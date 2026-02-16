@@ -56,7 +56,7 @@
 - [x] Implement scarcity messaging
 
 ## Phase 9: Campaign Builder (NEW - Kong missing)
-- [ ] Design campaign builder UI
+- [x] Design campaign builder UI
 - [ ] Implement drag-and-drop timeline
 - [ ] Add asset linking (ads → emails → landing pages)
 - [ ] Create visual workflow

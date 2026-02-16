@@ -15,6 +15,7 @@ import {
   LogOut,
   LayoutDashboard,
   Briefcase,
+  FolderOpen,
 } from "lucide-react";
 
 export default function Dashboard() {
@@ -110,6 +111,7 @@ export default function Dashboard() {
   const navigationItems = [
     { title: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
     { title: "Services", icon: Briefcase, href: "/services" },
+    { title: "Campaigns", icon: FolderOpen, href: "/campaigns" },
     { title: "Settings", icon: Settings, href: "/settings" },
   ];
 
@@ -273,6 +275,12 @@ export default function Dashboard() {
                 <Button className="w-full justify-start" variant="outline">
                   <Mail className="w-4 h-4 mr-2" />
                   Create Email Sequence
+                </Button>
+              </Link>
+              <Link href="/campaigns">
+                <Button className="w-full justify-start" variant="outline">
+                  <FolderOpen className="w-4 h-4 mr-2" />
+                  Organize Campaign
                 </Button>
               </Link>
             </CardContent>
