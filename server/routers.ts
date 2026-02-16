@@ -3,6 +3,13 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
 import { servicesRouter } from "./routers/services";
+import { icpsRouter } from "./routers/icps";
+import { adCopyRouter } from "./routers/adCopy";
+import { emailSequencesRouter } from "./routers/emailSequences";
+import { whatsappSequencesRouter } from "./routers/whatsappSequences";
+import { landingPagesRouter } from "./routers/landingPages";
+import { offersRouter } from "./routers/offers";
+import { subscriptionRouter } from "./routers/subscription";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -20,6 +27,13 @@ export const appRouter = router({
 
   // Feature routers
   services: servicesRouter,
+  icps: icpsRouter,
+  adCopy: adCopyRouter,
+  emailSequences: emailSequencesRouter,
+  whatsappSequences: whatsappSequencesRouter,
+  landingPages: landingPagesRouter,
+  offers: offersRouter,
+  subscription: subscriptionRouter,
 });
 
 export type AppRouter = typeof appRouter;

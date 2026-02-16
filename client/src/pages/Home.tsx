@@ -39,10 +39,10 @@ export default function Home() {
               <div className="flex gap-4 justify-center">
                 <Button
                   size="lg"
-                  onClick={() => setLocation("/services")}
+                  onClick={() => setLocation("/dashboard")}
                   className="flex items-center gap-2"
                 >
-                  Go to Services
+                  Go to Dashboard
                   <ArrowRight className="w-5 h-5" />
                 </Button>
                 <Button
