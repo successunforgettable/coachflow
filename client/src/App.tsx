@@ -9,6 +9,8 @@ import Services from "./pages/Services";
 import ICPGenerator from "./pages/ICPGenerator";
 import Dashboard from "./pages/Dashboard";
 import Pricing from "./pages/Pricing";
+import AdCopyGenerator from "./pages/AdCopyGenerator";
+import EmailSequenceGenerator from "./pages/EmailSequenceGenerator";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -19,6 +21,8 @@ function Router() {
       <Route path={"/services"} component={Services} />
       <Route path={"/generators/icp"} component={ICPGenerator} />
       <Route path={"/pricing"} component={Pricing} />
+      <Route path={"/generators/ad-copy"} component={AdCopyGenerator} />
+      <Route path={"/generators/email"} component={EmailSequenceGenerator} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />
