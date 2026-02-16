@@ -79,38 +79,39 @@
 }
 
 .dark {
-  --primary: var(--color-blue-700);
-  --primary-foreground: var(--color-blue-50);
-  --sidebar-primary: var(--color-blue-500);
-  --sidebar-primary-foreground: var(--color-blue-50);
-  --background: oklch(0.141 0.005 285.823);
-  --foreground: oklch(0.85 0.005 65);
-  --card: oklch(0.21 0.006 285.885);
-  --card-foreground: oklch(0.85 0.005 65);
-  --popover: oklch(0.21 0.006 285.885);
-  --popover-foreground: oklch(0.85 0.005 65);
-  --secondary: oklch(0.24 0.006 286.033);
-  --secondary-foreground: oklch(0.7 0.005 65);
-  --muted: oklch(0.274 0.006 286.033);
-  --muted-foreground: oklch(0.705 0.015 286.067);
-  --accent: oklch(0.274 0.006 286.033);
-  --accent-foreground:  oklch(0.92 0.005 65);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.488 0.243 264.376);
-  --chart-1: var(--color-blue-300);
-  --chart-2: var(--color-blue-500);
-  --chart-3: var(--color-blue-600);
-  --chart-4: var(--color-blue-700);
-  --chart-5: var(--color-blue-800);
-  --sidebar: oklch(0.21 0.006 285.885);
-  --sidebar-foreground: oklch(0.85 0.005 65);
-  --sidebar-accent: oklch(0.274 0.006 286.033);
-  --sidebar-accent-foreground:  oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.488 0.243 264.376);
+  /* Deep Navy Blue Theme (inspired by reference image) */
+  --primary: oklch(0.6 0.15 240); /* Bright blue for CTAs */
+  --primary-foreground: oklch(1 0 0); /* White text on blue */
+  --sidebar-primary: oklch(0.6 0.15 240);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --background: oklch(0.12 0.02 240); /* Deep navy blue #0A1628 */
+  --foreground: oklch(0.95 0 0); /* Bright white text */
+  --card: oklch(0.18 0.02 240); /* Dark slate card #1A2332 */
+  --card-foreground: oklch(0.95 0 0); /* White text on cards */
+  --popover: oklch(0.18 0.02 240);
+  --popover-foreground: oklch(0.95 0 0);
+  --secondary: oklch(0.25 0.02 240); /* Slightly lighter slate */
+  --secondary-foreground: oklch(0.8 0 0); /* Light gray text */
+  --muted: oklch(0.3 0.02 240);
+  --muted-foreground: oklch(0.6 0.01 240); /* Muted gray text */
+  --accent: oklch(0.6 0.15 240); /* Bright blue accent */
+  --accent-foreground: oklch(1 0 0);
+  --destructive: oklch(0.6 0.2 20); /* Red for delete */
+  --destructive-foreground: oklch(1 0 0);
+  --border: oklch(0.25 0.02 240); /* Subtle borders */
+  --input: oklch(0.2 0.02 240); /* Input background */
+  --ring: oklch(0.6 0.15 240); /* Focus ring */
+  --chart-1: oklch(0.7 0.15 240);
+  --chart-2: oklch(0.6 0.15 240);
+  --chart-3: oklch(0.5 0.15 240);
+  --chart-4: oklch(0.4 0.15 240);
+  --chart-5: oklch(0.3 0.15 240);
+  --sidebar: oklch(0.18 0.02 240);
+  --sidebar-foreground: oklch(0.95 0 0);
+  --sidebar-accent: oklch(0.25 0.02 240);
+  --sidebar-accent-foreground: oklch(1 0 0);
+  --sidebar-border: oklch(0.25 0.02 240);
+  --sidebar-ring: oklch(0.6 0.15 240);
 }
 
 @layer base {

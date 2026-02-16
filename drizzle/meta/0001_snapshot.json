@@ -1,0 +1,1276 @@
+{
+  "version": "5",
+  "dialect": "mysql",
+  "id": "3c48f971-c134-4482-b664-58f59e64860e",
+  "prevId": "70aa23ed-535f-4900-bd7d-d53cfa6d24e5",
+  "tables": {
+    "adCopy": {
+      "name": "adCopy",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "serviceId": {
+          "name": "serviceId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "campaignId": {
+          "name": "campaignId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "adType": {
+          "name": "adType",
+          "type": "enum('story','authority','question','social_proof','cta')",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "headline": {
+          "name": "headline",
+          "type": "varchar(500)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "bodyCopy": {
+          "name": "bodyCopy",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "linkDescription": {
+          "name": "linkDescription",
+          "type": "varchar(500)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "rating": {
+          "name": "rating",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": 0
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "idx_adCopy_userId": {
+          "name": "idx_adCopy_userId",
+          "columns": [
+            "userId"
+          ],
+          "isUnique": false
+        },
+        "idx_adCopy_campaignId": {
+          "name": "idx_adCopy_campaignId",
+          "columns": [
+            "campaignId"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "adCopy_userId_users_id_fk": {
+          "name": "adCopy_userId_users_id_fk",
+          "tableFrom": "adCopy",
+          "tableTo": "users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "adCopy_serviceId_services_id_fk": {
+          "name": "adCopy_serviceId_services_id_fk",
+          "tableFrom": "adCopy",
+          "tableTo": "services",
+          "columnsFrom": [
+            "serviceId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "adCopy_campaignId_campaigns_id_fk": {
+          "name": "adCopy_campaignId_campaigns_id_fk",
+          "tableFrom": "adCopy",
+          "tableTo": "campaigns",
+          "columnsFrom": [
+            "campaignId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "adCopy_id": {
+          "name": "adCopy_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "campaigns": {
+      "name": "campaigns",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "serviceId": {
+          "name": "serviceId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "campaignType": {
+          "name": "campaignType",
+          "type": "enum('webinar','challenge','course_launch','product_launch')",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "enum('draft','active','paused','completed')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'draft'"
+        },
+        "startDate": {
+          "name": "startDate",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "endDate": {
+          "name": "endDate",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "idx_campaigns_userId": {
+          "name": "idx_campaigns_userId",
+          "columns": [
+            "userId"
+          ],
+          "isUnique": false
+        },
+        "idx_campaigns_serviceId": {
+          "name": "idx_campaigns_serviceId",
+          "columns": [
+            "serviceId"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "campaigns_userId_users_id_fk": {
+          "name": "campaigns_userId_users_id_fk",
+          "tableFrom": "campaigns",
+          "tableTo": "users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "campaigns_serviceId_services_id_fk": {
+          "name": "campaigns_serviceId_services_id_fk",
+          "tableFrom": "campaigns",
+          "tableTo": "services",
+          "columnsFrom": [
+            "serviceId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "campaigns_id": {
+          "name": "campaigns_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "emailSequences": {
+      "name": "emailSequences",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "serviceId": {
+          "name": "serviceId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "campaignId": {
+          "name": "campaignId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "sequenceType": {
+          "name": "sequenceType",
+          "type": "enum('welcome','engagement','sales')",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "emails": {
+          "name": "emails",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "automationEnabled": {
+          "name": "automationEnabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": false
+        },
+        "rating": {
+          "name": "rating",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": 0
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "idx_emailSequences_userId": {
+          "name": "idx_emailSequences_userId",
+          "columns": [
+            "userId"
+          ],
+          "isUnique": false
+        },
+        "idx_emailSequences_campaignId": {
+          "name": "idx_emailSequences_campaignId",
+          "columns": [
+            "campaignId"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "emailSequences_userId_users_id_fk": {
+          "name": "emailSequences_userId_users_id_fk",
+          "tableFrom": "emailSequences",
+          "tableTo": "users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "emailSequences_serviceId_services_id_fk": {
+          "name": "emailSequences_serviceId_services_id_fk",
+          "tableFrom": "emailSequences",
+          "tableTo": "services",
+          "columnsFrom": [
+            "serviceId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "emailSequences_campaignId_campaigns_id_fk": {
+          "name": "emailSequences_campaignId_campaigns_id_fk",
+          "tableFrom": "emailSequences",
+          "tableTo": "campaigns",
+          "columnsFrom": [
+            "campaignId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "emailSequences_id": {
+          "name": "emailSequences_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "idealCustomerProfiles": {
+      "name": "idealCustomerProfiles",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "serviceId": {
+          "name": "serviceId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "demographics": {
+          "name": "demographics",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "painPoints": {
+          "name": "painPoints",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "desiredOutcomes": {
+          "name": "desiredOutcomes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "valuesMotivations": {
+          "name": "valuesMotivations",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "buyingTriggers": {
+          "name": "buyingTriggers",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "rating": {
+          "name": "rating",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": 0
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "idx_icp_userId": {
+          "name": "idx_icp_userId",
+          "columns": [
+            "userId"
+          ],
+          "isUnique": false
+        },
+        "idx_icp_serviceId": {
+          "name": "idx_icp_serviceId",
+          "columns": [
+            "serviceId"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "idealCustomerProfiles_userId_users_id_fk": {
+          "name": "idealCustomerProfiles_userId_users_id_fk",
+          "tableFrom": "idealCustomerProfiles",
+          "tableTo": "users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "idealCustomerProfiles_serviceId_services_id_fk": {
+          "name": "idealCustomerProfiles_serviceId_services_id_fk",
+          "tableFrom": "idealCustomerProfiles",
+          "tableTo": "services",
+          "columnsFrom": [
+            "serviceId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "idealCustomerProfiles_id": {
+          "name": "idealCustomerProfiles_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "landingPages": {
+      "name": "landingPages",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "serviceId": {
+          "name": "serviceId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "campaignId": {
+          "name": "campaignId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "angle": {
+          "name": "angle",
+          "type": "enum('shock_solve','contrarian','story','authority')",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "headline": {
+          "name": "headline",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "sections": {
+          "name": "sections",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "rating": {
+          "name": "rating",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": 0
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "idx_landingPages_userId": {
+          "name": "idx_landingPages_userId",
+          "columns": [
+            "userId"
+          ],
+          "isUnique": false
+        },
+        "idx_landingPages_campaignId": {
+          "name": "idx_landingPages_campaignId",
+          "columns": [
+            "campaignId"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "landingPages_userId_users_id_fk": {
+          "name": "landingPages_userId_users_id_fk",
+          "tableFrom": "landingPages",
+          "tableTo": "users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "landingPages_serviceId_services_id_fk": {
+          "name": "landingPages_serviceId_services_id_fk",
+          "tableFrom": "landingPages",
+          "tableTo": "services",
+          "columnsFrom": [
+            "serviceId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "landingPages_campaignId_campaigns_id_fk": {
+          "name": "landingPages_campaignId_campaigns_id_fk",
+          "tableFrom": "landingPages",
+          "tableTo": "campaigns",
+          "columnsFrom": [
+            "campaignId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "landingPages_id": {
+          "name": "landingPages_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "offers": {
+      "name": "offers",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "serviceId": {
+          "name": "serviceId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "campaignId": {
+          "name": "campaignId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "offerType": {
+          "name": "offerType",
+          "type": "enum('standard','premium','vip')",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "headline": {
+          "name": "headline",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "whatIncluded": {
+          "name": "whatIncluded",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "bonuses": {
+          "name": "bonuses",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "guarantee": {
+          "name": "guarantee",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "price": {
+          "name": "price",
+          "type": "decimal(10,2)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "rating": {
+          "name": "rating",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": 0
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "idx_offers_userId": {
+          "name": "idx_offers_userId",
+          "columns": [
+            "userId"
+          ],
+          "isUnique": false
+        },
+        "idx_offers_campaignId": {
+          "name": "idx_offers_campaignId",
+          "columns": [
+            "campaignId"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "offers_userId_users_id_fk": {
+          "name": "offers_userId_users_id_fk",
+          "tableFrom": "offers",
+          "tableTo": "users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "offers_serviceId_services_id_fk": {
+          "name": "offers_serviceId_services_id_fk",
+          "tableFrom": "offers",
+          "tableTo": "services",
+          "columnsFrom": [
+            "serviceId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "offers_campaignId_campaigns_id_fk": {
+          "name": "offers_campaignId_campaigns_id_fk",
+          "tableFrom": "offers",
+          "tableTo": "campaigns",
+          "columnsFrom": [
+            "campaignId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "offers_id": {
+          "name": "offers_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "services": {
+      "name": "services",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "category": {
+          "name": "category",
+          "type": "enum('coaching','speaking','consulting')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "targetCustomer": {
+          "name": "targetCustomer",
+          "type": "varchar(500)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "mainBenefit": {
+          "name": "mainBenefit",
+          "type": "varchar(500)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "price": {
+          "name": "price",
+          "type": "decimal(10,2)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "idx_services_userId": {
+          "name": "idx_services_userId",
+          "columns": [
+            "userId"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "services_userId_users_id_fk": {
+          "name": "services_userId_users_id_fk",
+          "tableFrom": "services",
+          "tableTo": "users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "services_id": {
+          "name": "services_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "users": {
+      "name": "users",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "openId": {
+          "name": "openId",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar(320)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "loginMethod": {
+          "name": "loginMethod",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "role": {
+          "name": "role",
+          "type": "enum('user','admin')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'user'"
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        },
+        "lastSignedIn": {
+          "name": "lastSignedIn",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "users_id": {
+          "name": "users_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {
+        "users_openId_unique": {
+          "name": "users_openId_unique",
+          "columns": [
+            "openId"
+          ]
+        }
+      },
+      "checkConstraint": {}
+    },
+    "whatsappSequences": {
+      "name": "whatsappSequences",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "serviceId": {
+          "name": "serviceId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "campaignId": {
+          "name": "campaignId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "sequenceType": {
+          "name": "sequenceType",
+          "type": "enum('engagement','sales')",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "messages": {
+          "name": "messages",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "automationEnabled": {
+          "name": "automationEnabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": false
+        },
+        "rating": {
+          "name": "rating",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": 0
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "idx_whatsappSequences_userId": {
+          "name": "idx_whatsappSequences_userId",
+          "columns": [
+            "userId"
+          ],
+          "isUnique": false
+        },
+        "idx_whatsappSequences_campaignId": {
+          "name": "idx_whatsappSequences_campaignId",
+          "columns": [
+            "campaignId"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "whatsappSequences_userId_users_id_fk": {
+          "name": "whatsappSequences_userId_users_id_fk",
+          "tableFrom": "whatsappSequences",
+          "tableTo": "users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "whatsappSequences_serviceId_services_id_fk": {
+          "name": "whatsappSequences_serviceId_services_id_fk",
+          "tableFrom": "whatsappSequences",
+          "tableTo": "services",
+          "columnsFrom": [
+            "serviceId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "whatsappSequences_campaignId_campaigns_id_fk": {
+          "name": "whatsappSequences_campaignId_campaigns_id_fk",
+          "tableFrom": "whatsappSequences",
+          "tableTo": "campaigns",
+          "columnsFrom": [
+            "campaignId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "whatsappSequences_id": {
+          "name": "whatsappSequences_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    }
+  },
+  "views": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "tables": {},
+    "indexes": {}
+  }
+}
