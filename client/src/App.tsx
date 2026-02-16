@@ -11,6 +11,9 @@ import Dashboard from "./pages/Dashboard";
 import Pricing from "./pages/Pricing";
 import AdCopyGenerator from "./pages/AdCopyGenerator";
 import EmailSequenceGenerator from "./pages/EmailSequenceGenerator";
+import WhatsAppSequenceGenerator from "./pages/WhatsAppSequenceGenerator";
+import LandingPageGenerator from "./pages/LandingPageGenerator";
+import OffersGenerator from "./pages/OffersGenerator";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -23,6 +26,9 @@ function Router() {
       <Route path={"/pricing"} component={Pricing} />
       <Route path={"/generators/ad-copy"} component={AdCopyGenerator} />
       <Route path={"/generators/email"} component={EmailSequenceGenerator} />
+      <Route path={"/generators/whatsapp"} component={WhatsAppSequenceGenerator} />
+      <Route path={"/generators/landing-page"} component={LandingPageGenerator} />
+      <Route path={"/generators/offers"} component={OffersGenerator} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />
