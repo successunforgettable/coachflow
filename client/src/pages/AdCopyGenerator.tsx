@@ -61,6 +61,29 @@ export default function AdCopyGenerator() {
     },
   });
 
+  const generateMoreMutation = trpc.adCopy.generate.useMutation({
+    onSuccess: () => {
+      toast.success("Generated 15 more ad copies!");
+      refetchAdCopy();
+    },
+    onError: (error) => {
+      toast.error(`Failed to generate more: ${error.message}`);
+    },
+  });
+
+  const handleGenerateMore = (adCopy: any) => {
+    if (!adCopy.serviceId || !adCopy.adType) {
+      toast.error("Cannot regenerate: Missing service or ad type");
+      return;
+    }
+    
+    generateMoreMutation.mutate({
+      serviceId: adCopy.serviceId,
+      adType: adCopy.adType,
+      count: 15,
+    });
+  };
+
   const handleGenerate = () => {
     if (!serviceId) {
       toast.error("Please select a service");
@@ -345,6 +368,18 @@ export default function AdCopyGenerator() {
                           </div>
                         </div>
                       )}
+
+                      {/* +15 More Like This Button */}
+                      <div className="flex justify-end pt-2">
+                        <Button
+                          size="sm"
+                          onClick={() => handleGenerateMore(adCopy)}
+                          disabled={generateMoreMutation.isPending}
+                          className="bg-primary hover:bg-primary/90"
+                        >
+                          {generateMoreMutation.isPending ? "Generating..." : "+15 More Like This"}
+                        </Button>
+                      </div>
                     </CardContent>
                   </Card>
                 ))}

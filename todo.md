@@ -334,9 +334,9 @@
 - [x] Implement for Headlines Generator
 - [x] Implement for HVCO Titles Generator
 - [x] Implement for Hero Mechanisms Generator
-- [ ] Implement for ICP Generator
-- [ ] Implement for Ad Copy Generator
-- [ ] Implement for Email Sequence Generator
-- [ ] Implement for WhatsApp Sequence Generator
-- [ ] Implement for Landing Page Generator
-- [ ] Implement for Offers Generator
+- [x] Implement for ICP Generator
+- [x] Implement for Ad Copy Generator
+- [x] Implement for Email Sequence Generator
+- [x] Implement for WhatsApp Sequence Generator
+- [x] Implement for Landing Page Generator
+- [x] Implement for Offers Generator

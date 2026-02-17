@@ -58,6 +58,30 @@ export default function ICPGenerator() {
     },
   });
 
+  const generateMoreMutation = trpc.icps.generate.useMutation({
+    onSuccess: () => {
+      toast.success("Generated 15 more ICPs!");
+      refetchICPs();
+    },
+    onError: (error) => {
+      toast.error(`Failed to generate more: ${error.message}`);
+    },
+  });
+
+  const handleGenerateMore = () => {
+    if (!selectedICP || !selectedICP.serviceId) {
+      toast.error("Cannot regenerate: No service associated with this ICP");
+      return;
+    }
+    
+    // Generate with same serviceId but new auto-generated name
+    const timestamp = new Date().toLocaleTimeString();
+    generateMoreMutation.mutate({
+      serviceId: selectedICP.serviceId,
+      name: `${selectedICP.name} - Variation ${timestamp}`,
+    });
+  };
+
   // Redirect to login if not authenticated
   if (!authLoading && !isAuthenticated) {
     window.location.href = getLoginUrl();
@@ -316,6 +340,14 @@ export default function ICPGenerator() {
                         >
                           <Download className="w-4 h-4 mr-2" />
                           Download PDF
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={handleGenerateMore}
+                          disabled={generateMoreMutation.isPending}
+                          className="bg-primary hover:bg-primary/90"
+                        >
+                          {generateMoreMutation.isPending ? "Generating..." : "+15 More Like This"}
                         </Button>
                         <Button
                           size="sm"

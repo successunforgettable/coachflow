@@ -41,6 +41,28 @@ export default function LandingPageGenerator() {
     onSuccess: () => refetch(),
   });
 
+  const generateMoreMutation = trpc.landingPages.generate.useMutation({
+    onSuccess: () => {
+      toast.success("Generated 15 more landing pages!");
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(`Failed to generate more: ${error.message}`);
+    },
+  });
+
+  const handleGenerateMore = (page: any) => {
+    if (!page.serviceId || !page.angle) {
+      toast.error("Cannot regenerate: Missing service or angle");
+      return;
+    }
+    
+    generateMoreMutation.mutate({
+      serviceId: page.serviceId,
+      angle: page.angle,
+    });
+  };
+
   const handleDownloadPDF = (page: any) => {
     const sections = [
       { title: "Headline", content: page.headline || 'No headline' },
@@ -202,6 +224,18 @@ export default function LandingPageGenerator() {
                             <p className="text-sm text-foreground whitespace-pre-wrap">{section.content}</p>
                           </div>
                         ))}
+                      </div>
+
+                      {/* +15 More Like This Button */}
+                      <div className="flex justify-end pt-4">
+                        <Button
+                          size="sm"
+                          onClick={() => handleGenerateMore(page)}
+                          disabled={generateMoreMutation.isPending}
+                          className="bg-primary hover:bg-primary/90"
+                        >
+                          {generateMoreMutation.isPending ? "Generating..." : "+15 More Like This"}
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>

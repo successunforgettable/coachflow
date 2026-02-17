@@ -41,6 +41,30 @@ export default function WhatsAppSequenceGenerator() {
     onSuccess: () => refetch(),
   });
 
+  const generateMoreMutation = trpc.whatsappSequences.generate.useMutation({
+    onSuccess: () => {
+      toast.success("Generated 15 more WhatsApp sequences!");
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(`Failed to generate more: ${error.message}`);
+    },
+  });
+
+  const handleGenerateMore = (sequence: any) => {
+    if (!sequence.serviceId || !sequence.sequenceType) {
+      toast.error("Cannot regenerate: Missing service or sequence type");
+      return;
+    }
+    
+    const timestamp = new Date().toLocaleTimeString();
+    generateMoreMutation.mutate({
+      serviceId: sequence.serviceId,
+      sequenceType: sequence.sequenceType,
+      name: `${sequence.sequenceType} Sequence - Variation ${timestamp}`,
+    });
+  };
+
   const handleDownloadPDF = (sequence: any) => {
     const messages = JSON.parse(sequence.messages || '[]');
     const sections = messages.map((msg: any, index: number) => ({
@@ -187,6 +211,18 @@ export default function WhatsAppSequenceGenerator() {
                             <p className="text-sm text-foreground whitespace-pre-wrap">{message.text}</p>
                           </div>
                         ))}
+                      </div>
+
+                      {/* +15 More Like This Button */}
+                      <div className="flex justify-end pt-4">
+                        <Button
+                          size="sm"
+                          onClick={() => handleGenerateMore(seq)}
+                          disabled={generateMoreMutation.isPending}
+                          className="bg-primary hover:bg-primary/90"
+                        >
+                          {generateMoreMutation.isPending ? "Generating..." : "+15 More Like This"}
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>

@@ -41,6 +41,29 @@ export default function OffersGenerator() {
     onSuccess: () => refetch(),
   });
 
+  const generateMoreMutation = trpc.offers.generate.useMutation({
+    onSuccess: () => {
+      toast.success("Generated 15 more offers!");
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(`Failed to generate more: ${error.message}`);
+    },
+  });
+
+  const handleGenerateMore = (offer: any) => {
+    if (!offer.serviceId || !offer.offerType) {
+      toast.error("Cannot regenerate: Missing service or offer type");
+      return;
+    }
+    
+    generateMoreMutation.mutate({
+      serviceId: offer.serviceId,
+      offerType: offer.offerType,
+      price: offer.pricing || "$997",
+    });
+  };
+
   const handleDownloadPDF = (offer: any) => {
     const sections = [
       { title: "Offer Name", content: offer.offerName || 'No name' },
@@ -237,6 +260,18 @@ export default function OffersGenerator() {
                             <p className="text-3xl font-bold text-green-500">${offer.price}</p>
                           </div>
                         )}
+
+                        {/* +15 More Like This Button */}
+                        <div className="flex justify-end pt-2">
+                          <Button
+                            size="sm"
+                            onClick={() => handleGenerateMore(offer)}
+                            disabled={generateMoreMutation.isPending}
+                            className="bg-primary hover:bg-primary/90"
+                          >
+                            {generateMoreMutation.isPending ? "Generating..." : "+15 More Like This"}
+                          </Button>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>

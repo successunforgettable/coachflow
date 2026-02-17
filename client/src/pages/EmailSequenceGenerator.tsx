@@ -41,6 +41,30 @@ export default function EmailSequenceGenerator() {
     onSuccess: () => refetch(),
   });
 
+  const generateMoreMutation = trpc.emailSequences.generate.useMutation({
+    onSuccess: () => {
+      toast.success("Generated 15 more email sequences!");
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(`Failed to generate more: ${error.message}`);
+    },
+  });
+
+  const handleGenerateMore = (sequence: any) => {
+    if (!sequence.serviceId || !sequence.sequenceType) {
+      toast.error("Cannot regenerate: Missing service or sequence type");
+      return;
+    }
+    
+    const timestamp = new Date().toLocaleTimeString();
+    generateMoreMutation.mutate({
+      serviceId: sequence.serviceId,
+      sequenceType: sequence.sequenceType,
+      name: `${sequence.sequenceType} Sequence - Variation ${timestamp}`,
+    });
+  };
+
   const handleDownloadPDF = (sequence: any) => {
     const emails = JSON.parse(sequence.emails || '[]');
     const sections = emails.map((email: any, index: number) => ({
@@ -182,6 +206,18 @@ export default function EmailSequenceGenerator() {
                             <p className="text-sm text-muted-foreground whitespace-pre-wrap">{email.body}</p>
                           </div>
                         ))}
+                      </div>
+
+                      {/* +15 More Like This Button */}
+                      <div className="flex justify-end pt-4">
+                        <Button
+                          size="sm"
+                          onClick={() => handleGenerateMore(seq)}
+                          disabled={generateMoreMutation.isPending}
+                          className="bg-primary hover:bg-primary/90"
+                        >
+                          {generateMoreMutation.isPending ? "Generating..." : "+15 More Like This"}
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>
