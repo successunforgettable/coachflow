@@ -12,6 +12,9 @@ import { toast } from "sonner";
 import { QuotaIndicator } from "@/components/QuotaIndicator";
 import { SearchBar } from "@/components/SearchBar";
 import { exportToPDF } from "@/lib/pdfExport";
+import RegenerateSidebar from "@/components/RegenerateSidebar";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 // Real-world offer type examples from Kong
 const OFFER_TYPE_EXAMPLES = {
@@ -196,7 +199,8 @@ export default function OffersGenerator() {
             {!offers || offers.length === 0 ? (
               <Card><CardContent className="py-12 text-center"><p className="text-muted-foreground">No offers yet. Create your first one!</p></CardContent></Card>
             ) : (
-              <div className="space-y-4">
+              <div className="flex gap-6">
+              <div className="flex-1 space-y-4">
                 {offers
                   .filter((offer) =>
                     offer.headline?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -310,6 +314,52 @@ export default function OffersGenerator() {
                     </CardContent>
                   </Card>
                 ))}
+              </div>
+
+              {/* Regenerate Sidebar */}
+              <RegenerateSidebar
+                title="Regenerate Offer"
+                subtitle="Submit or modify the pre-filled form below to regenerate a similar offer"
+                onRegenerate={() => {
+                  const firstOffer = offers[0];
+                  if (!firstOffer.serviceId || !firstOffer.offerType) {
+                    toast.error("Cannot regenerate: Missing service or offer type");
+                    return;
+                  }
+                  generateMoreMutation.mutate({
+                    serviceId: firstOffer.serviceId,
+                    offerType: firstOffer.offerType,
+                    price: firstOffer.price || "997",
+                  });
+                }}
+                isLoading={generateMoreMutation.isPending}
+                creditText="Uses 1 Offer Credit"
+              >
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="offerType">Offer Type*</Label>
+                    <Select value={offers[0]?.offerType || "standard"} disabled>
+                      <SelectTrigger id="offerType">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="standard">Standard</SelectItem>
+                        <SelectItem value="premium">Premium</SelectItem>
+                        <SelectItem value="vip">VIP</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="price">Price*</Label>
+                    <Input
+                      id="price"
+                      value={offers[0]?.price || "997"}
+                      readOnly
+                      placeholder="e.g., 997"
+                    />
+                  </div>
+                </div>
+              </RegenerateSidebar>
               </div>
             )}
           </div>

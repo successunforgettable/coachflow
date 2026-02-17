@@ -12,6 +12,9 @@ import { toast } from "sonner";
 import { QuotaIndicator } from "@/components/QuotaIndicator";
 import { SearchBar } from "@/components/SearchBar";
 import { exportToPDF } from "@/lib/pdfExport";
+import RegenerateSidebar from "@/components/RegenerateSidebar";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 // Real-world WhatsApp sequence examples from Kong
 const WHATSAPP_SEQUENCE_EXAMPLES = {
@@ -187,7 +190,8 @@ export default function WhatsAppSequenceGenerator() {
             {!sequences || sequences.length === 0 ? (
               <Card><CardContent className="py-12 text-center"><p className="text-muted-foreground">No sequences yet. Create your first one!</p></CardContent></Card>
             ) : (
-              <div className="space-y-4">
+              <div className="flex gap-6">
+              <div className="flex-1 space-y-4">
                 {sequences
                   .filter((seq) =>
                     seq.sequenceType?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -256,6 +260,52 @@ export default function WhatsAppSequenceGenerator() {
                     </CardContent>
                   </Card>
                 ))}
+              </div>
+
+              {/* Regenerate Sidebar */}
+              <RegenerateSidebar
+                title="Regenerate WhatsApp Sequence"
+                subtitle="Submit or modify the pre-filled form below to regenerate a similar WhatsApp sequence"
+                onRegenerate={() => {
+                  const firstSeq = sequences[0];
+                  if (!firstSeq.serviceId || !firstSeq.sequenceType) {
+                    toast.error("Cannot regenerate: Missing service or sequence type");
+                    return;
+                  }
+                  const timestamp = new Date().toLocaleTimeString();
+                  generateMoreMutation.mutate({
+                    serviceId: firstSeq.serviceId,
+                    sequenceType: firstSeq.sequenceType,
+                    name: `${firstSeq.sequenceType} Sequence - Variation ${timestamp}`,
+                  });
+                }}
+                isLoading={generateMoreMutation.isPending}
+                creditText="Uses 1 WhatsApp Sequence Credit"
+              >
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="sequenceType">Sequence Type*</Label>
+                    <Select value={sequences[0]?.sequenceType || "engagement"} disabled>
+                      <SelectTrigger id="sequenceType">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="engagement">Engagement</SelectItem>
+                        <SelectItem value="sales">Sales</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="sequenceName">Sequence Name*</Label>
+                    <Input
+                      id="sequenceName"
+                      value={sequences[0]?.name || ""}
+                      readOnly
+                      placeholder="e.g., 3-Day Engagement Sequence"
+                    />
+                  </div>
+                </div>
+              </RegenerateSidebar>
               </div>
             )}
           </div>

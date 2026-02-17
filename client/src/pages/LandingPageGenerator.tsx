@@ -12,6 +12,9 @@ import { toast } from "sonner";
 import { QuotaIndicator } from "@/components/QuotaIndicator";
 import { SearchBar } from "@/components/SearchBar";
 import { exportToPDF } from "@/lib/pdfExport";
+import RegenerateSidebar from "@/components/RegenerateSidebar";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 // Real-world landing page angle examples from Kong
 const LANDING_PAGE_ANGLE_EXAMPLES = {
@@ -201,7 +204,8 @@ export default function LandingPageGenerator() {
             {!pages || pages.length === 0 ? (
               <Card><CardContent className="py-12 text-center"><p className="text-muted-foreground">No landing pages yet. Create your first one!</p></CardContent></Card>
             ) : (
-              <div className="space-y-4">
+              <div className="flex gap-6">
+              <div className="flex-1 space-y-4">
                 {pages
                   .filter((page) =>
                     page.headline?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -278,7 +282,44 @@ export default function LandingPageGenerator() {
                       </div>
                     </CardContent>
                   </Card>
-                ))}
+                 ))}
+              </div>
+
+              {/* Regenerate Sidebar */}
+              <RegenerateSidebar
+                title="Regenerate Landing Page"
+                subtitle="Submit or modify the pre-filled form below to regenerate a similar landing page"
+                onRegenerate={() => {
+                  const firstPage = pages[0];
+                  if (!firstPage.serviceId || !firstPage.angle) {
+                    toast.error("Cannot regenerate: Missing service or angle");
+                    return;
+                  }
+                  generateMoreMutation.mutate({
+                    serviceId: firstPage.serviceId,
+                    angle: firstPage.angle,
+                  });
+                }}
+                isLoading={generateMoreMutation.isPending}
+                creditText="Uses 1 Landing Page Credit"
+              >
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="angle">Landing Page Angle*</Label>
+                    <Select value={pages[0]?.angle || "shock_solve"} disabled>
+                      <SelectTrigger id="angle">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="shock_solve">Shock & Solve</SelectItem>
+                        <SelectItem value="contrarian">Contrarian</SelectItem>
+                        <SelectItem value="story">Story</SelectItem>
+                        <SelectItem value="authority">Authority</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </RegenerateSidebar>
               </div>
             )}
           </div>
