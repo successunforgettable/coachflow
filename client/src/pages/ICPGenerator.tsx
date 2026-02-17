@@ -11,12 +11,14 @@ import { useState } from "react";
 import { Loader2, Sparkles, Star, Trash2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { QuotaIndicator } from "@/components/QuotaIndicator";
+import { SearchBar } from "@/components/SearchBar";
 
 export default function ICPGenerator() {
   const { isAuthenticated, loading: authLoading } = useAuth();
   const [selectedServiceId, setSelectedServiceId] = useState<number | null>(null);
   const [icpName, setIcpName] = useState("");
   const [selectedICPId, setSelectedICPId] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Queries
   const { data: services } = trpc.services.list.useQuery(undefined, {
@@ -166,6 +168,15 @@ export default function ICPGenerator() {
               </CardContent>
             </Card>
 
+            {/* Search Bar */}
+            <div className="mt-6">
+              <SearchBar
+                placeholder="Search ICPs..."
+                value={searchQuery}
+                onChange={setSearchQuery}
+              />
+            </div>
+
             {/* ICP List */}
             <Card className="mt-6">
               <CardHeader>
@@ -177,7 +188,11 @@ export default function ICPGenerator() {
               <CardContent>
                 {icps && icps.length > 0 ? (
                   <div className="space-y-2">
-                    {icps.map((icp) => (
+                    {icps
+                      .filter((icp) =>
+                        icp.name.toLowerCase().includes(searchQuery.toLowerCase())
+                      )
+                      .map((icp) => (
                       <div
                         key={icp.id}
                         className={`p-3 rounded-lg border cursor-pointer transition-colors ${

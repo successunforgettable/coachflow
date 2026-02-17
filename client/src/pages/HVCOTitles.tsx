@@ -4,10 +4,19 @@ import { Card } from "@/components/ui/card";
 import { FolderIcon, PlusIcon } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { QuotaIndicator } from "@/components/QuotaIndicator";
+import { SearchBar } from "@/components/SearchBar";
+import { useState } from "react";
 
 export default function HVCOTitles() {
+  const [searchQuery, setSearchQuery] = useState("");
   const { data: hvcoSets, isLoading } = trpc.hvco.list.useQuery();
   const { data: services } = trpc.services.list.useQuery();
+
+  const filteredSets = hvcoSets?.filter((set) =>
+    set.targetMarket.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    set.hvcoTopic.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    set.sampleTitle.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   if (isLoading) {
     return (
@@ -55,6 +64,15 @@ export default function HVCOTitles() {
           </div>
         </Card>
       )}
+
+      {/* Search Bar */}
+      <div className="mb-6">
+        <SearchBar
+          placeholder="Search HVCO Titles..."
+          value={searchQuery}
+          onChange={setSearchQuery}
+        />
+      </div>
 
       {/* Action Buttons */}
       <div className="flex items-center justify-between mb-6">

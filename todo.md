@@ -226,3 +226,91 @@
   - [ ] Add delete functionality
   - [ ] Add regenerate sidebar with pre-filled form
 - [ ] Test end-to-end and save checkpoint
+
+
+## Phase 28: Complete All Remaining Kong Parity Items (ACTIVE)
+
+### UI/UX Features (8 items)
+- [ ] 1. Search Bars on all list pages (4/9 complete)
+  - [x] Read Kong research for exact search implementation
+  - [x] Create SearchBar component
+  - [x] Add to Headlines list
+  - [x] Add to HVCO Titles list
+  - [x] Add to Hero Mechanisms list
+  - [x] Add to ICP list
+  - [ ] Add to Ad Copy list
+  - [ ] Add to Email Sequences list
+  - [ ] Add to WhatsApp Sequences list
+  - [ ] Add to Landing Pages list
+  - [ ] Add to Offers list
+
+- [ ] 2. Functional PDF Export
+  - [ ] Read Kong research for PDF format/structure
+  - [ ] Implement PDF generation utility
+  - [ ] Add to Headlines generator
+  - [ ] Add to HVCO Titles generator
+  - [ ] Add to Hero Mechanisms generator
+  - [ ] Add to ICP generator
+  - [ ] Add to Ad Copy generator
+  - [ ] Add to Email Sequences generator
+  - [ ] Add to WhatsApp Sequences generator
+  - [ ] Add to Landing Pages generator
+  - [ ] Add to Offers generator
+
+- [ ] 3. "+15 More Like This" functionality
+  - [ ] Read Kong research for regeneration behavior
+  - [ ] Implement regeneration logic
+  - [ ] Add to all generator detail pages
+
+- [ ] 4. Beast Mode Toggle
+  - [ ] Read Kong research for Beast Mode implementation
+  - [ ] Add toggle to generator forms
+  - [ ] Modify LLM prompts to generate 2-3x variations
+
+- [ ] 5. Regenerate Sidebar
+  - [ ] Read Kong research for sidebar structure
+  - [ ] Create RegenerateSidebar component
+  - [ ] Add to all detail pages
+
+- [ ] 6. Examples Carousel on all generators
+  - [ ] Read Kong research for examples format
+  - [ ] Add to HVCO Titles (currently missing)
+  - [ ] Add to Hero Mechanisms (currently missing)
+  - [ ] Add to ICP (currently missing)
+  - [ ] Add to Ad Copy (currently missing)
+  - [ ] Add to Email (currently missing)
+  - [ ] Add to WhatsApp (currently missing)
+  - [ ] Add to Landing Pages (currently missing)
+  - [ ] Add to Offers (currently missing)
+
+- [ ] 7. Polish Loading Animations
+  - [ ] Read Kong research for animation patterns
+  - [ ] Add skeleton loaders
+  - [ ] Add smooth transitions
+
+- [ ] 8. Multiple Angle Variations
+  - [ ] Read Kong research for angle toggle implementation
+  - [ ] Add Original/Godfather/Free/Dollar toggles
+  - [ ] Modify LLM prompts for each angle
+
+### Design/Styling (5 items)
+- [ ] 9. Dark Theme Consistency (#1a1a1a)
+  - [ ] Update index.css with Kong's exact colors
+  - [ ] Apply to all pages
+
+- [ ] 10. Purple Primary Buttons (#8B5CF6)
+  - [ ] Update button colors to match Kong
+  - [ ] Apply globally
+
+- [ ] 11. Green Action Buttons
+  - [ ] Update View/Manage/Generate buttons to green
+  - [ ] Apply to all generators
+
+- [ ] 12. Professional Spacing
+  - [ ] Audit all pages for spacing consistency
+  - [ ] Fix padding/margins to match Kong
+
+- [ ] 13. Smooth Animations
+  - [ ] Add fade-in animations
+  - [ ] Add transition effects
+  - [ ] Match Kong's animation timing

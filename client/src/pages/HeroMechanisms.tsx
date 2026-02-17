@@ -4,10 +4,20 @@ import { Card } from "@/components/ui/card";
 import { FolderIcon, PlusIcon } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { QuotaIndicator } from "@/components/QuotaIndicator";
+import { SearchBar } from "@/components/SearchBar";
+import { useState } from "react";
 
 export default function HeroMechanisms() {
+  const [searchQuery, setSearchQuery] = useState("");
   const { data: mechanismSets, isLoading } = trpc.heroMechanisms.list.useQuery();
   const { data: services } = trpc.services.list.useQuery();
+
+  const filteredSets = mechanismSets?.filter((set) =>
+    set.targetMarket.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    set.pressingProblem.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    set.sampleName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    set.desiredOutcome.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   if (isLoading) {
     return (
@@ -55,6 +65,15 @@ export default function HeroMechanisms() {
           </div>
         </Card>
       )}
+
+      {/* Search Bar */}
+      <div className="mb-6">
+        <SearchBar
+          placeholder="Search Hero Mechanisms..."
+          value={searchQuery}
+          onChange={setSearchQuery}
+        />
+      </div>
 
       {/* Action Buttons */}
       <div className="flex items-center justify-between mb-6">

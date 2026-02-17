@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Loader2, Plus, Star } from "lucide-react";
 import { QuotaIndicator } from "@/components/QuotaIndicator";
+import { SearchBar } from "@/components/SearchBar";
 import { useState } from "react";
 
 export default function Headlines() {
@@ -30,6 +31,15 @@ export default function Headlines() {
       {/* Quota Indicator */}
       <div className="mb-6">
         <QuotaIndicator generatorType="headline" />
+      </div>
+
+      {/* Search Bar */}
+      <div className="mb-6">
+        <SearchBar
+          placeholder="Search Direct Response Headlines..."
+          value={searchQuery}
+          onChange={setSearchQuery}
+        />
       </div>
 
       {/* Header */}
