@@ -11,6 +11,7 @@ import Dashboard from "./pages/Dashboard";
 import Pricing from "./pages/Pricing";
 import AdCopyGenerator from "./pages/AdCopyGenerator";
 import AdCopyDetail from "./pages/AdCopyDetail";
+import AdCreatives from "./pages/AdCreatives";
 import EmailSequenceGenerator from "./pages/EmailSequenceGenerator";
 import WhatsAppSequenceGenerator from "./pages/WhatsAppSequenceGenerator";
 import LandingPageGenerator from "./pages/LandingPageGenerator";
@@ -40,6 +41,7 @@ function Router() {
       <Route path={"/pricing"} component={Pricing} />
       <Route path={"/ad-copy"} component={AdCopyGenerator} />
       <Route path={"/ad-copy/:adSetId"} component={AdCopyDetail} />
+      <Route path={"/ad-creatives"} component={AdCreatives} />
       <Route path={"/generators/email"} component={EmailSequenceGenerator} />
       <Route path={"/generators/whatsapp"} component={WhatsAppSequenceGenerator} />
       <Route path={"/generators/landing-page"} component={LandingPageGenerator} />

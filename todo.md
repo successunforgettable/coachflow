@@ -395,3 +395,51 @@
 - [x] Add regenerate mutation for Beast Mode
 - [x] Update Ad Copy list page to link to detail page
 - [ ] Test complete flow from generation to detail view
+
+
+## Phase 35: Final Kong Parity Implementation (ACTIVE)
+- [x] 1. Create Ad Creatives page with scroll-stopper-ad-creator integration
+  - [x] Read Kong research for Ad Creatives Template Library specs
+  - [x] Create page explaining how to use scroll-stopper-ad-creator
+  - [x] Match Kong's style and design format
+  - [x] Add to navigation
+- [ ] 2. Implement Regenerate Sidebar on all detail pages
+  - [ ] Read Kong research for Regenerate Sidebar specs
+  - [ ] Create RegenerateSidebar component
+  - [ ] Add to Headlines detail page
+  - [ ] Add to HVCO Titles detail page
+  - [ ] Add to Hero Mechanisms detail page
+  - [ ] Add to ICP detail page
+  - [ ] Add to Ad Copy detail page
+  - [ ] Add to Email Sequence detail page
+  - [ ] Add to WhatsApp Sequence detail page
+  - [ ] Add to Landing Page detail page
+  - [ ] Add to Offers detail page
+- [ ] 3. Polish Loading Animations to match Kong
+  - [ ] Read Kong research for loading animation patterns
+  - [ ] Add skeleton loaders
+  - [ ] Add smooth transitions
+  - [ ] Apply to all generators
+- [ ] 4. Implement Multiple Angle Variations toggles
+  - [ ] Read Kong research for angle toggle implementation
+  - [ ] Add Original/Godfather/Free/Dollar toggles
+  - [ ] Modify LLM prompts for each angle
+  - [ ] Apply to Headlines generator
+  - [ ] Apply to HVCO Titles generator
+- [ ] 5. Apply Dark Theme Consistency (#1a1a1a)
+  - [ ] Read Kong research for exact color values
+  - [ ] Update index.css with Kong's colors
+  - [ ] Apply to all pages
+- [ ] 6. Update to Purple Primary Buttons (#8B5CF6)
+  - [ ] Update button colors to match Kong
+  - [ ] Apply globally
+- [ ] 7. Update to Green Action Buttons
+  - [ ] Update View/Manage/Generate buttons to green
+  - [ ] Apply to all generators
+- [ ] 8. Fix Professional Spacing consistency
+  - [ ] Audit all pages for spacing
+  - [ ] Fix padding/margins to match Kong
+- [ ] 9. Add Smooth Animations (fade-ins and transitions)
+  - [ ] Add fade-in animations
+  - [ ] Add transition effects
+  - [ ] Match Kong's animation timing

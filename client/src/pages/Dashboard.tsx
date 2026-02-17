@@ -20,6 +20,7 @@ import {
   Type,
   Lightbulb,
   Zap,
+  Image,
 } from "lucide-react";
 
 export default function Dashboard() {
@@ -145,6 +146,14 @@ export default function Dashboard() {
       count: heroMechanisms?.length || 0,
       href: "/hero-mechanisms",
       color: "text-indigo-500",
+    },
+    {
+      title: "Ad Creatives",
+      description: "AI-powered scroll-stopping Facebook ad creatives",
+      icon: Image,
+      count: 0,
+      href: "/ad-creatives",
+      color: "text-pink-500",
     },
   ];
 
