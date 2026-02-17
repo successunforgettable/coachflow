@@ -7,6 +7,11 @@ import { FolderIcon, ThumbsUp, ThumbsDown, Download, Trash2, Copy, Star } from "
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { exportToPDF } from "@/lib/pdfExport";
+import RegenerateSidebar from "@/components/RegenerateSidebar";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type TabType = "hero_mechanisms" | "headline_ideas" | "beast_mode";
 
@@ -159,15 +164,39 @@ export default function HeroMechanismsDetail() {
   const firstMechanism = mechanisms[0];
   const service = services?.find((s) => s.id === firstMechanism.serviceId);
 
-  // Group mechanisms by tab type
   const mechanismsByTab = {
     hero_mechanisms: mechanisms.filter((m) => m.tabType === "hero_mechanisms"),
     headline_ideas: mechanisms.filter((m) => m.tabType === "headline_ideas"),
     beast_mode: mechanisms.filter((m) => m.tabType === "beast_mode"),
   };
+  const [regenerateForm, setRegenerateForm] = useState({
+    targetMarket: firstMechanism?.targetMarket || "",
+    pressingProblem: firstMechanism?.pressingProblem || "",
+    whyProblem: firstMechanism?.whyProblem || "",
+    whatTried: firstMechanism?.whatTried || "",
+    whyExistingNotWork: firstMechanism?.whyExistingNotWork || "",
+    descriptor: firstMechanism?.descriptor || "Strategy",
+    application: firstMechanism?.application || "10 Drops",
+    desiredOutcome: firstMechanism?.desiredOutcome || "",
+    credibility: firstMechanism?.credibility || "",
+    socialProof: firstMechanism?.socialProof || "",
+  });
+
+  const handleRegenerate = () => {
+    if (!firstMechanism?.serviceId) {
+      toast.error("Cannot regenerate: missing service information");
+      return;
+    }
+    generateMoreMutation.mutate({
+      serviceId: firstMechanism.serviceId,
+      ...regenerateForm,
+    });
+  };
 
   return (
     <div className="container py-8">
+      <div className="flex gap-6">
+      <div className="flex-1">
       {/* Product Card */}
       {service && (
         <Card className="p-6 mb-6 bg-card">
@@ -392,6 +421,131 @@ export default function HeroMechanismsDetail() {
           ))}
         </TabsContent>
       </Tabs>
+      </div>
+
+      {/* Regenerate Sidebar */}
+      <RegenerateSidebar
+        title="Regenerate Hero Mechanisms"
+        subtitle="Submit or modify the pre-filled form below to regenerate a similar set of hero mechanisms"
+        onRegenerate={handleRegenerate}
+        isLoading={generateMoreMutation.isPending}
+        creditText="Uses 1 Hero Mechanism Credit"
+      >
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="targetMarket">Target Market*</Label>
+            <Input
+              id="targetMarket"
+              value={regenerateForm.targetMarket}
+              onChange={(e) => setRegenerateForm({ ...regenerateForm, targetMarket: e.target.value })}
+              maxLength={52}
+              placeholder="e.g., Busy entrepreneurs"
+            />
+          </div>
+          <div>
+            <Label htmlFor="pressingProblem">Pressing Problem*</Label>
+            <Textarea
+              id="pressingProblem"
+              value={regenerateForm.pressingProblem}
+              onChange={(e) => setRegenerateForm({ ...regenerateForm, pressingProblem: e.target.value })}
+              maxLength={71}
+              placeholder="e.g., Struggling to generate leads"
+            />
+          </div>
+          <div>
+            <Label htmlFor="whyProblem">Why does prospect have this problem?*</Label>
+            <Textarea
+              id="whyProblem"
+              value={regenerateForm.whyProblem}
+              onChange={(e) => setRegenerateForm({ ...regenerateForm, whyProblem: e.target.value })}
+              maxLength={151}
+              placeholder="e.g., Traditional methods are outdated"
+            />
+          </div>
+          <div>
+            <Label htmlFor="whatTried">What other solutions tried?*</Label>
+            <Textarea
+              id="whatTried"
+              value={regenerateForm.whatTried}
+              onChange={(e) => setRegenerateForm({ ...regenerateForm, whatTried: e.target.value })}
+              maxLength={138}
+              placeholder="e.g., Facebook ads, cold calling"
+            />
+          </div>
+          <div>
+            <Label htmlFor="whyExistingNotWork">Why don't existing solutions work?*</Label>
+            <Textarea
+              id="whyExistingNotWork"
+              value={regenerateForm.whyExistingNotWork}
+              onChange={(e) => setRegenerateForm({ ...regenerateForm, whyExistingNotWork: e.target.value })}
+              maxLength={137}
+              placeholder="e.g., Too expensive, too time-consuming"
+            />
+          </div>
+          <div>
+            <Label htmlFor="descriptor">Descriptor</Label>
+            <Select value={regenerateForm.descriptor} onValueChange={(value) => setRegenerateForm({ ...regenerateForm, descriptor: value })}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Strategy">Strategy</SelectItem>
+                <SelectItem value="Framework">Framework</SelectItem>
+                <SelectItem value="Method">Method</SelectItem>
+                <SelectItem value="System">System</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="application">How is it applied?</Label>
+            <Select value={regenerateForm.application} onValueChange={(value) => setRegenerateForm({ ...regenerateForm, application: value })}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="10 Drops">10 Drops</SelectItem>
+                <SelectItem value="Apply 2 drops">Apply 2 drops</SelectItem>
+                <SelectItem value="Spend 30 seconds">Spend 30 seconds</SelectItem>
+                <SelectItem value="Spend 5 minutes">Spend 5 minutes</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="desiredOutcome">Desired Outcome*</Label>
+            <Textarea
+              id="desiredOutcome"
+              value={regenerateForm.desiredOutcome}
+              onChange={(e) => setRegenerateForm({ ...regenerateForm, desiredOutcome: e.target.value })}
+              maxLength={116}
+              placeholder="e.g., 10x more qualified leads"
+            />
+          </div>
+          <div>
+            <Label htmlFor="credibility">Credible Authority Figure*</Label>
+            <Input
+              id="credibility"
+              value={regenerateForm.credibility}
+              onChange={(e) => setRegenerateForm({ ...regenerateForm, credibility: e.target.value })}
+              maxLength={22}
+              placeholder="e.g., Dr. Smith"
+            />
+          </div>
+          <div>
+            <Label htmlFor="socialProof">Social Proof*</Label>
+            <Input
+              id="socialProof"
+              value={regenerateForm.socialProof}
+              onChange={(e) => setRegenerateForm({ ...regenerateForm, socialProof: e.target.value })}
+              maxLength={24}
+              placeholder="e.g., 10,000+ users"
+            />
+          </div>
+          <div className="text-xs text-muted-foreground italic">
+            ⚠️ Hero Mechanisms are AI-generated and should be reviewed before use
+          </div>
+        </div>
+      </RegenerateSidebar>
+      </div>
     </div>
   );
 }
