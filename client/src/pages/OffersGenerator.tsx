@@ -9,6 +9,7 @@ import { ArrowLeft, Copy, DollarSign, Loader2, Star, Trash2 } from "lucide-react
 import { useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
+import { QuotaIndicator } from "@/components/QuotaIndicator";
 
 export default function OffersGenerator() {
   const { isAuthenticated, loading: authLoading } = useAuth();
@@ -45,6 +46,9 @@ export default function OffersGenerator() {
 
   return (
     <div className="min-h-screen bg-background">
+      <div className="container mx-auto px-4 py-4">
+        <QuotaIndicator generatorType="offer" />
+      </div>
       <PageHeader 
         title="Offers Generator" 
         description="Create irresistible Godfather offers"

@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { InsertUser, users, headlines } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -90,3 +90,77 @@ export async function getUserByOpenId(openId: string) {
 }
 
 // TODO: add feature queries here as your schema grows.
+
+// Headlines helpers
+
+export async function createHeadlines(headlineData: Array<typeof headlines.$inferInsert>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.insert(headlines).values(headlineData);
+}
+
+export async function getHeadlinesByUserId(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  // Group by headlineSetId to get unique sets
+  const result = await db
+    .select()
+    .from(headlines)
+    .where(eq(headlines.userId, userId))
+    .orderBy(desc(headlines.createdAt));
+  
+  return result;
+}
+
+export async function getHeadlinesBySetId(headlineSetId: string, userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const result = await db
+    .select()
+    .from(headlines)
+    .where(and(
+      eq(headlines.headlineSetId, headlineSetId),
+      eq(headlines.userId, userId)
+    ))
+    .orderBy(headlines.formulaType, headlines.id);
+  
+  return result;
+}
+
+export async function updateHeadlineRating(headlineId: number, userId: number, rating: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db
+    .update(headlines)
+    .set({ rating })
+    .where(and(
+      eq(headlines.id, headlineId),
+      eq(headlines.userId, userId)
+    ));
+}
+
+export async function deleteHeadlineSet(headlineSetId: string, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db
+    .delete(headlines)
+    .where(and(
+      eq(headlines.headlineSetId, headlineSetId),
+      eq(headlines.userId, userId)
+    ));
+}
+
+export async function incrementHeadlineCount(userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db
+    .update(users)
+    .set({ headlineGeneratedCount: sql`${users.headlineGeneratedCount} + 1` })
+    .where(eq(users.id, userId));
+}

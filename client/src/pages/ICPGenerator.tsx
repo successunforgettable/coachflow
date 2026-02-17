@@ -10,6 +10,7 @@ import { getLoginUrl } from "@/const";
 import { useState } from "react";
 import { Loader2, Sparkles, Star, Trash2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { QuotaIndicator } from "@/components/QuotaIndicator";
 
 export default function ICPGenerator() {
   const { isAuthenticated, loading: authLoading } = useAuth();
@@ -83,7 +84,13 @@ export default function ICPGenerator() {
         title="Ideal Customer Profile Generator" 
         description="Generate detailed customer profiles for your services"
         backTo="/dashboard"
-      />      <div className="container mx-auto px-4 py-8 max-w-7xl">
+      />
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
+        {/* Quota Indicator */}
+        <div className="mb-6">
+          <QuotaIndicator generatorType="icp" />
+        </div>
+
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground">Ideal Customer Profile Generator</h1>

@@ -24,6 +24,15 @@ export const users = mysqlTable("users", {
   subscriptionStatus: mysqlEnum("subscriptionStatus", ["active", "canceled", "past_due", "trialing"]).default("trialing"),
   trialEndsAt: timestamp("trialEndsAt"),
   subscriptionEndsAt: timestamp("subscriptionEndsAt"),
+  // Usage tracking fields
+  icpGeneratedCount: int("icpGeneratedCount").default(0).notNull(),
+  adCopyGeneratedCount: int("adCopyGeneratedCount").default(0).notNull(),
+  emailSeqGeneratedCount: int("emailSeqGeneratedCount").default(0).notNull(),
+  whatsappSeqGeneratedCount: int("whatsappSeqGeneratedCount").default(0).notNull(),
+  landingPageGeneratedCount: int("landingPageGeneratedCount").default(0).notNull(),
+  offerGeneratedCount: int("offerGeneratedCount").default(0).notNull(),
+  headlineGeneratedCount: int("headlineGeneratedCount").default(0).notNull(),
+  usageResetAt: timestamp("usageResetAt").defaultNow().notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
@@ -245,3 +254,40 @@ export const offers = mysqlTable("offers", {
 
 export type Offer = typeof offers.$inferSelect;
 export type InsertOffer = typeof offers.$inferInsert;
+
+/**
+ * Direct Response Headlines - Kong parity
+ * 5 formula types: story, eyebrow, question, authority, urgency
+ * Each generation creates 25 headlines (5 per formula type)
+ */
+export const headlines = mysqlTable("headlines", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  serviceId: int("serviceId").references(() => services.id, { onDelete: "set null" }),
+  campaignId: int("campaignId").references(() => campaigns.id, { onDelete: "set null" }),
+  // Headline set ID - groups 25 headlines from one generation
+  headlineSetId: varchar("headlineSetId", { length: 50 }).notNull(),
+  // Formula type determines structure
+  formulaType: mysqlEnum("formulaType", ["story", "eyebrow", "question", "authority", "urgency"]).notNull(),
+  // All headlines have main headline
+  headline: text("headline").notNull(),
+  // Optional fields depending on formula type
+  subheadline: text("subheadline"), // Used by: eyebrow, authority
+  eyebrow: varchar("eyebrow", { length: 255 }), // Used by: eyebrow
+  // Input data used to generate (stored for regeneration)
+  targetMarket: varchar("targetMarket", { length: 255 }).notNull(),
+  pressingProblem: text("pressingProblem").notNull(),
+  desiredOutcome: text("desiredOutcome").notNull(),
+  uniqueMechanism: text("uniqueMechanism").notNull(),
+  // Metadata
+  rating: int("rating").default(0), // -1 = thumbs down, 0 = no rating, 1 = thumbs up
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  userIdIdx: index("idx_headlines_userId").on(table.userId),
+  campaignIdIdx: index("idx_headlines_campaignId").on(table.campaignId),
+  headlineSetIdIdx: index("idx_headlines_headlineSetId").on(table.headlineSetId),
+}));
+
+export type Headline = typeof headlines.$inferSelect;
+export type InsertHeadline = typeof headlines.$inferInsert;

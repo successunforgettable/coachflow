@@ -9,6 +9,7 @@ import { ArrowLeft, Copy, Loader2, MessageCircle, Star, Trash2 } from "lucide-re
 import { useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
+import { QuotaIndicator } from "@/components/QuotaIndicator";
 
 export default function WhatsAppSequenceGenerator() {
   const { isAuthenticated, loading: authLoading } = useAuth();
@@ -45,6 +46,9 @@ export default function WhatsAppSequenceGenerator() {
 
   return (
     <div className="min-h-screen bg-background">
+      <div className="container mx-auto px-4 py-4">
+        <QuotaIndicator generatorType="whatsappSeq" />
+      </div>
       <PageHeader 
         title="WhatsApp Sequence Generator" 
         description="Create engaging WhatsApp message sequences"

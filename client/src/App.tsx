@@ -17,6 +17,9 @@ import OffersGenerator from "./pages/OffersGenerator";
 import Campaigns from "./pages/Campaigns";
 import SourceOfTruth from "./pages/SourceOfTruth";
 import ServiceDetail from "./pages/ServiceDetail";
+import Headlines from "./pages/Headlines";
+import HeadlinesNew from "./pages/HeadlinesNew";
+import HeadlinesDetail from "./pages/HeadlinesDetail";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -35,6 +38,9 @@ function Router() {
       <Route path={"/generators/offers"} component={OffersGenerator} />
       <Route path={"/campaigns"} component={Campaigns} />
       <Route path={"/source-of-truth"} component={SourceOfTruth} />
+      <Route path={"/headlines"} component={Headlines} />
+      <Route path={"/headlines/new"} component={HeadlinesNew} />
+      <Route path={"/headlines/:id"} component={HeadlinesDetail} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

@@ -9,6 +9,7 @@ import { ArrowLeft, Copy, FileText, Loader2, Star, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
+import { QuotaIndicator } from "@/components/QuotaIndicator";
 
 export default function LandingPageGenerator() {
   const { isAuthenticated, loading: authLoading } = useAuth();
@@ -45,6 +46,9 @@ export default function LandingPageGenerator() {
 
   return (
     <div className="min-h-screen bg-background">
+      <div className="container mx-auto px-4 py-4">
+        <QuotaIndicator generatorType="landingPage" />
+      </div>
       <PageHeader 
         title="Landing Page Generator" 
         description="Generate high-converting landing page copy"

@@ -150,3 +150,40 @@
 - [ ] Implement Kong-style copy-to-clipboard buttons
 - [ ] Add Kong-style loading states and animations
 - [ ] Match Kong's professional color scheme and typography
+
+## Phase 25: Kong Parity - Phase 1 Implementation (ACTIVE)
+- [x] Build Direct Response Headlines Generator
+  - [x] Create database schema for headlines
+  - [x] Add 5 prompt templates (story, eyebrow, question, authority, urgency)
+  - [x] Create generator form UI
+  - [x] Create results display page
+  - [x] Add to navigation
+- [x] Add Quota Indicators UI
+  - [x] Create QuotaIndicator component
+  - [x] Add quota tracking to database
+  - [x] Display on Dashboard
+  - [x] Display on all 7 generator pages
+- [ ] Implement PDF Export
+  - [ ] Install jsPDF library
+  - [ ] Create PDF export utility function
+  - [ ] Add PDF export to ICP Generator
+  - [ ] Add PDF export to Ad Copy Generator
+  - [ ] Add PDF export to Email Sequence Generator
+  - [ ] Add PDF export to WhatsApp Sequence Generator
+  - [ ] Add PDF export to Landing Page Generator
+  - [ ] Add PDF export to Offers Generator
+  - [ ] Add PDF export to Headlines Generator (new)
+- [ ] Add Copy to Clipboard buttons
+  - [ ] Create/verify useCopyToClipboard hook
+  - [ ] Add copy buttons to all generated text content
+  - [ ] Add toast notifications on copy
+- [ ] Add Search bars
+  - [ ] Create SearchBar component
+  - [ ] Add to Services list page
+  - [ ] Add to ICP list page
+  - [ ] Add to Ad Copy list page
+  - [ ] Add to Email Sequences list page
+  - [ ] Add to WhatsApp Sequences list page
+  - [ ] Add to Landing Pages list page
+  - [ ] Add to Offers list page
+  - [ ] Add to Headlines list page (new)

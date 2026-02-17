@@ -16,6 +16,7 @@ import { ArrowLeft, Copy, Loader2, Star, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
+import { QuotaIndicator } from "@/components/QuotaIndicator";
 
 export default function AdCopyGenerator() {
   const { isAuthenticated, loading: authLoading } = useAuth();
@@ -89,6 +90,9 @@ export default function AdCopyGenerator() {
 
   return (
     <div className="min-h-screen bg-background p-8">
+      <div className="mb-6">
+        <QuotaIndicator generatorType="adCopy" />
+      </div>
       <PageHeader 
         title="Ad Copy Generator" 
         description="Generate high-converting ad copy with proven formulas"

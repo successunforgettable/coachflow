@@ -17,6 +17,7 @@ import {
   Briefcase,
   FolderOpen,
   BookOpen,
+  Type,
 } from "lucide-react";
 
 export default function Dashboard() {
@@ -49,6 +50,10 @@ export default function Dashboard() {
   });
 
   const { data: offers } = trpc.offers.list.useQuery(undefined, {
+    enabled: isAuthenticated,
+  });
+
+  const { data: headlines } = trpc.headlines.list.useQuery(undefined, {
     enabled: isAuthenticated,
   });
 
@@ -106,6 +111,14 @@ export default function Dashboard() {
       count: offers?.length || 0,
       href: "/generators/offers",
       color: "text-pink-500",
+    },
+    {
+      title: "Direct Response Headlines",
+      description: "25 headlines across 5 proven formulas (Kong parity)",
+      icon: Type,
+      count: headlines?.length || 0,
+      href: "/headlines",
+      color: "text-yellow-500",
     },
   ];
 
