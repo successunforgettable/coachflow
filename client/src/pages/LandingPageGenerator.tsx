@@ -10,11 +10,13 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
 import { QuotaIndicator } from "@/components/QuotaIndicator";
+import { SearchBar } from "@/components/SearchBar";
 
 export default function LandingPageGenerator() {
   const { isAuthenticated, loading: authLoading } = useAuth();
   const [serviceId, setServiceId] = useState<number | null>(null);
   const [angle, setAngle] = useState<"shock_solve" | "contrarian" | "story" | "authority">("shock_solve");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const { data: services } = trpc.services.list.useQuery(undefined, { enabled: isAuthenticated });
   const { data: pages, refetch } = trpc.landingPages.list.useQuery(undefined, { enabled: isAuthenticated });
@@ -100,12 +102,29 @@ export default function LandingPageGenerator() {
           </div>
 
           <div className="lg:col-span-2">
+            {/* Search Bar */}
+            <div className="mb-6">
+              <SearchBar
+                placeholder="Search Landing Pages..."
+                value={searchQuery}
+                onChange={setSearchQuery}
+              />
+            </div>
+
             <h2 className="text-2xl font-bold text-foreground mb-4">Your Landing Pages ({pages?.length || 0})</h2>
             {!pages || pages.length === 0 ? (
               <Card><CardContent className="py-12 text-center"><p className="text-muted-foreground">No landing pages yet. Create your first one!</p></CardContent></Card>
             ) : (
               <div className="space-y-4">
-                {pages.map((page) => (
+                {pages
+                  .filter((page) =>
+                    page.headline?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    page.angle?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    page.sections?.some(section => 
+                      section.content?.toLowerCase().includes(searchQuery.toLowerCase())
+                    )
+                  )
+                  .map((page) => (
                   <Card key={page.id}>
                     <CardHeader>
                       <div className="flex items-start justify-between">

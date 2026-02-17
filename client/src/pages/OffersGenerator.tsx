@@ -10,11 +10,13 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
 import { QuotaIndicator } from "@/components/QuotaIndicator";
+import { SearchBar } from "@/components/SearchBar";
 
 export default function OffersGenerator() {
   const { isAuthenticated, loading: authLoading } = useAuth();
   const [serviceId, setServiceId] = useState<number | null>(null);
   const [offerType, setOfferType] = useState<"standard" | "premium" | "vip">("standard");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const { data: services } = trpc.services.list.useQuery(undefined, { enabled: isAuthenticated });
   const { data: offers, refetch } = trpc.offers.list.useQuery(undefined, { enabled: isAuthenticated });
@@ -99,12 +101,29 @@ export default function OffersGenerator() {
           </div>
 
           <div className="lg:col-span-2">
+            {/* Search Bar */}
+            <div className="mb-6">
+              <SearchBar
+                placeholder="Search Offers..."
+                value={searchQuery}
+                onChange={setSearchQuery}
+              />
+            </div>
+
             <h2 className="text-2xl font-bold text-foreground mb-4">Your Offers ({offers?.length || 0})</h2>
             {!offers || offers.length === 0 ? (
               <Card><CardContent className="py-12 text-center"><p className="text-muted-foreground">No offers yet. Create your first one!</p></CardContent></Card>
             ) : (
               <div className="space-y-4">
-                {offers.map((offer) => (
+                {offers
+                  .filter((offer) =>
+                    offer.headline?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    offer.offerType?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    offer.whatIncluded?.some((item: string) => 
+                      item.toLowerCase().includes(searchQuery.toLowerCase())
+                    )
+                  )
+                  .map((offer) => (
                   <Card key={offer.id}>
                     <CardHeader>
                       <div className="flex items-start justify-between">
