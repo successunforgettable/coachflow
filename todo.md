@@ -368,3 +368,15 @@
 - [ ] Update backend routers to handle beastMode parameter
 - [ ] Modify LLM prompts to generate 2-3x variations when Beast Mode enabled
 - [ ] Test Beast Mode across all generators
+
+
+## Phase 33: Beast Mode Implementation Fix (ACTIVE)
+- [x] Remove Beast Mode toggle from Headlines form (wrong location)
+- [x] Remove Beast Mode toggle from HVCO Titles form (wrong location)
+- [ ] Remove Beast Mode backend logic from Headlines router
+- [ ] Remove Beast Mode backend logic from HVCO router
+- [ ] Add Beast Mode toggle to Ad Copy detail page (correct location per Kong)
+- [ ] Update Ad Copy backend to handle Beast Mode parameter
+- [ ] Verify Headlines Beast Mode tab still works (tab is correct, toggle was wrong)
+- [ ] Verify Hero Mechanisms Beast Mode tab still works (tab is correct)
+- [ ] Test Ad Copy Beast Mode toggle functionality

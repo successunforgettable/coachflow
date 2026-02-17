@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
+
 import { Loader2, ArrowLeft, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "wouter";
@@ -45,7 +45,6 @@ export default function HeadlinesNew() {
     desiredOutcome: "",
     uniqueMechanism: "",
   });
-  const [beastMode, setBeastMode] = useState(false);
 
   const generateMutation = trpc.headlines.generate.useMutation({
     onSuccess: (data) => {
@@ -65,7 +64,6 @@ export default function HeadlinesNew() {
       pressingProblem: formData.pressingProblem,
       desiredOutcome: formData.desiredOutcome,
       uniqueMechanism: formData.uniqueMechanism,
-      beastMode,
     });
   };
 
@@ -198,23 +196,6 @@ export default function HeadlinesNew() {
               </div>
             </div>
 
-                     {/* Beast Mode Toggle */}
-            <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
-              <div className="space-y-0.5">
-                <Label htmlFor="beast-mode" className="text-base font-semibold">
-                  🔥 Beast Mode
-                </Label>
-                <p className="text-sm text-muted-foreground">
-                  Generate {beastMode ? "75" : "25"} headlines ({beastMode ? "3x" : "1x"} variations)
-                </p>
-              </div>
-              <Switch
-                id="beast-mode"
-                checked={beastMode}
-                onCheckedChange={setBeastMode}
-              />
-            </div>
-
             {/* Generate Button */}
             <div>
               <Button
@@ -230,12 +211,12 @@ export default function HeadlinesNew() {
                 ) : (
                   <>
                     <Sparkles className="h-4 w-4 mr-2" />
-                    Generate {beastMode ? "75" : "25"} Headlines
+                    Generate Headlines
                   </>
                 )}
               </Button>
               <p className="text-xs text-muted-foreground text-center mt-2">
-                Uses {beastMode ? "3" : "1"} Headline Credit{beastMode ? "s" : ""}
+                Uses 1 Headline Credit
               </p>
             </div>
           </div>
