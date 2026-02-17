@@ -1,4 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
@@ -43,6 +44,11 @@ export default function Pricing() {
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
+      <PageHeader 
+        title="Pricing" 
+        description="Choose your subscription plan"
+        backTo="/dashboard"
+      />
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
@@ -53,6 +59,11 @@ export default function Pricing() {
 
   return (
     <div className="min-h-screen bg-background">
+      <PageHeader 
+        title="Pricing" 
+        description="Choose your subscription plan"
+        backTo="/dashboard"
+      />
       <div className="container mx-auto px-4 py-16 max-w-7xl">
         {/* Header */}
         <div className="text-center mb-12">

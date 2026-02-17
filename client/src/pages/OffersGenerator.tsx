@@ -1,4 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -44,6 +45,11 @@ export default function OffersGenerator() {
 
   return (
     <div className="min-h-screen bg-background">
+      <PageHeader 
+        title="Offers Generator" 
+        description="Create irresistible Godfather offers"
+        backTo="/dashboard"
+      />
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         <div className="flex items-center gap-4 mb-8">
           <Link href="/dashboard"><Button variant="ghost" size="icon"><ArrowLeft className="w-5 h-5" /></Button></Link>
