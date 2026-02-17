@@ -13,6 +13,20 @@ import { QuotaIndicator } from "@/components/QuotaIndicator";
 import { SearchBar } from "@/components/SearchBar";
 import { exportToPDF } from "@/lib/pdfExport";
 
+// Real-world WhatsApp sequence examples from Kong
+const WHATSAPP_SEQUENCE_EXAMPLES = {
+  engagement: [
+    "3-Day Engagement: Day 1 - Welcome with quick value tip 💡, Day 2 - Share success story 🎯, Day 3 - Invite to community 🤝",
+    "5-Day Nurture: Introduce yourself, share free resource, ask engaging question, provide case study, soft offer",
+    "Weekly Check-in Series: Consistent value delivery with tips, motivation, and community highlights every Monday 📅",
+  ],
+  sales: [
+    "2-Day Flash Sale: Day 1 - Announce limited offer with urgency ⚡, Day 2 - Last chance reminder with social proof 🔥",
+    "3-Day Launch: Pre-launch teaser, launch announcement with bonuses, final countdown with scarcity",
+    "5-Day Sales Funnel: Problem awareness, solution introduction, social proof, objection handling, close with guarantee ✅",
+  ],
+};
+
 export default function WhatsAppSequenceGenerator() {
   const { isAuthenticated, loading: authLoading } = useAuth();
   const [serviceId, setServiceId] = useState<number | null>(null);
@@ -136,6 +150,21 @@ export default function WhatsAppSequenceGenerator() {
                       <SelectItem value="sales">Sales (Convert to Customer)</SelectItem>
                     </SelectContent>
                   </Select>
+                  
+                  {/* Examples Carousel */}
+                  <div className="mt-4">
+                    <p className="text-sm text-muted-foreground mb-2">Examples for {sequenceType} sequences:</p>
+                    <div className="grid gap-2 max-h-[150px] overflow-y-auto pr-2">
+                      {WHATSAPP_SEQUENCE_EXAMPLES[sequenceType].map((example, index) => (
+                        <div
+                          key={index}
+                          className="text-left text-xs p-2 rounded bg-muted/50 text-muted-foreground"
+                        >
+                          {example}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
                 <Button onClick={() => serviceId && generateMutation.mutate({ serviceId, sequenceType, name: `${sequenceType} WhatsApp Sequence` })} disabled={generateMutation.isPending || !serviceId} className="w-full">
                   {generateMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Generating...</> : "Generate Sequence"}

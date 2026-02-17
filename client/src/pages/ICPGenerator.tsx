@@ -15,6 +15,25 @@ import { SearchBar } from "@/components/SearchBar";
 import { exportToPDF } from "@/lib/pdfExport";
 import { toast } from "sonner";
 
+// Real-world ICP name examples from Kong
+const ICP_NAME_EXAMPLES = [
+  "Tech-Savvy Millennial Entrepreneur",
+  "Busy Corporate Executive",
+  "Health-Conscious Mom Over 40",
+  "Aspiring Real Estate Investor",
+  "E-Commerce Store Owner",
+  "Fitness Enthusiast Seeking Results",
+  "High-Ticket Coach or Consultant",
+  "B2B Service Provider",
+  "Online Course Creator",
+  "Agency Owner Scaling Revenue",
+  "SaaS Founder Seeking Growth",
+  "Crypto Investor Building Wealth",
+  "Professional Seeking Career Change",
+  "Retired Professional With Savings",
+  "Small Business Owner Struggling With Marketing",
+];
+
 export default function ICPGenerator() {
   const { isAuthenticated, loading: authLoading } = useAuth();
   const [selectedServiceId, setSelectedServiceId] = useState<number | null>(null);
@@ -208,6 +227,23 @@ export default function ICPGenerator() {
                     onChange={(e) => setIcpName(e.target.value)}
                     placeholder="e.g., Tech Executive"
                   />
+                  
+                  {/* Examples Carousel */}
+                  <div className="mt-4">
+                    <p className="text-sm text-muted-foreground mb-2">Click an example to use:</p>
+                    <div className="grid gap-2 max-h-[200px] overflow-y-auto pr-2">
+                      {ICP_NAME_EXAMPLES.map((example, index) => (
+                        <button
+                          key={index}
+                          type="button"
+                          onClick={() => setIcpName(example)}
+                          className="text-left text-sm p-2 rounded hover:bg-accent transition-colors"
+                        >
+                          {example}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
 
                 <Button

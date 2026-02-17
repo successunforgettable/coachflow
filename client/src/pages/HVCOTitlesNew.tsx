@@ -16,6 +16,25 @@ import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
+// Real-world HVCO topic examples from Kong
+const HVCO_TOPIC_EXAMPLES = [
+  "How to build a 7-figure coaching business in 12 months without paid ads using organic content and strategic partnerships",
+  "The exact system I used to replace my $150K corporate salary with passive income from rental properties in 24 months",
+  "How to scale your e-commerce store from $10K/month to $100K/month using Facebook ads and conversion rate optimization",
+  "The step-by-step blueprint for launching a profitable online course that generates $50K+ per month on autopilot",
+  "How to build a 6-figure consulting practice in 90 days by positioning yourself as the go-to expert in your niche",
+  "The proven framework for creating viral content that attracts high-ticket clients without spending a dime on advertising",
+  "How to leverage LinkedIn to book 20-30 qualified sales calls per month for your B2B service business",
+  "The complete system for building a $1M/year agency with just 10 high-paying retainer clients",
+  "How to create a membership site that generates $20K-$50K in recurring monthly revenue within 6 months",
+  "The exact funnel strategy that took my info product from $5K/month to $100K/month in 8 months",
+  "How to build an email list of 100K+ engaged subscribers and monetize it to $500K+ per year",
+  "The proven method for getting featured in major publications and becoming a recognized authority in your industry",
+  "How to create a high-ticket mastermind program that sells for $25K-$50K per person and fills consistently",
+  "The complete guide to building a YouTube channel that generates $10K-$30K per month in ad revenue and sponsorships",
+  "How to transition from trading time for money to building scalable systems that generate income while you sleep",
+];
+
 export default function HVCOTitlesNew() {
   const [, setLocation] = useLocation();
   const [selectedServiceId, setSelectedServiceId] = useState<number | null>(null);
@@ -150,6 +169,23 @@ export default function HVCOTitlesNew() {
             <p className="text-xs text-muted-foreground">
               {hvcoTopicCharsLeft} chars left
             </p>
+            
+            {/* Examples Carousel */}
+            <div className="mt-4">
+              <p className="text-sm text-muted-foreground mb-2">Click an example to use:</p>
+              <div className="grid gap-2 max-h-[200px] overflow-y-auto pr-2">
+                {HVCO_TOPIC_EXAMPLES.map((example, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => setHvcoTopic(example)}
+                    className="text-left text-sm p-2 rounded hover:bg-accent transition-colors"
+                  >
+                    {example}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* Disclaimer */}

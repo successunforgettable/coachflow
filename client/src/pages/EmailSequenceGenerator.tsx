@@ -13,6 +13,25 @@ import { QuotaIndicator } from "@/components/QuotaIndicator";
 import { SearchBar } from "@/components/SearchBar";
 import { exportToPDF } from "@/lib/pdfExport";
 
+// Real-world email sequence examples from Kong
+const EMAIL_SEQUENCE_EXAMPLES = {
+  welcome: [
+    "5-Day Welcome Sequence: Introduce your brand story, share quick wins, build trust, showcase transformation, and invite to next step",
+    "7-Day Onboarding Sequence: Welcome email, set expectations, share resources, highlight key features, success stories, FAQ, and activation CTA",
+    "3-Day Quick Start: Immediate value delivery, case study, and irresistible offer",
+  ],
+  engagement: [
+    "7-Day Nurture Sequence: Educational content, industry insights, success stories, problem-solving tips, community building, value stacking, soft CTA",
+    "5-Day Re-engagement: Acknowledge absence, share what's new, exclusive content, special offer, last chance",
+    "Weekly Newsletter Series: Consistent value delivery with tips, case studies, and community highlights",
+  ],
+  sales: [
+    "5-Day Sales Sequence: Problem agitation, solution introduction, social proof, objection handling, scarcity close",
+    "7-Day Launch Sequence: Pre-launch hype, early bird offer, social proof, FAQ, countdown, last chance, post-launch",
+    "3-Day Flash Sale: Announce offer, showcase benefits and urgency, final countdown",
+  ],
+};
+
 export default function EmailSequenceGenerator() {
   const { isAuthenticated, loading: authLoading } = useAuth();
   const [serviceId, setServiceId] = useState<number | null>(null);
@@ -137,6 +156,21 @@ export default function EmailSequenceGenerator() {
                       <SelectItem value="sales">Sales (Conversion)</SelectItem>
                     </SelectContent>
                   </Select>
+                  
+                  {/* Examples Carousel */}
+                  <div className="mt-4">
+                    <p className="text-sm text-muted-foreground mb-2">Examples for {sequenceType} sequences:</p>
+                    <div className="grid gap-2 max-h-[150px] overflow-y-auto pr-2">
+                      {EMAIL_SEQUENCE_EXAMPLES[sequenceType].map((example, index) => (
+                        <div
+                          key={index}
+                          className="text-left text-xs p-2 rounded bg-muted/50 text-muted-foreground"
+                        >
+                          {example}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
                 <Button onClick={() => serviceId && generateMutation.mutate({ serviceId, sequenceType, name: `${sequenceType} Sequence` })} disabled={generateMutation.isPending || !serviceId} className="w-full">
                   {generateMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Generating...</> : "Generate Sequence"}

@@ -13,6 +13,25 @@ import { QuotaIndicator } from "@/components/QuotaIndicator";
 import { SearchBar } from "@/components/SearchBar";
 import { exportToPDF } from "@/lib/pdfExport";
 
+// Real-world offer type examples from Kong
+const OFFER_TYPE_EXAMPLES = {
+  standard: [
+    "Core Program: Complete system with step-by-step training, templates, and 30-day support - $997",
+    "Starter Package: Essential tools and resources to get quick wins in 30 days - $497",
+    "Foundation Course: Self-paced learning with lifetime access and community support - $697",
+  ],
+  premium: [
+    "VIP Coaching: Core program + 6 months 1-on-1 coaching + implementation support - $4,997",
+    "Accelerator Package: Everything in Standard + weekly group calls + done-for-you templates - $2,997",
+    "Pro Bundle: Complete training + advanced strategies + priority support + exclusive bonuses - $1,997",
+  ],
+  vip: [
+    "Platinum Mastermind: Everything + 12 months private coaching + in-person retreat + unlimited access - $25,000",
+    "Done-For-You Service: We implement everything for you + ongoing optimization + guaranteed results - $50,000",
+    "Elite Partnership: Full implementation + dedicated team + revenue share model - Custom pricing",
+  ],
+};
+
 export default function OffersGenerator() {
   const { isAuthenticated, loading: authLoading } = useAuth();
   const [serviceId, setServiceId] = useState<number | null>(null);
@@ -140,6 +159,21 @@ export default function OffersGenerator() {
                       <SelectItem value="vip">VIP (Exclusive)</SelectItem>
                     </SelectContent>
                   </Select>
+                  
+                  {/* Examples Carousel */}
+                  <div className="mt-4">
+                    <p className="text-sm text-muted-foreground mb-2">Examples for {offerType} offers:</p>
+                    <div className="grid gap-2 max-h-[150px] overflow-y-auto pr-2">
+                      {OFFER_TYPE_EXAMPLES[offerType].map((example, index) => (
+                        <div
+                          key={index}
+                          className="text-left text-xs p-2 rounded bg-muted/50 text-muted-foreground"
+                        >
+                          {example}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
                 <Button onClick={() => serviceId && generateMutation.mutate({ serviceId, offerType, price: "997" })} disabled={generateMutation.isPending || !serviceId} className="w-full">
                   {generateMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Generating...</> : "Generate Offer"}

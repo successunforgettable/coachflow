@@ -60,6 +60,25 @@ const APPLICATION_OPTIONS = [
   "Install",
 ];
 
+// Real-world Hero Mechanism examples from Kong
+const HERO_MECHANISM_EXAMPLES = [
+  "Breakthrough 'Productivity Triggers' System Slashes 5, 10, Even 51 Hours Off Your Work Week",
+  "Weird 'Black Diamond' Refinance Framework Saves $120,787.50 On The Average Loan",
+  "Simple 'Density Stacking' Method Allows Any Guy To Melt 12 KGs In 6 Weeks",
+  "Wild $280 Billion 'Mrs Watanabe' Stock-Picking Strategy Of Japanese Housewives",
+  "The Blood Sugar Balancing Secret From A Village Where People Eat Nothing But Carbs",
+  "Primitive African Tribe Ritual Reveals the Secret To Rebuild Your Gums and Teeth",
+  "The Secret Manufacturing System Used By Toyota And Amazon That Increases Production by 113%",
+  "Strange 'Yield Farming' Strategy Used By Billionaire Crypto Investors",
+  "How To Exploit 'Micro-Fluctuations' In Crypto To Make 100's Of Tiny, Profitable Trades",
+  "Wild New 'Larger Market Formula' Prints More Clients, Customers And Sales",
+  "This Breakthrough 'Bedtime Ritual' Restores Youthful Energy, Vitality And Sex Drive",
+  "Mystical 'Japanese Elixir' Kickstarts A Deep, Sleeping Part Of Your Metabolism",
+  "New Done-For-You 'Jetstream' Accountant Service Fully Automates All Your Cash Flow",
+  "Tiny Orange Plant (a secret ancient ingredient) that speeds up metabolism by up to 68%",
+  "Algorithm Loophole That's Now Helping Normal Guys Match With Some of the Most Beautiful Women",
+];
+
 export default function HeroMechanismsNew() {
   const [, setLocation] = useLocation();
   const [selectedServiceId, setSelectedServiceId] = useState<number | null>(null);
@@ -218,6 +237,23 @@ export default function HeroMechanismsNew() {
             <p className="text-xs text-muted-foreground">
               {200 - pressingProblem.length} chars left
             </p>
+            
+            {/* Examples Carousel */}
+            <div className="mt-4">
+              <p className="text-sm text-muted-foreground mb-2">Click an example to use:</p>
+              <div className="grid gap-2 max-h-[200px] overflow-y-auto pr-2">
+                {HERO_MECHANISM_EXAMPLES.map((example, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => setPressingProblem(example)}
+                    className="text-left text-sm p-2 rounded hover:bg-accent transition-colors"
+                  >
+                    {example}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* Why Problem Exists */}

@@ -13,6 +13,30 @@ import { QuotaIndicator } from "@/components/QuotaIndicator";
 import { SearchBar } from "@/components/SearchBar";
 import { exportToPDF } from "@/lib/pdfExport";
 
+// Real-world landing page angle examples from Kong
+const LANDING_PAGE_ANGLE_EXAMPLES = {
+  shock_solve: [
+    "Shock: Most entrepreneurs waste 80% of their ad budget. Solve: Our AI-powered system cuts costs by 67% while doubling conversions",
+    "Shock: 9 out of 10 online courses fail in the first year. Solve: Our proven launch framework guarantees $50K+ in your first 90 days",
+    "Shock: Your website is losing $10K+ per month. Solve: Fix these 5 critical mistakes and watch revenue soar",
+  ],
+  contrarian: [
+    "Why working harder is killing your business (and what to do instead)",
+    "The truth about passive income that gurus won't tell you",
+    "Stop chasing more traffic - here's what actually drives sales",
+  ],
+  story: [
+    "How I went from broke and desperate to $100K/month in 6 months (and you can too)",
+    "The day everything changed: My journey from corporate slave to freedom entrepreneur",
+    "From $0 to 7-figures: The unconventional path nobody talks about",
+  ],
+  authority: [
+    "Featured in Forbes, Inc, and Entrepreneur - Trusted by 10,000+ successful businesses",
+    "The #1 system used by industry leaders to scale from 6 to 7 figures",
+    "Developed by experts with 20+ years and $500M+ in proven results",
+  ],
+};
+
 export default function LandingPageGenerator() {
   const { isAuthenticated, loading: authLoading } = useAuth();
   const [serviceId, setServiceId] = useState<number | null>(null);
@@ -140,6 +164,21 @@ export default function LandingPageGenerator() {
                       <SelectItem value="authority">Authority (Expert Positioning)</SelectItem>
                     </SelectContent>
                   </Select>
+                  
+                  {/* Examples Carousel */}
+                  <div className="mt-4">
+                    <p className="text-sm text-muted-foreground mb-2">Examples for {angle.replace('_', ' ')} angle:</p>
+                    <div className="grid gap-2 max-h-[150px] overflow-y-auto pr-2">
+                      {LANDING_PAGE_ANGLE_EXAMPLES[angle].map((example, index) => (
+                        <div
+                          key={index}
+                          className="text-left text-xs p-2 rounded bg-muted/50 text-muted-foreground"
+                        >
+                          {example}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
                 <Button onClick={() => serviceId && generateMutation.mutate({ serviceId, angle })} disabled={generateMutation.isPending || !serviceId} className="w-full">
                   {generateMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Generating...</> : "Generate Landing Page"}

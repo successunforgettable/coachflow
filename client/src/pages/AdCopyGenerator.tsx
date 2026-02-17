@@ -20,6 +20,35 @@ import { QuotaIndicator } from "@/components/QuotaIndicator";
 import { SearchBar } from "@/components/SearchBar";
 import { exportToPDF } from "@/lib/pdfExport";
 
+// Real-world ad angle examples from Kong
+const AD_ANGLE_EXAMPLES = {
+  story: [
+    "How I went from $0 to $100K/month in 6 months using this simple system",
+    "The day I discovered the secret that changed my business forever",
+    "Why I almost gave up on my dream before finding this breakthrough",
+  ],
+  authority: [
+    "Featured in Forbes, Inc, and Entrepreneur Magazine",
+    "Trusted by 10,000+ successful entrepreneurs worldwide",
+    "Developed by industry experts with 20+ years of experience",
+  ],
+  question: [
+    "What if you could double your income in the next 90 days?",
+    "Are you making these 5 critical mistakes in your business?",
+    "What's stopping you from achieving the success you deserve?",
+  ],
+  social_proof: [
+    "Join 50,000+ entrepreneurs who have transformed their businesses",
+    "See why our clients consistently achieve 10X ROI",
+    "Real results from real people just like you",
+  ],
+  cta: [
+    "Start your free trial today - no credit card required",
+    "Get instant access to the complete system now",
+    "Claim your limited-time bonus before it's gone",
+  ],
+};
+
 export default function AdCopyGenerator() {
   const { isAuthenticated, loading: authLoading } = useAuth();
   const [serviceId, setServiceId] = useState<number | null>(null);
@@ -213,6 +242,23 @@ export default function AdCopyGenerator() {
                     onChange={(e) => setCustomPrompt(e.target.value)}
                     rows={4}
                   />
+                  
+                  {/* Examples Carousel */}
+                  <div className="mt-4">
+                    <p className="text-sm text-muted-foreground mb-2">Click an example for {angle} angle:</p>
+                    <div className="grid gap-2 max-h-[150px] overflow-y-auto pr-2">
+                      {AD_ANGLE_EXAMPLES[angle].map((example, index) => (
+                        <button
+                          key={index}
+                          type="button"
+                          onClick={() => setCustomPrompt(example)}
+                          className="text-left text-sm p-2 rounded hover:bg-accent transition-colors"
+                        >
+                          {example}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
 
                 <Button
