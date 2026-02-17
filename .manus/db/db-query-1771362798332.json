@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE `adCopy` MODIFY COLUMN `adType` enum('lead_gen','ecommerce') NOT NULL;\nALTER TABLE `adCopy` ADD `adSetId` varchar(21) NOT NULL;\nALTER TABLE `adCopy` ADD `adStyle` varchar(100);\nALTER TABLE `adCopy` ADD `contentType` enum('headline','body','link') NOT NULL;\nALTER TABLE `adCopy` ADD `content` text NOT NULL;\nALTER TABLE `adCopy` ADD `targetMarket` varchar(255);\nALTER TABLE `adCopy` ADD `pressingProblem` text;\nALTER TABLE `adCopy` ADD `desiredOutcome` text;\nALTER TABLE `adCopy` ADD `uniqueMechanism` text;\nCREATE INDEX `idx_adCopy_adSetId` ON `adCopy` (`adSetId`);\nALTER TABLE `adCopy` DROP COLUMN `headline`;\nALTER TABLE `adCopy` DROP COLUMN `bodyCopy`;\nALTER TABLE `adCopy` DROP COLUMN `linkDescription`;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute ALTER TABLE `adCopy` MODIFY COLUMN `adType` enum('lead_gen','ecommerce') NOT NULL;\nALTER TABLE `adCopy` ADD `adSetId` varchar(21) NOT NULL;\nALTER TABLE `adCopy` ADD `adStyle` varchar(100);\nALTER TABLE `adCopy` ADD `contentType` enum('headline','body','link') NOT NULL;\nALTER TABLE `adCopy` ADD `content` text NOT NULL;\nALTER TABLE `adCopy` ADD `targetMarket` varchar(255);\nALTER TABLE `adCopy` ADD `pressingProblem` text;\nALTER TABLE `adCopy` ADD `desiredOutcome` text;\nALTER TABLE `adCopy` ADD `uniqueMechanism` text;\nCREATE INDEX `idx_adCopy_adSetId` ON `adCopy` (`adSetId`);\nALTER TABLE `adCopy` DROP COLUMN `headline`;\nALTER TABLE `adCopy` DROP COLUMN `bodyCopy`;\nALTER TABLE `adCopy` DROP COLUMN `linkDescription`;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 6736
+}

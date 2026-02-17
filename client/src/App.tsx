@@ -10,6 +10,7 @@ import ICPGenerator from "./pages/ICPGenerator";
 import Dashboard from "./pages/Dashboard";
 import Pricing from "./pages/Pricing";
 import AdCopyGenerator from "./pages/AdCopyGenerator";
+import AdCopyDetail from "./pages/AdCopyDetail";
 import EmailSequenceGenerator from "./pages/EmailSequenceGenerator";
 import WhatsAppSequenceGenerator from "./pages/WhatsAppSequenceGenerator";
 import LandingPageGenerator from "./pages/LandingPageGenerator";
@@ -37,7 +38,8 @@ function Router() {
       <Route path={"/services/:id"} component={ServiceDetail} />
       <Route path={"/generators/icp"} component={ICPGenerator} />
       <Route path={"/pricing"} component={Pricing} />
-      <Route path={"/generators/ad-copy"} component={AdCopyGenerator} />
+      <Route path={"/ad-copy"} component={AdCopyGenerator} />
+      <Route path={"/ad-copy/:adSetId"} component={AdCopyDetail} />
       <Route path={"/generators/email"} component={EmailSequenceGenerator} />
       <Route path={"/generators/whatsapp"} component={WhatsAppSequenceGenerator} />
       <Route path={"/generators/landing-page"} component={LandingPageGenerator} />

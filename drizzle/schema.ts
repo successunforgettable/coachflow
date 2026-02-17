@@ -142,23 +142,31 @@ export type IdealCustomerProfile = typeof idealCustomerProfiles.$inferSelect;
 export type InsertIdealCustomerProfile = typeof idealCustomerProfiles.$inferInsert;
 
 /**
- * Ad Copy - Facebook/social media ads (10 variations vs Kong's 15+)
+ * Ad Copy - Facebook/social media ads (Kong parity: 15 variations per content type)
+ * Grouped by adSetId with 3 content types: headline, body, link
  */
 export const adCopy = mysqlTable("adCopy", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   serviceId: int("serviceId").references(() => services.id, { onDelete: "set null" }),
   campaignId: int("campaignId").references(() => campaigns.id, { onDelete: "set null" }),
-  adType: mysqlEnum("adType", ["story", "authority", "question", "social_proof", "cta"]),
-  headline: varchar("headline", { length: 500 }).notNull(),
-  bodyCopy: text("bodyCopy").notNull(),
-  linkDescription: varchar("linkDescription", { length: 500 }),
+  adSetId: varchar("adSetId", { length: 21 }).notNull(), // nanoid for grouping
+  adType: mysqlEnum("adType", ["lead_gen", "ecommerce"]).notNull(), // Kong: Lead Gen / Ecommerce
+  adStyle: varchar("adStyle", { length: 100 }), // Hero Ad, Weird Authority Ad, etc.
+  contentType: mysqlEnum("contentType", ["headline", "body", "link"]).notNull(),
+  content: text("content").notNull(), // The actual headline/body/link text
+  // Generation parameters for regeneration
+  targetMarket: varchar("targetMarket", { length: 255 }),
+  pressingProblem: text("pressingProblem"),
+  desiredOutcome: text("desiredOutcome"),
+  uniqueMechanism: text("uniqueMechanism"),
   rating: int("rating").default(0),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({
   userIdIdx: index("idx_adCopy_userId").on(table.userId),
   campaignIdIdx: index("idx_adCopy_campaignId").on(table.campaignId),
+  adSetIdIdx: index("idx_adCopy_adSetId").on(table.adSetId),
 }));
 
 export type AdCopy = typeof adCopy.$inferSelect;

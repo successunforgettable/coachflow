@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -9,427 +10,339 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import { getLoginUrl } from "@/const";
-import { ArrowLeft, Copy, Loader2, Star, Trash2, Download } from "lucide-react";
-import { useState } from "react";
+import { Loader2, Trash2, Eye } from "lucide-react";
 import { Link } from "wouter";
 import { toast } from "sonner";
 import { QuotaIndicator } from "@/components/QuotaIndicator";
 import { SearchBar } from "@/components/SearchBar";
-import { exportToPDF } from "@/lib/pdfExport";
 
 // Real-world ad angle examples from Kong
 const AD_ANGLE_EXAMPLES = {
-  story: [
-    "How I went from $0 to $100K/month in 6 months using this simple system",
-    "The day I discovered the secret that changed my business forever",
-    "Why I almost gave up on my dream before finding this breakthrough",
+  lead_gen: [
+    "Free webinar: How to build a 6-figure coaching business in 90 days",
+    "Download the complete guide to scaling your consulting practice",
+    "Join our free masterclass on creating high-ticket offers that sell",
   ],
-  authority: [
-    "Featured in Forbes, Inc, and Entrepreneur Magazine",
-    "Trusted by 10,000+ successful entrepreneurs worldwide",
-    "Developed by industry experts with 20+ years of experience",
-  ],
-  question: [
-    "What if you could double your income in the next 90 days?",
-    "Are you making these 5 critical mistakes in your business?",
-    "What's stopping you from achieving the success you deserve?",
-  ],
-  social_proof: [
-    "Join 50,000+ entrepreneurs who have transformed their businesses",
-    "See why our clients consistently achieve 10X ROI",
-    "Real results from real people just like you",
-  ],
-  cta: [
-    "Start your free trial today - no credit card required",
-    "Get instant access to the complete system now",
-    "Claim your limited-time bonus before it's gone",
+  ecommerce: [
+    "Limited-time offer: Get 50% off our best-selling course",
+    "New product launch: Transform your business with our proven system",
+    "Flash sale: Premium coaching program now available at early-bird pricing",
   ],
 };
 
 export default function AdCopyGenerator() {
   const { isAuthenticated, loading: authLoading } = useAuth();
   const [serviceId, setServiceId] = useState<number | null>(null);
-  const [angle, setAngle] = useState<"story" | "authority" | "question" | "social_proof" | "cta">(
-    "story"
-  );
-  const [customPrompt, setCustomPrompt] = useState("");
+  const [adType, setAdType] = useState<"lead_gen" | "ecommerce">("lead_gen");
+  const [targetMarket, setTargetMarket] = useState("");
+  const [pressingProblem, setPressingProblem] = useState("");
+  const [desiredOutcome, setDesiredOutcome] = useState("");
+  const [uniqueMechanism, setUniqueMechanism] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
   const { data: services } = trpc.services.list.useQuery(undefined, {
     enabled: isAuthenticated,
   });
 
-  const { data: adCopyList, refetch: refetchAdCopy } = trpc.adCopy.list.useQuery(undefined, {
+  const { data: adSets, refetch: refetchAdCopy } = trpc.adCopy.list.useQuery(undefined, {
     enabled: isAuthenticated,
   });
 
   const generateMutation = trpc.adCopy.generate.useMutation({
-    onSuccess: () => {
-      toast.success("Ad copy generated successfully!");
+    onSuccess: (data) => {
+      toast.success(`Generated ${data.headlineCount} headlines, ${data.bodyCount} body copies, ${data.linkCount} link descriptions!`);
       refetchAdCopy();
-      setCustomPrompt("");
+      // Reset form
+      setTargetMarket("");
+      setPressingProblem("");
+      setDesiredOutcome("");
+      setUniqueMechanism("");
     },
     onError: (error) => {
       toast.error(`Error: ${error.message}`);
     },
   });
 
-  const deleteMutation = trpc.adCopy.delete.useMutation({
+  const deleteAdSetMutation = trpc.adCopy.deleteAdSet.useMutation({
     onSuccess: () => {
-      toast.success("Ad copy deleted");
+      toast.success("Ad set deleted");
       refetchAdCopy();
     },
   });
-
-  const updateRatingMutation = trpc.adCopy.update.useMutation({
-    onSuccess: () => {
-      refetchAdCopy();
-    },
-  });
-
-  const generateMoreMutation = trpc.adCopy.generate.useMutation({
-    onSuccess: () => {
-      toast.success("Generated 15 more ad copies!");
-      refetchAdCopy();
-    },
-    onError: (error) => {
-      toast.error(`Failed to generate more: ${error.message}`);
-    },
-  });
-
-  const handleGenerateMore = (adCopy: any) => {
-    if (!adCopy.serviceId || !adCopy.adType) {
-      toast.error("Cannot regenerate: Missing service or ad type");
-      return;
-    }
-    
-    generateMoreMutation.mutate({
-      serviceId: adCopy.serviceId,
-      adType: adCopy.adType,
-      count: 15,
-    });
-  };
 
   const handleGenerate = () => {
     if (!serviceId) {
       toast.error("Please select a service");
       return;
     }
+    if (!targetMarket.trim()) {
+      toast.error("Please enter target market");
+      return;
+    }
+    if (!pressingProblem.trim()) {
+      toast.error("Please describe the pressing problem");
+      return;
+    }
+    if (!desiredOutcome.trim()) {
+      toast.error("Please describe the desired outcome");
+      return;
+    }
+    if (!uniqueMechanism.trim()) {
+      toast.error("Please describe the unique mechanism");
+      return;
+    }
 
     generateMutation.mutate({
       serviceId,
-      adType: angle,
+      adType,
+      targetMarket: targetMarket.trim(),
+      pressingProblem: pressingProblem.trim(),
+      desiredOutcome: desiredOutcome.trim(),
+      uniqueMechanism: uniqueMechanism.trim(),
     });
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast.success("Copied to clipboard!");
-  };
-
-  const handleDownloadPDF = (adCopy: any) => {
-    const sections = [
-      {
-        title: "Headline",
-        content: adCopy.headline,
-      },
-      {
-        title: "Body Copy",
-        content: adCopy.bodyCopy,
-      },
-      {
-        title: "Call to Action",
-        content: adCopy.cta || "Not specified",
-      },
-    ];
-
-    exportToPDF({
-      title: "Ad Copy",
-      subtitle: `${adCopy.adType?.charAt(0).toUpperCase()}${adCopy.adType?.slice(1)} Ad`,
-      sections,
-      metadata: {
-        generatedDate: new Date(adCopy.createdAt).toLocaleDateString(),
-        generatorType: "Ad Copy Generator",
-      },
-    });
-
-    toast.success("PDF downloaded successfully!");
-  };
+  const filteredAdSets = adSets?.filter((adSet: any) => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      adSet.targetMarket?.toLowerCase().includes(query) ||
+      adSet.pressingProblem?.toLowerCase().includes(query) ||
+      adSet.desiredOutcome?.toLowerCase().includes(query)
+    );
+  });
 
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
   }
 
   if (!isAuthenticated) {
-    window.location.href = getLoginUrl();
-    return null;
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen gap-4">
+        <h1 className="text-2xl font-bold">Please log in to access Ad Copy Generator</h1>
+        <Button asChild>
+          <a href={getLoginUrl()}>Log In</a>
+        </Button>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-background p-8">
-      <div className="mb-6">
-        <QuotaIndicator generatorType="adCopy" />
-      </div>
-      <PageHeader 
-        title="Ad Copy Generator" 
-        description="Generate high-converting ad copy with proven formulas"
-        backTo="/dashboard"
+    <div className="container py-8">
+      <PageHeader
+        title="Facebook Ad Copy Generator"
+        description="Generate high-converting Facebook/Instagram ad copy with headlines, body text, and link descriptions"
       />
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Generation Form */}
-          <div className="lg:col-span-1">
-            <Card>
-              <CardHeader>
-                <CardTitle>Generate Ad Copy</CardTitle>
-                <CardDescription>Select service and angle to generate variations</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-2 block">
-                    Select Service
-                  </label>
-                  <Select
-                    value={serviceId?.toString()}
-                    onValueChange={(value) => setServiceId(parseInt(value))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Choose a service..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {services?.map((service) => (
-                        <SelectItem key={service.id} value={service.id.toString()}>
-                          {service.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+      <QuotaIndicator generatorType="adCopy" />
 
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-2 block">
-                    Ad Angle
-                  </label>
-                  <Select value={angle} onValueChange={(value: any) => setAngle(value)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="story">Story (Emotional Connection)</SelectItem>
-                      <SelectItem value="authority">Authority (Credibility)</SelectItem>
-                      <SelectItem value="question">Question (Curiosity)</SelectItem>
-                      <SelectItem value="social_proof">Social Proof (Testimonials)</SelectItem>
-                      <SelectItem value="cta">CTA Focused (Direct Action)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-2 block">
-                    Custom Instructions (Optional)
-                  </label>
-                  <Textarea
-                    placeholder="E.g., Focus on transformation stories, target entrepreneurs..."
-                    value={customPrompt}
-                    onChange={(e) => setCustomPrompt(e.target.value)}
-                    rows={4}
-                  />
-                  
-                  {/* Examples Carousel */}
-                  <div className="mt-4">
-                    <p className="text-sm text-muted-foreground mb-2">Click an example for {angle} angle:</p>
-                    <div className="grid gap-2 max-h-[150px] overflow-y-auto pr-2">
-                      {AD_ANGLE_EXAMPLES[angle].map((example, index) => (
-                        <button
-                          key={index}
-                          type="button"
-                          onClick={() => setCustomPrompt(example)}
-                          className="text-left text-sm p-2 rounded hover:bg-accent transition-colors"
-                        >
-                          {example}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                <Button
-                  onClick={handleGenerate}
-                  disabled={generateMutation.isPending || !serviceId}
-                  className="w-full"
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
+        {/* Generation Form */}
+        <div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Generate New Ad Copy</CardTitle>
+              <CardDescription>
+                Create 15 headlines, 15 body copies, and 15 link descriptions
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Service Selection */}
+              <div className="space-y-2">
+                <Label>Service/Product</Label>
+                <Select
+                  value={serviceId?.toString() || ""}
+                  onValueChange={(value) => setServiceId(parseInt(value))}
                 >
-                  {generateMutation.isPending ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Generating...
-                    </>
-                  ) : (
-                    "Generate Ad Copy"
-                  )}
-                </Button>
-              </CardContent>
-            </Card>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a service..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {services?.map((service: any) => (
+                      <SelectItem key={service.id} value={service.id.toString()}>
+                        {service.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Ad Type Selection */}
+              <div className="space-y-2">
+                <Label>Ad Type</Label>
+                <Select
+                  value={adType}
+                  onValueChange={(value: "lead_gen" | "ecommerce") => setAdType(value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="lead_gen">Lead Generation</SelectItem>
+                    <SelectItem value="ecommerce">E-commerce</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {adType === "lead_gen"
+                    ? "For free webinars, consultations, downloads"
+                    : "For direct product/service sales"}
+                </p>
+              </div>
+
+              {/* Examples Carousel */}
+              <div className="space-y-2">
+                <Label className="text-sm text-muted-foreground">Examples (click to use):</Label>
+                <div className="space-y-1 max-h-32 overflow-y-auto border rounded p-2">
+                  {AD_ANGLE_EXAMPLES[adType].map((example, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setDesiredOutcome(example)}
+                      className="text-left text-sm p-2 rounded hover:bg-accent transition-colors w-full"
+                    >
+                      {example}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Target Market */}
+              <div className="space-y-2">
+                <Label>Target Market</Label>
+                <Input
+                  placeholder="e.g., Coaches and consultants making $50K-$200K/year"
+                  value={targetMarket}
+                  onChange={(e) => setTargetMarket(e.target.value)}
+                  maxLength={255}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {255 - targetMarket.length} characters remaining
+                </p>
+              </div>
+
+              {/* Pressing Problem */}
+              <div className="space-y-2">
+                <Label>Pressing Problem</Label>
+                <Textarea
+                  placeholder="What keeps your target market up at night?"
+                  value={pressingProblem}
+                  onChange={(e) => setPressingProblem(e.target.value)}
+                  rows={3}
+                />
+              </div>
+
+              {/* Desired Outcome */}
+              <div className="space-y-2">
+                <Label>Desired Outcome</Label>
+                <Textarea
+                  placeholder="What transformation do they want to achieve?"
+                  value={desiredOutcome}
+                  onChange={(e) => setDesiredOutcome(e.target.value)}
+                  rows={3}
+                />
+              </div>
+
+              {/* Unique Mechanism */}
+              <div className="space-y-2">
+                <Label>Unique Mechanism</Label>
+                <Textarea
+                  placeholder="What makes your solution different and better?"
+                  value={uniqueMechanism}
+                  onChange={(e) => setUniqueMechanism(e.target.value)}
+                  rows={3}
+                />
+              </div>
+
+              {/* Generate Button */}
+              <Button
+                onClick={handleGenerate}
+                disabled={generateMutation.isPending}
+                className="w-full"
+              >
+                {generateMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Generating Ad Copy...
+                  </>
+                ) : (
+                  "Generate Ad Copy (15 Headlines, 15 Bodies, 15 Links)"
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Generated Ad Sets List */}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">Your Ad Sets</h2>
+            <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Search ad sets..." />
           </div>
 
-          {/* Generated Ad Copy List */}
-          <div className="lg:col-span-2">
-            {/* Search Bar */}
-            <div className="mb-6">
-              <SearchBar
-                placeholder="Search Ad Copy..."
-                value={searchQuery}
-                onChange={setSearchQuery}
-              />
-            </div>
-
-            <h2 className="text-2xl font-bold text-foreground mb-4">
-              Your Ad Copy ({adCopyList?.length || 0})
-            </h2>
-
-            {!adCopyList || adCopyList.length === 0 ? (
+          <div className="space-y-4">
+            {filteredAdSets && filteredAdSets.length > 0 ? (
+              filteredAdSets.map((adSet: any) => (
+                <Card key={adSet.adSetId}>
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <CardTitle className="text-lg">
+                          {adSet.adType === "lead_gen" ? "Lead Generation" : "E-commerce"} Ad Set
+                        </CardTitle>
+                        <CardDescription>
+                          {new Date(adSet.createdAt).toLocaleDateString()} • {adSet.headlines.length} headlines, {adSet.bodies.length} bodies, {adSet.links.length} links
+                        </CardDescription>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          if (confirm("Delete this ad set?")) {
+                            deleteAdSetMutation.mutate({ adSetId: adSet.adSetId });
+                          }
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2 text-sm">
+                      <div>
+                        <span className="font-semibold">Target Market:</span>{" "}
+                        {adSet.targetMarket}
+                      </div>
+                      <div>
+                        <span className="font-semibold">Pressing Problem:</span>{" "}
+                        {adSet.pressingProblem?.substring(0, 100)}
+                        {adSet.pressingProblem?.length > 100 ? "..." : ""}
+                      </div>
+                    </div>
+                    <Link href={`/ad-copy/${adSet.adSetId}`}>
+                      <Button className="w-full mt-4" variant="outline">
+                        <Eye className="h-4 w-4 mr-2" />
+                        View Ad Copy
+                      </Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+              ))
+            ) : (
               <Card>
-                <CardContent className="py-12 text-center">
-                  <p className="text-muted-foreground">
-                    No ad copy generated yet. Create your first one!
-                  </p>
+                <CardContent className="pt-6 text-center text-muted-foreground">
+                  {searchQuery
+                    ? "No ad sets match your search"
+                    : "No ad sets yet. Generate your first ad copy!"}
                 </CardContent>
               </Card>
-            ) : (
-              <div className="space-y-4">
-                {adCopyList
-                  .filter((adCopy) =>
-                    adCopy.headline.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    adCopy.bodyCopy.toLowerCase().includes(searchQuery.toLowerCase())
-                  )
-                  .map((adCopy) => (
-                  <Card key={adCopy.id}>
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <CardTitle className="text-lg">
-                            {adCopy.adType ? adCopy.adType.charAt(0).toUpperCase() + adCopy.adType.slice(1) : "Ad"} Copy
-                          </CardTitle>
-                          <CardDescription>
-                            {new Date(adCopy.createdAt).toLocaleDateString()}
-                          </CardDescription>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {/* Rating */}
-                          <div className="flex items-center gap-1">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <button
-                                key={star}
-                                onClick={() =>
-                                  updateRatingMutation.mutate({
-                                    id: adCopy.id,
-                                    rating: star,
-                                  })
-                                }
-                                className="hover:scale-110 transition-transform"
-                              >
-                                <Star
-                                  className={`w-4 h-4 ${
-                                    star <= (adCopy.rating || 0)
-                                      ? "fill-yellow-500 text-yellow-500"
-                                      : "text-muted-foreground"
-                                  }`}
-                                />
-                              </button>
-                            ))}
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDownloadPDF(adCopy)}
-                            title="Download PDF"
-                          >
-                            <Download className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => deleteMutation.mutate({ id: adCopy.id })}
-                          >
-                            <Trash2 className="w-4 h-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {/* Headline */}
-                      <div>
-                        <h4 className="font-semibold text-foreground mb-2">Headline</h4>
-                        <div className="flex items-start gap-2 p-3 bg-accent rounded-lg">
-                          <span className="text-sm text-foreground flex-1">{adCopy.headline}</span>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => copyToClipboard(adCopy.headline)}
-                          >
-                            <Copy className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-
-                      {/* Body Copy */}
-                      <div>
-                        <h4 className="font-semibold text-foreground mb-2">Body Copy</h4>
-                        <div className="flex items-start gap-2 p-3 bg-accent rounded-lg">
-                          <span className="text-sm text-foreground flex-1 whitespace-pre-wrap">
-                            {adCopy.bodyCopy}
-                          </span>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => copyToClipboard(adCopy.bodyCopy)}
-                          >
-                            <Copy className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-
-                      {/* Link Description */}
-                      {adCopy.linkDescription && (
-                        <div>
-                          <h4 className="font-semibold text-foreground mb-2">Link Description</h4>
-                          <div className="flex items-start gap-2 p-3 bg-accent rounded-lg">
-                            <span className="text-sm text-foreground flex-1">
-                              {adCopy.linkDescription}
-                            </span>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => copyToClipboard(adCopy.linkDescription!)}
-                            >
-                              <Copy className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* +15 More Like This Button */}
-                      <div className="flex justify-end pt-2">
-                        <Button
-                          size="sm"
-                          onClick={() => handleGenerateMore(adCopy)}
-                          disabled={generateMoreMutation.isPending}
-                          className="bg-primary hover:bg-primary/90"
-                        >
-                          {generateMoreMutation.isPending ? "Generating..." : "+15 More Like This"}
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
             )}
           </div>
         </div>

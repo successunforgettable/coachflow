@@ -380,3 +380,18 @@
 - [ ] Verify Headlines Beast Mode tab still works (tab is correct, toggle was wrong)
 - [ ] Verify Hero Mechanisms Beast Mode tab still works (tab is correct)
 - [ ] Test Ad Copy Beast Mode toggle functionality
+
+
+## Phase 34: Ad Copy Detail Page with Beast Mode (COMPLETE)
+- [x] Update Ad Copy schema to store adType (Lead Gen/Ecommerce) and contentType (headline/body/link)
+- [x] Generate migration SQL for schema changes
+- [x] Apply migration via webdev_execute_sql
+- [x] Update Ad Copy backend to generate all 3 content types (headlines, body, links)
+- [x] Create AdCopyDetail.tsx component with 3 tabs
+- [x] Add Beast Mode toggle to detail page (NOT form)
+- [x] Add product info card on left side
+- [x] Add action bar with Download PDF and Delete buttons
+- [x] Add individual ad cards with thumbs up/down, copy, "+15 More" buttons
+- [x] Add regenerate mutation for Beast Mode
+- [x] Update Ad Copy list page to link to detail page
+- [ ] Test complete flow from generation to detail view
