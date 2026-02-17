@@ -15,6 +15,7 @@ import {
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 
 // Real-world HVCO topic examples from Kong
 const HVCO_TOPIC_EXAMPLES = [
@@ -40,6 +41,7 @@ export default function HVCOTitlesNew() {
   const [selectedServiceId, setSelectedServiceId] = useState<number | null>(null);
   const [targetMarket, setTargetMarket] = useState("");
   const [hvcoTopic, setHvcoTopic] = useState("");
+  const [beastMode, setBeastMode] = useState(false);
 
   const { data: services } = trpc.services.list.useQuery();
   const generateMutation = trpc.hvco.generate.useMutation({
@@ -85,6 +87,7 @@ export default function HVCOTitlesNew() {
       serviceId: selectedServiceId,
       targetMarket: targetMarket.trim(),
       hvcoTopic: hvcoTopic.trim(),
+      beastMode,
     });
   };
 
@@ -188,6 +191,23 @@ export default function HVCOTitlesNew() {
             </div>
           </div>
 
+          {/* Beast Mode Toggle */}
+          <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
+            <div className="space-y-0.5">
+              <Label htmlFor="beast-mode" className="text-base font-semibold">
+                🔥 Beast Mode
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Generate {beastMode ? "30" : "10"} titles ({beastMode ? "3x" : "1x"} variations)
+              </p>
+            </div>
+            <Switch
+              id="beast-mode"
+              checked={beastMode}
+              onCheckedChange={setBeastMode}
+            />
+          </div>
+
           {/* Disclaimer */}
           <div className="bg-muted/50 p-4 rounded-lg">
             <p className="text-sm text-muted-foreground">
@@ -205,7 +225,7 @@ export default function HVCOTitlesNew() {
               {generateMutation.isPending && (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               )}
-              Create HVCO
+              Generate {beastMode ? "30" : "10"} HVCO Titles
             </Button>
             <Button
               type="button"

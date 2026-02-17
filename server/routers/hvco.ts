@@ -38,10 +38,12 @@ export const hvcoRouter = router({
         serviceId: z.number(),
         targetMarket: z.string().max(100),
         hvcoTopic: z.string().max(800),
+        beastMode: z.boolean().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
       const { user } = ctx;
+      const countMultiplier = input.beastMode ? 3 : 1; // Beast Mode generates 3x more
       
       // Get service details for context
       const db = await getDb();
@@ -83,7 +85,7 @@ Requirements:
 - Focus on the benefit/outcome
 - Use power words (Blueprint, Formula, Method, System, Secrets, etc.)
 
-Return ONLY a JSON array of 20 title strings, nothing else.`;
+Return ONLY a JSON array of ${20 * countMultiplier} title strings, nothing else.`;
 
       const longTitlesResponse = await invokeLLM({
         messages: [
@@ -127,7 +129,7 @@ Examples:
 - "Passive Profits"
 - "Financial Freedom"
 
-Return ONLY a JSON array of 20 title strings, nothing else.`;
+Return ONLY a JSON array of ${20 * countMultiplier} title strings, nothing else.`;
 
       const shortTitlesResponse = await invokeLLM({
         messages: [

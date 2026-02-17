@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { nanoid } from "nanoid";
 import { protectedProcedure, router } from "../_core/trpc";
 import { invokeLLM } from "../_core/llm";
 import {
@@ -178,7 +179,7 @@ export const headlinesRouter = router({
       };
     }),
 
-  // Generate new headline set (25 headlines: 5 per formula type)
+  // Generate new headline set (25 headlines: 5 per formula type, or 75 with Beast Mode)
   generate: protectedProcedure
     .input(
       z.object({
@@ -188,6 +189,7 @@ export const headlinesRouter = router({
         pressingProblem: z.string(),
         desiredOutcome: z.string(),
         uniqueMechanism: z.string(),
+        beastMode: z.boolean().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -200,12 +202,15 @@ export const headlinesRouter = router({
         });
       }
 
-      const headlineSetId = `hs_${Date.now()}_${ctx.user.id}`;
+      const headlineSetId = nanoid();
       const allHeadlines: Array<typeof headlines.$inferInsert> = [];
+      const countMultiplier = input.beastMode ? 3 : 1; // Beast Mode generates 3x more
 
       // Generate headlines for each formula type
       for (const [formulaType, promptTemplate] of Object.entries(FORMULA_PROMPTS)) {
-        const prompt = promptTemplate
+        // Modify prompt to generate 3x more if Beast Mode is enabled
+        const modifiedTemplate = promptTemplate.replace(/Generate 5/g, `Generate ${5 * countMultiplier}`);
+        const prompt = modifiedTemplate
           .replace(/{targetMarket}/g, input.targetMarket)
           .replace(/{pressingProblem}/g, input.pressingProblem)
           .replace(/{desiredOutcome}/g, input.desiredOutcome)

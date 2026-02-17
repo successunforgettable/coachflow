@@ -351,3 +351,20 @@
 - [x] Add Examples Carousel to WhatsApp Sequence Generator
 - [x] Add Examples Carousel to Landing Page Generator
 - [x] Add Examples Carousel to Offers Generator
+
+
+## Phase 32: Beast Mode Toggle Implementation (ACTIVE)
+- [ ] Research Kong Beast Mode implementation pattern
+- [ ] Add Beast Mode toggle UI component
+- [x] Add Beast Mode to Headlines Generator form
+- [x] Add Beast Mode to HVCO Titles Generator form
+- [ ] Add Beast Mode to Hero Mechanisms Generator form
+- [ ] Add Beast Mode to ICP Generator form
+- [ ] Add Beast Mode to Ad Copy Generator form
+- [ ] Add Beast Mode to Email Sequence Generator form
+- [ ] Add Beast Mode to WhatsApp Sequence Generator form
+- [ ] Add Beast Mode to Landing Page Generator form
+- [ ] Add Beast Mode to Offers Generator form
+- [ ] Update backend routers to handle beastMode parameter
+- [ ] Modify LLM prompts to generate 2-3x variations when Beast Mode enabled
+- [ ] Test Beast Mode across all generators
