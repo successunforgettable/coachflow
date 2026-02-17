@@ -2,7 +2,8 @@ import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 
 interface QuotaIndicatorProps {
-  generatorType: "icp" | "adCopy" | "emailSeq" | "whatsappSeq" | "landingPage" | "offer" | "headline";
+  generatorType: "icp" | "adCopy" | "emailSeq" | "whatsappSeq" | "landingPage" | "offer" | "headline" | "hvco" | "heroMechanism";
+  label?: string;
 }
 
 // Kong parity: Quota limits by subscription tier
@@ -15,6 +16,8 @@ const QUOTA_LIMITS = {
     landingPage: 3,
     offer: 3,
     headline: 3,
+    hvco: 3,
+    heroMechanism: 3,
   },
   pro: {
     icp: 10,
@@ -23,7 +26,9 @@ const QUOTA_LIMITS = {
     whatsappSeq: 10,
     landingPage: 10,
     offer: 10,
-    headline: 6, // Kong Pro plan: 6 headline sets per month
+    headline: 6,
+    hvco: 6,
+    heroMechanism: 6,
   },
   agency: {
     icp: 50,
@@ -33,6 +38,8 @@ const QUOTA_LIMITS = {
     landingPage: 50,
     offer: 50,
     headline: 20,
+    hvco: 20,
+    heroMechanism: 20,
   },
 };
 
@@ -44,9 +51,11 @@ const GENERATOR_FIELD_MAP = {
   landingPage: "landingPageGeneratedCount",
   offer: "offerGeneratedCount",
   headline: "headlineGeneratedCount",
+  hvco: "hvcoGeneratedCount",
+  heroMechanism: "heroMechanismGeneratedCount",
 } as const;
 
-export function QuotaIndicator({ generatorType }: QuotaIndicatorProps) {
+export function QuotaIndicator({ generatorType, label }: QuotaIndicatorProps) {
   const { data: user } = trpc.auth.me.useQuery();
 
   if (!user) return null;
@@ -72,11 +81,14 @@ export function QuotaIndicator({ generatorType }: QuotaIndicatorProps) {
   const badgeColor = isExceeded ? "bg-red-600" : "bg-green-600";
 
   return (
-    <div className="flex items-center gap-3">
-      <Badge className={`${badgeColor} text-white rounded-full px-3 py-1 font-semibold`}>
-        {used}/{limit}
-      </Badge>
-      <span className="text-sm text-muted-foreground">
+    <div className="flex flex-col items-end gap-1">
+      <div className="flex items-center gap-2">
+        {label && <span className="text-sm text-muted-foreground">{label}</span>}
+        <Badge className={`${badgeColor} text-white rounded-full px-3 py-1 font-semibold`}>
+          {used}/{limit}
+        </Badge>
+      </div>
+      <span className="text-xs text-muted-foreground">
         Usage Resets: {formattedResetDate}
       </span>
     </div>

@@ -20,6 +20,10 @@ import ServiceDetail from "./pages/ServiceDetail";
 import Headlines from "./pages/Headlines";
 import HeadlinesNew from "./pages/HeadlinesNew";
 import HeadlinesDetail from "./pages/HeadlinesDetail";
+import HVCOTitles from "./pages/HVCOTitles";
+import HVCOTitlesNew from "./pages/HVCOTitlesNew";
+import HVCOTitlesDetail from "./pages/HVCOTitlesDetail";
+import HeroMechanisms from "./pages/HeroMechanisms";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -41,6 +45,10 @@ function Router() {
       <Route path={"/headlines"} component={Headlines} />
       <Route path={"/headlines/new"} component={HeadlinesNew} />
       <Route path={"/headlines/:id"} component={HeadlinesDetail} />
+      <Route path={"/hvco-titles"} component={HVCOTitles} />
+      <Route path={"/hvco-titles/new"} component={HVCOTitlesNew} />
+      <Route path={"/hvco-titles/:hvcoSetId"} component={HVCOTitlesDetail} />
+      <Route path={"/hero-mechanisms"} component={HeroMechanisms} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

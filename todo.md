@@ -190,17 +190,19 @@
 
 
 ## Phase 26: Complete Missing Generators (ACTIVE)
-- [x] HVCO Titles Generator (backend complete)
+- [x] HVCO Titles Generator (COMPLETE)
   - [x] Read Kong research documentation
   - [x] Create implementation spec
   - [x] Build database schema
   - [x] Implement backend procedures (tRPC router)
-  - [ ] Build generator UI (list/form/detail pages)
-  - [ ] Add to navigation
-- [x] Hero Mechanisms Generator (backend complete)
+  - [x] Build generator UI (list/form/detail pages)
+  - [x] Add to navigation
+- [x] Hero Mechanisms Generator (backend complete + list page)
   - [x] Read Kong research documentation
   - [x] Create implementation spec
   - [x] Build database schema
   - [x] Implement backend procedures (tRPC router)
-  - [ ] Build generator UI (list/form/detail pages)
-  - [ ] Add to navigation
+  - [x] Build list page
+  - [x] Add to navigation
+  - [ ] Build generator form page (11 fields)
+  - [ ] Build detail page (3 tabs, 5 mechanisms each)

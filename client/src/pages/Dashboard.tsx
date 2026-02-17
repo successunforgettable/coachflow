@@ -18,6 +18,8 @@ import {
   FolderOpen,
   BookOpen,
   Type,
+  Lightbulb,
+  Zap,
 } from "lucide-react";
 
 export default function Dashboard() {
@@ -54,6 +56,14 @@ export default function Dashboard() {
   });
 
   const { data: headlines } = trpc.headlines.list.useQuery(undefined, {
+    enabled: isAuthenticated,
+  });
+
+  const { data: hvcoTitles } = trpc.hvco.list.useQuery(undefined, {
+    enabled: isAuthenticated,
+  });
+
+  const { data: heroMechanisms } = trpc.heroMechanisms.list.useQuery(undefined, {
     enabled: isAuthenticated,
   });
 
@@ -119,6 +129,22 @@ export default function Dashboard() {
       count: headlines?.length || 0,
       href: "/headlines",
       color: "text-yellow-500",
+    },
+    {
+      title: "HVCO Titles",
+      description: "Compelling titles for high-value content offers (Kong parity)",
+      icon: Lightbulb,
+      count: hvcoTitles?.length || 0,
+      href: "/hvco-titles",
+      color: "text-cyan-500",
+    },
+    {
+      title: "Hero Mechanisms",
+      description: "Unique features and benefits that set you apart (Kong parity)",
+      icon: Zap,
+      count: heroMechanisms?.length || 0,
+      href: "/hero-mechanisms",
+      color: "text-indigo-500",
     },
   ];
 
