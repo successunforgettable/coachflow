@@ -321,7 +321,7 @@
 - [x] Implement PDF export for Headlines Generator
 - [x] Implement PDF export for HVCO Titles Generator
 - [x] Implement PDF export for Hero Mechanisms Generator
-- [ ] Add PDF export button + functionality to ICP Generator
+- [x] Add PDF export button + functionality to ICP Generator
 - [ ] Add PDF export button + functionality to Ad Copy Generator
 - [ ] Add PDF export button + functionality to Email Sequence Generator
 - [ ] Add PDF export button + functionality to WhatsApp Sequence Generator

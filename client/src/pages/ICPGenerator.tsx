@@ -8,10 +8,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { trpc } from "@/lib/trpc";
 import { getLoginUrl } from "@/const";
 import { useState } from "react";
-import { Loader2, Sparkles, Star, Trash2 } from "lucide-react";
+import { Loader2, Sparkles, Star, Trash2, Download } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { QuotaIndicator } from "@/components/QuotaIndicator";
 import { SearchBar } from "@/components/SearchBar";
+import { exportToPDF } from "@/lib/pdfExport";
+import { toast } from "sonner";
 
 export default function ICPGenerator() {
   const { isAuthenticated, loading: authLoading } = useAuth();
@@ -78,6 +80,48 @@ export default function ICPGenerator() {
     if (confirm("Are you sure you want to delete this ICP?")) {
       deleteMutation.mutate({ id: icpId });
     }
+  };
+
+  const handleDownloadPDF = () => {
+    if (!selectedICP) return;
+
+    const sections = [
+      {
+        title: "Demographics",
+        content: selectedICP.demographics
+          ? Object.entries(selectedICP.demographics as Record<string, unknown>)
+              .map(([key, value]) => `${key.replace(/_/g, " ").toUpperCase()}: ${value}`)
+          : [],
+      },
+      {
+        title: "Pain Points",
+        content: selectedICP.painPoints || "Not specified",
+      },
+      {
+        title: "Desired Outcomes",
+        content: selectedICP.desiredOutcomes || "Not specified",
+      },
+      {
+        title: "Values & Motivations",
+        content: selectedICP.valuesMotivations || "Not specified",
+      },
+      {
+        title: "Buying Triggers",
+        content: selectedICP.buyingTriggers || "Not specified",
+      },
+    ];
+
+    exportToPDF({
+      title: "Ideal Customer Profile",
+      subtitle: selectedICP.name,
+      sections,
+      metadata: {
+        generatedDate: new Date(selectedICP.createdAt).toLocaleDateString(),
+        generatorType: "ICP Generator",
+      },
+    });
+
+    toast.success("PDF downloaded successfully!");
   };
 
   return (
@@ -247,22 +291,40 @@ export default function ICPGenerator() {
                           Created {new Date(selectedICP.createdAt).toLocaleDateString()}
                         </CardDescription>
                       </div>
-                      <div className="flex gap-1">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <button
-                            key={star}
-                            onClick={() => handleRating(selectedICP.id, star)}
-                            disabled={updateMutation.isPending}
-                          >
-                            <Star
-                              className={`w-5 h-5 ${
-                                star <= (selectedICP.rating || 0)
-                                  ? "fill-primary text-primary"
-                                  : "text-muted-foreground"
-                              }`}
-                            />
-                          </button>
-                        ))}
+                      <div className="flex items-center gap-3">
+                        <div className="flex gap-1">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <button
+                              key={star}
+                              onClick={() => handleRating(selectedICP.id, star)}
+                              disabled={updateMutation.isPending}
+                            >
+                              <Star
+                                className={`w-5 h-5 ${
+                                  star <= (selectedICP.rating || 0)
+                                    ? "fill-primary text-primary"
+                                    : "text-muted-foreground"
+                                }`}
+                              />
+                            </button>
+                          ))}
+                        </div>
+                        <Button
+                          size="sm"
+                          onClick={handleDownloadPDF}
+                          className="bg-primary hover:bg-primary/90"
+                        >
+                          <Download className="w-4 h-4 mr-2" />
+                          Download PDF
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleDelete(selectedICP.id)}
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete
+                        </Button>
                       </div>
                     </div>
                   </CardHeader>
