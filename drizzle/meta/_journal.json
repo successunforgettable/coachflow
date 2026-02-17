@@ -36,6 +36,13 @@
       "when": 1771340177975,
       "tag": "0004_parched_the_captain",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1771355644086,
+      "tag": "0005_futuristic_the_renegades",
+      "breakpoints": true
     }
   ]
 }

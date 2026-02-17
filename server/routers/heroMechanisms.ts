@@ -1,0 +1,320 @@
+import { z } from "zod";
+import { publicProcedure, protectedProcedure, router } from "../_core/trpc";
+import { invokeLLM } from "../_core/llm";
+import { 
+  createHeroMechanisms, 
+  getHeroMechanismSetsByUser, 
+  getHeroMechanismsBySetId,
+  updateHeroMechanismRating,
+  toggleHeroMechanismFavorite,
+  deleteHeroMechanismSet,
+  incrementHeroMechanismCount
+} from "../db";
+import { getDb } from "../db";
+import { services } from "../../drizzle/schema";
+import { eq } from "drizzle-orm";
+import { nanoid } from "nanoid";
+
+/**
+ * Hero Mechanisms Router - Kong Parity
+ * 
+ * Generates 3 tabs of mechanism variations:
+ * - Hero Mechanisms (5 creative mechanisms with unique names)
+ * - Headline Ideas (5 headline variations)
+ * - Beast Mode (5 extra powerful variations)
+ * 
+ * Each mechanism has:
+ * - Creative name (e.g., "Breakthrough Neural Nexus System")
+ * - Full paragraph description with credibility, outcome, timeframe, emotional transformation
+ */
+
+export const heroMechanismsRouter = router({
+  /**
+   * Generate Hero Mechanisms
+   * Creates 3 tabs with 5 mechanism variations each
+   */
+  generate: protectedProcedure
+    .input(
+      z.object({
+        serviceId: z.number(),
+        targetMarket: z.string().max(100),
+        pressingProblem: z.string().max(200),
+        whyProblem: z.string().max(300),
+        whatTried: z.string().max(300),
+        whyExistingNotWork: z.string().max(300),
+        descriptor: z.string().max(50).optional(), // Strategy, Framework, Method, System, etc.
+        application: z.string().max(100).optional(), // How it's applied
+        desiredOutcome: z.string().max(200),
+        credibility: z.string().max(200), // Authority figure
+        socialProof: z.string().max(200), // Publications, features
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { user } = ctx;
+      
+      // Get service details for context
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      
+      const [service] = await db
+        .select()
+        .from(services)
+        .where(eq(services.id, input.serviceId))
+        .limit(1);
+      
+      if (!service) {
+        throw new Error("Service not found");
+      }
+
+      const mechanismSetId = nanoid();
+      const allMechanisms: any[] = [];
+
+      // Generate Hero Mechanisms (5 variations)
+      const heroMechanismsPrompt = `You are an expert direct response copywriter creating compelling Hero Mechanisms.
+
+Product: ${service.name}
+Target Market: ${input.targetMarket}
+Pressing Problem: ${input.pressingProblem}
+Why Problem Exists: ${input.whyProblem}
+What They've Tried: ${input.whatTried}
+Why Existing Solutions Fail: ${input.whyExistingNotWork}
+Descriptor: ${input.descriptor || "System"}
+Application: ${input.application || "Use this system"}
+Desired Outcome: ${input.desiredOutcome}
+Credibility: ${input.credibility}
+Social Proof: ${input.socialProof}
+
+Create 5 HERO MECHANISMS. Each mechanism must have:
+1. A creative, unique NAME using the descriptor (e.g., "Breakthrough Neural Nexus System", "Proprietary Market Guardian Protocol")
+2. A full PARAGRAPH description (150-200 words) that includes:
+   - How it works (technology/method)
+   - Who developed it (credibility)
+   - Specific outcome ($10,000/month, 6 months, etc.)
+   - Emotional transformation (fear → confidence, confusion → clarity)
+   - Why it's different from existing solutions
+
+Examples:
+{
+  "name": "Breakthrough Neural Nexus System",
+  "description": "This innovative system harnesses neural networks and machine learning algorithms to analyze market trends and predict high-profit crypto trades. Developed by an award-winning author in collaboration with top 7-figure traders, this method teaches beginners how to confidently trade and earn at least $10,000 per month. Within 6 months, users learn the critical, often overlooked real-time data patterns that lead to significant gains, transforming fear into calculated action and building real wealth."
+}
+
+Return ONLY a JSON array of 5 objects with "name" and "description" fields, nothing else.`;
+
+      const heroMechanismsResponse = await invokeLLM({
+        messages: [
+          { role: "system", content: "You are a direct response copywriting expert. Return ONLY valid JSON arrays." },
+          { role: "user", content: heroMechanismsPrompt }
+        ],
+      });
+
+      const heroMechanismsContent = typeof heroMechanismsResponse.choices[0].message.content === 'string' 
+        ? heroMechanismsResponse.choices[0].message.content 
+        : JSON.stringify(heroMechanismsResponse.choices[0].message.content);
+      const heroMechanisms = JSON.parse(heroMechanismsContent);
+      
+      heroMechanisms.forEach((mechanism: { name: string; description: string }) => {
+        allMechanisms.push({
+          userId: user.id,
+          serviceId: input.serviceId,
+          mechanismSetId,
+          tabType: "hero_mechanisms" as const,
+          mechanismName: mechanism.name,
+          mechanismDescription: mechanism.description,
+          targetMarket: input.targetMarket,
+          pressingProblem: input.pressingProblem,
+          whyProblem: input.whyProblem,
+          whatTried: input.whatTried,
+          whyExistingNotWork: input.whyExistingNotWork,
+          descriptor: input.descriptor,
+          application: input.application,
+          desiredOutcome: input.desiredOutcome,
+          credibility: input.credibility,
+          socialProof: input.socialProof,
+        });
+      });
+
+      // Generate Headline Ideas (5 variations)
+      const headlineIdeasPrompt = `You are an expert direct response copywriter creating compelling headlines for Hero Mechanisms.
+
+Product: ${service.name}
+Target Market: ${input.targetMarket}
+Pressing Problem: ${input.pressingProblem}
+Desired Outcome: ${input.desiredOutcome}
+
+Create 5 HEADLINE IDEAS that:
+- Grab attention immediately
+- Promise a clear benefit
+- Create curiosity
+- Use power words
+
+Each headline should have:
+1. A creative NAME (the headline itself)
+2. A supporting DESCRIPTION (50-100 words explaining why this headline works)
+
+Examples:
+{
+  "name": "How Ordinary People Are Building $10K/Month Passive Income While Their Friends Work Dead-End Jobs",
+  "description": "This headline uses social proof ('ordinary people'), specific outcome ($10K/month), and contrast (passive income vs. dead-end jobs) to create desire and urgency. It speaks directly to the target market's frustration with traditional employment."
+}
+
+Return ONLY a JSON array of 5 objects with "name" and "description" fields, nothing else.`;
+
+      const headlineIdeasResponse = await invokeLLM({
+        messages: [
+          { role: "system", content: "You are a direct response copywriting expert. Return ONLY valid JSON arrays." },
+          { role: "user", content: headlineIdeasPrompt }
+        ],
+      });
+
+      const headlineIdeasContent = typeof headlineIdeasResponse.choices[0].message.content === 'string' 
+        ? headlineIdeasResponse.choices[0].message.content 
+        : JSON.stringify(headlineIdeasResponse.choices[0].message.content);
+      const headlineIdeas = JSON.parse(headlineIdeasContent);
+      
+      headlineIdeas.forEach((mechanism: { name: string; description: string }) => {
+        allMechanisms.push({
+          userId: user.id,
+          serviceId: input.serviceId,
+          mechanismSetId,
+          tabType: "headline_ideas" as const,
+          mechanismName: mechanism.name,
+          mechanismDescription: mechanism.description,
+          targetMarket: input.targetMarket,
+          pressingProblem: input.pressingProblem,
+          whyProblem: input.whyProblem,
+          whatTried: input.whatTried,
+          whyExistingNotWork: input.whyExistingNotWork,
+          descriptor: input.descriptor,
+          application: input.application,
+          desiredOutcome: input.desiredOutcome,
+          credibility: input.credibility,
+          socialProof: input.socialProof,
+        });
+      });
+
+      // Generate Beast Mode (5 extra powerful variations)
+      const beastModePrompt = `You are an expert direct response copywriter creating BEAST MODE Hero Mechanisms - the most powerful, compelling versions.
+
+Product: ${service.name}
+Target Market: ${input.targetMarket}
+Pressing Problem: ${input.pressingProblem}
+Why Problem Exists: ${input.whyProblem}
+What They've Tried: ${input.whatTried}
+Why Existing Solutions Fail: ${input.whyExistingNotWork}
+Descriptor: ${input.descriptor || "System"}
+Desired Outcome: ${input.desiredOutcome}
+Credibility: ${input.credibility}
+Social Proof: ${input.socialProof}
+
+Create 5 BEAST MODE mechanisms - these should be:
+- Even more creative and unique names
+- Longer, more detailed descriptions (200-250 words)
+- Include specific numbers, timeframes, and results
+- Address objections preemptively
+- Build massive credibility
+
+Each mechanism must have:
+1. An ultra-creative NAME with powerful descriptors
+2. A comprehensive DESCRIPTION that sells the transformation
+
+Return ONLY a JSON array of 5 objects with "name" and "description" fields, nothing else.`;
+
+      const beastModeResponse = await invokeLLM({
+        messages: [
+          { role: "system", content: "You are a direct response copywriting expert. Return ONLY valid JSON arrays." },
+          { role: "user", content: beastModePrompt }
+        ],
+      });
+
+      const beastModeContent = typeof beastModeResponse.choices[0].message.content === 'string' 
+        ? beastModeResponse.choices[0].message.content 
+        : JSON.stringify(beastModeResponse.choices[0].message.content);
+      const beastMode = JSON.parse(beastModeContent);
+      
+      beastMode.forEach((mechanism: { name: string; description: string }) => {
+        allMechanisms.push({
+          userId: user.id,
+          serviceId: input.serviceId,
+          mechanismSetId,
+          tabType: "beast_mode" as const,
+          mechanismName: mechanism.name,
+          mechanismDescription: mechanism.description,
+          targetMarket: input.targetMarket,
+          pressingProblem: input.pressingProblem,
+          whyProblem: input.whyProblem,
+          whatTried: input.whatTried,
+          whyExistingNotWork: input.whyExistingNotWork,
+          descriptor: input.descriptor,
+          application: input.application,
+          desiredOutcome: input.desiredOutcome,
+          credibility: input.credibility,
+          socialProof: input.socialProof,
+        });
+      });
+
+      // Save all mechanisms to database
+      await createHeroMechanisms(allMechanisms);
+      await incrementHeroMechanismCount(user.id);
+
+      return { mechanismSetId };
+    }),
+
+  /**
+   * List all mechanism sets for current user
+   */
+  list: protectedProcedure.query(async ({ ctx }) => {
+    const sets = await getHeroMechanismSetsByUser(ctx.user.id);
+    return sets;
+  }),
+
+  /**
+   * Get all mechanisms from a specific set
+   */
+  getBySetId: protectedProcedure
+    .input(z.object({ mechanismSetId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const mechanisms = await getHeroMechanismsBySetId(input.mechanismSetId, ctx.user.id);
+      return mechanisms;
+    }),
+
+  /**
+   * Rate a mechanism (thumbs up/down)
+   */
+  rate: protectedProcedure
+    .input(
+      z.object({
+        mechanismId: z.number(),
+        rating: z.number().min(-1).max(1), // -1 = down, 0 = neutral, 1 = up
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      await updateHeroMechanismRating(input.mechanismId, ctx.user.id, input.rating);
+      return { success: true };
+    }),
+
+  /**
+   * Toggle favorite status
+   */
+  toggleFavorite: protectedProcedure
+    .input(
+      z.object({
+        mechanismId: z.number(),
+        isFavorite: z.boolean(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      await toggleHeroMechanismFavorite(input.mechanismId, ctx.user.id, input.isFavorite);
+      return { success: true };
+    }),
+
+  /**
+   * Delete entire mechanism set
+   */
+  delete: protectedProcedure
+    .input(z.object({ mechanismSetId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      await deleteHeroMechanismSet(input.mechanismSetId, ctx.user.id);
+      return { success: true };
+    }),
+});

@@ -32,6 +32,8 @@ export const users = mysqlTable("users", {
   landingPageGeneratedCount: int("landingPageGeneratedCount").default(0).notNull(),
   offerGeneratedCount: int("offerGeneratedCount").default(0).notNull(),
   headlineGeneratedCount: int("headlineGeneratedCount").default(0).notNull(),
+  hvcoGeneratedCount: int("hvcoGeneratedCount").default(0).notNull(),
+  heroMechanismGeneratedCount: int("heroMechanismGeneratedCount").default(0).notNull(),
   usageResetAt: timestamp("usageResetAt").defaultNow().notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -291,3 +293,80 @@ export const headlines = mysqlTable("headlines", {
 
 export type Headline = typeof headlines.$inferSelect;
 export type InsertHeadline = typeof headlines.$inferInsert;
+
+/**
+ * HVCO Titles - Kong parity
+ * 4 tabs: Long Titles, Short Titles, Beast Mode Titles, Subheadlines
+ * Each generation creates ~20 title variations per tab
+ * Titles use alliteration pattern: [Action/Benefit] [Crypto/Money Word] [Blueprint/Formula/Method]
+ */
+export const hvcoTitles = mysqlTable("hvcoTitles", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  serviceId: int("serviceId").references(() => services.id, { onDelete: "set null" }),
+  campaignId: int("campaignId").references(() => campaigns.id, { onDelete: "set null" }),
+  // HVCO set ID - groups all titles from one generation
+  hvcoSetId: varchar("hvcoSetId", { length: 50 }).notNull(),
+  // Tab type determines title style
+  tabType: mysqlEnum("tabType", ["long", "short", "beast_mode", "subheadlines"]).notNull(),
+  // Title text
+  title: varchar("title", { length: 500 }).notNull(),
+  // Input data used to generate (stored for regeneration)
+  targetMarket: varchar("targetMarket", { length: 100 }).notNull(),
+  hvcoTopic: text("hvcoTopic").notNull(), // 800 chars
+  // Metadata
+  rating: int("rating").default(0), // -1 = thumbs down, 0 = no rating, 1 = thumbs up
+  isFavorite: boolean("isFavorite").default(false),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  userIdIdx: index("idx_hvcoTitles_userId").on(table.userId),
+  campaignIdIdx: index("idx_hvcoTitles_campaignId").on(table.campaignId),
+  hvcoSetIdIdx: index("idx_hvcoTitles_hvcoSetId").on(table.hvcoSetId),
+}));
+
+export type HvcoTitle = typeof hvcoTitles.$inferSelect;
+export type InsertHvcoTitle = typeof hvcoTitles.$inferInsert;
+
+/**
+ * Hero Mechanisms - Kong parity
+ * 3 tabs: Hero Mechanisms, Headline Ideas, Beast Mode
+ * Each generation creates 5 mechanism variations per tab
+ * Mechanisms have creative names + descriptors + full paragraph explanations
+ */
+export const heroMechanisms = mysqlTable("heroMechanisms", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  serviceId: int("serviceId").references(() => services.id, { onDelete: "set null" }),
+  campaignId: int("campaignId").references(() => campaigns.id, { onDelete: "set null" }),
+  // Mechanism set ID - groups all mechanisms from one generation
+  mechanismSetId: varchar("mechanismSetId", { length: 50 }).notNull(),
+  // Tab type determines content style
+  tabType: mysqlEnum("tabType", ["hero_mechanisms", "headline_ideas", "beast_mode"]).notNull(),
+  // Mechanism content
+  mechanismName: varchar("mechanismName", { length: 255 }).notNull(), // e.g., "Breakthrough Neural Nexus System"
+  mechanismDescription: text("mechanismDescription").notNull(), // Full paragraph explanation
+  // Input data used to generate (stored for regeneration)
+  targetMarket: varchar("targetMarket", { length: 100 }).notNull(),
+  pressingProblem: varchar("pressingProblem", { length: 200 }).notNull(),
+  whyProblem: text("whyProblem").notNull(), // 300 chars
+  whatTried: text("whatTried").notNull(), // 300 chars
+  whyExistingNotWork: text("whyExistingNotWork").notNull(), // 300 chars
+  descriptor: varchar("descriptor", { length: 50 }), // Strategy, Framework, Method, System, etc.
+  application: varchar("application", { length: 100 }), // How it's applied
+  desiredOutcome: varchar("desiredOutcome", { length: 200 }).notNull(),
+  credibility: varchar("credibility", { length: 200 }).notNull(), // Authority figure
+  socialProof: varchar("socialProof", { length: 200 }).notNull(), // Publications, features
+  // Metadata
+  rating: int("rating").default(0), // -1 = thumbs down, 0 = no rating, 1 = thumbs up
+  isFavorite: boolean("isFavorite").default(false),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  userIdIdx: index("idx_heroMechanisms_userId").on(table.userId),
+  campaignIdIdx: index("idx_heroMechanisms_campaignId").on(table.campaignId),
+  mechanismSetIdIdx: index("idx_heroMechanisms_mechanismSetId").on(table.mechanismSetId),
+}));
+
+export type HeroMechanism = typeof heroMechanisms.$inferSelect;
+export type InsertHeroMechanism = typeof heroMechanisms.$inferInsert;

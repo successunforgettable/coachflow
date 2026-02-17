@@ -187,3 +187,20 @@
   - [ ] Add to Landing Pages list page
   - [ ] Add to Offers list page
   - [ ] Add to Headlines list page (new)
+
+
+## Phase 26: Complete Missing Generators (ACTIVE)
+- [x] HVCO Titles Generator (backend complete)
+  - [x] Read Kong research documentation
+  - [x] Create implementation spec
+  - [x] Build database schema
+  - [x] Implement backend procedures (tRPC router)
+  - [ ] Build generator UI (list/form/detail pages)
+  - [ ] Add to navigation
+- [x] Hero Mechanisms Generator (backend complete)
+  - [x] Read Kong research documentation
+  - [x] Create implementation spec
+  - [x] Build database schema
+  - [x] Implement backend procedures (tRPC router)
+  - [ ] Build generator UI (list/form/detail pages)
+  - [ ] Add to navigation
