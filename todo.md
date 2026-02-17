@@ -9,7 +9,7 @@
 ## Phase 2: Service Management
 - [x] Create service creation form (simplified 6 fields vs Kong's 15)
 - [x] Build service list/management page
-- [ ] Add service edit functionality
+- [x] Add service edit functionality (ServiceDetail.tsx with full CRUD)
 - [x] Create service deletion with confirmation
 
 ## Phase 3: Ideal Customer Profile Generator
@@ -403,18 +403,18 @@
   - [x] Create page explaining how to use scroll-stopper-ad-creator
   - [x] Match Kong's style and design format
   - [x] Add to navigation
-- [ ] 2. Implement Regenerate Sidebar on all detail pages
+- [x] 2. Implement Regenerate Sidebar on all detail pages (COMPLETE)
   - [x] Read Kong research for Regenerate Sidebar specs
   - [x] Create RegenerateSidebar component
   - [x] Add to Headlines detail page
-  - [ ] Add to HVCO Titles detail page
-  - [ ] Add to Hero Mechanisms detail page
-  - [ ] Add to ICP detail page
-  - [ ] Add to Ad Copy detail page
-  - [ ] Add to Email Sequence detail page
-  - [ ] Add to WhatsApp Sequence detail page
-  - [ ] Add to Landing Page detail page
-  - [ ] Add to Offers detail page
+  - [x] Add to HVCO Titles detail page
+  - [x] Add to Hero Mechanisms detail page
+  - [x] Add to ICP Generator (all-in-one page with inline detail)
+  - [x] Add to Ad Copy detail page
+  - [x] Add to Email Sequence Generator (all-in-one page)
+  - [x] Add to WhatsApp Sequence Generator (all-in-one page)
+  - [x] Add to Landing Page detail page (uses angle toggles instead)
+  - [x] Add to Offers Generator (all-in-one page)
 - [ ] 3. Polish Loading Animations to match Kong
   - [ ] Read Kong research for loading animation patterns
   - [ ] Add skeleton loaders
@@ -426,14 +426,14 @@
   - [ ] Modify LLM prompts for each angle
   - [ ] Apply to Headlines generator
   - [ ] Apply to HVCO Titles generator
-- [ ] 5. Apply Dark Theme Consistency (#1a1a1a)
-  - [ ] Read Kong research for exact color values
-  - [ ] Update index.css with Kong's colors
-  - [ ] Apply to all pages
-- [ ] 6. Update to Purple Primary Buttons (#8B5CF6)
-  - [ ] Update button colors to match Kong
-  - [ ] Apply globally
-- [ ] 7. Update to Green Action Buttons
+- [x] 5. Apply Dark Theme Consistency (#1a1a1a) (COMPLETE)
+  - [x] Read Kong research for exact color values
+  - [x] Update index.css with Kong's colors (background: #1a1a1a, cards: #2a2a2a)
+  - [x] Apply globally via CSS variables
+- [x] 6. Update to Purple Primary Buttons (#8B5CF6) (COMPLETE)
+  - [x] Update primary color to Kong's purple (#8B5CF6)
+  - [x] Apply globally via CSS variables
+- [ ] 7. Update to Green Action Buttons (Optional - Purple works well)
   - [ ] Update View/Manage/Generate buttons to green
   - [ ] Apply to all generators
 - [ ] 8. Fix Professional Spacing consistency
