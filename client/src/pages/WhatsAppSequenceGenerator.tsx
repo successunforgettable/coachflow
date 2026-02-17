@@ -10,11 +10,13 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
 import { QuotaIndicator } from "@/components/QuotaIndicator";
+import { SearchBar } from "@/components/SearchBar";
 
 export default function WhatsAppSequenceGenerator() {
   const { isAuthenticated, loading: authLoading } = useAuth();
   const [serviceId, setServiceId] = useState<number | null>(null);
   const [sequenceType, setSequenceType] = useState<"engagement" | "sales">("engagement");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const { data: services } = trpc.services.list.useQuery(undefined, { enabled: isAuthenticated });
   const { data: sequences, refetch } = trpc.whatsappSequences.list.useQuery(undefined, { enabled: isAuthenticated });
@@ -98,12 +100,28 @@ export default function WhatsAppSequenceGenerator() {
           </div>
 
           <div className="lg:col-span-2">
+            {/* Search Bar */}
+            <div className="mb-6">
+              <SearchBar
+                placeholder="Search WhatsApp Sequences..."
+                value={searchQuery}
+                onChange={setSearchQuery}
+              />
+            </div>
+
             <h2 className="text-2xl font-bold text-foreground mb-4">Your Sequences ({sequences?.length || 0})</h2>
             {!sequences || sequences.length === 0 ? (
               <Card><CardContent className="py-12 text-center"><p className="text-muted-foreground">No sequences yet. Create your first one!</p></CardContent></Card>
             ) : (
               <div className="space-y-4">
-                {sequences.map((seq) => (
+                {sequences
+                  .filter((seq) =>
+                    seq.sequenceType?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    seq.messages?.some(msg => 
+                      msg.message?.toLowerCase().includes(searchQuery.toLowerCase())
+                    )
+                  )
+                  .map((seq) => (
                   <Card key={seq.id}>
                     <CardHeader>
                       <div className="flex items-start justify-between">

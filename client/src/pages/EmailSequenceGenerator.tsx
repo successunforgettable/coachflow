@@ -10,11 +10,13 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
 import { QuotaIndicator } from "@/components/QuotaIndicator";
+import { SearchBar } from "@/components/SearchBar";
 
 export default function EmailSequenceGenerator() {
   const { isAuthenticated, loading: authLoading } = useAuth();
   const [serviceId, setServiceId] = useState<number | null>(null);
   const [sequenceType, setSequenceType] = useState<"welcome" | "engagement" | "sales">("welcome");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const { data: services } = trpc.services.list.useQuery(undefined, { enabled: isAuthenticated });
   const { data: sequences, refetch } = trpc.emailSequences.list.useQuery(undefined, { enabled: isAuthenticated });
@@ -99,12 +101,29 @@ export default function EmailSequenceGenerator() {
           </div>
 
           <div className="lg:col-span-2">
+            {/* Search Bar */}
+            <div className="mb-6">
+              <SearchBar
+                placeholder="Search Email Sequences..."
+                value={searchQuery}
+                onChange={setSearchQuery}
+              />
+            </div>
+
             <h2 className="text-2xl font-bold text-foreground mb-4">Your Sequences ({sequences?.length || 0})</h2>
             {!sequences || sequences.length === 0 ? (
               <Card><CardContent className="py-12 text-center"><p className="text-muted-foreground">No sequences yet. Create your first one!</p></CardContent></Card>
             ) : (
               <div className="space-y-4">
-                {sequences.map((seq) => (
+                {sequences
+                  .filter((seq) =>
+                    seq.sequenceType?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    seq.emails?.some(email => 
+                      email.subject?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      email.body?.toLowerCase().includes(searchQuery.toLowerCase())
+                    )
+                  )
+                  .map((seq) => (
                   <Card key={seq.id}>
                     <CardHeader>
                       <div className="flex items-start justify-between">

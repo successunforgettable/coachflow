@@ -17,6 +17,7 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
 import { QuotaIndicator } from "@/components/QuotaIndicator";
+import { SearchBar } from "@/components/SearchBar";
 
 export default function AdCopyGenerator() {
   const { isAuthenticated, loading: authLoading } = useAuth();
@@ -25,6 +26,7 @@ export default function AdCopyGenerator() {
     "story"
   );
   const [customPrompt, setCustomPrompt] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const { data: services } = trpc.services.list.useQuery(undefined, {
     enabled: isAuthenticated,
@@ -180,6 +182,15 @@ export default function AdCopyGenerator() {
 
           {/* Generated Ad Copy List */}
           <div className="lg:col-span-2">
+            {/* Search Bar */}
+            <div className="mb-6">
+              <SearchBar
+                placeholder="Search Ad Copy..."
+                value={searchQuery}
+                onChange={setSearchQuery}
+              />
+            </div>
+
             <h2 className="text-2xl font-bold text-foreground mb-4">
               Your Ad Copy ({adCopyList?.length || 0})
             </h2>
@@ -194,7 +205,12 @@ export default function AdCopyGenerator() {
               </Card>
             ) : (
               <div className="space-y-4">
-                {adCopyList.map((adCopy) => (
+                {adCopyList
+                  .filter((adCopy) =>
+                    adCopy.headline.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    adCopy.bodyCopy.toLowerCase().includes(searchQuery.toLowerCase())
+                  )
+                  .map((adCopy) => (
                   <Card key={adCopy.id}>
                     <CardHeader>
                       <div className="flex items-start justify-between">

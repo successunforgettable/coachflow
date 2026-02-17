@@ -231,16 +231,16 @@
 ## Phase 28: Complete All Remaining Kong Parity Items (ACTIVE)
 
 ### UI/UX Features (8 items)
-- [ ] 1. Search Bars on all list pages (4/9 complete)
+- [ ] 1. Search Bars on all list pages (7/9 complete)
   - [x] Read Kong research for exact search implementation
   - [x] Create SearchBar component
   - [x] Add to Headlines list
   - [x] Add to HVCO Titles list
   - [x] Add to Hero Mechanisms list
   - [x] Add to ICP list
-  - [ ] Add to Ad Copy list
-  - [ ] Add to Email Sequences list
-  - [ ] Add to WhatsApp Sequences list
+  - [x] Add to Ad Copy list
+  - [x] Add to Email Sequences list
+  - [x] Add to WhatsApp Sequences list
   - [ ] Add to Landing Pages list
   - [ ] Add to Offers list
 
