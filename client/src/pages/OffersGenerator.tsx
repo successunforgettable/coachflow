@@ -5,12 +5,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
 import { getLoginUrl } from "@/const";
-import { ArrowLeft, Copy, DollarSign, Loader2, Star, Trash2 } from "lucide-react";
+import { ArrowLeft, Copy, DollarSign, Loader2, Star, Trash2, Download } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
 import { QuotaIndicator } from "@/components/QuotaIndicator";
 import { SearchBar } from "@/components/SearchBar";
+import { exportToPDF } from "@/lib/pdfExport";
 
 export default function OffersGenerator() {
   const { isAuthenticated, loading: authLoading } = useAuth();
@@ -39,6 +40,30 @@ export default function OffersGenerator() {
   const updateRatingMutation = trpc.offers.update.useMutation({
     onSuccess: () => refetch(),
   });
+
+  const handleDownloadPDF = (offer: any) => {
+    const sections = [
+      { title: "Offer Name", content: offer.offerName || 'No name' },
+      { title: "Value Proposition", content: offer.valueProposition || 'No value proposition' },
+      { title: "Pricing", content: offer.pricing || 'No pricing' },
+      { title: "Bonuses", content: offer.bonuses || 'No bonuses' },
+      { title: "Guarantee", content: offer.guarantee || 'No guarantee' },
+      { title: "Urgency/Scarcity", content: offer.urgency || 'No urgency' },
+      { title: "Call to Action", content: offer.cta || 'No CTA' },
+    ];
+
+    exportToPDF({
+      title: "Godfather Offer",
+      subtitle: `${offer.offerType?.charAt(0).toUpperCase()}${offer.offerType?.slice(1)} Offer`,
+      sections,
+      metadata: {
+        generatedDate: new Date(offer.createdAt).toLocaleDateString(),
+        generatorType: "Offers Generator",
+      },
+    });
+
+    toast.success("PDF downloaded successfully!");
+  };
 
   if (authLoading) return <div className="min-h-screen flex items-center justify-center bg-background"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
   if (!isAuthenticated) {
@@ -142,6 +167,9 @@ export default function OffersGenerator() {
                               </button>
                             ))}
                           </div>
+                          <Button variant="ghost" size="icon" onClick={() => handleDownloadPDF(offer)} title="Download PDF">
+                            <Download className="w-4 h-4" />
+                          </Button>
                           <Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate({ id: offer.id })}>
                             <Trash2 className="w-4 h-4 text-destructive" />
                           </Button>

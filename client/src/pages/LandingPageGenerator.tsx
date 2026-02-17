@@ -5,12 +5,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
 import { getLoginUrl } from "@/const";
-import { ArrowLeft, Copy, FileText, Loader2, Star, Trash2 } from "lucide-react";
+import { ArrowLeft, Copy, FileText, Loader2, Star, Trash2, Download } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
 import { QuotaIndicator } from "@/components/QuotaIndicator";
 import { SearchBar } from "@/components/SearchBar";
+import { exportToPDF } from "@/lib/pdfExport";
 
 export default function LandingPageGenerator() {
   const { isAuthenticated, loading: authLoading } = useAuth();
@@ -39,6 +40,30 @@ export default function LandingPageGenerator() {
   const updateRatingMutation = trpc.landingPages.update.useMutation({
     onSuccess: () => refetch(),
   });
+
+  const handleDownloadPDF = (page: any) => {
+    const sections = [
+      { title: "Headline", content: page.headline || 'No headline' },
+      { title: "Subheadline", content: page.subheadline || 'No subheadline' },
+      { title: "Hero Section", content: page.heroSection || 'No hero section' },
+      { title: "Features", content: page.features || 'No features' },
+      { title: "Benefits", content: page.benefits || 'No benefits' },
+      { title: "Social Proof", content: page.socialProof || 'No social proof' },
+      { title: "Call to Action", content: page.cta || 'No CTA' },
+    ];
+
+    exportToPDF({
+      title: "Landing Page",
+      subtitle: `${page.angle?.charAt(0).toUpperCase()}${page.angle?.slice(1).replace('_', ' ')} Angle`,
+      sections,
+      metadata: {
+        generatedDate: new Date(page.createdAt).toLocaleDateString(),
+        generatorType: "Landing Page Generator",
+      },
+    });
+
+    toast.success("PDF downloaded successfully!");
+  };
 
   if (authLoading) return <div className="min-h-screen flex items-center justify-center bg-background"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
   if (!isAuthenticated) {
@@ -143,6 +168,9 @@ export default function LandingPageGenerator() {
                               </button>
                             ))}
                           </div>
+                          <Button variant="ghost" size="icon" onClick={() => handleDownloadPDF(page)} title="Download PDF">
+                            <Download className="w-4 h-4" />
+                          </Button>
                           <Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate({ id: page.id })}>
                             <Trash2 className="w-4 h-4 text-destructive" />
                           </Button>

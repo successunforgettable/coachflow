@@ -5,12 +5,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
 import { getLoginUrl } from "@/const";
-import { ArrowLeft, Copy, Loader2, MessageCircle, Star, Trash2 } from "lucide-react";
+import { ArrowLeft, Copy, Loader2, MessageCircle, Star, Trash2, Download } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
 import { QuotaIndicator } from "@/components/QuotaIndicator";
 import { SearchBar } from "@/components/SearchBar";
+import { exportToPDF } from "@/lib/pdfExport";
 
 export default function WhatsAppSequenceGenerator() {
   const { isAuthenticated, loading: authLoading } = useAuth();
@@ -39,6 +40,26 @@ export default function WhatsAppSequenceGenerator() {
   const updateRatingMutation = trpc.whatsappSequences.update.useMutation({
     onSuccess: () => refetch(),
   });
+
+  const handleDownloadPDF = (sequence: any) => {
+    const messages = JSON.parse(sequence.messages || '[]');
+    const sections = messages.map((msg: any, index: number) => ({
+      title: `Message ${index + 1}`,
+      content: msg.message || msg.content || 'No content',
+    }));
+
+    exportToPDF({
+      title: "WhatsApp Sequence",
+      subtitle: `${sequence.sequenceType?.charAt(0).toUpperCase()}${sequence.sequenceType?.slice(1)} Sequence`,
+      sections,
+      metadata: {
+        generatedDate: new Date(sequence.createdAt).toLocaleDateString(),
+        generatorType: "WhatsApp Sequence Generator",
+      },
+    });
+
+    toast.success("PDF downloaded successfully!");
+  };
 
   if (authLoading) return <div className="min-h-screen flex items-center justify-center bg-background"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
   if (!isAuthenticated) {
@@ -140,6 +161,9 @@ export default function WhatsAppSequenceGenerator() {
                               </button>
                             ))}
                           </div>
+                          <Button variant="ghost" size="icon" onClick={() => handleDownloadPDF(seq)} title="Download PDF">
+                            <Download className="w-4 h-4" />
+                          </Button>
                           <Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate({ id: seq.id })}>
                             <Trash2 className="w-4 h-4 text-destructive" />
                           </Button>

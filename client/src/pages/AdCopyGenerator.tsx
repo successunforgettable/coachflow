@@ -12,12 +12,13 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import { getLoginUrl } from "@/const";
-import { ArrowLeft, Copy, Loader2, Star, Trash2 } from "lucide-react";
+import { ArrowLeft, Copy, Loader2, Star, Trash2, Download } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
 import { QuotaIndicator } from "@/components/QuotaIndicator";
 import { SearchBar } from "@/components/SearchBar";
+import { exportToPDF } from "@/lib/pdfExport";
 
 export default function AdCopyGenerator() {
   const { isAuthenticated, loading: authLoading } = useAuth();
@@ -75,6 +76,35 @@ export default function AdCopyGenerator() {
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success("Copied to clipboard!");
+  };
+
+  const handleDownloadPDF = (adCopy: any) => {
+    const sections = [
+      {
+        title: "Headline",
+        content: adCopy.headline,
+      },
+      {
+        title: "Body Copy",
+        content: adCopy.bodyCopy,
+      },
+      {
+        title: "Call to Action",
+        content: adCopy.cta || "Not specified",
+      },
+    ];
+
+    exportToPDF({
+      title: "Ad Copy",
+      subtitle: `${adCopy.adType?.charAt(0).toUpperCase()}${adCopy.adType?.slice(1)} Ad`,
+      sections,
+      metadata: {
+        generatedDate: new Date(adCopy.createdAt).toLocaleDateString(),
+        generatorType: "Ad Copy Generator",
+      },
+    });
+
+    toast.success("PDF downloaded successfully!");
   };
 
   if (authLoading) {
@@ -246,6 +276,14 @@ export default function AdCopyGenerator() {
                               </button>
                             ))}
                           </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDownloadPDF(adCopy)}
+                            title="Download PDF"
+                          >
+                            <Download className="w-4 h-4" />
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"
