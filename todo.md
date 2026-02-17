@@ -90,3 +90,35 @@
 - [ ] Performance optimization
 - [ ] Security audit
 - [ ] Deploy to production
+
+## Phase 14: Navigation & UX Improvements (URGENT)
+- [ ] Fix 404 error on navigation
+- [ ] Add back buttons to all generator pages
+- [ ] Add breadcrumb navigation
+- [ ] Fix sidebar navigation highlighting
+- [ ] Add "Home" button to all pages
+
+## Phase 15: Source of Truth Generator (NEW)
+- [ ] Create AI-powered service profile generator
+- [ ] User fills in: program name + 3-5 key details
+- [ ] AI generates complete service profile (6 fields)
+- [ ] Store as "source of truth" for all generators
+- [ ] Auto-populate generator inputs from source of truth
+
+## Phase 16: Guided Onboarding Wizard (NEW)
+- [ ] Create multi-step onboarding flow
+- [ ] Step 1: Welcome + explain platform
+- [ ] Step 2: Generate source of truth (AI service profile)
+- [ ] Step 3: Create first ICP
+- [ ] Step 4: Generate first ad copy
+- [ ] Step 5: Create first email sequence
+- [ ] Add progress indicator (1/5, 2/5, etc.)
+- [ ] Add "Skip" and "Next" buttons
+
+## Phase 17: Editable Source of Truth (NEW)
+- [ ] Create database table for source of truth
+- [ ] Store generated profile in database
+- [ ] Create Source of Truth page with edit functionality
+- [ ] Allow users to manually edit all fields
+- [ ] Auto-populate service creation from source of truth
+- [ ] Add "Use Source of Truth" button in service creation

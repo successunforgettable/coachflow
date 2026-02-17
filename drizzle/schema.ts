@@ -35,6 +35,34 @@ export type InsertUser = typeof users.$inferInsert;
 // CoachFlow Tables
 
 /**
+ * Source of Truth table - AI-generated comprehensive service profile
+ * User fills in basic info → AI generates complete profile → User can edit
+ */
+export const sourceOfTruth = mysqlTable("sourceOfTruth", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }).unique(),
+  programName: varchar("programName", { length: 255 }).notNull(),
+  coreOffer: text("coreOffer").notNull(),
+  targetAudience: text("targetAudience").notNull(),
+  mainPainPoint: text("mainPainPoint").notNull(),
+  priceRange: varchar("priceRange", { length: 100 }),
+  // AI-generated fields (editable)
+  description: text("description"),
+  targetCustomer: text("targetCustomer"),
+  mainBenefits: text("mainBenefits"),
+  painPoints: text("painPoints"),
+  uniqueValue: text("uniqueValue"),
+  idealCustomerAvatar: text("idealCustomerAvatar"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  userIdIdx: index("idx_sourceOfTruth_userId").on(table.userId),
+}));
+
+export type SourceOfTruth = typeof sourceOfTruth.$inferSelect;
+export type InsertSourceOfTruth = typeof sourceOfTruth.$inferInsert;
+
+/**
  * Services table - simplified vs Kong's products (6 fields vs 15)
  * Central hub for coach/speaker/consultant offerings
  */

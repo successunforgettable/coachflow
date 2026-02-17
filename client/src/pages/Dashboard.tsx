@@ -16,6 +16,7 @@ import {
   LayoutDashboard,
   Briefcase,
   FolderOpen,
+  BookOpen,
 } from "lucide-react";
 
 export default function Dashboard() {
@@ -110,6 +111,7 @@ export default function Dashboard() {
 
   const navigationItems = [
     { title: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
+    { title: "Source of Truth", icon: BookOpen, href: "/source-of-truth" },
     { title: "Services", icon: Briefcase, href: "/services" },
     { title: "Campaigns", icon: FolderOpen, href: "/campaigns" },
     { title: "Settings", icon: Settings, href: "/settings" },

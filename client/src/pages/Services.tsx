@@ -10,6 +10,7 @@ import { getLoginUrl } from "@/const";
 import { useState } from "react";
 import { Loader2, Plus, Trash2, Edit } from "lucide-react";
 import { useLocation } from "wouter";
+import PageHeader from "@/components/PageHeader";
 
 export default function Services() {
   const { user, loading: authLoading, isAuthenticated } = useAuth();
@@ -73,24 +74,22 @@ export default function Services() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Services</h1>
-            <p className="text-muted-foreground mt-1">
-              Manage your coaching, speaking, and consulting services
-            </p>
-          </div>
-          <Button
-            onClick={() => setShowCreateForm(!showCreateForm)}
-            className="flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            {showCreateForm ? "Cancel" : "New Service"}
-          </Button>
-        </div>
+    <div className="min-h-screen bg-background p-8">
+      <div className="max-w-6xl mx-auto">
+        <PageHeader
+          title="Services"
+          description="Manage your coaching, speaking, and consulting services"
+          backTo="/dashboard"
+          action={
+            <Button
+              onClick={() => setShowCreateForm(!showCreateForm)}
+              className="flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              {showCreateForm ? "Cancel" : "New Service"}
+            </Button>
+          }
+        />
 
         {/* Create Form */}
         {showCreateForm && (
