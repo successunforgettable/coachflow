@@ -327,3 +327,16 @@
 - [x] Add PDF export button + functionality to WhatsApp Sequence Generator
 - [x] Add PDF export button + functionality to Landing Page Generator
 - [x] Add PDF export button + functionality to Offers Generator
+
+
+## Phase 30: "+15 More Like This" Regeneration (ACTIVE)
+- [ ] Research Kong's "+15 More Like This" implementation
+- [x] Implement for Headlines Generator
+- [ ] Implement for HVCO Titles Generator
+- [ ] Implement for Hero Mechanisms Generator
+- [ ] Implement for ICP Generator
+- [ ] Implement for Ad Copy Generator
+- [ ] Implement for Email Sequence Generator
+- [ ] Implement for WhatsApp Sequence Generator
+- [ ] Implement for Landing Page Generator
+- [ ] Implement for Offers Generator

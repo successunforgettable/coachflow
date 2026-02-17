@@ -29,6 +29,33 @@ export default function HeadlinesDetail() {
     },
   });
 
+  const generateMoreMutation = trpc.headlines.generate.useMutation({
+    onSuccess: () => {
+      toast.success("+15 more headlines generated!");
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(`Error: ${error.message}`);
+    },
+  });
+
+  const handleGenerateMore = () => {
+    if (!data) return;
+    
+    // Use the stored parameters from any headline in the set
+    const firstHeadline = data.headlines.story[0] || data.headlines.eyebrow[0] || data.headlines.question[0] || data.headlines.authority[0] || data.headlines.urgency[0];
+    if (!firstHeadline) return;
+    
+    generateMoreMutation.mutate({
+      serviceId: firstHeadline.serviceId || undefined,
+      campaignId: firstHeadline.campaignId || undefined,
+      targetMarket: firstHeadline.targetMarket,
+      pressingProblem: firstHeadline.pressingProblem,
+      desiredOutcome: firstHeadline.desiredOutcome,
+      uniqueMechanism: firstHeadline.uniqueMechanism,
+    });
+  };
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success("Copied to clipboard!");
@@ -201,8 +228,14 @@ export default function HeadlinesDetail() {
                         <Copy className="h-4 w-4 mr-2" />
                         Copy
                       </Button>
-                      <Button variant="outline" size="sm" className="bg-purple-600 hover:bg-purple-700 text-white">
-                        +15 More Like This
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="bg-purple-600 hover:bg-purple-700 text-white"
+                        onClick={handleGenerateMore}
+                        disabled={generateMoreMutation.isPending}
+                      >
+                        {generateMoreMutation.isPending ? "Generating..." : "+15 More Like This"}
                       </Button>
                       <Button variant="outline" size="sm">
                         <TrendingUp className="h-4 w-4 mr-2" />
@@ -254,8 +287,14 @@ export default function HeadlinesDetail() {
                         <Copy className="h-4 w-4 mr-2" />
                         Copy
                       </Button>
-                      <Button variant="outline" size="sm" className="bg-purple-600 hover:bg-purple-700 text-white">
-                        +15 More Like This
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="bg-purple-600 hover:bg-purple-700 text-white"
+                        onClick={handleGenerateMore}
+                        disabled={generateMoreMutation.isPending}
+                      >
+                        {generateMoreMutation.isPending ? "Generating..." : "+15 More Like This"}
                       </Button>
                       <Button variant="outline" size="sm">
                         <TrendingUp className="h-4 w-4 mr-2" />
@@ -303,8 +342,14 @@ export default function HeadlinesDetail() {
                         <Copy className="h-4 w-4 mr-2" />
                         Copy
                       </Button>
-                      <Button variant="outline" size="sm" className="bg-purple-600 hover:bg-purple-700 text-white">
-                        +15 More Like This
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="bg-purple-600 hover:bg-purple-700 text-white"
+                        onClick={handleGenerateMore}
+                        disabled={generateMoreMutation.isPending}
+                      >
+                        {generateMoreMutation.isPending ? "Generating..." : "+15 More Like This"}
                       </Button>
                       <Button variant="outline" size="sm">
                         <TrendingUp className="h-4 w-4 mr-2" />
@@ -355,8 +400,14 @@ export default function HeadlinesDetail() {
                         <Copy className="h-4 w-4 mr-2" />
                         Copy
                       </Button>
-                      <Button variant="outline" size="sm" className="bg-purple-600 hover:bg-purple-700 text-white">
-                        +15 More Like This
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="bg-purple-600 hover:bg-purple-700 text-white"
+                        onClick={handleGenerateMore}
+                        disabled={generateMoreMutation.isPending}
+                      >
+                        {generateMoreMutation.isPending ? "Generating..." : "+15 More Like This"}
                       </Button>
                       <Button variant="outline" size="sm">
                         <TrendingUp className="h-4 w-4 mr-2" />
@@ -404,8 +455,14 @@ export default function HeadlinesDetail() {
                         <Copy className="h-4 w-4 mr-2" />
                         Copy
                       </Button>
-                      <Button variant="outline" size="sm" className="bg-purple-600 hover:bg-purple-700 text-white">
-                        +15 More Like This
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="bg-purple-600 hover:bg-purple-700 text-white"
+                        onClick={handleGenerateMore}
+                        disabled={generateMoreMutation.isPending}
+                      >
+                        {generateMoreMutation.isPending ? "Generating..." : "+15 More Like This"}
                       </Button>
                       <Button variant="outline" size="sm">
                         <TrendingUp className="h-4 w-4 mr-2" />
