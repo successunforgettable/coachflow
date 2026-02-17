@@ -9,6 +9,10 @@ import { Label } from "@/components/ui/label";
 import { ArrowLeft, Copy, Download, Trash2, ThumbsUp, ThumbsDown, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { exportToPDF } from "@/lib/pdfExport";
+import RegenerateSidebar from "@/components/RegenerateSidebar";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function AdCopyDetail() {
   const [, params] = useRoute("/ad-copy/:adSetId");
@@ -151,8 +155,26 @@ ${adSet.links.map((l: any, i: number) => `${i + 1}. ${l.content}`).join("\n\n")}
     );
   }
 
+  const handleRegenerate = () => {
+    if (!adSet?.serviceId) {
+      toast.error("Cannot regenerate: No service associated with this ad set");
+      return;
+    }
+    generateMutation.mutate({
+      serviceId: adSet.serviceId,
+      adType: adSet.adType,
+      targetMarket: adSet.targetMarket || "",
+      pressingProblem: adSet.pressingProblem || "",
+      desiredOutcome: adSet.desiredOutcome || "",
+      uniqueMechanism: adSet.uniqueMechanism || "",
+      beastMode,
+    });
+  };
+
   return (
     <div className="container py-8">
+      <div className="flex gap-6">
+      <div className="flex-1">
       {/* Breadcrumb */}
       <div className="mb-6">
         <Link href="/ad-copy">
@@ -393,6 +415,81 @@ ${adSet.links.map((l: any, i: number) => `${i + 1}. ${l.content}`).join("\n\n")}
           ))}
         </TabsContent>
       </Tabs>
+      </div>
+
+      {/* Regenerate Sidebar */}
+      <RegenerateSidebar
+        title="Regenerate Facebook Ad"
+        subtitle="Submit or modify the pre-filled form below to regenerate similar ad copy"
+        onRegenerate={handleRegenerate}
+        isLoading={generateMutation.isPending}
+        creditText="Uses 1 Facebook Ad Credit"
+      >
+        <div className="space-y-4">
+          <div>
+            <Label>Ad Type*</Label>
+            <div className="flex gap-2 mt-2">
+              <Button
+                type="button"
+                variant={adSet.adType === "lead_gen" ? "default" : "outline"}
+                size="sm"
+                className="flex-1"
+                disabled
+              >
+                Lead Gen
+              </Button>
+              <Button
+                type="button"
+                variant={adSet.adType === "ecommerce" ? "default" : "outline"}
+                size="sm"
+                className="flex-1"
+                disabled
+              >
+                Ecommerce
+              </Button>
+            </div>
+          </div>
+          <div>
+            <Label htmlFor="targetMarket">Target Market*</Label>
+            <Input
+              id="targetMarket"
+              value={adSet.targetMarket || ""}
+              readOnly
+              maxLength={52}
+            />
+          </div>
+          <div>
+            <Label htmlFor="pressingProblem">Pressing Problem*</Label>
+            <Textarea
+              id="pressingProblem"
+              value={adSet.pressingProblem || ""}
+              readOnly
+              maxLength={48}
+            />
+          </div>
+          <div>
+            <Label htmlFor="desiredOutcome">Desired Outcome*</Label>
+            <Input
+              id="desiredOutcome"
+              value={adSet.desiredOutcome || ""}
+              readOnly
+              maxLength={25}
+            />
+          </div>
+          <div>
+            <Label htmlFor="uniqueMechanism">Unique Mechanism*</Label>
+            <Textarea
+              id="uniqueMechanism"
+              value={adSet.uniqueMechanism || ""}
+              readOnly
+            />
+          </div>
+          <div className="text-xs text-muted-foreground italic">
+            Note: Full 17-field form with character limits will be added in next iteration
+          </div>
+        </div>
+      </RegenerateSidebar>
+      </div>
     </div>
   );
 }

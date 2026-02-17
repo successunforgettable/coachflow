@@ -14,6 +14,7 @@ import { QuotaIndicator } from "@/components/QuotaIndicator";
 import { SearchBar } from "@/components/SearchBar";
 import { exportToPDF } from "@/lib/pdfExport";
 import { toast } from "sonner";
+import RegenerateSidebar from "@/components/RegenerateSidebar";
 
 // Real-world ICP name examples from Kong
 const ICP_NAME_EXAMPLES = [
@@ -340,7 +341,8 @@ export default function ICPGenerator() {
           {/* Right Column - ICP Details */}
           <div className="lg:col-span-2">
             {selectedICP ? (
-              <div className="space-y-6">
+              <div className="flex gap-6">
+              <div className="flex-1 space-y-6">
                 {/* Header with Rating */}
                 <Card>
                   <CardHeader>
@@ -478,6 +480,58 @@ export default function ICPGenerator() {
                     />
                   </CardContent>
                 </Card>
+              </div>
+
+              {/* Regenerate Sidebar */}
+              <RegenerateSidebar
+                title="Regenerate Avatar"
+                subtitle="Submit or modify the pre-filled form below to regenerate a similar ICP"
+                onRegenerate={() => {
+                  if (!selectedICP.serviceId) {
+                    toast.error("Cannot regenerate: No service associated with this ICP");
+                    return;
+                  }
+                  const timestamp = new Date().toLocaleTimeString();
+                  generateMoreMutation.mutate({
+                    serviceId: selectedICP.serviceId,
+                    name: `${selectedICP.name} - Variation ${timestamp}`,
+                  });
+                }}
+                isLoading={generateMoreMutation.isPending}
+                creditText="Uses 1 Dream Buyer Credit"
+              >
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="icpName">ICP Name*</Label>
+                    <Input
+                      id="icpName"
+                      value={selectedICP.name}
+                      readOnly
+                      placeholder="e.g., Tech-Savvy Millennial Entrepreneur"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="productUrl">Product URL</Label>
+                    <Input
+                      id="productUrl"
+                      type="url"
+                      maxLength={300}
+                      placeholder="https://example.com/product"
+                      disabled
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">Optional: Provide URL for more context</p>
+                  </div>
+                  <div>
+                    <Label htmlFor="targetLocation">Target Location</Label>
+                    <Input
+                      id="targetLocation"
+                      placeholder="e.g., United States, Europe"
+                      disabled
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">Optional: Geographic focus</p>
+                  </div>
+                </div>
+              </RegenerateSidebar>
               </div>
             ) : (
               <Card>
