@@ -16,6 +16,7 @@ import LandingPageGenerator from "./pages/LandingPageGenerator";
 import OffersGenerator from "./pages/OffersGenerator";
 import Campaigns from "./pages/Campaigns";
 import SourceOfTruth from "./pages/SourceOfTruth";
+import ServiceDetail from "./pages/ServiceDetail";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -24,6 +25,7 @@ function Router() {
       <Route path={"/"} component={Home} />
       <Route path={"/dashboard"} component={Dashboard} />
       <Route path={"/services"} component={Services} />
+      <Route path={"/services/:id"} component={ServiceDetail} />
       <Route path={"/generators/icp"} component={ICPGenerator} />
       <Route path={"/pricing"} component={Pricing} />
       <Route path={"/generators/ad-copy"} component={AdCopyGenerator} />
