@@ -332,8 +332,8 @@
 ## Phase 30: "+15 More Like This" Regeneration (ACTIVE)
 - [ ] Research Kong's "+15 More Like This" implementation
 - [x] Implement for Headlines Generator
-- [ ] Implement for HVCO Titles Generator
-- [ ] Implement for Hero Mechanisms Generator
+- [x] Implement for HVCO Titles Generator
+- [x] Implement for Hero Mechanisms Generator
 - [ ] Implement for ICP Generator
 - [ ] Implement for Ad Copy Generator
 - [ ] Implement for Email Sequence Generator

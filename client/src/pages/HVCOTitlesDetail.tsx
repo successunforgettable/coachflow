@@ -42,6 +42,33 @@ export default function HVCOTitlesDetail() {
     },
   });
 
+  const generateMoreMutation = trpc.hvco.generate.useMutation({
+    onSuccess: () => {
+      toast.success("+15 more HVCO titles generated!");
+      window.location.reload();
+    },
+    onError: (error) => {
+      toast.error(`Error: ${error.message}`);
+    },
+  });
+
+  const handleGenerateMore = () => {
+    if (!titles || titles.length === 0) return;
+    
+    // Use the stored parameters from any title in the set
+    const firstTitle = titles[0];
+    if (!firstTitle.serviceId) {
+      toast.error("Cannot regenerate: missing service information");
+      return;
+    }
+    
+    generateMoreMutation.mutate({
+      serviceId: firstTitle.serviceId,
+      targetMarket: firstTitle.targetMarket,
+      hvcoTopic: firstTitle.hvcoTopic,
+    });
+  };
+
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success("Copied to clipboard!");
@@ -322,10 +349,13 @@ export default function HVCOTitlesDetail() {
                     Copy
                   </Button>
                   <Button
+                    variant="outline"
                     size="sm"
                     className="bg-primary hover:bg-primary/90"
+                    onClick={handleGenerateMore}
+                    disabled={generateMoreMutation.isPending}
                   >
-                    +15 More Like This
+                    {generateMoreMutation.isPending ? "Generating..." : "+15 More Like This"}
                   </Button>
                 </div>
               </div>

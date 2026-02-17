@@ -42,6 +42,44 @@ export default function HeroMechanismsDetail() {
     },
   });
 
+  const generateMoreMutation = trpc.heroMechanisms.generate.useMutation({
+    onSuccess: () => {
+      toast.success("Generated 15 more Hero Mechanisms!");
+      // Refresh the data
+      window.location.reload();
+    },
+    onError: (error) => {
+      toast.error(`Failed to generate more: ${error.message}`);
+    },
+  });
+
+  const handleGenerateMore = () => {
+    if (!mechanisms || mechanisms.length === 0) return;
+    
+    const firstMechanism = mechanisms[0];
+    
+    // Extract all 11 generation parameters from the first mechanism
+    // serviceId is required by the mutation, so we need to handle null case
+    if (!firstMechanism.serviceId) {
+      toast.error("Cannot regenerate: No service associated with this mechanism");
+      return;
+    }
+    
+    generateMoreMutation.mutate({
+      targetMarket: firstMechanism.targetMarket,
+      pressingProblem: firstMechanism.pressingProblem,
+      whyProblem: firstMechanism.whyProblem,
+      whatTried: firstMechanism.whatTried,
+      whyExistingNotWork: firstMechanism.whyExistingNotWork,
+      descriptor: firstMechanism.descriptor || "",
+      application: firstMechanism.application || "",
+      desiredOutcome: firstMechanism.desiredOutcome,
+      credibility: firstMechanism.credibility,
+      socialProof: firstMechanism.socialProof,
+      serviceId: firstMechanism.serviceId,
+    });
+  };
+
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success("Copied to clipboard!");
@@ -246,8 +284,10 @@ export default function HeroMechanismsDetail() {
                     <Button
                       size="sm"
                       className="bg-primary hover:bg-primary/90"
+                      onClick={handleGenerateMore}
+                      disabled={generateMoreMutation.isPending}
                     >
-                      +15 More Like This
+                      {generateMoreMutation.isPending ? "Generating..." : "+15 More Like This"}
                     </Button>
                   </div>
                 </div>
@@ -292,8 +332,10 @@ export default function HeroMechanismsDetail() {
                     <Button
                       size="sm"
                       className="bg-primary hover:bg-primary/90"
+                      onClick={handleGenerateMore}
+                      disabled={generateMoreMutation.isPending}
                     >
-                      +15 More Like This
+                      {generateMoreMutation.isPending ? "Generating..." : "+15 More Like This"}
                     </Button>
                   </div>
                 </div>
@@ -338,8 +380,10 @@ export default function HeroMechanismsDetail() {
                     <Button
                       size="sm"
                       className="bg-primary hover:bg-primary/90"
+                      onClick={handleGenerateMore}
+                      disabled={generateMoreMutation.isPending}
                     >
-                      +15 More Like This
+                      {generateMoreMutation.isPending ? "Generating..." : "+15 More Like This"}
                     </Button>
                   </div>
                 </div>
