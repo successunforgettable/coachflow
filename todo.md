@@ -197,12 +197,32 @@
   - [x] Implement backend procedures (tRPC router)
   - [x] Build generator UI (list/form/detail pages)
   - [x] Add to navigation
-- [x] Hero Mechanisms Generator (backend complete + list page)
+- [x] Hero Mechanisms Generator (COMPLETE)
   - [x] Read Kong research documentation
   - [x] Create implementation spec
   - [x] Build database schema
   - [x] Implement backend procedures (tRPC router)
   - [x] Build list page
+  - [x] Build generator form page (11 fields)
+  - [x] Build detail page (3 tabs, 5 mechanisms each)
   - [x] Add to navigation
-  - [ ] Build generator form page (11 fields)
-  - [ ] Build detail page (3 tabs, 5 mechanisms each)
+
+
+## Phase 27: Complete Hero Mechanisms Generator (ACTIVE)
+- [ ] Build Hero Mechanisms generator form page
+  - [ ] Read Hero Mechanisms documentation for exact field specs
+  - [ ] Create form with 11 fields matching Kong
+  - [ ] Add character counters on all text inputs
+  - [ ] Add dropdown options for descriptor and application method
+  - [ ] Auto-fill fields from selected product
+  - [ ] Add "Show Examples" expandable section
+- [ ] Build Hero Mechanisms detail page
+  - [ ] Create 3 tabs (Hero Mechanisms, Headline Ideas, Beast Mode)
+  - [ ] Display 5 mechanism variations per tab
+  - [ ] Add copy buttons on each mechanism
+  - [ ] Add star/favorite functionality
+  - [ ] Add rating system (thumbs up/down)
+  - [ ] Add PDF export button
+  - [ ] Add delete functionality
+  - [ ] Add regenerate sidebar with pre-filled form
+- [ ] Test end-to-end and save checkpoint

@@ -24,6 +24,8 @@ import HVCOTitles from "./pages/HVCOTitles";
 import HVCOTitlesNew from "./pages/HVCOTitlesNew";
 import HVCOTitlesDetail from "./pages/HVCOTitlesDetail";
 import HeroMechanisms from "./pages/HeroMechanisms";
+import HeroMechanismsNew from "./pages/HeroMechanismsNew";
+import HeroMechanismsDetail from "./pages/HeroMechanismsDetail";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -46,8 +48,10 @@ function Router() {
       <Route path={"/headlines/new"} component={HeadlinesNew} />
       <Route path={"/headlines/:id"} component={HeadlinesDetail} />
       <Route path={"/hvco-titles"} component={HVCOTitles} />
-      <Route path={"/hvco-titles/new"} component={HVCOTitlesNew} />
-      <Route path={"/hvco-titles/:hvcoSetId"} component={HVCOTitlesDetail} />
+      <Route path={"/hvco-titles/new"} component={HVCOTitlesNew} />      <Route path={"/hvco-titles/:hvcoSetId"} component={HVCOTitlesDetail} />
+      <Route path={"/hero-mechanisms"} component={HeroMechanisms} />
+      <Route path={"/hero-mechanisms/new"} component={HeroMechanismsNew} />
+      <Route path={"/hero-mechanisms/:mechanismSetId"} component={HeroMechanismsDetail} />
       <Route path={"/hero-mechanisms"} component={HeroMechanisms} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
