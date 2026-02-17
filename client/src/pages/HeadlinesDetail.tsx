@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Loader2, ArrowLeft, Download, Trash2, Copy, ThumbsUp, ThumbsDown, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
+import { exportToPDF } from "@/lib/pdfExport";
 
 export default function HeadlinesDetail() {
   const [, params] = useRoute("/headlines/:id");
@@ -64,7 +65,42 @@ export default function HeadlinesDetail() {
   ];
 
   const handleDownloadPDF = () => {
-    toast.info("PDF export coming soon!");
+    if (!data) return;
+
+    const sections = [
+      {
+        title: "Story-Based Headlines",
+        content: headlines.story.map(h => h.headline),
+      },
+      {
+        title: "Eyebrow Raise Headlines",
+        content: headlines.eyebrow.map(h => h.headline),
+      },
+      {
+        title: "Question Headlines",
+        content: headlines.question.map(h => h.headline),
+      },
+      {
+        title: "Authority Headlines",
+        content: headlines.authority.map(h => h.headline),
+      },
+      {
+        title: "Urgency Headlines",
+        content: headlines.urgency.map(h => h.headline),
+      },
+    ];
+
+    exportToPDF({
+      title: "Direct Response Headlines",
+      subtitle: "Marketing Headlines",
+      sections,
+      metadata: {
+        generatedDate: new Date(headlines.story[0]?.createdAt || new Date()).toLocaleDateString(),
+        generatorType: "Direct Response Headlines",
+      },
+    });
+
+    toast.success("PDF downloaded successfully!");
   };
 
   return (

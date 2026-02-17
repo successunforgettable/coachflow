@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FolderIcon, ThumbsUp, ThumbsDown, Download, Trash2, Copy, Star } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
+import { exportToPDF } from "@/lib/pdfExport";
 
 type TabType = "hero_mechanisms" | "headline_ideas" | "beast_mode";
 
@@ -47,7 +48,40 @@ export default function HeroMechanismsDetail() {
   };
 
   const handleDownloadPDF = () => {
-    toast.info("PDF export coming soon!");
+    if (!mechanisms || mechanisms.length === 0) return;
+
+    const mechanismsByTab = {
+      hero: mechanisms.filter((m) => m.tabType === "hero_mechanisms"),
+      headlines: mechanisms.filter((m) => m.tabType === "headline_ideas"),
+      beast: mechanisms.filter((m) => m.tabType === "beast_mode"),
+    };
+
+    const sections = [
+      {
+        title: "Hero Mechanisms",
+        content: mechanismsByTab.hero.map(m => `${m.mechanismName}\n${m.mechanismDescription}`),
+      },
+      {
+        title: "Headline Ideas",
+        content: mechanismsByTab.headlines.map(m => `${m.mechanismName}\n${m.mechanismDescription}`),
+      },
+      {
+        title: "Beast Mode",
+        content: mechanismsByTab.beast.map(m => `${m.mechanismName}\n${m.mechanismDescription}`),
+      },
+    ];
+
+    exportToPDF({
+      title: "Hero Mechanisms",
+      subtitle: mechanisms[0]?.targetMarket || "Product Mechanisms",
+      sections,
+      metadata: {
+        generatedDate: new Date(mechanisms[0]?.createdAt || new Date()).toLocaleDateString(),
+        generatorType: "Hero Mechanisms",
+      },
+    });
+
+    toast.success("PDF downloaded successfully!");
   };
 
   const handleDelete = () => {

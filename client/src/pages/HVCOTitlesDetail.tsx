@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FolderIcon, ThumbsUp, ThumbsDown, Download, Trash2, Copy, Star } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
+import { exportToPDF } from "@/lib/pdfExport";
 
 type TabType = "long" | "short" | "beast_mode" | "subheadlines";
 
@@ -47,7 +48,45 @@ export default function HVCOTitlesDetail() {
   };
 
   const handleDownloadPDF = () => {
-    toast.info("PDF export coming soon!");
+    if (!titles || titles.length === 0) return;
+
+    const titlesByTab = {
+      long: titles.filter((t) => t.tabType === "long"),
+      short: titles.filter((t) => t.tabType === "short"),
+      beast_mode: titles.filter((t) => t.tabType === "beast_mode"),
+      subheadlines: titles.filter((t) => t.tabType === "subheadlines"),
+    };
+
+    const sections = [
+      {
+        title: "Long Titles",
+        content: titlesByTab.long.map(t => t.title),
+      },
+      {
+        title: "Short Titles",
+        content: titlesByTab.short.map(t => t.title),
+      },
+      {
+        title: "Beast Mode Titles",
+        content: titlesByTab.beast_mode.map(t => t.title),
+      },
+      {
+        title: "Subheadlines",
+        content: titlesByTab.subheadlines.map(t => t.title),
+      },
+    ];
+
+    exportToPDF({
+      title: "HVCO Titles",
+      subtitle: titles[0]?.targetMarket || "High-Value Content Offer",
+      sections,
+      metadata: {
+        generatedDate: new Date(titles[0]?.createdAt || new Date()).toLocaleDateString(),
+        generatorType: "HVCO Titles",
+      },
+    });
+
+    toast.success("PDF downloaded successfully!");
   };
 
   const handleDelete = () => {
