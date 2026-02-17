@@ -15,6 +15,7 @@ import AdCreatives from "./pages/AdCreatives";
 import EmailSequenceGenerator from "./pages/EmailSequenceGenerator";
 import WhatsAppSequenceGenerator from "./pages/WhatsAppSequenceGenerator";
 import LandingPageGenerator from "./pages/LandingPageGenerator";
+import LandingPageDetail from "./pages/LandingPageDetail";
 import OffersGenerator from "./pages/OffersGenerator";
 import Campaigns from "./pages/Campaigns";
 import SourceOfTruth from "./pages/SourceOfTruth";
@@ -45,6 +46,8 @@ function Router() {
       <Route path={"/generators/email"} component={EmailSequenceGenerator} />
       <Route path={"/generators/whatsapp"} component={WhatsAppSequenceGenerator} />
       <Route path={"/generators/landing-page"} component={LandingPageGenerator} />
+      <Route path={"/landing-pages"} component={LandingPageGenerator} />
+      <Route path={"/landing-pages/:id"} component={LandingPageDetail} />
       <Route path={"/generators/offers"} component={OffersGenerator} />
       <Route path={"/campaigns"} component={Campaigns} />
       <Route path={"/source-of-truth"} component={SourceOfTruth} />

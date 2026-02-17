@@ -221,14 +221,59 @@ export type InsertWhatsappSequence = typeof whatsappSequences.$inferInsert;
 /**
  * Landing Pages
  */
+// Landing Page Content Type (all 16 sections)
+export type LandingPageContent = {
+  eyebrowHeadline: string;
+  mainHeadline: string;
+  subheadline: string;
+  primaryCta: string;
+  asSeenIn: string[]; // Logo names
+  quizSection: {
+    question: string;
+    options: string[];
+    answer: string;
+  };
+  problemAgitation: string;
+  solutionIntro: string;
+  whyOldFail: string;
+  uniqueMechanism: string;
+  testimonials: Array<{
+    headline: string;
+    quote: string;
+    name: string;
+    location: string;
+  }>;
+  insiderAdvantages: string;
+  scarcityUrgency: string;
+  shockingStat: string;
+  timeSavingBenefit: string;
+  consultationOutline: Array<{
+    title: string;
+    description: string;
+  }>;
+};
+
 export const landingPages = mysqlTable("landingPages", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   serviceId: int("serviceId").references(() => services.id, { onDelete: "set null" }),
   campaignId: int("campaignId").references(() => campaigns.id, { onDelete: "set null" }),
-  angle: mysqlEnum("angle", ["shock_solve", "contrarian", "story", "authority"]),
-  headline: text("headline").notNull(),
-  sections: json("sections").$type<Array<{ type: string; content: string }>>().notNull(),
+  
+  // Product & Avatar Info
+  productName: text("productName").notNull(),
+  productDescription: text("productDescription").notNull(),
+  avatarName: text("avatarName"), // e.g., "Amir from Abu Dhabi"
+  avatarDescription: text("avatarDescription"), // e.g., "Expat Professional"
+  
+  // 4 Angle Variations (each contains all 16 sections)
+  originalAngle: json("originalAngle").$type<LandingPageContent>(),
+  godfatherAngle: json("godfatherAngle").$type<LandingPageContent>(),
+  freeAngle: json("freeAngle").$type<LandingPageContent>(),
+  dollarAngle: json("dollarAngle").$type<LandingPageContent>(),
+  
+  // Active angle (for display)
+  activeAngle: mysqlEnum("activeAngle", ["original", "godfather", "free", "dollar"]).default("original"),
+  
   rating: int("rating").default(0),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

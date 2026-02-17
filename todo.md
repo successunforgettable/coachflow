@@ -443,3 +443,22 @@
   - [ ] Add fade-in animations
   - [ ] Add transition effects
   - [ ] Match Kong's animation timing
+
+
+## Phase 36: Landing Pages 16 Sections + 4 Angle Toggles (ACTIVE)
+### Research Complete - Kong landing page system fully analyzed
+- [x] Update Landing Page schema to store 4 angle variations (originalAngle, godfatherAngle, freeAngle, dollarAngle as JSON)
+- [x] Each angle contains all 16 sections: eyebrow, mainHeadline, subheadline, primaryCta, asSeenIn, quizSection, problemAgitation, solutionIntro, whyOldFail, uniqueMechanism, testimonials, insiderAdvantages, scarcityUrgency, shockingStat, timeSavingBenefit, consultationOutline
+- [x] Generate migration SQL for new schema structure
+- [x] Apply migration via webdev_execute_sql
+- [x] Create LLM generation helper with 4 angle-specific prompts (Original, Godfather, Free, Dollar)
+- [x] Implement generateLandingPage function to generate all 4 angles at once
+- [x] Add tRPC procedures: create, getById, list, updateActiveAngle, delete
+- [x] Create LandingPages list page with Kong's card design (show angle badge)
+- [x] Build LandingPageDetail page with dark theme (#1a1a1a background)
+- [x] Implement all 16 sections with Kong's exact styling (Inter font, purple CTAs, red eyebrows)
+- [x] Add 4 angle toggle buttons at bottom (ORIGINAL, GODFATHER OFFER, FREE OFFER, DOLLAR OFFER)
+- [x] Implement instant angle switching (no regeneration, just switch between stored angles)
+- [x] Add PDF export functionality (placeholder - toast notification)
+- [x] Test generation speed and quality for all 4 angles (vitest tests passing)
+- [x] Verify complete parity with Kong's landing pages

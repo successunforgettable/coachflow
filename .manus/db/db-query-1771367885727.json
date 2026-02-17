@@ -1,0 +1,9 @@
+{
+  "query": "\nALTER TABLE `landingPages` ADD `productName` text NOT NULL;\nALTER TABLE `landingPages` ADD `productDescription` text NOT NULL;\nALTER TABLE `landingPages` ADD `avatarName` text;\nALTER TABLE `landingPages` ADD `avatarDescription` text;\nALTER TABLE `landingPages` ADD `originalAngle` json;\nALTER TABLE `landingPages` ADD `godfatherAngle` json;\nALTER TABLE `landingPages` ADD `freeAngle` json;\nALTER TABLE `landingPages` ADD `dollarAngle` json;\nALTER TABLE `landingPages` ADD `activeAngle` enum('original','godfather','free','dollar') DEFAULT 'original';\nALTER TABLE `landingPages` DROP COLUMN `angle`;\nALTER TABLE `landingPages` DROP COLUMN `headline`;\nALTER TABLE `landingPages` DROP COLUMN `sections`;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute \nALTER TABLE `landingPages` ADD `productName` text NOT NULL;\nALTER TABLE `landingPages` ADD `productDescription` text NOT NULL;\nALTER TABLE `landingPages` ADD `avatarName` text;\nALTER TABLE `landingPages` ADD `avatarDescription` text;\nALTER TABLE `landingPages` ADD `originalAngle` json;\nALTER TABLE `landingPages` ADD `godfatherAngle` json;\nALTER TABLE `landingPages` ADD `freeAngle` json;\nALTER TABLE `landingPages` ADD `dollarAngle` json;\nALTER TABLE `landingPages` ADD `activeAngle` enum('original','godfather','free','dollar') DEFAULT 'original';\nALTER TABLE `landingPages` DROP COLUMN `angle`;\nALTER TABLE `landingPages` DROP COLUMN `headline`;\nALTER TABLE `landingPages` DROP COLUMN `sections`;\n",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 7054
+}

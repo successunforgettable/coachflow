@@ -526,6 +526,7 @@ export default function HeadlinesDetail() {
           </div>
         </TabsContent>
       </Tabs>
+      </div>
 
       {/* Regenerate Sidebar */}
       <RegenerateSidebar
@@ -577,7 +578,6 @@ export default function HeadlinesDetail() {
           </div>
         </div>
       </RegenerateSidebar>
-      </div>
       </div>
     </div>
   );
