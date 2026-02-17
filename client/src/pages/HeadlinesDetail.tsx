@@ -2,6 +2,7 @@ import { useRoute, Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, ArrowLeft, Download, Trash2, Copy, ThumbsUp, ThumbsDown, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 import { exportToPDF } from "@/lib/pdfExport";
@@ -217,8 +218,15 @@ export default function HeadlinesDetail() {
         </div>
       </Card>
 
-      {/* Headlines by Formula Type */}
-      <div className="space-y-8">
+      {/* 2-Tab Layout: Headlines + Beast Mode */}
+      <Tabs defaultValue="headlines" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 mb-6">
+          <TabsTrigger value="headlines">Headlines</TabsTrigger>
+          <TabsTrigger value="beastmode">Beast Mode</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="headlines">
+          <div className="space-y-8">
         {/* Story-Based Headlines */}
         {headlines.story.length > 0 && (
           <div>
@@ -500,8 +508,24 @@ export default function HeadlinesDetail() {
             </div>
           </div>
         )}
-      </div>
-      </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="beastmode">
+          <div className="text-center py-12">
+            <h3 className="text-xl font-semibold mb-2">Beast Mode Variations</h3>
+            <p className="text-muted-foreground mb-4">Additional headline variations will appear here</p>
+            <Button 
+              variant="default" 
+              className="bg-purple-600 hover:bg-purple-700"
+              onClick={handleGenerateMore}
+              disabled={generateMoreMutation.isPending}
+            >
+              {generateMoreMutation.isPending ? "Generating..." : "Generate Beast Mode Headlines"}
+            </Button>
+          </div>
+        </TabsContent>
+      </Tabs>
 
       {/* Regenerate Sidebar */}
       <RegenerateSidebar
@@ -553,6 +577,7 @@ export default function HeadlinesDetail() {
           </div>
         </div>
       </RegenerateSidebar>
+      </div>
       </div>
     </div>
   );
