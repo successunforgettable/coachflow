@@ -404,9 +404,9 @@
   - [x] Match Kong's style and design format
   - [x] Add to navigation
 - [ ] 2. Implement Regenerate Sidebar on all detail pages
-  - [ ] Read Kong research for Regenerate Sidebar specs
-  - [ ] Create RegenerateSidebar component
-  - [ ] Add to Headlines detail page
+  - [x] Read Kong research for Regenerate Sidebar specs
+  - [x] Create RegenerateSidebar component
+  - [x] Add to Headlines detail page
   - [ ] Add to HVCO Titles detail page
   - [ ] Add to Hero Mechanisms detail page
   - [ ] Add to ICP detail page

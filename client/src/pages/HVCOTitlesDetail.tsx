@@ -7,6 +7,10 @@ import { FolderIcon, ThumbsUp, ThumbsDown, Download, Trash2, Copy, Star } from "
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { exportToPDF } from "@/lib/pdfExport";
+import RegenerateSidebar from "@/components/RegenerateSidebar";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 type TabType = "long" | "short" | "beast_mode" | "subheadlines";
 
@@ -161,8 +165,26 @@ export default function HVCOTitlesDetail() {
     subheadlines: titles.filter((t) => t.tabType === "subheadlines"),
   };
 
+  const [regenerateForm, setRegenerateForm] = useState({
+    targetMarket: firstTitle?.targetMarket || "",
+    hvcoTopic: firstTitle?.hvcoTopic || "",
+  });
+
+  const handleRegenerate = () => {
+    if (!firstTitle?.serviceId) {
+      toast.error("Cannot regenerate: missing service information");
+      return;
+    }
+    generateMoreMutation.mutate({
+      serviceId: firstTitle.serviceId,
+      ...regenerateForm,
+    });
+  };
+
   return (
     <div className="container py-8">
+      <div className="flex gap-6">
+      <div className="flex-1">
       {/* Product Card */}
       {service && (
         <Card className="p-6 mb-6 bg-card">
@@ -403,6 +425,38 @@ export default function HVCOTitlesDetail() {
           ))}
         </TabsContent>
       </Tabs>
+      </div>
+
+      {/* Regenerate Sidebar */}
+      <RegenerateSidebar
+        title="Regenerate HVCO Titles"
+        subtitle="Submit or modify the pre-filled form below to regenerate a similar set of HVCO titles"
+        onRegenerate={handleRegenerate}
+        isLoading={generateMoreMutation.isPending}
+        creditText="Uses 1 HVCO Title Credit"
+      >
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="targetMarket">Target Market*</Label>
+            <Input
+              id="targetMarket"
+              value={regenerateForm.targetMarket}
+              onChange={(e) => setRegenerateForm({ ...regenerateForm, targetMarket: e.target.value })}
+              placeholder="e.g., Busy entrepreneurs"
+            />
+          </div>
+          <div>
+            <Label htmlFor="hvcoTopic">HVCO Topic*</Label>
+            <Textarea
+              id="hvcoTopic"
+              value={regenerateForm.hvcoTopic}
+              onChange={(e) => setRegenerateForm({ ...regenerateForm, hvcoTopic: e.target.value })}
+              placeholder="e.g., Lead generation strategies"
+            />
+          </div>
+        </div>
+      </RegenerateSidebar>
+      </div>
     </div>
   );
 }

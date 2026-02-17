@@ -5,6 +5,11 @@ import { Card } from "@/components/ui/card";
 import { Loader2, ArrowLeft, Download, Trash2, Copy, ThumbsUp, ThumbsDown, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 import { exportToPDF } from "@/lib/pdfExport";
+import RegenerateSidebar from "@/components/RegenerateSidebar";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { useState } from "react";
 
 export default function HeadlinesDetail() {
   const [, params] = useRoute("/headlines/:id");
@@ -130,8 +135,28 @@ export default function HeadlinesDetail() {
     toast.success("PDF downloaded successfully!");
   };
 
+  const firstHeadline = data.headlines.story[0] || data.headlines.eyebrow[0] || data.headlines.question[0] || data.headlines.authority[0] || data.headlines.urgency[0];
+  
+  const [regenerateForm, setRegenerateForm] = useState({
+    targetMarket: firstHeadline?.targetMarket || "",
+    pressingProblem: firstHeadline?.pressingProblem || "",
+    desiredOutcome: firstHeadline?.desiredOutcome || "",
+    uniqueMechanism: firstHeadline?.uniqueMechanism || "",
+  });
+
+  const handleRegenerate = () => {
+    generateMoreMutation.mutate({
+      serviceId: firstHeadline?.serviceId || undefined,
+      campaignId: firstHeadline?.campaignId || undefined,
+      ...regenerateForm,
+    });
+  };
+
   return (
     <div className="container max-w-7xl py-8">
+      <div className="flex gap-6">
+      {/* Main Content */}
+      <div className="flex-1">
       {/* Header */}
       <div className="mb-6">
         <Link href="/headlines">
@@ -475,6 +500,59 @@ export default function HeadlinesDetail() {
             </div>
           </div>
         )}
+      </div>
+      </div>
+
+      {/* Regenerate Sidebar */}
+      <RegenerateSidebar
+        title="Regenerate Headlines"
+        subtitle="Submit or modify the pre-filled form below to regenerate a similar set of headlines"
+        onRegenerate={handleRegenerate}
+        isLoading={generateMoreMutation.isPending}
+        creditText="Uses 1 Headline Credit"
+      >
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="targetMarket">Target Market*</Label>
+            <Input
+              id="targetMarket"
+              value={regenerateForm.targetMarket}
+              onChange={(e) => setRegenerateForm({ ...regenerateForm, targetMarket: e.target.value })}
+              maxLength={52}
+              placeholder="e.g., Busy entrepreneurs"
+            />
+          </div>
+          <div>
+            <Label htmlFor="pressingProblem">Pressing Problem*</Label>
+            <Textarea
+              id="pressingProblem"
+              value={regenerateForm.pressingProblem}
+              onChange={(e) => setRegenerateForm({ ...regenerateForm, pressingProblem: e.target.value })}
+              maxLength={48}
+              placeholder="e.g., Struggling to generate leads"
+            />
+          </div>
+          <div>
+            <Label htmlFor="desiredOutcome">Desired Outcome*</Label>
+            <Textarea
+              id="desiredOutcome"
+              value={regenerateForm.desiredOutcome}
+              onChange={(e) => setRegenerateForm({ ...regenerateForm, desiredOutcome: e.target.value })}
+              maxLength={25}
+              placeholder="e.g., 10x more qualified leads"
+            />
+          </div>
+          <div>
+            <Label htmlFor="uniqueMechanism">Unique Mechanism*</Label>
+            <Textarea
+              id="uniqueMechanism"
+              value={regenerateForm.uniqueMechanism}
+              onChange={(e) => setRegenerateForm({ ...regenerateForm, uniqueMechanism: e.target.value })}
+              placeholder="e.g., AI-powered lead magnet system"
+            />
+          </div>
+        </div>
+      </RegenerateSidebar>
       </div>
     </div>
   );
