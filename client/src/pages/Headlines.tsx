@@ -106,7 +106,7 @@ export default function Headlines() {
                 </div>
 
                 <Link href={`/headlines/${set.headlineSetId}`}>
-                  <Button className="w-full bg-green-600 hover:bg-green-700">
+                  <Button variant="action" className="w-full">
                     View Headlines
                   </Button>
                 </Link>

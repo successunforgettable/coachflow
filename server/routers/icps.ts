@@ -13,11 +13,28 @@ const generateICPSchema = z.object({
 const updateICPSchema = z.object({
   id: z.number(),
   name: z.string().min(1).max(255).optional(),
+  // 17 Kong tabs
+  introduction: z.string().optional(),
+  fears: z.string().optional(),
+  hopesDreams: z.string().optional(),
   demographics: z.any().optional(),
+  psychographics: z.string().optional(),
+  pains: z.string().optional(),
+  frustrations: z.string().optional(),
+  goals: z.string().optional(),
+  values: z.string().optional(),
+  objections: z.string().optional(),
+  buyingTriggers: z.string().optional(),
+  mediaConsumption: z.string().optional(),
+  influencers: z.string().optional(),
+  communicationStyle: z.string().optional(),
+  decisionMaking: z.string().optional(),
+  successMetrics: z.string().optional(),
+  implementationBarriers: z.string().optional(),
+  // Legacy fields
   painPoints: z.string().optional(),
   desiredOutcomes: z.string().optional(),
   valuesMotivations: z.string().optional(),
-  buyingTriggers: z.string().optional(),
   rating: z.number().min(0).max(5).optional(),
 });
 
@@ -89,7 +106,7 @@ export const icpsRouter = router({
         throw new Error("Service not found");
       }
 
-      // Generate ICP using AI
+      // Generate ICP using AI - ALL 17 KONG TABS
       const prompt = `You are an expert marketing strategist. Create a detailed Ideal Customer Profile (ICP) for the following service:
 
 Service Name: ${service.name}
@@ -98,21 +115,45 @@ Description: ${service.description}
 Target Customer: ${service.targetCustomer}
 Main Benefit: ${service.mainBenefit}
 
-Generate a comprehensive ICP with the following sections:
+Generate a comprehensive ICP with ALL 17 sections (Kong parity):
 
-1. DEMOGRAPHICS (return as JSON object with keys: age_range, gender, income_level, education, occupation, location, family_status)
-2. PAIN POINTS (detailed list of 5-7 specific pain points they experience)
-3. DESIRED OUTCOMES (what they want to achieve, 4-6 specific goals)
-4. VALUES & MOTIVATIONS (what drives them, their core values, 4-5 points)
-5. BUYING TRIGGERS (what makes them ready to buy, 4-5 specific triggers)
+1. INTRODUCTION: 2-3 paragraph overview of who this person is
+2. FEARS: 5-7 specific fears that keep them up at night
+3. HOPES & DREAMS: 5-7 aspirations and what they dream about achieving
+4. DEMOGRAPHICS: JSON object with age_range, gender, income_level, education, occupation, location, family_status
+5. PSYCHOGRAPHICS: Personality traits, lifestyle, attitudes, interests (3-4 paragraphs)
+6. PAINS: 7-10 specific pain points they experience daily
+7. FRUSTRATIONS: 5-7 daily frustrations and annoyances
+8. GOALS: 6-8 specific goals they want to achieve
+9. VALUES: 5-7 core values that guide their decisions
+10. OBJECTIONS: 5-7 common objections to buying your service
+11. BUYING TRIGGERS: 5-7 specific triggers that make them ready to buy
+12. MEDIA CONSUMPTION: Where they consume content (platforms, channels, formats)
+13. INFLUENCERS: Who they follow, trust, and listen to
+14. COMMUNICATION STYLE: How they prefer to communicate and be communicated with
+15. DECISION MAKING: How they make purchasing decisions (process, timeline, factors)
+16. SUCCESS METRICS: How they measure success in their life/business
+17. IMPLEMENTATION BARRIERS: What stops them from taking action after buying
 
-Format your response as JSON with these exact keys:
+Format as JSON with these exact keys (use bullet points • for lists):
 {
+  "introduction": "...",
+  "fears": "• Fear 1\\n• Fear 2\\n...",
+  "hopesDreams": "• Dream 1\\n• Dream 2\\n...",
   "demographics": { ... },
-  "painPoints": "• Point 1\\n• Point 2\\n...",
-  "desiredOutcomes": "• Outcome 1\\n• Outcome 2\\n...",
-  "valuesMotivations": "• Value 1\\n• Value 2\\n...",
-  "buyingTriggers": "• Trigger 1\\n• Trigger 2\\n..."
+  "psychographics": "...",
+  "pains": "• Pain 1\\n• Pain 2\\n...",
+  "frustrations": "• Frustration 1\\n• Frustration 2\\n...",
+  "goals": "• Goal 1\\n• Goal 2\\n...",
+  "values": "• Value 1\\n• Value 2\\n...",
+  "objections": "• Objection 1\\n• Objection 2\\n...",
+  "buyingTriggers": "• Trigger 1\\n• Trigger 2\\n...",
+  "mediaConsumption": "...",
+  "influencers": "...",
+  "communicationStyle": "...",
+  "decisionMaking": "...",
+  "successMetrics": "...",
+  "implementationBarriers": "..."
 }`;
 
       const response = await invokeLLM({
@@ -127,11 +168,14 @@ Format your response as JSON with these exact keys:
         response_format: {
           type: "json_schema",
           json_schema: {
-            name: "ideal_customer_profile",
+            name: "ideal_customer_profile_17_tabs",
             strict: true,
             schema: {
               type: "object",
               properties: {
+                introduction: { type: "string" },
+                fears: { type: "string" },
+                hopesDreams: { type: "string" },
                 demographics: {
                   type: "object",
                   properties: {
@@ -154,17 +198,38 @@ Format your response as JSON with these exact keys:
                   ],
                   additionalProperties: false,
                 },
-                painPoints: { type: "string" },
-                desiredOutcomes: { type: "string" },
-                valuesMotivations: { type: "string" },
+                psychographics: { type: "string" },
+                pains: { type: "string" },
+                frustrations: { type: "string" },
+                goals: { type: "string" },
+                values: { type: "string" },
+                objections: { type: "string" },
                 buyingTriggers: { type: "string" },
+                mediaConsumption: { type: "string" },
+                influencers: { type: "string" },
+                communicationStyle: { type: "string" },
+                decisionMaking: { type: "string" },
+                successMetrics: { type: "string" },
+                implementationBarriers: { type: "string" },
               },
               required: [
+                "introduction",
+                "fears",
+                "hopesDreams",
                 "demographics",
-                "painPoints",
-                "desiredOutcomes",
-                "valuesMotivations",
+                "psychographics",
+                "pains",
+                "frustrations",
+                "goals",
+                "values",
+                "objections",
                 "buyingTriggers",
+                "mediaConsumption",
+                "influencers",
+                "communicationStyle",
+                "decisionMaking",
+                "successMetrics",
+                "implementationBarriers",
               ],
               additionalProperties: false,
             },
@@ -178,18 +243,35 @@ Format your response as JSON with these exact keys:
       }
       const icpData = JSON.parse(content);
 
-      // Save to database
+      // Save to database - ALL 17 sections
       const insertResult: any = await db
         .insert(idealCustomerProfiles)
         .values({
           userId: ctx.user.id,
           serviceId: input.serviceId,
           name: input.name,
+          // 17 Kong tabs
+          introduction: icpData.introduction,
+          fears: icpData.fears,
+          hopesDreams: icpData.hopesDreams,
           demographics: icpData.demographics,
-          painPoints: icpData.painPoints,
-          desiredOutcomes: icpData.desiredOutcomes,
-          valuesMotivations: icpData.valuesMotivations,
+          psychographics: icpData.psychographics,
+          pains: icpData.pains,
+          frustrations: icpData.frustrations,
+          goals: icpData.goals,
+          values: icpData.values,
+          objections: icpData.objections,
           buyingTriggers: icpData.buyingTriggers,
+          mediaConsumption: icpData.mediaConsumption,
+          influencers: icpData.influencers,
+          communicationStyle: icpData.communicationStyle,
+          decisionMaking: icpData.decisionMaking,
+          successMetrics: icpData.successMetrics,
+          implementationBarriers: icpData.implementationBarriers,
+          // Legacy fields for backward compatibility
+          painPoints: icpData.pains, // Map to old field
+          desiredOutcomes: icpData.goals, // Map to old field
+          valuesMotivations: icpData.values, // Map to old field
         });
 
       // Fetch the created ICP

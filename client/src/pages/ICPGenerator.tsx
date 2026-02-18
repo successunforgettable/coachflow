@@ -1,10 +1,11 @@
 import { useAuth } from "@/_core/hooks/useAuth";
-import PageHeader from "@/components/PageHeader";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
 import { getLoginUrl } from "@/const";
 import { useState } from "react";
@@ -102,17 +103,14 @@ export default function ICPGenerator() {
     });
   };
 
-  // Redirect to login if not authenticated
-  if (!authLoading && !isAuthenticated) {
-    window.location.href = getLoginUrl();
-    return null;
-  }
-
   const handleGenerate = () => {
-    if (!selectedServiceId || !icpName) return;
+    if (!selectedServiceId || !icpName.trim()) {
+      toast.error("Please select a service and enter an ICP name");
+      return;
+    }
     generateMutation.mutate({
       serviceId: selectedServiceId,
-      name: icpName,
+      name: icpName.trim(),
     });
   };
 
@@ -128,220 +126,206 @@ export default function ICPGenerator() {
 
   const handleDownloadPDF = () => {
     if (!selectedICP) return;
-
+    
     const sections = [
+      { title: "Introduction", content: selectedICP.introduction || "Not specified" },
+      { title: "Fears", content: selectedICP.fears || "Not specified" },
+      { title: "Hopes & Dreams", content: selectedICP.hopesDreams || "Not specified" },
       {
         title: "Demographics",
         content: selectedICP.demographics
           ? Object.entries(selectedICP.demographics as Record<string, unknown>)
               .map(([key, value]) => `${key.replace(/_/g, " ").toUpperCase()}: ${value}`)
-          : [],
+              .join("\n")
+          : "Not specified",
       },
-      {
-        title: "Pain Points",
-        content: selectedICP.painPoints || "Not specified",
-      },
-      {
-        title: "Desired Outcomes",
-        content: selectedICP.desiredOutcomes || "Not specified",
-      },
-      {
-        title: "Values & Motivations",
-        content: selectedICP.valuesMotivations || "Not specified",
-      },
-      {
-        title: "Buying Triggers",
-        content: selectedICP.buyingTriggers || "Not specified",
-      },
+      { title: "Psychographics", content: selectedICP.psychographics || "Not specified" },
+      { title: "Pains", content: selectedICP.pains || "Not specified" },
+      { title: "Frustrations", content: selectedICP.frustrations || "Not specified" },
+      { title: "Goals", content: selectedICP.goals || "Not specified" },
+      { title: "Values", content: selectedICP.values || "Not specified" },
+      { title: "Objections", content: selectedICP.objections || "Not specified" },
+      { title: "Buying Triggers", content: selectedICP.buyingTriggers || "Not specified" },
+      { title: "Media Consumption", content: selectedICP.mediaConsumption || "Not specified" },
+      { title: "Influencers", content: selectedICP.influencers || "Not specified" },
+      { title: "Communication Style", content: selectedICP.communicationStyle || "Not specified" },
+      { title: "Decision Making", content: selectedICP.decisionMaking || "Not specified" },
+      { title: "Success Metrics", content: selectedICP.successMetrics || "Not specified" },
+      { title: "Implementation Barriers", content: selectedICP.implementationBarriers || "Not specified" },
     ];
 
     exportToPDF({
-      title: "Ideal Customer Profile",
-      subtitle: selectedICP.name,
+      title: selectedICP.name,
       sections,
-      metadata: {
-        generatedDate: new Date(selectedICP.createdAt).toLocaleDateString(),
-        generatorType: "ICP Generator",
-      },
     });
-
-    toast.success("PDF downloaded successfully!");
   };
 
-  return (
-    <div className="min-h-screen bg-background p-8">
-      <PageHeader 
-        title="Ideal Customer Profile Generator" 
-        description="Generate detailed customer profiles for your services"
-        backTo="/dashboard"
-      />
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
-        {/* Quota Indicator */}
-        <div className="mb-6">
-          <QuotaIndicator generatorType="icp" />
-        </div>
+  const filteredICPs = icps?.filter((icp) =>
+    icp.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
-        {/* Header */}
-        <div className="mb-8">
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="container mx-auto py-12 text-center">
+        <h1 className="text-3xl font-bold mb-4">Ideal Customer Profile Generator</h1>
+        <p className="text-muted-foreground mb-6">
+          Please sign in to generate ICPs
+        </p>
+        <Button asChild>
+          <a href={getLoginUrl()}>Sign In</a>
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container mx-auto py-8">
+
+
+      <div className="flex justify-between items-center mb-8">
+        <div>
           <h1 className="text-3xl font-bold text-foreground">Ideal Customer Profile Generator</h1>
           <p className="text-muted-foreground mt-1">
-            AI-powered customer research with demographics, pain points, and buying triggers
+            AI-powered customer research with 17 comprehensive sections
           </p>
         </div>
+        <div className="px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-sm font-medium">
+          0/10 ICPs
+        </div>
+      </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Generator Form */}
-          <div className="lg:col-span-1">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-primary" />
-                  Generate ICP
-                </CardTitle>
-                <CardDescription>Select a service and generate customer profile</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="service">Select Service *</Label>
-                  <Select
-                    value={selectedServiceId?.toString() || ""}
-                    onValueChange={(value) => setSelectedServiceId(parseInt(value))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Choose a service..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {services?.map((service) => (
-                        <SelectItem key={service.id} value={service.id.toString()}>
-                          {service.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="icpName">ICP Name *</Label>
-                  <Input
-                    id="icpName"
-                    value={icpName}
-                    onChange={(e) => setIcpName(e.target.value)}
-                    placeholder="e.g., Tech Executive"
-                  />
-                  
-                  {/* Examples Carousel */}
-                  <div className="mt-4">
-                    <p className="text-sm text-muted-foreground mb-2">Click an example to use:</p>
-                    <div className="grid gap-2 max-h-[200px] overflow-y-auto pr-2">
-                      {ICP_NAME_EXAMPLES.map((example, index) => (
-                        <button
-                          key={index}
-                          type="button"
-                          onClick={() => setIcpName(example)}
-                          className="text-left text-sm p-2 rounded hover:bg-accent transition-colors"
-                        >
-                          {example}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                <Button
-                  onClick={handleGenerate}
-                  disabled={!selectedServiceId || !icpName || generateMutation.isPending}
-                  className="w-full flex items-center justify-center gap-2"
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column - Generator Form */}
+        <div className="lg:col-span-1">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-primary" />
+                Generate New ICP
+              </CardTitle>
+              <CardDescription>
+                Select a service and name your ideal customer profile
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="service">Select Service*</Label>
+                <Select
+                  value={selectedServiceId?.toString() || ""}
+                  onValueChange={(value) => setSelectedServiceId(parseInt(value))}
                 >
-                  {generateMutation.isPending ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-4 h-4" />
-                      Generate ICP
-                    </>
-                  )}
-                </Button>
+                  <SelectTrigger id="service">
+                    <SelectValue placeholder="Choose a service" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {services?.map((service) => (
+                      <SelectItem key={service.id} value={service.id.toString()}>
+                        {service.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-                {generateMutation.isError && (
-                  <p className="text-sm text-destructive">
-                    Error: {generateMutation.error.message}
-                  </p>
+              <div>
+                <Label htmlFor="icpName">ICP Name*</Label>
+                <Input
+                  id="icpName"
+                  placeholder="e.g., Tech-Savvy Millennial Entrepreneur"
+                  value={icpName}
+                  onChange={(e) => setIcpName(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Examples: {ICP_NAME_EXAMPLES.slice(0, 3).join(", ")}
+                </p>
+              </div>
+
+              <Button
+                onClick={handleGenerate}
+                disabled={generateMutation.isPending || !selectedServiceId || !icpName.trim()}
+                className="w-full bg-primary hover:bg-primary/90"
+              >
+                {generateMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Generate ICP
+                  </>
                 )}
-              </CardContent>
-            </Card>
+              </Button>
+            </CardContent>
+          </Card>
 
-            {/* Search Bar */}
-            <div className="mt-6">
+          {/* ICP List */}
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>Your ICPs</CardTitle>
               <SearchBar
-                placeholder="Search ICPs..."
                 value={searchQuery}
                 onChange={setSearchQuery}
+                placeholder="Search ICPs..."
               />
-            </div>
-
-            {/* ICP List */}
-            <Card className="mt-6">
-              <CardHeader>
-                <CardTitle>Generated ICPs</CardTitle>
-                <CardDescription>
-                  {icps?.length || 0} profile{icps?.length !== 1 ? "s" : ""}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {icps && icps.length > 0 ? (
-                  <div className="space-y-2">
-                    {icps
-                      .filter((icp) =>
-                        icp.name.toLowerCase().includes(searchQuery.toLowerCase())
-                      )
-                      .map((icp) => (
-                      <div
-                        key={icp.id}
-                        className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                          selectedICPId === icp.id
-                            ? "border-primary bg-primary/10"
-                            : "border-border hover:border-primary/50"
-                        }`}
-                        onClick={() => setSelectedICPId(icp.id)}
-                      >
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <p className="font-medium text-foreground">{icp.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {new Date(icp.createdAt).toLocaleDateString()}
-                            </p>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDelete(icp.id);
-                            }}
-                            disabled={deleteMutation.isPending}
-                          >
-                            <Trash2 className="w-4 h-4 text-destructive" />
-                          </Button>
+            </CardHeader>
+            <CardContent>
+              {filteredICPs && filteredICPs.length > 0 ? (
+                <div className="space-y-2">
+                  {filteredICPs.map((icp) => (
+                    <div
+                      key={icp.id}
+                      className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                        selectedICPId === icp.id
+                          ? "border-primary bg-primary/10"
+                          : "border-border hover:border-primary/50"
+                      }`}
+                      onClick={() => setSelectedICPId(icp.id)}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <p className="font-medium text-foreground">{icp.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(icp.createdAt).toLocaleDateString()}
+                          </p>
                         </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(icp.id);
+                          }}
+                          disabled={deleteMutation.isPending}
+                        >
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    No ICPs generated yet
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No ICPs generated yet
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
-          {/* Right Column - ICP Details */}
-          <div className="lg:col-span-2">
-            {selectedICP ? (
-              <div className="flex gap-6">
+        {/* Right Column - ICP Details with 17 Tabs */}
+        <div className="lg:col-span-2">
+          {selectedICP ? (
+            <div className="flex gap-6">
               <div className="flex-1 space-y-6">
                 {/* Header with Rating */}
                 <Card>
@@ -400,84 +384,192 @@ export default function ICPGenerator() {
                   </CardHeader>
                 </Card>
 
-                {/* Demographics */}
+                {/* 17 KONG TABS */}
                 <Card>
-                  <CardHeader>
-                    <CardTitle>Demographics</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-2 gap-4">
-                      {selectedICP.demographics &&
-                        typeof selectedICP.demographics === "object" &&
-                        Object.entries(selectedICP.demographics).map(([key, value]) => (
-                          <div key={key}>
-                            <p className="text-sm font-medium text-muted-foreground capitalize">
-                              {key.replace(/_/g, " ")}
-                            </p>
-                            <p className="text-foreground">{value as string}</p>
+                  <CardContent className="pt-6">
+                    <Tabs defaultValue="introduction" className="w-full">
+                      <TabsList className="grid grid-cols-6 lg:grid-cols-9 gap-1 h-auto flex-wrap">
+                        <TabsTrigger value="introduction">Introduction</TabsTrigger>
+                        <TabsTrigger value="fears">Fears</TabsTrigger>
+                        <TabsTrigger value="hopesDreams">Hopes & Dreams</TabsTrigger>
+                        <TabsTrigger value="demographics">Demographics</TabsTrigger>
+                        <TabsTrigger value="psychographics">Psychographics</TabsTrigger>
+                        <TabsTrigger value="pains">Pains</TabsTrigger>
+                        <TabsTrigger value="frustrations">Frustrations</TabsTrigger>
+                        <TabsTrigger value="goals">Goals</TabsTrigger>
+                        <TabsTrigger value="values">Values</TabsTrigger>
+                        <TabsTrigger value="objections">Objections</TabsTrigger>
+                        <TabsTrigger value="buyingTriggers">Buying Triggers</TabsTrigger>
+                        <TabsTrigger value="mediaConsumption">Media</TabsTrigger>
+                        <TabsTrigger value="influencers">Influencers</TabsTrigger>
+                        <TabsTrigger value="communicationStyle">Communication</TabsTrigger>
+                        <TabsTrigger value="decisionMaking">Decision Making</TabsTrigger>
+                        <TabsTrigger value="successMetrics">Success Metrics</TabsTrigger>
+                        <TabsTrigger value="implementationBarriers">Barriers</TabsTrigger>
+                      </TabsList>
+
+                      <TabsContent value="introduction" className="mt-6">
+                        <div className="prose prose-invert max-w-none">
+                          <h3 className="text-xl font-semibold mb-4">Introduction</h3>
+                          <p className="whitespace-pre-wrap text-muted-foreground">
+                            {selectedICP.introduction || "No introduction generated yet."}
+                          </p>
+                        </div>
+                      </TabsContent>
+
+                      <TabsContent value="fears" className="mt-6">
+                        <div className="prose prose-invert max-w-none">
+                          <h3 className="text-xl font-semibold mb-4">Fears</h3>
+                          <p className="whitespace-pre-wrap text-muted-foreground">
+                            {selectedICP.fears || "No fears generated yet."}
+                          </p>
+                        </div>
+                      </TabsContent>
+
+                      <TabsContent value="hopesDreams" className="mt-6">
+                        <div className="prose prose-invert max-w-none">
+                          <h3 className="text-xl font-semibold mb-4">Hopes & Dreams</h3>
+                          <p className="whitespace-pre-wrap text-muted-foreground">
+                            {selectedICP.hopesDreams || "No hopes & dreams generated yet."}
+                          </p>
+                        </div>
+                      </TabsContent>
+
+                      <TabsContent value="demographics" className="mt-6">
+                        <div className="prose prose-invert max-w-none">
+                          <h3 className="text-xl font-semibold mb-4">Demographics</h3>
+                          <div className="grid grid-cols-2 gap-4">
+                            {selectedICP.demographics &&
+                              typeof selectedICP.demographics === "object" &&
+                              Object.entries(selectedICP.demographics).map(([key, value]) => (
+                                <div key={key}>
+                                  <p className="text-sm font-medium text-muted-foreground capitalize">
+                                    {key.replace(/_/g, " ")}
+                                  </p>
+                                  <p className="text-foreground">{value as string}</p>
+                                </div>
+                              ))}
                           </div>
-                        ))}
-                    </div>
-                  </CardContent>
-                </Card>
+                        </div>
+                      </TabsContent>
 
-                {/* Pain Points */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Pain Points</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <Textarea
-                      value={selectedICP.painPoints || ""}
-                      readOnly
-                      rows={6}
-                      className="font-mono text-sm"
-                    />
-                  </CardContent>
-                </Card>
+                      <TabsContent value="psychographics" className="mt-6">
+                        <div className="prose prose-invert max-w-none">
+                          <h3 className="text-xl font-semibold mb-4">Psychographics</h3>
+                          <p className="whitespace-pre-wrap text-muted-foreground">
+                            {selectedICP.psychographics || "No psychographics generated yet."}
+                          </p>
+                        </div>
+                      </TabsContent>
 
-                {/* Desired Outcomes */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Desired Outcomes</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <Textarea
-                      value={selectedICP.desiredOutcomes || ""}
-                      readOnly
-                      rows={6}
-                      className="font-mono text-sm"
-                    />
-                  </CardContent>
-                </Card>
+                      <TabsContent value="pains" className="mt-6">
+                        <div className="prose prose-invert max-w-none">
+                          <h3 className="text-xl font-semibold mb-4">Pains</h3>
+                          <p className="whitespace-pre-wrap text-muted-foreground">
+                            {selectedICP.pains || "No pains generated yet."}
+                          </p>
+                        </div>
+                      </TabsContent>
 
-                {/* Values & Motivations */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Values & Motivations</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <Textarea
-                      value={selectedICP.valuesMotivations || ""}
-                      readOnly
-                      rows={6}
-                      className="font-mono text-sm"
-                    />
-                  </CardContent>
-                </Card>
+                      <TabsContent value="frustrations" className="mt-6">
+                        <div className="prose prose-invert max-w-none">
+                          <h3 className="text-xl font-semibold mb-4">Frustrations</h3>
+                          <p className="whitespace-pre-wrap text-muted-foreground">
+                            {selectedICP.frustrations || "No frustrations generated yet."}
+                          </p>
+                        </div>
+                      </TabsContent>
 
-                {/* Buying Triggers */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Buying Triggers</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <Textarea
-                      value={selectedICP.buyingTriggers || ""}
-                      readOnly
-                      rows={6}
-                      className="font-mono text-sm"
-                    />
+                      <TabsContent value="goals" className="mt-6">
+                        <div className="prose prose-invert max-w-none">
+                          <h3 className="text-xl font-semibold mb-4">Goals</h3>
+                          <p className="whitespace-pre-wrap text-muted-foreground">
+                            {selectedICP.goals || "No goals generated yet."}
+                          </p>
+                        </div>
+                      </TabsContent>
+
+                      <TabsContent value="values" className="mt-6">
+                        <div className="prose prose-invert max-w-none">
+                          <h3 className="text-xl font-semibold mb-4">Values</h3>
+                          <p className="whitespace-pre-wrap text-muted-foreground">
+                            {selectedICP.values || "No values generated yet."}
+                          </p>
+                        </div>
+                      </TabsContent>
+
+                      <TabsContent value="objections" className="mt-6">
+                        <div className="prose prose-invert max-w-none">
+                          <h3 className="text-xl font-semibold mb-4">Objections</h3>
+                          <p className="whitespace-pre-wrap text-muted-foreground">
+                            {selectedICP.objections || "No objections generated yet."}
+                          </p>
+                        </div>
+                      </TabsContent>
+
+                      <TabsContent value="buyingTriggers" className="mt-6">
+                        <div className="prose prose-invert max-w-none">
+                          <h3 className="text-xl font-semibold mb-4">Buying Triggers</h3>
+                          <p className="whitespace-pre-wrap text-muted-foreground">
+                            {selectedICP.buyingTriggers || "No buying triggers generated yet."}
+                          </p>
+                        </div>
+                      </TabsContent>
+
+                      <TabsContent value="mediaConsumption" className="mt-6">
+                        <div className="prose prose-invert max-w-none">
+                          <h3 className="text-xl font-semibold mb-4">Media Consumption</h3>
+                          <p className="whitespace-pre-wrap text-muted-foreground">
+                            {selectedICP.mediaConsumption || "No media consumption data generated yet."}
+                          </p>
+                        </div>
+                      </TabsContent>
+
+                      <TabsContent value="influencers" className="mt-6">
+                        <div className="prose prose-invert max-w-none">
+                          <h3 className="text-xl font-semibold mb-4">Influencers</h3>
+                          <p className="whitespace-pre-wrap text-muted-foreground">
+                            {selectedICP.influencers || "No influencers data generated yet."}
+                          </p>
+                        </div>
+                      </TabsContent>
+
+                      <TabsContent value="communicationStyle" className="mt-6">
+                        <div className="prose prose-invert max-w-none">
+                          <h3 className="text-xl font-semibold mb-4">Communication Style</h3>
+                          <p className="whitespace-pre-wrap text-muted-foreground">
+                            {selectedICP.communicationStyle || "No communication style data generated yet."}
+                          </p>
+                        </div>
+                      </TabsContent>
+
+                      <TabsContent value="decisionMaking" className="mt-6">
+                        <div className="prose prose-invert max-w-none">
+                          <h3 className="text-xl font-semibold mb-4">Decision Making</h3>
+                          <p className="whitespace-pre-wrap text-muted-foreground">
+                            {selectedICP.decisionMaking || "No decision making data generated yet."}
+                          </p>
+                        </div>
+                      </TabsContent>
+
+                      <TabsContent value="successMetrics" className="mt-6">
+                        <div className="prose prose-invert max-w-none">
+                          <h3 className="text-xl font-semibold mb-4">Success Metrics</h3>
+                          <p className="whitespace-pre-wrap text-muted-foreground">
+                            {selectedICP.successMetrics || "No success metrics generated yet."}
+                          </p>
+                        </div>
+                      </TabsContent>
+
+                      <TabsContent value="implementationBarriers" className="mt-6">
+                        <div className="prose prose-invert max-w-none">
+                          <h3 className="text-xl font-semibold mb-4">Implementation Barriers</h3>
+                          <p className="whitespace-pre-wrap text-muted-foreground">
+                            {selectedICP.implementationBarriers || "No implementation barriers generated yet."}
+                          </p>
+                        </div>
+                      </TabsContent>
+                    </Tabs>
                   </CardContent>
                 </Card>
               </div>
@@ -498,52 +590,34 @@ export default function ICPGenerator() {
                   });
                 }}
                 isLoading={generateMoreMutation.isPending}
-                creditText="Uses 1 Dream Buyer Credit"
               >
                 <div className="space-y-4">
                   <div>
-                    <Label htmlFor="icpName">ICP Name*</Label>
-                    <Input
-                      id="icpName"
-                      value={selectedICP.name}
-                      readOnly
-                      placeholder="e.g., Tech-Savvy Millennial Entrepreneur"
-                    />
+                    <Label>Selected Service</Label>
+                    <p className="text-sm text-muted-foreground">
+                      {services?.find((s) => s.id === selectedICP.serviceId)?.name || "Unknown"}
+                    </p>
                   </div>
                   <div>
-                    <Label htmlFor="productUrl">Product URL</Label>
+                    <Label htmlFor="regenerate-name">ICP Name</Label>
                     <Input
-                      id="productUrl"
-                      type="url"
-                      maxLength={300}
-                      placeholder="https://example.com/product"
-                      disabled
+                      id="regenerate-name"
+                      defaultValue={selectedICP.name}
+                      placeholder="Enter new ICP name"
                     />
-                    <p className="text-xs text-muted-foreground mt-1">Optional: Provide URL for more context</p>
-                  </div>
-                  <div>
-                    <Label htmlFor="targetLocation">Target Location</Label>
-                    <Input
-                      id="targetLocation"
-                      placeholder="e.g., United States, Europe"
-                      disabled
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">Optional: Geographic focus</p>
                   </div>
                 </div>
               </RegenerateSidebar>
-              </div>
-            ) : (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <Sparkles className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">
-                    Select an ICP from the list or generate a new one to view details
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-          </div>
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <p className="text-muted-foreground">
+                  Select an ICP from the list or generate a new one to view details
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>

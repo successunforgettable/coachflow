@@ -118,18 +118,39 @@ export type Campaign = typeof campaigns.$inferSelect;
 export type InsertCampaign = typeof campaigns.$inferInsert;
 
 /**
- * Ideal Customer Profiles - simplified vs Kong's Dream Buyers (5 sections vs 17+ tabs)
+ * Ideal Customer Profiles - FULL Kong parity with 17 tabs
+ * Expanded from 5 sections to match Kong's Dream Buyers exactly
  */
 export const idealCustomerProfiles = mysqlTable("idealCustomerProfiles", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   serviceId: int("serviceId").references(() => services.id, { onDelete: "set null" }),
   name: varchar("name", { length: 255 }).notNull(),
-  demographics: json("demographics").$type<{ ageRange?: string; occupation?: string; incomeLevel?: string }>(),
-  painPoints: text("painPoints"),
-  desiredOutcomes: text("desiredOutcomes"),
-  valuesMotivations: text("valuesMotivations"),
-  buyingTriggers: text("buyingTriggers"),
+  
+  // 17 Kong Tabs - Complete Parity
+  introduction: text("introduction"), // Tab 1: Overview/intro
+  fears: text("fears"), // Tab 2: What they're afraid of
+  hopesDreams: text("hopesDreams"), // Tab 3: Aspirations
+  demographics: json("demographics").$type<{ ageRange?: string; occupation?: string; incomeLevel?: string; location?: string; education?: string; familyStatus?: string }>(), // Tab 4
+  psychographics: text("psychographics"), // Tab 5: Personality, lifestyle, attitudes
+  pains: text("pains"), // Tab 6: Pain points (renamed from painPoints for clarity)
+  frustrations: text("frustrations"), // Tab 7: Daily frustrations
+  goals: text("goals"), // Tab 8: What they want to achieve
+  values: text("values"), // Tab 9: Core values (split from valuesMotivations)
+  objections: text("objections"), // Tab 10: Common objections to buying
+  buyingTriggers: text("buyingTriggers"), // Tab 11: What makes them buy
+  mediaConsumption: text("mediaConsumption"), // Tab 12: Where they consume content
+  influencers: text("influencers"), // Tab 13: Who they follow/trust
+  communicationStyle: text("communicationStyle"), // Tab 14: How they prefer to communicate
+  decisionMaking: text("decisionMaking"), // Tab 15: How they make decisions
+  successMetrics: text("successMetrics"), // Tab 16: How they measure success
+  implementationBarriers: text("implementationBarriers"), // Tab 17: What stops them from taking action
+  
+  // Legacy fields for backward compatibility (will be migrated)
+  painPoints: text("painPoints"), // Old field, will migrate to 'pains'
+  desiredOutcomes: text("desiredOutcomes"), // Old field, will migrate to 'goals'
+  valuesMotivations: text("valuesMotivations"), // Old field, will split to 'values' and 'goals'
+  
   rating: int("rating").default(0),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -152,14 +173,26 @@ export const adCopy = mysqlTable("adCopy", {
   campaignId: int("campaignId").references(() => campaigns.id, { onDelete: "set null" }),
   adSetId: varchar("adSetId", { length: 21 }).notNull(), // nanoid for grouping
   adType: mysqlEnum("adType", ["lead_gen", "ecommerce"]).notNull(), // Kong: Lead Gen / Ecommerce
-  adStyle: varchar("adStyle", { length: 100 }), // Hero Ad, Weird Authority Ad, etc.
+  adStyle: varchar("adStyle", { length: 100 }), // Hero Ad, Weird Authority Ad, Secret Info, Commitment & Consistency
+  adCallToAction: varchar("adCallToAction", { length: 100 }), // Download free report, Watch free video, Book free call
   contentType: mysqlEnum("contentType", ["headline", "body", "link"]).notNull(),
   content: text("content").notNull(), // The actual headline/body/link text
-  // Generation parameters for regeneration
-  targetMarket: varchar("targetMarket", { length: 255 }),
-  pressingProblem: text("pressingProblem"),
-  desiredOutcome: text("desiredOutcome"),
-  uniqueMechanism: text("uniqueMechanism"),
+  // Generation parameters for regeneration - 17 Kong fields
+  targetMarket: varchar("targetMarket", { length: 52 }), // Kong: 52 char limit
+  productCategory: varchar("productCategory", { length: 79 }), // Kong: 79 char limit
+  specificProductName: varchar("specificProductName", { length: 72 }), // Kong: 72 char limit
+  pressingProblem: varchar("pressingProblem", { length: 48 }), // Kong: 48 char limit
+  desiredOutcome: varchar("desiredOutcome", { length: 25 }), // Kong: 25 char limit
+  uniqueMechanism: text("uniqueMechanism"), // Kong: 0 char limit (unlimited)
+  listBenefits: text("listBenefits"), // Kong: 0 char limit
+  specificTechnology: varchar("specificTechnology", { length: 23 }), // Kong: 23 char limit
+  scientificStudies: varchar("scientificStudies", { length: 31 }), // Kong: 31 char limit
+  credibleAuthority: varchar("credibleAuthority", { length: 70 }), // Kong: 70 char limit
+  featuredIn: varchar("featuredIn", { length: 65 }), // Kong: 65 char limit (social proof)
+  numberOfReviews: varchar("numberOfReviews", { length: 20 }),
+  averageReviewRating: varchar("averageReviewRating", { length: 10 }),
+  totalCustomers: varchar("totalCustomers", { length: 20 }),
+  testimonials: text("testimonials"), // Kong: 511 char limit
   rating: int("rating").default(0),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

@@ -15,34 +15,35 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import { getLoginUrl } from "@/const";
-import { Loader2, Trash2, Eye } from "lucide-react";
+import { Loader2, Trash2, Eye, Sparkles } from "lucide-react";
 import { Link } from "wouter";
 import { toast } from "sonner";
-import { QuotaIndicator } from "@/components/QuotaIndicator";
 import { SearchBar } from "@/components/SearchBar";
-
-// Real-world ad angle examples from Kong
-const AD_ANGLE_EXAMPLES = {
-  lead_gen: [
-    "Free webinar: How to build a 6-figure coaching business in 90 days",
-    "Download the complete guide to scaling your consulting practice",
-    "Join our free masterclass on creating high-ticket offers that sell",
-  ],
-  ecommerce: [
-    "Limited-time offer: Get 50% off our best-selling course",
-    "New product launch: Transform your business with our proven system",
-    "Flash sale: Premium coaching program now available at early-bird pricing",
-  ],
-};
+import { QuotaIndicator } from "@/components/QuotaIndicator";
 
 export default function AdCopyGenerator() {
   const { isAuthenticated, loading: authLoading } = useAuth();
+  
+  // Form state - all 17 Kong fields
   const [serviceId, setServiceId] = useState<number | null>(null);
-  const [adType, setAdType] = useState<"lead_gen" | "ecommerce">("lead_gen");
+  const [adStyle, setAdStyle] = useState<string>("");
+  const [adCallToAction, setAdCallToAction] = useState<string>("");
   const [targetMarket, setTargetMarket] = useState("");
+  const [productCategory, setProductCategory] = useState("");
+  const [specificProductName, setSpecificProductName] = useState("");
   const [pressingProblem, setPressingProblem] = useState("");
   const [desiredOutcome, setDesiredOutcome] = useState("");
   const [uniqueMechanism, setUniqueMechanism] = useState("");
+  const [listBenefits, setListBenefits] = useState("");
+  const [specificTechnology, setSpecificTechnology] = useState("");
+  const [scientificStudies, setScientificStudies] = useState("");
+  const [credibleAuthority, setCredibleAuthority] = useState("");
+  const [featuredIn, setFeaturedIn] = useState("");
+  const [numberOfReviews, setNumberOfReviews] = useState("");
+  const [averageReviewRating, setAverageReviewRating] = useState("");
+  const [totalCustomers, setTotalCustomers] = useState("");
+  const [testimonials, setTestimonials] = useState("");
+  
   const [searchQuery, setSearchQuery] = useState("");
 
   const { data: services } = trpc.services.list.useQuery(undefined, {
@@ -59,9 +60,20 @@ export default function AdCopyGenerator() {
       refetchAdCopy();
       // Reset form
       setTargetMarket("");
+      setProductCategory("");
+      setSpecificProductName("");
       setPressingProblem("");
       setDesiredOutcome("");
       setUniqueMechanism("");
+      setListBenefits("");
+      setSpecificTechnology("");
+      setScientificStudies("");
+      setCredibleAuthority("");
+      setFeaturedIn("");
+      setNumberOfReviews("");
+      setAverageReviewRating("");
+      setTotalCustomers("");
+      setTestimonials("");
     },
     onError: (error) => {
       toast.error(`Error: ${error.message}`);
@@ -80,8 +92,24 @@ export default function AdCopyGenerator() {
       toast.error("Please select a service");
       return;
     }
+    if (!adStyle) {
+      toast.error("Please select an ad style");
+      return;
+    }
+    if (!adCallToAction) {
+      toast.error("Please select a call to action");
+      return;
+    }
     if (!targetMarket.trim()) {
       toast.error("Please enter target market");
+      return;
+    }
+    if (!productCategory.trim()) {
+      toast.error("Please enter product category");
+      return;
+    }
+    if (!specificProductName.trim()) {
+      toast.error("Please enter specific product name");
       return;
     }
     if (!pressingProblem.trim()) {
@@ -92,82 +120,100 @@ export default function AdCopyGenerator() {
       toast.error("Please describe the desired outcome");
       return;
     }
-    if (!uniqueMechanism.trim()) {
-      toast.error("Please describe the unique mechanism");
-      return;
-    }
 
     generateMutation.mutate({
       serviceId,
-      adType,
-      targetMarket: targetMarket.trim(),
-      pressingProblem: pressingProblem.trim(),
-      desiredOutcome: desiredOutcome.trim(),
-      uniqueMechanism: uniqueMechanism.trim(),
+      adType: "lead_gen", // Default to lead_gen
+      adStyle,
+      adCallToAction,
+      targetMarket,
+      productCategory,
+      specificProductName,
+      pressingProblem,
+      desiredOutcome,
+      uniqueMechanism,
+      listBenefits,
+      specificTechnology,
+      scientificStudies,
+      credibleAuthority,
+      featuredIn,
+      numberOfReviews,
+      averageReviewRating,
+      totalCustomers,
+      testimonials,
     });
   };
 
-  const filteredAdSets = adSets?.filter((adSet: any) => {
-    if (!searchQuery) return true;
-    const query = searchQuery.toLowerCase();
+  const filteredAdSets = adSets?.filter((adSet) => {
+    const searchLower = searchQuery.toLowerCase();
     return (
-      adSet.targetMarket?.toLowerCase().includes(query) ||
-      adSet.pressingProblem?.toLowerCase().includes(query) ||
-      adSet.desiredOutcome?.toLowerCase().includes(query)
+      adSet.targetMarket?.toLowerCase().includes(searchLower) ||
+      adSet.adStyle?.toLowerCase().includes(searchLower)
     );
   });
 
   if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
 
   if (!isAuthenticated) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen gap-4">
-        <h1 className="text-2xl font-bold">Please log in to access Ad Copy Generator</h1>
+      <div className="container mx-auto py-12 text-center">
+        <h1 className="text-3xl font-bold mb-4">Ad Copy Generator</h1>
+        <p className="text-muted-foreground mb-6">
+          Please sign in to generate ad copy
+        </p>
         <Button asChild>
-          <a href={getLoginUrl()}>Log In</a>
+          <a href={getLoginUrl()}>Sign In</a>
         </Button>
       </div>
     );
   }
 
   return (
-    <div className="container py-8">
-      <PageHeader
-        title="Facebook Ad Copy Generator"
-        description="Generate high-converting Facebook/Instagram ad copy with headlines, body text, and link descriptions"
-      />
+    <div className="container mx-auto py-8">
+      <PageHeader title="Ad Copy Generator" />
 
-      <QuotaIndicator generatorType="adCopy" />
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
-        {/* Generation Form */}
+      <div className="flex justify-between items-center mb-8">
         <div>
+          <h1 className="text-3xl font-bold text-foreground">Ad Copy Generator</h1>
+          <p className="text-muted-foreground mt-1">
+            Generate high-converting Facebook/social media ads with 17 data points
+          </p>
+        </div>
+        <QuotaIndicator generatorType="adCopy" />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column - Generator Form */}
+        <div className="lg:col-span-1">
           <Card>
             <CardHeader>
-              <CardTitle>Generate New Ad Copy</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-primary" />
+                Generate Ad Copy
+              </CardTitle>
               <CardDescription>
-                Create 15 headlines, 15 body copies, and 15 link descriptions
+                Fill in all 17 fields to generate high-converting ads
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Service Selection */}
-              <div className="space-y-2">
-                <Label>Service/Product</Label>
+              <div>
+                <Label htmlFor="service">Select Service*</Label>
                 <Select
                   value={serviceId?.toString() || ""}
                   onValueChange={(value) => setServiceId(parseInt(value))}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a service..." />
+                  <SelectTrigger id="service">
+                    <SelectValue placeholder="Choose a service" />
                   </SelectTrigger>
                   <SelectContent>
-                    {services?.map((service: any) => (
+                    {services?.map((service) => (
                       <SelectItem key={service.id} value={service.id.toString()}>
                         {service.name}
                       </SelectItem>
@@ -176,175 +222,308 @@ export default function AdCopyGenerator() {
                 </Select>
               </div>
 
-              {/* Ad Type Selection */}
-              <div className="space-y-2">
-                <Label>Ad Type</Label>
-                <Select
-                  value={adType}
-                  onValueChange={(value: "lead_gen" | "ecommerce") => setAdType(value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
+              {/* 1. Ad Style */}
+              <div>
+                <Label htmlFor="adStyle">1. Ad Style*</Label>
+                <Select value={adStyle} onValueChange={setAdStyle}>
+                  <SelectTrigger id="adStyle">
+                    <SelectValue placeholder="Select ad style" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="lead_gen">Lead Generation</SelectItem>
-                    <SelectItem value="ecommerce">E-commerce</SelectItem>
+                    <SelectItem value="Hero Ad">Hero Ad</SelectItem>
+                    <SelectItem value="Weird Authority Ad">Weird Authority Ad</SelectItem>
+                    <SelectItem value="A Secret Piece Of Information">A Secret Piece Of Information</SelectItem>
+                    <SelectItem value="Commitment And Consistency">Commitment And Consistency</SelectItem>
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground">
-                  {adType === "lead_gen"
-                    ? "For free webinars, consultations, downloads"
-                    : "For direct product/service sales"}
-                </p>
               </div>
 
-              {/* Examples Carousel */}
-              <div className="space-y-2">
-                <Label className="text-sm text-muted-foreground">Examples (click to use):</Label>
-                <div className="space-y-1 max-h-32 overflow-y-auto border rounded p-2">
-                  {AD_ANGLE_EXAMPLES[adType].map((example, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setDesiredOutcome(example)}
-                      className="text-left text-sm p-2 rounded hover:bg-accent transition-colors w-full"
-                    >
-                      {example}
-                    </button>
-                  ))}
-                </div>
+              {/* 2. Ad Call To Action */}
+              <div>
+                <Label htmlFor="adCallToAction">2. Ad Call To Action*</Label>
+                <Select value={adCallToAction} onValueChange={setAdCallToAction}>
+                  <SelectTrigger id="adCallToAction">
+                    <SelectValue placeholder="Select CTA" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Download free report">Download free report</SelectItem>
+                    <SelectItem value="Watch free video training">Watch free video training</SelectItem>
+                    <SelectItem value="Book a free 30-minute call">Book a free 30-minute call</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
-              {/* Target Market */}
-              <div className="space-y-2">
-                <Label>Target Market</Label>
+              {/* 3. Target Market */}
+              <div>
+                <Label htmlFor="targetMarket">3. Target Market* (52 char max)</Label>
                 <Input
-                  placeholder="e.g., Coaches and consultants making $50K-$200K/year"
+                  id="targetMarket"
+                  placeholder="e.g., Busy entrepreneurs"
                   value={targetMarket}
                   onChange={(e) => setTargetMarket(e.target.value)}
-                  maxLength={255}
+                  maxLength={52}
                 />
-                <p className="text-xs text-muted-foreground">
-                  {255 - targetMarket.length} characters remaining
-                </p>
+                <p className="text-xs text-muted-foreground mt-1">{targetMarket.length}/52</p>
               </div>
 
-              {/* Pressing Problem */}
-              <div className="space-y-2">
-                <Label>Pressing Problem</Label>
+              {/* 4. Product Category */}
+              <div>
+                <Label htmlFor="productCategory">4. Product Category* (79 char max)</Label>
+                <Input
+                  id="productCategory"
+                  placeholder="e.g., Business coaching program"
+                  value={productCategory}
+                  onChange={(e) => setProductCategory(e.target.value)}
+                  maxLength={79}
+                />
+                <p className="text-xs text-muted-foreground mt-1">{productCategory.length}/79</p>
+              </div>
+
+              {/* 5. Specific Product Name */}
+              <div>
+                <Label htmlFor="specificProductName">5. Specific Product Name* (72 char max)</Label>
+                <Input
+                  id="specificProductName"
+                  placeholder="e.g., 7-Figure Coach Academy"
+                  value={specificProductName}
+                  onChange={(e) => setSpecificProductName(e.target.value)}
+                  maxLength={72}
+                />
+                <p className="text-xs text-muted-foreground mt-1">{specificProductName.length}/72</p>
+              </div>
+
+              {/* 6. Pressing Problem */}
+              <div>
+                <Label htmlFor="pressingProblem">6. Pressing Problem* (48 char max)</Label>
                 <Textarea
-                  placeholder="What keeps your target market up at night?"
+                  id="pressingProblem"
+                  placeholder="What keeps them up at night?"
                   value={pressingProblem}
                   onChange={(e) => setPressingProblem(e.target.value)}
-                  rows={3}
+                  maxLength={48}
+                  rows={2}
                 />
+                <p className="text-xs text-muted-foreground mt-1">{pressingProblem.length}/48</p>
               </div>
 
-              {/* Desired Outcome */}
-              <div className="space-y-2">
-                <Label>Desired Outcome</Label>
+              {/* 7. Desired Outcome */}
+              <div>
+                <Label htmlFor="desiredOutcome">7. Desired Outcome* (25 char max)</Label>
                 <Textarea
-                  placeholder="What transformation do they want to achieve?"
+                  id="desiredOutcome"
+                  placeholder="What do they want?"
                   value={desiredOutcome}
                   onChange={(e) => setDesiredOutcome(e.target.value)}
-                  rows={3}
+                  maxLength={25}
+                  rows={2}
                 />
+                <p className="text-xs text-muted-foreground mt-1">{desiredOutcome.length}/25</p>
               </div>
 
-              {/* Unique Mechanism */}
-              <div className="space-y-2">
-                <Label>Unique Mechanism</Label>
+              {/* 8. Unique Mechanism */}
+              <div>
+                <Label htmlFor="uniqueMechanism">8. Unique Mechanism</Label>
                 <Textarea
-                  placeholder="What makes your solution different and better?"
+                  id="uniqueMechanism"
+                  placeholder="What makes your solution different?"
                   value={uniqueMechanism}
                   onChange={(e) => setUniqueMechanism(e.target.value)}
                   rows={3}
                 />
               </div>
 
-              {/* Generate Button */}
+              {/* 9. List Benefits */}
+              <div>
+                <Label htmlFor="listBenefits">9. List Benefits</Label>
+                <Textarea
+                  id="listBenefits"
+                  placeholder="Key benefits of your offer"
+                  value={listBenefits}
+                  onChange={(e) => setListBenefits(e.target.value)}
+                  rows={3}
+                />
+              </div>
+
+              {/* 10. Specific Technology */}
+              <div>
+                <Label htmlFor="specificTechnology">10. Specific Technology/Ingredient/Methodology (23 char max)</Label>
+                <Input
+                  id="specificTechnology"
+                  placeholder="e.g., AI-powered system"
+                  value={specificTechnology}
+                  onChange={(e) => setSpecificTechnology(e.target.value)}
+                  maxLength={23}
+                />
+                <p className="text-xs text-muted-foreground mt-1">{specificTechnology.length}/23</p>
+              </div>
+
+              {/* 11. Scientific Studies */}
+              <div>
+                <Label htmlFor="scientificStudies">11. Scientific Studies/Research/Stats (31 char max)</Label>
+                <Input
+                  id="scientificStudies"
+                  placeholder="e.g., Harvard study shows..."
+                  value={scientificStudies}
+                  onChange={(e) => setScientificStudies(e.target.value)}
+                  maxLength={31}
+                />
+                <p className="text-xs text-muted-foreground mt-1">{scientificStudies.length}/31</p>
+              </div>
+
+              {/* 12. Credible Authority */}
+              <div>
+                <Label htmlFor="credibleAuthority">12. Credible Authority Figure (70 char max)</Label>
+                <Input
+                  id="credibleAuthority"
+                  placeholder="e.g., Tony Robbins, Russell Brunson"
+                  value={credibleAuthority}
+                  onChange={(e) => setCredibleAuthority(e.target.value)}
+                  maxLength={70}
+                />
+                <p className="text-xs text-muted-foreground mt-1">{credibleAuthority.length}/70</p>
+              </div>
+
+              {/* 13. Featured In */}
+              <div>
+                <Label htmlFor="featuredIn">13. Featured In (Social Proof) (65 char max)</Label>
+                <Input
+                  id="featuredIn"
+                  placeholder="e.g., Forbes, Inc, Entrepreneur"
+                  value={featuredIn}
+                  onChange={(e) => setFeaturedIn(e.target.value)}
+                  maxLength={65}
+                />
+                <p className="text-xs text-muted-foreground mt-1">{featuredIn.length}/65</p>
+              </div>
+
+              {/* 14. Number of Reviews */}
+              <div>
+                <Label htmlFor="numberOfReviews">14. Number of Reviews</Label>
+                <Input
+                  id="numberOfReviews"
+                  placeholder="e.g., 1,247"
+                  value={numberOfReviews}
+                  onChange={(e) => setNumberOfReviews(e.target.value)}
+                />
+              </div>
+
+              {/* 15. Average Review Rating */}
+              <div>
+                <Label htmlFor="averageReviewRating">15. Average Review Rating</Label>
+                <Input
+                  id="averageReviewRating"
+                  placeholder="e.g., 4.9/5"
+                  value={averageReviewRating}
+                  onChange={(e) => setAverageReviewRating(e.target.value)}
+                />
+              </div>
+
+              {/* 16. Total Customers */}
+              <div>
+                <Label htmlFor="totalCustomers">16. Total Number of Customers (All Time)</Label>
+                <Input
+                  id="totalCustomers"
+                  placeholder="e.g., 10,000+"
+                  value={totalCustomers}
+                  onChange={(e) => setTotalCustomers(e.target.value)}
+                />
+              </div>
+
+              {/* 17. Testimonials */}
+              <div>
+                <Label htmlFor="testimonials">17. Testimonials (511 char max)</Label>
+                <Textarea
+                  id="testimonials"
+                  placeholder="Paste 2-3 customer testimonials"
+                  value={testimonials}
+                  onChange={(e) => setTestimonials(e.target.value)}
+                  maxLength={511}
+                  rows={4}
+                />
+                <p className="text-xs text-muted-foreground mt-1">{testimonials.length}/511</p>
+              </div>
+
               <Button
                 onClick={handleGenerate}
                 disabled={generateMutation.isPending}
-                className="w-full"
+                className="w-full bg-primary hover:bg-primary/90"
               >
                 {generateMutation.isPending ? (
                   <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Generating Ad Copy...
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Generating...
                   </>
                 ) : (
-                  "Generate Ad Copy (15 Headlines, 15 Bodies, 15 Links)"
+                  <>
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Generate Ad Copy
+                  </>
                 )}
               </Button>
             </CardContent>
           </Card>
         </div>
 
-        {/* Generated Ad Sets List */}
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold">Your Ad Sets</h2>
-            <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Search ad sets..." />
-          </div>
-
-          <div className="space-y-4">
-            {filteredAdSets && filteredAdSets.length > 0 ? (
-              filteredAdSets.map((adSet: any) => (
-                <Card key={adSet.adSetId}>
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <CardTitle className="text-lg">
-                          {adSet.adType === "lead_gen" ? "Lead Generation" : "E-commerce"} Ad Set
-                        </CardTitle>
-                        <CardDescription>
-                          {new Date(adSet.createdAt).toLocaleDateString()} • {adSet.headlines.length} headlines, {adSet.bodies.length} bodies, {adSet.links.length} links
-                        </CardDescription>
+        {/* Right Column - Ad Sets List */}
+        <div className="lg:col-span-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Your Ad Sets</CardTitle>
+              <SearchBar
+                value={searchQuery}
+                onChange={setSearchQuery}
+                placeholder="Search ad sets..."
+              />
+            </CardHeader>
+            <CardContent>
+              {filteredAdSets && filteredAdSets.length > 0 ? (
+                <div className="space-y-4">
+                  {filteredAdSets.map((adSet) => (
+                    <Card key={adSet.adSetId} className="p-4">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="px-2 py-1 bg-primary/20 text-primary rounded text-xs font-medium">
+                              {adSet.adStyle || "Ad Copy"}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(adSet.createdAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <p className="text-sm text-muted-foreground mb-1">
+                            <strong>Target:</strong> {adSet.targetMarket || "Not specified"}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            <strong>Product:</strong> {adSet.specificProductName || "Not specified"}
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <Link href={`/ad-copy/${adSet.adSetId}`}>
+                            <Button size="sm" variant="outline">
+                              <Eye className="w-4 h-4 mr-2" />
+                              View
+                            </Button>
+                          </Link>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => deleteAdSetMutation.mutate({ adSetId: adSet.adSetId })}
+                            disabled={deleteAdSetMutation.isPending}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </div>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          if (confirm("Delete this ad set?")) {
-                            deleteAdSetMutation.mutate({ adSetId: adSet.adSetId });
-                          }
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2 text-sm">
-                      <div>
-                        <span className="font-semibold">Target Market:</span>{" "}
-                        {adSet.targetMarket}
-                      </div>
-                      <div>
-                        <span className="font-semibold">Pressing Problem:</span>{" "}
-                        {adSet.pressingProblem?.substring(0, 100)}
-                        {adSet.pressingProblem?.length > 100 ? "..." : ""}
-                      </div>
-                    </div>
-                    <Link href={`/ad-copy/${adSet.adSetId}`}>
-                      <Button className="w-full mt-4" variant="outline">
-                        <Eye className="h-4 w-4 mr-2" />
-                        View Ad Copy
-                      </Button>
-                    </Link>
-                  </CardContent>
-                </Card>
-              ))
-            ) : (
-              <Card>
-                <CardContent className="pt-6 text-center text-muted-foreground">
-                  {searchQuery
-                    ? "No ad sets match your search"
-                    : "No ad sets yet. Generate your first ad copy!"}
-                </CardContent>
-              </Card>
-            )}
-          </div>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-8">
+                  No ad sets generated yet. Fill in the form to generate your first ad set!
+                </p>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
