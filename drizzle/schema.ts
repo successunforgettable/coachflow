@@ -35,6 +35,8 @@ export const users = mysqlTable("users", {
   hvcoGeneratedCount: int("hvcoGeneratedCount").default(0).notNull(),
   heroMechanismGeneratedCount: int("heroMechanismGeneratedCount").default(0).notNull(),
   usageResetAt: timestamp("usageResetAt").defaultNow().notNull(),
+  // Beast Mode toggle
+  beastMode: boolean("beastMode").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),

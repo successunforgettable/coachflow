@@ -2,6 +2,10 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
+import { z } from "zod";
+import { getDb } from "./db";
+import { users } from "../drizzle/schema";
+import { eq } from "drizzle-orm";
 import { servicesRouter } from "./routers/services";
 import { icpsRouter } from "./routers/icps";
 import { adCopyRouter } from "./routers/adCopy";
@@ -28,6 +32,18 @@ export const appRouter = router({
         success: true,
       } as const;
     }),
+    toggleBeastMode: publicProcedure
+      .input(z.object({ enabled: z.boolean() }))
+      .mutation(async ({ ctx, input }) => {
+        if (!ctx.user) throw new Error("Not authenticated");
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+        await db
+          .update(users)
+          .set({ beastMode: input.enabled })
+          .where(eq(users.id, ctx.user.id));
+        return { success: true, enabled: input.enabled };
+      }),
   }),
 
   // Feature routers

@@ -3,6 +3,7 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
 import { Loader2, ArrowLeft, Download, Trash2, Copy, ThumbsUp, ThumbsDown, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 import { exportToPDF } from "@/lib/pdfExport";
@@ -32,6 +33,17 @@ export default function HeadlinesDetail() {
     onSuccess: () => {
       toast.success("Headlines deleted");
       window.location.href = "/headlines";
+    },
+  });
+
+  const { data: user } = trpc.auth.me.useQuery();
+  
+  const toggleBeastMode = trpc.auth.toggleBeastMode.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Beast Mode ${data.enabled ? 'enabled' : 'disabled'}`);
+    },
+    onError: (error) => {
+      toast.error(`Failed to toggle Beast Mode: ${error.message}`);
     },
   });
 
@@ -512,6 +524,19 @@ export default function HeadlinesDetail() {
         </TabsContent>
 
         <TabsContent value="beastmode">
+          <Card className="p-6 mb-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold mb-1">Beast Mode</h3>
+                <p className="text-sm text-muted-foreground">Enable to generate 15 additional variations automatically</p>
+              </div>
+              <Switch 
+                checked={user?.beastMode ?? false}
+                onCheckedChange={(checked) => toggleBeastMode.mutate({ enabled: checked })}
+                disabled={toggleBeastMode.isPending}
+              />
+            </div>
+          </Card>
           <div className="text-center py-12">
             <h3 className="text-xl font-semibold mb-2">Beast Mode Variations</h3>
             <p className="text-muted-foreground mb-4">Additional headline variations will appear here</p>

@@ -1,0 +1,1 @@
+ALTER TABLE `users` ADD `beastMode` boolean DEFAULT false NOT NULL;
