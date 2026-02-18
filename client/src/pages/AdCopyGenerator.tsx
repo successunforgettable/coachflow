@@ -20,6 +20,7 @@ import { Link } from "wouter";
 import { toast } from "sonner";
 import { SearchBar } from "@/components/SearchBar";
 import { QuotaIndicator } from "@/components/QuotaIndicator";
+import ExamplesCarousel from "@/components/ExamplesCarousel";
 
 export default function AdCopyGenerator() {
   const { isAuthenticated, loading: authLoading } = useAuth();
@@ -323,12 +324,37 @@ export default function AdCopyGenerator() {
               {/* 8. Unique Mechanism */}
               <div>
                 <Label htmlFor="uniqueMechanism">8. Unique Mechanism</Label>
+                <ExamplesCarousel
+                  examples={[
+                    "The 3-Step Framework That Helped 10,000+ Entrepreneurs Scale to 7-Figures",
+                    "A Proprietary Algorithm That Predicts Market Trends With 94% Accuracy",
+                    "The 'Reverse Engineering' Method Used by Fortune 500 Companies",
+                    "A Little-Known Loophole That Cuts Tax Bills by 40% (100% Legal)",
+                    "The 5-Minute Morning Ritual That Doubles Productivity",
+                    "A Counterintuitive Strategy That Turns Objections Into Sales",
+                    "The 'Invisible Funnel' That Converts 3X Better Than Traditional Funnels",
+                    "A Breakthrough Discovery From Stanford That Accelerates Learning by 10X",
+                    "The 'Compound Effect' System That Builds Wealth on Autopilot",
+                    "A Secret Ingredient Used by Olympic Athletes for Peak Performance",
+                    "The 'Anti-Hustle' Method That Generates More Revenue in Less Time",
+                    "A Proven Framework That Eliminates 90% of Marketing Guesswork",
+                    "The 'Invisible Hand' Technique That Attracts High-Ticket Clients",
+                    "A Counterintuitive Approach That Turns Competitors Into Allies",
+                    "The 'Leverage Loop' That Multiplies Results Without Extra Effort",
+                    "A Little-Known Psychological Trigger That Doubles Conversion Rates",
+                    "The 'Shortcut Stack' That Compresses 10 Years Into 10 Months",
+                    "A Proprietary System That Automates 80% of Your Busywork",
+                  ]}
+                  onSelectExample={setUniqueMechanism}
+                  title="Unique Mechanism Examples (Click to Use)"
+                />
                 <Textarea
                   id="uniqueMechanism"
                   placeholder="What makes your solution different?"
                   value={uniqueMechanism}
                   onChange={(e) => setUniqueMechanism(e.target.value)}
                   rows={3}
+                  className="mt-2"
                 />
               </div>
 

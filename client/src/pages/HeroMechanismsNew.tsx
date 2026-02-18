@@ -15,6 +15,7 @@ import {
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import ExamplesCarousel from "@/components/ExamplesCarousel";
 
 const DESCRIPTOR_OPTIONS = [
   "Strategy",
@@ -60,7 +61,7 @@ const APPLICATION_OPTIONS = [
   "Install",
 ];
 
-// Real-world Hero Mechanism examples from Kong
+// Real-world Hero Mechanism examples from Kong (18 examples)
 const HERO_MECHANISM_EXAMPLES = [
   "Breakthrough 'Productivity Triggers' System Slashes 5, 10, Even 51 Hours Off Your Work Week",
   "Weird 'Black Diamond' Refinance Framework Saves $120,787.50 On The Average Loan",
@@ -77,6 +78,9 @@ const HERO_MECHANISM_EXAMPLES = [
   "New Done-For-You 'Jetstream' Accountant Service Fully Automates All Your Cash Flow",
   "Tiny Orange Plant (a secret ancient ingredient) that speeds up metabolism by up to 68%",
   "Algorithm Loophole That's Now Helping Normal Guys Match With Some of the Most Beautiful Women",
+  "Revolutionary 'Autopilot Income' System Generates $10K-$50K Per Month With Zero Active Work",
+  "Ancient Himalayan 'Golden Honey' Ritual That Melts Stubborn Belly Fat In 28 Days",
+  "Secret 'Compounding Leverage' Strategy Used By Billionaires To 10X Their Wealth",
 ];
 
 export default function HeroMechanismsNew() {
@@ -240,19 +244,11 @@ export default function HeroMechanismsNew() {
             
             {/* Examples Carousel */}
             <div className="mt-4">
-              <p className="text-sm text-muted-foreground mb-2">Click an example to use:</p>
-              <div className="grid gap-2 max-h-[200px] overflow-y-auto pr-2">
-                {HERO_MECHANISM_EXAMPLES.map((example, index) => (
-                  <button
-                    key={index}
-                    type="button"
-                    onClick={() => setPressingProblem(example)}
-                    className="text-left text-sm p-2 rounded hover:bg-accent transition-colors"
-                  >
-                    {example}
-                  </button>
-                ))}
-              </div>
+              <ExamplesCarousel
+                examples={HERO_MECHANISM_EXAMPLES}
+                onSelectExample={setPressingProblem}
+                title="Hero Mechanism Examples (Click to Use)"
+              />
             </div>
           </div>
 

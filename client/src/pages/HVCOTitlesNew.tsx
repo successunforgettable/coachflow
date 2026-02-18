@@ -15,9 +15,10 @@ import {
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import ExamplesCarousel from "@/components/ExamplesCarousel";
 
 
-// Real-world HVCO topic examples from Kong
+// Real-world HVCO topic examples from Kong (18 examples)
 const HVCO_TOPIC_EXAMPLES = [
   "How to build a 7-figure coaching business in 12 months without paid ads using organic content and strategic partnerships",
   "The exact system I used to replace my $150K corporate salary with passive income from rental properties in 24 months",
@@ -34,6 +35,9 @@ const HVCO_TOPIC_EXAMPLES = [
   "How to create a high-ticket mastermind program that sells for $25K-$50K per person and fills consistently",
   "The complete guide to building a YouTube channel that generates $10K-$30K per month in ad revenue and sponsorships",
   "How to transition from trading time for money to building scalable systems that generate income while you sleep",
+  "The proven strategy for landing corporate speaking gigs that pay $10K-$50K per engagement",
+  "How to build a personal brand that attracts opportunities, partnerships, and high-ticket clients on autopilot",
+  "The complete system for creating and selling digital products that generate $100K+ in passive income annually",
 ];
 
 export default function HVCOTitlesNew() {
@@ -173,19 +177,11 @@ export default function HVCOTitlesNew() {
             
             {/* Examples Carousel */}
             <div className="mt-4">
-              <p className="text-sm text-muted-foreground mb-2">Click an example to use:</p>
-              <div className="grid gap-2 max-h-[200px] overflow-y-auto pr-2">
-                {HVCO_TOPIC_EXAMPLES.map((example, index) => (
-                  <button
-                    key={index}
-                    type="button"
-                    onClick={() => setHvcoTopic(example)}
-                    className="text-left text-sm p-2 rounded hover:bg-accent transition-colors"
-                  >
-                    {example}
-                  </button>
-                ))}
-              </div>
+              <ExamplesCarousel
+                examples={HVCO_TOPIC_EXAMPLES}
+                onSelectExample={setHvcoTopic}
+                title="HVCO Topic Examples (Click to Use)"
+              />
             </div>
           </div>
 
