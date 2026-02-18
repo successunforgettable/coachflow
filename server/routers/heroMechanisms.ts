@@ -14,6 +14,8 @@ import { getDb } from "../db";
 import { services } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
+import { getQuotaLimit } from "../quotaLimits";
+import { TRPCError } from "@trpc/server";
 
 /**
  * Hero Mechanisms Router - Kong Parity
@@ -51,6 +53,15 @@ export const heroMechanismsRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const { user } = ctx;
+      
+      // Check quota limit
+      const limit = getQuotaLimit(user.subscriptionTier, "heroMechanisms");
+      if (user.heroMechanismGeneratedCount >= limit) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: `You've reached your monthly limit of ${limit} Hero Mechanism sets. Upgrade to generate more.`,
+        });
+      }
       
       // Get service details for context
       const db = await getDb();

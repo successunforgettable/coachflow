@@ -4,6 +4,8 @@ import { getDb } from "../db";
 import { emailSequences, services, campaigns } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { invokeLLM } from "../_core/llm";
+import { getQuotaLimit } from "../quotaLimits";
+import { TRPCError } from "@trpc/server";
 
 const generateEmailSequenceSchema = z.object({
   serviceId: z.number(),
@@ -91,6 +93,15 @@ export const emailSequencesRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
+
+      // Check quota limit
+      const limit = getQuotaLimit(ctx.user.subscriptionTier, "email");
+      if (ctx.user.emailSeqGeneratedCount >= limit) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: `You've reached your monthly limit of ${limit} email sequences. Upgrade to generate more.`,
+        });
+      }
 
       // Get service details
       const [service] = await db

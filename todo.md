@@ -635,3 +635,33 @@
 - [ ] Test quota indicators update correctly
 - [ ] Visual QA: Compare every page side-by-side with Kong screenshots
 - [ ] Save final checkpoint with 100% Kong parity
+
+
+## Phase 99: Tier-Based Quota Enforcement & Automatic Feature Unlocking (ACTIVE)
+- [ ] Create centralized quota limits configuration file (`server/quotaLimits.ts`)
+- [ ] Implement quota enforcement in HVCO Titles backend router
+- [ ] Implement quota enforcement in Hero Mechanisms backend router
+- [ ] Implement quota enforcement in ICP backend router
+- [ ] Implement quota enforcement in Ad Copy backend router
+- [ ] Implement quota enforcement in Email Sequences backend router
+- [ ] Implement quota enforcement in WhatsApp Sequences backend router
+- [ ] Implement quota enforcement in Offers backend router
+- [ ] Update Headlines router to use centralized quota limits
+- [ ] Update Landing Pages router to use centralized quota limits
+- [ ] Update Stripe webhook handler for `customer.subscription.created` event
+- [ ] Update Stripe webhook handler for `customer.subscription.updated` event
+- [ ] Update Stripe webhook handler for `customer.subscription.deleted` event
+- [ ] Create UpgradePrompt component for quota exceeded UI
+- [ ] Add upgrade prompts to all 9 generator pages
+- [ ] Disable generate buttons at quota limits on all 9 generators
+- [ ] Add Dashboard quota usage summary card
+- [ ] Implement monthly quota reset logic (cron job or scheduled task)
+- [ ] Test Trial tier quota enforcement (2 per generator)
+- [ ] Test Pro tier quota enforcement (50 ICP, 100 ad copy, etc.)
+- [ ] Test Agency tier unlimited access (999 per generator)
+- [ ] Test upgrade flow: Trial → Pro (quotas increase)
+- [ ] Test upgrade flow: Pro → Agency (unlimited unlocks)
+- [ ] Test downgrade flow: Agency → Trial (quotas reset)
+- [ ] Test monthly quota reset (all counts reset to 0)
+- [ ] Update pricing page to match implemented quotas
+- [ ] Save final checkpoint with complete tier-based system

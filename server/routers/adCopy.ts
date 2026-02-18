@@ -5,6 +5,8 @@ import { adCopy, services, campaigns } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { invokeLLM } from "../_core/llm";
 import { nanoid } from "nanoid";
+import { getQuotaLimit } from "../quotaLimits";
+import { TRPCError } from "@trpc/server";
 
 const generateAdCopySchema = z.object({
   serviceId: z.number(),
@@ -163,6 +165,15 @@ export const adCopyRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
+
+      // Check quota limit
+      const limit = getQuotaLimit(ctx.user.subscriptionTier, "adCopy");
+      if (ctx.user.adCopyGeneratedCount >= limit) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: `You've reached your monthly limit of ${limit} ad copy sets. Upgrade to generate more.`,
+        });
+      }
 
       // Get service details
       const [service] = await db

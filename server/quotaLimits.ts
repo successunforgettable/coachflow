@@ -1,0 +1,81 @@
+/**
+ * Centralized Quota Limits Configuration
+ * 
+ * Defines generation limits for each subscription tier across all 9 generators.
+ * These limits must match the promises on the pricing page.
+ */
+
+export type GeneratorType = 
+  | "headlines" 
+  | "hvco" 
+  | "heroMechanisms" 
+  | "icp" 
+  | "adCopy" 
+  | "email" 
+  | "whatsapp" 
+  | "landingPages" 
+  | "offers";
+
+export type SubscriptionTier = "trial" | "pro" | "agency";
+
+export const QUOTA_LIMITS: Record<SubscriptionTier, Record<GeneratorType, number>> = {
+  trial: {
+    headlines: 0,
+    hvco: 0,
+    heroMechanisms: 0,
+    icp: 2,
+    adCopy: 5,
+    email: 2,
+    whatsapp: 2,
+    landingPages: 2,
+    offers: 2,
+  },
+  pro: {
+    headlines: 6,
+    hvco: 3,
+    heroMechanisms: 4,
+    icp: 50,
+    adCopy: 100,
+    email: 20,
+    whatsapp: 20,
+    landingPages: 10,
+    offers: 10,
+  },
+  agency: {
+    headlines: 999,
+    hvco: 999,
+    heroMechanisms: 999,
+    icp: 999,
+    adCopy: 999,
+    email: 999,
+    whatsapp: 999,
+    landingPages: 999,
+    offers: 999,
+  },
+};
+
+/**
+ * Get quota limit for a specific generator and subscription tier
+ */
+export function getQuotaLimit(tier: SubscriptionTier | null | undefined, generatorType: GeneratorType): number {
+  const effectiveTier = tier || "trial";
+  return QUOTA_LIMITS[effectiveTier][generatorType];
+}
+
+/**
+ * Get field name for quota count in user table
+ */
+export function getQuotaCountField(generatorType: GeneratorType): string {
+  const fieldMap: Record<GeneratorType, string> = {
+    headlines: "headlineGeneratedCount",
+    hvco: "hvcoGeneratedCount",
+    heroMechanisms: "heroMechanismGeneratedCount",
+    icp: "icpGeneratedCount",
+    adCopy: "adCopyGeneratedCount",
+    email: "emailSequenceGeneratedCount",
+    whatsapp: "whatsappSequenceGeneratedCount",
+    landingPages: "landingPageGeneratedCount",
+    offers: "offerGeneratedCount",
+  };
+  return fieldMap[generatorType];
+}

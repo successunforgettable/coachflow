@@ -4,6 +4,8 @@ import { getDb } from "../db";
 import { whatsappSequences, services } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { invokeLLM } from "../_core/llm";
+import { getQuotaLimit } from "../quotaLimits";
+import { TRPCError } from "@trpc/server";
 
 const generateWhatsAppSequenceSchema = z.object({
   serviceId: z.number(),
@@ -90,6 +92,15 @@ export const whatsappSequencesRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
+
+      // Check quota limit
+      const limit = getQuotaLimit(ctx.user.subscriptionTier, "whatsapp");
+      if (ctx.user.whatsappSeqGeneratedCount >= limit) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: `You've reached your monthly limit of ${limit} WhatsApp sequences. Upgrade to generate more.`,
+        });
+      }
 
       // Get service details
       const [service] = await db

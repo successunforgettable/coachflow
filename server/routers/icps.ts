@@ -4,6 +4,8 @@ import { getDb } from "../db";
 import { idealCustomerProfiles, services } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { invokeLLM } from "../_core/llm";
+import { getQuotaLimit } from "../quotaLimits";
+import { TRPCError } from "@trpc/server";
 
 const generateICPSchema = z.object({
   serviceId: z.number(),
@@ -89,6 +91,15 @@ export const icpsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
+
+      // Check quota limit
+      const limit = getQuotaLimit(ctx.user.subscriptionTier, "icp");
+      if (ctx.user.icpGeneratedCount >= limit) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: `You've reached your monthly limit of ${limit} ICP generations. Upgrade to generate more.`,
+        });
+      }
 
       // Get service details
       const [service] = await db

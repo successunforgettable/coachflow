@@ -14,6 +14,8 @@ import { getDb } from "../db";
 import { services } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
+import { getQuotaLimit } from "../quotaLimits";
+import { TRPCError } from "@trpc/server";
 
 /**
  * HVCO Titles Router - Kong Parity
@@ -44,6 +46,15 @@ export const hvcoRouter = router({
     .mutation(async ({ ctx, input }) => {
       const { user } = ctx;
       const countMultiplier = input.beastMode ? 3 : 1; // Beast Mode generates 3x more
+      
+      // Check quota limit
+      const limit = getQuotaLimit(user.subscriptionTier, "hvco");
+      if (user.hvcoGeneratedCount >= limit) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: `You've reached your monthly limit of ${limit} HVCO title sets. Upgrade to generate more.`,
+        });
+      }
       
       // Get service details for context
       const db = await getDb();

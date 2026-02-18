@@ -3,6 +3,47 @@ import { stripe } from "./client";
 import { getDb } from "../db";
 import { users } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
+import { SUBSCRIPTION_TIERS } from "./products";
+
+/**
+ * Detect tier from Stripe price ID
+ */
+function getTierFromPriceId(priceId: string): "pro" | "agency" | null {
+  if (
+    priceId === SUBSCRIPTION_TIERS.PRO.stripePriceIdMonthly ||
+    priceId === SUBSCRIPTION_TIERS.PRO.stripePriceIdYearly
+  ) {
+    return "pro";
+  }
+  if (
+    priceId === SUBSCRIPTION_TIERS.AGENCY.stripePriceIdMonthly ||
+    priceId === SUBSCRIPTION_TIERS.AGENCY.stripePriceIdYearly
+  ) {
+    return "agency";
+  }
+  return null;
+}
+
+/**
+ * Reset all quota counts to 0 (called when tier changes)
+ */
+function getQuotaResetFields() {
+  const resetDate = new Date();
+  resetDate.setMonth(resetDate.getMonth() + 1); // Reset in 1 month
+  
+  return {
+    headlineGeneratedCount: 0,
+    hvcoGeneratedCount: 0,
+    heroMechanismGeneratedCount: 0,
+    icpGeneratedCount: 0,
+    adCopyGeneratedCount: 0,
+    emailSequenceGeneratedCount: 0,
+    whatsappSequenceGeneratedCount: 0,
+    landingPageGeneratedCount: 0,
+    offerGeneratedCount: 0,
+    usageResetAt: resetDate,
+  };
+}
 
 export async function handleStripeWebhook(req: Request, res: Response) {
   const sig = req.headers["stripe-signature"];
@@ -82,6 +123,17 @@ export async function handleStripeWebhook(req: Request, res: Response) {
           break;
         }
 
+        // Detect tier from price ID
+        const priceId = (subscription as any).items?.data?.[0]?.price?.id;
+        const newTier = priceId ? getTierFromPriceId(priceId) : null;
+
+        // Get current user to check if tier changed
+        const [currentUser] = await db
+          .select()
+          .from(users)
+          .where(eq(users.id, userId))
+          .limit(1);
+
         // Map Stripe status to our status
         let status: "active" | "canceled" | "past_due" | "trialing" = "active";
         if (subscription.status === "trialing") status = "trialing";
@@ -92,13 +144,23 @@ export async function handleStripeWebhook(req: Request, res: Response) {
           ? new Date((subscription as any).current_period_end * 1000)
           : null;
 
+        // Build update object
+        const updateData: any = {
+          subscriptionStatus: status,
+          subscriptionEndsAt,
+          updatedAt: new Date(),
+        };
+
+        // If tier changed, update tier and reset quotas
+        if (newTier && currentUser && newTier !== currentUser.subscriptionTier) {
+          console.log(`[Webhook] Tier change detected: ${currentUser.subscriptionTier} → ${newTier}`);
+          updateData.subscriptionTier = newTier;
+          Object.assign(updateData, getQuotaResetFields());
+        }
+
         await db
           .update(users)
-          .set({
-            subscriptionStatus: status,
-            subscriptionEndsAt,
-            updatedAt: new Date(),
-          })
+          .set(updateData)
           .where(eq(users.id, userId));
 
         console.log(`[Webhook] Subscription updated for user ${userId}`);

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { QuotaProgressBar } from "@/components/QuotaProgressBar";
+import { UpgradePrompt } from "@/components/UpgradePrompt";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -74,6 +75,10 @@ export default function HeadlinesNew() {
 
   const { data: authData } = trpc.auth.me.useQuery();
 
+  // Check if user has reached quota limit
+  const quotaLimit = authData?.subscriptionTier === "agency" ? 999 : 6;
+  const isQuotaExceeded = (authData?.headlineGeneratedCount || 0) >= quotaLimit;
+
   return (
     <div className="container max-w-4xl py-8">
       {/* Header */}
@@ -95,9 +100,21 @@ export default function HeadlinesNew() {
         <div className="mb-6">
           <QuotaProgressBar
             used={authData.headlineGeneratedCount}
-            limit={50}
+            limit={quotaLimit}
             label="Headlines Quota"
             resetDate={authData.usageResetAt ? new Date(authData.usageResetAt) : undefined}
+          />
+        </div>
+      )}
+
+      {/* Upgrade Prompt */}
+      {authData && isQuotaExceeded && authData.subscriptionTier && (
+        <div className="mb-6">
+          <UpgradePrompt
+            generatorName="Headlines"
+            currentTier={authData.subscriptionTier}
+            used={authData.headlineGeneratedCount}
+            limit={quotaLimit}
           />
         </div>
       )}
@@ -216,7 +233,7 @@ export default function HeadlinesNew() {
               <Button
                 type="submit"
                 className="w-full bg-green-600 hover:bg-green-700 active-press"
-                disabled={generateMutation.isPending}
+                disabled={generateMutation.isPending || isQuotaExceeded}
               >
                 {generateMutation.isPending ? (
                   <>
