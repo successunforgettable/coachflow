@@ -267,7 +267,7 @@ export default function ICPGenerator() {
               <Button
                 onClick={handleGenerate}
                 disabled={generateMutation.isPending || !selectedServiceId || !icpName.trim()}
-                className="w-full bg-primary hover:bg-primary/90"
+                className="w-full bg-green-600 hover:bg-green-700"
               >
                 {generateMutation.isPending ? (
                   <>
@@ -375,7 +375,7 @@ export default function ICPGenerator() {
                         <Button
                           size="sm"
                           onClick={handleDownloadPDF}
-                          className="bg-primary hover:bg-primary/90"
+                          className="bg-green-600 hover:bg-green-700"
                         >
                           <Download className="w-4 h-4 mr-2" />
                           Download PDF
@@ -384,7 +384,7 @@ export default function ICPGenerator() {
                           size="sm"
                           onClick={handleGenerateMore}
                           disabled={generateMoreMutation.isPending}
-                          className="bg-primary hover:bg-primary/90"
+                          className="bg-green-600 hover:bg-green-700"
                         >
                           {generateMoreMutation.isPending ? "Generating..." : "+15 More Like This"}
                         </Button>

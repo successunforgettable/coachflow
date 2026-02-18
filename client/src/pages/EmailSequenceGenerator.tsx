@@ -189,7 +189,7 @@ export default function EmailSequenceGenerator() {
                     </div>
                   </div>
                 </div>
-                <Button onClick={() => serviceId && generateMutation.mutate({ serviceId, sequenceType, name: `${sequenceType} Sequence` })} disabled={generateMutation.isPending || !serviceId} className="w-full">
+                <Button onClick={() => serviceId && generateMutation.mutate({ serviceId, sequenceType, name: `${sequenceType} Sequence` })} disabled={generateMutation.isPending || !serviceId} className="w-full bg-green-600 hover:bg-green-700">
                   {generateMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Generating...</> : "Generate Sequence"}
                 </Button>
               </CardContent>
@@ -270,7 +270,7 @@ export default function EmailSequenceGenerator() {
                           size="sm"
                           onClick={() => handleGenerateMore(seq)}
                           disabled={generateMoreMutation.isPending}
-                          className="bg-primary hover:bg-primary/90"
+                          className="bg-green-600 hover:bg-green-700"
                         >
                           {generateMoreMutation.isPending ? "Generating..." : "+15 More Like This"}
                         </Button>

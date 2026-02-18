@@ -537,7 +537,7 @@ export default function AdCopyGenerator() {
                         </div>
                         <div className="flex gap-2">
                           <Link href={`/ad-copy/${adSet.adSetId}`}>
-                            <Button size="sm" variant="outline" className="active-press">
+                            <Button size="sm" className="bg-green-600 hover:bg-green-700 active-press">
                               <Eye className="w-4 h-4 mr-2" />
                               View
                             </Button>

@@ -439,7 +439,7 @@ export default function HeroMechanismsNew() {
             <Button
               type="submit"
               disabled={generateMutation.isPending}
-              className="bg-primary hover:bg-primary/90 active-press"
+              className="bg-green-600 hover:bg-green-700 active-press"
             >
               {generateMutation.isPending && (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />

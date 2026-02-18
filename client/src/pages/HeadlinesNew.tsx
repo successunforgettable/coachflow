@@ -200,7 +200,7 @@ export default function HeadlinesNew() {
             <div>
               <Button
                 type="submit"
-                className="w-full bg-purple-600 hover:bg-purple-700 active-press"
+                className="w-full bg-green-600 hover:bg-green-700 active-press"
                 disabled={generateMutation.isPending}
               >
                 {generateMutation.isPending ? (
