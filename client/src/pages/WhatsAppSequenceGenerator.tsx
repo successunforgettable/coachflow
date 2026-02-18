@@ -8,6 +8,7 @@ import { getLoginUrl } from "@/const";
 import { ArrowLeft, Copy, Loader2, MessageCircle, Star, Trash2, Download } from "lucide-react";
 import { SkeletonCardList } from "@/components/SkeletonCard";
 import { useState } from "react";
+import { QuotaProgressBar } from "@/components/QuotaProgressBar";
 import { Link } from "wouter";
 import { toast } from "sonner";
 import { QuotaIndicator } from "@/components/QuotaIndicator";
@@ -122,9 +123,19 @@ export default function WhatsAppSequenceGenerator() {
     return null;
   }
 
+  const { data: authData } = trpc.auth.me.useQuery();
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-4">
+        {authData && (
+          <QuotaProgressBar
+            used={authData.whatsappSeqGeneratedCount}
+            limit={50}
+            label="WhatsApp Sequences Quota"
+            resetDate={authData.usageResetAt ? new Date(authData.usageResetAt) : undefined}
+          />
+        )}
         <QuotaIndicator generatorType="whatsappSeq" />
       </div>
       <PageHeader 

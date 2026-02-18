@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { QuotaProgressBar } from "@/components/QuotaProgressBar";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -163,6 +164,8 @@ export default function HeroMechanismsNew() {
     });
   };
 
+  const { data: authData } = trpc.auth.me.useQuery();
+
   return (
     <div className="container max-w-3xl py-8">
       <div className="mb-8">
@@ -171,6 +174,18 @@ export default function HeroMechanismsNew() {
           Highlight the unique features and benefits that set your product apart
         </p>
       </div>
+
+      {/* Quota Progress Bar */}
+      {authData && (
+        <div className="mb-6">
+          <QuotaProgressBar
+            used={authData.heroMechanismGeneratedCount}
+            limit={50}
+            label="Hero Mechanisms Quota"
+            resetDate={authData.usageResetAt ? new Date(authData.usageResetAt) : undefined}
+          />
+        </div>
+      )}
 
       <Card className="p-6 animate-fade-in">
         <form onSubmit={handleSubmit} className="space-y-6">

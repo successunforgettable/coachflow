@@ -8,6 +8,7 @@ import { getLoginUrl } from "@/const";
 import { Loader2, Trash2, FileText } from "lucide-react";
 import { SkeletonCardList } from "@/components/SkeletonCard";
 import { useState } from "react";
+import { QuotaProgressBar } from "@/components/QuotaProgressBar";
 import { Link } from "wouter";
 import { toast } from "sonner";
 import { QuotaIndicator } from "@/components/QuotaIndicator";
@@ -103,11 +104,23 @@ export default function OffersGenerator() {
     );
   }
 
+  const { data: authData } = trpc.auth.me.useQuery();
+
   return (
     <div className="min-h-screen bg-background">
       <PageHeader title="Godfather Offers" backTo="/dashboard" />
       
       <div className="container max-w-7xl py-8">
+        {authData && (
+          <div className="mb-6">
+            <QuotaProgressBar
+              used={authData.offerGeneratedCount}
+              limit={50}
+              label="Offers Quota"
+              resetDate={authData.usageResetAt ? new Date(authData.usageResetAt) : undefined}
+            />
+          </div>
+        )}
         <QuotaIndicator generatorType="offer" />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">

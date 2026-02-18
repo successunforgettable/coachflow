@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
 import { getLoginUrl } from "@/const";
 import { useState } from "react";
+import { QuotaProgressBar } from "@/components/QuotaProgressBar";
 import { Loader2, Sparkles, Star, Trash2, Download } from "lucide-react";
 import { SkeletonCardList } from "@/components/SkeletonCard";
 import { Textarea } from "@/components/ui/textarea";
@@ -47,6 +48,7 @@ export default function ICPGenerator() {
   const [searchQuery, setSearchQuery] = useState("");
 
   // Queries
+  const { data: authData } = trpc.auth.me.useQuery();
   const { data: services } = trpc.services.list.useQuery(undefined, {
     enabled: isAuthenticated,
   });
@@ -198,7 +200,17 @@ export default function ICPGenerator() {
 
   return (
     <div className="container mx-auto py-8">
-
+      {/* Quota Progress Bar */}
+      {authData && (
+        <div className="mb-6">
+          <QuotaProgressBar
+            used={authData.icpGeneratedCount}
+            limit={50}
+            label="ICP Quota"
+            resetDate={authData.usageResetAt ? new Date(authData.usageResetAt) : undefined}
+          />
+        </div>
+      )}
 
       <div className="flex justify-between items-center mb-8">
         <div>

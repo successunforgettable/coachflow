@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { QuotaProgressBar } from "@/components/QuotaProgressBar";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -71,6 +72,8 @@ export default function HeadlinesNew() {
   const pressingProblemCharsLeft = 71 - formData.pressingProblem.length;
   const desiredOutcomeCharsLeft = 116 - formData.desiredOutcome.length;
 
+  const { data: authData } = trpc.auth.me.useQuery();
+
   return (
     <div className="container max-w-4xl py-8">
       {/* Header */}
@@ -86,6 +89,18 @@ export default function HeadlinesNew() {
           Create 25 high-converting headlines using 5 proven formulas
         </p>
       </div>
+
+      {/* Quota Progress Bar */}
+      {authData && (
+        <div className="mb-6">
+          <QuotaProgressBar
+            used={authData.headlineGeneratedCount}
+            limit={50}
+            label="Headlines Quota"
+            resetDate={authData.usageResetAt ? new Date(authData.usageResetAt) : undefined}
+          />
+        </div>
+      )}
 
       <form onSubmit={handleSubmit}>
         <Card className="p-6 animate-fade-in">

@@ -8,6 +8,7 @@ import { getLoginUrl } from "@/const";
 import { FileText, Loader2, Trash2 } from "lucide-react";
 import { SkeletonCardList } from "@/components/SkeletonCard";
 import { useState } from "react";
+import { QuotaProgressBar } from "@/components/QuotaProgressBar";
 import { Link } from "wouter";
 import { toast } from "sonner";
 import { QuotaIndicator } from "@/components/QuotaIndicator";
@@ -95,11 +96,23 @@ export default function LandingPageGenerator() {
     );
   }
 
+  const { data: authData } = trpc.auth.me.useQuery();
+
   return (
     <div className="min-h-screen bg-background">
       <PageHeader title="Landing Pages" backTo="/dashboard" />
       
       <div className="container max-w-7xl py-8">
+        {authData && (
+          <div className="mb-6">
+            <QuotaProgressBar
+              used={authData.landingPageGeneratedCount}
+              limit={50}
+              label="Landing Pages Quota"
+              resetDate={authData.usageResetAt ? new Date(authData.usageResetAt) : undefined}
+            />
+          </div>
+        )}
         <QuotaIndicator generatorType="landingPage" />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">

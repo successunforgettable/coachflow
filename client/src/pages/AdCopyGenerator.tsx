@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { QuotaProgressBar } from "@/components/QuotaProgressBar";
 import { useAuth } from "@/_core/hooks/useAuth";
 import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -183,9 +184,23 @@ export default function AdCopyGenerator() {
     );
   }
 
+  const { data: authData } = trpc.auth.me.useQuery();
+
   return (
     <div className="container mx-auto py-8">
       <PageHeader title="Ad Copy Generator" />
+
+      {/* Quota Progress Bar */}
+      {authData && (
+        <div className="mb-6">
+          <QuotaProgressBar
+            used={authData.adCopyGeneratedCount}
+            limit={50}
+            label="Ad Copy Quota"
+            resetDate={authData.usageResetAt ? new Date(authData.usageResetAt) : undefined}
+          />
+        </div>
+      )}
 
       <div className="flex justify-between items-center mb-8">
         <div>

@@ -597,6 +597,14 @@
 - [ ] Add quota limit validation (prevent generation if quota exceeded)
 - [ ] Apply to: Headlines, HVCO, Hero Mechanisms, ICP, Ad Copy, Email, WhatsApp, Landing Pages, Offers
 
+### Quota Progress Bars (Color-Coded Visual Indicators) - All Generators
+- [x] Create QuotaProgressBar component with color-coded warnings (green→yellow→red)
+- [x] Add progress bar to all 9 generator pages (Headlines, HVCO, Hero Mechanisms, ICP, Ad Copy, Email, WhatsApp, Landing Pages, Offers)
+- [x] Show visual progress: green (0-70%), yellow (71-90%), red (91-100%)
+- [x] Display "X/Y Used" text below progress bar
+- [x] Add tooltip with reset date on hover
+- [x] Test across all generators
+
 ### DESIGN/STYLING - Complete Polish
 - [ ] Dark Theme Consistency:
   - [ ] Verify #1a1a1a background on ALL pages
