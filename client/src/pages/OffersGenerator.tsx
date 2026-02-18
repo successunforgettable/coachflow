@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { trpc } from "@/lib/trpc";
 import { getLoginUrl } from "@/const";
 import { Loader2, Trash2, FileText } from "lucide-react";
+import { SkeletonCardList } from "@/components/SkeletonCard";
 import { useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
@@ -75,8 +76,15 @@ export default function OffersGenerator() {
 
   if (authLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="container max-w-7xl py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-1">
+            <div className="h-[600px] bg-card rounded-lg animate-pulse" />
+          </div>
+          <div className="lg:col-span-2">
+            <SkeletonCardList count={3} />
+          </div>
+        </div>
       </div>
     );
   }

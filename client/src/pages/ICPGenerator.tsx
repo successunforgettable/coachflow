@@ -10,6 +10,7 @@ import { trpc } from "@/lib/trpc";
 import { getLoginUrl } from "@/const";
 import { useState } from "react";
 import { Loader2, Sparkles, Star, Trash2, Download } from "lucide-react";
+import { SkeletonCardList } from "@/components/SkeletonCard";
 import { Textarea } from "@/components/ui/textarea";
 import { QuotaIndicator } from "@/components/QuotaIndicator";
 import { SearchBar } from "@/components/SearchBar";
@@ -168,8 +169,15 @@ export default function ICPGenerator() {
 
   if (authLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="container max-w-7xl py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-1">
+            <div className="h-[400px] bg-card rounded-lg animate-pulse" />
+          </div>
+          <div className="lg:col-span-2">
+            <SkeletonCardList count={3} />
+          </div>
+        </div>
       </div>
     );
   }
