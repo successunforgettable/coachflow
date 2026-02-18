@@ -297,10 +297,10 @@ export default function ICPGenerator() {
             <CardContent>
               {filteredICPs && filteredICPs.length > 0 ? (
                 <div className="space-y-2">
-                  {filteredICPs.map((icp) => (
+                  {filteredICPs.map((icp, index) => (
                     <div
                       key={icp.id}
-                      className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                      className={`p-3 rounded-lg border cursor-pointer transition-smooth animate-fade-in-up ${
                         selectedICPId === icp.id
                           ? "border-primary bg-primary/10"
                           : "border-border hover:border-primary/50"
@@ -317,6 +317,7 @@ export default function ICPGenerator() {
                         <Button
                           variant="ghost"
                           size="icon"
+                          className="active-press"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleDelete(icp.id);

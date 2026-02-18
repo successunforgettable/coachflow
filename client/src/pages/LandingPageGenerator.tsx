@@ -218,8 +218,12 @@ export default function LandingPageGenerator() {
               </Card>
             ) : (
               <div className="space-y-4">
-                {filteredPages?.map((page) => (
-                  <Card key={page.id} className="hover:shadow-lg transition-shadow">
+                {filteredPages?.map((page, index) => (
+                  <Card 
+                    key={page.id} 
+                    className="hover-lift transition-smooth animate-fade-in-up"
+                    style={{ animationDelay: `${index * 0.05}s` }}
+                  >
                     <CardHeader>
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
@@ -240,13 +244,14 @@ export default function LandingPageGenerator() {
                         </div>
                         <div className="flex gap-2">
                           <Link href={`/landing-pages/${page.id}`}>
-                            <Button size="sm" className="bg-green-600 hover:bg-green-700">
+                            <Button size="sm" className="bg-green-600 hover:bg-green-700 active-press">
                               View Landing Page
                             </Button>
                           </Link>
                           <Button
                             size="sm"
                             variant="destructive"
+                            className="active-press"
                             onClick={() => {
                               if (confirm("Delete this landing page?")) {
                                 deleteMutation.mutate({ id: page.id });

@@ -512,8 +512,12 @@ export default function AdCopyGenerator() {
             <CardContent>
               {filteredAdSets && filteredAdSets.length > 0 ? (
                 <div className="space-y-4">
-                  {filteredAdSets.map((adSet) => (
-                    <Card key={adSet.adSetId} className="p-4">
+                  {filteredAdSets.map((adSet, index) => (
+                    <Card 
+                      key={adSet.adSetId} 
+                      className="p-4 hover-lift transition-smooth animate-fade-in-up"
+                      style={{ animationDelay: `${index * 0.05}s` }}
+                    >
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
@@ -533,7 +537,7 @@ export default function AdCopyGenerator() {
                         </div>
                         <div className="flex gap-2">
                           <Link href={`/ad-copy/${adSet.adSetId}`}>
-                            <Button size="sm" variant="outline">
+                            <Button size="sm" variant="outline" className="active-press">
                               <Eye className="w-4 h-4 mr-2" />
                               View
                             </Button>
@@ -541,6 +545,7 @@ export default function AdCopyGenerator() {
                           <Button
                             size="sm"
                             variant="destructive"
+                            className="active-press"
                             onClick={() => deleteAdSetMutation.mutate({ adSetId: adSet.adSetId })}
                             disabled={deleteAdSetMutation.isPending}
                           >

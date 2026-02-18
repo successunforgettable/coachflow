@@ -213,8 +213,12 @@ export default function WhatsAppSequenceGenerator() {
                       msg.message?.toLowerCase().includes(searchQuery.toLowerCase())
                     )
                   )
-                  .map((seq) => (
-                  <Card key={seq.id}>
+                  .map((seq, index) => (
+                  <Card 
+                    key={seq.id}
+                    className="hover-lift transition-smooth animate-fade-in-up"
+                    style={{ animationDelay: `${index * 0.05}s` }}
+                  >
                     <CardHeader>
                       <div className="flex items-start justify-between">
                         <div>
@@ -232,10 +236,10 @@ export default function WhatsAppSequenceGenerator() {
                               </button>
                             ))}
                           </div>
-                          <Button variant="ghost" size="icon" onClick={() => handleDownloadPDF(seq)} title="Download PDF">
+                          <Button variant="ghost" size="icon" className="active-press" onClick={() => handleDownloadPDF(seq)} title="Download PDF">
                             <Download className="w-4 h-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate({ id: seq.id })}>
+                          <Button variant="ghost" size="icon" className="active-press" onClick={() => deleteMutation.mutate({ id: seq.id })}>
                             <Trash2 className="w-4 h-4 text-destructive" />
                           </Button>
                         </div>

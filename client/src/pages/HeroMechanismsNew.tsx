@@ -172,7 +172,7 @@ export default function HeroMechanismsNew() {
         </p>
       </div>
 
-      <Card className="p-6">
+      <Card className="p-6 animate-fade-in">
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Selected Product */}
           <div className="space-y-2">
@@ -439,7 +439,7 @@ export default function HeroMechanismsNew() {
             <Button
               type="submit"
               disabled={generateMutation.isPending}
-              className="bg-primary hover:bg-primary/90"
+              className="bg-primary hover:bg-primary/90 active-press"
             >
               {generateMutation.isPending && (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />

@@ -209,8 +209,12 @@ export default function OffersGenerator() {
               </Card>
             ) : (
               <div className="space-y-4">
-                {filteredOffers.map((offer) => (
-                  <Card key={offer.id} className="hover:border-purple-500/50 transition-colors">
+                {filteredOffers.map((offer, index) => (
+                  <Card 
+                    key={offer.id} 
+                    className="hover-lift transition-smooth animate-fade-in-up"
+                    style={{ animationDelay: `${index * 0.05}s` }}
+                  >
                     <CardHeader>
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
@@ -226,7 +230,7 @@ export default function OffersGenerator() {
                         </div>
                         <div className="flex items-center gap-2">
                           <Link href={`/offers/${offer.id}`}>
-                            <Button variant="default" size="sm" className="bg-purple-600 hover:bg-purple-700">
+                            <Button variant="default" size="sm" className="bg-purple-600 hover:bg-purple-700 active-press">
                               <FileText className="w-4 h-4 mr-2" />
                               View Offer
                             </Button>
@@ -234,6 +238,7 @@ export default function OffersGenerator() {
                           <Button
                             variant="ghost"
                             size="icon"
+                            className="active-press"
                             onClick={() => deleteMutation.mutate({ id: offer.id })}
                           >
                             <Trash2 className="w-4 h-4 text-destructive" />

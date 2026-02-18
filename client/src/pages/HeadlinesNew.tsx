@@ -76,7 +76,7 @@ export default function HeadlinesNew() {
       {/* Header */}
       <div className="mb-8">
         <Link href="/headlines">
-          <Button variant="ghost" size="sm" className="mb-4">
+          <Button variant="ghost" size="sm" className="mb-4 active-press">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Headlines
           </Button>
@@ -88,7 +88,7 @@ export default function HeadlinesNew() {
       </div>
 
       <form onSubmit={handleSubmit}>
-        <Card className="p-6">
+        <Card className="p-6 animate-fade-in">
           <div className="space-y-6">
             {/* Service Selection */}
             <div className="space-y-2">
@@ -200,7 +200,7 @@ export default function HeadlinesNew() {
             <div>
               <Button
                 type="submit"
-                className="w-full bg-purple-600 hover:bg-purple-700"
+                className="w-full bg-purple-600 hover:bg-purple-700 active-press"
                 disabled={generateMutation.isPending}
               >
                 {generateMutation.isPending ? (
