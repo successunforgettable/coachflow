@@ -93,8 +93,8 @@ export default function HVCOTitlesNew() {
     });
   };
 
-  const targetMarketCharsLeft = 100 - targetMarket.length;
-  const hvcoTopicCharsLeft = 800 - hvcoTopic.length;
+  const targetMarketCharsLeft = 52 - targetMarket.length;
+  const hvcoTopicCharsLeft = 72 - hvcoTopic.length;
 
   return (
     <div className="container max-w-3xl py-8">
@@ -149,8 +149,8 @@ export default function HVCOTitlesNew() {
               id="targetMarket"
               placeholder="e.g. Women over 45."
               value={targetMarket}
-              onChange={(e) => setTargetMarket(e.target.value.slice(0, 100))}
-              maxLength={100}
+              onChange={(e) => setTargetMarket(e.target.value.slice(0, 52))}
+              maxLength={52}
             />
             <p className="text-xs text-muted-foreground">
               {targetMarketCharsLeft} chars left
@@ -166,8 +166,8 @@ export default function HVCOTitlesNew() {
               id="hvcoTopic"
               placeholder="e.g. replacing a 9 to 5 income and retiring 8 to 15 years earlier through building an investment property portfolio."
               value={hvcoTopic}
-              onChange={(e) => setHvcoTopic(e.target.value.slice(0, 800))}
-              maxLength={800}
+              onChange={(e) => setHvcoTopic(e.target.value.slice(0, 72))}
+              maxLength={72}
               rows={6}
               className="resize-none"
             />

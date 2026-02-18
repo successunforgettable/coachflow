@@ -40,6 +40,8 @@ export default function ICPGenerator() {
   const { isAuthenticated, loading: authLoading } = useAuth();
   const [selectedServiceId, setSelectedServiceId] = useState<number | null>(null);
   const [icpName, setIcpName] = useState("");
+  
+  const icpNameCharsLeft = 100 - icpName.length;
   const [selectedICPId, setSelectedICPId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -236,12 +238,18 @@ export default function ICPGenerator() {
               </div>
 
               <div>
-                <Label htmlFor="icpName">ICP Name*</Label>
+                <div className="flex items-center justify-between mb-2">
+                  <Label htmlFor="icpName">ICP Name*</Label>
+                  <span className={`text-xs ${icpNameCharsLeft < 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
+                    {icpNameCharsLeft} chars left
+                  </span>
+                </div>
                 <Input
                   id="icpName"
                   placeholder="e.g., Tech-Savvy Millennial Entrepreneur"
                   value={icpName}
                   onChange={(e) => setIcpName(e.target.value)}
+                  maxLength={100}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
                   Examples: {ICP_NAME_EXAMPLES.slice(0, 3).join(", ")}

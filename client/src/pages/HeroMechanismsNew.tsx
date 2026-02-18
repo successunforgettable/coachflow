@@ -216,11 +216,11 @@ export default function HeroMechanismsNew() {
               id="targetMarket"
               placeholder="e.g. Women over 45."
               value={targetMarket}
-              onChange={(e) => setTargetMarket(e.target.value.slice(0, 100))}
-              maxLength={100}
+              onChange={(e) => setTargetMarket(e.target.value.slice(0, 52))}
+              maxLength={52}
             />
             <p className="text-xs text-muted-foreground">
-              {100 - targetMarket.length} chars left
+              {52 - targetMarket.length} chars left
             </p>
           </div>
 
@@ -233,13 +233,13 @@ export default function HeroMechanismsNew() {
               id="pressingProblem"
               placeholder="e.g. Weight gain/metabolism slowing down due to menopause."
               value={pressingProblem}
-              onChange={(e) => setPressingProblem(e.target.value.slice(0, 200))}
-              maxLength={200}
+              onChange={(e) => setPressingProblem(e.target.value.slice(0, 71))}
+              maxLength={71}
               rows={3}
               className="resize-none"
             />
             <p className="text-xs text-muted-foreground">
-              {200 - pressingProblem.length} chars left
+              {71 - pressingProblem.length} chars left
             </p>
             
             {/* Examples Carousel */}
@@ -261,13 +261,13 @@ export default function HeroMechanismsNew() {
               id="whyProblemExists"
               placeholder="e.g. They've relied on 'word of mouth' and referrals to get customers and grow their business."
               value={whyProblemExists}
-              onChange={(e) => setWhyProblemExists(e.target.value.slice(0, 300))}
-              maxLength={300}
+              onChange={(e) => setWhyProblemExists(e.target.value.slice(0, 150))}
+              maxLength={150}
               rows={4}
               className="resize-none"
             />
             <p className="text-xs text-muted-foreground">
-              {300 - whyProblemExists.length} chars left
+              {150 - whyProblemExists.length} chars left
             </p>
           </div>
 
@@ -280,13 +280,13 @@ export default function HeroMechanismsNew() {
               id="solutionsTried"
               placeholder="e.g. Agencies that promise them the world but deliver no results. SEO services, expensive pay-per-click advertising and complicated webinar funnels."
               value={solutionsTried}
-              onChange={(e) => setSolutionsTried(e.target.value.slice(0, 300))}
-              maxLength={300}
+              onChange={(e) => setSolutionsTried(e.target.value.slice(0, 150))}
+              maxLength={150}
               rows={4}
               className="resize-none"
             />
             <p className="text-xs text-muted-foreground">
-              {300 - solutionsTried.length} chars left
+              {150 - solutionsTried.length} chars left
             </p>
           </div>
 
@@ -299,13 +299,13 @@ export default function HeroMechanismsNew() {
               id="whySolutionsFail"
               placeholder="e.g. They either take too long to get results, are far too expensive and complicated to set up and the leads and customers they generate are low-quality."
               value={whySolutionsFail}
-              onChange={(e) => setWhySolutionsFail(e.target.value.slice(0, 300))}
-              maxLength={300}
+              onChange={(e) => setWhySolutionsFail(e.target.value.slice(0, 150))}
+              maxLength={150}
               rows={4}
               className="resize-none"
             />
             <p className="text-xs text-muted-foreground">
-              {300 - whySolutionsFail.length} chars left
+              {150 - whySolutionsFail.length} chars left
             </p>
           </div>
 
@@ -359,13 +359,13 @@ export default function HeroMechanismsNew() {
               id="desiredOutcome"
               placeholder="e.g. Being slim, sexy, desirable, impressing their husband, looking like their younger slim self"
               value={desiredOutcome}
-              onChange={(e) => setDesiredOutcome(e.target.value.slice(0, 200))}
-              maxLength={200}
+              onChange={(e) => setDesiredOutcome(e.target.value.slice(0, 116))}
+              maxLength={116}
               rows={3}
               className="resize-none"
             />
             <p className="text-xs text-muted-foreground">
-              {200 - desiredOutcome.length} chars left
+              {116 - desiredOutcome.length} chars left
             </p>
           </div>
 
@@ -378,13 +378,13 @@ export default function HeroMechanismsNew() {
               id="credibleAuthority"
               placeholder="e.g. Award-Winning Author and Mind Coach"
               value={credibleAuthority}
-              onChange={(e) => setCredibleAuthority(e.target.value.slice(0, 200))}
-              maxLength={200}
+              onChange={(e) => setCredibleAuthority(e.target.value.slice(0, 70))}
+              maxLength={70}
               rows={3}
               className="resize-none"
             />
             <p className="text-xs text-muted-foreground">
-              {200 - credibleAuthority.length} chars left
+              {70 - credibleAuthority.length} chars left
             </p>
             <button
               type="button"
@@ -417,13 +417,13 @@ export default function HeroMechanismsNew() {
               id="socialProof"
               placeholder="i.e. GQ, Elle, Vogue & Forbes"
               value={socialProof}
-              onChange={(e) => setSocialProof(e.target.value.slice(0, 200))}
-              maxLength={200}
+              onChange={(e) => setSocialProof(e.target.value.slice(0, 100))}
+              maxLength={100}
               rows={3}
               className="resize-none"
             />
             <p className="text-xs text-muted-foreground">
-              {200 - socialProof.length} chars left
+              {100 - socialProof.length} chars left
             </p>
           </div>
 

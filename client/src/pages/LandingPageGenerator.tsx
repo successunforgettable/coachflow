@@ -19,6 +19,9 @@ export default function LandingPageGenerator() {
   const [serviceId, setServiceId] = useState<number | null>(null);
   const [avatarName, setAvatarName] = useState("");
   const [avatarDescription, setAvatarDescription] = useState("");
+  
+  const avatarNameCharsLeft = 50 - avatarName.length;
+  const avatarDescriptionCharsLeft = 100 - avatarDescription.length;
   const [searchQuery, setSearchQuery] = useState("");
 
   const { data: services } = trpc.services.list.useQuery(undefined, { enabled: isAuthenticated });
@@ -122,12 +125,18 @@ export default function LandingPageGenerator() {
                 </div>
 
                 <div>
-                  <Label htmlFor="avatarName">Dream Buyer Avatar Name (Optional)</Label>
+                  <div className="flex items-center justify-between mb-2">
+                    <Label htmlFor="avatarName">Dream Buyer Avatar Name (Optional)</Label>
+                    <span className={`text-xs ${avatarNameCharsLeft < 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
+                      {avatarNameCharsLeft} chars left
+                    </span>
+                  </div>
                   <Input
                     id="avatarName"
                     value={avatarName}
                     onChange={(e) => setAvatarName(e.target.value)}
                     placeholder="e.g., Amir from Abu Dhabi"
+                    maxLength={50}
                   />
                   <p className="text-xs text-muted-foreground mt-1">
                     Personalizes the landing page copy
@@ -135,12 +144,18 @@ export default function LandingPageGenerator() {
                 </div>
 
                 <div>
-                  <Label htmlFor="avatarDescription">Avatar Description (Optional)</Label>
+                  <div className="flex items-center justify-between mb-2">
+                    <Label htmlFor="avatarDescription">Avatar Description (Optional)</Label>
+                    <span className={`text-xs ${avatarDescriptionCharsLeft < 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
+                      {avatarDescriptionCharsLeft} chars left
+                    </span>
+                  </div>
                   <Input
                     id="avatarDescription"
                     value={avatarDescription}
                     onChange={(e) => setAvatarDescription(e.target.value)}
                     placeholder="e.g., Expat Professional"
+                    maxLength={100}
                   />
                   <p className="text-xs text-muted-foreground mt-1">
                     Adds context for better targeting
