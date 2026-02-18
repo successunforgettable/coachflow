@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import PageHeader from "@/components/PageHeader";
+import { UpgradePrompt } from "@/components/UpgradePrompt";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -107,6 +108,9 @@ export default function OffersGenerator() {
 
   const { data: authData } = trpc.auth.me.useQuery();
 
+  // Check if user has reached quota limit
+  const isQuotaExceeded = !!(authData && quotaLimits && authData.offerGeneratedCount >= quotaLimits.offers);
+
   return (
     <div className="min-h-screen bg-background">
       <PageHeader title="Godfather Offers" backTo="/dashboard" />
@@ -119,6 +123,16 @@ export default function OffersGenerator() {
               limit={quotaLimits?.offers || 50}
               label="Offers Quota"
               resetDate={authData.usageResetAt ? new Date(authData.usageResetAt) : undefined}
+            />
+          </div>
+        )}
+        {authData && authData.subscriptionTier && quotaLimits && authData.offerGeneratedCount >= quotaLimits.offers && (
+          <div className="mb-6">
+            <UpgradePrompt
+              generatorName="Offers"
+              currentTier={authData.subscriptionTier}
+              used={authData.offerGeneratedCount}
+              limit={quotaLimits.offers}
             />
           </div>
         )}
@@ -185,7 +199,7 @@ export default function OffersGenerator() {
 
                 <Button
                   onClick={handleGenerate}
-                  disabled={!serviceId || generateMutation.isPending}
+                  disabled={!serviceId || generateMutation.isPending || isQuotaExceeded}
                   className="w-full bg-purple-600 hover:bg-purple-700"
                 >
                   {generateMutation.isPending ? (

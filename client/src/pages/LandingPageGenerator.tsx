@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import PageHeader from "@/components/PageHeader";
+import { UpgradePrompt } from "@/components/UpgradePrompt";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -99,6 +100,9 @@ export default function LandingPageGenerator() {
 
   const { data: authData } = trpc.auth.me.useQuery();
 
+  // Check if user has reached quota limit
+  const isQuotaExceeded = !!(authData && quotaLimits && authData.landingPageGeneratedCount >= quotaLimits.landingPages);
+
   return (
     <div className="min-h-screen bg-background">
       <PageHeader title="Landing Pages" backTo="/dashboard" />
@@ -111,6 +115,16 @@ export default function LandingPageGenerator() {
               limit={quotaLimits?.landingPages || 50}
               label="Landing Pages Quota"
               resetDate={authData.usageResetAt ? new Date(authData.usageResetAt) : undefined}
+            />
+          </div>
+        )}
+        {authData && authData.subscriptionTier && quotaLimits && authData.landingPageGeneratedCount >= quotaLimits.landingPages && (
+          <div className="mb-6">
+            <UpgradePrompt
+              generatorName="Landing Pages"
+              currentTier={authData.subscriptionTier}
+              used={authData.landingPageGeneratedCount}
+              limit={quotaLimits.landingPages}
             />
           </div>
         )}
@@ -186,7 +200,7 @@ export default function LandingPageGenerator() {
 
                 <Button
                   onClick={handleGenerate}
-                  disabled={!serviceId || generateMutation.isPending}
+                  disabled={!serviceId || generateMutation.isPending || isQuotaExceeded}
                   className="w-full bg-purple-600 hover:bg-purple-700"
                 >
                   {generateMutation.isPending ? (

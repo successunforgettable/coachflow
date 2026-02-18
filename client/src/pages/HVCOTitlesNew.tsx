@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { QuotaProgressBar } from "@/components/QuotaProgressBar";
+import { UpgradePrompt } from "@/components/UpgradePrompt";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -100,6 +101,9 @@ export default function HVCOTitlesNew() {
   const { data: authData } = trpc.auth.me.useQuery();
   const { data: quotaLimits } = trpc.auth.getQuotaLimits.useQuery();
 
+  // Check if user has reached quota limit
+  const isQuotaExceeded = !!(authData && quotaLimits && authData.hvcoGeneratedCount >= quotaLimits.hvco);
+
   return (
     <div className="container max-w-3xl py-8">
       <div className="mb-8">
@@ -117,6 +121,18 @@ export default function HVCOTitlesNew() {
             limit={quotaLimits?.hvco || 50}
             label="HVCO Titles Quota"
             resetDate={authData.usageResetAt ? new Date(authData.usageResetAt) : undefined}
+          />
+        </div>
+      )}
+
+      {/* Upgrade Prompt */}
+      {authData && authData.subscriptionTier && quotaLimits && authData.hvcoGeneratedCount >= quotaLimits.hvco && (
+        <div className="mb-6">
+          <UpgradePrompt
+            generatorName="HVCO Titles"
+            currentTier={authData.subscriptionTier}
+            used={authData.hvcoGeneratedCount}
+            limit={quotaLimits.hvco}
           />
         </div>
       )}
@@ -212,7 +228,7 @@ export default function HVCOTitlesNew() {
           <div className="flex items-center gap-4">
             <Button
               type="submit"
-              disabled={generateMutation.isPending}
+              disabled={generateMutation.isPending || isQuotaExceeded}
               className="bg-green-600 hover:bg-green-700 active-press"
             >
               {generateMutation.isPending && (

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { QuotaProgressBar } from "@/components/QuotaProgressBar";
+import { UpgradePrompt } from "@/components/UpgradePrompt";
 import { useAuth } from "@/_core/hooks/useAuth";
 import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -187,6 +188,9 @@ export default function AdCopyGenerator() {
 
   const { data: authData } = trpc.auth.me.useQuery();
 
+  // Check if user has reached quota limit
+  const isQuotaExceeded = !!(authData && quotaLimits && authData.adCopyGeneratedCount >= quotaLimits.adCopy);
+
   return (
     <div className="container mx-auto py-8">
       <PageHeader title="Ad Copy Generator" />
@@ -199,6 +203,18 @@ export default function AdCopyGenerator() {
             limit={quotaLimits?.adCopy || 50}
             label="Ad Copy Quota"
             resetDate={authData.usageResetAt ? new Date(authData.usageResetAt) : undefined}
+          />
+        </div>
+      )}
+
+      {/* Upgrade Prompt */}
+      {authData && authData.subscriptionTier && quotaLimits && authData.adCopyGeneratedCount >= quotaLimits.adCopy && (
+        <div className="mb-6">
+          <UpgradePrompt
+            generatorName="Ad Copy"
+            currentTier={authData.subscriptionTier}
+            used={authData.adCopyGeneratedCount}
+            limit={quotaLimits.adCopy}
           />
         </div>
       )}
@@ -495,7 +511,7 @@ export default function AdCopyGenerator() {
 
               <Button
                 onClick={handleGenerate}
-                disabled={generateMutation.isPending}
+                disabled={generateMutation.isPending || isQuotaExceeded}
                 className="w-full bg-primary hover:bg-primary/90"
               >
                 {generateMutation.isPending ? (

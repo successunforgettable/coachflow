@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 
+import { UpgradePrompt } from "@/components/UpgradePrompt";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -53,6 +54,9 @@ export default function ICPGenerator() {
   const { data: services } = trpc.services.list.useQuery(undefined, {
     enabled: isAuthenticated,
   });
+
+  // Check if user has reached quota limit
+  const isQuotaExceeded = !!(authData && quotaLimits && authData.icpGeneratedCount >= quotaLimits.icp);
 
   const { data: icps, refetch: refetchICPs } = trpc.icps.list.useQuery(
     { serviceId: selectedServiceId || undefined },
@@ -213,6 +217,18 @@ export default function ICPGenerator() {
         </div>
       )}
 
+      {/* Upgrade Prompt */}
+      {authData && authData.subscriptionTier && quotaLimits && authData.icpGeneratedCount >= quotaLimits.icp && (
+        <div className="mb-6">
+          <UpgradePrompt
+            generatorName="ICP"
+            currentTier={authData.subscriptionTier}
+            used={authData.icpGeneratedCount}
+            limit={quotaLimits.icp}
+          />
+        </div>
+      )}
+
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Ideal Customer Profile Generator</h1>
@@ -279,7 +295,7 @@ export default function ICPGenerator() {
 
               <Button
                 onClick={handleGenerate}
-                disabled={generateMutation.isPending || !selectedServiceId || !icpName.trim()}
+                disabled={generateMutation.isPending || !selectedServiceId || !icpName.trim() || isQuotaExceeded}
                 className="w-full bg-green-600 hover:bg-green-700"
               >
                 {generateMutation.isPending ? (

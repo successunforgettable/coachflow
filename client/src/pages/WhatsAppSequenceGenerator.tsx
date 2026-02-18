@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import PageHeader from "@/components/PageHeader";
+import { UpgradePrompt } from "@/components/UpgradePrompt";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -126,6 +127,9 @@ export default function WhatsAppSequenceGenerator() {
 
   const { data: authData } = trpc.auth.me.useQuery();
 
+  // Check if user has reached quota limit
+  const isQuotaExceeded = !!(authData && quotaLimits && authData.whatsappSeqGeneratedCount >= quotaLimits.whatsapp);
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-4">
@@ -136,6 +140,16 @@ export default function WhatsAppSequenceGenerator() {
             label="WhatsApp Sequences Quota"
             resetDate={authData.usageResetAt ? new Date(authData.usageResetAt) : undefined}
           />
+        )}
+        {authData && authData.subscriptionTier && quotaLimits && authData.whatsappSeqGeneratedCount >= quotaLimits.whatsapp && (
+          <div className="mt-4">
+            <UpgradePrompt
+              generatorName="WhatsApp Sequences"
+              currentTier={authData.subscriptionTier}
+              used={authData.whatsappSeqGeneratedCount}
+              limit={quotaLimits.whatsapp}
+            />
+          </div>
         )}
         <QuotaIndicator generatorType="whatsappSeq" />
       </div>
@@ -195,7 +209,7 @@ export default function WhatsAppSequenceGenerator() {
                     </div>
                   </div>
                 </div>
-                  <Button onClick={() => serviceId && generateMutation.mutate({ serviceId, sequenceType, name: `${sequenceType} Sequence` })} disabled={generateMutation.isPending || !serviceId} className="w-full bg-green-600 hover:bg-green-700">
+                  <Button onClick={() => serviceId && generateMutation.mutate({ serviceId, sequenceType, name: `${sequenceType} Sequence` })} disabled={generateMutation.isPending || !serviceId || isQuotaExceeded} className="w-full bg-green-600 hover:bg-green-700">
                   {generateMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Generating...</> : "Generate Sequence"}
                 </Button>
               </CardContent>

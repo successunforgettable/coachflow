@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import { QuotaSummaryCard } from "@/components/QuotaSummaryCard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
 import { getLoginUrl } from "@/const";
@@ -47,6 +48,9 @@ export default function Dashboard() {
   const { data: whatsappSequences } = trpc.whatsappSequences.list.useQuery(undefined, {
     enabled: isAuthenticated,
   });
+
+  const { data: authData } = trpc.auth.me.useQuery();
+  const { data: quotaLimits } = trpc.auth.getQuotaLimits.useQuery();
 
   const { data: landingPages } = trpc.landingPages.list.useQuery(undefined, {
     enabled: isAuthenticated,
@@ -226,6 +230,13 @@ export default function Dashboard() {
               Your all-in-one marketing automation platform for coaches, speakers, and consultants
             </p>
           </div>
+
+          {/* Quota Summary Card */}
+          {authData && quotaLimits && (
+            <div className="mb-8">
+              <QuotaSummaryCard authData={authData} quotaLimits={quotaLimits} />
+            </div>
+          )}
 
           {/* Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">

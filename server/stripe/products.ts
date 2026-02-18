@@ -12,6 +12,9 @@ export const SUBSCRIPTION_TIERS = {
     priceYearly: 490, // ~$41/month (2 months free)
     features: [
       "Unlimited services",
+      "6 headline generations/month",
+      "3 HVCO title generations/month",
+      "4 hero mechanism generations/month",
       "50 ICP generations/month",
       "100 ad copy variations/month",
       "20 email sequences/month",
@@ -29,6 +32,9 @@ export const SUBSCRIPTION_TIERS = {
     priceYearly: 1490, // ~$124/month (2 months free)
     features: [
       "Everything in Pro",
+      "Unlimited headlines",
+      "Unlimited HVCO titles",
+      "Unlimited hero mechanisms",
       "Unlimited ICP generations",
       "Unlimited ad copy variations",
       "Unlimited email sequences",
