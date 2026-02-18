@@ -12,6 +12,7 @@ import {
 } from "../db";
 import { headlines } from "../../drizzle/schema";
 import { TRPCError } from "@trpc/server";
+import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 
 // Kong parity: 5 formula types with exact prompt templates
 const FORMULA_PROMPTS = {
@@ -193,6 +194,9 @@ export const headlinesRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      // Check and reset quota if user's anniversary date has passed
+      await checkAndResetQuotaIfNeeded(ctx.user.id);
+
       // Check quota (Pro plan: 6 per month)
       const maxHeadlines = ctx.user.subscriptionTier === "agency" ? 20 : 6;
       if (ctx.user.headlineGeneratedCount >= maxHeadlines) {

@@ -16,6 +16,7 @@ import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
+import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 
 /**
  * Hero Mechanisms Router - Kong Parity
@@ -54,6 +55,9 @@ export const heroMechanismsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const { user } = ctx;
       
+      // Check and reset quota if user's anniversary date has passed
+      await checkAndResetQuotaIfNeeded(ctx.user.id);
+
       // Check quota limit
       const limit = getQuotaLimit(user.subscriptionTier, "heroMechanisms");
       if (user.heroMechanismGeneratedCount >= limit) {

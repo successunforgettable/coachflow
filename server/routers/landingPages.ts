@@ -1,5 +1,8 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
+import { TRPCError } from "@trpc/server";
+import { checkAndResetQuotaIfNeeded } from "../quotaReset";
+import { getQuotaLimit } from "../quotaLimits";
 import { getDb } from "../db";
 import { landingPages, services, users } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
@@ -83,6 +86,9 @@ export const landingPagesRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
+
+      // Check and reset quota if user's anniversary date has passed
+      await checkAndResetQuotaIfNeeded(ctx.user.id);
 
       // Check quota
       const [user] = await db

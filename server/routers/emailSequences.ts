@@ -6,6 +6,7 @@ import { eq, and, desc } from "drizzle-orm";
 import { invokeLLM } from "../_core/llm";
 import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
+import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 
 const generateEmailSequenceSchema = z.object({
   serviceId: z.number(),
@@ -93,6 +94,9 @@ export const emailSequencesRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
+
+      // Check and reset quota if user's anniversary date has passed
+      await checkAndResetQuotaIfNeeded(ctx.user.id);
 
       // Check quota limit
       const limit = getQuotaLimit(ctx.user.subscriptionTier, "email");

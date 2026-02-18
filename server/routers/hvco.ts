@@ -16,6 +16,7 @@ import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
+import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 
 /**
  * HVCO Titles Router - Kong Parity
@@ -46,6 +47,9 @@ export const hvcoRouter = router({
     .mutation(async ({ ctx, input }) => {
       const { user } = ctx;
       const countMultiplier = input.beastMode ? 3 : 1; // Beast Mode generates 3x more
+      
+      // Check and reset quota if user's anniversary date has passed
+      await checkAndResetQuotaIfNeeded(user.id);
       
       // Check quota limit
       const limit = getQuotaLimit(user.subscriptionTier, "hvco");
