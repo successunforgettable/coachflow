@@ -31,6 +31,10 @@ import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { Shield, Users, TrendingUp, Search, RefreshCw, Edit } from "lucide-react";
 import { useLocation } from "wouter";
+import { FinancialMetricsCard } from "@/components/admin/FinancialMetricsCard";
+import { RevenueByTierChart } from "@/components/admin/RevenueByTierChart";
+import { RevenueChart } from "@/components/admin/RevenueChart";
+import { FailedPaymentsAlert } from "@/components/admin/FailedPaymentsAlert";
 
 export default function AdminDashboard() {
   const { user, loading: authLoading } = useAuth();
@@ -51,6 +55,8 @@ export default function AdminDashboard() {
   // Queries
   const { data: allUsers, refetch: refetchUsers } = trpc.admin.getAllUsers.useQuery();
   const { data: analytics } = trpc.admin.getAnalytics.useQuery();
+  const { data: activityMetrics } = trpc.admin.getUserActivityMetrics.useQuery();
+  const { data: churnRiskUsers } = trpc.admin.getChurnRiskUsers.useQuery();
 
   // Mutations
   const resetQuotaMutation = trpc.admin.resetUserQuota.useMutation({
@@ -130,6 +136,58 @@ export default function AdminDashboard() {
             <p className="text-muted-foreground mt-1">Manage users and quota limits</p>
           </div>
         </div>
+
+        {/* Phase 1: Financial Metrics */}
+        <div className="mb-8">
+          <FinancialMetricsCard />
+        </div>
+
+        {/* Phase 1: Failed Payments Alert */}
+        <div className="mb-8">
+          <FailedPaymentsAlert />
+        </div>
+
+        {/* Phase 1: Revenue Charts */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <RevenueChart />
+          <RevenueByTierChart />
+        </div>
+
+        {/* Phase 4: User Activity Metrics */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>User Activity</CardTitle>
+            <CardDescription>Active users over different time periods</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <p className="text-sm text-muted-foreground">Last 7 Days</p>
+                <p className="text-2xl font-bold">{activityMetrics?.activeUsers7d || 0}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Last 30 Days</p>
+                <p className="text-2xl font-bold">{activityMetrics?.activeUsers30d || 0}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Last 90 Days</p>
+                <p className="text-2xl font-bold">{activityMetrics?.activeUsers90d || 0}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Phase 4: Churn Risk Alert */}
+        {churnRiskUsers && (churnRiskUsers.inactiveUsers.length > 0 || churnRiskUsers.quotaLimitUsers.length > 0) && (
+          <Card className="mb-8 border-red-500">
+            <CardHeader>
+              <CardTitle className="text-red-500">⚠️ Churn Risk Alert</CardTitle>
+              <CardDescription>
+                {churnRiskUsers.inactiveUsers.length} inactive users (14+ days) | {churnRiskUsers.quotaLimitUsers.length} users hit quota limit
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        )}
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">

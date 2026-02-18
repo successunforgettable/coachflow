@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE admin_audit_log (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  admin_user_id INT NOT NULL,\n  action_type VARCHAR(50) NOT NULL,\n  target_user_id INT,\n  details JSON,\n  ip_address VARCHAR(45),\n  user_agent TEXT,\n  created_at TIMESTAMP DEFAULT NOW(),\n  INDEX idx_admin_user_id (admin_user_id),\n  INDEX idx_target_user_id (target_user_id),\n  INDEX idx_action_type (action_type),\n  INDEX idx_created_at (created_at),\n  FOREIGN KEY (admin_user_id) REFERENCES users(id) ON DELETE CASCADE,\n  FOREIGN KEY (target_user_id) REFERENCES users(id) ON DELETE SET NULL\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute CREATE TABLE admin_audit_log (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  admin_user_id INT NOT NULL,\n  action_type VARCHAR(50) NOT NULL,\n  target_user_id INT,\n  details JSON,\n  ip_address VARCHAR(45),\n  user_agent TEXT,\n  created_at TIMESTAMP DEFAULT NOW(),\n  INDEX idx_admin_user_id (admin_user_id),\n  INDEX idx_target_user_id (target_user_id),\n  INDEX idx_action_type (action_type),\n  INDEX idx_created_at (created_at),\n  FOREIGN KEY (admin_user_id) REFERENCES users(id) ON DELETE CASCADE,\n  FOREIGN KEY (target_user_id) REFERENCES users(id) ON DELETE SET NULL\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1658
+}

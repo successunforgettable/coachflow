@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS user_notes (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  user_id INT NOT NULL,\n  admin_user_id INT NOT NULL,\n  note TEXT NOT NULL,\n  created_at TIMESTAMP DEFAULT NOW(),\n  INDEX idx_user_id (user_id),\n  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,\n  FOREIGN KEY (admin_user_id) REFERENCES users(id) ON DELETE CASCADE\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute CREATE TABLE IF NOT EXISTS user_notes (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  user_id INT NOT NULL,\n  admin_user_id INT NOT NULL,\n  note TEXT NOT NULL,\n  created_at TIMESTAMP DEFAULT NOW(),\n  INDEX idx_user_id (user_id),\n  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,\n  FOREIGN KEY (admin_user_id) REFERENCES users(id) ON DELETE CASCADE\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1656
+}

@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE financial_metrics (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  metric_date DATE NOT NULL UNIQUE,\n  mrr DECIMAL(10, 2) NOT NULL,\n  arr DECIMAL(10, 2) NOT NULL,\n  active_subscriptions INT NOT NULL,\n  new_subscriptions INT NOT NULL,\n  churned_subscriptions INT NOT NULL,\n  revenue_trial DECIMAL(10, 2) DEFAULT 0,\n  revenue_pro DECIMAL(10, 2) DEFAULT 0,\n  revenue_agency DECIMAL(10, 2) DEFAULT 0,\n  created_at TIMESTAMP DEFAULT NOW(),\n  INDEX idx_metric_date (metric_date)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute CREATE TABLE financial_metrics (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  metric_date DATE NOT NULL UNIQUE,\n  mrr DECIMAL(10, 2) NOT NULL,\n  arr DECIMAL(10, 2) NOT NULL,\n  active_subscriptions INT NOT NULL,\n  new_subscriptions INT NOT NULL,\n  churned_subscriptions INT NOT NULL,\n  revenue_trial DECIMAL(10, 2) DEFAULT 0,\n  revenue_pro DECIMAL(10, 2) DEFAULT 0,\n  revenue_agency DECIMAL(10, 2) DEFAULT 0,\n  created_at TIMESTAMP DEFAULT NOW(),\n  INDEX idx_metric_date (metric_date)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1676
+}

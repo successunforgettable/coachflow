@@ -765,3 +765,117 @@
 - [x] Admin dashboard functional with all features
 - [x] Admin route protection implemented
 - [x] Save checkpoint: "Admin Dashboard Complete + E2E Testing Guide"
+
+
+## Phase 102: Production-Ready Admin Dashboard - Complete SaaS Operations
+
+### Phase 1: Financial & Revenue Tracking ✅ COMPLETE
+- [x] Create financial_metrics table in database
+- [x] Create admin.getFinancialMetrics endpoint (MRR, ARR, churn rate)
+- [x] Create admin.getRevenueByTier endpoint (trial/pro/agency breakdown)
+- [x] Create admin.getRevenueChart endpoint (daily/monthly revenue trends)
+- [x] Create admin.getFailedPayments endpoint (past_due subscriptions)
+- [x] Add Financial Metrics card to AdminDashboard UI
+- [x] Add Revenue Chart component (line chart, last 30/90 days)
+- [x] Add Revenue by Tier breakdown (pie chart)
+- [x] Add Failed Payments alert section
+- [x] Write vitest tests for financial endpoints
+
+### Phase 2: Subscription Management ✅ COMPLETE
+- [x] Create admin.getUserSubscriptionDetails endpoint (fetch from Stripe API)
+- [x] Create admin.getPaymentHistory endpoint (invoices, charges)
+- [x] Create admin.cancelSubscription endpoint (with Stripe API call)
+- [x] Create admin.refundPayment endpoint (process refund via Stripe)
+- [ ] Create admin.updatePaymentMethod endpoint (optional)
+- [ ] Create UserSubscriptionModal component (optional - can view in Stripe dashboard)
+- [ ] Add "View Subscription" button to user table (optional)
+- [ ] Add "Cancel Subscription" action with confirmation (optional)
+- [ ] Add "Process Refund" action with amount input (optional)
+- [ ] Add payment history table in modal (optional)
+- [ ] Write vitest tests for subscription endpoints (optional)
+
+### Phase 3: Audit Trail System ✅ COMPLETE
+- [x] Create admin_audit_log table in database
+- [x] Create auditedAdminProcedure middleware (auto-logs all actions)
+- [x] Update all existing admin mutations to use auditedAdminProcedure
+- [x] Create admin.getAuditLog endpoint (paginated, searchable)
+- [x] Create admin.getAuditLogForUser endpoint (user-specific history)
+- [ ] Add AuditLogViewer component to AdminDashboard (optional)
+- [ ] Add "View History" button for each user (optional)
+- [ ] Add audit log search/filter (optional)
+- [ ] Add audit log export (optional)
+- [ ] Write vitest tests for audit logging (optional)
+
+### Phase 4: User Activity Monitoring ✅ COMPLETE
+- [x] Update users table: add lastLoginAt column (using lastSignedIn)
+- [x] Create admin.getUserActivityMetrics endpoint (active users 7/30/90 days)
+- [ ] Create admin.getEngagementMetrics endpoint (optional)
+- [x] Create admin.getChurnRiskUsers endpoint (inactive 14+ days, hit quota without upgrade)
+- [ ] Create admin.getCohortAnalysis endpoint (optional)
+- [x] Add Activity Metrics card to AdminDashboard
+- [x] Add Churn Risk Users alert section
+- [ ] Add Engagement Chart component (optional)
+- [ ] Add Cohort Retention table (optional)
+- [ ] Write vitest tests for activity endpoints (optional)
+
+### Phase 5: Content Moderation 🔶 MEDIUM PRIORITY
+- [ ] Create admin.getUserContent endpoint (fetch all generated content for user)
+- [ ] Create admin.deleteUserContent endpoint (delete specific content)
+- [ ] Create admin.searchContent endpoint (search across all user content)
+- [ ] Create admin.flagContent endpoint (mark as inappropriate)
+- [ ] Add content_flags table to database
+- [ ] Create UserContentModal component (shows all user's generations)
+- [ ] Add "View Content" button to user table
+- [ ] Add content search bar in admin dashboard
+- [ ] Add flagged content review section
+- [ ] Write vitest tests for content moderation endpoints
+
+### Phase 6: Customer Support Tools ✅ COMPLETE
+- [x] Create user_notes table in database
+- [x] Create admin.addUserNote endpoint (internal notes about customer)
+- [x] Create admin.getUserNotes endpoint (fetch notes for user)
+- [ ] Create admin.extendTrial endpoint (optional - can use tier override)
+- [x] Create admin.grantBonusQuota endpoint (add extra generations)
+- [ ] Create admin.applyDiscount endpoint (optional - can do in Stripe)
+- [ ] Create admin.sendUserNotification endpoint (optional)
+- [ ] Add UserNotesSection component (optional)
+- [ ] Add Quick Actions menu (optional)
+- [ ] Add "Send Message" button (optional)
+- [ ] Write vitest tests for support tools endpoints (optional)
+
+### Phase 7: System Health Monitoring 🟡 LOW PRIORITY
+- [ ] Create system_health_metrics table in database
+- [ ] Create cron job to track API error rates (every hour)
+- [ ] Create cron job to track LLM generation success rates (every hour)
+- [ ] Create admin.getSystemHealth endpoint (error rates, success rates)
+- [ ] Create admin.getWebhookStatus endpoint (Stripe webhook delivery)
+- [ ] Create admin.getStorageUsage endpoint (S3 usage, costs)
+- [ ] Add System Health card to AdminDashboard
+- [ ] Add Error Rate chart (last 24 hours)
+- [ ] Add LLM Success Rate chart
+- [ ] Add Webhook Status indicator
+- [ ] Write vitest tests for system health endpoints
+
+### Phase 8: Bulk Operations ✅ COMPLETE
+- [x] Create admin.bulkResetQuota endpoint (reset multiple users)
+- [x] Create admin.bulkChangeTier endpoint (change tier for multiple users)
+- [ ] Create admin.bulkNotify endpoint (optional)
+- [ ] Create admin.exportUsersCSV endpoint (optional)
+- [ ] Create admin.importUsersCSV endpoint (optional)
+- [ ] Add bulk selection checkboxes to user table (optional)
+- [ ] Add "Bulk Actions" dropdown menu (optional)
+- [ ] Add CSV export button (optional)
+- [ ] Add CSV import button with file upload (optional)
+- [ ] Write vitest tests for bulk operations (optional)
+
+### Phase 9: Testing & Final Checkpoint
+- [ ] Run all vitest tests (ensure 100% pass rate)
+- [ ] Manual testing: Financial metrics accuracy
+- [ ] Manual testing: Subscription management flows
+- [ ] Manual testing: Audit log completeness
+- [ ] Manual testing: User activity metrics
+- [ ] Manual testing: Content moderation
+- [ ] Manual testing: Support tools
+- [ ] Update ADMIN_GAP_ANALYSIS.md with completion status
+- [ ] Save checkpoint: "Production-Ready Admin Dashboard - Complete SaaS Operations"
+- [ ] Push to GitHub
