@@ -98,6 +98,7 @@ export default function HVCOTitlesNew() {
   const hvcoTopicCharsLeft = 72 - hvcoTopic.length;
 
   const { data: authData } = trpc.auth.me.useQuery();
+  const { data: quotaLimits } = trpc.auth.getQuotaLimits.useQuery();
 
   return (
     <div className="container max-w-3xl py-8">
@@ -113,7 +114,7 @@ export default function HVCOTitlesNew() {
         <div className="mb-6">
           <QuotaProgressBar
             used={authData.hvcoGeneratedCount}
-            limit={50}
+            limit={quotaLimits?.hvco || 50}
             label="HVCO Titles Quota"
             resetDate={authData.usageResetAt ? new Date(authData.usageResetAt) : undefined}
           />

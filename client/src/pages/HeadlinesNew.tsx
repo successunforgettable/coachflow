@@ -74,9 +74,10 @@ export default function HeadlinesNew() {
   const desiredOutcomeCharsLeft = 116 - formData.desiredOutcome.length;
 
   const { data: authData } = trpc.auth.me.useQuery();
+  const { data: quotaLimits } = trpc.auth.getQuotaLimits.useQuery();
 
   // Check if user has reached quota limit
-  const quotaLimit = authData?.subscriptionTier === "agency" ? 999 : 6;
+  const quotaLimit = quotaLimits?.headlines || 50;
   const isQuotaExceeded = (authData?.headlineGeneratedCount || 0) >= quotaLimit;
 
   return (

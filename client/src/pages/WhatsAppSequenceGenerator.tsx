@@ -34,6 +34,7 @@ const WHATSAPP_SEQUENCE_EXAMPLES = {
 
 export default function WhatsAppSequenceGenerator() {
   const { isAuthenticated, loading: authLoading } = useAuth();
+  const { data: quotaLimits } = trpc.auth.getQuotaLimits.useQuery();
   const [serviceId, setServiceId] = useState<number | null>(null);
   const [sequenceType, setSequenceType] = useState<"engagement" | "sales">("engagement");
   const [searchQuery, setSearchQuery] = useState("");
@@ -131,7 +132,7 @@ export default function WhatsAppSequenceGenerator() {
         {authData && (
           <QuotaProgressBar
             used={authData.whatsappSeqGeneratedCount}
-            limit={50}
+            limit={quotaLimits?.whatsapp || 50}
             label="WhatsApp Sequences Quota"
             resetDate={authData.usageResetAt ? new Date(authData.usageResetAt) : undefined}
           />

@@ -19,6 +19,7 @@ import { sourceOfTruthRouter } from "./routers/sourceOfTruth";
 import { headlinesRouter } from "./routers/headlines";
 import { hvcoRouter } from "./routers/hvco";
 import { heroMechanismsRouter } from "./routers/heroMechanisms";
+import { getQuotaLimit } from "./quotaLimits";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -44,6 +45,21 @@ export const appRouter = router({
           .where(eq(users.id, ctx.user.id));
         return { success: true, enabled: input.enabled };
       }),
+    getQuotaLimits: publicProcedure.query(({ ctx }) => {
+      if (!ctx.user) return null;
+      const tier = ctx.user.subscriptionTier || "trial";
+      return {
+        headlines: getQuotaLimit(tier, "headlines"),
+        hvco: getQuotaLimit(tier, "hvco"),
+        heroMechanisms: getQuotaLimit(tier, "heroMechanisms"),
+        icp: getQuotaLimit(tier, "icp"),
+        adCopy: getQuotaLimit(tier, "adCopy"),
+        email: getQuotaLimit(tier, "email"),
+        whatsapp: getQuotaLimit(tier, "whatsapp"),
+        landingPages: getQuotaLimit(tier, "landingPages"),
+        offers: getQuotaLimit(tier, "offers"),
+      };
+    }),
   }),
 
   // Feature routers

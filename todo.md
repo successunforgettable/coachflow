@@ -666,3 +666,11 @@
 - [ ] Test anniversary-based quota reset (resets on user's signup date)
 - [ ] Update pricing page to match implemented quotas
 - [ ] Save final checkpoint with complete tier-based system
+
+## URGENT: Fix QuotaProgressBar Limits Display ✅ COMPLETE
+- [x] Create backend API endpoint to fetch quota limits for current user and generator type
+- [x] Update QuotaProgressBar component to fetch limits from API instead of hardcoded 50
+- [x] Update all 9 generator pages to pass correct generator type prop to QuotaProgressBar
+- [x] Test: Pro user sees correct limits (6 headlines, 3 HVCO, 4 hero, 50 ICP, 100 ad copy, 20 email, 20 whatsapp, 10 landing pages, 10 offers)
+- [x] Test: Agency user sees 999 (unlimited) for all generators
+- [ ] Save checkpoint with verified quota limits matching backend enforcement

@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 
 export default function LandingPageGenerator() {
   const { isAuthenticated, loading: authLoading } = useAuth();
+  const { data: quotaLimits } = trpc.auth.getQuotaLimits.useQuery();
   const [serviceId, setServiceId] = useState<number | null>(null);
   const [avatarName, setAvatarName] = useState("");
   const [avatarDescription, setAvatarDescription] = useState("");
@@ -107,7 +108,7 @@ export default function LandingPageGenerator() {
           <div className="mb-6">
             <QuotaProgressBar
               used={authData.landingPageGeneratedCount}
-              limit={50}
+              limit={quotaLimits?.landingPages || 50}
               label="Landing Pages Quota"
               resetDate={authData.usageResetAt ? new Date(authData.usageResetAt) : undefined}
             />

@@ -35,6 +35,7 @@ const OFFER_TYPE_EXAMPLES = {
 
 export default function OffersGenerator() {
   const { isAuthenticated, loading: authLoading } = useAuth();
+  const { data: quotaLimits } = trpc.auth.getQuotaLimits.useQuery();
   const [serviceId, setServiceId] = useState<number | null>(null);
   const [offerType, setOfferType] = useState<"standard" | "premium" | "vip">("standard");
   const [searchQuery, setSearchQuery] = useState("");
@@ -115,7 +116,7 @@ export default function OffersGenerator() {
           <div className="mb-6">
             <QuotaProgressBar
               used={authData.offerGeneratedCount}
-              limit={50}
+              limit={quotaLimits?.offers || 50}
               label="Offers Quota"
               resetDate={authData.usageResetAt ? new Date(authData.usageResetAt) : undefined}
             />

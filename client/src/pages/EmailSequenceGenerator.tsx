@@ -39,6 +39,7 @@ const EMAIL_SEQUENCE_EXAMPLES = {
 
 export default function EmailSequenceGenerator() {
   const { isAuthenticated, loading: authLoading } = useAuth();
+  const { data: quotaLimits } = trpc.auth.getQuotaLimits.useQuery();
   const [serviceId, setServiceId] = useState<number | null>(null);
   const [sequenceType, setSequenceType] = useState<"welcome" | "engagement" | "sales">("welcome");
   const [searchQuery, setSearchQuery] = useState("");
@@ -136,7 +137,7 @@ export default function EmailSequenceGenerator() {
         {authData && (
           <QuotaProgressBar
             used={authData.emailSeqGeneratedCount}
-            limit={50}
+            limit={quotaLimits?.email || 50}
             label="Email Sequences Quota"
             resetDate={authData.usageResetAt ? new Date(authData.usageResetAt) : undefined}
           />

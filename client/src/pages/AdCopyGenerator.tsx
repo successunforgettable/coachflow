@@ -26,6 +26,7 @@ import ExamplesCarousel from "@/components/ExamplesCarousel";
 
 export default function AdCopyGenerator() {
   const { isAuthenticated, loading: authLoading } = useAuth();
+  const { data: quotaLimits } = trpc.auth.getQuotaLimits.useQuery();
   
   // Form state - all 17 Kong fields
   const [serviceId, setServiceId] = useState<number | null>(null);
@@ -195,7 +196,7 @@ export default function AdCopyGenerator() {
         <div className="mb-6">
           <QuotaProgressBar
             used={authData.adCopyGeneratedCount}
-            limit={50}
+            limit={quotaLimits?.adCopy || 50}
             label="Ad Copy Quota"
             resetDate={authData.usageResetAt ? new Date(authData.usageResetAt) : undefined}
           />

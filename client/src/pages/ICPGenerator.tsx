@@ -40,6 +40,7 @@ const ICP_NAME_EXAMPLES = [
 
 export default function ICPGenerator() {
   const { isAuthenticated, loading: authLoading } = useAuth();
+  const { data: quotaLimits } = trpc.auth.getQuotaLimits.useQuery();
   const [selectedServiceId, setSelectedServiceId] = useState<number | null>(null);
   const [icpName, setIcpName] = useState("");
   
@@ -205,7 +206,7 @@ export default function ICPGenerator() {
         <div className="mb-6">
           <QuotaProgressBar
             used={authData.icpGeneratedCount}
-            limit={50}
+            limit={quotaLimits?.icp || 50}
             label="ICP Quota"
             resetDate={authData.usageResetAt ? new Date(authData.usageResetAt) : undefined}
           />

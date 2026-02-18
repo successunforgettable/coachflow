@@ -165,6 +165,7 @@ export default function HeroMechanismsNew() {
   };
 
   const { data: authData } = trpc.auth.me.useQuery();
+  const { data: quotaLimits } = trpc.auth.getQuotaLimits.useQuery();
 
   return (
     <div className="container max-w-3xl py-8">
@@ -180,7 +181,7 @@ export default function HeroMechanismsNew() {
         <div className="mb-6">
           <QuotaProgressBar
             used={authData.heroMechanismGeneratedCount}
-            limit={50}
+            limit={quotaLimits?.heroMechanisms || 50}
             label="Hero Mechanisms Quota"
             resetDate={authData.usageResetAt ? new Date(authData.usageResetAt) : undefined}
           />
