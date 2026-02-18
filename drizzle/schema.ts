@@ -319,19 +319,37 @@ export type LandingPage = typeof landingPages.$inferSelect;
 export type InsertLandingPage = typeof landingPages.$inferInsert;
 
 /**
- * Offers
+ * Offers - Kong parity with 3 angle variations
  */
+// Offer Content Type (all 7 sections)
+export type OfferContent = {
+  offerName: string;
+  valueProposition: string;
+  pricing: string;
+  bonuses: string;
+  guarantee: string;
+  urgency: string;
+  cta: string;
+};
+
 export const offers = mysqlTable("offers", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   serviceId: int("serviceId").references(() => services.id, { onDelete: "set null" }),
   campaignId: int("campaignId").references(() => campaigns.id, { onDelete: "set null" }),
+  
+  // Product Info
+  productName: text("productName").notNull(),
   offerType: mysqlEnum("offerType", ["standard", "premium", "vip"]),
-  headline: text("headline").notNull(),
-  whatIncluded: json("whatIncluded").$type<Array<string>>().notNull(),
-  bonuses: json("bonuses").$type<Array<{ name: string; value: string }>>(),
-  guarantee: text("guarantee"),
-  price: decimal("price", { precision: 10, scale: 2 }),
+  
+  // 3 Angle Variations (each contains all 7 sections)
+  godfatherAngle: json("godfatherAngle").$type<OfferContent>(),
+  freeAngle: json("freeAngle").$type<OfferContent>(),
+  dollarAngle: json("dollarAngle").$type<OfferContent>(),
+  
+  // Active angle (for display)
+  activeAngle: mysqlEnum("activeAngle", ["godfather", "free", "dollar"]).default("godfather"),
+  
   rating: int("rating").default(0),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

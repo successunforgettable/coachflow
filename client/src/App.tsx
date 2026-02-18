@@ -17,6 +17,7 @@ import WhatsAppSequenceGenerator from "./pages/WhatsAppSequenceGenerator";
 import LandingPageGenerator from "./pages/LandingPageGenerator";
 import LandingPageDetail from "./pages/LandingPageDetail";
 import OffersGenerator from "./pages/OffersGenerator";
+import OfferDetail from "./pages/OfferDetail";
 import Campaigns from "./pages/Campaigns";
 import SourceOfTruth from "./pages/SourceOfTruth";
 import ServiceDetail from "./pages/ServiceDetail";
@@ -49,6 +50,8 @@ function Router() {
       <Route path={"/landing-pages"} component={LandingPageGenerator} />
       <Route path={"/landing-pages/:id"} component={LandingPageDetail} />
       <Route path={"/generators/offers"} component={OffersGenerator} />
+      <Route path={"/offers"} component={OffersGenerator} />
+      <Route path={"/offers/:id"} component={OfferDetail} />
       <Route path={"/campaigns"} component={Campaigns} />
       <Route path={"/source-of-truth"} component={SourceOfTruth} />
       <Route path={"/headlines"} component={Headlines} />

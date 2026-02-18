@@ -71,6 +71,13 @@
       "when": 1771397365170,
       "tag": "0009_dear_rage",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1771442221550,
+      "tag": "0010_dry_moondragon",
+      "breakpoints": true
     }
   ]
 }

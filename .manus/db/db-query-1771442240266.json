@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE `offers` ADD `productName` text NOT NULL;\nALTER TABLE `offers` ADD `godfatherAngle` json;\nALTER TABLE `offers` ADD `freeAngle` json;\nALTER TABLE `offers` ADD `dollarAngle` json;\nALTER TABLE `offers` ADD `activeAngle` enum('godfather','free','dollar') DEFAULT 'godfather';\nALTER TABLE `offers` DROP COLUMN `headline`;\nALTER TABLE `offers` DROP COLUMN `whatIncluded`;\nALTER TABLE `offers` DROP COLUMN `bonuses`;\nALTER TABLE `offers` DROP COLUMN `guarantee`;\nALTER TABLE `offers` DROP COLUMN `price`;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute ALTER TABLE `offers` ADD `productName` text NOT NULL;\nALTER TABLE `offers` ADD `godfatherAngle` json;\nALTER TABLE `offers` ADD `freeAngle` json;\nALTER TABLE `offers` ADD `dollarAngle` json;\nALTER TABLE `offers` ADD `activeAngle` enum('godfather','free','dollar') DEFAULT 'godfather';\nALTER TABLE `offers` DROP COLUMN `headline`;\nALTER TABLE `offers` DROP COLUMN `whatIncluded`;\nALTER TABLE `offers` DROP COLUMN `bonuses`;\nALTER TABLE `offers` DROP COLUMN `guarantee`;\nALTER TABLE `offers` DROP COLUMN `price`;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 5103
+}
