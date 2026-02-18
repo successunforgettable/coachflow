@@ -462,3 +462,31 @@
 - [x] Add PDF export functionality (placeholder - toast notification)
 - [x] Test generation speed and quality for all 4 angles (vitest tests passing)
 - [x] Verify complete parity with Kong's landing pages
+
+
+## Phase 37: Landing Page PDF Export Implementation (COMPLETE)
+- [x] Analyze current PDF export utility (pdfExport.ts)
+- [x] Design PDF layout structure for 16-section landing pages
+- [x] Implement PDF generation with Kong's visual styling:
+  - [x] Purple CTAs (#8B5CF6) with rounded rectangles
+  - [x] Red eyebrow headlines (#ff3366)
+  - [x] Professional typography (Helvetica)
+  - [x] Proper spacing and section breaks with page break handling
+- [x] Handle all 16 sections in PDF:
+  - [x] Eyebrow + Main Headline + Subheadline + CTA button
+  - [x] As Seen In logos (text list)
+  - [x] Quiz Section (question, 5 options, answer with checkmark)
+  - [x] Problem Agitation
+  - [x] Solution Introduction
+  - [x] Why Old Methods Fail
+  - [x] Unique Mechanism
+  - [x] Testimonials (headline, quote, name, location in boxes)
+  - [x] Insider Advantages
+  - [x] Scarcity/Urgency
+  - [x] Shocking Statistic
+  - [x] Time-Saving Benefit
+  - [x] Consultation Outline (numbered list with title + description)
+- [x] Update LandingPageDetail.tsx to use real PDF export
+- [x] Test PDF export structure validation (4/4 tests passing)
+- [x] Verify data types match schema (testimonials, consultationOutline)
+- [x] Save checkpoint

@@ -7,6 +7,7 @@ import { useState } from "react";
 import { Link, useParams } from "wouter";
 import { toast } from "sonner";
 import type { LandingPageContent } from "../../../drizzle/schema";
+import { exportLandingPageToPDF } from "@/lib/landingPagePdfExport";
 
 export default function LandingPageDetail() {
   const { id } = useParams<{ id: string }>();
@@ -79,7 +80,22 @@ export default function LandingPageDetail() {
   }
 
   const handleExportPDF = () => {
-    toast.info("PDF export coming soon!");
+    if (!page || !content) {
+      toast.error("No content to export");
+      return;
+    }
+
+    try {
+      exportLandingPageToPDF({
+        productName: page.productName,
+        angle: activeAngle,
+        angleData: content,
+      });
+      toast.success("PDF exported successfully!");
+    } catch (error) {
+      console.error("PDF export error:", error);
+      toast.error("Failed to export PDF");
+    }
   };
 
   return (
