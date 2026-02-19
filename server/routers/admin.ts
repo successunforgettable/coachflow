@@ -811,20 +811,26 @@ export const adminRouter = router({
   createSuperUser: auditedAdminProcedure
     .input(
       z.object({
-        userId: z.number(),
+        userEmail: z.string().email(),
       })
     )
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
 
+      // Find user by email
+      const user = await db.select().from(users).where(eq(users.email, input.userEmail)).limit(1);
+      if (!user || user.length === 0) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "User not found with this email" });
+      }
+
       // Update user role to superuser
       await db
         .update(users)
         .set({ role: "superuser" })
-        .where(eq(users.id, input.userId));
+        .where(eq(users.id, user[0].id));
 
-      return { success: true };
+      return { success: true, user: user[0] };
     }),
 
   /**
