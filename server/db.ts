@@ -1,6 +1,6 @@
-import { eq, and, or, desc, sql } from "drizzle-orm";
+import { eq, and, or, desc, sql, inArray, gte, lte, asc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, headlines, hvcoTitles, InsertHvcoTitle, heroMechanisms, InsertHeroMechanism, campaigns, campaignAssets, campaignLinks } from "../drizzle/schema";
+import { InsertUser, users, headlines, hvcoTitles, InsertHvcoTitle, heroMechanisms, InsertHeroMechanism, campaigns, campaignAssets, campaignLinks, analyticsEvents, campaignMetrics } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -529,4 +529,205 @@ export async function duplicateCampaign(campaignId: number, userId: number) {
   }
   
   return newCampaignId;
+}
+
+// ============================================================================
+// Analytics Helpers
+// ============================================================================
+
+/**
+ * Track individual analytics event
+ */
+export async function trackAnalyticsEvent(data: {
+  campaignId: number;
+  assetId?: string;
+  assetType?: string;
+  eventType: 'email_open' | 'email_click' | 'link_click' | 'conversion' | 'purchase';
+  userIdentifier?: string;
+  metadata?: any;
+  revenue?: number;
+}): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [result] = await db.insert(analyticsEvents).values({
+    campaignId: data.campaignId,
+    assetId: data.assetId,
+    assetType: data.assetType,
+    eventType: data.eventType,
+    userIdentifier: data.userIdentifier,
+    metadata: data.metadata,
+    revenue: data.revenue?.toString(),
+  });
+  
+  return result.insertId;
+}
+
+/**
+ * Get campaign metrics for date range
+ */
+export async function getCampaignMetrics(
+  campaignId: number,
+  startDate: Date,
+  endDate: Date
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const startDateStr = startDate.toISOString().split('T')[0];
+  const endDateStr = endDate.toISOString().split('T')[0];
+  
+  const metrics = await db
+    .select()
+    .from(campaignMetrics)
+    .where(
+      and(
+        eq(campaignMetrics.campaignId, campaignId),
+        sql`${campaignMetrics.metricDate} >= ${startDateStr}`,
+        sql`${campaignMetrics.metricDate} <= ${endDateStr}`
+      )
+    )
+    .orderBy(asc(campaignMetrics.metricDate));
+  
+  return metrics;
+}
+
+/**
+ * Get overall metrics across all user's campaigns
+ */
+export async function getOverallMetrics(
+  userId: number,
+  startDate: Date,
+  endDate: Date
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  // Get all user's campaigns
+  const userCampaigns = await db
+    .select({ id: campaigns.id })
+    .from(campaigns)
+    .where(eq(campaigns.userId, userId));
+  
+  const campaignIds = userCampaigns.map(c => c.id);
+  
+  if (campaignIds.length === 0) {
+    return {
+      totalCampaigns: 0,
+      totalRevenue: 0,
+      totalConversions: 0,
+      totalEmailOpens: 0,
+      totalEmailClicks: 0,
+      avgConversionRate: 0,
+      totalROI: 0,
+    };
+  }
+  
+  // Aggregate metrics across all campaigns
+  const startDateStr = startDate.toISOString().split('T')[0];
+  const endDateStr = endDate.toISOString().split('T')[0];
+  
+  const metrics = await db
+    .select({
+      totalRevenue: sql<number>`SUM(${campaignMetrics.revenue})`,
+      totalConversions: sql<number>`SUM(${campaignMetrics.conversions})`,
+      totalEmailOpens: sql<number>`SUM(${campaignMetrics.emailOpens})`,
+      totalEmailClicks: sql<number>`SUM(${campaignMetrics.emailClicks})`,
+      totalSpend: sql<number>`SUM(${campaignMetrics.spend})`,
+    })
+    .from(campaignMetrics)
+    .where(
+      and(
+        inArray(campaignMetrics.campaignId, campaignIds),
+        sql`${campaignMetrics.metricDate} >= ${startDateStr}`,
+        sql`${campaignMetrics.metricDate} <= ${endDateStr}`
+      )
+    );
+  
+  const result = metrics[0];
+  const totalRevenue = Number(result.totalRevenue) || 0;
+  const totalSpend = Number(result.totalSpend) || 0;
+  const totalConversions = Number(result.totalConversions) || 0;
+  const totalEmailOpens = Number(result.totalEmailOpens) || 0;
+  const totalEmailClicks = Number(result.totalEmailClicks) || 0;
+  
+  return {
+    totalCampaigns: campaignIds.length,
+    totalRevenue,
+    totalConversions,
+    totalEmailOpens,
+    totalEmailClicks,
+    avgConversionRate: totalEmailOpens > 0 ? (totalConversions / totalEmailOpens) * 100 : 0,
+    totalROI: totalSpend > 0 ? ((totalRevenue - totalSpend) / totalSpend) * 100 : 0,
+  };
+}
+
+/**
+ * Calculate ROI for specific campaign
+ */
+export async function calculateCampaignROI(
+  campaignId: number,
+  startDate: Date,
+  endDate: Date
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const startDateStr = startDate.toISOString().split('T')[0];
+  const endDateStr = endDate.toISOString().split('T')[0];
+  
+  const metrics = await db
+    .select({
+      totalRevenue: sql<number>`SUM(${campaignMetrics.revenue})`,
+      totalSpend: sql<number>`SUM(${campaignMetrics.spend})`,
+    })
+    .from(campaignMetrics)
+    .where(
+      and(
+        eq(campaignMetrics.campaignId, campaignId),
+        sql`${campaignMetrics.metricDate} >= ${startDateStr}`,
+        sql`${campaignMetrics.metricDate} <= ${endDateStr}`
+      )
+    );
+  
+  const result = metrics[0];
+  const revenue = Number(result.totalRevenue) || 0;
+  const spend = Number(result.totalSpend) || 0;
+  const roi = spend > 0 ? ((revenue - spend) / spend) * 100 : 0;
+  
+  return { revenue, spend, roi };
+}
+
+/**
+ * Get asset performance within campaign
+ */
+export async function getAssetPerformance(
+  campaignId: number,
+  startDate: Date,
+  endDate: Date
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const performance = await db
+    .select({
+      assetId: analyticsEvents.assetId,
+      assetType: analyticsEvents.assetType,
+      emailOpens: sql<number>`SUM(CASE WHEN ${analyticsEvents.eventType} = 'email_open' THEN 1 ELSE 0 END)`,
+      emailClicks: sql<number>`SUM(CASE WHEN ${analyticsEvents.eventType} = 'email_click' THEN 1 ELSE 0 END)`,
+      conversions: sql<number>`SUM(CASE WHEN ${analyticsEvents.eventType} = 'conversion' THEN 1 ELSE 0 END)`,
+      revenue: sql<number>`SUM(${analyticsEvents.revenue})`,
+    })
+    .from(analyticsEvents)
+    .where(
+      and(
+        eq(analyticsEvents.campaignId, campaignId),
+        gte(analyticsEvents.createdAt, startDate),
+        lte(analyticsEvents.createdAt, endDate)
+      )
+    )
+    .groupBy(analyticsEvents.assetId, analyticsEvents.assetType);
+  
+  return performance.map((p: any) => ({
+    ...p,
+    revenue: Number(p.revenue) || 0,
+    emailOpens: Number(p.emailOpens) || 0,
+    emailClicks: Number(p.emailClicks) || 0,
+    conversions: Number(p.conversions) || 0,
+  }));
 }

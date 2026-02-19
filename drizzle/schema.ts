@@ -1,4 +1,4 @@
-import { decimal, int, json, mysqlEnum, mysqlTable, text, timestamp, varchar, date, boolean, uniqueIndex, index } from "drizzle-orm/mysql-core";
+import { decimal, int, json, mysqlEnum, mysqlTable, text, timestamp, varchar, date, boolean, uniqueIndex, index, unique } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -521,3 +521,51 @@ export const heroMechanisms = mysqlTable("heroMechanisms", {
 
 export type HeroMechanism = typeof heroMechanisms.$inferSelect;
 export type InsertHeroMechanism = typeof heroMechanisms.$inferInsert;
+
+/**
+ * Analytics Events - Track individual user interactions
+ * Supports email opens, clicks, conversions, and purchases
+ */
+export const analyticsEvents = mysqlTable("analytics_events", {
+  id: int("id").autoincrement().primaryKey(),
+  campaignId: int("campaignId").notNull().references(() => campaigns.id, { onDelete: "cascade" }),
+  assetId: varchar("assetId", { length: 255 }),
+  assetType: varchar("assetType", { length: 50 }),
+  eventType: mysqlEnum("eventType", ["email_open", "email_click", "link_click", "conversion", "purchase"]).notNull(),
+  userIdentifier: varchar("userIdentifier", { length: 255 }), // email or user ID
+  metadata: json("metadata"), // additional event data
+  revenue: decimal("revenue", { precision: 10, scale: 2 }).default("0"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  campaignIdx: index("idx_analytics_campaign").on(table.campaignId),
+  assetIdx: index("idx_analytics_asset").on(table.assetId),
+  eventTypeIdx: index("idx_analytics_eventType").on(table.eventType),
+  createdAtIdx: index("idx_analytics_createdAt").on(table.createdAt),
+}));
+
+export type AnalyticsEvent = typeof analyticsEvents.$inferSelect;
+export type InsertAnalyticsEvent = typeof analyticsEvents.$inferInsert;
+
+/**
+ * Campaign Metrics - Aggregated daily metrics for faster queries
+ * Updated nightly or on-demand for dashboard display
+ */
+export const campaignMetrics = mysqlTable("campaign_metrics", {
+  id: int("id").autoincrement().primaryKey(),
+  campaignId: int("campaignId").notNull().references(() => campaigns.id, { onDelete: "cascade" }),
+  metricDate: date("metricDate").notNull(),
+  emailOpens: int("emailOpens").default(0),
+  emailClicks: int("emailClicks").default(0),
+  linkClicks: int("linkClicks").default(0),
+  conversions: int("conversions").default(0),
+  revenue: decimal("revenue", { precision: 10, scale: 2 }).default("0"),
+  spend: decimal("spend", { precision: 10, scale: 2 }).default("0"), // ad spend for ROI
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  uniqueCampaignDate: unique("unique_campaign_date").on(table.campaignId, table.metricDate),
+  metricDateIdx: index("idx_campaignMetrics_date").on(table.metricDate),
+}));
+
+export type CampaignMetric = typeof campaignMetrics.$inferSelect;
+export type InsertCampaignMetric = typeof campaignMetrics.$inferInsert;

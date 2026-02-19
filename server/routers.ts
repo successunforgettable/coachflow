@@ -20,6 +20,7 @@ import { headlinesRouter } from "./routers/headlines";
 import { hvcoRouter } from "./routers/hvco";
 import { heroMechanismsRouter } from "./routers/heroMechanisms";
 import { adminRouter } from "./routers/admin";
+import { analyticsRouter } from "./routers/analytics";
 import { getQuotaLimit } from "./quotaLimits";
 
 export const appRouter = router({
@@ -79,6 +80,7 @@ export const appRouter = router({
   hvco: hvcoRouter,
   heroMechanisms: heroMechanismsRouter,
   admin: adminRouter,
+  analytics: analyticsRouter,
 });
 
 export type AppRouter = typeof appRouter;
