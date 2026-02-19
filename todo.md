@@ -1000,3 +1000,33 @@
 - Remaining 7 generators require systematic replacement of Input/Textarea components
 - Estimated remaining time: 3-4 hours for remaining 7 generators
 - War plan created: docs/CHAR_LIMITS_WAR_PLAN.md
+
+
+## Phase 105 UPDATE: Character Limits Progress (3/4 Core Generators Complete)
+
+### Completed Generators ✅
+- [x] Headlines Generator - Kong-verified limits (52/48/25/0)
+- [x] HVCO Generator - Kong-verified limits (52/80)
+- [x] Hero Mechanisms Generator - 8 fields updated with Kong limits (52/48/0/0/0/25/70/65)
+
+### Remaining Generator (Ad Copy) - Partially Complete
+- [ ] Ad Copy Generator - 15 fields need CharLimitInput replacement
+  * Current status: Has character limits (52/79/72/48/25/0/0/23/31/70/65/511) but lacks visual feedback
+  * Needs: Replace Input/Textarea with CharLimitInput for consistent UI and yellow/red warnings
+  * Estimated time: 45 minutes
+
+### Generators That Don't Need Updates ✅
+- [x] Email Sequences - Uses service selection only (no manual text inputs)
+- [x] WhatsApp Sequences - Uses service selection only (no manual text inputs)
+- [x] Landing Pages - Uses service selection + optional avatar fields (not in Kong spec)
+- [x] Offers - Uses service selection only (no manual text inputs)
+- [x] ICP - All fields have no limits per Kong specs (correct)
+
+### Key Achievement
+**75% of character limits work is complete** (3/4 generators that need updates are done)
+
+### Next Steps
+1. Complete Ad Copy Generator CharLimitInput replacement (45 min)
+2. Fix Beast Mode implementation (move from forms to detail pages)
+3. Test all generators end-to-end
+4. Save checkpoint
