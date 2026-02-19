@@ -569,3 +569,27 @@ export const campaignMetrics = mysqlTable("campaign_metrics", {
 
 export type CampaignMetric = typeof campaignMetrics.$inferSelect;
 export type InsertCampaignMetric = typeof campaignMetrics.$inferInsert;
+
+/**
+ * User Onboarding - Track onboarding wizard progress
+ * Helps new users complete their first workflow
+ */
+export const userOnboarding = mysqlTable("user_onboarding", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }).unique(),
+  currentStep: int("currentStep").default(1).notNull(), // 1-5
+  completed: boolean("completed").default(false).notNull(),
+  serviceId: int("serviceId"), // Created service ID
+  icpId: varchar("icpId", { length: 255 }), // Generated ICP ID
+  headlineSetId: varchar("headlineSetId", { length: 255 }), // Generated headline set ID
+  campaignId: int("campaignId"), // Created campaign ID
+  skipped: boolean("skipped").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  completedAt: timestamp("completedAt"),
+}, (table) => ({
+  userIdx: index("idx_onboarding_user").on(table.userId),
+}));
+
+export type UserOnboarding = typeof userOnboarding.$inferSelect;
+export type InsertUserOnboarding = typeof userOnboarding.$inferInsert;

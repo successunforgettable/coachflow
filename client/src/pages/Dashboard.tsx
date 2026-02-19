@@ -4,7 +4,7 @@ import { QuotaSummaryCard } from "@/components/QuotaSummaryCard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
 import { getLoginUrl } from "@/const";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, Redirect } from "wouter";
 import {
   Sparkles,
   FileText,
@@ -51,6 +51,9 @@ export default function Dashboard() {
 
   const { data: authData } = trpc.auth.me.useQuery();
   const { data: quotaLimits } = trpc.auth.getQuotaLimits.useQuery();
+  const { data: onboardingStatus } = trpc.onboarding.getStatus.useQuery(undefined, {
+    enabled: isAuthenticated,
+  });
 
   const { data: landingPages } = trpc.landingPages.list.useQuery(undefined, {
     enabled: isAuthenticated,
@@ -76,6 +79,11 @@ export default function Dashboard() {
   if (!authLoading && !isAuthenticated) {
     window.location.href = getLoginUrl();
     return null;
+  }
+
+  // Redirect to onboarding if not completed
+  if (isAuthenticated && onboardingStatus && !onboardingStatus.completed) {
+    return <Redirect to="/onboarding" />;
   }
 
   const generators = [

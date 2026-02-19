@@ -1089,3 +1089,40 @@
 - [x] All 71 tests passing
 - [x] Analytics backend fully tested
 - [x] Ready for final checkpoint
+
+
+## Phase 400: Onboarding Wizard Implementation ✅ 100% COMPLETE
+
+### Database Schema ✅
+- [x] Create user_onboarding table (track completion status, current step)
+- [x] Add onboarding_completed field to users table
+- [x] Generate and apply migration SQL
+
+### OnboardingWizard Component ✅
+- [x] Create /client/src/components/OnboardingWizard.tsx with step navigation
+- [x] Add progress bar showing current step (1/5, 2/5, etc.)
+- [x] Implement Next/Back/Skip buttons
+- [x] Add step transition animations
+- [x] Store current step in database (not localStorage - proper persistence)
+
+### Wizard Steps ✅
+- [x] Step 1: Welcome screen with platform overview and benefits
+- [x] Step 2: Create Service form (guided version with tooltips)
+- [x] Step 3: Generate ICP (pre-filled with service data, one-click generate)
+- [x] Step 4: Generate Headlines (pre-filled with ICP data, one-click generate)
+- [x] Step 5: Create Campaign (add generated assets, show success)
+
+### Integration & Logic ✅
+- [x] Add onboarding trigger (show wizard on first login via Dashboard redirect)
+- [x] Create tRPC procedures (getStatus, updateStep, complete, reset)
+- [x] Create OnboardingPage.tsx wrapper component
+- [x] Add /onboarding route to App.tsx
+- [x] Track completion in database
+- [x] Redirect to dashboard after completion
+
+### Testing ✅
+- [x] Write vitest tests for onboarding router (13 tests)
+- [x] Test wizard navigation (next, back, skip)
+- [x] Test completion tracking
+- [x] All 84 tests passing (71 previous + 13 new)
+- [x] Save final checkpoint
