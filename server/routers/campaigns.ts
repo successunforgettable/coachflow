@@ -135,6 +135,21 @@ export const campaignsRouter = router({
       return { assetId };
     }),
 
+  // List all assets in a campaign
+  listAssets: protectedProcedure
+    .input(z.object({ campaignId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const campaign = await getCampaignById(input.campaignId, ctx.user.id);
+      if (!campaign) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Campaign not found",
+        });
+      }
+      // Return assets from the campaign (assuming getCampaignById returns assets)
+      return campaign.assets || [];
+    }),
+
   // Remove asset from campaign
   removeAsset: protectedProcedure
     .input(z.object({ assetId: z.number() }))
@@ -160,6 +175,21 @@ export const campaignsRouter = router({
         await updateAssetPosition(update.assetId, update.position);
       }
       return { success: true };
+    }),
+
+  // List all links in a campaign
+  listLinks: protectedProcedure
+    .input(z.object({ campaignId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const campaign = await getCampaignById(input.campaignId, ctx.user.id);
+      if (!campaign) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Campaign not found",
+        });
+      }
+      // Return links from the campaign (assuming getCampaignById returns links)
+      return campaign.links || [];
     }),
 
   // Create link between assets

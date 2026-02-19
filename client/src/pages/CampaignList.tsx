@@ -119,9 +119,9 @@ export default function CampaignList() {
               </div>
 
               <div className="flex gap-2">
-                <Link href={`/campaigns/${campaign.id}`} className="flex-1">
+                <Link href={`/campaigns/${campaign.id}/builder`} className="flex-1">
                   <Button variant="default" className="w-full">
-                    Open Builder
+                    Build Campaign
                   </Button>
                 </Link>
                 <Button

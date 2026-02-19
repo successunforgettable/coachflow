@@ -19,6 +19,7 @@ import LandingPageDetail from "./pages/LandingPageDetail";
 import OffersGenerator from "./pages/OffersGenerator";
 import OfferDetail from "./pages/OfferDetail";
 import CampaignList from "./pages/CampaignList";
+import CampaignBuilder from "./pages/CampaignBuilder";
 import SourceOfTruth from "./pages/SourceOfTruth";
 import ServiceDetail from "./pages/ServiceDetail";
 import Headlines from "./pages/Headlines";
@@ -54,6 +55,7 @@ function Router() {
       <Route path={"/offers"} component={OffersGenerator} />
       <Route path={"/offers/:id"} component={OfferDetail} />
       <Route path={"/campaigns"} component={CampaignList} />
+      <Route path={"/campaigns/:id/builder"} component={CampaignBuilder} />
       <Route path={"/source-of-truth"} component={SourceOfTruth} />
       <Route path={"/headlines"} component={Headlines} />
       <Route path={"/headlines/new"} component={HeadlinesNew} />
