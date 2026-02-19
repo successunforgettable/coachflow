@@ -5,9 +5,9 @@ import { UpgradePrompt } from "@/components/UpgradePrompt";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { CharLimitInput } from "@/components/CharLimitInput";
+import { CHARACTER_LIMITS } from "@/lib/characterLimits";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 import { Loader2, ArrowLeft, Sparkles } from "lucide-react";
@@ -69,9 +69,7 @@ export default function HeadlinesNew() {
     });
   };
 
-  const targetMarketCharsLeft = 52 - formData.targetMarket.length;
-  const pressingProblemCharsLeft = 71 - formData.pressingProblem.length;
-  const desiredOutcomeCharsLeft = 116 - formData.desiredOutcome.length;
+
 
   const { data: authData } = trpc.auth.me.useQuery();
   const { data: quotaLimits } = trpc.auth.getQuotaLimits.useQuery();
@@ -144,88 +142,69 @@ export default function HeadlinesNew() {
             </div>
 
             {/* Target Market */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="targetMarket">Target Market *</Label>
-                <span className={`text-xs ${targetMarketCharsLeft < 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
-                  {targetMarketCharsLeft} chars left
-                </span>
-              </div>
-              <Input
-                id="targetMarket"
-                value={formData.targetMarket}
-                onChange={(e) => setFormData({ ...formData, targetMarket: e.target.value })}
-                placeholder="Ages 25-55, crypto beginners, want to make money"
-                maxLength={52}
-                required
-              />
-            </div>
+            <CharLimitInput
+              label="Target Market"
+              value={formData.targetMarket}
+              onChange={(value) => setFormData({ ...formData, targetMarket: value })}
+              maxLength={CHARACTER_LIMITS.headlines.targetMarket}
+              placeholder="Ages 25-55, crypto beginners, want to make money"
+              required
+              id="targetMarket"
+            />
 
             {/* Pressing Problem */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="pressingProblem">Pressing Problem *</Label>
-                <span className={`text-xs ${pressingProblemCharsLeft < 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
-                  {pressingProblemCharsLeft} chars left
-                </span>
-              </div>
-              <Textarea
-                id="pressingProblem"
-                value={formData.pressingProblem}
-                onChange={(e) => setFormData({ ...formData, pressingProblem: e.target.value })}
-                placeholder="People lose money in crypto. They don't know what to do."
-                maxLength={71}
-                rows={3}
-                required
-              />
-            </div>
+            <CharLimitInput
+              label="Pressing Problem"
+              value={formData.pressingProblem}
+              onChange={(value) => setFormData({ ...formData, pressingProblem: value })}
+              maxLength={CHARACTER_LIMITS.headlines.pressingProblem}
+              placeholder="People lose money in crypto. They don't know what to do."
+              multiline
+              rows={3}
+              required
+              id="pressingProblem"
+            />
 
             {/* Desired Outcome */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="desiredOutcome">Desired Outcome *</Label>
-                <span className={`text-xs ${desiredOutcomeCharsLeft < 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
-                  {desiredOutcomeCharsLeft} chars left
-                </span>
-              </div>
-              <Textarea
-                id="desiredOutcome"
-                value={formData.desiredOutcome}
-                onChange={(e) => setFormData({ ...formData, desiredOutcome: e.target.value })}
-                placeholder="Make $10,000 per month. Learn crypto in 6 months. Feel confident."
-                maxLength={116}
-                rows={3}
-                required
-              />
-            </div>
+            <CharLimitInput
+              label="Desired Outcome"
+              value={formData.desiredOutcome}
+              onChange={(value) => setFormData({ ...formData, desiredOutcome: value })}
+              maxLength={CHARACTER_LIMITS.headlines.desiredOutcome}
+              placeholder="Make $10,000 per month. Learn crypto in 6 months. Feel confident."
+              multiline
+              rows={2}
+              required
+              id="desiredOutcome"
+            />
 
             {/* Unique Mechanism */}
-            <div className="space-y-2">
-              <Label htmlFor="uniqueMechanism">Unique Mechanism *</Label>
-              <Textarea
-                id="uniqueMechanism"
-                value={formData.uniqueMechanism}
-                onChange={(e) => setFormData({ ...formData, uniqueMechanism: e.target.value })}
-                placeholder="The 9-Step System That Turns Crypto Beginners Into Passive Income Earners"
-                rows={3}
-                required
-              />
-              
-              {/* Examples Carousel */}
-              <div className="mt-4">
-                <p className="text-sm text-muted-foreground mb-2">Click an example to use:</p>
-                <div className="grid gap-2 max-h-[200px] overflow-y-auto pr-2">
-                  {UNIQUE_MECHANISM_EXAMPLES.map((example, index) => (
-                    <button
-                      key={index}
-                      type="button"
-                      onClick={() => setFormData({ ...formData, uniqueMechanism: example })}
-                      className="text-left text-sm p-2 rounded hover:bg-accent transition-colors"
-                    >
-                      {example}
-                    </button>
-                  ))}
-                </div>
+            <CharLimitInput
+              label="Unique Mechanism"
+              value={formData.uniqueMechanism}
+              onChange={(value) => setFormData({ ...formData, uniqueMechanism: value })}
+              maxLength={CHARACTER_LIMITS.headlines.uniqueMechanism}
+              placeholder="The 9-Step System That Turns Crypto Beginners Into Passive Income Earners"
+              multiline
+              rows={3}
+              required
+              id="uniqueMechanism"
+            />
+
+            {/* Examples Carousel */}
+            <div className="mt-4">
+              <p className="text-sm text-muted-foreground mb-2">Click an example to use:</p>
+              <div className="grid gap-2 max-h-[200px] overflow-y-auto pr-2">
+                {UNIQUE_MECHANISM_EXAMPLES.map((example, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, uniqueMechanism: example })}
+                    className="text-left text-sm p-2 rounded hover:bg-accent transition-colors"
+                  >
+                    {example}
+                  </button>
+                ))}
               </div>
             </div>
 

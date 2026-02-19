@@ -975,3 +975,28 @@
 - [x] All 3 new UI sections added to AdminDashboard
 - [x] TypeScript compilation passes
 - [x] Save checkpoint: "Complete Admin UI - All Frontend Components Built"
+
+
+
+## Phase 105: Kong Parity - Character Limits Implementation (IN PROGRESS)
+
+### Character Limits Progress (2/9 Complete)
+- [x] CharLimitInput component created with id and rows props
+- [x] CHARACTER_LIMITS constants defined for all 9 generators
+- [x] Headlines generator - Kong-verified limits applied (52/48/25)
+- [x] HVCO generator - Kong-verified limits applied (52/80)
+- [ ] Hero Mechanisms generator - 11 fields with varying limits (52/79/72/48/25/0/0/23/31/70/65)
+- [ ] ICP generator - All fields have no limits (correct per Kong specs)
+- [ ] Ad Copy generator - 17 fields with varying limits
+- [ ] Email Sequence generator - 3 text fields (52/72/25)
+- [ ] WhatsApp Sequence generator - 3 text fields (52/72/25)
+- [ ] Landing Pages generator - 6 fields (52/72/25/0/20/67)
+- [ ] Offers generator - 7 fields (52/72/25/20/67/71/68)
+
+### Character Limits Implementation Notes
+- CharLimitInput component provides visual feedback (yellow warning at 10 chars remaining, red error when over limit)
+- All limits match Kong's exact specifications from CHARACTER_LIMITS constants
+- Headlines and HVCO generators fully tested and working
+- Remaining 7 generators require systematic replacement of Input/Textarea components
+- Estimated remaining time: 3-4 hours for remaining 7 generators
+- War plan created: docs/CHAR_LIMITS_WAR_PLAN.md

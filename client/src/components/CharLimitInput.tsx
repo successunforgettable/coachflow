@@ -11,6 +11,8 @@ interface CharLimitInputProps {
   placeholder?: string;
   required?: boolean;
   className?: string;
+  id?: string;
+  rows?: number;
 }
 
 export function CharLimitInput({
@@ -22,6 +24,8 @@ export function CharLimitInput({
   placeholder,
   required = false,
   className = '',
+  id,
+  rows = 4,
 }: CharLimitInputProps) {
   const remaining = maxLength - value.length;
   const isOverLimit = remaining < 0;
@@ -38,24 +42,28 @@ export function CharLimitInput({
 
   return (
     <div className={`space-y-2 ${className}`}>
-      <Label>
+      <Label htmlFor={id}>
         {label}
         {required && <span className="text-red-500 ml-1">*</span>}
       </Label>
       {multiline ? (
         <Textarea
+          id={id}
           value={value}
           onChange={(e) => handleChange(e.target.value)}
           placeholder={placeholder}
           className={isOverLimit ? 'border-red-500' : ''}
-          rows={4}
+          rows={rows}
+          required={required}
         />
       ) : (
         <Input
+          id={id}
           value={value}
           onChange={(e) => handleChange(e.target.value)}
           placeholder={placeholder}
           className={isOverLimit ? 'border-red-500' : ''}
+          required={required}
         />
       )}
       {maxLength > 0 && (
