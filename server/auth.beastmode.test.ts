@@ -1,27 +1,37 @@
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect } from "vitest";
 import { appRouter } from "./routers";
-import { upsertUser } from "./db";
-import type { User } from "../drizzle/schema";
+import type { TrpcContext } from "./_core/context";
+
+type AuthenticatedUser = NonNullable<TrpcContext["user"]>;
+
+function createAuthContext(beastMode = false): TrpcContext {
+  const user: AuthenticatedUser = {
+    id: 1,
+    openId: "test-beast-mode-user",
+    email: "beastmode@test.com",
+    name: "Beast Mode Test User",
+    loginMethod: "test",
+    role: "user",
+    beastMode,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    lastSignedIn: new Date(),
+  };
+
+  return {
+    user,
+    req: {
+      protocol: "https",
+      headers: {},
+    } as TrpcContext["req"],
+    res: {} as TrpcContext["res"],
+  };
+}
 
 describe("Beast Mode Toggle", () => {
-  let testUser: User;
-
-  beforeAll(async () => {
-    // Create test user
-    testUser = await upsertUser({
-      openId: "test-beast-mode-user",
-      name: "Beast Mode Test User",
-      email: "beastmode@test.com",
-      loginMethod: "test",
-    });
-  });
-
   it("should toggle Beast Mode on", async () => {
-    const caller = appRouter.createCaller({
-      user: testUser,
-      req: {} as any,
-      res: {} as any,
-    });
+    const ctx = createAuthContext(false);
+    const caller = appRouter.createCaller(ctx);
 
     const result = await caller.auth.toggleBeastMode({ enabled: true });
     
@@ -30,11 +40,8 @@ describe("Beast Mode Toggle", () => {
   });
 
   it("should toggle Beast Mode off", async () => {
-    const caller = appRouter.createCaller({
-      user: testUser,
-      req: {} as any,
-      res: {} as any,
-    });
+    const ctx = createAuthContext(true);
+    const caller = appRouter.createCaller(ctx);
 
     const result = await caller.auth.toggleBeastMode({ enabled: false });
     
@@ -43,11 +50,12 @@ describe("Beast Mode Toggle", () => {
   });
 
   it("should require authentication", async () => {
-    const caller = appRouter.createCaller({
+    const ctx: TrpcContext = {
       user: null,
-      req: {} as any,
-      res: {} as any,
-    });
+      req: {} as TrpcContext["req"],
+      res: {} as TrpcContext["res"],
+    };
+    const caller = appRouter.createCaller(ctx);
 
     await expect(
       caller.auth.toggleBeastMode({ enabled: true })

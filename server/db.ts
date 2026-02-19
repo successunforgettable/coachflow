@@ -1,6 +1,6 @@
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, or, desc, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, headlines, hvcoTitles, InsertHvcoTitle, heroMechanisms, InsertHeroMechanism } from "../drizzle/schema";
+import { InsertUser, users, headlines, hvcoTitles, InsertHvcoTitle, heroMechanisms, InsertHeroMechanism, campaigns, campaignAssets, campaignLinks } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -357,4 +357,176 @@ export async function incrementHeroMechanismCount(userId: number) {
     .update(users)
     .set({ heroMechanismGeneratedCount: sql`${users.heroMechanismGeneratedCount} + 1` })
     .where(eq(users.id, userId));
+}
+
+
+// Campaign Management Helpers
+
+export async function createCampaign(data: typeof campaigns.$inferInsert) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const [result] = await db.insert(campaigns).values(data);
+  return result.insertId;
+}
+
+export async function getCampaignsByUserId(userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  return await db.select().from(campaigns).where(eq(campaigns.userId, userId)).orderBy(desc(campaigns.updatedAt));
+}
+
+export async function getCampaignById(campaignId: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const [campaign] = await db
+    .select()
+    .from(campaigns)
+    .where(and(eq(campaigns.id, campaignId), eq(campaigns.userId, userId)));
+  
+  if (!campaign) return null;
+  
+  // Get all assets for this campaign
+  const assets = await db
+    .select()
+    .from(campaignAssets)
+    .where(eq(campaignAssets.campaignId, campaignId))
+    .orderBy(campaignAssets.position);
+  
+  // Get all links for this campaign
+  const links = await db
+    .select()
+    .from(campaignLinks)
+    .where(eq(campaignLinks.campaignId, campaignId));
+  
+  return { ...campaign, assets, links };
+}
+
+export async function updateCampaign(campaignId: number, userId: number, data: Partial<typeof campaigns.$inferInsert>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db
+    .update(campaigns)
+    .set(data)
+    .where(and(eq(campaigns.id, campaignId), eq(campaigns.userId, userId)));
+}
+
+export async function deleteCampaign(campaignId: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  // Delete links first
+  await db.delete(campaignLinks).where(eq(campaignLinks.campaignId, campaignId));
+  
+  // Delete assets
+  await db.delete(campaignAssets).where(eq(campaignAssets.campaignId, campaignId));
+  
+  // Delete campaign
+  await db.delete(campaigns).where(and(eq(campaigns.id, campaignId), eq(campaigns.userId, userId)));
+}
+
+export async function addAssetToCampaign(data: typeof campaignAssets.$inferInsert) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const [result] = await db.insert(campaignAssets).values(data);
+  return result.insertId;
+}
+
+export async function removeAssetFromCampaign(assetId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  // Delete any links involving this asset
+  await db.delete(campaignLinks).where(
+    or(
+      eq(campaignLinks.sourceAssetId, assetId),
+      eq(campaignLinks.targetAssetId, assetId)
+    )
+  );
+  
+  // Delete the asset
+  await db.delete(campaignAssets).where(eq(campaignAssets.id, assetId));
+}
+
+export async function updateAssetPosition(assetId: number, newPosition: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db
+    .update(campaignAssets)
+    .set({ position: newPosition })
+    .where(eq(campaignAssets.id, assetId));
+}
+
+export async function createCampaignLink(data: typeof campaignLinks.$inferInsert) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const [result] = await db.insert(campaignLinks).values(data);
+  return result.insertId;
+}
+
+export async function deleteCampaignLink(linkId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.delete(campaignLinks).where(eq(campaignLinks.id, linkId));
+}
+
+export async function duplicateCampaign(campaignId: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  // Get original campaign
+  const original = await getCampaignById(campaignId, userId);
+  if (!original) throw new Error("Campaign not found");
+  
+  // Create new campaign
+  const [result] = await db.insert(campaigns).values({
+    userId: original.userId,
+    serviceId: original.serviceId,
+    name: `${original.name} (Copy)`,
+    description: original.description,
+    campaignType: original.campaignType,
+    status: "draft",
+    startDate: original.startDate,
+    endDate: original.endDate,
+  });
+  
+  const newCampaignId = result.insertId;
+  
+  // Copy assets
+  const assetIdMap = new Map<number, number>(); // old ID -> new ID
+  
+  for (const asset of original.assets) {
+    const [assetResult] = await db.insert(campaignAssets).values({
+      campaignId: newCampaignId,
+      assetType: asset.assetType,
+      assetId: asset.assetId,
+      position: asset.position,
+      notes: asset.notes,
+    });
+    assetIdMap.set(asset.id, assetResult.insertId);
+  }
+  
+  // Copy links with updated asset IDs
+  for (const link of original.links) {
+    const newSourceId = assetIdMap.get(link.sourceAssetId);
+    const newTargetId = assetIdMap.get(link.targetAssetId);
+    
+    if (newSourceId && newTargetId) {
+      await db.insert(campaignLinks).values({
+        campaignId: newCampaignId,
+        sourceAssetId: newSourceId,
+        targetAssetId: newTargetId,
+        linkType: link.linkType,
+      });
+    }
+  }
+  
+  return newCampaignId;
 }

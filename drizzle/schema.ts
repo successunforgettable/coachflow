@@ -105,6 +105,7 @@ export const campaigns = mysqlTable("campaigns", {
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   serviceId: int("serviceId").references(() => services.id, { onDelete: "set null" }),
   name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
   campaignType: mysqlEnum("campaignType", ["webinar", "challenge", "course_launch", "product_launch"]),
   status: mysqlEnum("status", ["draft", "active", "paused", "completed"]).default("draft").notNull(),
   startDate: timestamp("startDate"),
@@ -476,3 +477,54 @@ export const heroMechanisms = mysqlTable("heroMechanisms", {
 
 export type HeroMechanism = typeof heroMechanisms.$inferSelect;
 export type InsertHeroMechanism = typeof heroMechanisms.$inferInsert;
+
+
+// Campaign Management - Asset Linking
+
+/**
+ * Campaign Assets - Links generator outputs to campaigns
+ */
+export const campaignAssets = mysqlTable("campaign_assets", {
+  id: int("id").autoincrement().primaryKey(),
+  campaignId: int("campaignId").notNull(),
+  assetType: mysqlEnum("assetType", [
+    "headline",
+    "hvco",
+    "hero_mechanism",
+    "ad_copy",
+    "email_sequence",
+    "whatsapp_sequence",
+    "landing_page",
+    "offer",
+    "icp"
+  ]).notNull(),
+  assetId: varchar("assetId", { length: 255 }).notNull(), // References setId/id from respective tables
+  position: int("position").default(0).notNull(), // Order in timeline
+  notes: text("notes"), // User notes about this asset
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  campaignIdIdx: index("idx_campaignAssets_campaignId").on(table.campaignId),
+  assetTypeIdx: index("idx_campaignAssets_assetType").on(table.assetType),
+}));
+
+export type CampaignAsset = typeof campaignAssets.$inferSelect;
+export type InsertCampaignAsset = typeof campaignAssets.$inferInsert;
+
+/**
+ * Campaign Links - Visual connections between campaign assets
+ */
+export const campaignLinks = mysqlTable("campaign_links", {
+  id: int("id").autoincrement().primaryKey(),
+  campaignId: int("campaignId").notNull(),
+  sourceAssetId: int("sourceAssetId").notNull(), // campaign_assets.id
+  targetAssetId: int("targetAssetId").notNull(), // campaign_assets.id
+  linkType: mysqlEnum("linkType", ["leads_to", "supports", "requires"]).default("leads_to").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  campaignIdIdx: index("idx_campaignLinks_campaignId").on(table.campaignId),
+  sourceAssetIdIdx: index("idx_campaignLinks_sourceAssetId").on(table.sourceAssetId),
+  targetAssetIdIdx: index("idx_campaignLinks_targetAssetId").on(table.targetAssetId),
+}));
+
+export type CampaignLink = typeof campaignLinks.$inferSelect;
+export type InsertCampaignLink = typeof campaignLinks.$inferInsert;

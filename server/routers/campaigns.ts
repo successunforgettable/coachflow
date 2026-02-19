@@ -1,98 +1,192 @@
 import { z } from "zod";
 import { router, protectedProcedure } from "../_core/trpc";
-import { getDb } from "../db";
-import { campaigns } from "../../drizzle/schema";
-import { eq, and } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
+import {
+  getCampaignsByUserId,
+  getCampaignById,
+  createCampaign,
+  updateCampaign,
+  deleteCampaign,
+  duplicateCampaign,
+  addAssetToCampaign,
+  removeAssetFromCampaign,
+  updateAssetPosition,
+  createCampaignLink,
+  deleteCampaignLink,
+} from "../db";
 
 export const campaignsRouter = router({
+  // List all user campaigns
   list: protectedProcedure.query(async ({ ctx }) => {
-    const db = await getDb();
-    if (!db) return [];
-    
-    const result = await db
-      .select()
-      .from(campaigns)
-      .where(eq(campaigns.userId, ctx.user.id))
-      .orderBy(campaigns.createdAt);
-    
-    return result;
+    return await getCampaignsByUserId(ctx.user.id);
   }),
 
+  // Get campaign by ID with assets and links
+  getById: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const campaign = await getCampaignById(input.id, ctx.user.id);
+      if (!campaign) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Campaign not found",
+        });
+      }
+      return campaign;
+    }),
+
+  // Create new campaign
   create: protectedProcedure
     .input(
       z.object({
-        name: z.string().min(1).max(200),
+        name: z.string().min(1).max(255),
+        description: z.string().optional(),
         serviceId: z.number().optional(),
         campaignType: z.enum(["webinar", "challenge", "course_launch", "product_launch"]).optional(),
-        status: z.enum(["draft", "active", "paused", "completed"]).optional(),
+        status: z.enum(["draft", "active", "paused", "completed"]).default("draft"),
+        startDate: z.string().optional(), // ISO date string
+        endDate: z.string().optional(), // ISO date string
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
-
-      const result = await db.insert(campaigns).values({
+      const campaignId = await createCampaign({
         userId: ctx.user.id,
         name: input.name,
-        serviceId: input.serviceId || null,
-        campaignType: input.campaignType || null,
-        status: input.status || "draft",
+        description: input.description,
+        serviceId: input.serviceId,
+        campaignType: input.campaignType,
+        status: input.status,
+        startDate: input.startDate ? new Date(input.startDate) : null,
+        endDate: input.endDate ? new Date(input.endDate) : null,
       });
-
-      return { id: Number(result[0].insertId) };
+      return { id: campaignId };
     }),
 
+  // Update campaign details
   update: protectedProcedure
     .input(
       z.object({
         id: z.number(),
-        name: z.string().min(1).max(200).optional(),
+        name: z.string().min(1).max(255).optional(),
+        description: z.string().optional(),
         campaignType: z.enum(["webinar", "challenge", "course_launch", "product_launch"]).optional(),
         status: z.enum(["draft", "active", "paused", "completed"]).optional(),
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
-
-      const updateData: any = {};
-      if (input.name) updateData.name = input.name;
-      if (input.campaignType !== undefined) updateData.campaignType = input.campaignType;
-      if (input.status) updateData.status = input.status;
-
-      await db
-        .update(campaigns)
-        .set(updateData)
-        .where(and(eq(campaigns.id, input.id), eq(campaigns.userId, ctx.user.id)));
-
+      const { id, ...data } = input;
+      
+      // Convert date strings to Date objects
+      const updateData: any = { ...data };
+      if (data.startDate) updateData.startDate = new Date(data.startDate);
+      if (data.endDate) updateData.endDate = new Date(data.endDate);
+      
+      await updateCampaign(id, ctx.user.id, updateData);
       return { success: true };
     }),
 
+  // Delete campaign
   delete: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
-
-      await db
-        .delete(campaigns)
-        .where(and(eq(campaigns.id, input.id), eq(campaigns.userId, ctx.user.id)));
-
+      await deleteCampaign(input.id, ctx.user.id);
       return { success: true };
     }),
 
-  getById: protectedProcedure
+  // Duplicate campaign
+  duplicate: protectedProcedure
     .input(z.object({ id: z.number() }))
-    .query(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) return null;
+    .mutation(async ({ ctx, input }) => {
+      const newCampaignId = await duplicateCampaign(input.id, ctx.user.id);
+      return { id: newCampaignId };
+    }),
 
-      const result = await db
-        .select()
-        .from(campaigns)
-        .where(and(eq(campaigns.id, input.id), eq(campaigns.userId, ctx.user.id)))
-        .limit(1);
+  // Add asset to campaign
+  addAsset: protectedProcedure
+    .input(
+      z.object({
+        campaignId: z.number(),
+        assetType: z.enum([
+          "headline",
+          "hvco",
+          "hero_mechanism",
+          "ad_copy",
+          "email_sequence",
+          "whatsapp_sequence",
+          "landing_page",
+          "offer",
+          "icp",
+        ]),
+        assetId: z.string(),
+        position: z.number().default(0),
+        notes: z.string().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const assetId = await addAssetToCampaign({
+        campaignId: input.campaignId,
+        assetType: input.assetType,
+        assetId: input.assetId,
+        position: input.position,
+        notes: input.notes,
+      });
+      return { assetId };
+    }),
 
-      return result[0] || null;
+  // Remove asset from campaign
+  removeAsset: protectedProcedure
+    .input(z.object({ assetId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      await removeAssetFromCampaign(input.assetId);
+      return { success: true };
+    }),
+
+  // Reorder assets in campaign
+  reorderAssets: protectedProcedure
+    .input(
+      z.object({
+        updates: z.array(
+          z.object({
+            assetId: z.number(),
+            position: z.number(),
+          })
+        ),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      for (const update of input.updates) {
+        await updateAssetPosition(update.assetId, update.position);
+      }
+      return { success: true };
+    }),
+
+  // Create link between assets
+  linkAssets: protectedProcedure
+    .input(
+      z.object({
+        campaignId: z.number(),
+        sourceAssetId: z.number(),
+        targetAssetId: z.number(),
+        linkType: z.enum(["leads_to", "supports", "requires"]).default("leads_to"),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const linkId = await createCampaignLink({
+        campaignId: input.campaignId,
+        sourceAssetId: input.sourceAssetId,
+        targetAssetId: input.targetAssetId,
+        linkType: input.linkType,
+      });
+      return { linkId };
+    }),
+
+  // Delete link between assets
+  unlinkAssets: protectedProcedure
+    .input(z.object({ linkId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      await deleteCampaignLink(input.linkId);
+      return { success: true };
     }),
 });
