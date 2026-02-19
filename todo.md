@@ -1136,3 +1136,15 @@
 - [x] Redirect to /onboarding after reset
 - [x] Test functionality (all 84 tests passing)
 - [x] Save checkpoint
+
+
+## Phase 402: Add Profile Editing to Settings Page ✅ COMPLETE
+- [x] Create tRPC procedure for updating user profile (auth.updateProfile)
+- [x] Add input validation (name required, email format validation, trim whitespace)
+- [x] Update Settings page with editable form fields
+- [x] Add Edit/Save/Cancel buttons
+- [x] Show loading states during save
+- [x] Add success/error toast notifications
+- [x] Write vitest tests for updateProfile procedure (15 comprehensive tests)
+- [x] Test end-to-end functionality (all 99 tests passing)
+- [x] Save checkpoint

@@ -64,6 +64,47 @@ export const appRouter = router({
         offers: getQuotaLimit(tier, "offers", userRole),
       };
     }),
+    updateProfile: publicProcedure
+      .input(
+        z.object({
+          name: z.string().trim().min(1, "Name is required").max(100, "Name is too long"),
+          email: z.string().trim().email("Invalid email address").max(255, "Email is too long"),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        if (!ctx.user) throw new Error("Not authenticated");
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+        
+        // Check if email is already taken by another user
+        const [existingUser] = await db
+          .select()
+          .from(users)
+          .where(eq(users.email, input.email))
+          .limit(1);
+        
+        if (existingUser && existingUser.id !== ctx.user.id) {
+          throw new Error("Email is already in use by another account");
+        }
+        
+        await db
+          .update(users)
+          .set({ 
+            name: input.name, 
+            email: input.email,
+            updatedAt: new Date(),
+          })
+          .where(eq(users.id, ctx.user.id));
+        
+        return { 
+          success: true, 
+          user: { 
+            ...ctx.user, 
+            name: input.name, 
+            email: input.email 
+          } 
+        };
+      }),
   }),
 
   // Feature routers

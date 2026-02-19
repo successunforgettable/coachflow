@@ -3,6 +3,8 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,12 +17,20 @@ import {
 } from "@/components/ui/alert-dialog";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { RefreshCw, User, Bell, CreditCard, Shield } from "lucide-react";
+import { RefreshCw, User, Bell, CreditCard, Shield, Edit2, X, Check } from "lucide-react";
 
 export default function Settings() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const [showRestartDialog, setShowRestartDialog] = useState(false);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [profileForm, setProfileForm] = useState({
+    name: user?.name || "",
+    email: user?.email || "",
+  });
+  const [formErrors, setFormErrors] = useState<{ name?: string; email?: string }>({});
+
+  const utils = trpc.useUtils();
 
   const resetOnboarding = trpc.onboarding.reset.useMutation({
     onSuccess: () => {
@@ -32,9 +42,71 @@ export default function Settings() {
     },
   });
 
+  const updateProfile = trpc.auth.updateProfile.useMutation({
+    onSuccess: () => {
+      toast.success("Profile updated successfully!");
+      setIsEditingProfile(false);
+      // Invalidate auth.me to refresh user data
+      utils.auth.me.invalidate();
+    },
+    onError: (error) => {
+      toast.error(`Failed to update profile: ${error.message}`);
+    },
+  });
+
   const handleRestartOnboarding = () => {
     resetOnboarding.mutate();
     setShowRestartDialog(false);
+  };
+
+  const handleEditProfile = () => {
+    setProfileForm({
+      name: user?.name || "",
+      email: user?.email || "",
+    });
+    setFormErrors({});
+    setIsEditingProfile(true);
+  };
+
+  const handleCancelEdit = () => {
+    setProfileForm({
+      name: user?.name || "",
+      email: user?.email || "",
+    });
+    setFormErrors({});
+    setIsEditingProfile(false);
+  };
+
+  const validateForm = () => {
+    const errors: { name?: string; email?: string } = {};
+    
+    if (!profileForm.name.trim()) {
+      errors.name = "Name is required";
+    } else if (profileForm.name.length > 100) {
+      errors.name = "Name is too long (max 100 characters)";
+    }
+    
+    if (!profileForm.email.trim()) {
+      errors.email = "Email is required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profileForm.email)) {
+      errors.email = "Invalid email address";
+    } else if (profileForm.email.length > 255) {
+      errors.email = "Email is too long (max 255 characters)";
+    }
+    
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSaveProfile = () => {
+    if (!validateForm()) {
+      return;
+    }
+    
+    updateProfile.mutate({
+      name: profileForm.name.trim(),
+      email: profileForm.email.trim(),
+    });
   };
 
   return (
@@ -49,33 +121,99 @@ export default function Settings() {
           {/* Account Information */}
           <Card className="bg-slate-800/50 border-slate-700">
             <CardHeader>
-              <div className="flex items-center gap-2">
-                <User className="h-5 w-5 text-purple-400" />
-                <CardTitle className="text-white">Account Information</CardTitle>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <User className="h-5 w-5 text-purple-400" />
+                  <CardTitle className="text-white">Account Information</CardTitle>
+                </div>
+                {!isEditingProfile && (
+                  <Button
+                    onClick={handleEditProfile}
+                    variant="outline"
+                    size="sm"
+                    className="bg-slate-700 hover:bg-slate-600 text-white border-slate-600"
+                  >
+                    <Edit2 className="h-4 w-4 mr-2" />
+                    Edit Profile
+                  </Button>
+                )}
               </div>
               <CardDescription className="text-slate-400">
-                Your account details and subscription status
+                {isEditingProfile ? "Update your profile information" : "Your account details and subscription status"}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-slate-400">Name</label>
-                  <p className="text-white mt-1">{user?.name || "Not set"}</p>
+              {isEditingProfile ? (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name" className="text-slate-300">Name</Label>
+                    <Input
+                      id="name"
+                      value={profileForm.name}
+                      onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
+                      className="bg-slate-700 border-slate-600 text-white"
+                      placeholder="Enter your name"
+                    />
+                    {formErrors.name && (
+                      <p className="text-sm text-red-400">{formErrors.name}</p>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="text-slate-300">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={profileForm.email}
+                      onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
+                      className="bg-slate-700 border-slate-600 text-white"
+                      placeholder="Enter your email"
+                    />
+                    {formErrors.email && (
+                      <p className="text-sm text-red-400">{formErrors.email}</p>
+                    )}
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={handleSaveProfile}
+                      disabled={updateProfile.isPending}
+                      className="bg-purple-600 hover:bg-purple-700 text-white"
+                    >
+                      <Check className="h-4 w-4 mr-2" />
+                      {updateProfile.isPending ? "Saving..." : "Save Changes"}
+                    </Button>
+                    <Button
+                      onClick={handleCancelEdit}
+                      variant="outline"
+                      disabled={updateProfile.isPending}
+                      className="bg-slate-700 hover:bg-slate-600 text-white border-slate-600"
+                    >
+                      <X className="h-4 w-4 mr-2" />
+                      Cancel
+                    </Button>
+                  </div>
                 </div>
-                <div>
-                  <label className="text-sm font-medium text-slate-400">Email</label>
-                  <p className="text-white mt-1">{user?.email || "Not set"}</p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-slate-400">Name</label>
+                    <p className="text-white mt-1">{user?.name || "Not set"}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-slate-400">Email</label>
+                    <p className="text-white mt-1">{user?.email || "Not set"}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-slate-400">Subscription Tier</label>
+                    <p className="text-white mt-1 capitalize">{user?.subscriptionTier || "trial"}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-slate-400">Account Status</label>
+                    <p className="text-white mt-1 capitalize">{user?.subscriptionStatus || "active"}</p>
+                  </div>
                 </div>
-                <div>
-                  <label className="text-sm font-medium text-slate-400">Subscription Tier</label>
-                  <p className="text-white mt-1 capitalize">{user?.subscriptionTier || "trial"}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-slate-400">Account Status</label>
-                  <p className="text-white mt-1 capitalize">{user?.subscriptionStatus || "active"}</p>
-                </div>
-              </div>
+              )}
             </CardContent>
           </Card>
 
