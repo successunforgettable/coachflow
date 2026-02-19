@@ -34,6 +34,7 @@ import HeroMechanismsDetail from "./pages/HeroMechanismsDetail";
 import AdminDashboard from "./pages/AdminDashboard";
 import AnalyticsDashboard from "./pages/AnalyticsDashboard";
 import OnboardingPage from "./pages/OnboardingPage";
+import Settings from "./pages/Settings";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -71,6 +72,7 @@ function Router() {
       <Route path={"/admin"} component={AdminDashboard} />
       <Route path={"/analytics"} component={AnalyticsDashboard} />
       <Route path={"/onboarding"} component={OnboardingPage} />
+      <Route path={"/settings"} component={Settings} />
       <Route path={"/404"} component={NotFound} />
       {/* Fallback route for 404 */}
       <Route component={NotFound} />

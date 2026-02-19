@@ -1126,3 +1126,13 @@
 - [x] Test completion tracking
 - [x] All 84 tests passing (71 previous + 13 new)
 - [x] Save final checkpoint
+
+
+## Phase 401: Add Restart Onboarding Button ✅ COMPLETE
+- [x] Find or create user profile/settings page
+- [x] Add "Restart Onboarding" button to profile page
+- [x] Add confirmation dialog before restarting
+- [x] Wire up to onboarding.reset tRPC procedure
+- [x] Redirect to /onboarding after reset
+- [x] Test functionality (all 84 tests passing)
+- [x] Save checkpoint
