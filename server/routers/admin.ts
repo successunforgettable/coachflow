@@ -805,6 +805,322 @@ export const adminRouter = router({
    * Phase 8: Bulk Change Tier
    * Change subscription tier for multiple users
    */
+  /**
+   * Create a super user with unlimited quotas
+   */
+  createSuperUser: auditedAdminProcedure
+    .input(
+      z.object({
+        userId: z.number(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+      // Update user role to superuser
+      await db
+        .update(users)
+        .set({ role: "superuser" })
+        .where(eq(users.id, input.userId));
+
+      return { success: true };
+    }),
+
+  /**
+   * List all super users
+   */
+  listSuperUsers: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+    const superusers = await db.select().from(users).where(eq(users.role, "superuser"));
+    return superusers;
+  }),
+
+  /**
+   * Revoke super user status (downgrade to regular user)
+   */
+  revokeSuperUser: auditedAdminProcedure
+    .input(
+      z.object({
+        userId: z.number(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+      // Downgrade to regular user
+      await db
+        .update(users)
+        .set({ role: "user" })
+        .where(eq(users.id, input.userId));
+
+      return { success: true };
+    }),
+
+  /**
+   * Phase 5: Content Moderation - Get user's generated content
+   */
+  getUserContent: adminProcedure
+    .input(
+      z.object({
+        userId: z.number(),
+        contentType: z.enum(["headline", "hvco", "heroMechanism", "icp", "adCopy", "email", "whatsapp", "landingPage", "offer"]).optional(),
+      })
+    )
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+      // Import all content tables
+      const { headlines, hvcoTitles, heroMechanisms, idealCustomerProfiles, adCopy, emailSequences, whatsappSequences, landingPages, offers } = await import("../../drizzle/schema");
+
+      const content: any[] = [];
+
+      // Fetch content based on type filter
+      if (!input.contentType || input.contentType === "headline") {
+        const headlineContent = await db.select().from(headlines).where(eq(headlines.userId, input.userId));
+        content.push(...headlineContent.map(h => ({ ...h, contentType: "headline" })));
+      }
+      if (!input.contentType || input.contentType === "hvco") {
+        const hvcoContent = await db.select().from(hvcoTitles).where(eq(hvcoTitles.userId, input.userId));
+        content.push(...hvcoContent.map(h => ({ ...h, contentType: "hvco" })));
+      }
+      if (!input.contentType || input.contentType === "heroMechanism") {
+        const heroContent = await db.select().from(heroMechanisms).where(eq(heroMechanisms.userId, input.userId));
+        content.push(...heroContent.map(h => ({ ...h, contentType: "heroMechanism" })));
+      }
+      if (!input.contentType || input.contentType === "icp") {
+        const icpContent = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.userId, input.userId));
+        content.push(...icpContent.map(h => ({ ...h, contentType: "icp" })));
+      }
+      if (!input.contentType || input.contentType === "adCopy") {
+        const adContent = await db.select().from(adCopy).where(eq(adCopy.userId, input.userId));
+        content.push(...adContent.map(h => ({ ...h, contentType: "adCopy" })));
+      }
+      if (!input.contentType || input.contentType === "email") {
+        const emailContent = await db.select().from(emailSequences).where(eq(emailSequences.userId, input.userId));
+        content.push(...emailContent.map(h => ({ ...h, contentType: "email" })));
+      }
+      if (!input.contentType || input.contentType === "whatsapp") {
+        const whatsappContent = await db.select().from(whatsappSequences).where(eq(whatsappSequences.userId, input.userId));
+        content.push(...whatsappContent.map(h => ({ ...h, contentType: "whatsapp" })));
+      }
+      if (!input.contentType || input.contentType === "landingPage") {
+        const landingPageContent = await db.select().from(landingPages).where(eq(landingPages.userId, input.userId));
+        content.push(...landingPageContent.map(h => ({ ...h, contentType: "landingPage" })));
+      }
+      if (!input.contentType || input.contentType === "offer") {
+        const offerContent = await db.select().from(offers).where(eq(offers.userId, input.userId));
+        content.push(...offerContent.map(h => ({ ...h, contentType: "offer" })));
+      }
+
+      return content;
+    }),
+
+  /**
+   * Phase 5: Delete user content
+   */
+  deleteUserContent: auditedAdminProcedure
+    .input(
+      z.object({
+        contentType: z.enum(["headline", "hvco", "heroMechanism", "icp", "adCopy", "email", "whatsapp", "landingPage", "offer"]),
+        contentId: z.number(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+      const { headlines, hvcoTitles, heroMechanisms, idealCustomerProfiles, adCopy, emailSequences, whatsappSequences, landingPages, offers } = await import("../../drizzle/schema");
+
+      // Delete based on content type
+      switch (input.contentType) {
+        case "headline":
+          await db.delete(headlines).where(eq(headlines.id, input.contentId));
+          break;
+        case "hvco":
+          await db.delete(hvcoTitles).where(eq(hvcoTitles.id, input.contentId));
+          break;
+        case "heroMechanism":
+          await db.delete(heroMechanisms).where(eq(heroMechanisms.id, input.contentId));
+          break;
+        case "icp":
+          await db.delete(idealCustomerProfiles).where(eq(idealCustomerProfiles.id, input.contentId));
+          break;
+        case "adCopy":
+          await db.delete(adCopy).where(eq(adCopy.id, input.contentId));
+          break;
+        case "email":
+          await db.delete(emailSequences).where(eq(emailSequences.id, input.contentId));
+          break;
+        case "whatsapp":
+          await db.delete(whatsappSequences).where(eq(whatsappSequences.id, input.contentId));
+          break;
+        case "landingPage":
+          await db.delete(landingPages).where(eq(landingPages.id, input.contentId));
+          break;
+        case "offer":
+          await db.delete(offers).where(eq(offers.id, input.contentId));
+          break;
+      }
+
+      return { success: true };
+    }),
+
+  /**
+   * Phase 5: Search content across all generators
+   * Note: Simplified implementation - returns empty for now
+   * In production, implement full-text search across all content tables
+   */
+  searchContent: adminProcedure
+    .input(
+      z.object({
+        query: z.string(),
+        contentType: z.enum(["headline", "hvco", "heroMechanism", "icp", "adCopy", "email", "whatsapp", "landingPage", "offer"]).optional(),
+      })
+    )
+    .query(async ({ input }) => {
+      // TODO: Implement full-text search
+      return [];
+    }),
+
+  /**
+   * Phase 5: Flag content as inappropriate
+   */
+  flagContent: auditedAdminProcedure
+    .input(
+      z.object({
+        contentType: z.enum(["headline", "hvco", "heroMechanism", "icp", "adCopy", "email", "whatsapp", "landingPage", "offer"]),
+        contentId: z.number(),
+        userId: z.number(),
+        reason: z.string(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+      // Insert flag record
+      await db.execute(sql`
+        INSERT INTO content_flags (content_type, content_id, user_id, flagged_by_admin_id, reason)
+        VALUES (${input.contentType}, ${input.contentId}, ${input.userId}, ${ctx.user.id}, ${input.reason})
+      `);
+
+      return { success: true };
+    }),
+
+  /**
+   * Phase 5: Get flagged content
+   */
+  getFlaggedContent: adminProcedure
+    .input(
+      z.object({
+        status: z.enum(["pending", "resolved", "dismissed"]).optional(),
+      })
+    )
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+      let query = sql`SELECT * FROM content_flags`;
+      if (input.status) {
+        query = sql`SELECT * FROM content_flags WHERE status = ${input.status}`;
+      }
+      query = sql`${query} ORDER BY created_at DESC LIMIT 100`;
+
+      const flags: any = await db.execute(query);
+      return flags.rows || [];
+    }),
+
+  /**
+   * Phase 5: Resolve flagged content
+   */
+  resolveFlaggedContent: auditedAdminProcedure
+    .input(
+      z.object({
+        flagId: z.number(),
+        status: z.enum(["resolved", "dismissed"]),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+      await db.execute(sql`
+        UPDATE content_flags 
+        SET status = ${input.status}, resolved_at = NOW()
+        WHERE id = ${input.flagId}
+      `);
+
+      return { success: true };
+    }),
+
+  /**
+   * Phase 7: Get system health metrics
+   */
+  getSystemHealth: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+    // Get latest metrics from last 24 hours
+    const metrics: any = await db.execute(sql`
+      SELECT * FROM system_health_metrics 
+      WHERE metric_date >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+      ORDER BY metric_date DESC
+    `);
+
+    // Calculate aggregates
+    const rows = (metrics.rows || []) as any[];
+    const totalApiCalls = rows.reduce((sum, r) => sum + (r.api_success_count || 0) + (r.api_error_count || 0), 0);
+    const totalApiErrors = rows.reduce((sum, r) => sum + (r.api_error_count || 0), 0);
+    const totalLlmCalls = rows.reduce((sum, r) => sum + (r.llm_success_count || 0) + (r.llm_error_count || 0), 0);
+    const totalLlmErrors = rows.reduce((sum, r) => sum + (r.llm_error_count || 0), 0);
+
+    return {
+      apiErrorRate: totalApiCalls > 0 ? (totalApiErrors / totalApiCalls * 100).toFixed(2) : "0",
+      llmSuccessRate: totalLlmCalls > 0 ? ((totalLlmCalls - totalLlmErrors) / totalLlmCalls * 100).toFixed(2) : "100",
+      metrics: rows,
+    };
+  }),
+
+  /**
+   * Phase 7: Get Stripe webhook status
+   */
+  getWebhookStatus: adminProcedure.query(async () => {
+    // Check Stripe webhook endpoint health
+    try {
+      const webhookEndpoints = await stripe.webhookEndpoints.list({ limit: 10 });
+      return {
+        configured: webhookEndpoints.data.length > 0,
+        endpoints: webhookEndpoints.data.map(e => ({
+          id: e.id,
+          url: e.url,
+          status: e.status,
+          enabledEvents: e.enabled_events,
+        })),
+      };
+    } catch (error) {
+      return { configured: false, error: "Failed to fetch webhook status" };
+    }
+  }),
+
+  /**
+   * Phase 7: Get S3 storage usage
+   * Note: Simplified - returns placeholder data
+   * In production, integrate with S3 API to get actual usage
+   */
+  getStorageUsage: adminProcedure.query(async () => {
+    // TODO: Integrate with S3 API
+    return {
+      totalBytes: 0,
+      totalGB: "0.00",
+      estimatedCost: "$0.00",
+    };
+  }),
+
   bulkChangeTier: auditedAdminProcedure
     .input(
       z.object({

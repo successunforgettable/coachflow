@@ -56,8 +56,21 @@ export const QUOTA_LIMITS: Record<SubscriptionTier, Record<GeneratorType, number
 
 /**
  * Get quota limit for a specific generator and subscription tier
+ * @param tier - Subscription tier or null/undefined
+ * @param generatorType - Type of generator
+ * @param userRole - User role (optional, for superuser check)
+ * @returns Quota limit (Infinity for superuser)
  */
-export function getQuotaLimit(tier: SubscriptionTier | null | undefined, generatorType: GeneratorType): number {
+export function getQuotaLimit(
+  tier: SubscriptionTier | null | undefined, 
+  generatorType: GeneratorType,
+  userRole?: string
+): number {
+  // Superusers have unlimited quota
+  if (userRole === "superuser") {
+    return Infinity;
+  }
+  
   const effectiveTier = tier || "trial";
   return QUOTA_LIMITS[effectiveTier][generatorType];
 }

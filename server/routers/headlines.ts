@@ -197,13 +197,16 @@ export const headlinesRouter = router({
       // Check and reset quota if user's anniversary date has passed
       await checkAndResetQuotaIfNeeded(ctx.user.id);
 
-      // Check quota (Pro plan: 6 per month)
-      const maxHeadlines = ctx.user.subscriptionTier === "agency" ? 20 : 6;
-      if (ctx.user.headlineGeneratedCount >= maxHeadlines) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: `You've reached your monthly limit of ${maxHeadlines} headline sets. Upgrade to generate more.`,
-        });
+      // Superusers have unlimited quota
+      if (ctx.user.role !== "superuser") {
+        // Check quota (Pro plan: 6 per month)
+        const maxHeadlines = ctx.user.subscriptionTier === "agency" ? 20 : 6;
+        if (ctx.user.headlineGeneratedCount >= maxHeadlines) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: `You've reached your monthly limit of ${maxHeadlines} headline sets. Upgrade to generate more.`,
+          });
+        }
       }
 
       const headlineSetId = nanoid();

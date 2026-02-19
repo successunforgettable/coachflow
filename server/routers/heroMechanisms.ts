@@ -58,13 +58,16 @@ export const heroMechanismsRouter = router({
       // Check and reset quota if user's anniversary date has passed
       await checkAndResetQuotaIfNeeded(ctx.user.id);
 
-      // Check quota limit
-      const limit = getQuotaLimit(user.subscriptionTier, "heroMechanisms");
-      if (user.heroMechanismGeneratedCount >= limit) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: `You've reached your monthly limit of ${limit} Hero Mechanism sets. Upgrade to generate more.`,
-        });
+      // Superusers have unlimited quota
+      if (user.role !== "superuser") {
+        // Check quota limit
+        const limit = getQuotaLimit(user.subscriptionTier, "heroMechanisms");
+        if (user.heroMechanismGeneratedCount >= limit) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: `You've reached your monthly limit of ${limit} Hero Mechanism sets. Upgrade to generate more.`,
+          });
+        }
       }
       
       // Get service details for context

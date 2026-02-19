@@ -98,13 +98,16 @@ export const emailSequencesRouter = router({
       // Check and reset quota if user's anniversary date has passed
       await checkAndResetQuotaIfNeeded(ctx.user.id);
 
-      // Check quota limit
-      const limit = getQuotaLimit(ctx.user.subscriptionTier, "email");
-      if (ctx.user.emailSeqGeneratedCount >= limit) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: `You've reached your monthly limit of ${limit} email sequences. Upgrade to generate more.`,
-        });
+      // Superusers have unlimited quota
+      if (ctx.user.role !== "superuser") {
+        // Check quota limit
+        const limit = getQuotaLimit(ctx.user.subscriptionTier, "email");
+        if (ctx.user.emailSeqGeneratedCount >= limit) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: `You've reached your monthly limit of ${limit} email sequences. Upgrade to generate more.`,
+          });
+        }
       }
 
       // Get service details

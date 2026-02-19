@@ -99,15 +99,18 @@ export const landingPagesRouter = router({
 
       if (!user) throw new Error("User not found");
 
-      const quotaLimits = {
-        trial: 2,
-        pro: 50,
-        agency: 500,
-      };
+      // Superusers have unlimited quota
+      if (user.role !== "superuser") {
+        const quotaLimits = {
+          trial: 2,
+          pro: 50,
+          agency: 500,
+        };
 
-      const limit = quotaLimits[user.subscriptionTier || "trial"];
-      if (user.landingPageGeneratedCount >= limit) {
-        throw new Error(`Landing page generation limit reached (${limit}). Please upgrade your plan.`);
+        const limit = quotaLimits[user.subscriptionTier || "trial"];
+        if (user.landingPageGeneratedCount >= limit) {
+          throw new Error(`Landing page generation limit reached (${limit}). Please upgrade your plan.`);
+        }
       }
 
       // Get service details

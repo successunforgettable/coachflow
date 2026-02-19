@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE system_health_metrics (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  metric_date TIMESTAMP NOT NULL,\n  api_error_count INT DEFAULT 0,\n  api_success_count INT DEFAULT 0,\n  llm_error_count INT DEFAULT 0,\n  llm_success_count INT DEFAULT 0,\n  webhook_delivery_success INT DEFAULT 0,\n  webhook_delivery_failed INT DEFAULT 0,\n  storage_usage_bytes BIGINT DEFAULT 0,\n  created_at TIMESTAMP DEFAULT NOW(),\n  INDEX idx_metric_date (metric_date)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute CREATE TABLE system_health_metrics (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  metric_date TIMESTAMP NOT NULL,\n  api_error_count INT DEFAULT 0,\n  api_success_count INT DEFAULT 0,\n  llm_error_count INT DEFAULT 0,\n  llm_success_count INT DEFAULT 0,\n  webhook_delivery_success INT DEFAULT 0,\n  webhook_delivery_failed INT DEFAULT 0,\n  storage_usage_bytes BIGINT DEFAULT 0,\n  created_at TIMESTAMP DEFAULT NOW(),\n  INDEX idx_metric_date (metric_date)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1639
+}

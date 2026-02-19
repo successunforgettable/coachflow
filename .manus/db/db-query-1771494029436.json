@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE content_flags (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  content_type ENUM('headline', 'hvco', 'heroMechanism', 'icp', 'adCopy', 'email', 'whatsapp', 'landingPage', 'offer') NOT NULL,\n  content_id INT NOT NULL,\n  user_id INT NOT NULL REFERENCES users(id),\n  flagged_by_admin_id INT NOT NULL REFERENCES users(id),\n  reason TEXT,\n  status ENUM('pending', 'resolved', 'dismissed') DEFAULT 'pending',\n  created_at TIMESTAMP DEFAULT NOW(),\n  resolved_at TIMESTAMP NULL,\n  INDEX idx_content_type_id (content_type, content_id),\n  INDEX idx_user_id (user_id),\n  INDEX idx_status (status),\n  INDEX idx_created_at (created_at)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute CREATE TABLE content_flags (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  content_type ENUM('headline', 'hvco', 'heroMechanism', 'icp', 'adCopy', 'email', 'whatsapp', 'landingPage', 'offer') NOT NULL,\n  content_id INT NOT NULL,\n  user_id INT NOT NULL REFERENCES users(id),\n  flagged_by_admin_id INT NOT NULL REFERENCES users(id),\n  reason TEXT,\n  status ENUM('pending', 'resolved', 'dismissed') DEFAULT 'pending',\n  created_at TIMESTAMP DEFAULT NOW(),\n  resolved_at TIMESTAMP NULL,\n  INDEX idx_content_type_id (content_type, content_id),\n  INDEX idx_user_id (user_id),\n  INDEX idx_status (status),\n  INDEX idx_created_at (created_at)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1640
+}

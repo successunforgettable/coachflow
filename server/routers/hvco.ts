@@ -51,13 +51,16 @@ export const hvcoRouter = router({
       // Check and reset quota if user's anniversary date has passed
       await checkAndResetQuotaIfNeeded(user.id);
       
-      // Check quota limit
-      const limit = getQuotaLimit(user.subscriptionTier, "hvco");
-      if (user.hvcoGeneratedCount >= limit) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: `You've reached your monthly limit of ${limit} HVCO title sets. Upgrade to generate more.`,
-        });
+      // Superusers have unlimited quota
+      if (user.role !== "superuser") {
+        // Check quota limit
+        const limit = getQuotaLimit(user.subscriptionTier, "hvco");
+        if (user.hvcoGeneratedCount >= limit) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: `You've reached your monthly limit of ${limit} HVCO title sets. Upgrade to generate more.`,
+          });
+        }
       }
       
       // Get service details for context

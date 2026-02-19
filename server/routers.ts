@@ -49,16 +49,17 @@ export const appRouter = router({
     getQuotaLimits: publicProcedure.query(({ ctx }) => {
       if (!ctx.user) return null;
       const tier = ctx.user.subscriptionTier || "trial";
+      const userRole = ctx.user.role;
       return {
-        headlines: getQuotaLimit(tier, "headlines"),
-        hvco: getQuotaLimit(tier, "hvco"),
-        heroMechanisms: getQuotaLimit(tier, "heroMechanisms"),
-        icp: getQuotaLimit(tier, "icp"),
-        adCopy: getQuotaLimit(tier, "adCopy"),
-        email: getQuotaLimit(tier, "email"),
-        whatsapp: getQuotaLimit(tier, "whatsapp"),
-        landingPages: getQuotaLimit(tier, "landingPages"),
-        offers: getQuotaLimit(tier, "offers"),
+        headlines: getQuotaLimit(tier, "headlines", userRole),
+        hvco: getQuotaLimit(tier, "hvco", userRole),
+        heroMechanisms: getQuotaLimit(tier, "heroMechanisms", userRole),
+        icp: getQuotaLimit(tier, "icp", userRole),
+        adCopy: getQuotaLimit(tier, "adCopy", userRole),
+        email: getQuotaLimit(tier, "email", userRole),
+        whatsapp: getQuotaLimit(tier, "whatsapp", userRole),
+        landingPages: getQuotaLimit(tier, "landingPages", userRole),
+        offers: getQuotaLimit(tier, "offers", userRole),
       };
     }),
   }),
