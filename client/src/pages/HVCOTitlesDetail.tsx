@@ -11,6 +11,8 @@ import RegenerateSidebar from "@/components/RegenerateSidebar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { RegenerateConfirmationDialog } from "@/components/RegenerateConfirmationDialog";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 type TabType = "long" | "short" | "beast_mode" | "subheadlines";
 
@@ -18,6 +20,8 @@ export default function HVCOTitlesDetail() {
   const [, params] = useRoute("/hvco-titles/:hvcoSetId");
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState<TabType>("long");
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const { user } = useAuth();
   
   const hvcoSetId = params?.hvcoSetId || "";
 
@@ -57,6 +61,10 @@ export default function HVCOTitlesDetail() {
   });
 
   const handleGenerateMore = () => {
+    setShowConfirmDialog(true);
+  };
+
+  const confirmGenerateMore = () => {
     if (!titles || titles.length === 0) return;
     
     // Use the stored parameters from any title in the set
@@ -66,6 +74,7 @@ export default function HVCOTitlesDetail() {
       return;
     }
     
+    setShowConfirmDialog(false);
     generateMoreMutation.mutate({
       serviceId: firstTitle.serviceId,
       targetMarket: firstTitle.targetMarket,
@@ -456,6 +465,18 @@ export default function HVCOTitlesDetail() {
           </div>
         </div>
       </RegenerateSidebar>
+
+      {/* Regenerate Confirmation Dialog */}
+      <RegenerateConfirmationDialog
+        open={showConfirmDialog}
+        onOpenChange={setShowConfirmDialog}
+        onConfirm={confirmGenerateMore}
+        generatorName="HVCO Titles"
+        currentCount={user?.hvcoGeneratedCount || 0}
+        limit={user?.role === "superuser" ? Infinity : (user?.subscriptionTier === "agency" ? 999 : user?.subscriptionTier === "pro" ? 3 : 0)}
+        resetDate={undefined}
+        isLoading={generateMoreMutation.isPending}
+      />
       </div>
     </div>
   );

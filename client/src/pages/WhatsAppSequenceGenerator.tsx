@@ -18,6 +18,7 @@ import { exportToPDF } from "@/lib/pdfExport";
 import RegenerateSidebar from "@/components/RegenerateSidebar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RegenerateConfirmationDialog } from "@/components/RegenerateConfirmationDialog";
 
 // Real-world WhatsApp sequence examples from Kong
 const WHATSAPP_SEQUENCE_EXAMPLES = {
@@ -34,11 +35,13 @@ const WHATSAPP_SEQUENCE_EXAMPLES = {
 };
 
 export default function WhatsAppSequenceGenerator() {
-  const { isAuthenticated, loading: authLoading } = useAuth();
+  const { isAuthenticated, loading: authLoading, user } = useAuth();
   const { data: quotaLimits } = trpc.auth.getQuotaLimits.useQuery();
   const [serviceId, setServiceId] = useState<number | null>(null);
   const [sequenceType, setSequenceType] = useState<"engagement" | "sales">("engagement");
   const [searchQuery, setSearchQuery] = useState("");
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [pendingSequence, setPendingSequence] = useState<any>(null);
 
   const { data: services } = trpc.services.list.useQuery(undefined, { enabled: isAuthenticated });
   const { data: sequences, refetch } = trpc.whatsappSequences.list.useQuery(undefined, { enabled: isAuthenticated });
@@ -73,16 +76,22 @@ export default function WhatsAppSequenceGenerator() {
   });
 
   const handleGenerateMore = (sequence: any) => {
-    if (!sequence.serviceId || !sequence.sequenceType) {
+    setPendingSequence(sequence);
+    setShowConfirmDialog(true);
+  };
+
+  const confirmGenerateMore = () => {
+    if (!pendingSequence || !pendingSequence.serviceId || !pendingSequence.sequenceType) {
       toast.error("Cannot regenerate: Missing service or sequence type");
       return;
     }
     
+    setShowConfirmDialog(false);
     const timestamp = new Date().toLocaleTimeString();
     generateMoreMutation.mutate({
-      serviceId: sequence.serviceId,
-      sequenceType: sequence.sequenceType,
-      name: `${sequence.sequenceType} Sequence - Variation ${timestamp}`,
+      serviceId: pendingSequence.serviceId,
+      sequenceType: pendingSequence.sequenceType,
+      name: `${pendingSequence.sequenceType} Sequence - Variation ${timestamp}`,
     });
   };
 
@@ -355,6 +364,18 @@ export default function WhatsAppSequenceGenerator() {
           </div>
         </div>
       </div>
+
+      {/* Regenerate Confirmation Dialog */}
+      <RegenerateConfirmationDialog
+        open={showConfirmDialog}
+        onOpenChange={setShowConfirmDialog}
+        onConfirm={confirmGenerateMore}
+        generatorName="WhatsApp Sequence"
+        currentCount={user?.whatsappSeqGeneratedCount || 0}
+        limit={user?.role === "superuser" ? Infinity : (user?.subscriptionTier === "agency" ? 999 : user?.subscriptionTier === "pro" ? 20 : 0)}
+        resetDate={undefined}
+        isLoading={generateMoreMutation.isPending}
+      />
     </div>
   );
 }

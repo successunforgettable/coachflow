@@ -13,12 +13,16 @@ import RegenerateSidebar from "@/components/RegenerateSidebar";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RegenerateConfirmationDialog } from "@/components/RegenerateConfirmationDialog";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 export default function AdCopyDetail() {
   const [, params] = useRoute("/ad-copy/:adSetId");
   const adSetId = params?.adSetId || "";
   const [beastMode, setBeastMode] = useState(false);
   const [activeTab, setActiveTab] = useState("headlines");
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const { user } = useAuth();
 
   const { data: adSet, isLoading, refetch } = trpc.adCopy.getByAdSetId.useQuery(
     { adSetId },
@@ -125,8 +129,13 @@ ${adSet.links.map((l: any, i: number) => `${i + 1}. ${l.content}`).join("\n\n")}
   };
 
   const handleMoreLikeThis = () => {
+    setShowConfirmDialog(true);
+  };
+
+  const confirmMoreLikeThis = () => {
     if (!adSet) return;
     
+    setShowConfirmDialog(false);
     generateMutation.mutate({
       serviceId: adSet.serviceId!,
       campaignId: adSet.campaignId || undefined,
@@ -515,6 +524,18 @@ ${adSet.links.map((l: any, i: number) => `${i + 1}. ${l.content}`).join("\n\n")}
           </div>
         </div>
       </RegenerateSidebar>
+
+      {/* Regenerate Confirmation Dialog */}
+      <RegenerateConfirmationDialog
+        open={showConfirmDialog}
+        onOpenChange={setShowConfirmDialog}
+        onConfirm={confirmMoreLikeThis}
+        generatorName="Ad Copy"
+        currentCount={user?.adCopyGeneratedCount || 0}
+        limit={user?.role === "superuser" ? Infinity : (user?.subscriptionTier === "agency" ? 999 : user?.subscriptionTier === "pro" ? 100 : 0)}
+        resetDate={undefined}
+        isLoading={generateMutation.isPending}
+      />
       </div>
     </div>
   );

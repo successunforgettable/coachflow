@@ -12,6 +12,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RegenerateConfirmationDialog } from "@/components/RegenerateConfirmationDialog";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 type TabType = "hero_mechanisms" | "headline_ideas" | "beast_mode";
 
@@ -19,6 +21,8 @@ export default function HeroMechanismsDetail() {
   const [, params] = useRoute("/hero-mechanisms/:mechanismSetId");
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState<TabType>("hero_mechanisms");
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const { user } = useAuth();
   
   const mechanismSetId = params?.mechanismSetId || "";
 
@@ -59,6 +63,10 @@ export default function HeroMechanismsDetail() {
   });
 
   const handleGenerateMore = () => {
+    setShowConfirmDialog(true);
+  };
+
+  const confirmGenerateMore = () => {
     if (!mechanisms || mechanisms.length === 0) return;
     
     const firstMechanism = mechanisms[0];
@@ -70,6 +78,7 @@ export default function HeroMechanismsDetail() {
       return;
     }
     
+    setShowConfirmDialog(false);
     generateMoreMutation.mutate({
       targetMarket: firstMechanism.targetMarket,
       pressingProblem: firstMechanism.pressingProblem,
@@ -545,6 +554,18 @@ export default function HeroMechanismsDetail() {
           </div>
         </div>
       </RegenerateSidebar>
+
+      {/* Regenerate Confirmation Dialog */}
+      <RegenerateConfirmationDialog
+        open={showConfirmDialog}
+        onOpenChange={setShowConfirmDialog}
+        onConfirm={confirmGenerateMore}
+        generatorName="Hero Mechanisms"
+        currentCount={user?.heroMechanismGeneratedCount || 0}
+        limit={user?.role === "superuser" ? Infinity : (user?.subscriptionTier === "agency" ? 999 : user?.subscriptionTier === "pro" ? 4 : 0)}
+        resetDate={undefined}
+        isLoading={generateMoreMutation.isPending}
+      />
       </div>
     </div>
   );

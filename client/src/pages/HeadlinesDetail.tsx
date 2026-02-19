@@ -12,10 +12,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
+import { RegenerateConfirmationDialog } from "@/components/RegenerateConfirmationDialog";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 export default function HeadlinesDetail() {
   const [, params] = useRoute("/headlines/:id");
   const headlineSetId = params?.id || "";
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const { user: authUser } = useAuth();
 
   const { data, isLoading, refetch } = trpc.headlines.getBySetId.useQuery(
     { headlineSetId },
@@ -58,12 +62,17 @@ export default function HeadlinesDetail() {
   });
 
   const handleGenerateMore = () => {
+    setShowConfirmDialog(true);
+  };
+
+  const confirmGenerateMore = () => {
     if (!data) return;
     
     // Use the stored parameters from any headline in the set
     const firstHeadline = data.headlines.story[0] || data.headlines.eyebrow[0] || data.headlines.question[0] || data.headlines.authority[0] || data.headlines.urgency[0];
     if (!firstHeadline) return;
     
+    setShowConfirmDialog(false);
     generateMoreMutation.mutate({
       serviceId: firstHeadline.serviceId || undefined,
       campaignId: firstHeadline.campaignId || undefined,
@@ -603,6 +612,18 @@ export default function HeadlinesDetail() {
           </div>
         </div>
       </RegenerateSidebar>
+
+      {/* Regenerate Confirmation Dialog */}
+      <RegenerateConfirmationDialog
+        open={showConfirmDialog}
+        onOpenChange={setShowConfirmDialog}
+        onConfirm={confirmGenerateMore}
+        generatorName="Headlines"
+        currentCount={authUser?.headlineGeneratedCount || 0}
+        limit={authUser?.role === "superuser" ? Infinity : (authUser?.subscriptionTier === "agency" ? 999 : authUser?.subscriptionTier === "pro" ? 6 : 0)}
+        resetDate={undefined}
+        isLoading={generateMoreMutation.isPending}
+      />
       </div>
     </div>
   );

@@ -19,6 +19,7 @@ import { SearchBar } from "@/components/SearchBar";
 import { exportToPDF } from "@/lib/pdfExport";
 import { toast } from "sonner";
 import RegenerateSidebar from "@/components/RegenerateSidebar";
+import { RegenerateConfirmationDialog } from "@/components/RegenerateConfirmationDialog";
 
 // Real-world ICP name examples from Kong
 const ICP_NAME_EXAMPLES = [
@@ -40,10 +41,11 @@ const ICP_NAME_EXAMPLES = [
 ];
 
 export default function ICPGenerator() {
-  const { isAuthenticated, loading: authLoading } = useAuth();
+  const { isAuthenticated, loading: authLoading, user } = useAuth();
   const { data: quotaLimits } = trpc.auth.getQuotaLimits.useQuery();
   const [selectedServiceId, setSelectedServiceId] = useState<number | null>(null);
   const [icpName, setIcpName] = useState("");
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   
   const icpNameCharsLeft = 100 - icpName.length;
   const [selectedICPId, setSelectedICPId] = useState<number | null>(null);
@@ -100,11 +102,16 @@ export default function ICPGenerator() {
   });
 
   const handleGenerateMore = () => {
+    setShowConfirmDialog(true);
+  };
+
+  const confirmGenerateMore = () => {
     if (!selectedICP || !selectedICP.serviceId) {
       toast.error("Cannot regenerate: No service associated with this ICP");
       return;
     }
     
+    setShowConfirmDialog(false);
     // Generate with same serviceId but new auto-generated name
     const timestamp = new Date().toLocaleTimeString();
     generateMoreMutation.mutate({
@@ -666,6 +673,18 @@ export default function ICPGenerator() {
           )}
         </div>
       </div>
+
+      {/* Regenerate Confirmation Dialog */}
+      <RegenerateConfirmationDialog
+        open={showConfirmDialog}
+        onOpenChange={setShowConfirmDialog}
+        onConfirm={confirmGenerateMore}
+        generatorName="ICP"
+        currentCount={user?.icpGeneratedCount || 0}
+        limit={user?.role === "superuser" ? Infinity : (user?.subscriptionTier === "agency" ? 999 : user?.subscriptionTier === "pro" ? 50 : 0)}
+        resetDate={undefined}
+        isLoading={generateMoreMutation.isPending}
+      />
     </div>
   );
 }
