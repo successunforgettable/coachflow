@@ -21,15 +21,44 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, Users } from "lucide-react";
+import { 
+  LayoutDashboard, 
+  LogOut, 
+  PanelLeft, 
+  Users, 
+  FileText, 
+  Target, 
+  Zap, 
+  Mail, 
+  MessageSquare, 
+  FileCode, 
+  DollarSign, 
+  BarChart3, 
+  FolderKanban,
+  Settings as SettingsIcon,
+  Home
+} from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
+import { Breadcrumb } from "./Breadcrumb";
 
 const menuItems = [
-  { icon: LayoutDashboard, label: "Page 1", path: "/" },
-  { icon: Users, label: "Page 2", path: "/some-path" },
+  { icon: Home, label: "Home", path: "/" },
+  { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
+  { icon: FileText, label: "Headlines", path: "/headlines" },
+  { icon: FileText, label: "HVCO Titles", path: "/hvco-titles" },
+  { icon: Zap, label: "Hero Mechanisms", path: "/hero-mechanisms" },
+  { icon: Target, label: "ICP Generator", path: "/generators/icp" },
+  { icon: FileCode, label: "Ad Copy", path: "/ad-copy" },
+  { icon: Mail, label: "Email Sequences", path: "/generators/email" },
+  { icon: MessageSquare, label: "WhatsApp", path: "/generators/whatsapp" },
+  { icon: FileCode, label: "Landing Pages", path: "/landing-pages" },
+  { icon: DollarSign, label: "Offers", path: "/offers" },
+  { icon: FolderKanban, label: "Campaigns", path: "/campaigns" },
+  { icon: BarChart3, label: "Analytics", path: "/analytics" },
+  { icon: SettingsIcon, label: "Settings", path: "/settings" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
@@ -257,7 +286,10 @@ function DashboardLayoutContent({
             </div>
           </div>
         )}
-        <main className="flex-1 p-4">{children}</main>
+        <main className="flex-1 p-4">
+          <Breadcrumb />
+          {children}
+        </main>
       </SidebarInset>
     </>
   );

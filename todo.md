@@ -1148,3 +1148,16 @@
 - [x] Write vitest tests for updateProfile procedure (15 comprehensive tests)
 - [x] Test end-to-end functionality (all 99 tests passing)
 - [x] Save checkpoint
+
+
+## Phase 500: WAR PLAN - Priority Tier 1: Navigation & UX Bugs ✅ COMPLETE
+- [x] Fix 404 error on navigation (updated sidebar menu with 14 proper links)
+- [x] Add breadcrumb navigation to all pages (Breadcrumb component created)
+- [x] Fix sidebar navigation highlighting (already working with isActive prop)
+- [x] Add "Home" button to all pages (added to sidebar)
+- [x] Verify all back buttons work correctly (using PageHeader component)
+
+## Phase 501: WAR PLAN - Priority Tier 2: Complete Hero Mechanisms Generator ✅ COMPLETE
+- [x] Build Hero Mechanisms generator form page (10 fields + service selector - already complete)
+- [x] Build Hero Mechanisms detail page (3 tabs: Hero Mechanisms, Headline Ideas, Beast Mode - already complete)
+- [x] Test end-to-end and save checkpoint
