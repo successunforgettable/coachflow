@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Link, useParams } from "wouter";
 import { toast } from "sonner";
 import type { OfferContent } from "../../../drizzle/schema";
+import { exportToPDF } from "@/lib/pdfExport";
 
 export default function OfferDetail() {
   const { id } = useParams<{ id: string }>();
@@ -81,6 +82,57 @@ export default function OfferDetail() {
     toast.success(`${label} copied to clipboard!`);
   };
 
+  const handleExportPDF = () => {
+    if (!offer || !content) {
+      toast.error("No content to export");
+      return;
+    }
+
+    const angleName = activeAngle === "godfather" ? "Godfather" : activeAngle === "free" ? "Free" : "Dollar";
+
+    exportToPDF({
+      title: `${offer.productName} - ${angleName} Offer`,
+      subtitle: `${offer.offerType?.toUpperCase()} OFFER`,
+      metadata: {
+        generatedDate: new Date().toLocaleDateString(),
+        productName: offer.productName,
+        generatorType: "Offers Generator",
+      },
+      sections: [
+        {
+          title: "Offer Name",
+          content: content.offerName,
+        },
+        {
+          title: "Value Proposition",
+          content: content.valueProposition,
+        },
+        {
+          title: "Pricing",
+          content: content.pricing,
+        },
+        {
+          title: "Bonuses",
+          content: content.bonuses.split("\n").filter(Boolean),
+        },
+        {
+          title: "Guarantee",
+          content: content.guarantee,
+        },
+        {
+          title: "Urgency/Scarcity",
+          content: content.urgency,
+        },
+        {
+          title: "Call to Action",
+          content: content.cta,
+        },
+      ],
+    });
+
+    toast.success("PDF exported successfully!");
+  };
+
   return (
     <div className="min-h-screen bg-[#1a1a1a] text-white" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
       {/* Top Navigation */}
@@ -93,6 +145,13 @@ export default function OfferDetail() {
             </Button>
           </Link>
           <div className="flex items-center gap-4">
+            <Button
+              onClick={handleExportPDF}
+              className="bg-purple-600 hover:bg-purple-700 text-white"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Export PDF
+            </Button>
             <div className="flex items-center gap-1">
               {[1, 2, 3, 4, 5].map((star) => (
                 <button
