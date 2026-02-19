@@ -28,7 +28,7 @@ export default function Home() {
           <p className="text-xl text-muted-foreground mb-8">
             The all-in-one marketing automation platform for coaches, speakers, and consultants.
             <br />
-            Simplified vs Kong - with integrated email/WhatsApp/SMS sequences!
+            Generate high-converting content in minutes with AI-powered tools and integrated email/WhatsApp/SMS sequences.
           </p>
           
           {isAuthenticated ? (

@@ -43,7 +43,7 @@ describe("Analytics Router", () => {
     landingPageGeneratedCount: 0,
     offerGeneratedCount: 0,
     subscriptionTier: "trial" as const,
-    beastMode: false,
+    powerMode: false,
   };
 
   const createCaller = (user: typeof testUser | null = testUser) => {

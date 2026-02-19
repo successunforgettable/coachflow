@@ -13,7 +13,7 @@ const generateAdCopySchema = z.object({
   serviceId: z.number(),
   campaignId: z.number().optional(),
   adType: z.enum(["lead_gen", "ecommerce"]),
-  // 17 Kong fields
+  // 17 fields
   adStyle: z.string(),
   adCallToAction: z.string(),
   targetMarket: z.string(),
@@ -31,7 +31,7 @@ const generateAdCopySchema = z.object({
   averageReviewRating: z.string().optional(),
   totalCustomers: z.string().optional(),
   testimonials: z.string().optional(),
-  beastMode: z.boolean().optional(),
+  powerMode: z.boolean().optional(),
 });
 
 const updateAdCopySchema = z.object({
@@ -78,7 +78,7 @@ export const adCopyRouter = router({
             adType: ad.adType,
             serviceId: ad.serviceId,
             campaignId: ad.campaignId,
-            // 17 Kong fields
+            // 17 fields
             adStyle: ad.adStyle,
             adCallToAction: ad.adCallToAction,
             targetMarket: ad.targetMarket,
@@ -133,7 +133,7 @@ export const adCopyRouter = router({
         adType: ads[0].adType,
         serviceId: ads[0].serviceId,
         campaignId: ads[0].campaignId,
-        // 17 Kong fields
+        // 17 fields
         adStyle: ads[0].adStyle,
         adCallToAction: ads[0].adCallToAction,
         targetMarket: ads[0].targetMarket,
@@ -160,7 +160,7 @@ export const adCopyRouter = router({
       return adSet;
     }),
 
-  // Generate ad copy using AI (Kong parity: 15 headlines, 15 bodies, 15 links)
+  // Generate ad copy using AI (Industry standard: 15 headlines, 15 bodies, 15 links)
   generate: protectedProcedure
     .input(generateAdCopySchema)
     .mutation(async ({ ctx, input }) => {
@@ -196,7 +196,7 @@ export const adCopyRouter = router({
       }
 
       const adSetId = nanoid();
-      const count = input.beastMode ? 30 : 15; // Beast Mode generates 2x
+      const count = input.powerMode ? 30 : 15; // Power Mode generates 2x
 
       const adTypeContext = input.adType === "lead_gen"
         ? "Lead Generation (free webinar, consultation, download)"
@@ -386,7 +386,7 @@ Format as JSON array:
           adCallToAction: input.adCallToAction,
           contentType: "headline" as const,
           content: headline,
-          // 17 Kong fields
+          // 17 fields
           targetMarket: input.targetMarket,
           productCategory: input.productCategory,
           specificProductName: input.specificProductName,

@@ -20,7 +20,7 @@ import { Loader2 } from "lucide-react";
 import ExamplesCarousel from "@/components/ExamplesCarousel";
 
 
-// Real-world HVCO topic examples from Kong (18 examples)
+// Real-world HVCO topic examples  (18 examples)
 const HVCO_TOPIC_EXAMPLES = [
   "How to build a 7-figure coaching business in 12 months without paid ads using organic content and strategic partnerships",
   "The exact system I used to replace my $150K corporate salary with passive income from rental properties in 24 months",

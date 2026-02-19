@@ -19,7 +19,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 export default function AdCopyDetail() {
   const [, params] = useRoute("/ad-copy/:adSetId");
   const adSetId = params?.adSetId || "";
-  const [beastMode, setBeastMode] = useState(false);
+  const [powerMode, setBeastMode] = useState(false);
   const [activeTab, setActiveTab] = useState("headlines");
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const { user } = useAuth();
@@ -157,7 +157,7 @@ ${adSet.links.map((l: any, i: number) => `${i + 1}. ${l.content}`).join("\n\n")}
       averageReviewRating: adSet.averageReviewRating || "",
       totalCustomers: adSet.totalCustomers || "",
       testimonials: adSet.testimonials || "",
-      beastMode,
+      powerMode,
     });
   };
 
@@ -202,7 +202,7 @@ ${adSet.links.map((l: any, i: number) => `${i + 1}. ${l.content}`).join("\n\n")}
       averageReviewRating: adSet.averageReviewRating || "",
       totalCustomers: adSet.totalCustomers || "",
       testimonials: adSet.testimonials || "",
-      beastMode,
+      powerMode,
     });
   };
 
@@ -270,21 +270,21 @@ ${adSet.links.map((l: any, i: number) => `${i + 1}. ${l.content}`).join("\n\n")}
         </CardContent>
       </Card>
 
-      {/* Beast Mode Toggle */}
+      {/* Power Mode Toggle */}
       <Card className="mb-6">
         <CardContent className="pt-6">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label htmlFor="beast-mode" className="text-base font-semibold">
-                🔥 Beast Mode
+                🔥 Power Mode
               </Label>
               <p className="text-sm text-muted-foreground">
-                Generate {beastMode ? "30" : "15"} variations per content type ({beastMode ? "2x" : "1x"})
+                Generate {powerMode ? "30" : "15"} variations per content type ({powerMode ? "2x" : "1x"})
               </p>
             </div>
             <Switch
               id="beast-mode"
-              checked={beastMode}
+              checked={powerMode}
               onCheckedChange={setBeastMode}
             />
           </div>
@@ -295,8 +295,8 @@ ${adSet.links.map((l: any, i: number) => `${i + 1}. ${l.content}`).join("\n\n")}
           >
             <Plus className="h-4 w-4 mr-2" />
             {generateMutation.isPending
-              ? `Generating ${beastMode ? "30" : "15"} variations...`
-              : `+${beastMode ? "30" : "15"} More Like This`}
+              ? `Generating ${powerMode ? "30" : "15"} variations...`
+              : `+${powerMode ? "30" : "15"} More Like This`}
           </Button>
         </CardContent>
       </Card>

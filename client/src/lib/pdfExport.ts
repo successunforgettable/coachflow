@@ -2,7 +2,7 @@ import jsPDF from 'jspdf';
 
 /**
  * PDF Export Utility for CoachFlow Generators
- * Matches Kong's PDF format and structure
+ * Matches Industry PDF format and structure
  */
 
 interface PDFSection {
@@ -22,7 +22,7 @@ interface PDFExportOptions {
 }
 
 /**
- * Export content to PDF with Kong-style formatting
+ * Export content to PDF with industry-standard formatting
  */
 export function exportToPDF(options: PDFExportOptions): void {
   const { title, subtitle, sections, metadata } = options;

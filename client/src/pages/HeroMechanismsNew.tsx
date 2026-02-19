@@ -63,7 +63,7 @@ const APPLICATION_OPTIONS = [
   "Install",
 ];
 
-// Real-world Hero Mechanism examples from Kong (18 examples)
+// Real-world Hero Mechanism examples  (18 examples)
 const HERO_MECHANISM_EXAMPLES = [
   "Breakthrough 'Productivity Triggers' System Slashes 5, 10, Even 51 Hours Off Your Work Week",
   "Weird 'Black Diamond' Refinance Framework Saves $120,787.50 On The Average Loan",

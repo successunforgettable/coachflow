@@ -14,7 +14,7 @@ import { headlines } from "../../drizzle/schema";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 
-// Kong parity: 5 formula types with exact prompt templates
+// Industry standard
 const FORMULA_PROMPTS = {
   story: `Generate 5 story-based headlines using this EXACT format:
 "How a [Triggering Event] Led/Pushed/Triggered a [Person] to [Discovery] that [Result]!"
@@ -180,7 +180,7 @@ export const headlinesRouter = router({
       };
     }),
 
-  // Generate new headline set (25 headlines: 5 per formula type, or 75 with Beast Mode)
+  // Generate new headline set (25 headlines: 5 per formula type, or 75 with Power Mode)
   generate: protectedProcedure
     .input(
       z.object({
@@ -190,7 +190,7 @@ export const headlinesRouter = router({
         pressingProblem: z.string(),
         desiredOutcome: z.string(),
         uniqueMechanism: z.string(),
-        beastMode: z.boolean().optional(),
+        powerMode: z.boolean().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -211,11 +211,11 @@ export const headlinesRouter = router({
 
       const headlineSetId = nanoid();
       const allHeadlines: Array<typeof headlines.$inferInsert> = [];
-      const countMultiplier = input.beastMode ? 3 : 1; // Beast Mode generates 3x more
+      const countMultiplier = input.powerMode ? 3 : 1; // Power Mode generates 3x more
 
       // Generate headlines for each formula type
       for (const [formulaType, promptTemplate] of Object.entries(FORMULA_PROMPTS)) {
-        // Modify prompt to generate 3x more if Beast Mode is enabled
+        // Modify prompt to generate 3x more if Power Mode is enabled
         const modifiedTemplate = promptTemplate.replace(/Generate 5/g, `Generate ${5 * countMultiplier}`);
         const prompt = modifiedTemplate
           .replace(/{targetMarket}/g, input.targetMarket)

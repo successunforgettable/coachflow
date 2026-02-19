@@ -44,10 +44,10 @@ export default function HeadlinesDetail() {
   
   const toggleBeastMode = trpc.auth.toggleBeastMode.useMutation({
     onSuccess: (data) => {
-      toast.success(`Beast Mode ${data.enabled ? 'enabled' : 'disabled'}`);
+      toast.success(`Power Mode ${data.enabled ? 'enabled' : 'disabled'}`);
     },
     onError: (error) => {
-      toast.error(`Failed to toggle Beast Mode: ${error.message}`);
+      toast.error(`Failed to toggle Power Mode: ${error.message}`);
     },
   });
 
@@ -239,11 +239,11 @@ export default function HeadlinesDetail() {
         </div>
       </Card>
 
-      {/* 2-Tab Layout: Headlines + Beast Mode */}
+      {/* 2-Tab Layout: Headlines + Power Mode */}
       <Tabs defaultValue="headlines" className="w-full">
         <TabsList className="grid w-full grid-cols-2 mb-6">
           <TabsTrigger value="headlines">Headlines</TabsTrigger>
-          <TabsTrigger value="beastmode">Beast Mode</TabsTrigger>
+          <TabsTrigger value="beastmode">Power Mode</TabsTrigger>
         </TabsList>
 
         <TabsContent value="headlines">
@@ -536,18 +536,18 @@ export default function HeadlinesDetail() {
           <Card className="p-6 mb-6">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-semibold mb-1">Beast Mode</h3>
+                <h3 className="text-lg font-semibold mb-1">Power Mode</h3>
                 <p className="text-sm text-muted-foreground">Enable to generate 15 additional variations automatically</p>
               </div>
               <Switch 
-                checked={user?.beastMode ?? false}
+                checked={user?.powerMode ?? false}
                 onCheckedChange={(checked) => toggleBeastMode.mutate({ enabled: checked })}
                 disabled={toggleBeastMode.isPending}
               />
             </div>
           </Card>
           <div className="text-center py-12">
-            <h3 className="text-xl font-semibold mb-2">Beast Mode Variations</h3>
+            <h3 className="text-xl font-semibold mb-2">Power Mode Variations</h3>
             <p className="text-muted-foreground mb-4">Additional headline variations will appear here</p>
             <Button 
               variant="default" 
@@ -555,7 +555,7 @@ export default function HeadlinesDetail() {
               onClick={handleGenerateMore}
               disabled={generateMoreMutation.isPending}
             >
-              {generateMoreMutation.isPending ? "Generating..." : "Generate Beast Mode Headlines"}
+              {generateMoreMutation.isPending ? "Generating..." : "Generate Power Mode Headlines"}
             </Button>
           </div>
         </TabsContent>

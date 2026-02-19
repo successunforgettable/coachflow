@@ -1,7 +1,7 @@
 import { invokeLLM } from "./_core/llm";
 import type { OfferContent } from "../drizzle/schema";
 
-// Angle-specific prompt modifiers for Offers (Kong parity)
+// Angle-specific prompt modifiers for Offers (Industry standard)
 const ANGLE_PROMPTS = {
   godfather: `
 Generate an IRRESISTIBLE GODFATHER OFFER using risk reversal.

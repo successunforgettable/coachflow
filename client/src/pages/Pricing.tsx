@@ -249,12 +249,12 @@ export default function Pricing() {
             </div>
             <div>
               <h3 className="font-semibold text-foreground mb-2">
-                How is CoachFlow different from Kong?
+                What makes CoachFlow unique?
               </h3>
               <p className="text-muted-foreground">
                 CoachFlow is specifically designed for coaches, speakers, and consultants with
-                integrated email/WhatsApp/SMS sequences, simpler onboarding (6 fields vs 15), and
-                better pricing ($49 vs $79 for Pro).
+                9 AI-powered content generators, integrated email/WhatsApp/SMS sequences, simple onboarding,
+                and a complete campaign builder - all in one platform.
               </p>
             </div>
           </div>

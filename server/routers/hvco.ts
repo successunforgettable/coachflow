@@ -19,12 +19,12 @@ import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 
 /**
- * HVCO Titles Router - Kong Parity
+ * HVCO Titles Router - Industry Standard
  * 
  * Generates 4 tabs of title variations:
  * - Long Titles (~20 alliterative 3-5 word titles)
  * - Short Titles (~20 concise titles)
- * - Beast Mode Titles (~30 extra variations)
+ * - Power Mode Titles (~30 extra variations)
  * - Subheadlines (~20 supporting subheadlines)
  * 
  * All titles follow alliteration pattern: [Action/Benefit] [Crypto/Money Word] [Blueprint/Formula/Method]
@@ -41,12 +41,12 @@ export const hvcoRouter = router({
         serviceId: z.number(),
         targetMarket: z.string().max(100),
         hvcoTopic: z.string().max(800),
-        beastMode: z.boolean().optional(),
+        powerMode: z.boolean().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
       const { user } = ctx;
-      const countMultiplier = input.beastMode ? 3 : 1; // Beast Mode generates 3x more
+      const countMultiplier = input.powerMode ? 3 : 1; // Power Mode generates 3x more
       
       // Check and reset quota if user's anniversary date has passed
       await checkAndResetQuotaIfNeeded(user.id);
@@ -172,8 +172,8 @@ Return ONLY a JSON array of ${20 * countMultiplier} title strings, nothing else.
         });
       });
 
-      // Generate Beast Mode Titles (30 extra variations)
-      const beastModeTitlesPrompt = `You are an expert copywriter creating compelling HVCO titles.
+      // Generate Power Mode Titles (30 extra variations)
+      const powerModeTitlesPrompt = `You are an expert copywriter creating compelling HVCO titles.
 
 Product: ${service.name}
 Target Market: ${input.targetMarket}
@@ -194,18 +194,18 @@ Examples:
 
 Return ONLY a JSON array of 30 title strings, nothing else.`;
 
-      const beastModeTitlesResponse = await invokeLLM({
+      const powerModeTitlesResponse = await invokeLLM({
         messages: [
           { role: "system", content: "You are a direct response copywriting expert. Return ONLY valid JSON arrays." },
-          { role: "user", content: beastModeTitlesPrompt }
+          { role: "user", content: powerModeTitlesPrompt }
         ],
       });
 
-      const beastModeTitlesContent = typeof beastModeTitlesResponse.choices[0].message.content === 'string' 
-        ? beastModeTitlesResponse.choices[0].message.content 
-        : JSON.stringify(beastModeTitlesResponse.choices[0].message.content);
-      const beastModeTitles = JSON.parse(beastModeTitlesContent);
-      beastModeTitles.forEach((title: string) => {
+      const powerModeTitlesContent = typeof powerModeTitlesResponse.choices[0].message.content === 'string' 
+        ? powerModeTitlesResponse.choices[0].message.content 
+        : JSON.stringify(powerModeTitlesResponse.choices[0].message.content);
+      const powerModeTitles = JSON.parse(powerModeTitlesContent);
+      powerModeTitles.forEach((title: string) => {
         allTitles.push({
           userId: user.id,
           serviceId: input.serviceId,

@@ -21,7 +21,7 @@ import { toast } from "sonner";
 import RegenerateSidebar from "@/components/RegenerateSidebar";
 import { RegenerateConfirmationDialog } from "@/components/RegenerateConfirmationDialog";
 
-// Real-world ICP name examples from Kong
+// Real-world ICP name examples 
 const ICP_NAME_EXAMPLES = [
   "Tech-Savvy Millennial Entrepreneur",
   "Busy Corporate Executive",

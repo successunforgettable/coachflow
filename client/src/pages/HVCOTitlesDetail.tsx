@@ -107,7 +107,7 @@ export default function HVCOTitlesDetail() {
         content: titlesByTab.short.map(t => t.title),
       },
       {
-        title: "Beast Mode Titles",
+        title: "Power Mode Titles",
         content: titlesByTab.beast_mode.map(t => t.title),
       },
       {
@@ -267,7 +267,7 @@ export default function HVCOTitlesDetail() {
         <TabsList className="grid w-full grid-cols-4 mb-6">
           <TabsTrigger value="long">Long Titles</TabsTrigger>
           <TabsTrigger value="short">Short Titles</TabsTrigger>
-          <TabsTrigger value="beast_mode">Beast Mode Titles</TabsTrigger>
+          <TabsTrigger value="beast_mode">Power Mode Titles</TabsTrigger>
           <TabsTrigger value="subheadlines">Subheadlines</TabsTrigger>
         </TabsList>
 
@@ -351,7 +351,7 @@ export default function HVCOTitlesDetail() {
           ))}
         </TabsContent>
 
-        {/* Beast Mode Titles Tab */}
+        {/* Power Mode Titles Tab */}
         <TabsContent value="beast_mode" className="space-y-3">
           {titlesByTab.beast_mode.map((title) => (
             <Card key={title.id} className="p-4 hover:border-primary/50 transition-colors">

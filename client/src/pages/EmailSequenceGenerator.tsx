@@ -20,7 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RegenerateConfirmationDialog } from "@/components/RegenerateConfirmationDialog";
 
-// Real-world email sequence examples from Kong
+// Real-world email sequence examples 
 const EMAIL_SEQUENCE_EXAMPLES = {
   welcome: [
     "5-Day Welcome Sequence: Introduce your brand story, share quick wins, build trust, showcase transformation, and invite to next step",

@@ -1,7 +1,7 @@
 import { invokeLLM } from "./_core/llm";
 import type { LandingPageContent } from "../drizzle/schema";
 
-// Angle-specific prompt modifiers based on Kong research
+// Angle-specific prompt modifiers based on industry research
 const ANGLE_PROMPTS = {
   original: `
 Generate a benefit-driven landing page emphasizing the unique mechanism and transformation.

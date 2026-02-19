@@ -19,12 +19,12 @@ import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 
 /**
- * Hero Mechanisms Router - Kong Parity
+ * Hero Mechanisms Router - Industry Standard
  * 
  * Generates 3 tabs of mechanism variations:
  * - Hero Mechanisms (5 creative mechanisms with unique names)
  * - Headline Ideas (5 headline variations)
- * - Beast Mode (5 extra powerful variations)
+ * - Power Mode (5 extra powerful variations)
  * 
  * Each mechanism has:
  * - Creative name (e.g., "Breakthrough Neural Nexus System")
@@ -211,8 +211,8 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
         });
       });
 
-      // Generate Beast Mode (5 extra powerful variations)
-      const beastModePrompt = `You are an expert direct response copywriter creating BEAST MODE Hero Mechanisms - the most powerful, compelling versions.
+      // Generate Power Mode (5 extra powerful variations)
+      const powerModePrompt = `You are an expert direct response copywriter creating BEAST MODE Hero Mechanisms - the most powerful, compelling versions.
 
 Product: ${service.name}
 Target Market: ${input.targetMarket}
@@ -238,19 +238,19 @@ Each mechanism must have:
 
 Return ONLY a JSON array of 5 objects with "name" and "description" fields, nothing else.`;
 
-      const beastModeResponse = await invokeLLM({
+      const powerModeResponse = await invokeLLM({
         messages: [
           { role: "system", content: "You are a direct response copywriting expert. Return ONLY valid JSON arrays." },
-          { role: "user", content: beastModePrompt }
+          { role: "user", content: powerModePrompt }
         ],
       });
 
-      const beastModeContent = typeof beastModeResponse.choices[0].message.content === 'string' 
-        ? beastModeResponse.choices[0].message.content 
-        : JSON.stringify(beastModeResponse.choices[0].message.content);
-      const beastMode = JSON.parse(beastModeContent);
+      const powerModeContent = typeof powerModeResponse.choices[0].message.content === 'string' 
+        ? powerModeResponse.choices[0].message.content 
+        : JSON.stringify(powerModeResponse.choices[0].message.content);
+      const powerMode = JSON.parse(powerModeContent);
       
-      beastMode.forEach((mechanism: { name: string; description: string }) => {
+      powerMode.forEach((mechanism: { name: string; description: string }) => {
         allMechanisms.push({
           userId: user.id,
           serviceId: input.serviceId,

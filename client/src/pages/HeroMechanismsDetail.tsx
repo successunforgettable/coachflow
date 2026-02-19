@@ -118,7 +118,7 @@ export default function HeroMechanismsDetail() {
         content: mechanismsByTab.headlines.map(m => `${m.mechanismName}\n${m.mechanismDescription}`),
       },
       {
-        title: "Beast Mode",
+        title: "Power Mode",
         content: mechanismsByTab.beast.map(m => `${m.mechanismName}\n${m.mechanismDescription}`),
       },
     ];
@@ -283,7 +283,7 @@ export default function HeroMechanismsDetail() {
         <TabsList className="grid w-full grid-cols-3 mb-6">
           <TabsTrigger value="hero_mechanisms">Hero Mechanisms</TabsTrigger>
           <TabsTrigger value="headline_ideas">Headline Ideas</TabsTrigger>
-          <TabsTrigger value="beast_mode">Beast Mode</TabsTrigger>
+          <TabsTrigger value="beast_mode">Power Mode</TabsTrigger>
         </TabsList>
 
         {/* Hero Mechanisms Tab */}
@@ -382,7 +382,7 @@ export default function HeroMechanismsDetail() {
           ))}
         </TabsContent>
 
-        {/* Beast Mode Tab */}
+        {/* Power Mode Tab */}
         <TabsContent value="beast_mode" className="space-y-4">
           {mechanismsByTab.beast_mode.map((mechanism) => (
             <Card key={mechanism.id} className="p-6 hover:border-primary/50 transition-colors">
@@ -400,7 +400,7 @@ export default function HeroMechanismsDetail() {
                 </button>
                 <div className="flex-1 space-y-3">
                   <div>
-                    <p className="text-xs font-semibold text-muted-foreground mb-1">Beast Mode Mechanism</p>
+                    <p className="text-xs font-semibold text-muted-foreground mb-1">Power Mode Mechanism</p>
                     <h3 className="text-xl font-bold mb-2">{mechanism.mechanismName}</h3>
                     <p className="text-sm text-muted-foreground leading-relaxed">
                       {mechanism.mechanismDescription}

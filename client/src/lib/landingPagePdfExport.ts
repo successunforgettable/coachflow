@@ -2,7 +2,7 @@ import jsPDF from 'jspdf';
 
 /**
  * Specialized PDF Export for Landing Pages
- * Preserves Kong's visual styling: dark theme, purple CTAs, red eyebrows, Inter font
+ * Preserves Industry visual styling: dark theme, purple CTAs, red eyebrows, Inter font
  */
 
 interface LandingPageAngle {
@@ -43,7 +43,7 @@ interface LandingPagePDFOptions {
 }
 
 /**
- * Export landing page to PDF with Kong's visual styling
+ * Export landing page to PDF with Industry visual styling
  */
 export function exportLandingPageToPDF(options: LandingPagePDFOptions): void {
   const { productName, angle, angleData } = options;

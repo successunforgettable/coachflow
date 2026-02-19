@@ -16,7 +16,7 @@ const generateICPSchema = z.object({
 const updateICPSchema = z.object({
   id: z.number(),
   name: z.string().min(1).max(255).optional(),
-  // 17 Kong tabs
+  // 17 tabs
   introduction: z.string().optional(),
   fears: z.string().optional(),
   hopesDreams: z.string().optional(),
@@ -133,7 +133,7 @@ Description: ${service.description}
 Target Customer: ${service.targetCustomer}
 Main Benefit: ${service.mainBenefit}
 
-Generate a comprehensive ICP with ALL 17 sections (Kong parity):
+Generate a comprehensive ICP with ALL 17 sections (Industry standard):
 
 1. INTRODUCTION: 2-3 paragraph overview of who this person is
 2. FEARS: 5-7 specific fears that keep them up at night
@@ -268,7 +268,7 @@ Format as JSON with these exact keys (use bullet points • for lists):
           userId: ctx.user.id,
           serviceId: input.serviceId,
           name: input.name,
-          // 17 Kong tabs
+          // 17 tabs
           introduction: icpData.introduction,
           fears: icpData.fears,
           hopesDreams: icpData.hopesDreams,

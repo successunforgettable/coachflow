@@ -29,7 +29,7 @@ export default function AdCopyGenerator() {
   const { isAuthenticated, loading: authLoading } = useAuth();
   const { data: quotaLimits } = trpc.auth.getQuotaLimits.useQuery();
   
-  // Form state - all 17 Kong fields
+  // Form state - all 17 fields
   const [serviceId, setServiceId] = useState<number | null>(null);
   const [adStyle, setAdStyle] = useState<string>("");
   const [adCallToAction, setAdCallToAction] = useState<string>("");

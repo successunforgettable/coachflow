@@ -26,8 +26,8 @@ describe("auth.getQuotaLimits API Contract", () => {
     expect(expectedStructure).toBeDefined();
   });
 
-  it("should return correct Pro tier limits matching Kong specifications", () => {
-    // Kong-verified Pro tier limits
+  it("should return correct Pro tier limits matching industry specifications", () => {
+    // Industry-verified Pro tier limits
     const proLimits = {
       headlines: 6,
       hvco: 3,

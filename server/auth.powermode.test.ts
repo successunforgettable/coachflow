@@ -4,7 +4,7 @@ import { getDb } from "./db";
 import { users } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 
-describe("Beast Mode Toggle", () => {
+describe("Power Mode Toggle", () => {
   let testUserId: number;
   let testUserOpenId: string;
 
@@ -16,16 +16,16 @@ describe("Beast Mode Toggle", () => {
     testUserOpenId = `test-beast-mode-${Date.now()}`;
     const [user] = await db.insert(users).values({
       openId: testUserOpenId,
-      name: "Beast Mode Test User",
+      name: "Power Mode Test User",
       email: `beastmode-${Date.now()}@test.com`,
       subscriptionTier: "trial",
-      beastMode: false,
+      powerMode: false,
     }).$returningId();
 
     testUserId = user.id;
   });
 
-  it("should toggle Beast Mode on", async () => {
+  it("should toggle Power Mode on", async () => {
     // Fetch fresh user from database
     const db = await getDb();
     if (!db) throw new Error("Database not available");
@@ -44,7 +44,7 @@ describe("Beast Mode Toggle", () => {
     expect(result.enabled).toBe(true);
   });
 
-  it("should toggle Beast Mode off", async () => {
+  it("should toggle Power Mode off", async () => {
     // Fetch fresh user from database
     const db = await getDb();
     if (!db) throw new Error("Database not available");

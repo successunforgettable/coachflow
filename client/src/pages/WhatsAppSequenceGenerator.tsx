@@ -20,7 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RegenerateConfirmationDialog } from "@/components/RegenerateConfirmationDialog";
 
-// Real-world WhatsApp sequence examples from Kong
+// Real-world WhatsApp sequence examples 
 const WHATSAPP_SEQUENCE_EXAMPLES = {
   engagement: [
     "3-Day Engagement: Day 1 - Welcome with quick value tip 💡, Day 2 - Share success story 🎯, Day 3 - Invite to community 🤝",

@@ -188,8 +188,8 @@ describe("Quota Limits Configuration", () => {
     });
   });
 
-  describe("Kong Parity Verification", () => {
-    it("should match Kong's trial tier limits exactly", () => {
+  describe("Industry Standard Verification", () => {
+    it("should match Standard trial tier limits exactly", () => {
       const kongTrialLimits = {
         headlines: 0,
         hvco: 0,
@@ -208,7 +208,7 @@ describe("Quota Limits Configuration", () => {
       });
     });
 
-    it("should match Kong's pro tier limits exactly", () => {
+    it("should match Standard pro tier limits exactly", () => {
       const kongProLimits = {
         headlines: 6,
         hvco: 3,
@@ -227,7 +227,7 @@ describe("Quota Limits Configuration", () => {
       });
     });
 
-    it("should match Kong's agency tier limits exactly (999 = unlimited)", () => {
+    it("should match Standard agency tier limits exactly (999 = unlimited)", () => {
       const kongAgencyLimits = {
         headlines: 999,
         hvco: 999,

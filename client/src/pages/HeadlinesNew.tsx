@@ -14,7 +14,7 @@ import { Loader2, ArrowLeft, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "wouter";
 
-// Kong's 18 unique mechanism examples
+// Industry 18 unique mechanism examples
 const UNIQUE_MECHANISM_EXAMPLES = [
   "$7.8 Billion AI Funnel That's Generating 90-480 Super Qualified Appointments A Month On Autopilot",
   "Tiny Orange Plant (a secret ancient ingredient China's most desired woman) that speeds up metabolism by up to 68%",

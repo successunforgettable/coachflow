@@ -97,7 +97,7 @@ export default function Services() {
             <CardHeader>
               <CardTitle>Create New Service</CardTitle>
               <CardDescription>
-                Simplified setup - just 6 fields (vs Kong's 15!)
+                Simplified setup - just 6 fields (vs Industry 15!)
               </CardDescription>
             </CardHeader>
             <CardContent>

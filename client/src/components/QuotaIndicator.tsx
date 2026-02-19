@@ -6,7 +6,7 @@ interface QuotaIndicatorProps {
   label?: string;
 }
 
-// Kong parity: Quota limits by subscription tier
+// Industry standard
 const QUOTA_LIMITS = {
   trial: {
     icp: 3,
@@ -76,7 +76,7 @@ export function QuotaIndicator({ generatorType, label }: QuotaIndicatorProps) {
     year: "numeric",
   });
 
-  // Kong parity: Green badge for normal usage, red for exceeded
+  // Industry standard
   const isExceeded = used >= limit;
   const badgeColor = isExceeded ? "bg-red-600" : "bg-green-600";
 

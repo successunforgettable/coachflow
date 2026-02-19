@@ -32,7 +32,7 @@ describe("ICP 17 Tabs Generation", () => {
     testServiceId = serviceResult[0].insertId;
   });
 
-  it("should have all 17 Kong tabs in schema", async () => {
+  it("should have all 17 tabs in schema", async () => {
     const db = await getDb();
     if (!db) throw new Error("Database not available");
 

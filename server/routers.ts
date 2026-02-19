@@ -44,7 +44,7 @@ export const appRouter = router({
         if (!db) throw new Error("Database not available");
         await db
           .update(users)
-          .set({ beastMode: input.enabled })
+          .set({ powerMode: input.enabled })
           .where(eq(users.id, ctx.user.id));
         return { success: true, enabled: input.enabled };
       }),

@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { QuotaIndicator } from "@/components/QuotaIndicator";
 import { SearchBar } from "@/components/SearchBar";
 
-// Real-world offer type examples from Kong
+// Real-world offer type examples 
 const OFFER_TYPE_EXAMPLES = {
   standard: [
     "Core Program: Complete system with step-by-step training, templates, and 30-day support - $997",

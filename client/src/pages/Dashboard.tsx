@@ -138,7 +138,7 @@ export default function Dashboard() {
     },
     {
       title: "Direct Response Headlines",
-      description: "25 headlines across 5 proven formulas (Kong parity)",
+      description: "25 headlines across 5 proven formulas (Industry standard)",
       icon: Type,
       count: headlines?.length || 0,
       href: "/headlines",
@@ -146,7 +146,7 @@ export default function Dashboard() {
     },
     {
       title: "HVCO Titles",
-      description: "Compelling titles for high-value content offers (Kong parity)",
+      description: "Compelling titles for high-value content offers (Industry standard)",
       icon: Lightbulb,
       count: hvcoTitles?.length || 0,
       href: "/hvco-titles",
@@ -154,7 +154,7 @@ export default function Dashboard() {
     },
     {
       title: "Hero Mechanisms",
-      description: "Unique features and benefits that set you apart (Kong parity)",
+      description: "Unique features and benefits that set you apart (Industry standard)",
       icon: Zap,
       count: heroMechanisms?.length || 0,
       href: "/hero-mechanisms",
