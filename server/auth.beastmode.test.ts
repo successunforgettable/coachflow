@@ -1,37 +1,42 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { appRouter } from "./routers";
-import type { TrpcContext } from "./_core/context";
-
-type AuthenticatedUser = NonNullable<TrpcContext["user"]>;
-
-function createAuthContext(beastMode = false): TrpcContext {
-  const user: AuthenticatedUser = {
-    id: 1,
-    openId: "test-beast-mode-user",
-    email: "beastmode@test.com",
-    name: "Beast Mode Test User",
-    loginMethod: "test",
-    role: "user",
-    beastMode,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    lastSignedIn: new Date(),
-  };
-
-  return {
-    user,
-    req: {
-      protocol: "https",
-      headers: {},
-    } as TrpcContext["req"],
-    res: {} as TrpcContext["res"],
-  };
-}
+import { getDb } from "./db";
+import { users } from "../drizzle/schema";
+import { eq } from "drizzle-orm";
 
 describe("Beast Mode Toggle", () => {
+  let testUserId: number;
+  let testUserOpenId: string;
+
+  beforeEach(async () => {
+    // Create test user directly in database
+    const db = await getDb();
+    if (!db) throw new Error("Database not available");
+
+    testUserOpenId = `test-beast-mode-${Date.now()}`;
+    const [user] = await db.insert(users).values({
+      openId: testUserOpenId,
+      name: "Beast Mode Test User",
+      email: `beastmode-${Date.now()}@test.com`,
+      subscriptionTier: "trial",
+      beastMode: false,
+    }).$returningId();
+
+    testUserId = user.id;
+  });
+
   it("should toggle Beast Mode on", async () => {
-    const ctx = createAuthContext(false);
-    const caller = appRouter.createCaller(ctx);
+    // Fetch fresh user from database
+    const db = await getDb();
+    if (!db) throw new Error("Database not available");
+    
+    const [user] = await db.select().from(users).where(eq(users.id, testUserId));
+    
+    const caller = appRouter.createCaller({
+      user,
+      req: {} as any,
+      res: {} as any,
+    });
 
     const result = await caller.auth.toggleBeastMode({ enabled: true });
     
@@ -40,8 +45,17 @@ describe("Beast Mode Toggle", () => {
   });
 
   it("should toggle Beast Mode off", async () => {
-    const ctx = createAuthContext(true);
-    const caller = appRouter.createCaller(ctx);
+    // Fetch fresh user from database
+    const db = await getDb();
+    if (!db) throw new Error("Database not available");
+    
+    const [user] = await db.select().from(users).where(eq(users.id, testUserId));
+    
+    const caller = appRouter.createCaller({
+      user,
+      req: {} as any,
+      res: {} as any,
+    });
 
     const result = await caller.auth.toggleBeastMode({ enabled: false });
     
@@ -50,12 +64,11 @@ describe("Beast Mode Toggle", () => {
   });
 
   it("should require authentication", async () => {
-    const ctx: TrpcContext = {
+    const caller = appRouter.createCaller({
       user: null,
-      req: {} as TrpcContext["req"],
-      res: {} as TrpcContext["res"],
-    };
-    const caller = appRouter.createCaller(ctx);
+      req: {} as any,
+      res: {} as any,
+    });
 
     await expect(
       caller.auth.toggleBeastMode({ enabled: true })

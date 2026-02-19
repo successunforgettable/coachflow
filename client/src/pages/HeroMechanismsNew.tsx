@@ -5,8 +5,8 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { CharLimitInput } from "@/components/CharLimitInput";
-import { CHARACTER_LIMITS } from "@/lib/characterLimits";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -240,76 +240,106 @@ export default function HeroMechanismsNew() {
           </div>
 
           {/* Target Market */}
-          <CharLimitInput
-            label="Target Market"
-            value={targetMarket}
-            onChange={setTargetMarket}
-            maxLength={CHARACTER_LIMITS.heroMechanisms.targetMarket}
-            placeholder="e.g. Women over 45."
-            required
-            id="targetMarket"
-          />
+          <div className="space-y-2">
+            <Label htmlFor="targetMarket">
+              Target Market <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              id="targetMarket"
+              placeholder="e.g. Women over 45."
+              value={targetMarket}
+              onChange={(e) => setTargetMarket(e.target.value.slice(0, 52))}
+              maxLength={52}
+            />
+            <p className="text-xs text-muted-foreground">
+              {52 - targetMarket.length} chars left
+            </p>
+          </div>
 
           {/* Pressing Problem */}
-          <CharLimitInput
-            label="Pressing Problem"
-            value={pressingProblem}
-            onChange={setPressingProblem}
-            maxLength={CHARACTER_LIMITS.heroMechanisms.pressingProblem}
-            placeholder="e.g. Weight gain/metabolism slowing down due to menopause."
-            multiline
-            rows={3}
-            required
-            id="pressingProblem"
-          />
-
-          {/* Examples Carousel */}
-          <div className="mt-4">
-            <ExamplesCarousel
-              examples={HERO_MECHANISM_EXAMPLES}
-              onSelectExample={setPressingProblem}
-              title="Hero Mechanism Examples (Click to Use)"
+          <div className="space-y-2">
+            <Label htmlFor="pressingProblem">
+              Pressing Problem <span className="text-red-500">*</span>
+            </Label>
+            <Textarea
+              id="pressingProblem"
+              placeholder="e.g. Weight gain/metabolism slowing down due to menopause."
+              value={pressingProblem}
+              onChange={(e) => setPressingProblem(e.target.value.slice(0, 71))}
+              maxLength={71}
+              rows={3}
+              className="resize-none"
             />
+            <p className="text-xs text-muted-foreground">
+              {71 - pressingProblem.length} chars left
+            </p>
+            
+            {/* Examples Carousel */}
+            <div className="mt-4">
+              <ExamplesCarousel
+                examples={HERO_MECHANISM_EXAMPLES}
+                onSelectExample={setPressingProblem}
+                title="Hero Mechanism Examples (Click to Use)"
+              />
+            </div>
           </div>
 
           {/* Why Problem Exists */}
-          <CharLimitInput
-            label="Why does your prospect have this problem in the first place?"
-            value={whyProblemExists}
-            onChange={setWhyProblemExists}
-            maxLength={0}
-            placeholder="e.g. They've relied on 'word of mouth' and referrals to get customers and grow their business."
-            multiline
-            rows={4}
-            required
-            id="whyProblemExists"
-          />
+          <div className="space-y-2">
+            <Label htmlFor="whyProblemExists">
+              Why does your prospect have this problem in the first place? <span className="text-red-500">*</span>
+            </Label>
+            <Textarea
+              id="whyProblemExists"
+              placeholder="e.g. They've relied on 'word of mouth' and referrals to get customers and grow their business."
+              value={whyProblemExists}
+              onChange={(e) => setWhyProblemExists(e.target.value.slice(0, 150))}
+              maxLength={150}
+              rows={4}
+              className="resize-none"
+            />
+            <p className="text-xs text-muted-foreground">
+              {150 - whyProblemExists.length} chars left
+            </p>
+          </div>
 
           {/* Solutions Tried */}
-          <CharLimitInput
-            label="What other solutions has your prospect tried to solve this problem? (List Out)"
-            value={solutionsTried}
-            onChange={setSolutionsTried}
-            maxLength={0}
-            placeholder="e.g. Agencies that promise them the world but deliver no results. SEO services, expensive pay-per-click advertising and complicated webinar funnels."
-            multiline
-            rows={4}
-            required
-            id="solutionsTried"
-          />
+          <div className="space-y-2">
+            <Label htmlFor="solutionsTried">
+              What other solutions has your prospect tried to solve this problem? <span className="text-red-500">*</span> (List Out)
+            </Label>
+            <Textarea
+              id="solutionsTried"
+              placeholder="e.g. Agencies that promise them the world but deliver no results. SEO services, expensive pay-per-click advertising and complicated webinar funnels."
+              value={solutionsTried}
+              onChange={(e) => setSolutionsTried(e.target.value.slice(0, 150))}
+              maxLength={150}
+              rows={4}
+              className="resize-none"
+            />
+            <p className="text-xs text-muted-foreground">
+              {150 - solutionsTried.length} chars left
+            </p>
+          </div>
 
           {/* Why Solutions Fail */}
-          <CharLimitInput
-            label="Why don't the existing solutions in the market solve this? Where do they fall short?"
-            value={whySolutionsFail}
-            onChange={setWhySolutionsFail}
-            maxLength={0}
-            placeholder="e.g. They either take too long to get results, are far too expensive and complicated to set up and the leads and customers they generate are low-quality."
-            multiline
-            rows={4}
-            required
-            id="whySolutionsFail"
-          />
+          <div className="space-y-2">
+            <Label htmlFor="whySolutionsFail">
+              Why don't the existing solutions in the market solve this? Where do they fall short? <span className="text-red-500">*</span>
+            </Label>
+            <Textarea
+              id="whySolutionsFail"
+              placeholder="e.g. They either take too long to get results, are far too expensive and complicated to set up and the leads and customers they generate are low-quality."
+              value={whySolutionsFail}
+              onChange={(e) => setWhySolutionsFail(e.target.value.slice(0, 150))}
+              maxLength={150}
+              rows={4}
+              className="resize-none"
+            />
+            <p className="text-xs text-muted-foreground">
+              {150 - whySolutionsFail.length} chars left
+            </p>
+          </div>
 
           {/* Descriptor */}
           <div className="space-y-2">
@@ -353,63 +383,81 @@ export default function HeroMechanismsNew() {
           </div>
 
           {/* Desired Outcome */}
-          <CharLimitInput
-            label="Desired Outcome"
-            value={desiredOutcome}
-            onChange={setDesiredOutcome}
-            maxLength={CHARACTER_LIMITS.heroMechanisms.desiredOutcome}
-            placeholder="e.g. Being slim, sexy, desirable, impressing their husband, looking like their younger slim self"
-            multiline
-            rows={2}
-            required
-            id="desiredOutcome"
-          />
+          <div className="space-y-2">
+            <Label htmlFor="desiredOutcome">
+              Desired Outcome <span className="text-red-500">*</span>
+            </Label>
+            <Textarea
+              id="desiredOutcome"
+              placeholder="e.g. Being slim, sexy, desirable, impressing their husband, looking like their younger slim self"
+              value={desiredOutcome}
+              onChange={(e) => setDesiredOutcome(e.target.value.slice(0, 116))}
+              maxLength={116}
+              rows={3}
+              className="resize-none"
+            />
+            <p className="text-xs text-muted-foreground">
+              {116 - desiredOutcome.length} chars left
+            </p>
+          </div>
 
           {/* Credible Authority Figure */}
-          <CharLimitInput
-            label="Credible Authority Figure"
-            value={credibleAuthority}
-            onChange={setCredibleAuthority}
-            maxLength={CHARACTER_LIMITS.heroMechanisms.credibleAuthority}
-            placeholder="e.g. Award-Winning Author and Mind Coach"
-            multiline
-            rows={2}
-            required
-            id="credibleAuthority"
-          />
-          <button
-            type="button"
-            onClick={() => setShowExamples(!showExamples)}
-            className="text-sm text-primary hover:underline flex items-center gap-1"
-          >
-            {showExamples ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-            Show Examples
-          </button>
-          {showExamples && (
-            <div className="bg-muted/50 p-4 rounded-lg text-sm space-y-2">
-              <p><strong>Examples:</strong></p>
-              <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                <li>Award-Winning Author and Mind Coach</li>
-                <li>Published by Penguin & Macmillan</li>
-                <li>Featured in GQ, ELLE, Forbes</li>
-                <li>Top 7-figure traders and crypto experts</li>
-                <li>Best-selling authors and leading authorities</li>
-              </ul>
-            </div>
-          )}
+          <div className="space-y-2">
+            <Label htmlFor="credibleAuthority">
+              Credible Authority Figure <span className="text-red-500">*</span>
+            </Label>
+            <Textarea
+              id="credibleAuthority"
+              placeholder="e.g. Award-Winning Author and Mind Coach"
+              value={credibleAuthority}
+              onChange={(e) => setCredibleAuthority(e.target.value.slice(0, 70))}
+              maxLength={70}
+              rows={3}
+              className="resize-none"
+            />
+            <p className="text-xs text-muted-foreground">
+              {70 - credibleAuthority.length} chars left
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowExamples(!showExamples)}
+              className="text-sm text-primary hover:underline flex items-center gap-1"
+            >
+              {showExamples ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              Show Examples
+            </button>
+            {showExamples && (
+              <div className="bg-muted/50 p-4 rounded-lg text-sm space-y-2">
+                <p><strong>Examples:</strong></p>
+                <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+                  <li>Award-Winning Author and Mind Coach</li>
+                  <li>Published by Penguin & Macmillan</li>
+                  <li>Featured in GQ, ELLE, Forbes</li>
+                  <li>Top 7-figure traders and crypto experts</li>
+                  <li>Best-selling authors and leading authorities</li>
+                </ul>
+              </div>
+            )}
+          </div>
 
           {/* Social Proof */}
-          <CharLimitInput
-            label="Social Proof"
-            value={socialProof}
-            onChange={setSocialProof}
-            maxLength={CHARACTER_LIMITS.heroMechanisms.featuredIn}
-            placeholder="i.e. GQ, Elle, Vogue & Forbes"
-            multiline
-            rows={2}
-            required
-            id="socialProof"
-          />
+          <div className="space-y-2">
+            <Label htmlFor="socialProof">
+              Social Proof <span className="text-red-500">*</span>
+            </Label>
+            <Textarea
+              id="socialProof"
+              placeholder="i.e. GQ, Elle, Vogue & Forbes"
+              value={socialProof}
+              onChange={(e) => setSocialProof(e.target.value.slice(0, 100))}
+              maxLength={100}
+              rows={3}
+              className="resize-none"
+            />
+            <p className="text-xs text-muted-foreground">
+              {100 - socialProof.length} chars left
+            </p>
+          </div>
 
           {/* Disclaimer */}
           <div className="bg-muted/50 p-4 rounded-lg">

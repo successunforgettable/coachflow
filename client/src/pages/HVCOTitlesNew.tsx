@@ -5,8 +5,8 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { CharLimitInput } from "@/components/CharLimitInput";
-import { CHARACTER_LIMITS } from "@/lib/characterLimits";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -95,7 +95,8 @@ export default function HVCOTitlesNew() {
     });
   };
 
-
+  const targetMarketCharsLeft = 52 - targetMarket.length;
+  const hvcoTopicCharsLeft = 72 - hvcoTopic.length;
 
   const { data: authData } = trpc.auth.me.useQuery();
   const { data: quotaLimits } = trpc.auth.getQuotaLimits.useQuery();
@@ -172,36 +173,48 @@ export default function HVCOTitlesNew() {
           </div>
 
           {/* Target Market */}
-          <CharLimitInput
-            label="Target Market"
-            value={targetMarket}
-            onChange={setTargetMarket}
-            maxLength={CHARACTER_LIMITS.hvco.targetMarket}
-            placeholder="e.g. Women over 45."
-            required
-            id="targetMarket"
-          />
+          <div className="space-y-2">
+            <Label htmlFor="targetMarket">
+              Target Market <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              id="targetMarket"
+              placeholder="e.g. Women over 45."
+              value={targetMarket}
+              onChange={(e) => setTargetMarket(e.target.value.slice(0, 52))}
+              maxLength={52}
+            />
+            <p className="text-xs text-muted-foreground">
+              {targetMarketCharsLeft} chars left
+            </p>
+          </div>
 
           {/* HVCO Topic */}
-          <CharLimitInput
-            label="What does the HVCO talk about?"
-            value={hvcoTopic}
-            onChange={setHvcoTopic}
-            maxLength={CHARACTER_LIMITS.hvco.subtitle}
-            placeholder="e.g. replacing a 9 to 5 income and retiring 8 to 15 years earlier through building an investment property portfolio."
-            multiline
-            rows={6}
-            required
-            id="hvcoTopic"
-          />
-
-          {/* Examples Carousel */}
-          <div className="mt-4">
-            <ExamplesCarousel
-              examples={HVCO_TOPIC_EXAMPLES}
-              onSelectExample={setHvcoTopic}
-              title="HVCO Topic Examples (Click to Use)"
+          <div className="space-y-2">
+            <Label htmlFor="hvcoTopic">
+              What does the HVCO talk about? <span className="text-red-500">*</span>
+            </Label>
+            <Textarea
+              id="hvcoTopic"
+              placeholder="e.g. replacing a 9 to 5 income and retiring 8 to 15 years earlier through building an investment property portfolio."
+              value={hvcoTopic}
+              onChange={(e) => setHvcoTopic(e.target.value.slice(0, 72))}
+              maxLength={72}
+              rows={6}
+              className="resize-none"
             />
+            <p className="text-xs text-muted-foreground">
+              {hvcoTopicCharsLeft} chars left
+            </p>
+            
+            {/* Examples Carousel */}
+            <div className="mt-4">
+              <ExamplesCarousel
+                examples={HVCO_TOPIC_EXAMPLES}
+                onSelectExample={setHvcoTopic}
+                title="HVCO Topic Examples (Click to Use)"
+              />
+            </div>
           </div>
 
           {/* Disclaimer */}

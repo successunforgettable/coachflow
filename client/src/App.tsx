@@ -18,7 +18,7 @@ import LandingPageGenerator from "./pages/LandingPageGenerator";
 import LandingPageDetail from "./pages/LandingPageDetail";
 import OffersGenerator from "./pages/OffersGenerator";
 import OfferDetail from "./pages/OfferDetail";
-import Campaigns from "./pages/Campaigns";
+import CampaignList from "./pages/CampaignList";
 import SourceOfTruth from "./pages/SourceOfTruth";
 import ServiceDetail from "./pages/ServiceDetail";
 import Headlines from "./pages/Headlines";
@@ -53,7 +53,7 @@ function Router() {
       <Route path={"/generators/offers"} component={OffersGenerator} />
       <Route path={"/offers"} component={OffersGenerator} />
       <Route path={"/offers/:id"} component={OfferDetail} />
-      <Route path={"/campaigns"} component={Campaigns} />
+      <Route path={"/campaigns"} component={CampaignList} />
       <Route path={"/source-of-truth"} component={SourceOfTruth} />
       <Route path={"/headlines"} component={Headlines} />
       <Route path={"/headlines/new"} component={HeadlinesNew} />

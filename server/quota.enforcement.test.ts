@@ -1,23 +1,60 @@
-import { describe, it, expect, beforeEach, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { appRouter } from "./routers";
 import { getDb } from "./db";
 import { users } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
-import { mockLLMResponses, resetLLMMocks } from "./__mocks__/llm";
+
+// Mock the LLM API to return valid JSON responses
+vi.mock("./_core/llm", () => ({
+  invokeLLM: vi.fn(async ({ messages }) => {
+    const userMessage = messages.find((m: any) => m.role === "user");
+    const content = typeof userMessage?.content === "string" ? userMessage.content : "";
+    
+    // Detect formula type from the prompt
+    let mockResponse;
+    if (content.includes("eyebrow") || content.includes("Eyebrow")) {
+      mockResponse = JSON.stringify([
+        { eyebrow: "Test", main: "Mock Headline 1", sub: "Mock Sub 1" },
+        { eyebrow: "Test", main: "Mock Headline 2", sub: "Mock Sub 2" },
+        { eyebrow: "Test", main: "Mock Headline 3", sub: "Mock Sub 3" },
+        { eyebrow: "Test", main: "Mock Headline 4", sub: "Mock Sub 4" },
+        { eyebrow: "Test", main: "Mock Headline 5", sub: "Mock Sub 5" },
+      ]);
+    } else if (content.includes("authority") || content.includes("Authority")) {
+      mockResponse = JSON.stringify([
+        { main: "Mock Authority Headline 1", sub: "Mock Sub 1" },
+        { main: "Mock Authority Headline 2", sub: "Mock Sub 2" },
+        { main: "Mock Authority Headline 3", sub: "Mock Sub 3" },
+        { main: "Mock Authority Headline 4", sub: "Mock Sub 4" },
+        { main: "Mock Authority Headline 5", sub: "Mock Sub 5" },
+      ]);
+    } else {
+      // Default: simple string array for story, urgency, etc.
+      mockResponse = JSON.stringify([
+        "Mock Headline 1",
+        "Mock Headline 2",
+        "Mock Headline 3",
+        "Mock Headline 4",
+        "Mock Headline 5",
+      ]);
+    }
+    
+    return {
+      choices: [
+        {
+          message: {
+            role: "assistant" as const,
+            content: mockResponse,
+          },
+        },
+      ],
+    };
+  }),
+}));
 
 describe("Quota Enforcement", () => {
   let testUserId: number;
   let testUserOpenId: string;
-
-  beforeAll(async () => {
-    // Setup LLM mocks for all tests
-    await mockLLMResponses();
-  });
-
-  afterAll(() => {
-    // Clean up mocks
-    resetLLMMocks();
-  });
 
   beforeEach(async () => {
     // Create test user with trial tier
@@ -51,13 +88,11 @@ describe("Quota Enforcement", () => {
     // Trial tier: Headlines limit = 6
     // Generate 6 headlines (should succeed)
     for (let i = 0; i < 6; i++) {
-      // Fetch fresh user data from database to get updated count
+      // Fetch fresh user from database to get updated count
       const [user] = await db.select().from(users).where(eq(users.id, testUserId));
       const caller = appRouter.createCaller({
         user,
-        req: {} as any,
-        res: {} as any,
-      });
+      } as any);
       
       await caller.headlines.generate({
         targetMarket: "Test Market",
@@ -71,9 +106,7 @@ describe("Quota Enforcement", () => {
     const [user] = await db.select().from(users).where(eq(users.id, testUserId));
     const caller = appRouter.createCaller({
       user,
-      req: {} as any,
-      res: {} as any,
-    });
+    } as any);
     
     await expect(
       caller.headlines.generate({
@@ -92,17 +125,13 @@ describe("Quota Enforcement", () => {
     // Upgrade user to agency tier
     await db.update(users).set({ subscriptionTier: "agency" }).where(eq(users.id, testUserId));
 
+    const caller = appRouter.createCaller({
+      user: { id: testUserId, openId: testUserOpenId, subscriptionTier: "agency" },
+    } as any);
+
     // Agency tier: Unlimited (999)
     // Generate 10 headlines (should all succeed)
     for (let i = 0; i < 10; i++) {
-      // Fetch fresh user data from database to get updated count
-      const [user] = await db.select().from(users).where(eq(users.id, testUserId));
-      const caller = appRouter.createCaller({
-        user,
-        req: {} as any,
-        res: {} as any,
-      });
-      
       await caller.headlines.generate({
         targetMarket: "Test Market",
         pressingProblem: "Test Problem",
@@ -120,13 +149,9 @@ describe("Quota Enforcement", () => {
     const db = await getDb();
     if (!db) throw new Error("Database not available");
 
-    // Fetch fresh user data from database
-    const [user] = await db.select().from(users).where(eq(users.id, testUserId));
     const caller = appRouter.createCaller({
-      user,
-      req: {} as any,
-      res: {} as any,
-    });
+      user: { id: testUserId, openId: testUserOpenId, subscriptionTier: "pro" },
+    } as any);
 
     // Generate 1 headline
     await caller.headlines.generate({
@@ -137,7 +162,7 @@ describe("Quota Enforcement", () => {
     });
 
     // Verify count = 1
-    const [updatedUser] = await db.select().from(users).where(eq(users.id, testUserId));
-    expect(updatedUser.headlineGeneratedCount).toBe(1);
+    const [user] = await db.select().from(users).where(eq(users.id, testUserId));
+    expect(user.headlineGeneratedCount).toBe(1);
   });
 });

@@ -35,10 +35,6 @@ import { FinancialMetricsCard } from "@/components/admin/FinancialMetricsCard";
 import { RevenueByTierChart } from "@/components/admin/RevenueByTierChart";
 import { RevenueChart } from "@/components/admin/RevenueChart";
 import { FailedPaymentsAlert } from "@/components/admin/FailedPaymentsAlert";
-import { SuperUserManagementCard } from "@/components/admin/SuperUserManagementCard";
-import { UserContentModal } from "@/components/admin/UserContentModal";
-import { FlaggedContentReview } from "@/components/admin/FlaggedContentReview";
-import { SystemHealthCard } from "@/components/admin/SystemHealthCard";
 
 export default function AdminDashboard() {
   const { user, loading: authLoading } = useAuth();
@@ -49,9 +45,6 @@ export default function AdminDashboard() {
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [showTierDialog, setShowTierDialog] = useState(false);
   const [newTier, setNewTier] = useState<"trial" | "pro" | "agency">("trial");
-  const [showContentModal, setShowContentModal] = useState(false);
-  const [contentUserId, setContentUserId] = useState<number | null>(null);
-  const [contentUserName, setContentUserName] = useState<string>("");
 
   // Check if user is admin
   if (!authLoading && user?.role !== "admin") {
@@ -152,21 +145,6 @@ export default function AdminDashboard() {
         {/* Phase 1: Failed Payments Alert */}
         <div className="mb-8">
           <FailedPaymentsAlert />
-        </div>
-
-        {/* Phase 104: Super User Management */}
-        <div className="mb-8">
-          <SuperUserManagementCard />
-        </div>
-
-        {/* Phase 104: Flagged Content Review */}
-        <div className="mb-8">
-          <FlaggedContentReview />
-        </div>
-
-        {/* Phase 104: System Health Monitoring */}
-        <div className="mb-8">
-          <SystemHealthCard />
         </div>
 
         {/* Phase 1: Revenue Charts */}
@@ -367,17 +345,6 @@ export default function AdminDashboard() {
                             variant="outline"
                             size="sm"
                             onClick={() => {
-                              setContentUserId(u.id);
-                              setContentUserName(u.name);
-                              setShowContentModal(true);
-                            }}
-                          >
-                            View Content
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
                               setSelectedUser(u);
                               setShowResetDialog(true);
                             }}
@@ -475,16 +442,6 @@ export default function AdminDashboard() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-
-        {/* User Content Modal */}
-        {contentUserId && (
-          <UserContentModal
-            userId={contentUserId}
-            userName={contentUserName}
-            open={showContentModal}
-            onOpenChange={setShowContentModal}
-          />
-        )}
       </div>
     </div>
   );
