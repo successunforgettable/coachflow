@@ -1,6 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { QuotaSummaryCard } from "@/components/QuotaSummaryCard";
+import { StripeSandboxBanner } from "@/components/StripeSandboxBanner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
 import { getLoginUrl } from "@/const";
@@ -238,6 +239,9 @@ export default function Dashboard() {
               Your all-in-one marketing automation platform for coaches, speakers, and consultants
             </p>
           </div>
+
+          {/* Stripe Sandbox Banner */}
+          <StripeSandboxBanner />
 
           {/* Quota Summary Card */}
           {authData && quotaLimits && (

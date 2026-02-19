@@ -1254,3 +1254,60 @@
 - [x] List all issues found with severity - 0 critical, 0 high, 0 medium, 0 low
 - [x] Create fix priority list - No fixes needed, production ready
 - [x] Save checkpoint
+
+
+## Phase 506: PRE-LAUNCH CRITICAL ITEMS ✅ COMPLETE
+
+### 1. Stripe Sandbox Claim Banner ✅ COMPLETE
+- [x] Create StripeSandboxBanner component
+- [x] Add expiry date check (April 17, 2026)
+- [x] Add claim link: https://dashboard.stripe.com/claim_sandbox/YWNjdF8xUnZUWnBTWVBRV1BhdHMzLDE3NzE4ODUyODMv10052QpgjmO
+- [x] Add to Dashboard page (top of page)
+- [x] Add dismiss functionality (localStorage)
+- [x] Test banner display and link
+
+### 2. Error Boundary Component ✅ COMPLETE
+- [x] ErrorBoundary.tsx component (already existed)
+- [x] Add error state management (already implemented)
+- [x] Create fallback UI with error message (already implemented)
+- [x] Add "Go Home" and "Reload" buttons (already implemented)
+- [x] Wrap App.tsx with ErrorBoundary (added to main.tsx)
+- [x] Test error boundary with intentional error (verified)
+
+### 3. Loading States Audit ✅ COMPLETE
+- [x] Audit all tRPC mutations for loading states (automated script)
+- [x] Check Headlines generator mutations (✅ Has loading state + disabled button)
+- [x] Check HVCO Titles generator mutations (✅ Has loading state + disabled button)
+- [x] Check Hero Mechanisms generator mutations (✅ Has loading state + disabled button)
+- [x] Check ICP generator mutations (✅ Has loading state + disabled button)
+- [x] Check Ad Copy generator mutations (✅ Has loading state + disabled button)
+- [x] Check Email Sequences generator mutations (✅ Has loading state + disabled button)
+- [x] Check WhatsApp Sequences generator mutations (✅ Has loading state + disabled button)
+- [x] Check Landing Pages generator mutations (✅ Has loading state + disabled button)
+- [x] Check Offers generator mutations (✅ Has loading state + disabled button)
+- [x] Check Campaign Builder mutations (verified)
+- [x] Add missing loading spinners (none missing)
+- [x] Add disabled state to buttons during mutation (all have it)
+
+### 4. Empty States ✅ COMPLETE
+- [x] Create EmptyState component (created)
+- [x] Add empty state to Services list page (✅ Already has)
+- [x] Add empty state to Headlines list page (✅ Already has)
+- [x] Add empty state to HVCO Titles list page (✅ Already has)
+- [x] Add empty state to Hero Mechanisms list page (✅ Already has)
+- [x] Add empty state to ICP list page (✅ Already has)
+- [x] Add empty state to Ad Copy list page (✅ Already has)
+- [x] Add empty state to Email Sequences list page (✅ Already has)
+- [x] Add empty state to WhatsApp Sequences list page (✅ Already has)
+- [x] Add empty state to Landing Pages list page (✅ Already has)
+- [x] Add empty state to Offers list page (✅ Already has)
+- [x] Add empty state to Campaigns list page (✅ Already has)
+- [x] Include "Create your first X" CTA buttons (all pages have CTAs)
+
+### 5. Final Testing ✅ COMPLETE
+- [x] Test Stripe banner display and dismiss (verified)
+- [x] Test Error Boundary with crash (verified)
+- [x] Test loading states on all generators (all 9 verified)
+- [x] Test empty states on all list pages (all 12 verified)
+- [x] Run all vitest tests (99/99 passing)
+- [x] Save final checkpoint
