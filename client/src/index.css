@@ -291,19 +291,19 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 20px 24px;
+  padding: 18px 20px;
   background: #14141F;
   border: 1px solid #27273A;
   border-radius: 12px;
-  margin-bottom: 8px;
-  transition: all 200ms ease-out;
+  margin-bottom: 6px;
   cursor: pointer;
+  transition: all 200ms ease;
 }
 
 .generator-row:hover {
   background: #1C1C2E;
   border-color: #8B5CF6;
-  box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.2);
+  box-shadow: inset 3px 0 0 #8B5CF6;
 }
 
 .generator-icon {
@@ -398,4 +398,73 @@
 /* Generator info and title classes */
 .generator-info {
   flex: 1;
+}
+
+/* Dashboard Layout - Proper CSS Grid */
+.dashboard-layout {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.sidebar {
+  width: 220px;
+  min-width: 220px;
+  height: 100vh;
+  overflow-y: auto;
+  border-right: 1px solid #27273A;
+  padding: 24px 16px;
+  background: var(--bg-primary);
+}
+
+.main-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 28px 48px;
+}
+
+.welcome-heading {
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 6px;
+  color: var(--text-primary);
+}
+
+.welcome-sub {
+  font-size: 15px;
+  color: var(--text-tertiary);
+  margin-bottom: 20px;
+}
+
+.video-player {
+  width: 100%;
+  aspect-ratio: 16/6;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 28px;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 200ms ease;
+}
+
+.below-video {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 32px;
+  align-items: start;
+}
+
+.right-column {
+  position: static;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }

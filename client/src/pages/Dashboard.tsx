@@ -165,19 +165,9 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="sidebar">
+    <div className="dashboard-layout">
       {/* Sidebar */}
-      <div style={{
-        width: '220px',
-        minWidth: '220px',
-        background: 'var(--bg-primary)',
-        borderRight: '1px solid var(--border-subtle)',
-        display: 'flex',
-        flexDirection: 'column',
-        padding: '24px 16px',
-        height: '100vh',
-        overflow: 'auto',
-      }}>
+      <div className="sidebar">
         <div style={{
           fontSize: '20px',
           fontWeight: 700,
@@ -262,49 +252,17 @@ export default function Dashboard() {
       </div>
 
       {/* Main Content */}
-      <div style={{
-        flex: 1,
-        overflowY: 'auto',
-        padding: '40px 48px',
-      }}>
+      <div className="main-content">
         {/* Welcome */}
-        <h1 style={{
-          fontSize: '32px',
-          fontWeight: 700,
-          letterSpacing: '-0.02em',
-          marginBottom: '8px',
-          color: 'var(--text-primary)',
-        }}>
+        <h1 className="welcome-heading">
           Welcome {user?.name || 'Arfeen'} 👋
         </h1>
-        <p style={{
-          fontSize: '15px',
-          color: 'var(--text-tertiary)',
-          marginBottom: '28px',
-        }}>
+        <p className="welcome-sub">
           Let's get started with something awesome.
         </p>
 
         {/* Full Width Video */}
-        <div style={{
-          width: '100%',
-          aspectRatio: '16/6',
-          background: 'var(--bg-secondary)',
-          border: '1px solid var(--border-subtle)',
-          borderRadius: '16px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexDirection: 'column',
-          gap: '14px',
-          marginBottom: '40px',
-          position: 'relative',
-          overflow: 'hidden',
-          cursor: 'pointer',
-          transition: 'border-color 200ms ease',
-        }}
-        className="video-player-hover"
-        >
+        <div className="video-player">
           <div style={{
             position: 'absolute',
             inset: 0,
@@ -345,12 +303,7 @@ export default function Dashboard() {
         </div>
 
         {/* Two Column: Generators + Right Cards */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 280px',
-          gap: '32px',
-          alignItems: 'start',
-        }}>
+        <div className="below-video">
           {/* Left: Generators */}
           <div>
             <div style={{
@@ -394,13 +347,7 @@ export default function Dashboard() {
           </div>
 
           {/* Right: Info Cards */}
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '10px',
-            animation: 'fadeInUp 0.5s ease both',
-            animationDelay: '100ms',
-          }}>
+          <div className="right-column">
             {/* Stripe Banner */}
             <StripeSandboxBanner />
 

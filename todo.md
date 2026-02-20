@@ -1790,3 +1790,26 @@
 - [x] Apply fadeInUp stagger animation on generator rows (60ms delay increments)
 - [x] Preserve all existing React functionality, routing, and data (useAuth, tRPC, Link, useTour)
 - [x] Test and verify layout matches reference exactly - All 99 tests passing
+
+## Phase 1108: Fix Dashboard Layout Issues ✅ COMPLETE
+- [x] Fix right column floating overlay - change to natural CSS Grid child
+- [x] Remove position: absolute, position: fixed, or z-index from right column
+- [x] Apply .dashboard-layout class with display: flex, height: 100vh
+- [x] Apply .main-content class with flex: 1, overflow-y: auto, padding: 28px 48px
+- [x] Apply .below-video class with display: grid, grid-template-columns: 1fr 280px, gap: 32px
+- [x] Apply .right-column class with position: static, flex-direction: column, gap: 10px
+- [x] Fix blank space above video - reduce padding from 40px to 28px top
+- [x] Reduce welcome-heading margin-bottom to 6px
+- [x] Reduce welcome-sub margin-bottom to 20px
+- [x] Reduce video-player margin-bottom to 28px, aspect-ratio: 16/6
+- [x] Verify welcome heading, subtitle, and video visible without scrolling
+- [x] Test and verify right column scrolls with page, not floating
+
+## Phase 1109: Fix Generator Row Box Styling ✅ COMPLETE
+- [x] Verify .generator-row CSS class exists in index.css
+- [x] Update .generator-row with exact styles: padding 18px 20px, background #14141F, border 1px solid #27273A
+- [x] Update .generator-row with border-radius 12px, margin-bottom 6px, transition: all 200ms ease
+- [x] Update .generator-row hover: background #1C1C2E, border-color #8B5CF6, box-shadow inset 3px 0 0 #8B5CF6
+- [x] Verify every generator row element has .generator-row class applied
+- [x] Screenshot and verify all generator rows have visible dark background boxes with borders
+- [x] All 99 tests passing
