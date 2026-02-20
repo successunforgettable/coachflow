@@ -1907,3 +1907,22 @@
 - [ ] Update Quota Usage card to show only infinity symbol and "Unlimited" without repetitive descriptions
 - [ ] Test and verify Stripe/Quota cards appear only once (in video section, not below generators)
 - [ ] Test and verify Quota Usage card has cleaner, non-redundant content
+
+
+## Onboarding Flow Improvements
+
+- [x] Replace copy in WelcomeStep.tsx with emotional, pain-point-focused messaging
+- [x] Replace copy in CreateServiceStep.tsx with improved pro tips
+- [x] Replace copy in GenerateICPStep.tsx with engaging "dream buyer" language
+- [x] Replace copy in GenerateHeadlinesStep.tsx with benefit-focused copy
+- [x] Replace copy in CreateCampaignStep.tsx to show summary of assets created
+- [x] Build SkipConfirmationDialog component with persuasive copy
+- [ ] Build PostOnboardingWelcomeBanner component (shown once after completion)
+- [ ] Build ReturningUserBanner component (shown on second login)
+- [ ] Build OnboardingProgressTracker sidebar component with 5 progress states
+- [ ] Add 30-day expiry logic to progress tracker
+- [ ] Add tooltip on hover for incomplete progress items
+- [ ] Add user preferences storage for banner dismissal states
+- [ ] Test full onboarding flow with new copy
+- [ ] Test skip confirmation dialog
+- [ ] Test progress tracker updates as generators are used

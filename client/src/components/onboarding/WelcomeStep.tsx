@@ -13,10 +13,9 @@ export default function WelcomeStep({ onNext }: WelcomeStepProps) {
         <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-primary/10">
           <Rocket className="h-10 w-10 text-primary" />
         </div>
-        <h3 className="text-3xl font-bold">Welcome to CoachFlow!</h3>
+        <h3 className="text-3xl font-bold">You're one setup away from never writing marketing copy from scratch again.</h3>
         <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-          The all-in-one marketing automation platform for coaches, speakers, and consultants.
-          Let's get you set up in just 5 simple steps.
+          Join 900,000+ coaches, speakers and consultants who've transformed their marketing with AI — in under 10 minutes.
         </p>
       </div>
 
@@ -25,9 +24,9 @@ export default function WelcomeStep({ onNext }: WelcomeStepProps) {
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary/10">
             <Target className="h-6 w-6 text-primary" />
           </div>
-          <h4 className="font-semibold">Define Your Service</h4>
+          <h4 className="font-semibold">Your Service, Defined</h4>
           <p className="text-sm text-muted-foreground">
-            Create your first service offering and target market
+            Tell us what you do once. CoachFlow uses it everywhere.
           </p>
         </div>
 
@@ -35,9 +34,9 @@ export default function WelcomeStep({ onNext }: WelcomeStepProps) {
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary/10">
             <Zap className="h-6 w-6 text-primary" />
           </div>
-          <h4 className="font-semibold">Generate Marketing Assets</h4>
+          <h4 className="font-semibold">Your Dream Client, Mapped</h4>
           <p className="text-sm text-muted-foreground">
-            AI-powered ICP and headlines tailored to your audience
+            AI builds a complete profile of who you're selling to.
           </p>
         </div>
 
@@ -45,33 +44,15 @@ export default function WelcomeStep({ onNext }: WelcomeStepProps) {
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary/10">
             <TrendingUp className="h-6 w-6 text-primary" />
           </div>
-          <h4 className="font-semibold">Launch Your Campaign</h4>
+          <h4 className="font-semibold">Your First Campaign, Ready</h4>
           <p className="text-sm text-muted-foreground">
-            Organize assets into a cohesive marketing workflow
+            Headlines, copy and assets — generated before you finish your coffee.
           </p>
         </div>
       </div>
 
-      <div className="bg-muted/50 rounded-lg p-6 mt-8">
-        <h4 className="font-semibold mb-2">What you'll accomplish:</h4>
-        <ul className="space-y-2 text-sm text-muted-foreground">
-          <li className="flex items-start gap-2">
-            <span className="text-primary mt-0.5">✓</span>
-            <span>Create your first service and define your ideal customer</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="text-primary mt-0.5">✓</span>
-            <span>Generate AI-powered marketing copy and headlines</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="text-primary mt-0.5">✓</span>
-            <span>Build your first campaign with organized marketing assets</span>
-          </li>
-        </ul>
-      </div>
-
-      <div className="text-center text-sm text-muted-foreground mt-6">
-        This will take approximately 5-10 minutes
+      <div className="text-center text-base text-muted-foreground mt-8 max-w-2xl mx-auto">
+        Most coaches spend 80% of their time on marketing and 20% on coaching. We're about to flip that.
       </div>
     </div>
   );

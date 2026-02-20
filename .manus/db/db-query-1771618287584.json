@@ -1,0 +1,80 @@
+{
+  "query": "SELECT * FROM user_onboarding ORDER BY id DESC LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT * FROM user_onboarding ORDER BY id DESC LIMIT 5;",
+  "rows": [
+    {
+      "id": "390065",
+      "userId": "1050148",
+      "currentStep": "5",
+      "completed": "1",
+      "serviceId": "111",
+      "icpId": "icp-flow-test",
+      "headlineSetId": "headline-flow-test",
+      "campaignId": "222",
+      "skipped": "0",
+      "createdAt": "2026-02-20 20:01:50",
+      "updatedAt": "2026-02-20 20:01:52",
+      "completedAt": "2026-02-20 20:01:52"
+    },
+    {
+      "id": "390052",
+      "userId": "1050121",
+      "currentStep": "5",
+      "completed": "1",
+      "serviceId": "111",
+      "icpId": "icp-flow-test",
+      "headlineSetId": "headline-flow-test",
+      "campaignId": "222",
+      "skipped": "0",
+      "createdAt": "2026-02-20 19:56:54",
+      "updatedAt": "2026-02-20 19:56:56",
+      "completedAt": "2026-02-20 19:56:56"
+    },
+    {
+      "id": "390039",
+      "userId": "1050086",
+      "currentStep": "5",
+      "completed": "1",
+      "serviceId": "111",
+      "icpId": "icp-flow-test",
+      "headlineSetId": "headline-flow-test",
+      "campaignId": "222",
+      "skipped": "0",
+      "createdAt": "2026-02-20 19:51:03",
+      "updatedAt": "2026-02-20 19:51:05",
+      "completedAt": "2026-02-20 19:51:05"
+    },
+    {
+      "id": "390026",
+      "userId": "1050059",
+      "currentStep": "5",
+      "completed": "1",
+      "serviceId": "111",
+      "icpId": "icp-flow-test",
+      "headlineSetId": "headline-flow-test",
+      "campaignId": "222",
+      "skipped": "0",
+      "createdAt": "2026-02-20 19:40:35",
+      "updatedAt": "2026-02-20 19:40:37",
+      "completedAt": "2026-02-20 19:40:37"
+    },
+    {
+      "id": "390013",
+      "userId": "1050016",
+      "currentStep": "5",
+      "completed": "1",
+      "serviceId": "111",
+      "icpId": "icp-flow-test",
+      "headlineSetId": "headline-flow-test",
+      "campaignId": "222",
+      "skipped": "0",
+      "createdAt": "2026-02-20 19:34:06",
+      "updatedAt": "2026-02-20 19:34:08",
+      "completedAt": "2026-02-20 19:34:09"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tuserId\tcurrentStep\tcompleted\tserviceId\ticpId\theadlineSetId\tcampaignId\tskipped\tcreatedAt\tupdatedAt\tcompletedAt\n390065\t1050148\t5\t1\t111\ticp-flow-test\theadline-flow-test\t222\t0\t2026-02-20 20:01:50\t2026-02-20 20:01:52\t2026-02-20 20:01:52\n390052\t1050121\t5\t1\t111\ticp-flow-test\theadline-flow-test\t222\t0\t2026-02-20 19:56:54\t2026-02-20 19:56:56\t2026-02-20 19:56:56\n390039\t1050086\t5\t1\t111\ticp-flow-test\theadline-flow-test\t222\t0\t2026-02-20 19:51:03\t2026-02-20 19:51:05\t2026-02-20 19:51:05\n390026\t1050059\t5\t1\t111\ticp-flow-test\theadline-flow-test\t222\t0\t2026-02-20 19:40:35\t2026-02-20 19:40:37\t2026-02-20 19:40:37\n390013\t1050016\t5\t1\t111\ticp-flow-test\theadline-flow-test\t222\t0\t2026-02-20 19:34:06\t2026-02-20 19:34:08\t2026-02-20 19:34:09\n",
+  "stderr": "",
+  "execution_time_ms": 1527
+}

@@ -1,0 +1,70 @@
+{
+  "query": "SELECT id, name, openId, email FROM users LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT id, name, openId, email FROM users LIMIT 10;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "Arfeen Khan",
+      "openId": "YAadMRwhwu3fpQ3qJTRrw4",
+      "email": "arfeen@arfeenkhan.com"
+    },
+    {
+      "id": "180001",
+      "name": "Test User",
+      "openId": "test-landing-1771368614514",
+      "email": "test@example.com"
+    },
+    {
+      "id": "180002",
+      "name": "Test User",
+      "openId": "test-landing-1771368641034",
+      "email": "test@example.com"
+    },
+    {
+      "id": "210024",
+      "name": "Test User",
+      "openId": "test-icp-1771397233982",
+      "email": "test@example.com"
+    },
+    {
+      "id": "360056",
+      "name": "Beast Mode Test User",
+      "openId": "test-beast-mode-user",
+      "email": "beastmode@test.com"
+    },
+    {
+      "id": "360106",
+      "name": "Test Quota User",
+      "openId": "test-quota-1771447191595",
+      "email": "test-quota-1771447191596@example.com"
+    },
+    {
+      "id": "360107",
+      "name": "Test Quota User",
+      "openId": "test-quota-1771447197983",
+      "email": "test-quota-1771447197983@example.com"
+    },
+    {
+      "id": "360108",
+      "name": "Test Quota User",
+      "openId": "test-quota-1771447202282",
+      "email": "test-quota-1771447202282@example.com"
+    },
+    {
+      "id": "420025",
+      "name": "Test User",
+      "openId": "test-landing-1771509348806",
+      "email": "test@example.com"
+    },
+    {
+      "id": "420026",
+      "name": "Test User",
+      "openId": "test-icp-1771509348803",
+      "email": "test@example.com"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\topenId\temail\n1\tArfeen Khan\tYAadMRwhwu3fpQ3qJTRrw4\tarfeen@arfeenkhan.com\n180001\tTest User\ttest-landing-1771368614514\ttest@example.com\n180002\tTest User\ttest-landing-1771368641034\ttest@example.com\n210024\tTest User\ttest-icp-1771397233982\ttest@example.com\n360056\tBeast Mode Test User\ttest-beast-mode-user\tbeastmode@test.com\n360106\tTest Quota User\ttest-quota-1771447191595\ttest-quota-1771447191596@example.com\n360107\tTest Quota User\ttest-quota-1771447197983\ttest-quota-1771447197983@example.com\n360108\tTest Quota User\ttest-quota-1771447202282\ttest-quota-1771447202282@example.com\n420025\tTest User\ttest-landing-1771509348806\ttest@example.com\n420026\tTest User\ttest-icp-1771509348803\ttest@example.com\n",
+  "stderr": "",
+  "execution_time_ms": 1634
+}

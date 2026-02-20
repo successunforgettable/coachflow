@@ -42,9 +42,9 @@ export default function GenerateICPStep({ data, onComplete, onNext }: GenerateIC
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-2xl font-bold mb-2">Generate Your Ideal Customer Profile</h3>
+        <h3 className="text-2xl font-bold mb-2">Who is the person whose life you change?</h3>
         <p className="text-muted-foreground">
-          We'll use AI to create a detailed profile of your ideal customer based on your service.
+          We're not building a demographic spreadsheet. We're building a complete human — their fears, desires, objections, and the exact words that make them say yes.
         </p>
       </div>
 
@@ -68,10 +68,10 @@ export default function GenerateICPStep({ data, onComplete, onNext }: GenerateIC
               <div>
                 <h4 className="font-semibold mb-2">What we'll generate:</h4>
                 <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• Demographics (age, income, location, education)</li>
-                  <li>• Psychographics (values, goals, challenges)</li>
-                  <li>• Behavioral patterns and buying triggers</li>
-                  <li>• Communication preferences</li>
+                  <li>🧠 Deep psychology — what keeps them up at 3am</li>
+                  <li>💬 Their exact language — words they use to describe their problem</li>
+                  <li>🎯 Their buying triggers — what makes them finally take action</li>
+                  <li>🚫 Their objections — what stops them from saying yes</li>
                 </ul>
               </div>
             </div>
@@ -85,12 +85,12 @@ export default function GenerateICPStep({ data, onComplete, onNext }: GenerateIC
             {generateICP.isPending ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Generating ICP...
+                Building Your Dream Buyer...
               </>
             ) : (
               <>
                 <Sparkles className="h-4 w-4 mr-2" />
-                Generate ICP with AI
+                Generate My Dream Buyer →
               </>
             )}
           </Button>
@@ -99,15 +99,15 @@ export default function GenerateICPStep({ data, onComplete, onNext }: GenerateIC
         <div className="space-y-4">
           <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900 rounded-lg p-4">
             <h4 className="font-semibold text-green-900 dark:text-green-100 mb-2">
-              ✓ ICP Generated Successfully!
+              ✓ Your dream buyer is ready.
             </h4>
             <p className="text-sm text-green-700 dark:text-green-300">
-              Your ideal customer profile has been created. You can view and edit it later from the ICP page.
+              Every piece of copy CoachFlow generates from here will speak directly to this person.
             </p>
           </div>
 
           <Button onClick={onNext} className="w-full">
-            Continue to Headlines
+            Continue to Headlines →
           </Button>
         </div>
       )}

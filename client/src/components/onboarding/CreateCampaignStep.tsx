@@ -20,6 +20,11 @@ export default function CreateCampaignStep({ data, onComplete, onNext }: CreateC
     description: "",
   });
 
+  const { data: service } = trpc.services.get.useQuery(
+    { id: data.serviceId! },
+    { enabled: !!data.serviceId }
+  );
+
   const createCampaign = trpc.campaigns.create.useMutation({
     onSuccess: (result) => {
       toast({ title: "Campaign created successfully!" });
@@ -47,29 +52,41 @@ export default function CreateCampaignStep({ data, onComplete, onNext }: CreateC
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-2xl font-bold mb-2">Create Your First Campaign</h3>
-        <p className="text-muted-foreground">
-          Organize your marketing assets into a cohesive campaign workflow.
-        </p>
+        <h3 className="text-2xl font-bold mb-2">Look what we built together.</h3>
       </div>
 
-      <div className="bg-muted/50 rounded-lg p-4 space-y-2">
-        <h4 className="font-semibold mb-3">Your Generated Assets:</h4>
+      <div className="bg-muted/50 rounded-lg p-4 space-y-3">
         <div className="space-y-2 text-sm">
+          {data.serviceId && (
+            <div className="flex items-start gap-2">
+              <span className="text-green-600 mt-0.5">✅</span>
+              <div>
+                <span className="font-semibold">Your Service</span> — {service?.name || 'Defined'} is defined and ready to power every generator
+              </div>
+            </div>
+          )}
           {data.icpId && (
-            <div className="flex items-center gap-2">
-              <span className="text-green-600">✓</span>
-              <span>Ideal Customer Profile</span>
+            <div className="flex items-start gap-2">
+              <span className="text-green-600 mt-0.5">✅</span>
+              <div>
+                <span className="font-semibold">Your Dream Buyer</span> — Built with full psychology and buying triggers
+              </div>
             </div>
           )}
           {data.headlineSetId && (
-            <div className="flex items-center gap-2">
-              <span className="text-green-600">✓</span>
-              <span>Marketing Headlines</span>
+            <div className="flex items-start gap-2">
+              <span className="text-green-600 mt-0.5">✅</span>
+              <div>
+                <span className="font-semibold">25+ Headlines</span> — Across 4 proven formulas, ready to deploy
+              </div>
             </div>
           )}
         </div>
       </div>
+
+      <p className="text-muted-foreground text-center">
+        Now let's give this campaign a name so you can find it later.
+      </p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
@@ -101,9 +118,9 @@ export default function CreateCampaignStep({ data, onComplete, onNext }: CreateC
         <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
           <h4 className="font-semibold text-sm mb-2">💡 Next Steps:</h4>
           <ul className="text-sm text-muted-foreground space-y-1">
-            <li>• Add more assets to your campaign from the Campaign Builder</li>
-            <li>• Link assets together to create a visual workflow</li>
-            <li>• Track campaign performance in the Analytics Dashboard</li>
+            <li>• Go deeper on any asset — edit, regenerate, or create variations</li>
+            <li>• Build your full ad campaign using your new headlines</li>
+            <li>• Generate landing page copy, email sequences and WhatsApp campaigns</li>
           </ul>
         </div>
 
@@ -115,12 +132,12 @@ export default function CreateCampaignStep({ data, onComplete, onNext }: CreateC
           {createCampaign.isPending ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Creating Campaign...
+              Setting Up Your Dashboard...
             </>
           ) : (
             <>
               <PartyPopper className="h-4 w-4 mr-2" />
-              Create Campaign & Finish
+              Take Me to My Dashboard 🎉
             </>
           )}
         </Button>

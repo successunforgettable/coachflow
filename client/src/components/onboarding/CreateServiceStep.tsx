@@ -46,10 +46,9 @@ export default function CreateServiceStep({ data, onComplete, onNext }: CreateSe
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-2xl font-bold mb-2">Create Your First Service</h3>
+        <h3 className="text-2xl font-bold mb-2">What transformation do you sell?</h3>
         <p className="text-muted-foreground">
-          Define your service offering and target market. This will be used to generate
-          personalized marketing content.
+          Be specific. The more precise you are here, the more powerful your AI-generated assets will be.
         </p>
       </div>
 
@@ -122,9 +121,9 @@ export default function CreateServiceStep({ data, onComplete, onNext }: CreateSe
         <div className="bg-muted/50 rounded-lg p-4">
           <h4 className="font-semibold text-sm mb-2">💡 Pro Tips:</h4>
           <ul className="text-sm text-muted-foreground space-y-1">
-            <li>• Be specific about your target market (industry, role, company size)</li>
-            <li>• Highlight the main problem you solve or transformation you provide</li>
-            <li>• You can create more services later from the Services page</li>
+            <li>• Don't say 'business coaching' — say 'I help first-generation entrepreneurs hit their first ₹1 crore in 12 months'</li>
+            <li>• Your main benefit should be a result, not a feature — transformation, not information</li>
+            <li>• You can add more services later — start with your #1 offer</li>
           </ul>
         </div>
 
@@ -136,10 +135,10 @@ export default function CreateServiceStep({ data, onComplete, onNext }: CreateSe
           {createService.isPending ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Creating Service...
+              Building Your Assets...
             </>
           ) : (
-            "Create Service & Continue"
+            "Build My Assets →"
           )}
         </Button>
       </form>
