@@ -460,11 +460,14 @@
   grid-template-columns: 1fr 280px;
   gap: 32px;
   align-items: start;
+  width: 100%;
 }
 
 .right-column {
-  position: static;
   display: flex;
   flex-direction: column;
   gap: 10px;
+  position: static !important;
+  width: 280px;
+  min-width: 280px;
 }

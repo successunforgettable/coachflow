@@ -1848,3 +1848,20 @@
 - [x] Keep only: flex layout, gap, padding, text styling, and button
 - [x] Generator rows are now flat text rows, NOT cards
 - [x] Test and verify matches reference screenshots exactly - All 99 tests passing
+
+## Phase 1113: Fix Generator Row className - Add Background, Border, Hover States ✅ COMPLETE
+- [x] Find line 323 in Dashboard.tsx inside generators.map()
+- [x] Replace className="flex items-center gap-3 px-4 py-3 mb-1 cursor-pointer transition-all duration-200"
+- [x] With className="flex items-center gap-3 px-5 py-4 mb-1.5 cursor-pointer transition-all duration-200 rounded-xl border border-[#27273A] bg-[#14141F] hover:bg-[#1C1C2E] hover:border-[#8B5CF6]"
+- [x] Save file and screenshot result - Generator rows now have visible dark background boxes with borders
+
+## Phase 1114: Fix Right Column Visibility ✅ COMPLETE
+- [x] Find .below-video CSS in index.css (lines 458-463)
+- [x] Replace with exact CSS: display: grid, grid-template-columns: 1fr 280px, gap: 32px, align-items: start, width: 100%
+- [x] Find .right-column CSS in index.css (lines 466-473)
+- [x] Replace with exact CSS: display: flex, flex-direction: column, gap: 10px, position: static !important, width: 280px, min-width: 280px
+- [x] Add temporary red border to right column div in Dashboard.tsx: style={{ border: '2px solid red' }}
+- [x] Screenshot to confirm right column div is rendering - CONFIRMED VISIBLE
+- [x] Check if StripeSandboxBanner and QuotaSummaryCard are returning null - Both rendering correctly
+- [x] Remove red border after confirming visibility
+- [x] All 99 tests passing
