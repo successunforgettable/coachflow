@@ -471,3 +471,33 @@
   width: 280px;
   min-width: 280px;
 }
+
+/* Generator Grid Layout */
+.generators-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.generator-card {
+  background: #16162A;
+  border: 1px solid #3F3F5E;
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 200ms ease;
+}
+
+.generator-card:hover {
+  border-color: #8B5CF6;
+  background: #1C1C2E;
+}
+
+.generator-card .gen-btn {
+  margin-top: auto;
+  align-self: flex-start;
+}

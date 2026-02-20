@@ -304,7 +304,7 @@ export default function Dashboard() {
 
         {/* Two Column: Generators + Right Cards */}
         <div className="below-video">
-          {/* Left: Generators */}
+          {/* Left: Generators Grid */}
           <div>
             <div style={{
               fontSize: '11px',
@@ -317,37 +317,31 @@ export default function Dashboard() {
               AI Generators
             </div>
 
-            {generators.map((gen, index) => (
-              <Link key={gen.href} href={gen.href}>
-                <div
-                  className="flex items-center gap-3 px-5 py-4 mb-1.5 cursor-pointer transition-all duration-200 rounded-xl border border-[#27273A] bg-[#14141F] hover:bg-[#1C1C2E] hover:border-[#8B5CF6]"
-                  style={{
-                    animationDelay: `${index * 60}ms`,
-                    animation: 'fadeInUp 0.4s ease-out both',
-                  }}
-                >
-                  <div className="w-9 h-9 bg-[rgba(139,92,246,0.08)] rounded-md flex items-center justify-center flex-shrink-0">
-                    <gen.icon className="w-[16px] h-[16px]" />
+            <div className="generators-grid">
+              {generators.map((gen, index) => (
+                <Link key={gen.href} href={gen.href}>
+                  <div className="generator-card">
+                    <div className="w-10 h-10 bg-[rgba(139,92,246,0.1)] rounded-lg flex items-center justify-center flex-shrink-0">
+                      <gen.icon className="w-5 h-5" />
+                    </div>
+                    <div className="text-base font-semibold text-white">{gen.title}</div>
+                    <div className="text-sm text-[#9CA3AF]">{gen.description}</div>
+                    <button
+                      className="gen-btn px-4 py-2 bg-gradient-to-br from-[#8B5CF6] to-[#A78BFA] rounded-lg text-white text-sm font-semibold hover:shadow-[0_0_20px_rgba(139,92,246,0.4)] hover:-translate-y-px transition-all duration-200"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        window.location.href = gen.href;
+                      }}
+                    >
+                      Generate
+                    </button>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[15px] font-semibold text-white leading-tight">{gen.title}</div>
-                    <div className="text-[13px] text-[#8B8B9A] mt-0.5 leading-tight">{gen.description}</div>
-                  </div>
-                  <button
-                    className="ml-auto px-4 py-1.5 bg-gradient-to-br from-[#8B5CF6] to-[#A78BFA] rounded-md text-white text-[13px] font-semibold flex-shrink-0 hover:shadow-[0_0_16px_rgba(139,92,246,0.35)] hover:-translate-y-0.5 transition-all duration-200"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      window.location.href = gen.href;
-                    }}
-                  >
-                    Generate
-                  </button>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              ))}
+            </div>
           </div>
 
-          {/* Right: Info Cards */}
+          {/* Right: Info Cards - ONLY Stripe and Quota */}
           <div className="right-column">
             {/* Stripe Banner */}
             <StripeSandboxBanner />
@@ -358,52 +352,6 @@ export default function Dashboard() {
                 <QuotaSummaryCard authData={authData} quotaLimits={quotaLimits} />
               </div>
             )}
-
-            {/* Products Card - Compact */}
-            <div
-              style={{
-                padding: 'var(--card-padding-md)',
-                borderRadius: 'var(--radius-lg)',
-                border: '1px solid var(--border-subtle)',
-                background: 'var(--bg-secondary)',
-                transition: 'border-color 200ms ease',
-              }}
-              className="right-card-hover"
-            >
-              <div className="flex items-center gap-2 mb-1">
-                <Package className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
-                <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Products</h3>
-              </div>
-              <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>
-                A central place for your product/service's details, to be used in resource generation
-              </p>
-              <div className="flex gap-2 text-xs">
-                <Link href="/services" style={{ color: 'var(--text-tertiary)', transition: 'color 150ms ease' }} className="right-action-link-hover">View All</Link>
-                <span style={{ color: 'var(--border-default)' }}>·</span>
-                <Link href="/services" style={{ color: 'var(--text-tertiary)', transition: 'color 150ms ease' }} className="right-action-link-hover">Create New Product</Link>
-              </div>
-            </div>
-
-            {/* Dream Buyer Avatar Card - Compact */}
-            <div
-              style={{
-                padding: 'var(--card-padding-md)',
-                borderRadius: 'var(--radius-lg)',
-                border: '1px solid var(--border-subtle)',
-                background: 'var(--bg-secondary)',
-                transition: 'border-color 200ms ease',
-              }}
-              className="right-card-hover"
-            >
-              <div className="flex items-center gap-2 mb-1">
-                <Sparkles className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
-                <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Dream Buyer Avatar</h3>
-              </div>
-              <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>
-                Create a detailed and idealized representation of your target customer
-              </p>
-              <Link href="/generators/icp" className="text-xs" style={{ color: 'var(--accent-hover)', fontWeight: 600 }}>Generate →</Link>
-            </div>
           </div>
         </div>
 
