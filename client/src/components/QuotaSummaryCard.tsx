@@ -64,19 +64,14 @@ export function QuotaSummaryCard({ authData, quotaLimits }: QuotaSummaryCardProp
     >
       {authData.subscriptionTier === "agency" ? (
         <div>
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-2">
             <TrendingUp className="h-4 w-4" style={{ color: 'var(--text-secondary)' }} />
             <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Quota Usage</h3>
           </div>
-          <p className="text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>
-            Unlimited generations on all tools
-          </p>
           <div className="flex items-center gap-2">
-            <span className="text-lg font-bold" style={{ color: '#10B981' }}>∞ Unlimited</span>
+            <span className="text-2xl font-bold" style={{ color: '#10B981' }}>∞</span>
+            <span className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Unlimited</span>
           </div>
-          <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
-            You have unlimited access to all generators
-          </p>
         </div>
       ) : (
           <div>

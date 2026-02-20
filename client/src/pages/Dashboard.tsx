@@ -316,55 +316,39 @@ export default function Dashboard() {
         </div>
 
         {/* Generators Grid */}
-        <div className="below-video">
-          {/* Left: Generators Grid */}
-          <div>
-            <div style={{
-              fontSize: '11px',
-              fontWeight: 600,
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-              color: 'var(--text-muted)',
-              marginBottom: '14px',
-            }}>
-              AI Generators
-            </div>
-
-            <div className="generators-grid">
-              {generators.map((gen, index) => (
-                <Link key={gen.href} href={gen.href}>
-                  <div className="generator-card">
-                    <div className="w-10 h-10 bg-[rgba(139,92,246,0.1)] rounded-lg flex items-center justify-center flex-shrink-0">
-                      <gen.icon className="w-5 h-5" />
-                    </div>
-                    <div className="text-base font-semibold text-white">{gen.title}</div>
-                    <div className="text-sm text-[#9CA3AF]">{gen.description}</div>
-                    <button
-                      className="gen-btn px-4 py-2 bg-gradient-to-br from-[#8B5CF6] to-[#A78BFA] rounded-lg text-white text-sm font-semibold hover:shadow-[0_0_20px_rgba(139,92,246,0.4)] hover:-translate-y-px transition-all duration-200"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        window.location.href = gen.href;
-                      }}
-                    >
-                      Generate
-                    </button>
-                  </div>
-                </Link>
-              ))}
-            </div>
+        <div>
+          <div style={{
+            fontSize: '11px',
+            fontWeight: 600,
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+            color: 'var(--text-muted)',
+            marginBottom: '14px',
+          }}>
+            AI Generators
           </div>
 
-          {/* Right: Info Cards - ONLY Stripe and Quota */}
-          <div className="right-column">
-            {/* Stripe Banner */}
-            <StripeSandboxBanner />
-
-            {/* Quota Card */}
-            {authData && quotaLimits && (
-              <div>
-                <QuotaSummaryCard authData={authData} quotaLimits={quotaLimits} />
-              </div>
-            )}
+          <div className="generators-grid">
+            {generators.map((gen, index) => (
+              <Link key={gen.href} href={gen.href}>
+                <div className="generator-card">
+                  <div className="w-10 h-10 bg-[rgba(139,92,246,0.1)] rounded-lg flex items-center justify-center flex-shrink-0">
+                    <gen.icon className="w-5 h-5" />
+                  </div>
+                  <div className="text-base font-semibold text-white">{gen.title}</div>
+                  <div className="text-sm text-[#9CA3AF]">{gen.description}</div>
+                  <button
+                    className="gen-btn px-4 py-2 bg-gradient-to-br from-[#8B5CF6] to-[#A78BFA] rounded-lg text-white text-sm font-semibold hover:shadow-[0_0_20px_rgba(139,92,246,0.4)] hover:-translate-y-px transition-all duration-200"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      window.location.href = gen.href;
+                    }}
+                  >
+                    Generate
+                  </button>
+                </div>
+              </Link>
+            ))}
           </div>
         </div>
 

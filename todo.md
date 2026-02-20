@@ -1899,3 +1899,11 @@
 - [x] Verify welcome heading, subtitle, and video visible without scrolling on page load - CONFIRMED
 - [x] Screenshot and verify fixes - Video left, Stripe/Quota right in 2-column grid
 - [x] All 99 tests passing
+
+## Phase 1118: Fix Duplicate Stripe/Quota Cards and Simplify Quota Usage Content (ACTIVE)
+- [ ] Find duplicate Stripe/Quota cards in .below-video section of Dashboard.tsx
+- [ ] Remove duplicate StripeSandboxBanner and QuotaSummaryCard from .below-video (keep only in .video-section)
+- [ ] Simplify QuotaSummaryCard component content to remove redundant text
+- [ ] Update Quota Usage card to show only infinity symbol and "Unlimited" without repetitive descriptions
+- [ ] Test and verify Stripe/Quota cards appear only once (in video section, not below generators)
+- [ ] Test and verify Quota Usage card has cleaner, non-redundant content
