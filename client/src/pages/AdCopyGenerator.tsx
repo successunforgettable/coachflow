@@ -28,6 +28,7 @@ import ExamplesCarousel from "@/components/ExamplesCarousel";
 export default function AdCopyGenerator() {
   const { isAuthenticated, loading: authLoading } = useAuth();
   const { data: quotaLimits } = trpc.auth.getQuotaLimits.useQuery();
+  const { data: authData } = trpc.auth.me.useQuery();
   
   // Form state - all 17 fields
   const [serviceId, setServiceId] = useState<number | null>(null);
@@ -185,8 +186,6 @@ export default function AdCopyGenerator() {
       </div>
     );
   }
-
-  const { data: authData } = trpc.auth.me.useQuery();
 
   // Check if user has reached quota limit
   const isQuotaExceeded = !!(authData && quotaLimits && authData.adCopyGeneratedCount >= quotaLimits.adCopy);
