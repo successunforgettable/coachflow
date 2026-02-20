@@ -8,6 +8,7 @@ import App from "./App";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { getLoginUrl } from "./const";
 import "./index.css";
+import { TourProvider } from "./contexts/TourContext";
 
 const queryClient = new QueryClient();
 
@@ -57,7 +58,9 @@ createRoot(document.getElementById("root")!).render(
   <ErrorBoundary>
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>
-        <App />
+        <TourProvider>
+          <App />
+        </TourProvider>
       </QueryClientProvider>
     </trpc.Provider>
   </ErrorBoundary>

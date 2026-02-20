@@ -17,11 +17,13 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { useState } from "react";
+import { useTour } from "@/contexts/TourContext";
 
 export default function LandingPage() {
   const { isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const { startTour } = useTour();
 
   // Redirect authenticated users to dashboard
   if (isAuthenticated) {
@@ -187,10 +189,13 @@ export default function LandingPage() {
             <a href="#faq" className="text-muted-foreground hover:text-foreground transition-colors">
               FAQ
             </a>
+            <Button variant="ghost" onClick={() => startTour('landing')}>
+              Take a Tour
+            </Button>
             <Button variant="outline" asChild>
               <a href={getLoginUrl()}>Login</a>
             </Button>
-            <Button asChild>
+            <Button asChild data-tour="cta">
               <a href={getLoginUrl()}>Start Free Trial</a>
             </Button>
           </div>
@@ -198,7 +203,7 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero Section */}
-      <section className="py-20 md:py-32">
+      <section className="py-20 md:py-32" data-tour="hero">
         <div className="container mx-auto px-4 text-center">
           <h1 className="text-5xl md:text-7xl font-bold text-foreground mb-6 leading-tight">
             Generate 300+ Marketing Assets
@@ -281,7 +286,7 @@ export default function LandingPage() {
       </section>
 
       {/* Features Section */}
-      <section id="features" className="py-20">
+      <section id="features" className="py-20" data-tour="features">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-4">9 AI-Powered Content Generators</h2>
@@ -342,7 +347,7 @@ export default function LandingPage() {
       </section>
 
       {/* Pricing Section */}
-      <section id="pricing" className="py-20">
+      <section id="pricing" className="py-20 bg-accent/50" data-tour="pricing">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-4">Simple, Transparent Pricing</h2>

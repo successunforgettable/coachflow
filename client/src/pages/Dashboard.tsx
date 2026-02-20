@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { trpc } from "@/lib/trpc";
 import { getLoginUrl } from "@/const";
 import { Link, useLocation, Redirect } from "wouter";
+import { useTour } from "@/contexts/TourContext";
 import {
   Sparkles,
   FileText,
@@ -28,6 +29,7 @@ import {
 export default function Dashboard() {
   const { user, isAuthenticated, loading: authLoading, logout } = useAuth();
   const [location] = useLocation();
+  const { startTour } = useTour();
 
   // Queries
   const { data: services } = trpc.services.list.useQuery(undefined, {
@@ -187,7 +189,7 @@ export default function Dashboard() {
           <p className="text-sm text-muted-foreground mt-1">Marketing Automation</p>
         </div>
 
-        <nav className="flex-1 p-4 space-y-2">
+        <nav className="flex-1 p-4 space-y-2" data-tour="sidebar">
           {navigationItems.map((item) => {
             const Icon = item.icon;
             const isActive = location === item.href;
@@ -245,7 +247,7 @@ export default function Dashboard() {
 
           {/* Quota Summary Card */}
           {authData && quotaLimits && (
-            <div className="mb-8">
+            <div className="mb-8" data-tour="quota-display">
               <QuotaSummaryCard authData={authData} quotaLimits={quotaLimits} />
             </div>
           )}
@@ -293,8 +295,13 @@ export default function Dashboard() {
 
           {/* Generators Grid */}
           <div className="mb-8">
-            <h2 className="text-2xl font-bold text-foreground mb-4">AI Generators</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-bold text-foreground">AI Generators</h2>
+              <Button variant="outline" size="sm" onClick={() => startTour('dashboard')}>
+                Start Tour
+              </Button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-tour="generators-grid">
               {generators.map((generator) => {
                 const Icon = generator.icon;
                 return (

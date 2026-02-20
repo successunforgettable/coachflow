@@ -1441,3 +1441,76 @@
 - [ ] Create NIGHT_SHIFT_COMPLETION_SUMMARY.md
 - [ ] Verify checkpoint saved successfully
 - [ ] Verify GitHub push successful
+
+
+## Phase 700: Visual Walkthrough Guide + Interactive Demo Tour
+
+### Option 2: Visual Walkthrough Guide with Screenshots
+- [ ] Capture screenshot of marketing homepage (hero section)
+- [ ] Capture screenshot of features showcase section
+- [ ] Capture screenshot of pricing comparison
+- [ ] Capture screenshot of sign-up/login flow
+- [ ] Capture screenshot of onboarding wizard (all 5 steps)
+- [ ] Capture screenshot of dashboard overview
+- [ ] Capture screenshot of Headlines generator (form + results)
+- [ ] Capture screenshot of HVCO Titles generator
+- [ ] Capture screenshot of Hero Mechanisms generator
+- [ ] Capture screenshot of ICP generator (full profile)
+- [ ] Capture screenshot of Ad Copy generator
+- [ ] Capture screenshot of Email Sequences generator
+- [ ] Capture screenshot of WhatsApp Sequences generator
+- [ ] Capture screenshot of Landing Pages generator
+- [ ] Capture screenshot of Offers generator
+- [ ] Capture screenshot of Campaign Builder
+- [ ] Capture screenshot of Settings page (all tabs)
+- [ ] Capture screenshot of Pricing page
+- [ ] Capture screenshot of PDF export functionality
+- [ ] Capture screenshot of Power Mode toggle
+- [ ] Create comprehensive VISUAL_WALKTHROUGH_GUIDE.md with all screenshots
+- [ ] Add captions and descriptions to each screenshot
+- [ ] Organize by user journey (Visitor → Trial → Pro → Agency)
+- [ ] Add mobile responsive screenshots (optional)
+
+### Option 3: Interactive Demo Tour Feature
+- [ ] Install react-joyride or similar tour library
+- [ ] Create TourProvider context component
+- [ ] Create tour steps configuration for landing page:
+  - [ ] Step 1: Hero section highlight
+  - [ ] Step 2: Features showcase
+  - [ ] Step 3: Pricing tiers
+  - [ ] Step 4: CTA button
+- [ ] Create tour steps for dashboard:
+  - [ ] Step 1: Welcome to dashboard
+  - [ ] Step 2: AI generators grid
+  - [ ] Step 3: Quick actions
+  - [ ] Step 4: Navigation sidebar
+- [ ] Create tour steps for Headlines generator:
+  - [ ] Step 1: Service selection
+  - [ ] Step 2: Form fields
+  - [ ] Step 3: Power Mode toggle
+  - [ ] Step 4: Generate button
+  - [ ] Step 5: Results tabs
+  - [ ] Step 6: Copy buttons
+  - [ ] Step 7: PDF export
+- [ ] Add "Take a Tour" button to landing page header
+- [ ] Add "Start Tour" button to dashboard (first-time users)
+- [ ] Add tour progress indicator (Step X of Y)
+- [ ] Add "Skip Tour" option
+- [ ] Add "Previous/Next" navigation
+- [ ] Store tour completion status in localStorage
+- [ ] Add option to restart tour from Settings
+- [ ] Style tour tooltips to match brand (purple theme)
+- [ ] Add smooth animations and transitions
+- [ ] Test tour flow on desktop
+- [ ] Test tour flow on mobile (responsive)
+- [ ] Add tour to onboarding wizard (optional enhancement)
+
+### Testing & Polish
+- [ ] Verify all screenshots are high quality (1920x1080)
+- [ ] Test interactive tour on Chrome
+- [ ] Test interactive tour on Safari
+- [ ] Test interactive tour on Firefox
+- [ ] Ensure tour doesn't break existing functionality
+- [ ] Add analytics tracking for tour completion rate
+- [ ] Run all 99 tests to ensure nothing breaks
+- [ ] Create checkpoint with both deliverables
