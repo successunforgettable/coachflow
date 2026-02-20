@@ -12,6 +12,8 @@ import CreateServiceStep from "./onboarding/CreateServiceStep";
 import GenerateICPStep from "./onboarding/GenerateICPStep";
 import GenerateHeadlinesStep from "./onboarding/GenerateHeadlinesStep";
 import CreateCampaignStep from "./onboarding/CreateCampaignStep";
+import SkipConfirmationDialog from "./onboarding/SkipConfirmationDialog";
+import { useToast } from "@/hooks/use-toast";
 
 interface OnboardingWizardProps {
   open: boolean;
@@ -27,7 +29,9 @@ const STEPS = [
 ];
 
 export default function OnboardingWizard({ open, onClose }: OnboardingWizardProps) {
+  const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(1);
+  const [skipDialogOpen, setSkipDialogOpen] = useState(false);
   const [onboardingData, setOnboardingData] = useState<{
     serviceId?: number;
     icpId?: string;
@@ -80,8 +84,17 @@ export default function OnboardingWizard({ open, onClose }: OnboardingWizardProp
     }
   };
 
-  const handleSkip = async () => {
+  const handleSkipClick = () => {
+    setSkipDialogOpen(true);
+  };
+
+  const handleConfirmSkip = async () => {
+    setSkipDialogOpen(false);
     await completeOnboarding.mutateAsync({ ...onboardingData, skipped: true });
+    toast({
+      title: "Got it. Your generators are ready whenever you are.",
+      description: "We'd recommend starting with the Ideal Customer Profile — everything else builds from there.",
+    });
   };
 
   const handleStepComplete = (data: Partial<typeof onboardingData>) => {
@@ -103,7 +116,7 @@ export default function OnboardingWizard({ open, onClose }: OnboardingWizardProp
                 Let's get you started with your first marketing campaign
               </p>
             </div>
-            <Button variant="ghost" size="icon" onClick={handleSkip}>
+            <Button variant="ghost" size="icon" onClick={handleSkipClick}>
               <X className="h-4 w-4" />
             </Button>
           </div>
@@ -163,7 +176,7 @@ export default function OnboardingWizard({ open, onClose }: OnboardingWizardProp
 
         {/* Footer */}
         <div className="sticky bottom-0 bg-background border-t p-6 flex items-center justify-between">
-          <Button variant="ghost" onClick={handleSkip}>
+          <Button variant="ghost" onClick={handleSkipClick}>
             Skip onboarding
           </Button>
 
@@ -192,6 +205,12 @@ export default function OnboardingWizard({ open, onClose }: OnboardingWizardProp
           </div>
         </div>
       </DialogContent>
+
+      <SkipConfirmationDialog
+        open={skipDialogOpen}
+        onOpenChange={setSkipDialogOpen}
+        onConfirmSkip={handleConfirmSkip}
+      />
     </Dialog>
   );
 }

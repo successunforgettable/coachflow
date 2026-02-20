@@ -1926,3 +1926,13 @@
 - [ ] Test full onboarding flow with new copy
 - [ ] Test skip confirmation dialog
 - [ ] Test progress tracker updates as generators are used
+
+## Session: Wire Up SkipConfirmationDialog
+
+- [x] Read OnboardingWizard.tsx to understand current skip logic
+- [x] Add state management for skip dialog open/close
+- [x] Wire X button to open skip dialog instead of direct skip
+- [x] Wire "Skip onboarding" link to open skip dialog
+- [x] Add onConfirmSkip handler that calls onboarding.complete with skipped:true
+- [x] Add toast notification after skip confirmation
+- [x] Test skip flow end-to-end (99 tests passing)
