@@ -320,7 +320,7 @@ export default function Dashboard() {
             {generators.map((gen, index) => (
               <Link key={gen.href} href={gen.href}>
                 <div
-                  className="flex items-center gap-3 px-4 py-3 bg-[#0F0F18] border border-[rgba(39,39,58,0.3)] rounded-lg mb-1 cursor-pointer hover:bg-[#16161F] hover:border-[rgba(139,92,246,0.4)] transition-all duration-200"
+                  className="flex items-center gap-3 px-4 py-3 mb-1 cursor-pointer transition-all duration-200"
                   style={{
                     animationDelay: `${index * 60}ms`,
                     animation: 'fadeInUp 0.4s ease-out both',

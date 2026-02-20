@@ -1838,3 +1838,13 @@
 - [x] Update hover effects: subtler glow (0.35 opacity vs 0.4), softer translate (-0.5 vs -1px)
 - [x] Test and screenshot to compare with reference - matches compact, dense design
 - [x] All 99 tests passing
+
+## Phase 1112: Remove ALL Card Styling from Generator Rows ✅ COMPLETE
+- [x] Remove background color (bg-[#0F0F18]) - rows now have NO background
+- [x] Remove ALL borders (border border-[rgba(...)]) - completely borderless
+- [x] Remove border-radius (rounded-lg) - no rounded corners
+- [x] Remove hover background change - kept transparent
+- [x] Remove hover border glow - no border effects
+- [x] Keep only: flex layout, gap, padding, text styling, and button
+- [x] Generator rows are now flat text rows, NOT cards
+- [x] Test and verify matches reference screenshots exactly - All 99 tests passing
