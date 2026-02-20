@@ -178,12 +178,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-background flex">
       {/* Sidebar - Text-only navigation like Kong */}
-      <div 
-        className="w-56 bg-card flex flex-col"
-        style={{
-          borderRight: '1px solid var(--border-subtle)'
-        }}
-      >
+      <div className="w-56 bg-card flex flex-col sidebar">
         {/* Logo */}
         <div className="p-6 border-b border-border">
           <h1 className="text-2xl font-bold" style={{ color: 'var(--accent-primary)' }}>CoachFlow</h1>
@@ -354,55 +349,26 @@ export default function Dashboard() {
                     animationFillMode: 'both'
                   }}
                 >
-                  <div 
-                    className="transition-all duration-200 cursor-pointer"
-                    style={{
-                      background: 'var(--bg-secondary)',
-                      border: '1px solid var(--border-subtle)',
-                      borderRadius: 'var(--radius-lg)',
-                      padding: '20px 24px',
-                      borderLeft: '4px solid transparent',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = 'var(--bg-tertiary)';
-                      e.currentTarget.style.borderLeftColor = 'var(--accent-primary)';
-                      e.currentTarget.style.transform = 'translateY(-2px)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'var(--bg-secondary)';
-                      e.currentTarget.style.borderLeftColor = 'transparent';
-                      e.currentTarget.style.transform = 'translateY(0)';
-                    }}
-                  >
-                    <div className="flex items-center gap-6">
+                  <div className="generator-row">
                       {/* Icon - Small, left-aligned */}
-                      <div 
-                        className="flex items-center justify-center flex-shrink-0"
-                        style={{
-                          width: '40px',
-                          height: '40px',
-                          background: 'var(--accent-subtle)',
-                          borderRadius: 'var(--radius-md)',
-                        }}
-                      >
-                        <Icon className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} />
+                      <div className="generator-icon">
+                        <Icon className="w-5 h-5" style={{ color: '#8B5CF6' }} />
                       </div>
 
                       {/* Title + Description - Middle, takes up remaining space */}
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-lg font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
+                        <h3 className="generator-title">
                           {generator.title}
                         </h3>
-                        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                        <p className="generator-description">
                           {generator.description}
                         </p>
                       </div>
 
                       {/* Generate Button - Right-aligned */}
                       <Link href={generator.href}>
-                        <Button>Generate</Button>
+                        <button className="generate-btn">Generate</button>
                       </Link>
-                    </div>
                   </div>
                 </div>
               );

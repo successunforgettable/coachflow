@@ -286,3 +286,69 @@
     }
   }
 }
+/* Generator Row Styles - Exact CSS from user */
+.generator-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 24px;
+  background: #14141F;
+  border: 1px solid #27273A;
+  border-radius: 12px;
+  margin-bottom: 8px;
+  transition: all 200ms ease-out;
+  cursor: pointer;
+}
+
+.generator-row:hover {
+  background: #1C1C2E;
+  border-color: #8B5CF6;
+  box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.2);
+}
+
+.generator-icon {
+  width: 40px;
+  height: 40px;
+  background: rgba(139, 92, 246, 0.1);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.generator-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #FFFFFF;
+}
+
+.generator-description {
+  font-size: 14px;
+  color: #9CA3AF;
+  margin-top: 2px;
+}
+
+.generate-btn {
+  margin-left: auto;
+  padding: 8px 20px;
+  background: linear-gradient(135deg, #8B5CF6, #A78BFA);
+  border: none;
+  border-radius: 8px;
+  color: #FFFFFF;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 200ms ease-out;
+}
+
+.generate-btn:hover {
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.4);
+  transform: translateY(-1px);
+}
+
+.sidebar {
+  border-right: 1px solid #27273A;
+  padding: 24px 16px;
+}

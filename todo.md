@@ -1757,3 +1757,13 @@
 ## Phase 1104: Fix Branding - Change KONG to CoachFlow ✅ COMPLETE
 - [x] Update sidebar logo text from "KONG" to "CoachFlow"
 - [x] Verify branding is consistent throughout dashboard
+
+## Phase 1105: Apply Exact CSS Classes to Generator Rows ✅ COMPLETE
+- [x] Add exact CSS classes to index.css (.generator-row, .generator-icon, .generator-title, .generator-description, .generate-btn, .sidebar)
+- [x] Apply .generator-row class to generator row containers
+- [x] Apply .generator-icon class to icon containers
+- [x] Apply .generator-title class to title elements
+- [x] Apply .generator-description class to description elements
+- [x] Apply .generate-btn class to Generate buttons
+- [x] Apply .sidebar class to sidebar container
+- [x] Screenshot and verify exact styling - All exact CSS applied
