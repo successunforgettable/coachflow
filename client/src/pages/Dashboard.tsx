@@ -320,20 +320,21 @@ export default function Dashboard() {
             {generators.map((gen, index) => (
               <Link key={gen.href} href={gen.href}>
                 <div
-                  className="generator-row"
+                  className="flex items-center gap-4 p-5 bg-[#14141F] border border-[#27273A] rounded-xl mb-1.5 cursor-pointer hover:bg-[#1C1C2E] hover:border-[#8B5CF6] transition-all duration-200"
                   style={{
                     animationDelay: `${index * 60}ms`,
+                    animation: 'fadeInUp 0.4s ease-out both',
                   }}
                 >
-                  <div className="generator-icon">
+                  <div className="w-10 h-10 bg-[rgba(139,92,246,0.1)] rounded-lg flex items-center justify-center flex-shrink-0">
                     <gen.icon className="w-[18px] h-[18px]" />
                   </div>
-                  <div className="generator-info">
-                    <div className="generator-title">{gen.title}</div>
-                    <div className="generator-description">{gen.description}</div>
+                  <div className="flex-1">
+                    <div className="text-base font-semibold text-white">{gen.title}</div>
+                    <div className="text-sm text-[#9CA3AF] mt-0.5">{gen.description}</div>
                   </div>
                   <button
-                    className="generate-btn"
+                    className="ml-auto px-5 py-2 bg-gradient-to-br from-[#8B5CF6] to-[#A78BFA] rounded-lg text-white text-sm font-semibold flex-shrink-0 hover:shadow-[0_0_20px_rgba(139,92,246,0.4)] hover:-translate-y-px transition-all duration-200"
                     onClick={(e) => {
                       e.preventDefault();
                       window.location.href = gen.href;

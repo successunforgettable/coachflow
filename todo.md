@@ -1813,3 +1813,15 @@
 - [x] Verify every generator row element has .generator-row class applied
 - [x] Screenshot and verify all generator rows have visible dark background boxes with borders
 - [x] All 99 tests passing
+
+## Phase 1110: Fix Generator Row Styling with Tailwind Classes ✅ COMPLETE
+- [x] Find React component that renders generator list (Dashboard.tsx lines 320-347)
+- [x] Locate the element that wraps each generator row (div inside generators.map)
+- [x] Remove existing className="generator-row" that was being overridden by Tailwind
+- [x] Apply Tailwind classes directly: flex items-center gap-4 p-5 bg-[#14141F] border border-[#27273A] rounded-xl mb-1.5 cursor-pointer hover:bg-[#1C1C2E] hover:border-[#8B5CF6] transition-all duration-200
+- [x] Apply Tailwind classes to icon container: w-10 h-10 bg-[rgba(139,92,246,0.1)] rounded-lg flex items-center justify-center flex-shrink-0
+- [x] Apply Tailwind classes to title/description: text-base font-semibold text-white, text-sm text-[#9CA3AF] mt-0.5
+- [x] Apply Tailwind classes to Generate button: ml-auto px-5 py-2 bg-gradient-to-br from-[#8B5CF6] to-[#A78BFA] rounded-lg hover:shadow-[0_0_20px_rgba(139,92,246,0.4)] hover:-translate-y-px
+- [x] Screenshot the specific component file edited (Dashboard.tsx lines 321-347)
+- [x] Screenshot the result in browser to verify styling - All generator rows have visible dark background boxes with borders
+- [x] All 99 tests passing
