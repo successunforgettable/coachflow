@@ -409,13 +409,14 @@
 
 .sidebar {
   width: 220px;
-  min-width: 220px;
   height: 100vh;
   overflow-y: auto;
   border-right: 1px solid #27273A;
   padding: 24px 16px;
   background: var(--bg-primary);
 }
+
+/* Remove min-width to allow Tailwind responsive classes to work */
 
 .main-content {
   flex: 1;

@@ -6,8 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { trpc } from "@/lib/trpc";
 import { getLoginUrl } from "@/const";
 import { Link, useLocation, Redirect } from "wouter";
-import { useTour } from "@/contexts/TourContext";
+import { useState } from "react";
 import OnboardingProgressTracker from "@/components/OnboardingProgressTracker";
+import { useTour } from "@/contexts/TourContext";
 import {
   Sparkles,
   FileText,
@@ -27,12 +28,15 @@ import {
   Image,
   Package,
   Play,
+  Menu,
+  X,
 } from "lucide-react";
 
 export default function Dashboard() {
   const { user, isAuthenticated, loading: authLoading, logout } = useAuth();
   const [location] = useLocation();
   const { startTour } = useTour();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Queries
   const { data: services } = trpc.services.list.useQuery(undefined, {
@@ -167,8 +171,31 @@ export default function Dashboard() {
 
   return (
     <div className="dashboard-layout">
+      {/* Mobile Hamburger Button */}
+      <button
+        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-[#1E1E1E] border border-[rgba(139,92,246,0.2)] rounded-lg hover:bg-[#252525] transition-colors"
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+        aria-label="Toggle menu"
+      >
+        {sidebarOpen ? (
+          <X className="w-5 h-5 text-white" />
+        ) : (
+          <Menu className="w-5 h-5 text-white" />
+        )}
+      </button>
+
+      {/* Mobile Overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <div className="sidebar">
+      <div className={`sidebar fixed lg:static inset-y-0 left-0 z-50 transform ${
+        sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+      } lg:translate-x-0 transition-transform duration-200`}>
         <div style={{
           fontSize: '20px',
           fontWeight: 700,
@@ -256,17 +283,17 @@ export default function Dashboard() {
       </div>
 
       {/* Main Content */}
-      <div className="main-content">
+      <div className="main-content p-4 md:p-6 lg:p-10">
         {/* Welcome */}
-        <h1 className="welcome-heading">
+        <h1 className="welcome-heading text-2xl md:text-3xl lg:text-4xl">
           Welcome {user?.name || 'Arfeen'} 👋
         </h1>
-        <p className="welcome-sub">
+        <p className="welcome-sub text-sm md:text-base">
           Let's get started with something awesome.
         </p>
 
         {/* Video Section: Video Left, Stripe/Quota Right */}
-        <div className="video-section">
+        <div className="video-section grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-5">
           <div className="video-player">
             <div style={{
               position: 'absolute',
@@ -332,10 +359,10 @@ export default function Dashboard() {
             AI Generators
           </div>
 
-          <div className="generators-grid">
+          <div className="generators-grid grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
             {generators.map((gen, index) => (
               <Link key={gen.href} href={gen.href}>
-                <div className="generator-card">
+                <div className="generator-card flex flex-col sm:flex-row items-start sm:items-center gap-3 p-4">
                   <div className="w-10 h-10 bg-[rgba(139,92,246,0.1)] rounded-lg flex items-center justify-center flex-shrink-0">
                     <gen.icon className="w-5 h-5" />
                   </div>
