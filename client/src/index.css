@@ -352,3 +352,50 @@
   border-right: 1px solid #27273A;
   padding: 24px 16px;
 }
+
+/* Dashboard Reference HTML Styles */
+.video-player-hover:hover {
+  border-color: var(--border-default);
+}
+
+.play-btn-hover:hover {
+  transform: scale(1.08);
+  box-shadow: 0 0 60px rgba(139, 92, 246, 0.7);
+}
+
+.right-card-hover:hover {
+  border-color: var(--border-default);
+}
+
+.right-action-link-hover:hover {
+  color: var(--accent-hover) !important;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: all 150ms ease;
+  margin-bottom: 2px;
+}
+
+.nav-item:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+.nav-item.active {
+  background: var(--accent-subtle);
+  color: var(--accent-hover);
+}
+
+/* Generator info and title classes */
+.generator-info {
+  flex: 1;
+}

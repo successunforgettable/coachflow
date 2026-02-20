@@ -25,6 +25,7 @@ import {
   Zap,
   Image,
   Package,
+  Play,
 } from "lucide-react";
 
 export default function Dashboard() {
@@ -110,25 +111,25 @@ export default function Dashboard() {
       description: "Russell Brunson's Soap Opera Sequence framework",
       icon: Mail,
       count: emailSequences?.length || 0,
-      href: "/generators/email",
+      href: "/generators/email-sequences",
     },
     {
       title: "WhatsApp Sequences",
       description: "Helo.ai's 7-Strategy Framework for high engagement",
       icon: MessageCircle,
       count: whatsappSequences?.length || 0,
-      href: "/generators/whatsapp",
+      href: "/generators/whatsapp-sequences",
     },
     {
       title: "Landing Pages",
       description: "High-converting sales pages with multiple angles",
       icon: Globe,
       count: landingPages?.length || 0,
-      href: "/generators/landing-page",
+      href: "/generators/landing-pages",
     },
     {
-      title: "Offers",
-      description: "Godfather Offers with irresistible value stacks",
+      title: "Godfather Offers",
+      description: "Create irresistible offers your customers can't refuse",
       icon: Gift,
       count: offers?.length || 0,
       href: "/generators/offers",
@@ -138,250 +139,331 @@ export default function Dashboard() {
       description: "25 headlines across 5 proven formulas",
       icon: Type,
       count: headlines?.length || 0,
-      href: "/headlines",
+      href: "/generators/headlines",
     },
     {
       title: "HVCO Titles",
       description: "Compelling titles for high-value content offers",
       icon: Lightbulb,
       count: hvcoTitles?.length || 0,
-      href: "/hvco-titles",
+      href: "/generators/hvco",
     },
     {
       title: "Hero Mechanisms",
       description: "Unique features and benefits that set you apart",
       icon: Zap,
       count: heroMechanisms?.length || 0,
-      href: "/hero-mechanisms",
+      href: "/generators/hero-mechanisms",
     },
     {
       title: "Ad Creatives",
       description: "AI-powered scroll-stopping Facebook ad creatives",
       icon: Image,
       count: 0,
-      href: "/ad-creatives",
+      href: "/generators/ad-creatives",
     },
   ];
 
-  const navigationItems = [
-    { title: "Dream Buyer Avatars", href: "/generators/icp" },
-    { title: "Facebook Ad Generator", href: "/generators/ad-copy" },
-    { title: "Direct Response Headlines", href: "/headlines" },
-    { title: "HVCO Titles", href: "/hvco-titles" },
-    { title: "Hero Mechanisms", href: "/hero-mechanisms" },
-    { title: "Ad Creatives", href: "/ad-creatives" },
-    { title: "Landing Pages", href: "/generators/landing-page" },
-    { title: "Godfather Offers", href: "/generators/offers" },
-    { title: "Products", href: "/services" },
-  ];
-
   return (
-    <div className="min-h-screen bg-background flex">
-      {/* Sidebar - Text-only navigation like Kong */}
-      <div className="w-56 bg-card flex flex-col sidebar">
-        {/* Logo */}
-        <div className="p-6 border-b border-border">
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--accent-primary)' }}>CoachFlow</h1>
-          <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>Generators</p>
-          <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>Superpowers just a click away</p>
+    <div className="sidebar">
+      {/* Sidebar */}
+      <div style={{
+        width: '220px',
+        minWidth: '220px',
+        background: 'var(--bg-primary)',
+        borderRight: '1px solid var(--border-subtle)',
+        display: 'flex',
+        flexDirection: 'column',
+        padding: '24px 16px',
+        height: '100vh',
+        overflow: 'auto',
+      }}>
+        <div style={{
+          fontSize: '20px',
+          fontWeight: 700,
+          color: 'var(--text-primary)',
+          letterSpacing: '-0.02em',
+          marginBottom: '4px',
+        }}>
+          CoachFlow
+        </div>
+        <div style={{
+          fontSize: '12px',
+          color: 'var(--text-muted)',
+          marginBottom: '28px',
+        }}>
+          Generators · Superpowers just a click away
         </div>
 
-        {/* Navigation - Text only, no icons */}
-        <nav className="flex-1 p-4 space-y-1" data-tour="sidebar">
-          {navigationItems.map((item) => {
-            const isActive = location === item.href;
-            return (
-              <Link 
-                key={item.href} 
-                href={item.href}
-                className={`block px-4 py-2 rounded-md text-sm transition-colors ${
-                  isActive
-                    ? "text-white font-medium"
-                    : "hover:bg-accent/50"
-                }`}
-                style={{
-                  backgroundColor: isActive ? 'var(--accent-primary)' : 'transparent',
-                  color: isActive ? '#FFFFFF' : 'var(--text-secondary)',
-                }}
-              >
-                {item.title}
-              </Link>
-            );
-          })}
-        </nav>
+        <div style={{
+          fontSize: '11px',
+          fontWeight: 600,
+          textTransform: 'uppercase',
+          letterSpacing: '0.08em',
+          color: 'var(--text-muted)',
+          marginBottom: '8px',
+          padding: '0 12px',
+        }}>
+          Generators
+        </div>
 
-        {/* Bottom section */}
-        <div className="p-4 border-t border-border space-y-1">
-          <Link 
-            href="/settings"
-            className="block px-4 py-2 rounded-md text-sm hover:bg-accent/50"
-            style={{ color: 'var(--text-secondary)' }}
-          >
-            Light Mode
-          </Link>
-          <Link 
-            href="/settings"
-            className="block px-4 py-2 rounded-md text-sm hover:bg-accent/50"
-            style={{ color: 'var(--text-secondary)' }}
-          >
-            Support
-          </Link>
-          <Link 
-            href="/settings"
-            className="block px-4 py-2 rounded-md text-sm hover:bg-accent/50"
-            style={{ color: 'var(--text-secondary)' }}
-          >
-            Settings
+        <Link href="/generators/icp">
+          <div className="nav-item">👤 Dream Buyer Avatars</div>
+        </Link>
+        <Link href="/generators/ad-copy">
+          <div className="nav-item">📝 Facebook Ad Generator</div>
+        </Link>
+        <Link href="/generators/headlines">
+          <div className="nav-item">📰 Direct Response Headlines</div>
+        </Link>
+        <Link href="/generators/hvco">
+          <div className="nav-item">🎯 HVCO Titles</div>
+        </Link>
+        <Link href="/generators/hero-mechanisms">
+          <div className="nav-item">⚡ Hero Mechanisms</div>
+        </Link>
+        <Link href="/generators/ad-creatives">
+          <div className="nav-item">🎨 Ad Creatives</div>
+        </Link>
+        <Link href="/generators/landing-pages">
+          <div className="nav-item">📄 Landing Pages</div>
+        </Link>
+        <Link href="/generators/offers">
+          <div className="nav-item">🤝 Godfather Offers</div>
+        </Link>
+
+        <div style={{ height: '16px' }}></div>
+        <div style={{
+          fontSize: '11px',
+          fontWeight: 600,
+          textTransform: 'uppercase',
+          letterSpacing: '0.08em',
+          color: 'var(--text-muted)',
+          marginBottom: '8px',
+          padding: '0 12px',
+        }}>
+          Resources
+        </div>
+        <Link href="/services">
+          <div className="nav-item">📦 Products</div>
+        </Link>
+
+        <div style={{
+          marginTop: 'auto',
+          borderTop: '1px solid var(--border-subtle)',
+          paddingTop: '16px',
+        }}>
+          <div className="nav-item">☀️ Light Mode</div>
+          <div className="nav-item">💬 Support</div>
+          <Link href="/settings">
+            <div className="nav-item">⚙️ Settings</div>
           </Link>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-auto">
-        <div className="container mx-auto px-12 py-16 max-w-[1400px]">
-          {/* Hero Section: 60% left + 40% right */}
-          <div className="flex gap-8 mb-20">
-            {/* Left: Hero Welcome (60%) */}
-            <div className="flex-[6]">
-              {/* Welcome Header */}
-              <div 
-                className="rounded-2xl p-8 mb-8"
-                style={{
-                  border: '1px solid var(--border-subtle)',
-                  background: 'var(--bg-elevated)',
-                }}
-              >
-                <h1 className="text-4xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
-                  Welcome {user?.name?.split(' ')[0]} 👋
-                </h1>
-                <p style={{ color: 'var(--text-secondary)' }}>
-                  Let's get started with something awesome.
-                </p>
-              </div>
+      <div style={{
+        flex: 1,
+        overflowY: 'auto',
+        padding: '40px 48px',
+      }}>
+        {/* Welcome */}
+        <h1 style={{
+          fontSize: '32px',
+          fontWeight: 700,
+          letterSpacing: '-0.02em',
+          marginBottom: '8px',
+          color: 'var(--text-primary)',
+        }}>
+          Welcome {user?.name || 'Arfeen'} 👋
+        </h1>
+        <p style={{
+          fontSize: '15px',
+          color: 'var(--text-tertiary)',
+          marginBottom: '28px',
+        }}>
+          Let's get started with something awesome.
+        </p>
 
-              {/* Featured Content Area - Video placeholder */}
-              <div 
-                className="rounded-2xl overflow-hidden"
-                style={{
-                  border: '1px solid var(--border-subtle)',
-                  background: 'var(--bg-elevated)',
-                  aspectRatio: '16/9',
-                }}
-              >
-                <div className="w-full h-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)' }}>
-                  <div className="text-center">
-                    <div className="w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ background: 'var(--accent-primary)' }}>
-                      <svg className="w-10 h-10 text-white" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
-                      </svg>
-                    </div>
-                    <p style={{ color: 'var(--text-secondary)' }}>Getting Started Video</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Right: Info Cards (40%) */}
-            <div className="flex-[4]" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {/* Stripe Banner */}
-              <StripeSandboxBanner />
-
-              {/* Quota Card */}
-              {authData && quotaLimits && (
-                <div data-tour="quota-display">
-                  <QuotaSummaryCard authData={authData} quotaLimits={quotaLimits} />
-                </div>
-              )}
-
-              {/* Products Card - Compact */}
-              <div
-                style={{
-                  padding: 'var(--card-padding-md)',
-                  borderRadius: 'var(--radius-lg)',
-                  border: '1px solid var(--border-subtle)',
-                  background: 'var(--bg-secondary)',
-                }}
-              >
-                <div className="flex items-center gap-2 mb-1">
-                  <Package className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
-                  <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Products</h3>
-                </div>
-                <p className="text-xs mb-2" style={{ color: 'var(--text-secondary)' }}>
-                  A central place for your product/service's details, to be used in resource generation
-                </p>
-                <div className="flex gap-2 text-xs">
-                  <Link href="/services" style={{ color: 'var(--accent-primary)' }}>View All</Link>
-                  <span style={{ color: 'var(--text-tertiary)' }}>•</span>
-                  <Link href="/services" style={{ color: 'var(--accent-primary)' }}>Create New Product</Link>
-                </div>
-              </div>
-
-              {/* Dream Buyer Avatar Card - Compact */}
-              <div
-                style={{
-                  padding: 'var(--card-padding-md)',
-                  borderRadius: 'var(--radius-lg)',
-                  border: '1px solid var(--border-subtle)',
-                  background: 'var(--bg-secondary)',
-                }}
-              >
-                <div className="flex items-center gap-2 mb-1">
-                  <Sparkles className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
-                  <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Dream Buyer Avatar</h3>
-                </div>
-                <p className="text-xs mb-2" style={{ color: 'var(--text-secondary)' }}>
-                  Create a detailed and idealized representation of your target customer
-                </p>
-                <Link href="/generators/icp" className="text-xs" style={{ color: 'var(--accent-primary)' }}>Generate →</Link>
-              </div>
-            </div>
+        {/* Full Width Video */}
+        <div style={{
+          width: '100%',
+          aspectRatio: '16/6',
+          background: 'var(--bg-secondary)',
+          border: '1px solid var(--border-subtle)',
+          borderRadius: '16px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexDirection: 'column',
+          gap: '14px',
+          marginBottom: '40px',
+          position: 'relative',
+          overflow: 'hidden',
+          cursor: 'pointer',
+          transition: 'border-color 200ms ease',
+        }}
+        className="video-player-hover"
+        >
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'radial-gradient(ellipse at 50% 60%, rgba(139, 92, 246, 0.1) 0%, transparent 65%)',
+          }}></div>
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.01) 2px, rgba(255,255,255,0.01) 4px)',
+            pointerEvents: 'none',
+          }}></div>
+          <div style={{
+            width: '64px',
+            height: '64px',
+            background: 'rgba(139, 92, 246, 0.9)',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            boxShadow: '0 0 40px rgba(139, 92, 246, 0.5)',
+            transition: 'all 200ms ease',
+            position: 'relative',
+            zIndex: 1,
+          }}
+          className="play-btn-hover"
+          >
+            <Play className="w-6 h-6 text-white" fill="white" />
           </div>
+          <div style={{
+            fontSize: '14px',
+            color: 'var(--text-muted)',
+            position: 'relative',
+            zIndex: 1,
+          }}>
+            Getting Started Video
+          </div>
+        </div>
 
-          {/* Generator Cards - Horizontal layout like Kong */}
-          <div className="space-y-4" data-tour="generators-grid">
-            {generators.map((generator, index) => {
-              const Icon = generator.icon;
-              return (
+        {/* Two Column: Generators + Right Cards */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 280px',
+          gap: '32px',
+          alignItems: 'start',
+        }}>
+          {/* Left: Generators */}
+          <div>
+            <div style={{
+              fontSize: '11px',
+              fontWeight: 600,
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              color: 'var(--text-muted)',
+              marginBottom: '14px',
+            }}>
+              AI Generators
+            </div>
+
+            {generators.map((gen, index) => (
+              <Link key={gen.href} href={gen.href}>
                 <div
-                  key={generator.href}
-                  className="animate-fade-in-up"
+                  className="generator-row"
                   style={{
-                    animationDelay: `${index * 50}ms`,
-                    animationFillMode: 'both'
+                    animationDelay: `${index * 60}ms`,
                   }}
                 >
-                  <div className="generator-row">
-                      {/* Icon - Small, left-aligned */}
-                      <div className="generator-icon">
-                        <Icon className="w-5 h-5" style={{ color: '#8B5CF6' }} />
-                      </div>
-
-                      {/* Title + Description - Middle, takes up remaining space */}
-                      <div className="flex-1 min-w-0">
-                        <h3 className="generator-title">
-                          {generator.title}
-                        </h3>
-                        <p className="generator-description">
-                          {generator.description}
-                        </p>
-                      </div>
-
-                      {/* Generate Button - Right-aligned */}
-                      <Link href={generator.href}>
-                        <button className="generate-btn">Generate</button>
-                      </Link>
+                  <div className="generator-icon">
+                    <gen.icon className="w-[18px] h-[18px]" />
                   </div>
+                  <div className="generator-info">
+                    <div className="generator-title">{gen.title}</div>
+                    <div className="generator-description">{gen.description}</div>
+                  </div>
+                  <button
+                    className="generate-btn"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      window.location.href = gen.href;
+                    }}
+                  >
+                    Generate
+                  </button>
                 </div>
-              );
-            })}
+              </Link>
+            ))}
           </div>
 
-          {/* Start Tour Button */}
-          <div className="mt-12 text-center">
-            <Button variant="outline" onClick={() => startTour('dashboard')}>
-              Start Tour
-            </Button>
+          {/* Right: Info Cards */}
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '10px',
+            animation: 'fadeInUp 0.5s ease both',
+            animationDelay: '100ms',
+          }}>
+            {/* Stripe Banner */}
+            <StripeSandboxBanner />
+
+            {/* Quota Card */}
+            {authData && quotaLimits && (
+              <div>
+                <QuotaSummaryCard authData={authData} quotaLimits={quotaLimits} />
+              </div>
+            )}
+
+            {/* Products Card - Compact */}
+            <div
+              style={{
+                padding: 'var(--card-padding-md)',
+                borderRadius: 'var(--radius-lg)',
+                border: '1px solid var(--border-subtle)',
+                background: 'var(--bg-secondary)',
+                transition: 'border-color 200ms ease',
+              }}
+              className="right-card-hover"
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <Package className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
+                <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Products</h3>
+              </div>
+              <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>
+                A central place for your product/service's details, to be used in resource generation
+              </p>
+              <div className="flex gap-2 text-xs">
+                <Link href="/services" style={{ color: 'var(--text-tertiary)', transition: 'color 150ms ease' }} className="right-action-link-hover">View All</Link>
+                <span style={{ color: 'var(--border-default)' }}>·</span>
+                <Link href="/services" style={{ color: 'var(--text-tertiary)', transition: 'color 150ms ease' }} className="right-action-link-hover">Create New Product</Link>
+              </div>
+            </div>
+
+            {/* Dream Buyer Avatar Card - Compact */}
+            <div
+              style={{
+                padding: 'var(--card-padding-md)',
+                borderRadius: 'var(--radius-lg)',
+                border: '1px solid var(--border-subtle)',
+                background: 'var(--bg-secondary)',
+                transition: 'border-color 200ms ease',
+              }}
+              className="right-card-hover"
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <Sparkles className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
+                <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Dream Buyer Avatar</h3>
+              </div>
+              <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>
+                Create a detailed and idealized representation of your target customer
+              </p>
+              <Link href="/generators/icp" className="text-xs" style={{ color: 'var(--accent-hover)', fontWeight: 600 }}>Generate →</Link>
+            </div>
           </div>
+        </div>
+
+        {/* Start Tour Button */}
+        <div style={{ marginTop: '40px', textAlign: 'center' }}>
+          <Button variant="outline" onClick={() => startTour('dashboard')}>
+            Start Tour
+          </Button>
         </div>
       </div>
     </div>

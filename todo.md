@@ -1779,3 +1779,14 @@
 - [x] Dream Buyer Avatar card - compact: title, one line description, small action link only
 - [x] Remove large empty spaces and full page section styling
 - [x] Test and verify compact info panel appearance - All 99 tests passing
+
+## Phase 1107: Restructure Dashboard to Match Reference HTML Mockup ✅ COMPLETE
+- [x] Analyze reference HTML layout structure and styling
+- [x] Restructure Dashboard: full-width video section at top spanning entire content area (aspect-ratio: 16/6)
+- [x] Below video: two-column grid - generators list left (1fr), info cards right (280px fixed), 32px gap
+- [x] Sidebar: 220px width, text-only nav with section labels (GENERATORS, RESOURCES)
+- [x] Generator rows: card style with icon, title, description, gradient Generate button
+- [x] Right column: stacked compact cards - alert, quota, products, dream buyer avatar (gap: 10px)
+- [x] Apply fadeInUp stagger animation on generator rows (60ms delay increments)
+- [x] Preserve all existing React functionality, routing, and data (useAuth, tRPC, Link, useTour)
+- [x] Test and verify layout matches reference exactly - All 99 tests passing
