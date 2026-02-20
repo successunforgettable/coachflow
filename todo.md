@@ -1514,3 +1514,15 @@
 - [ ] Add analytics tracking for tour completion rate
 - [ ] Run all 99 tests to ensure nothing breaks
 - [ ] Create checkpoint with both deliverables
+
+
+## Phase 701: Fix Landing Page & Dashboard Errors (URGENT) ✅ COMPLETE
+- [x] Fix landing page auto-redirect issue (moved redirect to useEffect)
+- [x] Investigate and fix 4 dashboard errors
+- [x] Fix SQL GROUP BY error in getHvcoSetsByUser (added all columns to GROUP BY)
+- [x] Fix SQL GROUP BY error in getMechanismSetsByUser (added all columns to GROUP BY)
+- [x] Fix nested <a> tag error in Dashboard navigation (removed nested anchor)
+- [x] Check dev server logs for error details
+- [x] Restart dev server to clear cached errors
+- [x] Run all 99 tests - all passing ✅
+- [ ] Save checkpoint after fixes (next step)

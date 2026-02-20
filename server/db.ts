@@ -192,7 +192,7 @@ export async function getHvcoSetsByUser(userId: number) {
     })
     .from(hvcoTitles)
     .where(eq(hvcoTitles.userId, userId))
-    .groupBy(hvcoTitles.hvcoSetId)
+    .groupBy(hvcoTitles.hvcoSetId, hvcoTitles.targetMarket, hvcoTitles.hvcoTopic, hvcoTitles.createdAt, hvcoTitles.title)
     .orderBy(desc(hvcoTitles.createdAt));
   
   return result;
@@ -289,7 +289,7 @@ export async function getHeroMechanismSetsByUser(userId: number) {
     })
     .from(heroMechanisms)
     .where(eq(heroMechanisms.userId, userId))
-    .groupBy(heroMechanisms.mechanismSetId)
+    .groupBy(heroMechanisms.mechanismSetId, heroMechanisms.targetMarket, heroMechanisms.pressingProblem, heroMechanisms.desiredOutcome, heroMechanisms.createdAt, heroMechanisms.mechanismName)
     .orderBy(desc(heroMechanisms.createdAt));
   
   return result;

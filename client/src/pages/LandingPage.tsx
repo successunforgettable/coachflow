@@ -16,7 +16,7 @@ import {
   ArrowRight,
   ChevronDown,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTour } from "@/contexts/TourContext";
 
 export default function LandingPage() {
@@ -26,10 +26,11 @@ export default function LandingPage() {
   const { startTour } = useTour();
 
   // Redirect authenticated users to dashboard
-  if (isAuthenticated) {
-    setLocation("/dashboard");
-    return null;
-  }
+  useEffect(() => {
+    if (isAuthenticated) {
+      setLocation("/dashboard");
+    }
+  }, [isAuthenticated, setLocation]);
 
   const features = [
     {
