@@ -1936,3 +1936,66 @@
 - [x] Add onConfirmSkip handler that calls onboarding.complete with skipped:true
 - [x] Add toast notification after skip confirmation
 - [x] Test skip flow end-to-end (99 tests passing)
+
+
+## Session: 30-Day Progress Tracker
+
+- [x] Create OnboardingProgressTracker.tsx component with basic structure
+- [x] Add progress bar with gradient fill
+- [x] Add 5-state milestone checklist UI
+- [x] Add progress calculation logic based on user actions (server/routers/progress.ts)
+- [x] Add 30-day expiry check (based on user createdAt)
+- [x] Integrate into Dashboard.tsx sidebar
+- [ ] Add tooltips for incomplete milestones (deferred - optional polish)
+- [ ] Add 30-day expiry toast notification (deferred - optional)
+- [x] Test progress tracker with real data (50% state working)
+- [x] Verify button navigation works (tested - routes to next milestone)
+
+
+## Meta Compliance System (HIGH PRIORITY - Future Implementation)
+
+### Layer 1: System Prompt Compliance Rules
+- [ ] Add META_COMPLIANCE_RULES constant to server/routers/adCopy.ts
+- [ ] Prepend compliance rules to system prompt in generate mutation
+- [ ] Test generation with compliance rules active
+
+### Layer 4: Banned Phrases Database (Implement First - No API Cost)
+- [ ] Create server/lib/complianceChecker.ts with checkCompliance function
+- [ ] Add CRITICAL_VIOLATIONS array (income claims, guarantees, health claims, sensationalism)
+- [ ] Add WARNING_VIOLATIONS array (superlatives, aggressive CTAs, before/after language)
+- [ ] Add getComplianceLabel helper function
+- [ ] Run compliance check after ad generation
+- [ ] Attach compliance result to return value
+
+### Layer 3: Compliance Score UI Component
+- [ ] Create client/src/components/ComplianceBadge.tsx
+- [ ] Add expandable compliance score display (90+ = green, 70-89 = amber, <70 = red)
+- [ ] Show critical issues with red badges
+- [ ] Show warning issues with amber badges
+- [ ] Add legal disclaimer text
+- [ ] Import Shield, CheckCircle, AlertTriangle, XCircle icons from lucide-react
+- [ ] Add ComplianceBadge to AdCopyDetail page
+- [ ] Add legal disclaimer banner to Ad Copy Generator form page
+
+### Layer 2: AI Compliance Reviewer (Optional - Adds API Cost)
+- [ ] Add aiComplianceReview function to complianceChecker.ts
+- [ ] Use gpt-4o-mini for cost efficiency
+- [ ] Return compliant/issues/suggestions/revisedCopy
+- [ ] Only call if Layer 4 passes (secondary check)
+- [ ] Add Auto-Fix button to ComplianceBadge
+
+### Testing & Validation
+- [ ] Test: Generate ad with income claim → verify flagged as critical
+- [ ] Test: Generate ad with "guaranteed results" → verify flagged as critical
+- [ ] Test: Generate clean compliant ad → verify 90+ score
+- [ ] Test: Verify compliance result returned alongside generated copy
+- [ ] Screenshot compliance badge in action
+- [ ] Run all tests to ensure no breakage
+- [ ] Save checkpoint: "Meta compliance system implemented"
+
+### Future Enhancements (Phase 2)
+- [ ] Add compliance history tracking
+- [ ] Add platform-specific compliance (Google Ads, LinkedIn, TikTok)
+- [ ] Add compliance score to ad copy list page
+- [ ] Add admin dashboard showing compliance rate across all users
+- [ ] Add email alert when user consistently generates non-compliant ads

@@ -43,6 +43,7 @@ import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
 import { Breadcrumb } from "./Breadcrumb";
+import OnboardingProgressTracker from "./OnboardingProgressTracker";
 
 const menuItems = [
   { icon: Home, label: "Home", path: "/" },
@@ -208,6 +209,11 @@ function DashboardLayoutContent({
           </SidebarHeader>
 
           <SidebarContent className="gap-0">
+            {/* Progress Tracker - shown for first 30 days */}
+            <div className="px-2">
+              <OnboardingProgressTracker />
+            </div>
+
             <SidebarMenu className="px-2 py-1">
               {menuItems.map(item => {
                 const isActive = location === item.path;

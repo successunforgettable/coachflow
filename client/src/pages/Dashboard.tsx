@@ -7,6 +7,7 @@ import { trpc } from "@/lib/trpc";
 import { getLoginUrl } from "@/const";
 import { Link, useLocation, Redirect } from "wouter";
 import { useTour } from "@/contexts/TourContext";
+import OnboardingProgressTracker from "@/components/OnboardingProgressTracker";
 import {
   Sparkles,
   FileText,
@@ -184,6 +185,9 @@ export default function Dashboard() {
         }}>
           Generators · Superpowers just a click away
         </div>
+
+        {/* Progress Tracker */}
+        <OnboardingProgressTracker />
 
         <div style={{
           fontSize: '11px',

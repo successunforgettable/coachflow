@@ -22,6 +22,7 @@ import { heroMechanismsRouter } from "./routers/heroMechanisms";
 import { adminRouter } from "./routers/admin";
 import { analyticsRouter } from "./routers/analytics";
 import { onboardingRouter } from "./routers/onboarding";
+import { progressRouter } from "./routers/progress";
 import { getQuotaLimit } from "./quotaLimits";
 
 export const appRouter = router({
@@ -124,6 +125,7 @@ export const appRouter = router({
   admin: adminRouter,
   analytics: analyticsRouter,
   onboarding: onboardingRouter,
+  progress: progressRouter,
 });
 
 export type AppRouter = typeof appRouter;
