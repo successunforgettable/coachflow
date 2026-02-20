@@ -24,6 +24,7 @@ import {
   Lightbulb,
   Zap,
   Image,
+  Package,
 } from "lucide-react";
 
 export default function Dashboard() {
@@ -96,7 +97,6 @@ export default function Dashboard() {
       icon: Sparkles,
       count: icps?.length || 0,
       href: "/generators/icp",
-      color: "text-blue-500",
     },
     {
       title: "Ad Copy Generator",
@@ -104,7 +104,6 @@ export default function Dashboard() {
       icon: FileText,
       count: adCopy?.length || 0,
       href: "/generators/ad-copy",
-      color: "text-green-500",
     },
     {
       title: "Email Sequences",
@@ -112,7 +111,6 @@ export default function Dashboard() {
       icon: Mail,
       count: emailSequences?.length || 0,
       href: "/generators/email",
-      color: "text-purple-500",
     },
     {
       title: "WhatsApp Sequences",
@@ -120,7 +118,6 @@ export default function Dashboard() {
       icon: MessageCircle,
       count: whatsappSequences?.length || 0,
       href: "/generators/whatsapp",
-      color: "text-emerald-500",
     },
     {
       title: "Landing Pages",
@@ -128,7 +125,6 @@ export default function Dashboard() {
       icon: Globe,
       count: landingPages?.length || 0,
       href: "/generators/landing-page",
-      color: "text-orange-500",
     },
     {
       title: "Offers",
@@ -136,31 +132,27 @@ export default function Dashboard() {
       icon: Gift,
       count: offers?.length || 0,
       href: "/generators/offers",
-      color: "text-pink-500",
     },
     {
       title: "Direct Response Headlines",
-      description: "25 headlines across 5 proven formulas (Industry standard)",
+      description: "25 headlines across 5 proven formulas",
       icon: Type,
       count: headlines?.length || 0,
       href: "/headlines",
-      color: "text-yellow-500",
     },
     {
       title: "HVCO Titles",
-      description: "Compelling titles for high-value content offers (Industry standard)",
+      description: "Compelling titles for high-value content offers",
       icon: Lightbulb,
       count: hvcoTitles?.length || 0,
       href: "/hvco-titles",
-      color: "text-cyan-500",
     },
     {
       title: "Hero Mechanisms",
-      description: "Unique features and benefits that set you apart (Industry standard)",
+      description: "Unique features and benefits that set you apart",
       icon: Zap,
       count: heroMechanisms?.length || 0,
       href: "/hero-mechanisms",
-      color: "text-indigo-500",
     },
     {
       title: "Ad Creatives",
@@ -168,300 +160,249 @@ export default function Dashboard() {
       icon: Image,
       count: 0,
       href: "/ad-creatives",
-      color: "text-pink-500",
     },
   ];
 
   const navigationItems = [
-    { title: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
-    { title: "Source of Truth", icon: BookOpen, href: "/source-of-truth" },
-    { title: "Services", icon: Briefcase, href: "/services" },
-    { title: "Campaigns", icon: FolderOpen, href: "/campaigns" },
-    { title: "Settings", icon: Settings, href: "/settings" },
+    { title: "Dream Buyer Avatars", href: "/generators/icp" },
+    { title: "Facebook Ad Generator", href: "/generators/ad-copy" },
+    { title: "Direct Response Headlines", href: "/headlines" },
+    { title: "HVCO Titles", href: "/hvco-titles" },
+    { title: "Hero Mechanisms", href: "/hero-mechanisms" },
+    { title: "Ad Creatives", href: "/ad-creatives" },
+    { title: "Landing Pages", href: "/generators/landing-page" },
+    { title: "Godfather Offers", href: "/generators/offers" },
+    { title: "Products", href: "/services" },
   ];
 
   return (
     <div className="min-h-screen bg-background flex">
-      {/* Sidebar */}
-      <div className="w-64 bg-card border-r border-border flex flex-col">
+      {/* Sidebar - Text-only navigation like Kong */}
+      <div className="w-56 bg-card border-r border-border flex flex-col">
+        {/* Logo */}
         <div className="p-6 border-b border-border">
-          <h1 className="text-2xl font-bold text-primary">CoachFlow</h1>
-          <p className="text-sm text-muted-foreground mt-1">Marketing Automation</p>
+          <h1 className="text-2xl font-bold" style={{ color: 'var(--accent-primary)' }}>KONG</h1>
+          <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>Generators</p>
+          <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>Superpowers just a click away</p>
         </div>
 
-        <nav className="flex-1 p-4 space-y-2" data-tour="sidebar">
+        {/* Navigation - Text only, no icons */}
+        <nav className="flex-1 p-4 space-y-1" data-tour="sidebar">
           {navigationItems.map((item) => {
-            const Icon = item.icon;
             const isActive = location === item.href;
             return (
               <Link 
                 key={item.href} 
                 href={item.href}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                className={`block px-4 py-2 rounded-md text-sm transition-colors ${
                   isActive
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                    ? "text-white font-medium"
+                    : "hover:bg-accent/50"
                 }`}
+                style={{
+                  backgroundColor: isActive ? 'var(--accent-primary)' : 'transparent',
+                  color: isActive ? '#FFFFFF' : 'var(--text-secondary)',
+                }}
               >
-                <Icon className="w-5 h-5" />
-                <span className="font-medium">{item.title}</span>
+                {item.title}
               </Link>
             );
           })}
         </nav>
 
-        <div className="p-4 border-t border-border">
-          <div className="flex items-center gap-3 px-4 py-3 mb-2">
-            <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold">
-              {user?.name?.charAt(0) || "U"}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground truncate">{user?.name}</p>
-              <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
-            </div>
-          </div>
-          <Button
-            variant="ghost"
-            className="w-full justify-start text-muted-foreground hover:text-destructive"
-            onClick={() => logout()}
+        {/* Bottom section */}
+        <div className="p-4 border-t border-border space-y-1">
+          <Link 
+            href="/settings"
+            className="block px-4 py-2 rounded-md text-sm hover:bg-accent/50"
+            style={{ color: 'var(--text-secondary)' }}
           >
-            <LogOut className="w-4 h-4 mr-2" />
-            Logout
-          </Button>
+            Light Mode
+          </Link>
+          <Link 
+            href="/settings"
+            className="block px-4 py-2 rounded-md text-sm hover:bg-accent/50"
+            style={{ color: 'var(--text-secondary)' }}
+          >
+            Support
+          </Link>
+          <Link 
+            href="/settings"
+            className="block px-4 py-2 rounded-md text-sm hover:bg-accent/50"
+            style={{ color: 'var(--text-secondary)' }}
+          >
+            Settings
+          </Link>
         </div>
       </div>
 
       {/* Main Content */}
       <div className="flex-1 overflow-auto">
-        <div className="container mx-auto px-8 py-8 max-w-7xl">
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-foreground">Welcome back, {user?.name}!</h1>
-            <p className="text-muted-foreground mt-1">
-              Your all-in-one marketing automation platform for coaches, speakers, and consultants
-            </p>
+        <div className="container mx-auto px-12 py-16 max-w-[1400px]">
+          {/* Hero Section: 60% left + 40% right */}
+          <div className="flex gap-8 mb-20">
+            {/* Left: Hero Welcome (60%) */}
+            <div className="flex-[6]">
+              {/* Welcome Header */}
+              <div 
+                className="rounded-2xl p-8 mb-8"
+                style={{
+                  border: '1px solid var(--border-subtle)',
+                  background: 'var(--bg-elevated)',
+                }}
+              >
+                <h1 className="text-4xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
+                  Welcome {user?.name?.split(' ')[0]} 👋
+                </h1>
+                <p style={{ color: 'var(--text-secondary)' }}>
+                  Let's get started with something awesome.
+                </p>
+              </div>
+
+              {/* Featured Content Area - Video placeholder */}
+              <div 
+                className="rounded-2xl overflow-hidden"
+                style={{
+                  border: '1px solid var(--border-subtle)',
+                  background: 'var(--bg-elevated)',
+                  aspectRatio: '16/9',
+                }}
+              >
+                <div className="w-full h-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)' }}>
+                  <div className="text-center">
+                    <div className="w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ background: 'var(--accent-primary)' }}>
+                      <svg className="w-10 h-10 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+                      </svg>
+                    </div>
+                    <p style={{ color: 'var(--text-secondary)' }}>Getting Started Video</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: Info Cards (40%) */}
+            <div className="flex-[4] space-y-6">
+              {/* Stripe Banner */}
+              <StripeSandboxBanner />
+
+              {/* Quota Card */}
+              {authData && quotaLimits && (
+                <div data-tour="quota-display">
+                  <QuotaSummaryCard authData={authData} quotaLimits={quotaLimits} />
+                </div>
+              )}
+
+              {/* Products Card */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Package className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
+                    <CardTitle>Products</CardTitle>
+                  </div>
+                  <CardDescription>
+                    A central place for your product/service's details, to be used in resource generation
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex gap-3">
+                    <Link href="/services" className="flex-1">
+                      <Button variant="outline" className="w-full">View All</Button>
+                    </Link>
+                    <Link href="/services" className="flex-1">
+                      <Button className="w-full">Create New Product</Button>
+                    </Link>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Dream Buyer Avatar Card */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Sparkles className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
+                    <CardTitle>Dream Buyer Avatar</CardTitle>
+                  </div>
+                  <CardDescription>
+                    Create a detailed and idealized representation of your target customer
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Link href="/generators/icp">
+                    <Button className="w-full">Generate</Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            </div>
           </div>
 
-          {/* Stripe Sandbox Banner */}
-          <StripeSandboxBanner />
-
-          {/* Quota Summary Card */}
-          {authData && quotaLimits && (
-            <div className="mb-8" data-tour="quota-display">
-              <QuotaSummaryCard authData={authData} quotaLimits={quotaLimits} />
-            </div>
-          )}
-
-          {/* Stats - Display size with purple accent */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Total Services
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-6xl font-extrabold" style={{ color: 'var(--accent-primary)' }}>
-                  {services?.length || 0}
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Generated Assets
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-6xl font-extrabold" style={{ color: 'var(--accent-primary)' }}>
-                  {(icps?.length || 0) +
-                    (adCopy?.length || 0) +
-                    (emailSequences?.length || 0) +
-                    (whatsappSequences?.length || 0) +
-                    (landingPages?.length || 0) +
-                    (offers?.length || 0)}
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Active Generators
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-6xl font-extrabold" style={{ color: 'var(--accent-primary)' }}>6</p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Generators Grid - with borders, shadows, hover states, and entrance animations */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-2xl font-bold text-foreground">AI Generators</h2>
-              <Button variant="outline" size="sm" onClick={() => startTour('dashboard')}>
-                Start Tour
-              </Button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-tour="generators-grid">
-              {generators.map((generator, index) => {
-                const Icon = generator.icon;
-                return (
-                  <Link key={generator.href} href={generator.href}>
-                    <div
-                      className="cursor-pointer h-full animate-fade-in-up"
-                      style={{
-                        animationDelay: `${index * 100}ms`,
-                        animationFillMode: 'both'
-                      }}
-                    >
-                      <Card 
-                        className="h-full transition-all duration-200"
+          {/* Generator Cards - Horizontal layout like Kong */}
+          <div className="space-y-6" data-tour="generators-grid">
+            {generators.map((generator, index) => {
+              const Icon = generator.icon;
+              return (
+                <div
+                  key={generator.href}
+                  className="animate-fade-in-up"
+                  style={{
+                    animationDelay: `${index * 50}ms`,
+                    animationFillMode: 'both'
+                  }}
+                >
+                  <div 
+                    className="rounded-xl p-6 transition-all duration-200 cursor-pointer"
+                    style={{
+                      border: '1px solid var(--border-subtle)',
+                      background: 'var(--bg-elevated)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--border-default)';
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--border-subtle)';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                    }}
+                  >
+                    <div className="flex items-center gap-6">
+                      {/* Icon - Small, left-aligned */}
+                      <div 
+                        className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0"
                         style={{
+                          background: 'var(--bg-tertiary)',
                           border: '1px solid var(--border-subtle)',
-                          boxShadow: 'var(--shadow-md)',
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.transform = 'translateY(-4px)';
-                          e.currentTarget.style.borderColor = 'var(--accent-primary)';
-                          e.currentTarget.style.boxShadow = '0 0 20px rgba(139, 92, 246, 0.3), var(--shadow-lg)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.transform = 'translateY(0)';
-                          e.currentTarget.style.borderColor = 'var(--border-subtle)';
-                          e.currentTarget.style.boxShadow = 'var(--shadow-md)';
                         }}
                       >
-                        <CardHeader>
-                          <div className="flex items-start justify-between">
-                            <div className="flex items-center gap-3">
-                              {/* Icon with gradient and purple glow */}
-                              <div 
-                                className="p-3 rounded-lg"
-                                style={{
-                                  background: 'linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-hover) 100%)',
-                                  boxShadow: '0 0 20px rgba(139, 92, 246, 0.3)',
-                                }}
-                              >
-                                <Icon className="w-6 h-6 text-white" />
-                              </div>
-                              <div>
-                                <CardTitle className="text-lg">{generator.title}</CardTitle>
-                                <p className="text-sm text-muted-foreground mt-1">
-                                  {generator.count} generated
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <CardDescription>{generator.description}</CardDescription>
-                        </CardContent>
-                      </Card>
+                        <Icon className="w-6 h-6" style={{ color: 'var(--text-secondary)' }} />
+                      </div>
+
+                      {/* Title + Description - Middle, takes up remaining space */}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-lg font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
+                          {generator.title}
+                        </h3>
+                        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                          {generator.description}
+                        </p>
+                      </div>
+
+                      {/* Generate Button - Right-aligned */}
+                      <Link href={generator.href}>
+                        <Button>Generate</Button>
+                      </Link>
                     </div>
-                  </Link>
-                );
-              })}
-            </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
-          {/* Quick Actions - styled as interactive rows */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
-              <CardDescription>Get started with your marketing automation</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <Link href="/services">
-                <div 
-                  className="flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer transition-all duration-200"
-                  style={{
-                    border: '1px solid var(--border-subtle)',
-                    background: 'var(--bg-tertiary)',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--bg-elevated)';
-                    e.currentTarget.style.borderColor = 'var(--border-default)';
-                    e.currentTarget.style.transform = 'translateX(4px)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'var(--bg-tertiary)';
-                    e.currentTarget.style.borderColor = 'var(--border-subtle)';
-                    e.currentTarget.style.transform = 'translateX(0)';
-                  }}
-                >
-                  <Briefcase className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} />
-                  <span className="font-medium" style={{ color: 'var(--text-primary)' }}>Create New Service</span>
-                </div>
-              </Link>
-              <Link href="/generators/icp">
-                <div 
-                  className="flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer transition-all duration-200"
-                  style={{
-                    border: '1px solid var(--border-subtle)',
-                    background: 'var(--bg-tertiary)',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--bg-elevated)';
-                    e.currentTarget.style.borderColor = 'var(--border-default)';
-                    e.currentTarget.style.transform = 'translateX(4px)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'var(--bg-tertiary)';
-                    e.currentTarget.style.borderColor = 'var(--border-subtle)';
-                    e.currentTarget.style.transform = 'translateX(0)';
-                  }}
-                >
-                  <Sparkles className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} />
-                  <span className="font-medium" style={{ color: 'var(--text-primary)' }}>Generate Customer Profile</span>
-                </div>
-              </Link>
-              <Link href="/generators/email">
-                <div 
-                  className="flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer transition-all duration-200"
-                  style={{
-                    border: '1px solid var(--border-subtle)',
-                    background: 'var(--bg-tertiary)',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--bg-elevated)';
-                    e.currentTarget.style.borderColor = 'var(--border-default)';
-                    e.currentTarget.style.transform = 'translateX(4px)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'var(--bg-tertiary)';
-                    e.currentTarget.style.borderColor = 'var(--border-subtle)';
-                    e.currentTarget.style.transform = 'translateX(0)';
-                  }}
-                >
-                  <Mail className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} />
-                  <span className="font-medium" style={{ color: 'var(--text-primary)' }}>Create Email Sequence</span>
-                </div>
-              </Link>
-              <Link href="/campaigns">
-                <div 
-                  className="flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer transition-all duration-200"
-                  style={{
-                    border: '1px solid var(--border-subtle)',
-                    background: 'var(--bg-tertiary)',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--bg-elevated)';
-                    e.currentTarget.style.borderColor = 'var(--border-default)';
-                    e.currentTarget.style.transform = 'translateX(4px)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'var(--bg-tertiary)';
-                    e.currentTarget.style.borderColor = 'var(--border-subtle)';
-                    e.currentTarget.style.transform = 'translateX(0)';
-                  }}
-                >
-                  <FolderOpen className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} />
-                  <span className="font-medium" style={{ color: 'var(--text-primary)' }}>Organize Campaign</span>
-                </div>
-              </Link>
-            </CardContent>
-          </Card>
+          {/* Start Tour Button */}
+          <div className="mt-12 text-center">
+            <Button variant="outline" onClick={() => startTour('dashboard')}>
+              Start Tour
+            </Button>
+          </div>
         </div>
       </div>
     </div>
