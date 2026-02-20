@@ -1753,3 +1753,7 @@
 - [x] Add subtle divider line between each generator row (space-y-4 provides spacing)
 - [x] Sidebar - add border-right: 1px solid var(--border-subtle)
 - [x] Test all styling without changing layout structure - All 99 tests passing
+
+## Phase 1104: Fix Branding - Change KONG to CoachFlow ✅ COMPLETE
+- [x] Update sidebar logo text from "KONG" to "CoachFlow"
+- [x] Verify branding is consistent throughout dashboard
