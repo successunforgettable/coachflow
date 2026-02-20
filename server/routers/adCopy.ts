@@ -8,6 +8,39 @@ import { nanoid } from "nanoid";
 import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
+import { checkCompliance } from "../lib/complianceChecker";
+
+const META_COMPLIANCE_RULES = `
+CRITICAL COMPLIANCE RULES — Every piece of ad copy you generate MUST follow these rules without exception. These are Meta (Facebook/Instagram) advertising policy requirements.
+
+NEVER include:
+1. Income or earnings claims — Do NOT write: "make $10k/month", "earn passive income", "quit your 9-5", "replace your salary", "make money from home", "6-figure income", "financial freedom in 30 days"
+2. Guaranteed results — Do NOT write: "guaranteed", "100% results", "works every time", "proven to work for everyone"
+3. Specific transformation claims — Do NOT write: "lose 20kg in 30 days", "get abs in 6 weeks", "cure your anxiety", "fix your relationship overnight"
+4. Superlatives without qualification — Do NOT write: "#1 coach", "the best program", "world's greatest", "unbeatable results" (unless qualified with "in [specific verified category]")
+5. Sensationalist language — Do NOT write: "shocking secret", "they don't want you to know", "banned method", "underground technique", "what doctors won't tell you"
+6. False urgency or scarcity — Do NOT write: "only 3 spots left" (unless literally true), "offer expires tonight" (unless literally true), "last chance forever"
+7. Before/after transformation language — Do NOT write: "before I was broke, now I'm rich", "I used to be fat, now I'm thin" style claims
+8. Personal attribute targeting language — Do NOT write copy that singles out age, religion, race, sexual orientation, disability, health conditions, or financial hardship as audience identifiers
+9. Misleading claims — Do NOT imply celebrity endorsement, Meta endorsement, government approval, or scientific proof without verified evidence
+10. Prohibited CTAs — Do NOT use: "Click here to get rich", "Buy now before it's too late", "You'd be stupid not to"
+
+ALWAYS include:
+1. Results qualifier when making any outcome claim: use "results may vary", "typical results", "individual results will differ"
+2. Honest benefit language: focus on the process and experience, not guaranteed outcomes
+3. Approved CTA formats: "Learn More", "Sign Up", "Book a Call", "Get Started", "Download Free Guide", "Watch Free Training"
+4. Professional tone: authoritative but not sensationalist
+
+REFRAME THESE COMMON VIOLATIONS:
+- "Make $10k/month" → "Build a sustainable coaching income"
+- "Guaranteed results" → "A proven framework used by [X] coaches"
+- "Lose 20kg guaranteed" → "A structured approach to sustainable weight loss"
+- "Secret method" → "A counterintuitive approach that most coaches overlook"
+- "Quit your 9-5" → "Create a coaching business that fits your life"
+- "Only 3 spots left" → "Applications now open" (unless truly limited)
+
+Your output must be ad copy that could be submitted directly to Meta without triggering a policy violation review.
+`;
 
 const generateAdCopySchema = z.object({
   serviceId: z.number(),
@@ -229,7 +262,7 @@ Format as JSON array:
         messages: [
           {
             role: "system",
-            content: "You are an expert ad copywriter. Always respond with valid JSON.",
+            content: `${META_COMPLIANCE_RULES}\n\nYou are an expert ad copywriter who specializes in Meta-compliant advertising for coaches, speakers and consultants. Always respond with valid JSON.`,
           },
           { role: "user", content: headlinePrompt },
         ],
@@ -287,7 +320,7 @@ Format as JSON array:
         messages: [
           {
             role: "system",
-            content: "You are an expert ad copywriter. Always respond with valid JSON.",
+            content: `${META_COMPLIANCE_RULES}\n\nYou are an expert ad copywriter who specializes in Meta-compliant advertising for coaches, speakers and consultants. Always respond with valid JSON.`,
           },
           { role: "user", content: bodyPrompt },
         ],
@@ -341,7 +374,7 @@ Format as JSON array:
         messages: [
           {
             role: "system",
-            content: "You are an expert ad copywriter. Always respond with valid JSON.",
+            content: `${META_COMPLIANCE_RULES}\n\nYou are an expert ad copywriter who specializes in Meta-compliant advertising for coaches, speakers and consultants. Always respond with valid JSON.`,
           },
           { role: "user", content: linkPrompt },
         ],
@@ -376,6 +409,7 @@ Format as JSON array:
 
       // Insert headlines
       for (const headline of headlineData.headlines) {
+        const complianceResult = checkCompliance(headline);
         allInserts.push({
           userId: ctx.user.id,
           serviceId: input.serviceId,
@@ -402,11 +436,16 @@ Format as JSON array:
           averageReviewRating: input.averageReviewRating || null,
           totalCustomers: input.totalCustomers || null,
           testimonials: input.testimonials || null,
+          // Compliance fields
+          complianceScore: complianceResult.score,
+          complianceVersion: complianceResult.version,
+          complianceCheckedAt: new Date(),
         });
       }
 
       // Insert bodies
       for (const body of bodyData.bodies) {
+        const complianceResult = checkCompliance(body);
         allInserts.push({
           userId: ctx.user.id,
           serviceId: input.serviceId,
@@ -432,11 +471,16 @@ Format as JSON array:
           averageReviewRating: input.averageReviewRating || null,
           totalCustomers: input.totalCustomers || null,
           testimonials: input.testimonials || null,
+          // Compliance fields
+          complianceScore: complianceResult.score,
+          complianceVersion: complianceResult.version,
+          complianceCheckedAt: new Date(),
         });
       }
 
       // Insert links
       for (const link of linkData.links) {
+        const complianceResult = checkCompliance(link);
         allInserts.push({
           userId: ctx.user.id,
           serviceId: input.serviceId,
@@ -462,6 +506,10 @@ Format as JSON array:
           averageReviewRating: input.averageReviewRating || null,
           totalCustomers: input.totalCustomers || null,
           testimonials: input.testimonials || null,
+          // Compliance fields
+          complianceScore: complianceResult.score,
+          complianceVersion: complianceResult.version,
+          complianceCheckedAt: new Date(),
         });
       }
 

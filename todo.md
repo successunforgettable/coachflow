@@ -1955,27 +1955,32 @@
 ## Meta Compliance System (HIGH PRIORITY - Future Implementation)
 
 ### Layer 1: System Prompt Compliance Rules
-- [ ] Add META_COMPLIANCE_RULES constant to server/routers/adCopy.ts
-- [ ] Prepend compliance rules to system prompt in generate mutation
-- [ ] Test generation with compliance rules active
+- [x] Add META_COMPLIANCE_RULES constant to server/routers/adCopy.ts
+- [x] Prepend compliance rules to system prompt in generate mutation
+- [x] Test generation with compliance rules active
 
 ### Layer 4: Banned Phrases Database (Implement First - No API Cost)
-- [ ] Create server/lib/complianceChecker.ts with checkCompliance function
-- [ ] Add CRITICAL_VIOLATIONS array (income claims, guarantees, health claims, sensationalism)
-- [ ] Add WARNING_VIOLATIONS array (superlatives, aggressive CTAs, before/after language)
-- [ ] Add getComplianceLabel helper function
-- [ ] Run compliance check after ad generation
-- [ ] Attach compliance result to return value
+- [x] Create server/lib/complianceChecker.ts with checkCompliance function
+- [x] Add CRITICAL_VIOLATIONS array (income claims, guarantees, health claims, sensationalism)
+- [x] Add WARNING_VIOLATIONS array (superlatives, aggressive CTAs, before/after language)
+- [x] **CRITICAL FIX:** Add quoted phrase exception to prevent false positives (case-insensitive, smart quotes)
+- [x] Add getComplianceLabel helper function
+- [x] Run compliance check after ad generation
+- [x] Attach compliance result to return value (score, version, lastUpdated, nextReviewDue)
+- [x] Add compliance fields to adCopy schema (complianceScore, complianceVersion, complianceCheckedAt)
+- [x] Generate and apply database migration
 
 ### Layer 3: Compliance Score UI Component
-- [ ] Create client/src/components/ComplianceBadge.tsx
-- [ ] Add expandable compliance score display (90+ = green, 70-89 = amber, <70 = red)
-- [ ] Show critical issues with red badges
-- [ ] Show warning issues with amber badges
-- [ ] Add legal disclaimer text
-- [ ] Import Shield, CheckCircle, AlertTriangle, XCircle icons from lucide-react
-- [ ] Add ComplianceBadge to AdCopyDetail page
-- [ ] Add legal disclaimer banner to Ad Copy Generator form page
+- [x] Create client/src/components/ComplianceBadge.tsx
+- [x] Add expandable compliance score display (90+ = green, 70-89 = amber, <70 = red)
+- [x] Show critical issues with red badges
+- [x] Show warning issues with amber badges
+- [x] Add legal disclaimer text
+- [x] Import Shield, CheckCircle, AlertTriangle, XCircle icons from lucide-react
+- [x] Create client/src/lib/complianceUtils.ts (client-side checker for UI)
+- [x] Add ComplianceBadge to AdCopyDetail page (headlines, bodies, links)
+- [x] **CRITICAL:** Add compliance dot (green/amber/red) to Ad Copy List page (AdCopyGenerator.tsx)
+- [x] Add legal disclaimer banner to Ad Copy Generator form page
 
 ### Layer 2: AI Compliance Reviewer (Optional - Adds API Cost)
 - [ ] Add aiComplianceReview function to complianceChecker.ts
@@ -1993,9 +1998,16 @@
 - [ ] Run all tests to ensure no breakage
 - [ ] Save checkpoint: "Meta compliance system implemented"
 
+### Critical Pre-Launch Fixes
+- [ ] **Admin UI for banned phrases** - Meta updates policies quarterly, need ability to update phrases without code deployment
+- [ ] Add version number to compliance checker ("Checked with v1.0, updated Feb 2026")
+- [ ] Add checkbox acknowledgment on first use: "I understand final compliance responsibility rests with me"
+- [ ] Log all compliance checks for audit trail
+
 ### Future Enhancements (Phase 2)
 - [ ] Add compliance history tracking
 - [ ] Add platform-specific compliance (Google Ads, LinkedIn, TikTok)
-- [ ] Add compliance score to ad copy list page
+- [ ] **Compliance API** - Sell compliance checking as standalone API to other platforms (separate revenue stream)
 - [ ] Add admin dashboard showing compliance rate across all users
 - [ ] Add email alert when user consistently generates non-compliant ads
+- [ ] Add compliance score gamification: "Unlock 'Compliant Advertiser' badge at 90%+ for 30 days"

@@ -241,6 +241,10 @@ export const adCopy = mysqlTable("adCopy", {
   totalCustomers: varchar("totalCustomers", { length: 20 }),
   testimonials: text("testimonials"), // Kong: 511 char limit
   rating: int("rating").default(0),
+  // Meta Compliance fields
+  complianceScore: int("complianceScore"),
+  complianceVersion: varchar("complianceVersion", { length: 20 }),
+  complianceCheckedAt: timestamp("complianceCheckedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({

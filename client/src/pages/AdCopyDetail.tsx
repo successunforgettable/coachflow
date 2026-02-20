@@ -15,6 +15,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RegenerateConfirmationDialog } from "@/components/RegenerateConfirmationDialog";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { ComplianceBadge } from "@/components/ComplianceBadge";
+import { checkCompliance } from "@/lib/complianceUtils";
 
 export default function AdCopyDetail() {
   const [, params] = useRoute("/ad-copy/:adSetId");
@@ -326,6 +328,14 @@ ${adSet.links.map((l: any, i: number) => `${i + 1}. ${l.content}`).join("\n\n")}
                       Headline {index + 1}
                     </div>
                     <div className="text-lg font-medium">{headline.content}</div>
+                    {headline.complianceScore !== null && headline.complianceScore !== undefined && (
+                      <ComplianceBadge
+                        score={headline.complianceScore}
+                        compliant={headline.complianceScore >= 90}
+                        issues={checkCompliance(headline.content).issues}
+                        suggestions={checkCompliance(headline.content).suggestions}
+                      />
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <Button
@@ -371,6 +381,14 @@ ${adSet.links.map((l: any, i: number) => `${i + 1}. ${l.content}`).join("\n\n")}
                       Body Copy {index + 1}
                     </div>
                     <div className="whitespace-pre-wrap">{body.content}</div>
+                    {body.complianceScore !== null && body.complianceScore !== undefined && (
+                      <ComplianceBadge
+                        score={body.complianceScore}
+                        compliant={body.complianceScore >= 90}
+                        issues={checkCompliance(body.content).issues}
+                        suggestions={checkCompliance(body.content).suggestions}
+                      />
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <Button

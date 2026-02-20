@@ -17,7 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import { getLoginUrl } from "@/const";
-import { Loader2, Trash2, Eye, Sparkles } from "lucide-react";
+import { Loader2, Trash2, Eye, Sparkles, Shield } from "lucide-react";
 import { SkeletonCardList } from "@/components/SkeletonCard";
 import { Link } from "wouter";
 import { toast } from "sonner";
@@ -194,6 +194,35 @@ export default function AdCopyGenerator() {
   return (
     <div className="container mx-auto py-8">
       <PageHeader title="Ad Copy Generator" />
+
+      {/* Meta Compliance Legal Disclaimer */}
+      <div
+        style={{
+          background: 'rgba(139, 92, 246, 0.06)',
+          border: '1px solid rgba(139, 92, 246, 0.15)',
+          borderRadius: '8px',
+          padding: '10px 14px',
+          marginBottom: '20px',
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: '8px',
+        }}
+      >
+        <Shield className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#8B5CF6' }} />
+        <p style={{ fontSize: '13px', color: '#9CA3AF', margin: 0 }}>
+          <span style={{ color: '#E5E7EB', fontWeight: 600 }}>Meta Compliance Checking Active.</span>{' '}
+          Every ad generated is automatically reviewed against Meta's advertising policies.
+          Final compliance responsibility rests with the advertiser.{' '}
+          <a
+            href="https://www.facebook.com/policies/ads/"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: '#8B5CF6' }}
+          >
+            View Meta Ad Policies →
+          </a>
+        </p>
+      </div>
 
       {/* Quota Progress Bar */}
       {authData && (
@@ -553,6 +582,21 @@ export default function AdCopyGenerator() {
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
+                            {/* Compliance Dot */}
+                            {adSet.headlines && adSet.headlines[0]?.complianceScore !== null && adSet.headlines[0]?.complianceScore !== undefined && (
+                              <div
+                                className="w-2 h-2 rounded-full"
+                                style={{
+                                  backgroundColor:
+                                    adSet.headlines[0].complianceScore >= 90
+                                      ? '#10B981'
+                                      : adSet.headlines[0].complianceScore >= 70
+                                      ? '#F59E0B'
+                                      : '#EF4444',
+                                }}
+                                title={`Compliance: ${adSet.headlines[0].complianceScore}/100`}
+                              />
+                            )}
                             <span className="px-2 py-1 bg-primary/20 text-primary rounded text-xs font-medium">
                               {adSet.adStyle || "Ad Copy"}
                             </span>
