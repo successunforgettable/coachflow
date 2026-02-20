@@ -1885,3 +1885,17 @@
 - [x] Update generator card structure: icon top-left, title, description, Generate button at bottom
 - [x] Screenshot and verify 3-column grid layout - Perfect 3x3 grid with 10 generators
 - [x] All 99 tests passing
+
+## Phase 1117: Final Dashboard Spacing and Video Section Layout Fixes ✅ COMPLETE
+- [x] Update .main-content CSS: padding: 24px 40px (reduced from 28px 48px)
+- [x] Update .welcome-heading CSS: margin-bottom: 6px (already correct)
+- [x] Update .welcome-sub CSS: margin-bottom: 20px (already correct)
+- [x] Update .video-player CSS: margin-bottom: 24px (reduced from 28px)
+- [x] Add .video-section CSS: display: grid, grid-template-columns: 1fr 260px, gap: 20px, margin-bottom: 32px, align-items: start
+- [x] Restructure Dashboard JSX: wrap video player and right cards (Stripe/Quota) in .video-section grid
+- [x] Move Stripe banner and Quota Usage card from .below-video to .video-section as second grid child
+- [x] Remove duplicate video player code above .video-section
+- [x] Add background gradient and texture to video player in .video-section
+- [x] Verify welcome heading, subtitle, and video visible without scrolling on page load - CONFIRMED
+- [x] Screenshot and verify fixes - Video left, Stripe/Quota right in 2-column grid
+- [x] All 99 tests passing

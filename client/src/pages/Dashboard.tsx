@@ -261,48 +261,61 @@ export default function Dashboard() {
           Let's get started with something awesome.
         </p>
 
-        {/* Full Width Video */}
-        <div className="video-player">
-          <div style={{
-            position: 'absolute',
-            inset: 0,
-            background: 'radial-gradient(ellipse at 50% 60%, rgba(139, 92, 246, 0.1) 0%, transparent 65%)',
-          }}></div>
-          <div style={{
-            position: 'absolute',
-            inset: 0,
-            background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.01) 2px, rgba(255,255,255,0.01) 4px)',
-            pointerEvents: 'none',
-          }}></div>
-          <div style={{
-            width: '64px',
-            height: '64px',
-            background: 'rgba(139, 92, 246, 0.9)',
-            borderRadius: '50%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            boxShadow: '0 0 40px rgba(139, 92, 246, 0.5)',
-            transition: 'all 200ms ease',
-            position: 'relative',
-            zIndex: 1,
-          }}
-          className="play-btn-hover"
-          >
-            <Play className="w-6 h-6 text-white" fill="white" />
+        {/* Video Section: Video Left, Stripe/Quota Right */}
+        <div className="video-section">
+          <div className="video-player">
+            <div style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'radial-gradient(ellipse at 50% 60%, rgba(139, 92, 246, 0.1) 0%, transparent 65%)',
+            }}></div>
+            <div style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.01) 2px, rgba(255,255,255,0.01) 4px)',
+              pointerEvents: 'none',
+            }}></div>
+            <div
+              style={{
+                width: '64px',
+                height: '64px',
+                background: 'linear-gradient(135deg, #8B5CF6, #A78BFA)',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                boxShadow: '0 0 40px rgba(139, 92, 246, 0.5)',
+                transition: 'all 200ms ease',
+                position: 'relative',
+                zIndex: 1,
+              }}
+              className="play-btn-hover"
+              >
+                <Play className="w-6 h-6 text-white" fill="white" />
+              </div>
+              <div style={{
+                fontSize: '14px',
+                color: 'var(--text-muted)',
+                position: 'relative',
+                zIndex: 1,
+              }}>
+                Getting Started Video
+              </div>
           </div>
-          <div style={{
-            fontSize: '14px',
-            color: 'var(--text-muted)',
-            position: 'relative',
-            zIndex: 1,
-          }}>
-            Getting Started Video
+
+          {/* Right: Stripe and Quota Cards */}
+          <div className="right-column">
+            <StripeSandboxBanner />
+            {authData && quotaLimits && (
+              <div>
+                <QuotaSummaryCard authData={authData} quotaLimits={quotaLimits} />
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Two Column: Generators + Right Cards */}
+        {/* Generators Grid */}
         <div className="below-video">
           {/* Left: Generators Grid */}
           <div>
