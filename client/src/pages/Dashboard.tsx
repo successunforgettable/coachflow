@@ -252,7 +252,7 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* Stats */}
+          {/* Stats - Display size with purple accent */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <Card>
               <CardHeader className="pb-3">
@@ -261,7 +261,9 @@ export default function Dashboard() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold text-foreground">{services?.length || 0}</p>
+                <p className="text-6xl font-extrabold" style={{ color: 'var(--accent-primary)' }}>
+                  {services?.length || 0}
+                </p>
               </CardContent>
             </Card>
             <Card>
@@ -271,7 +273,7 @@ export default function Dashboard() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold text-foreground">
+                <p className="text-6xl font-extrabold" style={{ color: 'var(--accent-primary)' }}>
                   {(icps?.length || 0) +
                     (adCopy?.length || 0) +
                     (emailSequences?.length || 0) +
@@ -288,12 +290,12 @@ export default function Dashboard() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold text-foreground">6</p>
+                <p className="text-6xl font-extrabold" style={{ color: 'var(--accent-primary)' }}>6</p>
               </CardContent>
             </Card>
           </div>
 
-          {/* Generators Grid */}
+          {/* Generators Grid - with borders, shadows, hover states, and entrance animations */}
           <div className="mb-8">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-2xl font-bold text-foreground">AI Generators</h2>
@@ -302,66 +304,161 @@ export default function Dashboard() {
               </Button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-tour="generators-grid">
-              {generators.map((generator) => {
+              {generators.map((generator, index) => {
                 const Icon = generator.icon;
                 return (
                   <Link key={generator.href} href={generator.href}>
-                    <Card className="cursor-pointer hover:border-primary transition-colors h-full">
-                      <CardHeader>
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-accent">
-                              <Icon className={`w-6 h-6 ${generator.color}`} />
-                            </div>
-                            <div>
-                              <CardTitle className="text-lg">{generator.title}</CardTitle>
-                              <p className="text-sm text-muted-foreground mt-1">
-                                {generator.count} generated
-                              </p>
+                    <div
+                      className="cursor-pointer h-full animate-fade-in-up"
+                      style={{
+                        animationDelay: `${index * 100}ms`,
+                        animationFillMode: 'both'
+                      }}
+                    >
+                      <Card 
+                        className="h-full transition-all duration-200"
+                        style={{
+                          border: '1px solid var(--border-subtle)',
+                          boxShadow: 'var(--shadow-md)',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'translateY(-4px)';
+                          e.currentTarget.style.borderColor = 'var(--accent-primary)';
+                          e.currentTarget.style.boxShadow = '0 0 20px rgba(139, 92, 246, 0.3), var(--shadow-lg)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'translateY(0)';
+                          e.currentTarget.style.borderColor = 'var(--border-subtle)';
+                          e.currentTarget.style.boxShadow = 'var(--shadow-md)';
+                        }}
+                      >
+                        <CardHeader>
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-3">
+                              {/* Icon with gradient and purple glow */}
+                              <div 
+                                className="p-3 rounded-lg"
+                                style={{
+                                  background: 'linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-hover) 100%)',
+                                  boxShadow: '0 0 20px rgba(139, 92, 246, 0.3)',
+                                }}
+                              >
+                                <Icon className="w-6 h-6 text-white" />
+                              </div>
+                              <div>
+                                <CardTitle className="text-lg">{generator.title}</CardTitle>
+                                <p className="text-sm text-muted-foreground mt-1">
+                                  {generator.count} generated
+                                </p>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <CardDescription>{generator.description}</CardDescription>
-                      </CardContent>
-                    </Card>
+                        </CardHeader>
+                        <CardContent>
+                          <CardDescription>{generator.description}</CardDescription>
+                        </CardContent>
+                      </Card>
+                    </div>
                   </Link>
                 );
               })}
             </div>
           </div>
 
-          {/* Quick Actions */}
+          {/* Quick Actions - styled as interactive rows */}
           <Card>
             <CardHeader>
               <CardTitle>Quick Actions</CardTitle>
               <CardDescription>Get started with your marketing automation</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-2">
               <Link href="/services">
-                <Button className="w-full justify-start" variant="outline">
-                  <Briefcase className="w-4 h-4 mr-2" />
-                  Create New Service
-                </Button>
+                <div 
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer transition-all duration-200"
+                  style={{
+                    border: '1px solid var(--border-subtle)',
+                    background: 'var(--bg-tertiary)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--bg-elevated)';
+                    e.currentTarget.style.borderColor = 'var(--border-default)';
+                    e.currentTarget.style.transform = 'translateX(4px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'var(--bg-tertiary)';
+                    e.currentTarget.style.borderColor = 'var(--border-subtle)';
+                    e.currentTarget.style.transform = 'translateX(0)';
+                  }}
+                >
+                  <Briefcase className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} />
+                  <span className="font-medium" style={{ color: 'var(--text-primary)' }}>Create New Service</span>
+                </div>
               </Link>
               <Link href="/generators/icp">
-                <Button className="w-full justify-start" variant="outline">
-                  <Sparkles className="w-4 h-4 mr-2" />
-                  Generate Customer Profile
-                </Button>
+                <div 
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer transition-all duration-200"
+                  style={{
+                    border: '1px solid var(--border-subtle)',
+                    background: 'var(--bg-tertiary)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--bg-elevated)';
+                    e.currentTarget.style.borderColor = 'var(--border-default)';
+                    e.currentTarget.style.transform = 'translateX(4px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'var(--bg-tertiary)';
+                    e.currentTarget.style.borderColor = 'var(--border-subtle)';
+                    e.currentTarget.style.transform = 'translateX(0)';
+                  }}
+                >
+                  <Sparkles className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} />
+                  <span className="font-medium" style={{ color: 'var(--text-primary)' }}>Generate Customer Profile</span>
+                </div>
               </Link>
               <Link href="/generators/email">
-                <Button className="w-full justify-start" variant="outline">
-                  <Mail className="w-4 h-4 mr-2" />
-                  Create Email Sequence
-                </Button>
+                <div 
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer transition-all duration-200"
+                  style={{
+                    border: '1px solid var(--border-subtle)',
+                    background: 'var(--bg-tertiary)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--bg-elevated)';
+                    e.currentTarget.style.borderColor = 'var(--border-default)';
+                    e.currentTarget.style.transform = 'translateX(4px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'var(--bg-tertiary)';
+                    e.currentTarget.style.borderColor = 'var(--border-subtle)';
+                    e.currentTarget.style.transform = 'translateX(0)';
+                  }}
+                >
+                  <Mail className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} />
+                  <span className="font-medium" style={{ color: 'var(--text-primary)' }}>Create Email Sequence</span>
+                </div>
               </Link>
               <Link href="/campaigns">
-                <Button className="w-full justify-start" variant="outline">
-                  <FolderOpen className="w-4 h-4 mr-2" />
-                  Organize Campaign
-                </Button>
+                <div 
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer transition-all duration-200"
+                  style={{
+                    border: '1px solid var(--border-subtle)',
+                    background: 'var(--bg-tertiary)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--bg-elevated)';
+                    e.currentTarget.style.borderColor = 'var(--border-default)';
+                    e.currentTarget.style.transform = 'translateX(4px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'var(--bg-tertiary)';
+                    e.currentTarget.style.borderColor = 'var(--border-subtle)';
+                    e.currentTarget.style.transform = 'translateX(0)';
+                  }}
+                >
+                  <FolderOpen className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} />
+                  <span className="font-medium" style={{ color: 'var(--text-primary)' }}>Organize Campaign</span>
+                </div>
               </Link>
             </CardContent>
           </Card>
