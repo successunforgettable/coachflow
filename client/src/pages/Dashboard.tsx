@@ -282,7 +282,7 @@ export default function Dashboard() {
             </div>
 
             {/* Right: Info Cards (40%) */}
-            <div className="flex-[4] space-y-6">
+            <div className="flex-[4]" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {/* Stripe Banner */}
               <StripeSandboxBanner />
 
@@ -293,46 +293,47 @@ export default function Dashboard() {
                 </div>
               )}
 
-              {/* Products Card */}
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Package className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
-                    <CardTitle>Products</CardTitle>
-                  </div>
-                  <CardDescription>
-                    A central place for your product/service's details, to be used in resource generation
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex gap-3">
-                    <Link href="/services" className="flex-1">
-                      <Button variant="outline" className="w-full">View All</Button>
-                    </Link>
-                    <Link href="/services" className="flex-1">
-                      <Button className="w-full">Create New Product</Button>
-                    </Link>
-                  </div>
-                </CardContent>
-              </Card>
+              {/* Products Card - Compact */}
+              <div
+                style={{
+                  padding: 'var(--card-padding-md)',
+                  borderRadius: 'var(--radius-lg)',
+                  border: '1px solid var(--border-subtle)',
+                  background: 'var(--bg-secondary)',
+                }}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <Package className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
+                  <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Products</h3>
+                </div>
+                <p className="text-xs mb-2" style={{ color: 'var(--text-secondary)' }}>
+                  A central place for your product/service's details, to be used in resource generation
+                </p>
+                <div className="flex gap-2 text-xs">
+                  <Link href="/services" style={{ color: 'var(--accent-primary)' }}>View All</Link>
+                  <span style={{ color: 'var(--text-tertiary)' }}>•</span>
+                  <Link href="/services" style={{ color: 'var(--accent-primary)' }}>Create New Product</Link>
+                </div>
+              </div>
 
-              {/* Dream Buyer Avatar Card */}
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Sparkles className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
-                    <CardTitle>Dream Buyer Avatar</CardTitle>
-                  </div>
-                  <CardDescription>
-                    Create a detailed and idealized representation of your target customer
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Link href="/generators/icp">
-                    <Button className="w-full">Generate</Button>
-                  </Link>
-                </CardContent>
-              </Card>
+              {/* Dream Buyer Avatar Card - Compact */}
+              <div
+                style={{
+                  padding: 'var(--card-padding-md)',
+                  borderRadius: 'var(--radius-lg)',
+                  border: '1px solid var(--border-subtle)',
+                  background: 'var(--bg-secondary)',
+                }}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <Sparkles className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
+                  <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Dream Buyer Avatar</h3>
+                </div>
+                <p className="text-xs mb-2" style={{ color: 'var(--text-secondary)' }}>
+                  Create a detailed and idealized representation of your target customer
+                </p>
+                <Link href="/generators/icp" className="text-xs" style={{ color: 'var(--accent-primary)' }}>Generate →</Link>
+              </div>
             </div>
           </div>
 

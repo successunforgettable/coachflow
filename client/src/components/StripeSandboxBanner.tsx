@@ -26,35 +26,51 @@ export function StripeSandboxBanner() {
   const daysRemaining = Math.ceil((EXPIRY_DATE.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 
   return (
-    <div className="bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-500/20 rounded-lg p-4 mb-6">
-      <div className="flex items-start gap-3">
-        <AlertCircle className="h-5 w-5 text-orange-500 mt-0.5 flex-shrink-0" />
-        <div className="flex-1">
-          <h3 className="font-semibold text-orange-500 mb-1">
+    <div
+      style={{
+        padding: 'var(--card-padding-md)',
+        borderRadius: 'var(--radius-lg)',
+        border: '1px solid var(--border-subtle)',
+        borderLeft: '4px solid #F59E0B',
+        background: 'var(--bg-secondary)',
+        position: 'relative',
+      }}
+    >
+      <button
+        onClick={handleDismiss}
+        style={{
+          position: 'absolute',
+          top: '8px',
+          right: '8px',
+          background: 'transparent',
+          border: 'none',
+          cursor: 'pointer',
+          padding: '4px',
+          color: 'var(--text-tertiary)',
+        }}
+      >
+        <X className="h-3 w-3" />
+      </button>
+      <div className="flex items-start gap-2">
+        <AlertCircle className="h-4 w-4 flex-shrink-0" style={{ color: '#F59E0B', marginTop: '2px' }} />
+        <div className="flex-1 pr-6">
+          <h3 className="text-sm font-semibold mb-1" style={{ color: '#F59E0B' }}>
             Action Required: Claim Your Stripe Test Sandbox
           </h3>
-          <p className="text-sm text-muted-foreground mb-3">
-            Your Stripe test sandbox expires in <span className="font-semibold text-orange-500">{daysRemaining} days</span> (April 17, 2026). 
+          <p className="text-xs mb-2" style={{ color: 'var(--text-secondary)' }}>
+            Your Stripe test sandbox expires in <span className="font-semibold" style={{ color: '#F59E0B' }}>{daysRemaining} days</span> (April 17, 2026). 
             Claim it now to test subscription payments and ensure your billing system works correctly.
           </p>
-          <Button
-            variant="outline"
-            size="sm"
-            className="bg-orange-500/10 border-orange-500/30 hover:bg-orange-500/20"
-            onClick={() => window.open(CLAIM_URL, '_blank')}
+          <a
+            href={CLAIM_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs inline-flex items-center gap-1"
+            style={{ color: 'var(--accent-primary)' }}
           >
-            <ExternalLink className="h-4 w-4 mr-2" />
-            Claim Stripe Sandbox
-          </Button>
+            Claim Stripe Sandbox <ExternalLink className="h-3 w-3" />
+          </a>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="flex-shrink-0"
-          onClick={handleDismiss}
-        >
-          <X className="h-4 w-4" />
-        </Button>
       </div>
     </div>
   );

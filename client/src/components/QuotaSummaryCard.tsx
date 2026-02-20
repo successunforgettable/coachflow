@@ -54,120 +54,50 @@ export function QuotaSummaryCard({ authData, quotaLimits }: QuotaSummaryCardProp
   const overallPercentage = (totalUsed / totalLimit) * 100;
 
   return (
-    <Card className="animate-fade-in">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
-              Quota Usage
-            </CardTitle>
-            <CardDescription>
-              {authData.subscriptionTier === "agency"
-                ? "Unlimited generations on all tools"
-                : `Your monthly usage across all 9 generators`}
-            </CardDescription>
+    <div
+      style={{
+        padding: 'var(--card-padding-md)',
+        borderRadius: 'var(--radius-lg)',
+        border: '1px solid var(--border-subtle)',
+        background: 'var(--bg-secondary)',
+      }}
+    >
+      {authData.subscriptionTier === "agency" ? (
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <TrendingUp className="h-4 w-4" style={{ color: 'var(--text-secondary)' }} />
+            <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Quota Usage</h3>
           </div>
-          {authData.subscriptionTier !== "agency" && hasExceeded && (
-            <Link href="/pricing">
-              <Button size="sm" className="bg-green-600 hover:bg-green-700">
-                Upgrade Plan
-              </Button>
-            </Link>
-          )}
+          <p className="text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>
+            Unlimited generations on all tools
+          </p>
+          <div className="flex items-center gap-2">
+            <span className="text-lg font-bold" style={{ color: '#10B981' }}>∞ Unlimited</span>
+          </div>
+          <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
+            You have unlimited access to all generators
+          </p>
         </div>
-      </CardHeader>
-      <CardContent>
-        {authData.subscriptionTier === "agency" ? (
-          <div className="text-center py-8">
-            <p className="text-2xl font-bold text-green-500">∞ Unlimited</p>
-            <p className="text-sm text-muted-foreground mt-2">
-              You have unlimited access to all generators
+      ) : (
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <TrendingUp className="h-4 w-4" style={{ color: 'var(--text-secondary)' }} />
+              <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Quota Usage</h3>
+            </div>
+            <p className="text-xs mb-2" style={{ color: 'var(--text-secondary)' }}>
+              Your monthly usage across all 9 generators
             </p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {/* Overall Progress */}
-            <div className="pb-4 border-b">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Overall Usage</span>
-                <span className="text-sm text-muted-foreground">
-                  {totalUsed}/{totalLimit} ({Math.round(overallPercentage)}%)
-                </span>
-              </div>
-              <Progress value={overallPercentage} className="h-2" />
+            <div className="flex items-center justify-between text-xs">
+              <span style={{ color: 'var(--text-primary)' }}>Overall: {totalUsed}/{totalLimit}</span>
+              <span style={{ color: hasExceeded ? '#EF4444' : 'var(--text-tertiary)' }}>({Math.round(overallPercentage)}%)</span>
             </div>
-
-            {/* Individual Generators */}
-            <div className="space-y-3">
-              {generators.map((gen) => {
-                const percentage = (gen.used / gen.limit) * 100;
-                const isAtLimit = gen.used >= gen.limit;
-                const isNearLimit = gen.used >= gen.limit * 0.8 && !isAtLimit;
-
-                return (
-                  <div key={gen.name} className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium flex items-center gap-2">
-                        {gen.name}
-                        {isAtLimit && (
-                          <AlertCircle className="h-3 w-3 text-red-500" />
-                        )}
-                      </span>
-                      <span
-                        className={`text-sm ${
-                          isAtLimit
-                            ? "text-red-500 font-semibold"
-                            : isNearLimit
-                            ? "text-yellow-500"
-                            : "text-muted-foreground"
-                        }`}
-                      >
-                        {gen.used}/{gen.limit}
-                      </span>
-                    </div>
-                    <Progress
-                      value={percentage}
-                      className={`h-1.5 ${
-                        isAtLimit
-                          ? "bg-red-100 [&>div]:bg-red-500"
-                          : isNearLimit
-                          ? "bg-yellow-100 [&>div]:bg-yellow-500"
-                          : ""
-                      }`}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Reset Date */}
-            {authData.usageResetAt && (
-              <div className="pt-4 border-t text-center">
-                <p className="text-xs text-muted-foreground">
-                  Quota resets on{" "}
-                  {new Date(authData.usageResetAt).toLocaleDateString("en-US", {
-                    month: "long",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
-                </p>
-              </div>
-            )}
-
-            {/* Warning Message */}
             {hasExceeded && (
-              <div className="pt-4 border-t">
-                <div className="bg-yellow-500/10 border border-yellow-500/50 rounded-lg p-3">
-                  <p className="text-sm text-yellow-500 font-medium">
-                    You've reached your limit on some generators. Upgrade to continue generating!
-                  </p>
-                </div>
-              </div>
+              <Link href="/pricing" className="text-xs mt-2 inline-block" style={{ color: 'var(--accent-primary)' }}>
+                Upgrade Plan →
+              </Link>
             )}
           </div>
         )}
-      </CardContent>
-    </Card>
+    </div>
   );
 }

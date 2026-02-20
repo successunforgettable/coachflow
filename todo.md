@@ -1767,3 +1767,15 @@
 - [x] Apply .generate-btn class to Generate buttons
 - [x] Apply .sidebar class to sidebar container
 - [x] Screenshot and verify exact styling - All exact CSS applied
+
+## Phase 1106: Redesign Right Column Widgets as Compact Info Panels ✅ COMPLETE
+- [x] Apply consistent card styling: var(--card-padding-md) padding, var(--radius-lg) border radius
+- [x] Apply var(--border-subtle) 1px solid border to all cards
+- [x] Apply var(--bg-secondary) background to all cards
+- [x] Stack cards vertically with 12px gap (flexDirection: column, gap: 12px)
+- [x] Stripe alert - add amber left border (4px solid #F59E0B)
+- [x] Quota Usage - make minimal (just infinity symbol and text, no large space)
+- [x] Products card - compact: title, one line description, small action link only
+- [x] Dream Buyer Avatar card - compact: title, one line description, small action link only
+- [x] Remove large empty spaces and full page section styling
+- [x] Test and verify compact info panel appearance - All 99 tests passing
