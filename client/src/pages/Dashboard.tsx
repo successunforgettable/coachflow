@@ -178,7 +178,12 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-background flex">
       {/* Sidebar - Text-only navigation like Kong */}
-      <div className="w-56 bg-card border-r border-border flex flex-col">
+      <div 
+        className="w-56 bg-card flex flex-col"
+        style={{
+          borderRight: '1px solid var(--border-subtle)'
+        }}
+      >
         {/* Logo */}
         <div className="p-6 border-b border-border">
           <h1 className="text-2xl font-bold" style={{ color: 'var(--accent-primary)' }}>KONG</h1>
@@ -337,7 +342,7 @@ export default function Dashboard() {
           </div>
 
           {/* Generator Cards - Horizontal layout like Kong */}
-          <div className="space-y-6" data-tour="generators-grid">
+          <div className="space-y-4" data-tour="generators-grid">
             {generators.map((generator, index) => {
               const Icon = generator.icon;
               return (
@@ -350,30 +355,37 @@ export default function Dashboard() {
                   }}
                 >
                   <div 
-                    className="rounded-xl p-6 transition-all duration-200 cursor-pointer"
+                    className="transition-all duration-200 cursor-pointer"
                     style={{
+                      background: 'var(--bg-secondary)',
                       border: '1px solid var(--border-subtle)',
-                      background: 'var(--bg-elevated)',
+                      borderRadius: 'var(--radius-lg)',
+                      padding: '20px 24px',
+                      borderLeft: '4px solid transparent',
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = 'var(--border-default)';
+                      e.currentTarget.style.background = 'var(--bg-tertiary)';
+                      e.currentTarget.style.borderLeftColor = 'var(--accent-primary)';
                       e.currentTarget.style.transform = 'translateY(-2px)';
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = 'var(--border-subtle)';
+                      e.currentTarget.style.background = 'var(--bg-secondary)';
+                      e.currentTarget.style.borderLeftColor = 'transparent';
                       e.currentTarget.style.transform = 'translateY(0)';
                     }}
                   >
                     <div className="flex items-center gap-6">
                       {/* Icon - Small, left-aligned */}
                       <div 
-                        className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0"
+                        className="flex items-center justify-center flex-shrink-0"
                         style={{
-                          background: 'var(--bg-tertiary)',
-                          border: '1px solid var(--border-subtle)',
+                          width: '40px',
+                          height: '40px',
+                          background: 'var(--accent-subtle)',
+                          borderRadius: 'var(--radius-md)',
                         }}
                       >
-                        <Icon className="w-6 h-6" style={{ color: 'var(--text-secondary)' }} />
+                        <Icon className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} />
                       </div>
 
                       {/* Title + Description - Middle, takes up remaining space */}

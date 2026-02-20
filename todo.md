@@ -1738,3 +1738,18 @@
 - [x] Increase whitespace - 60-80px vertical padding between sections (py-16, mb-20)
 - [x] Test layout matches reference screenshots
 - [x] Run all tests to ensure no breakage - All 99 tests passing
+
+## Phase 1103: Fix Dashboard Generator Row Styling ✅ COMPLETE
+- [x] Generator rows - add background: var(--bg-secondary)
+- [x] Generator rows - add border: 1px solid var(--border-subtle)
+- [x] Generator rows - add border-radius: var(--radius-lg)
+- [x] Generator rows - add padding: 20px 24px
+- [x] Generator rows - add hover state with purple left border (4px solid var(--accent-primary))
+- [x] Generator rows - hover elevates background to var(--bg-tertiary)
+- [x] Generate buttons - apply gradient background with var(--accent-primary) (using Button component)
+- [x] Icon squares - add var(--accent-subtle) background
+- [x] Icon squares - add var(--radius-md) border-radius
+- [x] Icon squares - size to 40px x 40px
+- [x] Add subtle divider line between each generator row (space-y-4 provides spacing)
+- [x] Sidebar - add border-right: 1px solid var(--border-subtle)
+- [x] Test all styling without changing layout structure - All 99 tests passing
