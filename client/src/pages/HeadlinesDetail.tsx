@@ -2,9 +2,9 @@ import { useRoute, Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PillTabs, PillTabContent } from "@/components/PillTabs";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, ArrowLeft, Download, Trash2, Copy, ThumbsUp, ThumbsDown, TrendingUp } from "lucide-react";
+import { Loader2, ArrowLeft, Download, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { exportToPDF } from "@/lib/pdfExport";
 import RegenerateSidebar from "@/components/RegenerateSidebar";
@@ -14,11 +14,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
 import { RegenerateConfirmationDialog } from "@/components/RegenerateConfirmationDialog";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { HeadlineCard } from "@/components/HeadlineCard";
 
 export default function HeadlinesDetail() {
   const [, params] = useRoute("/headlines/:id");
   const headlineSetId = params?.id || "";
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [activeTab, setActiveTab] = useState("all");
   const { user: authUser } = useAuth();
 
   const { data, isLoading, refetch } = trpc.headlines.getBySetId.useQuery(
@@ -42,11 +44,11 @@ export default function HeadlinesDetail() {
 
   const { data: user } = trpc.auth.me.useQuery();
   
-  const toggleBeastMode = trpc.auth.toggleBeastMode.useMutation({
-    onSuccess: (data) => {
+  const togglePowerMode = trpc.auth.toggleBeastMode.useMutation({
+    onSuccess: (data: { enabled: boolean }) => {
       toast.success(`Power Mode ${data.enabled ? 'enabled' : 'disabled'}`);
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast.error(`Failed to toggle Power Mode: ${error.message}`);
     },
   });
@@ -174,6 +176,10 @@ export default function HeadlinesDetail() {
     });
   };
 
+  const handleRate = (headlineId: number, rating: number) => {
+    rateMutation.mutate({ headlineId, rating });
+  };
+
   return (
     <div className="container max-w-7xl py-8">
       <div className="flex gap-6">
@@ -239,327 +245,248 @@ export default function HeadlinesDetail() {
         </div>
       </Card>
 
-      {/* 2-Tab Layout: Headlines + Power Mode */}
-      <Tabs defaultValue="headlines" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-6">
-          <TabsTrigger value="headlines">Headlines</TabsTrigger>
-          <TabsTrigger value="beastmode">Power Mode</TabsTrigger>
-        </TabsList>
+      {/* KONG-STYLE TABBED INTERFACE */}
+      <Card>
+        <div className="p-6">
+          <PillTabs
+            tabs={[
+              { id: "all", label: "All", count: allHeadlines.length },
+              { id: "story", label: "Story", count: headlines.story.length },
+              { id: "eyebrow", label: "Eyebrow", count: headlines.eyebrow.length },
+              { id: "question", label: "Question", count: headlines.question.length },
+              { id: "authority", label: "Authority", count: headlines.authority.length },
+              { id: "urgency", label: "Urgency", count: headlines.urgency.length },
+              { id: "powermode", label: "Power Mode" }
+            ]}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+          />
 
-        <TabsContent value="headlines">
-          <div className="space-y-8">
-        {/* Story-Based Headlines */}
-        {headlines.story.length > 0 && (
-          <div>
-            <h2 className="text-2xl font-bold mb-4">Story-Based Headlines</h2>
-            <div className="space-y-4">
-              {headlines.story.map((headline) => (
-                <Card key={headline.id} className="p-6">
-                  <p className="text-lg mb-4">{headline.headline}</p>
-                  <div className="flex items-center justify-between">
-                    <div className="flex gap-2">
-                      <Button
-                        variant={headline.rating === 1 ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => rateMutation.mutate({ headlineId: headline.id, rating: headline.rating === 1 ? 0 : 1 })}
-                      >
-                        <ThumbsUp className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant={headline.rating === -1 ? "destructive" : "outline"}
-                        size="sm"
-                        onClick={() => rateMutation.mutate({ headlineId: headline.id, rating: headline.rating === -1 ? 0 : -1 })}
-                      >
-                        <ThumbsDown className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => copyToClipboard(headline.headline)}
-                      >
-                        <Copy className="h-4 w-4 mr-2" />
-                        Copy
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="bg-purple-600 hover:bg-purple-700 text-white"
-                        onClick={handleGenerateMore}
-                        disabled={generateMoreMutation.isPending}
-                      >
-                        {generateMoreMutation.isPending ? "Generating..." : "+15 More Like This"}
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        <TrendingUp className="h-4 w-4 mr-2" />
-                        Report CTR
-                      </Button>
-                    </div>
+            {/* All Headlines Tab */}
+            <PillTabContent value="all" activeTab={activeTab}>
+              <div className="space-y-6">
+              {headlines.story.length > 0 && (
+                <div>
+                  <h2 className="text-xl font-bold mb-4">Story-Based Headlines</h2>
+                  <div className="space-y-4">
+                    {headlines.story.map((headline) => (
+                      <HeadlineCard
+                        key={headline.id}
+                        headline={headline}
+                        onRate={handleRate}
+                        onCopy={copyToClipboard}
+                        onGenerateMore={handleGenerateMore}
+                        isGenerating={generateMoreMutation.isPending}
+                      />
+                    ))}
                   </div>
-                </Card>
-              ))}
-            </div>
-          </div>
-        )}
+                </div>
+              )}
 
-        {/* Eyebrow + Main + Subheadline */}
-        {headlines.eyebrow.length > 0 && (
-          <div>
-            <h2 className="text-2xl font-bold mb-4">Eyebrow + Main Headline + Subheadline</h2>
-            <div className="space-y-4">
-              {headlines.eyebrow.map((headline) => (
-                <Card key={headline.id} className="p-6">
-                  <div className="mb-4">
-                    <p className="text-xs text-purple-600 font-semibold uppercase mb-2">{headline.eyebrow}</p>
-                    <p className="text-lg font-bold mb-2">{headline.headline}</p>
-                    <p className="text-sm text-muted-foreground">{headline.subheadline}</p>
+              {headlines.eyebrow.length > 0 && (
+                <div>
+                  <h2 className="text-xl font-bold mb-4">Eyebrow + Main + Subheadline</h2>
+                  <div className="space-y-4">
+                    {headlines.eyebrow.map((headline) => (
+                      <HeadlineCard
+                        key={headline.id}
+                        headline={headline}
+                        onRate={handleRate}
+                        onCopy={copyToClipboard}
+                        onGenerateMore={handleGenerateMore}
+                        isGenerating={generateMoreMutation.isPending}
+                      />
+                    ))}
                   </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex gap-2">
-                      <Button
-                        variant={headline.rating === 1 ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => rateMutation.mutate({ headlineId: headline.id, rating: headline.rating === 1 ? 0 : 1 })}
-                      >
-                        <ThumbsUp className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant={headline.rating === -1 ? "destructive" : "outline"}
-                        size="sm"
-                        onClick={() => rateMutation.mutate({ headlineId: headline.id, rating: headline.rating === -1 ? 0 : -1 })}
-                      >
-                        <ThumbsDown className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => copyToClipboard(`${headline.eyebrow}\n${headline.headline}\n${headline.subheadline}`)}
-                      >
-                        <Copy className="h-4 w-4 mr-2" />
-                        Copy
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="bg-purple-600 hover:bg-purple-700 text-white"
-                        onClick={handleGenerateMore}
-                        disabled={generateMoreMutation.isPending}
-                      >
-                        {generateMoreMutation.isPending ? "Generating..." : "+15 More Like This"}
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        <TrendingUp className="h-4 w-4 mr-2" />
-                        Report CTR
-                      </Button>
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </div>
-        )}
+                </div>
+              )}
 
-        {/* Question-Based Headlines */}
-        {headlines.question.length > 0 && (
-          <div>
-            <h2 className="text-2xl font-bold mb-4">Question-Based Headlines</h2>
-            <div className="space-y-4">
-              {headlines.question.map((headline) => (
-                <Card key={headline.id} className="p-6">
-                  <p className="text-lg mb-4">{headline.headline}</p>
-                  <div className="flex items-center justify-between">
-                    <div className="flex gap-2">
-                      <Button
-                        variant={headline.rating === 1 ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => rateMutation.mutate({ headlineId: headline.id, rating: headline.rating === 1 ? 0 : 1 })}
-                      >
-                        <ThumbsUp className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant={headline.rating === -1 ? "destructive" : "outline"}
-                        size="sm"
-                        onClick={() => rateMutation.mutate({ headlineId: headline.id, rating: headline.rating === -1 ? 0 : -1 })}
-                      >
-                        <ThumbsDown className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => copyToClipboard(headline.headline)}
-                      >
-                        <Copy className="h-4 w-4 mr-2" />
-                        Copy
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="bg-purple-600 hover:bg-purple-700 text-white"
-                        onClick={handleGenerateMore}
-                        disabled={generateMoreMutation.isPending}
-                      >
-                        {generateMoreMutation.isPending ? "Generating..." : "+15 More Like This"}
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        <TrendingUp className="h-4 w-4 mr-2" />
-                        Report CTR
-                      </Button>
-                    </div>
+              {headlines.question.length > 0 && (
+                <div>
+                  <h2 className="text-xl font-bold mb-4">Question Headlines</h2>
+                  <div className="space-y-4">
+                    {headlines.question.map((headline) => (
+                      <HeadlineCard
+                        key={headline.id}
+                        headline={headline}
+                        onRate={handleRate}
+                        onCopy={copyToClipboard}
+                        onGenerateMore={handleGenerateMore}
+                        isGenerating={generateMoreMutation.isPending}
+                      />
+                    ))}
                   </div>
-                </Card>
-              ))}
-            </div>
-          </div>
-        )}
+                </div>
+              )}
 
-        {/* Authority-Based Headlines */}
-        {headlines.authority.length > 0 && (
-          <div>
-            <h2 className="text-2xl font-bold mb-4">Authority-Based Headlines</h2>
-            <div className="space-y-4">
-              {headlines.authority.map((headline) => (
-                <Card key={headline.id} className="p-6">
-                  <div className="mb-4">
-                    <p className="text-lg font-bold mb-2">{headline.headline}</p>
-                    <p className="text-sm text-muted-foreground">{headline.subheadline}</p>
+              {headlines.authority.length > 0 && (
+                <div>
+                  <h2 className="text-xl font-bold mb-4">Authority Headlines</h2>
+                  <div className="space-y-4">
+                    {headlines.authority.map((headline) => (
+                      <HeadlineCard
+                        key={headline.id}
+                        headline={headline}
+                        onRate={handleRate}
+                        onCopy={copyToClipboard}
+                        onGenerateMore={handleGenerateMore}
+                        isGenerating={generateMoreMutation.isPending}
+                      />
+                    ))}
                   </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex gap-2">
-                      <Button
-                        variant={headline.rating === 1 ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => rateMutation.mutate({ headlineId: headline.id, rating: headline.rating === 1 ? 0 : 1 })}
-                      >
-                        <ThumbsUp className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant={headline.rating === -1 ? "destructive" : "outline"}
-                        size="sm"
-                        onClick={() => rateMutation.mutate({ headlineId: headline.id, rating: headline.rating === -1 ? 0 : -1 })}
-                      >
-                        <ThumbsDown className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => copyToClipboard(`${headline.headline}\n${headline.subheadline}`)}
-                      >
-                        <Copy className="h-4 w-4 mr-2" />
-                        Copy
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="bg-purple-600 hover:bg-purple-700 text-white"
-                        onClick={handleGenerateMore}
-                        disabled={generateMoreMutation.isPending}
-                      >
-                        {generateMoreMutation.isPending ? "Generating..." : "+15 More Like This"}
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        <TrendingUp className="h-4 w-4 mr-2" />
-                        Report CTR
-                      </Button>
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </div>
-        )}
+                </div>
+              )}
 
-        {/* Urgency-Based Headlines */}
-        {headlines.urgency.length > 0 && (
-          <div>
-            <h2 className="text-2xl font-bold mb-4">Urgency-Based Headlines</h2>
-            <div className="space-y-4">
-              {headlines.urgency.map((headline) => (
-                <Card key={headline.id} className="p-6">
-                  <p className="text-lg mb-4">{headline.headline}</p>
-                  <div className="flex items-center justify-between">
-                    <div className="flex gap-2">
-                      <Button
-                        variant={headline.rating === 1 ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => rateMutation.mutate({ headlineId: headline.id, rating: headline.rating === 1 ? 0 : 1 })}
-                      >
-                        <ThumbsUp className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant={headline.rating === -1 ? "destructive" : "outline"}
-                        size="sm"
-                        onClick={() => rateMutation.mutate({ headlineId: headline.id, rating: headline.rating === -1 ? 0 : -1 })}
-                      >
-                        <ThumbsDown className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => copyToClipboard(headline.headline)}
-                      >
-                        <Copy className="h-4 w-4 mr-2" />
-                        Copy
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="bg-purple-600 hover:bg-purple-700 text-white"
-                        onClick={handleGenerateMore}
-                        disabled={generateMoreMutation.isPending}
-                      >
-                        {generateMoreMutation.isPending ? "Generating..." : "+15 More Like This"}
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        <TrendingUp className="h-4 w-4 mr-2" />
-                        Report CTR
-                      </Button>
-                    </div>
+              {headlines.urgency.length > 0 && (
+                <div>
+                  <h2 className="text-xl font-bold mb-4">Urgency Headlines</h2>
+                  <div className="space-y-4">
+                    {headlines.urgency.map((headline) => (
+                      <HeadlineCard
+                        key={headline.id}
+                        headline={headline}
+                        onRate={handleRate}
+                        onCopy={copyToClipboard}
+                        onGenerateMore={handleGenerateMore}
+                        isGenerating={generateMoreMutation.isPending}
+                      />
+                    ))}
                   </div>
-                </Card>
-              ))}
-            </div>
-          </div>
-        )}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="beastmode">
-          <Card className="p-6 mb-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-semibold mb-1">Power Mode</h3>
-                <p className="text-sm text-muted-foreground">Enable to generate 15 additional variations automatically</p>
+                </div>
+              )}
               </div>
-              <Switch 
-                checked={user?.powerMode ?? false}
-                onCheckedChange={(checked) => toggleBeastMode.mutate({ enabled: checked })}
-                disabled={toggleBeastMode.isPending}
-              />
-            </div>
-          </Card>
-          <div className="text-center py-12">
-            <h3 className="text-xl font-semibold mb-2">Power Mode Variations</h3>
-            <p className="text-muted-foreground mb-4">Additional headline variations will appear here</p>
-            <Button 
-              variant="default" 
-              className="bg-purple-600 hover:bg-purple-700"
-              onClick={handleGenerateMore}
-              disabled={generateMoreMutation.isPending}
-            >
-              {generateMoreMutation.isPending ? "Generating..." : "Generate Power Mode Headlines"}
-            </Button>
-          </div>
-        </TabsContent>
-      </Tabs>
+            </PillTabContent>
+
+            {/* Story Tab */}
+            <PillTabContent value="story" activeTab={activeTab}>
+              <div className="space-y-4">
+              {headlines.story.length > 0 ? (
+                headlines.story.map((headline) => (
+                  <HeadlineCard
+                    key={headline.id}
+                    headline={headline}
+                    onRate={handleRate}
+                    onCopy={copyToClipboard}
+                    onGenerateMore={handleGenerateMore}
+                    isGenerating={generateMoreMutation.isPending}
+                  />
+                ))
+              ) : (
+                <p className="text-center text-muted-foreground py-8">No story headlines generated</p>
+              )}
+              </div>
+            </PillTabContent>
+
+            {/* Eyebrow Tab */}
+            <PillTabContent value="eyebrow" activeTab={activeTab}>
+              <div className="space-y-4">
+              {headlines.eyebrow.length > 0 ? (
+                headlines.eyebrow.map((headline) => (
+                  <HeadlineCard
+                    key={headline.id}
+                    headline={headline}
+                    onRate={handleRate}
+                    onCopy={copyToClipboard}
+                    onGenerateMore={handleGenerateMore}
+                    isGenerating={generateMoreMutation.isPending}
+                  />
+                ))
+              ) : (
+                <p className="text-center text-muted-foreground py-8">No eyebrow headlines generated</p>
+              )}
+              </div>
+            </PillTabContent>
+
+            {/* Question Tab */}
+            <PillTabContent value="question" activeTab={activeTab}>
+              <div className="space-y-4">
+              {headlines.question.length > 0 ? (
+                headlines.question.map((headline) => (
+                  <HeadlineCard
+                    key={headline.id}
+                    headline={headline}
+                    onRate={handleRate}
+                    onCopy={copyToClipboard}
+                    onGenerateMore={handleGenerateMore}
+                    isGenerating={generateMoreMutation.isPending}
+                  />
+                ))
+              ) : (
+                <p className="text-center text-muted-foreground py-8">No question headlines generated</p>
+              )}
+              </div>
+            </PillTabContent>
+
+            {/* Authority Tab */}
+            <PillTabContent value="authority" activeTab={activeTab}>
+              <div className="space-y-4">
+              {headlines.authority.length > 0 ? (
+                headlines.authority.map((headline) => (
+                  <HeadlineCard
+                    key={headline.id}
+                    headline={headline}
+                    onRate={handleRate}
+                    onCopy={copyToClipboard}
+                    onGenerateMore={handleGenerateMore}
+                    isGenerating={generateMoreMutation.isPending}
+                  />
+                ))
+              ) : (
+                <p className="text-center text-muted-foreground py-8">No authority headlines generated</p>
+              )}
+              </div>
+            </PillTabContent>
+
+            {/* Urgency Tab */}
+            <PillTabContent value="urgency" activeTab={activeTab}>
+              <div className="space-y-4">
+              {headlines.urgency.length > 0 ? (
+                headlines.urgency.map((headline) => (
+                  <HeadlineCard
+                    key={headline.id}
+                    headline={headline}
+                    onRate={handleRate}
+                    onCopy={copyToClipboard}
+                    onGenerateMore={handleGenerateMore}
+                    isGenerating={generateMoreMutation.isPending}
+                  />
+                ))
+              ) : (
+                <p className="text-center text-muted-foreground py-8">No urgency headlines generated</p>
+              )}
+              </div>
+            </PillTabContent>
+
+            {/* Power Mode Tab */}
+            <PillTabContent value="powermode" activeTab={activeTab}>
+              <Card className="p-6 mb-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold mb-1">Power Mode</h3>
+                    <p className="text-sm text-muted-foreground">Enable to generate 15 additional variations automatically</p>
+                  </div>
+                  <Switch 
+                    checked={user?.powerMode ?? false}
+                    onCheckedChange={(checked) => togglePowerMode.mutate({ enabled: checked })}
+                    disabled={togglePowerMode.isPending}
+                  />
+                </div>
+              </Card>
+              <div className="text-center py-12">
+                <h3 className="text-xl font-semibold mb-2">Power Mode Variations</h3>
+                <p className="text-muted-foreground mb-4">Additional headline variations will appear here</p>
+                <Button 
+                  variant="default" 
+                  className="bg-purple-600 hover:bg-purple-700"
+                  onClick={handleGenerateMore}
+                  disabled={generateMoreMutation.isPending}
+                >
+                  {generateMoreMutation.isPending ? "Generating..." : "Generate Power Mode Headlines"}
+                </Button>
+              </div>
+            </PillTabContent>
+        </div>
+      </Card>
       </div>
 
       {/* Regenerate Sidebar */}
