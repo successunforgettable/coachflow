@@ -320,21 +320,21 @@ export default function Dashboard() {
             {generators.map((gen, index) => (
               <Link key={gen.href} href={gen.href}>
                 <div
-                  className="flex items-center gap-4 p-5 bg-[#14141F] border border-[#27273A] rounded-xl mb-1.5 cursor-pointer hover:bg-[#1C1C2E] hover:border-[#8B5CF6] transition-all duration-200"
+                  className="flex items-center gap-3 px-4 py-3 bg-[#0F0F18] border border-[rgba(39,39,58,0.3)] rounded-lg mb-1 cursor-pointer hover:bg-[#16161F] hover:border-[rgba(139,92,246,0.4)] transition-all duration-200"
                   style={{
                     animationDelay: `${index * 60}ms`,
                     animation: 'fadeInUp 0.4s ease-out both',
                   }}
                 >
-                  <div className="w-10 h-10 bg-[rgba(139,92,246,0.1)] rounded-lg flex items-center justify-center flex-shrink-0">
-                    <gen.icon className="w-[18px] h-[18px]" />
+                  <div className="w-9 h-9 bg-[rgba(139,92,246,0.08)] rounded-md flex items-center justify-center flex-shrink-0">
+                    <gen.icon className="w-[16px] h-[16px]" />
                   </div>
-                  <div className="flex-1">
-                    <div className="text-base font-semibold text-white">{gen.title}</div>
-                    <div className="text-sm text-[#9CA3AF] mt-0.5">{gen.description}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[15px] font-semibold text-white leading-tight">{gen.title}</div>
+                    <div className="text-[13px] text-[#8B8B9A] mt-0.5 leading-tight">{gen.description}</div>
                   </div>
                   <button
-                    className="ml-auto px-5 py-2 bg-gradient-to-br from-[#8B5CF6] to-[#A78BFA] rounded-lg text-white text-sm font-semibold flex-shrink-0 hover:shadow-[0_0_20px_rgba(139,92,246,0.4)] hover:-translate-y-px transition-all duration-200"
+                    className="ml-auto px-4 py-1.5 bg-gradient-to-br from-[#8B5CF6] to-[#A78BFA] rounded-md text-white text-[13px] font-semibold flex-shrink-0 hover:shadow-[0_0_16px_rgba(139,92,246,0.35)] hover:-translate-y-0.5 transition-all duration-200"
                     onClick={(e) => {
                       e.preventDefault();
                       window.location.href = gen.href;

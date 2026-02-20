@@ -1825,3 +1825,16 @@
 - [x] Screenshot the specific component file edited (Dashboard.tsx lines 321-347)
 - [x] Screenshot the result in browser to verify styling - All generator rows have visible dark background boxes with borders
 - [x] All 99 tests passing
+
+## Phase 1111: Match Generator Rows to Reference Design Exactly ✅ COMPLETE
+- [x] Reduce generator row padding from p-5 (20px) to px-4 py-3 (16px horizontal, 12px vertical)
+- [x] Change background from #14141F to darker #0F0F18 to match reference
+- [x] Make borders extremely subtle using rgba(39,39,58,0.3) semi-transparent
+- [x] Reduce gap between rows from mb-1.5 (6px) to mb-1 (4px) for tighter spacing
+- [x] Update icon container: reduced from 40x40px to 36x36px, bg opacity from 0.1 to 0.08
+- [x] Make Generate buttons more compact: px-4 py-1.5 (was px-5 py-2), text-[13px] (was text-sm)
+- [x] Reduce text sizes: title 15px (was 16px), description 13px (was 14px), added leading-tight
+- [x] Reduce border radius: rounded-lg to rounded-md for sharper corners
+- [x] Update hover effects: subtler glow (0.35 opacity vs 0.4), softer translate (-0.5 vs -1px)
+- [x] Test and screenshot to compare with reference - matches compact, dense design
+- [x] All 99 tests passing
