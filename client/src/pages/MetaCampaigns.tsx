@@ -5,21 +5,35 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ExternalLink, TrendingUp, MousePointerClick, DollarSign, Eye, Play, Pause, Trash2, BarChart3, GitCompare, X } from "lucide-react";
+import { ExternalLink, TrendingUp, MousePointerClick, DollarSign, Eye, Play, Pause, Trash2, BarChart3, GitCompare, X, Calendar } from "lucide-react";
 import { useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { Link } from "wouter";
 import { CampaignPerformanceChart } from "@/components/CampaignPerformanceChart";
 import { CampaignComparison } from "@/components/CampaignComparison";
+import { DateRangePicker } from "@/components/DateRangePicker";
 
 export default function MetaCampaigns() {
   const { user } = useAuth();
   const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>([]);
   const [showComparison, setShowComparison] = useState(false);
+  // Default: Last 30 days for dashboard
+  const getDefaultDateRange = () => {
+    const until = new Date().toISOString().split('T')[0];
+    const since = new Date();
+    since.setDate(since.getDate() - 30);
+    return {
+      since: since.toISOString().split('T')[0],
+      until,
+    };
+  };
+
+  const [dashboardDateRange, setDashboardDateRange] = useState<{ since?: string; until?: string } | undefined>(getDefaultDateRange());
+
   const { data: connection, isLoading: connectionLoading } = trpc.meta.getConnectionStatus.useQuery();
   const { data: campaigns, isLoading: campaignsLoading, refetch } = trpc.meta.getCampaigns.useQuery(
-    { includeInsights: true, limit: 50 },
+    { includeInsights: true, limit: 50, dateRange: dashboardDateRange },
     { enabled: !!connection?.connected }
   );
   const { data: adAccount } = trpc.meta.getAdAccount.useQuery(undefined, { enabled: !!connection?.connected });
@@ -120,6 +134,11 @@ export default function MetaCampaigns() {
         </TabsList>
 
         <TabsContent value="dashboard" className="space-y-6">
+          {/* Date Range Picker for Dashboard */}
+          <div className="flex justify-end mb-4">
+            <DateRangePicker value={dashboardDateRange} onChange={setDashboardDateRange} />
+          </div>
+
           {adAccount && (
             <Card className="p-6">
               <div className="flex items-center justify-between">

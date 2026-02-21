@@ -1,9 +1,9 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { X, Calendar } from "lucide-react";
-import { useState, useEffect } from "react";
+import { X } from "lucide-react";
+import { useState } from "react";
 import { trpc } from "@/lib/trpc";
+import { DateRangePicker } from "@/components/DateRangePicker";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 interface CampaignInsight {
@@ -32,25 +32,22 @@ interface CampaignComparisonProps {
 }
 
 export function CampaignComparison({ campaignIds, onClose }: CampaignComparisonProps) {
-  const [dateRange, setDateRange] = useState<string>("30"); // Default: Last 30 days
-
-  // Calculate date range based on selection
-  const getDateRange = () => {
-    if (dateRange === "all") return undefined;
-    
-    const until = new Date().toISOString().split('T')[0]; // Today
+  // Default: Last 30 days
+  const getDefaultDateRange = () => {
+    const until = new Date().toISOString().split('T')[0];
     const since = new Date();
-    since.setDate(since.getDate() - parseInt(dateRange));
-    
+    since.setDate(since.getDate() - 30);
     return {
       since: since.toISOString().split('T')[0],
       until,
     };
   };
 
+  const [dateRange, setDateRange] = useState<{ since?: string; until?: string } | undefined>(getDefaultDateRange());
+
   // Fetch campaigns with date range
   const { data: allCampaigns, isLoading } = trpc.meta.getCampaigns.useQuery(
-    { includeInsights: true, dateRange: getDateRange() },
+    { includeInsights: true, dateRange },
     { refetchOnWindowFocus: false }
   );
 
@@ -88,21 +85,8 @@ export function CampaignComparison({ campaignIds, onClose }: CampaignComparisonP
           <p className="text-muted-foreground">Comparing {campaigns.length} campaigns side-by-side</p>
         </div>
         <div className="flex items-center gap-4">
-          {/* Date Range Selector */}
-          <div className="flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-muted-foreground" />
-            <Select value={dateRange} onValueChange={setDateRange}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Select date range" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="7">Last 7 days</SelectItem>
-                <SelectItem value="30">Last 30 days</SelectItem>
-                <SelectItem value="90">Last 90 days</SelectItem>
-                <SelectItem value="all">All time</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Date Range Picker */}
+          <DateRangePicker value={dateRange} onChange={setDateRange} />
           <Button variant="ghost" size="icon" onClick={onClose}>
             <X className="w-5 h-5" />
           </Button>

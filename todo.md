@@ -2294,3 +2294,23 @@
 - [x] Add loading state during date range changes
 - [x] Change CampaignComparison to accept campaignIds instead of campaigns
 - [x] Fix MetaCampaigns to pass campaignIds to comparison view
+
+### Phase 8: Date Range Filter for Dashboard (COMPLETE)
+- [x] Add date range state to MetaCampaigns Dashboard tab
+- [x] Add date range selector UI to Dashboard tab header
+- [x] Pass dateRange parameter to getCampaigns query in Dashboard
+- [x] Update summary cards with filtered data
+- [x] Update all dashboard charts with filtered data
+- [x] Test dashboard date range filtering
+
+### Phase 9: Custom Date Picker (COMPLETE)
+- [x] Install react-day-picker and date-fns libraries
+- [x] Create DateRangePicker component with Popover UI
+- [x] Add 2-month calendar view with DayPicker
+- [x] Add preset buttons (Last 7/30/90 days, All time) in sidebar
+- [x] Format selected date range display (MMM d, yyyy format)
+- [x] Disable future dates (after today)
+- [x] Replace Select dropdown with DateRangePicker in CampaignComparison
+- [x] Replace Select dropdown with DateRangePicker in Dashboard
+- [x] Update state management to use date objects
+- [x] Test custom date picker functionality
