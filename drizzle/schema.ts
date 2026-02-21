@@ -696,3 +696,31 @@ export const metaAccessTokens = mysqlTable("meta_access_tokens", {
 
 export type MetaAccessToken = typeof metaAccessTokens.$inferSelect;
 export type InsertMetaAccessToken = typeof metaAccessTokens.$inferInsert;
+
+/**
+ * Meta Published Ads - Links CoachFlow ad sets to Meta campaigns
+ * Tracks which ads have been published to Meta and their current status
+ */
+export const metaPublishedAds = mysqlTable("meta_published_ads", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  adSetId: varchar("adSetId", { length: 255 }).notNull(), // CoachFlow ad set ID
+  metaCampaignId: varchar("metaCampaignId", { length: 255 }).notNull(), // Meta campaign ID
+  metaAdSetId: varchar("metaAdSetId", { length: 255 }).notNull(), // Meta ad set ID
+  metaAdId: varchar("metaAdId", { length: 255 }).notNull(), // Meta ad ID
+  metaCreativeId: varchar("metaCreativeId", { length: 255 }).notNull(), // Meta creative ID
+  campaignName: varchar("campaignName", { length: 255 }).notNull(),
+  status: mysqlEnum("status", ["ACTIVE", "PAUSED", "ARCHIVED", "DELETED"]).default("PAUSED").notNull(),
+  objective: varchar("objective", { length: 100 }), // Campaign objective
+  dailyBudget: decimal("dailyBudget", { precision: 10, scale: 2 }), // Daily budget in dollars
+  publishedAt: timestamp("publishedAt").defaultNow().notNull(),
+  lastSyncedAt: timestamp("lastSyncedAt").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  userIdIdx: index("idx_metaPublishedAds_userId").on(table.userId),
+  adSetIdIdx: index("idx_metaPublishedAds_adSetId").on(table.adSetId),
+}));
+
+export type MetaPublishedAd = typeof metaPublishedAds.$inferSelect;
+export type InsertMetaPublishedAd = typeof metaPublishedAds.$inferInsert;

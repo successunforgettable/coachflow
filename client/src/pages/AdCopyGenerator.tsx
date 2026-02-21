@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import { getLoginUrl } from "@/const";
 import { Loader2, Trash2, Eye, Sparkles, Shield } from "lucide-react";
+import { MetaStatusBadge } from "@/components/MetaStatusBadge";
 import { SkeletonCardList } from "@/components/SkeletonCard";
 import { Link } from "wouter";
 import { toast } from "sonner";
@@ -57,6 +58,10 @@ export default function AdCopyGenerator() {
   });
 
   const { data: adSets, refetch: refetchAdCopy } = trpc.adCopy.list.useQuery(undefined, {
+    enabled: isAuthenticated,
+  });
+
+  const { data: publishedAds } = trpc.meta.getPublishedAds.useQuery(undefined, {
     enabled: isAuthenticated,
   });
 
@@ -602,6 +607,17 @@ export default function AdCopyGenerator() {
                             <span className="text-xs text-muted-foreground">
                               {new Date(adSet.createdAt).toLocaleDateString()}
                             </span>
+                            {/* Meta Status Badge */}
+                            {(() => {
+                              const published = publishedAds?.find(p => p.adSetId === adSet.adSetId);
+                              return (
+                                <MetaStatusBadge
+                                  status={published?.status || null}
+                                  campaignName={published?.campaignName}
+                                  metaCampaignId={published?.metaCampaignId}
+                                />
+                              );
+                            })()}
                           </div>
                           <p className="text-sm text-muted-foreground mb-1">
                             <strong>Target:</strong> {adSet.targetMarket || "Not specified"}

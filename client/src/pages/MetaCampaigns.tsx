@@ -4,17 +4,49 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ExternalLink, TrendingUp, MousePointerClick, DollarSign, Eye } from "lucide-react";
+import { ExternalLink, TrendingUp, MousePointerClick, DollarSign, Eye, Play, Pause, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { Link } from "wouter";
 
 export default function MetaCampaigns() {
   const { user } = useAuth();
   const { data: connection, isLoading: connectionLoading } = trpc.meta.getConnectionStatus.useQuery();
-  const { data: campaigns, isLoading: campaignsLoading } = trpc.meta.getCampaigns.useQuery(
+  const { data: campaigns, isLoading: campaignsLoading, refetch } = trpc.meta.getCampaigns.useQuery(
     { includeInsights: true, limit: 50 },
     { enabled: !!connection?.connected }
   );
   const { data: adAccount } = trpc.meta.getAdAccount.useQuery(undefined, { enabled: !!connection?.connected });
+
+  const updateStatusMutation = trpc.meta.updateCampaignStatus.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Campaign ${data.status === "ACTIVE" ? "activated" : "paused"}`);
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to update campaign status");
+    },
+  });
+
+  const deleteMutation = trpc.meta.deleteCampaign.useMutation({
+    onSuccess: () => {
+      toast.success("Campaign deleted");
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to delete campaign");
+    },
+  });
+
+  const handleToggleStatus = (campaignId: string, currentStatus: string) => {
+    const newStatus = currentStatus === "ACTIVE" ? "PAUSED" : "ACTIVE";
+    updateStatusMutation.mutate({ campaignId, status: newStatus as "ACTIVE" | "PAUSED" });
+  };
+
+  const handleDelete = (campaignId: string, campaignName: string) => {
+    if (confirm(`Delete campaign "${campaignName}"? This action cannot be undone.`)) {
+      deleteMutation.mutate({ campaignId });
+    }
+  };
 
   if (connectionLoading) {
     return (
@@ -151,6 +183,39 @@ export default function MetaCampaigns() {
                 <div className="text-sm text-muted-foreground">
                   {campaign.dailyBudget && `Daily Budget: $${campaign.dailyBudget.toFixed(2)}`}
                   {campaign.lifetimeBudget && `Lifetime Budget: $${campaign.lifetimeBudget.toFixed(2)}`}
+                </div>
+                <div className="flex items-center gap-2">
+                  {campaign.status !== "DELETED" && campaign.status !== "ARCHIVED" && (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleToggleStatus(campaign.id, campaign.status)}
+                        disabled={updateStatusMutation.isPending}
+                      >
+                        {campaign.status === "ACTIVE" ? (
+                          <>
+                            <Pause className="w-4 h-4 mr-2" />
+                            Pause
+                          </>
+                        ) : (
+                          <>
+                            <Play className="w-4 h-4 mr-2" />
+                            Activate
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDelete(campaign.id, campaign.name)}
+                        disabled={deleteMutation.isPending}
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Delete
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
             </Card>

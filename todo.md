@@ -2240,3 +2240,20 @@
 - [ ] Test ad publishing with different ad types
 - [ ] Write vitest tests for Meta procedures
 - [ ] Save checkpoint
+
+### Phase 4: Campaign Management & Ad Status Badges (COMPLETE)
+- [x] Add metaPublishedAds table to link CoachFlow ads to Meta campaigns
+- [x] Generate and apply migration (0023_yellow_doctor_faustus.sql)
+- [x] Add updateCampaignStatus procedure (pause/resume)
+- [x] Add updateCampaign procedure (edit budget, name)
+- [x] Add deleteCampaign procedure
+- [x] Add getPublishedAds procedure to fetch user's published ads
+- [x] Build campaign management UI on Meta Campaigns page
+- [x] Add pause/resume/delete buttons to each campaign
+- [x] Store Meta campaign IDs when publishing from Ad Copy
+- [x] Add MetaStatusBadge component (Active/Paused/Draft)
+- [x] Show ad status badges on Ad Copy list page
+- [x] Add "View in Meta" link to published ads
+- [x] Write vitest tests for campaign management (12 tests passing)
+- [x] Test campaign management flow
+- [x] Test status badge updates

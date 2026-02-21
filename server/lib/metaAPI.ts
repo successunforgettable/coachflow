@@ -445,3 +445,107 @@ export async function createAd(
     return null;
   }
 }
+
+/**
+ * Update campaign status (pause/resume)
+ */
+export async function updateCampaignStatus(
+  userId: number,
+  campaignId: string,
+  status: "ACTIVE" | "PAUSED"
+): Promise<boolean> {
+  const accessToken = await getMetaToken(userId);
+  if (!accessToken) return false;
+
+  try {
+    const url = new URL(`https://graph.facebook.com/v21.0/${campaignId}`);
+    url.searchParams.set("access_token", accessToken);
+    url.searchParams.set("status", status);
+
+    const response = await fetch(url.toString(), { method: "POST" });
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("[Meta API] Failed to update campaign status:", data);
+      return false;
+    }
+
+    return data.success === true;
+  } catch (error) {
+    console.error("[Meta API] Error updating campaign status:", error);
+    return false;
+  }
+}
+
+/**
+ * Update campaign details (name, budget)
+ */
+export async function updateCampaign(
+  userId: number,
+  campaignId: string,
+  params: {
+    name?: string;
+    dailyBudget?: number; // in dollars
+    lifetimeBudget?: number; // in dollars
+  }
+): Promise<boolean> {
+  const accessToken = await getMetaToken(userId);
+  if (!accessToken) return false;
+
+  try {
+    const url = new URL(`https://graph.facebook.com/v21.0/${campaignId}`);
+    url.searchParams.set("access_token", accessToken);
+
+    if (params.name) {
+      url.searchParams.set("name", params.name);
+    }
+    if (params.dailyBudget) {
+      url.searchParams.set("daily_budget", Math.round(params.dailyBudget * 100).toString());
+    }
+    if (params.lifetimeBudget) {
+      url.searchParams.set("lifetime_budget", Math.round(params.lifetimeBudget * 100).toString());
+    }
+
+    const response = await fetch(url.toString(), { method: "POST" });
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("[Meta API] Failed to update campaign:", data);
+      return false;
+    }
+
+    return data.success === true;
+  } catch (error) {
+    console.error("[Meta API] Error updating campaign:", error);
+    return false;
+  }
+}
+
+/**
+ * Delete campaign
+ */
+export async function deleteCampaign(
+  userId: number,
+  campaignId: string
+): Promise<boolean> {
+  const accessToken = await getMetaToken(userId);
+  if (!accessToken) return false;
+
+  try {
+    const url = new URL(`https://graph.facebook.com/v21.0/${campaignId}`);
+    url.searchParams.set("access_token", accessToken);
+
+    const response = await fetch(url.toString(), { method: "DELETE" });
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("[Meta API] Failed to delete campaign:", data);
+      return false;
+    }
+
+    return data.success === true;
+  } catch (error) {
+    console.error("[Meta API] Error deleting campaign:", error);
+    return false;
+  }
+}

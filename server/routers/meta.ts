@@ -272,6 +272,25 @@ export const metaRouter = router({
           });
         }
 
+        // Store published ad record in database
+        const db = await getDb();
+        if (db) {
+          const { metaPublishedAds } = await import("../../drizzle/schema");
+          
+          await db.insert(metaPublishedAds).values({
+            userId: ctx.user.id,
+            adSetId: "temp", // Will be passed from frontend in next iteration
+            metaCampaignId: campaign.id,
+            metaAdSetId: adSet.id,
+            metaAdId: ad.id,
+            metaCreativeId: creative.id,
+            campaignName: input.campaignName,
+            status: input.status,
+            objective: input.objective,
+            dailyBudget: input.dailyBudget?.toString(),
+          });
+        }
+
         return {
           success: true,
           campaignId: campaign.id,
@@ -288,4 +307,137 @@ export const metaRouter = router({
         });
       }
     }),
+
+  /**
+   * Update campaign status (pause/resume)
+   */
+  updateCampaignStatus: protectedProcedure
+    .input(
+      z.object({
+        campaignId: z.string(),
+        status: z.enum(["ACTIVE", "PAUSED"]),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { updateCampaignStatus } = await import("../lib/metaAPI");
+      const success = await updateCampaignStatus(ctx.user.id, input.campaignId, input.status);
+
+      if (!success) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to update campaign status",
+        });
+      }
+
+      // Update local database record
+      const db = await getDb();
+      if (db) {
+        const { metaPublishedAds } = await import("../../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        
+        await db
+          .update(metaPublishedAds)
+          .set({ status: input.status, lastSyncedAt: new Date() })
+          .where(eq(metaPublishedAds.metaCampaignId, input.campaignId));
+      }
+
+      return { success: true, status: input.status };
+    }),
+
+  /**
+   * Update campaign details (name, budget)
+   */
+  updateCampaign: protectedProcedure
+    .input(
+      z.object({
+        campaignId: z.string(),
+        name: z.string().optional(),
+        dailyBudget: z.number().min(1).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { updateCampaign } = await import("../lib/metaAPI");
+      const success = await updateCampaign(ctx.user.id, input.campaignId, {
+        name: input.name,
+        dailyBudget: input.dailyBudget,
+      });
+
+      if (!success) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to update campaign",
+        });
+      }
+
+      // Update local database record
+      const db = await getDb();
+      if (db) {
+        const { metaPublishedAds } = await import("../../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        
+        const updateData: any = { lastSyncedAt: new Date() };
+        if (input.name) updateData.campaignName = input.name;
+        if (input.dailyBudget) updateData.dailyBudget = input.dailyBudget.toString();
+        
+        await db
+          .update(metaPublishedAds)
+          .set(updateData)
+          .where(eq(metaPublishedAds.metaCampaignId, input.campaignId));
+      }
+
+      return { success: true };
+    }),
+
+  /**
+   * Delete campaign
+   */
+  deleteCampaign: protectedProcedure
+    .input(
+      z.object({
+        campaignId: z.string(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { deleteCampaign } = await import("../lib/metaAPI");
+      const success = await deleteCampaign(ctx.user.id, input.campaignId);
+
+      if (!success) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to delete campaign",
+        });
+      }
+
+      // Update local database record to DELETED status
+      const db = await getDb();
+      if (db) {
+        const { metaPublishedAds } = await import("../../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        
+        await db
+          .update(metaPublishedAds)
+          .set({ status: "DELETED", lastSyncedAt: new Date() })
+          .where(eq(metaPublishedAds.metaCampaignId, input.campaignId));
+      }
+
+      return { success: true };
+    }),
+
+  /**
+   * Get published ads for user's ad sets
+   */
+  getPublishedAds: protectedProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) return [];
+
+    const { metaPublishedAds } = await import("../../drizzle/schema");
+    const { eq } = await import("drizzle-orm");
+
+    const publishedAds = await db
+      .select()
+      .from(metaPublishedAds)
+      .where(eq(metaPublishedAds.userId, ctx.user.id));
+
+    return publishedAds;
+  }),
 });
