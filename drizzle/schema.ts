@@ -599,3 +599,40 @@ export const userOnboarding = mysqlTable("user_onboarding", {
 
 export type UserOnboarding = typeof userOnboarding.$inferSelect;
 export type InsertUserOnboarding = typeof userOnboarding.$inferInsert;
+
+/**
+ * Banned Phrases - Meta advertising compliance checker
+ * Admin-editable list of phrases that violate Meta's ad policies
+ */
+export const bannedPhrases = mysqlTable("banned_phrases", {
+  id: int("id").autoincrement().primaryKey(),
+  phrase: varchar("phrase", { length: 255 }).notNull(),
+  category: mysqlEnum("category", ["critical", "warning"]).notNull(),
+  description: text("description"), // Why this phrase is banned
+  suggestion: text("suggestion"), // Alternative phrasing suggestion
+  active: boolean("active").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  categoryIdx: index("idx_bannedPhrases_category").on(table.category),
+  activeIdx: index("idx_bannedPhrases_active").on(table.active),
+}));
+
+export type BannedPhrase = typeof bannedPhrases.$inferSelect;
+export type InsertBannedPhrase = typeof bannedPhrases.$inferInsert;
+
+/**
+ * Compliance Versions - Track Meta policy updates
+ * Single row table storing current version and dates
+ */
+export const complianceVersions = mysqlTable("compliance_versions", {
+  id: int("id").autoincrement().primaryKey(),
+  version: varchar("version", { length: 50 }).notNull(), // e.g., "v1.0", "v1.1"
+  lastUpdated: date("lastUpdated").notNull(),
+  nextReviewDue: date("nextReviewDue").notNull(),
+  notes: text("notes"), // What changed in this version
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ComplianceVersion = typeof complianceVersions.$inferSelect;
+export type InsertComplianceVersion = typeof complianceVersions.$inferInsert;

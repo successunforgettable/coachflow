@@ -1,5 +1,10 @@
 // server/lib/complianceChecker.ts
-// Meta Ad Compliance Checker - v1.0 (Updated Feb 2026)
+// Meta Ad Compliance Checker - v1.0+ (Updated Feb 2026)
+// Now supports database-driven banned phrases with hardcoded fallback
+
+import { getDb } from "../db";
+import { bannedPhrases, complianceVersions } from "../../drizzle/schema";
+import { eq } from "drizzle-orm";
 
 export interface ComplianceResult {
   compliant: boolean
@@ -18,8 +23,15 @@ export interface ComplianceIssue {
   suggestion: string
 }
 
-// Critical violations — will likely cause ad rejection
-const CRITICAL_VIOLATIONS = [
+interface ViolationRule {
+  phrases: string[]
+  reason: string
+  suggestion: string
+}
+
+// FALLBACK: Critical violations — will likely cause ad rejection
+// Used only if database is unavailable
+const FALLBACK_CRITICAL_VIOLATIONS: ViolationRule[] = [
   {
     phrases: ["make $", "earn $", "make money", "earn money", "passive income", "financial freedom", "quit your job", "quit your 9-5", "replace your income", "6 figure", "6-figure", "seven figure", "7 figure", "7-figure"],
     reason: "Income claim — violates Meta financial services policy",
@@ -57,8 +69,8 @@ const CRITICAL_VIOLATIONS = [
   }
 ]
 
-// Warnings — may trigger review, should be reworded
-const WARNING_VIOLATIONS = [
+// FALLBACK: Warnings — may trigger review, should be reworded
+const FALLBACK_WARNING_VIOLATIONS: ViolationRule[] = [
   {
     phrases: ["#1 coach", "best coach", "top coach", "world's best", "number one"],
     reason: "Unqualified superlative — may trigger review",
@@ -86,14 +98,108 @@ const WARNING_VIOLATIONS = [
   }
 ]
 
-// Info — best practice suggestions
-const INFO_SUGGESTIONS = [
-  {
-    phrases: ["results may vary", "individual results", "results will vary"],
-    reason: "Good — this disclaimer protects against misleading claims",
-    suggestion: "Keep this language — it's required when making any outcome claims"
+// Simple in-memory cache to avoid DB queries on every check
+let cachedPhrases: { critical: ViolationRule[], warning: ViolationRule[] } | null = null
+let cacheTimestamp: number = 0
+const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+
+/**
+ * Fetch banned phrases from database and convert to violation rules
+ * Falls back to hardcoded rules if database is unavailable
+ */
+async function getViolationRules(): Promise<{ critical: ViolationRule[], warning: ViolationRule[] }> {
+  // Return cached data if still valid
+  if (cachedPhrases && Date.now() - cacheTimestamp < CACHE_TTL) {
+    return cachedPhrases
   }
-]
+
+  try {
+    const db = await getDb()
+    if (!db) throw new Error("Database not available")
+
+    // Fetch all active banned phrases
+    const phrases = await db
+      .select()
+      .from(bannedPhrases)
+      .where(eq(bannedPhrases.active, true))
+
+    // Group by category
+    const criticalPhrases = phrases.filter(p => p.category === 'critical')
+    const warningPhrases = phrases.filter(p => p.category === 'warning')
+
+    // Convert to violation rules format (group by description)
+    const groupByDescription = (items: typeof phrases) => {
+      const grouped = new Map<string, string[]>()
+      items.forEach(item => {
+        const key = item.description || "Meta policy violation"
+        if (!grouped.has(key)) {
+          grouped.set(key, [])
+        }
+        grouped.get(key)!.push(item.phrase)
+      })
+      
+      return Array.from(grouped.entries()).map(([reason, phrases]) => {
+        // Get suggestion from first phrase with this description
+        const firstItem = items.find(i => (i.description || "Meta policy violation") === reason)
+        return {
+          phrases,
+          reason,
+          suggestion: firstItem?.suggestion || "Rephrase to comply with Meta advertising policies"
+        }
+      })
+    }
+
+    const critical = groupByDescription(criticalPhrases)
+    const warning = groupByDescription(warningPhrases)
+
+    // Update cache
+    cachedPhrases = { critical, warning }
+    cacheTimestamp = Date.now()
+
+    return { critical, warning }
+  } catch (error) {
+    console.error("Failed to fetch banned phrases from database, using fallback:", error)
+    // Return hardcoded fallback
+    return {
+      critical: FALLBACK_CRITICAL_VIOLATIONS,
+      warning: FALLBACK_WARNING_VIOLATIONS
+    }
+  }
+}
+
+/**
+ * Get compliance version from database
+ * Falls back to hardcoded version if database is unavailable
+ */
+async function getComplianceVersion(): Promise<{ version: string, lastUpdated: string, nextReviewDue: string }> {
+  try {
+    const db = await getDb()
+    if (!db) throw new Error("Database not available")
+
+    const [version] = await db
+      .select()
+      .from(complianceVersions)
+      .orderBy(complianceVersions.id)
+      .limit(1)
+
+    if (version) {
+      return {
+        version: version.version,
+        lastUpdated: version.lastUpdated.toISOString().split('T')[0],
+        nextReviewDue: version.nextReviewDue.toISOString().split('T')[0]
+      }
+    }
+  } catch (error) {
+    console.error("Failed to fetch compliance version from database, using fallback:", error)
+  }
+
+  // Fallback to hardcoded version
+  return {
+    version: 'v1.0',
+    lastUpdated: '2026-02-21',
+    nextReviewDue: '2026-05-21'
+  }
+}
 
 /**
  * Check if a phrase appears inside quotation marks (testimonial/case study context)
@@ -112,10 +218,17 @@ function isPhraseQuoted(adCopy: string, phrase: string): boolean {
   )
 }
 
-export function checkCompliance(adCopy: string): ComplianceResult {
+/**
+ * Check ad copy compliance against Meta advertising policies
+ * Fetches banned phrases from database with fallback to hardcoded rules
+ */
+export async function checkCompliance(adCopy: string): Promise<ComplianceResult> {
   const lowerCopy = adCopy.toLowerCase()
   const issues: ComplianceIssue[] = []
   let score = 100
+
+  // Fetch violation rules (from DB or fallback)
+  const { critical: CRITICAL_VIOLATIONS, warning: WARNING_VIOLATIONS } = await getViolationRules()
 
   // Check critical violations
   for (const violation of CRITICAL_VIOLATIONS) {
@@ -169,14 +282,17 @@ export function checkCompliance(adCopy: string): ComplianceResult {
   // Build suggestions list
   const suggestions = issues.map(i => `Replace "${i.phrase}": ${i.suggestion}`)
 
+  // Get version info
+  const versionInfo = await getComplianceVersion()
+
   return {
     compliant,
     score,
     issues,
     suggestions,
-    version: 'v1.0',
-    lastUpdated: '2026-02-21',
-    nextReviewDue: '2026-05-21' // Meta reviews policies quarterly
+    version: versionInfo.version,
+    lastUpdated: versionInfo.lastUpdated,
+    nextReviewDue: versionInfo.nextReviewDue
   }
 }
 
@@ -198,4 +314,12 @@ export function getComplianceColor(score: number): string {
   if (score >= 90) return '#10B981' // Green
   if (score >= 70) return '#F59E0B' // Amber
   return '#EF4444' // Red
+}
+
+/**
+ * Clear the cached phrases (useful after admin updates)
+ */
+export function clearComplianceCache(): void {
+  cachedPhrases = null
+  cacheTimestamp = 0
 }

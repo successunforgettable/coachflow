@@ -409,7 +409,7 @@ Format as JSON array:
 
       // Insert headlines
       for (const headline of headlineData.headlines) {
-        const complianceResult = checkCompliance(headline);
+        const complianceResult = await checkCompliance(headline);
         allInserts.push({
           userId: ctx.user.id,
           serviceId: input.serviceId,
@@ -445,7 +445,7 @@ Format as JSON array:
 
       // Insert bodies
       for (const body of bodyData.bodies) {
-        const complianceResult = checkCompliance(body);
+        const complianceResult = await checkCompliance(body);
         allInserts.push({
           userId: ctx.user.id,
           serviceId: input.serviceId,
@@ -480,7 +480,7 @@ Format as JSON array:
 
       // Insert links
       for (const link of linkData.links) {
-        const complianceResult = checkCompliance(link);
+        const complianceResult = await checkCompliance(link);
         allInserts.push({
           userId: ctx.user.id,
           serviceId: input.serviceId,

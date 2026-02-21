@@ -34,6 +34,7 @@ import HeroMechanismsNew from "./pages/HeroMechanismsNew";
 import HeroMechanismsDetail from "./pages/HeroMechanismsDetail";
 import AdminDashboard from "./pages/AdminDashboard";
 import AnalyticsDashboard from "./pages/AnalyticsDashboard";
+import ComplianceAdmin from "./pages/admin/ComplianceAdmin";
 import OnboardingPage from "./pages/OnboardingPage";
 import Settings from "./pages/Settings";
 
@@ -72,6 +73,7 @@ function Router() {
       <Route path={"/hero-mechanisms/new"} component={HeroMechanismsNew} />
       <Route path={"/hero-mechanisms/:mechanismSetId"} component={HeroMechanismsDetail} />
       <Route path={"/admin"} component={AdminDashboard} />
+      <Route path={"/admin/compliance"} component={ComplianceAdmin} />
       <Route path={"/analytics"} component={AnalyticsDashboard} />
       <Route path={"/onboarding"} component={OnboardingPage} />
       <Route path={"/settings"} component={Settings} />

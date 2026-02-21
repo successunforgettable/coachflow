@@ -1,0 +1,40 @@
+{
+  "query": "SELECT id, name, email, role FROM users LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT id, name, email, role FROM users LIMIT 5;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "Arfeen Khan",
+      "email": "arfeen@arfeenkhan.com",
+      "role": "admin"
+    },
+    {
+      "id": "180001",
+      "name": "Test User",
+      "email": "test@example.com",
+      "role": "user"
+    },
+    {
+      "id": "180002",
+      "name": "Test User",
+      "email": "test@example.com",
+      "role": "user"
+    },
+    {
+      "id": "210024",
+      "name": "Test User",
+      "email": "test@example.com",
+      "role": "user"
+    },
+    {
+      "id": "360056",
+      "name": "Beast Mode Test User",
+      "email": "beastmode@test.com",
+      "role": "user"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\temail\trole\n1\tArfeen Khan\tarfeen@arfeenkhan.com\tadmin\n180001\tTest User\ttest@example.com\tuser\n180002\tTest User\ttest@example.com\tuser\n210024\tTest User\ttest@example.com\tuser\n360056\tBeast Mode Test User\tbeastmode@test.com\tuser\n",
+  "stderr": "",
+  "execution_time_ms": 1700
+}
