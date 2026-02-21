@@ -236,25 +236,25 @@ export default function Dashboard() {
         <Link href="/generators/icp">
           <div className="nav-item"><Sparkles className="w-3.5 h-3.5 inline-block mr-2" /> Dream Buyer Avatars</div>
         </Link>
-        <Link href="/generators/ad-copy">
+        <Link href="/ad-copy">
           <div className="nav-item"><FileText className="w-3.5 h-3.5 inline-block mr-2" /> Facebook Ad Generator</div>
         </Link>
-        <Link href="/generators/headlines">
+        <Link href="/headlines">
           <div className="nav-item"><Type className="w-3.5 h-3.5 inline-block mr-2" /> Direct Response Headlines</div>
         </Link>
-        <Link href="/generators/hvco">
+        <Link href="/hvco-titles">
           <div className="nav-item"><Lightbulb className="w-3.5 h-3.5 inline-block mr-2" /> HVCO Titles</div>
         </Link>
-        <Link href="/generators/hero-mechanisms">
+        <Link href="/hero-mechanisms">
           <div className="nav-item"><Zap className="w-3.5 h-3.5 inline-block mr-2" /> Hero Mechanisms</div>
         </Link>
-        <Link href="/generators/ad-creatives">
+        <Link href="/ad-creatives">
           <div className="nav-item"><Image className="w-3.5 h-3.5 inline-block mr-2" /> Ad Creatives</div>
         </Link>
-        <Link href="/generators/landing-pages">
+        <Link href="/landing-pages">
           <div className="nav-item"><Globe className="w-3.5 h-3.5 inline-block mr-2" /> Landing Pages</div>
         </Link>
-        <Link href="/generators/offers">
+        <Link href="/offers">
           <div className="nav-item"><Gift className="w-3.5 h-3.5 inline-block mr-2" /> Godfather Offers</div>
         </Link>
 

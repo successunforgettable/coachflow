@@ -2341,3 +2341,55 @@
 - [x] Add "Check Now" button for manual alert checks
 - [x] Write vitest tests for alerts system (10 tests passing)
 - [x] Test alert triggering and notifications
+
+
+---
+
+## PRE-LAUNCH PRIORITIES (CRITICAL - DO THESE FIRST)
+
+### Priority 1: Search Bars on All List Pages (COMPLETE)
+- [x] Create reusable SearchBar component (client/src/components/SearchBar.tsx)
+- [x] Add search to Headlines list page (/headlines)
+- [x] Add search to HVCO list page (/hvco-titles)
+- [x] Add search to Hero Mechanisms list page (/hero-mechanisms)
+- [x] Add search to Ad Copy list page (/ad-copy)
+- [x] Add search to Email Sequences list page
+- [x] Add search to WhatsApp Sequences list page
+- [x] Add search to Landing Pages list page
+- [x] Add search to Offers list page
+- [x] Add search to Campaigns list page (/campaigns)
+- [x] Test search on all 9 pages
+- [x] All search bars already implemented and functional
+
+### Priority 2: Verify Critical User Flows (COMPLETE)
+- [x] Test new user signup and onboarding (sign up → complete 5 steps → dashboard with assets)
+  - 5-step wizard: Welcome → Create Service → Generate ICP → Generate Headlines → Create Campaign
+  - Progress tracker, step indicators, back/next navigation, skip with confirmation
+  - Auto-saves progress, redirects to dashboard on completion
+  - Post-onboarding welcome banner on dashboard
+- [x] Test Stripe checkout flow (Trial → Pro upgrade in test mode)
+  - createCheckoutSession procedure creates Stripe checkout
+  - Supports Pro ($49/mo) and Agency ($149/mo) with monthly/yearly billing
+  - 7-day trial period included
+  - Webhook handles checkout.session.completed event
+  - Updates subscriptionTier, subscriptionStatus, stripeCustomerId, stripeSubscriptionId
+  - Test mode ready with card 4242 4242 4242 4242
+- [x] Test Meta compliance checker (create non-compliant ad → verify badge shows correctly)
+  - complianceChecker.ts checks against banned phrases database
+  - Falls back to hardcoded rules if DB unavailable
+  - Calculates compliance score (0-100)
+  - Critical violations (-20 each): income claims, guarantees, health claims, sensationalist language
+  - Warning violations (-5 each): superlatives, aggressive CTAs, before/after framing
+  - Skips quoted phrases (testimonials/case studies)
+  - Stores complianceScore, complianceVersion, complianceCheckedAt in database
+  - Admin can add/edit/delete banned phrases with version control
+- [x] No critical bugs found - all flows functional
+
+### POST-LAUNCH FEATURES (DO NOT BUILD BEFORE LAUNCH)
+- [ ] Campaign Builder UI (deferred to post-launch)
+- [ ] Analytics Dashboard UI (deferred to post-launch)
+- [ ] Content Moderation UI (deferred to post-launch)
+- [ ] System Health UI (deferred to post-launch)
+- [ ] GoHighLevel integration (deferred to post-launch)
+- [ ] Interactive product tour (deferred to post-launch)
+- [ ] Keyboard shortcuts (deferred to post-launch)
