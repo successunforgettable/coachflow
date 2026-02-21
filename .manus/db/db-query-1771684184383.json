@@ -1,0 +1,50 @@
+{
+  "query": "SELECT * FROM compliance_versions ORDER BY id DESC LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT * FROM compliance_versions ORDER BY id DESC LIMIT 5;",
+  "rows": [
+    {
+      "id": "30027",
+      "version": "v1.1",
+      "lastUpdated": "2026-02-20",
+      "nextReviewDue": "2026-05-21",
+      "notes": "Updated for Q2 2026",
+      "createdAt": "2026-02-21 14:29:36"
+    },
+    {
+      "id": "30026",
+      "version": "v1.0",
+      "lastUpdated": "2026-02-20",
+      "nextReviewDue": "2026-05-20",
+      "notes": "Initial version",
+      "createdAt": "2026-02-21 14:29:36"
+    },
+    {
+      "id": "30025",
+      "version": "v1.0",
+      "lastUpdated": "2026-02-20",
+      "nextReviewDue": "2026-05-20",
+      "notes": "Initial version",
+      "createdAt": "2026-02-21 14:29:34"
+    },
+    {
+      "id": "30024",
+      "version": "v1.0",
+      "lastUpdated": "2026-02-20",
+      "nextReviewDue": "2026-05-20",
+      "notes": "Initial version",
+      "createdAt": "2026-02-21 14:29:32"
+    },
+    {
+      "id": "30023",
+      "version": "v1.0",
+      "lastUpdated": "2026-02-20",
+      "nextReviewDue": "2026-05-20",
+      "notes": "Initial version",
+      "createdAt": "2026-02-21 14:29:30"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tversion\tlastUpdated\tnextReviewDue\tnotes\tcreatedAt\n30027\tv1.1\t2026-02-20\t2026-05-21\tUpdated for Q2 2026\t2026-02-21 14:29:36\n30026\tv1.0\t2026-02-20\t2026-05-20\tInitial version\t2026-02-21 14:29:36\n30025\tv1.0\t2026-02-20\t2026-05-20\tInitial version\t2026-02-21 14:29:34\n30024\tv1.0\t2026-02-20\t2026-05-20\tInitial version\t2026-02-21 14:29:32\n30023\tv1.0\t2026-02-20\t2026-05-20\tInitial version\t2026-02-21 14:29:30\n",
+  "stderr": "",
+  "execution_time_ms": 1548
+}

@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE `phrase_usage_stats` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`phraseId` int NOT NULL,\n\t`phrase` varchar(255) NOT NULL,\n\t`category` enum('critical','warning') NOT NULL,\n\t`userId` int NOT NULL,\n\t`generatorType` varchar(50) NOT NULL,\n\t`detectedAt` timestamp NOT NULL DEFAULT (now()),\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\tCONSTRAINT `phrase_usage_stats_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute CREATE TABLE `phrase_usage_stats` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`phraseId` int NOT NULL,\n\t`phrase` varchar(255) NOT NULL,\n\t`category` enum('critical','warning') NOT NULL,\n\t`userId` int NOT NULL,\n\t`generatorType` varchar(50) NOT NULL,\n\t`detectedAt` timestamp NOT NULL DEFAULT (now()),\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\tCONSTRAINT `phrase_usage_stats_id` PRIMARY KEY(`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1602
+}

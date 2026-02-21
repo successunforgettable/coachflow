@@ -656,3 +656,21 @@ export const complianceHistory = mysqlTable("compliance_history", {
 
 export type ComplianceHistory = typeof complianceHistory.$inferSelect;
 export type InsertComplianceHistory = typeof complianceHistory.$inferInsert;
+
+/**
+ * Phrase Usage Stats - Track how often each banned phrase is caught
+ * Used for analytics and identifying common compliance issues
+ */
+export const phraseUsageStats = mysqlTable("phrase_usage_stats", {
+  id: int("id").autoincrement().primaryKey(),
+  phraseId: int("phraseId").notNull(), // Reference to bannedPhrases
+  phrase: varchar("phrase", { length: 255 }).notNull(), // Denormalized for performance
+  category: mysqlEnum("category", ["critical", "warning"]).notNull(),
+  userId: int("userId").notNull(), // User who triggered the check
+  generatorType: varchar("generatorType", { length: 50 }).notNull(), // e.g., "adCopy", "headline", "email"
+  detectedAt: timestamp("detectedAt").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type PhraseUsageStats = typeof phraseUsageStats.$inferSelect;
+export type InsertPhraseUsageStats = typeof phraseUsageStats.$inferInsert;

@@ -301,13 +301,22 @@ export default function ComplianceAdmin() {
                 Manage banned phrases and compliance rules for Meta advertising
               </p>
             </div>
-            <Button
-              onClick={() => navigate("/")}
-              variant="outline"
-              className="bg-transparent border-[#27273A] text-white hover:bg-[#16161F] hover:border-[#8B5CF6]"
-            >
-              Back to Dashboard
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => navigate("/admin/compliance/analytics")}
+                variant="outline"
+                className="bg-transparent border-[#27273A] text-white hover:bg-[#16161F] hover:border-[#8B5CF6]"
+              >
+                View Analytics
+              </Button>
+              <Button
+                onClick={() => navigate("/")}
+                variant="outline"
+                className="bg-transparent border-[#27273A] text-white hover:bg-[#16161F] hover:border-[#8B5CF6]"
+              >
+                Back to Dashboard
+              </Button>
+            </div>
           </div>
         </div>
 

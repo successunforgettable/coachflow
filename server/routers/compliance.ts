@@ -2,8 +2,9 @@ import { router, protectedProcedure } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { getDb } from "../db";
-import { bannedPhrases, complianceVersions, complianceHistory } from "../../drizzle/schema";
-import { eq, and } from "drizzle-orm";
+import { bannedPhrases, complianceVersions, complianceHistory, phraseUsageStats, users } from "../../drizzle/schema";
+import { eq, and, desc, sql } from "drizzle-orm";
+import { notifyOwner } from "../_core/notification";
 
 // Admin-only middleware
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -31,7 +32,7 @@ export const complianceRouter = router({
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
-    const [version] = await db.select().from(complianceVersions).orderBy(complianceVersions.id).limit(1);
+    const [version] = await db.select().from(complianceVersions).orderBy(desc(complianceVersions.id)).limit(1);
     return version || null;
   }),
 
@@ -303,6 +304,12 @@ export const complianceRouter = router({
         details: `Imported ${validPhrases.length} phrases (${input.mode} mode)`,
       });
 
+      // Send notification to owner
+      await notifyOwner({
+        title: "Compliance Rules Updated",
+        content: `${ctx.user.name} imported ${validPhrases.length} banned phrases in ${input.mode} mode. ${input.mode === "replace" ? "All previous phrases were replaced." : "Phrases were added to existing rules."}`,
+      }).catch(err => console.error("Failed to send notification:", err));
+
       return { 
         success: true, 
         imported: validPhrases.length,
@@ -380,5 +387,88 @@ export const complianceRouter = router({
         .limit(input.limit);
 
       return history;
+    }),
+
+  // Get phrase usage analytics
+  getUsageAnalytics: adminProcedure
+    .input(
+      z.object({
+        limit: z.number().min(1).max(100).optional().default(20),
+        days: z.number().min(1).max(365).optional().default(30),
+      })
+    )
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - input.days);
+
+      // Get most frequently detected phrases
+      const topPhrases = await db
+        .select({
+          phrase: phraseUsageStats.phrase,
+          category: phraseUsageStats.category,
+          count: sql<number>`COUNT(*)`
+        })
+        .from(phraseUsageStats)
+        .where(sql`${phraseUsageStats.detectedAt} >= ${cutoffDate}`)
+        .groupBy(phraseUsageStats.phrase, phraseUsageStats.category)
+        .orderBy(desc(sql`COUNT(*)`))
+        .limit(input.limit);
+
+      // Get usage by generator type
+      const byGenerator = await db
+        .select({
+          generatorType: phraseUsageStats.generatorType,
+          count: sql<number>`COUNT(*)`
+        })
+        .from(phraseUsageStats)
+        .where(sql`${phraseUsageStats.detectedAt} >= ${cutoffDate}`)
+        .groupBy(phraseUsageStats.generatorType)
+        .orderBy(desc(sql`COUNT(*)`));
+
+      // Get total detections
+      const [totalResult] = await db
+        .select({
+          total: sql<number>`COUNT(*)`
+        })
+        .from(phraseUsageStats)
+        .where(sql`${phraseUsageStats.detectedAt} >= ${cutoffDate}`);
+
+      return {
+        topPhrases,
+        byGenerator,
+        totalDetections: totalResult?.total || 0,
+        periodDays: input.days,
+      };
+    }),
+
+  // Get usage timeline (daily breakdown)
+  getUsageTimeline: adminProcedure
+    .input(
+      z.object({
+        days: z.number().min(1).max(90).optional().default(30),
+      })
+    )
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - input.days);
+
+      const timeline = await db
+        .select({
+          date: sql<string>`DATE(${phraseUsageStats.detectedAt})`,
+          category: phraseUsageStats.category,
+          count: sql<number>`COUNT(*)`
+        })
+        .from(phraseUsageStats)
+        .where(sql`${phraseUsageStats.detectedAt} >= ${cutoffDate}`)
+        .groupBy(sql`DATE(${phraseUsageStats.detectedAt})`, phraseUsageStats.category)
+        .orderBy(sql`DATE(${phraseUsageStats.detectedAt})`);
+
+      return timeline;
     }),
 });

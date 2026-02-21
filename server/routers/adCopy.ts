@@ -409,7 +409,11 @@ Format as JSON array:
 
       // Insert headlines
       for (const headline of headlineData.headlines) {
-        const complianceResult = await checkCompliance(headline);
+        const complianceResult = await checkCompliance(headline, {
+          userId: ctx.user.id,
+          generatorType: 'adCopy',
+          trackUsage: true,
+        });
         allInserts.push({
           userId: ctx.user.id,
           serviceId: input.serviceId,
@@ -443,9 +447,13 @@ Format as JSON array:
         });
       }
 
-      // Insert bodies
-      for (const body of bodyData.bodies) {
-        const complianceResult = await checkCompliance(body);
+      // Insert body copies
+      for (const body of bodyData.bodyCopies) {
+        const complianceResult = await checkCompliance(body, {
+          userId: ctx.user.id,
+          generatorType: 'adCopy',
+          trackUsage: true,
+        });
         allInserts.push({
           userId: ctx.user.id,
           serviceId: input.serviceId,

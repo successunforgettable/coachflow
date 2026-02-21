@@ -3,7 +3,7 @@
 // Now supports database-driven banned phrases with hardcoded fallback
 
 import { getDb } from "../db";
-import { bannedPhrases, complianceVersions } from "../../drizzle/schema";
+import { bannedPhrases, complianceVersions, phraseUsageStats } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 
 export interface ComplianceResult {
@@ -221,14 +221,21 @@ function isPhraseQuoted(adCopy: string, phrase: string): boolean {
 /**
  * Check ad copy compliance against Meta advertising policies
  * Fetches banned phrases from database with fallback to hardcoded rules
+ * Optionally tracks usage for analytics
  */
-export async function checkCompliance(adCopy: string): Promise<ComplianceResult> {
+export async function checkCompliance(
+  adCopy: string,
+  options?: { userId?: number; generatorType?: string; trackUsage?: boolean }
+): Promise<ComplianceResult> {
   const lowerCopy = adCopy.toLowerCase()
   const issues: ComplianceIssue[] = []
   let score = 100
 
   // Fetch violation rules (from DB or fallback)
   const { critical: CRITICAL_VIOLATIONS, warning: WARNING_VIOLATIONS } = await getViolationRules()
+
+  // Track detected phrases for analytics
+  const detectedPhrases: Array<{ phrase: string; category: 'critical' | 'warning'; phraseId?: number }> = []
 
   // Check critical violations
   for (const violation of CRITICAL_VIOLATIONS) {
@@ -245,6 +252,7 @@ export async function checkCompliance(adCopy: string): Promise<ComplianceResult>
           reason: violation.reason,
           suggestion: violation.suggestion
         })
+        detectedPhrases.push({ phrase, category: 'critical' })
         score -= 20 // Each critical violation costs 20 points
         break // Only flag once per violation category
       }
@@ -266,10 +274,18 @@ export async function checkCompliance(adCopy: string): Promise<ComplianceResult>
           reason: violation.reason,
           suggestion: violation.suggestion
         })
+        detectedPhrases.push({ phrase, category: 'warning' })
         score -= 8 // Each warning costs 8 points
         break
       }
     }
+  }
+
+  // Track usage in database (async, don't block response)
+  if (options?.trackUsage && options.userId && options.generatorType && detectedPhrases.length > 0) {
+    trackPhraseUsage(detectedPhrases, options.userId, options.generatorType).catch(err => {
+      console.error('Failed to track phrase usage:', err)
+    })
   }
 
   // Cap score at 0
@@ -314,6 +330,52 @@ export function getComplianceColor(score: number): string {
   if (score >= 90) return '#10B981' // Green
   if (score >= 70) return '#F59E0B' // Amber
   return '#EF4444' // Red
+}
+
+/**
+ * Track phrase usage in database for analytics
+ * Runs async and doesn't block the main compliance check
+ */
+async function trackPhraseUsage(
+  detectedPhrases: Array<{ phrase: string; category: 'critical' | 'warning'; phraseId?: number }>,
+  userId: number,
+  generatorType: string
+): Promise<void> {
+  try {
+    const db = await getDb()
+    if (!db) return
+
+    // Get phraseId for each detected phrase
+    const phrasesWithIds = await Promise.all(
+      detectedPhrases.map(async (detected) => {
+        const [phraseRecord] = await db
+          .select()
+          .from(bannedPhrases)
+          .where(eq(bannedPhrases.phrase, detected.phrase.toLowerCase()))
+          .limit(1)
+        
+        return {
+          phraseId: phraseRecord?.id || 0,
+          phrase: detected.phrase,
+          category: detected.category,
+        }
+      })
+    )
+
+    // Insert usage records
+    const records = phrasesWithIds.map(p => ({
+      phraseId: p.phraseId,
+      phrase: p.phrase,
+      category: p.category,
+      userId,
+      generatorType,
+      detectedAt: new Date(),
+    }))
+
+    await db.insert(phraseUsageStats).values(records)
+  } catch (error) {
+    console.error('Error tracking phrase usage:', error)
+  }
 }
 
 /**
