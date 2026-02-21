@@ -241,17 +241,32 @@ export const adCopyRouter = router({
 Service: ${service.name}
 Category: ${service.category}
 Target Market: ${input.targetMarket}
+Product Category: ${input.productCategory}
+Specific Product Name: ${input.specificProductName}
 Pressing Problem: ${input.pressingProblem}
 Desired Outcome: ${input.desiredOutcome}
-Unique Mechanism: ${input.uniqueMechanism}
+Unique Mechanism: ${input.uniqueMechanism || 'N/A'}
+Key Benefits: ${input.listBenefits || 'N/A'}
+Specific Technology: ${input.specificTechnology || 'N/A'}
+Scientific Studies: ${input.scientificStudies || 'N/A'}
+Credible Authority: ${input.credibleAuthority || 'N/A'}
+Featured In: ${input.featuredIn || 'N/A'}
+Number of Reviews: ${input.numberOfReviews || 'N/A'}
+Average Rating: ${input.averageReviewRating || 'N/A'}
+Total Customers: ${input.totalCustomers || 'N/A'}
+Testimonials: ${input.testimonials || 'N/A'}
 
 Ad Type: ${adTypeContext}
+Ad Style: ${input.adStyle}
+Call To Action: ${input.adCallToAction}
 
 Create ${count} attention-grabbing headlines (max 40 characters each) that:
-- Hook the reader immediately
+- Hook the reader immediately using the pressing problem or unique mechanism
 - Highlight the transformation or benefit
+- Incorporate social proof (reviews, customers, authority figures) when available
 - Create curiosity or urgency
 - Are specific and concrete
+- Match the ad style (${input.adStyle})
 
 Format as JSON array:
 {
@@ -298,18 +313,34 @@ Format as JSON array:
 Service: ${service.name}
 Category: ${service.category}
 Target Market: ${input.targetMarket}
+Product Category: ${input.productCategory}
+Specific Product Name: ${input.specificProductName}
 Pressing Problem: ${input.pressingProblem}
 Desired Outcome: ${input.desiredOutcome}
-Unique Mechanism: ${input.uniqueMechanism}
+Unique Mechanism: ${input.uniqueMechanism || 'N/A'}
+Key Benefits: ${input.listBenefits || 'N/A'}
+Specific Technology: ${input.specificTechnology || 'N/A'}
+Scientific Studies: ${input.scientificStudies || 'N/A'}
+Credible Authority: ${input.credibleAuthority || 'N/A'}
+Featured In: ${input.featuredIn || 'N/A'}
+Number of Reviews: ${input.numberOfReviews || 'N/A'}
+Average Rating: ${input.averageReviewRating || 'N/A'}
+Total Customers: ${input.totalCustomers || 'N/A'}
+Testimonials: ${input.testimonials || 'N/A'}
 
 Ad Type: ${adTypeContext}
+Ad Style: ${input.adStyle}
+Call To Action: ${input.adCallToAction}
 
 Create ${count} compelling body copy variations (125-150 words each) that:
 - Start with a hook related to the pressing problem
 - Agitate the pain or desire
 - Present the unique mechanism as the solution
-- Include social proof or credibility
-- End with a clear call-to-action
+- Weave in social proof: testimonials, reviews, total customers, featured publications, credible authorities
+- Mention specific technology or scientific studies if provided
+- Include key benefits naturally throughout
+- End with a clear call-to-action (${input.adCallToAction})
+- Match the ad style (${input.adStyle})
 
 Format as JSON array:
 {
@@ -356,14 +387,19 @@ Format as JSON array:
 Service: ${service.name}
 Category: ${service.category}
 Target Market: ${input.targetMarket}
+Product Category: ${input.productCategory}
+Specific Product Name: ${input.specificProductName}
 Desired Outcome: ${input.desiredOutcome}
+Call To Action: ${input.adCallToAction}
 
 Ad Type: ${adTypeContext}
+Ad Style: ${input.adStyle}
 
 Create ${count} clear, action-oriented link descriptions (max 30 characters each) that:
-- State the clear next step
+- State the clear next step aligned with the CTA (${input.adCallToAction})
 - Create urgency or excitement
 - Are benefit-focused
+- Match the ad style tone
 
 Format as JSON array:
 {
