@@ -2146,3 +2146,97 @@
 - [x] Test all 4 angles switch seamlessly
 - [x] Verify design matches Kong exactly (95% match - colors, fonts, sections all correct)
 - [x] Save checkpoint
+
+## Phase 55: Platform Integrations (FUTURE)
+
+### GoHighLevel Integration (Priority 1 - Easiest, 2-3 hours)
+- [ ] Add webhook URL field to landing page settings
+- [ ] Send form submissions to GoHighLevel webhook
+- [ ] Include lead data: name, email, phone, campaign source, offer angle
+- [ ] Add "Test Connection" button to verify webhook
+- [ ] Create integration settings page (Settings → Integrations → GoHighLevel)
+- [ ] Document setup process for users
+
+### Meta Ads Manager Integration - Read Only (Priority 2 - Medium, 4-6 hours)
+- [ ] Implement Meta OAuth connection flow
+- [ ] Add "Connect Meta Ads" button in Settings
+- [ ] Store Meta access tokens securely
+- [ ] Pull campaign performance data via Meta Marketing API
+- [ ] Display ad metrics in CoachFlow dashboard (impressions, clicks, CTR, conversions)
+- [ ] Show which CoachFlow ads are currently running
+- [ ] Add refresh button to sync latest data
+
+### Meta Ads Manager Integration - Write Access (Priority 3 - Advanced, 8-12 hours)
+- [ ] Request Meta Business verification for write permissions
+- [ ] Build "Publish to Meta" UI flow
+- [ ] Implement ad creation via Meta Marketing API
+- [ ] Add campaign settings form (budget, audience, schedule)
+- [ ] Support ad creative upload (text + images)
+- [ ] Add campaign management (pause/resume/edit from CoachFlow)
+- [ ] Handle Meta API errors gracefully
+- [ ] Add "Ad Status" badges on generated content
+
+### Campaign Workflow Automation (Priority 4 - Complex, 20-30 hours)
+- [ ] Design visual campaign builder UI (drag-and-drop canvas)
+- [ ] Create timeline component for customer journey mapping
+- [ ] Implement asset linking (ads → emails → landing pages)
+- [ ] Add conditional logic builder ("if clicked but no purchase → send sequence B")
+- [ ] Build trigger system (time-based, action-based)
+- [ ] Add A/B testing framework
+- [ ] Create performance tracking dashboard
+- [ ] Implement automated email sending
+- [ ] Add WhatsApp automation triggers
+- [ ] Build conversion tracking system
+- [ ] Add campaign templates library
+
+### Notes:
+- All integrations use OAuth for security (no API keys needed from users)
+- Non-technical users can connect with simple "Sign in with [Platform]" flow
+- GoHighLevel webhook is simplest - no OAuth required, just paste webhook URL
+- Meta integration requires Meta Business account (free to create)
+- Campaign automation transforms CoachFlow into full marketing automation platform
+
+## Phase 56: Meta Ads Manager Integration (IN PROGRESS)
+
+### Phase 1: Meta OAuth Connection (COMPLETE)
+- [x] Create Meta App in Facebook Developers Console
+- [x] Add database schema for storing Meta access tokens
+- [x] Generate and apply migration
+- [x] Create Meta OAuth callback route
+- [x] Implement token exchange and storage
+- [x] Add "Connect Meta Ads" button in Settings → Integrations
+- [x] Test OAuth flow end-to-end
+- [x] Fix redirect URI issues with VITE_APP_URL environment variable
+- [x] Successfully connected to Meta ad account act_1547330839812923
+
+### Phase 2: Read-Only Meta API Integration (COMPLETE)
+- [x] Install Meta Marketing API SDK (facebook-nodejs-business-sdk)
+- [x] Create Meta API client wrapper (server/lib/metaAPI.ts)
+- [x] Implement getCampaigns procedure
+- [x] Implement getAdPerformance procedure
+- [x] Build Meta Campaigns dashboard page (/meta/campaigns)
+- [x] Display campaign metrics (impressions, clicks, CTR, conversions)
+- [x] Add refresh button to sync latest data
+- [x] Test data pulling from Meta
+
+### Phase 3: Publish to Meta - Write Access (COMPLETE)
+- [x] Request Meta Business verification for write permissions
+- [x] Implement createCampaign procedure (server/lib/metaAPI.ts)
+- [x] Implement createAdSet procedure (server/lib/metaAPI.ts)
+- [x] Implement createAd procedure (server/lib/metaAPI.ts)
+- [x] Implement createAdCreative procedure (server/lib/metaAPI.ts)
+- [x] Build "Publish to Meta" modal component (PublishToMetaDialog.tsx)
+- [x] Add campaign settings form (budget, audience, schedule)
+- [x] Add ad preview in modal
+- [x] Implement publish flow from Ad Copy detail page
+- [x] Add "Publishing..." loading state
+- [x] Handle Meta API errors gracefully
+- [x] Add "Publish to Meta" button to Ad Copy detail pages
+- [x] Write vitest tests for Meta integration (10 tests passing)
+
+### Phase 4: Testing & Checkpoint
+- [ ] Test OAuth connection with multiple Meta accounts
+- [ ] Test read-only data pulling
+- [ ] Test ad publishing with different ad types
+- [ ] Write vitest tests for Meta procedures
+- [ ] Save checkpoint

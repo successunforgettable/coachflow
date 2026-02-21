@@ -17,12 +17,17 @@ import { RegenerateConfirmationDialog } from "@/components/RegenerateConfirmatio
 import { useAuth } from "@/_core/hooks/useAuth";
 import { ComplianceBadge } from "@/components/ComplianceBadge";
 import { checkCompliance } from "@/lib/complianceUtils";
+import { PublishToMetaDialog } from "@/components/PublishToMetaDialog";
+import { Send } from "lucide-react";
 
 export default function AdCopyDetail() {
   const [, params] = useRoute("/ad-copy/:adSetId");
   const adSetId = params?.adSetId || "";
   const [powerMode, setBeastMode] = useState(false);
   const [activeTab, setActiveTab] = useState("headlines");
+  const [publishDialogOpen, setPublishDialogOpen] = useState(false);
+  const [selectedHeadline, setSelectedHeadline] = useState("");
+  const [selectedBody, setSelectedBody] = useState("");
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const { user } = useAuth();
 
@@ -234,6 +239,22 @@ ${adSet.links.map((l: any, i: number) => `${i + 1}. ${l.content}`).join("\n\n")}
 
       {/* Action Bar */}
       <div className="flex items-center gap-4 mb-6">
+        <Button
+          onClick={() => {
+            // Use first headline and body as defaults
+            if (adSet.headlines.length > 0 && adSet.bodies.length > 0) {
+              setSelectedHeadline(adSet.headlines[0].content);
+              setSelectedBody(adSet.bodies[0].content);
+              setPublishDialogOpen(true);
+            } else {
+              toast.error("Need at least one headline and body copy to publish");
+            }
+          }}
+          className="bg-blue-600 hover:bg-blue-700"
+        >
+          <Send className="h-4 w-4 mr-2" />
+          Publish to Meta
+        </Button>
         <Button onClick={handleExportPDF} variant="outline">
           <Download className="h-4 w-4 mr-2" />
           Download PDF
@@ -553,6 +574,15 @@ ${adSet.links.map((l: any, i: number) => `${i + 1}. ${l.content}`).join("\n\n")}
         limit={user?.role === "superuser" ? Infinity : (user?.subscriptionTier === "agency" ? 999 : user?.subscriptionTier === "pro" ? 100 : 0)}
         resetDate={undefined}
         isLoading={generateMutation.isPending}
+      />
+
+      {/* Publish to Meta Dialog */}
+      <PublishToMetaDialog
+        open={publishDialogOpen}
+        onOpenChange={setPublishDialogOpen}
+        headline={selectedHeadline}
+        body={selectedBody}
+        linkUrl=""
       />
       </div>
     </div>

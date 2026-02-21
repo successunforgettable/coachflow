@@ -25,6 +25,7 @@ import { onboardingRouter } from "./routers/onboarding";
 import { progressRouter } from "./routers/progress";
 import { userRouter } from "./routers/user";
 import { complianceRouter } from "./routers/compliance";
+import { metaRouter } from "./routers/meta";
 import { getQuotaLimit } from "./quotaLimits";
 
 export const appRouter = router({
@@ -130,6 +131,7 @@ export const appRouter = router({
   progress: progressRouter,
   user: userRouter,
   compliance: complianceRouter,
+  meta: metaRouter,
 });
 
 export type AppRouter = typeof appRouter;

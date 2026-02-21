@@ -674,3 +674,25 @@ export const phraseUsageStats = mysqlTable("phrase_usage_stats", {
 
 export type PhraseUsageStats = typeof phraseUsageStats.$inferSelect;
 export type InsertPhraseUsageStats = typeof phraseUsageStats.$inferInsert;
+
+/**
+ * Meta Access Tokens - Store Meta (Facebook) OAuth tokens for Ads Manager integration
+ * Allows users to publish ads directly to Meta from CoachFlow
+ */
+export const metaAccessTokens = mysqlTable("meta_access_tokens", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(), // One Meta connection per user
+  accessToken: text("accessToken").notNull(), // Long-lived access token from Meta OAuth
+  tokenExpiresAt: timestamp("tokenExpiresAt").notNull(), // When token expires
+  adAccountId: varchar("adAccountId", { length: 255 }), // Selected Meta ad account ID
+  adAccountName: varchar("adAccountName", { length: 255 }), // Human-readable ad account name
+  businessId: varchar("businessId", { length: 255 }), // Meta Business Manager ID
+  pageId: varchar("pageId", { length: 255 }), // Facebook Page ID for ad creatives
+  connectedAt: timestamp("connectedAt").defaultNow().notNull(),
+  lastRefreshedAt: timestamp("lastRefreshedAt").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type MetaAccessToken = typeof metaAccessTokens.$inferSelect;
+export type InsertMetaAccessToken = typeof metaAccessTokens.$inferInsert;

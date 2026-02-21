@@ -1,0 +1,1 @@
+ALTER TABLE `meta_access_tokens` ADD `pageId` varchar(255);

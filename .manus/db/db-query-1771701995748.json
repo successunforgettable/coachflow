@@ -1,0 +1,18 @@
+{
+  "query": "SELECT id, userId, adAccountId, adAccountName, connectedAt, tokenExpiresAt FROM meta_access_tokens ORDER BY connectedAt DESC LIMIT 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT id, userId, adAccountId, adAccountName, connectedAt, tokenExpiresAt FROM meta_access_tokens ORDER BY connectedAt DESC LIMIT 1;",
+  "rows": [
+    {
+      "id": "1",
+      "userId": "1",
+      "adAccountId": "act_1547330839812923",
+      "adAccountName": "Arfeen Khan",
+      "connectedAt": "2026-02-21 19:25:57",
+      "tokenExpiresAt": "2026-04-22 19:03:55"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tuserId\tadAccountId\tadAccountName\tconnectedAt\ttokenExpiresAt\n1\t1\tact_1547330839812923\tArfeen Khan\t2026-02-21 19:25:57\t2026-04-22 19:03:55\n",
+  "stderr": "",
+  "execution_time_ms": 1680
+}
