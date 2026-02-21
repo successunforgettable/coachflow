@@ -1,0 +1,1 @@
+ALTER TABLE `users` ADD `dismissedWelcomeBanner` boolean DEFAULT false NOT NULL;

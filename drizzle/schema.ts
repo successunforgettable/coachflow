@@ -37,6 +37,8 @@ export const users = mysqlTable("users", {
   usageResetAt: timestamp("usageResetAt").defaultNow().notNull(),
   // Power Mode toggle
   powerMode: boolean("powerMode").default(false).notNull(),
+  // User preferences
+  dismissedWelcomeBanner: boolean("dismissedWelcomeBanner").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),

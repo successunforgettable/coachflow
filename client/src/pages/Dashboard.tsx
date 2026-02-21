@@ -8,6 +8,7 @@ import { getLoginUrl } from "@/const";
 import { Link, useLocation, Redirect } from "wouter";
 import { useState } from "react";
 import OnboardingProgressTracker from "@/components/OnboardingProgressTracker";
+import { PostOnboardingWelcomeBanner } from "@/components/PostOnboardingWelcomeBanner";
 import { useTour } from "@/contexts/TourContext";
 import {
   Sparkles,
@@ -62,6 +63,10 @@ export default function Dashboard() {
   const { data: authData } = trpc.auth.me.useQuery();
   const { data: quotaLimits } = trpc.auth.getQuotaLimits.useQuery();
   const { data: onboardingStatus } = trpc.onboarding.getStatus.useQuery(undefined, {
+    enabled: isAuthenticated,
+  });
+
+  const { data: userPreferences } = trpc.user.getPreferences.useQuery(undefined, {
     enabled: isAuthenticated,
   });
 
@@ -291,6 +296,14 @@ export default function Dashboard() {
         <p className="welcome-sub text-sm md:text-base">
           Let's get started with something awesome.
         </p>
+
+        {/* Post-Onboarding Welcome Banner */}
+        {isAuthenticated && 
+         onboardingStatus?.completed && 
+         userPreferences && 
+         !userPreferences.dismissedWelcomeBanner && (
+          <PostOnboardingWelcomeBanner />
+        )}
 
         {/* Video Section: Video Left, Stripe/Quota Right */}
         <div className="video-section grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-5">

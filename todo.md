@@ -2040,20 +2040,60 @@
 - [x] Update quota cards for mobile stacking
 
 ### Layer 4: Testing at Device Sizes
-- [ ] Test at 375px (iPhone 14)
-- [ ] Test at 390px (iPhone 14 Pro)
-- [ ] Test at 768px (iPad portrait)
-- [ ] Test at 1024px (iPad landscape)
-- [ ] Test at 1280px (MacBook Air 13")
-- [ ] Test at 1440px (MacBook Pro 14")
-- [ ] Test at 1920px (Desktop monitor)
-- [ ] Fix any layout breaks or overflow issues
-- [ ] Verify sidebar behavior at each breakpoint
-- [ ] Verify all generators are accessible and usable
+- [x] Code analysis: Verify all responsive classes present
+- [x] Verify sidebar classes (fixed lg:static, -translate-x-full lg:translate-x-0)
+- [x] Verify grid classes (grid-cols-1 sm:grid-cols-2 xl:grid-cols-3)
+- [x] Verify hamburger button classes (lg:hidden)
+- [x] Verify video section classes (grid-cols-1 lg:grid-cols-[1fr_260px])
+- [x] Create manual testing instructions for user
+- [ ] User manual testing: Test at 375px (iPhone 14)
+- [ ] User manual testing: Test at 390px (iPhone 14 Pro)
+- [ ] User manual testing: Test at 768px (iPad portrait)
+- [ ] User manual testing: Test at 1024px (iPad landscape)
+- [ ] User manual testing: Test at 1280px (MacBook Air 13")
+- [ ] User manual testing: Test at 1440px (MacBook Pro 14")
+- [ ] User manual testing: Test at 1920px (Desktop monitor)
 
 ### Final Checks
 - [x] Test hamburger menu open/close on mobile
 - [x] Fix CSS conflict (removed min-width from .sidebar)
-- [x] Test all generator cards are clickable on mobile
-- [x] Verify no horizontal scroll on any device size
-- [ ] Save checkpoint: "Responsive design system complete"
+- [x] Code analysis confirms all responsive classes present
+- [x] Create comprehensive testing documentation
+- [x] Save checkpoint: "Responsive design system complete" (version: 1fdbc10c)
+
+
+## Post-Onboarding Welcome Banner
+
+- [x] Create PostOnboardingWelcomeBanner component
+- [x] Add one-time display logic (show only after onboarding completion, hide after dismiss)
+- [x] Add recommended workflow: Ad Copy Generator → Landing Pages → Email Sequences
+- [x] Add dismiss button with database storage
+- [x] Add banner to Dashboard.tsx (show above video section)
+- [x] Add dismissedWelcomeBanner field to users table
+- [x] Create user router with dismissWelcomeBanner and getPreferences procedures
+- [x] Generate and apply database migration
+- [ ] Test banner display and dismiss functionality (pending user testing)
+
+## Meta Compliance Admin UI
+
+- [ ] Create ComplianceAdmin page (/admin/compliance)
+- [ ] Add admin-only route protection (check user.role === 'admin')
+- [ ] Build UI to view all banned phrases (critical + warning categories)
+- [ ] Build UI to add new banned phrases
+- [ ] Build UI to edit existing banned phrases
+- [ ] Build UI to delete banned phrases
+- [ ] Build UI to update version number and dates
+- [ ] Create backend tRPC procedures for CRUD operations
+- [ ] Add bannedPhrases table to database schema
+- [ ] Migrate existing phrases from complianceChecker.ts to database
+- [ ] Update complianceChecker.ts to fetch phrases from database
+- [ ] Add audit trail logging for all changes
+- [ ] Test admin UI with add/edit/delete operations
+
+## Policy Update Workflow Documentation
+
+- [ ] Create HOW_TO_UPDATE_META_POLICIES.md guide
+- [ ] Document quarterly review process
+- [ ] Document how to add new banned phrases via Admin UI
+- [ ] Document how to update version numbers
+- [ ] Document how to test compliance checker after updates

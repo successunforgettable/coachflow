@@ -23,6 +23,7 @@ import { adminRouter } from "./routers/admin";
 import { analyticsRouter } from "./routers/analytics";
 import { onboardingRouter } from "./routers/onboarding";
 import { progressRouter } from "./routers/progress";
+import { userRouter } from "./routers/user";
 import { getQuotaLimit } from "./quotaLimits";
 
 export const appRouter = router({
@@ -126,6 +127,7 @@ export const appRouter = router({
   analytics: analyticsRouter,
   onboarding: onboardingRouter,
   progress: progressRouter,
+  user: userRouter,
 });
 
 export type AppRouter = typeof appRouter;
