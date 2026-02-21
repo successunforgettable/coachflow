@@ -5,13 +5,18 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ExternalLink, TrendingUp, MousePointerClick, DollarSign, Eye, Play, Pause, Trash2, BarChart3 } from "lucide-react";
+import { ExternalLink, TrendingUp, MousePointerClick, DollarSign, Eye, Play, Pause, Trash2, BarChart3, GitCompare, X } from "lucide-react";
+import { useState } from "react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { Link } from "wouter";
 import { CampaignPerformanceChart } from "@/components/CampaignPerformanceChart";
+import { CampaignComparison } from "@/components/CampaignComparison";
 
 export default function MetaCampaigns() {
   const { user } = useAuth();
+  const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>([]);
+  const [showComparison, setShowComparison] = useState(false);
   const { data: connection, isLoading: connectionLoading } = trpc.meta.getConnectionStatus.useQuery();
   const { data: campaigns, isLoading: campaignsLoading, refetch } = trpc.meta.getCampaigns.useQuery(
     { includeInsights: true, limit: 50 },
@@ -71,6 +76,24 @@ export default function MetaCampaigns() {
             <Button>Go to Integrations</Button>
           </Link>
         </Card>
+      </div>
+    );
+  }
+
+  // Get selected campaigns data
+  const selectedCampaignsData = campaigns?.filter((c) => selectedCampaigns.includes(c.id)) || [];
+
+  // Show comparison view if enabled
+  if (showComparison && selectedCampaignsData.length >= 2) {
+    return (
+      <div className="container py-8">
+        <CampaignComparison
+          campaigns={selectedCampaignsData}
+          onClose={() => {
+            setShowComparison(false);
+            setSelectedCampaigns([]);
+          }}
+        />
       </div>
     );
   }
@@ -153,31 +176,89 @@ export default function MetaCampaigns() {
               ))}
             </div>
           ) : campaigns && campaigns.length > 0 ? (
-            <div className="space-y-4">
+            <>
+              {/* Comparison Controls */}
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      if (selectedCampaigns.length === campaigns.length) {
+                        setSelectedCampaigns([]);
+                      } else {
+                        setSelectedCampaigns(campaigns.map((c) => c.id));
+                      }
+                    }}
+                  >
+                    {selectedCampaigns.length === campaigns.length ? "Deselect All" : "Select All"}
+                  </Button>
+                  {selectedCampaigns.length > 0 && (
+                    <span className="text-sm text-muted-foreground">
+                      {selectedCampaigns.length} campaign{selectedCampaigns.length > 1 ? "s" : ""} selected
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {selectedCampaigns.length > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSelectedCampaigns([])}
+                    >
+                      <X className="w-4 h-4 mr-2" />
+                      Clear
+                    </Button>
+                  )}
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => setShowComparison(true)}
+                    disabled={selectedCampaigns.length < 2}
+                  >
+                    <GitCompare className="w-4 h-4 mr-2" />
+                    Compare Selected ({selectedCampaigns.length})
+                  </Button>
+                </div>
+              </div>
+
+              <div className="space-y-4">
               {campaigns.map((campaign) => (
                 <Card key={campaign.id} className="p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <h3 className="font-semibold text-lg">{campaign.name}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {campaign.objective} • Created {new Date(campaign.createdTime).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <Badge
-                      variant={
-                        campaign.status === "ACTIVE"
-                          ? "default"
-                          : campaign.status === "PAUSED"
-                          ? "secondary"
-                          : "outline"
-                      }
-                    >
-                      {campaign.status}
-                    </Badge>
-                  </div>
+                  <div className="flex items-start gap-4">
+                    <Checkbox
+                      checked={selectedCampaigns.includes(campaign.id)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelectedCampaigns([...selectedCampaigns, campaign.id]);
+                        } else {
+                          setSelectedCampaigns(selectedCampaigns.filter((id) => id !== campaign.id));
+                        }
+                      }}
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-start justify-between mb-4">
+                        <div>
+                          <h3 className="font-semibold text-lg">{campaign.name}</h3>
+                          <p className="text-sm text-muted-foreground">
+                            {campaign.objective} • Created {new Date(campaign.createdTime).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <Badge
+                          variant={
+                            campaign.status === "ACTIVE"
+                              ? "default"
+                              : campaign.status === "PAUSED"
+                              ? "secondary"
+                              : "outline"
+                          }
+                        >
+                          {campaign.status}
+                        </Badge>
+                      </div>
 
-                  {campaign.insights ? (
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                      {campaign.insights ? (
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                       <div className="flex items-center gap-2">
                         <Eye className="w-4 h-4 text-muted-foreground" />
                         <div>
@@ -217,53 +298,56 @@ export default function MetaCampaigns() {
                           <p className="font-semibold">${campaign.insights.cpc.toFixed(2)}</p>
                         </div>
                       </div>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">No insights available yet</p>
-                  )}
-
-                  <div className="mt-4 pt-4 border-t flex items-center justify-between">
-                    <div className="text-sm text-muted-foreground">
-                      {campaign.dailyBudget && `Daily Budget: $${campaign.dailyBudget.toFixed(2)}`}
-                      {campaign.lifetimeBudget && `Lifetime Budget: $${campaign.lifetimeBudget.toFixed(2)}`}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {campaign.status !== "DELETED" && campaign.status !== "ARCHIVED" && (
-                        <>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleToggleStatus(campaign.id, campaign.status)}
-                            disabled={updateStatusMutation.isPending}
-                          >
-                            {campaign.status === "ACTIVE" ? (
-                              <>
-                                <Pause className="w-4 h-4 mr-2" />
-                                Pause
-                              </>
-                            ) : (
-                              <>
-                                <Play className="w-4 h-4 mr-2" />
-                                Activate
-                              </>
-                            )}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleDelete(campaign.id, campaign.name)}
-                            disabled={deleteMutation.isPending}
-                          >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Delete
-                          </Button>
-                        </>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">No insights available yet</p>
                       )}
+
+                      <div className="mt-4 pt-4 border-t flex items-center justify-between">
+                        <div className="text-sm text-muted-foreground">
+                          {campaign.dailyBudget && `Daily Budget: $${campaign.dailyBudget.toFixed(2)}`}
+                          {campaign.lifetimeBudget && `Lifetime Budget: $${campaign.lifetimeBudget.toFixed(2)}`}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {campaign.status !== "DELETED" && campaign.status !== "ARCHIVED" && (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleToggleStatus(campaign.id, campaign.status)}
+                                disabled={updateStatusMutation.isPending}
+                              >
+                                {campaign.status === "ACTIVE" ? (
+                                  <>
+                                    <Pause className="w-4 h-4 mr-2" />
+                                    Pause
+                                  </>
+                                ) : (
+                                  <>
+                                    <Play className="w-4 h-4 mr-2" />
+                                    Activate
+                                  </>
+                                )}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleDelete(campaign.id, campaign.name)}
+                                disabled={deleteMutation.isPending}
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Delete
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </Card>
               ))}
-            </div>
+              </div>
+            </>
           ) : (
             <Card className="p-8 text-center">
               <p className="text-muted-foreground">No campaigns found in your Meta Ads Manager account.</p>

@@ -2270,3 +2270,16 @@
 - [x] Integrate dashboard into Meta Campaigns page
 - [x] Add loading states for charts
 - [x] Add empty state for no campaign data
+
+### Phase 6: Campaign Comparison Mode (COMPLETE)
+- [x] Add campaign selection state (useState for selected campaign IDs)
+- [x] Add checkboxes to campaign cards in Campaigns tab
+- [x] Add "Compare Selected" button with count badge
+- [x] Create CampaignComparison component
+- [x] Add side-by-side metrics table for selected campaigns
+- [x] Add comparison charts (impressions vs clicks, CTR, spend, CPC)
+- [x] Add "Clear Selection" button
+- [x] Add "Select All" / "Deselect All" buttons
+- [x] Disable comparison button when < 2 campaigns selected
+- [x] Add close button to return to campaigns list
+- [x] Responsive design with dark theme colors
