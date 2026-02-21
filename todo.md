@@ -2105,3 +2105,12 @@
 - [x] Update complianceChecker.ts to fetch from database
 - [x] Migrate existing hardcoded phrases to database
 - [x] Test admin UI and save checkpoint
+
+## Phase 51: Compliance Admin Enhancements (COMPLETE)
+- [x] Add admin-only "Compliance Admin" link to sidebar navigation
+- [x] Implement CSV export for banned phrases
+- [x] Implement CSV import for banned phrases with validation
+- [x] Create complianceHistory table for audit log
+- [x] Add history tracking to all CRUD operations
+- [x] Build compliance history viewer UI
+- [x] Test all features and save checkpoint

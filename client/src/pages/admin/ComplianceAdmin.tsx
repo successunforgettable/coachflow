@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, Edit, Plus, Trash2, Shield, Calendar, RefreshCw } from "lucide-react";
+import { AlertCircle, Edit, Plus, Trash2, Shield, Calendar, RefreshCw, Download, Upload, History, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useLocation } from "wouter";
@@ -49,7 +49,10 @@ export default function ComplianceAdmin() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [selectedPhrase, setSelectedPhrase] = useState<BannedPhrase | null>(null);
+  const [csvContent, setCsvContent] = useState("");
+  const [importMode, setImportMode] = useState<"replace" | "append">("append");
   const [formData, setFormData] = useState<FormData>({
     phrase: "",
     category: "critical",
@@ -61,8 +64,33 @@ export default function ComplianceAdmin() {
   // Queries
   const { data: phrases, isLoading: phrasesLoading } = trpc.compliance.listPhrases.useQuery();
   const { data: version } = trpc.compliance.getVersion.useQuery();
+  const { data: history, isLoading: historyLoading } = trpc.compliance.getHistory.useQuery({ limit: 50 });
+
+  // Queries for CSV
+  const { refetch: exportCSV } = trpc.compliance.exportCSV.useQuery(undefined, {
+    enabled: false,
+  });
 
   // Mutations
+  const importCSV = trpc.compliance.importCSV.useMutation({
+    onSuccess: (data) => {
+      utils.compliance.listPhrases.invalidate();
+      setIsImportDialogOpen(false);
+      setCsvContent("");
+      toast({
+        title: "Import successful",
+        description: `Imported ${data.imported} phrases (${data.mode} mode)`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Import failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const addPhrase = trpc.compliance.addPhrase.useMutation({
     onSuccess: () => {
       utils.compliance.listPhrases.invalidate();
@@ -203,6 +231,59 @@ export default function ComplianceAdmin() {
     });
   };
 
+  const handleExportCSV = async () => {
+    try {
+      const result = await exportCSV();
+      if (result.data?.csv) {
+        // Create download link
+        const blob = new Blob([result.data.csv], { type: "text/csv" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `banned-phrases-${new Date().toISOString().split("T")[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        toast({
+          title: "Export successful",
+          description: "CSV file has been downloaded",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Export failed",
+        description: "Failed to export CSV",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleImportCSV = () => {
+    if (!csvContent.trim()) {
+      toast({
+        title: "Error",
+        description: "Please paste CSV content",
+        variant: "destructive",
+      });
+      return;
+    }
+    importCSV.mutate({ csv: csvContent, mode: importMode });
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const content = event.target?.result as string;
+        setCsvContent(content);
+      };
+      reader.readAsText(file);
+    }
+  };
+
   // Stats
   const criticalCount = phrases?.filter((p) => p.category === "critical" && p.active).length || 0;
   const warningCount = phrases?.filter((p) => p.category === "warning" && p.active).length || 0;
@@ -331,13 +412,31 @@ export default function ComplianceAdmin() {
                   Manage phrases that trigger compliance warnings in generated ad copy
                 </CardDescription>
               </div>
-              <Button
-                onClick={handleAdd}
-                className="bg-gradient-to-br from-[#8B5CF6] to-[#A78BFA] hover:from-[#7C3AED] hover:to-[#8B5CF6]"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Add Phrase
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleExportCSV}
+                  variant="outline"
+                  className="bg-transparent border-[#27273A] text-white hover:bg-[#16161F] hover:border-[#8B5CF6]"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Export CSV
+                </Button>
+                <Button
+                  onClick={() => setIsImportDialogOpen(true)}
+                  variant="outline"
+                  className="bg-transparent border-[#27273A] text-white hover:bg-[#16161F] hover:border-[#8B5CF6]"
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  Import CSV
+                </Button>
+                <Button
+                  onClick={handleAdd}
+                  className="bg-gradient-to-br from-[#8B5CF6] to-[#A78BFA] hover:from-[#7C3AED] hover:to-[#8B5CF6]"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Phrase
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
@@ -411,6 +510,66 @@ export default function ComplianceAdmin() {
                   ))}
                 </TableBody>
               </Table>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Compliance History */}
+        <Card className="bg-[#14141F] border-[#27273A] mt-8">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <History className="w-5 h-5 text-[#8B5CF6]" />
+              <CardTitle>Compliance History (Audit Log)</CardTitle>
+            </div>
+            <CardDescription className="text-gray-400 mt-2">
+              Track all changes made to compliance rules and phrases
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {historyLoading ? (
+              <div className="text-center py-8 text-gray-400">Loading history...</div>
+            ) : !history || history.length === 0 ? (
+              <div className="text-center py-8 text-gray-400">No history records found</div>
+            ) : (
+              <div className="space-y-4">
+                {history.slice().reverse().map((record) => (
+                  <div
+                    key={record.id}
+                    className="bg-[#0A0A0F] border border-[#27273A] rounded-lg p-4 hover:border-[#8B5CF6]/30 transition-colors"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge
+                            variant="outline"
+                            className={
+                              record.action === "add"
+                                ? "bg-green-500/10 text-green-500 border-green-500/20"
+                                : record.action === "update"
+                                ? "bg-blue-500/10 text-blue-500 border-blue-500/20"
+                                : record.action === "delete"
+                                ? "bg-red-500/10 text-red-500 border-red-500/20"
+                                : record.action === "import"
+                                ? "bg-purple-500/10 text-purple-500 border-purple-500/20"
+                                : "bg-amber-500/10 text-amber-500 border-amber-500/20"
+                            }
+                          >
+                            {record.action.toUpperCase()}
+                          </Badge>
+                          <span className="text-sm text-gray-400">
+                            by <span className="text-white font-medium">{record.adminUserName}</span>
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-300 mb-1">{record.details}</p>
+                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                          <Clock className="w-3 h-3" />
+                          {new Date(record.createdAt).toLocaleString()}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </CardContent>
         </Card>
@@ -617,6 +776,83 @@ export default function ComplianceAdmin() {
               className="bg-red-500 hover:bg-red-600"
             >
               Delete Phrase
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Import CSV Dialog */}
+      <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
+        <DialogContent className="bg-[#14141F] border-[#27273A] text-white max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Import Banned Phrases from CSV</DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Upload or paste CSV content to bulk import banned phrases
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="import-mode">Import Mode</Label>
+              <Select
+                value={importMode}
+                onValueChange={(value: "replace" | "append") => setImportMode(value)}
+              >
+                <SelectTrigger className="bg-[#0A0A0F] border-[#27273A] text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-[#14141F] border-[#27273A]">
+                  <SelectItem value="append">Append (add to existing phrases)</SelectItem>
+                  <SelectItem value="replace">Replace (delete all existing phrases)</SelectItem>
+                </SelectContent>
+              </Select>
+              {importMode === "replace" && (
+                <p className="text-sm text-amber-500 mt-2">
+                  ⚠️ Warning: This will delete all existing banned phrases and replace them with the imported data.
+                </p>
+              )}
+            </div>
+            <div>
+              <Label htmlFor="csv-file">Upload CSV File</Label>
+              <Input
+                id="csv-file"
+                type="file"
+                accept=".csv"
+                onChange={handleFileUpload}
+                className="bg-[#0A0A0F] border-[#27273A] text-white"
+              />
+            </div>
+            <div>
+              <Label htmlFor="csv-content">Or Paste CSV Content</Label>
+              <Textarea
+                id="csv-content"
+                value={csvContent}
+                onChange={(e) => setCsvContent(e.target.value)}
+                placeholder="phrase,category,description,suggestion,active\n&quot;guaranteed results&quot;,critical,&quot;Meta policy violation&quot;,&quot;Use 'proven framework' instead&quot;,true"
+                rows={10}
+                className="bg-[#0A0A0F] border-[#27273A] text-white font-mono text-sm"
+              />
+              <p className="text-xs text-gray-400 mt-2">
+                CSV format: phrase, category (critical/warning), description, suggestion, active (true/false)
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={() => {
+                setIsImportDialogOpen(false);
+                setCsvContent("");
+              }}
+              variant="outline"
+              className="bg-transparent border-[#27273A] text-white hover:bg-[#16161F]"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleImportCSV}
+              disabled={!csvContent.trim() || importCSV.isPending}
+              className="bg-gradient-to-br from-[#8B5CF6] to-[#A78BFA] hover:from-[#7C3AED] hover:to-[#8B5CF6]"
+            >
+              {importCSV.isPending ? "Importing..." : "Import Phrases"}
             </Button>
           </DialogFooter>
         </DialogContent>

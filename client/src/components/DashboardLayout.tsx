@@ -36,7 +36,8 @@ import {
   BarChart3, 
   FolderKanban,
   Settings as SettingsIcon,
-  Home
+  Home,
+  Shield
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -233,6 +234,23 @@ function DashboardLayoutContent({
                   </SidebarMenuItem>
                 );
               })}
+              
+              {/* Admin-only Compliance Admin link */}
+              {user?.role === 'admin' && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    isActive={location === '/admin/compliance'}
+                    onClick={() => setLocation('/admin/compliance')}
+                    tooltip="Compliance Admin"
+                    className={`h-10 transition-all font-normal`}
+                  >
+                    <Shield
+                      className={`h-4 w-4 ${location === '/admin/compliance' ? "text-primary" : ""}`}
+                    />
+                    <span>Compliance Admin</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarContent>
 

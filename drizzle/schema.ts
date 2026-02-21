@@ -636,3 +636,23 @@ export const complianceVersions = mysqlTable("compliance_versions", {
 
 export type ComplianceVersion = typeof complianceVersions.$inferSelect;
 export type InsertComplianceVersion = typeof complianceVersions.$inferInsert;
+
+/**
+ * Compliance History - Audit log for all compliance rule changes
+ * Tracks who made changes, what changed, and when
+ */
+export const complianceHistory = mysqlTable("compliance_history", {
+  id: int("id").autoincrement().primaryKey(),
+  adminUserId: int("adminUserId").notNull(), // User who made the change
+  adminUserName: varchar("adminUserName", { length: 255 }).notNull(),
+  adminUserEmail: varchar("adminUserEmail", { length: 320 }).notNull(),
+  action: mysqlEnum("action", ["add", "update", "delete", "import", "version_update"]).notNull(),
+  phraseId: int("phraseId"), // NULL for imports and version updates
+  phraseBefore: text("phraseBefore"), // JSON snapshot before change
+  phraseAfter: text("phraseAfter"), // JSON snapshot after change
+  details: text("details"), // Additional context (e.g., "Imported 50 phrases", "Updated to v1.2")
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ComplianceHistory = typeof complianceHistory.$inferSelect;
+export type InsertComplianceHistory = typeof complianceHistory.$inferInsert;

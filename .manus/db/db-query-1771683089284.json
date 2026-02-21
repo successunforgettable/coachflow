@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE `compliance_history` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`adminUserId` int NOT NULL,\n\t`adminUserName` varchar(255) NOT NULL,\n\t`adminUserEmail` varchar(320) NOT NULL,\n\t`action` enum('add','update','delete','import','version_update') NOT NULL,\n\t`phraseId` int,\n\t`phraseBefore` text,\n\t`phraseAfter` text,\n\t`details` text,\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\tCONSTRAINT `compliance_history_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute CREATE TABLE `compliance_history` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`adminUserId` int NOT NULL,\n\t`adminUserName` varchar(255) NOT NULL,\n\t`adminUserEmail` varchar(320) NOT NULL,\n\t`action` enum('add','update','delete','import','version_update') NOT NULL,\n\t`phraseId` int,\n\t`phraseBefore` text,\n\t`phraseAfter` text,\n\t`details` text,\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\tCONSTRAINT `compliance_history_id` PRIMARY KEY(`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1707
+}
