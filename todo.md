@@ -2283,3 +2283,14 @@
 - [x] Disable comparison button when < 2 campaigns selected
 - [x] Add close button to return to campaigns list
 - [x] Responsive design with dark theme colors
+
+### Phase 7: Date Range Filter for Campaign Comparison (COMPLETE)
+- [x] Add date range parameters to getCampaigns procedure (since, until)
+- [x] Update Meta API client to support date range in insights fetch
+- [x] Add date range state to CampaignComparison component
+- [x] Create date range selector UI (Last 7 days, 30 days, 90 days, All time)
+- [x] Fetch campaigns with selected date range
+- [x] Update comparison charts with filtered data
+- [x] Add loading state during date range changes
+- [x] Change CampaignComparison to accept campaignIds instead of campaigns
+- [x] Fix MetaCampaigns to pass campaignIds to comparison view

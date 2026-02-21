@@ -110,6 +110,10 @@ export async function getCampaigns(
     limit?: number;
     status?: "ACTIVE" | "PAUSED" | "ARCHIVED" | "DELETED";
     includeInsights?: boolean;
+    dateRange?: {
+      since?: string; // YYYY-MM-DD format
+      until?: string; // YYYY-MM-DD format
+    };
   }
 ): Promise<MetaCampaign[]> {
   const accessToken = await getMetaToken(userId);
@@ -133,7 +137,21 @@ export async function getCampaigns(
     
     let fields = "id,name,status,objective,daily_budget,lifetime_budget,created_time";
     if (options?.includeInsights) {
-      fields += ",insights{impressions,clicks,spend,reach,ctr,cpc}";
+      // Add date range parameters to insights if provided
+      let insightsParams = "";
+      if (options.dateRange?.since || options.dateRange?.until) {
+        const params = [];
+        if (options.dateRange.since) params.push(`time_range={'since':'${options.dateRange.since}'}`);
+        if (options.dateRange.until) params.push(`time_range={'until':'${options.dateRange.until}'}`);
+        if (options.dateRange.since && options.dateRange.until) {
+          insightsParams = `.time_range({'since':'${options.dateRange.since}','until':'${options.dateRange.until}'})`;
+        } else if (options.dateRange.since) {
+          insightsParams = `.time_range({'since':'${options.dateRange.since}'})`;
+        } else if (options.dateRange.until) {
+          insightsParams = `.time_range({'until':'${options.dateRange.until}'})`;
+        }
+      }
+      fields += `,insights${insightsParams}{impressions,clicks,spend,reach,ctr,cpc}`;
     }
     url.searchParams.set("fields", fields);
 

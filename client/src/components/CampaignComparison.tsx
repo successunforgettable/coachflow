@@ -1,6 +1,9 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { X } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { X, Calendar } from "lucide-react";
+import { useState, useEffect } from "react";
+import { trpc } from "@/lib/trpc";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 interface CampaignInsight {
@@ -24,11 +27,36 @@ interface Campaign {
 }
 
 interface CampaignComparisonProps {
-  campaigns: Campaign[];
+  campaignIds: string[];
   onClose: () => void;
 }
 
-export function CampaignComparison({ campaigns, onClose }: CampaignComparisonProps) {
+export function CampaignComparison({ campaignIds, onClose }: CampaignComparisonProps) {
+  const [dateRange, setDateRange] = useState<string>("30"); // Default: Last 30 days
+
+  // Calculate date range based on selection
+  const getDateRange = () => {
+    if (dateRange === "all") return undefined;
+    
+    const until = new Date().toISOString().split('T')[0]; // Today
+    const since = new Date();
+    since.setDate(since.getDate() - parseInt(dateRange));
+    
+    return {
+      since: since.toISOString().split('T')[0],
+      until,
+    };
+  };
+
+  // Fetch campaigns with date range
+  const { data: allCampaigns, isLoading } = trpc.meta.getCampaigns.useQuery(
+    { includeInsights: true, dateRange: getDateRange() },
+    { refetchOnWindowFocus: false }
+  );
+
+  // Filter to only selected campaigns
+  const campaigns = allCampaigns?.filter((c) => campaignIds.includes(c.id)) || [];
+
   // Prepare data for comparison charts
   const comparisonData = campaigns.map((campaign) => ({
     name: campaign.name.length > 15 ? campaign.name.substring(0, 15) + "..." : campaign.name,
@@ -41,6 +69,16 @@ export function CampaignComparison({ campaigns, onClose }: CampaignComparisonPro
     reach: campaign.insights?.reach || 0,
   }));
 
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-center py-12">
+          <p className="text-muted-foreground">Loading campaign data...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -49,9 +87,26 @@ export function CampaignComparison({ campaigns, onClose }: CampaignComparisonPro
           <h2 className="text-2xl font-bold">Campaign Comparison</h2>
           <p className="text-muted-foreground">Comparing {campaigns.length} campaigns side-by-side</p>
         </div>
-        <Button variant="ghost" size="icon" onClick={onClose}>
-          <X className="w-5 h-5" />
-        </Button>
+        <div className="flex items-center gap-4">
+          {/* Date Range Selector */}
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-muted-foreground" />
+            <Select value={dateRange} onValueChange={setDateRange}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Select date range" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="7">Last 7 days</SelectItem>
+                <SelectItem value="30">Last 30 days</SelectItem>
+                <SelectItem value="90">Last 90 days</SelectItem>
+                <SelectItem value="all">All time</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Button variant="ghost" size="icon" onClick={onClose}>
+            <X className="w-5 h-5" />
+          </Button>
+        </div>
       </div>
 
       {/* Metrics Table */}

@@ -76,6 +76,10 @@ export const metaRouter = router({
         limit: z.number().optional(),
         status: z.enum(["ACTIVE", "PAUSED", "ARCHIVED", "DELETED"]).optional(),
         includeInsights: z.boolean().optional(),
+        dateRange: z.object({
+          since: z.string().optional(), // YYYY-MM-DD format
+          until: z.string().optional(), // YYYY-MM-DD format
+        }).optional(),
       }).optional()
     )
     .query(async ({ ctx, input }) => {

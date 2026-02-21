@@ -80,15 +80,12 @@ export default function MetaCampaigns() {
     );
   }
 
-  // Get selected campaigns data
-  const selectedCampaignsData = campaigns?.filter((c) => selectedCampaigns.includes(c.id)) || [];
-
   // Show comparison view if enabled
-  if (showComparison && selectedCampaignsData.length >= 2) {
+  if (showComparison && selectedCampaigns.length >= 2) {
     return (
       <div className="container py-8">
         <CampaignComparison
-          campaigns={selectedCampaignsData}
+          campaignIds={selectedCampaigns}
           onClose={() => {
             setShowComparison(false);
             setSelectedCampaigns([]);
