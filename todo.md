@@ -2257,3 +2257,16 @@
 - [x] Write vitest tests for campaign management (12 tests passing)
 - [x] Test campaign management flow
 - [x] Test status badge updates
+
+### Phase 5: Meta Performance Dashboard (COMPLETE)
+- [x] Install chart library (recharts)
+- [x] Create CampaignPerformanceChart component
+- [x] Add impressions & clicks bar chart
+- [x] Add CTR line chart
+- [x] Add spend bar chart
+- [x] Add CPC line chart
+- [x] Create dashboard summary cards (total impressions, clicks, spend, avg CTR)
+- [x] Add tabs to Meta Campaigns page (Dashboard/Campaigns)
+- [x] Integrate dashboard into Meta Campaigns page
+- [x] Add loading states for charts
+- [x] Add empty state for no campaign data
