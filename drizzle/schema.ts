@@ -724,3 +724,26 @@ export const metaPublishedAds = mysqlTable("meta_published_ads", {
 
 export type MetaPublishedAd = typeof metaPublishedAds.$inferSelect;
 export type InsertMetaPublishedAd = typeof metaPublishedAds.$inferInsert;
+
+/**
+ * Campaign Performance Alerts - Monitors campaign metrics and notifies owner
+ * Tracks alert rules and their trigger history
+ */
+export const campaignAlerts = mysqlTable("campaign_alerts", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  metaCampaignId: varchar("metaCampaignId", { length: 255 }), // Null = applies to all campaigns
+  alertType: mysqlEnum("alertType", ["ctr_drop", "cpc_exceed", "spend_limit", "low_impressions"]).notNull(),
+  threshold: decimal("threshold", { precision: 10, scale: 2 }).notNull(), // Threshold value (e.g., 1.5 for CTR%, 2.50 for CPC$)
+  enabled: boolean("enabled").default(true).notNull(),
+  lastTriggeredAt: timestamp("lastTriggeredAt"),
+  triggerCount: int("triggerCount").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  userIdIdx: index("idx_campaignAlerts_userId").on(table.userId),
+  campaignIdIdx: index("idx_campaignAlerts_metaCampaignId").on(table.metaCampaignId),
+}));
+
+export type CampaignAlert = typeof campaignAlerts.$inferSelect;
+export type InsertCampaignAlert = typeof campaignAlerts.$inferInsert;

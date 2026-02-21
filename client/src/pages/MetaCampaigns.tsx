@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ExternalLink, TrendingUp, MousePointerClick, DollarSign, Eye, Play, Pause, Trash2, BarChart3, GitCompare, X, Calendar } from "lucide-react";
+import { ExternalLink, TrendingUp, MousePointerClick, DollarSign, Eye, Play, Pause, Trash2, BarChart3, GitCompare, X, Calendar, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
@@ -55,6 +55,16 @@ export default function MetaCampaigns() {
     },
     onError: (error) => {
       toast.error(error.message || "Failed to delete campaign");
+    },
+  });
+
+  const syncMutation = trpc.meta.syncCampaignStatuses.useMutation({
+    onSuccess: (data) => {
+      toast.success(data.message);
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to sync campaigns");
     },
   });
 
@@ -196,6 +206,15 @@ export default function MetaCampaigns() {
               {/* Comparison Controls */}
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => syncMutation.mutate()}
+                    disabled={syncMutation.isPending}
+                  >
+                    <RefreshCw className={`w-4 h-4 mr-2 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
+                    {syncMutation.isPending ? "Syncing..." : "Sync Now"}
+                  </Button>
                   <Button
                     variant="outline"
                     size="sm"

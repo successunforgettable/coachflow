@@ -444,4 +444,264 @@ export const metaRouter = router({
 
     return publishedAds;
   }),
+
+  /**
+   * Sync campaign statuses from Meta to local database
+   * Updates metaPublishedAds table with latest status from Meta API
+   */
+  syncCampaignStatuses: protectedProcedure.mutation(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+    // Get user's Meta connection
+    const [connection] = await db
+      .select()
+      .from(metaAccessTokens)
+      .where(eq(metaAccessTokens.userId, ctx.user.id))
+      .limit(1);
+
+    if (!connection) {
+      throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Meta account not connected" });
+    }
+
+    // Check if token is expired
+    const now = new Date();
+    if (new Date(connection.tokenExpiresAt) < now) {
+      throw new TRPCError({ code: "UNAUTHORIZED", message: "Meta access token expired. Please reconnect." });
+    }
+
+    // Get all published ads for this user
+    const { metaPublishedAds } = await import("../../drizzle/schema");
+    const publishedAds = await db
+      .select()
+      .from(metaPublishedAds)
+      .where(eq(metaPublishedAds.userId, ctx.user.id));
+
+    if (publishedAds.length === 0) {
+      return { synced: 0, message: "No published campaigns to sync" };
+    }
+
+    // Fetch current status from Meta for each campaign
+    const { getCampaignStatus } = await import("../lib/metaAPI");
+    let syncedCount = 0;
+    const errors: string[] = [];
+
+    for (const ad of publishedAds) {
+      try {
+        const status = await getCampaignStatus(connection.accessToken, ad.metaCampaignId);
+        
+        // Update local database with latest status
+        await db
+          .update(metaPublishedAds)
+          .set({
+            status: status as "ACTIVE" | "PAUSED" | "ARCHIVED" | "DELETED",
+            lastSyncedAt: new Date(),
+          })
+          .where(eq(metaPublishedAds.id, ad.id));
+
+        syncedCount++;
+      } catch (error: any) {
+        console.error(`Failed to sync campaign ${ad.metaCampaignId}:`, error);
+        errors.push(`Campaign ${ad.metaCampaignId}: ${error.message}`);
+      }
+    }
+
+    return {
+      synced: syncedCount,
+      total: publishedAds.length,
+      errors: errors.length > 0 ? errors : undefined,
+      message: `Synced ${syncedCount} of ${publishedAds.length} campaigns`,
+    };
+  }),
+
+  /**
+   * Get user's campaign alerts
+   */
+  getAlerts: protectedProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+    const { campaignAlerts } = await import("../../drizzle/schema");
+    const alerts = await db
+      .select()
+      .from(campaignAlerts)
+      .where(eq(campaignAlerts.userId, ctx.user.id));
+
+    return alerts;
+  }),
+
+  /**
+   * Create a new campaign alert
+   */
+  createAlert: protectedProcedure
+    .input(
+      z.object({
+        metaCampaignId: z.string().optional(),
+        alertType: z.enum(["ctr_drop", "cpc_exceed", "spend_limit", "low_impressions"]),
+        threshold: z.number().positive(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const { campaignAlerts } = await import("../../drizzle/schema");
+      const [alert] = await db.insert(campaignAlerts).values({
+        userId: ctx.user.id,
+        metaCampaignId: input.metaCampaignId || null,
+        alertType: input.alertType,
+        threshold: input.threshold.toString(),
+        enabled: true,
+      });
+
+      return { success: true, alertId: alert.insertId };
+    }),
+
+  /**
+   * Update alert settings
+   */
+  updateAlert: protectedProcedure
+    .input(
+      z.object({
+        alertId: z.number(),
+        enabled: z.boolean().optional(),
+        threshold: z.number().positive().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const { campaignAlerts } = await import("../../drizzle/schema");
+      const updateData: any = {};
+      if (input.enabled !== undefined) updateData.enabled = input.enabled;
+      if (input.threshold !== undefined) updateData.threshold = input.threshold.toString();
+
+      await db
+        .update(campaignAlerts)
+        .set(updateData)
+        .where(eq(campaignAlerts.id, input.alertId));
+
+      return { success: true };
+    }),
+
+  /**
+   * Delete an alert
+   */
+  deleteAlert: protectedProcedure
+    .input(z.object({ alertId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const { campaignAlerts } = await import("../../drizzle/schema");
+      await db.delete(campaignAlerts).where(eq(campaignAlerts.id, input.alertId));
+
+      return { success: true };
+    }),
+
+  /**
+   * Check campaigns against alert rules and notify owner
+   */
+  checkCampaignAlerts: protectedProcedure.mutation(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+    // Get user's Meta connection
+    const [connection] = await db
+      .select()
+      .from(metaAccessTokens)
+      .where(eq(metaAccessTokens.userId, ctx.user.id))
+      .limit(1);
+
+    if (!connection) {
+      throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Meta account not connected" });
+    }
+
+    // Get enabled alerts
+    const { campaignAlerts } = await import("../../drizzle/schema");
+    const alerts = await db
+      .select()
+      .from(campaignAlerts)
+      .where(eq(campaignAlerts.userId, ctx.user.id));
+
+    const enabledAlerts = alerts.filter((a) => a.enabled);
+    if (enabledAlerts.length === 0) {
+      return { checked: 0, triggered: 0, message: "No enabled alerts" };
+    }
+
+    // Get campaigns with insights
+    const { getCampaigns } = await import("../lib/metaAPI");
+    const campaigns = await getCampaigns(ctx.user.id, { includeInsights: true, limit: 50 });
+
+    let triggeredCount = 0;
+    const { notifyOwner } = await import("../_core/notification");
+
+    for (const alert of enabledAlerts) {
+      const targetCampaigns = alert.metaCampaignId
+        ? campaigns.filter((c) => c.id === alert.metaCampaignId)
+        : campaigns;
+
+      for (const campaign of targetCampaigns) {
+        if (!campaign.insights) continue;
+
+        let triggered = false;
+        let message = "";
+
+        switch (alert.alertType) {
+          case "ctr_drop":
+            if (campaign.insights.ctr < parseFloat(alert.threshold)) {
+              triggered = true;
+              message = `Campaign "${campaign.name}" CTR dropped to ${campaign.insights.ctr.toFixed(2)}% (threshold: ${alert.threshold}%)`;
+            }
+            break;
+          case "cpc_exceed":
+            if (campaign.insights.cpc > parseFloat(alert.threshold)) {
+              triggered = true;
+              message = `Campaign "${campaign.name}" CPC exceeded $${campaign.insights.cpc.toFixed(2)} (threshold: $${alert.threshold})`;
+            }
+            break;
+          case "spend_limit":
+            if (campaign.insights.spend > parseFloat(alert.threshold)) {
+              triggered = true;
+              message = `Campaign "${campaign.name}" spend exceeded $${campaign.insights.spend.toFixed(2)} (limit: $${alert.threshold})`;
+            }
+            break;
+          case "low_impressions":
+            if (campaign.insights.impressions < parseFloat(alert.threshold)) {
+              triggered = true;
+              message = `Campaign "${campaign.name}" impressions dropped to ${campaign.insights.impressions} (threshold: ${alert.threshold})`;
+            }
+            break;
+        }
+
+        if (triggered) {
+          // Send notification
+          await notifyOwner({
+            title: "⚠️ Campaign Alert Triggered",
+            content: message,
+          });
+
+          // Update alert trigger count and timestamp
+          await db
+            .update(campaignAlerts)
+            .set({
+              lastTriggeredAt: new Date(),
+              triggerCount: alert.triggerCount + 1,
+            })
+            .where(eq(campaignAlerts.id, alert.id));
+
+          triggeredCount++;
+        }
+      }
+    }
+
+    return {
+      checked: enabledAlerts.length,
+      triggered: triggeredCount,
+      message: triggeredCount > 0
+        ? `${triggeredCount} alert${triggeredCount > 1 ? "s" : ""} triggered`
+        : "All campaigns within thresholds",
+    };
+  }),
 });

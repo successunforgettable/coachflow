@@ -567,3 +567,21 @@ export async function deleteCampaign(
     return false;
   }
 }
+
+
+/**
+ * Get campaign status from Meta
+ */
+export async function getCampaignStatus(accessToken: string, campaignId: string): Promise<string> {
+  const url = `https://graph.facebook.com/v21.0/${campaignId}?fields=status&access_token=${accessToken}`;
+  
+  const response = await fetch(url);
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error?.message || "Failed to fetch campaign status");
+  }
+  
+  const data = await response.json();
+  return data.status;
+}

@@ -2314,3 +2314,30 @@
 - [x] Replace Select dropdown with DateRangePicker in Dashboard
 - [x] Update state management to use date objects
 - [x] Test custom date picker functionality
+
+### Phase 10: Automated Campaign Status Sync (COMPLETE)
+- [x] Design sync strategy (manual trigger approach)
+- [x] Create syncCampaignStatuses procedure in meta router
+- [x] Implement batch status fetch from Meta API (getCampaignStatus)
+- [x] Update metaPublishedAds table with latest statuses
+- [x] Add lastSyncedAt timestamp tracking
+- [x] Add manual "Sync Now" button to Meta Campaigns page
+- [x] Handle sync errors gracefully (error array in response)
+- [x] Add sync loading state with spinning icon
+- [x] Test automated sync flow
+
+### Phase 11: Performance Alerts System (COMPLETE)
+- [x] Create campaignAlerts table in schema (0024_slow_gwen_stacy.sql)
+- [x] Generate and apply migration
+- [x] Add alert configuration procedures (getAlerts, createAlert, updateAlert, deleteAlert)
+- [x] Implement performance monitoring logic (check CTR, CPC, spend, impressions)
+- [x] Create checkCampaignAlerts procedure
+- [x] Integrate with notifyOwner for alert delivery
+- [x] Build alert configuration UI (CampaignAlerts page at /meta/alerts)
+- [x] Add alert type selector (CTR drop, CPC exceed, spend limit, low impressions)
+- [x] Add threshold input fields with unit indicators
+- [x] Add enable/disable toggle for each alert
+- [x] Add alert history/log display (lastTriggeredAt, triggerCount)
+- [x] Add "Check Now" button for manual alert checks
+- [x] Write vitest tests for alerts system (10 tests passing)
+- [x] Test alert triggering and notifications

@@ -40,6 +40,7 @@ import OnboardingPage from "./pages/OnboardingPage";
 import Settings from "./pages/Settings";
 import Integrations from "./pages/settings/Integrations";
 import MetaCampaigns from "./pages/MetaCampaigns";
+import CampaignAlerts from "./pages/CampaignAlerts";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -83,6 +84,7 @@ function Router() {
       <Route path={"/settings"} component={Settings} />
       <Route path={"/settings/integrations"} component={Integrations} />
       <Route path={"/meta/campaigns"} component={MetaCampaigns} />
+      <Route path={"/meta/alerts"} component={CampaignAlerts} />
       <Route path={"/404"} component={NotFound} />
       {/* Fallback route for 404 */}
       <Route component={NotFound} />
