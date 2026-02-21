@@ -20,6 +20,7 @@ import { Label } from "@/components/ui/label";
 export default function LandingPageGenerator() {
   const { isAuthenticated, loading: authLoading } = useAuth();
   const { data: quotaLimits } = trpc.auth.getQuotaLimits.useQuery();
+  const { data: authData } = trpc.auth.me.useQuery();
   const [serviceId, setServiceId] = useState<number | null>(null);
   const [avatarName, setAvatarName] = useState("");
   const [avatarDescription, setAvatarDescription] = useState("");
@@ -97,8 +98,6 @@ export default function LandingPageGenerator() {
       </div>
     );
   }
-
-  const { data: authData } = trpc.auth.me.useQuery();
 
   // Check if user has reached quota limit
   const isQuotaExceeded = !!(authData && quotaLimits && authData.landingPageGeneratedCount >= quotaLimits.landingPages);

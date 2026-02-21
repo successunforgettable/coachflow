@@ -1,0 +1,35 @@
+{
+  "query": "SELECT id, userId, productName FROM landingPages LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT id, userId, productName FROM landingPages LIMIT 5;",
+  "rows": [
+    {
+      "id": "1",
+      "userId": "180002",
+      "productName": "Crypto Coaching"
+    },
+    {
+      "id": "30001",
+      "userId": "420025",
+      "productName": "Crypto Coaching"
+    },
+    {
+      "id": "60001",
+      "userId": "480002",
+      "productName": "Crypto Coaching"
+    },
+    {
+      "id": "60002",
+      "userId": "480010",
+      "productName": "Crypto Coaching"
+    },
+    {
+      "id": "60003",
+      "userId": "480023",
+      "productName": "Crypto Coaching"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tuserId\tproductName\n1\t180002\tCrypto Coaching\n30001\t420025\tCrypto Coaching\n60001\t480002\tCrypto Coaching\n60002\t480010\tCrypto Coaching\n60003\t480023\tCrypto Coaching\n",
+  "stderr": "",
+  "execution_time_ms": 1507
+}

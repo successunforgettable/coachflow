@@ -1,0 +1,25 @@
+{
+  "query": "SELECT id FROM landingPages LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT id FROM landingPages LIMIT 5;",
+  "rows": [
+    {
+      "id": "1"
+    },
+    {
+      "id": "30001"
+    },
+    {
+      "id": "60001"
+    },
+    {
+      "id": "60002"
+    },
+    {
+      "id": "60003"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\n1\n30001\n60001\n60002\n60003\n",
+  "stderr": "",
+  "execution_time_ms": 1543
+}

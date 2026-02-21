@@ -1,0 +1,40 @@
+{
+  "query": "SELECT id, productName, avatarName, createdAt FROM landingPages LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT id, productName, avatarName, createdAt FROM landingPages LIMIT 5;",
+  "rows": [
+    {
+      "id": "1",
+      "productName": "Crypto Coaching",
+      "avatarName": "Amir from Abu Dhabi",
+      "createdAt": "2026-02-17 22:50:42"
+    },
+    {
+      "id": "30001",
+      "productName": "Crypto Coaching",
+      "avatarName": "Amir from Abu Dhabi",
+      "createdAt": "2026-02-19 13:55:50"
+    },
+    {
+      "id": "60001",
+      "productName": "Crypto Coaching",
+      "avatarName": "Amir from Abu Dhabi",
+      "createdAt": "2026-02-19 14:55:11"
+    },
+    {
+      "id": "60002",
+      "productName": "Crypto Coaching",
+      "avatarName": "Amir from Abu Dhabi",
+      "createdAt": "2026-02-19 14:55:31"
+    },
+    {
+      "id": "60003",
+      "productName": "Crypto Coaching",
+      "avatarName": "Amir from Abu Dhabi",
+      "createdAt": "2026-02-19 15:02:17"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tproductName\tavatarName\tcreatedAt\n1\tCrypto Coaching\tAmir from Abu Dhabi\t2026-02-17 22:50:42\n30001\tCrypto Coaching\tAmir from Abu Dhabi\t2026-02-19 13:55:50\n60001\tCrypto Coaching\tAmir from Abu Dhabi\t2026-02-19 14:55:11\n60002\tCrypto Coaching\tAmir from Abu Dhabi\t2026-02-19 14:55:31\n60003\tCrypto Coaching\tAmir from Abu Dhabi\t2026-02-19 15:02:17\n",
+  "stderr": "",
+  "execution_time_ms": 1512
+}
