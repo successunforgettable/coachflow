@@ -179,7 +179,14 @@ export default function LandingPage() {
       {/* Navigation */}
       <nav className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="text-2xl font-bold text-primary">ZAP</div>
+          <div className="flex items-center gap-3">
+            <img 
+              src="https://files.manuscdn.com/user_upload_by_module/session_file/310419663026750612/elkADmeWGCobYXio.png" 
+              alt="ZAP Logo" 
+              className="h-12 w-12 object-contain"
+            />
+            <div className="text-2xl font-bold text-primary">ZAP</div>
+          </div>
           <div className="flex items-center gap-6">
             <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors">
               Features

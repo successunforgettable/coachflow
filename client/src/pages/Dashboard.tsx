@@ -205,7 +205,7 @@ export default function Dashboard() {
           <img 
             src="https://files.manuscdn.com/user_upload_by_module/session_file/310419663026750612/elkADmeWGCobYXio.png" 
             alt="ZAP Logo" 
-            style={{ height: '96px', width: '96px', objectFit: 'contain' }}
+            className="h-16 w-16 md:h-24 md:w-24 object-contain"
           />
         </div>
         <div style={{
