@@ -201,11 +201,11 @@ export default function Dashboard() {
       <div className={`sidebar fixed lg:static inset-y-0 left-0 z-50 transform ${
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
       } lg:translate-x-0 transition-transform duration-200`}>
-        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
           <img 
             src="/zap-logo.png" 
             alt="ZAP Logo" 
-            style={{ height: '64px', width: '64px', objectFit: 'contain' }}
+            style={{ height: '96px', width: '96px', objectFit: 'contain' }}
           />
         </div>
         <div style={{
