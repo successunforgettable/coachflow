@@ -102,7 +102,7 @@ export default function GenerateICPStep({ data, onComplete, onNext }: GenerateIC
               ✓ Your dream buyer is ready.
             </h4>
             <p className="text-sm text-green-700 dark:text-green-300">
-              Every piece of copy CoachFlow generates from here will speak directly to this person.
+              Every piece of copy ZAP generates from here will speak directly to this person.
             </p>
           </div>
 

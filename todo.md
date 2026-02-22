@@ -2393,3 +2393,32 @@
 - [ ] GoHighLevel integration (deferred to post-launch)
 - [ ] Interactive product tour (deferred to post-launch)
 - [ ] Keyboard shortcuts (deferred to post-launch)
+
+
+---
+
+## POST-TESTING TASKS (Execute After Manual Testing Complete)
+
+### Rebranding: CoachFlow → ZAP (IN PROGRESS)
+**✅ User approved comic book logo style - executing now**
+
+- [x] Create optimized logo package (main, favicon, dark mode, transparent)
+- [x] Upload logos to S3 and get CDN URLs
+- [x] Update VITE_APP_TITLE from "CoachFlow" to "ZAP" (via Management UI Settings)
+- [x] Update VITE_APP_LOGO with new comic book logo URL (via Management UI Settings)
+- [x] Update all UI references from "CoachFlow" to "ZAP" (34 occurrences replaced)
+- [x] Update landing page branding to "ZAP"
+- [x] Update dashboard branding to "ZAP"
+- [x] Add favicon link tag to HTML head
+- [x] Update page titles and meta tags
+- [ ] Test all pages for branding consistency
+- [ ] Save checkpoint after rebranding complete
+- [ ] Push to GitHub with rebranding commit
+
+**Brand Guidelines:**
+- **Brand Name:** ZAP (all caps in UI)
+- **Domain:** zapcampaigns.com
+- **VITE_APP_TITLE:** "ZAP"
+- **All References:** CoachFlow → ZAP
+
+**Note:** Do NOT execute this task until manual testing is complete and approved by user.

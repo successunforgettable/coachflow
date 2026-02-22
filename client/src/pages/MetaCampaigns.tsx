@@ -94,7 +94,7 @@ export default function MetaCampaigns() {
         <Card className="p-8 text-center">
           <h2 className="text-2xl font-bold mb-4">Connect Meta Ads Manager</h2>
           <p className="text-muted-foreground mb-6">
-            Connect your Meta Ads Manager account to view campaign performance and publish ads directly from CoachFlow.
+            Connect your Meta Ads Manager account to view campaign performance and publish ads directly from ZAP.
           </p>
           <Link href="/settings/integrations">
             <Button>Go to Integrations</Button>

@@ -111,7 +111,7 @@ export default function OnboardingWizard({ open, onClose }: OnboardingWizardProp
         <div className="sticky top-0 bg-background border-b p-6 z-10">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-2xl font-bold">Welcome to CoachFlow</h2>
+              <h2 className="text-2xl font-bold">Welcome to ZAP</h2>
               <p className="text-muted-foreground">
                 Let's get you started with your first marketing campaign
               </p>

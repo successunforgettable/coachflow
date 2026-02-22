@@ -227,7 +227,7 @@ export default function Pricing() {
                 How does the {trialDays}-day free trial work?
               </h3>
               <p className="text-muted-foreground">
-                Start using CoachFlow immediately with full access to all features. No credit card
+                Start using ZAP immediately with full access to all features. No credit card
                 required. After {trialDays} days, you'll be charged based on your selected plan.
               </p>
             </div>
@@ -249,10 +249,10 @@ export default function Pricing() {
             </div>
             <div>
               <h3 className="font-semibold text-foreground mb-2">
-                What makes CoachFlow unique?
+                What makes ZAP unique?
               </h3>
               <p className="text-muted-foreground">
-                CoachFlow is specifically designed for coaches, speakers, and consultants with
+                ZAP is specifically designed for coaches, speakers, and consultants with
                 9 AI-powered content generators, integrated email/WhatsApp/SMS sequences, simple onboarding,
                 and a complete campaign builder - all in one platform.
               </p>

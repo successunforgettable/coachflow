@@ -27,7 +27,7 @@ const TOUR_STEPS: Record<string, Step[]> = {
   landing: [
     {
       target: 'body',
-      content: 'Welcome to CoachFlow! Let me show you around. This quick tour will introduce you to the platform\'s key features.',
+      content: 'Welcome to ZAP! Let me show you around. This quick tour will introduce you to the platform\'s key features.',
       placement: 'center',
       disableBeacon: true,
     },
@@ -55,7 +55,7 @@ const TOUR_STEPS: Record<string, Step[]> = {
   dashboard: [
     {
       target: 'body',
-      content: 'Welcome to your CoachFlow dashboard! Let me show you the key features.',
+      content: 'Welcome to your ZAP dashboard! Let me show you the key features.',
       placement: 'center',
       disableBeacon: true,
     },

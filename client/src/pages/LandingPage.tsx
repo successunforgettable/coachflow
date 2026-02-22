@@ -133,9 +133,9 @@ export default function LandingPage() {
 
   const faqs = [
     {
-      question: "What is CoachFlow?",
+      question: "What is ZAP?",
       answer:
-        "CoachFlow is an AI-powered marketing automation platform specifically designed for coaches, speakers, and consultants. It includes 9 content generators, integrated email/WhatsApp/SMS sequences, a campaign builder, and PDF export - all in one platform.",
+        "ZAP is an AI-powered marketing automation platform specifically designed for coaches, speakers, and consultants. It includes 9 content generators, integrated email/WhatsApp/SMS sequences, a campaign builder, and PDF export - all in one platform.",
     },
     {
       question: "How does AI content generation work?",
@@ -179,7 +179,7 @@ export default function LandingPage() {
       {/* Navigation */}
       <nav className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="text-2xl font-bold text-primary">CoachFlow</div>
+          <div className="text-2xl font-bold text-primary">ZAP</div>
           <div className="flex items-center gap-6">
             <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors">
               Features
@@ -236,7 +236,7 @@ export default function LandingPage() {
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-4">Stop Struggling with Marketing Content</h2>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              Creating high-converting marketing content is time-consuming and expensive. CoachFlow solves this.
+              Creating high-converting marketing content is time-consuming and expensive. ZAP solves this.
             </p>
           </div>
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
@@ -256,7 +256,7 @@ export default function LandingPage() {
             </Card>
             <Card className="border-primary">
               <CardHeader>
-                <CardTitle className="text-primary">✅ The CoachFlow Way</CardTitle>
+                <CardTitle className="text-primary">✅ The ZAP Way</CardTitle>
               </CardHeader>
               <CardContent>
                 <ul className="space-y-2 text-muted-foreground">
@@ -504,14 +504,14 @@ export default function LandingPage() {
               </ul>
             </div>
             <div>
-              <h3 className="text-lg font-bold text-foreground mb-4">CoachFlow</h3>
+              <h3 className="text-lg font-bold text-foreground mb-4">ZAP</h3>
               <p className="text-muted-foreground text-sm mb-4">
                 AI-powered marketing automation for coaches, speakers, and consultants.
               </p>
             </div>
           </div>
           <div className="text-center text-muted-foreground text-sm border-t border-border pt-8">
-            © 2026 CoachFlow. All rights reserved.
+            © 2026 ZAP. All rights reserved.
           </div>
         </div>
       </footer>

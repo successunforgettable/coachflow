@@ -24,7 +24,7 @@ export default function AdCreatives() {
               Take Your Ads to the Next Level
             </CardTitle>
             <CardDescription className="text-lg">
-              CoachFlow uses the powerful <strong>Scroll-Stopper Ad Creator</strong> to generate
+              ZAP uses the powerful <strong>Scroll-Stopper Ad Creator</strong> to generate
               high-converting ad creatives tailored to your audience
             </CardDescription>
           </CardHeader>
@@ -191,7 +191,7 @@ export default function AdCreatives() {
                 <li className="flex gap-3">
                   <span className="font-bold text-foreground">Step 2:</span>
                   <span>
-                    Select a product from your CoachFlow Source of Truth or manually enter your target
+                    Select a product from your ZAP Source of Truth or manually enter your target
                     market, pressing problem, and desired outcome.
                   </span>
                 </li>

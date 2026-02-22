@@ -26,7 +26,7 @@ export default function WelcomeStep({ onNext }: WelcomeStepProps) {
           </div>
           <h4 className="font-semibold">Your Service, Defined</h4>
           <p className="text-sm text-muted-foreground">
-            Tell us what you do once. CoachFlow uses it everywhere.
+            Tell us what you do once. ZAP uses it everywhere.
           </p>
         </div>
 

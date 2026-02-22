@@ -93,7 +93,7 @@ export function PublishToMetaDialog({
           </DialogHeader>
           <div className="py-6">
             <p className="text-sm text-muted-foreground mb-4">
-              Connect your Meta account to publish ads directly from CoachFlow to Facebook and Instagram.
+              Connect your Meta account to publish ads directly from ZAP to Facebook and Instagram.
             </p>
             <Button
               onClick={() => {

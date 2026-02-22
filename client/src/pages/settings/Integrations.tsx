@@ -80,7 +80,7 @@ export default function Integrations() {
                   Meta Ads Manager
                 </CardTitle>
                 <CardDescription className="mt-2">
-                  Publish ads directly to Facebook and Instagram from CoachFlow
+                  Publish ads directly to Facebook and Instagram from ZAP
                 </CardDescription>
               </div>
               {isLoading ? (
@@ -148,8 +148,8 @@ export default function Integrations() {
                   <p className="font-medium mb-2">What you can do:</p>
                   <ul className="space-y-1 text-muted-foreground">
                     <li>• Publish ad copy directly to Meta with one click</li>
-                    <li>• View campaign performance data in CoachFlow</li>
-                    <li>• Manage campaigns without leaving CoachFlow</li>
+                    <li>• View campaign performance data in ZAP</li>
+                    <li>• Manage campaigns without leaving ZAP</li>
                   </ul>
                 </div>
               </div>
@@ -158,10 +158,10 @@ export default function Integrations() {
                 <div className="rounded-lg bg-muted p-4 text-sm">
                   <p className="font-medium mb-2">Connect your Meta Ads Manager to:</p>
                   <ul className="space-y-1 text-muted-foreground">
-                    <li>• Publish ads directly from CoachFlow to Facebook & Instagram</li>
+                    <li>• Publish ads directly from ZAP to Facebook & Instagram</li>
                     <li>• Skip manual copy-paste between platforms</li>
                     <li>• Track campaign performance in one place</li>
-                    <li>• Manage budgets and targeting from CoachFlow</li>
+                    <li>• Manage budgets and targeting from ZAP</li>
                   </ul>
                 </div>
 
@@ -175,7 +175,7 @@ export default function Integrations() {
                 </Button>
 
                 <p className="text-xs text-muted-foreground">
-                  You'll be redirected to Facebook to authorize CoachFlow. We only request permissions
+                  You'll be redirected to Facebook to authorize ZAP. We only request permissions
                   to manage your ads - we never post to your personal timeline.
                 </p>
               </div>

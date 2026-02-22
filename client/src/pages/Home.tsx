@@ -23,7 +23,7 @@ export default function Home() {
       <main className="flex-1 flex items-center justify-center px-4">
         <div className="max-w-4xl mx-auto text-center">
           <h1 className="text-5xl md:text-6xl font-bold text-foreground mb-6">
-            Welcome to <span className="text-primary">CoachFlow</span>
+            Welcome to <span className="text-primary">ZAP</span>
           </h1>
           <p className="text-xl text-muted-foreground mb-8">
             The all-in-one marketing automation platform for coaches, speakers, and consultants.

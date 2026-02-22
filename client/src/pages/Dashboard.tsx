@@ -208,7 +208,7 @@ export default function Dashboard() {
           letterSpacing: '-0.02em',
           marginBottom: '4px',
         }}>
-          CoachFlow
+          ZAP
         </div>
         <div style={{
           fontSize: '12px',
