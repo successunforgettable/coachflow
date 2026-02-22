@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
+import Footer from "@/components/Footer";
 import { 
   LayoutDashboard, 
   LogOut, 
@@ -319,6 +320,7 @@ function DashboardLayoutContent({
           <Breadcrumb />
           {children}
         </main>
+        <Footer />
       </SidebarInset>
     </>
   );

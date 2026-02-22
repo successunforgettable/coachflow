@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useTour } from "@/contexts/TourContext";
+import Footer from "@/components/Footer";
 
 export default function LandingPage() {
   const { isAuthenticated } = useAuth();
@@ -522,6 +523,9 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
+
+      {/* Footer Component */}
+      <Footer />
     </div>
   );
 }

@@ -167,7 +167,7 @@ export function Terms() {
             </p>
             <p className="mt-4">
               <strong>Incredible You Consultants SOC LLC</strong><br />
-              Email: support@zapplatform.com<br />
+              Email: support@arfeenkhan.com<br />
               Location: Dubai, United Arab Emirates
             </p>
           </section>

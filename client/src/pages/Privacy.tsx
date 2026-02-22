@@ -97,7 +97,7 @@ export function Privacy() {
               When you delete your account, most personal information is deleted within 30 days. Some information may be retained for legal, tax, or regulatory purposes. Backup copies may persist for up to 90 days before permanent deletion. Anonymized usage data may be retained indefinitely for analytics.
             </p>
             <p>
-              You can request deletion of your account and personal information at any time by contacting us at support@zapplatform.com.
+              You can request deletion of your account and personal information at any time by contacting us at support@arfeenkhan.com.
             </p>
           </section>
 
@@ -132,7 +132,7 @@ export function Privacy() {
               UAE users (PDPL) have additional rights including access and correct your personal data, object to processing of your personal data in certain circumstances, request erasure of your personal data, request restriction of processing, and lodge a complaint with the UAE Data Office.
             </p>
             <p>
-              To exercise any of these rights, please contact us at privacy@zapplatform.com with subject line "Privacy Rights Request" and include your name, email address, and specific request. We will respond to your request within 30 days for most requests, 45 days for CCPA/CPRA requests (with possible 45-day extension), or as required by applicable law. We may need to verify your identity before processing your request to protect your privacy and security.
+              To exercise any of these rights, please contact us at support@arfeenkhan.com with subject line "Privacy Rights Request" and include your name, email address, and specific request. We will respond to your request within 30 days for most requests, 45 days for CCPA/CPRA requests (with possible 45-day extension), or as required by applicable law. We may need to verify your identity before processing your request to protect your privacy and security.
             </p>
           </section>
 
@@ -155,7 +155,7 @@ export function Privacy() {
               Our Services are not directed to children under the age of 18, and we do not knowingly collect personal information from children under 18. If we learn that we have collected personal information from a child under 18, we will delete the information as quickly as possible, terminate the associated account, and take steps to prevent future access.
             </p>
             <p>
-              If you believe we have collected information from a child under 18, please contact us immediately at privacy@zapplatform.com.
+              If you believe we have collected information from a child under 18, please contact us immediately at support@arfeenkhan.com.
             </p>
           </section>
 
@@ -193,9 +193,9 @@ export function Privacy() {
             </p>
             <p className="mt-4">
               <strong>Incredible You Consultants SOC LLC</strong><br />
-              <strong>General Inquiries:</strong> support@zapplatform.com<br />
-              <strong>Privacy-Specific Inquiries:</strong> privacy@zapplatform.com<br />
-              <strong>Data Protection Officer:</strong> dpo@zapplatform.com<br />
+              <strong>General Inquiries:</strong> support@arfeenkhan.com<br />
+              <strong>Privacy-Specific Inquiries:</strong> support@arfeenkhan.com<br />
+              <strong>Data Protection Officer:</strong> support@arfeenkhan.com<br />
               <strong>Mailing Address:</strong> Dubai, United Arab Emirates
             </p>
             <p className="mt-4">

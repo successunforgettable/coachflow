@@ -259,6 +259,18 @@ export default function Pricing() {
             </div>
           </div>
         </div>
+
+        {/* Earnings Disclaimer */}
+        <div className="mt-16 max-w-4xl mx-auto">
+          <div className="bg-muted/30 border border-border rounded-lg p-6">
+            <h3 className="font-semibold text-foreground mb-3 text-center">
+              Important Disclaimer
+            </h3>
+            <p className="text-sm text-muted-foreground leading-relaxed text-center">
+              <strong className="text-foreground">Earnings & Results Disclaimer:</strong> Results may vary significantly. No income, revenue, profit, or business success guarantees are made or implied. Success depends on individual effort, skill level, market conditions, business model, competition, and numerous other factors beyond our control. The testimonials, case studies, and examples shown (if any) are exceptional results and should not be interpreted as typical, average, or guaranteed outcomes. Your results may be better, worse, or non-existent. ZAP is a software tool that assists with marketing content creation and campaign management; it does not guarantee business success, customer acquisition, sales, or financial outcomes. Past performance is not indicative of future results. You are solely responsible for your business decisions and outcomes.
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );
