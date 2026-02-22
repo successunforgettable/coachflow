@@ -22,17 +22,19 @@ interface OnboardingWizardProps {
 }
 
 const STEPS = [
-  { id: 1, title: "Welcome", component: WelcomeStep },
-  { id: 2, title: "Define Service", component: CreateServiceStep },
-  { id: 3, title: "Create ICP", component: GenerateICPStep },
-  { id: 4, title: "Craft Offer", component: GenerateOfferStep },
-  { id: 5, title: "Generate Headlines", component: GenerateHeadlinesStep },
-  { id: 6, title: "Create Campaign", component: CreateCampaignStep },
+  { id: 0, title: "Welcome", component: WelcomeStep, isIntro: true },
+  { id: 1, title: "Define Service", component: CreateServiceStep },
+  { id: 2, title: "Create ICP", component: GenerateICPStep },
+  { id: 3, title: "Craft Offer", component: GenerateOfferStep },
+  { id: 4, title: "Generate Headlines", component: GenerateHeadlinesStep },
+  { id: 5, title: "Create Campaign", component: CreateCampaignStep },
 ];
+
+const TOTAL_STEPS = 5; // Exclude Welcome from count
 
 export default function OnboardingWizard({ open, onClose }: OnboardingWizardProps) {
   const { toast } = useToast();
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep, setCurrentStep] = useState(0);
   const [skipDialogOpen, setSkipDialogOpen] = useState(false);
   const [onboardingData, setOnboardingData] = useState<{
     serviceId?: number;
@@ -60,7 +62,9 @@ export default function OnboardingWizard({ open, onClose }: OnboardingWizardProp
   // Load saved progress
   useEffect(() => {
     if (status && !status.completed) {
-      setCurrentStep(status.currentStep);
+      // If user has progress, skip Welcome and go to their saved step
+      const step = status.currentStep > 0 ? status.currentStep : 0;
+      setCurrentStep(step);
       setOnboardingData({
         serviceId: status.serviceId || undefined,
         icpId: status.icpId || undefined,
@@ -83,7 +87,7 @@ export default function OnboardingWizard({ open, onClose }: OnboardingWizardProp
   };
 
   const handleBack = () => {
-    if (currentStep > 1) {
+    if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
     }
   };
@@ -105,8 +109,11 @@ export default function OnboardingWizard({ open, onClose }: OnboardingWizardProp
     setOnboardingData((prev) => ({ ...prev, ...data }));
   };
 
-  const CurrentStepComponent = STEPS[currentStep - 1].component;
-  const progress = (currentStep / STEPS.length) * 100;
+  const currentStepData = STEPS[currentStep];
+  const CurrentStepComponent = currentStepData.component;
+  const isWelcome = currentStepData.isIntro;
+  // Calculate progress excluding Welcome (steps 1-5)
+  const progress = isWelcome ? 0 : ((currentStep) / TOTAL_STEPS) * 100;
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -125,48 +132,52 @@ export default function OnboardingWizard({ open, onClose }: OnboardingWizardProp
             </Button>
           </div>
 
-          {/* Progress bar */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <span className="font-medium">
-                Step {currentStep} of {STEPS.length}: {STEPS[currentStep - 1].title}
-              </span>
-              <span className="text-muted-foreground">{Math.round(progress)}% complete</span>
-            </div>
-            <Progress value={progress} className="h-2" />
-          </div>
-
-          {/* Step indicators */}
-          <div className="flex items-center justify-between mt-4">
-            {STEPS.map((step, index) => (
-              <div key={step.id} className="flex items-center">
-                <div
-                  className={cn(
-                    "flex items-center justify-center w-8 h-8 rounded-full border-2 transition-colors",
-                    currentStep > step.id
-                      ? "bg-primary border-primary text-primary-foreground"
-                      : currentStep === step.id
-                      ? "border-primary text-primary"
-                      : "border-muted-foreground/30 text-muted-foreground"
-                  )}
-                >
-                  {currentStep > step.id ? (
-                    <Check className="h-4 w-4" />
-                  ) : (
-                    <span className="text-sm font-medium">{step.id}</span>
-                  )}
+          {/* Progress bar - only show after Welcome */}
+          {!isWelcome && (
+            <>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium">
+                    Step {currentStep} of {TOTAL_STEPS}: {currentStepData.title}
+                  </span>
+                  <span className="text-muted-foreground">{Math.round(progress)}% complete</span>
                 </div>
-                {index < STEPS.length - 1 && (
-                  <div
-                    className={cn(
-                      "h-0.5 w-12 mx-2 transition-colors",
-                      currentStep > step.id ? "bg-primary" : "bg-muted-foreground/30"
-                    )}
-                  />
-                )}
+                <Progress value={progress} className="h-2" />
               </div>
-            ))}
-          </div>
+
+              {/* Step indicators - exclude Welcome */}
+              <div className="flex items-center justify-between mt-4">
+                {STEPS.filter(s => !s.isIntro).map((step, index, arr) => (
+                  <div key={step.id} className="flex items-center">
+                    <div
+                      className={cn(
+                        "flex items-center justify-center w-8 h-8 rounded-full border-2 transition-colors",
+                        currentStep > step.id
+                          ? "bg-primary border-primary text-primary-foreground"
+                          : currentStep === step.id
+                          ? "border-primary text-primary"
+                          : "border-muted-foreground/30 text-muted-foreground"
+                      )}
+                    >
+                      {currentStep > step.id ? (
+                        <Check className="h-4 w-4" />
+                      ) : (
+                        <span className="text-sm font-medium">{step.id}</span>
+                      )}
+                    </div>
+                    {index < arr.length - 1 && (
+                      <div
+                        className={cn(
+                          "h-0.5 w-12 mx-2 transition-colors",
+                          currentStep > step.id ? "bg-primary" : "bg-muted-foreground/30"
+                        )}
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
         {/* Step content */}
@@ -188,13 +199,13 @@ export default function OnboardingWizard({ open, onClose }: OnboardingWizardProp
             <Button
               variant="outline"
               onClick={handleBack}
-              disabled={currentStep === 1}
+              disabled={currentStep === 0}
             >
               <ChevronLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
             <Button onClick={handleNext}>
-              {currentStep === STEPS.length ? (
+              {currentStep === TOTAL_STEPS ? (
                 <>
                   <Check className="h-4 w-4 mr-2" />
                   Complete

@@ -2480,3 +2480,13 @@
 - [ ] Test completion celebration and redirect
 - [ ] Test dashboard post-onboarding experience
 - [ ] Fix bugs and edge cases
+
+
+## Phase 39: Fix Welcome Screen and Step Counter (COMPLETE)
+- [x] Remove step counter from Welcome screen
+- [x] Remove progress bar from Welcome screen
+- [x] Update STEPS array to properly handle Welcome as step 0
+- [x] Ensure progress bar shows "Step 1 of 5" starting from Service step
+- [x] Update step navigation logic to skip Welcome in step count
+- [x] Update Back button to disable on Welcome screen
+- [ ] Test Welcome → Service transition shows correct step counter
