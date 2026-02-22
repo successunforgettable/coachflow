@@ -38,6 +38,8 @@ import ComplianceAdmin from "./pages/admin/ComplianceAdmin";
 import ComplianceAnalytics from "./pages/admin/ComplianceAnalytics";
 import OnboardingPage from "./pages/OnboardingPage";
 import Settings from "./pages/Settings";
+import { Terms } from "./pages/Terms";
+import { Privacy } from "./pages/Privacy";
 import Integrations from "./pages/settings/Integrations";
 import MetaCampaigns from "./pages/MetaCampaigns";
 import CampaignAlerts from "./pages/CampaignAlerts";
@@ -85,6 +87,8 @@ function Router() {
       <Route path={"/settings/integrations"} component={Integrations} />
       <Route path={"/meta/campaigns"} component={MetaCampaigns} />
       <Route path={"/meta/alerts"} component={CampaignAlerts} />
+      <Route path={"/terms"} component={Terms} />
+      <Route path={"/privacy"} component={Privacy} />
       <Route path={"/404"} component={NotFound} />
       {/* Fallback route for 404 */}
       <Route component={NotFound} />

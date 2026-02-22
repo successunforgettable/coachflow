@@ -2422,3 +2422,12 @@
 - **All References:** CoachFlow → ZAP
 
 **Note:** Do NOT execute this task until manual testing is complete and approved by user.
+
+
+## Phase 36: Legal Pages Implementation (COMPLETE)
+- [x] Create Terms of Service page at /terms
+- [x] Create Privacy Policy page at /privacy
+- [x] Add routes for legal pages in App.tsx
+- [ ] Add footer component with legal page links
+- [ ] Update navigation to include legal page links in footer
+- [ ] Test legal pages display correctly
