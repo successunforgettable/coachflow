@@ -200,9 +200,14 @@ function DashboardLayoutContent({
                 <PanelLeft className="h-4 w-4 text-muted-foreground" />
               </button>
               {!isCollapsed ? (
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="font-semibold tracking-tight truncate">
-                    Navigation
+                <div className="flex items-center gap-3 min-w-0">
+                  <img 
+                    src="/zap-logo.png" 
+                    alt="ZAP Logo" 
+                    className="h-20 w-20 object-contain shrink-0"
+                  />
+                  <span className="font-bold text-xl tracking-tight truncate">
+                    ZAP
                   </span>
                 </div>
               ) : null}
@@ -296,20 +301,20 @@ function DashboardLayoutContent({
       </div>
 
       <SidebarInset>
-        {isMobile && (
-          <div className="flex border-b h-14 items-center justify-between bg-background/95 px-2 backdrop-blur supports-[backdrop-filter]:backdrop-blur sticky top-0 z-40">
-            <div className="flex items-center gap-2">
-              <SidebarTrigger className="h-9 w-9 rounded-lg bg-background" />
-              <div className="flex items-center gap-3">
-                <div className="flex flex-col gap-1">
-                  <span className="tracking-tight text-foreground">
-                    {activeMenuItem?.label ?? "Menu"}
-                  </span>
-                </div>
-              </div>
-            </div>
+        {/* Header with Logo - Always visible */}
+        <div className="flex border-b h-16 items-center justify-between bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:backdrop-blur sticky top-0 z-40">
+          <div className="flex items-center gap-4">
+            {isMobile && <SidebarTrigger className="h-9 w-9 rounded-lg bg-background" />}
+            <img 
+              src="/zap-logo.png" 
+              alt="ZAP Logo" 
+              className="h-12 w-12 object-contain"
+            />
+            <span className="font-bold text-2xl tracking-tight">
+              ZAP
+            </span>
           </div>
-        )}
+        </div>
         <main className="flex-1 p-4">
           <Breadcrumb />
           {children}

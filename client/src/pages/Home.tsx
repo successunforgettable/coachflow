@@ -22,6 +22,13 @@ export default function Home() {
     <div className="min-h-screen flex flex-col bg-background">
       <main className="flex-1 flex items-center justify-center px-4">
         <div className="max-w-4xl mx-auto text-center">
+          <div className="flex justify-center mb-8">
+            <img 
+              src="/zap-logo.png" 
+              alt="ZAP Logo" 
+              className="h-40 w-40 object-contain"
+            />
+          </div>
           <h1 className="text-5xl md:text-6xl font-bold text-foreground mb-6">
             Welcome to <span className="text-primary">ZAP</span>
           </h1>
