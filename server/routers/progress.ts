@@ -1,7 +1,7 @@
 import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { eq, and, sql } from "drizzle-orm";
-import { users, services, idealCustomerProfiles, headlines, adCopy, landingPages } from "../../drizzle/schema";
+import { users, services, idealCustomerProfiles, offers, headlines, hvcoTitles, heroMechanisms, adCopy, landingPages, emailSequences, whatsappSequences, campaigns } from "../../drizzle/schema";
 
 export const progressRouter = router({
   /**
@@ -34,65 +34,112 @@ export const progressRouter = router({
       };
     }
 
-    // Check milestone completion
+    // Check milestone completion for all 11 steps
     const [
       userServices,
       userIcps,
+      userOffers,
       userHeadlines,
+      userHvco,
+      userHeroMechanisms,
       userAdCopy,
       userLandingPages,
+      userEmailSequences,
+      userWhatsappSequences,
+      userCampaigns,
     ] = await Promise.all([
       db.select().from(services).where(eq(services.userId, userId)).limit(1),
       db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.userId, userId)).limit(1),
+      db.select().from(offers).where(eq(offers.userId, userId)).limit(1),
       db.select().from(headlines).where(eq(headlines.userId, userId)).limit(1),
+      db.select().from(hvcoTitles).where(eq(hvcoTitles.userId, userId)).limit(1),
+      db.select().from(heroMechanisms).where(eq(heroMechanisms.userId, userId)).limit(1),
       db.select().from(adCopy).where(eq(adCopy.userId, userId)).limit(1),
       db.select().from(landingPages).where(eq(landingPages.userId, userId)).limit(1),
+      db.select().from(emailSequences).where(eq(emailSequences.userId, userId)).limit(1),
+      db.select().from(whatsappSequences).where(eq(whatsappSequences.userId, userId)).limit(1),
+      db.select().from(campaigns).where(eq(campaigns.userId, userId)).limit(1),
     ]);
 
+    // 11-step milestone sequence (logical flow)
     const milestones = [
+      // Phase 1: Foundation (WHO + WHAT)
       {
         id: "service",
-        label: "Service defined",
+        label: "1. Service defined",
         completed: userServices.length > 0,
         route: "/services",
       },
       {
         id: "icp",
-        label: "Dream Buyer created",
+        label: "2. Dream Buyer created",
         completed: userIcps.length > 0,
         route: "/generators/icp",
       },
       {
+        id: "offer",
+        label: "3. Offer crafted",
+        completed: userOffers.length > 0,
+        route: "/offers",
+      },
+      // Phase 2: Content Creation (HOW)
+      {
         id: "headlines",
-        label: "Headlines generated",
+        label: "4. Headlines generated",
         completed: userHeadlines.length > 0,
-        route: "/generators/headlines",
+        route: "/headlines",
+      },
+      {
+        id: "hvco",
+        label: "5. HVCO titles created",
+        completed: userHvco.length > 0,
+        route: "/hvco-titles",
+      },
+      {
+        id: "heroMechanism",
+        label: "6. Hero mechanism defined",
+        completed: userHeroMechanisms.length > 0,
+        route: "/hero-mechanisms",
       },
       {
         id: "adCopy",
-        label: "First ad copy created",
+        label: "7. Ad copy written",
         completed: userAdCopy.length > 0,
-        route: "/generators/ad-copy",
+        route: "/ad-copy",
       },
+      // Phase 3: Campaign Assets (WHERE)
       {
         id: "landingPage",
-        label: "First landing page built",
+        label: "8. Landing page built",
         completed: userLandingPages.length > 0,
-        route: "/generators/landing-pages",
+        route: "/landing-pages",
+      },
+      {
+        id: "emailSequence",
+        label: "9. Email sequence created",
+        completed: userEmailSequences.length > 0,
+        route: "/generators/email",
+      },
+      {
+        id: "whatsappSequence",
+        label: "10. WhatsApp sequence created",
+        completed: userWhatsappSequences.length > 0,
+        route: "/generators/whatsapp",
+      },
+      // Phase 4: Launch (GO LIVE)
+      {
+        id: "campaign",
+        label: "11. Campaign launched",
+        completed: userCampaigns.length > 0,
+        route: "/campaigns",
       },
     ];
 
     const completedCount = milestones.filter(m => m.completed).length;
     const totalCount = milestones.length;
 
-    // Calculate progress: 0%, 30%, 50%, 80%, or 100%
-    let progress = 0;
-    if (completedCount === 0) progress = 0;
-    else if (completedCount === 1) progress = 30;
-    else if (completedCount === 2) progress = 50;
-    else if (completedCount === 3) progress = 50;
-    else if (completedCount === 4) progress = 80;
-    else if (completedCount === 5) progress = 100;
+    // Calculate progress percentage based on 11 steps
+    const progress = Math.round((completedCount / totalCount) * 100);
 
     return {
       visible: true,

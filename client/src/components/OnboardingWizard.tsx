@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import WelcomeStep from "./onboarding/WelcomeStep";
 import CreateServiceStep from "./onboarding/CreateServiceStep";
 import GenerateICPStep from "./onboarding/GenerateICPStep";
+import GenerateOfferStep from "./onboarding/GenerateOfferStep";
 import GenerateHeadlinesStep from "./onboarding/GenerateHeadlinesStep";
 import CreateCampaignStep from "./onboarding/CreateCampaignStep";
 import SkipConfirmationDialog from "./onboarding/SkipConfirmationDialog";
@@ -22,10 +23,11 @@ interface OnboardingWizardProps {
 
 const STEPS = [
   { id: 1, title: "Welcome", component: WelcomeStep },
-  { id: 2, title: "Create Service", component: CreateServiceStep },
-  { id: 3, title: "Generate ICP", component: GenerateICPStep },
-  { id: 4, title: "Generate Headlines", component: GenerateHeadlinesStep },
-  { id: 5, title: "Create Campaign", component: CreateCampaignStep },
+  { id: 2, title: "Define Service", component: CreateServiceStep },
+  { id: 3, title: "Create ICP", component: GenerateICPStep },
+  { id: 4, title: "Craft Offer", component: GenerateOfferStep },
+  { id: 5, title: "Generate Headlines", component: GenerateHeadlinesStep },
+  { id: 6, title: "Create Campaign", component: CreateCampaignStep },
 ];
 
 export default function OnboardingWizard({ open, onClose }: OnboardingWizardProps) {
@@ -35,6 +37,7 @@ export default function OnboardingWizard({ open, onClose }: OnboardingWizardProp
   const [onboardingData, setOnboardingData] = useState<{
     serviceId?: number;
     icpId?: string;
+    offerId?: number;
     headlineSetId?: string;
     campaignId?: number;
   }>({});
@@ -61,6 +64,7 @@ export default function OnboardingWizard({ open, onClose }: OnboardingWizardProp
       setOnboardingData({
         serviceId: status.serviceId || undefined,
         icpId: status.icpId || undefined,
+        offerId: status.offerId || undefined,
         headlineSetId: status.headlineSetId || undefined,
         campaignId: status.campaignId || undefined,
       });

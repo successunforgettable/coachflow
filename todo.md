@@ -2456,19 +2456,22 @@
 - [x] Execute migration via webdev_execute_sql
 - [x] Test database schema changes
 
-### Phase 2: Onboarding Steps 1-5
-- [ ] Update Step 1: Service Definition form
-- [ ] Verify Step 2: ICP Generator (existing)
-- [ ] Create Step 3: Offer Generator with Meta compliance checker
-- [ ] Verify Step 4: Headlines Generator (existing)
-- [ ] Update Step 5: Campaign Creation form
+### Phase 2: Onboarding Steps 1-6
+- [x] Update Step 1: Service Definition form (existing)
+- [x] Verify Step 2: ICP Generator (existing)
+- [x] Create Step 3: Offer Generator with Meta compliance checker
+- [x] Verify Step 4: Headlines Generator (existing)
+- [x] Update Step 5: Campaign Creation form (existing)
+- [x] Update OnboardingWizard to 6-step sequence
+- [x] Update onboarding router to support offerId
 - [ ] Create OnboardingCompletion celebration modal
 
 ### Phase 3: Dashboard Integration
-- [ ] Update "What's Next" workflow card with correct 11-step sequence
-- [ ] Update sidebar progress tracker (11 steps, correct order)
-- [ ] Add "Resume Onboarding" banner for incomplete users
-- [ ] Add first-time user redirect logic
+- [x] Update sidebar progress tracker (11 steps, correct order)
+- [x] Update progress router with all 11 milestones
+- [x] Add phase labels (Foundation, Content, Assets, Launch)
+- [ ] Test dashboard displays correct progress
+- [ ] Test milestone navigation links work correctly
 
 ### Phase 4: Testing & Polish
 - [ ] Test complete onboarding flow (Steps 1-5)

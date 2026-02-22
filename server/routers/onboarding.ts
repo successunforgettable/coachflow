@@ -33,6 +33,7 @@ export const onboardingRouter = router({
         completed: false,
         serviceId: null,
         icpId: null,
+        offerId: null,
         headlineSetId: null,
         campaignId: null,
         skipped: false,
@@ -51,10 +52,11 @@ export const onboardingRouter = router({
   updateStep: protectedProcedure
     .input(
       z.object({
-        step: z.number().min(1).max(5),
+        step: z.number().min(1).max(6),
         data: z.object({
           serviceId: z.number().optional(),
           icpId: z.string().optional(),
+          offerId: z.number().optional(),
           headlineSetId: z.string().optional(),
           campaignId: z.number().optional(),
         }),
@@ -70,6 +72,7 @@ export const onboardingRouter = router({
           currentStep: input.step,
           serviceId: input.data.serviceId,
           icpId: input.data.icpId,
+          offerId: input.data.offerId,
           headlineSetId: input.data.headlineSetId,
           campaignId: input.data.campaignId,
         })
