@@ -2446,3 +2446,14 @@
 - [x] Add earnings disclaimer to Pricing page
 - [x] Integrate Footer component into LandingPage
 - [x] Integrate Footer component into Dashboard layout
+
+
+## Phase 38: Onboarding Flow Redesign (ACTIVE)
+- [ ] Analyze current onboarding flow and identify issues
+- [ ] Design optimal step-by-step onboarding sequence
+- [ ] Create onboarding flow specification document
+- [ ] Implement OnboardingWizard component with progress tracker
+- [ ] Update Dashboard recommended workflow card to match correct sequence
+- [ ] Add onboarding state tracking in database
+- [ ] Test complete onboarding flow from signup to first campaign
+- [ ] Update progress sidebar to reflect correct workflow order
