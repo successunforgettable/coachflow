@@ -203,7 +203,7 @@ export default function Dashboard() {
       } lg:translate-x-0 transition-transform duration-200`}>
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
           <img 
-            src="/zap-logo.png" 
+            src="https://files.manuscdn.com/user_upload_by_module/session_file/310419663026750612/elkADmeWGCobYXio.png" 
             alt="ZAP Logo" 
             style={{ height: '96px', width: '96px', objectFit: 'contain' }}
           />
