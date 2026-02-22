@@ -205,7 +205,7 @@ export default function Dashboard() {
           <img 
             src="https://files.manuscdn.com/user_upload_by_module/session_file/310419663026750612/elkADmeWGCobYXio.png" 
             alt="ZAP Logo" 
-            className="h-16 w-16 md:h-24 md:w-24 object-contain"
+            className="h-16 w-16 md:h-24 md:w-24 object-contain transition-all duration-300 hover:scale-110 hover:drop-shadow-[0_0_15px_rgba(255,68,68,0.6)] cursor-pointer"
           />
         </div>
         <div style={{

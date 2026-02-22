@@ -183,7 +183,7 @@ export default function LandingPage() {
             <img 
               src="https://files.manuscdn.com/user_upload_by_module/session_file/310419663026750612/elkADmeWGCobYXio.png" 
               alt="ZAP Logo" 
-              className="h-12 w-12 object-contain"
+              className="h-12 w-12 object-contain transition-all duration-300 hover:scale-110 hover:drop-shadow-[0_0_15px_rgba(255,68,68,0.6)] cursor-pointer"
             />
             <div className="text-2xl font-bold text-primary">ZAP</div>
           </div>
