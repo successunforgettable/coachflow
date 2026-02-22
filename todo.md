@@ -2448,12 +2448,32 @@
 - [x] Integrate Footer component into Dashboard layout
 
 
-## Phase 38: Onboarding Flow Redesign (ACTIVE)
-- [ ] Analyze current onboarding flow and identify issues
-- [ ] Design optimal step-by-step onboarding sequence
-- [ ] Create onboarding flow specification document
-- [ ] Implement OnboardingWizard component with progress tracker
-- [ ] Update Dashboard recommended workflow card to match correct sequence
-- [ ] Add onboarding state tracking in database
-- [ ] Test complete onboarding flow from signup to first campaign
-- [ ] Update progress sidebar to reflect correct workflow order
+## Phase 38: 5-Step Onboarding Implementation (ACTIVE)
+
+### Phase 1: Database Updates
+- [x] Add offerId field to user_onboarding table
+- [x] Generate migration SQL
+- [x] Execute migration via webdev_execute_sql
+- [x] Test database schema changes
+
+### Phase 2: Onboarding Steps 1-5
+- [ ] Update Step 1: Service Definition form
+- [ ] Verify Step 2: ICP Generator (existing)
+- [ ] Create Step 3: Offer Generator with Meta compliance checker
+- [ ] Verify Step 4: Headlines Generator (existing)
+- [ ] Update Step 5: Campaign Creation form
+- [ ] Create OnboardingCompletion celebration modal
+
+### Phase 3: Dashboard Integration
+- [ ] Update "What's Next" workflow card with correct 11-step sequence
+- [ ] Update sidebar progress tracker (11 steps, correct order)
+- [ ] Add "Resume Onboarding" banner for incomplete users
+- [ ] Add first-time user redirect logic
+
+### Phase 4: Testing & Polish
+- [ ] Test complete onboarding flow (Steps 1-5)
+- [ ] Test Back button functionality
+- [ ] Test Skip option with warning
+- [ ] Test completion celebration and redirect
+- [ ] Test dashboard post-onboarding experience
+- [ ] Fix bugs and edge cases

@@ -176,6 +176,13 @@
       "when": 1771706016037,
       "tag": "0024_slow_gwen_stacy",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "5",
+      "when": 1771792989770,
+      "tag": "0025_dark_genesis",
+      "breakpoints": true
     }
   ]
 }

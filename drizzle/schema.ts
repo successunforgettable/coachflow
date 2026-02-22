@@ -585,10 +585,11 @@ export const userOnboarding = mysqlTable("user_onboarding", {
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }).unique(),
   currentStep: int("currentStep").default(1).notNull(), // 1-5
   completed: boolean("completed").default(false).notNull(),
-  serviceId: int("serviceId"), // Created service ID
-  icpId: varchar("icpId", { length: 255 }), // Generated ICP ID
-  headlineSetId: varchar("headlineSetId", { length: 255 }), // Generated headline set ID
-  campaignId: int("campaignId"), // Created campaign ID
+  serviceId: int("serviceId"), // Step 1: Created service ID
+  icpId: varchar("icpId", { length: 255 }), // Step 2: Generated ICP ID
+  offerId: int("offerId"), // Step 3: Generated offer ID
+  headlineSetId: varchar("headlineSetId", { length: 255 }), // Step 4: Generated headline set ID
+  campaignId: int("campaignId"), // Step 5: Created campaign ID
   skipped: boolean("skipped").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
