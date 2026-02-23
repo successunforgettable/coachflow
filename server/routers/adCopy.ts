@@ -215,7 +215,7 @@ export const adCopyRouter = router({
         }
       }
 
-      // Get service details
+      // Get service details with social proof (Issue 2 fix)
       const [service] = await db
         .select()
         .from(services)
@@ -227,6 +227,19 @@ export const adCopyRouter = router({
       if (!service) {
         throw new Error("Service not found");
       }
+      
+      // Extract real social proof data
+      const socialProof = {
+        hasCustomers: !!service.totalCustomers && service.totalCustomers > 0,
+        hasRating: !!service.averageRating && parseFloat(service.averageRating) > 0,
+        hasReviews: !!service.totalReviews && service.totalReviews > 0,
+        hasTestimonials: !!service.testimonial1Name || !!service.testimonial2Name || !!service.testimonial3Name,
+        hasPress: !!service.pressFeatures && service.pressFeatures.trim().length > 0,
+        customerCount: service.totalCustomers || 0,
+        rating: service.averageRating || '',
+        reviewCount: service.totalReviews || 0,
+        press: service.pressFeatures || '',
+      };
 
       const adSetId = nanoid();
       const count = input.powerMode ? 30 : 15; // Power Mode generates 2x
@@ -235,7 +248,20 @@ export const adCopyRouter = router({
         ? "Lead Generation (free webinar, consultation, download)"
         : "E-commerce (direct product sale)";
 
-      // Generate Headlines
+      // Generate Headlines with social proof guidance (Issue 2 fix)
+      const socialProofGuidance = socialProof.hasCustomers || socialProof.hasRating || socialProof.hasReviews
+        ? `REAL SOCIAL PROOF AVAILABLE - Use these verified numbers:
+- ${socialProof.customerCount} total customers
+- ${socialProof.rating} average rating
+- ${socialProof.reviewCount} reviews
+You MUST use these exact numbers when incorporating social proof. Do not fabricate or inflate.`
+        : `NO SOCIAL PROOF DATA PROVIDED - Use launch-safe alternatives:
+- Focus on benefit claims and outcomes ("Get X result")
+- Use curiosity hooks ("The method that...")
+- Use contrast ("Before vs After")
+- DO NOT mention customer counts, ratings, or reviews
+- DO NOT fabricate testimonials or statistics`;
+      
       const headlinePrompt = `You are an expert Facebook/Instagram ad copywriter. Create ${count} high-converting ad HEADLINES for this service:
 
 Service: ${service.name}
@@ -250,11 +276,8 @@ Key Benefits: ${input.listBenefits || 'N/A'}
 Specific Technology: ${input.specificTechnology || 'N/A'}
 Scientific Studies: ${input.scientificStudies || 'N/A'}
 Credible Authority: ${input.credibleAuthority || 'N/A'}
-Featured In: ${input.featuredIn || 'N/A'}
-Number of Reviews: ${input.numberOfReviews || 'N/A'}
-Average Rating: ${input.averageReviewRating || 'N/A'}
-Total Customers: ${input.totalCustomers || 'N/A'}
-Testimonials: ${input.testimonials || 'N/A'}
+
+${socialProofGuidance}
 
 Ad Type: ${adTypeContext}
 Ad Style: ${input.adStyle}
@@ -307,7 +330,7 @@ Format as JSON array:
       }
       const headlineData = JSON.parse(headlineContent);
 
-      // Generate Body Copy
+      // Generate Body Copy with social proof guidance (Issue 2 fix)
       const bodyPrompt = `You are an expert Facebook/Instagram ad copywriter. Create ${count} high-converting ad BODY COPY variations for this service:
 
 Service: ${service.name}
@@ -322,11 +345,8 @@ Key Benefits: ${input.listBenefits || 'N/A'}
 Specific Technology: ${input.specificTechnology || 'N/A'}
 Scientific Studies: ${input.scientificStudies || 'N/A'}
 Credible Authority: ${input.credibleAuthority || 'N/A'}
-Featured In: ${input.featuredIn || 'N/A'}
-Number of Reviews: ${input.numberOfReviews || 'N/A'}
-Average Rating: ${input.averageReviewRating || 'N/A'}
-Total Customers: ${input.totalCustomers || 'N/A'}
-Testimonials: ${input.testimonials || 'N/A'}
+
+${socialProofGuidance}
 
 Ad Type: ${adTypeContext}
 Ad Style: ${input.adStyle}
@@ -336,11 +356,10 @@ Create ${count} compelling body copy variations (125-150 words each) that:
 - Start with a hook related to the pressing problem
 - Agitate the pain or desire
 - Present the unique mechanism as the solution
-- Weave in social proof: testimonials, reviews, total customers, featured publications, credible authorities
-- Mention specific technology or scientific studies if provided
 - Include key benefits naturally throughout
 - End with a clear call-to-action (${input.adCallToAction})
 - Match the ad style (${input.adStyle})
+- CRITICAL: Follow the social proof guidance above - use real data if provided, or avoid social proof claims entirely
 
 Format as JSON array:
 {

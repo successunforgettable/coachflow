@@ -21,6 +21,20 @@ const updateServiceSchema = z.object({
   targetCustomer: z.string().min(1).max(500).optional(),
   mainBenefit: z.string().min(1).max(500).optional(),
   price: z.number().optional(),
+  // Social proof fields (Issue 2 fix)
+  totalCustomers: z.number().optional(),
+  averageRating: z.number().optional(),
+  totalReviews: z.number().optional(),
+  testimonial1Name: z.string().max(255).optional(),
+  testimonial1Title: z.string().max(255).optional(),
+  testimonial1Quote: z.string().max(1000).optional(),
+  testimonial2Name: z.string().max(255).optional(),
+  testimonial2Title: z.string().max(255).optional(),
+  testimonial2Quote: z.string().max(1000).optional(),
+  testimonial3Name: z.string().max(255).optional(),
+  testimonial3Title: z.string().max(255).optional(),
+  testimonial3Quote: z.string().max(1000).optional(),
+  pressFeatures: z.string().max(1000).optional(),
 });
 
 export const servicesRouter = router({

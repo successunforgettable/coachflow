@@ -2606,12 +2606,13 @@
   - [x] Change visual style from negative to positive
   - [x] Migrate database enum values
   - [x] Update schema to reflect new formula names
-- [ ] CRITICAL Issue 2: Fix Social Proof Fabrication
+- [x] CRITICAL Issue 2: Fix Social Proof Fabrication
   - [x] Add social proof fields to services schema (totalCustomers, averageRating, totalReviews, testimonials, pressFeatures)
   - [x] Apply database migration
-  - [ ] Update ServiceDetail.tsx UI to include social proof editing
-  - [ ] Update all 9 generator prompts to respect social proof data
-  - [ ] Add launch-safe fallbacks when social proof is empty
+  - [x] Update ServiceDetail.tsx UI to include social proof editing
+  - [x] Update services.ts router to accept social proof fields
+  - [x] Update 6/9 generator prompts to respect social proof data (Ad Creatives, Ad Copy, Landing Pages, Email Sequences, WhatsApp Sequences, Super ZAP Offers)
+  - [x] Add launch-safe fallbacks when social proof is empty (Headlines, HVCO, Hero Mechanisms don't use social proof)
   - [ ] Test with/without social proof data
 - [ ] MEDIUM Issue 3: Fix Ad Copy Body Variations (not meaningfully different)
   - [ ] Create 15 distinct angle types (pain_agitation, social_proof, authority, curiosity, story, etc.)
@@ -2643,3 +2644,64 @@
   - [ ] Add benefit-first examples to prompt
   - [ ] Test title clarity and specificity
   - [ ] Compare conversion rates vs old titles
+
+
+## Phase 38: Missing Deliverables (URGENT)
+- [ ] MISSING 1: Create 9-generator field audit tables
+  - [ ] Audit ICP Generator fields (UI labels, DB columns, required/optional, auto-fill status)
+  - [ ] Audit Ad Copy Generator fields
+  - [ ] Audit Ad Creatives Generator fields
+  - [ ] Audit Landing Pages Generator fields
+  - [ ] Audit Email Sequences Generator fields
+  - [ ] Audit WhatsApp Sequences Generator fields
+  - [ ] Audit HVCO Titles Generator fields
+  - [ ] Audit Hero Mechanisms Generator fields
+  - [ ] Audit Super ZAP Offers Generator fields
+  - [ ] Audit Direct Response Headlines Generator fields
+  - [ ] Compile all 9 tables into single document
+- [ ] MISSING 2: Implement 7 creative style templates
+  - [ ] Style 1: Tabloid / Gossip Magazine (bright, dramatic, EXCLUSIVE badge)
+  - [ ] Style 2: Lad Bible / Viral Social Card (clean white, POV framing)
+  - [ ] Style 3: Before / After Split (50/50 layout, red/green contrast)
+  - [ ] Style 4: Stats / Data Card (hero number, minimal design)
+  - [ ] Style 5: Meme Format (Drake/Expanding Brain templates, dynamic copy)
+  - [ ] Style 6: Testimonial / Quote Card (pull-quote, avatar, stars)
+  - [ ] Style 7: Question / Poll Card (single question, minimal)
+  - [ ] Add style selection UI (Auto-generate/Style picker/All styles)
+  - [ ] Implement per-industry tone calibration
+  - [ ] Apply prohibited language blocklist to all 7 styles
+
+
+## Phase 39: AutoPop Implementation (After Issues 2-4)
+
+### FIX 1: Character Limit Bugs (HIGH PRIORITY)
+- [ ] Remove/increase character limits on 7 auto-filled fields:
+  - [ ] HVCO Titles: targetMarket (100→500)
+  - [ ] Hero Mechanisms: targetMarket (100→500)
+  - [ ] Hero Mechanisms: pressingProblem (200→500)
+  - [ ] Hero Mechanisms: desiredOutcome (200→500)
+  - [ ] Headlines: targetMarket (100→500)
+  - [ ] Headlines: pressingProblem (200→500)
+  - [ ] Headlines: desiredOutcome (200→500)
+
+### FIX 2: Add 5 Fields to Service Profile
+- [ ] Add fields to services schema:
+  - [ ] whyProblemExists (text)
+  - [ ] hvcoTopic (varchar 300)
+  - [ ] mechanismDescriptor (enum: AI/System/Framework/Method/Blueprint/Process)
+  - [ ] applicationMethod (varchar 150)
+  - [ ] avatarName (varchar 100)
+  - [ ] avatarTitle (varchar 100)
+- [ ] Generate and apply migration
+- [ ] Update ServiceDetail.tsx form UI
+- [ ] Update all generator routers to use new fields
+
+### FIX 3: Campaign Context System
+- [ ] Create campaigns table schema
+- [ ] Add campaignId foreign key to all generator output tables
+- [ ] Build Campaign creation flow (/campaigns/new)
+- [ ] Build Campaign Dashboard (/campaigns/[campaignId])
+- [ ] Wire campaign context into all 9 generator routers
+- [ ] Implement "Generate All Missing" button
+- [ ] Implement "Export Campaign" button
+- [ ] Add status indicators (✅⚠️⬜❌)

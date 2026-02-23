@@ -113,7 +113,7 @@ export const landingPagesRouter = router({
         }
       }
 
-      // Get service details
+      // Get service details with social proof (Issue 2 fix)
       const [service] = await db
         .select()
         .from(services)
@@ -125,17 +125,36 @@ export const landingPagesRouter = router({
       if (!service) {
         throw new Error("Service not found");
       }
+      
+      // Extract real social proof data
+      const socialProof = {
+        hasCustomers: !!service.totalCustomers && service.totalCustomers > 0,
+        hasRating: !!service.averageRating && parseFloat(service.averageRating) > 0,
+        hasReviews: !!service.totalReviews && service.totalReviews > 0,
+        hasTestimonials: !!service.testimonial1Name || !!service.testimonial2Name || !!service.testimonial3Name,
+        hasPress: !!service.pressFeatures && service.pressFeatures.trim().length > 0,
+        customerCount: service.totalCustomers || 0,
+        rating: service.averageRating || '',
+        reviewCount: service.totalReviews || 0,
+        testimonials: [
+          service.testimonial1Name ? { name: service.testimonial1Name, title: service.testimonial1Title || '', quote: service.testimonial1Quote || '' } : null,
+          service.testimonial2Name ? { name: service.testimonial2Name, title: service.testimonial2Title || '', quote: service.testimonial2Quote || '' } : null,
+          service.testimonial3Name ? { name: service.testimonial3Name, title: service.testimonial3Title || '', quote: service.testimonial3Quote || '' } : null,
+        ].filter(Boolean),
+        press: service.pressFeatures || '',
+      };
 
       // Use avatar from input or create default
       const avatarName = input.avatarName || `${service.targetCustomer}`;
       const avatarDescription = input.avatarDescription || service.description || "Target Customer";
 
-      // Generate all 4 angles in parallel
+      // Generate all 4 angles in parallel with social proof (Issue 2 fix)
       const allAngles = await generateAllAngles(
         service.name,
         service.description || "",
         avatarName,
-        avatarDescription
+        avatarDescription,
+        socialProof
       );
 
       // Save to database

@@ -98,7 +98,7 @@ export const offersRouter = router({
         }
       }
 
-      // Get service details
+      // Get service details with social proof (Issue 2 fix)
       const [service] = await db
         .select()
         .from(services)
@@ -110,14 +110,21 @@ export const offersRouter = router({
       if (!service) {
         throw new Error("Service not found");
       }
+      
+      // Extract real social proof data
+      const socialProof = {
+        hasCustomers: !!service.totalCustomers && service.totalCustomers > 0,
+        customerCount: service.totalCustomers || 0,
+      };
 
-      // Generate all 3 angles in parallel
+      // Generate all 3 angles in parallel with social proof
       const allAngles = await generateAllOfferAngles(
         service.name,
         service.description || "",
         service.targetCustomer || "Target Customer",
         service.mainBenefit || "Main Benefit",
-        input.offerType
+        input.offerType,
+        socialProof
       );
 
       // Save to database

@@ -61,8 +61,24 @@ export async function generateLandingPageAngle(
   productDescription: string,
   avatarName: string,
   avatarDescription: string,
-  angle: 'original' | 'godfather' | 'free' | 'dollar'
+  angle: 'original' | 'godfather' | 'free' | 'dollar',
+  socialProof: any
 ): Promise<LandingPageContent> {
+  // Social proof guidance (Issue 2 fix)
+  const socialProofGuidance = socialProof.hasTestimonials || socialProof.hasCustomers || socialProof.hasPress
+    ? `REAL SOCIAL PROOF AVAILABLE:
+${socialProof.hasCustomers ? `- ${socialProof.customerCount} verified customers` : ''}
+${socialProof.hasRating ? `- ${socialProof.rating} average rating from ${socialProof.reviewCount} reviews` : ''}
+${socialProof.hasTestimonials ? `- Real testimonials: ${socialProof.testimonials.map((t: any) => `${t.name} (${t.title})`).join(', ')}` : ''}
+${socialProof.hasPress ? `- Press features: ${socialProof.press}` : ''}
+
+You MUST use these exact numbers and real testimonials. Do not fabricate or inflate.`
+    : `NO SOCIAL PROOF DATA PROVIDED:
+- For testimonials section: Use outcome-based quotes WITHOUT specific names ("A marketing agency owner" instead of "John Smith")
+- For "As Seen In" section: OMIT entirely or use "Trusted by [audience] in 30+ countries"
+- DO NOT fabricate customer counts, ratings, or press mentions
+- Focus on benefit claims and transformation stories instead`;
+  
   const prompt = `
 You are a world-class direct response copywriter specializing in high-converting landing pages.
 
@@ -72,6 +88,8 @@ Target Avatar: ${avatarName} - ${avatarDescription}
 Angle: ${angle}
 
 ${ANGLE_PROMPTS[angle]}
+
+${socialProofGuidance}
 
 Generate a complete landing page with 16 sections following this structure:
 
@@ -235,7 +253,8 @@ export async function generateAllAngles(
   productName: string,
   productDescription: string,
   avatarName: string,
-  avatarDescription: string
+  avatarDescription: string,
+  socialProof: any
 ): Promise<{
   original: LandingPageContent;
   godfather: LandingPageContent;
@@ -244,10 +263,10 @@ export async function generateAllAngles(
 }> {
   // Generate all 4 angles in parallel for speed
   const [original, godfather, free, dollar] = await Promise.all([
-    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'original'),
-    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'godfather'),
-    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'free'),
-    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'dollar'),
+    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'original', socialProof),
+    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'godfather', socialProof),
+    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'free', socialProof),
+    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'dollar', socialProof),
   ]);
 
   return { original, godfather, free, dollar };

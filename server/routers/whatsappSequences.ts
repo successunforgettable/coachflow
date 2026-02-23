@@ -109,7 +109,7 @@ export const whatsappSequencesRouter = router({
         }
       }
 
-      // Get service details
+      // Get service details with social proof (Issue 2 fix)
       const [service] = await db
         .select()
         .from(services)
@@ -121,6 +121,24 @@ export const whatsappSequencesRouter = router({
       if (!service) {
         throw new Error("Service not found");
       }
+      
+      // Extract real social proof data
+      const socialProof = {
+        hasCustomers: !!service.totalCustomers && service.totalCustomers > 0,
+        hasTestimonials: !!service.testimonial1Name || !!service.testimonial2Name || !!service.testimonial3Name,
+        customerCount: service.totalCustomers || 0,
+      };
+      
+      // Social proof guidance for WhatsApp messages
+      const socialProofGuidance = socialProof.hasCustomers || socialProof.hasTestimonials
+        ? `REAL SOCIAL PROOF AVAILABLE:
+${socialProof.hasCustomers ? `- ${socialProof.customerCount} verified customers` : ''}
+
+You MUST use these exact numbers. Do not fabricate.`
+        : `NO SOCIAL PROOF DATA PROVIDED:
+- DO NOT mention customer counts or specific testimonials
+- Focus on benefit claims and value propositions
+- Use outcome-based language WITHOUT specific names`;
 
       let prompt = "";
 
@@ -131,6 +149,8 @@ Service: ${service.name}
 Event: ${input.eventDetails?.eventName || "Event"}
 Host: ${input.eventDetails?.hostName || "Host"}
 Event Date: ${input.eventDetails?.eventDate || "Date"}
+
+${socialProofGuidance}
 
 Create 3 WhatsApp messages (Monday, Wednesday, Friday before event):
 1. WELCOME & EXPECTATION SETTING (Monday) - Personal welcome, what to expect
@@ -154,6 +174,8 @@ Service: ${service.name}
 Event: ${input.eventDetails?.eventName || "Event"}
 Offer: ${input.eventDetails?.offerName || "Offer"}
 Price: ${input.eventDetails?.price || "Price"}
+
+${socialProofGuidance}
 
 Create 3 WhatsApp messages (Day 1, 3, 5 after event):
 1. EXCLUSIVE OFFER (Day 1) - Thank you, exclusive offer for attendees

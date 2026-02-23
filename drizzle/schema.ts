@@ -784,6 +784,7 @@ export const adCreatives = mysqlTable("adCreatives", {
   pressingProblem: text("pressingProblem").notNull(),
   // Generation settings
   adType: mysqlEnum("adType", ["lead_gen", "ecommerce"]).default("lead_gen").notNull(),
+  styleType: mysqlEnum("styleType", ["tabloid", "lad_bible", "before_after", "stats", "meme", "testimonial", "question"]).default("tabloid").notNull(),
   designStyle: mysqlEnum("designStyle", ["person_shocked", "screenshot", "person_intense", "object", "person_curious"]).notNull(),
   headlineFormula: mysqlEnum("headlineFormula", ["benefit", "social_proof", "curiosity", "contrast", "challenge"]).notNull(),
   // Generated content

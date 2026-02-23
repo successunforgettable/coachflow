@@ -23,16 +23,19 @@ const PROHIBITED_PHRASES = [
 
 // Meta-compliant scroll-stopper headline formulas
 // These use curiosity, benefit claims, social proof, contrast, and challenge without prohibited language
+// Issue 2 fix: social_proof formula now accepts optional real customer count
 const HEADLINE_FORMULAS = {
-  benefit: (mechanism: string, niche: string) => 
+  benefit: (mechanism: string, niche: string, _customers?: number) => 
     `${mechanism.toUpperCase()}: CUT YOUR ${niche.toUpperCase()} TIME BY 90%`,
-  social_proof: (mechanism: string, niche: string) => 
-    `10,000+ ${niche.toUpperCase()} PROS USE THIS ${mechanism.toUpperCase()}`,
-  curiosity: (mechanism: string, niche: string) => 
+  social_proof: (mechanism: string, niche: string, customers?: number) => 
+    customers && customers > 0
+      ? `${customers.toLocaleString()}+ ${niche.toUpperCase()} PROS USE THIS ${mechanism.toUpperCase()}`
+      : `${niche.toUpperCase()} PROS LOVE THIS ${mechanism.toUpperCase()}`,
+  curiosity: (mechanism: string, niche: string, _customers?: number) => 
     `THE ${mechanism.toUpperCase()} ${niche.toUpperCase()} EXPERTS DON'T TALK ABOUT`,
-  contrast: (mechanism: string, niche: string) => 
+  contrast: (mechanism: string, niche: string, _customers?: number) => 
     `BEFORE ${mechanism.toUpperCase()}: 40 HOURS. AFTER: 4 HOURS`,
-  challenge: (mechanism: string, niche: string) => 
+  challenge: (mechanism: string, niche: string, _customers?: number) => 
     `STILL DOING ${niche.toUpperCase()} THE OLD WAY? TRY ${mechanism.toUpperCase()}`,
 };
 
@@ -158,7 +161,7 @@ export const adCreativesRouter = router({
       // Check quota (if needed - add to users table)
       // const user = await db.select().from(users).where(eq(users.id, ctx.user.id)).limit(1);
       
-      // Get service details
+      // Get service details with social proof
       const service = await db
         .select()
         .from(services)
@@ -168,6 +171,17 @@ export const adCreativesRouter = router({
       if (service.length === 0) {
         throw new Error("Service not found");
       }
+      
+      // Extract social proof data (Issue 2 fix)
+      const serviceData = service[0];
+      const customerCount = serviceData.totalCustomers || 0;
+      const hasSocialProof = {
+        customers: customerCount > 0,
+        rating: !!serviceData.averageRating && parseFloat(serviceData.averageRating) > 0,
+        reviews: !!serviceData.totalReviews && serviceData.totalReviews > 0,
+        testimonials: !!serviceData.testimonial1Name || !!serviceData.testimonial2Name || !!serviceData.testimonial3Name,
+        press: !!serviceData.pressFeatures && serviceData.pressFeatures.trim().length > 0,
+      };
       
       const batchId = `batch-${Date.now()}-${randomBytes(4).toString("hex")}`;
       const mechanism = input.uniqueMechanism || "System";
@@ -185,7 +199,7 @@ export const adCreativesRouter = router({
       
       for (let i = 0; i < 5; i++) {
         const variation = variations[i];
-        const headline = HEADLINE_FORMULAS[variation.formula](mechanism, input.niche);
+        const headline = HEADLINE_FORMULAS[variation.formula](mechanism, input.niche, customerCount);
         
         // Check Meta compliance
         const complianceIssues = checkCompliance(headline, input.mainBenefit, input.pressingProblem);

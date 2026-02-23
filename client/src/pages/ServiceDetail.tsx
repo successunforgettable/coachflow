@@ -25,6 +25,20 @@ export default function ServiceDetail() {
     targetCustomer: "",
     mainBenefit: "",
     price: "",
+    // Social proof fields
+    totalCustomers: "",
+    averageRating: "",
+    totalReviews: "",
+    testimonial1Name: "",
+    testimonial1Title: "",
+    testimonial1Quote: "",
+    testimonial2Name: "",
+    testimonial2Title: "",
+    testimonial2Quote: "",
+    testimonial3Name: "",
+    testimonial3Title: "",
+    testimonial3Quote: "",
+    pressFeatures: "",
   });
 
   // Fetch service details
@@ -65,6 +79,20 @@ export default function ServiceDetail() {
         targetCustomer: service.targetCustomer || "",
         mainBenefit: service.mainBenefit || "",
         price: service.price || "",
+        // Social proof fields
+        totalCustomers: service.totalCustomers?.toString() || "",
+        averageRating: service.averageRating?.toString() || "",
+        totalReviews: service.totalReviews?.toString() || "",
+        testimonial1Name: service.testimonial1Name || "",
+        testimonial1Title: service.testimonial1Title || "",
+        testimonial1Quote: service.testimonial1Quote || "",
+        testimonial2Name: service.testimonial2Name || "",
+        testimonial2Title: service.testimonial2Title || "",
+        testimonial2Quote: service.testimonial2Quote || "",
+        testimonial3Name: service.testimonial3Name || "",
+        testimonial3Title: service.testimonial3Title || "",
+        testimonial3Quote: service.testimonial3Quote || "",
+        pressFeatures: service.pressFeatures || "",
       });
     }
   }, [service]);
@@ -110,6 +138,20 @@ export default function ServiceDetail() {
       targetCustomer: formData.targetCustomer,
       mainBenefit: formData.mainBenefit,
       price: formData.price ? parseFloat(formData.price) : undefined,
+      // Social proof fields
+      totalCustomers: formData.totalCustomers ? parseInt(formData.totalCustomers) : undefined,
+      averageRating: formData.averageRating ? parseFloat(formData.averageRating) : undefined,
+      totalReviews: formData.totalReviews ? parseInt(formData.totalReviews) : undefined,
+      testimonial1Name: formData.testimonial1Name || undefined,
+      testimonial1Title: formData.testimonial1Title || undefined,
+      testimonial1Quote: formData.testimonial1Quote || undefined,
+      testimonial2Name: formData.testimonial2Name || undefined,
+      testimonial2Title: formData.testimonial2Title || undefined,
+      testimonial2Quote: formData.testimonial2Quote || undefined,
+      testimonial3Name: formData.testimonial3Name || undefined,
+      testimonial3Title: formData.testimonial3Title || undefined,
+      testimonial3Quote: formData.testimonial3Quote || undefined,
+      pressFeatures: formData.pressFeatures || undefined,
     });
   };
 
@@ -219,6 +261,173 @@ export default function ServiceDetail() {
                   value={formData.price}
                   onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                 />
+              </div>
+
+              {/* Social Proof Section */}
+              <div className="border-t pt-6 mt-6">
+                <h3 className="text-lg font-semibold mb-4">Social Proof (Optional)</h3>
+                <p className="text-sm text-muted-foreground mb-6">
+                  Add real social proof to eliminate fabricated statistics in generated content. Leave empty for launch-safe alternatives.
+                </p>
+
+                <div className="space-y-6">
+                  {/* Customer Stats */}
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <Label htmlFor="totalCustomers">Total Customers</Label>
+                      <Input
+                        id="totalCustomers"
+                        type="number"
+                        placeholder="e.g., 500"
+                        value={formData.totalCustomers}
+                        onChange={(e) => setFormData({ ...formData, totalCustomers: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="averageRating">Average Rating</Label>
+                      <Input
+                        id="averageRating"
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        max="5"
+                        placeholder="e.g., 4.8"
+                        value={formData.averageRating}
+                        onChange={(e) => setFormData({ ...formData, averageRating: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="totalReviews">Total Reviews</Label>
+                      <Input
+                        id="totalReviews"
+                        type="number"
+                        placeholder="e.g., 127"
+                        value={formData.totalReviews}
+                        onChange={(e) => setFormData({ ...formData, totalReviews: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Testimonial 1 */}
+                  <div className="border-l-2 border-primary/30 pl-4">
+                    <h4 className="text-sm font-semibold mb-3">Testimonial 1</h4>
+                    <div className="grid grid-cols-2 gap-4 mb-3">
+                      <div>
+                        <Label htmlFor="testimonial1Name">Name</Label>
+                        <Input
+                          id="testimonial1Name"
+                          placeholder="e.g., Sarah Johnson"
+                          value={formData.testimonial1Name}
+                          onChange={(e) => setFormData({ ...formData, testimonial1Name: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="testimonial1Title">Title/Role</Label>
+                        <Input
+                          id="testimonial1Title"
+                          placeholder="e.g., CEO, TechCorp"
+                          value={formData.testimonial1Title}
+                          onChange={(e) => setFormData({ ...formData, testimonial1Title: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <Label htmlFor="testimonial1Quote">Quote</Label>
+                      <Textarea
+                        id="testimonial1Quote"
+                        placeholder="What did they say about your service?"
+                        value={formData.testimonial1Quote}
+                        onChange={(e) => setFormData({ ...formData, testimonial1Quote: e.target.value })}
+                        rows={3}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Testimonial 2 */}
+                  <div className="border-l-2 border-primary/30 pl-4">
+                    <h4 className="text-sm font-semibold mb-3">Testimonial 2</h4>
+                    <div className="grid grid-cols-2 gap-4 mb-3">
+                      <div>
+                        <Label htmlFor="testimonial2Name">Name</Label>
+                        <Input
+                          id="testimonial2Name"
+                          placeholder="e.g., Michael Chen"
+                          value={formData.testimonial2Name}
+                          onChange={(e) => setFormData({ ...formData, testimonial2Name: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="testimonial2Title">Title/Role</Label>
+                        <Input
+                          id="testimonial2Title"
+                          placeholder="e.g., Marketing Director"
+                          value={formData.testimonial2Title}
+                          onChange={(e) => setFormData({ ...formData, testimonial2Title: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <Label htmlFor="testimonial2Quote">Quote</Label>
+                      <Textarea
+                        id="testimonial2Quote"
+                        placeholder="What did they say about your service?"
+                        value={formData.testimonial2Quote}
+                        onChange={(e) => setFormData({ ...formData, testimonial2Quote: e.target.value })}
+                        rows={3}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Testimonial 3 */}
+                  <div className="border-l-2 border-primary/30 pl-4">
+                    <h4 className="text-sm font-semibold mb-3">Testimonial 3</h4>
+                    <div className="grid grid-cols-2 gap-4 mb-3">
+                      <div>
+                        <Label htmlFor="testimonial3Name">Name</Label>
+                        <Input
+                          id="testimonial3Name"
+                          placeholder="e.g., Emily Rodriguez"
+                          value={formData.testimonial3Name}
+                          onChange={(e) => setFormData({ ...formData, testimonial3Name: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="testimonial3Title">Title/Role</Label>
+                        <Input
+                          id="testimonial3Title"
+                          placeholder="e.g., Founder, StartupXYZ"
+                          value={formData.testimonial3Title}
+                          onChange={(e) => setFormData({ ...formData, testimonial3Title: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <Label htmlFor="testimonial3Quote">Quote</Label>
+                      <Textarea
+                        id="testimonial3Quote"
+                        placeholder="What did they say about your service?"
+                        value={formData.testimonial3Quote}
+                        onChange={(e) => setFormData({ ...formData, testimonial3Quote: e.target.value })}
+                        rows={3}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Press Features */}
+                  <div>
+                    <Label htmlFor="pressFeatures">Press Features</Label>
+                    <Textarea
+                      id="pressFeatures"
+                      placeholder="e.g., Featured in Forbes, TechCrunch, Entrepreneur Magazine"
+                      value={formData.pressFeatures}
+                      onChange={(e) => setFormData({ ...formData, pressFeatures: e.target.value })}
+                      rows={2}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Comma-separated list of real press mentions only
+                    </p>
+                  </div>
+                </div>
               </div>
 
               <div className="flex gap-3">

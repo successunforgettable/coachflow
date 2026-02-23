@@ -1,0 +1,1 @@
+ALTER TABLE `adCreatives` ADD `styleType` enum('tabloid','lad_bible','before_after','stats','meme','testimonial','question') DEFAULT 'tabloid' NOT NULL;

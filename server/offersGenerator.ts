@@ -50,7 +50,8 @@ export async function generateOfferAngle(
   targetCustomer: string,
   mainBenefit: string,
   angle: 'godfather' | 'free' | 'dollar',
-  offerType: 'standard' | 'premium' | 'vip'
+  offerType: 'standard' | 'premium' | 'vip',
+  socialProof: any
 ): Promise<OfferContent> {
   const offerTypeInstructions = {
     standard: "Entry-level offer with core benefits, good value",
@@ -58,6 +59,16 @@ export async function generateOfferAngle(
     vip: "High-ticket offer with maximum value, exclusive access, premium bonuses",
   };
 
+  // Social proof guidance (Issue 2 fix)
+  const socialProofGuidance = socialProof.hasCustomers
+    ? `REAL SOCIAL PROOF AVAILABLE:
+- ${socialProof.customerCount} verified customers
+
+You MAY use this number in the offer copy if relevant. Do not fabricate.`
+    : `NO SOCIAL PROOF DATA PROVIDED:
+- DO NOT mention customer counts or specific testimonials in the offer
+- Focus on benefit claims and value propositions`;
+  
   const prompt = `
 You are an expert offer creator specializing in irresistible offers for coaches, speakers, and consultants.
 
@@ -69,6 +80,8 @@ Offer Type: ${offerTypeInstructions[offerType]}
 Angle: ${angle}
 
 ${ANGLE_PROMPTS[angle]}
+
+${socialProofGuidance}
 
 Generate a complete offer with 7 sections:
 
@@ -150,16 +163,17 @@ export async function generateAllOfferAngles(
   productDescription: string,
   targetCustomer: string,
   mainBenefit: string,
-  offerType: 'standard' | 'premium' | 'vip'
+  offerType: 'standard' | 'premium' | 'vip',
+  socialProof: any
 ): Promise<{
   godfather: OfferContent;
   free: OfferContent;
   dollar: OfferContent;
 }> {
   const [godfather, free, dollar] = await Promise.all([
-    generateOfferAngle(productName, productDescription, targetCustomer, mainBenefit, 'godfather', offerType),
-    generateOfferAngle(productName, productDescription, targetCustomer, mainBenefit, 'free', offerType),
-    generateOfferAngle(productName, productDescription, targetCustomer, mainBenefit, 'dollar', offerType),
+    generateOfferAngle(productName, productDescription, targetCustomer, mainBenefit, 'godfather', offerType, socialProof),
+    generateOfferAngle(productName, productDescription, targetCustomer, mainBenefit, 'free', offerType, socialProof),
+    generateOfferAngle(productName, productDescription, targetCustomer, mainBenefit, 'dollar', offerType, socialProof),
   ]);
 
   return { godfather, free, dollar };

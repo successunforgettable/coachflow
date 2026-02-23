@@ -110,7 +110,7 @@ export const emailSequencesRouter = router({
         }
       }
 
-      // Get service details
+      // Get service details with social proof (Issue 2 fix)
       const [service] = await db
         .select()
         .from(services)
@@ -122,6 +122,38 @@ export const emailSequencesRouter = router({
       if (!service) {
         throw new Error("Service not found");
       }
+      
+      // Extract real social proof data
+      const socialProof = {
+        hasCustomers: !!service.totalCustomers && service.totalCustomers > 0,
+        hasRating: !!service.averageRating && parseFloat(service.averageRating) > 0,
+        hasReviews: !!service.totalReviews && service.totalReviews > 0,
+        hasTestimonials: !!service.testimonial1Name || !!service.testimonial2Name || !!service.testimonial3Name,
+        hasPress: !!service.pressFeatures && service.pressFeatures.trim().length > 0,
+        customerCount: service.totalCustomers || 0,
+        rating: service.averageRating || '',
+        reviewCount: service.totalReviews || 0,
+        testimonials: [
+          service.testimonial1Name ? { name: service.testimonial1Name, title: service.testimonial1Title || '', quote: service.testimonial1Quote || '' } : null,
+          service.testimonial2Name ? { name: service.testimonial2Name, title: service.testimonial2Title || '', quote: service.testimonial2Quote || '' } : null,
+          service.testimonial3Name ? { name: service.testimonial3Name, title: service.testimonial3Title || '', quote: service.testimonial3Quote || '' } : null,
+        ].filter(Boolean),
+        press: service.pressFeatures || '',
+      };
+      
+      // Social proof guidance for email copy
+      const socialProofGuidance = socialProof.hasTestimonials || socialProof.hasCustomers
+        ? `REAL SOCIAL PROOF AVAILABLE:
+${socialProof.hasCustomers ? `- ${socialProof.customerCount} verified customers` : ''}
+${socialProof.hasRating ? `- ${socialProof.rating} average rating from ${socialProof.reviewCount} reviews` : ''}
+${socialProof.hasTestimonials ? `- Real testimonials available from: ${socialProof.testimonials.map((t: any) => t.name).join(', ')}` : ''}
+
+You MUST use these exact numbers and real names. Do not fabricate.`
+        : `NO SOCIAL PROOF DATA PROVIDED:
+- DO NOT mention customer counts, ratings, or specific testimonials
+- Focus on benefit claims and transformation outcomes
+- Use outcome-based stories WITHOUT specific names ("One client" instead of "John Smith")`;
+
 
       let prompt = "";
 
@@ -133,6 +165,8 @@ Category: ${service.category}
 Description: ${service.description}
 Target Customer: ${service.targetCustomer}
 Main Benefit: ${service.mainBenefit}
+
+${socialProofGuidance}
 
 Create 3 emails:
 1. SET THE STAGE (Day 1) - Welcome, set expectations, introduce yourself
@@ -152,6 +186,8 @@ Format as JSON array.`;
 Service: ${service.name}
 Event: ${input.eventDetails?.eventName || "Event"}
 Host: ${input.eventDetails?.hostName || "Host"}
+
+${socialProofGuidance}
 
 Create 5 emails (Monday to Friday before event):
 1. SET THE STAGE (Monday) - Introduce, set expectations
@@ -176,6 +212,8 @@ Event: ${input.eventDetails?.eventName || "Event"}
 Offer: ${input.eventDetails?.offerName || "Offer"}
 Price: ${input.eventDetails?.price || "Price"}
 Deadline: ${input.eventDetails?.deadline || "Deadline"}
+
+${socialProofGuidance}
 
 Create 7 emails (Day 1-7 after event):
 1. THANK YOU (Day 1) - Gratitude, recap key points
