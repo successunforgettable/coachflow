@@ -90,6 +90,20 @@ export const services = mysqlTable("services", {
   targetCustomer: varchar("targetCustomer", { length: 500 }).notNull(),
   mainBenefit: varchar("mainBenefit", { length: 500 }).notNull(),
   price: decimal("price", { precision: 10, scale: 2 }),
+  // Social proof fields (optional - for compliant marketing)
+  totalCustomers: int("totalCustomers"), // Real customer count
+  averageRating: decimal("averageRating", { precision: 3, scale: 2 }), // e.g., 4.85
+  totalReviews: int("totalReviews"), // Number of reviews
+  testimonial1Name: varchar("testimonial1Name", { length: 255 }),
+  testimonial1Title: varchar("testimonial1Title", { length: 255 }),
+  testimonial1Quote: text("testimonial1Quote"),
+  testimonial2Name: varchar("testimonial2Name", { length: 255 }),
+  testimonial2Title: varchar("testimonial2Title", { length: 255 }),
+  testimonial2Quote: text("testimonial2Quote"),
+  testimonial3Name: varchar("testimonial3Name", { length: 255 }),
+  testimonial3Title: varchar("testimonial3Title", { length: 255 }),
+  testimonial3Quote: text("testimonial3Quote"),
+  pressFeatures: text("pressFeatures"), // Comma-separated list: "Forbes, Inc, TechCrunch"
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({
@@ -771,7 +785,7 @@ export const adCreatives = mysqlTable("adCreatives", {
   // Generation settings
   adType: mysqlEnum("adType", ["lead_gen", "ecommerce"]).default("lead_gen").notNull(),
   designStyle: mysqlEnum("designStyle", ["person_shocked", "screenshot", "person_intense", "object", "person_curious"]).notNull(),
-  headlineFormula: mysqlEnum("headlineFormula", ["banned", "secret", "leaked", "glitch", "forbidden"]).notNull(),
+  headlineFormula: mysqlEnum("headlineFormula", ["benefit", "social_proof", "curiosity", "contrast", "challenge"]).notNull(),
   // Generated content
   headline: varchar("headline", { length: 255 }).notNull(),
   imageUrl: text("imageUrl").notNull(), // S3 URL to generated image

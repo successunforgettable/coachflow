@@ -1,0 +1,9 @@
+{
+  "query": "-- Step 1: Add new column with new enum values\nALTER TABLE adCreatives ADD COLUMN headlineFormula_new enum('benefit','social_proof','curiosity','contrast','challenge') NOT NULL DEFAULT 'benefit';\n\n-- Step 2: Copy data with mapping\nUPDATE adCreatives SET headlineFormula_new = CASE\n  WHEN headlineFormula = 'banned' THEN 'benefit'\n  WHEN headlineFormula = 'secret' THEN 'social_proof'\n  WHEN headlineFormula = 'leaked' THEN 'curiosity'\n  WHEN headlineFormula = 'glitch' THEN 'contrast'\n  WHEN headlineFormula = 'forbidden' THEN 'challenge'\nEND;\n\n-- Step 3: Drop old column\nALTER TABLE adCreatives DROP COLUMN headlineFormula;\n\n-- Step 4: Rename new column\nALTER TABLE adCreatives CHANGE headlineFormula_new headlineFormula enum('benefit','social_proof','curiosity','contrast','challenge') NOT NULL;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute -- Step 1: Add new column with new enum values\nALTER TABLE adCreatives ADD COLUMN headlineFormula_new enum('benefit','social_proof','curiosity','contrast','challenge') NOT NULL DEFAULT 'benefit';\n\n-- Step 2: Copy data with mapping\nUPDATE adCreatives SET headlineFormula_new = CASE\n  WHEN headlineFormula = 'banned' THEN 'benefit'\n  WHEN headlineFormula = 'secret' THEN 'social_proof'\n  WHEN headlineFormula = 'leaked' THEN 'curiosity'\n  WHEN headlineFormula = 'glitch' THEN 'contrast'\n  WHEN headlineFormula = 'forbidden' THEN 'challenge'\nEND;\n\n-- Step 3: Drop old column\nALTER TABLE adCreatives DROP COLUMN headlineFormula;\n\n-- Step 4: Rename new column\nALTER TABLE adCreatives CHANGE headlineFormula_new headlineFormula enum('benefit','social_proof','curiosity','contrast','challenge') NOT NULL;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 2692
+}

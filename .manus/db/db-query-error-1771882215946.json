@@ -1,0 +1,8 @@
+{
+  "query": "UPDATE adCreatives SET headlineFormula = CASE\n  WHEN headlineFormula = 'banned' THEN 'benefit'\n  WHEN headlineFormula = 'secret' THEN 'social_proof'\n  WHEN headlineFormula = 'leaked' THEN 'curiosity'\n  WHEN headlineFormula = 'glitch' THEN 'contrast'\n  WHEN headlineFormula = 'forbidden' THEN 'challenge'\n  ELSE headlineFormula\nEND;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute UPDATE adCreatives SET headlineFormula = CASE\n  WHEN headlineFormula = 'banned' THEN 'benefit'\n  WHEN headlineFormula = 'secret' THEN 'social_proof'\n  WHEN headlineFormula = 'leaked' THEN 'curiosity'\n  WHEN headlineFormula = 'glitch' THEN 'contrast'\n  WHEN headlineFormula = 'forbidden' THEN 'challenge'\n  ELSE headlineFormula\nEND;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1265 (01000) at line 1: Data truncated for column '%s' at row %d"
+  ]
+}

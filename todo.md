@@ -2534,3 +2534,112 @@
 - [x] Fix JSON parsing bugs in Hero Mechanisms router (stripMarkdownJson)
 - [x] Fix JSON parsing bugs in Headlines router (stripMarkdownJson)
 - [x] Rename "Godfather Offers" to "Super ZAP Offers" across all UI
+
+
+## Phase 37: User Feedback Implementation - Critical Fixes for All Users
+
+### CRITICAL PRIORITY
+- [ ] **Issue 1: Ad Creatives - Meta-Prohibited Language**
+  - [ ] Add blocklist to ad creative prompt (banned, forbidden, leaked, exposed, secret, glitch, loophole, etc.)
+  - [ ] Add compliant scroll-stopper techniques to prompt (benefit claims, social proof, curiosity, contrast, challenge)
+  - [ ] Implement post-generation compliance scan for creative headlines
+  - [ ] Test with ZAP regeneration to verify no prohibited language
+
+- [ ] **Issue 2: Social Proof Fabrication**
+  - [ ] Add optional social proof fields to service creation form (total users, review rating, review count, testimonials 1-3, press features)
+  - [ ] Update all generators to use real data when provided
+  - [ ] Implement safe fallbacks when no data provided (remove claims entirely, use outcome-based claims without names, omit "As Seen In" section)
+  - [ ] Add `socialProofFabricated: true` flag to JSON for demo purposes
+  - [ ] Test with empty social proof fields to verify safe fallbacks
+
+### MEDIUM PRIORITY  
+- [ ] **Issue 3: Ad Copy - Body Copy Variation Quality**
+  - [ ] Restructure body copy prompt to cycle through 8 different angles (pain-led, aspiration-led, story-led, authority-led, curiosity-led, contrast-led, objection-led, social proof-led)
+  - [ ] Label each variation with its angle type in JSON output
+  - [ ] Test to verify 15 variations are meaningfully different
+
+- [ ] **Issue 4: WhatsApp Sequences - Placeholder Bug**
+  - [ ] Fix "Date" placeholder in WhatsApp messages
+  - [ ] Add date/time input fields to WhatsApp sequence generator
+  - [ ] Rewrite messages to build relationship instead of generic event reminders
+  - [ ] Test with ZAP regeneration
+
+- [ ] **Issue 5: Landing Pages - Avatar Name Parsing**
+  - [ ] Add pre-generation step to parse avatarName into firstName and roleDescription
+  - [ ] Update landing page prompt to use firstName only in headlines
+  - [ ] Test to verify "Sarah the Scaling Agency Owner" becomes "Sarah, a Marketing Agency Owner"
+
+- [ ] **Issue 6: Landing Pages - Meta in "As Seen In" Badges**
+  - [ ] Remove Meta, Facebook, Instagram, Google from default "As Seen In" badge list
+  - [ ] Update fallback to only include legitimate media publications
+  - [ ] If no press provided, omit "As Seen In" or use "As Used By [Audience] In 30+ Countries"
+  - [ ] Test with empty press fields
+
+- [ ] **Issue 7: Authority Claims - Product vs Person Attribution**
+  - [ ] Add instruction to ad copy/headline prompts to attribute credentials to person, not product
+  - [ ] Correct format: "Created by Forbes-featured [Name]" NOT "Forbes-Featured [Product]"
+  - [ ] Test with personal press credential input
+
+### LOW-MEDIUM PRIORITY
+- [ ] **Issue 8: HVCO Titles - Benefit-First Formulas**
+  - [ ] Restructure HVCO prompt to use 4 high-conversion formulas (Specific Outcome, Audience + Transformation, List/Number, Secret/System Reveal)
+  - [ ] Prioritize specificity and benefit over alliteration
+  - [ ] Test to verify titles contain specific promises
+
+### TESTING & VALIDATION
+- [ ] Regenerate complete ZAP campaign with all fixes applied
+- [ ] Verify all 5 ad creatives pass Meta compliance
+- [ ] Verify no fabricated social proof in any assets
+- [ ] Verify ad copy variations are meaningfully different
+- [ ] Verify WhatsApp sequences have no placeholders
+- [ ] Verify landing page headlines use correct avatar format
+- [ ] Verify no Meta in "As Seen In" badges
+- [ ] Verify authority claims attributed to person
+- [ ] Verify HVCO titles contain specific benefits
+- [ ] Create checkpoint after all fixes validated
+
+
+## Phase 37: User Feedback Implementation (ACTIVE)
+- [x] CRITICAL Issue 1: Fix Ad Creatives Meta-prohibited language (COMPLETE)
+  - [x] Replace prohibited headline formulas (banned, secret, leaked, glitch, forbidden)
+  - [x] Update image generation prompts to remove prohibited visual elements
+  - [x] Change visual style from negative to positive
+  - [x] Migrate database enum values
+  - [x] Update schema to reflect new formula names
+- [ ] CRITICAL Issue 2: Fix Social Proof Fabrication
+  - [x] Add social proof fields to services schema (totalCustomers, averageRating, totalReviews, testimonials, pressFeatures)
+  - [x] Apply database migration
+  - [ ] Update ServiceDetail.tsx UI to include social proof editing
+  - [ ] Update all 9 generator prompts to respect social proof data
+  - [ ] Add launch-safe fallbacks when social proof is empty
+  - [ ] Test with/without social proof data
+- [ ] MEDIUM Issue 3: Fix Ad Copy Body Variations (not meaningfully different)
+  - [ ] Create 15 distinct angle types (pain_agitation, social_proof, authority, curiosity, story, etc.)
+  - [ ] Update adCopy schema to include bodyAngle enum
+  - [ ] Update Ad Copy backend to use angle-based generation
+  - [ ] Test structural diversity >70%
+- [ ] MEDIUM Issue 4: Fix WhatsApp Date Placeholder Bug
+  - [ ] Update whatsappSequences.ts to replace {{Date}} with actual dates
+  - [ ] Replace {{Name}} with [First Name]
+  - [ ] Replace {{Product}} with service name
+  - [ ] Test all placeholders are replaced
+- [ ] MEDIUM Issue 5: Fix Landing Page Avatar Parsing
+  - [ ] Update landingPages.ts to parse avatar format correctly
+  - [ ] Extract name, age, role, location from comma-separated input
+  - [ ] Fix headline format to use "Name the Role" not "Name, Age, Role"
+  - [ ] Test with different avatar formats
+- [ ] MEDIUM Issue 6: Remove "Meta" from Landing Page Badges
+  - [ ] Update DEFAULT_PRESS array to exclude Meta
+  - [ ] Change language from "As seen in" to "Featured in publications"
+  - [ ] Update press context in prompt
+  - [ ] Test with/without real press features
+- [ ] MEDIUM Issue 7: Fix Authority Attribution
+  - [ ] Add authorityFigure field to services schema
+  - [ ] Update all generator prompts to attribute framework to authority (not product)
+  - [ ] Add authority context with correct/wrong examples
+  - [ ] Test across all 9 generators
+- [ ] LOW-MEDIUM Issue 8: Fix HVCO Titles (benefit-first, not alliterative)
+  - [ ] Update HVCO prompt to prioritize benefits over alliteration
+  - [ ] Add benefit-first examples to prompt
+  - [ ] Test title clarity and specificity
+  - [ ] Compare conversion rates vs old titles

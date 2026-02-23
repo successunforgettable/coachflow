@@ -197,6 +197,20 @@
       "when": 1771878354586,
       "tag": "0027_condemned_chameleon",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "5",
+      "when": 1771882181275,
+      "tag": "0028_rainy_whistler",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "5",
+      "when": 1771882307733,
+      "tag": "0029_silent_silver_fox",
+      "breakpoints": true
     }
   ]
 }

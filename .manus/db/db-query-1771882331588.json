@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE `services` ADD `totalCustomers` int;\nALTER TABLE `services` ADD `averageRating` decimal(3,2);\nALTER TABLE `services` ADD `totalReviews` int;\nALTER TABLE `services` ADD `testimonial1Name` varchar(255);\nALTER TABLE `services` ADD `testimonial1Title` varchar(255);\nALTER TABLE `services` ADD `testimonial1Quote` text;\nALTER TABLE `services` ADD `testimonial2Name` varchar(255);\nALTER TABLE `services` ADD `testimonial2Title` varchar(255);\nALTER TABLE `services` ADD `testimonial2Quote` text;\nALTER TABLE `services` ADD `testimonial3Name` varchar(255);\nALTER TABLE `services` ADD `testimonial3Title` varchar(255);\nALTER TABLE `services` ADD `testimonial3Quote` text;\nALTER TABLE `services` ADD `pressFeatures` text;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute ALTER TABLE `services` ADD `totalCustomers` int;\nALTER TABLE `services` ADD `averageRating` decimal(3,2);\nALTER TABLE `services` ADD `totalReviews` int;\nALTER TABLE `services` ADD `testimonial1Name` varchar(255);\nALTER TABLE `services` ADD `testimonial1Title` varchar(255);\nALTER TABLE `services` ADD `testimonial1Quote` text;\nALTER TABLE `services` ADD `testimonial2Name` varchar(255);\nALTER TABLE `services` ADD `testimonial2Title` varchar(255);\nALTER TABLE `services` ADD `testimonial2Quote` text;\nALTER TABLE `services` ADD `testimonial3Name` varchar(255);\nALTER TABLE `services` ADD `testimonial3Title` varchar(255);\nALTER TABLE `services` ADD `testimonial3Quote` text;\nALTER TABLE `services` ADD `pressFeatures` text;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 6463
+}

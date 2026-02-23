@@ -21,18 +21,19 @@ const PROHIBITED_PHRASES = [
   "fast cash",
 ];
 
-// Tabloid headline formulas
+// Meta-compliant scroll-stopper headline formulas
+// These use curiosity, benefit claims, social proof, contrast, and challenge without prohibited language
 const HEADLINE_FORMULAS = {
-  banned: (mechanism: string, niche: string) => 
-    `THIS ${mechanism.toUpperCase()} IS BANNED IN 3 COUNTRIES`,
-  secret: (mechanism: string, niche: string) => 
-    `THE ${niche.toUpperCase()} SECRET THEY DON'T WANT YOU TO KNOW`,
-  leaked: (mechanism: string, niche: string) => 
-    `'${mechanism.toUpperCase()}' LEAKED - EXPERTS FURIOUS`,
-  glitch: (mechanism: string, niche: string) => 
-    `THIS ${niche.toUpperCase()} GLITCH IS MAKING PEOPLE RICH`,
-  forbidden: (mechanism: string, niche: string) => 
-    `FORBIDDEN ${mechanism.toUpperCase()} FINALLY EXPOSED`,
+  benefit: (mechanism: string, niche: string) => 
+    `${mechanism.toUpperCase()}: CUT YOUR ${niche.toUpperCase()} TIME BY 90%`,
+  social_proof: (mechanism: string, niche: string) => 
+    `10,000+ ${niche.toUpperCase()} PROS USE THIS ${mechanism.toUpperCase()}`,
+  curiosity: (mechanism: string, niche: string) => 
+    `THE ${mechanism.toUpperCase()} ${niche.toUpperCase()} EXPERTS DON'T TALK ABOUT`,
+  contrast: (mechanism: string, niche: string) => 
+    `BEFORE ${mechanism.toUpperCase()}: 40 HOURS. AFTER: 4 HOURS`,
+  challenge: (mechanism: string, niche: string) => 
+    `STILL DOING ${niche.toUpperCase()} THE OLD WAY? TRY ${mechanism.toUpperCase()}`,
 };
 
 // Check for Meta compliance issues
@@ -63,15 +64,15 @@ function generateAdImagePrompt(
   const baseStyle = "Gossip magazine style, tabloid aesthetic, phone-quality photo (NOT polished studio shot), dramatic lighting, high contrast";
   
   const stylePrompts = {
-    person_shocked: `${baseStyle}. Person (30-45 years old) with SHOCKED expression, wide eyes, mouth open, pointing at viewer. Dark grey/black background. Red circle annotation around head. Red "BANNED" stamp in corner. Headline text overlay: "${headline}" in bold white text with yellow highlights on key words. Hand-drawn red arrow pointing from circle to viewer.`,
+    person_shocked: `${baseStyle}. Person (30-45 years old) with EXCITED expression, wide eyes, enthusiastic smile, pointing at viewer. Dark grey/black background. Green circle annotation around head with checkmark. Headline text overlay: "${headline}" in bold white text with yellow highlights on key words. Hand-drawn green arrow pointing from circle to viewer.`,
     
-    screenshot: `${baseStyle}. Laptop screen photographed at angle showing dashboard with dramatic results/numbers. Dark desk surface, coffee cup visible. Multiple red circles around key numbers. Red arrows pointing UP at gains. Handwritten text "WTF?! NO WAY" near circles. "LEAKED" stamp in corner. Headline: "${headline}" in bold white text at top.`,
+    screenshot: `${baseStyle}. Laptop screen photographed at angle showing dashboard with impressive results/numbers. Dark desk surface, coffee cup visible. Multiple green circles around key metrics. Green arrows pointing UP at gains. Handwritten text "RESULTS" near circles. Headline: "${headline}" in bold white text at top.`,
     
-    person_intense: `${baseStyle}. Person (30-45 years old) with INTENSE expression, serious face, leaning forward, direct eye contact. Dark background with spotlight on face. Red circle around object in background. Red arrow pointing TO circled object. "EXPOSED" stamp. Headline: "${headline}" in bold white text with yellow highlights.`,
+    person_intense: `${baseStyle}. Person (30-45 years old) with CONFIDENT expression, serious face, leaning forward, direct eye contact. Dark background with spotlight on face. Green circle around key element in background. Green arrow pointing TO circled element. Headline: "${headline}" in bold white text with yellow highlights.`,
     
-    object: `${baseStyle}. Relevant object (document, product, device) for ${niche} niche. Dramatic lighting, dark background. Red circles around key elements. Red arrows pointing to circled areas. Handwritten text "BANNED" or "LOOPHOLE". "CLASSIFIED" stamp. Headline: "${headline}" in bold white text.`,
+    object: `${baseStyle}. Relevant object (document, product, device) for ${niche} niche. Dramatic lighting, dark background. Green circles around key features. Green arrows pointing to circled areas. Handwritten text "PROVEN" or "RESULTS". Headline: "${headline}" in bold white text.`,
     
-    person_curious: `${baseStyle}. Person (30-45 years old) with CURIOUS expression, raised eyebrow, slight smile, head tilted. Dark grey background. Large red circle with handwritten text inside. Red arrow pointing from circle. Headline: "${headline}" in bold white text with yellow highlights on key words.`,
+    person_curious: `${baseStyle}. Person (30-45 years old) with INTRIGUED expression, raised eyebrow, interested smile, head tilted. Dark grey background. Large green circle with handwritten benefit text inside. Green arrow pointing from circle. Headline: "${headline}" in bold white text with yellow highlights on key words.`,
   };
   
   return stylePrompts[style as keyof typeof stylePrompts] || stylePrompts.person_shocked;
@@ -173,11 +174,11 @@ export const adCreativesRouter = router({
       
       // Define 5 variations with different styles and headlines
       const variations = [
-        { style: "person_shocked", formula: "banned" as const },
-        { style: "screenshot", formula: "secret" as const },
-        { style: "person_intense", formula: "leaked" as const },
-        { style: "object", formula: "glitch" as const },
-        { style: "person_curious", formula: "forbidden" as const },
+        { style: "person_shocked", formula: "benefit" as const },
+        { style: "screenshot", formula: "social_proof" as const },
+        { style: "person_intense", formula: "curiosity" as const },
+        { style: "object", formula: "contrast" as const },
+        { style: "person_curious", formula: "challenge" as const },
       ];
       
       const generatedCreatives = [];

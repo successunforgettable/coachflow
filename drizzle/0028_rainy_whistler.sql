@@ -1,0 +1,1 @@
+ALTER TABLE `adCreatives` MODIFY COLUMN `headlineFormula` enum('benefit','social_proof','curiosity','contrast','challenge') NOT NULL;

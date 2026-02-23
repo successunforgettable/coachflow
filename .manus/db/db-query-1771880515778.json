@@ -1,0 +1,50 @@
+{
+  "query": "SELECT id, name FROM services ORDER BY createdAt DESC LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT id, name FROM services ORDER BY createdAt DESC LIMIT 10;",
+  "rows": [
+    {
+      "id": "780001",
+      "name": "ZAP - Zero-to-Ads Platform"
+    },
+    {
+      "id": "750003",
+      "name": "Test Coaching Service"
+    },
+    {
+      "id": "750001",
+      "name": "Crypto Coaching"
+    },
+    {
+      "id": "720020",
+      "name": "Test Coaching Service"
+    },
+    {
+      "id": "720017",
+      "name": "Crypto Coaching"
+    },
+    {
+      "id": "720016",
+      "name": "Test Coaching Service"
+    },
+    {
+      "id": "720013",
+      "name": "Crypto Coaching"
+    },
+    {
+      "id": "720012",
+      "name": "Test Coaching Service"
+    },
+    {
+      "id": "720009",
+      "name": "Crypto Coaching"
+    },
+    {
+      "id": "720008",
+      "name": "Test Coaching Service"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\n780001\tZAP - Zero-to-Ads Platform\n750003\tTest Coaching Service\n750001\tCrypto Coaching\n720020\tTest Coaching Service\n720017\tCrypto Coaching\n720016\tTest Coaching Service\n720013\tCrypto Coaching\n720012\tTest Coaching Service\n720009\tCrypto Coaching\n720008\tTest Coaching Service\n",
+  "stderr": "",
+  "execution_time_ms": 1643
+}
