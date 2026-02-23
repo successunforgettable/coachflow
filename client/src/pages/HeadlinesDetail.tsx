@@ -11,7 +11,7 @@ import RegenerateSidebar from "@/components/RegenerateSidebar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { RegenerateConfirmationDialog } from "@/components/RegenerateConfirmationDialog";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { HeadlineCard } from "@/components/HeadlineCard";
@@ -22,6 +22,12 @@ export default function HeadlinesDetail() {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
   const { user: authUser } = useAuth();
+  const [regenerateForm, setRegenerateForm] = useState({
+    targetMarket: "",
+    pressingProblem: "",
+    desiredOutcome: "",
+    uniqueMechanism: "",
+  });
 
   const { data, isLoading, refetch } = trpc.headlines.getBySetId.useQuery(
     { headlineSetId },
@@ -62,6 +68,21 @@ export default function HeadlinesDetail() {
       toast.error(`Error: ${error.message}`);
     },
   });
+
+  // Calculate firstHeadline before any early returns
+  const firstHeadline = data?.headlines.story[0] || data?.headlines.eyebrow[0] || data?.headlines.question[0] || data?.headlines.authority[0] || data?.headlines.urgency[0];
+  
+  // Update form with actual data after loading
+  useEffect(() => {
+    if (firstHeadline) {
+      setRegenerateForm({
+        targetMarket: firstHeadline.targetMarket || "",
+        pressingProblem: firstHeadline.pressingProblem || "",
+        desiredOutcome: firstHeadline.desiredOutcome || "",
+        uniqueMechanism: firstHeadline.uniqueMechanism || "",
+      });
+    }
+  }, [firstHeadline]);
 
   const handleGenerateMore = () => {
     setShowConfirmDialog(true);
@@ -158,15 +179,6 @@ export default function HeadlinesDetail() {
 
     toast.success("PDF downloaded successfully!");
   };
-
-  const firstHeadline = data.headlines.story[0] || data.headlines.eyebrow[0] || data.headlines.question[0] || data.headlines.authority[0] || data.headlines.urgency[0];
-  
-  const [regenerateForm, setRegenerateForm] = useState({
-    targetMarket: firstHeadline?.targetMarket || "",
-    pressingProblem: firstHeadline?.pressingProblem || "",
-    desiredOutcome: firstHeadline?.desiredOutcome || "",
-    uniqueMechanism: firstHeadline?.uniqueMechanism || "",
-  });
 
   const handleRegenerate = () => {
     generateMoreMutation.mutate({

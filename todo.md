@@ -2490,3 +2490,47 @@
 - [x] Update step navigation logic to skip Welcome in step count
 - [x] Update Back button to disable on Welcome screen
 - [ ] Test Welcome → Service transition shows correct step counter
+
+
+## ZAP Campaign - Ad Creatives Generator Implementation (URGENT)
+- [ ] Build Scroll-Stopper Ad Creator generator
+  - [ ] Create database schema for ad creatives
+  - [ ] Build backend tRPC router for ad creatives generation
+  - [ ] Create generator form (service selection, ad type, design style)
+  - [ ] Integrate AI image generation to create 10-15 visual variations
+  - [ ] Create results display page with image gallery
+  - [ ] Add download functionality for Facebook-ready formats (1080x1080, 1200x628, 1080x1920)
+  - [ ] Add to navigation
+
+
+## ZAP Campaign - Scroll-Stopper Ad Creator Implementation (CRITICAL - IN PROGRESS)
+- [ ] Build complete Scroll-Stopper Ad Creator generator
+  - [ ] Create database schema for ad creatives (store image URLs, headlines, styles)
+  - [ ] Build backend tRPC router with image generation integration
+  - [ ] Create generator form page (service selection, niche, mechanism, audience, benefit, problem)
+  - [ ] Implement batch generation (5 variations with different styles: Person/Screenshot/Object/Person/Person)
+  - [ ] Generate tabloid-style images using AI (1080x1080px, dark backgrounds, red/yellow accents, annotations)
+  - [ ] Create results gallery page showing all 5 variations
+  - [ ] Add download functionality for each image
+  - [ ] Test complete flow from form to download
+
+## Phase 36: Meta Compliance for Direct Response Headlines (ACTIVE)
+- [ ] Add Meta compliance validation to Headlines backend router
+- [ ] Display compliance warnings on Headlines detail page
+- [ ] Add compliance score/badge to each headline
+- [ ] Test with ZAP service data
+
+
+## Phase 36: Meta Compliance for Headlines + All Generators Testing (COMPLETE)
+- [x] Add Meta compliance validation to Headlines generator
+- [x] Add compliance fields to headlines schema (complianceScore, complianceVersion, complianceCheckedAt)
+- [x] Generate and apply migration for compliance fields
+- [x] Integrate checkCompliance() into Headlines router
+- [x] Test all 9 generators with ZAP campaign data
+- [x] Fix React hooks bugs in HVCO detail page
+- [x] Fix React hooks bugs in Hero Mechanisms detail page
+- [x] Fix React hooks bugs in Headlines detail page
+- [x] Fix JSON parsing bugs in HVCO router (stripMarkdownJson)
+- [x] Fix JSON parsing bugs in Hero Mechanisms router (stripMarkdownJson)
+- [x] Fix JSON parsing bugs in Headlines router (stripMarkdownJson)
+- [x] Rename "Godfather Offers" to "Super ZAP Offers" across all UI

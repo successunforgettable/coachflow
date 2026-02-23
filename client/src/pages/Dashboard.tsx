@@ -138,7 +138,7 @@ export default function Dashboard() {
       href: "/landing-pages",
     },
     {
-      title: "Godfather Offers",
+      title: "Super ZAP Offers",
       description: "Create irresistible offers your customers can't refuse",
       icon: Gift,
       count: offers?.length || 0,
@@ -253,7 +253,7 @@ export default function Dashboard() {
           <div className="nav-item"><Globe className="w-3.5 h-3.5 inline-block mr-2" /> Landing Pages</div>
         </Link>
         <Link href="/offers">
-          <div className="nav-item"><Gift className="w-3.5 h-3.5 inline-block mr-2" /> Godfather Offers</div>
+          <div className="nav-item"><Gift className="w-3.5 h-3.5 inline-block mr-2" /> Super ZAP Offers</div>
         </Link>
 
         <div style={{ height: '16px' }}></div>

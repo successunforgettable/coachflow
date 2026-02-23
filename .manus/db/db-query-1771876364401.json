@@ -1,0 +1,26 @@
+{
+  "query": "SELECT COUNT(*) as total, tabType FROM hvcoTitles WHERE hvcoSetId = '9zWuc_EbtktVv7g8MJ-_R' GROUP BY tabType;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT COUNT(*) as total, tabType FROM hvcoTitles WHERE hvcoSetId = '9zWuc_EbtktVv7g8MJ-_R' GROUP BY tabType;",
+  "rows": [
+    {
+      "total": "20",
+      "tabType": "long"
+    },
+    {
+      "total": "20",
+      "tabType": "subheadlines"
+    },
+    {
+      "total": "30",
+      "tabType": "beast_mode"
+    },
+    {
+      "total": "20",
+      "tabType": "short"
+    }
+  ],
+  "messages": [],
+  "stdout": "total\ttabType\n20\tlong\n20\tsubheadlines\n30\tbeast_mode\n20\tshort\n",
+  "stderr": "",
+  "execution_time_ms": 1535
+}

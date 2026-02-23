@@ -1,0 +1,45 @@
+{
+  "query": "SELECT id, name, description, targetCustomer, mainBenefit FROM services LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT id, name, description, targetCustomer, mainBenefit FROM services LIMIT 5;",
+  "rows": [
+    {
+      "id": "30001",
+      "name": "incredible you coach training ",
+      "description": "The Incredible You Coach Training Program is the world's only complete end-to-end system that transforms ordinary people into extraordinary, heart-activated coaches in just 3 months. Unlike traditional certification-only programs, IYCT equips you with Arfeen Khan's revolutionary 10-week Incredible You System, proprietary heart-based methodology, complete marketing infrastructure, and ongoing support until you succeed—enabling you to build a thriving coaching business while creating profound transformations in others.",
+      "targetCustomer": "Adults aged 25–55 worldwide stuck in unfulfilling routines and seeking meaningful work and financial freedom. Middle-income earners open to investing in a career change. All genders, no coaching background required. They consume personal growth books, podcasts, and speakers (Western and Indian) and have tried courses, business ideas, or self-improvement repeatedly but relapse into old patterns. They want to become the person in their family who breaks the cycle and creates a new standard",
+      "mainBenefit": "The Incredible You System is a unique 3-part transformation method. First, the Mind-Heart Activation Protocol™ connects mind and heart, creating a measurable HRV shift and deep clarity. Second, a five-phase sequence maps your Inner DNA, removes self-sabotage patterns, accelerates goals, clears obstacles, and builds lasting success habits. Instead of temporary motivation, it rewires how you naturally think, decide, and act so results become automatic."
+    },
+    {
+      "id": "60001",
+      "name": "Crypto Coaching",
+      "description": "Help UAE expats build crypto wealth safely",
+      "targetCustomer": "UAE Expats",
+      "mainBenefit": "Safe crypto income in 6 months"
+    },
+    {
+      "id": "90001",
+      "name": "Test Coaching Service",
+      "description": "Premium business coaching for entrepreneurs",
+      "targetCustomer": "Tech entrepreneurs seeking business growth",
+      "mainBenefit": "Scale your business to 7 figures"
+    },
+    {
+      "id": "120001",
+      "name": "Crypto Coaching",
+      "description": "Help UAE expats build crypto wealth safely",
+      "targetCustomer": "UAE Expats",
+      "mainBenefit": "Safe crypto income in 6 months"
+    },
+    {
+      "id": "120002",
+      "name": "Test Coaching Service",
+      "description": "Premium business coaching for entrepreneurs",
+      "targetCustomer": "Tech entrepreneurs seeking business growth",
+      "mainBenefit": "Scale your business to 7 figures"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tdescription\ttargetCustomer\tmainBenefit\n30001\tincredible you coach training \tThe Incredible You Coach Training Program is the world's only complete end-to-end system that transforms ordinary people into extraordinary, heart-activated coaches in just 3 months. Unlike traditional certification-only programs, IYCT equips you with Arfeen Khan's revolutionary 10-week Incredible You System, proprietary heart-based methodology, complete marketing infrastructure, and ongoing support until you succeed—enabling you to build a thriving coaching business while creating profound transformations in others.\tAdults aged 25–55 worldwide stuck in unfulfilling routines and seeking meaningful work and financial freedom. Middle-income earners open to investing in a career change. All genders, no coaching background required. They consume personal growth books, podcasts, and speakers (Western and Indian) and have tried courses, business ideas, or self-improvement repeatedly but relapse into old patterns. They want to become the person in their family who breaks the cycle and creates a new standard\tThe Incredible You System is a unique 3-part transformation method. First, the Mind-Heart Activation Protocol™ connects mind and heart, creating a measurable HRV shift and deep clarity. Second, a five-phase sequence maps your Inner DNA, removes self-sabotage patterns, accelerates goals, clears obstacles, and builds lasting success habits. Instead of temporary motivation, it rewires how you naturally think, decide, and act so results become automatic.\n60001\tCrypto Coaching\tHelp UAE expats build crypto wealth safely\tUAE Expats\tSafe crypto income in 6 months\n90001\tTest Coaching Service\tPremium business coaching for entrepreneurs\tTech entrepreneurs seeking business growth\tScale your business to 7 figures\n120001\tCrypto Coaching\tHelp UAE expats build crypto wealth safely\tUAE Expats\tSafe crypto income in 6 months\n120002\tTest Coaching Service\tPremium business coaching for entrepreneurs\tTech entrepreneurs seeking business growth\tScale your business to 7 figures\n",
+  "stderr": "",
+  "execution_time_ms": 1671
+}

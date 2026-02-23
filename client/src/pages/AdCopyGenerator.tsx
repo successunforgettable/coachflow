@@ -87,7 +87,12 @@ export default function AdCopyGenerator() {
       setTestimonials("");
     },
     onError: (error) => {
+      console.error('MUTATION ERROR:', error);
+      console.error('ERROR DETAILS:', JSON.stringify(error, null, 2));
       toast.error(`Error: ${error.message}`);
+    },
+    onSettled: () => {
+      // This fires on both success AND error, ensuring isPending always resets
     },
   });
 
@@ -99,6 +104,23 @@ export default function AdCopyGenerator() {
   });
 
   const handleGenerate = () => {
+    generateMutation.reset();
+    alert('FUNCTION CALLED');
+    console.log('=== HANDLE GENERATE CALLED ===');
+    console.log('Mutation state:', {
+      isPending: generateMutation.isPending,
+      isError: generateMutation.isError,
+      isSuccess: generateMutation.isSuccess,
+      error: generateMutation.error
+    });
+    console.log('Form data:', {
+      serviceId,
+      adStyle,
+      adCallToAction,
+      targetMarket,
+      productCategory
+    });
+    
     if (!serviceId) {
       toast.error("Please select a service");
       return;
@@ -132,9 +154,9 @@ export default function AdCopyGenerator() {
       return;
     }
 
-    generateMutation.mutate({
+    const payload = {
       serviceId,
-      adType: "lead_gen", // Default to lead_gen
+      adType: "lead_gen" as const, // Default to lead_gen
       adStyle,
       adCallToAction,
       targetMarket,
@@ -152,7 +174,15 @@ export default function AdCopyGenerator() {
       averageReviewRating,
       totalCustomers,
       testimonials,
-    });
+    };
+    
+    console.log('PAYLOAD BEING SENT:', JSON.stringify(payload, null, 2));
+    
+    try {
+      generateMutation.mutate(payload);
+    } catch (err) {
+      console.error('CAUGHT ERROR:', err);
+    }
   };
 
   const filteredAdSets = adSets?.filter((adSet) => {
@@ -281,7 +311,7 @@ export default function AdCopyGenerator() {
                 <Label htmlFor="service">Select Service*</Label>
                 <Select
                   value={serviceId?.toString() || ""}
-                  onValueChange={(value) => setServiceId(parseInt(value))}
+                  onValueChange={(value) => setServiceId(parseInt(value, 10))}
                 >
                   <SelectTrigger id="service">
                     <SelectValue placeholder="Choose a service" />
@@ -559,6 +589,15 @@ export default function AdCopyGenerator() {
                   </>
                 )}
               </Button>
+              
+              {generateMutation.isPending && (
+                <button
+                  onClick={() => generateMutation.reset()}
+                  className="text-sm text-gray-500 underline mt-2"
+                >
+                  Stuck? Click to reset
+                </button>
+              )}
             </CardContent>
           </Card>
         </div>

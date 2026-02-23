@@ -125,7 +125,7 @@ export default function GenerateOfferStep({ data, onComplete, onNext }: Generate
       <div>
         <h3 className="text-xl font-semibold mb-2">Step 3: Craft Your Irresistible Offer</h3>
         <p className="text-muted-foreground">
-          Create a compelling offer with 3 angle variations (Godfather, Free, Dollar)
+          Create a compelling offer with 3 angle variations (Super ZAP, Free, Dollar)
         </p>
       </div>
 
@@ -214,7 +214,7 @@ export default function GenerateOfferStep({ data, onComplete, onNext }: Generate
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <h4 className="font-semibold text-sm mb-2">🎯 Godfather Angle</h4>
+                <h4 className="font-semibold text-sm mb-2">🎯 Super ZAP Angle</h4>
                 <p className="text-sm text-muted-foreground">{generatedOffer.godfatherAngle}</p>
               </div>
               <div>

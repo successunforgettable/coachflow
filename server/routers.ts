@@ -26,6 +26,7 @@ import { progressRouter } from "./routers/progress";
 import { userRouter } from "./routers/user";
 import { complianceRouter } from "./routers/compliance";
 import { metaRouter } from "./routers/meta";
+import { adCreativesRouter } from "./routers/adCreatives";
 import { getQuotaLimit } from "./quotaLimits";
 
 export const appRouter = router({
@@ -118,6 +119,7 @@ export const appRouter = router({
   emailSequences: emailSequencesRouter,
   whatsappSequences: whatsappSequencesRouter,
   landingPages: landingPagesRouter,
+  adCreatives: adCreativesRouter,
   offers: offersRouter,
   subscription: subscriptionRouter,
   campaigns: campaignsRouter,

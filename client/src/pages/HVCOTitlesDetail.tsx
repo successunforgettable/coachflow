@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRoute, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -21,12 +21,27 @@ export default function HVCOTitlesDetail() {
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState<TabType>("long");
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [regenerateForm, setRegenerateForm] = useState({
+    targetMarket: "",
+    hvcoTopic: "",
+  });
   const { user } = useAuth();
   
   const hvcoSetId = params?.hvcoSetId || "";
 
   const { data: titles, isLoading } = trpc.hvco.getBySetId.useQuery({ hvcoSetId });
   const { data: services } = trpc.services.list.useQuery();
+
+  // Update form when titles load - MUST be before early returns
+  useEffect(() => {
+    if (titles && titles.length > 0) {
+      const firstTitle = titles[0];
+      setRegenerateForm({
+        targetMarket: firstTitle.targetMarket || "",
+        hvcoTopic: firstTitle.hvcoTopic || "",
+      });
+    }
+  }, [titles]);
   
   const deleteMutation = trpc.hvco.delete.useMutation({
     onSuccess: () => {
@@ -173,11 +188,6 @@ export default function HVCOTitlesDetail() {
     beast_mode: titles.filter((t) => t.tabType === "beast_mode"),
     subheadlines: titles.filter((t) => t.tabType === "subheadlines"),
   };
-
-  const [regenerateForm, setRegenerateForm] = useState({
-    targetMarket: firstTitle?.targetMarket || "",
-    hvcoTopic: firstTitle?.hvcoTopic || "",
-  });
 
   const handleRegenerate = () => {
     if (!firstTitle?.serviceId) {

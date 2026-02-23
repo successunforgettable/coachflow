@@ -1,0 +1,35 @@
+{
+  "query": "SELECT COUNT(*) as total, formulaType, AVG(complianceScore) as avg_score FROM headlines WHERE headlineSetId = '3Il89supvH-_nb_zHVSnx' GROUP BY formulaType;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT COUNT(*) as total, formulaType, AVG(complianceScore) as avg_score FROM headlines WHERE headlineSetId = '3Il89supvH-_nb_zHVSnx' GROUP BY formulaType;",
+  "rows": [
+    {
+      "total": "5",
+      "formulaType": "eyebrow",
+      "avg_score": "100.0000"
+    },
+    {
+      "total": "5",
+      "formulaType": "question",
+      "avg_score": "100.0000"
+    },
+    {
+      "total": "5",
+      "formulaType": "authority",
+      "avg_score": "100.0000"
+    },
+    {
+      "total": "5",
+      "formulaType": "urgency",
+      "avg_score": "100.0000"
+    },
+    {
+      "total": "5",
+      "formulaType": "story",
+      "avg_score": "100.0000"
+    }
+  ],
+  "messages": [],
+  "stdout": "total\tformulaType\tavg_score\n5\teyebrow\t100.0000\n5\tquestion\t100.0000\n5\tauthority\t100.0000\n5\turgency\t100.0000\n5\tstory\t100.0000\n",
+  "stderr": "",
+  "execution_time_ms": 1599
+}

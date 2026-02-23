@@ -13,6 +13,12 @@ import {
 import { headlines } from "../../drizzle/schema";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
+import { checkCompliance } from "../lib/complianceChecker";
+
+// Helper to strip markdown code blocks from LLM responses
+function stripMarkdownJson(content: string): string {
+  return content.replace(/^```json\s*|^```\s*|\s*```$/gm, '').trim();
+}
 
 // Industry standard
 const FORMULA_PROMPTS = {
@@ -238,7 +244,7 @@ export const headlinesRouter = router({
           if (typeof content !== "string") {
             throw new Error("Invalid LLM response");
           }
-          const parsed = JSON.parse(content);
+          const parsed = JSON.parse(stripMarkdownJson(content));
 
           // Handle different formula types
           if (formulaType === "story" || formulaType === "question" || formulaType === "urgency") {
@@ -305,8 +311,26 @@ export const headlinesRouter = router({
         }
       }
 
-      // Save all headlines
-      await createHeadlines(allHeadlines);
+      // Check compliance for all headlines and add compliance data
+      const headlinesWithCompliance = await Promise.all(
+        allHeadlines.map(async (headline) => {
+          const complianceResult = await checkCompliance(headline.headline, {
+            userId: ctx.user.id,
+            generatorType: 'headlines',
+            trackUsage: true,
+          });
+          
+          return {
+            ...headline,
+            complianceScore: complianceResult.score,
+            complianceVersion: complianceResult.version,
+            complianceCheckedAt: new Date(),
+          };
+        })
+      );
+
+      // Save all headlines with compliance data
+      await createHeadlines(headlinesWithCompliance);
       await incrementHeadlineCount(ctx.user.id);
 
       return {

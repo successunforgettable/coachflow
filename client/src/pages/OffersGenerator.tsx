@@ -95,9 +95,9 @@ export default function OffersGenerator() {
   if (!isAuthenticated) {
     return (
       <div className="container max-w-2xl py-16 text-center">
-        <h1 className="text-4xl font-bold mb-4">Godfather Offers Generator</h1>
+        <h1 className="text-4xl font-bold mb-4">Super ZAP Offers Generator</h1>
         <p className="text-muted-foreground mb-8">
-          Generate irresistible offers with 3 angle variations (Godfather, Free, Dollar)
+          Generate irresistible offers with 3 angle variations (Super ZAP, Free, Dollar)
         </p>
         <Button asChild size="lg">
           <a href={getLoginUrl()}>Login to Get Started</a>
@@ -113,7 +113,7 @@ export default function OffersGenerator() {
 
   return (
     <div className="min-h-screen bg-background">
-      <PageHeader title="Godfather Offers" backTo="/dashboard" />
+      <PageHeader title="Super ZAP Offers" backTo="/dashboard" />
       
       <div className="container max-w-7xl py-8">
         {authData && (

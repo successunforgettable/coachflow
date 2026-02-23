@@ -43,9 +43,9 @@ Your output must be ad copy that could be submitted directly to Meta without tri
 `;
 
 const generateAdCopySchema = z.object({
-  serviceId: z.number(),
+  serviceId: z.coerce.number(),
   campaignId: z.number().optional(),
-  adType: z.enum(["lead_gen", "ecommerce"]),
+  adType: z.enum(["lead_gen", "ecommerce"]).default("lead_gen"),
   // 17 fields
   adStyle: z.string(),
   adCallToAction: z.string(),
@@ -484,7 +484,7 @@ Format as JSON array:
       }
 
       // Insert body copies
-      for (const body of bodyData.bodyCopies) {
+      for (const body of bodyData.bodies) {
         const complianceResult = await checkCompliance(body, {
           userId: ctx.user.id,
           generatorType: 'adCopy',

@@ -155,9 +155,7 @@ Use direct response copywriting principles: pain agitation, unique mechanism, so
             primaryCta: { type: "string" },
             asSeenIn: { 
               type: "array", 
-              items: { type: "string" },
-              minItems: 5,
-              maxItems: 5
+              items: { type: "string" }
             },
             quizSection: {
               type: "object",
@@ -165,9 +163,7 @@ Use direct response copywriting principles: pain agitation, unique mechanism, so
                 question: { type: "string" },
                 options: { 
                   type: "array", 
-                  items: { type: "string" },
-                  minItems: 5,
-                  maxItems: 5
+                  items: { type: "string" }
                 },
                 answer: { type: "string" }
               },
@@ -190,9 +186,7 @@ Use direct response copywriting principles: pain agitation, unique mechanism, so
                 },
                 required: ["headline", "quote", "name", "location"],
                 additionalProperties: false
-              },
-              minItems: 4,
-              maxItems: 4
+              }
             },
             insiderAdvantages: { type: "string" },
             scarcityUrgency: { type: "string" },
@@ -208,9 +202,7 @@ Use direct response copywriting principles: pain agitation, unique mechanism, so
                 },
                 required: ["title", "description"],
                 additionalProperties: false
-              },
-              minItems: 10,
-              maxItems: 10
+              }
             }
           },
           required: [
@@ -225,6 +217,12 @@ Use direct response copywriting principles: pain agitation, unique mechanism, so
     }
   });
 
+  // Add error handling for undefined response
+  if (!response || !response.choices || response.choices.length === 0) {
+    console.error('Invalid LLM response:', JSON.stringify(response, null, 2));
+    throw new Error('Invalid response from LLM: no choices returned');
+  }
+  
   const content = response.choices[0].message.content;
   if (typeof content !== 'string') {
     throw new Error('Invalid response format from LLM');

@@ -18,6 +18,18 @@ import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 
+// Helper to strip markdown code blocks from JSON responses
+function stripMarkdownJson(content: string): string {
+  const trimmed = content.trim();
+  if (trimmed.startsWith('```json') && trimmed.endsWith('```')) {
+    return trimmed.slice(7, -3).trim();
+  }
+  if (trimmed.startsWith('```') && trimmed.endsWith('```')) {
+    return trimmed.slice(3, -3).trim();
+  }
+  return trimmed;
+}
+
 /**
  * Hero Mechanisms Router - Industry Standard
  * 
@@ -129,7 +141,7 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
       const heroMechanismsContent = typeof heroMechanismsResponse.choices[0].message.content === 'string' 
         ? heroMechanismsResponse.choices[0].message.content 
         : JSON.stringify(heroMechanismsResponse.choices[0].message.content);
-      const heroMechanisms = JSON.parse(heroMechanismsContent);
+      const heroMechanisms = JSON.parse(stripMarkdownJson(heroMechanismsContent));
       
       heroMechanisms.forEach((mechanism: { name: string; description: string }) => {
         allMechanisms.push({
@@ -188,7 +200,7 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
       const headlineIdeasContent = typeof headlineIdeasResponse.choices[0].message.content === 'string' 
         ? headlineIdeasResponse.choices[0].message.content 
         : JSON.stringify(headlineIdeasResponse.choices[0].message.content);
-      const headlineIdeas = JSON.parse(headlineIdeasContent);
+      const headlineIdeas = JSON.parse(stripMarkdownJson(headlineIdeasContent));
       
       headlineIdeas.forEach((mechanism: { name: string; description: string }) => {
         allMechanisms.push({
@@ -248,7 +260,7 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
       const powerModeContent = typeof powerModeResponse.choices[0].message.content === 'string' 
         ? powerModeResponse.choices[0].message.content 
         : JSON.stringify(powerModeResponse.choices[0].message.content);
-      const powerMode = JSON.parse(powerModeContent);
+      const powerMode = JSON.parse(stripMarkdownJson(powerModeContent));
       
       powerMode.forEach((mechanism: { name: string; description: string }) => {
         allMechanisms.push({

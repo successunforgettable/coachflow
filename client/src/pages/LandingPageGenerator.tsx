@@ -136,7 +136,7 @@ export default function LandingPageGenerator() {
               <CardHeader>
                 <CardTitle>Generate Landing Page</CardTitle>
                 <CardDescription>
-                  Create a complete landing page with all 4 angle variations (Original, Godfather, Free, Dollar)
+                  Create a complete landing page with all 4 angle variations (Original, Super ZAP, Free, Dollar)
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">

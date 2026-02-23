@@ -42,6 +42,7 @@ const EMAIL_SEQUENCE_EXAMPLES = {
 export default function EmailSequenceGenerator() {
   const { isAuthenticated, loading: authLoading, user } = useAuth();
   const { data: quotaLimits } = trpc.auth.getQuotaLimits.useQuery();
+  const { data: authData } = trpc.auth.me.useQuery();
   const [serviceId, setServiceId] = useState<number | null>(null);
   const [sequenceType, setSequenceType] = useState<"welcome" | "engagement" | "sales">("welcome");
   const [searchQuery, setSearchQuery] = useState("");
@@ -138,8 +139,6 @@ export default function EmailSequenceGenerator() {
     window.location.href = getLoginUrl();
     return null;
   }
-
-  const { data: authData } = trpc.auth.me.useQuery();
 
   // Check if user has reached quota limit
   const isQuotaExceeded = !!(authData && quotaLimits && authData.emailSeqGeneratedCount >= quotaLimits.email);

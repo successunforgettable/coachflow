@@ -19,6 +19,14 @@ import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 
 /**
+ * Strip markdown code blocks from LLM JSON responses
+ */
+function stripMarkdownJson(content: string): string {
+  // Remove ```json and ``` wrappers if present
+  return content.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim();
+}
+
+/**
  * HVCO Titles Router - Industry Standard
  * 
  * Generates 4 tabs of title variations:
@@ -115,7 +123,7 @@ Return ONLY a JSON array of ${20 * countMultiplier} title strings, nothing else.
       const longTitlesContent = typeof longTitlesResponse.choices[0].message.content === 'string' 
         ? longTitlesResponse.choices[0].message.content 
         : JSON.stringify(longTitlesResponse.choices[0].message.content);
-      const longTitles = JSON.parse(longTitlesContent);
+      const longTitles = JSON.parse(stripMarkdownJson(longTitlesContent));
       longTitles.forEach((title: string) => {
         allTitles.push({
           userId: user.id,
@@ -159,7 +167,7 @@ Return ONLY a JSON array of ${20 * countMultiplier} title strings, nothing else.
       const shortTitlesContent = typeof shortTitlesResponse.choices[0].message.content === 'string' 
         ? shortTitlesResponse.choices[0].message.content 
         : JSON.stringify(shortTitlesResponse.choices[0].message.content);
-      const shortTitles = JSON.parse(shortTitlesContent);
+      const shortTitles = JSON.parse(stripMarkdownJson(shortTitlesContent));
       shortTitles.forEach((title: string) => {
         allTitles.push({
           userId: user.id,
@@ -204,7 +212,7 @@ Return ONLY a JSON array of 30 title strings, nothing else.`;
       const powerModeTitlesContent = typeof powerModeTitlesResponse.choices[0].message.content === 'string' 
         ? powerModeTitlesResponse.choices[0].message.content 
         : JSON.stringify(powerModeTitlesResponse.choices[0].message.content);
-      const powerModeTitles = JSON.parse(powerModeTitlesContent);
+      const powerModeTitles = JSON.parse(stripMarkdownJson(powerModeTitlesContent));
       powerModeTitles.forEach((title: string) => {
         allTitles.push({
           userId: user.id,
@@ -248,7 +256,7 @@ Return ONLY a JSON array of 20 subheadline strings, nothing else.`;
       const subheadlinesContent = typeof subheadlinesResponse.choices[0].message.content === 'string' 
         ? subheadlinesResponse.choices[0].message.content 
         : JSON.stringify(subheadlinesResponse.choices[0].message.content);
-      const subheadlines = JSON.parse(subheadlinesContent);
+      const subheadlines = JSON.parse(stripMarkdownJson(subheadlinesContent));
       subheadlines.forEach((title: string) => {
         allTitles.push({
           userId: user.id,

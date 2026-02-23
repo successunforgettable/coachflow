@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRoute, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -22,12 +22,43 @@ export default function HeroMechanismsDetail() {
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState<TabType>("hero_mechanisms");
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [regenerateForm, setRegenerateForm] = useState({
+    targetMarket: "",
+    pressingProblem: "",
+    whyProblem: "",
+    whatTried: "",
+    whyExistingNotWork: "",
+    descriptor: "Strategy",
+    application: "10 Drops",
+    desiredOutcome: "",
+    credibility: "",
+    socialProof: "",
+  });
   const { user } = useAuth();
   
   const mechanismSetId = params?.mechanismSetId || "";
 
   const { data: mechanisms, isLoading } = trpc.heroMechanisms.getBySetId.useQuery({ mechanismSetId });
   const { data: services } = trpc.services.list.useQuery();
+
+  // Update form when mechanisms load - MUST be before early returns
+  useEffect(() => {
+    if (mechanisms && mechanisms.length > 0) {
+      const firstMechanism = mechanisms[0];
+      setRegenerateForm({
+        targetMarket: firstMechanism.targetMarket || "",
+        pressingProblem: firstMechanism.pressingProblem || "",
+        whyProblem: firstMechanism.whyProblem || "",
+        whatTried: firstMechanism.whatTried || "",
+        whyExistingNotWork: firstMechanism.whyExistingNotWork || "",
+        descriptor: firstMechanism.descriptor || "Strategy",
+        application: firstMechanism.application || "10 Drops",
+        desiredOutcome: firstMechanism.desiredOutcome || "",
+        credibility: firstMechanism.credibility || "",
+        socialProof: firstMechanism.socialProof || "",
+      });
+    }
+  }, [mechanisms]);
   
   const deleteMutation = trpc.heroMechanisms.delete.useMutation({
     onSuccess: () => {
@@ -178,18 +209,6 @@ export default function HeroMechanismsDetail() {
     headline_ideas: mechanisms.filter((m) => m.tabType === "headline_ideas"),
     beast_mode: mechanisms.filter((m) => m.tabType === "beast_mode"),
   };
-  const [regenerateForm, setRegenerateForm] = useState({
-    targetMarket: firstMechanism?.targetMarket || "",
-    pressingProblem: firstMechanism?.pressingProblem || "",
-    whyProblem: firstMechanism?.whyProblem || "",
-    whatTried: firstMechanism?.whatTried || "",
-    whyExistingNotWork: firstMechanism?.whyExistingNotWork || "",
-    descriptor: firstMechanism?.descriptor || "Strategy",
-    application: firstMechanism?.application || "10 Drops",
-    desiredOutcome: firstMechanism?.desiredOutcome || "",
-    credibility: firstMechanism?.credibility || "",
-    socialProof: firstMechanism?.socialProof || "",
-  });
 
   const handleRegenerate = () => {
     if (!firstMechanism?.serviceId) {

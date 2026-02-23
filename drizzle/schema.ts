@@ -440,6 +440,10 @@ export const headlines = mysqlTable("headlines", {
   uniqueMechanism: text("uniqueMechanism").notNull(),
   // Metadata
   rating: int("rating").default(0), // -1 = thumbs down, 0 = no rating, 1 = thumbs up
+  // Meta compliance fields
+  complianceScore: int("complianceScore").default(100),
+  complianceVersion: varchar("complianceVersion", { length: 20 }),
+  complianceCheckedAt: timestamp("complianceCheckedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({
@@ -748,3 +752,46 @@ export const campaignAlerts = mysqlTable("campaign_alerts", {
 
 export type CampaignAlert = typeof campaignAlerts.$inferSelect;
 export type InsertCampaignAlert = typeof campaignAlerts.$inferInsert;
+
+/**
+ * Ad Creatives - Scroll-Stopper Ad Creator generated images
+ * Stores AI-generated tabloid-style ad creatives for Facebook/Instagram
+ */
+export const adCreatives = mysqlTable("adCreatives", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  serviceId: int("serviceId").references(() => services.id, { onDelete: "set null" }),
+  // Input fields
+  niche: varchar("niche", { length: 255 }).notNull(), // e.g., "crypto", "mind coaching"
+  productName: varchar("productName", { length: 255 }).notNull(),
+  uniqueMechanism: varchar("uniqueMechanism", { length: 255 }), // e.g., "9-Step System"
+  targetAudience: varchar("targetAudience", { length: 255 }).notNull(),
+  mainBenefit: text("mainBenefit").notNull(),
+  pressingProblem: text("pressingProblem").notNull(),
+  // Generation settings
+  adType: mysqlEnum("adType", ["lead_gen", "ecommerce"]).default("lead_gen").notNull(),
+  designStyle: mysqlEnum("designStyle", ["person_shocked", "screenshot", "person_intense", "object", "person_curious"]).notNull(),
+  headlineFormula: mysqlEnum("headlineFormula", ["banned", "secret", "leaked", "glitch", "forbidden"]).notNull(),
+  // Generated content
+  headline: varchar("headline", { length: 255 }).notNull(),
+  imageUrl: text("imageUrl").notNull(), // S3 URL to generated image
+  imageFormat: varchar("imageFormat", { length: 20 }).default("1080x1080").notNull(), // Square format
+  // Meta compliance
+  complianceChecked: boolean("complianceChecked").default(true).notNull(),
+  complianceIssues: text("complianceIssues"), // JSON array of flagged issues
+  // Batch info
+  batchId: varchar("batchId", { length: 100 }), // Groups 5 variations together
+  variationNumber: int("variationNumber").default(1).notNull(), // 1-5
+  // Metadata
+  rating: int("rating").default(0), // 0-5 stars
+  downloaded: boolean("downloaded").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  userIdIdx: index("idx_adCreatives_userId").on(table.userId),
+  serviceIdIdx: index("idx_adCreatives_serviceId").on(table.serviceId),
+  batchIdIdx: index("idx_adCreatives_batchId").on(table.batchId),
+}));
+
+export type AdCreative = typeof adCreatives.$inferSelect;
+export type InsertAdCreative = typeof adCreatives.$inferInsert;

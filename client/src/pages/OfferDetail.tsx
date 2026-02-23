@@ -88,7 +88,7 @@ export default function OfferDetail() {
       return;
     }
 
-    const angleName = activeAngle === "godfather" ? "Godfather" : activeAngle === "free" ? "Free" : "Dollar";
+    const angleName = activeAngle === "godfather" ? "Super ZAP" : activeAngle === "free" ? "Free" : "Dollar";
 
     exportToPDF({
       title: `${offer.productName} - ${angleName} Offer`,

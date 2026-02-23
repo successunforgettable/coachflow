@@ -1,0 +1,13 @@
+{
+  "query": "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME LIKE '%hvco%';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME LIKE '%hvco%';",
+  "rows": [
+    {
+      "TABLE_NAME": "hvcoTitles"
+    }
+  ],
+  "messages": [],
+  "stdout": "TABLE_NAME\nhvcoTitles\n",
+  "stderr": "",
+  "execution_time_ms": 1569
+}
