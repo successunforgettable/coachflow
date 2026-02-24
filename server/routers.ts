@@ -27,6 +27,7 @@ import { userRouter } from "./routers/user";
 import { complianceRouter } from "./routers/compliance";
 import { metaRouter } from "./routers/meta";
 import { adCreativesRouter } from "./routers/adCreatives";
+import { videoCreditsRouter } from "./routers/videoCreditsRouter";
 import { getQuotaLimit } from "./quotaLimits";
 
 export const appRouter = router({
@@ -134,6 +135,7 @@ export const appRouter = router({
   user: userRouter,
   compliance: complianceRouter,
   meta: metaRouter,
+  videoCredits: videoCreditsRouter,
 });
 
 export type AppRouter = typeof appRouter;

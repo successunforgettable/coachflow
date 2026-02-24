@@ -819,3 +819,145 @@ export const adCreatives = mysqlTable("adCreatives", {
 
 export type AdCreative = typeof adCreatives.$inferSelect;
 export type InsertAdCreative = typeof adCreatives.$inferInsert;
+
+
+/**
+ * Video Credits - Credit balance for video generation
+ * Each user has one record tracking their current balance
+ */
+export const videoCredits = mysqlTable("videoCredits", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }).unique(),
+  balance: int("balance").notNull().default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  userIdIdx: index("idx_videoCredits_userId").on(table.userId),
+}));
+export type VideoCredit = typeof videoCredits.$inferSelect;
+export type InsertVideoCredit = typeof videoCredits.$inferInsert;
+
+/**
+ * Video Credit Transactions - Transaction history for credits
+ * Tracks purchases, deductions, free grants, and refunds
+ */
+export const videoCreditTransactions = mysqlTable("videoCreditTransactions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  type: mysqlEnum("type", ["purchase", "deduction", "free_grant", "refund"]).notNull(),
+  amount: int("amount").notNull(), // Positive for purchases/grants, negative for deductions
+  balanceAfter: int("balanceAfter").notNull(),
+  stripePaymentIntentId: varchar("stripePaymentIntentId", { length: 255 }),
+  videoId: int("videoId"), // Reference to videos table (nullable)
+  description: varchar("description", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  userIdIdx: index("idx_videoCreditTransactions_userId").on(table.userId),
+  videoIdIdx: index("idx_videoCreditTransactions_videoId").on(table.videoId),
+}));
+export type VideoCreditTransaction = typeof videoCreditTransactions.$inferSelect;
+export type InsertVideoCreditTransaction = typeof videoCreditTransactions.$inferInsert;
+
+/**
+ * Video Scripts - AI-generated video scripts (free to generate)
+ * Users can generate and edit scripts before spending credits on rendering
+ */
+export const videoScripts = mysqlTable("videoScripts", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  serviceId: int("serviceId").notNull().references(() => services.id, { onDelete: "cascade" }),
+  campaignId: int("campaignId").references(() => campaigns.id, { onDelete: "set null" }),
+  videoType: mysqlEnum("videoType", [
+    "explainer", 
+    "proof_results", 
+    "testimonial", 
+    "mechanism_reveal"
+  ]).notNull(),
+  duration: mysqlEnum("duration", ["15", "30", "60", "90"]).notNull(),
+  visualStyle: mysqlEnum("visualStyle", [
+    "kinetic_typography", 
+    "motion_graphics", 
+    "stats_card"
+  ]).notNull(),
+  scenes: json("scenes").notNull(), // Array of {sceneNumber, duration, voiceoverText, visualDirection, onScreenText}
+  voiceoverText: text("voiceoverText").notNull(), // Concatenated voiceover from all scenes
+  status: mysqlEnum("status", ["draft", "approved", "rendered", "failed"]).default("draft").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  userIdIdx: index("idx_videoScripts_userId").on(table.userId),
+  serviceIdIdx: index("idx_videoScripts_serviceId").on(table.serviceId),
+  campaignIdIdx: index("idx_videoScripts_campaignId").on(table.campaignId),
+}));
+export type VideoScript = typeof videoScripts.$inferSelect;
+export type InsertVideoScript = typeof videoScripts.$inferInsert;
+
+/**
+ * Videos - Rendered video ads with voiceover
+ * Costs 1-3 credits depending on duration (15-30s=1, 60s=2, 90s=3)
+ */
+export const videos = mysqlTable("videos", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  serviceId: int("serviceId").notNull().references(() => services.id, { onDelete: "cascade" }),
+  campaignId: int("campaignId").references(() => campaigns.id, { onDelete: "set null" }),
+  scriptId: int("scriptId").notNull().references(() => videoScripts.id, { onDelete: "cascade" }),
+  videoType: mysqlEnum("videoType", [
+    "explainer", 
+    "proof_results", 
+    "testimonial", 
+    "mechanism_reveal"
+  ]).notNull(),
+  duration: mysqlEnum("duration", ["15", "30", "60", "90"]).notNull(),
+  visualStyle: mysqlEnum("visualStyle", [
+    "kinetic_typography", 
+    "motion_graphics", 
+    "stats_card"
+  ]).notNull(),
+  creatomateRenderId: varchar("creatomateRenderId", { length: 255 }),
+  creatomateStatus: mysqlEnum("creatomateStatus", [
+    "queued", 
+    "rendering", 
+    "succeeded", 
+    "failed"
+  ]).default("queued").notNull(),
+  videoUrl: varchar("videoUrl", { length: 1000 }), // Creatomate video URL
+  thumbnailUrl: varchar("thumbnailUrl", { length: 1000 }),
+  fileSize: int("fileSize"), // In bytes
+  creditsUsed: int("creditsUsed").notNull(), // 1, 2, or 3 based on duration
+  sentToMetaAt: timestamp("sentToMetaAt"),
+  metaCreativeId: varchar("metaCreativeId", { length: 255 }), // Meta Ads Manager creative ID
+  rating: int("rating").default(0), // 0-5 stars
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  userIdIdx: index("idx_videos_userId").on(table.userId),
+  serviceIdIdx: index("idx_videos_serviceId").on(table.serviceId),
+  campaignIdIdx: index("idx_videos_campaignId").on(table.campaignId),
+  scriptIdIdx: index("idx_videos_scriptId").on(table.scriptId),
+}));
+export type Video = typeof videos.$inferSelect;
+export type InsertVideo = typeof videos.$inferInsert;
+
+/**
+ * Meta Connections - OAuth connection to Meta Ads Manager
+ * Stores access token and ad account info for pushing videos/images
+ */
+export const metaConnections = mysqlTable("metaConnections", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }).unique(),
+  metaUserId: varchar("metaUserId", { length: 255 }).notNull(),
+  adAccountId: varchar("adAccountId", { length: 255 }).notNull(),
+  adAccountName: varchar("adAccountName", { length: 255 }),
+  pageId: varchar("pageId", { length: 255 }),
+  pageName: varchar("pageName", { length: 255 }),
+  accessToken: text("accessToken").notNull(),
+  tokenExpiresAt: timestamp("tokenExpiresAt"),
+  isActive: boolean("isActive").default(true).notNull(),
+  connectedAt: timestamp("connectedAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  userIdIdx: index("idx_metaConnections_userId").on(table.userId),
+}));
+export type MetaConnection = typeof metaConnections.$inferSelect;
+export type InsertMetaConnection = typeof metaConnections.$inferInsert;

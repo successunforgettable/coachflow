@@ -38,7 +38,8 @@ import {
   FolderKanban,
   Settings as SettingsIcon,
   Home,
-  Shield
+  Shield,
+  Coins
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -46,10 +47,12 @@ import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
 import { Breadcrumb } from "./Breadcrumb";
 import OnboardingProgressTracker from "./OnboardingProgressTracker";
+import { trpc } from "@/lib/trpc";
 
 const menuItems = [
   { icon: Home, label: "Home", path: "/" },
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
+  { icon: Coins, label: "Video Credits", path: "/video-credits", showBadge: true },
   { icon: FileText, label: "Headlines", path: "/headlines" },
   { icon: FileText, label: "HVCO Titles", path: "/hvco-titles" },
   { icon: Zap, label: "Hero Mechanisms", path: "/hero-mechanisms" },
@@ -68,6 +71,19 @@ const SIDEBAR_WIDTH_KEY = "sidebar-width";
 const DEFAULT_WIDTH = 280;
 const MIN_WIDTH = 200;
 const MAX_WIDTH = 480;
+
+// Credit balance badge component
+function CreditBadge() {
+  const { data: balance } = trpc.videoCredits.getBalance.useQuery();
+  
+  if (!balance || balance.balance === 0) return null;
+  
+  return (
+    <span className="ml-auto bg-purple-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+      {balance.balance}
+    </span>
+  );
+}
 
 export default function DashboardLayout({
   children,
@@ -236,6 +252,7 @@ function DashboardLayoutContent({
                         className={`h-4 w-4 ${isActive ? "text-primary" : ""}`}
                       />
                       <span>{item.label}</span>
+                      {(item as any).showBadge && <CreditBadge />}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 );

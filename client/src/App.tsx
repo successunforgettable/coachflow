@@ -44,6 +44,7 @@ import { Privacy } from "./pages/Privacy";
 import Integrations from "./pages/settings/Integrations";
 import MetaCampaigns from "./pages/MetaCampaigns";
 import CampaignAlerts from "./pages/CampaignAlerts";
+import { VideoCredits } from "./pages/VideoCredits";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -55,8 +56,8 @@ function Router() {
       <Route path={"/services"} component={Services} />
       <Route path={"/services/:id"} component={ServiceDetail} />
       <Route path={"/generators/icp"} component={ICPGenerator} />
-      <Route path={"/pricing"} component={Pricing} />
-      <Route path={"/ad-copy"} component={AdCopyGenerator} />
+      <Route path={"/ pricing"} component={Pricing} />
+      <Route path={"/video-credits"} component={VideoCredits} />      <Route path={"/ad-copy"} component={AdCopyGenerator} />
       <Route path={"/ad-copy/:adSetId"} component={AdCopyDetail} />
       <Route path={"/ad-creatives"} component={AdCreativesGenerator} />
       <Route path={"/generators/email"} component={EmailSequenceGenerator} />

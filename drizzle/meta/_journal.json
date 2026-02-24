@@ -246,6 +246,13 @@
       "when": 1771936421016,
       "tag": "0034_giant_celestials",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "5",
+      "when": 1771943856842,
+      "tag": "0035_empty_prowler",
+      "breakpoints": true
     }
   ]
 }

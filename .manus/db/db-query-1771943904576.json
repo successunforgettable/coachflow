@@ -1,0 +1,9 @@
+{
+  "query": "-- Insert videoCredits record for all existing users with 2 free credits\nINSERT INTO videoCredits (userId, balance, createdAt, updatedAt)\nSELECT id, 2, NOW(), NOW()\nFROM users\nWHERE id NOT IN (SELECT userId FROM videoCredits);\n\n-- Record the free grant transaction for each user\nINSERT INTO videoCreditTransactions (userId, type, amount, balanceAfter, description, createdAt)\nSELECT id, 'free_grant', 2, 2, 'Welcome bonus: 2 free video credits', NOW()\nFROM users\nWHERE id NOT IN (\n  SELECT userId FROM videoCreditTransactions WHERE type = 'free_grant' AND description LIKE 'Welcome bonus%'\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute -- Insert videoCredits record for all existing users with 2 free credits\nINSERT INTO videoCredits (userId, balance, createdAt, updatedAt)\nSELECT id, 2, NOW(), NOW()\nFROM users\nWHERE id NOT IN (SELECT userId FROM videoCredits);\n\n-- Record the free grant transaction for each user\nINSERT INTO videoCreditTransactions (userId, type, amount, balanceAfter, description, createdAt)\nSELECT id, 'free_grant', 2, 2, 'Welcome bonus: 2 free video credits', NOW()\nFROM users\nWHERE id NOT IN (\n  SELECT userId FROM videoCreditTransactions WHERE type = 'free_grant' AND description LIKE 'Welcome bonus%'\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1985
+}

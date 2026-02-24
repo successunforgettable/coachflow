@@ -2804,19 +2804,101 @@
 - UI enhancements can be added incrementally without breaking existing functionality
 - Placeholder mutations return helpful messages guiding users to run generators individually
 
-## Phase 40: Fix AutoPop Target Market Format (ACTIVE)
-- [ ] Update AutoPop logic to prioritize psychographic context over avatar name
-  - [ ] Change format from "Marketing Agency Owners like Sarah" to use actual targetMarket field
-  - [ ] Fallback to "${avatarTitle}s struggling with ${pressingProblem}" if targetMarket empty
-  - [ ] Only use avatar name format as last resort
-  - [ ] Update Headlines generator
-  - [ ] Update HVCO Titles generator
-  - [ ] Update Hero Mechanisms generator
-  - [ ] Update Ad Copy generator
-  - [ ] Update Ad Creatives generator
-  - [ ] Update Landing Pages generator
-  - [ ] Update Email Sequences generator
-  - [ ] Update WhatsApp Sequences generator
-  - [ ] Update Offers generator
-- [ ] Test improved format with ZAP service
-- [ ] Verify AI generates better copy with psychographic context
+## Phase 40: Fix AutoPop Target Market Format (COMPLETE)
+- [x] Update AutoPop logic to prioritize psychographic context over avatar name
+  - [x] Change format from "Marketing Agency Owners like Sarah" to use actual targetMarket field
+  - [x] Fallback to "${avatarTitle}s struggling with ${pressingProblem}" if targetMarket empty
+  - [x] Only use avatar name format as last resort
+  - [x] Update Headlines generator
+  - [x] Update HVCO Titles generator
+  - [x] Update Hero Mechanisms generator
+  - [x] Update Ad Copy generator
+  - [x] Update Ad Creatives generator
+  - [x] Update Landing Pages generator (no changes needed - uses avatarName directly)
+  - [x] Update Email Sequences generator (no changes needed - minimal AutoPop)
+  - [x] Update WhatsApp Sequences generator (no changes needed - minimal AutoPop)
+  - [x] Update Offers generator (no changes needed - minimal AutoPop)
+- [x] Test improved format with ZAP service
+- [x] Verify AI generates better copy with psychographic context
+
+
+## Phase 41: ZAP Video Creator Implementation (ACTIVE)
+
+### Week 1: Foundation (Database + Credits + Download Fallback)
+- [x] Day 1: Database Schema & Migrations
+  - [x] Add 5 new tables to drizzle/schema.ts (videoCredits, videoCreditTransactions, videoScripts, videos, metaConnections)
+  - [x] Generate migration with drizzle-kit
+  - [x] Apply migration via webdev_execute_sql
+  - [x] Grant 2 free credits to all existing users
+- [x] Day 2: Credit System Backend
+  - [x] Create server/routers/videoCredits.ts with credit bundles
+  - [x] Implement getBalance, getTransactions, getBundles, createPaymentIntent
+  - [x] Add Stripe webhook handler for video credit purchases
+  - [x] Update server/routers.ts to include videoCredits r- [x] Day 3: Credit Wallet UI
+  - [x] Create client/src/pages/VideoCredits.tsx
+  - [x] Create client/src/components/CreditPurchaseModal.tsx
+  - [x] Add route to App.tsx
+  - [x] Add navigation link to DashboardLayout with credit balance badge [ ] Day 4-5: Download MP4 Fallback (MANDATORY)
+  - [ ] Create client/src/components/DownloadVideoButton.tsx
+  - [ ] Create client/src/components/ManualUploadInstructions.tsx
+  - [ ] Test download functionality with sample video
+  - [ ] Add free credits on signup logic
+
+### Week 2: Core Video Generation (Script + Templates + Rendering)
+- [ ] Day 6: Script Generation Backend
+  - [ ] Verify invokeLLM exists in server/_core/llm.ts (or use Anthropic SDK)
+  - [ ] Create server/routers/videoScripts.ts
+  - [ ] Implement LLM prompts for 4 video types (explainer, proof_results, testimonial, mechanism_reveal)
+  - [ ] Implement generate, update, getById, list mutations
+  - [ ] Add credit cost calculation (1/2/3 credits based on duration)
+- [ ] Day 7-8: Creatomate Template Build
+  - [ ] Get Creatomate access from Arfeen
+  - [ ] Build 3 templates: Kinetic Typography, Motion Graphics, Stats Card
+  - [ ] Test templates with sample data
+  - [ ] Copy template IDs to environment variables
+- [ ] Day 9-10: Video Generation Backend
+  - [ ] Install @elevenlabs/api and axios
+  - [ ] Create server/routers/videos.ts
+  - [ ] Implement ElevenLabs voiceover generation
+  - [ ] Implement Creatomate render submission
+  - [ ] Implement render polling logic
+  - [ ] Add credit deduction before rendering
+  - [ ] Add credit refund on failure
+- [ ] Day 11-12: Video Creator Frontend
+  - [ ] Create client/src/pages/VideoCreator.tsx (setup step)
+  - [ ] Create client/src/pages/VideoScriptEditor.tsx
+  - [ ] Create client/src/pages/VideoDetail.tsx
+  - [ ] Add routes to App.tsx
+  - [ ] Add navigation link to sidebar
+  - [ ] FIX: Remove credit balance check from "Generate Script" button
+
+### Week 3: Meta Integration (OAuth + Push to Ads Manager + Testing)
+- [ ] Day 13-14: Meta OAuth Backend
+  - [ ] Create server/routers/metaAds.ts
+  - [ ] Implement getOAuthUrl, handleCallback, getConnectionStatus, disconnect
+  - [ ] Implement pushVideo, pushImage mutations
+  - [ ] Create OAuth callback route in server
+- [ ] Day 15: Meta Integration Frontend
+  - [ ] Create client/src/pages/settings/Integrations.tsx
+  - [ ] Create client/src/components/SendToMetaButton.tsx
+  - [ ] Add to video detail page
+  - [ ] Add route to App.tsx
+- [ ] Day 16-17: End-to-End Testing
+  - [ ] Test credit system (purchase, deduction, refund)
+  - [ ] Test script generation (all 4 video types)
+  - [ ] Test video generation (ElevenLabs + Creatomate)
+  - [ ] Test credit tiering (1/2/3 credits)
+  - [ ] Test download fallback
+  - [ ] Test Meta integration (OAuth + push)
+  - [ ] Test error handling
+- [ ] Day 18: Final Polish & Documentation
+  - [ ] Add usage analytics
+  - [ ] Add onboarding tooltips
+  - [ ] Create docs/VIDEO_CREATOR_GUIDE.md
+  - [ ] Save final checkpoint
+
+### Pre-Implementation Checklist
+- [ ] Submit Meta app review at developers.facebook.com
+- [ ] Create ElevenLabs account and get API key
+- [ ] Create Creatomate account (Growth plan $99/month)
+- [ ] Add environment variables to .env (ELEVENLABS_API_KEY, CREATOMATE_API_KEY, META_APP_ID, META_APP_SECRET)

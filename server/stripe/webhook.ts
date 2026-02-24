@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import { stripe } from "./client";
 import { getDb } from "../db";
-import { users } from "../../drizzle/schema";
+import { users, videoCredits, videoCreditTransactions } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { SUBSCRIPTION_TIERS } from "./products";
 
@@ -251,6 +251,67 @@ export async function handleStripeWebhook(req: Request, res: Response) {
           .where(eq(users.id, user.id));
 
         console.log(`[Webhook] Payment failed for user ${user.id}`);
+        break;
+      }
+
+      case "payment_intent.succeeded": {
+        const paymentIntent = event.data.object;
+        
+        // Check if this is a video credit purchase
+        if (paymentIntent.metadata?.type === "video_credits") {
+          const userId = parseInt(paymentIntent.metadata?.userId || "0");
+          const credits = parseInt(paymentIntent.metadata?.credits || "0");
+          const bundleId = paymentIntent.metadata?.bundleId;
+
+          if (!userId || !credits) {
+            console.error("[Webhook] Missing userId or credits in payment_intent metadata");
+            break;
+          }
+
+          // Get or create credit record
+          const [creditRecord] = await db
+            .select()
+            .from(videoCredits)
+            .where(eq(videoCredits.userId, userId))
+            .limit(1);
+
+          if (!creditRecord) {
+            // Create new record
+            await db.insert(videoCredits).values({
+              userId,
+              balance: credits,
+            });
+
+            await db.insert(videoCreditTransactions).values({
+              userId,
+              type: "purchase",
+              amount: credits,
+              balanceAfter: credits,
+              stripePaymentIntentId: paymentIntent.id,
+              description: `Purchased ${credits} credits (${bundleId})`,
+            });
+
+            console.log(`[Webhook] Created video credits for user ${userId}: ${credits} credits`);
+          } else {
+            // Update existing record
+            const newBalance = creditRecord.balance + credits;
+            await db
+              .update(videoCredits)
+              .set({ balance: newBalance })
+              .where(eq(videoCredits.userId, userId));
+
+            await db.insert(videoCreditTransactions).values({
+              userId,
+              type: "purchase",
+              amount: credits,
+              balanceAfter: newBalance,
+              stripePaymentIntentId: paymentIntent.id,
+              description: `Purchased ${credits} credits (${bundleId})`,
+            });
+
+            console.log(`[Webhook] Added ${credits} credits to user ${userId}. New balance: ${newBalance}`);
+          }
+        }
         break;
       }
 
