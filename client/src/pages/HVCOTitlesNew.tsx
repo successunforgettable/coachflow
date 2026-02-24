@@ -66,11 +66,14 @@ export default function HVCOTitlesNew() {
     
     const service = services?.find((s) => s.id === id);
     if (service) {
-      // Pre-fill targetMarket from avatarName + avatarTitle
-      if (service.avatarName && service.avatarTitle) {
+      // Pre-fill targetMarket with psychographic context
+      // Priority: 1) Use service.targetCustomer if exists, 2) Construct from avatarTitle + whyProblemExists, 3) Fallback to avatar name
+      if (service.targetCustomer) {
+        setTargetMarket(service.targetCustomer);
+      } else if (service.avatarTitle && service.whyProblemExists) {
+        setTargetMarket(`${service.avatarTitle}s struggling with ${service.whyProblemExists}`);
+      } else if (service.avatarName && service.avatarTitle) {
         setTargetMarket(`${service.avatarTitle}s like ${service.avatarName}`);
-      } else {
-        setTargetMarket(service.targetCustomer || "");
       }
       
       // Pre-fill hvcoTopic from AutoPop field

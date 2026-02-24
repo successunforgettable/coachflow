@@ -37,8 +37,13 @@ export default function AdCreativesGenerator() {
       setProductName(service.name || "");
       setNiche(service.category || "");
       
-      // Pre-fill targetAudience from avatarName + avatarTitle
-      if (service.avatarName && service.avatarTitle) {
+      // Pre-fill targetAudience with psychographic context
+      // Priority: 1) Use service.targetCustomer if exists, 2) Construct from avatarTitle + whyProblemExists, 3) Fallback to avatar name
+      if (service.targetCustomer) {
+        setTargetAudience(service.targetCustomer);
+      } else if (service.avatarTitle && service.whyProblemExists) {
+        setTargetAudience(`${service.avatarTitle}s struggling with ${service.whyProblemExists}`);
+      } else if (service.avatarName && service.avatarTitle) {
         setTargetAudience(`${service.avatarTitle}s like ${service.avatarName}`);
       }
       

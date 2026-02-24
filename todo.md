@@ -2803,3 +2803,20 @@
 - Generators successfully save campaignId when provided
 - UI enhancements can be added incrementally without breaking existing functionality
 - Placeholder mutations return helpful messages guiding users to run generators individually
+
+## Phase 40: Fix AutoPop Target Market Format (ACTIVE)
+- [ ] Update AutoPop logic to prioritize psychographic context over avatar name
+  - [ ] Change format from "Marketing Agency Owners like Sarah" to use actual targetMarket field
+  - [ ] Fallback to "${avatarTitle}s struggling with ${pressingProblem}" if targetMarket empty
+  - [ ] Only use avatar name format as last resort
+  - [ ] Update Headlines generator
+  - [ ] Update HVCO Titles generator
+  - [ ] Update Hero Mechanisms generator
+  - [ ] Update Ad Copy generator
+  - [ ] Update Ad Creatives generator
+  - [ ] Update Landing Pages generator
+  - [ ] Update Email Sequences generator
+  - [ ] Update WhatsApp Sequences generator
+  - [ ] Update Offers generator
+- [ ] Test improved format with ZAP service
+- [ ] Verify AI generates better copy with psychographic context

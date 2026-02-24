@@ -55,12 +55,22 @@ export default function HeadlinesNew() {
     if (serviceId && services) {
       const service = services.find(s => s.id.toString() === serviceId);
       if (service) {
-        // Pre-fill targetMarket from avatarName + avatarTitle
-        if (service.avatarName && service.avatarTitle) {
+        // Pre-fill targetMarket with psychographic context
+        // Priority: 1) Use service.targetCustomer if exists, 2) Construct from avatarTitle + whyProblemExists, 3) Fallback to avatar name
+        let targetMarketValue = '';
+        if (service.targetCustomer) {
+          targetMarketValue = service.targetCustomer;
+        } else if (service.avatarTitle && service.whyProblemExists) {
+          targetMarketValue = `${service.avatarTitle}s struggling with ${service.whyProblemExists}`;
+        } else if (service.avatarName && service.avatarTitle) {
+          targetMarketValue = `${service.avatarTitle}s like ${service.avatarName}`;
+        }
+        
+        if (targetMarketValue) {
           setFormData(prev => ({
             ...prev,
             serviceId,
-            targetMarket: prev.targetMarket || `${service.avatarTitle}s like ${service.avatarName}`,
+            targetMarket: prev.targetMarket || targetMarketValue,
           }));
         }
       }
