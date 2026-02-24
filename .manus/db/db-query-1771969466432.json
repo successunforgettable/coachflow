@@ -1,0 +1,9 @@
+{
+  "query": "INSERT INTO videoCredits (userId, balance) VALUES (1, 10) ON DUPLICATE KEY UPDATE balance = balance + 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute INSERT INTO videoCredits (userId, balance) VALUES (1, 10) ON DUPLICATE KEY UPDATE balance = balance + 10;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1589
+}

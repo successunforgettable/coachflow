@@ -327,6 +327,16 @@ async function renderVideo(params: {
 
   // Get script scenes (already parsed from database)
   const scenes = script.scenes || [];
+  console.log(`[Video ${videoId}] Scenes data:`, JSON.stringify(scenes, null, 2));
+
+  // Calculate cumulative time for each scene
+  let cumulativeTime = 0;
+  const sceneTimes: number[] = [];
+  scenes.forEach((scene: any) => {
+    sceneTimes.push(cumulativeTime);
+    cumulativeTime += scene.duration || 0;
+  });
+  console.log(`[Video ${videoId}] Scene times:`, sceneTimes);
 
   // Build modifications for Creatomate
   const modifications: any = {
@@ -339,7 +349,7 @@ async function renderVideo(params: {
           source: null, // Remove source URL
           audio_ai_provider: "elevenlabs",
           audio_ai_voice: "Rachel", // Default voice, can be customized
-          audio_ai_text: scenes.map((s: any) => s.text).join(" "), // Full script text
+          audio_ai_text: scenes.map((s: any) => s.voiceoverText).join(" "), // Full voiceover script
         };
       }
 
@@ -366,17 +376,21 @@ async function renderVideo(params: {
 
       // Replace scene texts in compositions
       if (element.type === "composition") {
+        const sceneName = element.name; // e.g., "Scene1"
+        const sceneIndex = parseInt(sceneName.replace("Scene", "")) - 1;
+        const sceneData = scenes[sceneIndex];
+        
         return {
           ...element,
+          time: sceneTimes[sceneIndex] || 0, // Set cumulative start time
+          duration: sceneData?.duration || element.duration, // Set scene duration from database
           elements: element.elements.map((child: any) => {
-            const sceneName = element.name; // e.g., "Scene1"
-            const sceneIndex = parseInt(sceneName.replace("Scene", "")) - 1;
-            const sceneData = scenes[sceneIndex];
+            // Use sceneData from parent scope
 
             if (child.name?.includes("Text") && sceneData) {
               return {
                 ...child,
-                text: sceneData.text,
+                text: sceneData.onScreenText, // Use onScreenText from database schema
                 fill_color: child.fill_color === "{{brand_color}}" ? brandColor : child.fill_color,
               };
             }
@@ -390,16 +404,17 @@ async function renderVideo(params: {
     }).filter((element: any) => element !== null), // Remove null elements (e.g., logo when no URL)
   };
 
+  // Debug: Log the final modifications being sent
+  console.log(`[Video ${videoId}] Final modifications:`, JSON.stringify(modifications, null, 2));
+
   // Call Creatomate API
-  const response = await fetch("https://api.creatomate.com/v1/renders", {
+  const response = await fetch("https://api.creatomate.com/v2/renders", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${CREATOMATE_API_KEY}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      source: modifications, // Send the modified template as the source
-    }),
+    body: JSON.stringify(modifications), // Send RenderScript directly (v2 API format)
   });
 
   if (!response.ok) {

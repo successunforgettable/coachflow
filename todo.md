@@ -2912,3 +2912,61 @@
 - [ ] Update RenderScript templates to include background music
 - [ ] Update videos.ts to pass musicStyle to Creatomate
 - [ ] Test video generation with different music styles
+
+
+## Phase 100: Video Rendering Bug Fixes (URGENT)
+- [ ] Fix scene timing in RenderScript - scenes need cumulative time values to play sequentially
+- [ ] Add comprehensive error prevention: input validation, automated testing, detailed logging
+- [ ] Add error handling for Creatomate API failures
+- [ ] Add validation for scene data before sending to Creatomate
+
+
+## Phase 101: Video Quality Improvements (CRITICAL)
+- [ ] Study Creatomate GitHub examples repository (https://github.com/Creatomate/node-examples)
+- [ ] Fix voiceover integration - currently no audio is playing
+- [ ] Add background music to videos
+- [ ] Implement professional video templates with engaging visuals
+- [ ] Test video quality matches professional Creatomate examples
+
+
+## Phase 102: Cinematic Quality Video Templates (HIGH PRIORITY - REVISED BUILD ORDER)
+
+### DELIVERABLES FOR APPROVAL (Before Implementation):
+- [ ] Select commercial-cleared music source + download 8 tracks
+- [x] Create template spec document (layer structure for all 3 templates)
+- [ ] Generate test render of Template 1 with real Pexels footage + ElevenLabs voiceover
+
+### Implementation (After Approval):
+- [ ] Step 1: Confirm music source + download 8 tracks (1-2 hours)
+- [ ] Step 2: Build Pexels keyword → footage lookup function with caching (half day)
+- [ ] Step 3: Build Template 1 in Creatomate dashboard with manual test footage (half day)
+- [ ] Step 4: Wire Pexels API to Template 1 - test with 5 different services (half day)
+- [ ] Step 5: Build Templates 2 and 3 once Template 1 pipeline is proven
+- [ ] Step 6: Add music mixing to all 3 templates
+
+
+## Phase 103: Spec Review Fixes (CRITICAL - BEFORE BUILD)
+- [ ] Problem 1: Download 30 Pixabay tracks (8 corporate, 8 upbeat, 7 warm, 7 dramatic), upload to S3, get real URLs
+- [x] Problem 2: APPROVED - Option A (single voiceover file, $0.27 per video)
+- [ ] Music Architecture: 30 tracks in 4 mood pools with randomization + anti-repeat logic
+- [ ] Database: Add musicTrackId field to videos table
+- [ ] Problem 3: Verify Creatomate particle support OR design replacement layer for Template 3
+- [ ] Build Template 1 (Bold Impact) only with real assets
+- [ ] Generate test render and submit for approval
+
+
+## Phase 103: Video Creator - Core Functionality (PRIORITY - Music Deferred)
+- [x] Voiceover Approach: APPROVED - Option A (single voiceover file, $0.27 per video)
+- [x] Verify Creatomate particle effects support OR design replacement layer (RESULT: No native particles, will remove from Template 3)
+- [x] Integrate Pexels API for stock footage search with caching (key validated, ENV configured)
+- [ ] Implement ElevenLabs voiceover generation + S3 upload pipeline (DEFERRED - need ElevenLabs API key)
+- [ ] Build Template 1 in Creatomate dashboard with real Pexels footage
+- [ ] Generate test render with real footage + voiceover for approval (BLOCKED - need ElevenLabs API key)
+- [x] Create comprehensive progress report for user
+
+## Phase 104: Video Creator - Music Integration (DEFERRED - After Core Works)
+- [ ] Download 30 Pixabay tracks (8 corporate, 8 upbeat, 7 warm, 7 dramatic)
+- [ ] Upload tracks to S3 and create server/config/music.ts
+- [ ] Music Architecture: 30 tracks in 4 mood pools with randomization
+- [ ] Database: Add musicTrackId field to videos table
+- [ ] Implement anti-repeat logic (exclude last 3 tracks per user)

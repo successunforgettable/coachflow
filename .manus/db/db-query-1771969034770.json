@@ -1,0 +1,16 @@
+{
+  "query": "SELECT id, creatomateStatus, videoUrl, creatomateRenderId FROM videos WHERE id = 8;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT id, creatomateStatus, videoUrl, creatomateRenderId FROM videos WHERE id = 8;",
+  "rows": [
+    {
+      "id": "8",
+      "creatomateStatus": "succeeded",
+      "videoUrl": "https://f002.backblazeb2.com/file/creatomate-c8xg3hsxdu/0c14bf81-bc1e-4876-ac44-a33a5d7dbcb4.mp4",
+      "creatomateRenderId": "0c14bf81-bc1e-4876-ac44-a33a5d7dbcb4"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tcreatomateStatus\tvideoUrl\tcreatomateRenderId\n8\tsucceeded\thttps://f002.backblazeb2.com/file/creatomate-c8xg3hsxdu/0c14bf81-bc1e-4876-ac44-a33a5d7dbcb4.mp4\t0c14bf81-bc1e-4876-ac44-a33a5d7dbcb4\n",
+  "stderr": "",
+  "execution_time_ms": 1557
+}
