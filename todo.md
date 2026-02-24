@@ -2863,13 +2863,13 @@
   - [x] Implement render polling logic
   - [x] Add credit deduction before rendering
   - [x] Add credit refund on failure
-- [ ] Day 11-12: Video Creator Frontend
-  - [ ] Create client/src/pages/VideoCreator.tsx (setup step)
-  - [ ] Create client/src/pages/VideoScriptEditor.tsx
-  - [ ] Create client/src/pages/VideoDetail.tsx
-  - [ ] Add routes to App.tsx
-  - [ ] Add navigation link to sidebar
-  - [ ] FIX: Remove credit balance check from "Generate Script" button
+- [x] Day 11-12: Video Creator Frontend
+  - [x] Create client/src/pages/VideoCreator.tsx (setup step)
+  - [x] Create client/src/pages/VideoScriptEditor.tsx
+  - [x] Create client/src/pages/VideoDetail.tsx
+  - [x] Add routes to App.tsx
+  - [x] Add navigation link to sidebar
+  - [x] FIX: Remove credit balance check from "Generate Script" button
 
 ### Week 3: Meta Integration (OAuth + Push to Ads Manager + Testing)
 - [ ] Day 13-14: Meta OAuth Backend

@@ -45,6 +45,9 @@ import Integrations from "./pages/settings/Integrations";
 import MetaCampaigns from "./pages/MetaCampaigns";
 import CampaignAlerts from "./pages/CampaignAlerts";
 import { VideoCredits } from "./pages/VideoCredits";
+import VideoCreator from "./pages/VideoCreator";
+import VideoScriptEditor from "./pages/VideoScriptEditor";
+import VideoDetail from "./pages/VideoDetail";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -86,8 +89,10 @@ function Router() {
       <Route path="/admin/compliance/analytics" component={ComplianceAnalytics} />
       <Route path={"/analytics"} component={AnalyticsDashboard} />
       <Route path={"/onboarding"} component={OnboardingPage} />
-      <Route path={"/settings"} component={Settings} />
-      <Route path={"/settings/integrations"} component={Integrations} />
+      <Route path={"/settings"} component={Settings} />      <Route path={"/settings/integrations"} component={Integrations} />
+      <Route path={"/video-creator"} component={VideoCreator} />
+      <Route path={"/video-creator/script/:id"} component={VideoScriptEditor} />
+      <Route path={"/video-creator/video/:id"} component={VideoDetail} />
       <Route path={"/meta/campaigns"} component={MetaCampaigns} />
       <Route path={"/meta/alerts"} component={CampaignAlerts} />
       <Route path={"/terms"} component={Terms} />
