@@ -87,7 +87,7 @@ export const whatsappSequencesRouter = router({
       return sequence;
     }),
 
-  // Generate WhatsApp sequence using AI (Helo.ai framework)
+  // Generate WhatsApp sequence using AI
   generate: protectedProcedure
     .input(generateWhatsAppSequenceSchema)
     .mutation(async ({ ctx, input }) => {
@@ -143,7 +143,7 @@ You MUST use these exact numbers. Do not fabricate.`
       let prompt = "";
 
       if (input.sequenceType === "engagement") {
-        prompt = `You are an expert WhatsApp marketer. Create a 3-message WhatsApp engagement sequence for event attendees using Helo.ai's 7-Strategy Framework.
+        prompt = `You are an expert WhatsApp marketer. Create a 3-message WhatsApp engagement sequence for event attendees.
 
 Service: ${service.name}
 Event: ${input.eventDetails?.eventName || "Event"}
@@ -172,7 +172,7 @@ Each message should:
 Format as JSON array.`;
       } else {
         // sales sequence
-        prompt = `You are an expert WhatsApp marketer. Create a 3-message WhatsApp sales sequence for event attendees using Helo.ai's framework.
+        prompt = `You are an expert WhatsApp marketer. Create a 3-message WhatsApp sales sequence for event attendees.
 
 Service: ${service.name}
 Event: ${input.eventDetails?.eventName || "Event"}
@@ -207,7 +207,7 @@ Format as JSON array.`;
           {
             role: "system",
             content:
-              "You are an expert WhatsApp marketer specializing in high-converting WhatsApp sequences for coaches, speakers, and consultants. Use Helo.ai's 7-Strategy Framework. Always respond with valid JSON.",
+              "You are an expert WhatsApp marketer specializing in high-converting WhatsApp sequences for coaches, speakers, and consultants. Always respond with valid JSON.",
           },
           { role: "user", content: prompt },
         ],

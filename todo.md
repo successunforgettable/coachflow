@@ -2707,3 +2707,58 @@
 - [ ] Implement "Generate All Missing" button
 - [ ] Implement "Export Campaign" button
 - [ ] Add status indicators (✅⚠️⬜❌)
+
+
+## CRITICAL BUGS (Issues 2-9)
+- [x] CRITICAL Issue 2: Fix Social Proof Fabrication
+  - [x] Add social proof fields to services schema (totalCustomers, averageRating, totalReviews, testimonials, pressFeatures)
+  - [x] Apply database migration
+  - [x] Update ServiceDetail.tsx UI to include social proof editing
+  - [x] Update services.ts router to accept social proof fields
+  - [x] Update 6/9 generator prompts to respect social proof data (Ad Creatives, Ad Copy, Landing Pages, Email Sequences, WhatsApp Sequences, Super ZAP Offers)
+  - [x] Add launch-safe fallbacks when social proof is empty (Headlines, HVCO, Hero Mechanisms don't use social proof)
+  - [ ] Test with/without social proof data
+
+- [x] MEDIUM Issue 3: Fix Ad Copy Body Variations (not meaningfully different)
+  - [x] Create 15 distinct angle types (pain_agitation, social_proof, authority, curiosity, story, etc.)
+  - [x] Update adCopy schema to include bodyAngle field
+  - [x] Update Ad Copy backend to use angle-based generation
+  - [x] Add angle badges to UI for easy comparison
+  - [ ] Test structural diversity >70%
+
+- [x] MEDIUM Issue 4: Fix WhatsApp Date Placeholder Bug
+  - [x] Update whatsappSequences.ts to replace {{Date}} with actual dates
+  - [x] Replace {{Name}} with [First Name]
+  - [x] Replace {{Product}} with service name
+  - [x] Replace {{Event}} and {{Offer}} with actual names
+  - [ ] Test all placeholders are replaced
+
+- [x] MEDIUM Issue 5: Fix Landing Page Avatar Parsing
+  - [x] Update landingPages.ts to parse avatar format correctly
+  - [x] Extract name, age, role, location from comma-separated input
+  - [x] Fix headline format to use "Name the Role" not "Name, Age, Role"
+  - [ ] Test with different avatar formats
+
+- [x] MEDIUM Issue 6: Remove "Meta" from Landing Page Badges
+  - [x] Remove Meta from As Seen In example in landingPageGenerator.ts
+  - [x] Add explicit warning: DO NOT include Meta/Facebook/Instagram (violates Meta advertising policy)
+  - [x] Replace with neutral publications (Forbes, Inc., Entrepreneur, Yahoo Finance, Business Insider)
+  - [ ] Test with/without real press features
+
+- [x] MEDIUM Issue 7: Fix Authority Attribution (NOT NEEDED)
+  - [x] User confirmed frameworks already have their own names
+  - [x] No personal attribution needed (e.g., "Perfect Webinar" not "Arfeen's Perfect Webinar")
+  - [x] Reverted all attribution changes
+
+- [x] LOW-MEDIUM Issue 8: Fix HVCO Titles (benefit-first, not alliterative)
+  - [x] Update HVCO long titles prompt to prioritize benefits over alliteration
+  - [x] Update HVCO short titles prompt with benefit-first examples
+  - [x] Update HVCO beast mode prompt to prioritize clarity
+  - [x] Added specific examples: "7 Secrets to Close 50% More Deals" vs "Beating Bosses Blueprint"
+  - [ ] Test title clarity and specificity
+
+- [x] URGENT Issue 9: Remove Helo.ai/help.ao mentions from user-facing pages
+  - [x] Remove "Helo.ai's 7-Strategy Framework" from Dashboard.tsx WhatsApp description
+  - [x] Remove duplicate "WhatsApp Sequence Generator" heading from WhatsAppSequenceGenerator.tsx
+  - [x] Remove "Helo.ai 7-Strategy Framework" subtitle from WhatsAppSequenceGenerator.tsx
+  - [x] Remove all Helo.ai mentions from whatsappSequences.ts router (4 locations)

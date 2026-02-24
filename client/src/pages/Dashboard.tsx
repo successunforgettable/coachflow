@@ -125,7 +125,7 @@ export default function Dashboard() {
     },
     {
       title: "WhatsApp Sequences",
-      description: "Helo.ai's 7-Strategy Framework for high engagement",
+      description: "High-engagement WhatsApp sequences for coaches and consultants",
       icon: MessageCircle,
       count: whatsappSequences?.length || 0,
       href: "/generators/whatsapp",
