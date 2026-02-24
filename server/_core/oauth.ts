@@ -28,6 +28,9 @@ export function registerOAuthRoutes(app: Express) {
         return;
       }
 
+      const existingUser = await db.getUserByOpenId(userInfo.openId);
+      const isNewUser = !existingUser;
+
       await db.upsertUser({
         openId: userInfo.openId,
         name: userInfo.name || null,
@@ -35,6 +38,18 @@ export function registerOAuthRoutes(app: Express) {
         loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
         lastSignedIn: new Date(),
       });
+
+      // Grant 2 free video credits to new users
+      if (isNewUser) {
+        try {
+          const { grantFreeVideoCredits } = await import("../db");
+          await grantFreeVideoCredits(userInfo.openId, 2);
+          console.log(`[OAuth] Granted 2 free video credits to new user: ${userInfo.openId}`);
+        } catch (error) {
+          console.error("[OAuth] Failed to grant free credits:", error);
+          // Don't fail the login if credit grant fails
+        }
+      }
 
       const sessionToken = await sdk.createSessionToken(userInfo.openId, {
         name: userInfo.name || "",

@@ -1,6 +1,6 @@
 import { eq, and, or, desc, sql, inArray, gte, lte, asc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, headlines, hvcoTitles, InsertHvcoTitle, heroMechanisms, InsertHeroMechanism, campaigns, campaignAssets, campaignLinks, analyticsEvents, campaignMetrics, services } from "../drizzle/schema";
+import { InsertUser, users, headlines, hvcoTitles, InsertHvcoTitle, heroMechanisms, InsertHeroMechanism, campaigns, campaignAssets, campaignLinks, analyticsEvents, campaignMetrics, services, videoCredits, videoCreditTransactions } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -734,4 +734,67 @@ export async function getAssetPerformance(
     emailClicks: Number(p.emailClicks) || 0,
     conversions: Number(p.conversions) || 0,
   }));
+}
+
+
+// Video Credits helpers
+
+export async function grantFreeVideoCredits(openId: string, amount: number): Promise<void> {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot grant free credits: database not available");
+    return;
+  }
+
+  const user = await getUserByOpenId(openId);
+  if (!user) {
+    console.warn("[Database] Cannot grant free credits: user not found");
+    return;
+  }
+
+  try {
+    // Check if user already has a video credits record
+    const existing = await db
+      .select()
+      .from(videoCredits)
+      .where(eq(videoCredits.userId, user.id))
+      .limit(1);
+
+    if (existing.length > 0) {
+      // User already has credits, add to existing balance
+      const newBalance = existing[0].balance + amount;
+      
+      await db
+        .update(videoCredits)
+        .set({ balance: newBalance })
+        .where(eq(videoCredits.userId, user.id));
+
+      // Record transaction
+      await db.insert(videoCreditTransactions).values({
+        userId: user.id,
+        type: "free_grant",
+        amount,
+        balanceAfter: newBalance,
+        description: `Free credits granted: ${amount} credits`,
+      });
+    } else {
+      // Create new credits record
+      await db.insert(videoCredits).values({
+        userId: user.id,
+        balance: amount,
+      });
+
+      // Record transaction
+      await db.insert(videoCreditTransactions).values({
+        userId: user.id,
+        type: "free_grant",
+        amount,
+        balanceAfter: amount,
+        description: `Welcome bonus: ${amount} free video credits`,
+      });
+    }
+  } catch (error) {
+    console.error("[Database] Failed to grant free credits:", error);
+    throw error;
+  }
 }

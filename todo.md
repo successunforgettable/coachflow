@@ -2838,19 +2838,18 @@
   - [x] Create client/src/pages/VideoCredits.tsx
   - [x] Create client/src/components/CreditPurchaseModal.tsx
   - [x] Add route to App.tsx
-  - [x] Add navigation link to DashboardLayout with credit balance badge [ ] Day 4-5: Download MP4 Fallback (MANDATORY)
-  - [ ] Create client/src/components/DownloadVideoButton.tsx
-  - [ ] Create client/src/components/ManualUploadInstructions.tsx
-  - [ ] Test download functionality with sample video
-  - [ ] Add free credits on signup logic
-
+  - [x] Add navigation link to DashboardLayout with credit balance badge- [x] Day 4-5: Download MP4 Fallback (MANDATORY)
+  - [x] Create client/src/components/DownloadVideoButton.tsx
+  - [x] Create client/src/components/ManualUploadInstructions.tsx
+  - [x] Test download functionality with sample video
+  - [x] Add free credits on signup logic (grantFreeVideoCredits in db.ts + OAuth callback)
 ### Week 2: Core Video Generation (Script + Templates + Rendering)
-- [ ] Day 6: Script Generation Backend
-  - [ ] Verify invokeLLM exists in server/_core/llm.ts (or use Anthropic SDK)
-  - [ ] Create server/routers/videoScripts.ts
-  - [ ] Implement LLM prompts for 4 video types (explainer, proof_results, testimonial, mechanism_reveal)
-  - [ ] Implement generate, update, getById, list mutations
-  - [ ] Add credit cost calculation (1/2/3 credits based on duration)
+- [x] Day 6: Script Generation Backend
+  - [x] Verify invokeLLM exists in server/_core/llm.ts (or use Anthropic SDK)
+  - [x] Create server/routers/videoScripts.ts
+  - [x] Implement LLM prompts for 4 video types (explainer, proof_results, testimonial, mechanism_reveal)
+  - [x] Implement generate, update, getById, list mutations
+  - [x] Add credit cost calculation (1/2/3 credits based on duration)
 - [ ] Day 7-8: Creatomate Template Build
   - [ ] Get Creatomate access from Arfeen
   - [ ] Build 3 templates: Kinetic Typography, Motion Graphics, Stats Card
