@@ -330,8 +330,17 @@ Format as JSON array:
       }
       const headlineData = JSON.parse(headlineContent);
 
-      // Generate Body Copy with social proof guidance (Issue 2 fix)
-      const bodyPrompt = `You are an expert Facebook/Instagram ad copywriter. Create ${count} high-converting ad BODY COPY variations for this service:
+      // Issue 3: Generate Body Copy using 15 distinct angles
+      const { ALL_BODY_ANGLES, BODY_ANGLE_PROMPTS } = await import('../adCopyAngles');
+      
+      // Select 15 angles (or fewer if count < 15)
+      const selectedAngles = ALL_BODY_ANGLES.slice(0, Math.min(count, 15));
+      
+      // Generate one body per angle in parallel
+      const bodyPromises = selectedAngles.map(async (angle) => {
+        const anglePrompt = BODY_ANGLE_PROMPTS[angle];
+        
+        const bodyPrompt = `You are an expert Facebook/Instagram ad copywriter. Create ONE high-converting ad BODY COPY using the ${angle.replace('_', ' ')} angle:
 
 Service: ${service.name}
 Category: ${service.category}
@@ -352,53 +361,33 @@ Ad Type: ${adTypeContext}
 Ad Style: ${input.adStyle}
 Call To Action: ${input.adCallToAction}
 
-Create ${count} compelling body copy variations (125-150 words each) that:
-- Start with a hook related to the pressing problem
-- Agitate the pain or desire
-- Present the unique mechanism as the solution
-- Include key benefits naturally throughout
-- End with a clear call-to-action (${input.adCallToAction})
-- Match the ad style (${input.adStyle})
-- CRITICAL: Follow the social proof guidance above - use real data if provided, or avoid social proof claims entirely
+${anglePrompt}
 
-Format as JSON array:
-{
-  "bodies": ["body 1", "body 2", ...]
-}`;
+Create ONE body copy (125-150 words) following the ${angle.replace('_', ' ')} structure above.
+End with clear call-to-action: ${input.adCallToAction}
 
-      const bodyResponse = await invokeLLM({
-        messages: [
-          {
-            role: "system",
-            content: `${META_COMPLIANCE_RULES}\n\nYou are an expert ad copywriter who specializes in Meta-compliant advertising for coaches, speakers and consultants. Always respond with valid JSON.`,
-          },
-          { role: "user", content: bodyPrompt },
-        ],
-        response_format: {
-          type: "json_schema",
-          json_schema: {
-            name: "ad_bodies",
-            strict: true,
-            schema: {
-              type: "object",
-              properties: {
-                bodies: {
-                  type: "array",
-                  items: { type: "string" },
-                },
-              },
-              required: ["bodies"],
-              additionalProperties: false,
+Return ONLY the body text as a single string, no JSON wrapper.`;
+
+        const response = await invokeLLM({
+          messages: [
+            {
+              role: "system",
+              content: `${META_COMPLIANCE_RULES}\n\nYou are an expert ad copywriter who specializes in Meta-compliant advertising for coaches, speakers and consultants.`,
             },
-          },
-        },
-      });
+            { role: "user", content: bodyPrompt },
+          ],
+        });
 
-      const bodyContent = bodyResponse.choices[0].message.content;
-      if (typeof bodyContent !== "string") {
-        throw new Error("Invalid body response");
-      }
-      const bodyData = JSON.parse(bodyContent);
+        const rawContent = response.choices[0]?.message?.content;
+        if (!rawContent) throw new Error(`Empty response for ${angle} angle`);
+        const content = typeof rawContent === 'string' ? rawContent.trim() : '';
+        if (!content) throw new Error(`Invalid content type for ${angle} angle`);
+        
+        return { angle, body: content };
+      });
+      
+      const bodyResults = await Promise.all(bodyPromises);
+      const bodyData = { bodies: bodyResults.map(r => r.body) };
 
       // Generate Link Descriptions
       const linkPrompt = `You are an expert Facebook/Instagram ad copywriter. Create ${count} high-converting LINK DESCRIPTIONS for this service:
@@ -502,9 +491,9 @@ Format as JSON array:
         });
       }
 
-      // Insert body copies
-      for (const body of bodyData.bodies) {
-        const complianceResult = await checkCompliance(body, {
+      // Insert body copies with angles (Issue 3)
+      for (const result of bodyResults) {
+        const complianceResult = await checkCompliance(result.body, {
           userId: ctx.user.id,
           generatorType: 'adCopy',
           trackUsage: true,
@@ -518,7 +507,8 @@ Format as JSON array:
           adStyle: input.adStyle,
           adCallToAction: input.adCallToAction,
           contentType: "body" as const,
-          content: body,
+          bodyAngle: result.angle,
+          content: result.body,
           targetMarket: input.targetMarket,
           productCategory: input.productCategory,
           specificProductName: input.specificProductName,

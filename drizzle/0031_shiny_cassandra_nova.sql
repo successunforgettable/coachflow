@@ -1,0 +1,1 @@
+ALTER TABLE `adCopy` ADD `bodyAngle` varchar(50);

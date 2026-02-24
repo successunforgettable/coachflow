@@ -398,8 +398,15 @@ ${adSet.links.map((l: any, i: number) => `${i + 1}. ${l.content}`).join("\n\n")}
               <CardContent className="pt-6">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
-                    <div className="text-sm text-muted-foreground mb-2">
-                      Body Copy {index + 1}
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="text-sm text-muted-foreground">
+                        Body Copy {index + 1}
+                      </div>
+                      {body.bodyAngle && (
+                        <span className="inline-flex items-center rounded-md bg-purple-50 px-2 py-1 text-xs font-medium text-purple-700 ring-1 ring-inset ring-purple-700/10">
+                          {body.bodyAngle.replace('_', ' ')}
+                        </span>
+                      )}
                     </div>
                     <div className="whitespace-pre-wrap">{body.content}</div>
                     {body.complianceScore !== null && body.complianceScore !== undefined && (

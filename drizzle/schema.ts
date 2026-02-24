@@ -239,6 +239,7 @@ export const adCopy = mysqlTable("adCopy", {
   adStyle: varchar("adStyle", { length: 100 }), // Hero Ad, Weird Authority Ad, Secret Info, Commitment & Consistency
   adCallToAction: varchar("adCallToAction", { length: 100 }), // Download free report, Watch free video, Book free call
   contentType: mysqlEnum("contentType", ["headline", "body", "link"]).notNull(),
+  bodyAngle: varchar("bodyAngle", { length: 50 }), // Angle type for body variations (Issue 3)
   content: text("content").notNull(), // The actual headline/body/link text
   // Generation parameters for regeneration - 17 Kong fields
   targetMarket: varchar("targetMarket", { length: 52 }), // Kong: 52 char limit

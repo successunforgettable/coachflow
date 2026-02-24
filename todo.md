@@ -2614,10 +2614,11 @@
   - [x] Update 6/9 generator prompts to respect social proof data (Ad Creatives, Ad Copy, Landing Pages, Email Sequences, WhatsApp Sequences, Super ZAP Offers)
   - [x] Add launch-safe fallbacks when social proof is empty (Headlines, HVCO, Hero Mechanisms don't use social proof)
   - [ ] Test with/without social proof data
-- [ ] MEDIUM Issue 3: Fix Ad Copy Body Variations (not meaningfully different)
-  - [ ] Create 15 distinct angle types (pain_agitation, social_proof, authority, curiosity, story, etc.)
-  - [ ] Update adCopy schema to include bodyAngle enum
-  - [ ] Update Ad Copy backend to use angle-based generation
+- [x] MEDIUM Issue 3: Fix Ad Copy Body Variations (not meaningfully different)
+  - [x] Create 15 distinct angle types (pain_agitation, social_proof, authority, curiosity, story, etc.)
+  - [x] Update adCopy schema to include bodyAngle field
+  - [x] Update Ad Copy backend to use angle-based generation
+  - [x] Add angle badges to UI for easy comparison
   - [ ] Test structural diversity >70%
 - [ ] MEDIUM Issue 4: Fix WhatsApp Date Placeholder Bug
   - [ ] Update whatsappSequences.ts to replace {{Date}} with actual dates
