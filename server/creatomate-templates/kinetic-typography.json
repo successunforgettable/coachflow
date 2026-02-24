@@ -1,0 +1,174 @@
+{
+  "output_format": "mp4",
+  "width": 1080,
+  "height": 1080,
+  "duration": null,
+  "elements": [
+    {
+      "type": "shape",
+      "path": "M 0 0 L 100 0 L 100 100 L 0 100 Z",
+      "fill_color": "#0a0a0a",
+      "width": "100%",
+      "height": "100%",
+      "duration": null
+    },
+    {
+      "type": "image",
+      "name": "Logo",
+      "source": "{{logo_url}}",
+      "width": "15%",
+      "height": "15%",
+      "x": "10%",
+      "y": "10%",
+      "duration": null
+    },
+    {
+      "type": "audio",
+      "name": "Voiceover",
+      "source": "{{voiceover_url}}",
+      "duration": null
+    },
+    {
+      "type": "composition",
+      "name": "Scene1",
+      "time": 0,
+      "duration": null,
+      "elements": [
+        {
+          "type": "text",
+          "name": "Scene1Text",
+          "text": "{{scene_1_text}}",
+          "fill_color": "{{brand_color}}",
+          "font_family": "Montserrat",
+          "font_weight": 700,
+          "font_size": null,
+          "font_size_minimum": "4 vmin",
+          "font_size_maximum": "10 vmin",
+          "x_alignment": "50%",
+          "y_alignment": "50%",
+          "text_transform": "uppercase",
+          "width": "80%",
+          "height": "auto",
+          "x": "50%",
+          "y": "50%",
+          "animations": [
+            {
+              "time": 0,
+              "duration": 0.8,
+              "easing": "cubic-bezier(0.34, 1.56, 0.64, 1)",
+              "type": "text-slide",
+              "scope": "word",
+              "split_delay": 0.05,
+              "direction": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "composition",
+      "name": "Scene2",
+      "time": null,
+      "duration": null,
+      "elements": [
+        {
+          "type": "text",
+          "name": "Scene2Text",
+          "text": "{{scene_2_text}}",
+          "fill_color": "#ffffff",
+          "font_family": "Montserrat",
+          "font_weight": 600,
+          "font_size": null,
+          "font_size_minimum": "3.5 vmin",
+          "font_size_maximum": "8 vmin",
+          "x_alignment": "50%",
+          "y_alignment": "50%",
+          "width": "80%",
+          "height": "auto",
+          "x": "50%",
+          "y": "50%",
+          "animations": [
+            {
+              "time": 0,
+              "duration": 0.8,
+              "easing": "cubic-bezier(0.34, 1.56, 0.64, 1)",
+              "type": "text-slide",
+              "scope": "word",
+              "split_delay": 0.05,
+              "direction": "right"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "composition",
+      "name": "Scene3",
+      "time": null,
+      "duration": null,
+      "elements": [
+        {
+          "type": "text",
+          "name": "Scene3Text",
+          "text": "{{scene_3_text}}",
+          "fill_color": "{{brand_color}}",
+          "font_family": "Montserrat",
+          "font_weight": 700,
+          "font_size": null,
+          "font_size_minimum": "4 vmin",
+          "font_size_maximum": "10 vmin",
+          "x_alignment": "50%",
+          "y_alignment": "50%",
+          "text_transform": "uppercase",
+          "width": "80%",
+          "height": "auto",
+          "x": "50%",
+          "y": "50%",
+          "animations": [
+            {
+              "time": 0,
+              "duration": 0.8,
+              "easing": "cubic-bezier(0.34, 1.56, 0.64, 1)",
+              "type": "text-scale",
+              "scope": "word",
+              "split_delay": 0.05
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "composition",
+      "name": "Scene4",
+      "time": null,
+      "duration": null,
+      "elements": [
+        {
+          "type": "text",
+          "name": "Scene4Text",
+          "text": "{{scene_4_text}}",
+          "fill_color": "#ffffff",
+          "font_family": "Montserrat",
+          "font_weight": 600,
+          "font_size": null,
+          "font_size_minimum": "3 vmin",
+          "font_size_maximum": "7 vmin",
+          "x_alignment": "50%",
+          "y_alignment": "50%",
+          "width": "80%",
+          "height": "auto",
+          "x": "50%",
+          "y": "50%",
+          "animations": [
+            {
+              "time": 0,
+              "duration": 1,
+              "easing": "cubic-bezier(0.34, 1.56, 0.64, 1)",
+              "type": "fade"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

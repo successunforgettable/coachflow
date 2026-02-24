@@ -2855,14 +2855,14 @@
   - [ ] Build 3 templates: Kinetic Typography, Motion Graphics, Stats Card
   - [ ] Test templates with sample data
   - [ ] Copy template IDs to environment variables
-- [ ] Day 9-10: Video Generation Backend
-  - [ ] Install @elevenlabs/api and axios
-  - [ ] Create server/routers/videos.ts
-  - [ ] Implement ElevenLabs voiceover generation
-  - [ ] Implement Creatomate render submission
-  - [ ] Implement render polling logic
-  - [ ] Add credit deduction before rendering
-  - [ ] Add credit refund on failure
+- [x] Day 9-10: Video Generation Backend
+  - [x] Install @elevenlabs/api and axios (not needed - using Creatomate's built-in ElevenLabs integration)
+  - [x] Create server/routers/videos.ts
+  - [x] Implement ElevenLabs voiceover generation (via Creatomate audio_ai)
+  - [x] Implement Creatomate render submission
+  - [x] Implement render polling logic
+  - [x] Add credit deduction before rendering
+  - [x] Add credit refund on failure
 - [ ] Day 11-12: Video Creator Frontend
   - [ ] Create client/src/pages/VideoCreator.tsx (setup step)
   - [ ] Create client/src/pages/VideoScriptEditor.tsx
