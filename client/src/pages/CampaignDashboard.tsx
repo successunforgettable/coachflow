@@ -150,27 +150,42 @@ export default function CampaignDashboard() {
   };
 
   const handleGenerateAll = async () => {
+    if (!campaignId) return;
+    
     setIsGenerating(true);
     toast.info("Generating all missing assets... This may take a few minutes.");
     
-    // TODO: Implement batch generation logic
-    // This will call all 9 generators in sequence for assets that are missing
-    
-    setTimeout(() => {
+    try {
+      const result = await trpc.campaigns.generateAllMissing.useMutation().mutateAsync({ 
+        campaignId 
+      });
+      
+      if (result.success) {
+        toast.info(result.message);
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to generate assets");
+    } finally {
       setIsGenerating(false);
-      toast.success("All assets generated successfully!");
-    }, 3000);
+    }
   };
 
   const handleExportCampaign = async () => {
+    if (!campaignId) return;
+    
     toast.info("Exporting campaign... This may take a moment.");
     
-    // TODO: Implement export logic
-    // This will create a ZIP file with all campaign assets
-    
-    setTimeout(() => {
-      toast.success("Campaign exported successfully!");
-    }, 2000);
+    try {
+      const result = await trpc.campaigns.exportCampaign.useMutation().mutateAsync({ 
+        campaignId 
+      });
+      
+      if (result.success) {
+        toast.info(result.message);
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to export campaign");
+    }
   };
 
   return (

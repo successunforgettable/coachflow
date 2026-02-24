@@ -2761,3 +2761,45 @@
   - [x] Remove duplicate "WhatsApp Sequence Generator" heading from WhatsAppSequenceGenerator.tsx
   - [x] Remove "Helo.ai 7-Strategy Framework" subtitle from WhatsAppSequenceGenerator.tsx
   - [x] Remove all Helo.ai mentions from whatsappSequences.ts router (4 locations)
+
+
+## Phase 39 FIX 3: Campaign Context System - STATUS UPDATE
+
+### Backend Infrastructure (COMPLETE ✅)
+- [x] Campaigns table exists with all required fields
+- [x] Campaign Dashboard created (/campaigns/[campaignId]) with asset tracking
+- [x] All 9 generators accept campaignId parameter and save to database
+- [x] campaignId foreign keys added to all 10 generator tables (including idealCustomerProfiles)
+- [x] generateAllMissing mutation added to campaigns router (placeholder)
+- [x] exportCampaign mutation added to campaigns router (placeholder)
+- [x] Campaign Dashboard UI shows asset counts and status indicators
+- [x] TypeScript compilation clean, no errors
+
+### Generator UI Updates (DEFERRED - Future Enhancement)
+- [ ] Update all 9 generator pages to detect campaign context from URL (?campaignId=123)
+- [ ] Pre-select and lock serviceId when opened from campaign
+- [ ] Pre-fill type dropdowns from campaign defaults (defaultAdType, defaultCtaType, etc.)
+- [ ] Add "Back to Campaign" button when in campaign context
+- [ ] Test campaign flow: create campaign → open generator → verify pre-fill
+
+### Full Feature Implementation (DEFERRED - Complex Features)
+- [ ] Implement full generateAllMissing logic:
+  - [ ] Check which generators are missing (assetCounts = 0)
+  - [ ] Call each missing generator sequentially with campaign defaults
+  - [ ] Handle quota checks for each generator
+  - [ ] Implement progress tracking (WebSocket or polling)
+  - [ ] Error handling for partial failures
+  - [ ] Estimated time: 2-3 days
+- [ ] Implement full exportCampaign logic:
+  - [ ] Fetch all assets from 9 generator tables
+  - [ ] Package into ZIP format with organized folders (headlines/, ad-copy/, etc.)
+  - [ ] Generate download URL
+  - [ ] Clean up temporary files
+  - [ ] Estimated time: 1 day
+
+### Notes
+- Backend infrastructure is 100% complete and ready for full implementation
+- Campaign Dashboard correctly shows asset counts and status for all 9 generators
+- Generators successfully save campaignId when provided
+- UI enhancements can be added incrementally without breaking existing functionality
+- Placeholder mutations return helpful messages guiding users to run generators individually
