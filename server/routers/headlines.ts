@@ -200,6 +200,25 @@ export const headlinesRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      // Fetch service data for AutoPop if serviceId provided
+      let autoPopData: any = {};
+      if (input.serviceId) {
+        const { getDb } = await import("../db");
+        const { services } = await import("../../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+        const serviceData = await db.select().from(services).where(eq(services.id, input.serviceId)).limit(1);
+        if (serviceData.length > 0) {
+          const service = serviceData[0];
+          autoPopData = {
+            avatarName: service.avatarName,
+            avatarTitle: service.avatarTitle,
+            mechanismDescriptor: service.mechanismDescriptor,
+          };
+        }
+      }
+
       // Check and reset quota if user's anniversary date has passed
       await checkAndResetQuotaIfNeeded(ctx.user.id);
 

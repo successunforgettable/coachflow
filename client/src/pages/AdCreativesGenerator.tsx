@@ -26,6 +26,25 @@ export default function AdCreativesGenerator() {
   const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
 
   const { data: services } = trpc.services.list.useQuery(undefined, { enabled: isAuthenticated });
+
+  // AutoPop: Pre-fill fields when service is selected
+  const handleServiceChange = (value: string) => {
+    const id = parseInt(value, 10);
+    setServiceId(id);
+    
+    const service = services?.find(s => s.id === id);
+    if (service) {
+      setProductName(service.name || "");
+      setNiche(service.category || "");
+      
+      // Pre-fill targetAudience from avatarName + avatarTitle
+      if (service.avatarName && service.avatarTitle) {
+        setTargetAudience(`${service.avatarTitle}s like ${service.avatarName}`);
+      }
+      
+      setMainBenefit(service.mainBenefit || "");
+    }
+  };
   const { data: batches, refetch } = trpc.adCreatives.list.useQuery(undefined, { enabled: isAuthenticated });
   const { data: selectedBatch } = trpc.adCreatives.getBatch.useQuery(
     { batchId: selectedBatchId! },
@@ -137,7 +156,7 @@ export default function AdCreativesGenerator() {
             {/* Service Selection */}
             <div>
               <Label htmlFor="service">Service / Product *</Label>
-              <Select value={serviceId?.toString() || ""} onValueChange={(value) => setServiceId(parseInt(value, 10))}>
+              <Select value={serviceId?.toString() || ""} onValueChange={handleServiceChange}>
                 <SelectTrigger id="service">
                   <SelectValue placeholder="Select a service" />
                 </SelectTrigger>

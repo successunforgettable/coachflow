@@ -48,6 +48,25 @@ export default function HeadlinesNew() {
     uniqueMechanism: "",
   });
 
+  // AutoPop: When service is selected, fetch and pre-fill fields
+  const handleServiceChange = (serviceId: string) => {
+    setFormData({ ...formData, serviceId });
+    
+    if (serviceId && services) {
+      const service = services.find(s => s.id.toString() === serviceId);
+      if (service) {
+        // Pre-fill targetMarket from avatarName + avatarTitle
+        if (service.avatarName && service.avatarTitle) {
+          setFormData(prev => ({
+            ...prev,
+            serviceId,
+            targetMarket: prev.targetMarket || `${service.avatarTitle}s like ${service.avatarName}`,
+          }));
+        }
+      }
+    }
+  };
+
   const generateMutation = trpc.headlines.generate.useMutation({
     onSuccess: (data) => {
       toast.success(`Headlines Generated! Created ${data.count} headlines across 5 formula types`);
@@ -128,7 +147,7 @@ export default function HeadlinesNew() {
               <Label htmlFor="service">Select Product/Service (Optional)</Label>
               <Select
                 value={formData.serviceId}
-                onValueChange={(value) => setFormData({ ...formData, serviceId: value })}
+                onValueChange={handleServiceChange}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Choose a service..." />

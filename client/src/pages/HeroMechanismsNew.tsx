@@ -111,16 +111,32 @@ export default function HeroMechanismsNew() {
     },
   });
 
-  // Auto-fill fields when service is selected
+  // AutoPop: Auto-fill fields when service is selected
   const handleServiceChange = (serviceId: string) => {
     const id = parseInt(serviceId);
     setSelectedServiceId(id);
     
     const service = services?.find((s) => s.id === id);
     if (service) {
-      setTargetMarket(service.targetCustomer || "");
+      // Pre-fill targetMarket from avatarName + avatarTitle
+      if (service.avatarName && service.avatarTitle) {
+        setTargetMarket(`${service.avatarTitle}s like ${service.avatarName}`);
+      } else {
+        setTargetMarket(service.targetCustomer || "");
+      }
+      
       setPressingProblem(service.mainBenefit ? `Struggling with ${service.mainBenefit.toLowerCase()}` : "");
       setDesiredOutcome(service.mainBenefit || "");
+      
+      // Pre-fill descriptor from AutoPop field
+      if (service.mechanismDescriptor) {
+        setDescriptor(service.mechanismDescriptor);
+      }
+      
+      // Pre-fill applicationMethod from AutoPop field
+      if (service.applicationMethod) {
+        setApplicationMethod(service.applicationMethod);
+      }
     }
   };
 

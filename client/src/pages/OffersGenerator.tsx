@@ -42,6 +42,15 @@ export default function OffersGenerator() {
   const [searchQuery, setSearchQuery] = useState("");
 
   const { data: services } = trpc.services.list.useQuery(undefined, { enabled: isAuthenticated });
+
+  // AutoPop: Pre-fill fields when service is selected
+  const handleServiceChange = (value: string) => {
+    const id = parseInt(value, 10);
+    setServiceId(id);
+    
+    // Offers generator doesn't have many auto-fillable fields from service
+    // The service data is used in the backend generator prompts
+  };
   const { data: offers, refetch } = trpc.offers.list.useQuery(undefined, { enabled: isAuthenticated });
 
   const generateMutation = trpc.offers.generate.useMutation({
@@ -153,7 +162,7 @@ export default function OffersGenerator() {
                   <label className="text-sm font-medium mb-2 block">Select Service*</label>
                   <Select
                     value={serviceId?.toString() || ""}
-                    onValueChange={(value) => setServiceId(Number(value))}
+                    onValueChange={handleServiceChange}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Choose a service..." />

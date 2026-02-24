@@ -1,0 +1,9 @@
+{
+  "query": "UPDATE services \nSET \n  whyProblemExists = 'Most marketing automation platforms are built for enterprise teams with complex workflows. Coaches and consultants need something simpler that combines proven marketing frameworks with AI, but existing tools either lack the frameworks or are too complicated to use effectively.',\n  hvcoTopic = '7 Secrets to Launch Meta-Compliant Ad Campaigns in 24 Hours',\n  mechanismDescriptor = 'AI',\n  applicationMethod = '3-step AI-powered workflow: Input your product details, select campaign type, generate 110+ assets instantly',\n  avatarName = 'Sarah',\n  avatarTitle = 'Marketing Agency Owner'\nWHERE id = 780001;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute UPDATE services \nSET \n  whyProblemExists = 'Most marketing automation platforms are built for enterprise teams with complex workflows. Coaches and consultants need something simpler that combines proven marketing frameworks with AI, but existing tools either lack the frameworks or are too complicated to use effectively.',\n  hvcoTopic = '7 Secrets to Launch Meta-Compliant Ad Campaigns in 24 Hours',\n  mechanismDescriptor = 'AI',\n  applicationMethod = '3-step AI-powered workflow: Input your product details, select campaign type, generate 110+ assets instantly',\n  avatarName = 'Sarah',\n  avatarTitle = 'Marketing Agency Owner'\nWHERE id = 780001;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1650
+}

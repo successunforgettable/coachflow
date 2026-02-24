@@ -59,14 +59,24 @@ export default function HVCOTitlesNew() {
     },
   });
 
-  // Auto-fill target market when service is selected
+  // AutoPop: Auto-fill fields when service is selected
   const handleServiceChange = (serviceId: string) => {
     const id = parseInt(serviceId);
     setSelectedServiceId(id);
     
     const service = services?.find((s) => s.id === id);
     if (service) {
-      setTargetMarket(service.targetCustomer || "");
+      // Pre-fill targetMarket from avatarName + avatarTitle
+      if (service.avatarName && service.avatarTitle) {
+        setTargetMarket(`${service.avatarTitle}s like ${service.avatarName}`);
+      } else {
+        setTargetMarket(service.targetCustomer || "");
+      }
+      
+      // Pre-fill hvcoTopic from AutoPop field
+      if (service.hvcoTopic) {
+        setHvcoTopic(service.hvcoTopic);
+      }
     }
   };
 

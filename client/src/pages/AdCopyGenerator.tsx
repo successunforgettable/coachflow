@@ -53,6 +53,23 @@ export default function AdCopyGenerator() {
   
   const [searchQuery, setSearchQuery] = useState("");
 
+  // AutoPop: Pre-fill fields when service is selected
+  const handleServiceChange = (value: string) => {
+    const id = parseInt(value, 10);
+    setServiceId(id);
+    
+    const service = services?.find(s => s.id === id);
+    if (service) {
+      // Pre-fill targetMarket from avatarName + avatarTitle
+      if (service.avatarName && service.avatarTitle) {
+        setTargetMarket(`${service.avatarTitle}s like ${service.avatarName}`);
+      }
+      
+      setSpecificProductName(service.name || "");
+      setProductCategory(service.category || "");
+    }
+  };
+
   const { data: services } = trpc.services.list.useQuery(undefined, {
     enabled: isAuthenticated,
   });
@@ -311,7 +328,7 @@ export default function AdCopyGenerator() {
                 <Label htmlFor="service">Select Service*</Label>
                 <Select
                   value={serviceId?.toString() || ""}
-                  onValueChange={(value) => setServiceId(parseInt(value, 10))}
+                  onValueChange={handleServiceChange}
                 >
                   <SelectTrigger id="service">
                     <SelectValue placeholder="Choose a service" />

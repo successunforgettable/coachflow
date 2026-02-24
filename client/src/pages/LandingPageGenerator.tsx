@@ -30,6 +30,25 @@ export default function LandingPageGenerator() {
   const [searchQuery, setSearchQuery] = useState("");
 
   const { data: services } = trpc.services.list.useQuery(undefined, { enabled: isAuthenticated });
+
+  // AutoPop: Pre-fill fields when service is selected
+  const handleServiceChange = (value: string) => {
+    const id = parseInt(value, 10);
+    setServiceId(id);
+    
+    const service = services?.find(s => s.id === id);
+    if (service) {
+      // Pre-fill avatarName from AutoPop field
+      if (service.avatarName) {
+        setAvatarName(service.avatarName);
+      }
+      
+      // Pre-fill avatarDescription from avatarTitle
+      if (service.avatarTitle) {
+        setAvatarDescription(service.avatarTitle);
+      }
+    }
+  };
   const { data: pages, refetch } = trpc.landingPages.list.useQuery(undefined, { enabled: isAuthenticated });
 
   const generateMutation = trpc.landingPages.generate.useMutation({
@@ -144,7 +163,7 @@ export default function LandingPageGenerator() {
                   <Label htmlFor="service">Select Service*</Label>
                   <Select
                     value={serviceId?.toString() || ""}
-                    onValueChange={(value) => setServiceId(Number(value))}
+                    onValueChange={handleServiceChange}
                   >
                     <SelectTrigger id="service">
                       <SelectValue placeholder="Choose a service..." />

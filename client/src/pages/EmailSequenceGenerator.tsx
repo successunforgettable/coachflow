@@ -50,6 +50,15 @@ export default function EmailSequenceGenerator() {
   const [pendingSequence, setPendingSequence] = useState<any>(null);
 
   const { data: services } = trpc.services.list.useQuery(undefined, { enabled: isAuthenticated });
+
+  // AutoPop: Pre-fill fields when service is selected
+  const handleServiceChange = (value: string) => {
+    const id = parseInt(value, 10);
+    setServiceId(id);
+    
+    // Email sequences don't have many auto-fillable fields from service
+    // The service data is used in the backend generator prompts
+  };
   const { data: sequences, refetch } = trpc.emailSequences.list.useQuery(undefined, { enabled: isAuthenticated });
 
   const generateMutation = trpc.emailSequences.generate.useMutation({
@@ -190,7 +199,7 @@ export default function EmailSequenceGenerator() {
               <CardContent className="space-y-4">
                 <div>
                   <label className="text-sm font-medium text-foreground mb-2 block">Select Service</label>
-                  <Select value={serviceId?.toString()} onValueChange={(v) => setServiceId(parseInt(v))}>
+                  <Select value={serviceId?.toString()} onValueChange={handleServiceChange}>
                     <SelectTrigger><SelectValue placeholder="Choose a service..." /></SelectTrigger>
                     <SelectContent>
                       {services?.map((s) => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
