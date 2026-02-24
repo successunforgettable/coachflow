@@ -1,6 +1,6 @@
 import { eq, and, or, desc, sql, inArray, gte, lte, asc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, headlines, hvcoTitles, InsertHvcoTitle, heroMechanisms, InsertHeroMechanism, campaigns, campaignAssets, campaignLinks, analyticsEvents, campaignMetrics } from "../drizzle/schema";
+import { InsertUser, users, headlines, hvcoTitles, InsertHvcoTitle, heroMechanisms, InsertHeroMechanism, campaigns, campaignAssets, campaignLinks, analyticsEvents, campaignMetrics, services } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -381,12 +381,16 @@ export async function getCampaignById(campaignId: number, userId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  const [campaign] = await db
-    .select()
+  const [result] = await db
+    .select({
+      campaign: campaigns,
+      service: services,
+    })
     .from(campaigns)
+    .leftJoin(services, eq(campaigns.serviceId, services.id))
     .where(and(eq(campaigns.id, campaignId), eq(campaigns.userId, userId)));
   
-  if (!campaign) return null;
+  if (!result) return null;
   
   // Get all assets for this campaign
   const assets = await db
@@ -401,7 +405,7 @@ export async function getCampaignById(campaignId: number, userId: number) {
     .from(campaignLinks)
     .where(eq(campaignLinks.campaignId, campaignId));
   
-  return { ...campaign, assets, links };
+  return { ...result.campaign, service: result.service, assets, links };
 }
 
 export async function updateCampaign(campaignId: number, userId: number, data: Partial<typeof campaigns.$inferInsert>) {

@@ -195,6 +195,7 @@ export const idealCustomerProfiles = mysqlTable("idealCustomerProfiles", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   serviceId: int("serviceId").references(() => services.id, { onDelete: "set null" }),
+  campaignId: int("campaignId").references(() => campaigns.id, { onDelete: "set null" }),
   name: varchar("name", { length: 255 }).notNull(),
   
   // 17 Kong Tabs - Complete Parity

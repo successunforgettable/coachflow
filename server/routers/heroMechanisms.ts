@@ -52,6 +52,7 @@ export const heroMechanismsRouter = router({
     .input(
       z.object({
         serviceId: z.number(),
+        campaignId: z.number().optional(),
         targetMarket: z.string().max(100),
         pressingProblem: z.string().max(200),
         whyProblem: z.string().max(300),
@@ -147,6 +148,7 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
         allMechanisms.push({
           userId: user.id,
           serviceId: input.serviceId,
+          campaignId: input.campaignId,
           mechanismSetId,
           tabType: "hero_mechanisms" as const,
           mechanismName: mechanism.name,
@@ -206,6 +208,7 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
         allMechanisms.push({
           userId: user.id,
           serviceId: input.serviceId,
+          campaignId: input.campaignId,
           mechanismSetId,
           tabType: "headline_ideas" as const,
           mechanismName: mechanism.name,
@@ -266,6 +269,7 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
         allMechanisms.push({
           userId: user.id,
           serviceId: input.serviceId,
+          campaignId: input.campaignId,
           mechanismSetId,
           tabType: "beast_mode" as const,
           mechanismName: mechanism.name,

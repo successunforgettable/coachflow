@@ -10,6 +10,7 @@ import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 
 const generateICPSchema = z.object({
   serviceId: z.number(),
+  campaignId: z.number().optional(),
   name: z.string().min(1).max(255),
 });
 
@@ -267,6 +268,7 @@ Format as JSON with these exact keys (use bullet points • for lists):
         .values({
           userId: ctx.user.id,
           serviceId: input.serviceId,
+          campaignId: input.campaignId,
           name: input.name,
           // 17 tabs
           introduction: icpData.introduction,

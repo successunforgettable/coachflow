@@ -47,6 +47,7 @@ export const hvcoRouter = router({
     .input(
       z.object({
         serviceId: z.number(),
+        campaignId: z.number().optional(),
         targetMarket: z.string().max(100),
         hvcoTopic: z.string().max(800),
         powerMode: z.boolean().optional(),
@@ -133,6 +134,7 @@ Return ONLY a JSON array of ${20 * countMultiplier} title strings, nothing else.
         allTitles.push({
           userId: user.id,
           serviceId: input.serviceId,
+          campaignId: input.campaignId,
           hvcoSetId,
           tabType: "long" as const,
           title,
@@ -182,6 +184,7 @@ Return ONLY a JSON array of ${20 * countMultiplier} title strings, nothing else.
         allTitles.push({
           userId: user.id,
           serviceId: input.serviceId,
+          campaignId: input.campaignId,
           hvcoSetId,
           tabType: "short" as const,
           title,
@@ -228,6 +231,7 @@ Return ONLY a JSON array of 30 title strings, nothing else.`;
         allTitles.push({
           userId: user.id,
           serviceId: input.serviceId,
+          campaignId: input.campaignId,
           hvcoSetId,
           tabType: "beast_mode" as const,
           title,
@@ -272,6 +276,7 @@ Return ONLY a JSON array of 20 subheadline strings, nothing else.`;
         allTitles.push({
           userId: user.id,
           serviceId: input.serviceId,
+          campaignId: input.campaignId,
           hvcoSetId,
           tabType: "subheadlines" as const,
           title,

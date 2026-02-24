@@ -32,7 +32,21 @@ export const campaignsRouter = router({
           message: "Campaign not found",
         });
       }
-      return campaign;
+      
+      // Calculate asset counts by type
+      const assetCounts = {
+        headline: campaign.assets.filter((a) => a.assetType === "headline").length,
+        hvco: campaign.assets.filter((a) => a.assetType === "hvco").length,
+        hero_mechanism: campaign.assets.filter((a) => a.assetType === "hero_mechanism").length,
+        ad_copy: campaign.assets.filter((a) => a.assetType === "ad_copy").length,
+        email_sequence: campaign.assets.filter((a) => a.assetType === "email_sequence").length,
+        whatsapp_sequence: campaign.assets.filter((a) => a.assetType === "whatsapp_sequence").length,
+        landing_page: campaign.assets.filter((a) => a.assetType === "landing_page").length,
+        offer: campaign.assets.filter((a) => a.assetType === "offer").length,
+        icp: campaign.assets.filter((a) => a.assetType === "icp").length,
+      };
+      
+      return { ...campaign, assetCounts };
     }),
 
   // Create new campaign
