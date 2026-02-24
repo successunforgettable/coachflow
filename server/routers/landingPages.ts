@@ -144,9 +144,28 @@ export const landingPagesRouter = router({
         press: service.pressFeatures || '',
       };
 
-      // Use avatar from input or create default
-      const avatarName = input.avatarName || `${service.targetCustomer}`;
-      const avatarDescription = input.avatarDescription || service.description || "Target Customer";
+      // Issue 5: Parse avatar from comma-separated format (name, age, role, location)
+      let avatarName = input.avatarName || `${service.targetCustomer}`;
+      let avatarDescription = input.avatarDescription || service.description || "Target Customer";
+      
+      // If avatarName contains commas, parse it
+      if (avatarName.includes(',')) {
+        const parts = avatarName.split(',').map(p => p.trim());
+        if (parts.length >= 3) {
+          // Format: "Name, Age, Role, Location" or "Name, Age, Role"
+          const name = parts[0];
+          const role = parts[2];
+          avatarName = `${name} the ${role}`; // "Sarah the Marketing Director"
+          avatarDescription = parts.length >= 4 ? parts[3] : role; // Location or Role
+        } else if (parts.length === 2) {
+          // Format: "Name, Role"
+          const name = parts[0];
+          const role = parts[1];
+          avatarName = `${name} the ${role}`;
+          avatarDescription = role;
+        }
+        // Otherwise keep original format
+      }
 
       // Generate all 4 angles in parallel with social proof (Issue 2 fix)
       const allAngles = await generateAllAngles(

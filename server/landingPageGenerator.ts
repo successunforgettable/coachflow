@@ -106,7 +106,8 @@ Generate a complete landing page with 16 sections following this structure:
    Example: "Claim Your FREE Consultation!"
 
 5. **As Seen In** (5 credible publication names as array)
-   Example: ["Forbes", "Inc.", "Insider", "Yahoo Finance", "Meta"]
+   Example: ["Forbes", "Inc.", "Entrepreneur", "Yahoo Finance", "Business Insider"]
+   NOTE: DO NOT include "Meta", "Facebook", or "Instagram" as these imply platform endorsement which violates Meta advertising policy
 
 6. **Quiz/Question Section** (engaging question with 5 options and reveal answer, 200-300 words total)
    Example: "Can You Guess Which One of These 'Safe' Crypto Moves… Actually Gets Your Bank Account Flagged?"

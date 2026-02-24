@@ -95,21 +95,26 @@ Product: ${service.name}
 Target Market: ${input.targetMarket}
 HVCO Topic: ${input.hvcoTopic}
 
-Create 20 LONG, alliterative titles (3-5 words each) following this pattern:
-[Action/Benefit] [Crypto/Money Word] [Blueprint/Formula/Method]
+Create 20 LONG, benefit-first titles (3-5 words each) following this pattern:
+[Specific Number/Timeframe] [Action/Benefit] [to/for] [Concrete Outcome]
 
-Examples:
-- "Beating Bosses Blockchain Blueprint"
-- "Passive Profits Playbook Unveiled"
-- "Wealth Wave Walkaway Wizard"
-- "Bold Bitcoin Breakthroughs Blueprint"
-- "10K Crypto Cashflow Catalyst"
+BENEFIT-FIRST Examples (CORRECT):
+- "7 Secrets to Close 50% More Deals in 30 Days"
+- "5 Steps to Generate $10K Monthly Passive Income"
+- "3 Strategies to Double Your Coaching Revenue"
+- "10 Proven Methods to Build a 6-Figure Funnel"
+- "4 Simple Tweaks to 3x Your Email Open Rates"
+
+ALLITERATIVE Examples (WRONG - too vague):
+- "Beating Bosses Blockchain Blueprint" (What's the actual benefit?)
+- "Passive Profits Playbook Unveiled" (How much profit? When?)
+- "Wealth Wave Walkaway Wizard" (Unclear outcome)
 
 Requirements:
-- Use alliteration (repeating first letters)
-- Make them catchy and memorable
-- Focus on the benefit/outcome
-- Use power words (Blueprint, Formula, Method, System, Secrets, etc.)
+- PRIORITIZE clarity and specific benefits over alliteration
+- Include numbers, timeframes, or percentages when possible
+- Make the outcome concrete and measurable
+- Alliteration is optional - only use if it doesn't sacrifice clarity
 
 Return ONLY a JSON array of ${20 * countMultiplier} title strings, nothing else.`;
 
@@ -143,17 +148,22 @@ Product: ${service.name}
 Target Market: ${input.targetMarket}
 HVCO Topic: ${input.hvcoTopic}
 
-Create 20 SHORT, punchy titles (2-3 words each) that are:
+Create 20 SHORT, benefit-focused titles (2-4 words each) that are:
 - Concise and memorable
+- Include specific outcomes when possible
 - Action-oriented
-- Benefit-focused
 
-Examples:
-- "Crypto Freedom Formula"
-- "Wealth Unlocked"
-- "Bitcoin Breakthrough"
-- "Passive Profits"
-- "Financial Freedom"
+BENEFIT-FIRST Examples (CORRECT):
+- "10X Sales Blueprint"
+- "30-Day Revenue Boost"
+- "$100K Funnel Formula"
+- "5-Step Conversion System"
+- "Double Your Clients"
+
+VAGUE Examples (WRONG):
+- "Crypto Freedom Formula" (Freedom from what? How much?)
+- "Wealth Unlocked" (What kind of wealth? When?)
+- "Bitcoin Breakthrough" (What's the breakthrough?)
 
 Return ONLY a JSON array of ${20 * countMultiplier} title strings, nothing else.`;
 
@@ -188,10 +198,11 @@ Target Market: ${input.targetMarket}
 HVCO Topic: ${input.hvcoTopic}
 
 Create 30 BEAST MODE titles - a mix of long and short, all highly creative and attention-grabbing:
-- Use curiosity gaps
-- Use numbers and specifics
+- PRIORITIZE specific benefits and outcomes
+- Use numbers, timeframes, and percentages
+- Include curiosity gaps
 - Use power words
-- Use alliteration where possible
+- Alliteration is optional - clarity comes first
 
 Examples:
 - "The 9-Step Crypto Wealth Building Blueprint"

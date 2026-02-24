@@ -164,6 +164,10 @@ Each message should:
 - Include clear CTA
 - Use second-person POV ("you" not "we")
 - Be grade 4 language level
+- Use [First Name] for personalization (NOT {{Name}})
+- Use actual service name "${service.name}" (NOT {{Product}})
+- Use actual event name "${input.eventDetails?.eventName || "the event"}" (NOT {{Event}})
+- DO NOT use placeholder syntax like {{Date}} or {{Time}} - write actual timing descriptions
 
 Format as JSON array.`;
       } else {
@@ -190,6 +194,10 @@ Each message should:
 - Use second-person POV ("you" not "we")
 - Be grade 4 language level
 - Include scarcity/urgency elements (+12% CVR)
+- Use [First Name] for personalization (NOT {{Name}})
+- Use actual service name "${service.name}" (NOT {{Product}})
+- Use actual offer name "${input.eventDetails?.offerName || "this offer"}" (NOT {{Offer}})
+- DO NOT use placeholder syntax like {{Date}} or {{Time}} - write actual timing descriptions
 
 Format as JSON array.`;
       }

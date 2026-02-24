@@ -2620,31 +2620,32 @@
   - [x] Update Ad Copy backend to use angle-based generation
   - [x] Add angle badges to UI for easy comparison
   - [ ] Test structural diversity >70%
-- [ ] MEDIUM Issue 4: Fix WhatsApp Date Placeholder Bug
-  - [ ] Update whatsappSequences.ts to replace {{Date}} with actual dates
-  - [ ] Replace {{Name}} with [First Name]
-  - [ ] Replace {{Product}} with service name
+- [x] MEDIUM Issue 4: Fix WhatsApp Date Placeholder Bug
+  - [x] Update whatsappSequences.ts to replace {{Date}} with actual dates
+  - [x] Replace {{Name}} with [First Name]
+  - [x] Replace {{Product}} with service name
+  - [x] Replace {{Event}} and {{Offer}} with actual names
   - [ ] Test all placeholders are replaced
-- [ ] MEDIUM Issue 5: Fix Landing Page Avatar Parsing
-  - [ ] Update landingPages.ts to parse avatar format correctly
-  - [ ] Extract name, age, role, location from comma-separated input
-  - [ ] Fix headline format to use "Name the Role" not "Name, Age, Role"
+- [x] MEDIUM Issue 5: Fix Landing Page Avatar Parsing
+  - [x] Update landingPages.ts to parse avatar format correctly
+  - [x] Extract name, age, role, location from comma-separated input
+  - [x] Fix headline format to use "Name the Role" not "Name, Age, Role"
   - [ ] Test with different avatar formats
-- [ ] MEDIUM Issue 6: Remove "Meta" from Landing Page Badges
-  - [ ] Update DEFAULT_PRESS array to exclude Meta
-  - [ ] Change language from "As seen in" to "Featured in publications"
-  - [ ] Update press context in prompt
+- [x] MEDIUM Issue 6: Remove "Meta" from Landing Page Badges
+  - [x] Remove Meta from As Seen In example in landingPageGenerator.ts
+  - [x] Add explicit warning: DO NOT include Meta/Facebook/Instagram (violates Meta advertising policy)
+  - [x] Replace with neutral publications (Forbes, Inc., Entrepreneur, Yahoo Finance, Business Insider)
   - [ ] Test with/without real press features
-- [ ] MEDIUM Issue 7: Fix Authority Attribution
-  - [ ] Add authorityFigure field to services schema
-  - [ ] Update all generator prompts to attribute framework to authority (not product)
-  - [ ] Add authority context with correct/wrong examples
-  - [ ] Test across all 9 generators
-- [ ] LOW-MEDIUM Issue 8: Fix HVCO Titles (benefit-first, not alliterative)
-  - [ ] Update HVCO prompt to prioritize benefits over alliteration
-  - [ ] Add benefit-first examples to prompt
+- [x] MEDIUM Issue 7: Fix Authority Attribution (NOT NEEDED)
+  - [x] User confirmed frameworks already have their own names
+  - [x] No personal attribution needed (e.g., "Perfect Webinar" not "Arfeen's Perfect Webinar")
+  - [x] Reverted all attribution changes
+- [x] LOW-MEDIUM Issue 8: Fix HVCO Titles (benefit-first, not alliterative)
+  - [x] Update HVCO long titles prompt to prioritize benefits over alliteration
+  - [x] Update HVCO short titles prompt with benefit-first examples
+  - [x] Update HVCO beast mode prompt to prioritize clarity
+  - [x] Added specific examples: "7 Secrets to Close 50% More Deals" vs "Beating Bosses Blueprint"
   - [ ] Test title clarity and specificity
-  - [ ] Compare conversion rates vs old titles
 
 
 ## Phase 38: Missing Deliverables (URGENT)
