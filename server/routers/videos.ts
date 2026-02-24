@@ -29,17 +29,25 @@ function getCreditCost(duration: string): number {
 }
 
 // Load RenderScript templates
+// Use absolute path from project root to avoid path resolution issues
+const PROJECT_ROOT = join(__dirname, "../..");
+console.log("[Templates] __dirname:", __dirname);
+console.log("[Templates] PROJECT_ROOT:", PROJECT_ROOT);
+console.log("[Templates] Template path:", join(PROJECT_ROOT, "server/creatomate-templates/kinetic-typography.json"));
+
 const TEMPLATES = {
   kinetic_typography: JSON.parse(
-    readFileSync(join(__dirname, "../creatomate-templates/kinetic-typography.json"), "utf-8")
+    readFileSync(join(PROJECT_ROOT, "server/creatomate-templates/kinetic-typography.json"), "utf-8")
   ),
   motion_graphics: JSON.parse(
-    readFileSync(join(__dirname, "../creatomate-templates/motion-graphics.json"), "utf-8")
+    readFileSync(join(PROJECT_ROOT, "server/creatomate-templates/motion-graphics.json"), "utf-8")
   ),
   stats_card: JSON.parse(
-    readFileSync(join(__dirname, "../creatomate-templates/stats-card.json"), "utf-8")
+    readFileSync(join(PROJECT_ROOT, "server/creatomate-templates/stats-card.json"), "utf-8")
   ),
 };
+
+console.log("[Templates] Loaded successfully:", Object.keys(TEMPLATES));
 
 export const videosRouter = router({
   // Generate video from script
@@ -317,9 +325,8 @@ async function renderVideo(params: {
     throw new Error(`Template not found: ${visualStyle}`);
   }
 
-  // Parse script scenes
-  const scriptData = JSON.parse(script.scriptJson);
-  const scenes = scriptData.scenes || [];
+  // Get script scenes (already parsed from database)
+  const scenes = script.scenes || [];
 
   // Build modifications for Creatomate
   const modifications: any = {
@@ -336,12 +343,17 @@ async function renderVideo(params: {
         };
       }
 
-      // Replace logo URL
-      if (element.name === "Logo" && logoUrl) {
-        return {
-          ...element,
-          source: logoUrl,
-        };
+      // Replace logo URL or remove logo element if no URL provided
+      if (element.name === "Logo") {
+        if (logoUrl) {
+          return {
+            ...element,
+            source: logoUrl,
+          };
+        } else {
+          // Remove logo element by setting it to null (will be filtered out)
+          return null;
+        }
       }
 
       // Replace brand color
@@ -375,7 +387,7 @@ async function renderVideo(params: {
       }
 
       return element;
-    }),
+    }).filter((element: any) => element !== null), // Remove null elements (e.g., logo when no URL)
   };
 
   // Call Creatomate API
@@ -385,7 +397,9 @@ async function renderVideo(params: {
       Authorization: `Bearer ${CREATOMATE_API_KEY}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(modifications),
+    body: JSON.stringify({
+      source: modifications, // Send the modified template as the source
+    }),
   });
 
   if (!response.ok) {
@@ -394,7 +408,11 @@ async function renderVideo(params: {
   }
 
   const renderData = await response.json();
-  const renderId = renderData.id;
+  console.log(`[Video ${videoId}] Creatomate response:`, JSON.stringify(renderData, null, 2));
+  
+  // Creatomate returns an array of render objects
+  const render = Array.isArray(renderData) ? renderData[0] : renderData;
+  const renderId = render.id;
 
   console.log(`[Video ${videoId}] Render started: ${renderId}`);
 

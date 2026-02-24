@@ -2901,3 +2901,14 @@
 - [ ] Create ElevenLabs account and get API key
 - [ ] Create Creatomate account (Growth plan $99/month)
 - [ ] Add environment variables to .env (ELEVENLABS_API_KEY, CREATOMATE_API_KEY, META_APP_ID, META_APP_SECRET)
+
+
+## Phase 42: Add Music Style Selection Feature (ACTIVE)
+- [ ] Add musicStyle field to videoScripts schema (enum: upbeat, corporate, minimal, none)
+- [ ] Generate and apply migration
+- [ ] Add music style selector to VideoCreator.tsx
+- [ ] Update VideoScriptEditor.tsx to show selected music style
+- [ ] Find 3 royalty-free music tracks (upbeat, corporate, minimal)
+- [ ] Update RenderScript templates to include background music
+- [ ] Update videos.ts to pass musicStyle to Creatomate
+- [ ] Test video generation with different music styles
