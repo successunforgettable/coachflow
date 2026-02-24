@@ -35,6 +35,13 @@ const updateServiceSchema = z.object({
   testimonial3Title: z.string().max(255).optional(),
   testimonial3Quote: z.string().max(1000).optional(),
   pressFeatures: z.string().max(1000).optional(),
+  // AutoPop fields (Phase 39 FIX 2)
+  whyProblemExists: z.string().optional(),
+  hvcoTopic: z.string().max(300).optional(),
+  mechanismDescriptor: z.enum(["AI", "System", "Framework", "Method", "Blueprint", "Process"]).optional(),
+  applicationMethod: z.string().max(150).optional(),
+  avatarName: z.string().max(100).optional(),
+  avatarTitle: z.string().max(100).optional(),
 });
 
 export const servicesRouter = router({

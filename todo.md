@@ -2676,27 +2676,26 @@
 
 ## Phase 39: AutoPop Implementation (After Issues 2-4)
 
-### FIX 1: Character Limit Bugs (HIGH PRIORITY)
-- [ ] Remove/increase character limits on 7 auto-filled fields:
-  - [ ] HVCO Titles: targetMarket (100→500)
-  - [ ] Hero Mechanisms: targetMarket (100→500)
-  - [ ] Hero Mechanisms: pressingProblem (200→500)
-  - [ ] Hero Mechanisms: desiredOutcome (200→500)
-  - [ ] Headlines: targetMarket (100→500)
-  - [ ] Headlines: pressingProblem (200→500)
-  - [ ] Headlines: desiredOutcome (200→500)
+### FIX 1: Character Limit Bugs (HIGH PRIORITY) - COMPLETE
+- [x] Remove/increase character limits on 7 auto-filled fields:
+  - [x] HVCO Titles: targetMarket (100→500)
+  - [x] Hero Mechanisms: targetMarket (100→500)
+  - [x] Hero Mechanisms: pressingProblem (200→500)
+  - [x] Hero Mechanisms: desiredOutcome (200→500)
+  - [x] Headlines: targetMarket (255→500)
 
-### FIX 2: Add 5 Fields to Service Profile
-- [ ] Add fields to services schema:
-  - [ ] whyProblemExists (text)
-  - [ ] hvcoTopic (varchar 300)
-  - [ ] mechanismDescriptor (enum: AI/System/Framework/Method/Blueprint/Process)
-  - [ ] applicationMethod (varchar 150)
-  - [ ] avatarName (varchar 100)
-  - [ ] avatarTitle (varchar 100)
-- [ ] Generate and apply migration
-- [ ] Update ServiceDetail.tsx form UI
-- [ ] Update all generator routers to use new fields
+### FIX 2: Add 5 Fields to Service Profile - COMPLETE
+- [x] Add fields to services schema:
+  - [x] whyProblemExists (text)
+  - [x] hvcoTopic (varchar 300)
+  - [x] mechanismDescriptor (enum: AI/System/Framework/Method/Blueprint/Process)
+  - [x] applicationMethod (varchar 150)
+  - [x] avatarName (varchar 100)
+  - [x] avatarTitle (varchar 100)
+- [x] Generate and apply migration
+- [x] Update ServiceDetail.tsx form UI (added AutoPop Fields section)
+- [x] Update services router schema to accept new fields
+- [ ] Update all generator routers to use new fields (deferred - requires campaign context)
 
 ### FIX 3: Campaign Context System
 - [ ] Create campaigns table schema

@@ -104,6 +104,13 @@ export const services = mysqlTable("services", {
   testimonial3Title: varchar("testimonial3Title", { length: 255 }),
   testimonial3Quote: text("testimonial3Quote"),
   pressFeatures: text("pressFeatures"), // Comma-separated list: "Forbes, Inc, TechCrunch"
+  // AutoPop fields (Phase 39 FIX 2)
+  whyProblemExists: text("whyProblemExists"), // Root cause explanation
+  hvcoTopic: varchar("hvcoTopic", { length: 300 }), // High-value content offer topic
+  mechanismDescriptor: mysqlEnum("mechanismDescriptor", ["AI", "System", "Framework", "Method", "Blueprint", "Process"]), // How to describe the mechanism
+  applicationMethod: varchar("applicationMethod", { length: 150 }), // How the mechanism is applied
+  avatarName: varchar("avatarName", { length: 100 }), // Ideal customer name
+  avatarTitle: varchar("avatarTitle", { length: 100 }), // Ideal customer title/role
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({
@@ -449,7 +456,7 @@ export const headlines = mysqlTable("headlines", {
   subheadline: text("subheadline"), // Used by: eyebrow, authority
   eyebrow: varchar("eyebrow", { length: 255 }), // Used by: eyebrow
   // Input data used to generate (stored for regeneration)
-  targetMarket: varchar("targetMarket", { length: 255 }).notNull(),
+  targetMarket: varchar("targetMarket", { length: 500 }).notNull(), // Increased from 255 to 500 (Phase 39 FIX 1)
   pressingProblem: text("pressingProblem").notNull(),
   desiredOutcome: text("desiredOutcome").notNull(),
   uniqueMechanism: text("uniqueMechanism").notNull(),
@@ -488,7 +495,7 @@ export const hvcoTitles = mysqlTable("hvcoTitles", {
   // Title text
   title: varchar("title", { length: 500 }).notNull(),
   // Input data used to generate (stored for regeneration)
-  targetMarket: varchar("targetMarket", { length: 100 }).notNull(),
+  targetMarket: varchar("targetMarket", { length: 500 }).notNull(), // Increased from 100 to 500 (Phase 39 FIX 1)
   hvcoTopic: text("hvcoTopic").notNull(), // 800 chars
   // Metadata
   rating: int("rating").default(0), // -1 = thumbs down, 0 = no rating, 1 = thumbs up
@@ -523,14 +530,14 @@ export const heroMechanisms = mysqlTable("heroMechanisms", {
   mechanismName: varchar("mechanismName", { length: 255 }).notNull(), // e.g., "Breakthrough Neural Nexus System"
   mechanismDescription: text("mechanismDescription").notNull(), // Full paragraph explanation
   // Input data used to generate (stored for regeneration)
-  targetMarket: varchar("targetMarket", { length: 100 }).notNull(),
-  pressingProblem: varchar("pressingProblem", { length: 200 }).notNull(),
+  targetMarket: varchar("targetMarket", { length: 500 }).notNull(), // Increased from 100 to 500 (Phase 39 FIX 1)
+  pressingProblem: varchar("pressingProblem", { length: 500 }).notNull(), // Increased from 200 to 500 (Phase 39 FIX 1)
   whyProblem: text("whyProblem").notNull(), // 300 chars
   whatTried: text("whatTried").notNull(), // 300 chars
   whyExistingNotWork: text("whyExistingNotWork").notNull(), // 300 chars
   descriptor: varchar("descriptor", { length: 50 }), // Strategy, Framework, Method, System, etc.
   application: varchar("application", { length: 100 }), // How it's applied
-  desiredOutcome: varchar("desiredOutcome", { length: 200 }).notNull(),
+  desiredOutcome: varchar("desiredOutcome", { length: 500 }).notNull(), // Increased from 200 to 500 (Phase 39 FIX 1)
   credibility: varchar("credibility", { length: 200 }).notNull(), // Authority figure
   socialProof: varchar("socialProof", { length: 200 }).notNull(), // Publications, features
   // Metadata

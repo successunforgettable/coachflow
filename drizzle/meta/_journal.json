@@ -225,6 +225,20 @@
       "when": 1771884315365,
       "tag": "0031_shiny_cassandra_nova",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "5",
+      "when": 1771935402173,
+      "tag": "0032_bored_princess_powerful",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "5",
+      "when": 1771935456110,
+      "tag": "0033_wakeful_black_crow",
+      "breakpoints": true
     }
   ]
 }

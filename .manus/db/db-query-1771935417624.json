@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE `services` ADD `whyProblemExists` text;\nALTER TABLE `services` ADD `hvcoTopic` varchar(300);\nALTER TABLE `services` ADD `mechanismDescriptor` enum('AI','System','Framework','Method','Blueprint','Process');\nALTER TABLE `services` ADD `applicationMethod` varchar(150);\nALTER TABLE `services` ADD `avatarName` varchar(100);\nALTER TABLE `services` ADD `avatarTitle` varchar(100);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute ALTER TABLE `services` ADD `whyProblemExists` text;\nALTER TABLE `services` ADD `hvcoTopic` varchar(300);\nALTER TABLE `services` ADD `mechanismDescriptor` enum('AI','System','Framework','Method','Blueprint','Process');\nALTER TABLE `services` ADD `applicationMethod` varchar(150);\nALTER TABLE `services` ADD `avatarName` varchar(100);\nALTER TABLE `services` ADD `avatarTitle` varchar(100);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 3700
+}

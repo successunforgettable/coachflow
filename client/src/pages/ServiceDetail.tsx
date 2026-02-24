@@ -39,6 +39,13 @@ export default function ServiceDetail() {
     testimonial3Title: "",
     testimonial3Quote: "",
     pressFeatures: "",
+    // AutoPop fields (Phase 39 FIX 2)
+    whyProblemExists: "",
+    hvcoTopic: "",
+    mechanismDescriptor: "" as "" | "AI" | "System" | "Framework" | "Method" | "Blueprint" | "Process",
+    applicationMethod: "",
+    avatarName: "",
+    avatarTitle: "",
   });
 
   // Fetch service details
@@ -93,6 +100,13 @@ export default function ServiceDetail() {
         testimonial3Title: service.testimonial3Title || "",
         testimonial3Quote: service.testimonial3Quote || "",
         pressFeatures: service.pressFeatures || "",
+        // AutoPop fields (Phase 39 FIX 2)
+        whyProblemExists: service.whyProblemExists || "",
+        hvcoTopic: service.hvcoTopic || "",
+        mechanismDescriptor: service.mechanismDescriptor || "",
+        applicationMethod: service.applicationMethod || "",
+        avatarName: service.avatarName || "",
+        avatarTitle: service.avatarTitle || "",
       });
     }
   }, [service]);
@@ -152,6 +166,13 @@ export default function ServiceDetail() {
       testimonial3Title: formData.testimonial3Title || undefined,
       testimonial3Quote: formData.testimonial3Quote || undefined,
       pressFeatures: formData.pressFeatures || undefined,
+      // AutoPop fields (Phase 39 FIX 2)
+      whyProblemExists: formData.whyProblemExists || undefined,
+      hvcoTopic: formData.hvcoTopic || undefined,
+      mechanismDescriptor: formData.mechanismDescriptor || undefined,
+      applicationMethod: formData.applicationMethod || undefined,
+      avatarName: formData.avatarName || undefined,
+      avatarTitle: formData.avatarTitle || undefined,
     });
   };
 
@@ -427,6 +448,106 @@ export default function ServiceDetail() {
                       Comma-separated list of real press mentions only
                     </p>
                   </div>
+                </div>
+              </div>
+
+              {/* AutoPop Fields (Phase 39 FIX 2) */}
+              <div>
+                <h3 className="text-lg font-semibold mb-4">AutoPop Fields</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  These fields are used to auto-populate generator forms. Fill them once here, and they'll be automatically used across all generators.
+                </p>
+                <div className="space-y-4">
+                  {/* Why Problem Exists */}
+                  <div>
+                    <Label htmlFor="whyProblemExists">Why Problem Exists</Label>
+                    <Textarea
+                      id="whyProblemExists"
+                      placeholder="Explain the root cause of the problem your service solves"
+                      value={formData.whyProblemExists}
+                      onChange={(e) => setFormData({ ...formData, whyProblemExists: e.target.value })}
+                      rows={3}
+                    />
+                  </div>
+
+                  {/* HVCO Topic */}
+                  <div>
+                    <Label htmlFor="hvcoTopic">HVCO Topic</Label>
+                    <Input
+                      id="hvcoTopic"
+                      placeholder="e.g., 7 Secrets to Double Your Revenue in 90 Days"
+                      value={formData.hvcoTopic}
+                      onChange={(e) => setFormData({ ...formData, hvcoTopic: e.target.value })}
+                      maxLength={300}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      High-value content offer topic for lead magnets
+                    </p>
+                  </div>
+
+                  {/* Mechanism Descriptor */}
+                  <div>
+                    <Label htmlFor="mechanismDescriptor">Mechanism Descriptor</Label>
+                    <select
+                      id="mechanismDescriptor"
+                      value={formData.mechanismDescriptor}
+                      onChange={(e) => setFormData({ ...formData, mechanismDescriptor: e.target.value as any })}
+                      className="w-full px-3 py-2 border border-border rounded-md bg-background"
+                    >
+                      <option value="">Select descriptor...</option>
+                      <option value="AI">AI</option>
+                      <option value="System">System</option>
+                      <option value="Framework">Framework</option>
+                      <option value="Method">Method</option>
+                      <option value="Blueprint">Blueprint</option>
+                      <option value="Process">Process</option>
+                    </select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      How to describe your unique mechanism (e.g., "AI System", "Framework")
+                    </p>
+                  </div>
+
+                  {/* Application Method */}
+                  <div>
+                    <Label htmlFor="applicationMethod">Application Method</Label>
+                    <Input
+                      id="applicationMethod"
+                      placeholder="e.g., 3-step process, 5-day challenge, weekly coaching calls"
+                      value={formData.applicationMethod}
+                      onChange={(e) => setFormData({ ...formData, applicationMethod: e.target.value })}
+                      maxLength={150}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      How your mechanism is applied or delivered
+                    </p>
+                  </div>
+
+                  {/* Avatar Name & Title */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="avatarName">Avatar Name</Label>
+                      <Input
+                        id="avatarName"
+                        placeholder="e.g., Sarah"
+                        value={formData.avatarName}
+                        onChange={(e) => setFormData({ ...formData, avatarName: e.target.value })}
+                        maxLength={100}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="avatarTitle">Avatar Title</Label>
+                      <Input
+                        id="avatarTitle"
+                        placeholder="e.g., Marketing Director"
+                        value={formData.avatarTitle}
+                        onChange={(e) => setFormData({ ...formData, avatarTitle: e.target.value })}
+                        maxLength={100}
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Ideal customer avatar (e.g., "Sarah the Marketing Director")
+                  </p>
                 </div>
               </div>
 
