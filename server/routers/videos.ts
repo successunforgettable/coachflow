@@ -420,7 +420,7 @@ function validateVideoDurations(
  * Render a video using Creatomate
  * Calls Creatomate API with RenderScript + ElevenLabs voiceover
  */
-async function renderVideo(params: {
+export async function renderVideo(params: {
   videoId: number;
   script: any;
   visualStyle: string;
