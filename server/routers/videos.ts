@@ -18,6 +18,7 @@ import { searchPexelsVideos, selectBestHDVideo, extractKeywords } from "../pexel
 import { fetchSceneFootageWithFallback } from "../pexels-scene-fetcher";
 import { generateVoiceover, VOICE_IDS } from "../elevenlabs";
 import { storagePut } from "../storage";
+import * as mm from 'music-metadata';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -309,7 +310,114 @@ const SCENE_TYPE_MAP: Array<'hook' | 'problem' | 'authority' | 'solution' | 'cta
 ];
 
 /**
- * Async video rendering function
+ * Get audio duration in seconds from audio buffer
+ */
+async function getAudioDurationSeconds(audioBuffer: Buffer): Promise<number> {
+  try {
+    const metadata = await mm.parseBuffer(audioBuffer, 'audio/mpeg');
+    return metadata.format.duration ?? 30; // fallback to 30s if detection fails
+  } catch (error) {
+    console.error('[Audio Duration] Failed to parse audio metadata:', error);
+    return 30; // fallback
+  }
+}
+
+/**
+ * Calculate scene durations proportionally based on word counts
+ */
+function calculateSceneDurations(
+  scenes: any[],
+  totalAudioDuration: number
+): number[] {
+  // Count words per scene
+  const wordCounts = scenes.map(scene => 
+    scene.voiceoverText.trim().split(/\s+/).length
+  );
+  
+  const totalWords = wordCounts.reduce((sum: number, count: number) => sum + count, 0);
+  
+  // Allocate duration proportionally to word count
+  const durations = wordCounts.map(wordCount => {
+    const proportion = wordCount / totalWords;
+    const rawDuration = proportion * totalAudioDuration;
+    // Minimum 2s per scene, round to 1 decimal
+    return Math.max(2, Math.round(rawDuration * 10) / 10);
+  });
+
+  // Adjust last scene to include 2s URL display after voiceover ends
+  durations[durations.length - 1] += 2;
+  
+  return durations;
+}
+
+/**
+ * Calculate scene start times from durations
+ */
+function calculateSceneStartTimes(durations: number[]): number[] {
+  const startTimes: number[] = [];
+  let currentTime = 0;
+  
+  for (const duration of durations) {
+    startTimes.push(Math.round(currentTime * 10) / 10);
+    currentTime += duration;
+  }
+  
+  return startTimes;
+}
+
+/**
+ * Validate video durations before rendering
+ */
+function validateVideoDurations(
+  scenes: any[],
+  sceneDurations: number[],
+  totalAudioDuration: number,
+  totalVideoDuration: number
+): void {
+  // Check scene count matches
+  if (scenes.length !== sceneDurations.length) {
+    throw new Error(`Scene count mismatch: ${scenes.length} scenes but ${sceneDurations.length} durations`);
+  }
+  
+  // Check no scene is impossibly short
+  const tooShort = sceneDurations.filter(d => d < 1.5);
+  if (tooShort.length > 0) {
+    throw new Error(`Scene durations too short: ${tooShort}. Script may be too brief.`);
+  }
+  
+  // Check total video is reasonable
+  if (totalVideoDuration < 15 || totalVideoDuration > 120) {
+    throw new Error(`Total video duration ${totalVideoDuration}s is outside acceptable range (15-120s)`);
+  }
+  
+  // Check video is longer than audio (must have buffer)
+  if (totalVideoDuration < totalAudioDuration) {
+    throw new Error(`Video duration ${totalVideoDuration}s is shorter than audio ${totalAudioDuration}s`);
+  }
+  
+  console.log('✅ Duration validation passed');
+  console.log(`Audio: ${totalAudioDuration}s | Video: ${totalVideoDuration}s | Buffer: ${(totalVideoDuration - totalAudioDuration).toFixed(1)}s`);
+}
+
+/**
+ * COMPLETE PIPELINE SEQUENCE — Final Order
+ * 
+ * 1. Generate script → get scenes[] with voiceoverText per scene
+ * 2. Concatenate all voiceover text → single string for ElevenLabs
+ * 3. Call ElevenLabs → get audioBuffer
+ * 4. Measure audioBuffer duration → totalAudioDuration (seconds)
+ * 5. Upload audioBuffer to S3 → voiceoverUrl
+ * 6. Calculate sceneDurations[] from totalAudioDuration + word counts
+ * 7. Calculate sceneStartTimes[] from sceneDurations[]
+ * 8. Calculate totalVideoDuration = last start + last duration + 1s fade
+ * 9. Run validateVideoDurations()
+ * 10. Fetch Pexels footage for each scene (parallel)
+ * 11. Build Creatomate elements using sceneStartTimes + sceneDurations
+ * 12. Set source.duration = totalVideoDuration explicitly
+ * 13. Call Creatomate render API
+ * 14. Return render URL
+ * 
+ * Render a video using Creatomate
  * Calls Creatomate API with RenderScript + ElevenLabs voiceover
  */
 async function renderVideo(params: {
@@ -356,7 +464,51 @@ async function renderVideo(params: {
   }
   console.log(`[Video ${videoId}] Scenes data:`, JSON.stringify(scenes, null, 2));
 
-  // Fetch stock footage for each scene from Pexels (parallel fetch)
+  // STEP 2: Concatenate all voiceover text
+  console.log(`[Video ${videoId}] Concatenating voiceover text...`);
+  const fullVoiceoverText = scenes.map((s: any) => s.voiceoverText).join(" ");
+  
+  // STEP 3: Call ElevenLabs to generate voiceover audio
+  console.log(`[Video ${videoId}] Generating voiceover with ElevenLabs...`);
+  const voiceoverBuffer = await generateVoiceover({
+    text: fullVoiceoverText,
+    voiceId: VOICE_IDS.charlie, // Deep, Confident, Energetic
+  });
+  
+  // STEP 4: Measure audio duration
+  console.log(`[Video ${videoId}] Measuring audio duration...`);
+  const totalAudioDuration = await getAudioDurationSeconds(voiceoverBuffer);
+  console.log(`[Video ${videoId}] Measured audio duration: ${totalAudioDuration}s`);
+  
+  // STEP 5: Upload audio to S3
+  console.log(`[Video ${videoId}] Uploading voiceover to S3...`);
+  const { url: voiceoverUrl } = await storagePut(
+    `voiceovers/video-${videoId}.mp3`,
+    voiceoverBuffer,
+    'audio/mpeg'
+  );
+  console.log(`[Video ${videoId}] Voiceover URL: ${voiceoverUrl}`);
+  
+  // STEP 6: Calculate scene durations from audio duration + word counts
+  console.log(`[Video ${videoId}] Calculating scene durations proportionally...`);
+  const sceneDurations = calculateSceneDurations(scenes, totalAudioDuration);
+  console.log(`[Video ${videoId}] Scene durations:`, sceneDurations);
+  
+  // STEP 7: Calculate scene start times
+  const sceneStartTimes = calculateSceneStartTimes(sceneDurations);
+  console.log(`[Video ${videoId}] Scene start times:`, sceneStartTimes);
+  
+  // STEP 8: Calculate total video duration
+  const totalVideoDuration = 
+    sceneStartTimes[sceneStartTimes.length - 1] + 
+    sceneDurations[sceneDurations.length - 1] + 
+    1; // 1 second fade to black
+  console.log(`[Video ${videoId}] Total video duration: ${totalVideoDuration}s`);
+  
+  // STEP 9: Validate durations
+  validateVideoDurations(scenes, sceneDurations, totalAudioDuration, totalVideoDuration);
+  
+  // STEP 10: Fetch stock footage for each scene from Pexels (parallel fetch)
   console.log(`[Video ${videoId}] Fetching stock footage for ${scenes.length} scenes...`);
   
   const sceneFootage = await Promise.all(
@@ -402,43 +554,13 @@ async function renderVideo(params: {
   );
   
   console.log(`[Video ${videoId}] Footage URLs:`, sceneFootage);
-
-  // Calculate cumulative time for each scene
-  let cumulativeTime = 0;
-  const sceneTimes: number[] = [];
-  scenes.forEach((scene: any) => {
-    sceneTimes.push(cumulativeTime);
-    cumulativeTime += scene.duration || 0;
-  });
-  console.log(`[Video ${videoId}] Scene times:`, sceneTimes);
-  
-  // Add 2 seconds for fade-to-black outro (28-30s)
-  const totalDuration = cumulativeTime + 2;
-  console.log(`[Video ${videoId}] Total duration with outro: ${totalDuration}s`);
-
-  // PRE-GENERATE VOICEOVER AUDIO
-  console.log(`[Video ${videoId}] Generating voiceover with ElevenLabs...`);
-  const fullVoiceoverText = scenes.map((s: any) => s.voiceoverText).join(" ");
-  
-  const voiceoverBuffer = await generateVoiceover({
-    text: fullVoiceoverText,
-    voiceId: VOICE_IDS.charlie, // Deep, Confident, Energetic
-  });
-  
-  console.log(`[Video ${videoId}] Uploading voiceover to S3...`);
-  const { url: voiceoverUrl } = await storagePut(
-    `voiceovers/video-${videoId}.mp3`,
-    voiceoverBuffer,
-    'audio/mpeg'
-  );
-  
-  console.log(`[Video ${videoId}] Voiceover URL: ${voiceoverUrl}`);
-  console.log(`[Video ${videoId}] ⚠️  VERIFY THIS URL PLAYS IN BROWSER BEFORE PROCEEDING`);
   
   // Wait 3 seconds for CDN propagation before calling Creatomate
   console.log(`[Video ${videoId}] Waiting 3s for CDN propagation...`);
   await new Promise(resolve => setTimeout(resolve, 3000));
   console.log(`[Video ${videoId}] CDN propagation wait complete`);
+  
+  // STEP 11: Build Creatomate elements using calculated durations
 
   // Build modifications for Creatomate
   let modifications: any;
@@ -469,7 +591,7 @@ async function renderVideo(params: {
           type: "video",
           source: footageUrl,
           time: 0,
-          duration: scene.duration,
+          duration: sceneDurations[index],
           x: "50%",
           y: "50%",
           width: "100%",
@@ -477,13 +599,13 @@ async function renderVideo(params: {
           fit: "cover",           // Fill frame, crop edges
           muted: true,            // No original audio from footage
           trim_start: 0,          // Start from beginning of clip
-          trim_duration: scene.duration,
+          trim_duration: sceneDurations[index],
           filter,                 // Color grading per scene type
           // Ken Burns zoom effect (Submagic-style)
           animations: [
             {
               time: 0,
-              duration: scene.duration,
+              duration: sceneDurations[index],
               type: "scale",
               start_scale: "100%",
               end_scale: "108%",
@@ -497,7 +619,7 @@ async function renderVideo(params: {
           type: "shape",
           shape: "rect",
           time: 0,
-          duration: scene.duration,
+          duration: sceneDurations[index],
           x: "50%",
           y: "50%",
           width: "100%",
@@ -567,8 +689,8 @@ async function renderVideo(params: {
         type: "composition",
         name: `Scene${index + 1}`,
         track: index + 2, // Track 1 is Main, scenes start at 2
-        time: sceneTimes[index],
-        duration: scene.duration,
+        time: sceneStartTimes[index],
+        duration: sceneDurations[index],
         elements
       };
       
@@ -586,13 +708,13 @@ async function renderVideo(params: {
       width: 1080,
       height: 1920,
       frame_rate: 30,
-      duration: totalDuration,
+      duration: totalVideoDuration,
       elements: [
         {
           type: "composition",
           track: 1,
           time: 0,
-          duration: totalDuration,
+          duration: totalVideoDuration,
           name: "Main",
           elements: [
             // Radial gradient background (#1a1a1a center → #000000 edges)
@@ -638,6 +760,7 @@ async function renderVideo(params: {
               type: "audio",
               name: "Voiceover",
               source: voiceoverUrl,
+              duration: totalAudioDuration,
               audio_volume: 100
             },
             // Background music
@@ -645,21 +768,22 @@ async function renderVideo(params: {
               type: "audio",
               name: "BackgroundMusic",
               source: BACKGROUND_MUSIC_URL,
+              duration: totalVideoDuration,
               audio_volume: 15,
               audio_fade_out: 2
             }
           ]
         },
         ...sceneCompositions,
-        // Fade-to-black outro (28-30s) with URL display
+        // Fade-to-black outro with URL display
         {
           type: "composition",
           name: "Outro",
           track: scenes.length + 2, // After all scene tracks
-          time: 28,
-          duration: 2,
+          time: totalVideoDuration - 3, // 3 seconds before end
+          duration: 3,
           elements: [
-            // URL text (visible entire 2 seconds)
+            // URL text (visible entire 3 seconds)
             {
               type: "text",
               text: "zapcampaigns.com",
@@ -672,7 +796,7 @@ async function renderVideo(params: {
               x_alignment: "50%",
               y_alignment: "50%",
               time: 0,
-              duration: 2,
+              duration: 3,
               animations: [
                 {
                   time: 0,
@@ -684,11 +808,11 @@ async function renderVideo(params: {
                 }
               ]
             },
-            // Fade-to-black overlay (only last 1 second: 29-30s)
+            // Fade-to-black overlay (only last 1 second)
             {
               type: "shape",
               shape: "rect",
-              time: 1,  // Start at 1s into outro (29s absolute time)
+              time: 2,  // Start at 2s into outro
               duration: 1,
               x: "50%",
               y: "50%",
@@ -793,8 +917,8 @@ async function renderVideo(params: {
         
         return {
           ...element,
-          time: sceneTimes[sceneIndex] || 0, // Set cumulative start time
-          duration: sceneData?.duration || element.duration, // Set scene duration from database
+          time: sceneStartTimes[sceneIndex] || 0, // Set cumulative start time
+          duration: sceneDurations[sceneIndex] || element.duration, // Set scene duration from calculated values
           elements: newElements.map((child: any) => {
             // Use sceneData from parent scope
 

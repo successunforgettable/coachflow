@@ -290,10 +290,17 @@ SPECIFIC NICHE EXAMPLES:
 
 Postpartum Fitness:
 ❌ WRONG: "Feeling like your body isn't yours anymore? Exhausted, weak, disconnected?"
-✅ RIGHT: "Want to rebuild your core strength? Ready to feel strong and energized again?"
+❌ WRONG: "Many mothers seek to feel energized" (too generic, not a hook)
+✅ RIGHT: "That moment you go to pick up your toddler and your back says no."
+✅ RIGHT: "Three months in and the gym feels like a foreign country."
+✅ RIGHT: "You reach for the stroller and your core just... isn't there."
 
 ❌ WRONG: "Your postpartum body has changed. Get it back."
 ✅ RIGHT: "Rebuild core strength. Feel capable and energized."
+
+KEY PRINCIPLE: Describe a specific physical MOMENT, not a personal attribute.
+- Moments are Meta-compliant ("you go to pick up your toddler and your back says no")
+- Attributes are violations ("you are weak and exhausted")
 
 Weight Loss:
 ❌ WRONG: "Are you overweight and tired of failed diets?"
