@@ -31,6 +31,118 @@ function buildScriptPrompt(
   duration: number,
   service: any
 ): string {
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // COPYWRITING RULES — THESE OVERRIDE EVERYTHING ELSE
+  // ═══════════════════════════════════════════════════════════════════════════════
+  
+  const NICHE_DETECTION = `
+═══ NICHE DETECTION — DO THIS FIRST ═══
+
+Read the service profile data carefully. Identify:
+1. What WORLD does this coach operate in? (fitness, crypto, mindset, relationships, business, spiritual, parenting, etc.)
+2. What language does that world use? (a fitness coach says "gains" and "macros", a crypto coach says "entries" and "bags", a mindset coach says "blocks" and "patterns")
+3. What does FAILURE look like in that world? What are they afraid of?
+4. What does SUCCESS look like in that world? What do they dream about?
+
+Then write the ENTIRE script using only the language of that world.
+A fitness ad must sound like a fitness coach wrote it.
+A crypto ad must sound like a crypto trader wrote it.
+A life coach ad must sound like a life coach wrote it.
+
+If a life coach and a crypto trader could both use your script without changing a word — it is too generic. Rewrite it.
+`;
+
+  const ANGLE_SELECTION = `
+═══ ANGLE SELECTION — CHOOSE ONE ═══
+
+BEFORE WRITING ANYTHING, choose ONE angle for this script:
+- Pain point: Lead with what the coach is LOSING or suffering right now
+- Outcome: Lead with the specific transformation the coach's clients experience  
+- Social proof: Lead with a specific number or result that creates instant credibility
+- Curiosity: Lead with a counterintuitive truth about why ads fail for coaches
+- Comparison: Lead with what makes this different from every other ad tool
+
+State the chosen angle in your thinking. Then write the entire script through that single lens.
+Only one angle per script. Do not mix them.
+`;
+
+  const BANNED_WORDS = `
+═══ BANNED WORDS — NEVER USE THESE ═══
+
+NEVER USE THESE WORDS OR PHRASES — they produce generic, forgettable copy:
+- "proven frameworks", "proven strategies", "proven system"
+- "AI-powered", "leverage AI", "harness the power"
+- "transform", "transformation", "transformative"
+- "streamline", "optimize", "innovative", "cutting-edge"
+- "empower", "empowering", "unlock your potential"  
+- "scale your business", "take your business to the next level"
+- "overwhelmed", "challenges", "pain points"
+- "in today's world", "in the digital age"
+- "seamlessly", "effortlessly", "easily"
+- Any word ending in "-ize" that isn't a common word
+
+If you catch yourself writing any of these — stop. Rewrite the sentence using the coach's actual language.
+`;
+
+  const CUSTOMER_LANGUAGE_RULE = `
+═══ CUSTOMER LANGUAGE RULE — MOST IMPORTANT ═══
+
+Coaches do not talk like software companies. 
+Write every line as if a coach who has been burned by bad ads is talking to another coach who is about to make the same mistake.
+
+WRONG (software language): "ZAP leverages AI to optimize your campaign performance"
+RIGHT (coach language): "I spent $4,000 on Facebook ads last year. Got 3 leads. All of them ghosted me."
+
+WRONG: "Our proven framework delivers results"  
+RIGHT: "900,000 people have been through my programs. None of them found me because of a fancy agency."
+
+WRONG: "AI-powered campaigns at scale"
+RIGHT: "You open the app. You answer 6 questions. Your ad is live on Facebook in 11 minutes."
+
+The test: read each line out loud. If it sounds like a SaaS landing page — rewrite it. 
+If it sounds like a coach talking to another coach — it's right.
+`;
+
+  const SPECIFICITY_RULE = `
+═══ SPECIFICITY RULE — NUMBERS AND NAMES ═══
+
+Every claim needs a number or a name. Vague claims are invisible.
+
+WRONG: "Thousands of coaches trust ZAP"
+RIGHT: "Built by a coach who's trained 900,000 students across 49 countries"
+
+WRONG: "Get results fast"  
+RIGHT: "Your first ad campaign. Live on Facebook. In under 15 minutes."
+
+WRONG: "Stop wasting money on ads that don't work"
+RIGHT: "You've already spent the money. You already know it didn't work. This is different."
+
+If a sentence has no specific number, name, timeframe, or concrete detail — it is probably too vague.
+`;
+
+  const HOOK_RULE = `
+═══ HOOK RULE — SCENE 1 ONLY ═══
+
+The hook must create an open loop. A question, a tension, or a truth that 
+cannot be resolved until the viewer watches the rest of the video.
+
+The hook must also name something the viewer is LOSING — not something they could gain.
+Loss is felt more than gain. Make them feel the loss.
+
+WRONG hook: "Want to grow your coaching business with Facebook ads?"
+RIGHT hook: "You've tried running Facebook ads before. You spent the money. You got nothing back."
+
+WRONG hook: "Discover the secret to successful ad campaigns"
+RIGHT hook: "Every coach I know has wasted at least $2,000 on ads that did absolutely nothing."
+
+The hook does not mention ZAP. The hook does not mention solutions. 
+The hook is only about the pain that is happening right now, today, without ZAP.
+`;
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // SERVICE DATA
+  // ═══════════════════════════════════════════════════════════════════════════════
+  
   const baseContext = `
 PRODUCT NAME: ${service.name}
 TARGET AUDIENCE: ${service.targetCustomer || service.targetMarket || "Coaches and consultants"}
@@ -78,6 +190,20 @@ Format:
 
   if (videoType === "explainer") {
     return `You are a world-class direct response video scriptwriter for Meta ads.
+
+${NICHE_DETECTION}
+
+${ANGLE_SELECTION}
+
+${BANNED_WORDS}
+
+${CUSTOMER_LANGUAGE_RULE}
+
+${SPECIFICITY_RULE}
+
+${HOOK_RULE}
+
+═══════════════════════════════════════════════════════════════════════════════
 
 Generate an EXPLAINER video ad script. TOTAL DURATION MUST BE EXACTLY 28 SECONDS (not ${duration}).
 
