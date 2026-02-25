@@ -30,6 +30,7 @@ import { adCreativesRouter } from "./routers/adCreatives";
 import { videoCreditsRouter } from "./routers/videoCreditsRouter";
 import { videoScriptsRouter } from "./routers/videoScripts";
 import { videosRouter } from "./routers/videos";
+import { demoVideosRouter } from "./routers/demoVideos";
 import { getQuotaLimit } from "./quotaLimits";
 
 export const appRouter = router({
@@ -140,6 +141,7 @@ export const appRouter = router({
   videoCredits: videoCreditsRouter,
   videoScripts: videoScriptsRouter,
   videos: videosRouter,
+  demoVideos: demoVideosRouter,
 });
 
 export type AppRouter = typeof appRouter;

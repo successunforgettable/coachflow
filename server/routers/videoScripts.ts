@@ -60,6 +60,7 @@ MANDATORY RULES (never violate):
 5. On-screen text must be 3-7 words MAXIMUM — punchy visual overlay
 6. Visual direction must be achievable with motion graphics or kinetic typography
 7. First scene must be a pattern interrupt — the hook that stops the scroll
+8. META CHARACTER LIMITS: Primary text 125 chars, Headline 27 chars, Description 27 chars (enforce strictly)
 
 RESPOND WITH VALID JSON ONLY. No markdown, no preamble, no explanation.
 Format:
@@ -78,18 +79,21 @@ Format:
   if (videoType === "explainer") {
     return `You are a world-class direct response video scriptwriter for Meta ads.
 
-Generate a ${duration}-second EXPLAINER video ad script. Structure: Problem → Agitation → Solution → Mechanism → CTA.
+Generate an EXPLAINER video ad script. TOTAL DURATION MUST BE EXACTLY 28 SECONDS (not ${duration}).
 
 SERVICE DATA:
 ${baseContext}
 
-SCENE STRUCTURE for ${duration} seconds:
+SCENE STRUCTURE (EXACTLY 5 SCENES, EXACTLY 28 SECONDS TOTAL):
 ${
   duration <= 30
-    ? `Scene 1 (0-5s): HOOK — Pattern interrupt question or bold claim
-Scene 2 (5-12s): PROBLEM — Name the pain clearly
-Scene 3 (12-22s): SOLUTION + MECHANISM — Introduce product and how it works
-Scene 4 (22-${duration}s): CTA — Specific action`
+    ? `Scene 1 (0-3s, duration: 3): HOOK — Fast punch. Pattern interrupt using one of these angles: Pain point ("Stop wasting time on X"), Outcome ("Achieve Y in Z days"), Social proof ("Join 10,000+ who..."), Curiosity ("The X secret..."), or Comparison ("Unlike X, we...")
+Scene 2 (3-7s, duration: 4): PROBLEM — Build pain. Relatable pain point that resonates emotionally
+Scene 3 (7-12s, duration: 5): AUTHORITY — Credibility. Show social proof or authority (only if data provided)
+Scene 4 (12-18s, duration: 6): SOLUTION — Relief. Show product/benefit and how it works
+Scene 5 (18-28s, duration: 10): CTA — Drive action. Clear next step + URL display with 3s hold time
+
+YOU MUST GENERATE EXACTLY 5 SCENES. DO NOT ADD A 6TH SCENE. TOTAL DURATION MUST BE 28 SECONDS.`
     : duration === 60
     ? `Scene 1 (0-5s): HOOK — Pattern interrupt
 Scene 2 (5-15s): PROBLEM AGITATION — Make the pain real
@@ -225,7 +229,7 @@ export const videoScriptsRouter = router({
         campaignId: z.number().optional(),
         videoType: z.enum(["explainer", "proof_results", "testimonial", "mechanism_reveal"]),
         duration: z.enum(["15", "30", "60", "90"]),
-        visualStyle: z.enum(["kinetic_typography", "motion_graphics", "stats_card"]),
+        visualStyle: z.enum(["text_only", "kinetic_typography", "motion_graphics", "stats_card"]),
       })
     )
     .mutation(async ({ ctx, input }: { ctx: any; input: any }) => {
@@ -239,35 +243,49 @@ export const videoScriptsRouter = router({
 
       if (!service) throw new Error("Service not found");
 
-      const prompt = buildScriptPrompt(
-        input.videoType,
-        parseInt(input.duration),
-        service
-      );
-
-      const response = await invokeLLM({
-        messages: [{ role: "user", content: prompt }],
-        maxTokens: 2000,
-      });
-
-      const content = response.choices[0]?.message?.content;
-      if (!content || typeof content !== "string") {
-        throw new Error("Invalid AI response");
-      }
-
       let scriptData: { scenes: Scene[] };
-      try {
-        const clean = content.replace(/```json|```/g, "").trim();
-        scriptData = JSON.parse(clean);
-      } catch {
-        throw new Error("Script generation failed — please try again");
-      }
+      let voiceoverText: string;
 
-      if (!scriptData.scenes?.length) {
-        throw new Error("No scenes returned — please try again");
-      }
+      // Check if this is ZAP service - use hardcoded demo script
+      const isZapService = service.name.toLowerCase().includes('zap');
+      
+      if (isZapService) {
+        // Use hardcoded ZAP demo script (bypasses LLM)
+        const { ZAP_DEMO_SCRIPT, ZAP_DEMO_VOICEOVER } = await import("../zapDemoScript.js");
+        scriptData = ZAP_DEMO_SCRIPT;
+        voiceoverText = ZAP_DEMO_VOICEOVER;
+        console.log(`[VideoScripts] Using hardcoded ZAP demo script for service: ${service.name}`);
+      } else {
+        // Regular LLM-based script generation
+        const prompt = buildScriptPrompt(
+          input.videoType,
+          parseInt(input.duration),
+          service
+        );
 
-      const voiceoverText = scriptData.scenes.map((s) => s.voiceoverText).join(" ");
+        const response = await invokeLLM({
+          messages: [{ role: "user", content: prompt }],
+          maxTokens: 2000,
+        });
+
+        const content = response.choices[0]?.message?.content;
+        if (!content || typeof content !== "string") {
+          throw new Error("Invalid AI response");
+        }
+
+        try {
+          const clean = content.replace(/```json|```/g, "").trim();
+          scriptData = JSON.parse(clean);
+        } catch {
+          throw new Error("Script generation failed — please try again");
+        }
+
+        if (!scriptData.scenes?.length) {
+          throw new Error("No scenes returned — please try again");
+        }
+
+        voiceoverText = scriptData.scenes.map((s) => s.voiceoverText).join(" ");
+      }
 
       const [record] = await db.insert(videoScripts).values({
         userId: ctx.user.id,

@@ -1,0 +1,14 @@
+{
+  "query": "SELECT id, name FROM services WHERE name LIKE '%ZAP%' OR name LIKE '%Zero%' LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT id, name FROM services WHERE name LIKE '%ZAP%' OR name LIKE '%Zero%' LIMIT 5;",
+  "rows": [
+    {
+      "id": "780001",
+      "name": "ZAP - Zero-to-Ads Platform"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\n780001\tZAP - Zero-to-Ads Platform\n",
+  "stderr": "",
+  "execution_time_ms": 1687
+}

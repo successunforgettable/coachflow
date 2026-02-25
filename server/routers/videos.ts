@@ -14,11 +14,16 @@ import { eq, desc } from "drizzle-orm";
 import { readFileSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
+import { searchPexelsVideos, selectBestHDVideo, extractKeywords } from "../pexels";
+import { fetchSceneFootageWithFallback } from "../pexels-scene-fetcher";
+import { generateVoiceover, VOICE_IDS } from "../elevenlabs";
+import { storagePut } from "../storage";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const CREATOMATE_API_KEY = process.env.CREATOMATE_API_KEY!;
+const BACKGROUND_MUSIC_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310419663026750612/jQsGzEaS9E2xgaK8jEKUPB/video-assets/background-music.mp3";
 
 // Credit cost based on duration
 function getCreditCost(duration: string): number {
@@ -36,6 +41,9 @@ console.log("[Templates] PROJECT_ROOT:", PROJECT_ROOT);
 console.log("[Templates] Template path:", join(PROJECT_ROOT, "server/creatomate-templates/kinetic-typography.json"));
 
 const TEMPLATES = {
+  text_only: JSON.parse(
+    readFileSync(join(PROJECT_ROOT, "server/creatomate-templates/text-only-black.json"), "utf-8")
+  ),
   kinetic_typography: JSON.parse(
     readFileSync(join(PROJECT_ROOT, "server/creatomate-templates/kinetic-typography.json"), "utf-8")
   ),
@@ -55,9 +63,10 @@ export const videosRouter = router({
     .input(
       z.object({
         scriptId: z.number(),
-        visualStyle: z.enum(["kinetic_typography", "motion_graphics", "stats_card"]),
+        visualStyle: z.enum(["text_only", "kinetic_typography", "motion_graphics", "stats_card"]),
         brandColor: z.string().optional().default("#3B82F6"),
         logoUrl: z.string().optional(),
+        isZapDemo: z.boolean().optional().default(false),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -137,10 +146,10 @@ export const videosRouter = router({
       });
 
       const videoId = newVideo.insertId;
-
-      // Start async rendering (don't await)
+      
+      // Trigger async render (non-blocking)
       renderVideo({
-        videoId,
+        videoId: newVideo.insertId,
         script,
         visualStyle: input.visualStyle,
         brandColor: input.brandColor,
@@ -148,6 +157,7 @@ export const videosRouter = router({
         userId: ctx.user.id,
         creditCost,
         originalBalance: creditBalance.balance,
+        isZapDemo: input.isZapDemo,
       }).catch(async (error) => {
         console.error(`[Video ${videoId}] Render failed:`, error);
 
@@ -289,6 +299,15 @@ export const videosRouter = router({
     }),
 });
 
+// Scene type mapping for Pexels footage queries (25s structure)
+const SCENE_TYPE_MAP: Array<'hook' | 'problem' | 'authority' | 'solution' | 'cta'> = [
+  'hook',       // Scene 1: 0-3s   — Hook / Pattern Interrupt
+  'problem',    // Scene 2: 3-7s   — Problem / Pain
+  'authority',  // Scene 3: 7-12s  — Authority / Proof
+  'solution',   // Scene 4: 12-18s — Solution / Relief
+  'cta',        // Scene 5: 18-25s — CTA / Drive Action
+];
+
 /**
  * Async video rendering function
  * Calls Creatomate API with RenderScript + ElevenLabs voiceover
@@ -302,8 +321,9 @@ async function renderVideo(params: {
   userId: number;
   creditCost: number;
   originalBalance: number;
+  isZapDemo?: boolean;
 }) {
-  const { videoId, script, visualStyle, brandColor, logoUrl, userId, creditCost, originalBalance } = params;
+  const { videoId, script, visualStyle, brandColor, logoUrl, userId, creditCost, originalBalance, isZapDemo } = params;
 
   console.log(`[Video ${videoId}] Starting render...`);
 
@@ -325,9 +345,63 @@ async function renderVideo(params: {
     throw new Error(`Template not found: ${visualStyle}`);
   }
 
-  // Get script scenes (already parsed from database)
-  const scenes = script.scenes || [];
+  // Get script scenes (use hardcoded ZAP demo script if isZapDemo flag is set)
+  let scenes;
+  if (isZapDemo) {
+    const { ZAP_DEMO_SCRIPT } = await import("../zapDemoScript.js");
+    scenes = ZAP_DEMO_SCRIPT.scenes;
+    console.log(`[Video ${videoId}] Using hardcoded ZAP demo script`);
+  } else {
+    scenes = script.scenes || [];
+  }
   console.log(`[Video ${videoId}] Scenes data:`, JSON.stringify(scenes, null, 2));
+
+  // Fetch stock footage for each scene from Pexels (parallel fetch)
+  console.log(`[Video ${videoId}] Fetching stock footage for ${scenes.length} scenes...`);
+  
+  const sceneFootage = await Promise.all(
+    scenes.map(async (scene: any, index: number) => {
+      // If scene has pexelsQuery field, use it directly (ZAP demo or custom scripts)
+      if (scene.pexelsQuery) {
+        try {
+          const { searchPexelsVideos, selectBestHDVideo } = await import("../pexels.js");
+          const results = await searchPexelsVideos(scene.pexelsQuery, 'portrait', 5);
+          const footageUrl = selectBestHDVideo(results.videos);
+          if (footageUrl) {
+            console.log(`[Video ${videoId}] Scene ${index + 1} (${scene.pexelsQuery}): ✓ ${footageUrl.substring(0, 60)}...`);
+          } else {
+            console.warn(`[Video ${videoId}] Scene ${index + 1} (${scene.pexelsQuery}): ✗ No footage found`);
+          }
+          return footageUrl;
+        } catch (error) {
+          console.error(`[Video ${videoId}] Scene ${index + 1} (${scene.pexelsQuery}): Error:`, error);
+          return null;
+        }
+      }
+      
+      // For regular videos, use scene type mapping
+      const sceneType = SCENE_TYPE_MAP[index];
+      if (!sceneType) {
+        console.warn(`[Video ${videoId}] Scene ${index + 1}: No scene type mapping`);
+        return null;
+      }
+      
+      try {
+        const footageUrl = await fetchSceneFootageWithFallback(sceneType, scene.duration);
+        if (footageUrl) {
+          console.log(`[Video ${videoId}] Scene ${index + 1} (${sceneType}): ✓ ${footageUrl.substring(0, 60)}...`);
+        } else {
+          console.warn(`[Video ${videoId}] Scene ${index + 1} (${sceneType}): ✗ No footage found`);
+        }
+        return footageUrl;
+      } catch (error) {
+        console.error(`[Video ${videoId}] Scene ${index + 1} (${sceneType}): Error:`, error);
+        return null;
+      }
+    })
+  );
+  
+  console.log(`[Video ${videoId}] Footage URLs:`, sceneFootage);
 
   // Calculate cumulative time for each scene
   let cumulativeTime = 0;
@@ -337,19 +411,324 @@ async function renderVideo(params: {
     cumulativeTime += scene.duration || 0;
   });
   console.log(`[Video ${videoId}] Scene times:`, sceneTimes);
+  
+  // Add 2 seconds for fade-to-black outro (28-30s)
+  const totalDuration = cumulativeTime + 2;
+  console.log(`[Video ${videoId}] Total duration with outro: ${totalDuration}s`);
+
+  // PRE-GENERATE VOICEOVER AUDIO
+  console.log(`[Video ${videoId}] Generating voiceover with ElevenLabs...`);
+  const fullVoiceoverText = scenes.map((s: any) => s.voiceoverText).join(" ");
+  
+  const voiceoverBuffer = await generateVoiceover({
+    text: fullVoiceoverText,
+    voiceId: VOICE_IDS.charlie, // Deep, Confident, Energetic
+  });
+  
+  console.log(`[Video ${videoId}] Uploading voiceover to S3...`);
+  const { url: voiceoverUrl } = await storagePut(
+    `voiceovers/video-${videoId}.mp3`,
+    voiceoverBuffer,
+    'audio/mpeg'
+  );
+  
+  console.log(`[Video ${videoId}] Voiceover URL: ${voiceoverUrl}`);
+  console.log(`[Video ${videoId}] ⚠️  VERIFY THIS URL PLAYS IN BROWSER BEFORE PROCEEDING`);
+  
+  // Wait 3 seconds for CDN propagation before calling Creatomate
+  console.log(`[Video ${videoId}] Waiting 3s for CDN propagation...`);
+  await new Promise(resolve => setTimeout(resolve, 3000));
+  console.log(`[Video ${videoId}] CDN propagation wait complete`);
 
   // Build modifications for Creatomate
-  const modifications: any = {
+  let modifications: any;
+  
+  // Special handling for text_only template: build RenderScript from scratch
+  if (visualStyle === "text_only") {
+    console.log(`[Video ${videoId}] Building text_only RenderScript from scratch`);
+    
+    // Build scene compositions dynamically with 3-layer structure
+    const sceneCompositions = scenes.map((scene: any, index: number) => {
+      const footageUrl = sceneFootage[index];
+      const sceneType = SCENE_TYPE_MAP[index];
+      const elements: any[] = [];
+      
+      // Color grading per scene type (Submagic-style)
+      const colorGrading: Record<string, string> = {
+        hook: "brightness(0.85) saturate(0.7)",      // Cold, tense
+        problem: "brightness(0.85) saturate(0.7)",   // Cold, tense
+        authority: "brightness(1.1) saturate(1.2)",  // Warm, energetic
+        solution: "brightness(1.1) saturate(1.2)",   // Warm, energetic
+        cta: "brightness(1.15) saturate(1.3)",       // Bright, optimistic
+      };
+      const filter = colorGrading[sceneType] || "brightness(1) saturate(1)";
+      
+      // LAYER 1: Background video footage (if available)
+      if (footageUrl) {
+        elements.push({
+          type: "video",
+          source: footageUrl,
+          time: 0,
+          duration: scene.duration,
+          x: "50%",
+          y: "50%",
+          width: "100%",
+          height: "100%",
+          fit: "cover",           // Fill frame, crop edges
+          muted: true,            // No original audio from footage
+          trim_start: 0,          // Start from beginning of clip
+          trim_duration: scene.duration,
+          filter,                 // Color grading per scene type
+          // Ken Burns zoom effect (Submagic-style)
+          animations: [
+            {
+              time: 0,
+              duration: scene.duration,
+              type: "scale",
+              start_scale: "100%",
+              end_scale: "108%",
+              easing: "linear"
+            }
+          ]
+        });
+        
+        // LAYER 2: Dark overlay for text readability
+        elements.push({
+          type: "shape",
+          shape: "rect",
+          time: 0,
+          duration: scene.duration,
+          x: "50%",
+          y: "50%",
+          width: "100%",
+          height: "100%",
+          fill_color: "rgba(0, 0, 0, 0.55)", // 55% dark — readable but footage still visible
+        });
+      }
+      
+      // LAYER 3: Text (always present)
+      elements.push({
+        type: "text",
+        text: scene.onScreenText,
+        font_family: "Montserrat",
+        font_weight: "900", // Black weight
+        font_size: "10 vmin", // Responsive viewport units - reduced to prevent clipping on longer text
+        fill_color: "#ffffff",
+        x: "50%",
+        y: "50%",
+        x_alignment: "50%",
+        y_alignment: "50%",
+        width: "90%",
+        text_align: "center",
+        animations: [
+          {
+            time: 0,
+            duration: 0.8,
+            type: "text-slide",
+            split: "word", // Animate word-by-word
+            scope: "element",
+            distance: "10%",
+            easing: "quadratic-out"
+          }
+        ]
+      });
+      
+      // LAYER 4: URL display (only in Scene 5, final 3 seconds)
+      if (index === scenes.length - 1) {
+        // Scene 5 is 10s (18-28s), URL appears at 25s (7s into the scene) and holds for 3s
+        elements.push({
+          type: "text",
+          text: "zapcampaigns.com",
+          font_family: "Montserrat",
+          font_weight: "700", // Bold
+          font_size: "8 vmin",
+          fill_color: "#ffffff",
+          x: "50%",
+          y: "85%",  // Bottom of screen
+          x_alignment: "50%",
+          y_alignment: "50%",
+          width: "80%",
+          text_align: "center",
+          time: 7,  // 7 seconds into Scene 5 (which starts at 18s, so this is 25s total)
+          duration: 3,  // Hold for 3 seconds (25-28s)
+          animations: [
+            {
+              time: 0,
+              duration: 0.5,
+              type: "fade",
+              fade_in: true,
+              easing: "quadratic-out"
+            }
+          ]
+        });
+      }
+      
+      const composition: any = {
+        type: "composition",
+        name: `Scene${index + 1}`,
+        track: index + 2, // Track 1 is Main, scenes start at 2
+        time: sceneTimes[index],
+        duration: scene.duration,
+        elements
+      };
+      
+      // Add cross-dissolve transition (except first scene)
+      if (index > 0) {
+        composition.transition = {
+          type: "fade",
+          duration: 0.3  // 0.3s cross-dissolve
+        };
+      }
+      
+      return composition;
+    });    modifications = {
+      output_format: "mp4",
+      width: 1080,
+      height: 1920,
+      frame_rate: 30,
+      duration: totalDuration,
+      elements: [
+        {
+          type: "composition",
+          track: 1,
+          time: 0,
+          duration: totalDuration,
+          name: "Main",
+          elements: [
+            // Radial gradient background (#1a1a1a center → #000000 edges)
+            {
+              type: "shape",
+              name: "RadialGradientBackground",
+              path: "M 0 0 L 100 0 L 100 100 L 0 100 Z",
+              fill_color: [
+                {offset: 0, color: "#1a1a1a"},
+                {offset: 1, color: "#000000"}
+              ],
+              fill_mode: "radial",
+              fill_x0: "50%",
+              fill_y0: "50%",
+              fill_radius: "75%",
+              width: "100%",
+              height: "100%"
+            },
+            // Logo (if provided)
+            ...(logoUrl ? [{
+              type: "image",
+              name: "Logo",
+              source: logoUrl,
+              width: "80 px",
+              height: "80 px",
+              x: "90%",
+              y: "5%",
+              x_alignment: "50%",
+              y_alignment: "50%",
+              animations: [
+                {
+                  time: 0.5,
+                  duration: 0.5,
+                  type: "fade",
+                  fade_start: 0,
+                  fade_end: 100,
+                  easing: "linear"
+                }
+              ]
+            }] : []),
+            // Voiceover (pre-generated via ElevenLabs, uploaded to S3)
+            {
+              type: "audio",
+              name: "Voiceover",
+              source: voiceoverUrl,
+              audio_volume: 100
+            },
+            // Background music
+            {
+              type: "audio",
+              name: "BackgroundMusic",
+              source: BACKGROUND_MUSIC_URL,
+              audio_volume: 15,
+              audio_fade_out: 2
+            }
+          ]
+        },
+        ...sceneCompositions,
+        // Fade-to-black outro (28-30s) with URL display
+        {
+          type: "composition",
+          name: "Outro",
+          track: scenes.length + 2, // After all scene tracks
+          time: 28,
+          duration: 2,
+          elements: [
+            // URL text (visible entire 2 seconds)
+            {
+              type: "text",
+              text: "zapcampaigns.com",
+              font_family: "Montserrat",
+              font_weight: "700",
+              font_size: "8 vmin",
+              fill_color: "#ffffff",
+              x: "50%",
+              y: "50%",
+              x_alignment: "50%",
+              y_alignment: "50%",
+              time: 0,
+              duration: 2,
+              animations: [
+                {
+                  time: 0,
+                  duration: 0.3,
+                  type: "fade",
+                  fade_start: 0,
+                  fade_end: 100,
+                  easing: "quadratic-out"
+                }
+              ]
+            },
+            // Fade-to-black overlay (only last 1 second: 29-30s)
+            {
+              type: "shape",
+              shape: "rect",
+              time: 1,  // Start at 1s into outro (29s absolute time)
+              duration: 1,
+              x: "50%",
+              y: "50%",
+              width: "100%",
+              height: "100%",
+              fill_color: "#000000",
+              animations: [
+                {
+                  time: 0,
+                  duration: 1,
+                  type: "fade",
+                  fade_start: 0,
+                  fade_end: 100,
+                  easing: "quadratic-out"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    };
+  } else {
+    // Existing template modification logic for other templates
+    modifications = {
     ...template,
     elements: template.elements.map((element: any) => {
-      // Replace voiceover with ElevenLabs AI generation
+      // Replace voiceover with ElevenLabs AI generation via Creatomate
       if (element.type === "audio" && element.name === "Voiceover") {
+        // Use Creatomate's built-in ElevenLabs integration
+        // Voice options:
+        // - Rachel (professional female): 21m00Tcm4TlvDq8ikWAM
+        // - Antoni (warm male): ErXwobaYiN019PkySvjV
+        // - Josh (confident male): TxGEqnHWrfWFTfGW9XjX
+        const voiceId = "TxGEqnHWrfWFTfGW9XjX"; // Josh - confident, direct, human
+        const fullVoiceoverText = scenes.map((s: any) => s.voiceoverText).join(" ");
+        
         return {
           ...element,
-          source: null, // Remove source URL
-          audio_ai_provider: "elevenlabs",
-          audio_ai_voice: "Rachel", // Default voice, can be customized
-          audio_ai_text: scenes.map((s: any) => s.voiceoverText).join(" "), // Full voiceover script
+          provider: `elevenlabs model_id=eleven_multilingual_v2 voice_id=${voiceId} stability=0.25 similarity_boost=0.75 style=0.65 use_speaker_boost=true`,
+          source: fullVoiceoverText, // The text to be spoken
         };
       }
 
@@ -380,11 +759,43 @@ async function renderVideo(params: {
         const sceneIndex = parseInt(sceneName.replace("Scene", "")) - 1;
         const sceneData = scenes[sceneIndex];
         
+        // Add video background if stock footage is available
+        const footageUrl = sceneFootage[sceneIndex];
+        const newElements = [...element.elements];
+        
+        if (footageUrl) {
+          // Add video element as first child (background)
+          newElements.unshift({
+            type: "video",
+            name: `Scene${sceneIndex + 1}Background`,
+            source: footageUrl,
+            width: "100%",
+            height: "100%",
+            x: "50%",
+            y: "50%",
+            x_alignment: "50%",
+            y_alignment: "50%",
+            fit: "cover", // Cover entire scene area
+            loop: true, // Loop if video is shorter than scene
+            audio_volume: 0, // Mute background video
+          });
+          
+          // Add dark overlay for better text readability
+          newElements.unshift({
+            type: "shape",
+            name: `Scene${sceneIndex + 1}Overlay`,
+            path: "M 0 0 L 100 0 L 100 100 L 0 100 Z",
+            fill_color: "rgba(0, 0, 0, 0.4)", // 40% black overlay
+            width: "100%",
+            height: "100%",
+          });
+        }
+        
         return {
           ...element,
           time: sceneTimes[sceneIndex] || 0, // Set cumulative start time
           duration: sceneData?.duration || element.duration, // Set scene duration from database
-          elements: element.elements.map((child: any) => {
+          elements: newElements.map((child: any) => {
             // Use sceneData from parent scope
 
             if (child.name?.includes("Text") && sceneData) {
@@ -402,7 +813,8 @@ async function renderVideo(params: {
 
       return element;
     }).filter((element: any) => element !== null), // Remove null elements (e.g., logo when no URL)
-  };
+    };
+  }
 
   // Debug: Log the final modifications being sent
   console.log(`[Video ${videoId}] Final modifications:`, JSON.stringify(modifications, null, 2));

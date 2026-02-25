@@ -2970,3 +2970,365 @@
 - [ ] Music Architecture: 30 tracks in 4 mood pools with randomization
 - [ ] Database: Add musicTrackId field to videos table
 - [ ] Implement anti-repeat logic (exclude last 3 tracks per user)
+
+
+## Phase 105: ElevenLabs Voiceover Integration via Creatomate (IN PROGRESS)
+- [x] Update video generation code to use Creatomate's built-in ElevenLabs integration
+- [x] Configure default professional voice (Rachel: 21m00Tcm4TlvDq8ikWAM)
+- [x] Rebuild kinetic typography template with voiceover support (template already has audio element)
+- [ ] Test video generation with real voiceover
+- [ ] Integrate Pexels footage into templates
+- [ ] Generate final test render with voiceover + footage
+
+
+## Phase 103: Video Render Test Results - Video 30001 (COMPLETE ✅)
+
+### Test Summary
+- [x] Initiated Video 30001 render with Kinetic Typography template
+- [x] Verified all 9 critical bugs from Phase 1 are fixed
+- [x] Confirmed Creatomate API integration working correctly
+- [x] Identified blocker: ElevenLabs API key configuration needed
+
+### Bugs Verified as FIXED ✅
+- [x] Schema mismatch (using scenes array correctly)
+- [x] Creatomate API payload format (RenderScript structure)
+- [x] Response parsing (array handling)
+- [x] Logo placeholder handling (removed when no URL)
+- [x] Scene text mapping (onScreenText populated)
+- [x] Voiceover text mapping (voiceoverText sent correctly)
+- [x] Scene duration configuration (30s total: 5s + 7s + 10s + 8s)
+- [x] API format (sending RenderScript correctly)
+- [x] Audio provider format (ElevenLabs syntax correct)
+
+### Systems Verified as WORKING ✅
+- [x] Credit system (1 credit refunded on failure)
+- [x] Error handling (proper error messages)
+- [x] Database updates (video status tracked)
+- [x] Render initiation (render ID: ab369aeb-fdd6-49e5-92b1-579b4da873d6)
+
+### Current Blocker 🚧
+- [ ] ElevenLabs API key must be configured in Creatomate dashboard
+  - Location: https://creatomate.com/dashboard → Settings → Integrations → ElevenLabs
+  - Action: Toggle ElevenLabs integration and enter API key
+  - Status: Waiting for API key configuration
+
+### Next Steps After API Key Configuration
+- [ ] Retry Video 30001 render with same script
+- [ ] Verify voiceover quality (Rachel voice)
+- [ ] Confirm 30-second duration with audio
+- [ ] Test credit system (1 credit deduction)
+- [ ] Proceed with Pexels stock footage integration
+- [ ] Build Template 1 with real footage
+
+### Documentation Created
+- [x] VIDEO_RENDER_STATUS.md - Detailed test results
+- [x] ELEVENLABS_INTEGRATION_SOLUTION.md - Setup guide
+- [x] PROGRESS_REPORT_VIDEO_RENDER_TEST.md - Comprehensive report
+
+### Key Insights
+- All code is working correctly (no bugs found in Phase 1 fixes)
+- Blocker is external configuration, not a code issue
+- Solution is simple: configure API key in Creatomate dashboard
+- No code changes needed to proceed
+- Cost per video: $0.27 (Creatomate $0.10 + ElevenLabs $0.17)
+
+
+## Phase 104: Video Quality Improvements - Make Videos Cinematic (URGENT)
+
+### User Feedback on Video 30003:
+- [ ] Graphics are too basic (just text on black background)
+- [ ] Voice is very dull and boring (needs more energy and emotion)
+- [ ] Video ends abruptly (needs proper fade-out/ending)
+- [ ] Not cinematic at all (needs professional polish)
+
+### Fix 1: Dynamic Voiceover (ElevenLabs Settings)
+- [x] Research ElevenLabs voice settings for more engaging delivery
+- [x] Changed stability from 0.75 to 0.40 for more emotion and energy
+- [x] Added similarity_boost=0.75 for better quality
+- [ ] Test different voice IDs for more energetic voices (if needed after testing)
+- [ ] Consider adding voice selection UI (future enhancement)
+
+### Fix 2: Cinematic Visuals (Pexels Integration)
+- [x] Integrate Pexels API to fetch stock footage for each scene
+- [x] Replace black background with relevant video clips
+- [x] Use visualDirection field to search for appropriate footage
+- [x] Ensure portrait orientation (9:16) for Meta ads
+- [x] Add video overlay with text on top of footage
+- [x] Add 40% dark overlay for better text readability
+- [x] Mute background video audio
+- [x] Enable video looping for scenes longer than clip
+
+### Fix 3: Smooth Transitions & Proper Ending
+- [ ] Add fade transitions between scenes
+- [ ] Add fade-out at the end of video (last 2 seconds)
+- [ ] Add subtle zoom/pan effects to static elements
+- [ ] Ensure audio fades out smoothly with video
+- [ ] Test ending doesn't feel abrupt
+
+### Fix 4: Background Music
+- [ ] Download 3-4 royalty-free music tracks from Pixabay
+- [ ] Add background music to template (low volume, ~20-30%)
+- [ ] Ensure music doesn't overpower voiceover
+- [ ] Add music fade-in at start and fade-out at end
+- [ ] Test audio mixing levels
+
+### Fix 5: Professional Polish
+- [ ] Add subtle animations to text (not just slide-in)
+- [ ] Add color gradients to backgrounds
+- [ ] Add motion blur effects for dynamic feel
+- [ ] Ensure timing feels natural (not rushed or slow)
+- [ ] Test overall video flow and pacing
+
+### Testing Checklist
+- [ ] Generate new test video with all improvements
+- [ ] Verify voiceover is engaging and energetic
+- [ ] Verify visuals are cinematic with stock footage
+- [ ] Verify smooth transitions and proper ending
+- [ ] Verify background music enhances the video
+- [ ] Get user approval before proceeding to other templates
+
+
+
+## Phase 106: REVISED DIRECTIVE - Template 0 (Text Only) Priority Build
+**Authority:** Arfeen Khan, Founder | **Date:** February 25, 2026
+**Status:** Supersedes all previous video template instructions
+
+### Core Finding from Research (500+ SaaS Video Ads)
+**Production quality is not the problem. Format and hook are.**
+- Stop chasing cinematic quality. Start building formats that convert.
+- Text-only template is the most important template. Build it first.
+- Black background. White bold text. Voiceover. Music. Done.
+
+### Step 1: ElevenLabs Voice Settings Update (IMMEDIATE)
+- [x] Update stability from current to 0.35 (more expressive, less flat)
+- [x] Update style to 0.5 (more stylistic variation)
+- [x] Keep similarity_boost at 0.75
+- [x] Add use_speaker_boost: true
+- [ ] Test voiceover with same script to confirm more human sound
+
+### Step 2: Build Template 0 (Text Only) - FLAGSHIP TEMPLATE
+- [ ] Create new Creatomate template: text-only-black.json
+- [ ] Layer 1: Solid black background (#0a0a0a)
+- [ ] Layer 2: Scene text - Montserrat Black, 96px, white, centered
+- [ ] Layer 3: Word-by-word animation (0.1s per word)
+- [ ] Layer 4: Subtle accent color on key words (brand_color variable)
+- [ ] Layer 5: Logo - top right, 80x80px, fades in at 0.5s
+- [ ] Layer 6: Voiceover audio at 100%
+- [ ] Layer 7: Background music at 30%, 1s fade in, 2s fade out
+- [ ] Add visualStyle option "Text Only" in database and UI
+- [ ] Update renderVideo to use text-only template when selected
+
+### Step 3: Remove 90s Option + Add Logo Overlay
+- [ ] Remove "90" from DURATIONS array in VideoCreator.tsx
+- [ ] Remove "90" from duration enum in drizzle/schema.ts
+- [ ] Remove "90" from videoScripts.ts
+- [ ] Add logo_url variable support to all templates
+- [ ] Logo position: top-right, 80x80px, fade in 0.5s at time 0.3s
+- [ ] Skip logo element if logo_url is empty (no broken image)
+
+### Step 4: Update Hook Prompts (5 Proven Formulas)
+- [ ] Replace generic "pattern interrupt" with 5 hook formulas:
+  - Formula 1: The Specific Number
+  - Formula 2: The Counterintuitive Statement
+  - Formula 3: The Direct Call Out
+  - Formula 4: The Bold Claim with Proof
+  - Formula 5: The Uncomfortable Truth
+- [ ] Update hook scene instruction in all 4 video type prompts
+- [ ] AI should pick formula based on service data
+- [ ] Test with 3 regenerated scripts to confirm stronger hooks
+
+### Step 5: Music System (12 Tracks, 4 Mood Pools)
+- [ ] Create server/config/music.ts with MUSIC_POOLS structure
+- [ ] Download 12 tracks from Pixabay Music (3 per mood pool):
+  - Corporate: 90-110 BPM, subtle melodies, professional
+  - Upbeat: 120-140 BPM, prominent percussion, energetic
+  - Warm: 80-100 BPM, emotional melody, inspiring
+  - Dramatic: 100-120 BPM, building tension, cinematic
+- [ ] Upload all tracks to S3 under /music/{mood}/trackname.mp3
+- [ ] Add VIDEO_TYPE_MUSIC_MAP mapping video types to moods
+- [ ] Implement selectMusicTrack() with no-repeat logic (last 3)
+- [ ] Add musicTrackUrl column to videos table
+- [ ] Integrate music selection into renderVideo function
+
+### Step 6: Additional Required Changes
+- [ ] Confirm single voiceover file per video (not per-scene)
+- [ ] Add reverse chronology option for proof_results video type
+- [ ] Update script generator to avoid failure modes:
+  - No long introductions
+  - No inspirational speeches
+  - No generic animations
+  - Call out specific audience
+  - Show value, not features
+
+### Step 7: Test Template 0 and Deliver
+- [ ] Generate test video with real ZAP service data
+- [ ] Verify hook lands in first 3 seconds
+- [ ] Verify on-screen text is 3-7 words
+- [ ] Verify logo visible by second 1
+- [ ] Verify voiceover sounds human, not robotic
+- [ ] Verify music audible but doesn't compete with voiceover
+- [ ] Verify file size under 5MB
+- [ ] Verify renders successfully on first attempt
+- [ ] Test downloaded MP4 in VLC and QuickTime
+- [ ] Send render URL to user for approval
+
+### Future Templates (Build After Template 0 Approved)
+- [ ] Template 1: Bold Impact with Stock Footage (45% dark overlay mandatory)
+- [ ] Template 2: Clean Professional (B2B tone, Inter font)
+- [ ] Template 3: Story Driven (verify Creatomate particle support first)
+
+### Success Criteria (All Must Pass)
+- Hook lands in first 3 seconds - specific, not generic
+- On-screen text is 3-7 words - no exceptions
+- Logo visible by second 1
+- Voiceover sounds human, not robotic
+- Music audible but doesn't compete with voiceover
+- Total duration 15, 30, or 60 seconds (not 90)
+- File size under 5MB
+- Renders successfully on first attempt
+- Downloaded MP4 plays correctly
+
+### Key Notes from Directive
+1. Template 0 (Text Only) is the flagship, not a fallback
+2. Ship Template 0 first, get feedback, iterate
+3. Do not present test render until it would make you stop scrolling
+4. Allow light, confident tone - not always corporate-speak
+5. Generic stock footage will never stop a scroll
+6. Research confirms: format and hook matter more than production quality
+
+
+## Phase 108: Template 0 Fixes Applied
+
+### Text Animation Fix
+- [x] Changed from word-by-word overlap to full text display
+- [x] Display complete onScreenText as single text element
+- [x] Add fade-in + scale animation (0.5s duration)
+- [x] Constrain width to 90% for better readability
+- [x] Center-align text
+
+### Resolution Fix (TODO)
+- [ ] Research Creatomate resolution/quality parameters
+- [ ] Add quality parameter to ensure 1080x1920 output
+- [ ] Test render to verify resolution
+
+### Next Test
+- [ ] Generate new video with fixed animation
+- [ ] Verify text is readable and not jumbled
+- [ ] Check if resolution is correct (1080x1920)
+- [ ] Deliver to user for approval
+
+
+## Phase 109: ZAP Flagship Demo Video (HARDCODED SCRIPT)
+
+### Context
+- User provided exact script for ZAP's flagship demo video
+- Must use Josh voice (TxGEqnHWrfWFTfGW9XjX), not Rachel
+- Radial gradient background (#1a1a1a center → #000000 edges)
+- Brand color #FF6B35 on key words
+- 5 scenes, 30 seconds total
+- This is the video every coach sees when visiting the platform
+
+### Tasks
+- [x] Add Josh voice (ID: TxGEqnHWrfWFTfGW9XjX) as voice option
+- [x] Update ElevenLabs settings for Josh: stability 0.25, similarity_boost 0.75, style 0.65, use_speaker_boost true
+- [x] Update Template 0 to support radial gradient background
+- [ ] Update Template 0 to support brand color accents on specific words
+- [x] Implement font size as 15vmin (responsive viewport units)
+- [ ] Add zapcampaigns.com subtext in scene 5 (Inter Regular, 3vmin, white)
+- [ ] Create hardcoded ZAP demo script (5 scenes with exact copy from user)
+- [ ] Fix resolution to 1080x1920 (currently rendering at 270x480)
+- [ ] Add music system (upbeat pool, 30% volume, 1s fade in, 2s fade out)
+- [ ] Test render with all specifications
+- [ ] Verify "stop scrolling" quality before delivery
+
+### Exact Script (DO NOT MODIFY)
+Scene 1 (5s): "You've tried running ads before. Spent the money. Got nothing back." → "YOU'VE TRIED THIS BEFORE." (TRIED in orange)
+Scene 2 (5s): "It wasn't your fault. You had the wrong tool. Built for businesses — not coaches." → "WRONG TOOL. WRONG RESULTS." (WRONG pulses red)
+Scene 3 (7s): "ZAP was built by a coach who's worked with 900,000 people across 49 countries..." → "BUILT BY A COACH. FOR COACHES." (900,000 appears first large)
+Scene 4 (7s): "Your campaign goes straight to Meta. No copying. No pasting..." → "STRAIGHT TO META. TODAY." (TODAY in orange, larger)
+Scene 5 (6s): "Stop being invisible. Your next client is already on Facebook..." → "THEY HAVEN'T SEEN YOU YET." + zapcampaigns.com below
+
+
+## Phase 110: ZAP Demo Video (Separate System)
+
+### Context
+- Create dedicated demo video page, NOT integrated into main video creator
+- Hardcoded 5-scene ZAP script (not AI-generated)
+- One-click generation: "Generate ZAP Demo"
+- Showcase flagship quality to coaches
+- All special features: word colors, pulse animations, music
+
+### Phase 1: Database Schema & Backend
+- [x] Create demoVideos table in schema
+- [x] Generate migration SQL
+- [x] Apply migration via webdev_execute_sql
+- [x] Create generateDemoVideo tRPC procedure
+- [x] Create getDemoVideo tRPC procedure
+- [x] Create listDemoVideos tRPC procedure
+
+### Phase 2: Demo Video Page UI
+- [x] Create /demo-video route in App.tsx
+- [x] Create DemoVideo.tsx page component
+- [x] Add "Generate ZAP Demo" button
+- [x] Add video player for completed demos
+- [x] Add download button
+- [ ] Add to navigation (will do after testing)
+
+### Phase 3: Hardcoded 5-Scene Script
+- [ ] Scene 1 (5s): "You've tried running ads before..." → "YOU'VE TRIED THIS BEFORE."
+- [ ] Scene 2 (5s): "It wasn't your fault..." → "WRONG TOOL. WRONG RESULTS."
+- [ ] Scene 3 (7s): "ZAP was built by a coach..." → "BUILT BY A COACH. FOR COACHES."
+- [ ] Scene 4 (7s): "Your campaign goes straight to Meta..." → "STRAIGHT TO META. TODAY."
+- [ ] Scene 5 (6s): "Stop being invisible..." → "THEY HAVEN'T SEEN YOU YET."
+
+### Phase 4: Word-Level Color Accents
+- [ ] Scene 1: "TRIED" in #FF6B35 (orange)
+- [ ] Scene 2: "WRONG" pulsing red animation
+- [ ] Scene 3: "900,000" appears first, large
+- [ ] Scene 4: "TODAY" in orange, larger size
+- [ ] Implement multi-text-element approach for word colors
+
+### Phase 5: Special Elements & Resolution Fix
+- [ ] Add zapcampaigns.com subtext in scene 5 (Inter Regular, 3vmin, white)
+- [ ] Fix resolution to 1080x1920 (investigate Creatomate quality parameter)
+- [ ] Verify radial gradient renders correctly
+- [ ] Verify 15vmin font size is responsive
+
+### Phase 6: Background Music
+- [ ] Research Pixabay music API or download tracks
+- [ ] Select upbeat track for demo
+- [ ] Upload to S3 or use direct URL
+- [ ] Add music element to RenderScript (30% volume, 1s fade in, 2s fade out)
+
+### Phase 7: Testing & Delivery
+- [ ] Generate test demo video
+- [ ] Verify Josh voice quality
+- [ ] Verify word colors and animations
+- [ ] Verify 1080x1920 resolution
+- [ ] Verify music integration
+- [ ] Deliver for user approval
+
+
+## Phase 50: Video Generation - Fix Abrupt Ending (URGENT)
+- [ ] Extend Scene 5 CTA from 7s to 10s (total video 28s before outro)
+- [ ] Add URL display element in final 3 seconds of Scene 5
+- [ ] Add 1-second fade-to-black outro at end (28-29s total)
+- [ ] Update videoScripts.ts to change Scene 5 duration from 7s to 10s
+- [ ] Test render and verify complete ending without abrupt cutoff
+
+
+## Phase 51: Video Ending Extension and URL Fix (ACTIVE)
+- [ ] Extend Scene 5 from 10s to 12s (18-30s total)
+- [ ] Move fade-to-black outro from 28-29s to 30-31s
+- [ ] Fix URL display from "GetZAP.ai" to "www.zapcampaigns.com"
+- [ ] Update script generation prompt to reflect 30s total duration
+- [ ] Test render and verify extended ending with correct URL
+
+
+## Phase 52: ZAP Demo Video 4 Critical Fixes (ACTIVE)
+- [x] Fix 1: Hardcode exact ZAP demo script (no AI generation, use exact text provided)
+- [x] Fix 2: Replace Pexels search with exact 5 queries per scene (not generic pools)
+- [x] Fix 3: Remove black frame at start - footage visible from frame 1
+- [x] Fix 4: Replace all URLs with zapcampaigns.com (check video element, URL overlay, hardcoded strings)
+- [ ] Verify all 4 fixes before generating render
+- [ ] Generate final render and confirm all 4 fixes applied

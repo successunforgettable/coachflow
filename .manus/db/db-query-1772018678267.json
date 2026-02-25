@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE `demoVideos` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`userId` int NOT NULL,\n\t`title` varchar(255) NOT NULL DEFAULT 'ZAP Demo Video',\n\t`description` text,\n\t`creatomateRenderId` varchar(255),\n\t`creatomateStatus` enum('queued','rendering','succeeded','failed') NOT NULL DEFAULT 'queued',\n\t`videoUrl` varchar(1000),\n\t`thumbnailUrl` varchar(1000),\n\t`fileSize` int,\n\t`duration` int NOT NULL DEFAULT 30,\n\t`errorMessage` text,\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\t`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n\tCONSTRAINT `demoVideos_id` PRIMARY KEY(`id`)\n);\n\nALTER TABLE `demoVideos` ADD CONSTRAINT `demoVideos_userId_users_id_fk` FOREIGN KEY (`userId`) REFERENCES `users`(`id`) ON DELETE cascade ON UPDATE no action;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute CREATE TABLE `demoVideos` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`userId` int NOT NULL,\n\t`title` varchar(255) NOT NULL DEFAULT 'ZAP Demo Video',\n\t`description` text,\n\t`creatomateRenderId` varchar(255),\n\t`creatomateStatus` enum('queued','rendering','succeeded','failed') NOT NULL DEFAULT 'queued',\n\t`videoUrl` varchar(1000),\n\t`thumbnailUrl` varchar(1000),\n\t`fileSize` int,\n\t`duration` int NOT NULL DEFAULT 30,\n\t`errorMessage` text,\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\t`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n\tCONSTRAINT `demoVideos_id` PRIMARY KEY(`id`)\n);\n\nALTER TABLE `demoVideos` ADD CONSTRAINT `demoVideos_userId_users_id_fk` FOREIGN KEY (`userId`) REFERENCES `users`(`id`) ON DELETE cascade ON UPDATE no action;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 2189
+}

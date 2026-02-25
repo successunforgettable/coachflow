@@ -875,6 +875,7 @@ export const videoScripts = mysqlTable("videoScripts", {
   ]).notNull(),
   duration: mysqlEnum("duration", ["15", "30", "60", "90"]).notNull(),
   visualStyle: mysqlEnum("visualStyle", [
+    "text_only",
     "kinetic_typography", 
     "motion_graphics", 
     "stats_card"
@@ -910,6 +911,7 @@ export const videos = mysqlTable("videos", {
   ]).notNull(),
   duration: mysqlEnum("duration", ["15", "30", "60", "90"]).notNull(),
   visualStyle: mysqlEnum("visualStyle", [
+    "text_only",
     "kinetic_typography", 
     "motion_graphics", 
     "stats_card"
@@ -938,6 +940,35 @@ export const videos = mysqlTable("videos", {
 }));
 export type Video = typeof videos.$inferSelect;
 export type InsertVideo = typeof videos.$inferInsert;
+
+/**
+ * Demo Videos Table
+ * Stores ZAP flagship demo videos with hardcoded script
+ * Separate from main video generation system
+ */
+export const demoVideos = mysqlTable("demoVideos", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: varchar("title", { length: 255 }).notNull().default("ZAP Demo Video"),
+  description: text("description"),
+  creatomateRenderId: varchar("creatomateRenderId", { length: 255 }),
+  creatomateStatus: mysqlEnum("creatomateStatus", [
+    "queued", 
+    "rendering", 
+    "succeeded", 
+    "failed"
+  ]).default("queued").notNull(),
+  videoUrl: varchar("videoUrl", { length: 1000 }),
+  thumbnailUrl: varchar("thumbnailUrl", { length: 1000 }),
+  fileSize: int("fileSize"),
+  duration: int("duration").default(30).notNull(), // Always 30 seconds
+  errorMessage: text("errorMessage"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type DemoVideo = typeof demoVideos.$inferSelect;
+export type InsertDemoVideo = typeof demoVideos.$inferInsert;
 
 /**
  * Meta Connections - OAuth connection to Meta Ads Manager

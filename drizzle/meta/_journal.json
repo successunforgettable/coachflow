@@ -253,6 +253,20 @@
       "when": 1771943856842,
       "tag": "0035_empty_prowler",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "5",
+      "when": 1771981971950,
+      "tag": "0036_lumpy_nekra",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "5",
+      "when": 1772018660825,
+      "tag": "0037_fearless_killmonger",
+      "breakpoints": true
     }
   ]
 }

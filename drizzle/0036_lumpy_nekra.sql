@@ -1,0 +1,2 @@
+ALTER TABLE `videoScripts` MODIFY COLUMN `visualStyle` enum('text_only','kinetic_typography','motion_graphics','stats_card') NOT NULL;--> statement-breakpoint
+ALTER TABLE `videos` MODIFY COLUMN `visualStyle` enum('text_only','kinetic_typography','motion_graphics','stats_card') NOT NULL;

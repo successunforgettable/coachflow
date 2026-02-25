@@ -48,6 +48,7 @@ import { VideoCredits } from "./pages/VideoCredits";
 import VideoCreator from "./pages/VideoCreator";
 import VideoScriptEditor from "./pages/VideoScriptEditor";
 import VideoDetail from "./pages/VideoDetail";
+import { DemoVideo } from "./pages/DemoVideo";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -93,6 +94,7 @@ function Router() {
       <Route path={"/video-creator"} component={VideoCreator} />
       <Route path={"/video-creator/script/:id"} component={VideoScriptEditor} />
       <Route path={"/video-creator/video/:id"} component={VideoDetail} />
+      <Route path={"/demo-video"} component={DemoVideo} />
       <Route path={"/meta/campaigns"} component={MetaCampaigns} />
       <Route path={"/meta/alerts"} component={CampaignAlerts} />
       <Route path={"/terms"} component={Terms} />

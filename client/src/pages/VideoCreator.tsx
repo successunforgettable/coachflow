@@ -15,7 +15,7 @@ export default function VideoCreator() {
   const [serviceId, setServiceId] = useState<string>("");
   const [videoType, setVideoType] = useState<"explainer" | "proof_results" | "testimonial" | "mechanism_reveal">("explainer");
   const [duration, setDuration] = useState<"15" | "30" | "60" | "90">("30");
-  const [visualStyle, setVisualStyle] = useState<"kinetic_typography" | "motion_graphics" | "stats_card">("kinetic_typography");
+  const [visualStyle, setVisualStyle] = useState<"text_only" | "kinetic_typography" | "motion_graphics" | "stats_card">("text_only");
 
   const { data: services } = trpc.services.list.useQuery();
   const { data: balance } = trpc.videoCredits.getBalance.useQuery();
@@ -166,6 +166,12 @@ export default function VideoCreator() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="text_only">
+                  <div>
+                    <div className="font-medium">Text Only (Recommended)</div>
+                    <div className="text-sm text-muted-foreground">Black background, white bold text — highest converting format</div>
+                  </div>
+                </SelectItem>
                 <SelectItem value="kinetic_typography">
                   <div>
                     <div className="font-medium">Kinetic Typography</div>

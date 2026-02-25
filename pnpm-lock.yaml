@@ -145,6 +145,9 @@ importers:
       cookie:
         specifier: ^1.0.2
         version: 1.0.2
+      creatomate:
+        specifier: ^1.2.1
+        version: 1.2.1
       date-fns:
         specifier: ^4.1.0
         version: 4.1.0
@@ -2634,6 +2637,9 @@ packages:
 
   cose-base@2.2.0:
     resolution: {integrity: sha512-AzlgcsCbUMymkADOJtQm3wO9S3ltPfYOFD5033keQn9NJzIbtnZj+UdBJe7DYml/8TdbtHJW3j58SOnKhWY/5g==}
+
+  creatomate@1.2.1:
+    resolution: {integrity: sha512-O+ItEBREe0z6RkHu9wERWnnK3mxmuWEBTPS2Xs7tPCOCx7z4/U1s5+Bf2tNdTs/4N4beal3NAeN6vLri8l0lYg==}
 
   css-line-break@2.1.0:
     resolution: {integrity: sha512-FHcKFCZcAha3LwfVBhCQbW2nCNbkZXn7KVUJcsT5/P8YmfsVja0FMPJr0B903j/E69HUphKiV9iQArX8SDYA4w==}
@@ -7216,6 +7222,12 @@ snapshots:
   cose-base@2.2.0:
     dependencies:
       layout-base: 2.0.1
+
+  creatomate@1.2.1:
+    dependencies:
+      axios: 1.12.2
+    transitivePeerDependencies:
+      - debug
 
   css-line-break@2.1.0:
     dependencies:
