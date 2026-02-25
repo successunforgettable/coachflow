@@ -36,107 +36,299 @@ function buildScriptPrompt(
   // ═══════════════════════════════════════════════════════════════════════════════
   
   const NICHE_DETECTION = `
-═══ NICHE DETECTION — DO THIS FIRST ═══
+NICHE DETECTION — universal, not a fixed list.
 
-Read the service profile data carefully. Identify:
-1. What WORLD does this coach operate in? (fitness, crypto, mindset, relationships, business, spiritual, parenting, etc.)
-2. What language does that world use? (a fitness coach says "gains" and "macros", a crypto coach says "entries" and "bags", a mindset coach says "blocks" and "patterns")
-3. What does FAILURE look like in that world? What are they afraid of?
-4. What does SUCCESS look like in that world? What do they dream about?
+ZAP serves any coach, speaker, consultant, or educator on the planet.
+You will encounter niches you have never seen before. That is expected.
+Your job is to detect and write in their world, whatever that world is.
 
-Then write the ENTIRE script using only the language of that world.
-A fitness ad must sound like a fitness coach wrote it.
-A crypto ad must sound like a crypto trader wrote it.
-A life coach ad must sound like a life coach wrote it.
+STEP 1 — Read the service profile carefully. Extract:
+- What does this person teach or help people do?
+- Who specifically do they help? Not "people" — be specific.
+- What does failure look like for that audience RIGHT NOW, today?
+- What does success look like for that audience?
+- What words does that audience use that an outsider would not?
 
-If a life coach and a crypto trader could both use your script without changing a word — it is too generic. Rewrite it.
+STEP 2 — Identify the world. It could be any of these or something entirely different:
+Fitness / health / nutrition / postpartum / menopause / athletic performance
+Crypto / trading / investing / wealth building / financial freedom
+Mindset / NLP / hypnotherapy / subconscious / limiting beliefs
+Relationships / dating / marriage / divorce / attachment styles
+Business / sales / lead generation / agency / freelancing / consulting
+Spirituality / tarot / astrology / energy healing / manifestation
+Parenting / motherhood / fatherhood / family systems
+Career / executive / leadership / corporate / public speaking
+Creative / music / writing / art / photography / film
+Real estate / property / passive income / land investing
+Language / education / academic / professional skills
+Sports performance / coaching athletes / mental performance
+
+This list is NOT exhaustive. If the coach teaches competitive barbecue judging — 
+detect that world and write in its language.
+
+STEP 3 — Write in their language, not yours.
+Every niche has insider language. Use it.
+Every niche has specific fears. Name them precisely.
+Every niche has specific dreams. Reference them concretely.
+
+EXAMPLES OF NICHE-SPECIFIC FEARS:
+- Business coach client: "wasting another year stuck at the same revenue level"
+- Dating coach client: "another failed relationship and running out of time"
+- Crypto coach client: "watching Bitcoin run 40% while still waiting for the perfect entry"
+- Postpartum coach client: "never feeling like herself again after having kids"
+- Public speaking coach client: "freezing completely on stage in front of 500 people"
+- Dog trainer client: "their dog lunging at every person they pass on the street"
+- Executive coach client: "being passed over for promotion again despite doing everything right"
+- Tarot coach client: "being dismissed as not credible by people who don't understand the work"
+- Wedding photographer coach client: "still charging $1,500 while watching others charge $8,000"
+
+None of these fears sound the same. Your script must sound like it was written 
+by someone who lives inside that world — not an outsider who read about it once.
+
+THE NICHE TEST:
+Show the script to someone in that niche.
+If they say "yes, that's exactly how I feel" — correct world.
+If they say "close but not quite" — go deeper into their specific language.
+If they say "this doesn't sound like us" — start over.
 `;
 
   const ANGLE_SELECTION = `
-═══ ANGLE SELECTION — CHOOSE ONE ═══
+ANGLE SELECTION — choose ONE before writing a single word.
 
-BEFORE WRITING ANYTHING, choose ONE angle for this script:
-- Pain point: Lead with what the coach is LOSING or suffering right now
-- Outcome: Lead with the specific transformation the coach's clients experience  
-- Social proof: Lead with a specific number or result that creates instant credibility
-- Curiosity: Lead with a counterintuitive truth about why ads fail for coaches
-- Comparison: Lead with what makes this different from every other ad tool
+For any niche, one of these 5 angles will be strongest.
+Choose based on what the service profile data suggests is most compelling.
+State your chosen angle before writing the script.
 
-State the chosen angle in your thinking. Then write the entire script through that single lens.
-Only one angle per script. Do not mix them.
+1. LOSS — what are they losing RIGHT NOW without this?
+   Best when: the audience has already tried something and failed
+   Hook pattern: "You've already [tried X]. You already know [it didn't work]."
+   Example: "You've already run Facebook ads. You already know what happened."
+
+2. IDENTITY — who do they want to become, and what's blocking them?
+   Best when: the transformation is about becoming a different version of themselves
+   Hook pattern: "You know exactly who you want to be. Something keeps pulling you back."
+   Example: "You know you're meant to be on stage. Your body has other ideas."
+
+3. PROOF — a specific number that makes the promise feel real
+   Best when: the coach has strong credentials, client results, or scale
+   Hook pattern: "[Specific number] [specific people] [specific outcome]."
+   Example: "3,847 women have rebuilt their strength after having kids. Using this exact system."
+
+4. CONTRARIAN — a truth that goes against what they have been told
+   Best when: the audience has wasted money or time following conventional advice
+   Hook pattern: "Everything you've been told about [X] is exactly why [Y] keeps happening."
+   Example: "Everything the trading gurus told you about entries is why you keep getting wrecked."
+
+5. URGENCY — something happening right now makes waiting costly
+   Best when: there is a market timing, trend, or opportunity element
+   Hook pattern: "While you're [waiting/thinking/hesitating], [specific bad thing] is happening."
+   Example: "While you're waiting to feel ready, your competitor just booked your next 10 clients."
+
+RULE: If the service profile does not clearly suggest one angle — choose LOSS.
+Loss is the universal default. It works across every niche because every audience 
+has already tried something that did not work.
+
+Do not mix angles. One script, one angle, one emotional through-line from start to finish.
 `;
 
   const BANNED_WORDS = `
-═══ BANNED WORDS — NEVER USE THESE ═══
+BANNED WORDS — never use any of these. No exceptions.
 
-NEVER USE THESE WORDS OR PHRASES — they produce generic, forgettable copy:
-- "proven frameworks", "proven strategies", "proven system"
-- "AI-powered", "leverage AI", "harness the power"
-- "transform", "transformation", "transformative"
-- "streamline", "optimize", "innovative", "cutting-edge"
-- "empower", "empowering", "unlock your potential"  
-- "scale your business", "take your business to the next level"
-- "overwhelmed", "challenges", "pain points"
-- "in today's world", "in the digital age"
-- "seamlessly", "effortlessly", "easily"
-- Any word ending in "-ize" that isn't a common word
+If you catch yourself writing any of these, stop and rewrite the sentence 
+using the specific language of the niche instead.
 
-If you catch yourself writing any of these — stop. Rewrite the sentence using the coach's actual language.
+BANNED PHRASES:
+- "proven frameworks", "proven strategies", "proven system", "proven methods"
+- "AI-powered", "leverage AI", "harness the power of AI", "powered by artificial intelligence"
+- "transform", "transformation", "transformative journey", "life-changing transformation"
+- "streamline", "optimize", "innovative", "cutting-edge", "state-of-the-art"
+- "empower", "empowering", "unlock your potential", "unlock your true potential"
+- "scale your business", "take your business to the next level", "elevate your brand"
+- "overwhelmed", "challenges", "pain points", "struggling with"
+- "in today's world", "in today's digital age", "in today's competitive landscape"
+- "seamlessly", "effortlessly", "easily", "simply", "just"
+- "game-changer", "revolutionary", "disruptive", "groundbreaking"
+- "holistic approach", "comprehensive solution", "end-to-end"
+- "best-in-class", "world-class", "industry-leading"
+- "passion", "passionate about", "I'm passionate"
+- "journey", "on your journey", "begin your journey"
+
+WHY: These words appear in every piece of marketing content on the internet.
+They trigger the part of the brain that skips ads. They signal inauthenticity.
+A coach who has been burned by bad ads, who is scrolling Facebook at 11pm, 
+will not stop for any of these words. They have seen them too many times.
 `;
 
   const CUSTOMER_LANGUAGE_RULE = `
-═══ CUSTOMER LANGUAGE RULE — MOST IMPORTANT ═══
+CUSTOMER LANGUAGE RULE — the most important rule in this entire prompt.
 
-Coaches do not talk like software companies. 
-Write every line as if a coach who has been burned by bad ads is talking to another coach who is about to make the same mistake.
+Coaches do not talk like software companies.
+Consultants do not talk like SaaS landing pages.
+Speakers do not talk like enterprise vendors.
+
+Write every line as if a practitioner in that niche is talking directly 
+to another practitioner who is about to make the same costly mistake they made.
 
 WRONG (software language): "ZAP leverages AI to optimize your campaign performance"
-RIGHT (coach language): "I spent $4,000 on Facebook ads last year. Got 3 leads. All of them ghosted me."
+RIGHT (coach language): "I spent $4,000 on Facebook ads last year. Got 3 leads. All ghosted."
 
-WRONG: "Our proven framework delivers results"  
-RIGHT: "900,000 people have been through my programs. None of them found me because of a fancy agency."
+WRONG: "Our proven framework delivers measurable results"
+RIGHT: "900,000 people have sat in my programs. None of them found me through a fancy agency."
 
-WRONG: "AI-powered campaigns at scale"
+WRONG: "AI-powered campaigns that scale your coaching business"
 RIGHT: "You open the app. You answer 6 questions. Your ad is live on Facebook in 11 minutes."
 
-The test: read each line out loud. If it sounds like a SaaS landing page — rewrite it. 
-If it sounds like a coach talking to another coach — it's right.
+WRONG: "Stop wasting weeks on manual campaign creation"
+RIGHT: "You've been putting off running ads for 4 months. You know why. It's not laziness."
+
+THE TEST: Read each line out loud.
+If it sounds like a SaaS product landing page — rewrite it.
+If it sounds like a coach having a real conversation — it is right.
+If your 13-year-old could have written it — it is too generic.
 `;
 
   const SPECIFICITY_RULE = `
-═══ SPECIFICITY RULE — NUMBERS AND NAMES ═══
+SPECIFICITY RULE — vague claims are invisible.
 
-Every claim needs a number or a name. Vague claims are invisible.
+Every claim needs a number, a name, a timeframe, or a concrete detail.
+If a sentence has none of these, it is probably too vague to stop a scroll.
 
-WRONG: "Thousands of coaches trust ZAP"
-RIGHT: "Built by a coach who's trained 900,000 students across 49 countries"
+WRONG: "Thousands of coaches trust this system"
+RIGHT: "Built by a coach who has trained 900,000 students across 49 countries"
 
-WRONG: "Get results fast"  
+WRONG: "Get results fast"
 RIGHT: "Your first ad campaign. Live on Facebook. In under 15 minutes."
 
 WRONG: "Stop wasting money on ads that don't work"
 RIGHT: "You've already spent the money. You already know it didn't work. This is different."
 
-If a sentence has no specific number, name, timeframe, or concrete detail — it is probably too vague.
+WRONG: "Join coaches who are growing their business"
+RIGHT: "Join 2,400 coaches who generated their first qualified lead in the first 48 hours"
+
+WRONG: "Feel stronger after having your baby"
+RIGHT: "Lift your toddler without your back giving out. Sleep through the night. Feel like you again."
+
+WRONG: "Learn to trade like a professional"
+RIGHT: "Stop watching Bitcoin move 30% while you're still waiting for the perfect setup"
+
+Specificity creates credibility. Vagueness creates doubt.
+If you cannot be specific — ask what specific data exists in the service profile 
+and use whatever numbers or details are available.
 `;
 
   const HOOK_RULE = `
-═══ HOOK RULE — SCENE 1 ONLY ═══
+HOOK RULE — applies to Scene 1 only, the first 3 seconds.
 
-The hook must create an open loop. A question, a tension, or a truth that 
-cannot be resolved until the viewer watches the rest of the video.
+The hook has one job: make the right person stop scrolling.
+Not everyone. The right person. The one who has this exact problem right now.
 
-The hook must also name something the viewer is LOSING — not something they could gain.
-Loss is felt more than gain. Make them feel the loss.
+REQUIREMENTS for every hook:
+1. Names something the viewer is LOSING — not something they could gain
+   Loss is felt more powerfully than gain. Lead with loss.
+   
+2. Creates an open loop — a tension or question that cannot be resolved 
+   until the viewer watches the rest of the video
+   
+3. Does NOT mention ZAP, the product, or any solution
+   The hook is only about the pain that exists right now, without ZAP
+   
+4. Sounds like it was said by a real person, not written by a copywriter
+   If it sounds polished and professional — it will be skipped
+   If it sounds like a truth someone finally said out loud — it will stop the scroll
 
-WRONG hook: "Want to grow your coaching business with Facebook ads?"
-RIGHT hook: "You've tried running Facebook ads before. You spent the money. You got nothing back."
+WRONG hooks (too generic, no loss, no open loop):
+- "Want to grow your coaching business with Facebook ads?"
+- "Discover the secret to successful ad campaigns"  
+- "Are you tired of struggling with marketing?"
+- "Stop wasting time on manual work"
 
-WRONG hook: "Discover the secret to successful ad campaigns"
-RIGHT hook: "Every coach I know has wasted at least $2,000 on ads that did absolutely nothing."
+RIGHT hooks (specific loss, open loop, niche language):
+- "You've tried running Facebook ads before. You spent the money. You got nothing back."
+- "Every trading coach I know has blown at least one account following someone else's signals."
+- "You had the baby. You did everything right. You still don't recognise the person in the mirror."
+- "You've been speaking for 3 years. You're still being asked to speak for free."
+- "You passed your real estate exam. You just haven't closed a deal in 90 days."
 
-The hook does not mention ZAP. The hook does not mention solutions. 
-The hook is only about the pain that is happening right now, today, without ZAP.
+The hook does not need to be clever. It needs to be TRUE.
+When the right person hears it, their reaction should be: "How did they know that?"
+`;
+
+  const META_COMPLIANCE = `
+⚠️ META COMPLIANCE — CRITICAL: Ad account suspension if violated.
+
+BEFORE WRITING ANYTHING, read this entire section. Your script will be rejected if it violates ANY of these rules.
+
+ABSOLUTE PROHIBITIONS (will cause immediate ad rejection):
+
+1. NEVER use "you" + negative body/health language:
+   ❌ BANNED: "Are you exhausted?", "Feeling weak?", "Your body isn't yours?"
+   ❌ BANNED: "Are you overweight?", "Struggling with your weight?", "Feel fat?"
+   ❌ BANNED: "Your body has changed", "Don't recognize yourself?", "Feel disconnected from your body?"
+   ✅ SAFE: "Want more energy?", "Build strength", "Reconnect with your body"
+   ✅ SAFE: "Ready to feel strong again?", "Regain your strength", "Feel like yourself"
+
+2. NEVER call out personal attributes:
+   ❌ BANNED: Age ("over 40", "postpartum", "menopausal"), race, religion, disability
+   ❌ BANNED: Financial status ("broke", "struggling financially", "can't afford")
+   ❌ BANNED: Medical conditions ("have anxiety", "suffering from", "diagnosed with")
+   ✅ SAFE: Remove all personal identifiers, focus on desired outcome only
+
+3. NEVER use "you are" + failure language:
+   ❌ BANNED: "You're failing", "You're stuck", "You're losing", "You're broke"
+   ❌ BANNED: "Still losing accounts?", "Still failing at...?", "Still stuck at...?"
+   ✅ SAFE: "Want to stop losing accounts?", "Ready to move forward?", "Time to succeed?"
+
+4. NEVER promise unrealistic outcomes:
+   ❌ BANNED: "Lose 50 lbs in 2 weeks", "Make $10K your first month", "Cure your anxiety"
+   ✅ SAFE: "Sustainable weight loss", "Build a profitable business", "Manage stress better"
+
+5. NEVER use before/after body transformation language:
+   ❌ BANNED: "Get your pre-baby body back", "Look like you did before", "Transform your body"
+   ✅ SAFE: "Build strength", "Feel energized", "Regain capability"
+
+SPECIFIC NICHE EXAMPLES:
+
+Postpartum Fitness:
+❌ WRONG: "Feeling like your body isn't yours anymore? Exhausted, weak, disconnected?"
+✅ RIGHT: "Want to rebuild your core strength? Ready to feel strong and energized again?"
+
+❌ WRONG: "Your postpartum body has changed. Get it back."
+✅ RIGHT: "Rebuild core strength. Feel capable and energized."
+
+Weight Loss:
+❌ WRONG: "Are you overweight and tired of failed diets?"
+✅ RIGHT: "Want sustainable weight loss without restrictive diets?"
+
+Mental Health:
+❌ WRONG: "Do you have anxiety? Are you depressed?"
+✅ RIGHT: "Want to manage stress better and feel more confident?"
+
+Business/Money:
+❌ WRONG: "Are you broke? Still making no money?"
+✅ RIGHT: "Ready to build a profitable business? Want consistent revenue?"
+
+Dog Training:
+❌ WRONG: "Is your dog aggressive? Does your dog have behavior problems?"
+✅ RIGHT: "Want a calmer dog? Ready for stress-free walks?"
+
+PATTERN DETECTION — Scan your script for these:
+- "you" + [tired, exhausted, weak, fat, broke, failing, stuck, lost, disconnected]
+- "are you" + [any negative attribute]
+- "still" + [losing, failing, stuck, broke]
+- "your body" + [isn't, changed, failed, broken]
+
+If you find ANY of these patterns → REWRITE IMMEDIATELY.
+
+PRE-SUBMISSION CHECKLIST:
+Before returning your script, verify:
+□ Zero instances of "you are" + negative attributes
+□ Zero body-focused negative language
+□ Zero personal attribute callouts (age, weight, financial status)
+□ All hooks focus on desired outcome, not current failure
+□ All language is empowering and forward-looking
+
+IF YOU VIOLATE THESE RULES, THE USER'S AD ACCOUNT WILL BE FLAGGED OR SUSPENDED.
+When in doubt, reframe to positive aspiration instead of negative current state.
 `;
 
   // ═══════════════════════════════════════════════════════════════════════════════
@@ -202,6 +394,8 @@ ${CUSTOMER_LANGUAGE_RULE}
 ${SPECIFICITY_RULE}
 
 ${HOOK_RULE}
+
+${META_COMPLIANCE}
 
 ═══════════════════════════════════════════════════════════════════════════════
 
