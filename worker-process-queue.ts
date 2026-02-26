@@ -30,7 +30,6 @@ async function main() {
     SELECT 
       v.id as videoId,
       v.scriptId,
-      v.visualStyle,
       v.serviceId,
       v.userId,
       v.creditsUsed,
@@ -40,12 +39,13 @@ async function main() {
       vs.duration
     FROM videos v
     JOIN videoScripts vs ON v.scriptId = vs.id
-    WHERE v.creatomateStatus = 'queued'
-    AND v.id IN (240001, 240002, 240003, 240004, 240005)
+    WHERE v.id IN (250001, 250002, 250003, 250004, 250005)
     ORDER BY v.id
   `) as any;
 
-  console.log(`\n📊 Found ${videos.length} queued videos\n`);
+  console.log(`\n📊 Found ${videos.length} queued videos`);
+  console.log('DEBUG: Query result:', JSON.stringify(videos, null, 2));
+  console.log('');
 
   for (let i = 0; i < videos.length; i++) {
     const video = videos[i];

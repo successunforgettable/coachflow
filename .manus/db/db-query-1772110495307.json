@@ -1,0 +1,9 @@
+{
+  "query": "-- Delete hardcoded test videos\nDELETE FROM videos WHERE id >= 240001 AND id <= 240005;\n\n-- Delete hardcoded test scripts\nDELETE FROM videoScripts WHERE id >= 180002 AND id <= 180006;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute -- Delete hardcoded test videos\nDELETE FROM videos WHERE id >= 240001 AND id <= 240005;\n\n-- Delete hardcoded test scripts\nDELETE FROM videoScripts WHERE id >= 180002 AND id <= 180006;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1892
+}

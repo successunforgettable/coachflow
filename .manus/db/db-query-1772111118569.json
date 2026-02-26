@@ -1,0 +1,9 @@
+{
+  "query": "\nSELECT \n  v.id as videoId,\n  v.scriptId,\n  v.creatomateStatus,\n  vs.id as scriptDbId\nFROM videos v\nJOIN videoScripts vs ON v.scriptId = vs.id\nWHERE v.creatomateStatus IS NULL\nAND v.scriptId IN (210001, 210002, 210003, 210004, 210005)\nORDER BY v.id;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute \nSELECT \n  v.id as videoId,\n  v.scriptId,\n  v.creatomateStatus,\n  vs.id as scriptDbId\nFROM videos v\nJOIN videoScripts vs ON v.scriptId = vs.id\nWHERE v.creatomateStatus IS NULL\nAND v.scriptId IN (210001, 210002, 210003, 210004, 210005)\nORDER BY v.id;\n",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1657
+}

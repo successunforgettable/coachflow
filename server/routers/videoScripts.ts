@@ -15,6 +15,7 @@ export interface Scene {
   voiceoverText: string;
   visualDirection: string;
   onScreenText: string;
+  pexelsQuery: string;
 }
 
 // ─── CREDIT COST BY DURATION ──────────────────────────────────────────────────
@@ -26,7 +27,7 @@ export function getCreditCost(duration: string): number {
 }
 
 // ─── SCRIPT GENERATION PROMPTS ────────────────────────────────────────────────
-function buildScriptPrompt(
+export function buildScriptPrompt(
   videoType: string,
   duration: number,
   service: any
@@ -152,6 +153,9 @@ BANNED PHRASES:
 - "best-in-class", "world-class", "industry-leading"
 - "passion", "passionate about", "I'm passionate"
 - "journey", "on your journey", "begin your journey"
+- "countless", "many", "numerous", "various", "several" (replace with actual numbers from service profile)
+- "industry expert", "seasoned professional", "experienced coach" (replace with actual credential from service profile)
+- "individuals", "people" (replace with specific audience: traders, mothers, photographers, etc.)
 
 WHY: These words appear in every piece of marketing content on the internet.
 They trigger the part of the brain that skips ads. They signal inauthenticity.
@@ -338,6 +342,242 @@ IF YOU VIOLATE THESE RULES, THE USER'S AD ACCOUNT WILL BE FLAGGED OR SUSPENDED.
 When in doubt, reframe to positive aspiration instead of negative current state.
 `;
 
+  const FEW_SHOT_EXAMPLES = `
+## EXAMPLES — Learning the Pattern, Not the Niches
+
+These examples exist to teach you HOW to detect a world and write in it.
+They do not represent the only niches ZAP serves.
+ZAP serves every coaching, consulting, speaking, and education niche on earth.
+Your job is to apply this same detection and writing process to ANY niche you encounter.
+
+Study the PATTERN across all 3 examples:
+- How the hook is constructed (loss + open loop + insider language)
+- How the problem scene deepens without labelling the person
+- How authority is stated (first person + specific number)
+- How the solution shows the after state, not the mechanism
+- How the CTA uses the coach's exact specificOutcome language
+
+Once you understand the pattern, you can apply it to:
+A barbecue competition coach. A Mandarin language tutor. A grief counsellor.
+A professional poker player who coaches others. A beekeeper who teaches beekeeping.
+A retired navy SEAL who coaches corporate leadership. Any niche. Every niche.
+
+---
+
+### EXAMPLE A — World: Corporate Leadership (shows moment-based loss hook)
+
+SERVICE PROFILE:
+targetCustomer: Senior women passed over for promotion
+mainPainPoint: Told not ready despite outperforming peers
+specificOutcome: "Get your VP title within the next 12 months"
+credentials: Former Fortune 500 CHRO, 200+ women promoted
+angle: LOSS
+
+❌ GENERIC VERSION — what the LLM defaults to without guidance:
+"Are you struggling to advance in your career? Many women face challenges 
+in corporate environments. Our proven framework empowers you to transform 
+your trajectory. Start your journey today."
+
+Pattern failures: no world language, banned words throughout, no specific
+loss, no open loop, could belong to any industry or gender.
+
+✅ NICHE VERSION — what ZAP must produce:
+Scene 1: "Still waiting for that VP title you earned years ago?"
+Scene 2: "It's infuriating to hear 'not ready yet' after outperforming your male peers."
+Scene 3: "As a former Fortune 500 CHRO, I've promoted over 200 women into senior roles."
+Scene 4: "The Executive Edge shows you how to articulate your impact, command the room, and secure that overdue promotion. No more waiting."
+Scene 5: "Stop losing out. Click Learn More to get your VP title within the next 12 months."
+
+Pattern applied:
+HOOK → specific loss (title already earned, still waiting) + open loop (why?)
+PROBLEM → insider language (male peers, not ready yet) + emotion without labels
+AUTHORITY → first person + specific credential + specific number
+SOLUTION → after state (command the room) not mechanism (we use a framework)
+CTA → specificOutcome field pulled verbatim
+
+---
+
+### EXAMPLE B — World: Animal Behaviour (shows visceral experience hook)
+
+SERVICE PROFILE:
+targetCustomer: Dog owners whose dog lunges at other dogs on walks
+mainPainPoint: Dreading every walk, unpredictable behaviour
+specificOutcome: "Get your calm dog back"
+credentials: Certified applied animal behaviourist, 1,200 reactive dogs
+angle: LOSS
+
+❌ GENERIC VERSION:
+"Is your dog causing problems? Dog behaviour challenges can be overwhelming.
+Our expert trainers use proven methods to transform your dog. Book today
+to start your journey to a better relationship with your pet."
+
+Pattern failures: "causing problems" vague, "overwhelming" banned,
+"proven methods" banned, "transform" banned, "journey" banned,
+no pelvic floor — wait, wrong niche. Exactly. No insider language at all.
+
+✅ NICHE VERSION:
+Scene 1: "Losing the joy of dog walks because of leash reactivity?"
+Scene 2: "That gut-wrenching dread every time you see another dog — wondering if this walk ends in a lunge-fest or a full-blown meltdown."
+Scene 3: "As a certified applied animal behaviourist, I've helped over 1,200 reactive dogs find their calm."
+Scene 4: "Science-backed methods that rewire your dog's brain — replacing fear with focus. No pulling. No barking. Just a loose leash."
+Scene 5: "Stop avoiding walks. Book your free call and get your calm dog back."
+
+Pattern applied:
+HOOK → specific activity being lost (dog walks) + insider term (leash reactivity)
+PROBLEM → physical experience (gut-wrenching dread) not a label (stressed owner)
+AUTHORITY → certification + specific number (1,200 dogs)
+SOLUTION → concrete image of the after state (loose leash, no barking)
+CTA → action verb + specificOutcome verbatim (calm dog back)
+
+---
+
+### EXAMPLE C — World: Postpartum Fitness (shows Meta-compliant moment hook)
+
+SERVICE PROFILE:
+targetCustomer: Mothers 3-18 months postpartum
+mainPainPoint: Feeling disconnected from body after having kids
+specificOutcome: "Feel like yourself again"
+credentials: Pelvic floor physio and strength coach
+angle: LOSS
+special rule: Meta compliance — describe MOMENTS not personal attributes
+
+❌ GENERIC VERSION:
+"Are you struggling to get back in shape after your baby? Many mothers 
+feel exhausted and weak postpartum. Our holistic approach transforms 
+your body and mind. Begin your wellness journey today."
+
+Pattern failures: "get back in shape" implies body image (Meta violation),
+"exhausted and weak" are personal attributes (Meta violation), "holistic"
+banned, "transforms" banned, "wellness journey" two banned words,
+no pelvic floor language, no specificity.
+
+✅ NICHE VERSION:
+Scene 1: "That moment you go to pick up your baby and your core just… isn't there."
+Scene 2: "You try to walk further, but your hips ache, and lifting the car seat feels like a marathon."
+Scene 3: "As a pelvic floor physio and strength coach, I've guided hundreds of mothers back to full strength."
+Scene 4: "The Strong Mama Method — specialised pelvic floor recovery combined with progressive strength training. Build a resilient body, safely."
+Scene 5: "Feel like yourself again. Tap Learn More to explore the Strong Mama Method."
+
+Pattern applied:
+HOOK → specific MOMENT (picking up baby) not attribute (being weak)
+PROBLEM → physical EXPERIENCE (hips ache, car seat weight) not condition (exhausted)
+AUTHORITY → dual credential (physio + strength coach) + number (hundreds)
+SOLUTION → method name + what it combines + outcome image (resilient body)
+CTA → specificOutcome field verbatim as opening line
+
+---
+
+## THE UNIVERSAL PATTERN — Apply This to Every Niche
+
+Extract these 5 rules from the examples above and apply them to ANY niche:
+
+HOOK FORMULA:
+[Specific activity or moment being lost] + [insider term for the problem] + [open question]
+OR
+[The exact moment the pain hits] + [sensory/physical detail] (for Meta-sensitive niches)
+
+PROBLEM FORMULA:
+[Physical or emotional EXPERIENCE of the pain] — never a label, always an experience
+Use the exact words someone in that world uses to describe this to a friend
+
+AUTHORITY FORMULA:
+"As a [specific credential], I've [specific verb] [specific number] [specific people/things]."
+Always first person. Always a number. Always a credential the niche respects.
+
+SOLUTION FORMULA:
+Name the method or program + what it does in niche language + concrete image of the after state
+Do NOT describe the mechanism. Show the result.
+
+CTA FORMULA:
+[Action word] + [specificOutcome field verbatim] + [campaign objective action]
+The specificOutcome field is the coach's own words. Use them exactly.
+
+---
+
+## APPLYING THE PATTERN TO NEW NICHES
+
+When you encounter a niche not in these examples, follow this process:
+
+Step 1: Identify the specific activity or moment where the pain is most felt
+  Crypto trader → the moment the funded account gets blown
+  Wedding photographer → the moment a client asks for a discount
+  Grief counsellor → the moment they reach for the phone to call someone gone
+  Beekeeping coach → the moment a hive collapses and they don't know why
+
+Step 2: Find the insider term for that pain
+  Crypto → "blowing the account", "getting wrecked", "prop firm challenge"
+  Wedding photographer → "second shooter discount", "ghosted after the quote"
+  Grief counsellor → "grief fog", "the firsts" (first birthday, first Christmas)
+  Beekeeping → "colony collapse", "hive loss", "varroa mite infestation"
+
+Step 3: Write the hook using that moment + that insider term
+  Never use the generic version. Always use the world's own language.
+
+Step 4: Follow the AUTHORITY → SOLUTION → CTA formula exactly as shown above
+
+This process works for every niche. There are no exceptions.
+`;
+
+  const AUTHORITY_SCENE_RULE = `
+AUTHORITY SCENE RULE — Scene 3 only:
+
+Scene 3 must use the exact credentials from the service profile.
+Do not invent credentials. Do not use generic phrases.
+Do not say "industry expert", "experienced coach", "seasoned professional."
+Do not say "countless" — if there is no number, use "hundreds of" minimum.
+
+The authority scene has one formula. Use it exactly:
+
+"As a [CREDENTIAL FROM uniqueMechanism FIELD], I've [SPECIFIC VERB] 
+[NUMBER FROM uniqueMechanism FIELD] [SPECIFIC PEOPLE OR THINGS]."
+
+WRONG: "As an industry expert, I've guided countless individuals."
+RIGHT: "As a certified grief recovery specialist, I've guided 800+ people 
+through losing a spouse or parent."
+
+WRONG: "I've seen countless traders stuck in this cycle."
+RIGHT: "As a former prop desk trader with 7 years trading bank capital, 
+I've mentored over 340 retail traders to consistent funded account withdrawals."
+
+If the uniqueMechanism field contains a number — use it.
+If it does not contain a number — use "hundreds of" as minimum.
+If it does not contain a specific credential — ask what it is before generating.
+
+The authority scene is the proof point. Generic proof is no proof at all.
+`;
+
+  const PEXELS_QUERY_RULE = `
+PEXELS QUERY RULE — All scenes:
+
+Every scene must include a "pexelsQuery" field with a 2-4 word search query that matches:
+1. The NICHE/WORLD of the service (crypto, fitness, corporate, etc.)
+2. The EMOTION of that specific scene (frustrated, confident, relieved, etc.)
+
+DO NOT use generic business queries. Use niche-specific visual language.
+
+EXAMPLES:
+
+Crypto Trading Service:
+❌ WRONG: "business person frustrated laptop" (too generic)
+✅ RIGHT: "crypto charts volatility" (Scene 1 - hook)
+✅ RIGHT: "trader stressed loss" (Scene 2 - problem)
+✅ RIGHT: "bitcoin trading success" (Scene 4 - solution)
+
+Postpartum Fitness Service:
+❌ WRONG: "woman exercising gym" (too generic)
+✅ RIGHT: "mother tired baby" (Scene 1 - hook)
+✅ RIGHT: "postpartum strength training" (Scene 4 - solution)
+
+Executive Leadership Service:
+❌ WRONG: "person working office" (too generic)
+✅ RIGHT: "corporate boardroom meeting" (Scene 1 - hook)
+✅ RIGHT: "executive confident presentation" (Scene 4 - solution)
+
+FORMULA: [NICHE KEYWORD] + [EMOTION/ACTION]
+
+Keep queries SHORT (2-4 words max) and SPECIFIC to the niche.
+`;
+
   // ═══════════════════════════════════════════════════════════════════════════════
   // SERVICE DATA
   // ═══════════════════════════════════════════════════════════════════════════════
@@ -382,7 +622,8 @@ Format:
       "duration": 5,
       "voiceoverText": "Exact spoken words",
       "visualDirection": "What appears on screen — specific, achievable",
-      "onScreenText": "3-7 word text overlay"
+      "onScreenText": "3-7 word text overlay",
+      "pexelsQuery": "2-4 word Pexels search query matching the niche and scene emotion"
     }
   ]
 }`;
@@ -404,23 +645,29 @@ ${HOOK_RULE}
 
 ${META_COMPLIANCE}
 
+${FEW_SHOT_EXAMPLES}
+
+${AUTHORITY_SCENE_RULE}
+
+${PEXELS_QUERY_RULE}
+
 ═══════════════════════════════════════════════════════════════════════════════
 
-Generate an EXPLAINER video ad script. TOTAL DURATION MUST BE EXACTLY 28 SECONDS (not ${duration}).
+Generate an EXPLAINER video ad script. TOTAL DURATION MUST BE MINIMUM 40 SECONDS (not ${duration}).
 
 SERVICE DATA:
 ${baseContext}
 
-SCENE STRUCTURE (EXACTLY 5 SCENES, EXACTLY 28 SECONDS TOTAL):
+SCENE STRUCTURE (EXACTLY 5 SCENES, MINIMUM 40 SECONDS TOTAL):
 ${
   duration <= 30
-    ? `Scene 1 (0-3s, duration: 3): HOOK — Fast punch. Pattern interrupt using one of these angles: Pain point ("Stop wasting time on X"), Outcome ("Achieve Y in Z days"), Social proof ("Join 10,000+ who..."), Curiosity ("The X secret..."), or Comparison ("Unlike X, we...")
-Scene 2 (3-7s, duration: 4): PROBLEM — Build pain. Relatable pain point that resonates emotionally
-Scene 3 (7-12s, duration: 5): AUTHORITY — Credibility. Show social proof or authority (only if data provided)
-Scene 4 (12-18s, duration: 6): SOLUTION — Relief. Show product/benefit and how it works
-Scene 5 (18-28s, duration: 10): CTA — Drive action. Clear next step + URL display with 3s hold time
+    ? `Scene 1 (0-5s, duration: 5): HOOK — Fast punch. Pattern interrupt using one of these angles: Pain point ("Stop wasting time on X"), Outcome ("Achieve Y in Z days"), Social proof ("Join 10,000+ who..."), Curiosity ("The X secret..."), or Comparison ("Unlike X, we...")
+Scene 2 (5-12s, duration: 7): PROBLEM — Build pain. Relatable pain point that resonates emotionally. Use 2-3 sentences to deepen the pain.
+Scene 3 (12-20s, duration: 8): AUTHORITY — Credibility. Show social proof or authority (only if data provided). Expand with specific results or credentials.
+Scene 4 (20-30s, duration: 10): SOLUTION — Relief. Show product/benefit and how it works. Explain the mechanism in detail.
+Scene 5 (30-42s, duration: 12): CTA — Drive action. Clear next step + URL display with 3s hold time. Reinforce the outcome.
 
-YOU MUST GENERATE EXACTLY 5 SCENES. DO NOT ADD A 6TH SCENE. TOTAL DURATION MUST BE 28 SECONDS.`
+YOU MUST GENERATE EXACTLY 5 SCENES. DO NOT ADD A 6TH SCENE. TOTAL DURATION MUST BE MINIMUM 40 SECONDS (aim for 40-45 seconds).`
     : duration === 60
     ? `Scene 1 (0-5s): HOOK — Pattern interrupt
 Scene 2 (5-15s): PROBLEM AGITATION — Make the pain real

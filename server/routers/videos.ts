@@ -513,12 +513,11 @@ export async function renderVideo(params: {
   
   const sceneFootage = await Promise.all(
     scenes.map(async (scene: any, index: number) => {
-      // If scene has pexelsQuery field, use it directly (ZAP demo or custom scripts)
+      // If scene has pexelsQuery field, use it directly with fallback
       if (scene.pexelsQuery) {
         try {
-          const { searchPexelsVideos, selectBestHDVideo } = await import("../pexels.js");
-          const results = await searchPexelsVideos(scene.pexelsQuery, 'portrait', 5);
-          const footageUrl = selectBestHDVideo(results.videos);
+          const { fetchStockFootageWithFallback } = await import("../pixabay.js");
+          const footageUrl = await fetchStockFootageWithFallback(scene.pexelsQuery, 'portrait', index);
           if (footageUrl) {
             console.log(`[Video ${videoId}] Scene ${index + 1} (${scene.pexelsQuery}): ✓ ${footageUrl.substring(0, 60)}...`);
           } else {
@@ -888,31 +887,64 @@ export async function renderVideo(params: {
         const newElements = [...element.elements];
         
         if (footageUrl) {
-          // Add video element as first child (background)
-          newElements.unshift({
-            type: "video",
-            name: `Scene${sceneIndex + 1}Background`,
-            source: footageUrl,
-            width: "100%",
-            height: "100%",
-            x: "50%",
-            y: "50%",
-            x_alignment: "50%",
-            y_alignment: "50%",
-            fit: "cover", // Cover entire scene area
-            loop: true, // Loop if video is shorter than scene
-            audio_volume: 0, // Mute background video
-          });
-          
-          // Add dark overlay for better text readability
-          newElements.unshift({
-            type: "shape",
-            name: `Scene${sceneIndex + 1}Overlay`,
-            path: "M 0 0 L 100 0 L 100 100 L 0 100 Z",
-            fill_color: "rgba(0, 0, 0, 0.4)", // 40% black overlay
-            width: "100%",
-            height: "100%",
-          });
+          // Check if it's a gradient specification or real video URL
+          if (footageUrl.startsWith('gradient:')) {
+            // Parse gradient colors
+            const colors = footageUrl.replace('gradient:', '').split(',');
+            const [startColor, endColor] = colors;
+            
+            // Add animated gradient shape as background
+            newElements.unshift({
+              type: "shape",
+              name: `Scene${sceneIndex + 1}GradientBackground`,
+              path: "M 0 0 L 100 0 L 100 100 L 0 100 Z",
+              fill_color: `linear-gradient(135deg, ${startColor} 0%, ${endColor} 100%)`,
+              width: "100%",
+              height: "100%",
+              animations: [{
+                type: "scale",
+                start_scale: "100%",
+                end_scale: "110%",
+                easing: "linear"
+              }]
+            });
+            
+            // Add subtle overlay for text readability
+            newElements.unshift({
+              type: "shape",
+              name: `Scene${sceneIndex + 1}Overlay`,
+              path: "M 0 0 L 100 0 L 100 100 L 0 100 Z",
+              fill_color: "rgba(0, 0, 0, 0.3)", // 30% black overlay
+              width: "100%",
+              height: "100%",
+            });
+          } else {
+            // Real video URL - add video element
+            newElements.unshift({
+              type: "video",
+              name: `Scene${sceneIndex + 1}Background`,
+              source: footageUrl,
+              width: "100%",
+              height: "100%",
+              x: "50%",
+              y: "50%",
+              x_alignment: "50%",
+              y_alignment: "50%",
+              fit: "cover", // Cover entire scene area
+              loop: true, // Loop if video is shorter than scene
+              audio_volume: 0, // Mute background video
+            });
+            
+            // Add dark overlay for better text readability
+            newElements.unshift({
+              type: "shape",
+              name: `Scene${sceneIndex + 1}Overlay`,
+              path: "M 0 0 L 100 0 L 100 100 L 0 100 Z",
+              fill_color: "rgba(0, 0, 0, 0.4)", // 40% black overlay
+              width: "100%",
+              height: "100%",
+            });
+          }
         }
         
         return {

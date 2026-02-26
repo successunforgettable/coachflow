@@ -1,0 +1,8 @@
+{
+  "query": "\nINSERT INTO videos (userId, serviceId, scriptId, videoType, duration, createdAt, updatedAt)\nVALUES\n  (1, 840001, 210001, 'explainer', '30', NOW(), NOW()),\n  (1, 840002, 210002, 'explainer', '30', NOW(), NOW()),\n  (1, 840003, 210003, 'explainer', '30', NOW(), NOW()),\n  (1, 840004, 210004, 'explainer', '30', NOW(), NOW()),\n  (1, 840005, 210005, 'explainer', '30', NOW(), NOW());\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute \nINSERT INTO videos (userId, serviceId, scriptId, videoType, duration, createdAt, updatedAt)\nVALUES\n  (1, 840001, 210001, 'explainer', '30', NOW(), NOW()),\n  (1, 840002, 210002, 'explainer', '30', NOW(), NOW()),\n  (1, 840003, 210003, 'explainer', '30', NOW(), NOW()),\n  (1, 840004, 210004, 'explainer', '30', NOW(), NOW()),\n  (1, 840005, 210005, 'explainer', '30', NOW(), NOW());\n",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1364 (HY000) at line 2: Field 'creditsUsed' doesn't have a default value"
+  ]
+}

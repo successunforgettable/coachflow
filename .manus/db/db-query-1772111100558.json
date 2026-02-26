@@ -1,0 +1,45 @@
+{
+  "query": "\nSELECT id, serviceId, videoType, duration, LENGTH(scenes) as scenes_length\nFROM videoScripts \nWHERE id IN (210001, 210002, 210003, 210004, 210005)\nORDER BY id;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute \nSELECT id, serviceId, videoType, duration, LENGTH(scenes) as scenes_length\nFROM videoScripts \nWHERE id IN (210001, 210002, 210003, 210004, 210005)\nORDER BY id;\n",
+  "rows": [
+    {
+      "id": "210001",
+      "serviceId": "840001",
+      "videoType": "explainer",
+      "duration": "30",
+      "scenes_length": "1193"
+    },
+    {
+      "id": "210002",
+      "serviceId": "840002",
+      "videoType": "explainer",
+      "duration": "30",
+      "scenes_length": "1297"
+    },
+    {
+      "id": "210003",
+      "serviceId": "840003",
+      "videoType": "explainer",
+      "duration": "30",
+      "scenes_length": "1226"
+    },
+    {
+      "id": "210004",
+      "serviceId": "840004",
+      "videoType": "explainer",
+      "duration": "30",
+      "scenes_length": "1588"
+    },
+    {
+      "id": "210005",
+      "serviceId": "840005",
+      "videoType": "explainer",
+      "duration": "30",
+      "scenes_length": "1167"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tserviceId\tvideoType\tduration\tscenes_length\n210001\t840001\texplainer\t30\t1193\n210002\t840002\texplainer\t30\t1297\n210003\t840003\texplainer\t30\t1226\n210004\t840004\texplainer\t30\t1588\n210005\t840005\texplainer\t30\t1167\n",
+  "stderr": "",
+  "execution_time_ms": 1638
+}

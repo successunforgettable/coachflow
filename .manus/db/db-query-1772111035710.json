@@ -1,0 +1,40 @@
+{
+  "query": "\nSELECT id, serviceId, scriptId, creatomateStatus \nFROM videos \nWHERE scriptId IN (210001, 210002, 210003, 210004, 210005)\nORDER BY id DESC;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute \nSELECT id, serviceId, scriptId, creatomateStatus \nFROM videos \nWHERE scriptId IN (210001, 210002, 210003, 210004, 210005)\nORDER BY id DESC;\n",
+  "rows": [
+    {
+      "id": "270005",
+      "serviceId": "840005",
+      "scriptId": "210005",
+      "creatomateStatus": "queued"
+    },
+    {
+      "id": "270004",
+      "serviceId": "840004",
+      "scriptId": "210004",
+      "creatomateStatus": "queued"
+    },
+    {
+      "id": "270003",
+      "serviceId": "840003",
+      "scriptId": "210003",
+      "creatomateStatus": "queued"
+    },
+    {
+      "id": "270002",
+      "serviceId": "840002",
+      "scriptId": "210002",
+      "creatomateStatus": "queued"
+    },
+    {
+      "id": "270001",
+      "serviceId": "840001",
+      "scriptId": "210001",
+      "creatomateStatus": "queued"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tserviceId\tscriptId\tcreatomateStatus\n270005\t840005\t210005\tqueued\n270004\t840004\t210004\tqueued\n270003\t840003\t210003\tqueued\n270002\t840002\t210002\tqueued\n270001\t840001\t210001\tqueued\n",
+  "stderr": "",
+  "execution_time_ms": 1670
+}

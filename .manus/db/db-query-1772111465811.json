@@ -1,0 +1,17 @@
+{
+  "query": "\nSELECT id, serviceId, videoType, duration, scenes\nFROM videoScripts \nWHERE id = 210001\nLIMIT 1;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute \nSELECT id, serviceId, videoType, duration, scenes\nFROM videoScripts \nWHERE id = 210001\nLIMIT 1;\n",
+  "rows": [
+    {
+      "id": "210001",
+      "serviceId": "840001",
+      "videoType": "explainer",
+      "duration": "30",
+      "scenes": "[{\"duration\": 3, \"onScreenText\": \"Passed over. Again.\", \"pexelsQuery\": \"frustrated woman corporate office\", \"sceneNumber\": 1, \"voiceoverText\": \"You've been passed over for VP again. Despite the numbers.\"}, {\"duration\": 4, \"onScreenText\": \"Waiting for recognition?\", \"pexelsQuery\": \"woman looking overlooked in meeting\", \"sceneNumber\": 2, \"voiceoverText\": \"You see male colleagues get promoted for half your output. You're waiting for recognition.\"}, {\"duration\": 5, \"onScreenText\": \"200+ VPs. Same framework.\", \"pexelsQuery\": \"diverse group of successful business women\", \"sceneNumber\": 3, \"voiceoverText\": \"Over 200 senior directors used this framework. They're now VPs at Fortune 500s.\"}, {\"duration\": 6, \"onScreenText\": \"VP in 12 months.\", \"pexelsQuery\": \"woman leading confident meeting\", \"sceneNumber\": 4, \"voiceoverText\": \"The Executive Edge teaches you sponsor advocacy and executive presence. Get that VP role in 12 months.\"}, {\"duration\": 10, \"onScreenText\": \"Claim your VP promotion. TheExecutiveEdge.com\", \"pexelsQuery\": \"woman celebrating promotion\", \"sceneNumber\": 5, \"voiceoverText\": \"Stop waiting for your turn. Claim your VP promotion. Learn how at TheExecutiveEdge.com now.\"}]"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tserviceId\tvideoType\tduration\tscenes\n210001\t840001\texplainer\t30\t[{\"duration\": 3, \"onScreenText\": \"Passed over. Again.\", \"pexelsQuery\": \"frustrated woman corporate office\", \"sceneNumber\": 1, \"voiceoverText\": \"You've been passed over for VP again. Despite the numbers.\"}, {\"duration\": 4, \"onScreenText\": \"Waiting for recognition?\", \"pexelsQuery\": \"woman looking overlooked in meeting\", \"sceneNumber\": 2, \"voiceoverText\": \"You see male colleagues get promoted for half your output. You're waiting for recognition.\"}, {\"duration\": 5, \"onScreenText\": \"200+ VPs. Same framework.\", \"pexelsQuery\": \"diverse group of successful business women\", \"sceneNumber\": 3, \"voiceoverText\": \"Over 200 senior directors used this framework. They're now VPs at Fortune 500s.\"}, {\"duration\": 6, \"onScreenText\": \"VP in 12 months.\", \"pexelsQuery\": \"woman leading confident meeting\", \"sceneNumber\": 4, \"voiceoverText\": \"The Executive Edge teaches you sponsor advocacy and executive presence. Get that VP role in 12 months.\"}, {\"duration\": 10, \"onScreenText\": \"Claim your VP promotion. TheExecutiveEdge.com\", \"pexelsQuery\": \"woman celebrating promotion\", \"sceneNumber\": 5, \"voiceoverText\": \"Stop waiting for your turn. Claim your VP promotion. Learn how at TheExecutiveEdge.com now.\"}]\n",
+  "stderr": "",
+  "execution_time_ms": 1651
+}

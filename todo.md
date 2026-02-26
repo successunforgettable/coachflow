@@ -3337,7 +3337,80 @@ Scene 5 (6s): "Stop being invisible. Your next client is already on Facebook..."
 ## Phase 60: Video Generator Bug Fixes (URGENT)
 - [x] Fix: All 5 niche videos rendering as same ZAP demo video instead of using distinct scripts
 - [x] Investigate why renderVideo is using hardcoded ZAP script instead of database scripts
-- [x] CRITICAL: Fix voiceover using ZAP script instead of niche-specific scripts
-- [x] Investigate why voiceover generation ignores isZapDemo=false flag
-- [x] Re-generate all 5 videos with correct voiceover AND footage
-- [x] Download and verify each video has matching voiceover before delivery
+- [x] CRITICAL: Identified root cause - scripts were hardcoded, not LLM-generated
+- [ ] Delete all hardcoded test scripts (IDs 180002-180006) and videos (IDs 240001-240005)
+- [ ] Create 5 service profiles in database for testing
+- [ ] Generate scripts using videoScripts.generate tRPC endpoint with LLM
+- [ ] Render videos using LLM-generated scripts (isZapDemo=false)
+- [ ] Extract audio from final rendered videos and verify voiceover content
+
+- [x] Replace FEW_SHOT_EXAMPLES block in buildScriptPrompt with new pattern-learning examples
+- [x] Test script generation with funded trader niche (no example in prompt)
+- [x] Test script generation with grief recovery niche (emotionally sensitive Meta-compliant test)
+- [x] Report both generated scripts for user review before any video rendering
+
+- [x] Add AUTHORITY_SCENE_RULE block to buildScriptPrompt after existing 6 copywriting rules
+- [x] Expand BANNED_WORDS list to include 'countless', 'many', 'numerous', 'industry expert', 'individuals'
+- [x] Regenerate Funded Trader script and verify Scene 3 uses specific credentials and numbers
+- [x] Regenerate Grief Recovery script and verify Scene 3 uses specific credentials and numbers
+- [x] Report both regenerated Scene 3s for user review
+
+- [x] Create service profile for "Crypto Trader" video (Service ID: 870003)
+- [x] Use existing ZAP service profile (Service ID: 780001)
+- [x] Generate script for Crypto Trader video (Script ID: 240007)
+- [x] Generate script for ZAP video (Script ID: 240008)
+- [x] Render video for Crypto Trader (Video ID: 300003) ✅ SUCCEEDED
+- [ ] Render video for ZAP (failed due to Creatomate credits - need retry)
+- [ ] Verify voiceovers match scripts and deliver both videos to user
+
+- [x] Investigate why Crypto Trader video rendered as black/white text-only instead of with stock footage
+- [x] Check kinetic_typography template to verify it includes video background elements
+- [x] Fix template - removed root-level black background shape that was covering scene videos
+- [ ] Delete bad video 300003 and regenerate with correct template
+- [ ] Verify new video has stock footage from Pexels
+- [ ] Deliver corrected Crypto Trader video with proper visual style
+
+- [x] Analyze Pexels query generation - currently uses generic "business person frustrated" queries
+- [x] Add pexelsQuery field to script generation prompt so LLM generates niche-specific queries
+- [x] Update videoScripts buildScriptPrompt to include pexelsQuery in output schema
+- [x] Regenerate Crypto Trader script with pexelsQuery fields for each scene (Script ID: 270001)
+- [x] Delete bad video 300006 and regenerate with niche-specific Pexels footage (Video ID: 330001)
+- [ ] Verify new video has crypto-relevant footage (Pexels API had 503 errors during render)
+
+- [ ] Read videos.ts to understand current pipeline sequencing
+- [ ] Install music-metadata package for audio duration measurement
+- [ ] Implement getAudioDurationSeconds function
+- [ ] Implement calculateSceneDurations function (proportional to word count)
+- [ ] Implement calculateSceneStartTimes function
+- [ ] Reorder pipeline: measure audio FIRST, then calculate durations, then build elements
+- [ ] Add validateVideoDurations function
+- [ ] Set explicit duration on Creatomate source object
+- [ ] Test Crypto Trader video - verify no cutoff and proper stock footage
+- [ ] Generate ZAP video with fixed system
+- [ ] Deliver both complete videos to user
+
+- [ ] Update buildScriptPrompt to enforce MINIMUM 40 seconds (not 28 seconds)
+- [ ] Adjust scene structure for 40+ second videos (more words per scene)
+- [ ] Regenerate Crypto Trader script with 40+ second requirement
+- [ ] Regenerate ZAP script with 40+ second requirement  
+- [ ] Render Crypto Trader video with new script (verify 40+ seconds + stock footage)
+- [ ] Render ZAP video with new script (verify 40+ seconds + stock footage)
+- [ ] Deliver both complete 40+ second videos to user
+
+- [x] Implement Pixabay API integration as Pexels fallback
+- [ ] Add gradient background generator as final fallback (when both APIs fail)
+- [x] Update videos.ts to use fallback chain: Pexels → Pixabay → Gradient
+- [ ] Test fallback system with Crypto Trader script
+- [ ] Render Crypto Trader video with fallback system (verify 40+ seconds + full color)
+- [ ] Generate ZAP script with 40+ second requirement
+- [ ] Render ZAP video with fallback system (verify 40+ seconds + full color)
+- [ ] Deliver both complete videos to user
+
+- [x] Implement gradient background generator with scene-appropriate colors (hook=red, problem=orange, authority=blue, solution=green, cta=purple)
+- [x] Update pixabay.ts fetchStockFootageWithFallback to return gradient URL when both Pexels and Pixabay fail
+- [x] Update videos.ts to handle gradient specifications and render animated gradient backgrounds
+- [ ] Test gradient fallback system with Crypto Trader script
+- [ ] Render Crypto Trader video with gradient fallback (verify 40+ seconds + colorful backgrounds)
+- [ ] Generate ZAP script with 40+ second requirement
+- [ ] Render ZAP video with gradient fallback (verify 40+ seconds + colorful backgrounds)
+- [ ] Deliver both complete videos to user with system documentation
