@@ -1,0 +1,35 @@
+{
+  "query": "\n-- Reset the 5 videos to queued status and clear incorrect render data\nUPDATE videos \nSET \n  creatomateStatus = 'queued',\n  creatomateRenderId = NULL,\n  videoUrl = NULL,\n  thumbnailUrl = NULL,\n  fileSize = NULL\nWHERE id IN (240001, 240002, 240003, 240004, 240005);\n\nSELECT id, scriptId, creatomateStatus FROM videos WHERE id IN (240001, 240002, 240003, 240004, 240005) ORDER BY id;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute \n-- Reset the 5 videos to queued status and clear incorrect render data\nUPDATE videos \nSET \n  creatomateStatus = 'queued',\n  creatomateRenderId = NULL,\n  videoUrl = NULL,\n  thumbnailUrl = NULL,\n  fileSize = NULL\nWHERE id IN (240001, 240002, 240003, 240004, 240005);\n\nSELECT id, scriptId, creatomateStatus FROM videos WHERE id IN (240001, 240002, 240003, 240004, 240005) ORDER BY id;\n",
+  "rows": [
+    {
+      "id": "240001",
+      "scriptId": "180002",
+      "creatomateStatus": "queued"
+    },
+    {
+      "id": "240002",
+      "scriptId": "180003",
+      "creatomateStatus": "queued"
+    },
+    {
+      "id": "240003",
+      "scriptId": "180004",
+      "creatomateStatus": "queued"
+    },
+    {
+      "id": "240004",
+      "scriptId": "180005",
+      "creatomateStatus": "queued"
+    },
+    {
+      "id": "240005",
+      "scriptId": "180006",
+      "creatomateStatus": "queued"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tscriptId\tcreatomateStatus\n240001\t180002\tqueued\n240002\t180003\tqueued\n240003\t180004\tqueued\n240004\t180005\tqueued\n240005\t180006\tqueued\n",
+  "stderr": "",
+  "execution_time_ms": 2190
+}

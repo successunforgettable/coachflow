@@ -3332,3 +3332,12 @@ Scene 5 (6s): "Stop being invisible. Your next client is already on Facebook..."
 - [x] Fix 4: Replace all URLs with zapcampaigns.com (check video element, URL overlay, hardcoded strings)
 - [ ] Verify all 4 fixes before generating render
 - [ ] Generate final render and confirm all 4 fixes applied
+
+
+## Phase 60: Video Generator Bug Fixes (URGENT)
+- [x] Fix: All 5 niche videos rendering as same ZAP demo video instead of using distinct scripts
+- [x] Investigate why renderVideo is using hardcoded ZAP script instead of database scripts
+- [x] CRITICAL: Fix voiceover using ZAP script instead of niche-specific scripts
+- [x] Investigate why voiceover generation ignores isZapDemo=false flag
+- [x] Re-generate all 5 videos with correct voiceover AND footage
+- [x] Download and verify each video has matching voiceover before delivery

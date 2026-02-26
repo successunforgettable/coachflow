@@ -88,7 +88,7 @@ async function main() {
         userId: video.userId,
         creditCost: video.creditsUsed,
         originalBalance,
-        isZapDemo: true, // Use ZAP demo mode
+        isZapDemo: false, // Use actual niche-specific scripts from database
       });
 
       console.log(`✅ Render initiated for ${videoName}`);
