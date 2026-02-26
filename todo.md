@@ -3461,3 +3461,8 @@ Scene 5 (6s): "Stop being invisible. Your next client is already on Facebook..."
 - [ ] Fix backend import errors for service query (in progress)
 - [ ] Add bulk download functionality
 - [ ] Test complete workflow: Campaign → Creatives → Generation → Dashboard → Download
+
+## Backend Service Query Fix
+- [x] Fix service query import error in campaigns.generateCreatives
+- [ ] Test batch generation workflow end-to-end
+- [ ] Verify creatives appear in Campaign Dashboard

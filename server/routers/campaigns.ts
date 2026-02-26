@@ -13,7 +13,10 @@ import {
   updateAssetPosition,
   createCampaignLink,
   deleteCampaignLink,
+  getDb,
 } from "../db";
+import { services } from "../../drizzle/schema";
+import { eq } from "drizzle-orm";
 
 export const campaignsRouter = router({
   // List all user campaigns
@@ -304,10 +307,14 @@ export const campaignsRouter = router({
       // Import generation functions
       const { generateAdCreativesBatch } = await import("./adCreatives");
       const { generateVideoScriptForService, renderVideoFromScript } = await import("./videoScripts");
-      const db = (await import("../db")).db;
-      const { services } = await import("../../drizzle/schema");
-      const { eq } = await import("drizzle-orm");
-
+      const db = await getDb();
+      if (!db) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Database not available",
+        });
+      }
+      
       const [service] = await db.select().from(services).where(eq(services.id, input.serviceId)).limit(1);
       if (!service) {
         throw new TRPCError({

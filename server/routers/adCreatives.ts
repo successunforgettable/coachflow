@@ -238,7 +238,7 @@ export const adCreativesRouter = router({
         console.log(`[Ad Creatives] Uploaded to S3: ${s3Url}`);
         
         // Save to database
-        const [creative] = await db.insert(adCreatives).values({
+        const result = await db.insert(adCreatives).values({
           userId: ctx.user.id,
           serviceId: input.serviceId,
           niche: input.niche,
@@ -259,8 +259,9 @@ export const adCreativesRouter = router({
           variationNumber: i + 1,
         });
         
+        const creativeId = Number(result.insertId);
         generatedCreatives.push({
-          id: creative.insertId,
+          id: creativeId,
           headline,
           imageUrl: s3Url,
           style: variation.style,
@@ -411,7 +412,7 @@ export async function generateAdCreativesBatch(params: {
     const { url: s3Url } = await storagePut(fileKey, imageBuffer, "image/png");
 
     // Save to database with campaignId
-    const [creative] = await db.insert(adCreatives).values({
+    const result = await db.insert(adCreatives).values({
       userId: params.userId,
       serviceId: params.serviceId,
       campaignId: params.campaignId || null,
@@ -431,8 +432,10 @@ export async function generateAdCreativesBatch(params: {
       complianceIssues: complianceIssues.length > 0 ? JSON.stringify(complianceIssues) : null,
       batchId,
       status: "generated",
-    }).returning();
+    });
 
+    const creativeId = Number(result.insertId);
+    const [creative] = await db.select().from(adCreatives).where(eq(adCreatives.id, creativeId)).limit(1);
     generatedCreatives.push(creative);
   }
 
