@@ -21,6 +21,14 @@
       "duration": null
     },
     {
+      "type": "audio",
+      "name": "BackgroundMusic",
+      "source": "https://d2xsxph8kpxj0f.cloudfront.net/310419663026750612/jQsGzEaS9E2xgaK8jEKUPB/video-assets/background-music.mp3",
+      "audio_volume": 15,
+      "audio_fade_out": 2,
+      "duration": null
+    },
+    {
       "type": "composition",
       "name": "Scene1",
       "time": 0,

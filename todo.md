@@ -3414,3 +3414,22 @@ Scene 5 (6s): "Stop being invisible. Your next client is already on Facebook..."
 - [ ] Generate ZAP script with 40+ second requirement
 - [ ] Render ZAP video with gradient fallback (verify 40+ seconds + colorful backgrounds)
 - [ ] Deliver both complete videos to user with system documentation
+
+## Phase 99: Video Rendering Pipeline Test (ACTIVE)
+- [ ] Create test script using tRPC caller to generate video from Script ID 330002
+- [ ] Monitor video rendering progress and wait for completion (up to 3 minutes)
+- [ ] Verify rendered video has stock footage, 40+ seconds duration, Ken Burns zoom, color grading
+- [ ] Report final video URL and complete rendering results to user
+- [x] Create test script using tRPC caller to generate video from Script ID 330002
+- [x] Monitor video rendering progress and wait for completion (up to 3 minutes)
+- [x] Verify rendered video has stock footage, 40+ seconds duration, Ken Burns zoom, color grading
+- [x] Report final video URL and complete rendering results to user
+
+## Video Quality Fixes
+- [ ] Fix video cutoff by ensuring Creatomate duration matches total scene duration (currently 65s scenes but 60s video)
+- [ ] Update scene duration requirements to 3-7 seconds per scene for faster cuts (currently 5-15s)
+- [ ] Add background music track to kinetic-typography template
+- [ ] Regenerate Crypto Trader script with faster scene timings (40-50s total, 3-7s per scene)
+- [ ] Test video render with all fixes applied (no cutoff, faster cuts, background music)
+- [x] Update scene duration requirements to 3-7 seconds per scene for faster cuts (updated videoScripts.ts)
+- [x] Add background music track to kinetic-typography template (added BackgroundMusic audio element)

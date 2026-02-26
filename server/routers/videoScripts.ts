@@ -658,23 +658,24 @@ Generate an EXPLAINER video ad script. TOTAL DURATION MUST BE MINIMUM 40 SECONDS
 SERVICE DATA:
 ${baseContext}
 
-SCENE STRUCTURE (EXACTLY 5 SCENES, MINIMUM 40 SECONDS TOTAL):
-${
-  duration <= 30
-    ? `Scene 1 (0-5s, duration: 5): HOOK — Fast punch. Pattern interrupt using one of these angles: Pain point ("Stop wasting time on X"), Outcome ("Achieve Y in Z days"), Social proof ("Join 10,000+ who..."), Curiosity ("The X secret..."), or Comparison ("Unlike X, we...")
-Scene 2 (5-12s, duration: 7): PROBLEM — Build pain. Relatable pain point that resonates emotionally. Use 2-3 sentences to deepen the pain.
-Scene 3 (12-20s, duration: 8): AUTHORITY — Credibility. Show social proof or authority (only if data provided). Expand with specific results or credentials.
-Scene 4 (20-30s, duration: 10): SOLUTION — Relief. Show product/benefit and how it works. Explain the mechanism in detail.
-Scene 5 (30-42s, duration: 12): CTA — Drive action. Clear next step + URL display with 3s hold time. Reinforce the outcome.
+SCENE STRUCTURE (EXACTLY 5 SCENES, 40-50 SECONDS TOTAL, FAST CUTS):
 
-YOU MUST GENERATE EXACTLY 5 SCENES. DO NOT ADD A 6TH SCENE. TOTAL DURATION MUST BE MINIMUM 40 SECONDS (aim for 40-45 seconds).`
+${duration === 15
+    ? `Scene 1 (0-4s, duration: 4): HOOK — Fast punch. Pattern interrupt using one of these angles: Pain point ("Stop wasting time on X"), Outcome ("Achieve Y in Z days"), Social proof ("Join 10,000+ who..."), Curiosity ("The X secret..."), or Comparison ("Unlike X, we...")
+Scene 2 (4-10s, duration: 6): PROBLEM — Build pain. Relatable pain point that resonates emotionally. Use 2-3 sentences to deepen the pain.
+Scene 3 (10-17s, duration: 7): AUTHORITY — Credibility. Show social proof or authority (only if data provided). Expand with specific results or credentials.
+Scene 4 (17-24s, duration: 7): SOLUTION — Relief. Show product/benefit and how it works. Explain the mechanism in detail.
+Scene 5 (24-30s, duration: 6): CTA — Drive action. Clear next step + URL display with 3s hold time. Reinforce the outcome.
+
+YOU MUST GENERATE EXACTLY 5 SCENES. DO NOT ADD MORE SCENES. TOTAL DURATION MUST BE 40-50 SECONDS (aim for 45s). EACH SCENE MUST BE 3-7 SECONDS (faster cuts for engagement).`
     : duration === 60
-    ? `Scene 1 (0-5s): HOOK — Pattern interrupt
-Scene 2 (5-15s): PROBLEM AGITATION — Make the pain real
-Scene 3 (15-30s): SOLUTION — Introduce the product
-Scene 4 (30-45s): MECHANISM — How it works simply
-Scene 5 (45-55s): PROOF — Social proof or authority (only if data provided above)
-Scene 6 (55-60s): CTA — Single specific action`
+    ? `Scene 1 (duration: 4-5s): HOOK — Pattern interrupt. Fast punch.
+Scene 2 (duration: 5-7s): PROBLEM AGITATION — Make the pain real. 2-3 sentences.
+Scene 3 (duration: 6-7s): AUTHORITY — Credibility. Show social proof or authority (only if data provided).
+Scene 4 (duration: 6-7s): SOLUTION — Introduce the product and how it works.
+Scene 5 (duration: 5-6s): CTA — Single specific action.
+
+⚠️ CRITICAL REQUIREMENT: YOU MUST GENERATE EXACTLY 5 SCENES. EACH SCENE DURATION MUST BE BETWEEN 3-7 SECONDS (NO EXCEPTIONS). TOTAL VIDEO DURATION MUST BE 40-50 SECONDS. DO NOT GENERATE SCENES LONGER THAN 7 SECONDS.`
     : `Scene 1 (0-5s): HOOK
 Scene 2 (5-15s): PROBLEM AGITATION
 Scene 3 (15-30s): RELATABLE STORY SCENARIO
