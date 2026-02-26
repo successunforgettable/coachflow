@@ -3448,3 +3448,16 @@ Scene 5 (6s): "Stop being invisible. Your next client is already on Facebook..."
   - [x] Regenerate option
 - [ ] Add video generator to onboarding progress tracker
 - [x] Test complete workflow: Service → Script → Video → Preview → Download
+
+## Unified Campaign Ad Creatives System (Phase 1-7)
+- [x] Update database schema to link images and videos to campaigns
+- [x] Create Ad Creatives configuration dialog in Campaign Dashboard
+- [x] Implement batch generation pipeline for images and videos
+- [x] Create Campaign Creatives section in Campaign Dashboard
+- [x] Implement hybrid pricing (free images, paid videos)
+- [x] Add soft rate limiting for images (100/month warning, 500/month hard cap)
+- [x] Add progress tracking for batch generation
+- [x] Add owner notification when batch complete
+- [ ] Fix backend import errors for service query (in progress)
+- [ ] Add bulk download functionality
+- [ ] Test complete workflow: Campaign → Creatives → Generation → Dashboard → Download

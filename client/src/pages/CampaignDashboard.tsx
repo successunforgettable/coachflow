@@ -7,6 +7,8 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Download, Zap, CheckCircle2, AlertCircle, Circle, XCircle, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
+import { CampaignCreativesDialog } from "@/components/CampaignCreativesDialog";
+import { CampaignCreativesSection } from "@/components/CampaignCreativesSection";
 
 interface GeneratorStatus {
   name: string;
@@ -20,6 +22,7 @@ export default function CampaignDashboard() {
   const { id } = useParams<{ id: string }>();
   const campaignId = id ? parseInt(id) : null;
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isCreativesDialogOpen, setIsCreativesDialogOpen] = useState(false);
 
   const { data: campaign, isLoading } = trpc.campaigns.getById.useQuery(
     { id: campaignId! },
@@ -50,6 +53,13 @@ export default function CampaignDashboard() {
   }
 
   const generators: GeneratorStatus[] = [
+    {
+      name: "Ad Creatives",
+      type: "ad_creatives",
+      count: 0, // Will be calculated from images + videos
+      status: "missing",
+      icon: "🎨",
+    },
     {
       name: "Headlines",
       type: "headline",
@@ -264,15 +274,42 @@ export default function CampaignDashboard() {
             <CardContent>
               <div className="flex items-center justify-between">
                 {getStatusBadge(generator.status)}
-                <Button variant="ghost" size="sm" asChild>
-                  <Link href={`/${generator.type.replace("_", "-")}s`}>
-                    View →
-                  </Link>
-                </Button>
+                {generator.type === "ad_creatives" ? (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => setIsCreativesDialogOpen(true)}
+                  >
+                    Generate →
+                  </Button>
+                ) : (
+                  <Button variant="ghost" size="sm" asChild>
+                    <Link href={`/${generator.type.replace("_", "-")}s`}>
+                      View →
+                    </Link>
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
         ))}
+      </div>
+
+      {/* Ad Creatives Dialog */}
+      <CampaignCreativesDialog
+        open={isCreativesDialogOpen}
+        onOpenChange={setIsCreativesDialogOpen}
+        campaignId={campaignId!}
+        serviceId={campaign.serviceId}
+        onSuccess={() => {
+          // Refetch campaign to update counts
+          window.location.reload();
+        }}
+      />
+
+      {/* Campaign Creatives Section */}
+      <div className="mt-8">
+        <CampaignCreativesSection campaignId={campaignId!} />
       </div>
 
       {/* Service Info */}

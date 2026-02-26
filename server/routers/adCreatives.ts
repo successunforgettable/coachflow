@@ -2,7 +2,7 @@ import { router, protectedProcedure } from "../_core/trpc";
 import { z } from "zod";
 import { getDb } from "../db";
 import { adCreatives, services, users } from "../../drizzle/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, gte } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { generateImage } from "../_core/imageGeneration";
 import { storagePut } from "../storage";
@@ -320,3 +320,121 @@ export const adCreativesRouter = router({
       return { success: true };
     }),
 });
+
+// Export helper function for batch generation from campaigns
+export async function generateAdCreativesBatch(params: {
+  userId: number;
+  serviceId: number;
+  campaignId?: number;
+  niche: string;
+  productName: string;
+  targetAudience: string;
+  mainBenefit: string;
+  pressingProblem: string;
+  uniqueMechanism: string;
+  adType: "lead_gen" | "ecommerce";
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  // Check rate limiting for images (FREE but limited)
+  const startOfMonth = new Date();
+  startOfMonth.setDate(1);
+  startOfMonth.setHours(0, 0, 0, 0);
+
+  const monthlyImageCount = await db
+    .select()
+    .from(adCreatives)
+    .where(
+      and(
+        eq(adCreatives.userId, params.userId),
+        // @ts-ignore - createdAt comparison
+        gte(adCreatives.createdAt, startOfMonth)
+      )
+    );
+
+  const currentCount = monthlyImageCount.length;
+
+  // Hard cap: 500 images/month
+  if (currentCount >= 500) {
+    throw new Error(
+      "Monthly image limit reached (500 images). Contact support for enterprise pricing."
+    );
+  }
+
+  // Soft warning: 100 images/month
+  if (currentCount >= 100 && currentCount < 500) {
+    console.warn(
+      `[generateAdCreativesBatch] User ${params.userId} has generated ${currentCount} images this month (soft limit warning)`
+    );
+  }
+
+  const batchId = `batch-${Date.now()}-${randomBytes(4).toString("hex")}`;
+  const mechanism = params.uniqueMechanism || "System";
+
+  // Get service details
+  const service = await db
+    .select()
+    .from(services)
+    .where(eq(services.id, params.serviceId))
+    .limit(1);
+
+  const customerCount = service[0]?.totalCustomers || 0;
+
+  // Define 5 variations
+  const variations = [
+    { style: "person_shocked", formula: "benefit" as const },
+    { style: "screenshot", formula: "social_proof" as const },
+    { style: "person_intense", formula: "curiosity" as const },
+    { style: "object", formula: "contrast" as const },
+    { style: "person_curious", formula: "challenge" as const },
+  ];
+
+  const generatedCreatives = [];
+
+  for (let i = 0; i < 5; i++) {
+    const variation = variations[i];
+    const headline = HEADLINE_FORMULAS[variation.formula](mechanism, params.niche, customerCount);
+    const complianceIssues = checkCompliance(headline, params.mainBenefit, params.pressingProblem);
+    const imagePrompt = generateAdImagePrompt(variation.style, headline, params.niche, params.pressingProblem);
+
+    console.log(`[generateAdCreativesBatch] Generating variation ${i + 1}/5`);
+
+    // Generate image
+    const imageResult = await generateImage({ prompt: imagePrompt });
+    if (!imageResult.url) throw new Error(`Failed to generate image ${i + 1}`);
+
+    // Download and upload to S3
+    const imageResponse = await fetch(imageResult.url);
+    const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
+    const fileKey = `ad-creatives/${params.userId}/${batchId}/variation-${i + 1}.png`;
+    const { url: s3Url } = await storagePut(fileKey, imageBuffer, "image/png");
+
+    // Save to database with campaignId
+    const [creative] = await db.insert(adCreatives).values({
+      userId: params.userId,
+      serviceId: params.serviceId,
+      campaignId: params.campaignId || null,
+      niche: params.niche,
+      productName: params.productName,
+      uniqueMechanism: mechanism,
+      targetAudience: params.targetAudience,
+      mainBenefit: params.mainBenefit,
+      pressingProblem: params.pressingProblem,
+      adType: params.adType,
+      designStyle: variation.style as any,
+      headlineFormula: variation.formula,
+      headline,
+      imageUrl: s3Url,
+      imageFormat: "1080x1080",
+      complianceChecked: true,
+      complianceIssues: complianceIssues.length > 0 ? JSON.stringify(complianceIssues) : null,
+      batchId,
+      status: "generated",
+    }).returning();
+
+    generatedCreatives.push(creative);
+  }
+
+  return { batchId, creatives: generatedCreatives };
+}

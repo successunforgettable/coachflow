@@ -267,6 +267,13 @@
       "when": 1772018660825,
       "tag": "0037_fearless_killmonger",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "5",
+      "when": 1772144587502,
+      "tag": "0038_small_tusk",
+      "breakpoints": true
     }
   ]
 }

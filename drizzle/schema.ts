@@ -784,6 +784,7 @@ export const adCreatives = mysqlTable("adCreatives", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   serviceId: int("serviceId").references(() => services.id, { onDelete: "set null" }),
+  campaignId: int("campaignId").references(() => campaigns.id, { onDelete: "set null" }),
   // Input fields
   niche: varchar("niche", { length: 255 }).notNull(), // e.g., "crypto", "mind coaching"
   productName: varchar("productName", { length: 255 }).notNull(),
@@ -814,6 +815,7 @@ export const adCreatives = mysqlTable("adCreatives", {
 }, (table) => ({
   userIdIdx: index("idx_adCreatives_userId").on(table.userId),
   serviceIdIdx: index("idx_adCreatives_serviceId").on(table.serviceId),
+  campaignIdIdx: index("idx_adCreatives_campaignId").on(table.campaignId),
   batchIdIdx: index("idx_adCreatives_batchId").on(table.batchId),
 }));
 

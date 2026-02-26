@@ -966,3 +966,180 @@ export const videoScriptsRouter = router({
     }));
   }),
 });
+
+// Export helper functions for campaign batch generation
+export async function generateVideoScriptForService(params: {
+  userId: number;
+  serviceId: number;
+  campaignId?: number;
+  videoType: "explainer" | "proof_results" | "testimonial" | "mechanism_reveal";
+  duration: "15" | "30" | "60" | "90";
+}): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  // Get service details
+  const [service] = await db
+    .select()
+    .from(services)
+    .where(eq(services.id, params.serviceId))
+    .limit(1);
+
+  if (!service) throw new Error("Service not found");
+
+  // Generate script using LLM
+  const scriptContent = await generateScriptWithLLM({
+    service,
+    videoType: params.videoType,
+    duration: params.duration,
+  });
+
+  // Save script to database
+  const [record] = await db.insert(videoScripts).values({
+    userId: params.userId,
+    serviceId: params.serviceId,
+    campaignId: params.campaignId || null,
+    videoType: params.videoType,
+    duration: params.duration,
+    visualStyle: "kinetic_typography",
+    scenes: scriptContent.scenes || [],
+    voiceoverText: scriptContent.scenes?.map((s: any) => s.voiceover).join(" ") || "",
+    status: "draft",
+  });
+
+  return (record as any).insertId;
+}
+
+export async function renderVideoFromScript(params: {
+  userId: number;
+  scriptId: number;
+  visualStyle: "text_only" | "kinetic_typography" | "motion_graphics" | "stats_card";
+  campaignId?: number;
+}): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  // Get script
+  const [script] = await db
+    .select()
+    .from(videoScripts)
+    .where(eq(videoScripts.id, params.scriptId))
+    .limit(1);
+
+  if (!script) throw new Error("Script not found");
+
+  // Import render function from videos router
+  const { renderVideo } = await import("./videos");
+  const { videoCredits, videoCreditTransactions, videos } = await import("../../drizzle/schema");
+
+  // Calculate credit cost
+  const creditCost = getCreditCost(script.duration);
+
+  // Check credit balance
+  const [creditBalance] = await db
+    .select()
+    .from(videoCredits)
+    .where(eq(videoCredits.userId, params.userId))
+    .limit(1);
+
+  if (!creditBalance || creditBalance.balance < creditCost) {
+    throw new Error(`Insufficient credits: need ${creditCost}, have ${creditBalance?.balance || 0}`);
+  }
+
+  // Deduct credits
+  await db
+    .update(videoCredits)
+    .set({
+      balance: creditBalance.balance - creditCost,
+      updatedAt: new Date(),
+    })
+    .where(eq(videoCredits.userId, params.userId));
+
+  // Record transaction
+  await db.insert(videoCreditTransactions).values({
+    userId: params.userId,
+    type: "deduction",
+    amount: -creditCost,
+    balanceAfter: creditBalance.balance - creditCost,
+    description: `Video generation (${script.duration}s, ${params.visualStyle})`,
+  });
+
+  // Create video record
+  const [videoRecord] = await db.insert(videos).values({
+    userId: params.userId,
+    scriptId: params.scriptId,
+    serviceId: script.serviceId,
+    campaignId: params.campaignId || null,
+    videoType: script.videoType,
+    duration: script.duration,
+    visualStyle: params.visualStyle,
+    creatomateStatus: "queued",
+    creditsUsed: creditCost,
+  });
+
+  const videoId = (videoRecord as any).insertId;
+
+  // Trigger async render
+  renderVideo({
+    videoId,
+    script,
+    visualStyle: params.visualStyle,
+    brandColor: "#3B82F6",
+    logoUrl: undefined,
+    userId: params.userId,
+    creditCost,
+    originalBalance: creditBalance.balance,
+    isZapDemo: false,
+  }).catch(async (error) => {
+    console.error(`[renderVideoFromScript] Video ${videoId} render failed:`, error);
+    // Refund credits on failure
+    const db = await getDb();
+    if (!db) return;
+    await db
+      .update(videoCredits)
+      .set({ balance: creditBalance.balance, updatedAt: new Date() })
+      .where(eq(videoCredits.userId, params.userId));
+    await db.insert(videoCreditTransactions).values({
+      userId: params.userId,
+      amount: creditCost,
+      type: "refund",
+      balanceAfter: creditBalance.balance,
+      description: `Refund: Video generation failed (${script.duration}s)`,
+    });
+  });
+
+  return videoId;
+}
+
+// Helper to generate script content using LLM
+async function generateScriptWithLLM(params: {
+  service: any;
+  videoType: string;
+  duration: string;
+}): Promise<any> {
+  const { invokeLLM } = await import("../_core/llm");
+
+  const prompt = `Generate a ${params.duration}-second ${params.videoType} video script for:
+Service: ${params.service.name}
+Description: ${params.service.description}
+Target: ${params.service.targetCustomer}
+
+Return JSON with:
+{
+  "hook": "opening line",
+  "scenes": [
+    {"sceneType": "intro|problem|solution|proof|cta", "voiceover": "text", "visualCue": "description"}
+  ]
+}`;
+
+  const response = await invokeLLM({
+    messages: [
+      { role: "system", content: "You are a video script writer. Always return valid JSON." },
+      { role: "user", content: prompt },
+    ],
+    response_format: { type: "json_object" },
+  });
+
+  const content = response.choices[0].message.content;
+  return JSON.parse(typeof content === 'string' ? content : JSON.stringify(content));
+}

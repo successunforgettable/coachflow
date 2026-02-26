@@ -281,4 +281,127 @@ export const campaignsRouter = router({
         message: "Export Campaign feature coming soon. For now, please export individual assets from each generator."
       };
     }),
+
+  // Generate ad creatives (images + videos) for campaign
+  generateCreatives: protectedProcedure
+    .input(
+      z.object({
+        campaignId: z.number(),
+        serviceId: z.number(),
+        includeImages: z.boolean(),
+        includeVideos: z.boolean(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const campaign = await getCampaignById(input.campaignId, ctx.user.id);
+      if (!campaign) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Campaign not found",
+        });
+      }
+
+      // Import generation functions
+      const { generateAdCreativesBatch } = await import("./adCreatives");
+      const { generateVideoScriptForService, renderVideoFromScript } = await import("./videoScripts");
+      const db = (await import("../db")).db;
+      const { services } = await import("../../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+
+      const [service] = await db.select().from(services).where(eq(services.id, input.serviceId)).limit(1);
+      if (!service) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Service not found",
+        });
+      }
+
+      let imagesCount = 0;
+      let videosCount = 0;
+
+      // Generate images if requested (FREE)
+      if (input.includeImages) {
+        try {
+          const imageResult = await generateAdCreativesBatch({
+            userId: ctx.user.id,
+            serviceId: input.serviceId,
+            campaignId: input.campaignId,
+            niche: service.category || "coaching",
+            productName: service.name,
+            targetAudience: service.targetCustomer || "professionals",
+            mainBenefit: service.mainBenefit || "transformation",
+            pressingProblem: service.description || "challenges",
+            uniqueMechanism: service.name,
+            adType: "lead_gen",
+          });
+          imagesCount = 5; // Always generate 5 images
+        } catch (error: any) {
+          console.error("[generateCreatives] Image generation failed:", error);
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: `Image generation failed: ${error.message}`,
+          });
+        }
+      }
+
+      // Generate videos if requested (PAID - credits deducted in video generation)
+      if (input.includeVideos) {
+        try {
+          // Generate 5 videos with different types and durations
+          const videoConfigs = [
+            { type: "explainer" as const, duration: "30" as const },
+            { type: "explainer" as const, duration: "60" as const },
+            { type: "proof_results" as const, duration: "30" as const },
+            { type: "testimonial" as const, duration: "60" as const },
+            { type: "mechanism_reveal" as const, duration: "30" as const },
+          ];
+
+          for (let i = 0; i < 5; i++) {
+            try {
+              const config = videoConfigs[i];
+              // Step 1: Generate script
+              const scriptId = await generateVideoScriptForService({
+                userId: ctx.user.id,
+                serviceId: input.serviceId,
+                campaignId: input.campaignId,
+                videoType: config.type,
+                duration: config.duration,
+              });
+
+              // Step 2: Render video from script
+              await renderVideoFromScript({
+                userId: ctx.user.id,
+                scriptId,
+                visualStyle: "kinetic_typography",
+                campaignId: input.campaignId,
+              });
+
+              videosCount++;
+            } catch (videoError: any) {
+              console.error(`[generateCreatives] Video ${i + 1} generation failed:`, videoError);
+              // Continue with other videos even if one fails
+            }
+          }
+        } catch (error: any) {
+          console.error("[generateCreatives] Video generation failed:", error);
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: `Video generation failed: ${error.message}`,
+          });
+        }
+      }
+
+      // Send notification to owner
+      const { notifyOwner } = await import("../_core/notification");
+      await notifyOwner({
+        title: "Campaign Creatives Ready",
+        content: `Your ad creatives for "${campaign.name}" are ready! Generated ${imagesCount} images and ${videosCount} videos.`,
+      });
+
+      return {
+        success: true,
+        imagesCount,
+        videosCount,
+      };
+    }),
 });
