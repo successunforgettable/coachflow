@@ -48,6 +48,7 @@ import { VideoCredits } from "./pages/VideoCredits";
 import VideoCreator from "./pages/VideoCreator";
 import VideoScriptEditor from "./pages/VideoScriptEditor";
 import VideoDetail from "./pages/VideoDetail";
+import Videos from "./pages/Videos";
 import { DemoVideo } from "./pages/DemoVideo";
 
 function Router() {
@@ -91,6 +92,7 @@ function Router() {
       <Route path={"/analytics"} component={AnalyticsDashboard} />
       <Route path={"/onboarding"} component={OnboardingPage} />
       <Route path={"/settings"} component={Settings} />      <Route path={"/settings/integrations"} component={Integrations} />
+      <Route path={"/videos"} component={Videos} />
       <Route path={"/video-creator"} component={VideoCreator} />
       <Route path={"/video-creator/script/:id"} component={VideoScriptEditor} />
       <Route path={"/video-creator/video/:id"} component={VideoDetail} />

@@ -54,7 +54,7 @@ const menuItems = [
   { icon: Home, label: "Home", path: "/" },
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
   { icon: Coins, label: "Video Credits", path: "/video-credits", showBadge: true },
-  { icon: Video, label: "Video Creator", path: "/video-creator" },
+  { icon: Video, label: "My Videos", path: "/videos" },
   { icon: FileText, label: "Headlines", path: "/headlines" },
   { icon: FileText, label: "HVCO Titles", path: "/hvco-titles" },
   { icon: Zap, label: "Hero Mechanisms", path: "/hero-mechanisms" },

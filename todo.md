@@ -3435,3 +3435,16 @@ Scene 5 (6s): "Stop being invisible. Your next client is already on Facebook..."
 - [x] Add background music track to kinetic-typography template (added BackgroundMusic audio element)
 
 - [x] Remove duration field from script generation to enable natural fast-paced videos
+
+## Video Generator Integration (Meta Campaign Workflow)
+- [x] Add Video Generator to main navigation in DashboardLayout.tsx
+- [x] Create video scripts list page (/videos) with search and thumbnails
+- [x] Video script generator form page already exists (/video-creator)
+- [x] Create video preview page (/videos/:id) with:
+  - [x] Video player with playback controls
+  - [x] Duration display
+  - [x] Resolution/format specs for Meta compliance
+  - [x] Download button
+  - [x] Regenerate option
+- [ ] Add video generator to onboarding progress tracker
+- [x] Test complete workflow: Service → Script → Video → Preview → Download

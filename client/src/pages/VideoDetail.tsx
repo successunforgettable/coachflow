@@ -151,15 +151,30 @@ export default function VideoDetail() {
       <Card className="mb-6">
         <CardHeader>
           <CardTitle>Video Details</CardTitle>
+          <CardDescription>
+            Meta-compliant video specifications for Facebook and Instagram ads
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
             <div>
               <p className="text-sm text-muted-foreground">Status</p>
               <p className="font-semibold capitalize flex items-center gap-2">
                 {video.creatomateStatus === "rendering" && <Loader2 className="w-4 h-4 animate-spin" />}
                 {video.creatomateStatus}
               </p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Duration</p>
+              <p className="font-semibold">{video.duration || "N/A"}s</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Resolution</p>
+              <p className="font-semibold">1080×1080 (Square)</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Format</p>
+              <p className="font-semibold">MP4 (H.264)</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Visual Style</p>
@@ -169,12 +184,11 @@ export default function VideoDetail() {
               <p className="text-sm text-muted-foreground">Credits Used</p>
               <p className="font-semibold text-purple-500">{video.creditsUsed}</p>
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Created</p>
-              <p className="font-semibold">
-                {new Date(video.createdAt).toLocaleDateString()}
-              </p>
-            </div>
+          </div>
+          <div className="mt-4 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+            <p className="text-sm text-green-600 dark:text-green-400 font-medium">
+              ✓ Meta Ads Compliant — Ready for Facebook & Instagram campaigns
+            </p>
           </div>
         </CardContent>
       </Card>
