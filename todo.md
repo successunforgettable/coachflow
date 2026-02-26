@@ -3433,3 +3433,5 @@ Scene 5 (6s): "Stop being invisible. Your next client is already on Facebook..."
 - [ ] Test video render with all fixes applied (no cutoff, faster cuts, background music)
 - [x] Update scene duration requirements to 3-7 seconds per scene for faster cuts (updated videoScripts.ts)
 - [x] Add background music track to kinetic-typography template (added BackgroundMusic audio element)
+
+- [x] Remove duration field from script generation to enable natural fast-paced videos

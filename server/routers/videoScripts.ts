@@ -11,7 +11,6 @@ import { invokeLLM } from "../_core/llm";
 
 export interface Scene {
   sceneNumber: number;
-  duration: number;
   voiceoverText: string;
   visualDirection: string;
   onScreenText: string;
@@ -619,8 +618,7 @@ Format:
   "scenes": [
     {
       "sceneNumber": 1,
-      "duration": 5,
-      "voiceoverText": "Exact spoken words",
+      "voiceoverText": "Exact spoken words — write enough to fill the scene naturally",
       "visualDirection": "What appears on screen — specific, achievable",
       "onScreenText": "3-7 word text overlay",
       "pexelsQuery": "2-4 word Pexels search query matching the niche and scene emotion"
@@ -658,31 +656,33 @@ Generate an EXPLAINER video ad script. TOTAL DURATION MUST BE MINIMUM 40 SECONDS
 SERVICE DATA:
 ${baseContext}
 
-SCENE STRUCTURE (EXACTLY 5 SCENES, 40-50 SECONDS TOTAL, FAST CUTS):
+SCENE STRUCTURE (EXACTLY 5 SCENES):
 
 ${duration === 15
-    ? `Scene 1 (0-4s, duration: 4): HOOK — Fast punch. Pattern interrupt using one of these angles: Pain point ("Stop wasting time on X"), Outcome ("Achieve Y in Z days"), Social proof ("Join 10,000+ who..."), Curiosity ("The X secret..."), or Comparison ("Unlike X, we...")
-Scene 2 (4-10s, duration: 6): PROBLEM — Build pain. Relatable pain point that resonates emotionally. Use 2-3 sentences to deepen the pain.
-Scene 3 (10-17s, duration: 7): AUTHORITY — Credibility. Show social proof or authority (only if data provided). Expand with specific results or credentials.
-Scene 4 (17-24s, duration: 7): SOLUTION — Relief. Show product/benefit and how it works. Explain the mechanism in detail.
-Scene 5 (24-30s, duration: 6): CTA — Drive action. Clear next step + URL display with 3s hold time. Reinforce the outcome.
+    ? `Scene 1: HOOK — Fast punch. 1-2 sentences. Pattern interrupt using pain point, outcome, social proof, curiosity, or comparison.
+Scene 2: PROBLEM — Build pain. 2-3 sentences that deepen emotional pain.
+Scene 3: AUTHORITY — Credibility. 2-3 sentences with specific proof (only if data provided).
+Scene 4: SOLUTION — Relief. 2-3 sentences explaining how it works.
+Scene 5: CTA — Drive action. 1-2 sentences maximum.
 
-YOU MUST GENERATE EXACTLY 5 SCENES. DO NOT ADD MORE SCENES. TOTAL DURATION MUST BE 40-50 SECONDS (aim for 45s). EACH SCENE MUST BE 3-7 SECONDS (faster cuts for engagement).`
+⚠️ WRITE PUNCHY, CONCISE COPY: Each scene should be 10-25 words. Total script 100-150 words (creates 40-60s video with natural pacing).`
     : duration === 60
-    ? `Scene 1 (duration: 4-5s): HOOK — Pattern interrupt. Fast punch.
-Scene 2 (duration: 5-7s): PROBLEM AGITATION — Make the pain real. 2-3 sentences.
-Scene 3 (duration: 6-7s): AUTHORITY — Credibility. Show social proof or authority (only if data provided).
-Scene 4 (duration: 6-7s): SOLUTION — Introduce the product and how it works.
-Scene 5 (duration: 5-6s): CTA — Single specific action.
+    ? `Scene 1: HOOK — Pattern interrupt. 1-2 sentences maximum.
+Scene 2: PROBLEM AGITATION — Make the pain real. 2-3 sentences.
+Scene 3: AUTHORITY — Credibility. 2-3 sentences with specific proof (only if data provided).
+Scene 4: SOLUTION — Introduce the product and how it works. 2-3 sentences.
+Scene 5: CTA — Single specific action. 1-2 sentences maximum.
 
-⚠️ CRITICAL REQUIREMENT: YOU MUST GENERATE EXACTLY 5 SCENES. EACH SCENE DURATION MUST BE BETWEEN 3-7 SECONDS (NO EXCEPTIONS). TOTAL VIDEO DURATION MUST BE 40-50 SECONDS. DO NOT GENERATE SCENES LONGER THAN 7 SECONDS.`
-    : `Scene 1 (0-5s): HOOK
-Scene 2 (5-15s): PROBLEM AGITATION
-Scene 3 (15-30s): RELATABLE STORY SCENARIO
-Scene 4 (30-50s): SOLUTION + MECHANISM
-Scene 5 (50-70s): PROOF + TESTIMONIAL (only if provided above)
-Scene 6 (70-85s): BENEFITS STACK
-Scene 7 (85-90s): CTA`
+⚠️ WRITE PUNCHY, CONCISE COPY: Each scene should be 10-25 words. Total script 100-150 words (creates 40-60s video with natural pacing).`
+    : `Scene 1: HOOK — 1-2 sentences
+Scene 2: PROBLEM AGITATION — 2-3 sentences
+Scene 3: RELATABLE STORY SCENARIO — 3-4 sentences
+Scene 4: SOLUTION + MECHANISM — 3-4 sentences
+Scene 5: PROOF + TESTIMONIAL (only if provided above) — 2-3 sentences
+Scene 6: BENEFITS STACK — 2-3 sentences
+Scene 7: CTA — 1-2 sentences
+
+⚠️ WRITE PUNCHY, CONCISE COPY: Total script 200-250 words (creates 80-100s video with natural pacing).`
 }
 
 ${globalRules}`;
@@ -890,10 +890,10 @@ export const videoScriptsRouter = router({
         scenes: z.array(
           z.object({
             sceneNumber: z.number(),
-            duration: z.number(),
             voiceoverText: z.string(),
             visualDirection: z.string(),
             onScreenText: z.string(),
+            pexelsQuery: z.string().optional(),
           })
         ),
       })

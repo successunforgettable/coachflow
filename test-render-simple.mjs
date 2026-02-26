@@ -10,11 +10,11 @@ import { renderVideo } from './server/routers/videos.js';
     // Verify script exists
     const [scripts] = await conn.execute(
       'SELECT * FROM videoScripts WHERE id = ?',
-      [330002]
+      [360003]
     );
     
     if (scripts.length === 0) {
-      console.error('❌ Script 330002 not found');
+      console.error('❌ Script 360003 not found');
       process.exit(1);
     }
     
@@ -27,7 +27,7 @@ import { renderVideo } from './server/routers/videos.js';
         scriptId, userId, serviceId, videoType, duration, 
         visualStyle, creatomateStatus, creditsUsed, createdAt, updatedAt
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
-      [330002, 1, script.serviceId, 'explainer', script.duration, 'kinetic_typography', 'queued', 0]
+      [360003, 1, script.serviceId, 'explainer', script.duration, 'kinetic_typography', 'queued', 0]
     );
     
     const videoId = result.insertId;

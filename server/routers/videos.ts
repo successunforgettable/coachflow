@@ -538,7 +538,7 @@ export async function renderVideo(params: {
       }
       
       try {
-        const footageUrl = await fetchSceneFootageWithFallback(sceneType, scene.duration);
+        const footageUrl = await fetchSceneFootageWithFallback(sceneType, sceneDurations[index]);
         if (footageUrl) {
           console.log(`[Video ${videoId}] Scene ${index + 1} (${sceneType}): ✓ ${footageUrl.substring(0, 60)}...`);
         } else {
