@@ -1,0 +1,82 @@
+{
+  "query": "SELECT id, campaignId, adType, styleType, imageUrl, variationNumber, createdAt FROM adCreatives WHERE campaignId = 1 ORDER BY id DESC LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT id, campaignId, adType, styleType, imageUrl, variationNumber, createdAt FROM adCreatives WHERE campaignId = 1 ORDER BY id DESC LIMIT 10;",
+  "rows": [
+    {
+      "id": "30008",
+      "campaignId": "1",
+      "adType": "lead_gen",
+      "styleType": "tabloid",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310419663026750612/jQsGzEaS9E2xgaK8jEKUPB/ad-creatives/1/batch-1772186400505-4fbf77e6/variation-5.png",
+      "variationNumber": "1",
+      "createdAt": "2026-02-27 10:02:17"
+    },
+    {
+      "id": "30007",
+      "campaignId": "1",
+      "adType": "lead_gen",
+      "styleType": "tabloid",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310419663026750612/jQsGzEaS9E2xgaK8jEKUPB/ad-creatives/1/batch-1772186400505-4fbf77e6/variation-4.png",
+      "variationNumber": "1",
+      "createdAt": "2026-02-27 10:01:41"
+    },
+    {
+      "id": "30006",
+      "campaignId": "1",
+      "adType": "lead_gen",
+      "styleType": "tabloid",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310419663026750612/jQsGzEaS9E2xgaK8jEKUPB/ad-creatives/1/batch-1772186400505-4fbf77e6/variation-3.png",
+      "variationNumber": "1",
+      "createdAt": "2026-02-27 10:01:15"
+    },
+    {
+      "id": "30005",
+      "campaignId": "1",
+      "adType": "lead_gen",
+      "styleType": "tabloid",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310419663026750612/jQsGzEaS9E2xgaK8jEKUPB/ad-creatives/1/batch-1772186400505-4fbf77e6/variation-2.png",
+      "variationNumber": "1",
+      "createdAt": "2026-02-27 10:00:48"
+    },
+    {
+      "id": "30004",
+      "campaignId": "1",
+      "adType": "lead_gen",
+      "styleType": "tabloid",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310419663026750612/jQsGzEaS9E2xgaK8jEKUPB/ad-creatives/1/batch-1772186400505-4fbf77e6/variation-1.png",
+      "variationNumber": "1",
+      "createdAt": "2026-02-27 10:00:24"
+    },
+    {
+      "id": "30003",
+      "campaignId": "1",
+      "adType": "lead_gen",
+      "styleType": "tabloid",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310419663026750612/jQsGzEaS9E2xgaK8jEKUPB/ad-creatives/1/batch-1772186170400-b08e5bb2/variation-1.png",
+      "variationNumber": "1",
+      "createdAt": "2026-02-27 09:56:35"
+    },
+    {
+      "id": "30002",
+      "campaignId": "1",
+      "adType": "lead_gen",
+      "styleType": "tabloid",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310419663026750612/jQsGzEaS9E2xgaK8jEKUPB/ad-creatives/1/batch-1772185970997-5b5764bd/variation-1.png",
+      "variationNumber": "1",
+      "createdAt": "2026-02-27 09:53:17"
+    },
+    {
+      "id": "30001",
+      "campaignId": "1",
+      "adType": "lead_gen",
+      "styleType": "tabloid",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310419663026750612/jQsGzEaS9E2xgaK8jEKUPB/ad-creatives/1/batch-1772185782393-783f98d5/variation-1.png",
+      "variationNumber": "1",
+      "createdAt": "2026-02-27 09:50:23"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tcampaignId\tadType\tstyleType\timageUrl\tvariationNumber\tcreatedAt\n30008\t1\tlead_gen\ttabloid\thttps://d2xsxph8kpxj0f.cloudfront.net/310419663026750612/jQsGzEaS9E2xgaK8jEKUPB/ad-creatives/1/batch-1772186400505-4fbf77e6/variation-5.png\t1\t2026-02-27 10:02:17\n30007\t1\tlead_gen\ttabloid\thttps://d2xsxph8kpxj0f.cloudfront.net/310419663026750612/jQsGzEaS9E2xgaK8jEKUPB/ad-creatives/1/batch-1772186400505-4fbf77e6/variation-4.png\t1\t2026-02-27 10:01:41\n30006\t1\tlead_gen\ttabloid\thttps://d2xsxph8kpxj0f.cloudfront.net/310419663026750612/jQsGzEaS9E2xgaK8jEKUPB/ad-creatives/1/batch-1772186400505-4fbf77e6/variation-3.png\t1\t2026-02-27 10:01:15\n30005\t1\tlead_gen\ttabloid\thttps://d2xsxph8kpxj0f.cloudfront.net/310419663026750612/jQsGzEaS9E2xgaK8jEKUPB/ad-creatives/1/batch-1772186400505-4fbf77e6/variation-2.png\t1\t2026-02-27 10:00:48\n30004\t1\tlead_gen\ttabloid\thttps://d2xsxph8kpxj0f.cloudfront.net/310419663026750612/jQsGzEaS9E2xgaK8jEKUPB/ad-creatives/1/batch-1772186400505-4fbf77e6/variation-1.png\t1\t2026-02-27 10:00:24\n30003\t1\tlead_gen\ttabloid\thttps://d2xsxph8kpxj0f.cloudfront.net/310419663026750612/jQsGzEaS9E2xgaK8jEKUPB/ad-creatives/1/batch-1772186170400-b08e5bb2/variation-1.png\t1\t2026-02-27 09:56:35\n30002\t1\tlead_gen\ttabloid\thttps://d2xsxph8kpxj0f.cloudfront.net/310419663026750612/jQsGzEaS9E2xgaK8jEKUPB/ad-creatives/1/batch-1772185970997-5b5764bd/variation-1.png\t1\t2026-02-27 09:53:17\n30001\t1\tlead_gen\ttabloid\thttps://d2xsxph8kpxj0f.cloudfront.net/310419663026750612/jQsGzEaS9E2xgaK8jEKUPB/ad-creatives/1/batch-1772185782393-783f98d5/variation-1.png\t1\t2026-02-27 09:50:23\n",
+  "stderr": "",
+  "execution_time_ms": 1645
+}

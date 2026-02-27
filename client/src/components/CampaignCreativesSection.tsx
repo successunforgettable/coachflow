@@ -16,8 +16,9 @@ export function CampaignCreativesSection({ campaignId }: CampaignCreativesSectio
   const [isDownloading, setIsDownloading] = useState(false);
 
   // Fetch ad images
-  const { data: images, isLoading: imagesLoading } = trpc.adCreatives.list.useQuery();
-  const campaignImages = images?.filter((img) => img.campaignId === campaignId) || [];
+  const { data: batches, isLoading: imagesLoading } = trpc.adCreatives.list.useQuery();
+  // Flatten batches to individual creatives and filter by campaignId
+  const campaignImages = batches?.flatMap(batch => batch.creatives).filter(img => img.campaignId === campaignId) || [];
 
   // Fetch videos
   const { data: videos, isLoading: videosLoading } = trpc.videos.list.useQuery({});

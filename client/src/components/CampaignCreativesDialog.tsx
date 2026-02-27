@@ -43,6 +43,7 @@ export function CampaignCreativesDialog({
   });
 
   const handleGenerate = () => {
+    console.log('Generate button clicked', { includeImages, includeVideos, serviceId, campaignId });
     if (!includeImages && !includeVideos) {
       toast.error("Please select at least one format (Images or Videos)");
       return;

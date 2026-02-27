@@ -15,8 +15,8 @@ import {
   deleteCampaignLink,
   getDb,
 } from "../db";
-import { services } from "../../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { services, campaigns, adCreatives, videos } from "../../drizzle/schema";
+import { eq, and } from "drizzle-orm";
 
 export const campaignsRouter = router({
   // List all user campaigns
@@ -420,6 +420,9 @@ export const campaignsRouter = router({
       campaignId: z.number(),
     }))
     .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      
       const userId = ctx.user.id;
 
       // Verify campaign ownership

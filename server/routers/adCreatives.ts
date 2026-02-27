@@ -412,6 +412,7 @@ export async function generateAdCreativesBatch(params: {
     const { url: s3Url } = await storagePut(fileKey, imageBuffer, "image/png");
 
     // Save to database with campaignId
+    console.log("[generateAdCreativesBatch] About to insert creative", { variation: i + 1 });
     const result = await db.insert(adCreatives).values({
       userId: params.userId,
       serviceId: params.serviceId,
@@ -434,7 +435,8 @@ export async function generateAdCreativesBatch(params: {
       status: "generated",
     });
 
-    const creativeId = Number(result.insertId);
+    const creativeId = Number(result[0].insertId);
+    console.log("[generateAdCreativesBatch] Converted creativeId:", creativeId);
     const [creative] = await db.select().from(adCreatives).where(eq(adCreatives.id, creativeId)).limit(1);
     generatedCreatives.push(creative);
   }

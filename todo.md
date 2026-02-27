@@ -3487,3 +3487,23 @@ Scene 5 (6s): "Stop being invisible. Your next client is already on Facebook..."
 - [ ] Test bulk download ZIP export (BLOCKED: Need generated assets first)
 - [ ] Verify Meta compliance specs display correctly (BLOCKED: Need generated assets first)
 - [x] Save checkpoint with all completed work
+
+## Phase 100: Replicate Integration & Bulk Download (COMPLETE)
+- [x] Replace Manus Forge API with Replicate API for image generation
+- [x] Add REPLICATE_API_KEY to environment variables
+- [x] Test Replicate API authentication
+- [x] Update imageGeneration module to use flux-1.1-pro model
+- [x] Fix FileOutput URL extraction (call url() method)
+- [x] Fix database insertId access (use result[0].insertId)
+- [x] Fix frontend batch structure handling (flatMap creatives)
+- [x] Add bulk download ZIP functionality to campaigns router
+- [x] Fix downloadAllCreatives database connection (add getDb())
+- [x] Fix downloadAllCreatives missing imports (campaigns, adCreatives, videos, and)
+- [x] Add "Download All as ZIP" button to Campaign Creatives section
+- [x] Install jszip package for client-side ZIP creation
+- [x] Test complete workflow: Generate 5 images successfully via Replicate
+- [x] Verify images use Replicate (flux-1.1-pro) - CONFIRMED WORKING
+- [x] Test bulk download ZIP export - CONFIRMED WORKING (8 images downloaded)
+- [x] Verify Meta compliance specs display correctly - CONFIRMED WORKING
+- [ ] Test video generation (BLOCKED: Manus LLM quota exhausted for script generation)
+- [ ] Verify videos use Creatomate (BLOCKED: Cannot test until LLM quota resets)
