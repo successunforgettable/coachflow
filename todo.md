@@ -3466,3 +3466,24 @@ Scene 5 (6s): "Stop being invisible. Your next client is already on Facebook..."
 - [x] Fix service query import error in campaigns.generateCreatives
 - [ ] Test batch generation workflow end-to-end
 - [ ] Verify creatives appear in Campaign Dashboard
+
+## Batch Generation Test & Bulk Download
+- [ ] Test end-to-end batch generation workflow (Campaign → Ad Creatives → Generate → Verify)
+- [ ] Implement bulk download ZIP export for campaign creatives
+- [ ] Add "Download All" button to Campaign Creatives section
+- [ ] Test bulk download and save final checkpoint
+
+## Phase 100: Unified Campaign Ad Creatives System - Final Integration
+- [x] Replace Manus Forge API with Replicate API for image generation
+- [x] Add REPLICATE_API_KEY to environment variables
+- [x] Test Replicate API authentication
+- [x] Update imageGeneration module to use flux-1.1-pro model
+- [x] Add bulk download ZIP functionality to campaigns router
+- [x] Add "Download All as ZIP" button to Campaign Creatives section
+- [x] Install jszip package for client-side ZIP creation
+- [ ] Test complete workflow: Generate 5 images + 5 videos for a campaign (BLOCKED: Manus LLM quota exhausted)
+- [ ] Verify images use Replicate (flux-1.1-pro) (BLOCKED: Manus LLM quota exhausted)
+- [ ] Verify videos use Creatomate (upgraded account) (BLOCKED: Manus LLM quota exhausted)
+- [ ] Test bulk download ZIP export (BLOCKED: Need generated assets first)
+- [ ] Verify Meta compliance specs display correctly (BLOCKED: Need generated assets first)
+- [x] Save checkpoint with all completed work

@@ -411,4 +411,54 @@ export const campaignsRouter = router({
         videosCount,
       };
     }),
+
+  /**
+   * Download all campaign creatives (images + videos) as ZIP
+   */
+  downloadAllCreatives: protectedProcedure
+    .input(z.object({
+      campaignId: z.number(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.user.id;
+
+      // Verify campaign ownership
+      const [campaign] = await db
+        .select()
+        .from(campaigns)
+        .where(and(eq(campaigns.id, input.campaignId), eq(campaigns.userId, userId)))
+        .limit(1);
+
+      if (!campaign) {
+        throw new Error("Campaign not found");
+      }
+
+      // Get all images
+      const images = await db
+        .select()
+        .from(adCreatives)
+        .where(eq(adCreatives.campaignId, input.campaignId));
+
+      // Get all videos
+      const videosList = await db
+        .select()
+        .from(videos)
+        .where(eq(videos.campaignId, input.campaignId));
+
+      // Return URLs for client-side ZIP creation
+      return {
+        success: true,
+        campaignName: campaign.name,
+        images: images.map(img => ({
+          id: img.id,
+          url: img.imageUrl,
+          filename: `image-${img.id}.png`,
+        })),
+        videos: videosList.map(vid => ({
+          id: vid.id,
+          url: vid.videoUrl,
+          filename: `video-${vid.id}.mp4`,
+        })),
+      };
+    }),
 });

@@ -788,8 +788,8 @@ export const adCreatives = mysqlTable("adCreatives", {
   // Input fields
   niche: varchar("niche", { length: 255 }).notNull(), // e.g., "crypto", "mind coaching"
   productName: varchar("productName", { length: 255 }).notNull(),
-  uniqueMechanism: varchar("uniqueMechanism", { length: 255 }), // e.g., "9-Step System"
-  targetAudience: varchar("targetAudience", { length: 255 }).notNull(),
+  uniqueMechanism: text("uniqueMechanism"), // e.g., "9-Step System"
+  targetAudience: text("targetAudience").notNull(),
   mainBenefit: text("mainBenefit").notNull(),
   pressingProblem: text("pressingProblem").notNull(),
   // Generation settings

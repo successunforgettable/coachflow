@@ -274,6 +274,13 @@
       "when": 1772144587502,
       "tag": "0038_small_tusk",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "5",
+      "when": 1772149748198,
+      "tag": "0039_redundant_darkhawk",
+      "breakpoints": true
     }
   ]
 }

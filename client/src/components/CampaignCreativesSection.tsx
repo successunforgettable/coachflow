@@ -2,13 +2,19 @@ import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Download, ExternalLink, Loader2 } from "lucide-react";
+import { Download, ExternalLink, Loader2, PackageOpen } from "lucide-react";
+import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+import JSZip from "jszip";
 
 interface CampaignCreativesSectionProps {
   campaignId: number;
 }
 
 export function CampaignCreativesSection({ campaignId }: CampaignCreativesSectionProps) {
+  const { toast } = useToast();
+  const [isDownloading, setIsDownloading] = useState(false);
+
   // Fetch ad images
   const { data: images, isLoading: imagesLoading } = trpc.adCreatives.list.useQuery();
   const campaignImages = images?.filter((img) => img.campaignId === campaignId) || [];
@@ -16,6 +22,68 @@ export function CampaignCreativesSection({ campaignId }: CampaignCreativesSectio
   // Fetch videos
   const { data: videos, isLoading: videosLoading } = trpc.videos.list.useQuery({});
   const campaignVideos = videos?.filter((vid) => vid.campaignId === campaignId) || [];
+
+  // Bulk download mutation
+  const downloadAll = trpc.campaigns.downloadAllCreatives.useMutation();
+
+  const handleBulkDownload = async () => {
+    try {
+      setIsDownloading(true);
+      
+      // Get all creative URLs from backend
+      const result = await downloadAll.mutateAsync({ campaignId });
+      
+      // Create ZIP file
+      const zip = new JSZip();
+      
+      // Download and add images to ZIP
+      for (const image of result.images) {
+        try {
+          const response = await fetch(image.url);
+          const blob = await response.blob();
+          zip.file(`images/${image.filename}`, blob);
+        } catch (err) {
+          console.error(`Failed to download image ${image.id}:`, err);
+        }
+      }
+      
+      // Download and add videos to ZIP
+      for (const video of result.videos) {
+        try {
+          const response = await fetch(video.url);
+          const blob = await response.blob();
+          zip.file(`videos/${video.filename}`, blob);
+        } catch (err) {
+          console.error(`Failed to download video ${video.id}:`, err);
+        }
+      }
+      
+      // Generate ZIP and trigger download
+      const zipBlob = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(zipBlob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${result.campaignName}-creatives.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      toast({
+        title: "Download Complete",
+        description: `Downloaded ${result.images.length} images and ${result.videos.length} videos`,
+      });
+    } catch (error) {
+      console.error("Bulk download failed:", error);
+      toast({
+        title: "Download Failed",
+        description: "Failed to download creatives. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   const isLoading = imagesLoading || videosLoading;
 
@@ -51,8 +119,28 @@ export function CampaignCreativesSection({ campaignId }: CampaignCreativesSectio
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
         <CardTitle>Campaign Creatives ({totalCreatives})</CardTitle>
+        {totalCreatives > 0 && (
+          <Button
+            onClick={handleBulkDownload}
+            disabled={isDownloading}
+            variant="outline"
+            size="sm"
+          >
+            {isDownloading ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Downloading...
+              </>
+            ) : (
+              <>
+                <PackageOpen className="w-4 h-4 mr-2" />
+                Download All as ZIP
+              </>
+            )}
+          </Button>
+        )}
       </CardHeader>
       <CardContent className="space-y-8">
         {/* Ad Images Section */}
