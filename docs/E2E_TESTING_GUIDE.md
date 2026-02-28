@@ -251,7 +251,7 @@ Verify quota limits restrict access when users downgrade or cancel subscriptions
 ## Phase 5.6: Monthly Reset Testing
 
 ### Objective
-Verify quota counts reset automatically on the 1st of each month (or anniversary date).
+Verify quota counts reset automatically on each user's anniversary date (monthly from their signup date, not on the 1st of the calendar month).
 
 ### Test Steps
 
@@ -261,7 +261,7 @@ Verify quota counts reset automatically on the 1st of each month (or anniversary
      ```sql
      UPDATE users SET usageResetAt = DATE_SUB(NOW(), INTERVAL 1 DAY) WHERE id = <user_id>;
      ```
-   - Trigger quota reset logic (via cron job or manual script)
+   - Make a generation request (the anniversary-based reset check runs automatically at the start of each generation request)
    - Verify all quota counts reset to 0:
      ```sql
      SELECT headlineGeneratedCount, icpGeneratedCount, adCopyGeneratedCount FROM users WHERE id = <user_id>;
@@ -351,7 +351,7 @@ All tests pass when:
 ✅ Agency users have unlimited (999) access
 ✅ Upgrading unlocks higher limits immediately
 ✅ Downgrading restricts to trial limits
-✅ Monthly reset clears quota counts
+✅ Anniversary-based reset clears quota counts on each user's individual signup anniversary
 ✅ Frontend UI shows accurate quota usage
 ✅ Backend throws proper errors at limits
 ✅ Stripe webhooks update tiers automatically
