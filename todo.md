@@ -3536,3 +3536,6 @@ Scene 5 (6s): "Stop being invisible. Your next client is already on Facebook..."
 - [x] Alternate Ken Burns zoom direction per clip (zoom-in vs zoom-out) for visual variety
 - [x] Apply same multi-clip logic to kinetic_typography, motion_graphics, stats_card templates
 - [x] Add smooth outro to else-branch templates (4s fade-to-black + URL text)
+
+## Bug: Text Overlays Not Showing in Creatomate Output
+- [x] Fix text overlays not appearing in rendered videos - root cause: fill_color was #3B82F6 (blue, invisible on dark b-roll) and font_size was null; fixed to #ffffff and 10vmin

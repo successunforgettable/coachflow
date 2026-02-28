@@ -1016,7 +1016,15 @@ export async function renderVideo(params: {
               return {
                 ...child,
                 text: sceneData.onScreenText,
-                fill_color: child.fill_color === "{{brand_color}}" ? brandColor : child.fill_color,
+                // Force white text so it is always visible over dark b-roll
+                fill_color: "#ffffff",
+                // Ensure font size is always set (template may have null)
+                font_size: child.font_size || "10 vmin",
+                font_size_minimum: undefined,
+                font_size_maximum: undefined,
+                // Span the full scene duration
+                time: 0,
+                duration: sceneDur,
               };
             }
             return child;
