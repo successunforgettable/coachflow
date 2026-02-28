@@ -1,0 +1,9 @@
+{
+  "query": "DELETE FROM videos WHERE creatomateStatus = 'rendering' AND creatomateRenderId IS NULL;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute DELETE FROM videos WHERE creatomateStatus = 'rendering' AND creatomateRenderId IS NULL;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1599
+}

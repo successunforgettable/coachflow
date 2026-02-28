@@ -1,0 +1,80 @@
+{
+  "query": "SELECT id, creatomateStatus, creatomateRenderId, videoUrl, campaignId FROM videos ORDER BY id DESC LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT id, creatomateStatus, creatomateRenderId, videoUrl, campaignId FROM videos ORDER BY id DESC LIMIT 10;",
+  "rows": [
+    {
+      "id": "480005",
+      "creatomateStatus": "rendering",
+      "creatomateRenderId": "NULL",
+      "videoUrl": "NULL",
+      "campaignId": "1"
+    },
+    {
+      "id": "480004",
+      "creatomateStatus": "rendering",
+      "creatomateRenderId": "NULL",
+      "videoUrl": "NULL",
+      "campaignId": "1"
+    },
+    {
+      "id": "480003",
+      "creatomateStatus": "rendering",
+      "creatomateRenderId": "NULL",
+      "videoUrl": "NULL",
+      "campaignId": "1"
+    },
+    {
+      "id": "480002",
+      "creatomateStatus": "rendering",
+      "creatomateRenderId": "NULL",
+      "videoUrl": "NULL",
+      "campaignId": "1"
+    },
+    {
+      "id": "480001",
+      "creatomateStatus": "rendering",
+      "creatomateRenderId": "NULL",
+      "videoUrl": "NULL",
+      "campaignId": "1"
+    },
+    {
+      "id": "450001",
+      "creatomateStatus": "succeeded",
+      "creatomateRenderId": "19932d53-7308-434c-938c-8317decee019",
+      "videoUrl": "https://f002.backblazeb2.com/file/creatomate-c8xg3hsxdu/19932d53-7308-434c-938c-8317decee019.mp4",
+      "campaignId": "NULL"
+    },
+    {
+      "id": "420001",
+      "creatomateStatus": "succeeded",
+      "creatomateRenderId": "10592bf1-3cfc-446c-a924-72cd94c736c4",
+      "videoUrl": "https://f002.backblazeb2.com/file/creatomate-c8xg3hsxdu/10592bf1-3cfc-446c-a924-72cd94c736c4.mp4",
+      "campaignId": "NULL"
+    },
+    {
+      "id": "300004",
+      "creatomateStatus": "failed",
+      "creatomateRenderId": "c1edef14-29da-47d8-b285-dbd2a7d1aaa4",
+      "videoUrl": "NULL",
+      "campaignId": "NULL"
+    },
+    {
+      "id": "270005",
+      "creatomateStatus": "queued",
+      "creatomateRenderId": "NULL",
+      "videoUrl": "NULL",
+      "campaignId": "NULL"
+    },
+    {
+      "id": "270004",
+      "creatomateStatus": "queued",
+      "creatomateRenderId": "NULL",
+      "videoUrl": "NULL",
+      "campaignId": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tcreatomateStatus\tcreatomateRenderId\tvideoUrl\tcampaignId\n480005\trendering\tNULL\tNULL\t1\n480004\trendering\tNULL\tNULL\t1\n480003\trendering\tNULL\tNULL\t1\n480002\trendering\tNULL\tNULL\t1\n480001\trendering\tNULL\tNULL\t1\n450001\tsucceeded\t19932d53-7308-434c-938c-8317decee019\thttps://f002.backblazeb2.com/file/creatomate-c8xg3hsxdu/19932d53-7308-434c-938c-8317decee019.mp4\tNULL\n420001\tsucceeded\t10592bf1-3cfc-446c-a924-72cd94c736c4\thttps://f002.backblazeb2.com/file/creatomate-c8xg3hsxdu/10592bf1-3cfc-446c-a924-72cd94c736c4.mp4\tNULL\n300004\tfailed\tc1edef14-29da-47d8-b285-dbd2a7d1aaa4\tNULL\tNULL\n270005\tqueued\tNULL\tNULL\tNULL\n270004\tqueued\tNULL\tNULL\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 1576
+}

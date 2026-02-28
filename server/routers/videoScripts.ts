@@ -1141,5 +1141,11 @@ Return JSON with:
   });
 
   const content = response.choices[0].message.content;
-  return JSON.parse(typeof content === 'string' ? content : JSON.stringify(content));
+  // Strip markdown code fences if present (Claude sometimes wraps JSON in ```json ... ```)
+  const rawContent = typeof content === 'string' ? content : JSON.stringify(content);
+  const cleanContent = rawContent
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```\s*$/i, '')
+    .trim();
+  return JSON.parse(cleanContent);
 }

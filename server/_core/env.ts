@@ -10,4 +10,5 @@ export const ENV = {
   pexelsApiKey: process.env.PEXELS_API_KEY ?? "",
   creatomateApiKey: process.env.CREATOMATE_API_KEY ?? "",
   replicateApiKey: process.env.REPLICATE_API_KEY ?? "",
+  anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? "",
 };

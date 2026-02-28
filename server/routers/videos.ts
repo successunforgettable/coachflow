@@ -265,6 +265,64 @@ export const videosRouter = router({
       return filtered;
     }),
 
+  // Regenerate a single failed/errored video by ID (no credit charge)
+  regenerateSingle: protectedProcedure
+    .input(z.object({ videoId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+      // Fetch the existing video record
+      const [video] = await db
+        .select()
+        .from(videos)
+        .where(eq(videos.id, input.videoId))
+        .limit(1);
+
+      if (!video) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Video not found" });
+      }
+
+      if (video.userId !== ctx.user.id) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "You don't have permission to regenerate this video" });
+      }
+
+      // Fetch the associated script
+      const [script] = await db
+        .select()
+        .from(videoScripts)
+        .where(eq(videoScripts.id, video.scriptId))
+        .limit(1);
+
+      if (!script) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Associated script not found" });
+      }
+
+      // Reset video status to queued
+      await db
+        .update(videos)
+        .set({ creatomateStatus: "queued", videoUrl: null, updatedAt: new Date() })
+        .where(eq(videos.id, input.videoId));
+
+      // Re-trigger render (non-blocking, no credit deduction)
+      renderVideo({
+        videoId: input.videoId,
+        script,
+        visualStyle: video.visualStyle,
+        brandColor: "#3B82F6",
+        userId: ctx.user.id,
+        creditCost: 0, // No credit charge for regeneration
+        originalBalance: 0,
+      }).catch(async (error) => {
+        console.error(`[Video ${input.videoId}] Regen render failed:`, error);
+        const db2 = await getDb();
+        if (!db2) return;
+        await db2.update(videos).set({ creatomateStatus: "failed", updatedAt: new Date() }).where(eq(videos.id, input.videoId));
+      });
+
+      return { videoId: input.videoId, status: "queued" };
+    }),
+
   // Delete video
   delete: protectedProcedure
     .input(z.object({ videoId: z.number() }))
@@ -329,10 +387,11 @@ function calculateSceneDurations(
   scenes: any[],
   totalAudioDuration: number
 ): number[] {
-  // Count words per scene
-  const wordCounts = scenes.map(scene => 
-    scene.voiceoverText.trim().split(/\s+/).length
-  );
+  // Count words per scene — handle both voiceoverText and voiceover field names
+  const wordCounts = scenes.map(scene => {
+    const text = scene.voiceoverText ?? scene.voiceover ?? "";
+    return text.trim().split(/\s+/).filter(Boolean).length || 1;
+  });
   
   const totalWords = wordCounts.reduce((sum: number, count: number) => sum + count, 0);
   
@@ -466,7 +525,7 @@ export async function renderVideo(params: {
 
   // STEP 2: Concatenate all voiceover text
   console.log(`[Video ${videoId}] Concatenating voiceover text...`);
-  const fullVoiceoverText = scenes.map((s: any) => s.voiceoverText).join(" ");
+  const fullVoiceoverText = scenes.map((s: any) => s.voiceoverText ?? s.voiceover ?? "").join(" ");
   
   // STEP 3: Call ElevenLabs to generate voiceover audio
   console.log(`[Video ${videoId}] Generating voiceover with ElevenLabs...`);
@@ -846,7 +905,7 @@ export async function renderVideo(params: {
         // - Antoni (warm male): ErXwobaYiN019PkySvjV
         // - Josh (confident male): TxGEqnHWrfWFTfGW9XjX
         const voiceId = "TxGEqnHWrfWFTfGW9XjX"; // Josh - confident, direct, human
-        const fullVoiceoverText = scenes.map((s: any) => s.voiceoverText).join(" ");
+        const fullVoiceoverText = scenes.map((s: any) => s.voiceoverText ?? s.voiceover ?? "").join(" ");
         
         return {
           ...element,

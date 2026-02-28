@@ -3507,3 +3507,18 @@ Scene 5 (6s): "Stop being invisible. Your next client is already on Facebook..."
 - [x] Verify Meta compliance specs display correctly - CONFIRMED WORKING
 - [ ] Test video generation (BLOCKED: Manus LLM quota exhausted for script generation)
 - [ ] Verify videos use Creatomate (BLOCKED: Cannot test until LLM quota resets)
+
+## Phase 101: Individual Regeneration Buttons & Video Testing
+- [ ] Add backend tRPC procedure: adCreatives.regenerateSingle (regenerate one image by ID)
+- [ ] Add backend tRPC procedure: videos.regenerateSingle (regenerate one video by ID)
+- [ ] Add "Regenerate" button to each image card in CampaignCreativesSection
+- [ ] Add "Regenerate" button to each video card in CampaignCreativesSection
+- [ ] Show spinner on individual card while regenerating
+- [ ] Replace old asset with new one after successful regeneration
+- [ ] Test individual image regeneration end-to-end
+- [ ] Test video generation once Manus LLM quota resets
+- [ ] Test complete workflow: images + videos together
+- [ ] Test bulk download ZIP with mixed images and videos
+
+## ZIP Download Fix
+- [x] Fix bulk ZIP download to include images alongside videos (CORS issue resolved by moving to server-side ZIP generation via /api/campaigns/:id/download-zip)

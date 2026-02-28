@@ -255,12 +255,12 @@ export const adCreativesRouter = router({
           imageFormat: "1080x1080",
           complianceChecked: true,
           complianceIssues: complianceIssues.length > 0 ? JSON.stringify(complianceIssues) : null,
-          batchId,
-          variationNumber: i + 1,
-        });
+      batchId,
+      variationNumber: i + 1,
+    } as any);
         
-        const creativeId = Number(result.insertId);
-        generatedCreatives.push({
+      const creativeId = Number((result as any).insertId ?? (result as any)[0]?.insertId ?? 0);
+      generatedCreatives.push({
           id: creativeId,
           headline,
           imageUrl: s3Url,
@@ -296,6 +296,54 @@ export const adCreativesRouter = router({
         );
       
       return { success: true };
+    }),
+
+  // Regenerate a single ad creative by ID
+  regenerateSingle: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      // Get the existing creative
+      const [existing] = await db
+        .select()
+        .from(adCreatives)
+        .where(and(eq(adCreatives.id, input.id), eq(adCreatives.userId, ctx.user.id)))
+        .limit(1);
+
+      if (!existing) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Creative not found" });
+      }
+
+      const headline = existing.headline || "";
+      const imagePrompt = generateAdImagePrompt(
+        existing.designStyle || "person_shocked",
+        headline,
+        existing.niche,
+        existing.pressingProblem
+      );
+
+      console.log(`[adCreatives.regenerateSingle] Regenerating creative ${input.id}`);
+
+      // Generate new image
+      const imageResult = await generateImage({ prompt: imagePrompt });
+      if (!imageResult.url) throw new Error("Failed to generate replacement image");
+
+      // Download and upload to S3
+      const imageResponse = await fetch(imageResult.url);
+      const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
+      const fileKey = `ad-creatives/${ctx.user.id}/regen-${input.id}-${Date.now()}.png`;
+      const { url: s3Url } = await storagePut(fileKey, imageBuffer, "image/png");
+
+      // Update the existing record in-place
+      await db
+        .update(adCreatives)
+        .set({ imageUrl: s3Url })
+        .where(and(eq(adCreatives.id, input.id), eq(adCreatives.userId, ctx.user.id)));
+
+      console.log(`[adCreatives.regenerateSingle] Done. New URL: ${s3Url}`);
+      return { id: input.id, imageUrl: s3Url };
     }),
 
   // Rate creative
@@ -432,8 +480,7 @@ export async function generateAdCreativesBatch(params: {
       complianceChecked: true,
       complianceIssues: complianceIssues.length > 0 ? JSON.stringify(complianceIssues) : null,
       batchId,
-      status: "generated",
-    });
+    } as any);
 
     const creativeId = Number(result[0].insertId);
     console.log("[generateAdCreativesBatch] Converted creativeId:", creativeId);

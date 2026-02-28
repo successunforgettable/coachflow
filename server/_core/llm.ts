@@ -215,10 +215,107 @@ const resolveApiUrl = () =>
     : "https://forge.manus.im/v1/chat/completions";
 
 const assertApiKey = () => {
-  if (!ENV.forgeApiKey) {
-    throw new Error("OPENAI_API_KEY is not configured");
+  if (!ENV.anthropicApiKey && !ENV.forgeApiKey) {
+    throw new Error("No LLM API key configured. Set ANTHROPIC_API_KEY or BUILT_IN_FORGE_API_KEY.");
   }
 };
+
+// ─── CLAUDE (ANTHROPIC) DIRECT CALL ─────────────────────────────────────────
+// Converts OpenAI-style messages to Anthropic's Messages API format
+async function invokeClaudeAPI(params: InvokeParams): Promise<InvokeResult> {
+  const { messages, responseFormat, response_format, outputSchema, output_schema } = params;
+
+  // Separate system message from conversation messages
+  const systemMessages = messages.filter(m => m.role === "system");
+  const conversationMessages = messages.filter(m => m.role !== "system");
+
+  const systemPrompt = systemMessages
+    .map(m => (typeof m.content === "string" ? m.content : JSON.stringify(m.content)))
+    .join("\n");
+
+  // Determine if JSON output is requested
+  const needsJson = responseFormat?.type?.includes("json") ||
+    response_format?.type?.includes("json") ||
+    outputSchema != null ||
+    output_schema != null;
+
+  const anthropicMessages = conversationMessages.map(m => ({
+    role: m.role === "assistant" ? "assistant" : "user",
+    content: typeof m.content === "string" ? m.content : JSON.stringify(m.content),
+  }));
+
+  // Use latest Claude models — claude-sonnet-4-5 confirmed available on this account
+  const PREFERRED_MODELS = [
+    "claude-sonnet-4-5",   // Latest Sonnet — best quality for marketing copy
+    "claude-haiku-4-5",   // Latest Haiku fallback
+    "claude-3-haiku-20240307", // Legacy fallback
+  ];
+
+  const systemContent = systemPrompt
+    ? systemPrompt + (needsJson ? "\n\nIMPORTANT: Respond with ONLY valid JSON. No markdown, no explanations, no code blocks." : "")
+    : (needsJson ? "IMPORTANT: Respond with ONLY valid JSON. No markdown, no explanations, no code blocks." : undefined);
+
+  let response: Response | null = null;
+  let lastError = "";
+
+  for (const model of PREFERRED_MODELS) {
+    const body: Record<string, unknown> = {
+      model,
+      max_tokens: 8192,
+      messages: anthropicMessages,
+    };
+    if (systemContent) body.system = systemContent;
+
+    response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": ENV.anthropicApiKey,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (response.ok) break; // success — stop trying models
+
+    const errData = await response.json() as any;
+    lastError = errData?.error?.message ?? response.statusText;
+
+    // Only retry on model-not-found (404); propagate other errors immediately
+    if (response.status !== 404) {
+      throw new Error(`Claude API failed: ${response.status} – ${lastError}`);
+    }
+  }
+
+  if (!response || !response.ok) {
+    throw new Error(`Claude API failed on all models: ${lastError}`);
+  }
+
+  const claudeResponse = await response.json() as any;
+
+  // Convert Anthropic response format to OpenAI-compatible InvokeResult
+  return {
+    id: claudeResponse.id,
+    object: "chat.completion",
+    created: Math.floor(Date.now() / 1000),
+    model: claudeResponse.model,
+    choices: [
+      {
+        index: 0,
+        message: {
+          role: "assistant",
+          content: claudeResponse.content?.[0]?.text ?? "",
+        },
+        finish_reason: claudeResponse.stop_reason === "end_turn" ? "stop" : claudeResponse.stop_reason,
+      },
+    ],
+    usage: {
+      prompt_tokens: claudeResponse.usage?.input_tokens ?? 0,
+      completion_tokens: claudeResponse.usage?.output_tokens ?? 0,
+      total_tokens: (claudeResponse.usage?.input_tokens ?? 0) + (claudeResponse.usage?.output_tokens ?? 0),
+    },
+  } as InvokeResult;
+}
 
 const normalizeResponseFormat = ({
   responseFormat,
@@ -268,6 +365,12 @@ const normalizeResponseFormat = ({
 export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   assertApiKey();
 
+  // Use Claude (Anthropic) as primary LLM — reliable, no quota surprises
+  if (ENV.anthropicApiKey) {
+    return invokeClaudeAPI(params);
+  }
+
+  // Fallback to Manus Forge if no Anthropic key configured
   const {
     messages,
     tools,
@@ -296,10 +399,7 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     payload.tool_choice = normalizedToolChoice;
   }
 
-  payload.max_tokens = 32768
-  payload.thinking = {
-    "budget_tokens": 128
-  }
+  payload.max_tokens = 32768;
 
   const normalizedResponseFormat = normalizeResponseFormat({
     responseFormat,
