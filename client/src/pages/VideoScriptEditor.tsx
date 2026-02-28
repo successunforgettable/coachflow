@@ -37,7 +37,7 @@ export default function VideoScriptEditor() {
 
   useEffect(() => {
     if (script?.scenes) {
-      setScenes(script.scenes as Scene[]);
+      setScenes(script.scenes as unknown as Scene[]);
     }
   }, [script]);
 

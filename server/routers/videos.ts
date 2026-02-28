@@ -836,7 +836,7 @@ export async function renderVideo(params: {
     transcript_maximum_length: 4,
     time: 0,
     duration: totalAudioDuration,
-    y: "78%",
+    y: "82%",
     x: "50%",
     width: "88%",
     height: "20%",
@@ -847,7 +847,7 @@ export async function renderVideo(params: {
     stroke_width: "1.2 vmin",
     font_family: "Montserrat",
     font_weight: "800",
-    font_size: "7.5 vmin"
+    font_size: "6.5 vmin"
   });
 
   // ─── CLOSING SEQUENCE — always, 5 seconds after voiceover ends ────────────

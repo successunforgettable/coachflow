@@ -46,6 +46,8 @@ export default function ServiceDetail() {
     applicationMethod: "",
     avatarName: "",
     avatarTitle: "",
+    // Video authority badge stat
+    socialProofStat: "",
   });
 
   // Fetch service details
@@ -107,6 +109,7 @@ export default function ServiceDetail() {
         applicationMethod: service.applicationMethod || "",
         avatarName: service.avatarName || "",
         avatarTitle: service.avatarTitle || "",
+        socialProofStat: (service as any).socialProofStat || "",
       });
     }
   }, [service]);
@@ -173,6 +176,7 @@ export default function ServiceDetail() {
       applicationMethod: formData.applicationMethod || undefined,
       avatarName: formData.avatarName || undefined,
       avatarTitle: formData.avatarTitle || undefined,
+      socialProofStat: formData.socialProofStat || undefined,
     });
   };
 
@@ -446,6 +450,21 @@ export default function ServiceDetail() {
                     />
                     <p className="text-xs text-muted-foreground mt-1">
                       Comma-separated list of real press mentions only
+                    </p>
+                  </div>
+
+                  {/* Social Proof Stat (Video Authority Badge) */}
+                  <div>
+                    <Label htmlFor="socialProofStat">Video Authority Badge Stat</Label>
+                    <Input
+                      id="socialProofStat"
+                      placeholder="e.g., 900,000 STUDENTS TRAINED"
+                      value={formData.socialProofStat}
+                      onChange={(e) => setFormData({ ...formData, socialProofStat: e.target.value })}
+                      maxLength={255}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Shown as a blue authority badge on Scene 3 of every video. Use ALL CAPS (e.g., "900,000 STUDENTS TRAINED").
                     </p>
                   </div>
                 </div>

@@ -35,6 +35,8 @@ const updateServiceSchema = z.object({
   testimonial3Title: z.string().max(255).optional(),
   testimonial3Quote: z.string().max(1000).optional(),
   pressFeatures: z.string().max(1000).optional(),
+  // Video authority badge stat
+  socialProofStat: z.string().max(255).optional(),
   // AutoPop fields (Phase 39 FIX 2)
   whyProblemExists: z.string().optional(),
   hvcoTopic: z.string().max(300).optional(),

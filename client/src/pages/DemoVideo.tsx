@@ -9,13 +9,13 @@ export function DemoVideo() {
   const { toast } = useToast();
   const [selectedVideoId, setSelectedVideoId] = useState<number | null>(null);
 
-  const { data: demoVideos, isLoading: isLoadingList, refetch } = trpc.demoVideos.list.useQuery();
-  const { data: selectedVideo } = trpc.demoVideos.get.useQuery(
+  const { data: demoVideos, isLoading: isLoadingList, refetch } = trpc.demoVideos.listDemoVideos.useQuery();
+  const { data: selectedVideo } = trpc.demoVideos.getDemoVideo.useQuery(
     { id: selectedVideoId! },
     { enabled: !!selectedVideoId }
   );
 
-  const generateMutation = trpc.demoVideos.generate.useMutation({
+  const generateMutation = trpc.demoVideos.generateDemoVideo.useMutation({
     onSuccess: (data) => {
       toast({
         title: "Demo video generation started",
@@ -64,10 +64,7 @@ export function DemoVideo() {
   });
 
   const handleGenerate = () => {
-    generateMutation.mutate({
-      title: "ZAP Demo Video",
-      description: "Flagship demo showcasing ZAP's value proposition to coaches",
-    });
+    generateMutation.mutate(undefined);
   };
 
   const getStatusIcon = (status: string) => {
@@ -169,7 +166,7 @@ export function DemoVideo() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => checkStatusMutation.mutate({ id: video.id })}
+                      onClick={() => checkStatusMutation.mutate({ demoVideoId: video.id })}
                       disabled={checkStatusMutation.isPending}
                     >
                       {checkStatusMutation.isPending ? (

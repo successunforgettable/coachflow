@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Plus, Video, PlayCircle, Clock, CheckCircle, XCircle } from "lucide-react";
-import { QuotaIndicator } from "@/components/QuotaIndicator";
 import { SearchBar } from "@/components/SearchBar";
 import { useState } from "react";
 
@@ -56,11 +55,6 @@ export default function Videos() {
 
   return (
     <div className="container max-w-7xl py-8">
-      {/* Quota Indicator */}
-      <div className="mb-6">
-        <QuotaIndicator generatorType="video" />
-      </div>
-
       {/* Search Bar */}
       <div className="mb-6">
         <SearchBar

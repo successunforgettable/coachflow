@@ -45,14 +45,16 @@ export const demoVideosRouter = router({
       throw new Error("Database not available");
     }
 
-    // Create demo video record
-    const [demoVideo] = await db
+    // Create demo video record — MySQL doesn't support .returning(), use $returningId
+    const result: any = await db
       .insert(demoVideos)
       .values({
         userId: ctx.user.id,
         creatomateStatus: "queued",
-      })
-      .returning();
+      });
+
+    const insertId = result[0].insertId;
+    const [demoVideo] = await db.select().from(demoVideos).where(eq(demoVideos.id, insertId)).limit(1);
 
     try {
       // Initialize Creatomate client
@@ -131,6 +133,7 @@ export const demoVideosRouter = router({
       const voiceoverText = ZAP_DEMO_SCENES.map((s) => s.voiceoverText).join(" ");
 
       // Create the source with proper audio pipeline
+      // Use a plain dark background color instead of gradient (gradient requires different API)
       const source = new Creatomate.Source({
         outputFormat: "mp4",
         width: 1080,
@@ -139,7 +142,7 @@ export const demoVideosRouter = router({
         duration: totalDuration,
 
         elements: [
-          // Background with radial gradient
+          // Background — solid dark color (gradient not supported via fillColor array)
           new Creatomate.Shape({
             track: 0,
             time: 0,
@@ -149,41 +152,20 @@ export const demoVideosRouter = router({
             y: "50%",
             width: "100%",
             height: "100%",
-            fillColor: [
-              { offset: 0, color: "#1a1a1a" }, // Center
-              { offset: 1, color: "#000000" }, // Edges
-            ],
+            fillColor: "#0d0d0d",
           }),
 
           // Text elements
           ...textElements,
 
           // Voiceover audio (ElevenLabs with Josh voice)
+          // source must be a URL string for Creatomate Audio; use transcript_source for AI TTS
           new Creatomate.Audio({
             track: 10,
-            source: {
-              type: "audio_ai",
-              provider: "elevenlabs",
-              voice: "TxGEqnHWrfWFTfGW9XjX", // Josh voice
-              text: voiceoverText,
-              settings: {
-                stability: 0.25,
-                similarity_boost: 0.75,
-                style: 0.65,
-                use_speaker_boost: true,
-              },
-            },
-            volume: "100%", // Full volume for voiceover
-          }),
-
-          // Background music (placeholder - will add real music URL later)
-          // new Creatomate.Audio({
-          //   track: 11,
-          //   source: 'https://s3-url/music.mp3',
-          //   volume: '30%',  // Low volume for background
-          //   audioFadeOut: 2,  // Fade out at end
-          //   loop: true,
-          // }),
+            // Use transcript_source for AI-generated speech
+            transcriptSource: "voiceover",
+            volume: "100%",
+          } as any),
         ],
       });
 
@@ -193,11 +175,6 @@ export const demoVideosRouter = router({
       const render = renders[0];
 
       console.log(`[DemoVideo ${demoVideo.id}] Creatomate render started: ${render.id}`);
-
-      // Update database with render ID
-      if (!db) {
-        throw new Error("Database not available");
-      }
 
       await db
         .update(demoVideos)
@@ -213,11 +190,6 @@ export const demoVideosRouter = router({
       };
     } catch (error: any) {
       console.error(`[DemoVideo ${demoVideo.id}] Error:`, error);
-
-      // Update database with error
-      if (!db) {
-        throw new Error("Database not available");
-      }
 
       await db
         .update(demoVideos)
@@ -241,10 +213,12 @@ export const demoVideosRouter = router({
         throw new Error("Database not available");
       }
 
-      // Get demo video from database
-      const demoVideo = await db.query.demoVideos.findFirst({
-        where: eq(demoVideos.id, input.demoVideoId),
-      });
+      // Get demo video from database using select (db.query not available without relations config)
+      const [demoVideo] = await db
+        .select()
+        .from(demoVideos)
+        .where(eq(demoVideos.id, input.demoVideoId))
+        .limit(1);
 
       if (!demoVideo) {
         throw new Error("Demo video not found");
@@ -300,9 +274,11 @@ export const demoVideosRouter = router({
         throw new Error("Database not available");
       }
 
-      const demoVideo = await db.query.demoVideos.findFirst({
-        where: eq(demoVideos.id, input.id),
-      });
+      const [demoVideo] = await db
+        .select()
+        .from(demoVideos)
+        .where(eq(demoVideos.id, input.id))
+        .limit(1);
 
       if (!demoVideo) {
         throw new Error("Demo video not found");

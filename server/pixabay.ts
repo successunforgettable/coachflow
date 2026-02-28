@@ -155,10 +155,17 @@ export async function fetchStockFootageWithFallback(
   orientation: "all" | "horizontal" | "vertical" | "portrait" = "portrait",
   sceneIndex: number = 0
 ): Promise<string | null> {
+  // Map orientation to Pexels-compatible values
+  const pexelsOrientation: "landscape" | "portrait" | "square" =
+    orientation === "horizontal" ? "landscape" :
+    orientation === "all" ? "landscape" :
+    orientation === "vertical" ? "portrait" :
+    "portrait";
+
   // Try Pexels first
   try {
     const { searchPexelsVideos, selectBestHDVideo } = await import("./pexels.js");
-    const pexelsResults = await searchPexelsVideos(query, orientation, 5);
+    const pexelsResults = await searchPexelsVideos(query, pexelsOrientation, 5);
     const pexelsUrl = selectBestHDVideo(pexelsResults.videos);
     if (pexelsUrl) {
       console.log(`[Footage] ✓ Pexels: ${query}`);
