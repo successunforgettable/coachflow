@@ -1,0 +1,15 @@
+{
+  "query": "SELECT vs.serviceId, s.name, s.socialProofStat FROM videoScripts vs JOIN services s ON s.id = vs.serviceId WHERE vs.id = (SELECT scriptId FROM videos WHERE id = 480010) LIMIT 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT vs.serviceId, s.name, s.socialProofStat FROM videoScripts vs JOIN services s ON s.id = vs.serviceId WHERE vs.id = (SELECT scriptId FROM videos WHERE id = 480010) LIMIT 1;",
+  "rows": [
+    {
+      "serviceId": "30001",
+      "name": "incredible you coach training ",
+      "socialProofStat": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "serviceId\tname\tsocialProofStat\n30001\tincredible you coach training \tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 1603
+}

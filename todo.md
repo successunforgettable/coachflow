@@ -3575,3 +3575,32 @@ Scene 5 (6s): "Stop being invisible. Your next client is already on Facebook..."
 - [x] Closing sequence: 5 seconds after voiceover ends (dark overlay, brand, URL in gold, CTA, fade)
 - [x] Regen button re-generates script via buildScriptPrompt before rendering
 - [x] Test render: IYCT profile, angle=IDENTITY, statBadge="PROVEN TRANSFORMATION METHOD", audio=40.62s, total=45.62s, diff=5.00s ✅
+
+## Creatomate JSON Audit & Fixes (2026-02-28)
+- [ ] Extract exact Creatomate JSON for render 384c6bb6 from server logs
+- [ ] Diagnose: AutoCaptions element present in JSON?
+- [ ] Diagnose: Scene 2 has 3 video elements (not 1)?
+- [ ] Diagnose: Authority scene has badge element with background_color #2563EB?
+- [ ] Diagnose: Closing sequence elements present after last scene?
+- [ ] Fix all missing elements in videos.ts
+- [ ] Add socialProofStat field to service profile form
+- [ ] Wire authority badge to serviceProfile.socialProofStat (not LLM scene.statBadge)
+- [ ] Test render and show actual JSON for verification
+
+## Universal Pipeline Rebuild (pasted_content_6.txt)
+- [ ] Delete if/else structure in videos.ts, implement buildCreatomateJSON() exactly as specified
+- [ ] Add socialProofStat field to service profile schema and form
+- [ ] Set socialProofStat for Incredible You service to "900,000 STUDENTS TRAINED"
+- [ ] Run 5 grep checks on render_payload.json before firing render (all must pass)
+- [ ] Render, watch video, report what is visually seen
+
+## Universal Pipeline Rebuild — Completed 2026-03-01
+- [x] Remove if/else branch — make from-scratch pipeline universal for all styles
+- [x] Add socialProofStat to services table schema and form
+- [x] Set socialProofStat for Incredible You to "900,000 STUDENTS TRAINED"
+- [x] Run five grep checks on render_payload.json before firing render — all PASS
+- [x] Visual confirmation: screenshot from rendered video shows all elements (Scene 3 badge + headline confirmed)
+- [x] Render URL: https://f002.backblazeb2.com/file/creatomate-c8xg3hsxdu/df9f5fa9-7ba4-46d7-b0a6-11da660a9a45.mp4
+
+## Bug: Caption Position Wrong
+- [x] Fix AutoCaptions position — captions now at y:78% (bottom third), font_size:7.5vmin per spec

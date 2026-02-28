@@ -1,0 +1,60 @@
+{
+  "query": "SELECT id, name, socialProofStat FROM services LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT id, name, socialProofStat FROM services LIMIT 10;",
+  "rows": [
+    {
+      "id": "30001",
+      "name": "incredible you coach training ",
+      "socialProofStat": "NULL"
+    },
+    {
+      "id": "60001",
+      "name": "Crypto Coaching",
+      "socialProofStat": "NULL"
+    },
+    {
+      "id": "90001",
+      "name": "Test Coaching Service",
+      "socialProofStat": "NULL"
+    },
+    {
+      "id": "120001",
+      "name": "Crypto Coaching",
+      "socialProofStat": "NULL"
+    },
+    {
+      "id": "120002",
+      "name": "Test Coaching Service",
+      "socialProofStat": "NULL"
+    },
+    {
+      "id": "150001",
+      "name": "Crypto Coaching",
+      "socialProofStat": "NULL"
+    },
+    {
+      "id": "150002",
+      "name": "Test Coaching Service",
+      "socialProofStat": "NULL"
+    },
+    {
+      "id": "150005",
+      "name": "Crypto Coaching",
+      "socialProofStat": "NULL"
+    },
+    {
+      "id": "150006",
+      "name": "Test Coaching Service",
+      "socialProofStat": "NULL"
+    },
+    {
+      "id": "150009",
+      "name": "Crypto Coaching",
+      "socialProofStat": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tsocialProofStat\n30001\tincredible you coach training \tNULL\n60001\tCrypto Coaching\tNULL\n90001\tTest Coaching Service\tNULL\n120001\tCrypto Coaching\tNULL\n120002\tTest Coaching Service\tNULL\n150001\tCrypto Coaching\tNULL\n150002\tTest Coaching Service\tNULL\n150005\tCrypto Coaching\tNULL\n150006\tTest Coaching Service\tNULL\n150009\tCrypto Coaching\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 1749
+}

@@ -104,6 +104,8 @@ export const services = mysqlTable("services", {
   testimonial3Title: varchar("testimonial3Title", { length: 255 }),
   testimonial3Quote: text("testimonial3Quote"),
   pressFeatures: text("pressFeatures"), // Comma-separated list: "Forbes, Inc, TechCrunch"
+  // Social proof stat for video authority badge (e.g., "900,000 STUDENTS TRAINED")
+  socialProofStat: varchar("socialProofStat", { length: 255 }),
   // AutoPop fields (Phase 39 FIX 2)
   whyProblemExists: text("whyProblemExists"), // Root cause explanation
   hvcoTopic: varchar("hvcoTopic", { length: 300 }), // High-value content offer topic

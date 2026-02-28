@@ -655,597 +655,301 @@ export async function renderVideo(params: {
   await new Promise(resolve => setTimeout(resolve, 3000));
   console.log(`[Video ${videoId}] CDN propagation wait complete`);
   
-  // STEP 11: Build Creatomate elements using calculated durations
+  // STEP 11: Fetch service profile for authority badge (socialProofStat)
+  let serviceProfile: { socialProofStat?: string | null } | null = null;
+  if (script.serviceId) {
+    try {
+      const [svc] = await db.select({ socialProofStat: services.socialProofStat }).from(services).where(eq(services.id, script.serviceId)).limit(1);
+      serviceProfile = svc || null;
+      console.log(`[Video ${videoId}] serviceProfile.socialProofStat:`, serviceProfile?.socialProofStat);
+    } catch (e) {
+      console.warn(`[Video ${videoId}] Could not fetch serviceProfile:`, e);
+    }
+  }
+  const musicUrl: string | null = null; // Background music reserved for future use
 
-  // Build modifications for Creatomate
-  let modifications: any;
-  
-  // Special handling for text_only template: build RenderScript from scratch
-  if (visualStyle === "text_only") {
-    console.log(`[Video ${videoId}] Building text_only RenderScript from scratch`);
-    
-    // Build scene compositions with MULTIPLE b-roll sub-clips + persistent text overlay
-    const sceneCompositions = scenes.map((scene: any, index: number) => {
-      const clips: string[] = sceneFootage[index] || [];
-      const sceneType = SCENE_TYPE_MAP[index];
-      const sceneDur = sceneDurations[index];
-      const elements: any[] = [];
-      
-      // Color grading per scene type — cold to warm emotional arc
-      const colorGrading: Record<string, string> = {
-        hook:      "brightness(0.85) saturate(0.7)",  // cold, tense — pain
-        problem:   "brightness(0.8) saturate(0.6)",   // darker, heavier — deeper pain
-        authority: "brightness(1.0) saturate(0.9)",   // neutral, credible
-        solution:  "brightness(1.1) saturate(1.2)",   // warmer, brighter — relief
-        cta:       "brightness(1.15) saturate(1.3)",  // brightest, most energetic — action
-      };
-      const filter = colorGrading[sceneType] || "brightness(1) saturate(1)";
-      
-      if (clips.length > 0) {
-        // Divide scene duration evenly across available clips
-        const clipDur = Math.round((sceneDur / clips.length) * 10) / 10;
-        
-        clips.forEach((clipUrl, clipIdx) => {
-          const clipStart = Math.round(clipIdx * clipDur * 10) / 10;
-          // Last clip gets any remaining time to avoid rounding gaps
-          const actualDur = clipIdx === clips.length - 1
-            ? Math.round((sceneDur - clipStart) * 10) / 10
-            : clipDur;
-          
-          // LAYER 1: B-roll video sub-clip
-          elements.push({
-            type: "video",
-            source: clipUrl,
-            time: clipStart,
-            duration: actualDur,
-            x: "50%",
-            y: "50%",
-            width: "100%",
-            height: "100%",
-            fit: "cover",
-            muted: true,
-            trim_start: 0,
-            trim_duration: actualDur,
-            filter,
-            // Alternate zoom direction per clip for visual variety
-            animations: [
-              {
-                time: 0,
-                duration: actualDur,
-                type: "scale",
-                start_scale: clipIdx % 2 === 0 ? "100%" : "108%",
-                end_scale: clipIdx % 2 === 0 ? "108%" : "100%",
-                easing: "linear"
-              }
-            ]
-          });
-          
-          // LAYER 2: Dark overlay per clip for text readability
-          elements.push({
-            type: "shape",
-            shape: "rect",
-            time: clipStart,
-            duration: actualDur,
-            x: "50%",
-            y: "50%",
-            width: "100%",
-            height: "100%",
-            fill_color: "rgba(0, 0, 0, 0.55)",
-          });
-        });
-      }
-      
-      // LAYER 3: Scene headline — upper third, white Montserrat 900, word-by-word animation
-      elements.push({
-        type: "text",
-        text: scene.onScreenText || "",
-        font_family: "Montserrat",
-        font_weight: "900",
-        font_size: "10 vmin",
-        fill_color: "#FFFFFF",
-        stroke_color: "#000000",
-        stroke_width: "0.8 vmin",
+  // ─── UNIVERSAL PIPELINE — all styles, no branches ────────────────────────
+  // Build the Creatomate JSON from scratch using the exact spec
+  const COLOR_GRADING: Record<string, string> = {
+    hook:      "brightness(0.85) saturate(0.7)",
+    problem:   "brightness(0.8) saturate(0.6)",
+    authority: "brightness(1.0) saturate(0.9)",
+    solution:  "brightness(1.1) saturate(1.2)",
+    cta:       "brightness(1.15) saturate(1.3)",
+  };
+
+  const allElements: any[] = [];
+
+  // ─── SCENES ───────────────────────────────────────────────────────────────
+  for (let index = 0; index < scenes.length; index++) {
+    const scene = scenes[index];
+    const sceneType = SCENE_TYPE_MAP[index] || "hook";
+    const filter = COLOR_GRADING[sceneType] || "brightness(1) saturate(1)";
+    const sceneDur = sceneDurations[index];
+    const sceneElements: any[] = [];
+
+    // 2-3 B-roll clips — always, no condition
+    const clips: string[] = sceneFootage[index] || [];
+    const clipDuration = clips.length > 0 ? Math.round((sceneDur / clips.length) * 100) / 100 : sceneDur;
+
+    clips.forEach((url: string, i: number) => {
+      const clipStart = Math.round(i * clipDuration * 100) / 100;
+      const actualClipDur = i === clips.length - 1
+        ? Math.round((sceneDur - clipStart) * 100) / 100
+        : clipDuration;
+
+      sceneElements.push({
+        type: "video",
+        source: url,
+        time: clipStart,
+        duration: actualClipDur,
         x: "50%",
-        y: "30%",
-        x_alignment: "50%",
-        y_alignment: "50%",
-        width: "85%",
-        height: "auto",
-        text_transform: "uppercase",
-        time: 0,
-        duration: sceneDur,
-        animations: [
-          {
-            time: 0,
-            duration: 0.6,
-            type: "text-slide",
-            split: "word",
-            scope: "element",
-            easing: "quadratic-out"
-          }
-        ]
+        y: "50%",
+        width: "100%",
+        height: "100%",
+        fit: "cover",
+        muted: true,
+        audio_volume: 0,
+        trim_start: 0,
+        trim_duration: actualClipDur,
+        filter,
+        animations: [{
+          type: "scale",
+          time: 0,
+          duration: actualClipDur,
+          start_scale: i % 2 === 0 ? "100%" : "108%",
+          end_scale: i % 2 === 0 ? "108%" : "100%",
+          easing: "linear"
+        }]
       });
-      
-      // LAYER 4: Authority badge — blue pill on Scene 3 only (index === 2)
-      if (index === 2 && scene.statBadge) {
-        elements.push({
+      sceneElements.push({
+        type: "shape",
+        shape: "rect",
+        time: clipStart,
+        duration: actualClipDur,
+        width: "100%",
+        height: "100%",
+        fill_color: "rgba(0,0,0,0.45)"
+      });
+    });
+
+    // Headline text — always, no condition
+    sceneElements.push({
+      type: "text",
+      text: scene.onScreenText || "",
+      time: 0,
+      duration: sceneDur,
+      y: "18%",
+      x: "50%",
+      width: "88%",
+      height: "auto",
+      x_alignment: "50%",
+      y_alignment: "50%",
+      fill_color: "#FFFFFF",
+      stroke_color: "#000000",
+      stroke_width: "0.8 vmin",
+      font_family: "Montserrat",
+      font_weight: "900",
+      font_size: "9 vmin",
+      text_transform: "uppercase",
+      animations: [{
+        type: "text-slide",
+        scope: "word",
+        duration: 0.6,
+        easing: "quadratic-out",
+        direction: "up"
+      }]
+    });
+
+    // Authority badge — always evaluated, only renders on Scene 3 (index === 2)
+    if (index === 2) {
+      const statBadge = (serviceProfile?.socialProofStat || "")?.toUpperCase() || null;
+      if (statBadge) {
+        sceneElements.push({
           type: "text",
-          text: scene.statBadge,
-          font_family: "Montserrat",
-          font_weight: "800",
-          font_size: "6 vmin",
-          fill_color: "#FFFFFF",
+          text: statBadge,
+          time: 0.5,
+          duration: sceneDur - 0.5,
+          y: "68%",
           x: "50%",
-          y: "55%",
-          x_alignment: "50%",
-          y_alignment: "50%",
           width: "80%",
           height: "auto",
-          background_color: "rgba(59, 130, 246, 0.9)",
-          background_x_padding: "30%",
-          background_y_padding: "20%",
-          background_border_radius: "50%",
-          time: 0,
-          duration: sceneDur,
-          animations: [
-            {
-              time: 0.5,
-              duration: 0.5,
-              type: "scale",
-              easing: "cubic-bezier(0.34, 1.56, 0.64, 1)",
-              start_scale: "0%",
-              end_scale: "100%"
-            }
-          ]
-        });
-      }
-      
-      const composition: any = {
-        type: "composition",
-        name: `Scene${index + 1}`,
-        track: index + 2, // Track 1 is Main, scenes start at 2
-        time: sceneStartTimes[index],
-        duration: sceneDur,
-        elements
-      };
-      
-      // Add cross-dissolve transition between scenes (except first)
-      if (index > 0) {
-        composition.transition = {
-          type: "fade",
-          duration: 0.4
-        };
-      }
-      
-      return composition;
-    });    modifications = {
-      output_format: "mp4",
-      width: 1080,
-      height: 1920,
-      frame_rate: 30,
-      duration: totalVideoDuration,
-      elements: [
-        {
-          type: "composition",
-          track: 1,
-          time: 0,
-          duration: totalVideoDuration,
-          name: "Main",
-          elements: [
-            // Radial gradient background (#1a1a1a center → #000000 edges)
-            {
-              type: "shape",
-              name: "RadialGradientBackground",
-              path: "M 0 0 L 100 0 L 100 100 L 0 100 Z",
-              fill_color: [
-                {offset: 0, color: "#1a1a1a"},
-                {offset: 1, color: "#000000"}
-              ],
-              fill_mode: "radial",
-              fill_x0: "50%",
-              fill_y0: "50%",
-              fill_radius: "75%",
-              width: "100%",
-              height: "100%"
-            },
-            // Logo (if provided)
-            ...(logoUrl ? [{
-              type: "image",
-              name: "Logo",
-              source: logoUrl,
-              width: "80 px",
-              height: "80 px",
-              x: "90%",
-              y: "5%",
-              x_alignment: "50%",
-              y_alignment: "50%",
-              animations: [
-                {
-                  time: 0.5,
-                  duration: 0.5,
-                  type: "fade",
-                  fade_start: 0,
-                  fade_end: 100,
-                  easing: "linear"
-                }
-              ]
-            }] : []),
-            // Voiceover (pre-generated via ElevenLabs, uploaded to S3)
-            // name: "MainVoiceover" is required for transcript_source auto-captions
-            {
-              type: "audio",
-              name: "MainVoiceover",
-              source: voiceoverUrl,
-              time: 0,
-              duration: totalAudioDuration,
-              audio_volume: 100
-            },
-            // Background music
-            {
-              type: "audio",
-              name: "BackgroundMusic",
-              source: BACKGROUND_MUSIC_URL,
-              duration: totalVideoDuration,
-              audio_volume: 15,
-              audio_fade_out: 2
-            }
-          ]
-        },
-        ...sceneCompositions,
-        // ─── AUTO-CAPTIONS — root level, spans totalAudioDuration only ───────────
-        // transcript_source references MainVoiceover by name
-        // Captions stop when voiceover ends — they do NOT run during closing sequence
-        {
-          type: "text",
-          transcript_source: "MainVoiceover",
-          transcript_effect: "highlight",
-          transcript_color: "#FFD700",
-          transcript_maximum_length: 4,
-          time: 0,
-          duration: totalAudioDuration,
-          y: "78%",
-          x: "50%",
-          width: "88%",
-          height: "20%",
           x_alignment: "50%",
           y_alignment: "50%",
           fill_color: "#FFFFFF",
-          stroke_color: "#000000",
-          stroke_width: "1.2 vmin",
           font_family: "Montserrat",
           font_weight: "800",
-          font_size: "7.5 vmin"
-        },
-        // ─── CLOSING SEQUENCE — 5 seconds after voiceover ends ──────────────────
-        // Step 1: Dark overlay fades in over last footage (0-1s)
-        {
-          type: "shape",
-          shape: "rect",
-          time: totalAudioDuration,
-          duration: 5,
-          x: "50%",
-          y: "50%",
-          width: "100%",
-          height: "100%",
-          fill_color: "rgba(0, 0, 0, 0.85)",
-          animations: [{
-            time: 0,
-            type: "fade",
-            duration: 1,
-            fade_start: 0,
-            fade_end: 100,
-            easing: "quadratic-in-out"
-          }]
-        },
-        // Step 2: Brand name (1-4s)
-        {
-          type: "text",
-          text: "ZAP CAMPAIGNS",
-          time: totalAudioDuration + 1,
-          duration: 3,
-          x: "50%",
-          y: "40%",
-          width: "85%",
-          height: "auto",
-          x_alignment: "50%",
-          y_alignment: "50%",
-          fill_color: "#FFFFFF",
-          font_family: "Montserrat",
-          font_weight: "900",
-          font_size: "9 vmin",
-          letter_spacing: "8%",
-          animations: [{
-            time: 0,
-            type: "fade",
-            duration: 0.5,
-            fade_start: 0,
-            fade_end: 100,
-            easing: "quadratic-out"
-          }]
-        },
-        // Step 3: URL in gold (1.5-4s)
-        {
-          type: "text",
-          text: "zapcampaigns.com",
-          time: totalAudioDuration + 1.5,
-          duration: 2.5,
-          x: "50%",
-          y: "52%",
-          width: "85%",
-          height: "auto",
-          x_alignment: "50%",
-          y_alignment: "50%",
-          fill_color: "#FFD700",
-          font_family: "Montserrat",
-          font_weight: "700",
-          font_size: "5.5 vmin",
-          animations: [{
-            time: 0,
-            type: "fade",
-            duration: 0.4,
-            fade_start: 0,
-            fade_end: 100,
-            easing: "quadratic-out"
-          }]
-        },
-        // Step 4: CTA button (2-4s)
-        {
-          type: "text",
-          text: "START FREE TODAY",
-          time: totalAudioDuration + 2,
-          duration: 2,
-          x: "50%",
-          y: "65%",
-          width: "70%",
-          height: "auto",
-          x_alignment: "50%",
-          y_alignment: "50%",
-          fill_color: "#FFFFFF",
-          font_family: "Montserrat",
-          font_weight: "600",
-          font_size: "4 vmin",
-          background_color: "rgba(59, 130, 246, 0.9)",
-          background_x_padding: "40%",
-          background_y_padding: "25%",
+          font_size: "5 vmin",
+          background_color: "rgba(37, 99, 235, 0.92)",
+          background_x_padding: "35%",
+          background_y_padding: "22%",
           background_border_radius: "50%",
           animations: [{
-            time: 0,
             type: "scale",
+            time: 0,
             duration: 0.4,
-            easing: "cubic-bezier(0.34, 1.56, 0.64, 1)",
             start_scale: "0%",
-            end_scale: "100%"
+            end_scale: "100%",
+            easing: "cubic-bezier(0.34, 1.56, 0.64, 1)"
           }]
-        },
-        // Step 5: Final fade to black — exactly 1 second (4-5s)
-        {
-          type: "shape",
-          shape: "rect",
-          time: totalAudioDuration + 4,
-          duration: 1,
-          x: "50%",
-          y: "50%",
-          width: "100%",
-          height: "100%",
-          fill_color: "#000000",
-          animations: [{
-            time: 0,
-            type: "fade",
-            duration: 1,
-            fade_start: 0,
-            fade_end: 100,
-            easing: "quadratic-in"
-          }]
-        }
-      ]
-    };
-  } else {
-    // Existing template modification logic for other templates
-    const mappedElements = template.elements.map((element: any) => {
-      // Replace voiceover with ElevenLabs AI generation via Creatomate
-      if (element.type === "audio" && element.name === "Voiceover") {
-        // Use Creatomate's built-in ElevenLabs integration
-        // Voice options:
-        // - Rachel (professional female): 21m00Tcm4TlvDq8ikWAM
-        // - Antoni (warm male): ErXwobaYiN019PkySvjV
-        // - Josh (confident male): TxGEqnHWrfWFTfGW9XjX
-        const voiceId = "TxGEqnHWrfWFTfGW9XjX"; // Josh - confident, direct, human
-        const fullVoiceoverText = scenes.map((s: any) => s.voiceoverText ?? "").join(" ");
-        
-        return {
-          ...element,
-          provider: `elevenlabs model_id=eleven_multilingual_v2 voice_id=${voiceId} stability=0.25 similarity_boost=0.75 style=0.65 use_speaker_boost=true`,
-          source: fullVoiceoverText, // The text to be spoken
-        };
+        });
       }
+    }
 
-      // Replace logo URL or remove logo element if no URL provided
-      if (element.name === "Logo") {
-        if (logoUrl) {
-          return {
-            ...element,
-            source: logoUrl,
-          };
-        } else {
-          // Remove logo element by setting it to null (will be filtered out)
-          return null;
-        }
-      }
-
-      // Replace brand color
-      if (element.fill_color === "{{brand_color}}") {
-        return {
-          ...element,
-          fill_color: brandColor,
-        };
-      }
-
-      // Replace scene texts in compositions
-      if (element.type === "composition") {
-        const sceneName = element.name; // e.g., "Scene1"
-        const sceneIndex = parseInt(sceneName.replace("Scene", "")) - 1;
-        const sceneData = scenes[sceneIndex];
-        const sceneDur = sceneDurations[sceneIndex] || element.duration;
-        
-        // Add MULTIPLE b-roll sub-clips for variety
-        const clips: string[] = (sceneFootage[sceneIndex] || []).filter((u: string) => !u.startsWith('gradient:'));
-        const gradientClip = (sceneFootage[sceneIndex] || []).find((u: string) => u.startsWith('gradient:'));
-        const newElements = [...element.elements];
-        
-        if (clips.length > 0) {
-          const clipDur = Math.round((sceneDur / clips.length) * 10) / 10;
-          // Insert sub-clips in reverse so unshift keeps correct order
-          for (let ci = clips.length - 1; ci >= 0; ci--) {
-            const clipStart = Math.round(ci * clipDur * 10) / 10;
-            const actualDur = ci === clips.length - 1
-              ? Math.round((sceneDur - clipStart) * 10) / 10
-              : clipDur;
-            // Dark overlay per clip
-            newElements.unshift({
-              type: "shape",
-              name: `Scene${sceneIndex + 1}Overlay${ci}`,
-              path: "M 0 0 L 100 0 L 100 100 L 0 100 Z",
-              fill_color: "rgba(0, 0, 0, 0.4)",
-              width: "100%",
-              height: "100%",
-              time: clipStart,
-              duration: actualDur,
-            });
-            // B-roll video sub-clip
-            newElements.unshift({
-              type: "video",
-              name: `Scene${sceneIndex + 1}Background${ci}`,
-              source: clips[ci],
-              width: "100%",
-              height: "100%",
-              x: "50%",
-              y: "50%",
-              x_alignment: "50%",
-              y_alignment: "50%",
-              fit: "cover",
-              loop: true,
-              audio_volume: 0,
-              time: clipStart,
-              duration: actualDur,
-              animations: [{
-                time: 0,
-                duration: actualDur,
-                type: "scale",
-                start_scale: ci % 2 === 0 ? "100%" : "108%",
-                end_scale: ci % 2 === 0 ? "108%" : "100%",
-                easing: "linear"
-              }]
-            });
-          }
-        } else if (gradientClip) {
-          // Gradient fallback
-          const colors = gradientClip.replace('gradient:', '').split(',');
-          const [startColor, endColor] = colors;
-          newElements.unshift({
-            type: "shape",
-            name: `Scene${sceneIndex + 1}Overlay`,
-            path: "M 0 0 L 100 0 L 100 100 L 0 100 Z",
-            fill_color: "rgba(0, 0, 0, 0.3)",
-            width: "100%",
-            height: "100%",
-          });
-          newElements.unshift({
-            type: "shape",
-            name: `Scene${sceneIndex + 1}GradientBackground`,
-            path: "M 0 0 L 100 0 L 100 100 L 0 100 Z",
-            fill_color: `linear-gradient(135deg, ${startColor} 0%, ${endColor} 100%)`,
-            width: "100%",
-            height: "100%",
-            animations: [{ type: "scale", start_scale: "100%", end_scale: "110%", easing: "linear" }]
-          });
-        }
-        
-        return {
-          ...element,
-          time: sceneStartTimes[sceneIndex] || 0,
-          duration: sceneDur,
-          elements: newElements.map((child: any) => {
-            if (child.name?.includes("Text") && sceneData) {
-              return {
-                ...child,
-                text: sceneData.onScreenText,
-                // Force white text so it is always visible over dark b-roll
-                fill_color: "#ffffff",
-                // Ensure font size is always set (template may have null)
-                font_size: child.font_size || "10 vmin",
-                font_size_minimum: undefined,
-                font_size_maximum: undefined,
-                // Span the full scene duration
-                time: 0,
-                duration: sceneDur,
-              };
-            }
-            return child;
-          }),
-        };
-      }
-
-      return element;
-    }).filter((element: any) => element !== null);
-
-    modifications = {
-      ...template,
-      elements: mappedElements,
-    };
-
-    // Append smooth 4-second outro composition
-    const outroTrack = scenes.length + 2;
-    modifications.elements.push({
+    allElements.push({
+      name: `Scene${index + 1}`,
       type: "composition",
-      name: "Outro",
-      track: outroTrack,
-      time: totalVideoDuration - 4,
-      duration: 4,
-      elements: [
-        {
-          type: "shape",
-          shape: "rect",
-          time: 0,
-          duration: 4,
-          x: "50%",
-          y: "50%",
-          width: "100%",
-          height: "100%",
-          fill_color: "#000000",
-          animations: [{
-            time: 0,
-            duration: 1.5,
-            type: "fade",
-            fade_start: 0,
-            fade_end: 100,
-            easing: "quadratic-in-out"
-          }]
-        },
-        {
-          type: "text",
-          text: "zapcampaigns.com",
-          font_family: "Montserrat",
-          font_weight: "700",
-          font_size: "8 vmin",
-          fill_color: "#ffffff",
-          x: "50%",
-          y: "50%",
-          x_alignment: "50%",
-          y_alignment: "50%",
-          time: 0,
-          duration: 4,
-          animations: [
-            { time: 0, duration: 0.6, type: "fade", fade_start: 0, fade_end: 100, easing: "quadratic-out" },
-            { time: 3.2, duration: 0.8, type: "fade", fade_start: 100, fade_end: 0, easing: "quadratic-in" }
-          ]
-        }
-      ]
+      time: sceneStartTimes[index],
+      duration: sceneDur,
+      elements: sceneElements
     });
-    modifications.duration = totalVideoDuration;
   }
+
+  // ─── VOICEOVER — named so transcript_source can reference it ──────────────
+  allElements.push({
+    name: "MainVoiceover",
+    type: "audio",
+    source: voiceoverUrl,
+    time: 0,
+    duration: totalAudioDuration,
+    audio_volume: 100
+  });
+
+  // ─── BACKGROUND MUSIC ─────────────────────────────────────────────────────
+  if (musicUrl) {
+    allElements.push({
+      type: "audio",
+      source: musicUrl,
+      time: 0,
+      duration: totalVideoDuration,
+      audio_volume: 15,
+      audio_fade_out: 2
+    });
+  }
+
+  // ─── AUTO-CAPTIONS — always, references MainVoiceover ─────────────────────
+  allElements.push({
+    type: "text",
+    transcript_source: "MainVoiceover",
+    transcript_effect: "highlight",
+    transcript_color: "#FFD700",
+    transcript_maximum_length: 4,
+    time: 0,
+    duration: totalAudioDuration,
+    y: "78%",
+    x: "50%",
+    width: "88%",
+    height: "20%",
+    x_alignment: "50%",
+    y_alignment: "50%",
+    fill_color: "#FFFFFF",
+    stroke_color: "#000000",
+    stroke_width: "1.2 vmin",
+    font_family: "Montserrat",
+    font_weight: "800",
+    font_size: "7.5 vmin"
+  });
+
+  // ─── CLOSING SEQUENCE — always, 5 seconds after voiceover ends ────────────
+  const closingStart = totalAudioDuration;
+
+  // Dark overlay fades in
+  allElements.push({
+    type: "shape",
+    shape: "rect",
+    time: closingStart,
+    duration: 5,
+    width: "100%",
+    height: "100%",
+    fill_color: "rgba(0,0,0,0.88)",
+    animations: [{ type: "fade", time: 0, duration: 1, fade_start: 0, fade_end: 100, easing: "quadratic-in-out" }]
+  });
+  // Brand name
+  allElements.push({
+    type: "text",
+    text: "ZAP CAMPAIGNS",
+    time: closingStart + 0.8,
+    duration: 3.2,
+    y: "38%",
+    x: "50%",
+    x_alignment: "50%",
+    y_alignment: "50%",
+    fill_color: "#FFFFFF",
+    font_family: "Montserrat",
+    font_weight: "900",
+    font_size: "10 vmin",
+    letter_spacing: "8%",
+    animations: [{ type: "fade", time: 0, duration: 0.4, fade_start: 0, fade_end: 100, easing: "quadratic-out" }]
+  });
+  // URL in gold
+  allElements.push({
+    type: "text",
+    text: "zapcampaigns.com",
+    time: closingStart + 1.2,
+    duration: 2.8,
+    y: "50%",
+    x: "50%",
+    x_alignment: "50%",
+    y_alignment: "50%",
+    fill_color: "#FFD700",
+    font_family: "Montserrat",
+    font_weight: "700",
+    font_size: "5.5 vmin",
+    animations: [{ type: "fade", time: 0, duration: 0.4, fade_start: 0, fade_end: 100, easing: "quadratic-out" }]
+  });
+  // CTA button
+  allElements.push({
+    type: "text",
+    text: "START FREE TODAY",
+    time: closingStart + 2,
+    duration: 2,
+    y: "63%",
+    x: "50%",
+    x_alignment: "50%",
+    y_alignment: "50%",
+    fill_color: "#FFFFFF",
+    font_family: "Montserrat",
+    font_weight: "700",
+    font_size: "4.5 vmin",
+    background_color: "rgba(37, 99, 235, 0.95)",
+    background_x_padding: "40%",
+    background_y_padding: "25%",
+    background_border_radius: "50%",
+    animations: [{ type: "scale", time: 0, duration: 0.4, start_scale: "0%", end_scale: "100%", easing: "cubic-bezier(0.34, 1.56, 0.64, 1)" }]
+  });
+  // Final fade to black
+  allElements.push({
+    type: "shape",
+    shape: "rect",
+    time: closingStart + 4,
+    duration: 1,
+    width: "100%",
+    height: "100%",
+    fill_color: "#000000",
+    animations: [{ type: "fade", time: 0, duration: 1, fade_start: 0, fade_end: 100, easing: "quadratic-in" }]
+  });
+
+  const modifications: any = {
+    output_format: "mp4",
+    width: 1080,
+    height: 1920,
+    frame_rate: 30,
+    duration: totalVideoDuration,
+    elements: allElements
+  };
+
 
   // Debug: Log the final modifications being sent
   console.log(`[Video ${videoId}] Final modifications:`, JSON.stringify(modifications, null, 2));
+
+  // Write render payload to file for grep verification
+  try {
+    const { writeFileSync } = await import('fs');
+    writeFileSync('/tmp/render_payload.json', JSON.stringify(modifications, null, 2));
+    console.log(`[Video ${videoId}] render_payload.json written to /tmp/render_payload.json`);
+  } catch (e) {
+    console.warn(`[Video ${videoId}] Could not write render_payload.json:`, e);
+  }
 
   // Call Creatomate API
   const response = await fetch("https://api.creatomate.com/v2/renders", {
