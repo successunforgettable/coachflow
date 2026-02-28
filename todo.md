@@ -3637,3 +3637,9 @@ Scene 5 (6s): "Stop being invisible. Your next client is already on Facebook..."
 - [x] Fix Videos.tsx: remove QuotaIndicator with invalid "video" generatorType
 - [x] Fix pixabay.ts: map "all"/"horizontal"/"vertical" to valid Pexels orientation values
 - [x] Zero TypeScript errors confirmed
+
+## Bug: No Music in Videos — Mar 01, 2026
+- [x] Add background music to rendered videos — fixed: musicUrl was hardcoded null, now uses BACKGROUND_MUSIC_URL
+- [x] Source royalty-free background music tracks — already hosted at CloudFront CDN
+- [x] Add music element to buildCreatomateJSON with correct volume (audio_volume:15, audio_fade_out:2)
+- [x] Re-render and confirm music is audible — Video 510004 confirmed: AAC 44100Hz stereo, 212kbps audio stream present

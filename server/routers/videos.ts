@@ -666,7 +666,7 @@ export async function renderVideo(params: {
       console.warn(`[Video ${videoId}] Could not fetch serviceProfile:`, e);
     }
   }
-  const musicUrl: string | null = null; // Background music reserved for future use
+  const musicUrl: string | null = BACKGROUND_MUSIC_URL; // Background music enabled
 
   // ─── UNIVERSAL PIPELINE — all styles, no branches ────────────────────────
   // Build the Creatomate JSON from scratch using the exact spec
