@@ -1,0 +1,18 @@
+{
+  "query": "SELECT id, name FROM services WHERE name LIKE '%Burnout%' OR name LIKE '%Blueprint%';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT id, name FROM services WHERE name LIKE '%Burnout%' OR name LIKE '%Blueprint%';",
+  "rows": [
+    {
+      "id": "840003",
+      "name": "The Funded Trader Blueprint"
+    },
+    {
+      "id": "870001",
+      "name": "The Funded Trader Blueprint"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\n840003\tThe Funded Trader Blueprint\n870001\tThe Funded Trader Blueprint\n",
+  "stderr": "",
+  "execution_time_ms": 1530
+}

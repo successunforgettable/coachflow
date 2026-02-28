@@ -1,0 +1,8 @@
+{
+  "query": "SELECT s.id as service_id, s.name as service_name, vs.id as script_id, vs.video_type, vs.duration, v.id as video_id, v.creatomate_status FROM services s LEFT JOIN video_scripts vs ON vs.service_id = s.id LEFT JOIN videos v ON v.script_id = vs.id WHERE s.name LIKE '%Burnout%' OR s.name LIKE '%Blueprint%' ORDER BY v.id DESC LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT s.id as service_id, s.name as service_name, vs.id as script_id, vs.video_type, vs.duration, v.id as video_id, v.creatomate_status FROM services s LEFT JOIN video_scripts vs ON vs.service_id = s.id LEFT JOIN videos v ON v.script_id = vs.id WHERE s.name LIKE '%Burnout%' OR s.name LIKE '%Blueprint%' ORDER BY v.id DESC LIMIT 10;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1146 (42S02) at line 1: Table 'jqsgzeas9e2xgak8jekupb.video_scripts' doesn't exist"
+  ]
+}

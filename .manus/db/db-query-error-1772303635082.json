@@ -1,0 +1,11 @@
+{
+  "query": "SELECT id, name FROM services WHERE name LIKE '%Burnout%' OR name LIKE '%Blueprint%'; SELECT id, service_id, video_type, duration FROM videoScripts WHERE service_id IN (SELECT id FROM services WHERE name LIKE '%Burnout%' OR name LIKE '%Blueprint%') LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT id, name FROM services WHERE name LIKE '%Burnout%' OR name LIKE '%Blueprint%'; SELECT id, service_id, video_type, duration FROM videoScripts WHERE service_id IN (SELECT id FROM services WHERE name LIKE '%Burnout%' OR name LIKE '%Blueprint%') LIMIT 5;",
+  "returncode": 1,
+  "logs": [
+    "id\tname",
+    "840003\tThe Funded Trader Blueprint",
+    "870001\tThe Funded Trader Blueprint",
+    "ERROR 1054 (42S22) at line 1: Unknown column 'service_id' in 'where clause'"
+  ]
+}

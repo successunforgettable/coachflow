@@ -3554,3 +3554,24 @@ Scene 5 (6s): "Stop being invisible. Your next client is already on Facebook..."
 - [x] Fix 3: Fix field name mismatches (voiceover → voiceoverText) in videos.ts and buildScriptPrompt output format
 - [x] Verification: All four grep checks return nothing (PASS)
 - [x] Live test: Burnout Recovery Blueprint profile — PASS: Angle=LOSS, Niche=corporate burnout recovery, 7 scenes generated with voiceoverText + onScreenText + statBadge
+
+## Video Visual Upgrade (Prompt 2)
+- [ ] Part 1: Auto-captions via transcript_source on MainVoiceover element
+- [ ] Part 2: Faster B-roll — 2-3 Pexels clips per scene, each 2-3s, Ken Burns alternating zoom
+- [ ] Part 3: Scene headline text — y:30%, white Montserrat 900, word-by-word animation
+- [ ] Part 4: Authority badge — blue pill on Scene 3 only, using statBadge from script
+- [ ] Part 5: Colour grading — cold (hook/problem) to warm (solution/cta) per scene
+- [ ] Closing sequence: 5s after voiceover — dark overlay → brand → URL gold → CTA button → 1s fade to black
+- [ ] SCENE_QUERIES expanded to 3 per scene type
+- [ ] Verification: all 7 checklist items confirmed YES
+- [ ] Test render: Burnout Recovery Blueprint profile via live buildScriptPrompt
+
+## Video Visual Upgrade (Prompt 2 — 2026-02-28)
+- [x] Auto-captions via transcript_source on voiceover element
+- [x] Faster B-roll: 2-3 Pexels clips per scene, each 2-3 seconds
+- [x] Scene headline text: upper third, white, word-by-word animation
+- [x] Authority badge: blue pill on Scene 3 only using statBadge from script
+- [x] Colour grading: cold to warm across emotional arc
+- [x] Closing sequence: 5 seconds after voiceover ends (dark overlay, brand, URL in gold, CTA, fade)
+- [x] Regen button re-generates script via buildScriptPrompt before rendering
+- [x] Test render: IYCT profile, angle=IDENTITY, statBadge="PROVEN TRANSFORMATION METHOD", audio=40.62s, total=45.62s, diff=5.00s ✅

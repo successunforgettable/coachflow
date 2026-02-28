@@ -1,0 +1,23 @@
+{
+  "query": "SELECT s.id as service_id, s.name FROM services s WHERE s.name LIKE '%Burnout%' OR s.name LIKE '%Blueprint%'; SELECT vs.id, vs.serviceId, vs.videoType, vs.duration FROM videoScripts vs WHERE vs.serviceId IN (SELECT id FROM services WHERE name LIKE '%Burnout%' OR name LIKE '%Blueprint%') LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT s.id as service_id, s.name FROM services s WHERE s.name LIKE '%Burnout%' OR s.name LIKE '%Blueprint%'; SELECT vs.id, vs.serviceId, vs.videoType, vs.duration FROM videoScripts vs WHERE vs.serviceId IN (SELECT id FROM services WHERE name LIKE '%Burnout%' OR name LIKE '%Blueprint%') LIMIT 5;",
+  "rows": [
+    {
+      "service_id": "840003",
+      "name": "The Funded Trader Blueprint"
+    },
+    {
+      "service_id": "870001",
+      "name": "The Funded Trader Blueprint"
+    }
+  ],
+  "messages": [
+    "id\tserviceId\tvideoType\tduration",
+    "210003\t840003\texplainer\t30",
+    "240003\t870001\texplainer\t30",
+    "240001\t870001\texplainer\t30"
+  ],
+  "stdout": "service_id\tname\n840003\tThe Funded Trader Blueprint\n870001\tThe Funded Trader Blueprint\nid\tserviceId\tvideoType\tduration\n210003\t840003\texplainer\t30\n240003\t870001\texplainer\t30\n240001\t870001\texplainer\t30\n",
+  "stderr": "",
+  "execution_time_ms": 1708
+}

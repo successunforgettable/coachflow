@@ -1,0 +1,18 @@
+{
+  "query": "SELECT v.id as video_id, v.scriptId, vs.id as script_id, vs.videoType, vs.duration, LEFT(vs.scenes, 500) as scenes_preview FROM videos v JOIN videoScripts vs ON vs.id = v.scriptId WHERE v.id = 480010;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT v.id as video_id, v.scriptId, vs.id as script_id, vs.videoType, vs.duration, LEFT(vs.scenes, 500) as scenes_preview FROM videos v JOIN videoScripts vs ON vs.id = v.scriptId WHERE v.id = 480010;",
+  "rows": [
+    {
+      "video_id": "480010",
+      "scriptId": "450010",
+      "script_id": "450010",
+      "videoType": "mechanism_reveal",
+      "duration": "30",
+      "scenes_preview": "[{\"sceneType\": \"intro\", \"visualCue\": \"Split screen: Left shows person at desk looking unfulfilled, right shows same person confidently coaching someone, both sides glowing\", \"voiceover\": \"What if you could transform your life AND get paid to transform others—in just 3 months?\"}, {\"sceneType\": \"problem\", \"visualCue\": \"Fast montage of certificates piling up, books on shelf, person looking frustrated at laptop, calendar pages flipping showing repeated attempts\", \"voiceover\": \"You've read the books,"
+    }
+  ],
+  "messages": [],
+  "stdout": "video_id\tscriptId\tscript_id\tvideoType\tduration\tscenes_preview\n480010\t450010\t450010\tmechanism_reveal\t30\t[{\"sceneType\": \"intro\", \"visualCue\": \"Split screen: Left shows person at desk looking unfulfilled, right shows same person confidently coaching someone, both sides glowing\", \"voiceover\": \"What if you could transform your life AND get paid to transform others—in just 3 months?\"}, {\"sceneType\": \"problem\", \"visualCue\": \"Fast montage of certificates piling up, books on shelf, person looking frustrated at laptop, calendar pages flipping showing repeated attempts\", \"voiceover\": \"You've read the books,\n",
+  "stderr": "",
+  "execution_time_ms": 1550
+}

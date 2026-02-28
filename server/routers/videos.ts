@@ -19,6 +19,8 @@ import { fetchSceneFootageWithFallback, fetchMultipleClipsForScene } from "../pe
 import { generateVoiceover, VOICE_IDS } from "../elevenlabs";
 import { storagePut } from "../storage";
 import * as mm from 'music-metadata';
+import { buildScriptPrompt } from "./videoScripts";
+import { services } from "../../drizzle/schema";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -298,6 +300,49 @@ export const videosRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Associated script not found" });
       }
 
+      // Re-generate the script via buildScriptPrompt so every Regen uses a fresh ZAP script
+      let freshScript = script;
+      try {
+        const [service] = await db
+          .select()
+          .from(services)
+          .where(eq(services.id, script.serviceId!))
+          .limit(1);
+
+        if (service) {
+          console.log(`[Video ${input.videoId}] Re-generating script via buildScriptPrompt for: ${service.name}`);
+          const prompt = buildScriptPrompt(
+            script.videoType as any,
+            parseInt(script.duration),
+            service
+          );
+          const { invokeLLM } = await import("../_core/llm.js");
+          const response = await invokeLLM({
+            messages: [{ role: "user", content: prompt }],
+            maxTokens: 2000,
+          });
+          const rawContent = response.choices[0]?.message?.content;
+          if (rawContent && typeof rawContent === "string") {
+            const cleaned = rawContent.replace(/```json|```/g, "").trim();
+            const parsed = JSON.parse(cleaned);
+            if (parsed.scenes && parsed.scenes.length >= 3) {
+              const voiceoverTextFull = parsed.scenes.map((s: any) => s.voiceoverText ?? "").join(" ");
+              // Update the script record with fresh scenes
+              await db.update(videoScripts).set({
+                scenes: parsed.scenes,
+                voiceoverText: voiceoverTextFull,
+                updatedAt: new Date(),
+              }).where(eq(videoScripts.id, script.id));
+              freshScript = { ...script, scenes: parsed.scenes, voiceoverText: voiceoverTextFull };
+              console.log(`[Video ${input.videoId}] ✅ Fresh script generated: ${parsed.scenes.length} scenes, angle=${parsed.angle}`);
+            }
+          }
+        }
+      } catch (scriptErr) {
+        console.warn(`[Video ${input.videoId}] Script re-generation failed, using existing script:`, scriptErr);
+        // Fall through — use the existing script
+      }
+
       // Reset video status to queued
       await db
         .update(videos)
@@ -307,7 +352,7 @@ export const videosRouter = router({
       // Re-trigger render (non-blocking, no credit deduction)
       renderVideo({
         videoId: input.videoId,
-        script,
+        script: freshScript,
         visualStyle: video.visualStyle,
         brandColor: "#3B82F6",
         userId: ctx.user.id,
@@ -552,10 +597,8 @@ export async function renderVideo(params: {
   console.log(`[Video ${videoId}] Scene start times:`, sceneStartTimes);
   
   // STEP 8: Calculate total video duration
-  const totalVideoDuration = 
-    sceneStartTimes[sceneStartTimes.length - 1] + 
-    sceneDurations[sceneDurations.length - 1] + 
-    4; // 4 second outro (smooth fade-to-black + URL hold)
+  // totalVideoDuration = audio duration + exactly 5 seconds closing sequence
+  const totalVideoDuration = totalAudioDuration + 5;
   console.log(`[Video ${videoId}] Total video duration: ${totalVideoDuration}s`);
   
   // STEP 9: Validate durations
@@ -628,13 +671,13 @@ export async function renderVideo(params: {
       const sceneDur = sceneDurations[index];
       const elements: any[] = [];
       
-      // Color grading per scene type (Submagic-style)
+      // Color grading per scene type — cold to warm emotional arc
       const colorGrading: Record<string, string> = {
-        hook: "brightness(0.85) saturate(0.7)",      // Cold, tense
-        problem: "brightness(0.85) saturate(0.7)",   // Cold, tense
-        authority: "brightness(1.1) saturate(1.2)",  // Warm, energetic
-        solution: "brightness(1.1) saturate(1.2)",   // Warm, energetic
-        cta: "brightness(1.15) saturate(1.3)",       // Bright, optimistic
+        hook:      "brightness(0.85) saturate(0.7)",  // cold, tense — pain
+        problem:   "brightness(0.8) saturate(0.6)",   // darker, heavier — deeper pain
+        authority: "brightness(1.0) saturate(0.9)",   // neutral, credible
+        solution:  "brightness(1.1) saturate(1.2)",   // warmer, brighter — relief
+        cta:       "brightness(1.15) saturate(1.3)",  // brightest, most energetic — action
       };
       const filter = colorGrading[sceneType] || "brightness(1) saturate(1)";
       
@@ -692,34 +735,70 @@ export async function renderVideo(params: {
         });
       }
       
-      // LAYER 3: Text overlay — spans the FULL scene duration regardless of b-roll clips
+      // LAYER 3: Scene headline — upper third, white Montserrat 900, word-by-word animation
       elements.push({
         type: "text",
-        text: scene.onScreenText,
+        text: scene.onScreenText || "",
         font_family: "Montserrat",
         font_weight: "900",
         font_size: "10 vmin",
-        fill_color: "#ffffff",
+        fill_color: "#FFFFFF",
+        stroke_color: "#000000",
+        stroke_width: "0.8 vmin",
         x: "50%",
-        y: "50%",
+        y: "30%",
         x_alignment: "50%",
         y_alignment: "50%",
-        width: "90%",
-        text_align: "center",
+        width: "85%",
+        height: "auto",
+        text_transform: "uppercase",
         time: 0,
         duration: sceneDur,
         animations: [
           {
             time: 0,
-            duration: 0.8,
+            duration: 0.6,
             type: "text-slide",
             split: "word",
             scope: "element",
-            distance: "10%",
             easing: "quadratic-out"
           }
         ]
       });
+      
+      // LAYER 4: Authority badge — blue pill on Scene 3 only (index === 2)
+      if (index === 2 && scene.statBadge) {
+        elements.push({
+          type: "text",
+          text: scene.statBadge,
+          font_family: "Montserrat",
+          font_weight: "800",
+          font_size: "6 vmin",
+          fill_color: "#FFFFFF",
+          x: "50%",
+          y: "55%",
+          x_alignment: "50%",
+          y_alignment: "50%",
+          width: "80%",
+          height: "auto",
+          background_color: "rgba(59, 130, 246, 0.9)",
+          background_x_padding: "30%",
+          background_y_padding: "20%",
+          background_border_radius: "50%",
+          time: 0,
+          duration: sceneDur,
+          animations: [
+            {
+              time: 0.5,
+              duration: 0.5,
+              type: "scale",
+              easing: "cubic-bezier(0.34, 1.56, 0.64, 1)",
+              start_scale: "0%",
+              end_scale: "100%"
+            }
+          ]
+        });
+      }
       
       const composition: any = {
         type: "composition",
@@ -792,10 +871,12 @@ export async function renderVideo(params: {
               ]
             }] : []),
             // Voiceover (pre-generated via ElevenLabs, uploaded to S3)
+            // name: "MainVoiceover" is required for transcript_source auto-captions
             {
               type: "audio",
-              name: "Voiceover",
+              name: "MainVoiceover",
               source: voiceoverUrl,
+              time: 0,
               duration: totalAudioDuration,
               audio_volume: 100
             },
@@ -811,72 +892,150 @@ export async function renderVideo(params: {
           ]
         },
         ...sceneCompositions,
-        // Smooth 4-second outro: black bg fades in, URL text holds, then fades out
+        // ─── AUTO-CAPTIONS — root level, spans totalAudioDuration only ───────────
+        // transcript_source references MainVoiceover by name
+        // Captions stop when voiceover ends — they do NOT run during closing sequence
         {
-          type: "composition",
-          name: "Outro",
-          track: scenes.length + 2, // After all scene tracks
-          time: totalVideoDuration - 4, // 4 seconds before end
-          duration: 4,
-          elements: [
-            // Full black background that fades in over 1.5s
-            {
-              type: "shape",
-              shape: "rect",
-              time: 0,
-              duration: 4,
-              x: "50%",
-              y: "50%",
-              width: "100%",
-              height: "100%",
-              fill_color: "#000000",
-              animations: [
-                {
-                  time: 0,
-                  duration: 1.5,
-                  type: "fade",
-                  fade_start: 0,
-                  fade_end: 100,
-                  easing: "quadratic-in-out"
-                }
-              ]
-            },
-            // URL text — fades in after black bg is established, holds, then fades out
-            {
-              type: "text",
-              text: "zapcampaigns.com",
-              font_family: "Montserrat",
-              font_weight: "700",
-              font_size: "8 vmin",
-              fill_color: "#ffffff",
-              x: "50%",
-              y: "50%",
-              x_alignment: "50%",
-              y_alignment: "50%",
-              time: 0,
-              duration: 4,
-              animations: [
-                // Fade in
-                {
-                  time: 0,
-                  duration: 0.6,
-                  type: "fade",
-                  fade_start: 0,
-                  fade_end: 100,
-                  easing: "quadratic-out"
-                },
-                // Fade out at end
-                {
-                  time: 3.2,
-                  duration: 0.8,
-                  type: "fade",
-                  fade_start: 100,
-                  fade_end: 0,
-                  easing: "quadratic-in"
-                }
-              ]
-            }
-          ]
+          type: "text",
+          transcript_source: "MainVoiceover",
+          transcript_effect: "highlight",
+          transcript_color: "#FFD700",
+          transcript_maximum_length: 4,
+          time: 0,
+          duration: totalAudioDuration,
+          y: "78%",
+          x: "50%",
+          width: "88%",
+          height: "20%",
+          x_alignment: "50%",
+          y_alignment: "50%",
+          fill_color: "#FFFFFF",
+          stroke_color: "#000000",
+          stroke_width: "1.2 vmin",
+          font_family: "Montserrat",
+          font_weight: "800",
+          font_size: "7.5 vmin"
+        },
+        // ─── CLOSING SEQUENCE — 5 seconds after voiceover ends ──────────────────
+        // Step 1: Dark overlay fades in over last footage (0-1s)
+        {
+          type: "shape",
+          shape: "rect",
+          time: totalAudioDuration,
+          duration: 5,
+          x: "50%",
+          y: "50%",
+          width: "100%",
+          height: "100%",
+          fill_color: "rgba(0, 0, 0, 0.85)",
+          animations: [{
+            time: 0,
+            type: "fade",
+            duration: 1,
+            fade_start: 0,
+            fade_end: 100,
+            easing: "quadratic-in-out"
+          }]
+        },
+        // Step 2: Brand name (1-4s)
+        {
+          type: "text",
+          text: "ZAP CAMPAIGNS",
+          time: totalAudioDuration + 1,
+          duration: 3,
+          x: "50%",
+          y: "40%",
+          width: "85%",
+          height: "auto",
+          x_alignment: "50%",
+          y_alignment: "50%",
+          fill_color: "#FFFFFF",
+          font_family: "Montserrat",
+          font_weight: "900",
+          font_size: "9 vmin",
+          letter_spacing: "8%",
+          animations: [{
+            time: 0,
+            type: "fade",
+            duration: 0.5,
+            fade_start: 0,
+            fade_end: 100,
+            easing: "quadratic-out"
+          }]
+        },
+        // Step 3: URL in gold (1.5-4s)
+        {
+          type: "text",
+          text: "zapcampaigns.com",
+          time: totalAudioDuration + 1.5,
+          duration: 2.5,
+          x: "50%",
+          y: "52%",
+          width: "85%",
+          height: "auto",
+          x_alignment: "50%",
+          y_alignment: "50%",
+          fill_color: "#FFD700",
+          font_family: "Montserrat",
+          font_weight: "700",
+          font_size: "5.5 vmin",
+          animations: [{
+            time: 0,
+            type: "fade",
+            duration: 0.4,
+            fade_start: 0,
+            fade_end: 100,
+            easing: "quadratic-out"
+          }]
+        },
+        // Step 4: CTA button (2-4s)
+        {
+          type: "text",
+          text: "START FREE TODAY",
+          time: totalAudioDuration + 2,
+          duration: 2,
+          x: "50%",
+          y: "65%",
+          width: "70%",
+          height: "auto",
+          x_alignment: "50%",
+          y_alignment: "50%",
+          fill_color: "#FFFFFF",
+          font_family: "Montserrat",
+          font_weight: "600",
+          font_size: "4 vmin",
+          background_color: "rgba(59, 130, 246, 0.9)",
+          background_x_padding: "40%",
+          background_y_padding: "25%",
+          background_border_radius: "50%",
+          animations: [{
+            time: 0,
+            type: "scale",
+            duration: 0.4,
+            easing: "cubic-bezier(0.34, 1.56, 0.64, 1)",
+            start_scale: "0%",
+            end_scale: "100%"
+          }]
+        },
+        // Step 5: Final fade to black — exactly 1 second (4-5s)
+        {
+          type: "shape",
+          shape: "rect",
+          time: totalAudioDuration + 4,
+          duration: 1,
+          x: "50%",
+          y: "50%",
+          width: "100%",
+          height: "100%",
+          fill_color: "#000000",
+          animations: [{
+            time: 0,
+            type: "fade",
+            duration: 1,
+            fade_start: 0,
+            fade_end: 100,
+            easing: "quadratic-in"
+          }]
         }
       ]
     };
