@@ -3522,3 +3522,17 @@ Scene 5 (6s): "Stop being invisible. Your next client is already on Facebook..."
 
 ## ZIP Download Fix
 - [x] Fix bulk ZIP download to include images alongside videos (CORS issue resolved by moving to server-side ZIP generation via /api/campaigns/:id/download-zip)
+
+## Video Template Improvements (ACTIVE)
+- [ ] Fix abrupt video endings — add smooth fade-out / outro slide to all templates
+- [ ] Add text overlays on b-roll footage so on-screen text appears throughout the video
+- [ ] Shorten individual b-roll clip durations and increase variety (more clips per video)
+- [ ] Test updated templates with a new render and verify output
+
+## Video Template Improvements (Feb 28)
+- [x] Fix abrupt video endings - extended outro from 1s to 4s with smooth fade-to-black
+- [x] Add text overlays on b-roll - text layer now spans full scene duration regardless of clip count
+- [x] Increase b-roll variety - fetch 2-3 clips per scene instead of 1 (3-4s each)
+- [x] Alternate Ken Burns zoom direction per clip (zoom-in vs zoom-out) for visual variety
+- [x] Apply same multi-clip logic to kinetic_typography, motion_graphics, stats_card templates
+- [x] Add smooth outro to else-branch templates (4s fade-to-black + URL text)

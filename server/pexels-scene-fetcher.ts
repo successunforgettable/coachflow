@@ -87,6 +87,60 @@ export async function fetchSceneFootageByType(
 }
 
 /**
+ * Fetch multiple distinct clips for a scene (for b-roll variety)
+ * Returns up to `count` different video URLs for the same scene type
+ */
+export async function fetchMultipleClipsForScene(
+  sceneType: 'hook' | 'problem' | 'authority' | 'solution' | 'cta',
+  count: number = 3
+): Promise<string[]> {
+  const queries = SCENE_QUERIES[sceneType];
+  if (!queries || queries.length === 0) return [];
+
+  // Shuffle queries so we get variety
+  const shuffled = [...queries].sort(() => Math.random() - 0.5);
+  const results: string[] = [];
+  const usedUrls = new Set<string>();
+
+  for (const query of shuffled) {
+    if (results.length >= count) break;
+    try {
+      // Fetch a page of results and pick a random one (not always the first)
+      const pexelsResults = await searchPexelsVideos(query, 'portrait', 15);
+      const pool = pexelsResults.videos || [];
+      // Shuffle pool for variety
+      const shuffledPool = [...pool].sort(() => Math.random() - 0.5);
+      for (const video of shuffledPool) {
+        const url = selectBestHDVideo([video]);
+        if (url && !usedUrls.has(url)) {
+          usedUrls.add(url);
+          results.push(url);
+          break;
+        }
+      }
+    } catch (err) {
+      console.warn(`[MultiClip] Failed for query "${query}":`, err);
+    }
+  }
+
+  // Fallback to pixabay if we don't have enough clips
+  if (results.length < count) {
+    try {
+      const { fetchStockFootageWithFallback } = await import('./pixabay.js');
+      const fallbackUrl = await fetchStockFootageWithFallback(queries[0], 'portrait', 0);
+      if (fallbackUrl && !usedUrls.has(fallbackUrl) && !fallbackUrl.startsWith('gradient:')) {
+        usedUrls.add(fallbackUrl);
+        results.push(fallbackUrl);
+      }
+    } catch (err) {
+      console.warn('[MultiClip] Pixabay fallback failed:', err);
+    }
+  }
+
+  return results;
+}
+
+/**
  * Fetch footage with fallback to simpler queries
  */
 export async function fetchSceneFootageWithFallback(
