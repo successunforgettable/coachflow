@@ -698,6 +698,23 @@ export async function renderVideo(params: {
         ? Math.round((sceneDur - clipStart) * 100) / 100
         : clipDuration;
 
+      // Detect gradient fallback strings (not valid video URLs)
+      if (url.startsWith('gradient:')) {
+        // Parse gradient:START,END and use a solid dark background shape instead
+        const parts = url.replace('gradient:', '').split(',');
+        const bgColor = parts[0] || '#1a1a2e'; // Use first gradient color as solid bg
+        sceneElements.push({
+          type: "shape",
+          shape: "rect",
+          time: clipStart,
+          duration: actualClipDur,
+          width: "100%",
+          height: "100%",
+          fill_color: bgColor
+        });
+        return;
+      }
+
       sceneElements.push({
         type: "video",
         source: url,
@@ -780,7 +797,7 @@ export async function renderVideo(params: {
           font_family: "Montserrat",
           font_weight: "800",
           font_size: "5 vmin",
-          background_color: "rgba(37, 99, 235, 0.92)",
+          background_color: "#2563EB",
           background_x_padding: "35%",
           background_y_padding: "22%",
           background_border_radius: "50%",
@@ -911,7 +928,7 @@ export async function renderVideo(params: {
     font_family: "Montserrat",
     font_weight: "700",
     font_size: "4.5 vmin",
-    background_color: "rgba(37, 99, 235, 0.95)",
+    background_color: "#1d4ed8",
     background_x_padding: "40%",
     background_y_padding: "25%",
     background_border_radius: "50%",
@@ -992,17 +1009,36 @@ export async function renderVideo(params: {
   while (attempts < maxAttempts) {
     await new Promise((resolve) => setTimeout(resolve, 5000)); // Wait 5 seconds
 
-    const statusResponse = await fetch(`https://api.creatomate.com/v1/renders/${renderId}`, {
-      headers: {
-        Authorization: `Bearer ${CREATOMATE_API_KEY}`,
-      },
-    });
-
-    if (!statusResponse.ok) {
-      throw new Error(`Failed to check render status`);
+    // Fetch with retry for transient network errors (ECONNRESET, etc.)
+    let statusData: any = null;
+    let fetchAttempts = 0;
+    const maxFetchAttempts = 3;
+    while (fetchAttempts < maxFetchAttempts) {
+      try {
+        const statusResponse = await fetch(`https://api.creatomate.com/v1/renders/${renderId}`, {
+          headers: { Authorization: `Bearer ${CREATOMATE_API_KEY}` },
+        });
+        if (!statusResponse.ok) {
+          throw new Error(`Failed to check render status: HTTP ${statusResponse.status}`);
+        }
+        statusData = await statusResponse.json();
+        break; // success
+      } catch (fetchErr: any) {
+        fetchAttempts++;
+        if (fetchAttempts >= maxFetchAttempts) {
+          console.warn(`[Video ${videoId}] Status fetch failed after ${maxFetchAttempts} attempts:`, fetchErr?.message);
+          // Don't throw — just skip this polling cycle and try again next interval
+          break;
+        }
+        console.warn(`[Video ${videoId}] Status fetch attempt ${fetchAttempts} failed, retrying in 2s:`, fetchErr?.message);
+        await new Promise(r => setTimeout(r, 2000));
+      }
     }
 
-    const statusData = await statusResponse.json();
+    if (!statusData) {
+      attempts++;
+      continue; // Skip this cycle, try again
+    }
 
     if (statusData.status === "succeeded") {
       console.log(`[Video ${videoId}] Render completed!`);

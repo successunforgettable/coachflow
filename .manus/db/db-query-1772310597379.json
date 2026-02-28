@@ -1,0 +1,16 @@
+{
+  "query": "SELECT id, videoUrl, thumbnailUrl, creatomateStatus FROM videos WHERE id = 510003;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT id, videoUrl, thumbnailUrl, creatomateStatus FROM videos WHERE id = 510003;",
+  "rows": [
+    {
+      "id": "510003",
+      "videoUrl": "https://f002.backblazeb2.com/file/creatomate-c8xg3hsxdu/72810dcd-d3e7-4245-8de0-6a05ff8a9a9e.mp4",
+      "thumbnailUrl": "NULL",
+      "creatomateStatus": "succeeded"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tvideoUrl\tthumbnailUrl\tcreatomateStatus\n510003\thttps://f002.backblazeb2.com/file/creatomate-c8xg3hsxdu/72810dcd-d3e7-4245-8de0-6a05ff8a9a9e.mp4\tNULL\tsucceeded\n",
+  "stderr": "",
+  "execution_time_ms": 1571
+}
