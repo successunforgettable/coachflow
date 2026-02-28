@@ -59,18 +59,40 @@ export async function searchPexelsVideos(
   url.searchParams.set('orientation', orientation);
   url.searchParams.set('per_page', per_page.toString());
 
-  const response = await fetch(url.toString(), {
-    headers: {
-      'Authorization': ENV.pexelsApiKey
-    }
-  });
+  const MAX_RETRIES = 3;
+  let lastError: Error | null = null;
 
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => '');
-    throw new Error(`Pexels API error: ${response.status} ${response.statusText}${errorText ? `: ${errorText}` : ''}`);
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const response = await fetch(url.toString(), {
+        headers: {
+          'Authorization': ENV.pexelsApiKey
+        }
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => '');
+        throw new Error(`Pexels API error: ${response.status} ${response.statusText}${errorText ? `: ${errorText}` : ''}`);
+      }
+
+      return response.json();
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      const isRetryable = lastError.message.includes('fetch failed') || 
+                          lastError.message.includes('ECONNRESET') ||
+                          lastError.message.includes('ETIMEDOUT') ||
+                          lastError.message.includes('socket');
+      if (isRetryable && attempt < MAX_RETRIES) {
+        const delay = attempt * 1500; // 1.5s, 3s
+        console.warn(`[Pexels] Attempt ${attempt} failed (${lastError.message}), retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      } else {
+        throw lastError;
+      }
+    }
   }
 
-  return response.json();
+  throw lastError!;
 }
 
 /**

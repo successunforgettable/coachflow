@@ -3650,3 +3650,8 @@ Scene 5 (6s): "Stop being invisible. Your next client is already on Facebook..."
 - [ ] Issue 2: Add DURATION_RULE to script prompt + word count validation (max 150 words, throw if exceeded)
 - [ ] Issue 3: Trim last scene duration to end exactly at audioDuration; raise dark overlay to rgba(0,0,0,0.95)
 - [ ] Issue 4: Add video.title to DB schema; generate from script; display on video cards with duration/angle/niche metadata
+
+## Pre-Launch Fixes — Mar 01, 2026
+
+- [ ] Issue 1: Add PEXELS QUERY RULES to buildScriptPrompt — niche-specific, person-based, 3-5 words, English only
+- [ ] Issue 2: Store actual render duration in DB after render completes, display real duration on video cards

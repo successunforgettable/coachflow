@@ -1,0 +1,17 @@
+{
+  "query": "SELECT id, actualDuration, creatomateStatus, videoUrl, title FROM videos WHERE id = 510010;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT id, actualDuration, creatomateStatus, videoUrl, title FROM videos WHERE id = 510010;",
+  "rows": [
+    {
+      "id": "510010",
+      "actualDuration": "60",
+      "creatomateStatus": "succeeded",
+      "videoUrl": "https://f002.backblazeb2.com/file/creatomate-c8xg3hsxdu/13699979-8e5a-4d5a-9e03-ad2bb1ba71a0.mp4",
+      "title": "incredible you coach training  — LOSS Ad (5 scenes, 130 words)"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tactualDuration\tcreatomateStatus\tvideoUrl\ttitle\n510010\t60\tsucceeded\thttps://f002.backblazeb2.com/file/creatomate-c8xg3hsxdu/13699979-8e5a-4d5a-9e03-ad2bb1ba71a0.mp4\tincredible you coach training  — LOSS Ad (5 scenes, 130 words)\n",
+  "stderr": "",
+  "execution_time_ms": 1686
+}

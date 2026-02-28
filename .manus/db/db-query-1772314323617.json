@@ -1,0 +1,18 @@
+{
+  "query": "SELECT id, JSON_EXTRACT(scenes, '$[0].pexelsQuery') as scene1, JSON_EXTRACT(scenes, '$[1].pexelsQuery') as scene2, JSON_EXTRACT(scenes, '$[2].pexelsQuery') as scene3, JSON_EXTRACT(scenes, '$[3].pexelsQuery') as scene4, JSON_EXTRACT(scenes, '$[4].pexelsQuery') as scene5 FROM videoScripts WHERE id = 480003;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT id, JSON_EXTRACT(scenes, '$[0].pexelsQuery') as scene1, JSON_EXTRACT(scenes, '$[1].pexelsQuery') as scene2, JSON_EXTRACT(scenes, '$[2].pexelsQuery') as scene3, JSON_EXTRACT(scenes, '$[3].pexelsQuery') as scene4, JSON_EXTRACT(scenes, '$[4].pexelsQuery') as scene5 FROM videoScripts WHERE id = 480003;",
+  "rows": [
+    {
+      "id": "480003",
+      "scene1": "\"person frustrated desk books\"",
+      "scene2": "\"person overwhelmed looking window\"",
+      "scene3": "\"professional confident speaker presenting\"",
+      "scene4": "\"person focused working confidently\"",
+      "scene5": "\"person smiling confident camera\""
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tscene1\tscene2\tscene3\tscene4\tscene5\n480003\t\"person frustrated desk books\"\t\"person overwhelmed looking window\"\t\"professional confident speaker presenting\"\t\"person focused working confidently\"\t\"person smiling confident camera\"\n",
+  "stderr": "",
+  "execution_time_ms": 1599
+}

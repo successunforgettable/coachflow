@@ -546,35 +546,29 @@ The authority scene is the proof point. Generic proof is no proof at all.
 `;
 
   const PEXELS_QUERY_RULE = `
-PEXELS QUERY RULE — All scenes:
+PEXELS QUERY RULES — MANDATORY for every scene:
 
-Every scene must include a "pexelsQuery" field with a 2-4 word search query that matches:
-1. The NICHE/WORLD of the service (crypto, fitness, corporate, etc.)
-2. The EMOTION of that specific scene (frustrated, confident, relieved, etc.)
+EVERY pexelsQuery MUST follow this exact formula:
+  [PERSON/ROLE in the niche] + [SPECIFIC ACTION or EMOTIONAL STATE]
 
-DO NOT use generic business queries. Use niche-specific visual language.
+RULES:
+1. Always show a HUMAN BEING doing something — never an object, concept, or abstract idea
+2. Use 3-5 words maximum
+3. The person and situation must match the detected nicheWorld
+4. The emotional state must match the scene voiceover (frustrated = hook, relieved = solution, confident = cta)
+5. English only — no metaphors, no brand names, no abstract nouns
 
-EXAMPLES:
+FORMULA APPLIED TO ANY NICHE:
+  Crypto/trading: "trader stressed watching charts", "investor celebrating profit screen"
+  Fitness/health: "woman exhausted after workout", "person celebrating weight loss"
+  Dog training: "owner frustrated pulling leash", "trainer rewarding calm dog"
+  Business/coaching: "entrepreneur overwhelmed at desk", "coach presenting whiteboard group"
+  Relationships: "couple arguing living room", "woman smiling reading message"
+  Real estate: "agent showing house clients", "buyer signing contract table"
 
-Crypto Trading Service:
-❌ WRONG: "business person frustrated laptop" (too generic)
-✅ RIGHT: "crypto charts volatility" (Scene 1 - hook)
-✅ RIGHT: "trader stressed loss" (Scene 2 - problem)
-✅ RIGHT: "bitcoin trading success" (Scene 4 - solution)
+BAD (never use these): "transformation", "coaching", "success journey", "breakthrough moment", "motivation", "mindset", "growth"
 
-Postpartum Fitness Service:
-❌ WRONG: "woman exercising gym" (too generic)
-✅ RIGHT: "mother tired baby" (Scene 1 - hook)
-✅ RIGHT: "postpartum strength training" (Scene 4 - solution)
-
-Executive Leadership Service:
-❌ WRONG: "person working office" (too generic)
-✅ RIGHT: "corporate boardroom meeting" (Scene 1 - hook)
-✅ RIGHT: "executive confident presentation" (Scene 4 - solution)
-
-FORMULA: [NICHE KEYWORD] + [EMOTION/ACTION]
-
-Keep queries SHORT (2-4 words max) and SPECIFIC to the niche.
+For the service you are writing for, detect the nicheWorld first, then apply the formula to generate queries that show a PERSON from that niche in a situation that matches each scene's emotional arc.
 `;
 
   // ═══════════════════════════════════════════════════════════════════════════════
@@ -887,6 +881,7 @@ export const videoScriptsRouter = router({
       console.log(`✅ ZAP-generated script for: ${service.name}`);
       scriptData.scenes.forEach((scene: any, i: number) => {
         console.log(`  Scene ${i + 1} [${scene.sceneType || scene.sceneNumber}]: "${scene.voiceoverText}"`);
+        console.log(`    pexelsQuery: "${scene.pexelsQuery}"`);
       });
 
       voiceoverText = scriptData.scenes.map((s) => s.voiceoverText).join(" ");
@@ -1055,6 +1050,7 @@ export async function generateVideoScriptForService(params: {
   console.log(`  Angle: ${parsed.angle || 'N/A'} | Niche world: ${parsed.nicheWorld || 'N/A'}`);
   parsed.scenes.forEach((scene: any, i: number) => {
     console.log(`  Scene ${i + 1} [${scene.sceneType}]: "${scene.voiceoverText}"`);
+    console.log(`    pexelsQuery: "${scene.pexelsQuery}"`);
   });
   const voiceoverTextFull = parsed.scenes.map((s: any) => s.voiceoverText).join(" ");
 

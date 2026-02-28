@@ -938,6 +938,7 @@ export const videos = mysqlTable("videos", {
   angle: varchar("angle", { length: 50 }), // e.g. "IDENTITY"
   nicheWorld: varchar("nicheWorld", { length: 100 }), // e.g. "coaching certification"
   wordCount: int("wordCount"), // total words in script
+  actualDuration: int("actualDuration"), // actual rendered duration in seconds from Creatomate
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({

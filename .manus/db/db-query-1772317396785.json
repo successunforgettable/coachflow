@@ -1,0 +1,16 @@
+{
+  "query": "SELECT id, actualDuration, creatomateStatus, duration FROM videos WHERE id = 510010;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT id, actualDuration, creatomateStatus, duration FROM videos WHERE id = 510010;",
+  "rows": [
+    {
+      "id": "510010",
+      "actualDuration": "60",
+      "creatomateStatus": "succeeded",
+      "duration": "30"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tactualDuration\tcreatomateStatus\tduration\n510010\t60\tsucceeded\t30\n",
+  "stderr": "",
+  "execution_time_ms": 1518
+}

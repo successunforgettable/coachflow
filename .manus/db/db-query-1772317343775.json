@@ -1,0 +1,17 @@
+{
+  "query": "SELECT id, actualDuration, creatomateStatus, title, angle FROM videos WHERE id = 510010;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT id, actualDuration, creatomateStatus, title, angle FROM videos WHERE id = 510010;",
+  "rows": [
+    {
+      "id": "510010",
+      "actualDuration": "60",
+      "creatomateStatus": "succeeded",
+      "title": "incredible you coach training  — LOSS Ad (5 scenes, 130 words)",
+      "angle": "LOSS"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tactualDuration\tcreatomateStatus\ttitle\tangle\n510010\t60\tsucceeded\tincredible you coach training  — LOSS Ad (5 scenes, 130 words)\tLOSS\n",
+  "stderr": "",
+  "execution_time_ms": 1669
+}

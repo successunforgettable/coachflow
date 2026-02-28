@@ -111,9 +111,9 @@ export default function Videos() {
                   </div>
                 )}
                 {/* Duration badge */}
-                {video.duration && (
+                {(video.actualDuration || video.duration) && (
                   <div className="absolute bottom-2 right-2 bg-black/80 text-white text-xs px-2 py-1 rounded">
-                    {video.duration}s
+                    {video.actualDuration ? `${video.actualDuration}s` : `${video.duration}s`}
                   </div>
                 )}
               </div>
@@ -157,7 +157,7 @@ export default function Videos() {
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Duration:</span>
-                    <span>{video.duration}s</span>
+                    <span>{video.actualDuration ? `${video.actualDuration}s` : `${video.duration}s`}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Type:</span>

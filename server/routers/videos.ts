@@ -635,8 +635,13 @@ export async function renderVideo(params: {
   console.log(`[Video ${videoId}] Fetching stock footage for ${scenes.length} scenes...`);
   
   // Fetch MULTIPLE clips per scene for b-roll variety (2-3 clips per scene)
+  // NOTE: Stagger requests by 300ms each to avoid Pexels concurrent connection throttling
   const sceneFootage = await Promise.all(
     scenes.map(async (scene: any, index: number) => {
+      // Stagger requests to avoid hitting Pexels rate limits with concurrent connections
+      if (index > 0) {
+        await new Promise(resolve => setTimeout(resolve, index * 300));
+      }
       // If scene has pexelsQuery field, use it directly with fallback
       if (scene.pexelsQuery) {
         const { fetchStockFootageWithFallback } = await import("../pixabay.js");
@@ -1061,7 +1066,7 @@ export async function renderVideo(params: {
     }
 
     if (statusData.status === "succeeded") {
-      console.log(`[Video ${videoId}] Render completed!`);
+      console.log(`[Video ${videoId}] Render completed! duration=${statusData.duration} output_duration=${statusData.output_duration} keys=${Object.keys(statusData).join(',')}`);
 
       // Update video record
       if (!db) throw new Error("Database connection lost");
@@ -1072,6 +1077,7 @@ export async function renderVideo(params: {
           videoUrl: statusData.url,
           thumbnailUrl: statusData.snapshot_url,
           fileSize: statusData.file_size,
+          actualDuration: statusData.duration ? Math.round(statusData.duration) : undefined,
           updatedAt: new Date(),
         })
         .where(eq(videos.id, videoId));

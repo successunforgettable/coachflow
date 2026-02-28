@@ -24,6 +24,7 @@ export interface VoiceoverOptions {
 
 /**
  * Generate voiceover audio from text using ElevenLabs API
+ * Retries up to 3 times on transient network errors (ECONNRESET, fetch failed).
  * 
  * @param options - Voiceover generation options
  * @returns MP3 audio buffer
@@ -40,34 +41,63 @@ export async function generateVoiceover(options: VoiceoverOptions): Promise<Buff
 
   console.log(`[ElevenLabs] Generating voiceover (${text.length} chars) with voice ${voiceId}`);
 
-  const response = await fetch(
-    `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
-    {
-      method: 'POST',
-      headers: {
-        'xi-api-key': ELEVENLABS_API_KEY,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        text,
-        model_id: 'eleven_multilingual_v2',
-        voice_settings: {
-          stability,
-          similarity_boost: similarityBoost,
-          style,
-          use_speaker_boost: useSpeakerBoost,
-        },
-      }),
-    }
-  );
+  const MAX_RETRIES = 3;
+  let lastError: Error | null = null;
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`ElevenLabs API failed: ${response.status} ${errorText}`);
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const response = await fetch(
+        `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
+        {
+          method: 'POST',
+          headers: {
+            'xi-api-key': ELEVENLABS_API_KEY,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            text,
+            model_id: 'eleven_multilingual_v2',
+            voice_settings: {
+              stability,
+              similarity_boost: similarityBoost,
+              style,
+              use_speaker_boost: useSpeakerBoost,
+            },
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`ElevenLabs API failed: ${response.status} ${errorText}`);
+      }
+
+      const audioBuffer = Buffer.from(await response.arrayBuffer());
+      console.log(`[ElevenLabs] Generated audio: ${audioBuffer.length} bytes (attempt ${attempt})`);
+      return audioBuffer;
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      const msg = lastError.message.toLowerCase();
+      const isRetryable =
+        msg.includes('econnreset') ||
+        msg.includes('fetch failed') ||
+        msg.includes('network') ||
+        msg.includes('socket') ||
+        msg.includes('tls') ||
+        msg.includes('connection') ||
+        msg.includes('service_unavailable') ||
+        msg.includes('something went wrong') ||
+        msg.includes('500') ||
+        msg.includes('503');
+      if (isRetryable && attempt < MAX_RETRIES) {
+        const delay = attempt * 2000; // 2s, 4s
+        console.warn(`[ElevenLabs] Attempt ${attempt} failed (${lastError.message}), retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      throw lastError;
+    }
   }
 
-  const audioBuffer = Buffer.from(await response.arrayBuffer());
-  console.log(`[ElevenLabs] Generated audio: ${audioBuffer.length} bytes`);
-
-  return audioBuffer;
+  throw lastError!;
 }

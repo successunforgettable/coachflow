@@ -187,8 +187,7 @@ export async function fetchStockFootageWithFallback(
     console.warn(`[Footage] ✗ Pixabay failed for "${query}":`, error instanceof Error ? error.message : error);
   }
 
-  // Final fallback: animated gradient
-  const gradientSpec = generateGradientFallback(sceneIndex, query);
-  console.log(`[Footage] ✓ Gradient fallback for scene ${sceneIndex + 1}`);
-  return gradientSpec;
+  // No footage found — return null so caller can throw a proper error
+  console.warn(`[Footage] ✗ No footage found for "${query}" (scene ${sceneIndex + 1}) — Pexels and Pixabay both failed`);
+  return null;
 }

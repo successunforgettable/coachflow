@@ -295,6 +295,13 @@
       "when": 1772312268121,
       "tag": "0041_ancient_squadron_supreme",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "5",
+      "when": 1772315260879,
+      "tag": "0042_brief_brother_voodoo",
+      "breakpoints": true
     }
   ]
 }

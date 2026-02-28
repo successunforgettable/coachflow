@@ -1,0 +1,19 @@
+{
+  "query": "SELECT id, JSON_EXTRACT(scenes, '$[0].pexelsQuery') as s1, JSON_EXTRACT(scenes, '$[1].pexelsQuery') as s2, JSON_EXTRACT(scenes, '$[2].pexelsQuery') as s3, JSON_EXTRACT(scenes, '$[3].pexelsQuery') as s4, JSON_EXTRACT(scenes, '$[4].pexelsQuery') as s5, JSON_EXTRACT(scenes, '$[5].pexelsQuery') as s6 FROM videoScripts ORDER BY id DESC LIMIT 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT id, JSON_EXTRACT(scenes, '$[0].pexelsQuery') as s1, JSON_EXTRACT(scenes, '$[1].pexelsQuery') as s2, JSON_EXTRACT(scenes, '$[2].pexelsQuery') as s3, JSON_EXTRACT(scenes, '$[3].pexelsQuery') as s4, JSON_EXTRACT(scenes, '$[4].pexelsQuery') as s5, JSON_EXTRACT(scenes, '$[5].pexelsQuery') as s6 FROM videoScripts ORDER BY id DESC LIMIT 1;",
+  "rows": [
+    {
+      "id": "480004",
+      "s1": "\"person frustrated desk books\"",
+      "s2": "\"adult thinking deeply concerned\"",
+      "s3": "\"coach speaking camera confident\"",
+      "s4": "\"person meditating peaceful clarity\"",
+      "s5": "\"person walking forward confident\"",
+      "s6": "\"person smiling breakthrough moment\""
+    }
+  ],
+  "messages": [],
+  "stdout": "id\ts1\ts2\ts3\ts4\ts5\ts6\n480004\t\"person frustrated desk books\"\t\"adult thinking deeply concerned\"\t\"coach speaking camera confident\"\t\"person meditating peaceful clarity\"\t\"person walking forward confident\"\t\"person smiling breakthrough moment\"\n",
+  "stderr": "",
+  "execution_time_ms": 1606
+}
