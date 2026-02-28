@@ -615,16 +615,28 @@ MANDATORY RULES (never violate):
 RESPOND WITH VALID JSON ONLY. No markdown, no preamble, no explanation.
 Format:
 {
+  "angle": "LOSS|GAIN|FEAR|IDENTITY",
+  "nicheWorld": "detected niche world e.g. corporate leadership, crypto trading, postpartum fitness",
+  "insiderWords": ["word1", "word2", "word3"],
   "scenes": [
     {
       "sceneNumber": 1,
+      "sceneType": "hook|problem|authority|solution|cta",
       "voiceoverText": "Exact spoken words — write enough to fill the scene naturally",
+      "onScreenText": "MAX 40 CHARS, UPPERCASE, PUNCHY",
+      "statBadge": "authority scene only — the specific credential number e.g. 200+ WOMEN PROMOTED",
       "visualDirection": "What appears on screen — specific, achievable",
-      "onScreenText": "3-7 word text overlay",
       "pexelsQuery": "2-4 word Pexels search query matching the niche and scene emotion"
     }
   ]
-}`;
+}
+
+RULES FOR OUTPUT:
+- onScreenText must be 40 characters or fewer
+- onScreenText must be UPPERCASE
+- statBadge only on the authority scene (sceneType: authority) — contains the specific number/credential
+- voiceoverText must follow all banned word rules and niche detection rules
+- Return JSON only — no markdown, no explanation, no backticks`;
 
   if (videoType === "explainer") {
     return `You are a world-class direct response video scriptwriter for Meta ads.
@@ -821,46 +833,41 @@ export const videoScriptsRouter = router({
       let scriptData: { scenes: Scene[] };
       let voiceoverText: string;
 
-      // Check if this is ZAP service - use hardcoded demo script
-      const isZapService = service.name.toLowerCase().includes('zap');
-      
-      if (isZapService) {
-        // Use hardcoded ZAP demo script (bypasses LLM)
-        const { ZAP_DEMO_SCRIPT, ZAP_DEMO_VOICEOVER } = await import("../zapDemoScript.js");
-        scriptData = ZAP_DEMO_SCRIPT;
-        voiceoverText = ZAP_DEMO_VOICEOVER;
-        console.log(`[VideoScripts] Using hardcoded ZAP demo script for service: ${service.name}`);
-      } else {
-        // Regular LLM-based script generation
-        const prompt = buildScriptPrompt(
-          input.videoType,
-          parseInt(input.duration),
-          service
-        );
+      // ✅ ALL services go through buildScriptPrompt — no exceptions, no hardcoded bypass
+      console.log(`[VideoScripts] Generating live ZAP script for service: ${service.name}`);
+      const prompt = buildScriptPrompt(
+        input.videoType,
+        parseInt(input.duration),
+        service
+      );
 
-        const response = await invokeLLM({
-          messages: [{ role: "user", content: prompt }],
-          maxTokens: 2000,
-        });
+      const response = await invokeLLM({
+        messages: [{ role: "user", content: prompt }],
+        maxTokens: 2000,
+      });
 
-        const content = response.choices[0]?.message?.content;
-        if (!content || typeof content !== "string") {
-          throw new Error("Invalid AI response");
-        }
-
-        try {
-          const clean = content.replace(/```json|```/g, "").trim();
-          scriptData = JSON.parse(clean);
-        } catch {
-          throw new Error("Script generation failed — please try again");
-        }
-
-        if (!scriptData.scenes?.length) {
-          throw new Error("No scenes returned — please try again");
-        }
-
-        voiceoverText = scriptData.scenes.map((s) => s.voiceoverText).join(" ");
+      const content = response.choices[0]?.message?.content;
+      if (!content || typeof content !== "string") {
+        throw new Error("Invalid AI response");
       }
+
+      try {
+        const clean = content.replace(/```json|```/g, "").trim();
+        scriptData = JSON.parse(clean);
+      } catch {
+        throw new Error("Script generation failed — please try again");
+      }
+
+      if (!scriptData.scenes?.length) {
+        throw new Error("No scenes returned — please try again");
+      }
+
+      console.log(`✅ ZAP-generated script for: ${service.name}`);
+      scriptData.scenes.forEach((scene: any, i: number) => {
+        console.log(`  Scene ${i + 1} [${scene.sceneType || scene.sceneNumber}]: "${scene.voiceoverText}"`); 
+      });
+
+      voiceoverText = scriptData.scenes.map((s) => s.voiceoverText).join(" ");
 
       const [record] = await db.insert(videoScripts).values({
         userId: ctx.user.id,
@@ -987,12 +994,32 @@ export async function generateVideoScriptForService(params: {
 
   if (!service) throw new Error("Service not found");
 
-  // Generate script using LLM
-  const scriptContent = await generateScriptWithLLM({
-    service,
-    videoType: params.videoType,
-    duration: params.duration,
+  // ✅ Generate script using buildScriptPrompt — the ZAP generator with all rules
+  console.log(`[VideoScripts] Generating live ZAP script for campaign video: ${service.name}`);
+  const prompt = buildScriptPrompt(params.videoType, parseInt(params.duration), service);
+  const { invokeLLM } = await import("../_core/llm");
+  const response = await invokeLLM({
+    messages: [{ role: "user", content: prompt }],
+    maxTokens: 2000,
   });
+  const rawContent = response.choices[0]?.message?.content;
+  if (!rawContent || typeof rawContent !== "string") throw new Error("Invalid AI response");
+  const cleaned = rawContent.replace(/```json|```/g, "").trim();
+  let parsed: any;
+  try {
+    parsed = JSON.parse(cleaned);
+  } catch {
+    throw new Error("Script generation failed — LLM did not return valid JSON");
+  }
+  if (!parsed.scenes || parsed.scenes.length !== 5) {
+    throw new Error(`Invalid script structure — expected 5 scenes, got: ${JSON.stringify(parsed)}`);
+  }
+  console.log(`✅ ZAP-generated script for: ${service.name}`);
+  console.log(`  Angle: ${parsed.angle || 'N/A'} | Niche world: ${parsed.nicheWorld || 'N/A'}`);
+  parsed.scenes.forEach((scene: any, i: number) => {
+    console.log(`  Scene ${i + 1} [${scene.sceneType}]: "${scene.voiceoverText}"`);
+  });
+  const voiceoverTextFull = parsed.scenes.map((s: any) => s.voiceoverText).join(" ");
 
   // Save script to database
   const [record] = await db.insert(videoScripts).values({
@@ -1002,8 +1029,8 @@ export async function generateVideoScriptForService(params: {
     videoType: params.videoType,
     duration: params.duration,
     visualStyle: "kinetic_typography",
-    scenes: scriptContent.scenes || [],
-    voiceoverText: scriptContent.scenes?.map((s: any) => s.voiceover).join(" ") || "",
+    scenes: parsed.scenes,
+    voiceoverText: voiceoverTextFull,
     status: "draft",
   });
 
@@ -1111,41 +1138,4 @@ export async function renderVideoFromScript(params: {
   return videoId;
 }
 
-// Helper to generate script content using LLM
-async function generateScriptWithLLM(params: {
-  service: any;
-  videoType: string;
-  duration: string;
-}): Promise<any> {
-  const { invokeLLM } = await import("../_core/llm");
-
-  const prompt = `Generate a ${params.duration}-second ${params.videoType} video script for:
-Service: ${params.service.name}
-Description: ${params.service.description}
-Target: ${params.service.targetCustomer}
-
-Return JSON with:
-{
-  "hook": "opening line",
-  "scenes": [
-    {"sceneType": "intro|problem|solution|proof|cta", "voiceover": "text", "visualCue": "description"}
-  ]
-}`;
-
-  const response = await invokeLLM({
-    messages: [
-      { role: "system", content: "You are a video script writer. Always return valid JSON." },
-      { role: "user", content: prompt },
-    ],
-    response_format: { type: "json_object" },
-  });
-
-  const content = response.choices[0].message.content;
-  // Strip markdown code fences if present (Claude sometimes wraps JSON in ```json ... ```)
-  const rawContent = typeof content === 'string' ? content : JSON.stringify(content);
-  const cleanContent = rawContent
-    .replace(/^```(?:json)?\s*/i, '')
-    .replace(/\s*```\s*$/i, '')
-    .trim();
-  return JSON.parse(cleanContent);
-}
+// All script generation uses buildScriptPrompt — the ZAP generator with all niche detection and copywriting rules

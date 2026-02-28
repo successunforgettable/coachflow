@@ -3539,3 +3539,18 @@ Scene 5 (6s): "Stop being invisible. Your next client is already on Facebook..."
 
 ## Bug: Text Overlays Not Showing in Creatomate Output
 - [x] Fix text overlays not appearing in rendered videos - root cause: fill_color was #3B82F6 (blue, invisible on dark b-roll) and font_size was null; fixed to #ffffff and 10vmin
+
+## Script Generation Audit
+- [ ] Audit full code path: "User clicks Generate Video" → "Script is created"
+- [ ] Search for and remove any scriptOverride, APPROVED_SCRIPTS, hardcoded arrays
+- [ ] Verify buildScriptPrompt() is called for every render
+- [ ] Verify output format includes all required fields (sceneType, voiceoverText, onScreenText, statBadge)
+- [ ] Live test with "The Burnout Recovery Blueprint" profile
+- [ ] Report: 5-scene script, angle chosen, niche world detected, console log confirmation, render URL
+
+## Script Pipeline Fixes (ordered)
+- [x] Fix 1: Delete zapDemoScript.ts and remove isZapService bypass from videoScripts.ts
+- [x] Fix 2: Delete generateScriptWithLLM stub and replace Trigger B with buildScriptPrompt
+- [x] Fix 3: Fix field name mismatches (voiceover → voiceoverText) in videos.ts and buildScriptPrompt output format
+- [x] Verification: All four grep checks return nothing (PASS)
+- [x] Live test: Burnout Recovery Blueprint profile — PASS: Angle=LOSS, Niche=corporate burnout recovery, 7 scenes generated with voiceoverText + onScreenText + statBadge

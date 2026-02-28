@@ -387,9 +387,9 @@ function calculateSceneDurations(
   scenes: any[],
   totalAudioDuration: number
 ): number[] {
-  // Count words per scene — handle both voiceoverText and voiceover field names
+  // Count words per scene — voiceoverText is the canonical field name
   const wordCounts = scenes.map(scene => {
-    const text = scene.voiceoverText ?? scene.voiceover ?? "";
+    const text = scene.voiceoverText ?? "";
     return text.trim().split(/\s+/).filter(Boolean).length || 1;
   });
   
@@ -512,20 +512,14 @@ export async function renderVideo(params: {
     throw new Error(`Template not found: ${visualStyle}`);
   }
 
-  // Get script scenes (use hardcoded ZAP demo script if isZapDemo flag is set)
-  let scenes;
-  if (isZapDemo) {
-    const { ZAP_DEMO_SCRIPT } = await import("../zapDemoScript.js");
-    scenes = ZAP_DEMO_SCRIPT.scenes;
-    console.log(`[Video ${videoId}] Using hardcoded ZAP demo script`);
-  } else {
-    scenes = script.scenes || [];
-  }
+  // ✅ Always use the live ZAP-generated script — no hardcoded bypass
+  const scenes = script.scenes || [];
+  console.log(`[Video ${videoId}] ✅ Using ZAP-generated script (${scenes.length} scenes)`);
   console.log(`[Video ${videoId}] Scenes data:`, JSON.stringify(scenes, null, 2));
 
   // STEP 2: Concatenate all voiceover text
   console.log(`[Video ${videoId}] Concatenating voiceover text...`);
-  const fullVoiceoverText = scenes.map((s: any) => s.voiceoverText ?? s.voiceover ?? "").join(" ");
+  const fullVoiceoverText = scenes.map((s: any) => s.voiceoverText ?? "").join(" ");
   
   // STEP 3: Call ElevenLabs to generate voiceover audio
   console.log(`[Video ${videoId}] Generating voiceover with ElevenLabs...`);
@@ -897,7 +891,7 @@ export async function renderVideo(params: {
         // - Antoni (warm male): ErXwobaYiN019PkySvjV
         // - Josh (confident male): TxGEqnHWrfWFTfGW9XjX
         const voiceId = "TxGEqnHWrfWFTfGW9XjX"; // Josh - confident, direct, human
-        const fullVoiceoverText = scenes.map((s: any) => s.voiceoverText ?? s.voiceover ?? "").join(" ");
+        const fullVoiceoverText = scenes.map((s: any) => s.voiceoverText ?? "").join(" ");
         
         return {
           ...element,
