@@ -601,6 +601,17 @@ TESTIMONIAL: ${
   }
 `;
 
+  const DURATION_RULE = `
+DURATION RULE — NON-NEGOTIABLE:
+- Total script must produce 30-45 seconds of voiceover when spoken at natural pace
+- 5 scenes maximum — hook, problem, authority, solution, cta
+- Each voiceoverText must be 1-3 sentences maximum
+- Count words: aim for 80-120 total words across all 5 scenes
+- Average speaking pace is 130 words per minute
+- 100 words = approximately 46 seconds spoken
+- If you write more than 120 words total — you have written too much. Cut it.
+`;
+
   const globalRules = `
 MANDATORY RULES (never violate):
 1. NEVER use prohibited Meta language: banned, forbidden, leaked, exposed, glitch, secret they don't want you to know
@@ -661,9 +672,11 @@ ${AUTHORITY_SCENE_RULE}
 
 ${PEXELS_QUERY_RULE}
 
+${DURATION_RULE}
+
 ═══════════════════════════════════════════════════════════════════════════════
 
-Generate an EXPLAINER video ad script. TOTAL DURATION MUST BE MINIMUM 40 SECONDS (not ${duration}).
+Generate an EXPLAINER video ad script. TOTAL DURATION MUST BE 30-45 SECONDS.
 
 SERVICE DATA:
 ${baseContext}
@@ -830,7 +843,7 @@ export const videoScriptsRouter = router({
 
       if (!service) throw new Error("Service not found");
 
-      let scriptData: { scenes: Scene[] };
+      let scriptData: { scenes: Scene[]; angle?: string; nicheWorld?: string };
       let voiceoverText: string;
 
       // ✅ ALL services go through buildScriptPrompt — no exceptions, no hardcoded bypass
@@ -862,12 +875,26 @@ export const videoScriptsRouter = router({
         throw new Error("No scenes returned — please try again");
       }
 
+      // Word count validation — max 150 words
+      const totalWords = scriptData.scenes.reduce((sum: number, s: any) =>
+        sum + (s.voiceoverText?.trim().split(/\s+/).length || 0), 0
+      );
+      console.log(`[Script] Total word count: ${totalWords}`);
+      if (totalWords > 150) {
+        throw new Error(`Script too long: ${totalWords} words. Maximum 150. Regenerate.`);
+      }
+
       console.log(`✅ ZAP-generated script for: ${service.name}`);
       scriptData.scenes.forEach((scene: any, i: number) => {
-        console.log(`  Scene ${i + 1} [${scene.sceneType || scene.sceneNumber}]: "${scene.voiceoverText}"`); 
+        console.log(`  Scene ${i + 1} [${scene.sceneType || scene.sceneNumber}]: "${scene.voiceoverText}"`);
       });
 
       voiceoverText = scriptData.scenes.map((s) => s.voiceoverText).join(" ");
+
+      // Attach top-level angle/nicheWorld to first scene so it's accessible from video insert
+      const enrichedScenes = scriptData.scenes.map((s: any, i: number) =>
+        i === 0 ? { ...s, _angle: scriptData.angle, _nicheWorld: scriptData.nicheWorld, _wordCount: totalWords } : s
+      );
 
       const [record] = await db.insert(videoScripts).values({
         userId: ctx.user.id,
@@ -876,14 +903,14 @@ export const videoScriptsRouter = router({
         videoType: input.videoType,
         duration: input.duration,
         visualStyle: input.visualStyle,
-        scenes: scriptData.scenes,
+        scenes: enrichedScenes,
         voiceoverText,
         status: "draft",
       });
 
       return {
         scriptId: (record as any).insertId,
-        scenes: scriptData.scenes,
+        scenes: enrichedScenes,
         voiceoverText,
         creditCost: getCreditCost(input.duration),
       };
@@ -1014,6 +1041,16 @@ export async function generateVideoScriptForService(params: {
   if (!parsed.scenes || parsed.scenes.length !== 5) {
     throw new Error(`Invalid script structure — expected 5 scenes, got: ${JSON.stringify(parsed)}`);
   }
+
+  // Word count validation — max 150 words
+  const totalWords = parsed.scenes.reduce((sum: number, s: any) =>
+    sum + (s.voiceoverText?.trim().split(/\s+/).length || 0), 0
+  );
+  console.log(`[Script] Total word count: ${totalWords}`);
+  if (totalWords > 150) {
+    throw new Error(`Script too long: ${totalWords} words. Maximum 150. Regenerate.`);
+  }
+
   console.log(`✅ ZAP-generated script for: ${service.name}`);
   console.log(`  Angle: ${parsed.angle || 'N/A'} | Niche world: ${parsed.nicheWorld || 'N/A'}`);
   parsed.scenes.forEach((scene: any, i: number) => {

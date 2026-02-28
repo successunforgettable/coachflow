@@ -13,6 +13,9 @@ export default function Videos() {
   const [searchQuery, setSearchQuery] = useState("");
 
   const filteredVideos = videos?.filter((video) =>
+    (video.title ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (video.angle ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (video.nicheWorld ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
     video.visualStyle.toLowerCase().includes(searchQuery.toLowerCase()) ||
     video.videoType.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -118,9 +121,12 @@ export default function Videos() {
               {/* Content */}
               <div className="p-4 space-y-3">
                 <div className="flex items-start justify-between gap-2">
-                  <h3 className="font-semibold text-sm">
-                    Video #{video.id}
-                  </h3>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-sm leading-tight truncate" title={video.title ?? `Video #${video.id}`}>
+                      {video.title ?? `Video #${video.id}`}
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">#{video.id}</p>
+                  </div>
                   <Badge className={getStatusColor(video.creatomateStatus)}>
                     <span className="flex items-center gap-1">
                       {getStatusIcon(video.creatomateStatus)}
@@ -129,18 +135,33 @@ export default function Videos() {
                   </Badge>
                 </div>
 
+                {/* Metadata badges */}
+                <div className="flex flex-wrap gap-1">
+                  {video.angle && (
+                    <span className="text-xs bg-purple-500/10 text-purple-600 dark:text-purple-400 px-2 py-0.5 rounded-full font-medium">
+                      {video.angle}
+                    </span>
+                  )}
+                  {video.nicheWorld && (
+                    <span className="text-xs bg-blue-500/10 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded-full">
+                      {video.nicheWorld}
+                    </span>
+                  )}
+                  {video.wordCount && (
+                    <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
+                      {video.wordCount} words
+                    </span>
+                  )}
+                </div>
+
                 <div className="space-y-1 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Duration:</span>
+                    <span>{video.duration}s</span>
+                  </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Type:</span>
                     <span className="capitalize">{video.videoType.replace(/_/g, " ")}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Style:</span>
-                    <span className="capitalize">{video.visualStyle.replace(/_/g, " ")}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Credits:</span>
-                    <span className="text-purple-500 font-semibold">{video.creditsUsed}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Created:</span>

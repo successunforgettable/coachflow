@@ -934,6 +934,10 @@ export const videos = mysqlTable("videos", {
   sentToMetaAt: timestamp("sentToMetaAt"),
   metaCreativeId: varchar("metaCreativeId", { length: 255 }), // Meta Ads Manager creative ID
   rating: int("rating").default(0), // 0-5 stars
+  title: varchar("title", { length: 255 }), // e.g. "Incredible You — IDENTITY Ad (5 scenes, 98 words)"
+  angle: varchar("angle", { length: 50 }), // e.g. "IDENTITY"
+  nicheWorld: varchar("nicheWorld", { length: 100 }), // e.g. "coaching certification"
+  wordCount: int("wordCount"), // total words in script
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({

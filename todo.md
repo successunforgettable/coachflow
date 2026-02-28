@@ -3643,3 +3643,10 @@ Scene 5 (6s): "Stop being invisible. Your next client is already on Facebook..."
 - [x] Source royalty-free background music tracks — already hosted at CloudFront CDN
 - [x] Add music element to buildCreatomateJSON with correct volume (audio_volume:15, audio_fade_out:2)
 - [x] Re-render and confirm music is audible — Video 510004 confirmed: AAC 44100Hz stereo, 212kbps audio stream present
+
+## 4 Pipeline Fixes — Mar 01, 2026
+
+- [ ] Issue 1: Throw on Pexels fetch failure — never fall back to solid colour shapes silently
+- [ ] Issue 2: Add DURATION_RULE to script prompt + word count validation (max 150 words, throw if exceeded)
+- [ ] Issue 3: Trim last scene duration to end exactly at audioDuration; raise dark overlay to rgba(0,0,0,0.95)
+- [ ] Issue 4: Add video.title to DB schema; generate from script; display on video cards with duration/angle/niche metadata

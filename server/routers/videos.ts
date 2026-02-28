@@ -136,6 +136,20 @@ export const videosRouter = router({
         description: `Video generation (${script.duration}s, ${input.visualStyle})`,
       });
 
+      // Generate video title from script metadata
+      const scenes: any[] = Array.isArray(script.scenes) ? script.scenes : [];
+      const firstScene = scenes[0] || {};
+      const videoAngle = firstScene._angle || script.videoType?.toUpperCase() || "AD";
+      const videoNicheWorld = firstScene._nicheWorld || "";
+      const videoWordCount = firstScene._wordCount ||
+        scenes.reduce((sum: number, s: any) => sum + (s.voiceoverText?.trim().split(/\s+/).length || 0), 0);
+      const serviceName = script.serviceId ? "" : "";
+      // Fetch service name for title
+      const [svcForTitle] = await db.select({ name: services.name }).from(services).where(eq(services.id, script.serviceId)).limit(1);
+      const titleServiceName = svcForTitle?.name || "Video";
+      const videoTitle = `${titleServiceName} — ${videoAngle} Ad (${scenes.length} scenes, ${videoWordCount} words)`;
+      console.log(`[Video] Generated title: "${videoTitle}"`);
+
       // Create video record
       const [newVideo] = await db.insert(videos).values({
         userId: ctx.user.id,
@@ -146,6 +160,10 @@ export const videosRouter = router({
         visualStyle: input.visualStyle,
         creatomateStatus: "queued",
         creditsUsed: creditCost,
+        title: videoTitle,
+        angle: videoAngle,
+        nicheWorld: videoNicheWorld || null,
+        wordCount: videoWordCount,
       });
 
       const videoId = newVideo.insertId;
@@ -448,9 +466,18 @@ function calculateSceneDurations(
     return Math.max(2, Math.round(rawDuration * 10) / 10);
   });
 
-  // Adjust last scene to include 2s URL display after voiceover ends
-  durations[durations.length - 1] += 2;
-  
+  // Trim/extend last scene so it ends exactly at totalAudioDuration
+  const sumWithoutLast = durations.slice(0, -1).reduce((a: number, b: number) => a + b, 0);
+  const lastDuration = Math.max(2, Math.round((totalAudioDuration - sumWithoutLast) * 10) / 10);
+  durations[durations.length - 1] = lastDuration;
+
+  // Validate: last scene must end exactly at audioDuration
+  const lastSceneEnd = durations.reduce((a: number, b: number) => a + b, 0);
+  if (Math.abs(lastSceneEnd - totalAudioDuration) > 0.1) {
+    console.error(`Last scene ends at ${lastSceneEnd} but audio ends at ${totalAudioDuration} — trimming`);
+    durations[durations.length - 1] = Math.max(2, Math.round((totalAudioDuration - sumWithoutLast) * 10) / 10);
+  }
+
   return durations;
 }
 
@@ -612,19 +639,13 @@ export async function renderVideo(params: {
     scenes.map(async (scene: any, index: number) => {
       // If scene has pexelsQuery field, use it directly with fallback
       if (scene.pexelsQuery) {
-        try {
-          const { fetchStockFootageWithFallback } = await import("../pixabay.js");
-          const footageUrl = await fetchStockFootageWithFallback(scene.pexelsQuery, 'portrait', index);
-          if (footageUrl) {
-            console.log(`[Video ${videoId}] Scene ${index + 1} (${scene.pexelsQuery}): ✓ ${footageUrl.substring(0, 60)}...`);
-          } else {
-            console.warn(`[Video ${videoId}] Scene ${index + 1} (${scene.pexelsQuery}): ✗ No footage found`);
-          }
-          return footageUrl ? [footageUrl] : [];
-        } catch (error) {
-          console.error(`[Video ${videoId}] Scene ${index + 1} (${scene.pexelsQuery}): Error:`, error);
-          return [];
+        const { fetchStockFootageWithFallback } = await import("../pixabay.js");
+        const footageUrl = await fetchStockFootageWithFallback(scene.pexelsQuery, 'portrait', index);
+        if (!footageUrl) {
+          throw new Error(`Pexels fetch failed for scene ${index + 1}: query="${scene.pexelsQuery}" — no footage returned`);
         }
+        console.log(`[Video ${videoId}] Scene ${index + 1} (${scene.pexelsQuery}): ✓ ${footageUrl.substring(0, 60)}...`);
+        return [footageUrl];
       }
       
       // For regular videos, fetch multiple clips for variety
@@ -634,17 +655,13 @@ export async function renderVideo(params: {
         return [];
       }
       
-      try {
-        // Determine how many clips to fetch based on scene duration
-        // ~3-4s per clip, so a 9s scene gets 3 clips, a 5s scene gets 2
-        const clipCount = Math.max(2, Math.min(4, Math.ceil(sceneDurations[index] / 3.5)));
-        const clips = await fetchMultipleClipsForScene(sceneType, clipCount);
-        console.log(`[Video ${videoId}] Scene ${index + 1} (${sceneType}): fetched ${clips.length} clips for ${sceneDurations[index]}s scene`);
-        return clips;
-      } catch (error) {
-        console.error(`[Video ${videoId}] Scene ${index + 1}: Error:`, error);
-        return [];
+      const clipCount = Math.max(2, Math.min(4, Math.ceil(sceneDurations[index] / 3.5)));
+      const clips = await fetchMultipleClipsForScene(sceneType, clipCount);
+      if (!clips || clips.length === 0) {
+        throw new Error(`Pexels fetch failed for scene ${index + 1}: ${sceneType} — no clips returned`);
       }
+      console.log(`[Video ${videoId}] Scene ${index + 1} (${sceneType}): fetched ${clips.length} clips for ${sceneDurations[index]}s scene`);
+      return clips;
     })
   );
   
@@ -690,7 +707,10 @@ export async function renderVideo(params: {
 
     // 2-3 B-roll clips — always, no condition
     const clips: string[] = sceneFootage[index] || [];
-    const clipDuration = clips.length > 0 ? Math.round((sceneDur / clips.length) * 100) / 100 : sceneDur;
+    if (clips.length === 0) {
+      throw new Error(`Scene ${index + 1} has no footage clips — render aborted. Fix Pexels fetcher.`);
+    }
+    const clipDuration = Math.round((sceneDur / clips.length) * 100) / 100;
 
     clips.forEach((url: string, i: number) => {
       const clipStart = Math.round(i * clipDuration * 100) / 100;
@@ -878,7 +898,7 @@ export async function renderVideo(params: {
     duration: 5,
     width: "100%",
     height: "100%",
-    fill_color: "rgba(0,0,0,0.88)",
+    fill_color: "rgba(0,0,0,0.95)",
     animations: [{ type: "fade", time: 0, duration: 1, fade_start: 0, fade_end: 100, easing: "quadratic-in-out" }]
   });
   // Brand name

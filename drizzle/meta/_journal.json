@@ -288,6 +288,13 @@
       "when": 1772306209781,
       "tag": "0040_nebulous_the_stranger",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "5",
+      "when": 1772312268121,
+      "tag": "0041_ancient_squadron_supreme",
+      "breakpoints": true
     }
   ]
 }

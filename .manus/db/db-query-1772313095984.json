@@ -1,0 +1,18 @@
+{
+  "query": "SELECT id, title, wordCount, angle, nicheWorld, creatomateStatus FROM videos WHERE id = 510005;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT id, title, wordCount, angle, nicheWorld, creatomateStatus FROM videos WHERE id = 510005;",
+  "rows": [
+    {
+      "id": "510005",
+      "title": "incredible you coach training  — LOSS Ad (5 scenes, 113 words)",
+      "wordCount": "113",
+      "angle": "LOSS",
+      "nicheWorld": "personal transformation coaching / career change seekers",
+      "creatomateStatus": "succeeded"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\ttitle\twordCount\tangle\tnicheWorld\tcreatomateStatus\n510005\tincredible you coach training  — LOSS Ad (5 scenes, 113 words)\t113\tLOSS\tpersonal transformation coaching / career change seekers\tsucceeded\n",
+  "stderr": "",
+  "execution_time_ms": 1640
+}
