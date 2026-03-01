@@ -137,7 +137,7 @@ export default function SourceOfTruth() {
           <Card>
             <CardContent className="py-12 text-center">
               <Sparkles className="w-16 h-16 mx-auto mb-4 text-primary" />
-              <h2 className="text-2xl font-bold text-foreground mb-2">Create Your Your Brand Summary</h2>
+              <h2 className="text-2xl font-bold text-foreground mb-2">Create Your Brand Summary</h2>
               <p className="text-muted-foreground mb-6 max-w-2xl mx-auto">
                 Answer 4 simple questions and let AI generate a comprehensive service profile that will power all your
                 marketing assets. This becomes your single source of truth for ICPs, ad copy, email sequences, and more.
@@ -153,7 +153,7 @@ export default function SourceOfTruth() {
         {showGenerator && (
           <Card>
             <CardHeader>
-              <CardTitle>Generate Your Your Brand Summary</CardTitle>
+              <CardTitle>Generate Your Brand Summary</CardTitle>
               <CardDescription>Fill in these 4 fields and AI will generate a complete profile</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">

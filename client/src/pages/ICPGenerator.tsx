@@ -244,7 +244,7 @@ export default function ICPGenerator() {
           </p>
         </div>
         <div className="px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-sm font-medium">
-          0/10 ICPs
+          0/10 Ideal Customers
         </div>
       </div>
 
@@ -327,7 +327,7 @@ export default function ICPGenerator() {
               <SearchBar
                 value={searchQuery}
                 onChange={setSearchQuery}
-                placeholder="Search ICPs..."
+                placeholder="Search Ideal Customers..."
               />
             </CardHeader>
             <CardContent>

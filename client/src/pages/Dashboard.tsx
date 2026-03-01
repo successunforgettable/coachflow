@@ -235,7 +235,7 @@ export default function Dashboard() {
           <div className="nav-item"><Sparkles className="w-3.5 h-3.5 inline-block mr-2" /> Who You Want to Attract</div>
         </Link>
         <Link href="/ad-copy">
-          <div className="nav-item"><FileText className="w-3.5 h-3.5 inline-block mr-2" /> Facebook Ad Generator</div>
+          <div className="nav-item"><FileText className="w-3.5 h-3.5 inline-block mr-2" /> Your Ads</div>
         </Link>
         <Link href="/headlines">
           <div className="nav-item"><Type className="w-3.5 h-3.5 inline-block mr-2" /> Direct Response Headlines</div>
