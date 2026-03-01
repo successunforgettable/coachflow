@@ -16,7 +16,7 @@ import {
   getDb,
 } from "../db";
 import { services, campaigns, adCreatives, videos, idealCustomerProfiles } from "../../drizzle/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 
 export const campaignsRouter = router({
   // List all user campaigns
@@ -48,8 +48,26 @@ export const campaignsRouter = router({
         offer: campaign.assets.filter((a) => a.assetType === "offer").length,
         icp: campaign.assets.filter((a) => a.assetType === "icp").length,
       };
-      
-      return { ...campaign, assetCounts };
+
+      // Item 2.1: Count ad creatives (images) and videos separately — these live in their own tables
+      const db = await getDb();
+      let ad_creatives_count = 0;
+      let videos_count = 0;
+      if (db) {
+        const [acRow] = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(adCreatives)
+          .where(eq(adCreatives.campaignId, input.id));
+        ad_creatives_count = Number(acRow?.count ?? 0);
+
+        const [vRow] = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(videos)
+          .where(eq(videos.campaignId, input.id));
+        videos_count = Number(vRow?.count ?? 0);
+      }
+
+      return { ...campaign, assetCounts: { ...assetCounts, ad_creatives: ad_creatives_count, videos: videos_count } };
     }),
 
   // Create new campaign
