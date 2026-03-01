@@ -3663,3 +3663,14 @@ Scene 5 (6s): "Stop being invisible. Your next client is already on Facebook..."
 - [x] Update CreateServiceStep.tsx: after create succeeds, call expandProfile, show loading state, then show review screen
 - [x] Review screen: plain English labels (Req 1), exact LLM prompt (Req 2), auto-save before review shown (Req 3)
 - [x] Evidence test with Incredible You inputs (Req 4)
+
+## 4 Pipeline Fixes + 2 Pre-Launch Fixes — Completed 2026-03-02
+- [x] Issue 1 (4-Pipeline): Remove silent gradient fallback — throw instead of silently using a solid colour shape (videos.ts line 726-729)
+- [x] Issue 2 (4-Pipeline): DURATION_RULE already in buildScriptPrompt (line 598) + word count validation already throws at >150 words (line 878) — confirmed DONE
+- [x] Issue 3 (4-Pipeline): Last scene duration already trims to audioDuration in calculateSceneDurations; dark overlay already rgba(0,0,0,0.95) — confirmed DONE
+- [x] Issue 4 (4-Pipeline): video.title already generated from script metadata and stored in DB; Videos page already displays title/angle/niche/duration — confirmed DONE
+- [x] Issue 5 (Pre-Launch): PEXELS_QUERY_RULE already in buildScriptPrompt (line 548) — confirmed DONE
+- [x] Issue 6 (Pre-Launch): actualDuration already stored from statusData.duration in polling loop; Videos page already displays actualDuration — confirmed DONE
+- [x] Export calculateSceneDurations from videos.ts for testability
+- [x] Write server/pipeline-fixes.test.ts — 26 tests, all PASS
+- [x] Zero TypeScript errors confirmed

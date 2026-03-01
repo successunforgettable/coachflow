@@ -446,7 +446,7 @@ async function getAudioDurationSeconds(audioBuffer: Buffer): Promise<number> {
 /**
  * Calculate scene durations proportionally based on word counts
  */
-function calculateSceneDurations(
+export function calculateSceneDurations(
   scenes: any[],
   totalAudioDuration: number
 ): number[] {
@@ -723,21 +723,9 @@ export async function renderVideo(params: {
         ? Math.round((sceneDur - clipStart) * 100) / 100
         : clipDuration;
 
-      // Detect gradient fallback strings (not valid video URLs)
+      // Detect gradient fallback strings (not valid video URLs) — NEVER silently fall back
       if (url.startsWith('gradient:')) {
-        // Parse gradient:START,END and use a solid dark background shape instead
-        const parts = url.replace('gradient:', '').split(',');
-        const bgColor = parts[0] || '#1a1a2e'; // Use first gradient color as solid bg
-        sceneElements.push({
-          type: "shape",
-          shape: "rect",
-          time: clipStart,
-          duration: actualClipDur,
-          width: "100%",
-          height: "100%",
-          fill_color: bgColor
-        });
-        return;
+        throw new Error(`Scene ${index + 1} clip ${i + 1} returned a gradient fallback instead of a real video URL — Pexels and Pixabay both failed. Fix the footage fetcher or pexelsQuery.`);
       }
 
       sceneElements.push({
