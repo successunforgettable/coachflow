@@ -302,6 +302,13 @@
       "when": 1772315260879,
       "tag": "0042_brief_brother_voodoo",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "5",
+      "when": 1772323240209,
+      "tag": "0043_eager_manta",
+      "breakpoints": true
     }
   ]
 }

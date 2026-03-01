@@ -3655,3 +3655,11 @@ Scene 5 (6s): "Stop being invisible. Your next client is already on Facebook..."
 
 - [ ] Issue 1: Add PEXELS QUERY RULES to buildScriptPrompt — niche-specific, person-based, 3-5 words, English only
 - [ ] Issue 2: Store actual render duration in DB after render completes, display real duration on video cards
+
+## Phase 1.1 — AI-Powered Onboarding Expansion (Build Plan March 1 2026)
+- [x] Schema migration: add 5 new text columns to services table (falseBeliefsVsRealReasons, failedSolutions, hiddenReasons, riskReversal, uniqueMechanismSuggestion)
+- [x] New server mutation services.expandProfile: call invokeLLM with exact prompt, parse JSON, write all 10 fields to service record
+- [x] Update services.update schema to accept 5 new fields
+- [x] Update CreateServiceStep.tsx: after create succeeds, call expandProfile, show loading state, then show review screen
+- [x] Review screen: plain English labels (Req 1), exact LLM prompt (Req 2), auto-save before review shown (Req 3)
+- [x] Evidence test with Incredible You inputs (Req 4)

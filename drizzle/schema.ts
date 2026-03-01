@@ -113,6 +113,12 @@ export const services = mysqlTable("services", {
   applicationMethod: varchar("applicationMethod", { length: 150 }), // How the mechanism is applied
   avatarName: varchar("avatarName", { length: 100 }), // Ideal customer name
   avatarTitle: varchar("avatarTitle", { length: 100 }), // Ideal customer title/role
+  // AI-expanded onboarding fields (Item 1.1 — Build Plan March 1 2026)
+  falseBeliefsVsRealReasons: text("falseBeliefsVsRealReasons"), // What they think is stopping them vs what really is
+  failedSolutions: text("failedSolutions"), // What they have tried before and why it failed
+  hiddenReasons: text("hiddenReasons"), // Real reasons behind their problem they would never admit
+  riskReversal: text("riskReversal"), // Guarantee suggestion
+  uniqueMechanismSuggestion: text("uniqueMechanismSuggestion"), // Proprietary method name suggestion
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({
