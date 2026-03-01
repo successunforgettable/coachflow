@@ -96,8 +96,7 @@ export const hvcoRouter = router({
       const icpContext = icp ? [
         'IDEAL CUSTOMER PROFILE — use this to make every title specific and targeted:',
         icp.pains ? `Their daily pains: ${icp.pains}` : '',
-        icp.fears ? `Their deep fears: ${icp.fears}` : '',
-        icp.buyingTriggers ? `What makes them buy: ${icp.buyingTriggers}` : '',
+        icp.goals ? `Their goals and aspirations: ${icp.goals}` : '',
         icp.implementationBarriers ? `What stops them from taking action: ${icp.implementationBarriers}` : '',
       ].filter(Boolean).join('\n').trim() : '';
 
