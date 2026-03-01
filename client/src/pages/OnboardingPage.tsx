@@ -1,45 +1,74 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
+import { OnboardingFlow } from "@/components/onboarding/OnboardingFlow";
 import OnboardingWizard from "@/components/OnboardingWizard";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 
 /**
- * OnboardingPage - Wrapper component for the onboarding wizard
- * 
- * This page manages the modal state and handles completion/skip logic.
- * It automatically opens the wizard for new users who haven't completed onboarding.
+ * OnboardingPage — Item 2.0
+ *
+ * New users (onboardingStage === 0 or null) see the new 4-stage ZAP onboarding flow.
+ * Returning users who somehow land here see the legacy wizard.
+ * Completed users are redirected to /dashboard immediately.
  */
 export default function OnboardingPage() {
   const [, setLocation] = useLocation();
   const { isAuthenticated } = useAuth();
-  const [isOpen, setIsOpen] = useState(true);
+  const [isLegacyOpen, setIsLegacyOpen] = useState(true);
 
-  const { data: onboardingStatus } = trpc.onboarding.getStatus.useQuery(undefined, {
+  const { data: onboardingStatus, isLoading } = trpc.onboarding.getStatus.useQuery(undefined, {
     enabled: isAuthenticated,
   });
 
-  // If user has already completed onboarding, redirect to dashboard
+  // Redirect already-completed users
   useEffect(() => {
     if (onboardingStatus?.completed) {
       setLocation("/dashboard");
     }
   }, [onboardingStatus, setLocation]);
 
-  const handleClose = () => {
-    setIsOpen(false);
-    // Redirect to dashboard when wizard is closed
+  function handleFlowComplete() {
     setLocation("/dashboard");
-  };
+  }
 
-  // Don't render anything if onboarding is already completed
+  function handleLegacyClose() {
+    setIsLegacyOpen(false);
+    setLocation("/dashboard");
+  }
+
+  // Show loading spinner until status is known
+  if (isLoading || !isAuthenticated) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "#F5F1EA",
+        }}
+      >
+        <div style={{ fontSize: "32px" }}>⚡</div>
+      </div>
+    );
+  }
+
+  // Already completed — redirect handled by useEffect above
   if (onboardingStatus?.completed) {
     return null;
   }
 
+  // New user (stage 1 = default) → new 4-stage flow
+  const onboardingStage = (onboardingStatus as any)?.onboardingStage ?? 1;
+  if (onboardingStage === 1) {
+    return <OnboardingFlow onComplete={handleFlowComplete} />;
+  }
+
+  // Returning user mid-onboarding → legacy wizard
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-      <OnboardingWizard open={isOpen} onClose={handleClose} />
+      <OnboardingWizard open={isLegacyOpen} onClose={handleLegacyClose} />
     </div>
   );
 }

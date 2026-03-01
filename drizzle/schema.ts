@@ -39,6 +39,13 @@ export const users = mysqlTable("users", {
   powerMode: boolean("powerMode").default(false).notNull(),
   // User preferences
   dismissedWelcomeBanner: boolean("dismissedWelcomeBanner").default(false).notNull(),
+  // Onboarding (Item 2.0)
+  onboardingComplete: boolean("onboardingComplete").default(false).notNull(),
+  onboardingStage: int("onboardingStage").default(1).notNull(),
+  // Campaign Momentum Score (Item 2.0 — Duolingo streak equivalent)
+  activityStreak: int("activityStreak").default(0).notNull(),
+  lastActivityDate: date("lastActivityDate"),
+  streakUpdatedAt: timestamp("streakUpdatedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),

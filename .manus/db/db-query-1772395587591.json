@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE `users` ADD `onboardingComplete` boolean DEFAULT false NOT NULL;\nALTER TABLE `users` ADD `onboardingStage` int DEFAULT 1 NOT NULL;\nALTER TABLE `users` ADD `activityStreak` int DEFAULT 0 NOT NULL;\nALTER TABLE `users` ADD `lastActivityDate` date;\nALTER TABLE `users` ADD `streakUpdatedAt` timestamp;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute ALTER TABLE `users` ADD `onboardingComplete` boolean DEFAULT false NOT NULL;\nALTER TABLE `users` ADD `onboardingStage` int DEFAULT 1 NOT NULL;\nALTER TABLE `users` ADD `activityStreak` int DEFAULT 0 NOT NULL;\nALTER TABLE `users` ADD `lastActivityDate` date;\nALTER TABLE `users` ADD `streakUpdatedAt` timestamp;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 4891
+}

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
-import { userOnboarding } from "../../drizzle/schema";
+import { userOnboarding, users } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 
 export const onboardingRouter = router({
@@ -82,7 +82,65 @@ export const onboardingRouter = router({
     }),
 
   /**
-   * Mark onboarding as complete
+   * Mark onboarding as complete — sets both user_onboarding.completed and users.onboardingComplete.
+   * Called from Stage 4 ("Start from Step 1" or "I'll explore on my own").
+   */
+  setComplete: protectedProcedure
+    .input(
+      z.object({
+        serviceId: z.number().optional(),
+        campaignId: z.number().optional(),
+        headlineSetId: z.string().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database connection failed");
+
+      // Update user_onboarding table
+      await db
+        .update(userOnboarding)
+        .set({
+          completed: true,
+          completedAt: new Date(),
+          skipped: false,
+          serviceId: input.serviceId,
+          campaignId: input.campaignId,
+          headlineSetId: input.headlineSetId,
+        })
+        .where(eq(userOnboarding.userId, ctx.user.id));
+
+      // Update users table — fast single-field check on login without a join
+      await db
+        .update(users)
+        .set({
+          onboardingComplete: true,
+          onboardingStage: 5,
+        })
+        .where(eq(users.id, ctx.user.id));
+
+      return { success: true };
+    }),
+
+  /**
+   * Update onboarding stage on users table (called at end of each stage)
+   */
+  updateStageFlag: protectedProcedure
+    .input(z.object({ stage: z.number().min(1).max(5) }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database connection failed");
+
+      await db
+        .update(users)
+        .set({ onboardingStage: input.stage })
+        .where(eq(users.id, ctx.user.id));
+
+      return { success: true };
+    }),
+
+  /**
+   * Mark onboarding as complete (legacy — kept for backward compatibility)
    */
   complete: protectedProcedure
     .input(
@@ -134,6 +192,15 @@ export const onboardingRouter = router({
         campaignId: null,
       })
       .where(eq(userOnboarding.userId, ctx.user.id));
+
+    // Also reset users table flags
+    await db
+      .update(users)
+      .set({
+        onboardingComplete: false,
+        onboardingStage: 1,
+      })
+      .where(eq(users.id, ctx.user.id));
 
     return { success: true };
   }),
