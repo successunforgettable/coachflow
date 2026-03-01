@@ -126,23 +126,6 @@ export const landingPagesRouter = router({
         throw new Error("Service not found");
       }
 
-      // ICP query — Item 1.2
-      const [icp] = await db
-        .select()
-        .from(idealCustomerProfiles)
-        .where(eq(idealCustomerProfiles.serviceId, input.serviceId))
-        .limit(1);
-
-      const icpContext = icp ? `
-IDEAL CUSTOMER PROFILE — use this to make every line of copy specific and targeted:
-${icp.pains ? `Their daily pains: ${icp.pains}` : ''}
-${icp.fears ? `Their deep fears: ${icp.fears}` : ''}
-${icp.objections ? `Their objections to buying: ${icp.objections}` : ''}
-${icp.buyingTriggers ? `What makes them buy: ${icp.buyingTriggers}` : ''}
-${icp.implementationBarriers ? `What stops them from taking action: ${icp.implementationBarriers}` : ''}
-${icp.successMetrics ? `How they measure success: ${icp.successMetrics}` : ''}
-`.trim() : '';
-
       // SOT query — Item 1.4
       const [sot] = await db
         .select()
@@ -163,7 +146,8 @@ ${icp.successMetrics ? `How they measure success: ${icp.successMetrics}` : ''}
         ? ['BRAND CONTEXT — this is the approved brand voice. All copy must be consistent with this:', ...sotLines].join('\n')
         : '';
 
-      // Campaign type fetch — Item 1.5
+      // Campaign fetch — Item 1.5 (campaignType) + Item 1.1b (icpId)
+      let icp: typeof idealCustomerProfiles.$inferSelect | undefined;
       let campaignType = 'course_launch'; // default
 
       if (input.campaignId) {
@@ -179,7 +163,25 @@ ${icp.successMetrics ? `How they measure success: ${icp.successMetrics}` : ''}
         if (campaign?.campaignType) {
           campaignType = campaign.campaignType;
         }
+        if (campaign?.icpId) {
+          [icp] = await db.select().from(idealCustomerProfiles)
+            .where(eq(idealCustomerProfiles.id, campaign.icpId)).limit(1);
+        }
       }
+      // ICP serviceId fallback — Item 1.1b
+      if (!icp) {
+        [icp] = await db.select().from(idealCustomerProfiles)
+          .where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
+      }
+      const icpContext = icp ? `
+IDEAL CUSTOMER PROFILE — use this to make every line of copy specific and targeted:
+${icp.pains ? `Their daily pains: ${icp.pains}` : ''}
+${icp.fears ? `Their deep fears: ${icp.fears}` : ''}
+${icp.objections ? `Their objections to buying: ${icp.objections}` : ''}
+${icp.buyingTriggers ? `What makes them buy: ${icp.buyingTriggers}` : ''}
+${icp.implementationBarriers ? `What stops them from taking action: ${icp.implementationBarriers}` : ''}
+${icp.successMetrics ? `How they measure success: ${icp.successMetrics}` : ''}
+`.trim() : '';
 
       const campaignTypeContextMap: Record<string, string> = {
         webinar: `CAMPAIGN TYPE: Webinar

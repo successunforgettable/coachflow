@@ -31,6 +31,7 @@ import { videoCreditsRouter } from "./routers/videoCreditsRouter";
 import { videoScriptsRouter } from "./routers/videoScripts";
 import { videosRouter } from "./routers/videos";
 import { demoVideosRouter } from "./routers/demoVideos";
+import { icpAngleSuggestionsRouter } from "./routers/icpAngleSuggestions";
 import { getQuotaLimit } from "./quotaLimits";
 
 export const appRouter = router({
@@ -119,6 +120,7 @@ export const appRouter = router({
   // Feature routers
   services: servicesRouter,
   icps: icpsRouter,
+  icpAngleSuggestions: icpAngleSuggestionsRouter,
   adCopy: adCopyRouter,
   emailSequences: emailSequencesRouter,
   whatsappSequences: whatsappSequencesRouter,

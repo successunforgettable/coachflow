@@ -224,12 +224,28 @@ export const headlinesRouter = router({
             resolvedUniqueMechanism: input.uniqueMechanism?.trim() || service.uniqueMechanismSuggestion || "",
           };
         }
-        // ICP query — Item 1.2
-        const [icp] = await db
-          .select()
-          .from(idealCustomerProfiles)
-          .where(eq(idealCustomerProfiles.serviceId, input.serviceId))
-          .limit(1);
+        // Campaign fetch — Item 1.1b (icpId support)
+        let campaignRecord;
+        if (input.campaignId) {
+          const { campaigns } = await import("../../drizzle/schema");
+          const { and: andOp } = await import("drizzle-orm");
+          [campaignRecord] = await db
+            .select()
+            .from(campaigns)
+            .where(andOp(eq(campaigns.id, input.campaignId), eq(campaigns.userId, ctx.user.id)))
+            .limit(1);
+        }
+
+        // ICP fetch — Item 1.1b: campaign-specific ICP first, serviceId fallback
+        let icp;
+        if (campaignRecord?.icpId) {
+          [icp] = await db.select().from(idealCustomerProfiles)
+            .where(eq(idealCustomerProfiles.id, campaignRecord.icpId)).limit(1);
+        }
+        if (!icp) {
+          [icp] = await db.select().from(idealCustomerProfiles)
+            .where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
+        }
         if (icp) {
           icpContext = [
             'IDEAL CUSTOMER PROFILE — use this to make every line of copy specific and targeted:',

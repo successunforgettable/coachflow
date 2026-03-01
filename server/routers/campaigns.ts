@@ -15,7 +15,7 @@ import {
   deleteCampaignLink,
   getDb,
 } from "../db";
-import { services, campaigns, adCreatives, videos } from "../../drizzle/schema";
+import { services, campaigns, adCreatives, videos, idealCustomerProfiles } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 
 export const campaignsRouter = router({
@@ -463,5 +463,51 @@ export const campaignsRouter = router({
           filename: `video-${vid.id}.mp4`,
         })),
       };
+    }),
+
+  // Item 1.1b: Set campaign-specific ICP
+  updateIcp: protectedProcedure
+    .input(z.object({
+      campaignId: z.number(),
+      icpId: z.number(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      // Verify campaign ownership
+      const [campaign] = await db
+        .select()
+        .from(campaigns)
+        .where(and(eq(campaigns.id, input.campaignId), eq(campaigns.userId, ctx.user.id)))
+        .limit(1);
+
+      if (!campaign) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Campaign not found" });
+      }
+
+      // Verify ICP ownership
+      const [icp] = await db
+        .select()
+        .from(idealCustomerProfiles)
+        .where(and(eq(idealCustomerProfiles.id, input.icpId), eq(idealCustomerProfiles.userId, ctx.user.id)))
+        .limit(1);
+
+      if (!icp) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "ICP not found" });
+      }
+
+      await db
+        .update(campaigns)
+        .set({ icpId: input.icpId })
+        .where(eq(campaigns.id, input.campaignId));
+
+      const [updated] = await db
+        .select()
+        .from(campaigns)
+        .where(eq(campaigns.id, input.campaignId))
+        .limit(1);
+
+      return updated;
     }),
 });

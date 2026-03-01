@@ -142,6 +142,7 @@ export const campaigns = mysqlTable("campaigns", {
   status: mysqlEnum("status", ["draft", "active", "paused", "completed"]).default("draft").notNull(),
   startDate: timestamp("startDate"),
   endDate: timestamp("endDate"),
+  icpId: int("icp_id"), // Item 1.1b: campaign-specific ICP (FK to idealCustomerProfiles.id — declared without .references() to break circular TS cycle; constraint applied in migration SQL)
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({
@@ -206,6 +207,7 @@ export const idealCustomerProfiles = mysqlTable("idealCustomerProfiles", {
   serviceId: int("serviceId").references(() => services.id, { onDelete: "set null" }),
   campaignId: int("campaignId").references(() => campaigns.id, { onDelete: "set null" }),
   name: varchar("name", { length: 255 }).notNull(),
+  angleName: varchar("angle_name", { length: 255 }), // Item 1.1b: populated when ICP is generated from an angle suggestion
   
   // 17 Kong Tabs - Complete Parity
   introduction: text("introduction"), // Tab 1: Overview/intro
@@ -1008,3 +1010,26 @@ export const metaConnections = mysqlTable("metaConnections", {
 }));
 export type MetaConnection = typeof metaConnections.$inferSelect;
 export type InsertMetaConnection = typeof metaConnections.$inferInsert;
+
+/**
+ * ICP Angle Suggestions — Item 1.1b
+ * Stores AI-generated audience segment suggestions for a service.
+ * User picks 1-3 and full ICPs are generated from them.
+ */
+export const icpAngleSuggestions = mysqlTable("icp_angle_suggestions", {
+  id: int("id").autoincrement().primaryKey(),
+  serviceId: int("service_id").notNull().references(() => services.id, { onDelete: "cascade" }),
+  userId: int("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  angleName: varchar("angle_name", { length: 255 }).notNull(),
+  description: text("description").notNull(),
+  primaryPain: text("primary_pain").notNull(),
+  primaryBuyingTrigger: text("primary_buying_trigger").notNull(),
+  status: varchar("status", { length: 50 }).default("suggested"),
+  icpId: int("icp_id").references(() => idealCustomerProfiles.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  serviceIdIdx: index("idx_icp_angle_suggestions_serviceId").on(table.serviceId),
+  userIdIdx: index("idx_icp_angle_suggestions_userId").on(table.userId),
+}));
+export type IcpAngleSuggestion = typeof icpAngleSuggestions.$inferSelect;
+export type InsertIcpAngleSuggestion = typeof icpAngleSuggestions.$inferInsert;
