@@ -78,7 +78,7 @@ export default function HeroMechanisms() {
       {/* Action Buttons */}
       <div className="flex items-center justify-between mb-6">
         <Button variant="outline">
-          View Favourite Mechanisms
+          View Favourite Methods
         </Button>
         <Link href="/hero-mechanisms/new">
           <Button className="bg-primary hover:bg-primary/90">

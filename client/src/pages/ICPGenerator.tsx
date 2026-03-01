@@ -255,7 +255,7 @@ export default function ICPGenerator() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-primary" />
-                Generate New Your Ideal Customer
+                Generate Your Ideal Customer
               </CardTitle>
               <CardDescription>
                 Select a service and name your ideal customer profile
@@ -323,7 +323,7 @@ export default function ICPGenerator() {
           {/* Your Ideal Customer List */}
           <Card className="mt-6">
             <CardHeader>
-              <CardTitle>Your ICPs</CardTitle>
+              <CardTitle>Your Ideal Customers</CardTitle>
               <SearchBar
                 value={searchQuery}
                 onChange={setSearchQuery}
@@ -666,7 +666,7 @@ export default function ICPGenerator() {
             <Card>
               <CardContent className="py-12 text-center">
                 <p className="text-muted-foreground">
-                  Select an Your Ideal Customer from the list or generate a new one to view details
+                  Select an Ideal Customer from the list or generate a new one to view details
                 </p>
               </CardContent>
             </Card>
