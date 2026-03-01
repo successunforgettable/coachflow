@@ -1,0 +1,55 @@
+{
+  "query": "SELECT id, name, onboardingComplete, onboardingStage, activityStreak, lastActivityDate, streakUpdatedAt FROM users ORDER BY id DESC LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT id, name, onboardingComplete, onboardingStage, activityStreak, lastActivityDate, streakUpdatedAt FROM users ORDER BY id DESC LIMIT 5;",
+  "rows": [
+    {
+      "id": "4290087",
+      "name": "Test Quota User",
+      "onboardingComplete": "0",
+      "onboardingStage": "1",
+      "activityStreak": "0",
+      "lastActivityDate": "NULL",
+      "streakUpdatedAt": "NULL"
+    },
+    {
+      "id": "4290086",
+      "name": "Test Quota User",
+      "onboardingComplete": "0",
+      "onboardingStage": "1",
+      "activityStreak": "0",
+      "lastActivityDate": "NULL",
+      "streakUpdatedAt": "NULL"
+    },
+    {
+      "id": "4290085",
+      "name": "Power Mode Test User",
+      "onboardingComplete": "0",
+      "onboardingStage": "1",
+      "activityStreak": "0",
+      "lastActivityDate": "NULL",
+      "streakUpdatedAt": "NULL"
+    },
+    {
+      "id": "4290083",
+      "name": "Power Mode Test User",
+      "onboardingComplete": "0",
+      "onboardingStage": "1",
+      "activityStreak": "0",
+      "lastActivityDate": "NULL",
+      "streakUpdatedAt": "NULL"
+    },
+    {
+      "id": "4290082",
+      "name": "Power Mode Test User",
+      "onboardingComplete": "0",
+      "onboardingStage": "1",
+      "activityStreak": "0",
+      "lastActivityDate": "NULL",
+      "streakUpdatedAt": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tonboardingComplete\tonboardingStage\tactivityStreak\tlastActivityDate\tstreakUpdatedAt\n4290087\tTest Quota User\t0\t1\t0\tNULL\tNULL\n4290086\tTest Quota User\t0\t1\t0\tNULL\tNULL\n4290085\tPower Mode Test User\t0\t1\t0\tNULL\tNULL\n4290083\tPower Mode Test User\t0\t1\t0\tNULL\tNULL\n4290082\tPower Mode Test User\t0\t1\t0\tNULL\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 1564
+}

@@ -81,7 +81,12 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       )}
 
       {state.stage === 4 && (
-        <Stage4Streak programName={state.programName} onComplete={handleStage4Complete} />
+        <Stage4Streak
+          programName={state.programName}
+          campaignId={state.campaignId}
+          campaignType={state.campaignType || "webinar"}
+          onComplete={handleStage4Complete}
+        />
       )}
     </div>
   );

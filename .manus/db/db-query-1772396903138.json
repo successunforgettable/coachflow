@@ -1,0 +1,16 @@
+{
+  "query": "UPDATE users SET onboardingComplete = false, onboardingStage = 1 WHERE id = (SELECT u.id FROM (SELECT id FROM users LIMIT 1) u);\nUPDATE user_onboarding SET completed = false, completedAt = NULL WHERE userId = (SELECT u.id FROM (SELECT id FROM users LIMIT 1) u);\nSELECT u.id, u.onboardingComplete, u.onboardingStage, uo.completed FROM users u JOIN user_onboarding uo ON uo.userId = u.id LIMIT 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute UPDATE users SET onboardingComplete = false, onboardingStage = 1 WHERE id = (SELECT u.id FROM (SELECT id FROM users LIMIT 1) u);\nUPDATE user_onboarding SET completed = false, completedAt = NULL WHERE userId = (SELECT u.id FROM (SELECT id FROM users LIMIT 1) u);\nSELECT u.id, u.onboardingComplete, u.onboardingStage, uo.completed FROM users u JOIN user_onboarding uo ON uo.userId = u.id LIMIT 1;",
+  "rows": [
+    {
+      "id": "540102",
+      "onboardingComplete": "0",
+      "onboardingStage": "1",
+      "completed": "0"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tonboardingComplete\tonboardingStage\tcompleted\n540102\t0\t1\t0\n",
+  "stderr": "",
+  "execution_time_ms": 1972
+}

@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 
 const ZAP_LOGO =
@@ -5,17 +7,57 @@ const ZAP_LOGO =
 
 const PROGRESS_DOTS = [false, false, false, true, false];
 
+const CAMPAIGN_TYPE_LABELS: Record<string, string> = {
+  webinar: "webinar",
+  challenge: "challenge",
+  course_launch: "course",
+  product_launch: "launch",
+};
+
+const STEPS = [
+  { num: 1, label: "Your Sales Offer", done: false },
+  { num: 2, label: "Your Unique Method", done: false },
+  { num: 3, label: "Your Free Opt-In", done: false },
+  { num: 4, label: "Your Headlines", done: true },
+  { num: 5, label: "Your Ideal Customer", done: false },
+  { num: 6, label: "Your Ads", done: false },
+  { num: 7, label: "Your Ad Images", done: false },
+  { num: 8, label: "Your Ad Videos", done: false },
+  { num: 9, label: "Your Landing Page", done: false },
+  { num: 10, label: "Your Email Follow-Up", done: false },
+  { num: 11, label: "Your WhatsApp Follow-Up", done: false },
+];
+
 interface Stage4Props {
   programName: string;
+  campaignId: number | null;
+  campaignType: string;
   onComplete: () => void;
 }
 
-export function Stage4Streak({ programName, onComplete }: Stage4Props) {
+export function Stage4Streak({ programName, campaignId, campaignType, onComplete }: Stage4Props) {
+  const [, navigate] = useLocation();
   const setComplete = trpc.onboarding.setComplete.useMutation();
+  const updateStage = trpc.onboarding.updateStageFlag.useMutation();
 
-  async function handleEnterDashboard() {
+  useEffect(() => {
+    updateStage.mutate({ stage: 4 });
+  }, []);
+
+  const typeLabel = CAMPAIGN_TYPE_LABELS[campaignType] || "campaign";
+
+  async function handleStartStep1() {
     await setComplete.mutateAsync({});
-    onComplete();
+    if (campaignId) {
+      navigate(`/campaigns/${campaignId}`);
+    } else {
+      navigate("/dashboard");
+    }
+  }
+
+  async function handleExploreOwn() {
+    await setComplete.mutateAsync({});
+    navigate("/dashboard");
   }
 
   return (
@@ -65,150 +107,163 @@ export function Stage4Streak({ programName, onComplete }: Stage4Props) {
         className="zo-card zo-fade-up"
         style={{
           width: "100%",
-          maxWidth: "480px",
+          maxWidth: "520px",
           padding: "36px 32px",
-          textAlign: "center",
         }}
       >
-        {/* Streak flame */}
-        <div
-          style={{
-            fontSize: "64px",
-            marginBottom: "12px",
-            lineHeight: 1,
-            animation: "zo-badge-in 600ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards",
-          }}
-        >
-          🔥
-        </div>
-
-        {/* Streak counter */}
-        <div
-          style={{
-            display: "inline-flex",
-            alignItems: "baseline",
-            gap: "6px",
-            marginBottom: "8px",
-          }}
-        >
-          <span
-            style={{
-              fontFamily: "Fraunces, serif",
-              fontStyle: "italic",
-              fontWeight: 900,
-              fontSize: "72px",
-              color: "var(--charge)",
-              lineHeight: 1,
-            }}
-          >
-            1
-          </span>
-          <span
-            style={{
-              fontSize: "18px",
-              fontWeight: 700,
-              color: "var(--ink-2)",
-            }}
-          >
-            day streak
-          </span>
-        </div>
-
+        {/* Title */}
         <h2
           style={{
-            fontSize: "clamp(20px, 4vw, 26px)",
-            marginBottom: "8px",
+            fontFamily: "Fraunces, serif",
+            fontStyle: "italic",
+            fontWeight: 900,
+            fontSize: "28px",
+            color: "var(--ink)",
+            marginBottom: "20px",
             lineHeight: 1.2,
           }}
         >
-          You're already building momentum
+          Your campaign kit
         </h2>
 
+        {/* Progress bar — 9% fill */}
+        <div style={{ marginBottom: "20px" }}>
+          <div
+            style={{
+              height: "8px",
+              background: "var(--inset)",
+              borderRadius: "4px",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                height: "100%",
+                width: "9%",
+                background: "var(--charge)",
+                borderRadius: "4px",
+                transition: "width 0.8s ease",
+              }}
+            />
+          </div>
+          <p
+            style={{
+              fontSize: "13px",
+              color: "var(--ink-3)",
+              marginTop: "6px",
+              textAlign: "right",
+            }}
+          >
+            1 of 11
+          </p>
+        </div>
+
+        {/* Subtitle */}
         <p
           style={{
-            fontSize: "14px",
+            fontSize: "15px",
             color: "var(--ink-2)",
-            marginBottom: "28px",
-            lineHeight: 1.6,
+            marginBottom: "16px",
+            lineHeight: 1.5,
           }}
         >
-          Every day you generate content in ZAP, your streak grows. Coaches who
-          show up consistently for{" "}
-          <strong style={{ color: "var(--ink)" }}>7 days straight</strong> generate
-          3× more leads in their first month.
+          Everything ZAP will build for your{" "}
+          <strong style={{ color: "var(--ink)" }}>{typeLabel}</strong>:
         </p>
 
-        {/* Streak milestones */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            gap: "12px",
-            marginBottom: "32px",
-          }}
-        >
-          {[
-            { days: 1, label: "Today", active: true },
-            { days: 3, label: "3 days", active: false },
-            { days: 7, label: "1 week", active: false },
-            { days: 30, label: "1 month", active: false },
-          ].map(({ days, label, active }) => (
+        {/* 11-step list */}
+        <div style={{ marginBottom: "28px" }}>
+          {STEPS.map((step) => (
             <div
-              key={days}
+              key={step.num}
               style={{
                 display: "flex",
-                flexDirection: "column",
                 alignItems: "center",
-                gap: "4px",
+                gap: "12px",
+                padding: "10px 0",
+                borderBottom: step.num < 11 ? "1px solid var(--ink-5, rgba(255,255,255,0.06))" : "none",
               }}
             >
+              {/* Tick or number circle */}
               <div
                 style={{
-                  width: "40px",
-                  height: "40px",
+                  width: "26px",
+                  height: "26px",
                   borderRadius: "50%",
-                  background: active ? "var(--charge)" : "var(--inset)",
-                  border: active ? "none" : "1.5px solid var(--ink-4)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  fontSize: "16px",
-                  boxShadow: active ? "var(--sh-charge)" : "none",
-                  animation: active ? "zo-pulse-green 2s ease infinite" : "none",
+                  flexShrink: 0,
+                  background: step.done ? "#22c55e" : "transparent",
+                  border: step.done ? "none" : "2px solid var(--ink-4)",
+                  fontSize: "12px",
+                  color: step.done ? "#fff" : "var(--ink-3)",
+                  fontWeight: 700,
                 }}
               >
-                {active ? "🔥" : "○"}
+                {step.done ? "✓" : step.num}
               </div>
+
+              {/* Label */}
               <span
                 style={{
-                  fontSize: "11px",
-                  color: active ? "var(--charge)" : "var(--ink-3)",
-                  fontWeight: active ? 700 : 400,
+                  flex: 1,
+                  fontSize: "15px",
+                  color: step.done ? "var(--ink)" : "var(--ink-2)",
+                  fontWeight: step.done ? 600 : 400,
                 }}
               >
-                {label}
+                {step.label}
               </span>
+
+              {/* "1 done" badge */}
+              {step.done && (
+                <span
+                  style={{
+                    fontSize: "12px",
+                    color: "#22c55e",
+                    fontWeight: 600,
+                    background: "rgba(34,197,94,0.12)",
+                    padding: "2px 8px",
+                    borderRadius: "12px",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  1 done
+                </span>
+              )}
             </div>
           ))}
         </div>
 
+        {/* Primary CTA */}
         <button
           className="btn-primary"
-          onClick={handleEnterDashboard}
+          onClick={handleStartStep1}
           disabled={setComplete.isPending}
+          style={{ width: "100%", marginBottom: "14px" }}
         >
-          {setComplete.isPending ? "Setting up…" : `Enter your dashboard →`}
+          {setComplete.isPending ? "Setting up…" : "Start from Step 1 →"}
         </button>
 
-        <p
-          style={{
-            fontSize: "12px",
-            color: "var(--ink-3)",
-            marginTop: "12px",
-          }}
-        >
-          Your campaign for <em>{programName}</em> is ready to build.
-        </p>
+        {/* Secondary link */}
+        <div style={{ textAlign: "center" }}>
+          <button
+            onClick={handleExploreOwn}
+            disabled={setComplete.isPending}
+            style={{
+              background: "none",
+              border: "none",
+              color: "var(--ink-3)",
+              fontSize: "14px",
+              cursor: "pointer",
+              textDecoration: "underline",
+              fontFamily: "'Instrument Sans', sans-serif",
+            }}
+          >
+            I'll explore on my own ›
+          </button>
+        </div>
       </div>
     </div>
   );
