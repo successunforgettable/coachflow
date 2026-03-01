@@ -41,22 +41,22 @@ export default function LandingPage() {
     },
     {
       icon: <FileText className="w-8 h-8 text-primary" />,
-      title: "HVCO Titles",
+      title: "Your Free Opt-In",
       description: "Create compelling titles for your high-value content offers. 50 variations to choose from.",
     },
     {
       icon: <Target className="w-8 h-8 text-primary" />,
-      title: "Hero Mechanisms",
+      title: "Your Unique Method",
       description: "Develop unique mechanisms that set your offer apart. 15 hero mechanisms with supporting copy.",
     },
     {
       icon: <Target className="w-8 h-8 text-primary" />,
-      title: "ICP Generator",
+      title: "Your Ideal Customer Generator",
       description: "Build detailed customer profiles with 17 comprehensive sections. Know exactly who you're marketing to.",
     },
     {
       icon: <Zap className="w-8 h-8 text-primary" />,
-      title: "Ad Copy Generator",
+      title: "Your Ads Generator",
       description: "Generate complete ad campaigns with headlines, body copy, and CTAs. 15 variations per generation.",
     },
     {
@@ -107,7 +107,7 @@ export default function LandingPage() {
         "All 9 content generators",
         "PDF export",
         "Campaign builder",
-        "Power Mode (3x output)",
+        "Advanced options (3x output)",
         "Priority support",
       ],
       cta: "Start Free Trial",
@@ -123,7 +123,7 @@ export default function LandingPage() {
         "All 9 content generators",
         "PDF export",
         "Campaign builder",
-        "Power Mode (3x output)",
+        "Advanced options (3x output)",
         "Priority support",
         "White-label options",
       ],
@@ -151,12 +151,12 @@ export default function LandingPage() {
     {
       question: "What's the difference between Trial, Pro, and Agency?",
       answer:
-        "Trial gives you 3 generations per tool for 7 days (no credit card required). Pro gives you 50 generations per tool per month plus Power Mode for 3x output. Agency gives you unlimited generations plus white-label options for client work.",
+        "Trial gives you 3 generations per tool for 7 days (no credit card required). Pro gives you 50 generations per tool per month plus Advanced options for 3x output. Agency gives you unlimited generations plus white-label options for client work.",
     },
     {
       question: "How many generations do I get?",
       answer:
-        "Trial: 3 per tool. Pro: 50 per tool per month. Agency: Unlimited. Quotas reset monthly. Power Mode (Pro/Agency only) generates 3x more variations in a single generation.",
+        "Trial: 3 per tool. Pro: 50 per tool per month. Agency: Unlimited. Quotas reset monthly. Advanced options (Pro/Agency only) generates 3x more variations in a single generation.",
     },
     {
       question: "Can I cancel anytime?",

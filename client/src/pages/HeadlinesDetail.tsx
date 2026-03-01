@@ -52,10 +52,10 @@ export default function HeadlinesDetail() {
   
   const togglePowerMode = trpc.auth.toggleBeastMode.useMutation({
     onSuccess: (data: { enabled: boolean }) => {
-      toast.success(`Power Mode ${data.enabled ? 'enabled' : 'disabled'}`);
+      toast.success(`Advanced options ${data.enabled ? 'enabled' : 'disabled'}`);
     },
     onError: (error: any) => {
-      toast.error(`Failed to toggle Power Mode: ${error.message}`);
+      toast.error(`Failed to toggle advanced options: ${error.message}`);
     },
   });
 
@@ -173,7 +173,7 @@ export default function HeadlinesDetail() {
       sections,
       metadata: {
         generatedDate: new Date(headlines.story[0]?.createdAt || new Date()).toLocaleDateString(),
-        generatorType: "Direct Response Headlines",
+        generatorType: "Your Headlines",
       },
     });
 
@@ -243,11 +243,11 @@ export default function HeadlinesDetail() {
             <p className="text-sm text-muted-foreground">{metadata.targetMarket}</p>
           </div>
           <div>
-            <h3 className="font-semibold mb-2">Pressing Problem</h3>
+            <h3 className="font-semibold mb-2">The main problem you solve</h3>
             <p className="text-sm text-muted-foreground">{metadata.pressingProblem}</p>
           </div>
           <div>
-            <h3 className="font-semibold mb-2">Desired Outcome</h3>
+            <h3 className="font-semibold mb-2">The result your customer wants</h3>
             <p className="text-sm text-muted-foreground">{metadata.desiredOutcome}</p>
           </div>
           <div>
@@ -268,7 +268,7 @@ export default function HeadlinesDetail() {
               { id: "question", label: "Question", count: headlines.question.length },
               { id: "authority", label: "Authority", count: headlines.authority.length },
               { id: "urgency", label: "Urgency", count: headlines.urgency.length },
-              { id: "powermode", label: "Power Mode" }
+              { id: "powermode", label: "Advanced options" }
             ]}
             activeTab={activeTab}
             onTabChange={setActiveTab}
@@ -474,7 +474,7 @@ export default function HeadlinesDetail() {
               <Card className="p-6 mb-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-lg font-semibold mb-1">Power Mode</h3>
+                    <h3 className="text-lg font-semibold mb-1">Advanced options</h3>
                     <p className="text-sm text-muted-foreground">Enable to generate 15 additional variations automatically</p>
                   </div>
                   <Switch 
@@ -485,7 +485,7 @@ export default function HeadlinesDetail() {
                 </div>
               </Card>
               <div className="text-center py-12">
-                <h3 className="text-xl font-semibold mb-2">Power Mode Variations</h3>
+                <h3 className="text-xl font-semibold mb-2">Advanced Variations</h3>
                 <p className="text-muted-foreground mb-4">Additional headline variations will appear here</p>
                 <Button 
                   variant="default" 
@@ -493,7 +493,7 @@ export default function HeadlinesDetail() {
                   onClick={handleGenerateMore}
                   disabled={generateMoreMutation.isPending}
                 >
-                  {generateMoreMutation.isPending ? "Generating..." : "Generate Power Mode Headlines"}
+                  {generateMoreMutation.isPending ? "Generating..." : "Generate Advanced Headlines"}
                 </Button>
               </div>
             </PillTabContent>
@@ -521,7 +521,7 @@ export default function HeadlinesDetail() {
             />
           </div>
           <div>
-            <Label htmlFor="pressingProblem">Pressing Problem*</Label>
+            <Label htmlFor="pressingProblem">The main problem you solve*</Label>
             <Textarea
               id="pressingProblem"
               value={regenerateForm.pressingProblem}
@@ -531,7 +531,7 @@ export default function HeadlinesDetail() {
             />
           </div>
           <div>
-            <Label htmlFor="desiredOutcome">Desired Outcome*</Label>
+            <Label htmlFor="desiredOutcome">The result your customer wants*</Label>
             <Textarea
               id="desiredOutcome"
               value={regenerateForm.desiredOutcome}

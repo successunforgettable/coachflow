@@ -39,14 +39,14 @@ export default function HVCOTitles() {
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold mb-2">HVCO Titles</h1>
+          <h1 className="text-3xl font-bold mb-2">Your Free Opt-In</h1>
           <p className="text-muted-foreground">
             Craft compelling titles for your high-value content offers to attract and engage your ideal audience.
           </p>
         </div>
         <QuotaIndicator 
           generatorType="hvco" 
-          label="HVCO Usage"
+          label="Free Opt-In Usage"
         />
       </div>
 
@@ -68,7 +68,7 @@ export default function HVCOTitles() {
       {/* Search Bar */}
       <div className="mb-6">
         <SearchBar
-          placeholder="Search HVCO Titles..."
+          placeholder="Search Free Opt-In..."
           value={searchQuery}
           onChange={setSearchQuery}
         />
@@ -82,7 +82,7 @@ export default function HVCOTitles() {
         <Link href="/hvco-titles/new">
           <Button className="bg-primary hover:bg-primary/90">
             <PlusIcon className="w-4 h-4 mr-2" />
-            Create New HVCO
+            Create New Free Opt-In
           </Button>
         </Link>
       </div>
@@ -91,14 +91,14 @@ export default function HVCOTitles() {
       {!hvcoSets || hvcoSets.length === 0 ? (
         <Card className="p-12 text-center">
           <FolderIcon className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-          <h3 className="text-lg font-semibold mb-2">No HVCO Titles Yet</h3>
+          <h3 className="text-lg font-semibold mb-2">No Free Opt-In Titles Yet</h3>
           <p className="text-muted-foreground mb-4">
-            Create your first HVCO title set to get started
+            Create your first Free Opt-In set to get started
           </p>
           <Link href="/hvco-titles/new">
             <Button className="bg-primary hover:bg-primary/90">
               <PlusIcon className="w-4 h-4 mr-2" />
-              Create New HVCO
+              Create New Free Opt-In
             </Button>
           </Link>
         </Card>
@@ -109,7 +109,7 @@ export default function HVCOTitles() {
               <div className="space-y-4">
                 <div>
                   <h3 className="font-semibold text-sm text-muted-foreground mb-2">
-                    HVCO #{set.hvcoSetId.slice(0, 8)}
+                    Free Opt-In #{set.hvcoSetId.slice(0, 8)}
                   </h3>
                   <p className="text-lg font-medium line-clamp-2 mb-3">
                     {set.sampleTitle}
@@ -120,7 +120,7 @@ export default function HVCOTitles() {
                 </div>
                 <Link href={`/hvco-titles/${set.hvcoSetId}`}>
                   <Button className="w-full bg-green-600 hover:bg-green-700">
-                    View HVCO
+                    View Free Opt-In
                   </Button>
                 </Link>
               </div>

@@ -40,14 +40,14 @@ export default function HeroMechanisms() {
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold mb-2">Hero Mechanisms</h1>
+          <h1 className="text-3xl font-bold mb-2">Your Unique Method</h1>
           <p className="text-muted-foreground">
             Highlight the unique features and benefits that set your product apart.
           </p>
         </div>
         <QuotaIndicator 
           generatorType="heroMechanism" 
-          label="Hero Mechanism Usage"
+          label="Unique Method Usage"
         />
       </div>
 
@@ -69,7 +69,7 @@ export default function HeroMechanisms() {
       {/* Search Bar */}
       <div className="mb-6">
         <SearchBar
-          placeholder="Search Hero Mechanisms..."
+          placeholder="Search Unique Methods..."
           value={searchQuery}
           onChange={setSearchQuery}
         />
@@ -83,7 +83,7 @@ export default function HeroMechanisms() {
         <Link href="/hero-mechanisms/new">
           <Button className="bg-primary hover:bg-primary/90">
             <PlusIcon className="w-4 h-4 mr-2" />
-            Create New Hero Mechanism
+            Create New Unique Method
           </Button>
         </Link>
       </div>
@@ -92,14 +92,14 @@ export default function HeroMechanisms() {
       {!mechanismSets || mechanismSets.length === 0 ? (
         <Card className="p-12 text-center">
           <FolderIcon className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-          <h3 className="text-lg font-semibold mb-2">No Hero Mechanisms Yet</h3>
+          <h3 className="text-lg font-semibold mb-2">No Unique Methods Yet</h3>
           <p className="text-muted-foreground mb-4">
             Create your first hero mechanism set to get started
           </p>
           <Link href="/hero-mechanisms/new">
             <Button className="bg-primary hover:bg-primary/90">
               <PlusIcon className="w-4 h-4 mr-2" />
-              Create New Hero Mechanism
+              Create New Unique Method
             </Button>
           </Link>
         </Card>
@@ -110,7 +110,7 @@ export default function HeroMechanisms() {
               <div className="space-y-4">
                 <div>
                   <h3 className="font-semibold text-sm text-muted-foreground mb-2">
-                    Hero Mechanism #{set.mechanismSetId.slice(0, 8)}
+                    Unique Method #{set.mechanismSetId.slice(0, 8)}
                   </h3>
                   <div className="space-y-3">
                     <div>
@@ -118,18 +118,18 @@ export default function HeroMechanisms() {
                       <p className="text-sm line-clamp-2">{set.targetMarket}</p>
                     </div>
                     <div>
-                      <p className="text-xs font-semibold text-muted-foreground mb-1">Pressing Problem</p>
+                      <p className="text-xs font-semibold text-muted-foreground mb-1">The main problem you solve</p>
                       <p className="text-sm line-clamp-3">{set.pressingProblem}</p>
                     </div>
                     <div>
-                      <p className="text-xs font-semibold text-muted-foreground mb-1">Desired Outcome</p>
+                      <p className="text-xs font-semibold text-muted-foreground mb-1">The result your customer wants</p>
                       <p className="text-sm line-clamp-2">{set.desiredOutcome}</p>
                     </div>
                   </div>
                 </div>
                 <Link href={`/hero-mechanisms/${set.mechanismSetId}`}>
                   <Button className="w-full bg-green-600 hover:bg-green-700">
-                    View Hero Mechanisms
+                    View Unique Methods
                   </Button>
                 </Link>
               </div>

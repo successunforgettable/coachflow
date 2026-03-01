@@ -24,7 +24,7 @@ interface OnboardingWizardProps {
 const STEPS = [
   { id: 0, title: "Welcome", component: WelcomeStep, isIntro: true },
   { id: 1, title: "Define Service", component: CreateServiceStep },
-  { id: 2, title: "Create ICP", component: GenerateICPStep },
+  { id: 2, title: "Your Ideal Customer", component: GenerateICPStep },
   { id: 3, title: "Craft Offer", component: GenerateOfferStep },
   { id: 4, title: "Generate Headlines", component: GenerateHeadlinesStep },
   { id: 5, title: "Create Campaign", component: CreateCampaignStep },

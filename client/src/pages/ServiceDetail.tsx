@@ -288,9 +288,9 @@ export default function ServiceDetail() {
                 />
               </div>
 
-              {/* Social Proof Section */}
+              {/* Reviews and results Section */}
               <div className="border-t pt-6 mt-6">
-                <h3 className="text-lg font-semibold mb-4">Social Proof (Optional)</h3>
+                <h3 className="text-lg font-semibold mb-4">Reviews and results (Optional)</h3>
                 <p className="text-sm text-muted-foreground mb-6">
                   Add real social proof to eliminate fabricated statistics in generated content. Leave empty for launch-safe alternatives.
                 </p>
@@ -453,7 +453,7 @@ export default function ServiceDetail() {
                     </p>
                   </div>
 
-                  {/* Social Proof Stat (Video Authority Badge) */}
+                  {/* Reviews and results Stat (Video Authority Badge) */}
                   <div>
                     <Label htmlFor="socialProofStat">Video Authority Badge Stat</Label>
                     <Input
@@ -491,7 +491,7 @@ export default function ServiceDetail() {
 
                   {/* HVCO Topic */}
                   <div>
-                    <Label htmlFor="hvcoTopic">HVCO Topic</Label>
+                    <Label htmlFor="hvcoTopic">Free Opt-In Topic</Label>
                     <Input
                       id="hvcoTopic"
                       placeholder="e.g., 7 Secrets to Double Your Revenue in 90 Days"

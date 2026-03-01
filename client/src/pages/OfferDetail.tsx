@@ -96,7 +96,7 @@ export default function OfferDetail() {
       metadata: {
         generatedDate: new Date().toLocaleDateString(),
         productName: offer.productName,
-        generatorType: "Offers Generator",
+        generatorType: "Your Sales Offer",
       },
       sections: [
         {

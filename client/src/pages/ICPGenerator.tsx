@@ -21,7 +21,7 @@ import { toast } from "sonner";
 import RegenerateSidebar from "@/components/RegenerateSidebar";
 import { RegenerateConfirmationDialog } from "@/components/RegenerateConfirmationDialog";
 
-// Real-world ICP name examples 
+// Real-world Your Ideal Customer name examples 
 const ICP_NAME_EXAMPLES = [
   "Tech-Savvy Millennial Entrepreneur",
   "Busy Corporate Executive",
@@ -107,7 +107,7 @@ export default function ICPGenerator() {
 
   const confirmGenerateMore = () => {
     if (!selectedICP || !selectedICP.serviceId) {
-      toast.error("Cannot regenerate: No service associated with this ICP");
+      toast.error("Cannot regenerate: No service associated with this Your Ideal Customer");
       return;
     }
     
@@ -122,7 +122,7 @@ export default function ICPGenerator() {
 
   const handleGenerate = () => {
     if (!selectedServiceId || !icpName.trim()) {
-      toast.error("Please select a service and enter an ICP name");
+      toast.error("Please select a service and enter an Your Ideal Customer name");
       return;
     }
     generateMutation.mutate({
@@ -136,7 +136,7 @@ export default function ICPGenerator() {
   };
 
   const handleDelete = (icpId: number) => {
-    if (confirm("Are you sure you want to delete this ICP?")) {
+    if (confirm("Are you sure you want to delete this Your Ideal Customer?")) {
       deleteMutation.mutate({ id: icpId });
     }
   };
@@ -218,7 +218,7 @@ export default function ICPGenerator() {
           <QuotaProgressBar
             used={authData.icpGeneratedCount}
             limit={quotaLimits?.icp || 50}
-            label="ICP Quota"
+            label="Your Ideal Customer Quota"
             resetDate={authData.usageResetAt ? new Date(authData.usageResetAt) : undefined}
           />
         </div>
@@ -228,7 +228,7 @@ export default function ICPGenerator() {
       {authData && authData.subscriptionTier && quotaLimits && authData.icpGeneratedCount >= quotaLimits.icp && (
         <div className="mb-6">
           <UpgradePrompt
-            generatorName="ICP"
+            generatorName="Your Ideal Customer"
             currentTier={authData.subscriptionTier}
             used={authData.icpGeneratedCount}
             limit={quotaLimits.icp}
@@ -255,7 +255,7 @@ export default function ICPGenerator() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-primary" />
-                Generate New ICP
+                Generate New Your Ideal Customer
               </CardTitle>
               <CardDescription>
                 Select a service and name your ideal customer profile
@@ -283,7 +283,7 @@ export default function ICPGenerator() {
 
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <Label htmlFor="icpName">ICP Name*</Label>
+                  <Label htmlFor="icpName">Your Ideal Customer Name*</Label>
                   <span className={`text-xs ${icpNameCharsLeft < 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
                     {icpNameCharsLeft} chars left
                   </span>
@@ -313,14 +313,14 @@ export default function ICPGenerator() {
                 ) : (
                   <>
                     <Sparkles className="w-4 h-4 mr-2" />
-                    Generate ICP
+                    Generate Your Ideal Customer
                   </>
                 )}
               </Button>
             </CardContent>
           </Card>
 
-          {/* ICP List */}
+          {/* Your Ideal Customer List */}
           <Card className="mt-6">
             <CardHeader>
               <CardTitle>Your ICPs</CardTitle>
@@ -375,7 +375,7 @@ export default function ICPGenerator() {
           </Card>
         </div>
 
-        {/* Right Column - ICP Details with 17 Tabs */}
+        {/* Right Column - Your Ideal Customer Details with 17 Tabs */}
         <div className="lg:col-span-2">
           {selectedICP ? (
             <div className="flex gap-6">
@@ -630,10 +630,10 @@ export default function ICPGenerator() {
               {/* Regenerate Sidebar */}
               <RegenerateSidebar
                 title="Regenerate Avatar"
-                subtitle="Submit or modify the pre-filled form below to regenerate a similar ICP"
+                subtitle="Submit or modify the pre-filled form below to regenerate a similar Your Ideal Customer"
                 onRegenerate={() => {
                   if (!selectedICP.serviceId) {
-                    toast.error("Cannot regenerate: No service associated with this ICP");
+                    toast.error("Cannot regenerate: No service associated with this Your Ideal Customer");
                     return;
                   }
                   const timestamp = new Date().toLocaleTimeString();
@@ -652,11 +652,11 @@ export default function ICPGenerator() {
                     </p>
                   </div>
                   <div>
-                    <Label htmlFor="regenerate-name">ICP Name</Label>
+                    <Label htmlFor="regenerate-name">Your Ideal Customer Name</Label>
                     <Input
                       id="regenerate-name"
                       defaultValue={selectedICP.name}
-                      placeholder="Enter new ICP name"
+                      placeholder="Enter new Your Ideal Customer name"
                     />
                   </div>
                 </div>
@@ -666,7 +666,7 @@ export default function ICPGenerator() {
             <Card>
               <CardContent className="py-12 text-center">
                 <p className="text-muted-foreground">
-                  Select an ICP from the list or generate a new one to view details
+                  Select an Your Ideal Customer from the list or generate a new one to view details
                 </p>
               </CardContent>
             </Card>
@@ -679,7 +679,7 @@ export default function ICPGenerator() {
         open={showConfirmDialog}
         onOpenChange={setShowConfirmDialog}
         onConfirm={confirmGenerateMore}
-        generatorName="ICP"
+        generatorName="Your Ideal Customer"
         currentCount={user?.icpGeneratedCount || 0}
         limit={user?.role === "superuser" ? Infinity : (user?.subscriptionTier === "agency" ? 999 : user?.subscriptionTier === "pro" ? 50 : 0)}
         resetDate={undefined}

@@ -46,7 +46,7 @@ export default function SourceOfTruth() {
 
   const generateMutation = trpc.sourceOfTruth.generate.useMutation({
     onSuccess: () => {
-      toast.success("Source of Truth generated!");
+      toast.success("Your Brand Summary generated!");
       setShowGenerator(false);
       refetch();
     },
@@ -55,7 +55,7 @@ export default function SourceOfTruth() {
 
   const updateMutation = trpc.sourceOfTruth.update.useMutation({
     onSuccess: () => {
-      toast.success("Source of Truth updated!");
+      toast.success("Your Brand Summary updated!");
       setIsEditing(false);
       refetch();
     },
@@ -106,7 +106,7 @@ export default function SourceOfTruth() {
     <div className="min-h-screen bg-background p-8">
       <div className="max-w-5xl mx-auto">
         <PageHeader
-          title="Source of Truth"
+          title="Your Brand Summary"
           description="Your AI-generated comprehensive service profile - the foundation for all your marketing"
           backTo="/dashboard"
           action={
@@ -137,14 +137,14 @@ export default function SourceOfTruth() {
           <Card>
             <CardContent className="py-12 text-center">
               <Sparkles className="w-16 h-16 mx-auto mb-4 text-primary" />
-              <h2 className="text-2xl font-bold text-foreground mb-2">Create Your Source of Truth</h2>
+              <h2 className="text-2xl font-bold text-foreground mb-2">Create Your Your Brand Summary</h2>
               <p className="text-muted-foreground mb-6 max-w-2xl mx-auto">
                 Answer 4 simple questions and let AI generate a comprehensive service profile that will power all your
                 marketing assets. This becomes your single source of truth for ICPs, ad copy, email sequences, and more.
               </p>
               <Button onClick={() => setShowGenerator(true)} size="lg">
                 <Sparkles className="w-5 h-5 mr-2" />
-                Generate Source of Truth
+                Generate Your Brand Summary
               </Button>
             </CardContent>
           </Card>
@@ -153,7 +153,7 @@ export default function SourceOfTruth() {
         {showGenerator && (
           <Card>
             <CardHeader>
-              <CardTitle>Generate Your Source of Truth</CardTitle>
+              <CardTitle>Generate Your Your Brand Summary</CardTitle>
               <CardDescription>Fill in these 4 fields and AI will generate a complete profile</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">

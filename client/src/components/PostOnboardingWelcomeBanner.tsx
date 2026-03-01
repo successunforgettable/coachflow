@@ -66,7 +66,7 @@ export function PostOnboardingWelcomeBanner() {
             1
           </div>
           <div className="flex-1">
-            <h4 className="font-semibold text-white mb-1">Ad Copy Generator</h4>
+            <h4 className="font-semibold text-white mb-1">Your Ads Generator</h4>
             <p className="text-sm text-gray-400 mb-2">
               Generate 25+ headlines and body copy variations using proven formulas
             </p>

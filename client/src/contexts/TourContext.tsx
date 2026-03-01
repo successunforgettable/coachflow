@@ -94,7 +94,7 @@ const TOUR_STEPS: Record<string, Step[]> = {
     },
     {
       target: '[data-tour="power-mode"]',
-      content: 'Power Mode (Pro/Agency only) generates 3x more variations in a single generation.',
+      content: 'Advanced options (Pro/Agency only) generates 3x more variations in a single generation.',
       placement: 'left',
     },
     {

@@ -62,11 +62,11 @@ export default function HeroMechanismsDetail() {
   
   const deleteMutation = trpc.heroMechanisms.delete.useMutation({
     onSuccess: () => {
-      toast.success("Hero Mechanism deleted successfully");
+      toast.success("Your Unique Method deleted successfully");
       setLocation("/hero-mechanisms");
     },
     onError: (error) => {
-      toast.error(`Failed to delete Hero Mechanism: ${error.message}`);
+      toast.error(`Failed to delete Your Unique Method: ${error.message}`);
     },
   });
 
@@ -84,7 +84,7 @@ export default function HeroMechanismsDetail() {
 
   const generateMoreMutation = trpc.heroMechanisms.generate.useMutation({
     onSuccess: () => {
-      toast.success("Generated 15 more Hero Mechanisms!");
+      toast.success("Generated 15 more Your Unique Method!");
       // Refresh the data
       window.location.reload();
     },
@@ -141,7 +141,7 @@ export default function HeroMechanismsDetail() {
 
     const sections = [
       {
-        title: "Hero Mechanisms",
+        title: "Your Unique Method",
         content: mechanismsByTab.hero.map(m => `${m.mechanismName}\n${m.mechanismDescription}`),
       },
       {
@@ -149,18 +149,18 @@ export default function HeroMechanismsDetail() {
         content: mechanismsByTab.headlines.map(m => `${m.mechanismName}\n${m.mechanismDescription}`),
       },
       {
-        title: "Power Mode",
+        title: "Advanced options",
         content: mechanismsByTab.beast.map(m => `${m.mechanismName}\n${m.mechanismDescription}`),
       },
     ];
 
     exportToPDF({
-      title: "Hero Mechanisms",
+      title: "Your Unique Method",
       subtitle: mechanisms[0]?.targetMarket || "Product Mechanisms",
       sections,
       metadata: {
         generatedDate: new Date(mechanisms[0]?.createdAt || new Date()).toLocaleDateString(),
-        generatorType: "Hero Mechanisms",
+        generatorType: "Your Unique Method",
       },
     });
 
@@ -168,7 +168,7 @@ export default function HeroMechanismsDetail() {
   };
 
   const handleDelete = () => {
-    if (confirm("Are you sure you want to delete this Hero Mechanism set? This action cannot be undone.")) {
+    if (confirm("Are you sure you want to delete this Your Unique Method set? This action cannot be undone.")) {
       deleteMutation.mutate({ mechanismSetId });
     }
   };
@@ -189,12 +189,12 @@ export default function HeroMechanismsDetail() {
     return (
       <div className="container py-8">
         <Card className="p-12 text-center">
-          <h3 className="text-lg font-semibold mb-2">Hero Mechanism Not Found</h3>
+          <h3 className="text-lg font-semibold mb-2">Your Unique Method Not Found</h3>
           <p className="text-muted-foreground mb-4">
-            This Hero Mechanism set doesn't exist or has been deleted
+            This Your Unique Method set doesn't exist or has been deleted
           </p>
           <Button onClick={() => setLocation("/hero-mechanisms")}>
-            Back to Hero Mechanisms
+            Back to Your Unique Method
           </Button>
         </Card>
       </div>
@@ -240,11 +240,11 @@ export default function HeroMechanismsDetail() {
         </Card>
       )}
 
-      {/* Hero Mechanism Header */}
+      {/* Your Unique Method Header */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-semibold text-muted-foreground">
-            Hero Mechanism #{mechanismSetId.slice(0, 8)}
+            Your Unique Method #{mechanismSetId.slice(0, 8)}
           </h2>
           <div className="flex items-center gap-2">
             <Button
@@ -287,11 +287,11 @@ export default function HeroMechanismsDetail() {
             <p className="text-sm">{firstMechanism.targetMarket}</p>
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-muted-foreground mb-1">Desired Outcome</h3>
+            <h3 className="text-sm font-semibold text-muted-foreground mb-1">The result your customer wants</h3>
             <p className="text-sm">{firstMechanism.desiredOutcome}</p>
           </div>
           <div className="md:col-span-2">
-            <h3 className="text-sm font-semibold text-muted-foreground mb-1">Pressing Problem</h3>
+            <h3 className="text-sm font-semibold text-muted-foreground mb-1">The main problem you solve</h3>
             <p className="text-sm">{firstMechanism.pressingProblem}</p>
           </div>
         </div>
@@ -300,12 +300,12 @@ export default function HeroMechanismsDetail() {
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabType)}>
         <TabsList className="grid w-full grid-cols-3 mb-6">
-          <TabsTrigger value="hero_mechanisms">Hero Mechanisms</TabsTrigger>
+          <TabsTrigger value="hero_mechanisms">Your Unique Method</TabsTrigger>
           <TabsTrigger value="headline_ideas">Headline Ideas</TabsTrigger>
-          <TabsTrigger value="beast_mode">Power Mode</TabsTrigger>
+          <TabsTrigger value="beast_mode">Advanced options</TabsTrigger>
         </TabsList>
 
-        {/* Hero Mechanisms Tab */}
+        {/* Your Unique Method Tab */}
         <TabsContent value="hero_mechanisms" className="space-y-4">
           {mechanismsByTab.hero_mechanisms.map((mechanism) => (
             <Card key={mechanism.id} className="p-6 hover:border-primary/50 transition-colors">
@@ -323,7 +323,7 @@ export default function HeroMechanismsDetail() {
                 </button>
                 <div className="flex-1 space-y-3">
                   <div>
-                    <p className="text-xs font-semibold text-muted-foreground mb-1">Hero Mechanism</p>
+                    <p className="text-xs font-semibold text-muted-foreground mb-1">Your Unique Method</p>
                     <h3 className="text-xl font-bold mb-2">{mechanism.mechanismName}</h3>
                     <p className="text-sm text-muted-foreground leading-relaxed">
                       {mechanism.mechanismDescription}
@@ -419,7 +419,7 @@ export default function HeroMechanismsDetail() {
                 </button>
                 <div className="flex-1 space-y-3">
                   <div>
-                    <p className="text-xs font-semibold text-muted-foreground mb-1">Power Mode Mechanism</p>
+                    <p className="text-xs font-semibold text-muted-foreground mb-1">Advanced Variation</p>
                     <h3 className="text-xl font-bold mb-2">{mechanism.mechanismName}</h3>
                     <p className="text-sm text-muted-foreground leading-relaxed">
                       {mechanism.mechanismDescription}
@@ -453,11 +453,11 @@ export default function HeroMechanismsDetail() {
 
       {/* Regenerate Sidebar */}
       <RegenerateSidebar
-        title="Regenerate Hero Mechanisms"
+        title="Regenerate Your Unique Method"
         subtitle="Submit or modify the pre-filled form below to regenerate a similar set of hero mechanisms"
         onRegenerate={handleRegenerate}
         isLoading={generateMoreMutation.isPending}
-        creditText="Uses 1 Hero Mechanism Credit"
+        creditText="Uses 1 Your Unique Method Credit"
       >
         <div className="space-y-4">
           <div>
@@ -471,7 +471,7 @@ export default function HeroMechanismsDetail() {
             />
           </div>
           <div>
-            <Label htmlFor="pressingProblem">Pressing Problem*</Label>
+            <Label htmlFor="pressingProblem">The main problem you solve*</Label>
             <Textarea
               id="pressingProblem"
               value={regenerateForm.pressingProblem}
@@ -539,7 +539,7 @@ export default function HeroMechanismsDetail() {
             </Select>
           </div>
           <div>
-            <Label htmlFor="desiredOutcome">Desired Outcome*</Label>
+            <Label htmlFor="desiredOutcome">The result your customer wants*</Label>
             <Textarea
               id="desiredOutcome"
               value={regenerateForm.desiredOutcome}
@@ -549,7 +549,7 @@ export default function HeroMechanismsDetail() {
             />
           </div>
           <div>
-            <Label htmlFor="credibility">Credible Authority Figure*</Label>
+            <Label htmlFor="credibility">Your credentials*</Label>
             <Input
               id="credibility"
               value={regenerateForm.credibility}
@@ -559,7 +559,7 @@ export default function HeroMechanismsDetail() {
             />
           </div>
           <div>
-            <Label htmlFor="socialProof">Social Proof*</Label>
+            <Label htmlFor="socialProof">Reviews and results*</Label>
             <Input
               id="socialProof"
               value={regenerateForm.socialProof}
@@ -569,7 +569,7 @@ export default function HeroMechanismsDetail() {
             />
           </div>
           <div className="text-xs text-muted-foreground italic">
-            ⚠️ Hero Mechanisms are AI-generated and should be reviewed before use
+            ⚠️ Your Unique Method are AI-generated and should be reviewed before use
           </div>
         </div>
       </RegenerateSidebar>
@@ -579,7 +579,7 @@ export default function HeroMechanismsDetail() {
         open={showConfirmDialog}
         onOpenChange={setShowConfirmDialog}
         onConfirm={confirmGenerateMore}
-        generatorName="Hero Mechanisms"
+        generatorName="Your Unique Method"
         currentCount={user?.heroMechanismGeneratedCount || 0}
         limit={user?.role === "superuser" ? Infinity : (user?.subscriptionTier === "agency" ? 999 : user?.subscriptionTier === "pro" ? 4 : 0)}
         resetDate={undefined}

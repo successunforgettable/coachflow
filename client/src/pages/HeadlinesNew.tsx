@@ -195,7 +195,7 @@ export default function HeadlinesNew() {
             {/* Pressing Problem */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="pressingProblem">Pressing Problem *</Label>
+                <Label htmlFor="pressingProblem">The main problem you solve *</Label>
                 <span className={`text-xs ${pressingProblemCharsLeft < 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
                   {pressingProblemCharsLeft} chars left
                 </span>
@@ -214,7 +214,7 @@ export default function HeadlinesNew() {
             {/* Desired Outcome */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="desiredOutcome">Desired Outcome *</Label>
+                <Label htmlFor="desiredOutcome">The result your customer wants *</Label>
                 <span className={`text-xs ${desiredOutcomeCharsLeft < 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
                   {desiredOutcomeCharsLeft} chars left
                 </span>

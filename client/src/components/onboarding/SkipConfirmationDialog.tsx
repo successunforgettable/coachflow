@@ -35,7 +35,7 @@ export default function SkipConfirmationDialog({
               <ul className="space-y-1 text-sm">
                 <li className="flex items-start gap-2">
                   <span className="text-destructive mt-0.5">✗</span>
-                  <span>Your Dream Buyer profile — the foundation of all your copy</span>
+                  <span>Your Ideal Customer profile — the foundation of all your copy</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-destructive mt-0.5">✗</span>

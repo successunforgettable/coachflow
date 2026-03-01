@@ -69,7 +69,7 @@ export default function CreateCampaignStep({ data, onComplete, onNext }: CreateC
             <div className="flex items-start gap-2">
               <span className="text-green-600 mt-0.5">✅</span>
               <div>
-                <span className="font-semibold">Your Dream Buyer</span> — Built with full psychology and buying triggers
+                <span className="font-semibold">Your Ideal Customer</span> — Built with full psychology and buying triggers
               </div>
             </div>
           )}

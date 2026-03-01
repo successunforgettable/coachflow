@@ -110,7 +110,7 @@ export default function Dashboard() {
       href: "/generators/icp",
     },
     {
-      title: "Ad Copy Generator",
+      title: "Your Ads Generator",
       description: "Multiple headline variations with proven formulas",
       icon: FileText,
       count: adCopy?.length || 0,
@@ -152,21 +152,21 @@ export default function Dashboard() {
       href: "/headlines",
     },
     {
-      title: "HVCO Titles",
+      title: "Your Free Opt-In",
       description: "Compelling titles for high-value content offers",
       icon: Lightbulb,
       count: hvcoTitles?.length || 0,
       href: "/hvco-titles",
     },
     {
-      title: "Hero Mechanisms",
+      title: "Your Unique Method",
       description: "Unique features and benefits that set you apart",
       icon: Zap,
       count: heroMechanisms?.length || 0,
       href: "/hero-mechanisms",
     },
     {
-      title: "Ad Creatives",
+      title: "Your Ad Images",
       description: "AI-powered scroll-stopping Facebook ad creatives",
       icon: Image,
       count: 0,
@@ -232,7 +232,7 @@ export default function Dashboard() {
         </div>
 
         <Link href="/generators/icp">
-          <div className="nav-item"><Sparkles className="w-3.5 h-3.5 inline-block mr-2" /> Dream Buyer Avatars</div>
+          <div className="nav-item"><Sparkles className="w-3.5 h-3.5 inline-block mr-2" /> Who You Want to Attract</div>
         </Link>
         <Link href="/ad-copy">
           <div className="nav-item"><FileText className="w-3.5 h-3.5 inline-block mr-2" /> Facebook Ad Generator</div>
@@ -241,13 +241,13 @@ export default function Dashboard() {
           <div className="nav-item"><Type className="w-3.5 h-3.5 inline-block mr-2" /> Direct Response Headlines</div>
         </Link>
         <Link href="/hvco-titles">
-          <div className="nav-item"><Lightbulb className="w-3.5 h-3.5 inline-block mr-2" /> HVCO Titles</div>
+          <div className="nav-item"><Lightbulb className="w-3.5 h-3.5 inline-block mr-2" /> Your Free Opt-In</div>
         </Link>
         <Link href="/hero-mechanisms">
-          <div className="nav-item"><Zap className="w-3.5 h-3.5 inline-block mr-2" /> Hero Mechanisms</div>
+          <div className="nav-item"><Zap className="w-3.5 h-3.5 inline-block mr-2" /> Your Unique Method</div>
         </Link>
         <Link href="/ad-creatives">
-          <div className="nav-item"><Image className="w-3.5 h-3.5 inline-block mr-2" /> Ad Creatives</div>
+          <div className="nav-item"><Image className="w-3.5 h-3.5 inline-block mr-2" /> Your Ad Images</div>
         </Link>
         <Link href="/landing-pages">
           <div className="nav-item"><Globe className="w-3.5 h-3.5 inline-block mr-2" /> Landing Pages</div>

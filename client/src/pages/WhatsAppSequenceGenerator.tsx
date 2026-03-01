@@ -118,7 +118,7 @@ export default function WhatsAppSequenceGenerator() {
       sections,
       metadata: {
         generatedDate: new Date(sequence.createdAt).toLocaleDateString(),
-        generatorType: "WhatsApp Sequence Generator",
+        generatorType: "Your WhatsApp Follow-Up",
       },
     });
 

@@ -34,10 +34,10 @@ interface QuotaSummaryCardProps {
 export function QuotaSummaryCard({ authData, quotaLimits }: QuotaSummaryCardProps) {
   const generators = [
     { name: "Headlines", used: authData.headlineGeneratedCount, limit: quotaLimits.headlines },
-    { name: "HVCO Titles", used: authData.hvcoGeneratedCount, limit: quotaLimits.hvco },
-    { name: "Hero Mechanisms", used: authData.heroMechanismGeneratedCount, limit: quotaLimits.heroMechanisms },
-    { name: "ICP", used: authData.icpGeneratedCount, limit: quotaLimits.icp },
-    { name: "Ad Copy", used: authData.adCopyGeneratedCount, limit: quotaLimits.adCopy },
+    { name: "Your Free Opt-In", used: authData.hvcoGeneratedCount, limit: quotaLimits.hvco },
+    { name: "Your Unique Method", used: authData.heroMechanismGeneratedCount, limit: quotaLimits.heroMechanisms },
+    { name: "Your Ideal Customer", used: authData.icpGeneratedCount, limit: quotaLimits.icp },
+    { name: "Your Ads", used: authData.adCopyGeneratedCount, limit: quotaLimits.adCopy },
     { name: "Email Sequences", used: authData.emailSeqGeneratedCount, limit: quotaLimits.email },
     { name: "WhatsApp Sequences", used: authData.whatsappSeqGeneratedCount, limit: quotaLimits.whatsapp },
     { name: "Landing Pages", used: authData.landingPageGeneratedCount, limit: quotaLimits.landingPages },

@@ -70,15 +70,15 @@ export default function AdCopyDetail() {
     if (!adSet) return;
     
     const content = `
-# Facebook Ad Copy - ${adSet.adType === "lead_gen" ? "Lead Generation" : "E-commerce"}
+# Facebook Ads - ${adSet.adType === "lead_gen" ? "Lead Generation" : "E-commerce"}
 
 ## Target Market
 ${adSet.targetMarket}
 
-## Pressing Problem
+## The main problem you solve
 ${adSet.pressingProblem}
 
-## Desired Outcome
+## The result your customer wants
 ${adSet.desiredOutcome}
 
 ## Unique Mechanism
@@ -104,14 +104,14 @@ ${adSet.links.map((l: any, i: number) => `${i + 1}. ${l.content}`).join("\n\n")}
 `;
 
     exportToPDF({
-      title: `Facebook Ad Copy - ${adSet.adType === "lead_gen" ? "Lead Generation" : "E-commerce"}`,
+      title: `Facebook Ads - ${adSet.adType === "lead_gen" ? "Lead Generation" : "E-commerce"}`,
       subtitle: `Target Market: ${adSet.targetMarket}`,
       sections: [
         {
           title: "Generation Parameters",
           content: [
-            `Pressing Problem: ${adSet.pressingProblem}`,
-            `Desired Outcome: ${adSet.desiredOutcome}`,
+            `The main problem you solve: ${adSet.pressingProblem}`,
+            `The result your customer wants: ${adSet.desiredOutcome}`,
             `Unique Mechanism: ${adSet.uniqueMechanism}`,
           ],
         },
@@ -130,7 +130,7 @@ ${adSet.links.map((l: any, i: number) => `${i + 1}. ${l.content}`).join("\n\n")}
       ],
       metadata: {
         generatedDate: new Date(adSet.createdAt).toLocaleDateString(),
-        generatorType: "Facebook Ad Copy Generator",
+        generatorType: "Facebook Ads Generator",
       },
     });
   };
@@ -222,7 +222,7 @@ ${adSet.links.map((l: any, i: number) => `${i + 1}. ${l.content}`).join("\n\n")}
         <Link href="/ad-copy">
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Ad Copy
+            Back to Your Ads
           </Button>
         </Link>
       </div>
@@ -230,7 +230,7 @@ ${adSet.links.map((l: any, i: number) => `${i + 1}. ${l.content}`).join("\n\n")}
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-3xl font-bold mb-2">
-          {adSet.adType === "lead_gen" ? "Lead Generation" : "E-commerce"} Ad Copy
+          {adSet.adType === "lead_gen" ? "Lead Generation" : "E-commerce"} Facebook Ads
         </h1>
         <p className="text-muted-foreground">
           Generated {new Date(adSet.createdAt).toLocaleDateString()} • {adSet.headlines.length} headlines, {adSet.bodies.length} body copies, {adSet.links.length} link descriptions
@@ -282,10 +282,10 @@ ${adSet.links.map((l: any, i: number) => `${i + 1}. ${l.content}`).join("\n\n")}
             <span className="font-semibold">Target Market:</span> {adSet.targetMarket}
           </div>
           <div>
-            <span className="font-semibold">Pressing Problem:</span> {adSet.pressingProblem}
+            <span className="font-semibold">The main problem you solve:</span> {adSet.pressingProblem}
           </div>
           <div>
-            <span className="font-semibold">Desired Outcome:</span> {adSet.desiredOutcome}
+            <span className="font-semibold">The result your customer wants:</span> {adSet.desiredOutcome}
           </div>
           <div>
             <span className="font-semibold">Unique Mechanism:</span> {adSet.uniqueMechanism}
@@ -299,7 +299,7 @@ ${adSet.links.map((l: any, i: number) => `${i + 1}. ${l.content}`).join("\n\n")}
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label htmlFor="beast-mode" className="text-base font-semibold">
-                🔥 Power Mode
+                🔥 Advanced options
               </Label>
               <p className="text-sm text-muted-foreground">
                 Generate {powerMode ? "30" : "15"} variations per content type ({powerMode ? "2x" : "1x"})
@@ -540,7 +540,7 @@ ${adSet.links.map((l: any, i: number) => `${i + 1}. ${l.content}`).join("\n\n")}
             />
           </div>
           <div>
-            <Label htmlFor="pressingProblem">Pressing Problem*</Label>
+            <Label htmlFor="pressingProblem">The main problem you solve*</Label>
             <Textarea
               id="pressingProblem"
               value={adSet.pressingProblem || ""}
@@ -549,7 +549,7 @@ ${adSet.links.map((l: any, i: number) => `${i + 1}. ${l.content}`).join("\n\n")}
             />
           </div>
           <div>
-            <Label htmlFor="desiredOutcome">Desired Outcome*</Label>
+            <Label htmlFor="desiredOutcome">The result your customer wants*</Label>
             <Input
               id="desiredOutcome"
               value={adSet.desiredOutcome || ""}
@@ -576,7 +576,7 @@ ${adSet.links.map((l: any, i: number) => `${i + 1}. ${l.content}`).join("\n\n")}
         open={showConfirmDialog}
         onOpenChange={setShowConfirmDialog}
         onConfirm={confirmMoreLikeThis}
-        generatorName="Ad Copy"
+        generatorName="Your Ads"
         currentCount={user?.adCopyGeneratedCount || 0}
         limit={user?.role === "superuser" ? Infinity : (user?.subscriptionTier === "agency" ? 999 : user?.subscriptionTier === "pro" ? 100 : 0)}
         resetDate={undefined}

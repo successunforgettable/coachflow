@@ -123,7 +123,7 @@ export default function EmailSequenceGenerator() {
       sections,
       metadata: {
         generatedDate: new Date(sequence.createdAt).toLocaleDateString(),
-        generatorType: "Email Sequence Generator",
+        generatorType: "Your Email Follow-Up",
       },
     });
 

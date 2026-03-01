@@ -7,7 +7,7 @@ export default function AdCreatives() {
   return (
     <div className="min-h-screen bg-background">
       <PageHeader
-        title="Ad Creatives"
+        title="Your Ad Images"
         description="Generate attention-grabbing Facebook ad creatives using AI-powered scroll-stopper technology"
       />
 
@@ -70,7 +70,7 @@ export default function AdCreatives() {
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground">
-                  Select a product from your Source of Truth or input your target market, pressing
+                  Select a product from your Brand Summary or input your target market, pressing
                   problem, and desired outcome directly into the tool.
                 </p>
               </CardContent>
@@ -191,7 +191,7 @@ export default function AdCreatives() {
                 <li className="flex gap-3">
                   <span className="font-bold text-foreground">Step 2:</span>
                   <span>
-                    Select a product from your ZAP Source of Truth or manually enter your target
+                    Select a product from your ZAP Brand Summary or manually enter your target
                     market, pressing problem, and desired outcome.
                   </span>
                 </li>
@@ -205,7 +205,7 @@ export default function AdCreatives() {
                 <li className="flex gap-3">
                   <span className="font-bold text-foreground">Step 4:</span>
                   <span>
-                    Click <strong>"Generate Ad Creatives"</strong> and watch as the AI creates 10-15
+                    Click <strong>"Generate Your Ad Images"</strong> and watch as the AI creates 10-15
                     unique ad variations in seconds.
                   </span>
                 </li>

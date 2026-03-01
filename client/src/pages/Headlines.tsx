@@ -96,11 +96,11 @@ export default function Headlines() {
                     <p className="line-clamp-2">{set.targetMarket}</p>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Pressing Problem:</span>
+                    <span className="text-muted-foreground">The main problem you solve:</span>
                     <p className="line-clamp-2">{set.pressingProblem}</p>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Desired Outcome:</span>
+                    <span className="text-muted-foreground">The result your customer wants:</span>
                     <p className="line-clamp-2">{set.desiredOutcome}</p>
                   </div>
                 </div>

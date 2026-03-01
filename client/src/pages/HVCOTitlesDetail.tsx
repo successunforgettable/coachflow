@@ -122,7 +122,7 @@ export default function HVCOTitlesDetail() {
         content: titlesByTab.short.map(t => t.title),
       },
       {
-        title: "Power Mode Titles",
+        title: "Advanced Variations",
         content: titlesByTab.beast_mode.map(t => t.title),
       },
       {
@@ -132,12 +132,12 @@ export default function HVCOTitlesDetail() {
     ];
 
     exportToPDF({
-      title: "HVCO Titles",
+      title: "Your Free Opt-In",
       subtitle: titles[0]?.targetMarket || "High-Value Content Offer",
       sections,
       metadata: {
         generatedDate: new Date(titles[0]?.createdAt || new Date()).toLocaleDateString(),
-        generatorType: "HVCO Titles",
+        generatorType: "Your Free Opt-In",
       },
     });
 
@@ -171,7 +171,7 @@ export default function HVCOTitlesDetail() {
             This HVCO set doesn't exist or has been deleted
           </p>
           <Button onClick={() => setLocation("/hvco-titles")}>
-            Back to HVCO Titles
+            Back to Your Free Opt-In
           </Button>
         </Card>
       </div>
@@ -277,7 +277,7 @@ export default function HVCOTitlesDetail() {
         <TabsList className="grid w-full grid-cols-4 mb-6">
           <TabsTrigger value="long">Long Titles</TabsTrigger>
           <TabsTrigger value="short">Short Titles</TabsTrigger>
-          <TabsTrigger value="beast_mode">Power Mode Titles</TabsTrigger>
+          <TabsTrigger value="beast_mode">Advanced Variations</TabsTrigger>
           <TabsTrigger value="subheadlines">Subheadlines</TabsTrigger>
         </TabsList>
 
@@ -361,7 +361,7 @@ export default function HVCOTitlesDetail() {
           ))}
         </TabsContent>
 
-        {/* Power Mode Titles Tab */}
+        {/* Advanced Variations Tab */}
         <TabsContent value="beast_mode" className="space-y-3">
           {titlesByTab.beast_mode.map((title) => (
             <Card key={title.id} className="p-4 hover:border-primary/50 transition-colors">
@@ -448,7 +448,7 @@ export default function HVCOTitlesDetail() {
 
       {/* Regenerate Sidebar */}
       <RegenerateSidebar
-        title="Regenerate HVCO Titles"
+        title="Regenerate Your Free Opt-In"
         subtitle="Submit or modify the pre-filled form below to regenerate a similar set of HVCO titles"
         onRegenerate={handleRegenerate}
         isLoading={generateMoreMutation.isPending}
@@ -481,7 +481,7 @@ export default function HVCOTitlesDetail() {
         open={showConfirmDialog}
         onOpenChange={setShowConfirmDialog}
         onConfirm={confirmGenerateMore}
-        generatorName="HVCO Titles"
+        generatorName="Your Free Opt-In"
         currentCount={user?.hvcoGeneratedCount || 0}
         limit={user?.role === "superuser" ? Infinity : (user?.subscriptionTier === "agency" ? 999 : user?.subscriptionTier === "pro" ? 3 : 0)}
         resetDate={undefined}

@@ -247,7 +247,7 @@ export default function AdCopyGenerator() {
   if (!isAuthenticated) {
     return (
       <div className="container mx-auto py-12 text-center">
-        <h1 className="text-3xl font-bold mb-4">Ad Copy Generator</h1>
+        <h1 className="text-3xl font-bold mb-4">Your Ads Generator</h1>
         <p className="text-muted-foreground mb-6">
           Please sign in to generate ad copy
         </p>
@@ -263,7 +263,7 @@ export default function AdCopyGenerator() {
 
   return (
     <div className="container mx-auto py-8">
-      <PageHeader title="Ad Copy Generator" />
+      <PageHeader title="Your Ads Generator" />
 
       {/* Meta Compliance Legal Disclaimer */}
       <div
@@ -300,7 +300,7 @@ export default function AdCopyGenerator() {
           <QuotaProgressBar
             used={authData.adCopyGeneratedCount}
             limit={quotaLimits?.adCopy || 50}
-            label="Ad Copy Quota"
+            label="Your Ads Quota"
             resetDate={authData.usageResetAt ? new Date(authData.usageResetAt) : undefined}
           />
         </div>
@@ -310,7 +310,7 @@ export default function AdCopyGenerator() {
       {authData && authData.subscriptionTier && quotaLimits && authData.adCopyGeneratedCount >= quotaLimits.adCopy && (
         <div className="mb-6">
           <UpgradePrompt
-            generatorName="Ad Copy"
+            generatorName="Your Ads"
             currentTier={authData.subscriptionTier}
             used={authData.adCopyGeneratedCount}
             limit={quotaLimits.adCopy}
@@ -320,7 +320,7 @@ export default function AdCopyGenerator() {
 
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Ad Copy Generator</h1>
+          <h1 className="text-3xl font-bold text-foreground">Your Ads Generator</h1>
           <p className="text-muted-foreground mt-1">
             Generate high-converting Facebook/social media ads with 17 data points
           </p>
@@ -335,7 +335,7 @@ export default function AdCopyGenerator() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-primary" />
-                Generate Ad Copy
+                Generate Your Ads
               </CardTitle>
               <CardDescription>
                 Fill in all 17 fields to generate high-converting ads
@@ -432,9 +432,9 @@ export default function AdCopyGenerator() {
                 <p className="text-xs text-muted-foreground mt-1">{specificProductName.length}/72</p>
               </div>
 
-              {/* 6. Pressing Problem */}
+              {/* 6. The main problem you solve */}
               <div>
-                <Label htmlFor="pressingProblem">6. Pressing Problem* (48 char max)</Label>
+                <Label htmlFor="pressingProblem">6. The main problem you solve* (48 char max)</Label>
                 <Textarea
                   id="pressingProblem"
                   placeholder="What keeps them up at night?"
@@ -446,9 +446,9 @@ export default function AdCopyGenerator() {
                 <p className="text-xs text-muted-foreground mt-1">{pressingProblem.length}/48</p>
               </div>
 
-              {/* 7. Desired Outcome */}
+              {/* 7. The result your customer wants */}
               <div>
-                <Label htmlFor="desiredOutcome">7. Desired Outcome* (25 char max)</Label>
+                <Label htmlFor="desiredOutcome">7. The result your customer wants* (25 char max)</Label>
                 <Textarea
                   id="desiredOutcome"
                   placeholder="What do they want?"
@@ -537,7 +537,7 @@ export default function AdCopyGenerator() {
 
               {/* 12. Credible Authority */}
               <div>
-                <Label htmlFor="credibleAuthority">12. Credible Authority Figure (70 char max)</Label>
+                <Label htmlFor="credibleAuthority">12. Your credentials (70 char max)</Label>
                 <Input
                   id="credibleAuthority"
                   placeholder="e.g., Tony Robbins, Russell Brunson"
@@ -550,7 +550,7 @@ export default function AdCopyGenerator() {
 
               {/* 13. Featured In */}
               <div>
-                <Label htmlFor="featuredIn">13. Featured In (Social Proof) (65 char max)</Label>
+                <Label htmlFor="featuredIn">13. Featured In (Reviews and results) (65 char max)</Label>
                 <Input
                   id="featuredIn"
                   placeholder="e.g., Forbes, Inc, Entrepreneur"
@@ -621,7 +621,7 @@ export default function AdCopyGenerator() {
                 ) : (
                   <>
                     <Sparkles className="w-4 h-4 mr-2" />
-                    Generate Ad Copy
+                    Generate Your Ads
                   </>
                 )}
               </Button>
@@ -677,7 +677,7 @@ export default function AdCopyGenerator() {
                               />
                             )}
                             <span className="px-2 py-1 bg-primary/20 text-primary rounded text-xs font-medium">
-                              {adSet.adStyle || "Ad Copy"}
+                              {adSet.adStyle || "Facebook Ads"}
                             </span>
                             <span className="text-xs text-muted-foreground">
                               {new Date(adSet.createdAt).toLocaleDateString()}

@@ -77,7 +77,7 @@ export function CampaignCreativesDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Generate Ad Creatives</DialogTitle>
+          <DialogTitle>Generate Your Ad Images</DialogTitle>
           <DialogDescription>
             Create images and videos for your Meta ad campaigns. Select the formats you need.
           </DialogDescription>
@@ -216,7 +216,7 @@ export function CampaignCreativesDialog({
             ) : (
               <>
                 <Sparkles className="w-4 h-4 mr-2" />
-                Generate Ad Creatives
+                Generate Your Ad Images
               </>
             )}
           </Button>

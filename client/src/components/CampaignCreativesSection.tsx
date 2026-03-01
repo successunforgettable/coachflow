@@ -151,7 +151,7 @@ export function CampaignCreativesSection({ campaignId }: CampaignCreativesSectio
         </CardHeader>
         <CardContent className="text-center py-8">
           <p className="text-muted-foreground mb-4">
-            No creatives generated yet. Use the "Ad Creatives" generator above to create images and videos.
+            No creatives generated yet. Use the "Your Ad Images" generator above to create images and videos.
           </p>
         </CardContent>
       </Card>

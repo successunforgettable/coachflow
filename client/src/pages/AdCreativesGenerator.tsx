@@ -150,7 +150,7 @@ export default function AdCreativesGenerator() {
                 <Sparkles className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <CardTitle>Generate Ad Creatives</CardTitle>
+                <CardTitle>Generate Your Ad Images</CardTitle>
                 <CardDescription>
                   Create 5 dramatic, tabloid-style ad variations optimized for Facebook/Instagram
                 </CardDescription>
@@ -250,7 +250,7 @@ export default function AdCreativesGenerator() {
 
             {/* Pressing Problem */}
             <div>
-              <Label htmlFor="problem">Pressing Problem *</Label>
+              <Label htmlFor="problem">The main problem you solve *</Label>
               <Textarea
                 id="problem"
                 placeholder="e.g., Losing money in crypto, Stuck mindset holding you back, Can't lose weight"
@@ -291,7 +291,7 @@ export default function AdCreativesGenerator() {
               ) : (
                 <>
                   <ImageIcon className="mr-2 h-4 w-4" />
-                  Generate 5 Ad Creatives
+                  Generate 5 Ad Images
                 </>
               )}
             </Button>

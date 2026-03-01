@@ -180,7 +180,7 @@ export default function LandingPageGenerator() {
 
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <Label htmlFor="avatarName">Dream Buyer Avatar Name (Optional)</Label>
+                    <Label htmlFor="avatarName">Ideal Customer Name (Optional)</Label>
                     <span className={`text-xs ${avatarNameCharsLeft < 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
                       {avatarNameCharsLeft} chars left
                     </span>

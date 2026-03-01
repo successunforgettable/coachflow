@@ -63,7 +63,7 @@ const APPLICATION_OPTIONS = [
   "Install",
 ];
 
-// Real-world Hero Mechanism examples  (18 examples)
+// Real-world Your Unique Method examples  (18 examples)
 const HERO_MECHANISM_EXAMPLES = [
   "Breakthrough 'Productivity Triggers' System Slashes 5, 10, Even 51 Hours Off Your Work Week",
   "Weird 'Black Diamond' Refinance Framework Saves $120,787.50 On The Average Loan",
@@ -103,11 +103,11 @@ export default function HeroMechanismsNew() {
   const { data: services } = trpc.services.list.useQuery();
   const generateMutation = trpc.heroMechanisms.generate.useMutation({
     onSuccess: (data) => {
-      toast.success("Hero Mechanisms generated successfully!");
+      toast.success("Your Unique Method generated successfully!");
       setLocation(`/hero-mechanisms/${data.mechanismSetId}`);
     },
     onError: (error) => {
-      toast.error(`Failed to generate Hero Mechanisms: ${error.message}`);
+      toast.error(`Failed to generate Your Unique Method: ${error.message}`);
     },
   });
 
@@ -164,8 +164,8 @@ export default function HeroMechanismsNew() {
       { value: solutionsTried, name: "Solutions tried" },
       { value: whySolutionsFail, name: "Why solutions fail" },
       { value: desiredOutcome, name: "Desired Outcome" },
-      { value: credibleAuthority, name: "Credible Authority Figure" },
-      { value: socialProof, name: "Social Proof" },
+      { value: credibleAuthority, name: "Your credentials" },
+      { value: socialProof, name: "Reviews and results" },
     ];
 
     for (const field of requiredFields) {
@@ -199,7 +199,7 @@ export default function HeroMechanismsNew() {
   return (
     <div className="container max-w-3xl py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Create New Hero Mechanism</h1>
+        <h1 className="text-3xl font-bold mb-2">Create New Your Unique Method</h1>
         <p className="text-muted-foreground">
           Highlight the unique features and benefits that set your product apart
         </p>
@@ -211,7 +211,7 @@ export default function HeroMechanismsNew() {
           <QuotaProgressBar
             used={authData.heroMechanismGeneratedCount}
             limit={quotaLimits?.heroMechanisms || 50}
-            label="Hero Mechanisms Quota"
+            label="Your Unique Method Quota"
             resetDate={authData.usageResetAt ? new Date(authData.usageResetAt) : undefined}
           />
         </div>
@@ -221,7 +221,7 @@ export default function HeroMechanismsNew() {
       {authData && authData.subscriptionTier && quotaLimits && authData.heroMechanismGeneratedCount >= quotaLimits.heroMechanisms && (
         <div className="mb-6">
           <UpgradePrompt
-            generatorName="Hero Mechanisms"
+            generatorName="Your Unique Method"
             currentTier={authData.subscriptionTier}
             used={authData.heroMechanismGeneratedCount}
             limit={quotaLimits.heroMechanisms}
@@ -304,7 +304,7 @@ export default function HeroMechanismsNew() {
               <ExamplesCarousel
                 examples={HERO_MECHANISM_EXAMPLES}
                 onSelectExample={setPressingProblem}
-                title="Hero Mechanism Examples (Click to Use)"
+                title="Your Unique Method Examples (Click to Use)"
               />
             </div>
           </div>
@@ -369,7 +369,7 @@ export default function HeroMechanismsNew() {
           {/* Descriptor */}
           <div className="space-y-2">
             <Label htmlFor="descriptor">
-              Descriptor For Hero Mechanisms
+              Descriptor For Your Unique Method
             </Label>
             <p className="text-xs text-muted-foreground mb-2">
               How is your solution superior to the existing solutions available in the market that our prospect has likely tried? i.e. What makes it unique? Do you have a unique algorithm that gets the result? Do you leverage AI? A special framework?
@@ -391,7 +391,7 @@ export default function HeroMechanismsNew() {
           {/* Application Method */}
           <div className="space-y-2">
             <Label htmlFor="applicationMethod">
-              How Is The Hero Mechanism Applied To Get The Desired Result?
+              How Is The Your Unique Method Applied To Get The Desired Result?
             </Label>
             <Select value={applicationMethod} onValueChange={setApplicationMethod}>
               <SelectTrigger id="applicationMethod">
@@ -429,7 +429,7 @@ export default function HeroMechanismsNew() {
           {/* Credible Authority Figure */}
           <div className="space-y-2">
             <Label htmlFor="credibleAuthority">
-              Credible Authority Figure <span className="text-red-500">*</span>
+              Your credentials <span className="text-red-500">*</span>
             </Label>
             <Textarea
               id="credibleAuthority"
@@ -468,7 +468,7 @@ export default function HeroMechanismsNew() {
           {/* Social Proof */}
           <div className="space-y-2">
             <Label htmlFor="socialProof">
-              Social Proof <span className="text-red-500">*</span>
+              Reviews and results <span className="text-red-500">*</span>
             </Label>
             <Textarea
               id="socialProof"
@@ -487,7 +487,7 @@ export default function HeroMechanismsNew() {
           {/* Disclaimer */}
           <div className="bg-muted/50 p-4 rounded-lg">
             <p className="text-sm text-muted-foreground">
-              Hero Mechanisms are AI-generated. Please review and edit all content for accuracy before using or publishing.
+              Your Unique Method are AI-generated. Please review and edit all content for accuracy before using or publishing.
             </p>
           </div>
 
@@ -501,7 +501,7 @@ export default function HeroMechanismsNew() {
               {generateMutation.isPending && (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               )}
-              Create Hero Mechanisms
+              Create Your Unique Method
             </Button>
             <Button
               type="button"

@@ -85,12 +85,12 @@ export default function GenerateICPStep({ data, onComplete, onNext }: GenerateIC
             {generateICP.isPending ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Building Your Dream Buyer...
+                Building Your Ideal Customer...
               </>
             ) : (
               <>
                 <Sparkles className="h-4 w-4 mr-2" />
-                Generate My Dream Buyer →
+                Generate My Ideal Customer →
               </>
             )}
           </Button>

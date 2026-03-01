@@ -51,11 +51,11 @@ export default function HVCOTitlesNew() {
   const { data: services } = trpc.services.list.useQuery();
   const generateMutation = trpc.hvco.generate.useMutation({
     onSuccess: (data) => {
-      toast.success("HVCO Titles generated successfully!");
+      toast.success("Your Free Opt-In generated successfully!");
       setLocation(`/hvco-titles/${data.hvcoSetId}`);
     },
     onError: (error) => {
-      toast.error(`Failed to generate HVCO Titles: ${error.message}`);
+      toast.error(`Failed to generate Your Free Opt-In: ${error.message}`);
     },
   });
 
@@ -132,7 +132,7 @@ export default function HVCOTitlesNew() {
           <QuotaProgressBar
             used={authData.hvcoGeneratedCount}
             limit={quotaLimits?.hvco || 50}
-            label="HVCO Titles Quota"
+            label="Your Free Opt-In Quota"
             resetDate={authData.usageResetAt ? new Date(authData.usageResetAt) : undefined}
           />
         </div>
@@ -142,7 +142,7 @@ export default function HVCOTitlesNew() {
       {authData && authData.subscriptionTier && quotaLimits && authData.hvcoGeneratedCount >= quotaLimits.hvco && (
         <div className="mb-6">
           <UpgradePrompt
-            generatorName="HVCO Titles"
+            generatorName="Your Free Opt-In"
             currentTier={authData.subscriptionTier}
             used={authData.hvcoGeneratedCount}
             limit={quotaLimits.hvco}
@@ -247,7 +247,7 @@ export default function HVCOTitlesNew() {
               {generateMutation.isPending && (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               )}
-              Generate HVCO Titles
+              Generate Your Free Opt-In
             </Button>
             <Button
               type="button"
