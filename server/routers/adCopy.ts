@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
-import { adCopy, services, campaigns, idealCustomerProfiles } from "../../drizzle/schema";
+import { adCopy, services, campaigns, idealCustomerProfiles, sourceOfTruth } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { invokeLLM } from "../_core/llm";
 import { nanoid } from "nanoid";
@@ -244,6 +244,26 @@ ${icp.buyingTriggers ? `What makes them buy: ${icp.buyingTriggers}` : ''}
 ${icp.communicationStyle ? `How they communicate: ${icp.communicationStyle}` : ''}
 `.trim() : '';
 
+      // SOT query — Item 1.4
+      const [sot] = await db
+        .select()
+        .from(sourceOfTruth)
+        .where(eq(sourceOfTruth.userId, ctx.user.id))
+        .limit(1);
+
+      const sotLines = sot ? [
+        sot.coreOffer        ? `Core offer: ${sot.coreOffer}` : '',
+        sot.targetAudience   ? `Target audience: ${sot.targetAudience}` : '',
+        sot.mainPainPoint    ? `Main pain point: ${sot.mainPainPoint}` : '',
+        sot.mainBenefits     ? `Main benefits: ${sot.mainBenefits}` : '',
+        sot.uniqueValue      ? `Unique value: ${sot.uniqueValue}` : '',
+        sot.idealCustomerAvatar ? `Ideal customer: ${sot.idealCustomerAvatar}` : '',
+      ].filter(Boolean) : [];
+
+      const sotContext = sotLines.length > 0
+        ? ['BRAND CONTEXT — this is the approved brand voice. All copy must be consistent with this:', ...sotLines].join('\n')
+        : '';
+
       // Item 1.3 — Rule 4: server-side fallbacks (use input if provided, else fall back to service record)
       const resolvedPressingProblem = input.pressingProblem?.trim() || service.painPoints || "";
       const resolvedDesiredOutcome = input.desiredOutcome?.trim() || service.mainBenefit || "";
@@ -291,7 +311,7 @@ You MUST use these exact numbers when incorporating social proof. Do not fabrica
 - DO NOT mention customer counts, ratings, or reviews
 - DO NOT fabricate testimonials or statistics`;
       
-      const headlinePrompt = `You are an expert Facebook/Instagram ad copywriter. Create ${count} high-converting ad HEADLINES for this service:
+      const headlinePrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ${count} high-converting ad HEADLINES for this service:
 
 Service: ${service.name}
 Category: ${service.category}
@@ -371,7 +391,7 @@ Format as JSON array:
       const bodyPromises = selectedAngles.map(async (angle) => {
         const anglePrompt = BODY_ANGLE_PROMPTS[angle];
         
-        const bodyPrompt = `You are an expert Facebook/Instagram ad copywriter. Create ONE high-converting ad BODY COPY using the ${angle.replace('_', ' ')} angle:
+        const bodyPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ONE high-converting ad BODY COPY using the ${angle.replace('_', ' ')} angle:
 
 Service: ${service.name}
 Category: ${service.category}
@@ -423,7 +443,7 @@ Return ONLY the body text as a single string, no JSON wrapper.`;
       const bodyData = { bodies: bodyResults.map(r => r.body) };
 
       // Generate Link Descriptions
-      const linkPrompt = `You are an expert Facebook/Instagram ad copywriter. Create ${count} high-converting LINK DESCRIPTIONS for this service:
+      const linkPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ${count} high-converting LINK DESCRIPTIONS for this service:
 
 Service: ${service.name}
 Category: ${service.category}

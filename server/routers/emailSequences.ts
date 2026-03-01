@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
-import { emailSequences, services, campaigns, idealCustomerProfiles } from "../../drizzle/schema";
+import { emailSequences, services, campaigns, idealCustomerProfiles, sourceOfTruth } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { invokeLLM } from "../_core/llm";
 import { getQuotaLimit } from "../quotaLimits";
@@ -139,6 +139,26 @@ ${icp.buyingTriggers ? `What makes them buy: ${icp.buyingTriggers}` : ''}
 ${icp.implementationBarriers ? `What stops them from taking action: ${icp.implementationBarriers}` : ''}
 `.trim() : '';
 
+      // SOT query — Item 1.4
+      const [sot] = await db
+        .select()
+        .from(sourceOfTruth)
+        .where(eq(sourceOfTruth.userId, ctx.user.id))
+        .limit(1);
+
+      const sotLines = sot ? [
+        sot.coreOffer        ? `Core offer: ${sot.coreOffer}` : '',
+        sot.targetAudience   ? `Target audience: ${sot.targetAudience}` : '',
+        sot.mainPainPoint    ? `Main pain point: ${sot.mainPainPoint}` : '',
+        sot.mainBenefits     ? `Main benefits: ${sot.mainBenefits}` : '',
+        sot.uniqueValue      ? `Unique value: ${sot.uniqueValue}` : '',
+        sot.idealCustomerAvatar ? `Ideal customer: ${sot.idealCustomerAvatar}` : '',
+      ].filter(Boolean) : [];
+
+      const sotContext = sotLines.length > 0
+        ? ['BRAND CONTEXT — this is the approved brand voice. All copy must be consistent with this:', ...sotLines].join('\n')
+        : '';
+
       // Extract real social proof data
       const socialProof = {
         hasCustomers: !!service.totalCustomers && service.totalCustomers > 0,
@@ -174,7 +194,7 @@ You MUST use these exact numbers and real names. Do not fabricate.`
       let prompt = "";
 
       if (input.sequenceType === "welcome") {
-        prompt = `You are an expert email marketer. Create a 3-email welcome sequence for new subscribers using Russell Brunson's Soap Opera Sequence framework.
+        prompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert email marketer. Create a 3-email welcome sequence for new subscribers using Russell Brunson's Soap Opera Sequence framework.
 
 Service: ${service.name}
 Category: ${service.category}
@@ -199,7 +219,7 @@ Each email should have:
 
 Format as JSON array.`;
       } else if (input.sequenceType === "engagement") {
-        prompt = `You are an expert email marketer. Create a 5-email engagement sequence for event attendees using Russell Brunson's Soap Opera Sequence.
+        prompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert email marketer. Create a 5-email engagement sequence for event attendees using Russell Brunson's Soap Opera Sequence.
 
 Service: ${service.name}
 Event: ${input.eventDetails?.eventName || "Event"}
@@ -225,7 +245,7 @@ Each email should have:
 Format as JSON array.`;
       } else {
         // sales sequence
-        prompt = `You are an expert email marketer. Create a 7-email sales sequence for event attendees who didn't buy.
+        prompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert email marketer. Create a 7-email sales sequence for event attendees who didn't buy.
 
 Service: ${service.name}
 Event: ${input.eventDetails?.eventName || "Event"}

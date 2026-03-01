@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
-import { offers, services, idealCustomerProfiles } from "../../drizzle/schema";
+import { offers, services, idealCustomerProfiles, sourceOfTruth } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { generateAllOfferAngles } from "../offersGenerator";
 import { getQuotaLimit } from "../quotaLimits";
@@ -126,15 +126,35 @@ export const offersRouter = router({
         icp.successMetrics ? `How they measure success: ${icp.successMetrics}` : '',
       ].filter(Boolean).join('\n').trim() : '';
 
+      // SOT query — Item 1.4
+      const [sot] = await db
+        .select()
+        .from(sourceOfTruth)
+        .where(eq(sourceOfTruth.userId, ctx.user.id))
+        .limit(1);
+
+      const sotLines = sot ? [
+        sot.coreOffer        ? `Core offer: ${sot.coreOffer}` : '',
+        sot.targetAudience   ? `Target audience: ${sot.targetAudience}` : '',
+        sot.mainPainPoint    ? `Main pain point: ${sot.mainPainPoint}` : '',
+        sot.mainBenefits     ? `Main benefits: ${sot.mainBenefits}` : '',
+        sot.uniqueValue      ? `Unique value: ${sot.uniqueValue}` : '',
+        sot.idealCustomerAvatar ? `Ideal customer: ${sot.idealCustomerAvatar}` : '',
+      ].filter(Boolean) : [];
+
+      const sotContext = sotLines.length > 0
+        ? ['BRAND CONTEXT — this is the approved brand voice. All copy must be consistent with this:', ...sotLines].join('\n')
+        : '';
+
       // Extract real social proof data
       const socialProof = {
         hasCustomers: !!service.totalCustomers && service.totalCustomers > 0,
         customerCount: service.totalCustomers || 0,
       };
 
-      // Append ICP context to targetCustomer so it flows into the helper prompt — Item 1.2
-      const enrichedTargetCustomer = icpContext
-        ? `${service.targetCustomer || 'Target Customer'}\n\n${icpContext}`
+      // Append SOT + ICP context to targetCustomer so it flows into the helper prompt — Item 1.2 + 1.4
+      const enrichedTargetCustomer = sotContext || icpContext
+        ? `${sotContext ? `${sotContext}\n\n` : ''}${service.targetCustomer || 'Target Customer'}${icpContext ? `\n\n${icpContext}` : ''}`
         : service.targetCustomer || 'Target Customer';
 
       // Generate all 3 angles in parallel with social proof

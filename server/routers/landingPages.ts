@@ -4,7 +4,7 @@ import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 import { getQuotaLimit } from "../quotaLimits";
 import { getDb } from "../db";
-import { landingPages, services, users, idealCustomerProfiles } from "../../drizzle/schema";
+import { landingPages, services, users, idealCustomerProfiles, sourceOfTruth } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { generateAllAngles } from "../landingPageGenerator";
 
@@ -143,6 +143,26 @@ ${icp.implementationBarriers ? `What stops them from taking action: ${icp.implem
 ${icp.successMetrics ? `How they measure success: ${icp.successMetrics}` : ''}
 `.trim() : '';
 
+      // SOT query — Item 1.4
+      const [sot] = await db
+        .select()
+        .from(sourceOfTruth)
+        .where(eq(sourceOfTruth.userId, ctx.user.id))
+        .limit(1);
+
+      const sotLines = sot ? [
+        sot.coreOffer        ? `Core offer: ${sot.coreOffer}` : '',
+        sot.targetAudience   ? `Target audience: ${sot.targetAudience}` : '',
+        sot.mainPainPoint    ? `Main pain point: ${sot.mainPainPoint}` : '',
+        sot.mainBenefits     ? `Main benefits: ${sot.mainBenefits}` : '',
+        sot.uniqueValue      ? `Unique value: ${sot.uniqueValue}` : '',
+        sot.idealCustomerAvatar ? `Ideal customer: ${sot.idealCustomerAvatar}` : '',
+      ].filter(Boolean) : [];
+
+      const sotContext = sotLines.length > 0
+        ? ['BRAND CONTEXT — this is the approved brand voice. All copy must be consistent with this:', ...sotLines].join('\n')
+        : '';
+
       // Extract real social proof data
       const socialProof = {
         hasCustomers: !!service.totalCustomers && service.totalCustomers > 0,
@@ -184,9 +204,9 @@ ${icp.successMetrics ? `How they measure success: ${icp.successMetrics}` : ''}
         // Otherwise keep original format
       }
 
-      // Append ICP context to avatarDescription so it flows into the helper prompt — Item 1.2
-      const enrichedAvatarDescription = icpContext
-        ? `${avatarDescription}\n\n${icpContext}`
+      // Append SOT + ICP context to avatarDescription so it flows into the helper prompt — Item 1.2 + 1.4
+      const enrichedAvatarDescription = sotContext || icpContext
+        ? `${sotContext ? `${sotContext}\n\n` : ''}${avatarDescription}${icpContext ? `\n\n${icpContext}` : ''}`
         : avatarDescription;
 
       // Generate all 4 angles in parallel with social proof (Issue 2 fix)

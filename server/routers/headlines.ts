@@ -204,6 +204,7 @@ export const headlinesRouter = router({
       // NOTE: pre-existing issue — this fetch does not check userId (flagged for future security pass, not fixed in 1.2)
       let autoPopData: any = {};
       let icpContext = '';
+      let sotContext = '';
       if (input.serviceId) {
         const { getDb } = await import("../db");
         const { services, idealCustomerProfiles } = await import("../../drizzle/schema");
@@ -237,6 +238,25 @@ export const headlinesRouter = router({
             icp.buyingTriggers ? `What makes them buy: ${icp.buyingTriggers}` : '',
           ].filter(Boolean).join('\n').trim();
         }
+
+        // SOT query — Item 1.4
+        const { sourceOfTruth } = await import("../../drizzle/schema");
+        const [sot] = await db
+          .select()
+          .from(sourceOfTruth)
+          .where(eq(sourceOfTruth.userId, ctx.user.id))
+          .limit(1);
+        const sotLines = sot ? [
+          sot.coreOffer        ? `Core offer: ${sot.coreOffer}` : '',
+          sot.targetAudience   ? `Target audience: ${sot.targetAudience}` : '',
+          sot.mainPainPoint    ? `Main pain point: ${sot.mainPainPoint}` : '',
+          sot.mainBenefits     ? `Main benefits: ${sot.mainBenefits}` : '',
+          sot.uniqueValue      ? `Unique value: ${sot.uniqueValue}` : '',
+          sot.idealCustomerAvatar ? `Ideal customer: ${sot.idealCustomerAvatar}` : '',
+        ].filter(Boolean) : [];
+        sotContext = sotLines.length > 0
+          ? ['BRAND CONTEXT — this is the approved brand voice. All copy must be consistent with this:', ...sotLines].join('\n')
+          : '';
       }
 
       // Check and reset quota if user's anniversary date has passed
@@ -272,8 +292,9 @@ export const headlinesRouter = router({
           .replace(/{desiredOutcome}/g, resolvedDesiredOutcome)
           .replace(/{uniqueMechanism}/g, resolvedUniqueMechanism);
 
-        // Inject ICP context between service context and generation instructions — Item 1.2
+        // Inject SOT as outermost layer, then ICP — Item 1.2 + 1.4
         const promptWithIcp = icpContext ? prompt.replace(/\n\nGenerate /, `\n\n${icpContext}\n\nGenerate `) : prompt;
+        const promptWithSot = sotContext ? `${sotContext}\n\n${promptWithIcp}` : promptWithIcp;
 
         try {
           const response = await invokeLLM({
@@ -282,7 +303,7 @@ export const headlinesRouter = router({
                 role: "system",
                 content: "You are an expert direct response copywriter. Return ONLY valid JSON, no markdown, no explanations.",
               },
-              { role: "user", content: promptWithIcp },
+              { role: "user", content: promptWithSot },
             ],
           });
 

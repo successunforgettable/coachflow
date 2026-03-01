@@ -1,0 +1,35 @@
+{
+  "query": "SELECT id, openId, name FROM users LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT id, openId, name FROM users LIMIT 5;",
+  "rows": [
+    {
+      "id": "1",
+      "openId": "YAadMRwhwu3fpQ3qJTRrw4",
+      "name": "Arfeen Khan"
+    },
+    {
+      "id": "180001",
+      "openId": "test-landing-1771368614514",
+      "name": "Test User"
+    },
+    {
+      "id": "180002",
+      "openId": "test-landing-1771368641034",
+      "name": "Test User"
+    },
+    {
+      "id": "210024",
+      "openId": "test-icp-1771397233982",
+      "name": "Test User"
+    },
+    {
+      "id": "360056",
+      "openId": "test-beast-mode-user",
+      "name": "Beast Mode Test User"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\topenId\tname\n1\tYAadMRwhwu3fpQ3qJTRrw4\tArfeen Khan\n180001\ttest-landing-1771368614514\tTest User\n180002\ttest-landing-1771368641034\tTest User\n210024\ttest-icp-1771397233982\tTest User\n360056\ttest-beast-mode-user\tBeast Mode Test User\n",
+  "stderr": "",
+  "execution_time_ms": 1510
+}

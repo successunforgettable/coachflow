@@ -11,7 +11,7 @@ import {
   incrementHvcoCount
 } from "../db";
 import { getDb } from "../db";
-import { services, idealCustomerProfiles } from "../../drizzle/schema";
+import { services, idealCustomerProfiles, sourceOfTruth } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { getQuotaLimit } from "../quotaLimits";
@@ -100,6 +100,26 @@ export const hvcoRouter = router({
         icp.implementationBarriers ? `What stops them from taking action: ${icp.implementationBarriers}` : '',
       ].filter(Boolean).join('\n').trim() : '';
 
+      // SOT query — Item 1.4
+      const [sot] = await db
+        .select()
+        .from(sourceOfTruth)
+        .where(eq(sourceOfTruth.userId, ctx.user.id))
+        .limit(1);
+
+      const sotLines = sot ? [
+        sot.coreOffer        ? `Core offer: ${sot.coreOffer}` : '',
+        sot.targetAudience   ? `Target audience: ${sot.targetAudience}` : '',
+        sot.mainPainPoint    ? `Main pain point: ${sot.mainPainPoint}` : '',
+        sot.mainBenefits     ? `Main benefits: ${sot.mainBenefits}` : '',
+        sot.uniqueValue      ? `Unique value: ${sot.uniqueValue}` : '',
+        sot.idealCustomerAvatar ? `Ideal customer: ${sot.idealCustomerAvatar}` : '',
+      ].filter(Boolean) : [];
+
+      const sotContext = sotLines.length > 0
+        ? ['BRAND CONTEXT — this is the approved brand voice. All copy must be consistent with this:', ...sotLines].join('\n')
+        : '';
+
       // Item 1.3 — Rule 4: server-side fallbacks so empty form fields fall back to service record
       const resolvedTargetMarket = input.targetMarket?.trim() || service.targetCustomer || "";
       const resolvedHvcoTopic = input.hvcoTopic?.trim() || service.hvcoTopic || "";
@@ -108,7 +128,7 @@ export const hvcoRouter = router({
       const allTitles: any[] = [];
 
       // Generate Long Titles (20 variations)
-      const longTitlesPrompt = `You are an expert copywriter creating compelling HVCO (High-Value Content Offer) titles.
+      const longTitlesPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert copywriter creating compelling HVCO (High-Value Content Offer) titles.
 
 Product: ${service.name}
 Target Market: ${resolvedTargetMarket}
@@ -162,7 +182,7 @@ Return ONLY a JSON array of ${20 * countMultiplier} title strings, nothing else.
       });
 
       // Generate Short Titles (20 variations)
-      const shortTitlesPrompt = `You are an expert copywriter creating compelling HVCO titles.
+      const shortTitlesPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert copywriter creating compelling HVCO titles.
 
 Product: ${service.name}
 Target Market: ${resolvedTargetMarket}
@@ -212,7 +232,7 @@ Return ONLY a JSON array of ${20 * countMultiplier} title strings, nothing else.
       });
 
       // Generate Power Mode Titles (30 extra variations)
-      const powerModeTitlesPrompt = `You are an expert copywriter creating compelling HVCO titles.
+      const powerModeTitlesPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert copywriter creating compelling HVCO titles.
 
 Product: ${service.name}
 Target Market: ${resolvedTargetMarket}
@@ -259,7 +279,7 @@ Return ONLY a JSON array of 30 title strings, nothing else.`;
       });
 
       // Generate Subheadlines (20 variations)
-      const subheadlinesPrompt = `You are an expert copywriter creating compelling subheadlines for HVCOs.
+      const subheadlinesPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert copywriter creating compelling subheadlines for HVCOs.
 
 Product: ${service.name}
 Target Market: ${resolvedTargetMarket}

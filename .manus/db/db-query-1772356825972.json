@@ -1,0 +1,40 @@
+{
+  "query": "SELECT id, name, role, openId FROM users ORDER BY id ASC LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT id, name, role, openId FROM users ORDER BY id ASC LIMIT 5;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "Arfeen Khan",
+      "role": "admin",
+      "openId": "YAadMRwhwu3fpQ3qJTRrw4"
+    },
+    {
+      "id": "180001",
+      "name": "Test User",
+      "role": "user",
+      "openId": "test-landing-1771368614514"
+    },
+    {
+      "id": "180002",
+      "name": "Test User",
+      "role": "user",
+      "openId": "test-landing-1771368641034"
+    },
+    {
+      "id": "210024",
+      "name": "Test User",
+      "role": "user",
+      "openId": "test-icp-1771397233982"
+    },
+    {
+      "id": "360056",
+      "name": "Beast Mode Test User",
+      "role": "user",
+      "openId": "test-beast-mode-user"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\trole\topenId\n1\tArfeen Khan\tadmin\tYAadMRwhwu3fpQ3qJTRrw4\n180001\tTest User\tuser\ttest-landing-1771368614514\n180002\tTest User\tuser\ttest-landing-1771368641034\n210024\tTest User\tuser\ttest-icp-1771397233982\n360056\tBeast Mode Test User\tuser\ttest-beast-mode-user\n",
+  "stderr": "",
+  "execution_time_ms": 1519
+}

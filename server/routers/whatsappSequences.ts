@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
-import { whatsappSequences, services, idealCustomerProfiles } from "../../drizzle/schema";
+import { whatsappSequences, services, idealCustomerProfiles, sourceOfTruth } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { invokeLLM } from "../_core/llm";
 import { getQuotaLimit } from "../quotaLimits";
@@ -137,6 +137,26 @@ ${icp.buyingTriggers ? `What makes them buy: ${icp.buyingTriggers}` : ''}
 ${icp.communicationStyle ? `How they communicate: ${icp.communicationStyle}` : ''}
 `.trim() : '';
 
+      // SOT query — Item 1.4
+      const [sot] = await db
+        .select()
+        .from(sourceOfTruth)
+        .where(eq(sourceOfTruth.userId, ctx.user.id))
+        .limit(1);
+
+      const sotLines = sot ? [
+        sot.coreOffer        ? `Core offer: ${sot.coreOffer}` : '',
+        sot.targetAudience   ? `Target audience: ${sot.targetAudience}` : '',
+        sot.mainPainPoint    ? `Main pain point: ${sot.mainPainPoint}` : '',
+        sot.mainBenefits     ? `Main benefits: ${sot.mainBenefits}` : '',
+        sot.uniqueValue      ? `Unique value: ${sot.uniqueValue}` : '',
+        sot.idealCustomerAvatar ? `Ideal customer: ${sot.idealCustomerAvatar}` : '',
+      ].filter(Boolean) : [];
+
+      const sotContext = sotLines.length > 0
+        ? ['BRAND CONTEXT — this is the approved brand voice. All copy must be consistent with this:', ...sotLines].join('\n')
+        : '';
+
       // Extract real social proof data
       const socialProof = {
         hasCustomers: !!service.totalCustomers && service.totalCustomers > 0,
@@ -158,7 +178,7 @@ You MUST use these exact numbers. Do not fabricate.`
       let prompt = "";
 
       if (input.sequenceType === "engagement") {
-        prompt = `You are an expert WhatsApp marketer. Create a 3-message WhatsApp engagement sequence for event attendees.
+        prompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert WhatsApp marketer. Create a 3-message WhatsApp engagement sequence for event attendees.
 
 Service: ${service.name}
 Event: ${input.eventDetails?.eventName || "Event"}
@@ -189,7 +209,7 @@ Each message should:
 Format as JSON array.`;
       } else {
         // sales sequence
-        prompt = `You are an expert WhatsApp marketer. Create a 3-message WhatsApp sales sequence for event attendees.
+        prompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert WhatsApp marketer. Create a 3-message WhatsApp sales sequence for event attendees.
 
 Service: ${service.name}
 Event: ${input.eventDetails?.eventName || "Event"}

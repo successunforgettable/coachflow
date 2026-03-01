@@ -11,7 +11,7 @@ import {
   incrementHeroMechanismCount
 } from "../db";
 import { getDb } from "../db";
-import { services, idealCustomerProfiles } from "../../drizzle/schema";
+import { services, idealCustomerProfiles, sourceOfTruth } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { getQuotaLimit } from "../quotaLimits";
@@ -111,6 +111,26 @@ export const heroMechanismsRouter = router({
         icp.implementationBarriers ? `What stops them from taking action: ${icp.implementationBarriers}` : '',
       ].filter(Boolean).join('\n').trim() : '';
 
+      // SOT query — Item 1.4
+      const [sot] = await db
+        .select()
+        .from(sourceOfTruth)
+        .where(eq(sourceOfTruth.userId, ctx.user.id))
+        .limit(1);
+
+      const sotLines = sot ? [
+        sot.coreOffer        ? `Core offer: ${sot.coreOffer}` : '',
+        sot.targetAudience   ? `Target audience: ${sot.targetAudience}` : '',
+        sot.mainPainPoint    ? `Main pain point: ${sot.mainPainPoint}` : '',
+        sot.mainBenefits     ? `Main benefits: ${sot.mainBenefits}` : '',
+        sot.uniqueValue      ? `Unique value: ${sot.uniqueValue}` : '',
+        sot.idealCustomerAvatar ? `Ideal customer: ${sot.idealCustomerAvatar}` : '',
+      ].filter(Boolean) : [];
+
+      const sotContext = sotLines.length > 0
+        ? ['BRAND CONTEXT — this is the approved brand voice. All copy must be consistent with this:', ...sotLines].join('\n')
+        : '';
+
       // Item 1.3 — Rule 4: server-side fallbacks for Hero Mechanism
       const resolvedPressingProblem = input.pressingProblem?.trim() || service.painPoints || "";
       const resolvedWhyProblem = input.whyProblem?.trim() || service.whyProblemExists || "";
@@ -122,7 +142,7 @@ export const heroMechanismsRouter = router({
       const allMechanisms: any[] = [];
 
       // Generate Hero Mechanisms (5 variations)
-      const heroMechanismsPrompt = `You are an expert direct response copywriter creating compelling Hero Mechanisms.
+      const heroMechanismsPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert direct response copywriter creating compelling Hero Mechanisms.
 
 Product: ${service.name}
 Target Market: ${input.targetMarket}
@@ -188,7 +208,7 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
       });
 
       // Generate Headline Ideas (5 variations)
-      const headlineIdeasPrompt = `You are an expert direct response copywriter creating compelling headlines for Hero Mechanisms.
+      const headlineIdeasPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert direct response copywriter creating compelling headlines for Hero Mechanisms.
 
 Product: ${service.name}
 Target Market: ${input.targetMarket}
@@ -248,7 +268,7 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
       });
 
       // Generate Power Mode (5 extra powerful variations)
-      const powerModePrompt = `You are an expert direct response copywriter creating BEAST MODE Hero Mechanisms - the most powerful, compelling versions.
+      const powerModePrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert direct response copywriter creating BEAST MODE Hero Mechanisms - the most powerful, compelling versions.
 
 Product: ${service.name}
 Target Market: ${input.targetMarket}

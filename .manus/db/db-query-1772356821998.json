@@ -1,0 +1,25 @@
+{
+  "query": "SELECT id, name, role FROM users WHERE role = 'admin' OR role = 'superuser' LIMIT 3;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT id, name, role FROM users WHERE role = 'admin' OR role = 'superuser' LIMIT 3;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "Arfeen Khan",
+      "role": "admin"
+    },
+    {
+      "id": "1260098",
+      "name": "Admin User",
+      "role": "admin"
+    },
+    {
+      "id": "1260101",
+      "name": "Admin User",
+      "role": "admin"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\trole\n1\tArfeen Khan\tadmin\n1260098\tAdmin User\tadmin\n1260101\tAdmin User\tadmin\n",
+  "stderr": "",
+  "execution_time_ms": 1557
+}
