@@ -201,10 +201,12 @@ export const headlinesRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       // Fetch service data for AutoPop if serviceId provided
+      // NOTE: pre-existing issue — this fetch does not check userId (flagged for future security pass, not fixed in 1.2)
       let autoPopData: any = {};
+      let icpContext = '';
       if (input.serviceId) {
         const { getDb } = await import("../db");
-        const { services } = await import("../../drizzle/schema");
+        const { services, idealCustomerProfiles } = await import("../../drizzle/schema");
         const { eq } = await import("drizzle-orm");
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
@@ -216,6 +218,20 @@ export const headlinesRouter = router({
             avatarTitle: service.avatarTitle,
             mechanismDescriptor: service.mechanismDescriptor,
           };
+        }
+        // ICP query — Item 1.2
+        const [icp] = await db
+          .select()
+          .from(idealCustomerProfiles)
+          .where(eq(idealCustomerProfiles.serviceId, input.serviceId))
+          .limit(1);
+        if (icp) {
+          icpContext = [
+            'IDEAL CUSTOMER PROFILE — use this to make every line of copy specific and targeted:',
+            icp.pains ? `Their daily pains: ${icp.pains}` : '',
+            icp.fears ? `Their deep fears: ${icp.fears}` : '',
+            icp.buyingTriggers ? `What makes them buy: ${icp.buyingTriggers}` : '',
+          ].filter(Boolean).join('\n').trim();
         }
       }
 
@@ -248,6 +264,9 @@ export const headlinesRouter = router({
           .replace(/{desiredOutcome}/g, input.desiredOutcome)
           .replace(/{uniqueMechanism}/g, input.uniqueMechanism);
 
+        // Inject ICP context between service context and generation instructions — Item 1.2
+        const promptWithIcp = icpContext ? prompt.replace(/\n\nGenerate /, `\n\n${icpContext}\n\nGenerate `) : prompt;
+
         try {
           const response = await invokeLLM({
             messages: [
@@ -255,7 +274,7 @@ export const headlinesRouter = router({
                 role: "system",
                 content: "You are an expert direct response copywriter. Return ONLY valid JSON, no markdown, no explanations.",
               },
-              { role: "user", content: prompt },
+              { role: "user", content: promptWithIcp },
             ],
           });
 

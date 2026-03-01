@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
-import { adCopy, services, campaigns } from "../../drizzle/schema";
+import { adCopy, services, campaigns, idealCustomerProfiles } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { invokeLLM } from "../_core/llm";
 import { nanoid } from "nanoid";
@@ -227,7 +227,23 @@ export const adCopyRouter = router({
       if (!service) {
         throw new Error("Service not found");
       }
-      
+
+      // ICP query — Item 1.2
+      const [icp] = await db
+        .select()
+        .from(idealCustomerProfiles)
+        .where(eq(idealCustomerProfiles.serviceId, input.serviceId))
+        .limit(1);
+
+      const icpContext = icp ? `
+IDEAL CUSTOMER PROFILE — use this to make every line of copy specific and targeted:
+${icp.pains ? `Their daily pains: ${icp.pains}` : ''}
+${icp.fears ? `Their deep fears: ${icp.fears}` : ''}
+${icp.objections ? `Their objections to buying: ${icp.objections}` : ''}
+${icp.buyingTriggers ? `What makes them buy: ${icp.buyingTriggers}` : ''}
+${icp.communicationStyle ? `How they communicate: ${icp.communicationStyle}` : ''}
+`.trim() : '';
+
       // Extract real social proof data
       const socialProof = {
         hasCustomers: !!service.totalCustomers && service.totalCustomers > 0,
@@ -278,6 +294,8 @@ Scientific Studies: ${input.scientificStudies || 'N/A'}
 Credible Authority: ${input.credibleAuthority || 'N/A'}
 
 ${socialProofGuidance}
+
+${icpContext}
 
 Ad Type: ${adTypeContext}
 Ad Style: ${input.adStyle}
@@ -357,6 +375,8 @@ Credible Authority: ${input.credibleAuthority || 'N/A'}
 
 ${socialProofGuidance}
 
+${icpContext}
+
 Ad Type: ${adTypeContext}
 Ad Style: ${input.adStyle}
 Call To Action: ${input.adCallToAction}
@@ -399,6 +419,8 @@ Product Category: ${input.productCategory}
 Specific Product Name: ${input.specificProductName}
 Desired Outcome: ${input.desiredOutcome}
 Call To Action: ${input.adCallToAction}
+
+${icpContext}
 
 Ad Type: ${adTypeContext}
 Ad Style: ${input.adStyle}

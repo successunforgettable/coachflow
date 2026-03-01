@@ -11,7 +11,7 @@ import {
   incrementHvcoCount
 } from "../db";
 import { getDb } from "../db";
-import { services } from "../../drizzle/schema";
+import { services, idealCustomerProfiles } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { getQuotaLimit } from "../quotaLimits";
@@ -86,6 +86,21 @@ export const hvcoRouter = router({
         throw new Error("Service not found");
       }
 
+      // ICP query — Item 1.2
+      const [icp] = await db
+        .select()
+        .from(idealCustomerProfiles)
+        .where(eq(idealCustomerProfiles.serviceId, input.serviceId))
+        .limit(1);
+
+      const icpContext = icp ? [
+        'IDEAL CUSTOMER PROFILE — use this to make every title specific and targeted:',
+        icp.pains ? `Their daily pains: ${icp.pains}` : '',
+        icp.fears ? `Their deep fears: ${icp.fears}` : '',
+        icp.buyingTriggers ? `What makes them buy: ${icp.buyingTriggers}` : '',
+        icp.implementationBarriers ? `What stops them from taking action: ${icp.implementationBarriers}` : '',
+      ].filter(Boolean).join('\n').trim() : '';
+
       const hvcoSetId = nanoid();
       const allTitles: any[] = [];
 
@@ -95,7 +110,7 @@ export const hvcoRouter = router({
 Product: ${service.name}
 Target Market: ${input.targetMarket}
 HVCO Topic: ${input.hvcoTopic}
-
+${icpContext ? `\n${icpContext}\n` : ''}
 Create 20 LONG, benefit-first titles (3-5 words each) following this pattern:
 [Specific Number/Timeframe] [Action/Benefit] [to/for] [Concrete Outcome]
 
@@ -149,7 +164,7 @@ Return ONLY a JSON array of ${20 * countMultiplier} title strings, nothing else.
 Product: ${service.name}
 Target Market: ${input.targetMarket}
 HVCO Topic: ${input.hvcoTopic}
-
+${icpContext ? `\n${icpContext}\n` : ''}
 Create 20 SHORT, benefit-focused titles (2-4 words each) that are:
 - Concise and memorable
 - Include specific outcomes when possible
@@ -199,7 +214,7 @@ Return ONLY a JSON array of ${20 * countMultiplier} title strings, nothing else.
 Product: ${service.name}
 Target Market: ${input.targetMarket}
 HVCO Topic: ${input.hvcoTopic}
-
+${icpContext ? `\n${icpContext}\n` : ''}
 Create 30 BEAST MODE titles - a mix of long and short, all highly creative and attention-grabbing:
 - PRIORITIZE specific benefits and outcomes
 - Use numbers, timeframes, and percentages
@@ -246,7 +261,7 @@ Return ONLY a JSON array of 30 title strings, nothing else.`;
 Product: ${service.name}
 Target Market: ${input.targetMarket}
 HVCO Topic: ${input.hvcoTopic}
-
+${icpContext ? `\n${icpContext}\n` : ''}
 Create 20 SUBHEADLINES that:
 - Support and expand on the main title
 - Add specificity and credibility

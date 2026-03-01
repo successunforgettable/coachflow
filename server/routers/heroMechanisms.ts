@@ -11,7 +11,7 @@ import {
   incrementHeroMechanismCount
 } from "../db";
 import { getDb } from "../db";
-import { services } from "../../drizzle/schema";
+import { services, idealCustomerProfiles } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { getQuotaLimit } from "../quotaLimits";
@@ -97,6 +97,21 @@ export const heroMechanismsRouter = router({
         throw new Error("Service not found");
       }
 
+      // ICP query — Item 1.2
+      const [icp] = await db
+        .select()
+        .from(idealCustomerProfiles)
+        .where(eq(idealCustomerProfiles.serviceId, input.serviceId))
+        .limit(1);
+
+      const icpContext = icp ? [
+        'IDEAL CUSTOMER PROFILE — use this to make every mechanism specific and targeted:',
+        icp.pains ? `Their daily pains: ${icp.pains}` : '',
+        icp.fears ? `Their deep fears: ${icp.fears}` : '',
+        icp.frustrations ? `Their frustrations: ${icp.frustrations}` : '',
+        icp.implementationBarriers ? `What stops them from taking action: ${icp.implementationBarriers}` : '',
+      ].filter(Boolean).join('\n').trim() : '';
+
       const mechanismSetId = nanoid();
       const allMechanisms: any[] = [];
 
@@ -114,7 +129,7 @@ Application: ${input.application || "Use this system"}
 Desired Outcome: ${input.desiredOutcome}
 Credibility: ${input.credibility}
 Social Proof: ${input.socialProof}
-
+${icpContext ? `\n${icpContext}\n` : ''}
 Create 5 HERO MECHANISMS. Each mechanism must have:
 1. A creative, unique NAME using the descriptor (e.g., "Breakthrough Neural Nexus System", "Proprietary Market Guardian Protocol")
 2. A full PARAGRAPH description (150-200 words) that includes:
@@ -173,7 +188,7 @@ Product: ${service.name}
 Target Market: ${input.targetMarket}
 Pressing Problem: ${input.pressingProblem}
 Desired Outcome: ${input.desiredOutcome}
-
+${icpContext ? `\n${icpContext}\n` : ''}
 Create 5 HEADLINE IDEAS that:
 - Grab attention immediately
 - Promise a clear benefit
@@ -239,7 +254,7 @@ Descriptor: ${input.descriptor || "System"}
 Desired Outcome: ${input.desiredOutcome}
 Credibility: ${input.credibility}
 Social Proof: ${input.socialProof}
-
+${icpContext ? `\n${icpContext}\n` : ''}
 Create 5 BEAST MODE mechanisms - these should be:
 - Even more creative and unique names
 - Longer, more detailed descriptions (200-250 words)

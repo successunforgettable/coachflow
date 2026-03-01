@@ -4,7 +4,7 @@ import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 import { getQuotaLimit } from "../quotaLimits";
 import { getDb } from "../db";
-import { landingPages, services, users } from "../../drizzle/schema";
+import { landingPages, services, users, idealCustomerProfiles } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { generateAllAngles } from "../landingPageGenerator";
 
@@ -125,7 +125,24 @@ export const landingPagesRouter = router({
       if (!service) {
         throw new Error("Service not found");
       }
-      
+
+      // ICP query — Item 1.2
+      const [icp] = await db
+        .select()
+        .from(idealCustomerProfiles)
+        .where(eq(idealCustomerProfiles.serviceId, input.serviceId))
+        .limit(1);
+
+      const icpContext = icp ? `
+IDEAL CUSTOMER PROFILE — use this to make every line of copy specific and targeted:
+${icp.pains ? `Their daily pains: ${icp.pains}` : ''}
+${icp.fears ? `Their deep fears: ${icp.fears}` : ''}
+${icp.objections ? `Their objections to buying: ${icp.objections}` : ''}
+${icp.buyingTriggers ? `What makes them buy: ${icp.buyingTriggers}` : ''}
+${icp.implementationBarriers ? `What stops them from taking action: ${icp.implementationBarriers}` : ''}
+${icp.successMetrics ? `How they measure success: ${icp.successMetrics}` : ''}
+`.trim() : '';
+
       // Extract real social proof data
       const socialProof = {
         hasCustomers: !!service.totalCustomers && service.totalCustomers > 0,
@@ -167,12 +184,17 @@ export const landingPagesRouter = router({
         // Otherwise keep original format
       }
 
+      // Append ICP context to avatarDescription so it flows into the helper prompt — Item 1.2
+      const enrichedAvatarDescription = icpContext
+        ? `${avatarDescription}\n\n${icpContext}`
+        : avatarDescription;
+
       // Generate all 4 angles in parallel with social proof (Issue 2 fix)
       const allAngles = await generateAllAngles(
         service.name,
         service.description || "",
         avatarName,
-        avatarDescription,
+        enrichedAvatarDescription,
         socialProof
       );
 

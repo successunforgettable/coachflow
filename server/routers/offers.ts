@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
-import { offers, services } from "../../drizzle/schema";
+import { offers, services, idealCustomerProfiles } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { generateAllOfferAngles } from "../offersGenerator";
 import { getQuotaLimit } from "../quotaLimits";
@@ -110,18 +110,38 @@ export const offersRouter = router({
       if (!service) {
         throw new Error("Service not found");
       }
-      
+
+      // ICP query — Item 1.2
+      const [icp] = await db
+        .select()
+        .from(idealCustomerProfiles)
+        .where(eq(idealCustomerProfiles.serviceId, input.serviceId))
+        .limit(1);
+
+      const icpContext = icp ? [
+        'IDEAL CUSTOMER PROFILE — use this to make every offer specific and targeted:',
+        icp.objections ? `Their objections to buying: ${icp.objections}` : '',
+        icp.buyingTriggers ? `What makes them buy: ${icp.buyingTriggers}` : '',
+        icp.implementationBarriers ? `What stops them from taking action: ${icp.implementationBarriers}` : '',
+        icp.successMetrics ? `How they measure success: ${icp.successMetrics}` : '',
+      ].filter(Boolean).join('\n').trim() : '';
+
       // Extract real social proof data
       const socialProof = {
         hasCustomers: !!service.totalCustomers && service.totalCustomers > 0,
         customerCount: service.totalCustomers || 0,
       };
 
+      // Append ICP context to targetCustomer so it flows into the helper prompt — Item 1.2
+      const enrichedTargetCustomer = icpContext
+        ? `${service.targetCustomer || 'Target Customer'}\n\n${icpContext}`
+        : service.targetCustomer || 'Target Customer';
+
       // Generate all 3 angles in parallel with social proof
       const allAngles = await generateAllOfferAngles(
         service.name,
         service.description || "",
-        service.targetCustomer || "Target Customer",
+        enrichedTargetCustomer,
         service.mainBenefit || "Main Benefit",
         input.offerType,
         socialProof

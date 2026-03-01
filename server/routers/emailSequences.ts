@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
-import { emailSequences, services, campaigns } from "../../drizzle/schema";
+import { emailSequences, services, campaigns, idealCustomerProfiles } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { invokeLLM } from "../_core/llm";
 import { getQuotaLimit } from "../quotaLimits";
@@ -122,7 +122,23 @@ export const emailSequencesRouter = router({
       if (!service) {
         throw new Error("Service not found");
       }
-      
+
+      // ICP query — Item 1.2
+      const [icp] = await db
+        .select()
+        .from(idealCustomerProfiles)
+        .where(eq(idealCustomerProfiles.serviceId, input.serviceId))
+        .limit(1);
+
+      const icpContext = icp ? `
+IDEAL CUSTOMER PROFILE — use this to make every line of copy specific and targeted:
+${icp.pains ? `Their daily pains: ${icp.pains}` : ''}
+${icp.fears ? `Their deep fears: ${icp.fears}` : ''}
+${icp.objections ? `Their objections to buying: ${icp.objections}` : ''}
+${icp.buyingTriggers ? `What makes them buy: ${icp.buyingTriggers}` : ''}
+${icp.implementationBarriers ? `What stops them from taking action: ${icp.implementationBarriers}` : ''}
+`.trim() : '';
+
       // Extract real social proof data
       const socialProof = {
         hasCustomers: !!service.totalCustomers && service.totalCustomers > 0,
@@ -168,6 +184,8 @@ Main Benefit: ${service.mainBenefit}
 
 ${socialProofGuidance}
 
+${icpContext}
+
 Create 3 emails:
 1. SET THE STAGE (Day 1) - Welcome, set expectations, introduce yourself
 2. EPIPHANY (Day 3) - Share your transformation story, introduce solution
@@ -188,6 +206,8 @@ Event: ${input.eventDetails?.eventName || "Event"}
 Host: ${input.eventDetails?.hostName || "Host"}
 
 ${socialProofGuidance}
+
+${icpContext}
 
 Create 5 emails (Monday to Friday before event):
 1. SET THE STAGE (Monday) - Introduce, set expectations
@@ -214,6 +234,8 @@ Price: ${input.eventDetails?.price || "Price"}
 Deadline: ${input.eventDetails?.deadline || "Deadline"}
 
 ${socialProofGuidance}
+
+${icpContext}
 
 Create 7 emails (Day 1-7 after event):
 1. THANK YOU (Day 1) - Gratitude, recap key points

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
-import { whatsappSequences, services } from "../../drizzle/schema";
+import { whatsappSequences, services, idealCustomerProfiles } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { invokeLLM } from "../_core/llm";
 import { getQuotaLimit } from "../quotaLimits";
@@ -121,7 +121,22 @@ export const whatsappSequencesRouter = router({
       if (!service) {
         throw new Error("Service not found");
       }
-      
+
+      // ICP query — Item 1.2
+      const [icp] = await db
+        .select()
+        .from(idealCustomerProfiles)
+        .where(eq(idealCustomerProfiles.serviceId, input.serviceId))
+        .limit(1);
+
+      const icpContext = icp ? `
+IDEAL CUSTOMER PROFILE — use this to make every line of copy specific and targeted:
+${icp.pains ? `Their daily pains: ${icp.pains}` : ''}
+${icp.fears ? `Their deep fears: ${icp.fears}` : ''}
+${icp.buyingTriggers ? `What makes them buy: ${icp.buyingTriggers}` : ''}
+${icp.communicationStyle ? `How they communicate: ${icp.communicationStyle}` : ''}
+`.trim() : '';
+
       // Extract real social proof data
       const socialProof = {
         hasCustomers: !!service.totalCustomers && service.totalCustomers > 0,
@@ -152,6 +167,8 @@ Event Date: ${input.eventDetails?.eventDate || "Date"}
 
 ${socialProofGuidance}
 
+${icpContext}
+
 Create 3 WhatsApp messages (Monday, Wednesday, Friday before event):
 1. WELCOME & EXPECTATION SETTING (Monday) - Personal welcome, what to expect
 2. EDUCATIONAL CONTENT (Wednesday) - Share valuable tip, build trust
@@ -180,6 +197,8 @@ Offer: ${input.eventDetails?.offerName || "Offer"}
 Price: ${input.eventDetails?.price || "Price"}
 
 ${socialProofGuidance}
+
+${icpContext}
 
 Create 3 WhatsApp messages (Day 1, 3, 5 after event):
 1. EXCLUSIVE OFFER (Day 1) - Thank you, exclusive offer for attendees
