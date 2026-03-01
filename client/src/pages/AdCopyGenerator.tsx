@@ -72,6 +72,20 @@ export default function AdCopyGenerator() {
       
       setSpecificProductName(service.name || "");
       setProductCategory(service.category || "");
+      // Item 1.3 — auto-fill from service record
+      setPressingProblem(service.painPoints || "");
+      setDesiredOutcome(service.mainBenefit || "");
+      setUniqueMechanism(service.uniqueMechanismSuggestion || "");
+      setCredibleAuthority(service.pressFeatures || "");
+      setFeaturedIn(service.pressFeatures || "");
+      setNumberOfReviews(service.totalReviews?.toString() || "");
+      setAverageReviewRating(service.averageRating?.toString() || "");
+      setTotalCustomers(service.totalCustomers?.toString() || "");
+      setTestimonials(
+        [service.testimonial1Quote, service.testimonial2Quote, service.testimonial3Quote]
+          .filter(Boolean)
+          .join(" | ") || ""
+      );
     }
   };
 

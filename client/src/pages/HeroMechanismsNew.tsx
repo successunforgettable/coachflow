@@ -128,8 +128,14 @@ export default function HeroMechanismsNew() {
         setTargetMarket(`${service.avatarTitle}s like ${service.avatarName}`);
       }
       
-      setPressingProblem(service.mainBenefit ? `Struggling with ${service.mainBenefit.toLowerCase()}` : "");
+      // Item 1.3 — Correction: use painPoints for pressingProblem (was incorrectly using mainBenefit)
+      setPressingProblem(service.painPoints || "");
       setDesiredOutcome(service.mainBenefit || "");
+      // Item 1.3 — 4 new pre-fill fields
+      setWhyProblemExists(service.whyProblemExists || "");
+      setSolutionsTried(service.failedSolutions || "");
+      setWhySolutionsFail(service.falseBeliefsVsRealReasons || "");
+      setCredibleAuthority(service.pressFeatures || "");
       
       // Pre-fill descriptor from AutoPop field
       if (service.mechanismDescriptor) {

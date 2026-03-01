@@ -244,6 +244,19 @@ ${icp.buyingTriggers ? `What makes them buy: ${icp.buyingTriggers}` : ''}
 ${icp.communicationStyle ? `How they communicate: ${icp.communicationStyle}` : ''}
 `.trim() : '';
 
+      // Item 1.3 — Rule 4: server-side fallbacks (use input if provided, else fall back to service record)
+      const resolvedPressingProblem = input.pressingProblem?.trim() || service.painPoints || "";
+      const resolvedDesiredOutcome = input.desiredOutcome?.trim() || service.mainBenefit || "";
+      const resolvedUniqueMechanism = input.uniqueMechanism?.trim() || service.uniqueMechanismSuggestion || "";
+      const resolvedCredibleAuthority = input.credibleAuthority?.trim() || service.pressFeatures || "";
+      const resolvedFeaturedIn = input.featuredIn?.trim() || service.pressFeatures || "";
+      const resolvedNumberOfReviews = input.numberOfReviews?.trim() || service.totalReviews?.toString() || "";
+      const resolvedAverageReviewRating = input.averageReviewRating?.trim() || service.averageRating?.toString() || "";
+      const resolvedTotalCustomers = input.totalCustomers?.trim() || service.totalCustomers?.toString() || "";
+      const resolvedTestimonials = input.testimonials?.trim() ||
+        [service.testimonial1Quote, service.testimonial2Quote, service.testimonial3Quote]
+          .filter(Boolean).join(" | ") || "";
+
       // Extract real social proof data
       const socialProof = {
         hasCustomers: !!service.totalCustomers && service.totalCustomers > 0,
@@ -285,13 +298,13 @@ Category: ${service.category}
 Target Market: ${input.targetMarket}
 Product Category: ${input.productCategory}
 Specific Product Name: ${input.specificProductName}
-Pressing Problem: ${input.pressingProblem}
-Desired Outcome: ${input.desiredOutcome}
-Unique Mechanism: ${input.uniqueMechanism || 'N/A'}
+Pressing Problem: ${resolvedPressingProblem}
+Desired Outcome: ${resolvedDesiredOutcome}
+Unique Mechanism: ${resolvedUniqueMechanism || 'N/A'}
 Key Benefits: ${input.listBenefits || 'N/A'}
 Specific Technology: ${input.specificTechnology || 'N/A'}
 Scientific Studies: ${input.scientificStudies || 'N/A'}
-Credible Authority: ${input.credibleAuthority || 'N/A'}
+Credible Authority: ${resolvedCredibleAuthority || 'N/A'}
 
 ${socialProofGuidance}
 
@@ -365,13 +378,13 @@ Category: ${service.category}
 Target Market: ${input.targetMarket}
 Product Category: ${input.productCategory}
 Specific Product Name: ${input.specificProductName}
-Pressing Problem: ${input.pressingProblem}
-Desired Outcome: ${input.desiredOutcome}
-Unique Mechanism: ${input.uniqueMechanism || 'N/A'}
+Pressing Problem: ${resolvedPressingProblem}
+Desired Outcome: ${resolvedDesiredOutcome}
+Unique Mechanism: ${resolvedUniqueMechanism || 'N/A'}
 Key Benefits: ${input.listBenefits || 'N/A'}
 Specific Technology: ${input.specificTechnology || 'N/A'}
 Scientific Studies: ${input.scientificStudies || 'N/A'}
-Credible Authority: ${input.credibleAuthority || 'N/A'}
+Credible Authority: ${resolvedCredibleAuthority || 'N/A'}
 
 ${socialProofGuidance}
 
@@ -417,7 +430,7 @@ Category: ${service.category}
 Target Market: ${input.targetMarket}
 Product Category: ${input.productCategory}
 Specific Product Name: ${input.specificProductName}
-Desired Outcome: ${input.desiredOutcome}
+Desired Outcome: ${resolvedDesiredOutcome}
 Call To Action: ${input.adCallToAction}
 
 ${icpContext}

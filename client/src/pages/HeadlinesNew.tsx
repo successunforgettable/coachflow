@@ -66,13 +66,15 @@ export default function HeadlinesNew() {
           targetMarketValue = `${service.avatarTitle}s like ${service.avatarName}`;
         }
         
-        if (targetMarketValue) {
-          setFormData(prev => ({
-            ...prev,
-            serviceId,
-            targetMarket: prev.targetMarket || targetMarketValue,
-          }));
-        }
+        // Item 1.3 — auto-fill from service record
+        setFormData(prev => ({
+          ...prev,
+          serviceId,
+          targetMarket: prev.targetMarket || targetMarketValue,
+          pressingProblem: service.painPoints || "",
+          desiredOutcome: service.mainBenefit || "",
+          uniqueMechanism: service.uniqueMechanismSuggestion || "",
+        }));
       }
     }
   };

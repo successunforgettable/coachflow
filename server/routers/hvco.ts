@@ -100,6 +100,10 @@ export const hvcoRouter = router({
         icp.implementationBarriers ? `What stops them from taking action: ${icp.implementationBarriers}` : '',
       ].filter(Boolean).join('\n').trim() : '';
 
+      // Item 1.3 — Rule 4: server-side fallbacks so empty form fields fall back to service record
+      const resolvedTargetMarket = input.targetMarket?.trim() || service.targetCustomer || "";
+      const resolvedHvcoTopic = input.hvcoTopic?.trim() || service.hvcoTopic || "";
+
       const hvcoSetId = nanoid();
       const allTitles: any[] = [];
 
@@ -107,8 +111,8 @@ export const hvcoRouter = router({
       const longTitlesPrompt = `You are an expert copywriter creating compelling HVCO (High-Value Content Offer) titles.
 
 Product: ${service.name}
-Target Market: ${input.targetMarket}
-HVCO Topic: ${input.hvcoTopic}
+Target Market: ${resolvedTargetMarket}
+HVCO Topic: ${resolvedHvcoTopic}
 ${icpContext ? `\n${icpContext}\n` : ''}
 Create 20 LONG, benefit-first titles (3-5 words each) following this pattern:
 [Specific Number/Timeframe] [Action/Benefit] [to/for] [Concrete Outcome]
@@ -161,8 +165,8 @@ Return ONLY a JSON array of ${20 * countMultiplier} title strings, nothing else.
       const shortTitlesPrompt = `You are an expert copywriter creating compelling HVCO titles.
 
 Product: ${service.name}
-Target Market: ${input.targetMarket}
-HVCO Topic: ${input.hvcoTopic}
+Target Market: ${resolvedTargetMarket}
+HVCO Topic: ${resolvedHvcoTopic}
 ${icpContext ? `\n${icpContext}\n` : ''}
 Create 20 SHORT, benefit-focused titles (2-4 words each) that are:
 - Concise and memorable
@@ -211,8 +215,8 @@ Return ONLY a JSON array of ${20 * countMultiplier} title strings, nothing else.
       const powerModeTitlesPrompt = `You are an expert copywriter creating compelling HVCO titles.
 
 Product: ${service.name}
-Target Market: ${input.targetMarket}
-HVCO Topic: ${input.hvcoTopic}
+Target Market: ${resolvedTargetMarket}
+HVCO Topic: ${resolvedHvcoTopic}
 ${icpContext ? `\n${icpContext}\n` : ''}
 Create 30 BEAST MODE titles - a mix of long and short, all highly creative and attention-grabbing:
 - PRIORITIZE specific benefits and outcomes
@@ -258,8 +262,8 @@ Return ONLY a JSON array of 30 title strings, nothing else.`;
       const subheadlinesPrompt = `You are an expert copywriter creating compelling subheadlines for HVCOs.
 
 Product: ${service.name}
-Target Market: ${input.targetMarket}
-HVCO Topic: ${input.hvcoTopic}
+Target Market: ${resolvedTargetMarket}
+HVCO Topic: ${resolvedHvcoTopic}
 ${icpContext ? `\n${icpContext}\n` : ''}
 Create 20 SUBHEADLINES that:
 - Support and expand on the main title

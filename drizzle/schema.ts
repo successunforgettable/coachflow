@@ -114,6 +114,7 @@ export const services = mysqlTable("services", {
   avatarName: varchar("avatarName", { length: 100 }), // Ideal customer name
   avatarTitle: varchar("avatarTitle", { length: 100 }), // Ideal customer title/role
   // AI-expanded onboarding fields (Item 1.1 — Build Plan March 1 2026)
+  painPoints: text("painPoints"), // 3-5 specific pain points the ideal customer feels daily
   falseBeliefsVsRealReasons: text("falseBeliefsVsRealReasons"), // What they think is stopping them vs what really is
   failedSolutions: text("failedSolutions"), // What they have tried before and why it failed
   hiddenReasons: text("hiddenReasons"), // Real reasons behind their problem they would never admit

@@ -217,6 +217,10 @@ export const headlinesRouter = router({
             avatarName: service.avatarName,
             avatarTitle: service.avatarTitle,
             mechanismDescriptor: service.mechanismDescriptor,
+            // Item 1.3 — Rule 4: server-side fallbacks
+            resolvedPressingProblem: input.pressingProblem?.trim() || service.painPoints || "",
+            resolvedDesiredOutcome: input.desiredOutcome?.trim() || service.mainBenefit || "",
+            resolvedUniqueMechanism: input.uniqueMechanism?.trim() || service.uniqueMechanismSuggestion || "",
           };
         }
         // ICP query — Item 1.2
@@ -258,11 +262,15 @@ export const headlinesRouter = router({
       for (const [formulaType, promptTemplate] of Object.entries(FORMULA_PROMPTS)) {
         // Modify prompt to generate 3x more if Power Mode is enabled
         const modifiedTemplate = promptTemplate.replace(/Generate 5/g, `Generate ${5 * countMultiplier}`);
+        // Item 1.3 — use resolved values (server fallback from service record)
+        const resolvedPressingProblem = autoPopData.resolvedPressingProblem ?? input.pressingProblem;
+        const resolvedDesiredOutcome = autoPopData.resolvedDesiredOutcome ?? input.desiredOutcome;
+        const resolvedUniqueMechanism = autoPopData.resolvedUniqueMechanism ?? input.uniqueMechanism;
         const prompt = modifiedTemplate
           .replace(/{targetMarket}/g, input.targetMarket)
-          .replace(/{pressingProblem}/g, input.pressingProblem)
-          .replace(/{desiredOutcome}/g, input.desiredOutcome)
-          .replace(/{uniqueMechanism}/g, input.uniqueMechanism);
+          .replace(/{pressingProblem}/g, resolvedPressingProblem)
+          .replace(/{desiredOutcome}/g, resolvedDesiredOutcome)
+          .replace(/{uniqueMechanism}/g, resolvedUniqueMechanism);
 
         // Inject ICP context between service context and generation instructions — Item 1.2
         const promptWithIcp = icpContext ? prompt.replace(/\n\nGenerate /, `\n\n${icpContext}\n\nGenerate `) : prompt;

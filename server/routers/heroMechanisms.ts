@@ -111,6 +111,13 @@ export const heroMechanismsRouter = router({
         icp.implementationBarriers ? `What stops them from taking action: ${icp.implementationBarriers}` : '',
       ].filter(Boolean).join('\n').trim() : '';
 
+      // Item 1.3 — Rule 4: server-side fallbacks for Hero Mechanism
+      const resolvedPressingProblem = input.pressingProblem?.trim() || service.painPoints || "";
+      const resolvedWhyProblem = input.whyProblem?.trim() || service.whyProblemExists || "";
+      const resolvedWhatTried = input.whatTried?.trim() || service.failedSolutions || "";
+      const resolvedWhyExistingNotWork = input.whyExistingNotWork?.trim() || service.falseBeliefsVsRealReasons || "";
+      const resolvedCredibility = input.credibility?.trim() || service.pressFeatures || "";
+
       const mechanismSetId = nanoid();
       const allMechanisms: any[] = [];
 
@@ -119,14 +126,14 @@ export const heroMechanismsRouter = router({
 
 Product: ${service.name}
 Target Market: ${input.targetMarket}
-Pressing Problem: ${input.pressingProblem}
-Why Problem Exists: ${input.whyProblem}
-What They've Tried: ${input.whatTried}
-Why Existing Solutions Fail: ${input.whyExistingNotWork}
+Pressing Problem: ${resolvedPressingProblem}
+Why Problem Exists: ${resolvedWhyProblem}
+What They've Tried: ${resolvedWhatTried}
+Why Existing Solutions Fail: ${resolvedWhyExistingNotWork}
 Descriptor: ${input.descriptor || "System"}
 Application: ${input.application || "Use this system"}
 Desired Outcome: ${input.desiredOutcome}
-Credibility: ${input.credibility}
+Credibility: ${resolvedCredibility}
 Social Proof: ${input.socialProof}
 ${icpContext ? `\n${icpContext}\n` : ''}
 Create 5 HERO MECHANISMS. Each mechanism must have:
@@ -185,7 +192,7 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
 
 Product: ${service.name}
 Target Market: ${input.targetMarket}
-Pressing Problem: ${input.pressingProblem}
+Pressing Problem: ${resolvedPressingProblem}
 Desired Outcome: ${input.desiredOutcome}
 ${icpContext ? `\n${icpContext}\n` : ''}
 Create 5 HEADLINE IDEAS that:
@@ -245,13 +252,13 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
 
 Product: ${service.name}
 Target Market: ${input.targetMarket}
-Pressing Problem: ${input.pressingProblem}
-Why Problem Exists: ${input.whyProblem}
-What They've Tried: ${input.whatTried}
-Why Existing Solutions Fail: ${input.whyExistingNotWork}
+Pressing Problem: ${resolvedPressingProblem}
+Why Problem Exists: ${resolvedWhyProblem}
+What They've Tried: ${resolvedWhatTried}
+Why Existing Solutions Fail: ${resolvedWhyExistingNotWork}
 Descriptor: ${input.descriptor || "System"}
 Desired Outcome: ${input.desiredOutcome}
-Credibility: ${input.credibility}
+Credibility: ${resolvedCredibility}
 Social Proof: ${input.socialProof}
 ${icpContext ? `\n${icpContext}\n` : ''}
 Create 5 BEAST MODE mechanisms - these should be:
