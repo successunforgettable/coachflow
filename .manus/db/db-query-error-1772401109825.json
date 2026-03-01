@@ -1,0 +1,8 @@
+{
+  "query": "INSERT INTO offers (userId, serviceId, campaignId, offerType, productName, godfatherAngle, freeAngle, dollarAngle, activeAngle, rating, createdAt, updatedAt)\nVALUES (1, 1020008, 90002, 'standard', 'The Incredible You Coach Training — Webinar Access', 'Discover the 5-step system to double your coaching income in 90 days without burnout', 'Free Webinar: The Coaching Income Blueprint', '$997 value — yours free when you register today', 'godfatherAngle', 5, NOW(), NOW());",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute INSERT INTO offers (userId, serviceId, campaignId, offerType, productName, godfatherAngle, freeAngle, dollarAngle, activeAngle, rating, createdAt, updatedAt)\nVALUES (1, 1020008, 90002, 'standard', 'The Incredible You Coach Training — Webinar Access', 'Discover the 5-step system to double your coaching income in 90 days without burnout', 'Free Webinar: The Coaching Income Blueprint', '$997 value — yours free when you register today', 'godfatherAngle', 5, NOW(), NOW());",
+  "returncode": 1,
+  "logs": [
+    "ERROR 3140 (22032) at line 1: Invalid JSON text: ?"
+  ]
+}

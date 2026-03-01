@@ -15,7 +15,7 @@
  *   Step 6 unlocks automatically when Step 5 is complete (no user action needed).
  */
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Lock, CheckCircle2, ChevronRight } from "lucide-react";
@@ -301,8 +301,8 @@ function StepCard({ step, stepIndex, assetCounts, icpId, serviceId, isActive, on
         overflow: "hidden",
         borderRadius: "var(--rL)",
         background: locked ? "var(--inset)" : (isActive ? "var(--card-2)" : "var(--card)"),
-        boxShadow: isActive ? "var(--sh-lg)" : "var(--sh-sm)",
-        border: isActive ? "2px solid var(--charge)" : "1.5px solid var(--ink-4)",
+        boxShadow: isActive ? "var(--sh-lg), 0 0 0 2px rgba(255,91,29,0.18)" : "var(--sh-sm)",
+        border: "1.5px solid var(--ink-4)",
         padding: "28px 28px 24px 28px",
         cursor: locked ? "default" : "pointer",
         opacity: locked ? 0.65 : 1,
@@ -675,6 +675,19 @@ export default function GuidedCampaignBuilder({ campaign }: GuidedCampaignBuilde
   })();
 
   const [activeStep, setActiveStep] = useState(defaultActiveStep);
+  const stepCardRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const prevActiveStep = useRef(defaultActiveStep);
+
+  // Scroll to active step card when spine click changes activeStep
+  useEffect(() => {
+    if (activeStep !== prevActiveStep.current) {
+      prevActiveStep.current = activeStep;
+      const el = stepCardRefs.current[activeStep];
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  }, [activeStep]);
 
   // Progress: count complete steps
   const completeCount = STEP_DEFINITIONS.filter((s) =>
@@ -736,16 +749,17 @@ export default function GuidedCampaignBuilder({ campaign }: GuidedCampaignBuilde
         {/* Left: step cards */}
         <div className="gcb-cards">
           {STEP_DEFINITIONS.map((step, idx) => (
-            <StepCard
-              key={step.number}
-              step={step}
-              stepIndex={idx}
-              assetCounts={assetCounts}
-              icpId={icpId}
-              serviceId={serviceId}
-              isActive={idx === activeStep}
-              onClick={() => setActiveStep(idx)}
-            />
+            <div key={step.number} ref={el => { stepCardRefs.current[idx] = el; }}>
+              <StepCard
+                step={step}
+                stepIndex={idx}
+                assetCounts={assetCounts}
+                icpId={icpId}
+                serviceId={serviceId}
+                isActive={idx === activeStep}
+                onClick={() => setActiveStep(idx)}
+              />
+            </div>
           ))}
         </div>
 
