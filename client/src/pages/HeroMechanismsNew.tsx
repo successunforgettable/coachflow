@@ -134,7 +134,7 @@ export default function HeroMechanismsNew() {
       // Item 1.3 — 4 new pre-fill fields
       setWhyProblemExists(service.whyProblemExists || "");
       setSolutionsTried(service.failedSolutions || "");
-      setWhySolutionsFail(service.falseBeliefsVsRealReasons || "");
+      setWhySolutionsFail(service.failedSolutions || "");
       setCredibleAuthority(service.pressFeatures || "");
       
       // Pre-fill descriptor from AutoPop field

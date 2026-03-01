@@ -115,7 +115,7 @@ export const heroMechanismsRouter = router({
       const resolvedPressingProblem = input.pressingProblem?.trim() || service.painPoints || "";
       const resolvedWhyProblem = input.whyProblem?.trim() || service.whyProblemExists || "";
       const resolvedWhatTried = input.whatTried?.trim() || service.failedSolutions || "";
-      const resolvedWhyExistingNotWork = input.whyExistingNotWork?.trim() || service.falseBeliefsVsRealReasons || "";
+      const resolvedWhyExistingNotWork = input.whyExistingNotWork?.trim() || service.failedSolutions || "";
       const resolvedCredibility = input.credibility?.trim() || service.pressFeatures || "";
 
       const mechanismSetId = nanoid();
