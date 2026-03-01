@@ -391,8 +391,8 @@ function StepCard({ step, stepIndex, assetCounts, icpId, serviceId, isActive, on
           </span>
         </div>
 
-        {/* Locked message */}
-        {locked && prevStep && (
+        {/* Locked message — only show when locked AND not complete */}
+        {locked && !complete && prevStep && (
           <p style={{
             fontFamily: "'Instrument Sans', sans-serif",
             fontSize: "13px",
