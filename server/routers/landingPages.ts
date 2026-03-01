@@ -4,7 +4,7 @@ import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 import { getQuotaLimit } from "../quotaLimits";
 import { getDb } from "../db";
-import { landingPages, services, users, idealCustomerProfiles, sourceOfTruth } from "../../drizzle/schema";
+import { landingPages, services, users, campaigns, idealCustomerProfiles, sourceOfTruth } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { generateAllAngles } from "../landingPageGenerator";
 
@@ -163,6 +163,48 @@ ${icp.successMetrics ? `How they measure success: ${icp.successMetrics}` : ''}
         ? ['BRAND CONTEXT — this is the approved brand voice. All copy must be consistent with this:', ...sotLines].join('\n')
         : '';
 
+      // Campaign type fetch — Item 1.5
+      let campaignType = 'course_launch'; // default
+
+      if (input.campaignId) {
+        const [campaign] = await db
+          .select()
+          .from(campaigns)
+          .where(and(
+            eq(campaigns.id, input.campaignId),
+            eq(campaigns.userId, ctx.user.id)
+          ))
+          .limit(1);
+
+        if (campaign?.campaignType) {
+          campaignType = campaign.campaignType;
+        }
+      }
+
+      const campaignTypeContextMap: Record<string, string> = {
+        webinar: `CAMPAIGN TYPE: Webinar
+Framing: Show-up urgency — the live event is the vehicle. Copy must give a compelling reason to attend live, not just register.
+Urgency mechanism: Date and time of the webinar. Limited seats available.
+CTA language: Register now / Save your seat / Join us live on [date]`,
+
+        challenge: `CAMPAIGN TYPE: Challenge
+Framing: Community commitment — joining a group doing this together. Daily wins build momentum.
+Urgency mechanism: Challenge start date. Community closes when the challenge begins.
+CTA language: Join the challenge / Claim your spot / Start with us on [date]`,
+
+        course_launch: `CAMPAIGN TYPE: Course Launch
+Framing: Transformation journey — who they are now vs who they will become. Enrolment is the decision point.
+Urgency mechanism: Enrolment deadline. Cohort size is limited.
+CTA language: Enrol now / Join the programme / Claim your place before [date]`,
+
+        product_launch: `CAMPAIGN TYPE: Product Launch
+Framing: Early access and founding member status. First to experience something new.
+Urgency mechanism: Launch day price increase. Founding member pricing closes on launch day.
+CTA language: Get early access / Become a founding member / Lock in launch pricing`,
+      };
+
+      const campaignTypeContext = campaignTypeContextMap[campaignType] || campaignTypeContextMap['course_launch'];
+
       // Extract real social proof data
       const socialProof = {
         hasCustomers: !!service.totalCustomers && service.totalCustomers > 0,
@@ -204,10 +246,14 @@ ${icp.successMetrics ? `How they measure success: ${icp.successMetrics}` : ''}
         // Otherwise keep original format
       }
 
-      // Append SOT + ICP context to avatarDescription so it flows into the helper prompt — Item 1.2 + 1.4
-      const enrichedAvatarDescription = sotContext || icpContext
-        ? `${sotContext ? `${sotContext}\n\n` : ''}${avatarDescription}${icpContext ? `\n\n${icpContext}` : ''}`
-        : avatarDescription;
+      // Append SOT + campaignType + ICP context to avatarDescription — Item 1.2 + 1.4 + 1.5
+      // Layer order: SOT → avatarDescription → campaignType → ICP
+      const enrichedAvatarDescription = [
+        sotContext || null,
+        avatarDescription || null,
+        campaignTypeContext || null,
+        icpContext || null,
+      ].filter(Boolean).join('\n\n');
 
       // Generate all 4 angles in parallel with social proof (Issue 2 fix)
       const allAngles = await generateAllAngles(

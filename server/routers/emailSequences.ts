@@ -159,6 +159,48 @@ ${icp.implementationBarriers ? `What stops them from taking action: ${icp.implem
         ? ['BRAND CONTEXT — this is the approved brand voice. All copy must be consistent with this:', ...sotLines].join('\n')
         : '';
 
+      // Campaign type fetch — Item 1.5
+      let campaignType = 'course_launch'; // default
+
+      if (input.campaignId) {
+        const [campaign] = await db
+          .select()
+          .from(campaigns)
+          .where(and(
+            eq(campaigns.id, input.campaignId),
+            eq(campaigns.userId, ctx.user.id)
+          ))
+          .limit(1);
+
+        if (campaign?.campaignType) {
+          campaignType = campaign.campaignType;
+        }
+      }
+
+      const campaignTypeContextMap: Record<string, string> = {
+        webinar: `CAMPAIGN TYPE: Webinar
+Framing: Show-up urgency — the live event is the vehicle. Copy must give a compelling reason to attend live, not just register.
+Urgency mechanism: Date and time of the webinar. Limited seats available.
+CTA language: Register now / Save your seat / Join us live on [date]`,
+
+        challenge: `CAMPAIGN TYPE: Challenge
+Framing: Community commitment — joining a group doing this together. Daily wins build momentum.
+Urgency mechanism: Challenge start date. Community closes when the challenge begins.
+CTA language: Join the challenge / Claim your spot / Start with us on [date]`,
+
+        course_launch: `CAMPAIGN TYPE: Course Launch
+Framing: Transformation journey — who they are now vs who they will become. Enrolment is the decision point.
+Urgency mechanism: Enrolment deadline. Cohort size is limited.
+CTA language: Enrol now / Join the programme / Claim your place before [date]`,
+
+        product_launch: `CAMPAIGN TYPE: Product Launch
+Framing: Early access and founding member status. First to experience something new.
+Urgency mechanism: Launch day price increase. Founding member pricing closes on launch day.
+CTA language: Get early access / Become a founding member / Lock in launch pricing`,
+      };
+
+      const campaignTypeContext = campaignTypeContextMap[campaignType] || campaignTypeContextMap['course_launch'];
+
       // Extract real social proof data
       const socialProof = {
         hasCustomers: !!service.totalCustomers && service.totalCustomers > 0,
@@ -204,7 +246,7 @@ Main Benefit: ${service.mainBenefit}
 
 ${socialProofGuidance}
 
-${icpContext}
+${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}
 
 Create 3 emails:
 1. SET THE STAGE (Day 1) - Welcome, set expectations, introduce yourself
@@ -227,7 +269,7 @@ Host: ${input.eventDetails?.hostName || "Host"}
 
 ${socialProofGuidance}
 
-${icpContext}
+${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}
 
 Create 5 emails (Monday to Friday before event):
 1. SET THE STAGE (Monday) - Introduce, set expectations
@@ -255,7 +297,7 @@ Deadline: ${input.eventDetails?.deadline || "Deadline"}
 
 ${socialProofGuidance}
 
-${icpContext}
+${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}
 
 Create 7 emails (Day 1-7 after event):
 1. THANK YOU (Day 1) - Gratitude, recap key points
