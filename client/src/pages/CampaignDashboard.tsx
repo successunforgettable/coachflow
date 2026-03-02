@@ -63,30 +63,7 @@ export default function CampaignDashboard() {
     enabled: !!campaignId,
   });
 
-  // ── Loading state ──────────────────────────────────────────────────────────
-  if (isLoading) {
-    return (
-      <div className="zap-onboarding" style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <Loader2 style={{ width: 32, height: 32, color: "var(--charge)" }} className="animate-spin" />
-      </div>
-    );
-  }
-
-  // ── Not found ──────────────────────────────────────────────────────────────
-  if (!campaign) {
-    return (
-      <div className="zap-onboarding" style={{ padding: "48px 24px", textAlign: "center" }}>
-        <p style={{ color: "var(--ink-2)", marginBottom: "16px" }}>Campaign not found</p>
-        <Link href="/campaigns">
-          <button className="btn-primary" style={{ width: "auto", padding: "12px 24px" }}>
-            Back to Campaigns
-          </button>
-        </Link>
-      </div>
-    );
-  }
-
-  // ── Generator mutations ──────────────────────────────────────────────────
+  // ── Generator mutations (ALL hooks MUST be above any early returns) ──────
   const generateOffer = trpc.offers.generate.useMutation();
   const generateHeroMechanism = trpc.heroMechanisms.generate.useMutation();
   const generateHvco = trpc.hvco.generate.useMutation();
@@ -115,6 +92,29 @@ export default function CampaignDashboard() {
   useEffect(() => {
     window.dispatchEvent(new CustomEvent("zap:generation-running", { detail: { running: isRunning } }));
   }, [isRunning]);
+
+  // ── Loading state ──────────────────────────────────────────────────────────
+  if (isLoading) {
+    return (
+      <div className="zap-onboarding" style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <Loader2 style={{ width: 32, height: 32, color: "var(--charge)" }} className="animate-spin" />
+      </div>
+    );
+  }
+
+  // ── Not found ──────────────────────────────────────────────────────────────
+  if (!campaign) {
+    return (
+      <div className="zap-onboarding" style={{ padding: "48px 24px", textAlign: "center" }}>
+        <p style={{ color: "var(--ink-2)", marginBottom: "16px" }}>Campaign not found</p>
+        <Link href="/campaigns">
+          <button className="btn-primary" style={{ width: "auto", padding: "12px 24px" }}>
+            Back to Campaigns
+          </button>
+        </Link>
+      </div>
+    );
+  }
 
   // ── Update a single step's status ────────────────────────────────────────
   const updateStep = (stepId: number, update: Partial<StepState>) => {
