@@ -68,6 +68,7 @@ export default function CampaignDashboard() {
   // ── Route guard dialog (in-app navigation interception) ──────────────────
   const [routeGuardOpen, setRouteGuardOpen] = useState(false);
   const [pendingNavTarget, setPendingNavTarget] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
   const [, navigate] = useLocation();
 
   const handleNavAttempt = (target: string) => {
@@ -318,20 +319,39 @@ export default function CampaignDashboard() {
     }
   };
 
+  // ── Map step id → assetCounts key — used to pre-fill completed steps on re-open ─
+  const STEP_ASSET_KEY: Record<number, string> = {
+    1: "offer",
+    2: "hero_mechanism",
+    3: "hvco",
+    4: "headline",
+    6: "ad_copy",
+    7: "ad_creatives",
+    8: "videos",
+    9: "landing_page",
+    10: "email_sequence",
+    11: "whatsapp_sequence",
+  };
+
   // ── Main generate-all handler — opens modal in preview state first ──────────
   const handleGenerateAll = () => {
     if (!campaignId || !campaign?.service) {
       toast.error("Campaign service not found. Please link a service first.");
       return;
     }
-    const initialSteps: StepState[] = GENERATE_STEPS.map((s) => ({
-      id: s.id,
-      label: s.label,
-      status: "queued",
-    }));
+    const counts = (campaign.assetCounts as Record<string, number>) ?? {};
+    const initialSteps: StepState[] = GENERATE_STEPS.map((s) => {
+      const key = STEP_ASSET_KEY[s.id];
+      const alreadyDone = key ? (counts[key] ?? 0) > 0 : false;
+      return {
+        id: s.id,
+        label: s.label,
+        status: alreadyDone ? "done" : "queued",
+      };
+    });
     setSteps(initialSteps);
     cancelledRef.current = false;
-    setIsRunning(false); // open in preview/queued state — user sees all grey dots
+    setIsRunning(false); // open in preview state — completed steps show green, queued show grey
     setModalOpen(true);
   };
 
@@ -373,9 +393,37 @@ export default function CampaignDashboard() {
     setModalOpen(false);
   };
 
+    // ── Export handler (fetch + blob URL for authenticated download) ────────
   const handleExportCampaign = async () => {
-    if (!campaignId) return;
-    toast.info("Export Campaign — coming in Item 2.4");
+    if (!campaignId || isExporting) return;
+    setIsExporting(true);
+    toast.info("Preparing your campaign ZIP… download will start shortly.");
+    try {
+      const res = await fetch(`/api/campaigns/${campaignId}/export-zip`, {
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const err = await res.text();
+        throw new Error(err || `HTTP ${res.status}`);
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      // Extract filename from Content-Disposition header if present
+      const cd = res.headers.get("content-disposition") || "";
+      const match = cd.match(/filename="?([^"]+)"?/);
+      a.download = match ? match[1] : `campaign-${campaignId}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success("Campaign ZIP downloaded successfully.");
+    } catch (err: any) {
+      toast.error(`Export failed: ${err.message}`);
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const isGenerating = isRunning;
@@ -431,12 +479,13 @@ export default function CampaignDashboard() {
           <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
             <button
               onClick={handleExportCampaign}
+              disabled={isExporting}
               style={{
                 background: "transparent",
                 border: "1.5px solid var(--ink-4)",
                 borderRadius: "10px",
                 padding: "9px 16px",
-                cursor: "pointer",
+                cursor: isExporting ? "not-allowed" : "pointer",
                 fontFamily: "'Instrument Sans', sans-serif",
                 fontWeight: 600,
                 fontSize: "13px",
@@ -444,13 +493,14 @@ export default function CampaignDashboard() {
                 display: "flex",
                 alignItems: "center",
                 gap: "6px",
-                transition: "border-color 150ms ease",
+                opacity: isExporting ? 0.6 : 1,
+                transition: "border-color 150ms ease, opacity 150ms ease",
               }}
-              onMouseEnter={e => (e.currentTarget.style.borderColor = "var(--ink-2)")}
+              onMouseEnter={e => { if (!isExporting) e.currentTarget.style.borderColor = "var(--ink-2)"; }}
               onMouseLeave={e => (e.currentTarget.style.borderColor = "var(--ink-4)")}
             >
-              <Download size={15} />
-              Export Campaign
+              {isExporting ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
+              {isExporting ? "Preparing ZIP…" : "Export Campaign"}
             </button>
             <button
               onClick={isGenerating ? () => setModalOpen(true) : handleGenerateAll}

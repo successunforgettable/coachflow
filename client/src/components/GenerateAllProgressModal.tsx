@@ -64,6 +64,7 @@ export function GenerateAllProgressModal({
   const failedCount = steps.filter((s) => s.status === "failed").length;
   const totalActive = steps.filter((s) => s.status !== "skipped").length;
   const allQueued = steps.length > 0 && steps.every((s) => s.status === "queued");
+  const hasQueued = steps.some((s) => s.status === "queued");
   const allFinished = !isRunning && steps.length > 0 && steps.every((s) => s.status === "done" || s.status === "failed" || s.status === "skipped");
   const wasCancelled = cancelledRef.current && !isRunning;
 
@@ -310,7 +311,7 @@ export function GenerateAllProgressModal({
 
         {/* Footer */}
         <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", paddingTop: "4px" }}>
-          {allQueued && !isRunning ? (
+          {hasQueued && !isRunning ? (
             /* Preview state — Start Generation + Cancel buttons */
             <>
               <button

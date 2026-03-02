@@ -147,6 +147,233 @@ async function startServer() {
     }
   });
 
+  // Item 2.4 — Full campaign export ZIP (all 11 steps as markdown + media)
+  app.get("/api/campaigns/:campaignId/export-zip", async (req, res) => {
+    try {
+      let user;
+      try {
+        user = await sdk.authenticateRequest(req);
+      } catch {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+      if (!user) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+      const campaignId = parseInt(req.params.campaignId);
+      if (isNaN(campaignId)) {
+        res.status(400).json({ error: "Invalid campaign ID" });
+        return;
+      }
+
+      const { getDb } = await import("../db");
+      const {
+        campaigns,
+        offers,
+        heroMechanisms,
+        hvcoTitles,
+        headlines,
+        idealCustomerProfiles,
+        adCopy,
+        adCreatives,
+        videoScripts,
+        videos,
+        landingPages,
+        emailSequences,
+        whatsappSequences,
+      } = await import("../../drizzle/schema");
+      const { eq, and } = await import("drizzle-orm");
+      const archiver = (await import("archiver")).default;
+      const https = await import("https");
+      const http = await import("http");
+      const {
+        formatSalesOffer,
+        formatUniqueMethod,
+        formatFreeOptIn,
+        formatHeadlines,
+        formatIdealCustomerProfile,
+        formatAdCopy,
+        formatVideoScripts,
+        formatLandingPage,
+        formatEmailSequence,
+        formatWhatsappSequence,
+        generateReadme,
+      } = await import("../campaignExportFormatters");
+
+      const db = await getDb();
+      if (!db) {
+        res.status(500).json({ error: "Database not available" });
+        return;
+      }
+
+      // Verify campaign ownership
+      const [campaign] = await db
+        .select()
+        .from(campaigns)
+        .where(and(eq(campaigns.id, campaignId), eq(campaigns.userId, user.id)))
+        .limit(1);
+      if (!campaign) {
+        res.status(404).json({ error: "Campaign not found" });
+        return;
+      }
+
+      // Fetch all assets in parallel
+      const [
+        offersRows, heroRows, hvcoRows, headlineRows, icpRows, adCopyRows,
+        adCreativeRows, videoScriptRows, videoRows, landingPageRows,
+        emailRows, whatsappRows,
+      ] = await Promise.all([
+        db.select().from(offers).where(eq(offers.campaignId, campaignId)),
+        db.select().from(heroMechanisms).where(eq(heroMechanisms.campaignId, campaignId)),
+        db.select().from(hvcoTitles).where(eq(hvcoTitles.campaignId, campaignId)),
+        db.select().from(headlines).where(eq(headlines.campaignId, campaignId)),
+        db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.campaignId, campaignId)),
+        db.select().from(adCopy).where(eq(adCopy.campaignId, campaignId)),
+        db.select().from(adCreatives).where(eq(adCreatives.campaignId, campaignId)),
+        db.select().from(videoScripts).where(eq(videoScripts.campaignId, campaignId)),
+        db.select().from(videos).where(eq(videos.campaignId, campaignId)),
+        db.select().from(landingPages).where(eq(landingPages.campaignId, campaignId)),
+        db.select().from(emailSequences).where(eq(emailSequences.campaignId, campaignId)),
+        db.select().from(whatsappSequences).where(eq(whatsappSequences.campaignId, campaignId)),
+      ]);
+
+      // Helper to fetch a URL as a stream with graceful failure
+      const warnings: string[] = [];
+      const fetchStream = (url: string, label: string): Promise<NodeJS.ReadableStream | null> => {
+        return new Promise((resolve) => {
+          const client = url.startsWith("https") ? https : http;
+          client.get(url, (response) => {
+            if (response.statusCode && response.statusCode >= 400) {
+              warnings.push(`${label} — HTTP ${response.statusCode}`);
+              resolve(null);
+            } else {
+              resolve(response);
+            }
+          }).on("error", (err: Error) => {
+            warnings.push(`${label} — ${err.message}`);
+            resolve(null);
+          });
+        });
+      };
+
+      // Build step summaries for README
+      const stepSummaries: Array<{ number: number; name: string; included: boolean; reason?: string; warnings?: string[] }> = [
+        { number: 1, name: "Sales Offer", included: offersRows.length > 0 },
+        { number: 2, name: "Unique Method", included: heroRows.length > 0 },
+        { number: 3, name: "Free Opt-In", included: hvcoRows.length > 0 },
+        { number: 4, name: "Headlines", included: headlineRows.length > 0 },
+        { number: 5, name: "Ideal Customer Profile", included: icpRows.length > 0 },
+        { number: 6, name: "Ad Copy", included: adCopyRows.length > 0 },
+        { number: 7, name: "Ad Images", included: adCreativeRows.filter((r) => !!r.imageUrl).length > 0 },
+        { number: 8, name: "Ad Videos", included: videoScriptRows.length > 0 || videoRows.filter((v) => v.videoUrl && v.creatomateStatus === "succeeded").length > 0 },
+        { number: 9, name: "Landing Page", included: landingPageRows.length > 0 },
+        { number: 10, name: "Email Follow-Up", included: emailRows.length > 0 },
+        { number: 11, name: "WhatsApp Follow-Up", included: whatsappRows.length > 0 },
+      ];
+      for (const s of stepSummaries) {
+        if (!s.included) s.reason = "No assets generated";
+      }
+
+      // Set up ZIP streaming response
+      const safeName = campaign.name.replace(/[^a-zA-Z0-9\s\-_]/g, "").trim();
+      res.setHeader("Content-Type", "application/zip");
+      res.setHeader("Content-Disposition", `attachment; filename="${safeName}-campaign.zip"`);
+      const archive = archiver("zip", { zlib: { level: 6 } });
+      archive.pipe(res);
+
+      // Step 1 — Sales Offer
+      if (offersRows.length > 0) {
+        archive.append(formatSalesOffer(offersRows as any), { name: "01-sales-offer/sales-offer.md" });
+      }
+      // Step 2 — Unique Method
+      if (heroRows.length > 0) {
+        archive.append(formatUniqueMethod(heroRows as any), { name: "02-unique-method/unique-method.md" });
+      }
+      // Step 3 — Free Opt-In
+      if (hvcoRows.length > 0) {
+        archive.append(formatFreeOptIn(hvcoRows as any), { name: "03-free-opt-in/free-opt-in.md" });
+      }
+      // Step 4 — Headlines
+      if (headlineRows.length > 0) {
+        archive.append(formatHeadlines(headlineRows as any), { name: "04-headlines/headlines.md" });
+      }
+      // Step 5 — Ideal Customer Profile
+      if (icpRows.length > 0) {
+        archive.append(formatIdealCustomerProfile(icpRows as any), { name: "05-ideal-customer-profile/icp.md" });
+      }
+      // Step 6 — Ad Copy
+      if (adCopyRows.length > 0) {
+        archive.append(formatAdCopy(adCopyRows as any), { name: "06-ad-copy/ad-copy.md" });
+      }
+      // Step 7 — Ad Images
+      const imageWarnings: string[] = [];
+      for (const img of adCreativeRows) {
+        if (!img.imageUrl) continue;
+        const stream = await fetchStream(img.imageUrl, `image-${img.id}.png`);
+        if (stream) {
+          archive.append(stream as any, { name: `07-ad-images/image-${img.id}.png` });
+        } else {
+          imageWarnings.push(`image-${img.id}.png — fetch failed`);
+        }
+      }
+      if (imageWarnings.length > 0) stepSummaries[6].warnings = imageWarnings;
+      // Step 8 — Ad Videos + video-scripts.md
+      if (videoScriptRows.length > 0) {
+        archive.append(formatVideoScripts(videoScriptRows as any), { name: "08-ad-videos/video-scripts.md" });
+      }
+      const videoWarnings: string[] = [];
+      for (const vid of videoRows) {
+        if (!vid.videoUrl || vid.creatomateStatus !== "succeeded") continue;
+        const stream = await fetchStream(vid.videoUrl, `video-${vid.id}.mp4`);
+        if (stream) {
+          archive.append(stream as any, { name: `08-ad-videos/video-${vid.id}.mp4` });
+        } else {
+          videoWarnings.push(`video-${vid.id}.mp4 — fetch failed`);
+        }
+      }
+      if (videoWarnings.length > 0) stepSummaries[7].warnings = videoWarnings;
+      // Step 9 — Landing Page
+      if (landingPageRows.length > 0) {
+        archive.append(formatLandingPage(landingPageRows as any), { name: "09-landing-page/landing-page.md" });
+      }
+      // Step 10 — Email Follow-Up
+      if (emailRows.length > 0) {
+        archive.append(formatEmailSequence(emailRows as any), { name: "10-email-follow-up/email-sequence.md" });
+      }
+      // Step 11 — WhatsApp Follow-Up
+      if (whatsappRows.length > 0) {
+        archive.append(formatWhatsappSequence(whatsappRows as any), { name: "11-whatsapp-follow-up/whatsapp-sequence.md" });
+      }
+      // README.txt
+      archive.append(generateReadme(campaign.name, new Date(), stepSummaries), { name: "README.txt" });
+
+      await archive.finalize();
+    } catch (err) {
+      console.error("[ExportZIP] Error:", err);
+      if (!res.headersSent) {
+        res.status(500).json({ error: "Failed to create export ZIP" });
+      }
+    }
+  });
+
+  // Temporary debug: save ZIP to disk (remove after evidence capture)
+  app.post("/api/debug-save-zip", async (req, res) => {
+    try {
+      const chunks: Buffer[] = [];
+      req.on("data", (c) => chunks.push(c));
+      req.on("end", () => {
+        const body = JSON.parse(Buffer.concat(chunks).toString());
+        const buf = Buffer.from(body.data, "base64");
+        const fsSync = require("fs");
+        fsSync.writeFileSync("/tmp/campaign-debug-export.zip", buf);
+        res.json({ ok: true, size: buf.length });
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   // tRPC API
   app.use(
     "/api/trpc",

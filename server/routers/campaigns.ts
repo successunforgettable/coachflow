@@ -256,30 +256,6 @@ export const campaignsRouter = router({
     }),
 
 
-  // Export all campaign assets as ZIP
-  exportCampaign: protectedProcedure
-    .input(z.object({ campaignId: z.number() }))
-    .mutation(async ({ ctx, input }) => {
-      const campaign = await getCampaignById(input.campaignId, ctx.user.id);
-      if (!campaign) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Campaign not found",
-        });
-      }
-
-      // TODO: Implement export logic
-      // This is a placeholder that will be enhanced to:
-      // 1. Fetch all campaign assets from all 9 generators
-      // 2. Package them into a ZIP file
-      // 3. Return download URL
-      
-      return { 
-        success: true,
-        message: "Export Campaign feature coming soon. For now, please export individual assets from each generator."
-      };
-    }),
-
   // Generate ad creatives (images + videos) for campaign
   generateCreatives: protectedProcedure
     .input(

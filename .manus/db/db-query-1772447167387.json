@@ -1,0 +1,18 @@
+{
+  "query": "SELECT c.id, c.name, c.serviceId, s.id as sid, s.name as sname, s.targetCustomer FROM campaigns c LEFT JOIN services s ON c.serviceId = s.id WHERE c.id = 90002;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT c.id, c.name, c.serviceId, s.id as sid, s.name as sname, s.targetCustomer FROM campaigns c LEFT JOIN services s ON c.serviceId = s.id WHERE c.id = 90002;",
+  "rows": [
+    {
+      "id": "90002",
+      "name": "The Incredible You Coach Training — Webinar Campaign",
+      "serviceId": "1020008",
+      "sid": "1020008",
+      "sname": "The Incredible You Coach Training",
+      "targetCustomer": "To be defined"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tserviceId\tsid\tsname\ttargetCustomer\n90002\tThe Incredible You Coach Training — Webinar Campaign\t1020008\t1020008\tThe Incredible You Coach Training\tTo be defined\n",
+  "stderr": "",
+  "execution_time_ms": 1523
+}

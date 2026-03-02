@@ -1,0 +1,8 @@
+{
+  "query": "SELECT c.id, c.name, c.service_id, s.id as sid, s.name as sname, s.target_customer FROM campaigns c LEFT JOIN services s ON c.service_id = s.id WHERE c.id = 90002;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT c.id, c.name, c.service_id, s.id as sid, s.name as sname, s.target_customer FROM campaigns c LEFT JOIN services s ON c.service_id = s.id WHERE c.id = 90002;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 1: Unknown column 'c.service_id' in 'on clause'"
+  ]
+}

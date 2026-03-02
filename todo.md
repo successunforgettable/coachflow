@@ -3705,3 +3705,27 @@ Scene 5 (6s): "Stop being invisible. Your next client is already on Facebook..."
 - [x] Make "Generating..." button clickable to reopen modal while run is active
 - [x] Replace native beforeunload with custom in-app AlertDialog route guard (visible in screenshots)
 - [x] Capture S2 (mid-run: 3 green ticks + spinner), S3 (all 10 green ticks complete), S9 (route guard dialog)
+
+## Item 2.4 — Export Campaign
+
+- [x] Remove `campaigns.exportCampaign` tRPC stub from `server/routers/campaigns.ts`
+- [x] Remove any client-side references to `trpc.campaigns.exportCampaign`
+- [x] Build `GET /api/campaigns/:campaignId/export-zip` Express endpoint in `server/_core/index.ts`
+- [x] Markdown formatter: Step 1 — Sales Offer (offers table, 3 angles × 7 fields)
+- [x] Markdown formatter: Step 2 — Unique Method (heroMechanisms, grouped by tabType)
+- [x] Markdown formatter: Step 3 — Free Opt-In (hvcoTitles, grouped by tabType)
+- [x] Markdown formatter: Step 4 — Headlines (headlines, grouped by formulaType)
+- [x] Markdown formatter: Step 5 — Ideal Customer Profile (all ICPs, separated by hr)
+- [x] Markdown formatter: Step 6 — Ad Copy (adCopy, grouped by adSetId)
+- [x] Media handler: Step 7 — Ad Images (adCreatives, fetch from S3 URL)
+- [x] Media handler: Step 8 — Ad Videos + video-scripts.md (videos + videoScripts)
+- [x] Markdown formatter: Step 9 — Landing Page (landingPages, 4 angles × 16 sections)
+- [x] Markdown formatter: Step 10 — Email Follow-Up (emailSequences, day-ordered)
+- [x] Markdown formatter: Step 11 — WhatsApp Follow-Up (whatsappSequences, day-ordered)
+- [x] README.txt generator (campaign name, export date, included/skipped steps, warnings)
+- [x] Empty step omission: skip folder entirely if zero assets; note in README.txt
+- [x] Client: update `handleExportCampaign` with Option C fetch+blob loading state (clears on resolve)
+- [x] Write 18 vitest tests for markdown formatters
+- [x] TypeScript: 0 errors
+- [x] Vitest: all tests passing
+- [x] Save checkpoint + push to GitHub

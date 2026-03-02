@@ -1,0 +1,14 @@
+{
+  "query": "SELECT s.id, s.targetCustomer FROM campaigns c JOIN services s ON c.serviceId = s.id WHERE c.id = 90002;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT s.id, s.targetCustomer FROM campaigns c JOIN services s ON c.serviceId = s.id WHERE c.id = 90002;",
+  "rows": [
+    {
+      "id": "1020008",
+      "targetCustomer": "To be defined"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\ttargetCustomer\n1020008\tTo be defined\n",
+  "stderr": "",
+  "execution_time_ms": 1538
+}
