@@ -246,7 +246,9 @@ Use direct response copywriting principles: pain agitation, unique mechanism, so
   if (typeof content !== 'string') {
     throw new Error('Invalid response format from LLM');
   }
-  return JSON.parse(content);
+  // Strip markdown code fences if LLM wraps response in ```json ... ```
+  const cleaned = content.replace(/^```json\s*|^```\s*|\s*```$/gm, '').trim();
+  return JSON.parse(cleaned);
 }
 
 // Generate all 4 angles at once
@@ -262,13 +264,12 @@ export async function generateAllAngles(
   free: LandingPageContent;
   dollar: LandingPageContent;
 }> {
-  // Generate all 4 angles in parallel for speed
+  // Generate all 4 angles in parallel to stay within gateway timeout
   const [original, godfather, free, dollar] = await Promise.all([
     generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'original', socialProof),
     generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'godfather', socialProof),
     generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'free', socialProof),
     generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'dollar', socialProof),
   ]);
-
   return { original, godfather, free, dollar };
 }

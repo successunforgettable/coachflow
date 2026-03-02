@@ -3698,3 +3698,10 @@ Scene 5 (6s): "Stop being invisible. Your next client is already on Facebook..."
 - [x] Per-step retry button for failed steps
 - [x] 22 vitest tests — all passing
 - [x] TypeScript: 0 errors
+
+## Item 2.3 Improvements — Mar 02, 2026
+- [x] Fix landing page 504 timeout: changed generateAllAngles from sequential to parallel LLM calls (4 calls now run in ~60s instead of ~240s)
+- [x] Add "— Minimise" button to GenerateAllProgressModal during active run (hides modal, run continues in background)
+- [x] Make "Generating..." button clickable to reopen modal while run is active
+- [x] Replace native beforeunload with custom in-app AlertDialog route guard (visible in screenshots)
+- [x] Capture S2 (mid-run: 3 green ticks + spinner), S3 (all 10 green ticks complete), S9 (route guard dialog)

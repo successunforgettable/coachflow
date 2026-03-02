@@ -10,6 +10,10 @@ import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 import { checkCompliance } from "../lib/complianceChecker";
 
+function stripMarkdownJson(content: string): string {
+  return content.replace(/^```json\s*|^```\s*|\s*```$/gm, '').trim();
+}
+
 const META_COMPLIANCE_RULES = `
 CRITICAL COMPLIANCE RULES — Every piece of ad copy you generate MUST follow these rules without exception. These are Meta (Facebook/Instagram) advertising policy requirements.
 
@@ -396,7 +400,7 @@ Format as JSON array:
       if (typeof headlineContent !== "string") {
         throw new Error("Invalid headline response");
       }
-      const headlineData = JSON.parse(headlineContent);
+      const headlineData = JSON.parse(stripMarkdownJson(headlineContent));
 
       // Issue 3: Generate Body Copy using 15 distinct angles
       const { ALL_BODY_ANGLES, BODY_ANGLE_PROMPTS } = await import('../adCopyAngles');
@@ -518,7 +522,7 @@ Format as JSON array:
       if (typeof linkContent !== "string") {
         throw new Error("Invalid link response");
       }
-      const linkData = JSON.parse(linkContent);
+      const linkData = JSON.parse(stripMarkdownJson(linkContent));
 
       // Save all variations to database
       const allInserts = [];

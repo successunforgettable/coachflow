@@ -2,6 +2,10 @@ import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { idealCustomerProfiles, services } from "../../drizzle/schema";
+
+function stripMarkdownJson(content: string): string {
+  return content.replace(/^```json\s*|^```\s*|\s*```$/gm, '').trim();
+}
 import { eq, and, desc } from "drizzle-orm";
 import { invokeLLM } from "../_core/llm";
 import { getQuotaLimit } from "../quotaLimits";
@@ -260,7 +264,7 @@ Format as JSON with these exact keys (use bullet points • for lists):
       if (typeof content !== 'string') {
         throw new Error('Invalid response format from AI');
       }
-      const icpData = JSON.parse(content);
+      const icpData = JSON.parse(stripMarkdownJson(content));
 
       // Save to database - ALL 17 sections
       const insertResult: any = await db

@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
+
+function stripMarkdownJson(content: string): string {
+  return content.replace(/^```json\s*|^```\s*|\s*```$/gm, '').trim();
+}
 import { whatsappSequences, services, campaigns, idealCustomerProfiles, sourceOfTruth } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { invokeLLM } from "../_core/llm";
@@ -250,7 +254,7 @@ Each message should:
 - Use actual event name "${input.eventDetails?.eventName || "the event"}" (NOT {{Event}})
 - DO NOT use placeholder syntax like {{Date}} or {{Time}} - write actual timing descriptions
 
-Format as JSON array.`;
+Return as a JSON object with a 'messages' key containing the array.`;
       } else {
         // sales sequence
         prompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert WhatsApp marketer. Create a 3-message WhatsApp sales sequence for event attendees.
@@ -282,9 +286,8 @@ Each message should:
 - Use actual offer name "${input.eventDetails?.offerName || "this offer"}" (NOT {{Offer}})
 - DO NOT use placeholder syntax like {{Date}} or {{Time}} - write actual timing descriptions
 
-Format as JSON array.`;
+Return as a JSON object with a 'messages' key containing the array.`;
       }
-
       const response = await invokeLLM({
         messages: [
           {
@@ -327,8 +330,14 @@ Format as JSON array.`;
       if (typeof content !== "string") {
         throw new Error("Invalid response format from AI");
       }
-      const sequenceData = JSON.parse(content);
-
+      let sequenceData = JSON.parse(stripMarkdownJson(content));
+      // Defensive: if LLM returned a raw array instead of { messages: [...] }, wrap it
+      if (Array.isArray(sequenceData)) {
+        sequenceData = { messages: sequenceData };
+      }
+      if (!sequenceData.messages || !Array.isArray(sequenceData.messages)) {
+        throw new Error("LLM did not return a valid messages array");
+      }
       // Save to database
       const insertResult: any = await db.insert(whatsappSequences).values({
         userId: ctx.user.id,

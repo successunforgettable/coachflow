@@ -1,5 +1,9 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
+
+function stripMarkdownJson(content: string): string {
+  return content.replace(/^```json\s*|^```\s*|\s*```$/gm, "").trim();
+}
 import { getDb } from "../db";
 import { emailSequences, services, campaigns, idealCustomerProfiles, sourceOfTruth } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
@@ -261,7 +265,7 @@ Each email should have:
 - Body (200-300 words, conversational tone, grade 4 language)
 - CTA (clear next step)
 
-Format as JSON array.`;
+Return as a JSON object with an 'emails' key containing the array.`;
       } else if (input.sequenceType === "engagement") {
         prompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert email marketer. Create a 5-email engagement sequence for event attendees using Russell Brunson's Soap Opera Sequence.
 
@@ -286,7 +290,7 @@ Each email should have:
 - Body (200-300 words, conversational tone, grade 4 language)
 - CTA (clear next step)
 
-Format as JSON array.`;
+Return as a JSON object with an 'emails' key containing the array.`;
       } else {
         // sales sequence
         prompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert email marketer. Create a 7-email sales sequence for event attendees who didn't buy.
@@ -316,9 +320,8 @@ Each email should have:
 - Body (250-350 words, conversational tone, grade 4 language)
 - CTA (clear next step)
 
-Format as JSON array.`;
+Return as a JSON object with an 'emails' key containing the array.`;
       }
-
       const response = await invokeLLM({
         messages: [
           {
@@ -363,9 +366,15 @@ Format as JSON array.`;
       if (typeof content !== "string") {
         throw new Error("Invalid response format from AI");
       }
-      const sequenceData = JSON.parse(content);
-
-      // Save to database
+      let sequenceData = JSON.parse(stripMarkdownJson(content));
+      // Defensive: if LLM returned a raw array instead of { emails: [...] }, wrap it
+      if (Array.isArray(sequenceData)) {
+        sequenceData = { emails: sequenceData };
+      }
+      if (!sequenceData.emails || !Array.isArray(sequenceData.emails)) {
+        throw new Error("LLM did not return a valid emails array");
+      }
+      // Save to databasee
       const insertResult: any = await db.insert(emailSequences).values({
         userId: ctx.user.id,
         serviceId: input.serviceId,

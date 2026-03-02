@@ -154,7 +154,9 @@ Return ONLY valid JSON with these exact keys: offerName, valueProposition, prici
     throw new Error("Invalid response format from AI");
   }
 
-  return JSON.parse(content) as OfferContent;
+  // Strip markdown code fences if the LLM wraps the JSON (e.g. ```json\n{...}\n```)
+  const stripped = content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
+  return JSON.parse(stripped) as OfferContent;
 }
 
 // Generate all 3 angles in parallel

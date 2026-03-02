@@ -5,7 +5,7 @@
  * Item 2.3: Generate All Missing — real sequential mutation logic with progress modal.
  */
 import { useEffect, useRef, useState } from "react";
-import { useParams, Link } from "wouter";
+import { useParams, Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Loader2, Download, Zap, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
@@ -13,6 +13,16 @@ import { CampaignCreativesDialog } from "@/components/CampaignCreativesDialog";
 import { CampaignCreativesSection } from "@/components/CampaignCreativesSection";
 import GuidedCampaignBuilder from "@/components/GuidedCampaignBuilder";
 import { GenerateAllProgressModal, StepState } from "@/components/GenerateAllProgressModal";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // ── Step definitions (Step 5 / ICP is auto-generated, omitted from the run list) ──
 const GENERATE_STEPS: { id: number; label: string }[] = [
@@ -39,6 +49,11 @@ function requireField(value: string | null | undefined, fieldName: string): stri
   return trimmed;
 }
 
+// ── Truncate helper — prevents Zod max-length violations ─────────────────────
+function trunc(value: string, max: number): string {
+  return value.length > max ? value.slice(0, max - 3) + "..." : value;
+}
+
 export default function CampaignDashboard() {
   const { id } = useParams<{ id: string }>();
   const campaignId = id ? parseInt(id) : null;
@@ -50,6 +65,23 @@ export default function CampaignDashboard() {
   const cancelledRef = useRef(false);
 
   const [isCreativesDialogOpen, setIsCreativesDialogOpen] = useState(false);
+  // ── Route guard dialog (in-app navigation interception) ──────────────────
+  const [routeGuardOpen, setRouteGuardOpen] = useState(false);
+  const [pendingNavTarget, setPendingNavTarget] = useState<string | null>(null);
+  const [, navigate] = useLocation();
+
+  const handleNavAttempt = (target: string) => {
+    if (isRunning) {
+      setPendingNavTarget(target);
+      setRouteGuardOpen(true);
+    } else {
+      navigate(target);
+    }
+  };
+
+  const handleMinimiseModal = () => {
+    setModalOpen(false);
+  };
 
   const utils = trpc.useUtils();
 
@@ -148,16 +180,16 @@ export default function CampaignDashboard() {
           await generateHeroMechanism.mutateAsync({
             serviceId: service.id,
             campaignId: cId,
-            targetMarket,
-            pressingProblem,
-            whyProblem,
-            whatTried,
-            whyExistingNotWork,
-            desiredOutcome,
-            credibility,
-            socialProof,
-            descriptor: service.mechanismDescriptor || undefined,
-            application: service.applicationMethod || undefined,
+            targetMarket: trunc(targetMarket, 100),
+            pressingProblem: trunc(pressingProblem, 200),
+            whyProblem: trunc(whyProblem, 300),
+            whatTried: trunc(whatTried, 300),
+            whyExistingNotWork: trunc(whyExistingNotWork, 300),
+            desiredOutcome: trunc(desiredOutcome, 200),
+            credibility: trunc(credibility, 200),
+            socialProof: trunc(socialProof, 200),
+            descriptor: service.mechanismDescriptor ? trunc(service.mechanismDescriptor, 50) : undefined,
+            application: service.applicationMethod ? trunc(service.applicationMethod, 100) : undefined,
           });
           break;
         }
@@ -286,13 +318,12 @@ export default function CampaignDashboard() {
     }
   };
 
-  // ── Main generate-all handler ─────────────────────────────────────────────
-  const handleGenerateAll = async () => {
+  // ── Main generate-all handler — opens modal in preview state first ──────────
+  const handleGenerateAll = () => {
     if (!campaignId || !campaign?.service) {
       toast.error("Campaign service not found. Please link a service first.");
       return;
     }
-    const service = campaign.service;
     const initialSteps: StepState[] = GENERATE_STEPS.map((s) => ({
       id: s.id,
       label: s.label,
@@ -300,8 +331,15 @@ export default function CampaignDashboard() {
     }));
     setSteps(initialSteps);
     cancelledRef.current = false;
-    setIsRunning(true);
+    setIsRunning(false); // open in preview/queued state — user sees all grey dots
     setModalOpen(true);
+  };
+
+  // ── Start the actual generation run (called from modal Start button) ────────
+  const handleStartRun = async () => {
+    if (!campaignId || !campaign?.service) return;
+    const service = campaign.service;
+    setIsRunning(true);
     for (const step of GENERATE_STEPS) {
       if (cancelledRef.current) break;
       await runStep(step.id, service, campaignId);
@@ -349,28 +387,27 @@ export default function CampaignDashboard() {
         {/* ── Header ──────────────────────────────────────────────────────── */}
         <div style={{ marginBottom: "32px", display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: "16px" }}>
           <div>
-            <Link href="/campaigns">
-              <button
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  fontFamily: "'Instrument Sans', sans-serif",
-                  fontSize: "13px",
-                  color: "var(--ink-3)",
-                  padding: "0 0 10px 0",
-                  transition: "color 150ms ease",
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = "var(--ink-2)")}
-                onMouseLeave={(e) => (e.currentTarget.style.color = "var(--ink-3)")}
-              >
-                <ArrowLeft size={14} />
-                All Campaigns
-              </button>
-            </Link>
+            <button
+              onClick={() => handleNavAttempt("/campaigns")}
+              style={{
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                fontFamily: "'Instrument Sans', sans-serif",
+                fontSize: "13px",
+                color: "var(--ink-3)",
+                padding: "0 0 10px 0",
+                transition: "color 150ms ease",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = "var(--ink-2)")}
+              onMouseLeave={(e) => (e.currentTarget.style.color = "var(--ink-3)")}
+            >
+              <ArrowLeft size={14} />
+              All Campaigns
+            </button>
             <h1
               style={{
                 fontFamily: "'Fraunces', serif",
@@ -416,22 +453,20 @@ export default function CampaignDashboard() {
               Export Campaign
             </button>
             <button
-              onClick={handleGenerateAll}
-              disabled={isGenerating}
+              onClick={isGenerating ? () => setModalOpen(true) : handleGenerateAll}
               style={{
-                background: "var(--ink)",
+                background: isGenerating ? "var(--charge)" : "var(--ink)",
                 color: "#fff",
                 border: "none",
                 borderRadius: "10px",
                 padding: "9px 16px",
-                cursor: isGenerating ? "not-allowed" : "pointer",
+                cursor: "pointer",
                 fontFamily: "'Instrument Sans', sans-serif",
                 fontWeight: 600,
                 fontSize: "13px",
                 display: "flex",
                 alignItems: "center",
                 gap: "6px",
-                opacity: isGenerating ? 0.6 : 1,
                 transition: "opacity 150ms ease",
               }}
             >
@@ -531,14 +566,42 @@ export default function CampaignDashboard() {
         )}
       </div>
 
+      {/* ── Route Guard Dialog ───────────────────────────────────────────────── */}
+      <AlertDialog open={routeGuardOpen} onOpenChange={setRouteGuardOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Generation in progress</AlertDialogTitle>
+            <AlertDialogDescription>
+              Your campaign is still being generated. If you leave now, the current run will be cancelled and any incomplete steps will need to be retried manually.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setRouteGuardOpen(false)}>Stay on page</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                cancelledRef.current = true;
+                setIsRunning(false);
+                setRouteGuardOpen(false);
+                if (pendingNavTarget) navigate(pendingNavTarget);
+              }}
+              style={{ background: "var(--charge)", color: "white" }}
+            >
+              Leave anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* ── Generate All Progress Modal ──────────────────────────────────────── */}
       <GenerateAllProgressModal
         open={modalOpen}
         steps={steps}
         cancelledRef={cancelledRef}
+        onStart={handleStartRun}
         onCancel={handleCancel}
         onClose={handleCloseModal}
         onRetry={handleRetry}
+        onMinimise={handleMinimiseModal}
         isRunning={isRunning}
       />
     </div>

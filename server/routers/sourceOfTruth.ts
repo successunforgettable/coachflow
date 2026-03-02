@@ -2,6 +2,10 @@ import { z } from "zod";
 import { router, protectedProcedure } from "../_core/trpc";
 import { invokeLLM } from "../_core/llm";
 import { getDb } from "../db";
+
+function stripMarkdownJson(content: string): string {
+  return content.replace(/^```json\s*|^```\s*|\s*```$/gm, '').trim();
+}
 import { sourceOfTruth } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 
@@ -98,7 +102,7 @@ Format your response as JSON with these exact keys:
         throw new Error("No response from AI");
       }
 
-      const profile = JSON.parse(content);
+      const profile = JSON.parse(stripMarkdownJson(content));
 
       // Save to database
       const db = await getDb();
