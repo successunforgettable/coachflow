@@ -3674,3 +3674,27 @@ Scene 5 (6s): "Stop being invisible. Your next client is already on Facebook..."
 - [x] Export calculateSceneDurations from videos.ts for testability
 - [x] Write server/pipeline-fixes.test.ts — 26 tests, all PASS
 - [x] Zero TypeScript errors confirmed
+
+## Item 2.3 — Generate All Missing (Approved Build)
+- [ ] Remove generateAllMissing server stub from server/routers/campaigns.ts
+- [ ] Create client/src/components/GenerateAllProgressModal.tsx — modal with 10 steps, status icons, progress counter, cancel, per-step retry
+- [ ] Update CampaignDashboard.tsx — replace stub with sequential mutateAsync loop, null fallback validation, cancelledRef
+- [ ] Implement null fallback rule — fail step with clear error message naming missing field if all fallbacks resolve to null/empty
+- [ ] Implement Step 8 credit check BEFORE script generation
+- [ ] Add route guard — block navigation while generation is running
+- [ ] Design compliance — Fraunces headings, Instrument Sans body, cream palette, shadow only (no borders)
+- [ ] TypeScript 0 errors
+- [ ] Vitest all passing
+- [ ] Capture all required screenshots for evidence
+
+## Item 2.3 Build Completion
+- [x] Server stub (generateAllMissing) removed from campaigns.ts
+- [x] GenerateAllProgressModal component created
+- [x] CampaignDashboard: 10 real sequential mutateAsync calls wired up
+- [x] Null-fallback requireField helper with actionable error messages
+- [x] Credit check before Step 8 (video render)
+- [x] Route guard: beforeunload + zap:generation-running custom event
+- [x] Cancel mid-run: sets queued steps to skipped
+- [x] Per-step retry button for failed steps
+- [x] 22 vitest tests — all passing
+- [x] TypeScript: 0 errors

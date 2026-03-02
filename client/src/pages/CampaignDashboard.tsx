@@ -1,31 +1,67 @@
 /**
- * CampaignDashboard — Item 2.1
+ * CampaignDashboard — Item 2.1 / Item 2.3
  *
  * Full page wrapped in .zap-onboarding design system.
- * The old tile grid is replaced by GuidedCampaignBuilder.
- * Header, Export/GenerateAll stubs, CampaignCreativesSection, and Service card are preserved.
+ * Item 2.3: Generate All Missing — real sequential mutation logic with progress modal.
  */
-
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, Link } from "wouter";
 import { trpc } from "@/lib/trpc";
-import { Button } from "@/components/ui/button";
 import { Loader2, Download, Zap, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { CampaignCreativesDialog } from "@/components/CampaignCreativesDialog";
 import { CampaignCreativesSection } from "@/components/CampaignCreativesSection";
 import GuidedCampaignBuilder from "@/components/GuidedCampaignBuilder";
+import { GenerateAllProgressModal, StepState } from "@/components/GenerateAllProgressModal";
+
+// ── Step definitions (Step 5 / ICP is auto-generated, omitted from the run list) ──
+const GENERATE_STEPS: { id: number; label: string }[] = [
+  { id: 1, label: "Your Sales Offer" },
+  { id: 2, label: "Your Unique Method" },
+  { id: 3, label: "Your Free Opt-In" },
+  { id: 4, label: "Your Headlines" },
+  { id: 6, label: "Your Ads" },
+  { id: 7, label: "Your Ad Images" },
+  { id: 8, label: "Your Ad Videos" },
+  { id: 9, label: "Your Landing Page" },
+  { id: 10, label: "Your Email Follow-Up" },
+  { id: 11, label: "Your WhatsApp Follow-Up" },
+];
+
+// ── Null-fallback helper ─────────────────────────────────────────────────────
+function requireField(value: string | null | undefined, fieldName: string): string {
+  const trimmed = (value ?? "").trim();
+  if (!trimmed) {
+    throw new Error(
+      `Step skipped — "${fieldName}" is missing from your service profile. Open your service and fill in the "${fieldName}" field, then retry.`
+    );
+  }
+  return trimmed;
+}
 
 export default function CampaignDashboard() {
   const { id } = useParams<{ id: string }>();
   const campaignId = id ? parseInt(id) : null;
-  const [isGenerating, setIsGenerating] = useState(false);
+
+  // ── Modal state ──────────────────────────────────────────────────────────
+  const [modalOpen, setModalOpen] = useState(false);
+  const [isRunning, setIsRunning] = useState(false);
+  const [steps, setSteps] = useState<StepState[]>([]);
+  const cancelledRef = useRef(false);
+
   const [isCreativesDialogOpen, setIsCreativesDialogOpen] = useState(false);
+
+  const utils = trpc.useUtils();
 
   const { data: campaign, isLoading } = trpc.campaigns.getById.useQuery(
     { id: campaignId! },
     { enabled: !!campaignId }
   );
+
+  // ── Video credit balance (fetched to check BEFORE script generation) ─────
+  const { data: creditBalance } = trpc.videoCredits.getBalance.useQuery(undefined, {
+    enabled: !!campaignId,
+  });
 
   // ── Loading state ──────────────────────────────────────────────────────────
   if (isLoading) {
@@ -50,19 +86,253 @@ export default function CampaignDashboard() {
     );
   }
 
-  // ── Stubs: Generate All Missing (Item 2.3) and Export Campaign (Item 2.4) ──
-  const handleGenerateAll = async () => {
-    if (!campaignId) return;
-    setIsGenerating(true);
-    toast.info("Generating all missing assets… This may take a few minutes.");
+  // ── Generator mutations ──────────────────────────────────────────────────
+  const generateOffer = trpc.offers.generate.useMutation();
+  const generateHeroMechanism = trpc.heroMechanisms.generate.useMutation();
+  const generateHvco = trpc.hvco.generate.useMutation();
+  const generateHeadlines = trpc.headlines.generate.useMutation();
+  const generateAdCopy = trpc.adCopy.generate.useMutation();
+  const generateAdCreatives = trpc.adCreatives.generate.useMutation();
+  const generateVideoScript = trpc.videoScripts.generate.useMutation();
+  const generateVideo = trpc.videos.generate.useMutation();
+  const generateLandingPage = trpc.landingPages.generate.useMutation();
+  const generateEmailSequence = trpc.emailSequences.generate.useMutation();
+  const generateWhatsAppSequence = trpc.whatsappSequences.generate.useMutation();
+
+  // ── Route guard: block browser navigation while running ──────────────────
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isRunning) {
+        e.preventDefault();
+        e.returnValue = "Generation is in progress. Are you sure you want to leave?";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isRunning]);
+
+  // Dispatch a custom event so DashboardLayout can disable sidebar links
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("zap:generation-running", { detail: { running: isRunning } }));
+  }, [isRunning]);
+
+  // ── Update a single step's status ────────────────────────────────────────
+  const updateStep = (stepId: number, update: Partial<StepState>) => {
+    setSteps((prev) =>
+      prev.map((s) => (s.id === stepId ? { ...s, ...update } : s))
+    );
+  };
+
+  // ── Run a single step ─────────────────────────────────────────────────────
+  const runStep = async (stepId: number, service: any, cId: number) => {
+    updateStep(stepId, { status: "running", error: undefined });
     try {
-      // Item 2.3 will implement this
-      toast.info("Generate All Missing — coming in Item 2.3");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to generate assets");
-    } finally {
-      setIsGenerating(false);
+      switch (stepId) {
+        case 1: {
+          await generateOffer.mutateAsync({
+            serviceId: service.id,
+            campaignId: cId,
+            offerType: "standard",
+          });
+          break;
+        }
+        case 2: {
+          const targetMarket = requireField(service.targetCustomer, "Target Customer");
+          const pressingProblem = requireField(service.painPoints || service.mainBenefit, "Pain Points");
+          const whyProblem = requireField(service.whyProblemExists || service.description, "Why Problem Exists");
+          const whatTried = requireField(service.failedSolutions || service.description, "Failed Solutions");
+          const whyExistingNotWork = requireField(service.hiddenReasons || service.description, "Hidden Reasons");
+          const desiredOutcome = requireField(service.mainBenefit, "Main Benefit");
+          const credibility = requireField(service.name, "Service Name");
+          const socialProof = (service.pressFeatures || service.name || "").trim() || service.name;
+          await generateHeroMechanism.mutateAsync({
+            serviceId: service.id,
+            campaignId: cId,
+            targetMarket,
+            pressingProblem,
+            whyProblem,
+            whatTried,
+            whyExistingNotWork,
+            desiredOutcome,
+            credibility,
+            socialProof,
+            descriptor: service.mechanismDescriptor || undefined,
+            application: service.applicationMethod || undefined,
+          });
+          break;
+        }
+        case 3: {
+          const targetMarket3 = requireField(service.targetCustomer, "Target Customer");
+          const hvcoTopic = requireField(service.hvcoTopic || service.description, "Free Opt-In Topic");
+          await generateHvco.mutateAsync({
+            serviceId: service.id,
+            campaignId: cId,
+            targetMarket: targetMarket3,
+            hvcoTopic,
+          });
+          break;
+        }
+        case 4: {
+          const targetMarket4 = requireField(service.targetCustomer, "Target Customer");
+          await generateHeadlines.mutateAsync({
+            serviceId: service.id,
+            campaignId: cId,
+            targetMarket: targetMarket4,
+            pressingProblem: service.painPoints || "",
+            desiredOutcome: service.mainBenefit || "",
+            uniqueMechanism: service.uniqueMechanismSuggestion || "",
+          });
+          break;
+        }
+        case 6: {
+          const targetMarket6 = requireField(service.targetCustomer, "Target Customer");
+          const productCategory = requireField(service.category, "Category");
+          const specificProductName = requireField(service.name, "Service Name");
+          const pressingProblem6 = requireField(service.painPoints || service.mainBenefit, "Pain Points");
+          const desiredOutcome6 = requireField(service.mainBenefit, "Main Benefit");
+          await generateAdCopy.mutateAsync({
+            serviceId: service.id,
+            campaignId: cId,
+            adStyle: "story",
+            adCallToAction: "Learn More",
+            targetMarket: targetMarket6,
+            productCategory,
+            specificProductName,
+            pressingProblem: pressingProblem6,
+            desiredOutcome: desiredOutcome6,
+            uniqueMechanism: service.uniqueMechanismSuggestion || undefined,
+            credibleAuthority: service.name || undefined,
+            featuredIn: service.pressFeatures || undefined,
+          });
+          break;
+        }
+        case 7: {
+          const niche = requireField(service.category, "Category");
+          const productName7 = requireField(service.name, "Service Name");
+          const targetAudience7 = requireField(service.targetCustomer, "Target Customer");
+          const mainBenefit7 = requireField(service.mainBenefit, "Main Benefit");
+          const pressingProblem7 = requireField(service.painPoints || service.mainBenefit, "Pain Points");
+          await generateAdCreatives.mutateAsync({
+            serviceId: service.id,
+            niche,
+            productName: productName7,
+            targetAudience: targetAudience7,
+            mainBenefit: mainBenefit7,
+            pressingProblem: pressingProblem7,
+            uniqueMechanism: service.uniqueMechanismSuggestion || "",
+            adType: "lead_gen",
+          });
+          break;
+        }
+        case 8: {
+          // Credit check FIRST — before any script generation
+          const balance = creditBalance?.balance ?? 0;
+          if (balance < 1) {
+            throw new Error(
+              `Insufficient video credits — need 1, have ${balance}. Purchase credits to generate videos.`
+            );
+          }
+          const scriptResult = await generateVideoScript.mutateAsync({
+            serviceId: service.id,
+            campaignId: cId,
+            videoType: "explainer",
+            duration: "30",
+            visualStyle: "motion_graphics",
+          });
+          await generateVideo.mutateAsync({
+            scriptId: scriptResult.scriptId,
+            visualStyle: "motion_graphics",
+          });
+          break;
+        }
+        case 9: {
+          await generateLandingPage.mutateAsync({
+            serviceId: service.id,
+            campaignId: cId,
+            avatarName: service.avatarName || undefined,
+            avatarDescription: service.avatarTitle || undefined,
+          });
+          break;
+        }
+        case 10: {
+          const serviceName10 = requireField(service.name, "Service Name");
+          await generateEmailSequence.mutateAsync({
+            serviceId: service.id,
+            campaignId: cId,
+            sequenceType: "welcome",
+            name: `${serviceName10} Welcome Sequence`,
+          });
+          break;
+        }
+        case 11: {
+          const serviceName11 = requireField(service.name, "Service Name");
+          await generateWhatsAppSequence.mutateAsync({
+            serviceId: service.id,
+            campaignId: cId,
+            sequenceType: "engagement",
+            name: `${serviceName11} WhatsApp Sequence`,
+          });
+          break;
+        }
+        default:
+          throw new Error(`Unknown step ${stepId}`);
+      }
+      updateStep(stepId, { status: "done" });
+    } catch (err: any) {
+      updateStep(stepId, {
+        status: "failed",
+        error: err?.message || "Generation failed — please retry",
+      });
     }
+  };
+
+  // ── Main generate-all handler ─────────────────────────────────────────────
+  const handleGenerateAll = async () => {
+    if (!campaignId || !campaign?.service) {
+      toast.error("Campaign service not found. Please link a service first.");
+      return;
+    }
+    const service = campaign.service;
+    const initialSteps: StepState[] = GENERATE_STEPS.map((s) => ({
+      id: s.id,
+      label: s.label,
+      status: "queued",
+    }));
+    setSteps(initialSteps);
+    cancelledRef.current = false;
+    setIsRunning(true);
+    setModalOpen(true);
+    for (const step of GENERATE_STEPS) {
+      if (cancelledRef.current) break;
+      await runStep(step.id, service, campaignId);
+      utils.campaigns.getById.invalidate({ id: campaignId });
+    }
+    setIsRunning(false);
+    utils.campaigns.getById.invalidate({ id: campaignId });
+  };
+
+  // ── Retry a single failed step ────────────────────────────────────────────
+  const handleRetry = async (stepId: number) => {
+    if (!campaignId || !campaign?.service) return;
+    setIsRunning(true);
+    cancelledRef.current = false;
+    await runStep(stepId, campaign.service, campaignId);
+    setIsRunning(false);
+    utils.campaigns.getById.invalidate({ id: campaignId });
+  };
+
+  // ── Cancel ────────────────────────────────────────────────────────────────
+  const handleCancel = () => {
+    cancelledRef.current = true;
+    setSteps((prev) =>
+      prev.map((s) => (s.status === "queued" ? { ...s, status: "skipped" } : s))
+    );
+  };
+
+  // ── Close modal ───────────────────────────────────────────────────────────
+  const handleCloseModal = () => {
+    if (isRunning) return;
+    setModalOpen(false);
   };
 
   const handleExportCampaign = async () => {
@@ -70,60 +340,57 @@ export default function CampaignDashboard() {
     toast.info("Export Campaign — coming in Item 2.4");
   };
 
+  const isGenerating = isRunning;
+
   return (
     <div className="zap-onboarding" style={{ minHeight: "100vh" }}>
       <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "32px 24px" }}>
 
         {/* ── Header ──────────────────────────────────────────────────────── */}
         <div style={{ marginBottom: "32px", display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: "16px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+          <div>
             <Link href="/campaigns">
-              <button style={{
-                background: "transparent",
-                border: "1.5px solid var(--ink-4)",
-                borderRadius: "10px",
-                padding: "8px 10px",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                color: "var(--ink-2)",
-                transition: "border-color 150ms ease",
-              }}
-              onMouseEnter={e => (e.currentTarget.style.borderColor = "var(--ink-2)")}
-              onMouseLeave={e => (e.currentTarget.style.borderColor = "var(--ink-4)")}
+              <button
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  fontFamily: "'Instrument Sans', sans-serif",
+                  fontSize: "13px",
+                  color: "var(--ink-3)",
+                  padding: "0 0 10px 0",
+                  transition: "color 150ms ease",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = "var(--ink-2)")}
+                onMouseLeave={(e) => (e.currentTarget.style.color = "var(--ink-3)")}
               >
-                <ArrowLeft size={18} />
+                <ArrowLeft size={14} />
+                All Campaigns
               </button>
             </Link>
-            <div>
-              <h1 style={{ margin: 0, lineHeight: 1.1 }}>{campaign.name}</h1>
-              <p style={{
-                fontFamily: "'Instrument Sans', sans-serif",
-                fontSize: "14px",
-                color: "var(--ink-2)",
-                margin: "4px 0 0 0",
-              }}>
-                {campaign.description || "Campaign Dashboard"}
-                {campaign.campaignType && (
-                  <span style={{
-                    marginLeft: "10px",
-                    background: "var(--cg)",
-                    color: "var(--charge)",
-                    padding: "2px 8px",
-                    borderRadius: "999px",
-                    fontSize: "11px",
-                    fontWeight: 700,
-                    textTransform: "capitalize",
-                    letterSpacing: "0.04em",
-                  }}>
-                    {campaign.campaignType.replace("_", " ")}
-                  </span>
-                )}
+            <h1
+              style={{
+                fontFamily: "'Fraunces', serif",
+                fontStyle: "italic",
+                fontWeight: 700,
+                fontSize: "28px",
+                color: "var(--ink)",
+                margin: 0,
+                lineHeight: 1.2,
+              }}
+            >
+              {campaign.name}
+            </h1>
+            {campaign.description && (
+              <p style={{ fontFamily: "'Instrument Sans', sans-serif", fontSize: "14px", color: "var(--ink-2)", margin: "6px 0 0 0" }}>
+                {campaign.description}
               </p>
-            </div>
+            )}
           </div>
 
-          {/* Header action buttons — stubs for Items 2.3 and 2.4 */}
           <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
             <button
               onClick={handleExportCampaign}
@@ -262,8 +529,18 @@ export default function CampaignDashboard() {
             </Link>
           </div>
         )}
-
       </div>
+
+      {/* ── Generate All Progress Modal ──────────────────────────────────────── */}
+      <GenerateAllProgressModal
+        open={modalOpen}
+        steps={steps}
+        cancelledRef={cancelledRef}
+        onCancel={handleCancel}
+        onClose={handleCloseModal}
+        onRetry={handleRetry}
+        isRunning={isRunning}
+      />
     </div>
   );
 }

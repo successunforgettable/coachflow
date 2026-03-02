@@ -255,29 +255,6 @@ export const campaignsRouter = router({
       return { success: true };
     }),
 
-  // Generate all missing assets for campaign
-  generateAllMissing: protectedProcedure
-    .input(z.object({ campaignId: z.number() }))
-    .mutation(async ({ ctx, input }) => {
-      const campaign = await getCampaignById(input.campaignId, ctx.user.id);
-      if (!campaign) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Campaign not found",
-        });
-      }
-
-      // TODO: Implement batch generation logic
-      // This is a placeholder that will be enhanced to:
-      // 1. Check which generators haven't been run (assetCounts = 0)
-      // 2. Call each missing generator with campaign defaults
-      // 3. Return progress updates
-      
-      return { 
-        success: true,
-        message: "Generate All Missing feature coming soon. For now, please run each generator individually from the dashboard."
-      };
-    }),
 
   // Export all campaign assets as ZIP
   exportCampaign: protectedProcedure
