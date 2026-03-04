@@ -374,6 +374,14 @@ Return as a JSON object with an 'emails' key containing the array.`;
       if (!sequenceData.emails || !Array.isArray(sequenceData.emails)) {
         throw new Error("LLM did not return a valid emails array");
       }
+      sequenceData.emails = sequenceData.emails.map((email: any, idx: number) => ({
+        subject: email.subject || `Email ${idx + 1}: Check this out`,
+        body: email.body || `This is email ${idx + 1}. Click the link to learn more.`,
+        delay: email.delay || (idx * 24),
+        delayUnit: email.delayUnit || 'hours',
+        cta: email.cta || 'Learn More',
+        ctaLink: email.ctaLink || '#',
+      }));
       // Save to databasee
       const insertResult: any = await db.insert(emailSequences).values({
         userId: ctx.user.id,

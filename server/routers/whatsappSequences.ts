@@ -338,6 +338,13 @@ Return as a JSON object with a 'messages' key containing the array.`;
       if (!sequenceData.messages || !Array.isArray(sequenceData.messages)) {
         throw new Error("LLM did not return a valid messages array");
       }
+      sequenceData.messages = sequenceData.messages.map((msg: any, idx: number) => ({
+        text: msg.text || `Message ${idx + 1}: Check this out`,
+        delay: msg.delay || (idx * 24),
+        delayUnit: msg.delayUnit || 'hours',
+        mediaUrl: msg.mediaUrl || null,
+        mediaType: msg.mediaType || null,
+      }));
       // Save to database
       const insertResult: any = await db.insert(whatsappSequences).values({
         userId: ctx.user.id,
