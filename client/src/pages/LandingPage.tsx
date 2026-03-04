@@ -71,7 +71,7 @@ export default function LandingPage() {
     },
     {
       icon: <FileText className="w-8 h-8 text-primary" />,
-      title: "Landing Pages",
+      title: "Your Landing Page",
       description: "Generate complete landing page copy with headlines, bullets, and CTAs. 5 angle variations included.",
     },
     {

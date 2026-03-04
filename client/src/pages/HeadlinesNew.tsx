@@ -121,7 +121,7 @@ export default function HeadlinesNew() {
             Back to Headlines
           </Button>
         </Link>
-        <h1 className="text-3xl font-bold">Generate Direct Response Headlines</h1>
+        <h1 className="text-3xl font-bold">Generate Your Headlines</h1>
         <p className="text-muted-foreground mt-2">
           Create 25 high-converting headlines using 5 proven formulas
         </p>

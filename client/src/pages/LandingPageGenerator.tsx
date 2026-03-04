@@ -107,7 +107,7 @@ export default function LandingPageGenerator() {
   if (!isAuthenticated) {
     return (
       <div className="container max-w-2xl py-16 text-center">
-        <h1 className="text-4xl font-bold mb-4">Landing Pages Generator</h1>
+        <h1 className="text-4xl font-bold mb-4">Your Landing Page Generator</h1>
         <p className="text-muted-foreground mb-8">
           Generate high-converting landing pages with 16 sections and 4 angle variations
         </p>
@@ -123,7 +123,7 @@ export default function LandingPageGenerator() {
 
   return (
     <div className="min-h-screen bg-background">
-      <PageHeader title="Landing Pages" backTo="/dashboard" />
+      <PageHeader title="Your Landing Page" backTo="/dashboard" />
       
       <div className="container max-w-7xl py-8">
         {authData && (
@@ -131,7 +131,7 @@ export default function LandingPageGenerator() {
             <QuotaProgressBar
               used={authData.landingPageGeneratedCount}
               limit={quotaLimits?.landingPages || 50}
-              label="Landing Pages Quota"
+              label="Your Landing Page Quota"
               resetDate={authData.usageResetAt ? new Date(authData.usageResetAt) : undefined}
             />
           </div>
@@ -139,7 +139,7 @@ export default function LandingPageGenerator() {
         {authData && authData.subscriptionTier && quotaLimits && authData.landingPageGeneratedCount >= quotaLimits.landingPages && (
           <div className="mb-6">
             <UpgradePrompt
-              generatorName="Landing Pages"
+              generatorName="Your Landing Page"
               currentTier={authData.subscriptionTier}
               used={authData.landingPageGeneratedCount}
               limit={quotaLimits.landingPages}
@@ -241,10 +241,10 @@ export default function LandingPageGenerator() {
             </Card>
           </div>
 
-          {/* Landing Pages List */}
+          {/* Your Landing Page List */}
           <div className="lg:col-span-2">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold">Your Landing Pages</h2>
+              <h2 className="text-2xl font-bold">Your Your Landing Page</h2>
               <SearchBar
                 value={searchQuery}
                 onChange={setSearchQuery}

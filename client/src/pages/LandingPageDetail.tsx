@@ -47,7 +47,7 @@ export default function LandingPageDetail() {
           <Link href="/landing-pages">
             <Button className="bg-purple-600 hover:bg-purple-700">
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Landing Pages
+              Back to Your Landing Page
             </Button>
           </Link>
         </div>
@@ -71,7 +71,7 @@ export default function LandingPageDetail() {
           <Link href="/landing-pages">
             <Button className="bg-purple-600 hover:bg-purple-700">
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Landing Pages
+              Back to Your Landing Page
             </Button>
           </Link>
         </div>
@@ -106,7 +106,7 @@ export default function LandingPageDetail() {
           <Link href="/landing-pages">
             <Button variant="ghost" className="text-white hover:bg-gray-800">
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Landing Pages
+              Back to Your Landing Page
             </Button>
           </Link>
           <div className="flex items-center gap-4">

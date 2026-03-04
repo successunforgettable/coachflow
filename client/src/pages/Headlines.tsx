@@ -36,7 +36,7 @@ export default function Headlines() {
       {/* Search Bar */}
       <div className="mb-6">
         <SearchBar
-          placeholder="Search Direct Response Headlines..."
+          placeholder="Search Your Headlines..."
           value={searchQuery}
           onChange={setSearchQuery}
         />
@@ -45,7 +45,7 @@ export default function Headlines() {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold">Direct Response Headlines</h1>
+          <h1 className="text-3xl font-bold">Your Headlines</h1>
           <p className="text-muted-foreground mt-2">
             Generate high-converting headlines using 5 proven formulas
           </p>

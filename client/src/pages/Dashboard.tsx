@@ -131,21 +131,21 @@ export default function Dashboard() {
       href: "/generators/whatsapp",
     },
     {
-      title: "Landing Pages",
+      title: "Your Landing Page",
       description: "High-converting sales pages with multiple angles",
       icon: Globe,
       count: landingPages?.length || 0,
       href: "/landing-pages",
     },
     {
-      title: "Super ZAP Offers",
+      title: "Your Sales Offer",
       description: "Create irresistible offers your customers can't refuse",
       icon: Gift,
       count: offers?.length || 0,
       href: "/offers",
     },
     {
-      title: "Direct Response Headlines",
+      title: "Your Headlines",
       description: "25 headlines across 5 proven formulas",
       icon: Type,
       count: headlines?.length || 0,
@@ -238,7 +238,7 @@ export default function Dashboard() {
           <div className="nav-item"><FileText className="w-3.5 h-3.5 inline-block mr-2" /> Your Ads</div>
         </Link>
         <Link href="/headlines">
-          <div className="nav-item"><Type className="w-3.5 h-3.5 inline-block mr-2" /> Direct Response Headlines</div>
+          <div className="nav-item"><Type className="w-3.5 h-3.5 inline-block mr-2" /> Your Headlines</div>
         </Link>
         <Link href="/hvco-titles">
           <div className="nav-item"><Lightbulb className="w-3.5 h-3.5 inline-block mr-2" /> Your Free Opt-In</div>
@@ -250,10 +250,10 @@ export default function Dashboard() {
           <div className="nav-item"><Image className="w-3.5 h-3.5 inline-block mr-2" /> Your Ad Images</div>
         </Link>
         <Link href="/landing-pages">
-          <div className="nav-item"><Globe className="w-3.5 h-3.5 inline-block mr-2" /> Landing Pages</div>
+          <div className="nav-item"><Globe className="w-3.5 h-3.5 inline-block mr-2" /> Your Landing Page</div>
         </Link>
         <Link href="/offers">
-          <div className="nav-item"><Gift className="w-3.5 h-3.5 inline-block mr-2" /> Super ZAP Offers</div>
+          <div className="nav-item"><Gift className="w-3.5 h-3.5 inline-block mr-2" /> Your Sales Offer</div>
         </Link>
 
         <div style={{ height: '16px' }}></div>

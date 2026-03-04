@@ -168,7 +168,7 @@ export default function HeadlinesDetail() {
     ];
 
     exportToPDF({
-      title: "Direct Response Headlines",
+      title: "Your Headlines",
       subtitle: "Marketing Headlines",
       sections,
       metadata: {
@@ -207,7 +207,7 @@ export default function HeadlinesDetail() {
         </Link>
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Direct Response Headlines</h1>
+            <h1 className="text-3xl font-bold">Your Headlines</h1>
             <p className="text-muted-foreground mt-2">
               Headline Set #{headlineSetId.slice(-6)}
             </p>
