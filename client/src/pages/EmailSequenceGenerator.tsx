@@ -299,18 +299,18 @@ export default function EmailSequenceGenerator() {
                         {(seq.emails as any)?.map((email: any, idx: number) => {
                           const c = checkCompliance(email.subject + " " + email.body);
                           return (
-                          <>
-                          <div key={idx} className="p-4 bg-accent rounded-lg">
-                            <div className="flex items-start justify-between mb-2">
-                              <h4 className="font-semibold text-foreground">Email {idx + 1}: {email.subject}</h4>
-                              <Button variant="ghost" size="icon" onClick={() => navigator.clipboard.writeText(`Subject: ${email.subject}\n\n${email.body}`)}>
-                                <Copy className="w-4 h-4" />
-                              </Button>
-                            </div>
-                            <p className="text-sm text-muted-foreground whitespace-pre-wrap">{email.body}</p>
-                          </div>
-                          <ComplianceBadge score={c.score} compliant={c.compliant} issues={c.issues} suggestions={c.suggestions} />
-                          </>
+                            <>
+                              <div key={idx} className="p-4 bg-accent rounded-lg">
+                                <div className="flex items-start justify-between mb-2">
+                                  <h4 className="font-semibold text-foreground">Email {idx + 1}: {email.subject}</h4>
+                                  <Button variant="ghost" size="icon" onClick={() => navigator.clipboard.writeText(`Subject: ${email.subject}\n\n${email.body}`)}>
+                                    <Copy className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{email.body}</p>
+                              </div>
+                              <ComplianceBadge score={c.score} compliant={c.compliant} issues={c.issues} suggestions={c.suggestions} />
+                            </>
                           );
                         })}
                       </div>

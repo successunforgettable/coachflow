@@ -197,48 +197,48 @@ export default function LandingPageDetail() {
         {/* Section 4: Problem Agitation */}
         <section className="space-y-6">
           <h2 className="text-4xl font-bold text-center mb-8">
-            {content.problemAgitation.split('\n')[0]}
+            {content.problemAgitation ? content.problemAgitation.split('\n')[0] : 'Problem Agitation'}
           </h2>
           <div className="text-gray-300 text-lg leading-relaxed space-y-4">
-            {content.problemAgitation.split('\n').slice(1).map((para, idx) => (
+            {content.problemAgitation ? content.problemAgitation.split('\n').slice(1).map((para, idx) => (
               <p key={idx}>{para}</p>
-            ))}
+            )) : <p>Content loading...</p>}
           </div>
         </section>
 
         {/* Section 5: Solution Introduction */}
         <section className="bg-gradient-to-br from-purple-900/20 to-pink-900/20 rounded-2xl p-8 md:p-12 space-y-6">
           <h2 className="text-4xl font-bold">
-            {content.solutionIntro.split('\n')[0]}
+            {content.solutionIntro ? content.solutionIntro.split('\n')[0] : 'Solution Introduction'}
           </h2>
           <div className="text-gray-300 text-lg leading-relaxed space-y-4">
-            {content.solutionIntro.split('\n').slice(1).map((para, idx) => (
+            {content.solutionIntro ? content.solutionIntro.split('\n').slice(1).map((para, idx) => (
               <p key={idx}>{para}</p>
-            ))}
+            )) : <p>Content loading...</p>}
           </div>
         </section>
 
         {/* Section 6: Why Old Methods Fail */}
         <section className="space-y-6">
           <h2 className="text-4xl font-bold text-center text-[#ff3366] mb-8">
-            {content.whyOldFail.split('\n')[0]}
+            {content.whyOldFail ? content.whyOldFail.split('\n')[0] : 'Why Old Methods Fail'}
           </h2>
           <div className="text-gray-300 text-lg leading-relaxed space-y-4">
-            {content.whyOldFail.split('\n').slice(1).map((para, idx) => (
+            {content.whyOldFail ? content.whyOldFail.split('\n').slice(1).map((para, idx) => (
               <p key={idx}>{para}</p>
-            ))}
+            )) : <p>Content loading...</p>}
           </div>
         </section>
 
         {/* Section 7: Unique Mechanism */}
         <section className="bg-[#222222] rounded-2xl p-8 md:p-12 space-y-6">
           <h2 className="text-4xl font-bold text-[#8B5CF6]">
-            {content.uniqueMechanism.split('\n')[0]}
+            {content.uniqueMechanism ? content.uniqueMechanism.split('\n')[0] : 'Unique Mechanism'}
           </h2>
           <div className="text-gray-300 text-lg leading-relaxed space-y-4">
-            {content.uniqueMechanism.split('\n').slice(1).map((para, idx) => (
+            {content.uniqueMechanism ? content.uniqueMechanism.split('\n').slice(1).map((para, idx) => (
               <p key={idx}>{para}</p>
-            ))}
+            )) : <p>Content loading...</p>}
           </div>
         </section>
 
@@ -262,12 +262,12 @@ export default function LandingPageDetail() {
         {/* Section 9: Insider Advantages */}
         <section className="bg-gradient-to-br from-green-900/20 to-blue-900/20 rounded-2xl p-8 md:p-12 space-y-6">
           <h2 className="text-4xl font-bold">
-            {content.insiderAdvantages.split('\n')[0]}
+            {content.insiderAdvantages ? content.insiderAdvantages.split('\n')[0] : 'Insider Advantages'}
           </h2>
           <div className="text-gray-300 text-lg leading-relaxed space-y-4">
-            {content.insiderAdvantages.split('\n').slice(1).map((para, idx) => (
+            {content.insiderAdvantages ? content.insiderAdvantages.split('\n').slice(1).map((para, idx) => (
               <p key={idx}>{para}</p>
-            ))}
+            )) : <p>Content loading...</p>}
           </div>
         </section>
 
