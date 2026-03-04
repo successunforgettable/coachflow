@@ -47,7 +47,7 @@ export default function LandingPage() {
     {
       icon: <Target className="w-8 h-8 text-primary" />,
       title: "Your Unique Method",
-      description: "Develop unique mechanisms that set your offer apart. 15 hero mechanisms with supporting copy.",
+      description: "Develop unique mechanisms that set your offer apart. 15 Unique Methods with supporting copy.",
     },
     {
       icon: <Target className="w-8 h-8 text-primary" />,
@@ -254,7 +254,7 @@ export default function LandingPage() {
               </CardHeader>
               <CardContent>
                 <ul className="space-y-2 text-muted-foreground">
-                  <li>• Spend hours writing ad copy</li>
+                  <li>• Spend hours writing ads</li>
                   <li>• Hire expensive copywriters</li>
                   <li>• Run out of creative ideas</li>
                   <li>• Test one variation at a time</li>

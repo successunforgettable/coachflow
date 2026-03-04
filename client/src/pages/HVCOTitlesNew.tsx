@@ -205,7 +205,7 @@ export default function HVCOTitlesNew() {
           {/* HVCO Topic */}
           <div className="space-y-2">
             <Label htmlFor="hvcoTopic">
-              What does the HVCO talk about? <span className="text-red-500">*</span>
+              What does the Free Opt-In talk about? <span className="text-red-500">*</span>
             </Label>
             <Textarea
               id="hvcoTopic"
@@ -233,7 +233,7 @@ export default function HVCOTitlesNew() {
           {/* Disclaimer */}
           <div className="bg-muted/50 p-4 rounded-lg">
             <p className="text-sm text-muted-foreground">
-              HVCOs are AI-generated. Please review and edit all content for accuracy before using or publishing.
+              Free Opt-Ins are AI-generated. Please review and edit all content for accuracy before using or publishing.
             </p>
           </div>
 

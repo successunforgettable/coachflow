@@ -145,7 +145,7 @@ export default function HVCOTitlesDetail() {
   };
 
   const handleDelete = () => {
-    if (confirm("Are you sure you want to delete this HVCO? This action cannot be undone.")) {
+    if (confirm("Are you sure you want to delete this Free Opt-In? This action cannot be undone.")) {
       deleteMutation.mutate({ hvcoSetId });
     }
   };
@@ -166,9 +166,9 @@ export default function HVCOTitlesDetail() {
     return (
       <div className="container py-8">
         <Card className="p-12 text-center">
-          <h3 className="text-lg font-semibold mb-2">HVCO Not Found</h3>
+          <h3 className="text-lg font-semibold mb-2">Free Opt-In Not Found</h3>
           <p className="text-muted-foreground mb-4">
-            This HVCO set doesn't exist or has been deleted
+            This Free Opt-In set doesn't exist or has been deleted
           </p>
           <Button onClick={() => setLocation("/hvco-titles")}>
             Back to Your Free Opt-In
@@ -449,10 +449,10 @@ export default function HVCOTitlesDetail() {
       {/* Regenerate Sidebar */}
       <RegenerateSidebar
         title="Regenerate Your Free Opt-In"
-        subtitle="Submit or modify the pre-filled form below to regenerate a similar set of HVCO titles"
+        subtitle="Submit or modify the pre-filled form below to regenerate a similar set of Free Opt-In titles"
         onRegenerate={handleRegenerate}
         isLoading={generateMoreMutation.isPending}
-        creditText="Uses 1 HVCO Title Credit"
+        creditText="Uses 1 Free Opt-In Credit"
       >
         <div className="space-y-4">
           <div>

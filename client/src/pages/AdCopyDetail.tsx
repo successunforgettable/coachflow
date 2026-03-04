@@ -171,7 +171,7 @@ ${adSet.links.map((l: any, i: number) => `${i + 1}. ${l.content}`).join("\n\n")}
   if (isLoading) {
     return (
       <div className="container py-8">
-        <div className="text-center">Loading ad copy...</div>
+        <div className="text-center">Loading your ads...</div>
       </div>
     );
   }
@@ -501,7 +501,7 @@ ${adSet.links.map((l: any, i: number) => `${i + 1}. ${l.content}`).join("\n\n")}
       {/* Regenerate Sidebar */}
       <RegenerateSidebar
         title="Regenerate Facebook Ad"
-        subtitle="Submit or modify the pre-filled form below to regenerate similar ad copy"
+        subtitle="Submit or modify the pre-filled form below to regenerate similar ads"
         onRegenerate={handleRegenerate}
         isLoading={generateMutation.isPending}
         creditText="Uses 1 Facebook Ad Credit"

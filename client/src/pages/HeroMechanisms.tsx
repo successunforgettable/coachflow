@@ -94,7 +94,7 @@ export default function HeroMechanisms() {
           <FolderIcon className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
           <h3 className="text-lg font-semibold mb-2">No Unique Methods Yet</h3>
           <p className="text-muted-foreground mb-4">
-            Create your first hero mechanism set to get started
+            Create your first Unique Method set to get started
           </p>
           <Link href="/hero-mechanisms/new">
             <Button className="bg-primary hover:bg-primary/90">

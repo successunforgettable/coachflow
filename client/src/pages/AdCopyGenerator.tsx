@@ -249,7 +249,7 @@ export default function AdCopyGenerator() {
       <div className="container mx-auto py-12 text-center">
         <h1 className="text-3xl font-bold mb-4">Your Ads Generator</h1>
         <p className="text-muted-foreground mb-6">
-          Please sign in to generate ad copy
+          Please sign in to generate ads
         </p>
         <Button asChild>
           <a href={getLoginUrl()}>Sign In</a>

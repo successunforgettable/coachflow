@@ -8,7 +8,7 @@ export default function AdCreatives() {
     <div className="min-h-screen bg-background">
       <PageHeader
         title="Your Ad Images"
-        description="Generate attention-grabbing Facebook ad creatives using AI-powered scroll-stopper technology"
+        description="Generate attention-grabbing Facebook ad images using AI-powered scroll-stopper technology"
       />
 
       <div className="container py-8">
@@ -25,7 +25,7 @@ export default function AdCreatives() {
             </CardTitle>
             <CardDescription className="text-lg">
               ZAP uses the powerful <strong>Scroll-Stopper Ad Creator</strong> to generate
-              high-converting ad creatives tailored to your audience
+              high-converting ad images tailored to your audience
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center pb-6">
@@ -43,7 +43,7 @@ export default function AdCreatives() {
             <CardContent className="pt-6">
               <p className="text-muted-foreground leading-relaxed mb-4">
                 The <strong>Scroll-Stopper Ad Creator</strong> is an AI-powered tool that generates
-                visually stunning Facebook ad creatives designed to stop users mid-scroll. Unlike
+                visually stunning Facebook ad images designed to stop users mid-scroll. Unlike
                 traditional template libraries with 154 static designs, this tool creates custom,
                 data-driven ad visuals based on your specific product, audience, and marketing goals.
               </p>
@@ -104,7 +104,7 @@ export default function AdCreatives() {
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground">
-                  Review your ad creatives, select your favorites, and download them in
+                  Review your ad images, select your favorites, and download them in
                   Facebook-ready formats (1080x1080, 1200x628, etc.) for immediate use.
                 </p>
               </CardContent>
@@ -125,7 +125,7 @@ export default function AdCreatives() {
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground">
-                  Generate 10+ professional ad creatives in under 60 seconds—no design skills required.
+                  Generate 10+ professional ad images in under 60 seconds—no design skills required.
                 </p>
               </CardContent>
             </Card>
@@ -212,7 +212,7 @@ export default function AdCreatives() {
                 <li className="flex gap-3">
                   <span className="font-bold text-foreground">Step 5:</span>
                   <span>
-                    Review, rate, and download your favorite ad creatives in Facebook-ready formats.
+                    Review, rate, and download your favorite ad images in Facebook-ready formats.
                   </span>
                 </li>
               </ol>
@@ -225,7 +225,7 @@ export default function AdCreatives() {
           <CardContent className="text-center py-12">
             <h3 className="text-2xl font-bold mb-4">Ready to Create Scroll-Stopping Ads?</h3>
             <p className="text-muted-foreground mb-6 max-w-2xl mx-auto">
-              Launch the Scroll-Stopper Ad Creator now and generate professional Facebook ad creatives
+              Launch the Scroll-Stopper Ad Creator now and generate professional Facebook ad images
               that drive results—no design experience needed.
             </p>
             <Button size="lg" className="gap-2">

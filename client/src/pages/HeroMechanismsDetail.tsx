@@ -454,7 +454,7 @@ export default function HeroMechanismsDetail() {
       {/* Regenerate Sidebar */}
       <RegenerateSidebar
         title="Regenerate Your Unique Method"
-        subtitle="Submit or modify the pre-filled form below to regenerate a similar set of hero mechanisms"
+        subtitle="Submit or modify the pre-filled form below to regenerate a similar set of Unique Methods"
         onRegenerate={handleRegenerate}
         isLoading={generateMoreMutation.isPending}
         creditText="Uses 1 Your Unique Method Credit"
