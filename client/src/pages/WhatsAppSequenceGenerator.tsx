@@ -19,6 +19,8 @@ import RegenerateSidebar from "@/components/RegenerateSidebar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RegenerateConfirmationDialog } from "@/components/RegenerateConfirmationDialog";
+import { ComplianceBadge } from "@/components/ComplianceBadge";
+import { checkCompliance } from "@/lib/complianceUtils";
 
 // Real-world WhatsApp sequence examples 
 const WHATSAPP_SEQUENCE_EXAMPLES = {
@@ -284,7 +286,10 @@ export default function WhatsAppSequenceGenerator() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-3">
-                        {(seq.messages as any)?.map((message: any, idx: number) => (
+                        {(seq.messages as any)?.map((message: any, idx: number) => {
+                          const c = checkCompliance(message.text);
+                          return (
+                          <>
                           <div key={idx} className="p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
                             <div className="flex items-start justify-between mb-2">
                               <div className="flex items-center gap-2">
@@ -298,7 +303,10 @@ export default function WhatsAppSequenceGenerator() {
                             </div>
                             <p className="text-sm text-foreground whitespace-pre-wrap">{message.text}</p>
                           </div>
-                        ))}
+                          <ComplianceBadge score={c.score} compliant={c.compliant} issues={c.issues} suggestions={c.suggestions} />
+                          </>
+                          );
+                        })}
                       </div>
 
                       {/* +15 More Like This Button */}
