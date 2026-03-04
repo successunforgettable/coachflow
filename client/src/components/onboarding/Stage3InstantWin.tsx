@@ -221,7 +221,7 @@ export function Stage3InstantWin({
         >
           ZAP will generate{" "}
           <strong style={{ color: "var(--ink)" }}>110+ more assets</strong> like this —
-          email sequences, ad copy, landing pages, WhatsApp messages, and more.
+          email sequences, ads, landing pages, WhatsApp messages, and more.
           All tailored to your program.
         </p>
 

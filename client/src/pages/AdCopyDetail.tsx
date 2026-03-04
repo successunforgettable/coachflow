@@ -38,7 +38,7 @@ export default function AdCopyDetail() {
 
   const updateMutation = trpc.adCopy.update.useMutation({
     onSuccess: () => {
-      toast.success("Ad copy updated");
+      toast.success("Your Ads updated");
       refetch();
     },
   });

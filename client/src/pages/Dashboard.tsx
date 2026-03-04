@@ -103,7 +103,7 @@ export default function Dashboard() {
 
   const generators = [
     {
-      title: "Ideal Customer Profile",
+      title: "Your Ideal Customer",
       description: "AI-powered customer research with demographics and pain points",
       icon: Sparkles,
       count: icps?.length || 0,
@@ -117,14 +117,14 @@ export default function Dashboard() {
       href: "/ad-copy",
     },
     {
-      title: "Email Sequences",
+      title: "Your Email Follow-Up",
       description: "Russell Brunson's Soap Opera Sequence framework",
       icon: Mail,
       count: emailSequences?.length || 0,
       href: "/generators/email",
     },
     {
-      title: "WhatsApp Sequences",
+      title: "Your WhatsApp Follow-Up",
       description: "High-engagement WhatsApp sequences for coaches and consultants",
       icon: MessageCircle,
       count: whatsappSequences?.length || 0,
@@ -167,7 +167,7 @@ export default function Dashboard() {
     },
     {
       title: "Your Ad Images",
-      description: "AI-powered scroll-stopping Facebook ad creatives",
+      description: "AI-powered scroll-stopping Facebook ad images",
       icon: Image,
       count: 0,
       href: "/ad-creatives",

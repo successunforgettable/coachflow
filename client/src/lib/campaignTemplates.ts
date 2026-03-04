@@ -29,7 +29,7 @@ export const campaignTemplates: CampaignTemplate[] = [
       },
       {
         type: "hero_mechanism",
-        title: "Hero Mechanisms",
+        title: "Your Unique Method",
         description: "Unique mechanisms that make your product stand out",
       },
       {
@@ -39,7 +39,7 @@ export const campaignTemplates: CampaignTemplate[] = [
       },
       {
         type: "ad_copy",
-        title: "Launch Ad Copy",
+        title: "Your Ads",
         description: "Paid ads to drive traffic to your launch",
       },
       {

@@ -176,7 +176,7 @@ export default function EmailSequenceGenerator() {
         <QuotaIndicator generatorType="emailSeq" />
       </div>
       <PageHeader 
-        title="Email Sequence Generator" 
+        title="Your Email Follow-Up" 
         description="Generate automated email sequences with proven frameworks"
         backTo="/dashboard"
       />
@@ -184,7 +184,7 @@ export default function EmailSequenceGenerator() {
         <div className="flex items-center gap-4 mb-8">
           <Link href="/dashboard"><Button variant="ghost" size="icon"><ArrowLeft className="w-5 h-5" /></Button></Link>
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Email Sequence Generator</h1>
+            <h1 className="text-3xl font-bold text-foreground">Your Email Follow-Up</h1>
             <p className="text-muted-foreground">Russell Brunson's Soap Opera Sequence framework</p>
           </div>
         </div>

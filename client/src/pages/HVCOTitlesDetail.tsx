@@ -45,11 +45,11 @@ export default function HVCOTitlesDetail() {
   
   const deleteMutation = trpc.hvco.delete.useMutation({
     onSuccess: () => {
-      toast.success("HVCO deleted successfully");
+      toast.success("Your Free Opt-In deleted successfully");
       setLocation("/hvco-titles");
     },
     onError: (error) => {
-      toast.error(`Failed to delete HVCO: ${error.message}`);
+      toast.error(`Failed to delete Your Free Opt-In: ${error.message}`);
     },
   });
 
@@ -67,7 +67,7 @@ export default function HVCOTitlesDetail() {
 
   const generateMoreMutation = trpc.hvco.generate.useMutation({
     onSuccess: () => {
-      toast.success("+15 more HVCO titles generated!");
+      toast.success("+15 more Free Opt-In titles generated!");
       window.location.reload();
     },
     onError: (error) => {
@@ -223,7 +223,7 @@ export default function HVCOTitlesDetail() {
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-semibold text-muted-foreground">
-            HVCO #{hvcoSetId.slice(0, 8)}
+            Free Opt-In #{hvcoSetId.slice(0, 8)}
           </h2>
           <div className="flex items-center gap-2">
             <Button

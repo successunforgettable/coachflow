@@ -97,7 +97,7 @@ export default function HVCOTitlesNew() {
     }
 
     if (!hvcoTopic.trim()) {
-      toast.error("Please describe what the HVCO talks about");
+      toast.error("Please describe what the Free Opt-In talks about");
       return;
     }
 
@@ -120,7 +120,7 @@ export default function HVCOTitlesNew() {
   return (
     <div className="container max-w-3xl py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Create New HVCO</h1>
+        <h1 className="text-3xl font-bold mb-2">Create New Free Opt-In</h1>
         <p className="text-muted-foreground">
           Generate compelling titles for your high-value content offer
         </p>
@@ -225,7 +225,7 @@ export default function HVCOTitlesNew() {
               <ExamplesCarousel
                 examples={HVCO_TOPIC_EXAMPLES}
                 onSelectExample={setHvcoTopic}
-                title="HVCO Topic Examples (Click to Use)"
+                title="Free Opt-In Topic Examples (Click to Use)"
               />
             </div>
           </div>
