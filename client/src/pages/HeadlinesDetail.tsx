@@ -15,6 +15,8 @@ import { useState, useEffect } from "react";
 import { RegenerateConfirmationDialog } from "@/components/RegenerateConfirmationDialog";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { HeadlineCard } from "@/components/HeadlineCard";
+import { ComplianceBadge } from "@/components/ComplianceBadge";
+import { checkCompliance } from "@/lib/complianceUtils";
 
 export default function HeadlinesDetail() {
   const [, params] = useRoute("/headlines/:id");
@@ -281,16 +283,22 @@ export default function HeadlinesDetail() {
                 <div>
                   <h2 className="text-xl font-bold mb-4">Story-Based Headlines</h2>
                   <div className="space-y-4">
-                    {headlines.story.map((headline) => (
-                      <HeadlineCard
-                        key={headline.id}
-                        headline={headline}
-                        onRate={handleRate}
-                        onCopy={copyToClipboard}
-                        onGenerateMore={handleGenerateMore}
-                        isGenerating={generateMoreMutation.isPending}
-                      />
-                    ))}
+                    {headlines.story.map((headline) => {
+                      const c = checkCompliance(headline.headline);
+                      return (
+                        <>
+                          <HeadlineCard
+                            key={headline.id}
+                            headline={headline}
+                            onRate={handleRate}
+                            onCopy={copyToClipboard}
+                            onGenerateMore={handleGenerateMore}
+                            isGenerating={generateMoreMutation.isPending}
+                          />
+                          <ComplianceBadge score={c.score} compliant={c.compliant} issues={c.issues} suggestions={c.suggestions} />
+                        </>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -299,16 +307,15 @@ export default function HeadlinesDetail() {
                 <div>
                   <h2 className="text-xl font-bold mb-4">Eyebrow + Main + Subheadline</h2>
                   <div className="space-y-4">
-                    {headlines.eyebrow.map((headline) => (
-                      <HeadlineCard
-                        key={headline.id}
-                        headline={headline}
-                        onRate={handleRate}
-                        onCopy={copyToClipboard}
-                        onGenerateMore={handleGenerateMore}
-                        isGenerating={generateMoreMutation.isPending}
-                      />
-                    ))}
+                    {headlines.eyebrow.map((headline) => {
+                      const c = checkCompliance(headline.headline);
+                      return (
+                        <>
+                          <HeadlineCard key={headline.id} headline={headline} onRate={handleRate} onCopy={copyToClipboard} onGenerateMore={handleGenerateMore} isGenerating={generateMoreMutation.isPending} />
+                          <ComplianceBadge score={c.score} compliant={c.compliant} issues={c.issues} suggestions={c.suggestions} />
+                        </>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -317,16 +324,15 @@ export default function HeadlinesDetail() {
                 <div>
                   <h2 className="text-xl font-bold mb-4">Question Headlines</h2>
                   <div className="space-y-4">
-                    {headlines.question.map((headline) => (
-                      <HeadlineCard
-                        key={headline.id}
-                        headline={headline}
-                        onRate={handleRate}
-                        onCopy={copyToClipboard}
-                        onGenerateMore={handleGenerateMore}
-                        isGenerating={generateMoreMutation.isPending}
-                      />
-                    ))}
+                    {headlines.question.map((headline) => {
+                      const c = checkCompliance(headline.headline);
+                      return (
+                        <>
+                          <HeadlineCard key={headline.id} headline={headline} onRate={handleRate} onCopy={copyToClipboard} onGenerateMore={handleGenerateMore} isGenerating={generateMoreMutation.isPending} />
+                          <ComplianceBadge score={c.score} compliant={c.compliant} issues={c.issues} suggestions={c.suggestions} />
+                        </>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -335,16 +341,15 @@ export default function HeadlinesDetail() {
                 <div>
                   <h2 className="text-xl font-bold mb-4">Authority Headlines</h2>
                   <div className="space-y-4">
-                    {headlines.authority.map((headline) => (
-                      <HeadlineCard
-                        key={headline.id}
-                        headline={headline}
-                        onRate={handleRate}
-                        onCopy={copyToClipboard}
-                        onGenerateMore={handleGenerateMore}
-                        isGenerating={generateMoreMutation.isPending}
-                      />
-                    ))}
+                    {headlines.authority.map((headline) => {
+                      const c = checkCompliance(headline.headline);
+                      return (
+                        <>
+                          <HeadlineCard key={headline.id} headline={headline} onRate={handleRate} onCopy={copyToClipboard} onGenerateMore={handleGenerateMore} isGenerating={generateMoreMutation.isPending} />
+                          <ComplianceBadge score={c.score} compliant={c.compliant} issues={c.issues} suggestions={c.suggestions} />
+                        </>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -353,16 +358,16 @@ export default function HeadlinesDetail() {
                 <div>
                   <h2 className="text-xl font-bold mb-4">Urgency Headlines</h2>
                   <div className="space-y-4">
-                    {headlines.urgency.map((headline) => (
-                      <HeadlineCard
-                        key={headline.id}
-                        headline={headline}
-                        onRate={handleRate}
-                        onCopy={copyToClipboard}
-                        onGenerateMore={handleGenerateMore}
-                        isGenerating={generateMoreMutation.isPending}
-                      />
-                    ))}
+                    {headlines.urgency.map((headline) => {
+                      const c = checkCompliance(headline.headline);
+                      return (
+                        <>
+                          <HeadlineCard key={headline.id} headline={headline} onRate={handleRate} onCopy={copyToClipboard} onGenerateMore={handleGenerateMore} isGenerating={generateMoreMutation.isPending} />
+                          <ComplianceBadge score={c.score} compliant={c.compliant} issues={c.issues} suggestions={c.suggestions} />
+                        </>
+                      );
+                    })}
+
                   </div>
                 </div>
               )}

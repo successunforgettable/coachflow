@@ -14,6 +14,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RegenerateConfirmationDialog } from "@/components/RegenerateConfirmationDialog";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { ComplianceBadge } from "@/components/ComplianceBadge";
+import { checkCompliance } from "@/lib/complianceUtils";
 
 type TabType = "hero_mechanisms" | "headline_ideas" | "beast_mode";
 
@@ -307,7 +309,10 @@ export default function HeroMechanismsDetail() {
 
         {/* Your Unique Method Tab */}
         <TabsContent value="hero_mechanisms" className="space-y-4">
-          {mechanismsByTab.hero_mechanisms.map((mechanism) => (
+          {mechanismsByTab.hero_mechanisms.map((mechanism) => {
+            const c = checkCompliance(mechanism.mechanismName + " " + mechanism.mechanismDescription);
+            return (
+            <>
             <Card key={mechanism.id} className="p-6 hover:border-primary/50 transition-colors">
               <div className="flex items-start gap-4">
                 <button
@@ -350,12 +355,18 @@ export default function HeroMechanismsDetail() {
                 </div>
               </div>
             </Card>
-          ))}
+            <ComplianceBadge score={c.score} compliant={c.compliant} issues={c.issues} suggestions={c.suggestions} />
+            </>
+            );
+          })}
         </TabsContent>
 
         {/* Headline Ideas Tab */}
         <TabsContent value="headline_ideas" className="space-y-4">
-          {mechanismsByTab.headline_ideas.map((mechanism) => (
+          {mechanismsByTab.headline_ideas.map((mechanism) => {
+            const c = checkCompliance(mechanism.mechanismName + " " + mechanism.mechanismDescription);
+            return (
+            <>
             <Card key={mechanism.id} className="p-6 hover:border-primary/50 transition-colors">
               <div className="flex items-start gap-4">
                 <button
@@ -398,12 +409,18 @@ export default function HeroMechanismsDetail() {
                 </div>
               </div>
             </Card>
-          ))}
+            <ComplianceBadge score={c.score} compliant={c.compliant} issues={c.issues} suggestions={c.suggestions} />
+            </>
+            );
+          })}
         </TabsContent>
 
         {/* Power Mode Tab */}
         <TabsContent value="beast_mode" className="space-y-4">
-          {mechanismsByTab.beast_mode.map((mechanism) => (
+          {mechanismsByTab.beast_mode.map((mechanism) => {
+            const c = checkCompliance(mechanism.mechanismName + " " + mechanism.mechanismDescription);
+            return (
+            <>
             <Card key={mechanism.id} className="p-6 hover:border-primary/50 transition-colors">
               <div className="flex items-start gap-4">
                 <button
@@ -446,7 +463,10 @@ export default function HeroMechanismsDetail() {
                 </div>
               </div>
             </Card>
-          ))}
+            <ComplianceBadge score={c.score} compliant={c.compliant} issues={c.issues} suggestions={c.suggestions} />
+            </>
+            );
+          })}
         </TabsContent>
       </Tabs>
       </div>

@@ -13,6 +13,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { RegenerateConfirmationDialog } from "@/components/RegenerateConfirmationDialog";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { ComplianceBadge } from "@/components/ComplianceBadge";
+import { checkCompliance } from "@/lib/complianceUtils";
 
 type TabType = "long" | "short" | "beast_mode" | "subheadlines";
 
@@ -283,7 +285,10 @@ export default function HVCOTitlesDetail() {
 
         {/* Long Titles Tab */}
         <TabsContent value="long" className="space-y-3">
-          {titlesByTab.long.map((title) => (
+          {titlesByTab.long.map((title) => {
+            const c = checkCompliance(title.title);
+            return (
+            <>
             <Card key={title.id} className="p-4 hover:border-primary/50 transition-colors">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3 flex-1">
@@ -318,12 +323,18 @@ export default function HVCOTitlesDetail() {
                 </div>
               </div>
             </Card>
-          ))}
+            <ComplianceBadge score={c.score} compliant={c.compliant} issues={c.issues} suggestions={c.suggestions} />
+            </>
+            );
+          })}
         </TabsContent>
 
         {/* Short Titles Tab */}
         <TabsContent value="short" className="space-y-3">
-          {titlesByTab.short.map((title) => (
+          {titlesByTab.short.map((title) => {
+            const c = checkCompliance(title.title);
+            return (
+            <>
             <Card key={title.id} className="p-4 hover:border-primary/50 transition-colors">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3 flex-1">
@@ -358,12 +369,18 @@ export default function HVCOTitlesDetail() {
                 </div>
               </div>
             </Card>
-          ))}
+            <ComplianceBadge score={c.score} compliant={c.compliant} issues={c.issues} suggestions={c.suggestions} />
+            </>
+            );
+          })}
         </TabsContent>
 
         {/* Advanced Variations Tab */}
         <TabsContent value="beast_mode" className="space-y-3">
-          {titlesByTab.beast_mode.map((title) => (
+          {titlesByTab.beast_mode.map((title) => {
+            const c = checkCompliance(title.title);
+            return (
+            <>
             <Card key={title.id} className="p-4 hover:border-primary/50 transition-colors">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3 flex-1">
@@ -401,12 +418,18 @@ export default function HVCOTitlesDetail() {
                 </div>
               </div>
             </Card>
-          ))}
+            <ComplianceBadge score={c.score} compliant={c.compliant} issues={c.issues} suggestions={c.suggestions} />
+            </>
+            );
+          })}
         </TabsContent>
 
         {/* Subheadlines Tab */}
         <TabsContent value="subheadlines" className="space-y-3">
-          {titlesByTab.subheadlines.map((title) => (
+          {titlesByTab.subheadlines.map((title) => {
+            const c = checkCompliance(title.title);
+            return (
+            <>
             <Card key={title.id} className="p-4 hover:border-primary/50 transition-colors">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3 flex-1">
@@ -441,7 +464,10 @@ export default function HVCOTitlesDetail() {
                 </div>
               </div>
             </Card>
-          ))}
+            <ComplianceBadge score={c.score} compliant={c.compliant} issues={c.issues} suggestions={c.suggestions} />
+            </>
+            );
+          })}
         </TabsContent>
       </Tabs>
       </div>
