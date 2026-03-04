@@ -19,6 +19,8 @@ import RegenerateSidebar from "@/components/RegenerateSidebar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RegenerateConfirmationDialog } from "@/components/RegenerateConfirmationDialog";
+import { ComplianceBadge } from "@/components/ComplianceBadge";
+import { checkCompliance } from "@/lib/complianceUtils";
 
 // Real-world email sequence examples 
 const EMAIL_SEQUENCE_EXAMPLES = {
@@ -294,7 +296,10 @@ export default function EmailSequenceGenerator() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-3">
-                        {(seq.emails as any)?.map((email: any, idx: number) => (
+                        {(seq.emails as any)?.map((email: any, idx: number) => {
+                          const c = checkCompliance(email.subject + " " + email.body);
+                          return (
+                          <>
                           <div key={idx} className="p-4 bg-accent rounded-lg">
                             <div className="flex items-start justify-between mb-2">
                               <h4 className="font-semibold text-foreground">Email {idx + 1}: {email.subject}</h4>
@@ -304,7 +309,10 @@ export default function EmailSequenceGenerator() {
                             </div>
                             <p className="text-sm text-muted-foreground whitespace-pre-wrap">{email.body}</p>
                           </div>
-                        ))}
+                          <ComplianceBadge score={c.score} compliant={c.compliant} issues={c.issues} suggestions={c.suggestions} />
+                          </>
+                          );
+                        })}
                       </div>
 
                       {/* +15 More Like This Button */}
