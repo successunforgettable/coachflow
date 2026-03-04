@@ -69,7 +69,7 @@ export const STEP_DEFINITIONS: StepDefinition[] = [
     number: 3,
     label: "Your Free Opt-In",
     description:
-      "This is a free gift you give people to get their email address — something small and useful that shows them you know what you are talking about.",
+      "This is a free opt-in offer you give people to get their email address — something small and useful that shows them you know what you are talking about.",
     assetKey: "hvco",
     generateUrl: "/hvco-titles/new",
     viewUrl: "/hvco-titles",

@@ -58,7 +58,7 @@ export default function AdCreativesGenerator() {
 
   const generateMutation = trpc.adCreatives.generate.useMutation({
     onSuccess: (data) => {
-      toast.success(`5 ad creatives generated successfully!`);
+      toast.success(`5 ad images generated successfully!`);
       refetch();
       setSelectedBatchId(data.batchId);
       // Reset form
@@ -70,7 +70,7 @@ export default function AdCreativesGenerator() {
       setPressingProblem("");
     },
     onError: (error) => {
-      toast.error(`Failed to generate ad creatives: ${error.message}`);
+      toast.error(`Failed to generate ad images: ${error.message}`);
     },
   });
 
@@ -138,7 +138,7 @@ export default function AdCreativesGenerator() {
     <div className="min-h-screen bg-background">
       <PageHeader
         title="Scroll-Stopper Ad Creator"
-        description="Generate tabloid-style, gossip magazine aesthetic ad creatives that stop people from scrolling"
+        description="Generate tabloid-style, gossip magazine aesthetic ad images that stop people from scrolling"
       />
 
       <div className="container py-8">

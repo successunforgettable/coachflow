@@ -117,7 +117,7 @@ export function CampaignCreativesSection({ campaignId }: CampaignCreativesSectio
       console.error("Bulk download failed:", error);
       toast({
         title: "Download Failed",
-        description: "Failed to download creatives. Please try again.",
+        description: "Failed to download images. Please try again.",
         variant: "destructive",
       });
     } finally {

@@ -107,7 +107,7 @@ export function CampaignCreativesDialog({
                       <span className="ml-auto text-sm font-medium text-green-500">FREE</span>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      Static ad creatives with different styles: Tabloid, Before/After, Stats, Testimonial
+                      Static ad images with different styles: Tabloid, Before/After, Stats, Testimonial
                     </p>
                     <div className="mt-2 text-xs text-muted-foreground">
                       • 1080×1080 square format (Meta standard)
