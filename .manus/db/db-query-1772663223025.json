@@ -1,0 +1,35 @@
+{
+  "query": "SELECT id, productName, JSON_EXTRACT(originalAngle, '$.problemAgitation') as problemAgitation FROM landingPages LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT id, productName, JSON_EXTRACT(originalAngle, '$.problemAgitation') as problemAgitation FROM landingPages LIMIT 5;",
+  "rows": [
+    {
+      "id": "720001",
+      "productName": "ZAP - Zero-to-Ads Platform",
+      "problemAgitation": "\"\\\"Are you, like Sarah, a brilliant agency owner constantly battling the clock? You're passionate about delivering results, but the sheer volume of campaign creation – from crafting Meta-compliant ads to designing landing pages and writing email sequences – is crushing your capacity. You dream of scaling, but every new client feels like another mountain of manual work. You're stuck in a cycle of 'doing the work' instead of 'growing the business,' watching potential revenue slip away because you simply don't have enough hours in the day or enough hands on deck. The pressure to deliver for clients while trying to innovate and expand is immense, leaving you feeling overwhelmed and unable to truly scale.\\\"\""
+    },
+    {
+      "id": "780001",
+      "productName": "Crypto Coaching",
+      "problemAgitation": "\"\\\"Still Worrying You'll Be The Next Account Freeze Or Crypto Horror Story?\\\\n\\\\nYou're not alone. Every day, UAE expats try to build crypto wealth...\\\"\""
+    },
+    {
+      "id": "810001",
+      "productName": "Crypto Coaching",
+      "problemAgitation": "\"\\\"Still Worrying You'll Be The Next Account Freeze Or Crypto Horror Story?\\\\n\\\\nYou're not alone. Every day, UAE expats try to build crypto wealth...\\\"\""
+    },
+    {
+      "id": "840001",
+      "productName": "Crypto Coaching",
+      "problemAgitation": "\"\\\"Still Worrying You'll Be The Next Account Freeze Or Crypto Horror Story?\\\\n\\\\nYou're not alone. Every day, UAE expats try to build crypto wealth...\\\"\""
+    },
+    {
+      "id": "840003",
+      "productName": "Crypto Coaching",
+      "problemAgitation": "\"\\\"Still Worrying You'll Be The Next Account Freeze Or Crypto Horror Story?\\\\n\\\\nYou're not alone. Every day, UAE expats try to build crypto wealth...\\\"\""
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tproductName\tproblemAgitation\n720001\tZAP - Zero-to-Ads Platform\t\"\\\"Are you, like Sarah, a brilliant agency owner constantly battling the clock? You're passionate about delivering results, but the sheer volume of campaign creation – from crafting Meta-compliant ads to designing landing pages and writing email sequences – is crushing your capacity. You dream of scaling, but every new client feels like another mountain of manual work. You're stuck in a cycle of 'doing the work' instead of 'growing the business,' watching potential revenue slip away because you simply don't have enough hours in the day or enough hands on deck. The pressure to deliver for clients while trying to innovate and expand is immense, leaving you feeling overwhelmed and unable to truly scale.\\\"\"\n780001\tCrypto Coaching\t\"\\\"Still Worrying You'll Be The Next Account Freeze Or Crypto Horror Story?\\\\n\\\\nYou're not alone. Every day, UAE expats try to build crypto wealth...\\\"\"\n810001\tCrypto Coaching\t\"\\\"Still Worrying You'll Be The Next Account Freeze Or Crypto Horror Story?\\\\n\\\\nYou're not alone. Every day, UAE expats try to build crypto wealth...\\\"\"\n840001\tCrypto Coaching\t\"\\\"Still Worrying You'll Be The Next Account Freeze Or Crypto Horror Story?\\\\n\\\\nYou're not alone. Every day, UAE expats try to build crypto wealth...\\\"\"\n840003\tCrypto Coaching\t\"\\\"Still Worrying You'll Be The Next Account Freeze Or Crypto Horror Story?\\\\n\\\\nYou're not alone. Every day, UAE expats try to build crypto wealth...\\\"\"\n",
+  "stderr": "",
+  "execution_time_ms": 1618
+}

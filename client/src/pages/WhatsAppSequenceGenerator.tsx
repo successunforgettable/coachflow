@@ -287,7 +287,7 @@ export default function WhatsAppSequenceGenerator() {
                     <CardContent>
                       <div className="space-y-3">
                         {(seq.messages as any)?.map((message: any, idx: number) => {
-                          const c = checkCompliance(message.text);
+                          const c = checkCompliance(message?.text || '');
                           return (
                           <>
                           <div key={idx} className="p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
