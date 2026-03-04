@@ -1,0 +1,9 @@
+{
+  "query": "UPDATE landingPages SET originalAngle = JSON_SET(originalAngle, '$.problemAgitation', COALESCE(JSON_EXTRACT(originalAngle, '$.problemAgitation'), 'Many people struggle with this challenge every day.'), '$.solutionIntro', COALESCE(JSON_EXTRACT(originalAngle, '$.solutionIntro'), 'There is a proven solution that works.'), '$.whyOldFail', COALESCE(JSON_EXTRACT(originalAngle, '$.whyOldFail'), 'Traditional methods do not work because they miss the core issue.'), '$.uniqueMechanism', COALESCE(JSON_EXTRACT(originalAngle, '$.uniqueMechanism'), 'Our unique system addresses the root cause.'), '$.insiderAdvantages', COALESCE(JSON_EXTRACT(originalAngle, '$.insiderAdvantages'), 'Get exclusive access to proven strategies.')) WHERE originalAngle IS NOT NULL;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute UPDATE landingPages SET originalAngle = JSON_SET(originalAngle, '$.problemAgitation', COALESCE(JSON_EXTRACT(originalAngle, '$.problemAgitation'), 'Many people struggle with this challenge every day.'), '$.solutionIntro', COALESCE(JSON_EXTRACT(originalAngle, '$.solutionIntro'), 'There is a proven solution that works.'), '$.whyOldFail', COALESCE(JSON_EXTRACT(originalAngle, '$.whyOldFail'), 'Traditional methods do not work because they miss the core issue.'), '$.uniqueMechanism', COALESCE(JSON_EXTRACT(originalAngle, '$.uniqueMechanism'), 'Our unique system addresses the root cause.'), '$.insiderAdvantages', COALESCE(JSON_EXTRACT(originalAngle, '$.insiderAdvantages'), 'Get exclusive access to proven strategies.')) WHERE originalAngle IS NOT NULL;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1576
+}

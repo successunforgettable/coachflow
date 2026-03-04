@@ -100,6 +100,9 @@ function isPhraseQuoted(adCopy: string, phrase: string): boolean {
 }
 
 export function checkCompliance(adCopy: string): ComplianceResult {
+  if (!adCopy || typeof adCopy !== 'string') {
+    return { issues: [], score: 100, passed: true };
+  }
   const lowerCopy = adCopy.toLowerCase();
   const issues: ComplianceIssue[] = [];
   let score = 100;
