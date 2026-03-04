@@ -14,6 +14,8 @@ import { Link } from "wouter";
 import { toast } from "sonner";
 import { QuotaIndicator } from "@/components/QuotaIndicator";
 import { SearchBar } from "@/components/SearchBar";
+import { ComplianceBadge } from "@/components/ComplianceBadge";
+import { checkCompliance } from "@/lib/complianceUtils";
 
 // Real-world offer type examples 
 const OFFER_TYPE_EXAMPLES = {
@@ -246,7 +248,10 @@ export default function OffersGenerator() {
               </Card>
             ) : (
               <div className="space-y-4">
-                {filteredOffers.map((offer, index) => (
+                {filteredOffers.map((offer, index) => {
+                  const c = checkCompliance(offer.productName + " " + offer.offerType);
+                  return (
+                  <>
                   <Card 
                     key={offer.id} 
                     className="hover-lift transition-smooth animate-fade-in-up"
@@ -284,7 +289,10 @@ export default function OffersGenerator() {
                       </div>
                     </CardHeader>
                   </Card>
-                ))}
+                  <ComplianceBadge score={c.score} compliant={c.compliant} issues={c.issues} suggestions={c.suggestions} />
+                  </>
+                  );
+                })}
               </div>
             )}
           </div>
