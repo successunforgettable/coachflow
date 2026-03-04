@@ -274,12 +274,12 @@ export default function LandingPageDetail() {
         {/* Section 10: Scarcity / Urgency */}
         <section className="border-2 border-[#ff3366] rounded-2xl p-8 md:p-12 space-y-6">
           <h2 className="text-4xl font-bold text-[#ff3366]">
-            {content.scarcityUrgency.split('\n')[0]}
+            {content.scarcityUrgency ? content.scarcityUrgency.split('\n')[0] : 'Scarcity & Urgency'}
           </h2>
           <div className="text-gray-300 text-lg leading-relaxed space-y-4">
-            {content.scarcityUrgency.split('\n').slice(1).map((para, idx) => (
+            {content.scarcityUrgency ? content.scarcityUrgency.split('\n').slice(1).map((para, idx) => (
               <p key={idx}>{para}</p>
-            ))}
+            )) : <p>Content loading...</p>}
           </div>
         </section>
 
@@ -296,12 +296,12 @@ export default function LandingPageDetail() {
         {/* Section 12: Time-Saving Benefit */}
         <section className="bg-[#222222] rounded-2xl p-8 md:p-12 space-y-6">
           <h2 className="text-4xl font-bold">
-            {content.timeSavingBenefit.split('\n')[0]}
+            {content.timeSavingBenefit ? content.timeSavingBenefit.split('\n')[0] : 'Time-Saving Benefit'}
           </h2>
           <div className="text-gray-300 text-lg leading-relaxed space-y-4">
-            {content.timeSavingBenefit.split('\n').slice(1).map((para, idx) => (
+            {content.timeSavingBenefit ? content.timeSavingBenefit.split('\n').slice(1).map((para, idx) => (
               <p key={idx}>{para}</p>
-            ))}
+            )) : <p>Content loading...</p>}
           </div>
         </section>
 
