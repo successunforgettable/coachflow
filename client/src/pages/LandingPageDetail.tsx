@@ -8,6 +8,8 @@ import { Link, useParams } from "wouter";
 import { toast } from "sonner";
 import type { LandingPageContent } from "../../../drizzle/schema";
 import { exportLandingPageToPDF } from "@/lib/landingPagePdfExport";
+import { ComplianceBadge } from "@/components/ComplianceBadge";
+import { checkCompliance } from "@/lib/complianceUtils";
 
 export default function LandingPageDetail() {
   const { id } = useParams<{ id: string }>();
@@ -149,9 +151,11 @@ export default function LandingPageDetail() {
           <h1 className="text-5xl md:text-6xl font-bold leading-tight">
             {content.mainHeadline}
           </h1>
+          <ComplianceBadge score={checkCompliance(content.mainHeadline).score} compliant={checkCompliance(content.mainHeadline).compliant} issues={checkCompliance(content.mainHeadline).issues} suggestions={checkCompliance(content.mainHeadline).suggestions} />
           <p className="text-xl text-gray-300 max-w-3xl mx-auto">
             {content.subheadline}
           </p>
+          <ComplianceBadge score={checkCompliance(content.subheadline).score} compliant={checkCompliance(content.subheadline).compliant} issues={checkCompliance(content.subheadline).issues} suggestions={checkCompliance(content.subheadline).suggestions} />
           <Button className="bg-[#8B5CF6] hover:bg-[#7C3AED] text-white text-lg px-8 py-6 rounded-lg font-semibold">
             {content.primaryCta}
           </Button>
