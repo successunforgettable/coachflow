@@ -50,6 +50,7 @@ import VideoScriptEditor from "./pages/VideoScriptEditor";
 import VideoDetail from "./pages/VideoDetail";
 import Videos from "./pages/Videos";
 import { DemoVideo } from "./pages/DemoVideo";
+import CampaignICPSelection from "./pages/CampaignICPSelection";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -75,6 +76,7 @@ function Router() {
       <Route path={"/offers/:id"} component={OfferDetail} />
       <Route path={"/campaigns"} component={CampaignList} />
       <Route path={"/campaigns/:id"} component={CampaignDashboard} />
+      <Route path={"/campaigns/:campaignId/icp"} component={CampaignICPSelection} />
       <Route path={"/campaigns/:id/builder"} component={CampaignBuilder} />
       <Route path={"/source-of-truth"} component={SourceOfTruth} />
       <Route path={"/headlines"} component={Headlines} />
