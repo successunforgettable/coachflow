@@ -491,7 +491,7 @@ export default function HVCOTitlesDetail() {
             />
           </div>
           <div>
-            <Label htmlFor="hvcoTopic">HVCO Topic*</Label>
+            <Label htmlFor="hvcoTopic">Your Unique Method Topic*</Label>
             <Textarea
               id="hvcoTopic"
               value={regenerateForm.hvcoTopic}

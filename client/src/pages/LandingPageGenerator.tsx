@@ -244,7 +244,7 @@ export default function LandingPageGenerator() {
           {/* Your Landing Page List */}
           <div className="lg:col-span-2">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold">Your Your Landing Page</h2>
+              <h2 className="text-2xl font-bold">Your Landing Page</h2>
               <SearchBar
                 value={searchQuery}
                 onChange={setSearchQuery}

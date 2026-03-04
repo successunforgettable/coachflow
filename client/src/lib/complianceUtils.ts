@@ -101,7 +101,7 @@ function isPhraseQuoted(adCopy: string, phrase: string): boolean {
 
 export function checkCompliance(adCopy: string): ComplianceResult {
   if (!adCopy || typeof adCopy !== 'string') {
-    return { issues: [], score: 100, passed: true };
+    return { compliant: true, score: 100, issues: [], suggestions: [], version: '1.0', lastUpdated: new Date().toISOString(), nextReviewDue: new Date(Date.now() + 30*24*60*60*1000).toISOString() };
   }
   const lowerCopy = adCopy.toLowerCase();
   const issues: ComplianceIssue[] = [];
