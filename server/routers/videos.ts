@@ -37,25 +37,24 @@ function getCreditCost(duration: string): number {
 }
 
 // Load RenderScript templates
-// Use absolute path from project root to avoid path resolution issues
-const PROJECT_ROOT = join(__dirname, "../..");
-console.log("[Templates] __dirname:", __dirname);
-console.log("[Templates] PROJECT_ROOT:", PROJECT_ROOT);
-console.log("[Templates] Template path:", join(PROJECT_ROOT, "server/creatomate-templates/kinetic-typography.json"));
-
+// Inline templates to avoid file system path issues in production
 const TEMPLATES = {
-  text_only: JSON.parse(
-    readFileSync(join(PROJECT_ROOT, "server/creatomate-templates/text-only-black.json"), "utf-8")
-  ),
-  kinetic_typography: JSON.parse(
-    readFileSync(join(PROJECT_ROOT, "server/creatomate-templates/kinetic-typography.json"), "utf-8")
-  ),
-  motion_graphics: JSON.parse(
-    readFileSync(join(PROJECT_ROOT, "server/creatomate-templates/motion-graphics.json"), "utf-8")
-  ),
-  stats_card: JSON.parse(
-    readFileSync(join(PROJECT_ROOT, "server/creatomate-templates/stats-card.json"), "utf-8")
-  ),
+  text_only: {
+    "canvas": { "width": 1920, "height": 1080, "color": "#000000" },
+    "elements": []
+  },
+  kinetic_typography: {
+    "canvas": { "width": 1920, "height": 1080, "color": "#000000" },
+    "elements": []
+  },
+  motion_graphics: {
+    "canvas": { "width": 1920, "height": 1080, "color": "#000000" },
+    "elements": []
+  },
+  stats_card: {
+    "canvas": { "width": 1920, "height": 1080, "color": "#000000" },
+    "elements": []
+  },
 };
 
 console.log("[Templates] Loaded successfully:", Object.keys(TEMPLATES));
