@@ -227,7 +227,7 @@ function SuccessState({ score }: { score: number }) {
           height={windowSize.height}
           recycle={false}
           numberOfPieces={300}
-          colors={["#FF5B1D", "#8B5CF6", "#58CC02", "#FFD700", "#F5F1EA"]}
+          colors={["#FF5B1D", "#FF5B1D", "#FF5B1D", "#8B5CF6", "#8B5CF6", "#8B5CF6", "#58CC02", "#FFD700", "#F5F1EA"]}
           style={{ position: "fixed", top: 0, left: 0, zIndex: 9999, pointerEvents: "none" }}
         />
       )}
@@ -448,7 +448,7 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
     // ── Fire the API ──
     // Show waiting (queued) briefly before loading kicks in
     setStatus("waiting");
-    setTimeout(() => setStatus("loading"), 800);
+    setTimeout(() => setStatus("loading"), 1200);
 
     // Simulate API response with compliance check (real API wiring in Sprint 5)
     setTimeout(() => {
