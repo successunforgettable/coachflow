@@ -14,6 +14,7 @@ import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import { getSessionCookieOptions } from "../_core/cookies";
 import { sdk } from "../_core/sdk";
 import { notifyOwner } from "../_core/notification";
+import { sendPasswordResetEmail, sendWelcomeEmail } from "../email";
 
 const BCRYPT_ROUNDS = 12;
 const TOKEN_EXPIRY_HOURS = 24;
@@ -90,6 +91,13 @@ export const nativeAuthRouter = router({
         token: verifyToken,
         expiresAt: tokenExpiresAt(TOKEN_EXPIRY_HOURS),
       });
+
+      // Send welcome email (non-critical)
+      try {
+        await sendWelcomeEmail({ to: input.email, name: input.name });
+      } catch {
+        // Non-critical — don't fail registration
+      }
 
       // Notify owner of new signup
       try {
@@ -216,14 +224,22 @@ export const nativeAuthRouter = router({
 
       const resetUrl = `${input.origin}/reset-password?token=${resetToken}`;
 
-      // Send via owner notification (acts as email proxy for now)
+      // Send password reset email via Resend
       try {
-        await notifyOwner({
-          title: "Password Reset Request",
-          content: `User ${input.email} requested a password reset.\n\nReset link: ${resetUrl}\n\nThis link expires in 1 hour.`,
+        await sendPasswordResetEmail({
+          to: input.email,
+          name: user.name || "there",
+          resetUrl,
         });
-      } catch {
-        // Silently fail — token is still created
+      } catch (emailErr) {
+        console.error("[ForgotPassword] Email send failed:", emailErr);
+        // Silently fail — token is still created, owner notification as fallback
+        try {
+          await notifyOwner({
+            title: "Password Reset Request (Email Failed)",
+            content: `User ${input.email} requested a password reset.\n\nReset link: ${resetUrl}\n\nThis link expires in 1 hour.`,
+          });
+        } catch { /* ignore */ }
       }
 
       return successResponse;
