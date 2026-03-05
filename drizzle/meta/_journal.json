@@ -330,6 +330,13 @@
       "when": 1772395573774,
       "tag": "0046_lovely_kylun",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "5",
+      "when": 1772726336376,
+      "tag": "0047_dizzy_santa_claus",
+      "breakpoints": true
     }
   ]
 }

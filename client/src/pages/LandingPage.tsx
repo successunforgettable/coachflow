@@ -1,7 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { getLoginUrl } from "@/const";
+
 import { useLocation } from "wouter";
 import {
   Sparkles,
@@ -202,10 +202,10 @@ export default function LandingPage() {
               Take a Tour
             </Button>
             <Button variant="outline" asChild>
-              <a href={getLoginUrl()}>Login</a>
+              <a href="/login">Login</a>
             </Button>
             <Button asChild data-tour="cta">
-              <a href={getLoginUrl()}>Start Free Trial</a>
+              <a href="/signup">Start Free Trial</a>
             </Button>
           </div>
         </div>
@@ -225,7 +225,7 @@ export default function LandingPage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Button size="lg" asChild className="text-lg px-8 py-6">
-              <a href={getLoginUrl()}>
+              <a href="/signup">
                 Start Free Trial
                 <ArrowRight className="ml-2 w-5 h-5" />
               </a>
@@ -390,7 +390,7 @@ export default function LandingPage() {
                     variant={tier.highlighted ? "default" : "outline"}
                     asChild
                   >
-                    <a href={getLoginUrl()}>{tier.cta}</a>
+                    <a href="/signup">{tier.cta}</a>
                   </Button>
                 </CardContent>
               </Card>
@@ -438,7 +438,7 @@ export default function LandingPage() {
             minutes, not hours.
           </p>
           <Button size="lg" asChild className="text-lg px-8 py-6">
-            <a href={getLoginUrl()}>
+            <a href="/signup">
               Start Your Free Trial
               <ArrowRight className="ml-2 w-5 h-5" />
             </a>

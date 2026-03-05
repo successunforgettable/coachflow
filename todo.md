@@ -3731,4 +3731,18 @@ Scene 5 (6s): "Stop being invisible. Your next client is already on Facebook..."
 - [x] Save checkpoint + push to GitHub
 
 ## Authentication Improvements
-- [ ] Add native email/password registration and login — signup form on zapcampaigns.com, email verification, password reset flow — so users can register directly without being redirected to the Manus OAuth portal
+- [x] Add native email/password registration and login — signup form on zapcampaigns.com, email verification, password reset flow — so users can register directly without being redirected to the Manus OAuth portal
+
+## Native Authentication (Priority: Critical - needed before public launch)
+- [x] Add passwordHash column to users table
+- [x] Add emailVerificationTokens table
+- [x] Add passwordResetTokens table
+- [x] Build register tRPC procedure (email + password + name)
+- [x] Build login tRPC procedure (email + password → session cookie)
+- [x] Build forgot password + reset password procedures
+- [x] Build email verification flow
+- [x] Build /signup page with name, email, password form
+- [x] Build /login page with email, password form
+- [x] Build /forgot-password and /reset-password pages
+- [x] Remove Manus OAuth redirect from landing page CTAs
+- [x] Keep Manus OAuth as optional fallback (for existing users)

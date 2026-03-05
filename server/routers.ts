@@ -32,6 +32,7 @@ import { videoScriptsRouter } from "./routers/videoScripts";
 import { videosRouter } from "./routers/videos";
 import { demoVideosRouter } from "./routers/demoVideos";
 import { icpAngleSuggestionsRouter } from "./routers/icpAngleSuggestions";
+import { nativeAuthRouter } from "./routers/nativeAuth";
 import { getQuotaLimit } from "./quotaLimits";
 
 export const appRouter = router({
@@ -144,6 +145,7 @@ export const appRouter = router({
   videoScripts: videoScriptsRouter,
   videos: videosRouter,
   demoVideos: demoVideosRouter,
+  nativeAuth: nativeAuthRouter,
 });
 
 export type AppRouter = typeof appRouter;

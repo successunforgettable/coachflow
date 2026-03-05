@@ -51,6 +51,10 @@ import VideoDetail from "./pages/VideoDetail";
 import Videos from "./pages/Videos";
 import { DemoVideo } from "./pages/DemoVideo";
 import CampaignICPSelection from "./pages/CampaignICPSelection";
+import Signup from "./pages/Signup";
+import Login from "./pages/Login";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -103,6 +107,10 @@ function Router() {
       <Route path={"/meta/alerts"} component={CampaignAlerts} />
       <Route path={"/terms"} component={Terms} />
       <Route path={"/privacy"} component={Privacy} />
+      <Route path={"/signup"} component={Signup} />
+      <Route path={"/login"} component={Login} />
+      <Route path={"/forgot-password"} component={ForgotPassword} />
+      <Route path={"/reset-password"} component={ResetPassword} />
       <Route path={"/404"} component={NotFound} />
       {/* Fallback route for 404 */}
       <Route component={NotFound} />
