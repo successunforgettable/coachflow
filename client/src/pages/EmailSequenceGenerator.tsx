@@ -19,7 +19,7 @@ import RegenerateSidebar from "@/components/RegenerateSidebar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RegenerateConfirmationDialog } from "@/components/RegenerateConfirmationDialog";
-import { ComplianceBadge } from "@/components/ComplianceBadge";
+import { ComplianceBadgeInline } from "@/components/ComplianceBadge";
 import { checkCompliance } from "@/lib/complianceUtils";
 
 // Real-world email sequence examples 
@@ -302,14 +302,17 @@ export default function EmailSequenceGenerator() {
                             <>
                               <div key={idx} className="p-4 bg-accent rounded-lg">
                                 <div className="flex items-start justify-between mb-2">
+                                  <div className="flex items-center gap-2">
                                   <h4 className="font-semibold text-foreground">Email {idx + 1}: {email.subject}</h4>
+                                  <ComplianceBadgeInline score={c.score} />
+                                </div>
                                   <Button variant="ghost" size="icon" onClick={() => navigator.clipboard.writeText(`Subject: ${email.subject}\n\n${email.body}`)}>
                                     <Copy className="w-4 h-4" />
                                   </Button>
                                 </div>
                                 <p className="text-sm text-muted-foreground whitespace-pre-wrap">{email.body}</p>
                               </div>
-                              <ComplianceBadge score={c.score} compliant={c.compliant} issues={c.issues} suggestions={c.suggestions} />
+
                             </>
                           );
                         })}

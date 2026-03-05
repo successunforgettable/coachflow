@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { RegenerateConfirmationDialog } from "@/components/RegenerateConfirmationDialog";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { ComplianceBadge } from "@/components/ComplianceBadge";
+import { ComplianceBadgeInline } from "@/components/ComplianceBadge";
 import { checkCompliance } from "@/lib/complianceUtils";
 
 type TabType = "long" | "short" | "beast_mode" | "subheadlines";
@@ -303,7 +303,10 @@ export default function HVCOTitlesDetail() {
                       className={`w-5 h-5 ${title.isFavorite ? 'fill-yellow-500 text-yellow-500' : 'text-muted-foreground'}`}
                     />
                   </button>
-                  <p className="text-lg font-medium flex-1">{title.title}</p>
+                  <div className="flex items-center gap-2 flex-1">
+                    <p className="text-lg font-medium">{title.title}</p>
+                    <ComplianceBadgeInline score={c.score} />
+                  </div>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <Button
@@ -323,7 +326,7 @@ export default function HVCOTitlesDetail() {
                 </div>
               </div>
             </Card>
-            <ComplianceBadge score={c.score} compliant={c.compliant} issues={c.issues} suggestions={c.suggestions} />
+
             </>
             );
           })}
@@ -349,7 +352,10 @@ export default function HVCOTitlesDetail() {
                       className={`w-5 h-5 ${title.isFavorite ? 'fill-yellow-500 text-yellow-500' : 'text-muted-foreground'}`}
                     />
                   </button>
-                  <p className="text-lg font-medium flex-1">{title.title}</p>
+                  <div className="flex items-center gap-2 flex-1">
+                    <p className="text-lg font-medium">{title.title}</p>
+                    <ComplianceBadgeInline score={c.score} />
+                  </div>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <Button
@@ -369,7 +375,7 @@ export default function HVCOTitlesDetail() {
                 </div>
               </div>
             </Card>
-            <ComplianceBadge score={c.score} compliant={c.compliant} issues={c.issues} suggestions={c.suggestions} />
+
             </>
             );
           })}
@@ -395,7 +401,10 @@ export default function HVCOTitlesDetail() {
                       className={`w-5 h-5 ${title.isFavorite ? 'fill-yellow-500 text-yellow-500' : 'text-muted-foreground'}`}
                     />
                   </button>
-                  <p className="text-lg font-medium flex-1">{title.title}</p>
+                  <div className="flex items-center gap-2 flex-1">
+                    <p className="text-lg font-medium">{title.title}</p>
+                    <ComplianceBadgeInline score={c.score} />
+                  </div>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <Button
@@ -418,7 +427,7 @@ export default function HVCOTitlesDetail() {
                 </div>
               </div>
             </Card>
-            <ComplianceBadge score={c.score} compliant={c.compliant} issues={c.issues} suggestions={c.suggestions} />
+
             </>
             );
           })}
@@ -444,7 +453,10 @@ export default function HVCOTitlesDetail() {
                       className={`w-5 h-5 ${title.isFavorite ? 'fill-yellow-500 text-yellow-500' : 'text-muted-foreground'}`}
                     />
                   </button>
-                  <p className="text-lg font-medium flex-1">{title.title}</p>
+                  <div className="flex items-center gap-2 flex-1">
+                    <p className="text-lg font-medium">{title.title}</p>
+                    <ComplianceBadgeInline score={c.score} />
+                  </div>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <Button
@@ -464,7 +476,7 @@ export default function HVCOTitlesDetail() {
                 </div>
               </div>
             </Card>
-            <ComplianceBadge score={c.score} compliant={c.compliant} issues={c.issues} suggestions={c.suggestions} />
+
             </>
             );
           })}

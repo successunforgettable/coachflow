@@ -1,0 +1,35 @@
+{
+  "query": "SELECT id, JSON_EXTRACT(originalAngle, '$.problemAgitation') as problemAgitation, JSON_EXTRACT(originalAngle, '$.scarcityUrgency') as scarcityUrgency FROM landingPages WHERE originalAngle IS NOT NULL LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT id, JSON_EXTRACT(originalAngle, '$.problemAgitation') as problemAgitation, JSON_EXTRACT(originalAngle, '$.scarcityUrgency') as scarcityUrgency FROM landingPages WHERE originalAngle IS NOT NULL LIMIT 5;",
+  "rows": [
+    {
+      "id": "720001",
+      "problemAgitation": "\"\\\"Are you, like Sarah, a brilliant agency owner constantly battling the clock? You're passionate about delivering results, but the sheer volume of campaign creation – from crafting Meta-compliant ads to designing landing pages and writing email sequences – is crushing your capacity. You dream of scaling, but every new client feels like another mountain of manual work. You're stuck in a cycle of 'doing the work' instead of 'growing the business,' watching potential revenue slip away because you simply don't have enough hours in the day or enough hands on deck. The pressure to deliver for clients while trying to innovate and expand is immense, leaving you feeling overwhelmed and unable to truly scale.\\\"\"",
+      "scarcityUrgency": "\"The demand for ZAP's 'AI Campaign Catalyst' is unprecedented, and our capacity to provide personalized onboarding and support is limited. To ensure every agency owner, like Sarah, receives the dedicated attention needed to fully integrate and leverage this transformative technology, we are opening enrollment for a very short window. This exclusive opportunity to redefine your agency's operational efficiency and growth trajectory won't last. Secure your spot now to lock in your access and begin your journey to unparalleled scalability before this limited-time offer closes.\""
+    },
+    {
+      "id": "780001",
+      "problemAgitation": "\"\\\"Still Worrying You'll Be The Next Account Freeze Or Crypto Horror Story?\\\\n\\\\nYou're not alone. Every day, UAE expats try to build crypto wealth...\\\"\"",
+      "scarcityUrgency": "\"The Steady Wealth Protocol Doors Are Only Open For a Short Window (Secure Your Spot Now)\\n\\nWe only work with 10 new clients per month.\""
+    },
+    {
+      "id": "810001",
+      "problemAgitation": "\"\\\"Still Worrying You'll Be The Next Account Freeze Or Crypto Horror Story?\\\\n\\\\nYou're not alone. Every day, UAE expats try to build crypto wealth...\\\"\"",
+      "scarcityUrgency": "\"The Steady Wealth Protocol Doors Are Only Open For a Short Window (Secure Your Spot Now)\\n\\nWe only work with 10 new clients per month.\""
+    },
+    {
+      "id": "840001",
+      "problemAgitation": "\"\\\"Still Worrying You'll Be The Next Account Freeze Or Crypto Horror Story?\\\\n\\\\nYou're not alone. Every day, UAE expats try to build crypto wealth...\\\"\"",
+      "scarcityUrgency": "\"The Steady Wealth Protocol Doors Are Only Open For a Short Window (Secure Your Spot Now)\\n\\nWe only work with 10 new clients per month.\""
+    },
+    {
+      "id": "840003",
+      "problemAgitation": "\"\\\"Still Worrying You'll Be The Next Account Freeze Or Crypto Horror Story?\\\\n\\\\nYou're not alone. Every day, UAE expats try to build crypto wealth...\\\"\"",
+      "scarcityUrgency": "\"The Steady Wealth Protocol Doors Are Only Open For a Short Window (Secure Your Spot Now)\\n\\nWe only work with 10 new clients per month.\""
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tproblemAgitation\tscarcityUrgency\n720001\t\"\\\"Are you, like Sarah, a brilliant agency owner constantly battling the clock? You're passionate about delivering results, but the sheer volume of campaign creation – from crafting Meta-compliant ads to designing landing pages and writing email sequences – is crushing your capacity. You dream of scaling, but every new client feels like another mountain of manual work. You're stuck in a cycle of 'doing the work' instead of 'growing the business,' watching potential revenue slip away because you simply don't have enough hours in the day or enough hands on deck. The pressure to deliver for clients while trying to innovate and expand is immense, leaving you feeling overwhelmed and unable to truly scale.\\\"\"\t\"The demand for ZAP's 'AI Campaign Catalyst' is unprecedented, and our capacity to provide personalized onboarding and support is limited. To ensure every agency owner, like Sarah, receives the dedicated attention needed to fully integrate and leverage this transformative technology, we are opening enrollment for a very short window. This exclusive opportunity to redefine your agency's operational efficiency and growth trajectory won't last. Secure your spot now to lock in your access and begin your journey to unparalleled scalability before this limited-time offer closes.\"\n780001\t\"\\\"Still Worrying You'll Be The Next Account Freeze Or Crypto Horror Story?\\\\n\\\\nYou're not alone. Every day, UAE expats try to build crypto wealth...\\\"\"\t\"The Steady Wealth Protocol Doors Are Only Open For a Short Window (Secure Your Spot Now)\\n\\nWe only work with 10 new clients per month.\"\n810001\t\"\\\"Still Worrying You'll Be The Next Account Freeze Or Crypto Horror Story?\\\\n\\\\nYou're not alone. Every day, UAE expats try to build crypto wealth...\\\"\"\t\"The Steady Wealth Protocol Doors Are Only Open For a Short Window (Secure Your Spot Now)\\n\\nWe only work with 10 new clients per month.\"\n840001\t\"\\\"Still Worrying You'll Be The Next Account Freeze Or Crypto Horror Story?\\\\n\\\\nYou're not alone. Every day, UAE expats try to build crypto wealth...\\\"\"\t\"The Steady Wealth Protocol Doors Are Only Open For a Short Window (Secure Your Spot Now)\\n\\nWe only work with 10 new clients per month.\"\n840003\t\"\\\"Still Worrying You'll Be The Next Account Freeze Or Crypto Horror Story?\\\\n\\\\nYou're not alone. Every day, UAE expats try to build crypto wealth...\\\"\"\t\"The Steady Wealth Protocol Doors Are Only Open For a Short Window (Secure Your Spot Now)\\n\\nWe only work with 10 new clients per month.\"\n",
+  "stderr": "",
+  "execution_time_ms": 1638
+}

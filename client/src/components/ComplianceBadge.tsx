@@ -14,6 +14,44 @@ interface ComplianceBadgeProps {
   issues: ComplianceIssue[];
   suggestions: string[];
   onAutoFix?: () => void; // Optional - for future auto-fix feature
+  compact?: boolean; // When true, shows inline checkmark for perfect scores
+}
+
+// Compact inline badge — just a ✅ icon for perfect 100/100 scores
+export function ComplianceBadgeInline({ score }: { score: number }) {
+  if (score >= 100) {
+    return (
+      <span
+        title="Meta Compliant — Score: 100/100"
+        style={{ display: 'inline-flex', alignItems: 'center', fontSize: '14px', cursor: 'default' }}
+      >
+        ✅
+      </span>
+    );
+  }
+  // Below 100 — show a small colored pill
+  const color = score >= 70 ? '#F59E0B' : '#EF4444';
+  const emoji = score >= 70 ? '⚠️' : '🚫';
+  return (
+    <span
+      title={`Compliance Score: ${score}/100`}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '3px',
+        fontSize: '11px',
+        fontWeight: 600,
+        color,
+        background: `${color}22`,
+        border: `1px solid ${color}55`,
+        borderRadius: '12px',
+        padding: '1px 7px',
+        cursor: 'default',
+      }}
+    >
+      {emoji} {score}/100
+    </span>
+  );
 }
 
 export function ComplianceBadge({ score, compliant, issues, suggestions }: ComplianceBadgeProps) {

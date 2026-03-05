@@ -19,7 +19,7 @@ import RegenerateSidebar from "@/components/RegenerateSidebar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RegenerateConfirmationDialog } from "@/components/RegenerateConfirmationDialog";
-import { ComplianceBadge } from "@/components/ComplianceBadge";
+import { ComplianceBadgeInline } from "@/components/ComplianceBadge";
 import { checkCompliance } from "@/lib/complianceUtils";
 
 // Real-world WhatsApp sequence examples 
@@ -296,6 +296,7 @@ export default function WhatsAppSequenceGenerator() {
                                 <MessageCircle className="w-4 h-4 text-green-500" />
                                 <h4 className="font-semibold text-foreground">Message {idx + 1}</h4>
                                 <span className="text-xs text-muted-foreground">({message.timing})</span>
+                                <ComplianceBadgeInline score={c.score} />
                               </div>
                               <Button variant="ghost" size="icon" onClick={() => navigator.clipboard.writeText(message.text)}>
                                 <Copy className="w-4 h-4" />
@@ -303,7 +304,7 @@ export default function WhatsAppSequenceGenerator() {
                             </div>
                             <p className="text-sm text-foreground whitespace-pre-wrap">{message.text}</p>
                           </div>
-                          <ComplianceBadge score={c.score} compliant={c.compliant} issues={c.issues} suggestions={c.suggestions} />
+                          {c.score < 100 && <ComplianceBadgeInline score={c.score} />}
                           </>
                           );
                         })}
