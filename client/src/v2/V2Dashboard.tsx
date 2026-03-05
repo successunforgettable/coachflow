@@ -4,9 +4,10 @@
  *             Fork Point Modal (first-time only), Persistent Buttons
  * All isolated within [data-v2] scope. No existing routes touched.
  */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useLocation } from "wouter";
 import V2Layout from "./V2Layout";
+import { trpc } from "@/lib/trpc";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 type NodeState = "completed" | "active" | "locked";
@@ -194,11 +195,45 @@ function ForkModal({ onGuide, onJump }: { onGuide: () => void; onJump: () => voi
   );
 }
 
+// ─── Milestone id → PathNode index mapping ───────────────────────────────────
+const MILESTONE_TO_NODE: Record<string, number> = {
+  service:          0,
+  icp:              1,
+  offer:            2,
+  heroMechanism:    3,
+  hvco:             4,
+  headlines:        5,
+  adCopy:           6,
+  landingPage:      7,
+  emailSequence:    8,
+  whatsappSequence: 9,
+  campaign:         10,
+};
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function V2Dashboard() {
   const [, navigate] = useLocation();
   const [activeTab, setActiveTab] = useState<"guided" | "tools">("guided");
-  const [nodes, setNodes] = useState<PathNode[]>(INITIAL_NODES);
+
+  // ── Real progress data from backend ──
+  const { data: progressData } = trpc.progress.getProgress.useQuery();
+
+  // ── Derive node states from real data ──
+  const nodes = useMemo<PathNode[]>(() => {
+    if (!progressData?.milestones) return INITIAL_NODES;
+    const base = INITIAL_NODES.map(n => ({ ...n }));
+    // Apply completed states from real data
+    progressData.milestones.forEach(m => {
+      const idx = MILESTONE_TO_NODE[m.id];
+      if (idx !== undefined && m.completed) {
+        base[idx].state = "completed";
+      }
+    });
+    // Set the first non-completed node as active
+    const firstLocked = base.findIndex(n => n.state !== "completed");
+    if (firstLocked !== -1) base[firstLocked].state = "active";
+    return base;
+  }, [progressData]);
   const [showModal, setShowModal] = useState(false);
   const [forkDismissed, setForkDismissed] = useState(() => {
     return localStorage.getItem("v2_fork_dismissed") === "true";
@@ -213,6 +248,7 @@ export default function V2Dashboard() {
     return () => window.removeEventListener("resize", check);
   }, []);
 
+  // Real counts from derived node states
   const completedCount = nodes.filter(n => n.state === "completed").length;
   const totalCount = nodes.length;
 

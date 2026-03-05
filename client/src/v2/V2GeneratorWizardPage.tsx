@@ -6,9 +6,10 @@
  * Zero backend changes. Isolated to /v2 routes.
  */
 import { useParams, useLocation } from "wouter";
-import V2GeneratorWizard, { WizardStep, STEP_LABELS } from "./V2GeneratorWizard";
+import V2GeneratorWizard from "./V2GeneratorWizard";
+import { type WizardStep, STEP_LABELS } from "./v2-constants";
 
-// Re-export STEP_LABELS so App.tsx doesn't need to import from V2GeneratorWizard directly
+// Re-export STEP_LABELS for convenience
 export { STEP_LABELS };
 
 const VALID_STEPS: WizardStep[] = [
