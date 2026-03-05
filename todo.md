@@ -3751,3 +3751,9 @@ Scene 5 (6s): "Stop being invisible. Your next client is already on Facebook..."
 - [x] Rename "Godfather Angle" / "GODFATHER OFFER" to "PREMIUM OFFER" in OfferDetail.tsx
 - [x] Verify WhatsApp message content fix (message.message || message.text || message.content fallback chain already applied)
 - [x] Confirm GenerateOfferStep onboarding already uses "Super ZAP Angle" (plain English, no jargon)
+
+## Pre-GitHub Tasks (Mar 6, 2026)
+- [x] Deploy mobile CSS fix to production
+- [x] Add ICP gate to Tool Library: Zappy prompt card when no ICP exists
+- [x] Add ICP selector dropdown to Tool Library: "Generating for: [ICP Name]"
+- [x] Pass selected ICP id to all generator cards via URL param
