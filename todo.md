@@ -3746,3 +3746,8 @@ Scene 5 (6s): "Stop being invisible. Your next client is already on Facebook..."
 - [x] Build /forgot-password and /reset-password pages
 - [x] Remove Manus OAuth redirect from landing page CTAs
 - [x] Keep Manus OAuth as optional fallback (for existing users)
+
+## Phase 45: UI Label Fixes (COMPLETE)
+- [x] Rename "Godfather Angle" / "GODFATHER OFFER" to "PREMIUM OFFER" in OfferDetail.tsx
+- [x] Verify WhatsApp message content fix (message.message || message.text || message.content fallback chain already applied)
+- [x] Confirm GenerateOfferStep onboarding already uses "Super ZAP Angle" (plain English, no jargon)

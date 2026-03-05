@@ -184,9 +184,9 @@ export default function OfferDetail() {
             {offer.productName}
           </h1>
           <p className="text-purple-400 text-lg uppercase tracking-wide">
-            {activeAngle === "godfather" ? "GODFATHER ANGLE" : 
-             activeAngle === "free" ? "FREE ANGLE" : 
-             "DOLLAR ANGLE"}
+            {activeAngle === "godfather" ? "PREMIUM OFFER" : 
+             activeAngle === "free" ? "FREE OFFER" : 
+             "DOLLAR OFFER"}
           </p>
         </div>
 
@@ -325,7 +325,7 @@ export default function OfferDetail() {
                   : "bg-gray-800 text-gray-300 hover:bg-gray-700"
               } font-bold uppercase px-6 py-3 rounded-lg transition-all`}
             >
-              GODFATHER OFFER
+              PREMIUM OFFER
             </Button>
             <Button
               onClick={() => {

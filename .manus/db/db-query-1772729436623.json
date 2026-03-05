@@ -1,0 +1,25 @@
+{
+  "query": "SHOW COLUMNS FROM users LIKE 'passwordHash'; SELECT id, email, loginMethod, CASE WHEN passwordHash IS NULL THEN 'NULL' WHEN passwordHash = '' THEN 'EMPTY' ELSE 'HAS_VALUE' END as hashStatus FROM users WHERE loginMethod = 'email' ORDER BY id DESC LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SHOW COLUMNS FROM users LIKE 'passwordHash'; SELECT id, email, loginMethod, CASE WHEN passwordHash IS NULL THEN 'NULL' WHEN passwordHash = '' THEN 'EMPTY' ELSE 'HAS_VALUE' END as hashStatus FROM users WHERE loginMethod = 'email' ORDER BY id DESC LIMIT 5;",
+  "rows": [
+    {
+      "Field": "passwordHash",
+      "Type": "varchar(255)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    }
+  ],
+  "messages": [
+    "id\temail\tloginMethod\thashStatus",
+    "5400040\tdebug_1772727575@zapcampaigns.com\temail\tHAS_VALUE",
+    "5400037\tconfirm_test_1772727536@zapcampaigns.com\temail\tHAS_VALUE",
+    "5400034\tconfirm_test_1772727461@zapcampaigns.com\temail\tHAS_VALUE",
+    "5400022\ttestuser_auth@zapcampaigns.com\temail\tHAS_VALUE",
+    "5340001\tgoldenuser@zapcampaigns.com\temail\tNULL"
+  ],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\npasswordHash\tvarchar(255)\tYES\t\tNULL\t\nid\temail\tloginMethod\thashStatus\n5400040\tdebug_1772727575@zapcampaigns.com\temail\tHAS_VALUE\n5400037\tconfirm_test_1772727536@zapcampaigns.com\temail\tHAS_VALUE\n5400034\tconfirm_test_1772727461@zapcampaigns.com\temail\tHAS_VALUE\n5400022\ttestuser_auth@zapcampaigns.com\temail\tHAS_VALUE\n5340001\tgoldenuser@zapcampaigns.com\temail\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 1731
+}

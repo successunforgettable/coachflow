@@ -1,0 +1,45 @@
+{
+  "query": "SELECT id, email, loginMethod, LEFT(passwordHash, 20) as hashPreview, emailVerified FROM users WHERE loginMethod = 'email' ORDER BY id DESC LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT id, email, loginMethod, LEFT(passwordHash, 20) as hashPreview, emailVerified FROM users WHERE loginMethod = 'email' ORDER BY id DESC LIMIT 5;",
+  "rows": [
+    {
+      "id": "5400040",
+      "email": "debug_1772727575@zapcampaigns.com",
+      "loginMethod": "email",
+      "hashPreview": "$2b$12$dToM0GsGrXp4O",
+      "emailVerified": "0"
+    },
+    {
+      "id": "5400037",
+      "email": "confirm_test_1772727536@zapcampaigns.com",
+      "loginMethod": "email",
+      "hashPreview": "$2b$12$hcq7iISHdXRGx",
+      "emailVerified": "0"
+    },
+    {
+      "id": "5400034",
+      "email": "confirm_test_1772727461@zapcampaigns.com",
+      "loginMethod": "email",
+      "hashPreview": "$2b$12$8xBqFpt/daVcr",
+      "emailVerified": "0"
+    },
+    {
+      "id": "5400022",
+      "email": "testuser_auth@zapcampaigns.com",
+      "loginMethod": "email",
+      "hashPreview": "$2b$12$Kk8nWnd6dOYxR",
+      "emailVerified": "0"
+    },
+    {
+      "id": "5340001",
+      "email": "goldenuser@zapcampaigns.com",
+      "loginMethod": "email",
+      "hashPreview": "NULL",
+      "emailVerified": "0"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\temail\tloginMethod\thashPreview\temailVerified\n5400040\tdebug_1772727575@zapcampaigns.com\temail\t$2b$12$dToM0GsGrXp4O\t0\n5400037\tconfirm_test_1772727536@zapcampaigns.com\temail\t$2b$12$hcq7iISHdXRGx\t0\n5400034\tconfirm_test_1772727461@zapcampaigns.com\temail\t$2b$12$8xBqFpt/daVcr\t0\n5400022\ttestuser_auth@zapcampaigns.com\temail\t$2b$12$Kk8nWnd6dOYxR\t0\n5340001\tgoldenuser@zapcampaigns.com\temail\tNULL\t0\n",
+  "stderr": "",
+  "execution_time_ms": 1592
+}
