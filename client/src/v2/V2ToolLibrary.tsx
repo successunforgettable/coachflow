@@ -205,7 +205,7 @@ export default function V2ToolLibrary() {
           gap: "16px",
         }}
       >
-        <ZappyMascot state="loading" size={80} />
+        <ZappyMascot state="waiting" size={80} />
         <p
           style={{
             fontFamily: "var(--v2-font-body)",

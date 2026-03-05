@@ -31,28 +31,133 @@
     </radialGradient>
   </defs>
 
+  <!-- CONFETTI SCATTER ANIMATIONS -->
+  <style>
+    /* Each confetti piece gets its own float+spin keyframe for organic scatter */
+    @keyframes cf-a {
+      0%,100% { transform: translate(0,0) rotate(-28deg); }
+      40%     { transform: translate(-6px,-12px) rotate(-42deg); }
+      70%     { transform: translate(4px,-6px) rotate(-18deg); }
+    }
+    @keyframes cf-b {
+      0%,100% { transform: translate(0,0) rotate(18deg); }
+      35%     { transform: translate(8px,-14px) rotate(32deg); }
+      65%     { transform: translate(-4px,-8px) rotate(8deg); }
+    }
+    @keyframes cf-c {
+      0%,100% { transform: translate(0,0) rotate(0deg); }
+      50%     { transform: translate(-5px,-16px) rotate(20deg); }
+    }
+    @keyframes cf-d {
+      0%,100% { transform: translate(0,0) rotate(38deg); }
+      45%     { transform: translate(7px,-10px) rotate(55deg); }
+      75%     { transform: translate(-3px,-5px) rotate(28deg); }
+    }
+    @keyframes cf-e {
+      0%,100% { transform: translate(0,0) rotate(0deg); }
+      40%     { transform: translate(-8px,-12px) rotate(15deg); }
+      70%     { transform: translate(5px,-7px) rotate(-8deg); }
+    }
+    @keyframes cf-f {
+      0%,100% { transform: translate(0,0) rotate(-12deg); }
+      50%     { transform: translate(6px,-18px) rotate(-28deg); }
+    }
+    @keyframes cf-g {
+      0%,100% { transform: translate(0,0) rotate(22deg); }
+      35%     { transform: translate(-9px,-11px) rotate(38deg); }
+      65%     { transform: translate(4px,-6px) rotate(14deg); }
+    }
+    @keyframes cf-h {
+      0%,100% { transform: translate(0,0) rotate(0deg); }
+      45%     { transform: translate(7px,-15px) rotate(18deg); }
+    }
+    @keyframes cf-i {
+      0%,100% { transform: translate(0,0) rotate(-16deg); }
+      40%     { transform: translate(-6px,-13px) rotate(-30deg); }
+      70%     { transform: translate(5px,-8px) rotate(-6deg); }
+    }
+    @keyframes cf-j {
+      0%,100% { transform: translate(0,0) rotate(0deg); }
+      50%     { transform: translate(-4px,-17px) rotate(12deg); }
+    }
+    @keyframes cf-k {
+      0%,100% { transform: translate(0,0) rotate(32deg); }
+      40%     { transform: translate(8px,-12px) rotate(48deg); }
+      70%     { transform: translate(-5px,-7px) rotate(22deg); }
+    }
+    @keyframes cf-l {
+      0%,100% { transform: translate(0,0) rotate(22deg); }
+      35%     { transform: translate(-7px,-14px) rotate(36deg); }
+      65%     { transform: translate(4px,-9px) rotate(12deg); }
+    }
+    @keyframes cf-m {
+      0%,100% { transform: translate(0,0) rotate(0deg); }
+      50%     { transform: translate(6px,-16px) rotate(14deg); }
+    }
+    @keyframes cf-n {
+      0%,100% { transform: translate(0,0) rotate(-20deg); }
+      45%     { transform: translate(-5px,-11px) rotate(-34deg); }
+      75%     { transform: translate(4px,-6px) rotate(-10deg); }
+    }
+    @keyframes cf-o {
+      0%,100% { transform: translate(0,0) rotate(0deg); }
+      40%     { transform: translate(7px,-13px) rotate(16deg); }
+    }
+    @keyframes cf-p {
+      0%,100% { transform: translate(0,0) rotate(14deg); }
+      50%     { transform: translate(-6px,-15px) rotate(28deg); }
+    }
+    @keyframes cf-q {
+      0%,100% { transform: translate(0,0) rotate(0deg); }
+      45%     { transform: translate(5px,-10px) rotate(12deg); }
+      75%     { transform: translate(-3px,-5px) rotate(-4deg); }
+    }
+    @keyframes cf-r {
+      0%,100% { transform: translate(0,0) rotate(0deg); }
+      50%     { transform: translate(-4px,-14px) rotate(10deg); }
+    }
+  </style>
+
   <!-- FLAT PILL SHADOW -->
   <rect x="110" y="474" width="180" height="14" rx="7" fill="#B03A0A" opacity="0.18"/>
 
-  <!-- CONFETTI — rounded rects and circles only, brand palette -->
-  <rect x="38"  y="68"  width="18" height="10" rx="5"   fill="#FF5B1D" opacity="0.9"  transform="rotate(-28 47 73)"/>
-  <rect x="55"  y="96"  width="13" height="8"  rx="4"   fill="#8B5CF6" opacity="0.85" transform="rotate(18 61 100)"/>
-  <circle cx="70"  cy="54"  r="8"  fill="#FFD700" opacity="0.9"/>
-  <rect x="24"  y="118" width="15" height="9"  rx="4.5" fill="#8B5CF6" opacity="0.8"  transform="rotate(38 31 122)"/>
-  <circle cx="44"  cy="140" r="6"  fill="#FF5B1D" opacity="0.75"/>
-  <rect x="60"  y="152" width="11" height="7"  rx="3.5" fill="#FFD700" opacity="0.85" transform="rotate(-12 65 155)"/>
-  <rect x="146" y="14"  width="15" height="9"  rx="4.5" fill="#8B5CF6" opacity="0.9"  transform="rotate(22 153 18)"/>
-  <circle cx="176" cy="10"  r="7"  fill="#FF5B1D" opacity="0.85"/>
-  <rect x="196" y="6"   width="18" height="10" rx="5"   fill="#FFD700" opacity="0.9"  transform="rotate(-16 205 11)"/>
-  <circle cx="222" cy="14"  r="6"  fill="#8B5CF6" opacity="0.8"/>
-  <rect x="240" y="20"  width="13" height="8"  rx="4"   fill="#FF5B1D" opacity="0.85" transform="rotate(32 246 24)"/>
-  <rect x="316" y="62"  width="18" height="10" rx="5"   fill="#FFD700" opacity="0.9"  transform="rotate(22 325 67)"/>
-  <circle cx="342" cy="90"  r="8"  fill="#8B5CF6" opacity="0.85"/>
-  <rect x="328" y="112" width="13" height="8"  rx="4"   fill="#FF5B1D" opacity="0.8"  transform="rotate(-20 334 116)"/>
-  <circle cx="354" cy="134" r="6"  fill="#FFD700" opacity="0.9"/>
-  <rect x="318" y="148" width="15" height="9"  rx="4.5" fill="#8B5CF6" opacity="0.75" transform="rotate(14 325 152)"/>
-  <circle cx="84"  cy="176" r="5"  fill="#FFD700" opacity="0.7"/>
-  <circle cx="316" cy="176" r="5"  fill="#FF5B1D" opacity="0.7"/>
+  <!-- CONFETTI — each piece animated with its own keyframe + staggered delay -->
+  <rect x="38"  y="68"  width="18" height="10" rx="5"   fill="#FF5B1D" opacity="0.9"
+        style="animation: cf-a 2.1s ease-in-out infinite; transform-origin: 47px 73px;"/>
+  <rect x="55"  y="96"  width="13" height="8"  rx="4"   fill="#8B5CF6" opacity="0.85"
+        style="animation: cf-b 2.4s ease-in-out 0.15s infinite; transform-origin: 61px 100px;"/>
+  <circle cx="70"  cy="54"  r="8"  fill="#FFD700" opacity="0.9"
+        style="animation: cf-c 1.9s ease-in-out 0.3s infinite; transform-origin: 70px 54px;"/>
+  <rect x="24"  y="118" width="15" height="9"  rx="4.5" fill="#8B5CF6" opacity="0.8"
+        style="animation: cf-d 2.6s ease-in-out 0.45s infinite; transform-origin: 31px 122px;"/>
+  <circle cx="44"  cy="140" r="6"  fill="#FF5B1D" opacity="0.75"
+        style="animation: cf-e 2.2s ease-in-out 0.6s infinite; transform-origin: 44px 140px;"/>
+  <rect x="60"  y="152" width="11" height="7"  rx="3.5" fill="#FFD700" opacity="0.85"
+        style="animation: cf-f 2.8s ease-in-out 0.1s infinite; transform-origin: 65px 155px;"/>
+  <rect x="146" y="14"  width="15" height="9"  rx="4.5" fill="#8B5CF6" opacity="0.9"
+        style="animation: cf-g 2.0s ease-in-out 0.5s infinite; transform-origin: 153px 18px;"/>
+  <circle cx="176" cy="10"  r="7"  fill="#FF5B1D" opacity="0.85"
+        style="animation: cf-h 2.3s ease-in-out 0.2s infinite; transform-origin: 176px 10px;"/>
+  <rect x="196" y="6"   width="18" height="10" rx="5"   fill="#FFD700" opacity="0.9"
+        style="animation: cf-i 2.5s ease-in-out 0.35s infinite; transform-origin: 205px 11px;"/>
+  <circle cx="222" cy="14"  r="6"  fill="#8B5CF6" opacity="0.8"
+        style="animation: cf-j 1.8s ease-in-out 0.55s infinite; transform-origin: 222px 14px;"/>
+  <rect x="240" y="20"  width="13" height="8"  rx="4"   fill="#FF5B1D" opacity="0.85"
+        style="animation: cf-k 2.7s ease-in-out 0.25s infinite; transform-origin: 246px 24px;"/>
+  <rect x="316" y="62"  width="18" height="10" rx="5"   fill="#FFD700" opacity="0.9"
+        style="animation: cf-l 2.2s ease-in-out 0.4s infinite; transform-origin: 325px 67px;"/>
+  <circle cx="342" cy="90"  r="8"  fill="#8B5CF6" opacity="0.85"
+        style="animation: cf-m 2.4s ease-in-out 0.1s infinite; transform-origin: 342px 90px;"/>
+  <rect x="328" y="112" width="13" height="8"  rx="4"   fill="#FF5B1D" opacity="0.8"
+        style="animation: cf-n 2.0s ease-in-out 0.5s infinite; transform-origin: 334px 116px;"/>
+  <circle cx="354" cy="134" r="6"  fill="#FFD700" opacity="0.9"
+        style="animation: cf-o 2.6s ease-in-out 0.3s infinite; transform-origin: 354px 134px;"/>
+  <rect x="318" y="148" width="15" height="9"  rx="4.5" fill="#8B5CF6" opacity="0.75"
+        style="animation: cf-p 2.1s ease-in-out 0.45s infinite; transform-origin: 325px 152px;"/>
+  <circle cx="84"  cy="176" r="5"  fill="#FFD700" opacity="0.7"
+        style="animation: cf-q 2.3s ease-in-out 0.2s infinite; transform-origin: 84px 176px;"/>
+  <circle cx="316" cy="176" r="5"  fill="#FF5B1D" opacity="0.7"
+        style="animation: cf-r 2.5s ease-in-out 0.35s infinite; transform-origin: 316px 176px;"/>
 
   <!-- TAIL -->
   <ellipse cx="296" cy="348" rx="48" ry="64" fill="url(#tailGrad)" transform="rotate(-18 296 348)"/>
@@ -134,9 +239,7 @@
 
   <!-- MOUTH — big open smile with teeth (joy) -->
   <path d="M178,192 Q200,220 222,192" stroke="#2D1208" stroke-width="3.5" fill="#2D1208" stroke-linecap="round"/>
-  <!-- Teeth row inside smile -->
   <rect x="185" y="194" width="30" height="13" rx="6.5" fill="#FFFFFF"/>
-  <!-- Tongue -->
   <ellipse cx="200" cy="210" rx="11" ry="7" fill="#FF5B1D" opacity="0.85"/>
 
   <!-- Rosy cheeks -->

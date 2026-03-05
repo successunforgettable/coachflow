@@ -138,6 +138,32 @@ function AdvancedFieldInput({
   );
 }
 
+// ─── Waiting State: Zappy pointing at watch — queued before loading ────────────
+function WaitingState() {
+  return (
+    <div style={{
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      gap: "24px",
+      padding: "8px 0 16px",
+    }}>
+      <ZappyMascot state="waiting" size={100} />
+      <p style={{
+        fontFamily: "var(--v2-font-body)",
+        fontSize: "15px",
+        fontWeight: 600,
+        color: "var(--v2-text-color)",
+        textAlign: "center",
+        margin: 0,
+        lineHeight: 1.5,
+      }}>
+        Queuing your request…
+      </p>
+    </div>
+  );
+}
+
 // ─── Loading State: Zappy + progress ring ────────────────────────────────────
 function LoadingState() {
   return (
@@ -312,7 +338,7 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
   });
 
   // ── UI state ──
-  type WizardStatus = "idle" | "loading" | "success" | "concerned" | "missing_data";
+  type WizardStatus = "idle" | "waiting" | "loading" | "success" | "concerned" | "missing_data";
   const [status, setStatus] = useState<WizardStatus>("idle");
   const [errorMsg, setErrorMsg] = useState("");
   const [complianceScore, setComplianceScore] = useState(100);
@@ -420,7 +446,9 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
     console.log("ZAP V2 Payload Check:", payload);
 
     // ── Fire the API ──
-    setStatus("loading");
+    // Show waiting (queued) briefly before loading kicks in
+    setStatus("waiting");
+    setTimeout(() => setStatus("loading"), 800);
 
     // Simulate API response with compliance check (real API wiring in Sprint 5)
     setTimeout(() => {
@@ -490,6 +518,9 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
           }}>
             Generate {stepLabel} using your AI Profile
           </h1>
+
+          {/* ── WAITING STATE ── */}
+          {status === "waiting" && <WaitingState />}
 
           {/* ── LOADING STATE ── */}
           {status === "loading" && <LoadingState />}
