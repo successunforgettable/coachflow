@@ -248,10 +248,14 @@ function DashboardLayoutContent({
                       isActive={isActive}
                       onClick={() => setLocation(item.path)}
                       tooltip={item.label}
-                      className={`h-10 transition-all font-normal`}
+                      className={`h-10 transition-all font-normal ${
+                        isActive
+                          ? 'bg-primary/20 text-primary font-semibold border-l-2 border-primary rounded-l-none'
+                          : 'text-sidebar-foreground/70 hover:text-sidebar-foreground'
+                      }`}
                     >
                       <item.icon
-                        className={`h-4 w-4 ${isActive ? "text-primary" : ""}`}
+                        className={`h-4 w-4 flex-shrink-0 ${isActive ? 'text-primary' : 'text-muted-foreground'}`}
                       />
                       <span>{item.label}</span>
                       {(item as any).showBadge && <CreditBadge />}
@@ -267,10 +271,14 @@ function DashboardLayoutContent({
                     isActive={location === '/admin/compliance'}
                     onClick={() => setLocation('/admin/compliance')}
                     tooltip="Compliance Admin"
-                    className={`h-10 transition-all font-normal`}
+                    className={`h-10 transition-all font-normal ${
+                      location === '/admin/compliance'
+                        ? 'bg-primary/20 text-primary font-semibold border-l-2 border-primary rounded-l-none'
+                        : 'text-sidebar-foreground/70 hover:text-sidebar-foreground'
+                    }`}
                   >
                     <Shield
-                      className={`h-4 w-4 ${location === '/admin/compliance' ? "text-primary" : ""}`}
+                      className={`h-4 w-4 flex-shrink-0 ${location === '/admin/compliance' ? 'text-primary' : 'text-muted-foreground'}`}
                     />
                     <span>Compliance Admin</span>
                   </SidebarMenuButton>
@@ -279,35 +287,31 @@ function DashboardLayoutContent({
             </SidebarMenu>
           </SidebarContent>
 
-          <SidebarFooter className="p-3">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-3 rounded-lg px-1 py-1 hover:bg-accent/50 transition-colors w-full text-left group-data-[collapsible=icon]:justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                  <Avatar className="h-9 w-9 border shrink-0">
-                    <AvatarFallback className="text-xs font-medium">
-                      {user?.name?.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
-                    <p className="text-sm font-medium truncate leading-none">
-                      {user?.name || "-"}
-                    </p>
-                    <p className="text-xs text-muted-foreground truncate mt-1.5">
-                      {user?.email || "-"}
-                    </p>
-                  </div>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem
-                  onClick={logout}
-                  className="cursor-pointer text-destructive focus:text-destructive"
-                >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Sign out</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+          <SidebarFooter className="p-3 space-y-1">
+            {/* User info row */}
+            <div className="flex items-center gap-3 rounded-lg px-1 py-1 w-full group-data-[collapsible=icon]:justify-center">
+              <Avatar className="h-9 w-9 border shrink-0">
+                <AvatarFallback className="text-xs font-medium">
+                  {user?.name?.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
+                <p className="text-sm font-medium truncate leading-none">
+                  {user?.name || "-"}
+                </p>
+                <p className="text-xs text-muted-foreground truncate mt-1.5">
+                  {user?.email || "-"}
+                </p>
+              </div>
+            </div>
+            {/* Logout button — always visible */}
+            <button
+              onClick={logout}
+              className="flex items-center gap-2 w-full rounded-lg px-2 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors group-data-[collapsible=icon]:justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <LogOut className="h-4 w-4 shrink-0" />
+              <span className="group-data-[collapsible=icon]:hidden">Sign out</span>
+            </button>
           </SidebarFooter>
         </Sidebar>
         <div
@@ -333,6 +337,17 @@ function DashboardLayoutContent({
             <span className="font-bold text-2xl tracking-tight">
               ZAP
             </span>
+          </div>
+          {/* Right side: user info + sign out */}
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-muted-foreground hidden sm:block">{user?.name}</span>
+            <button
+              onClick={logout}
+              className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm text-destructive border border-destructive/30 hover:bg-destructive/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <LogOut className="h-4 w-4" />
+              <span>Sign out</span>
+            </button>
           </div>
         </div>
         <main className="flex-1 p-4">

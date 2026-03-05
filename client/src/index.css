@@ -108,7 +108,7 @@
   --chart-5: oklch(0.42 0.24 293);
   --sidebar: oklch(0.18 0 0); /* Sidebar background #222 */
   --sidebar-foreground: oklch(0.98 0 0);
-  --sidebar-accent: oklch(0.25 0 0);
+  --sidebar-accent: oklch(0.28 0.05 293); /* Subtle purple tint for hover */
   --sidebar-accent-foreground: oklch(1 0 0);
   --sidebar-border: oklch(0.25 0 0);
   --sidebar-ring: oklch(0.63 0.24 293);

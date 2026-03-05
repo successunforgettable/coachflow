@@ -1,0 +1,23 @@
+{
+  "query": "SELECT id, openId, name, email, role, subscriptionTier, subscriptionStatus, onboardingComplete, onboardingStage, trialEndsAt, subscriptionEndsAt FROM users WHERE openId = 'test-golden-user-pro-001';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT id, openId, name, email, role, subscriptionTier, subscriptionStatus, onboardingComplete, onboardingStage, trialEndsAt, subscriptionEndsAt FROM users WHERE openId = 'test-golden-user-pro-001';",
+  "rows": [
+    {
+      "id": "5340001",
+      "openId": "test-golden-user-pro-001",
+      "name": "Golden Test User",
+      "email": "goldenuser@zapcampaigns.com",
+      "role": "user",
+      "subscriptionTier": "pro",
+      "subscriptionStatus": "active",
+      "onboardingComplete": "0",
+      "onboardingStage": "1",
+      "trialEndsAt": "2027-03-05 14:52:34",
+      "subscriptionEndsAt": "2027-03-05 14:52:34"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\topenId\tname\temail\trole\tsubscriptionTier\tsubscriptionStatus\tonboardingComplete\tonboardingStage\ttrialEndsAt\tsubscriptionEndsAt\n5340001\ttest-golden-user-pro-001\tGolden Test User\tgoldenuser@zapcampaigns.com\tuser\tpro\tactive\t0\t1\t2027-03-05 14:52:34\t2027-03-05 14:52:34\n",
+  "stderr": "",
+  "execution_time_ms": 1589
+}

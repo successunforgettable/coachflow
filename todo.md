@@ -3729,3 +3729,6 @@ Scene 5 (6s): "Stop being invisible. Your next client is already on Facebook..."
 - [x] TypeScript: 0 errors
 - [x] Vitest: all tests passing
 - [x] Save checkpoint + push to GitHub
+
+## Authentication Improvements
+- [ ] Add native email/password registration and login — signup form on zapcampaigns.com, email verification, password reset flow — so users can register directly without being redirected to the Manus OAuth portal
