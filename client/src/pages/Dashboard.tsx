@@ -282,6 +282,14 @@ export default function Dashboard() {
           <Link href="/settings">
             <div className="nav-item">⚙️ Settings</div>
           </Link>
+          <button
+            onClick={logout}
+            className="nav-item w-full text-left flex items-center gap-2"
+            style={{ color: '#ef4444', marginTop: '4px' }}
+          >
+            <LogOut className="h-4 w-4 inline-block" />
+            Sign out
+          </button>
         </div>
       </div>
 
