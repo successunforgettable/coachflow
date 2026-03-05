@@ -51,8 +51,22 @@ function LockIcon() {
   );
 }
 
+// ─── Node ID to wizard step mapping ─────────────────────────────────────────
+const NODE_STEP_MAP: Record<number, string> = {
+  2:  "icp",
+  3:  "offer",
+  4:  "uniqueMethod",
+  5:  "freeOptIn",
+  6:  "headlines",
+  7:  "adCopy",
+  8:  "landingPage",
+  9:  "emailSequence",
+  10: "whatsappSequence",
+  11: "pushToMeta",
+};
+
 // ─── Single Path Node ────────────────────────────────────────────────────────
-function PathNode({ node, isMobile }: { node: PathNode; isMobile: boolean }) {
+function PathNode({ node, isMobile, onNodeClick }: { node: PathNode; isMobile: boolean; onNodeClick: (node: PathNode) => void }) {
   const size = isMobile ? 60 : 80;
 
   const bgColor =
@@ -221,6 +235,13 @@ export default function V2Dashboard() {
 
   const progressPct = Math.round((completedCount / totalCount) * 100);
 
+  function handleNodeClick(node: PathNode) {
+    const step = NODE_STEP_MAP[node.id];
+    if (step) {
+      navigate(`/v2-dashboard/wizard/${step}`);
+    }
+  }
+
   return (
     <V2Layout>
       {/* Fork Modal */}
@@ -355,7 +376,7 @@ export default function V2Dashboard() {
               {idx > 0 && (
                 <Connector fromCompleted={nodes[idx - 1].state === "completed"} />
               )}
-              <PathNode node={node} isMobile={isMobile} />
+              <PathNode node={node} isMobile={isMobile} onNodeClick={handleNodeClick} />
             </div>
           ))}
         </div>
