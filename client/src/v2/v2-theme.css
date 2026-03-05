@@ -1,8 +1,7 @@
 /*
- * ZAP V2 Theme — Sprint 1
- * ISOLATION GUARANTEE: This file is imported ONLY by V2Layout.tsx.
- * It is scoped to the [data-v2] attribute selector so it cannot
- * bleed into any existing dark-theme route.
+ * ZAP V2 Theme — Sprint 2
+ * ISOLATION GUARANTEE: Imported ONLY by V2Layout.tsx.
+ * All rules scoped to [data-v2] attribute.
  */
 
 /* ─── Design Tokens ─────────────────────────────────────────── */
@@ -14,11 +13,9 @@
   --v2-border-radius-card: 24px;
   --v2-border-radius-pill: 9999px;
 
-  /* Typography */
   --v2-font-heading: 'Fraunces', Georgia, serif;
   --v2-font-body:    'Instrument Sans', system-ui, sans-serif;
 
-  /* Spacing scale */
   --v2-space-xs:  4px;
   --v2-space-sm:  8px;
   --v2-space-md:  16px;
@@ -26,7 +23,6 @@
   --v2-space-xl:  40px;
   --v2-space-2xl: 64px;
 
-  /* Shadows */
   --v2-shadow-card: 0 2px 16px 0 rgba(26, 22, 36, 0.08);
   --v2-shadow-btn:  0 4px 14px 0 rgba(255, 91, 29, 0.30);
 }
@@ -58,6 +54,7 @@
   color: var(--v2-text-color);
   line-height: 1.15;
   letter-spacing: -0.02em;
+  margin: 0;
 }
 
 [data-v2] p,
@@ -65,10 +62,10 @@
 [data-v2] li,
 [data-v2] label {
   font-family: var(--v2-font-body);
+  margin: 0;
 }
 
 /* ─── No Sharp Corners Rule ──────────────────────────────────── */
-/* Every card, button, input, and container must be rounded */
 [data-v2] .v2-card {
   border-radius: var(--v2-border-radius-card);
   background: #fff;
@@ -88,6 +85,8 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  text-decoration: none;
+  white-space: nowrap;
 }
 
 [data-v2] .v2-btn:hover {
@@ -104,7 +103,7 @@
 [data-v2] .v2-btn-secondary {
   background: transparent;
   color: var(--v2-text-color);
-  border: 1.5px solid rgba(26, 22, 36, 0.18);
+  border: 1.5px solid rgba(26, 22, 36, 0.20);
 }
 
 [data-v2] .v2-btn-purple {
@@ -121,11 +120,107 @@
 
 /* ─── Layout Helpers ─────────────────────────────────────────── */
 [data-v2] .v2-container {
-  max-width: 1280px;
+  max-width: 680px;
   margin: 0 auto;
   padding: 0 var(--v2-space-xl);
 }
 
 [data-v2] .v2-section {
   padding: var(--v2-space-2xl) 0;
+}
+
+/* ─── Pulse Animation (Active node) ─────────────────────────── */
+@keyframes v2-pulse {
+  0%   { box-shadow: 0 0 0 0   rgba(255, 91, 29, 0.50); }
+  50%  { box-shadow: 0 0 0 14px rgba(255, 91, 29, 0.00); }
+  100% { box-shadow: 0 0 0 0   rgba(255, 91, 29, 0.00); }
+}
+
+/* ─── 11-Step Path Layout ────────────────────────────────────── */
+/* Desktop: winding (alternating left/right) */
+[data-v2] .v2-path-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  padding: 16px 0;
+}
+
+[data-v2] .v2-path-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+/* Winding effect: odd nodes shift left, even nodes shift right */
+[data-v2] .v2-path-column:nth-child(odd) {
+  align-items: flex-start;
+  padding-left: 80px;
+}
+
+[data-v2] .v2-path-column:nth-child(even) {
+  align-items: flex-end;
+  padding-right: 80px;
+}
+
+/* Connector lines align to center of their column */
+[data-v2] .v2-path-column > div:first-child {
+  /* connector */
+  align-self: center;
+}
+
+/* ─── Fork Modal ─────────────────────────────────────────────── */
+[data-v2] .v2-fork-modal {
+  background: #fff;
+  border-radius: var(--v2-border-radius-card);
+  padding: 36px 32px 32px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 24px 64px rgba(26, 22, 36, 0.18);
+}
+
+/* ─── Persistent Fork Buttons ────────────────────────────────── */
+[data-v2] .v2-fork-persistent {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* ─── Mobile Responsive (≤ 768px) ───────────────────────────── */
+@media (max-width: 768px) {
+
+  [data-v2] .v2-container {
+    padding: 0 var(--v2-space-md);
+  }
+
+  /* Straight vertical column — no winding */
+  [data-v2] .v2-path-column:nth-child(odd),
+  [data-v2] .v2-path-column:nth-child(even) {
+    align-items: center;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  /* Modal becomes full-screen bottom sheet */
+  [data-v2] .v2-fork-modal {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    max-width: 100%;
+    border-radius: 24px 24px 0 0;
+    padding: 28px 24px 40px;
+    margin: 0;
+  }
+
+  /* Persistent fork buttons stack vertically */
+  [data-v2] .v2-fork-persistent {
+    flex-direction: column;
+  }
+
+  [data-v2] .v2-fork-persistent .v2-btn {
+    width: 100%;
+    justify-content: center;
+  }
 }
