@@ -1,0 +1,131 @@
+/*
+ * ZAP V2 Theme — Sprint 1
+ * ISOLATION GUARANTEE: This file is imported ONLY by V2Layout.tsx.
+ * It is scoped to the [data-v2] attribute selector so it cannot
+ * bleed into any existing dark-theme route.
+ */
+
+/* ─── Design Tokens ─────────────────────────────────────────── */
+[data-v2] {
+  --v2-bg-color:           #F5F1EA;
+  --v2-text-color:         #1A1624;
+  --v2-primary-btn:        #FF5B1D;
+  --v2-accent-purple:      #8B5CF6;
+  --v2-border-radius-card: 24px;
+  --v2-border-radius-pill: 9999px;
+
+  /* Typography */
+  --v2-font-heading: 'Fraunces', Georgia, serif;
+  --v2-font-body:    'Instrument Sans', system-ui, sans-serif;
+
+  /* Spacing scale */
+  --v2-space-xs:  4px;
+  --v2-space-sm:  8px;
+  --v2-space-md:  16px;
+  --v2-space-lg:  24px;
+  --v2-space-xl:  40px;
+  --v2-space-2xl: 64px;
+
+  /* Shadows */
+  --v2-shadow-card: 0 2px 16px 0 rgba(26, 22, 36, 0.08);
+  --v2-shadow-btn:  0 4px 14px 0 rgba(255, 91, 29, 0.30);
+}
+
+/* ─── Base Reset (scoped) ────────────────────────────────────── */
+[data-v2],
+[data-v2] * {
+  box-sizing: border-box;
+}
+
+[data-v2] {
+  background-color: var(--v2-bg-color);
+  color: var(--v2-text-color);
+  font-family: var(--v2-font-body);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── Typography ─────────────────────────────────────────────── */
+[data-v2] h1,
+[data-v2] h2,
+[data-v2] h3,
+[data-v2] h4,
+[data-v2] h5,
+[data-v2] h6 {
+  font-family: var(--v2-font-heading);
+  font-style: italic;
+  font-weight: 900;
+  color: var(--v2-text-color);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+[data-v2] p,
+[data-v2] span,
+[data-v2] li,
+[data-v2] label {
+  font-family: var(--v2-font-body);
+}
+
+/* ─── No Sharp Corners Rule ──────────────────────────────────── */
+/* Every card, button, input, and container must be rounded */
+[data-v2] .v2-card {
+  border-radius: var(--v2-border-radius-card);
+  background: #fff;
+  box-shadow: var(--v2-shadow-card);
+  padding: var(--v2-space-lg);
+}
+
+[data-v2] .v2-btn {
+  border-radius: var(--v2-border-radius-pill);
+  font-family: var(--v2-font-body);
+  font-weight: 600;
+  font-size: 15px;
+  padding: 12px 28px;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+[data-v2] .v2-btn:hover {
+  transform: translateY(-1px);
+  opacity: 0.92;
+}
+
+[data-v2] .v2-btn-primary {
+  background: var(--v2-primary-btn);
+  color: #fff;
+  box-shadow: var(--v2-shadow-btn);
+}
+
+[data-v2] .v2-btn-secondary {
+  background: transparent;
+  color: var(--v2-text-color);
+  border: 1.5px solid rgba(26, 22, 36, 0.18);
+}
+
+[data-v2] .v2-btn-purple {
+  background: var(--v2-accent-purple);
+  color: #fff;
+}
+
+[data-v2] input,
+[data-v2] textarea,
+[data-v2] select {
+  border-radius: 12px;
+  font-family: var(--v2-font-body);
+}
+
+/* ─── Layout Helpers ─────────────────────────────────────────── */
+[data-v2] .v2-container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 var(--v2-space-xl);
+}
+
+[data-v2] .v2-section {
+  padding: var(--v2-space-2xl) 0;
+}

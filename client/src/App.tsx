@@ -52,6 +52,7 @@ import Videos from "./pages/Videos";
 import { DemoVideo } from "./pages/DemoVideo";
 import CampaignICPSelection from "./pages/CampaignICPSelection";
 import Signup from "./pages/Signup";
+import V2Dashboard from "./v2/V2Dashboard";
 import Login from "./pages/Login";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
@@ -111,6 +112,8 @@ function Router() {
       <Route path={"/login"} component={Login} />
       <Route path={"/forgot-password"} component={ForgotPassword} />
       <Route path={"/reset-password"} component={ResetPassword} />
+      {/* V2 Sandbox — isolated, does not affect any existing route */}
+      <Route path={"/v2-dashboard"} component={V2Dashboard} />
       <Route path={"/404"} component={NotFound} />
       {/* Fallback route for 404 */}
       <Route component={NotFound} />
