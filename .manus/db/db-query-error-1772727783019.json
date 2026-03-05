@@ -1,0 +1,20 @@
+{
+  "query": "DESCRIBE whatsappSequences; SELECT id, name, LEFT(messages, 500) as messages_sample, LEFT(sequences, 500) as sequences_sample FROM whatsappSequences LIMIT 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute DESCRIBE whatsappSequences; SELECT id, name, LEFT(messages, 500) as messages_sample, LEFT(sequences, 500) as sequences_sample FROM whatsappSequences LIMIT 1;",
+  "returncode": 1,
+  "logs": [
+    "Field\tType\tNull\tKey\tDefault\tExtra",
+    "id\tint\tNO\tPRI\tNULL\tauto_increment",
+    "userId\tint\tNO\tMUL\tNULL\t",
+    "serviceId\tint\tYES\tMUL\tNULL\t",
+    "campaignId\tint\tYES\tMUL\tNULL\t",
+    "sequenceType\tenum('engagement','sales')\tYES\t\tNULL\t",
+    "name\tvarchar(255)\tNO\t\tNULL\t",
+    "messages\tjson\tNO\t\tNULL\t",
+    "automationEnabled\ttinyint(1)\tYES\t\t0\t",
+    "rating\tint\tYES\t\t0\t",
+    "createdAt\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\t",
+    "updatedAt\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP",
+    "ERROR 1054 (42S22) at line 1: Unknown column 'sequences' in 'field list'"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "query": "SELECT id, name, LEFT(messages, 600) as messages_sample FROM whatsappSequences LIMIT 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT id, name, LEFT(messages, 600) as messages_sample FROM whatsappSequences LIMIT 1;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "engagement Sequence",
+      "messages_sample": "[{\"cta\": \"Reply 'YES' if you're excited too!\", \"day\": 1, \"message\": \"Hey there! 👋 Host here. So excited you're joining our ZAP - Zero-to-Ads Platform event on Date! Get ready to learn how to launch your ads like a pro. We'll share simple steps to get you started quickly. I can't wait to help you transform your advertising game! 🚀\"}, {\"cta\": \"What's one thing you hope to learn at ZAP?\", \"day\": 3, \"message\": \"Quick tip for you! Did you know the best ads start with understanding your customer? 🤔 Before our ZAP event, think about who you want to reach. What problems do they have? What do they drea"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tmessages_sample\n1\tengagement Sequence\t[{\"cta\": \"Reply 'YES' if you're excited too!\", \"day\": 1, \"message\": \"Hey there! 👋 Host here. So excited you're joining our ZAP - Zero-to-Ads Platform event on Date! Get ready to learn how to launch your ads like a pro. We'll share simple steps to get you started quickly. I can't wait to help you transform your advertising game! 🚀\"}, {\"cta\": \"What's one thing you hope to learn at ZAP?\", \"day\": 3, \"message\": \"Quick tip for you! Did you know the best ads start with understanding your customer? 🤔 Before our ZAP event, think about who you want to reach. What problems do they have? What do they drea\n",
+  "stderr": "",
+  "execution_time_ms": 1533
+}

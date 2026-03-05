@@ -287,7 +287,7 @@ export default function WhatsAppSequenceGenerator() {
                     <CardContent>
                       <div className="space-y-3">
                         {(seq.messages as any)?.map((message: any, idx: number) => {
-                          const c = checkCompliance(message?.text || '');
+                          const c = checkCompliance(message?.message || message?.text || message?.content || '');
                           return (
                           <>
                           <div key={idx} className="p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
@@ -298,11 +298,11 @@ export default function WhatsAppSequenceGenerator() {
                                 <span className="text-xs text-muted-foreground">({message.timing})</span>
                                 <ComplianceBadgeInline score={c.score} />
                               </div>
-                              <Button variant="ghost" size="icon" onClick={() => navigator.clipboard.writeText(message.text)}>
+                              <Button variant="ghost" size="icon" onClick={() => navigator.clipboard.writeText(message.message || message.text || message.content || '')}>
                                 <Copy className="w-4 h-4" />
                               </Button>
                             </div>
-                            <p className="text-sm text-foreground whitespace-pre-wrap">{message.text}</p>
+                            <p className="text-sm text-foreground whitespace-pre-wrap">{message.message || message.text || message.content || ''}</p>
                           </div>
                           {c.score < 100 && <ComplianceBadgeInline score={c.score} />}
                           </>
