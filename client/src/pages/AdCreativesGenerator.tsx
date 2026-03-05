@@ -130,7 +130,7 @@ export default function AdCreativesGenerator() {
   }
 
   if (!isAuthenticated) {
-    window.location.href = getLoginUrl();
+    window.location.href = "/login";
     return null;
   }
 

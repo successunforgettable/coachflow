@@ -252,7 +252,7 @@ export default function AdCopyGenerator() {
           Please sign in to generate ads
         </p>
         <Button asChild>
-          <a href={getLoginUrl()}>Sign In</a>
+          <a href="/login">Sign In</a>
         </Button>
       </div>
     );

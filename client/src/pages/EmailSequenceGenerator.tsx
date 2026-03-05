@@ -147,7 +147,7 @@ export default function EmailSequenceGenerator() {
     );
   }
   if (!isAuthenticated) {
-    window.location.href = getLoginUrl();
+    window.location.href = "/login";
     return null;
   }
 

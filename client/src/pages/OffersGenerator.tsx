@@ -111,7 +111,7 @@ export default function OffersGenerator() {
           Generate irresistible offers with 3 angle variations (Super ZAP, Free, Dollar)
         </p>
         <Button asChild size="lg">
-          <a href={getLoginUrl()}>Login to Get Started</a>
+          <a href="/login">Login to Get Started</a>
         </Button>
       </div>
     );

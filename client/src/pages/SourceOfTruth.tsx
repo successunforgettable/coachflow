@@ -90,7 +90,7 @@ export default function SourceOfTruth() {
   }
 
   if (!isAuthenticated) {
-    window.location.href = getLoginUrl();
+    window.location.href = "/login";
     return null;
   }
 
