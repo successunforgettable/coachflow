@@ -110,7 +110,7 @@ function PathNode({ node, isMobile, onNodeClick }: { node: PathNode; isMobile: b
         fontWeight: 500,
         color: node.state === "locked" ? "rgba(26,22,36,0.35)" : "var(--v2-text-color)",
         textAlign: "center",
-        maxWidth: isMobile ? "70px" : "90px",
+        maxWidth: isMobile ? "80px" : "110px",
         lineHeight: 1.3,
       }}>
         {node.label}
