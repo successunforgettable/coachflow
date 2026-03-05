@@ -1,13 +1,24 @@
 /**
- * ZappyMascot — Sprint 4
- * Renders the official Zappy character in one of four states.
- * All states use the same image; visual differentiation is achieved
- * via CSS animations and wrapper styling.
+ * ZappyMascot — Sprint 4 (updated: four production SVG emotional states)
+ *
+ * state="loading"   → zappy-working.svg   (focused, typing on laptop)
+ * state="cheering"  → zappy-cheering.svg  (arms raised, confetti, pure joy)
+ * state="concerned" → zappy-concerned.svg (worried brows, red clipboard)
+ * state="waiting"   → zappy-waiting.svg   (pointing at watch, playfully impatient)
+ * state="idle"      → zappy-working.svg   (default fallback)
  */
 
-const ZAPPY_CDN = "https://files.manuscdn.com/user_upload_by_module/session_file/310419663026750612/EpdOCZXnsiLLghXc.png";
+import React from "react";
 
-export type ZappyState = "idle" | "loading" | "cheering" | "concerned";
+const ZAPPY_SVGS: Record<string, string> = {
+  loading:   "/zappy-working.svg",
+  cheering:  "/zappy-cheering.svg",
+  concerned: "/zappy-concerned.svg",
+  waiting:   "/zappy-waiting.svg",
+  idle:      "/zappy-working.svg",
+};
+
+export type ZappyState = "idle" | "loading" | "cheering" | "concerned" | "waiting";
 
 interface ZappyMascotProps {
   state: ZappyState;
@@ -15,6 +26,8 @@ interface ZappyMascotProps {
 }
 
 export default function ZappyMascot({ state, size = 120 }: ZappyMascotProps) {
+  const src = ZAPPY_SVGS[state] ?? ZAPPY_SVGS.idle;
+
   const wrapperStyle: React.CSSProperties = {
     position: "relative",
     width: size,
@@ -25,19 +38,15 @@ export default function ZappyMascot({ state, size = 120 }: ZappyMascotProps) {
     flexShrink: 0,
   };
 
-  // State-specific image animation
   const imageStyle: React.CSSProperties = {
     width: "100%",
     height: "100%",
     objectFit: "contain",
     animation:
-      state === "loading"  ? "zappy-float 1.4s ease-in-out infinite" :
-      state === "cheering" ? "zappy-bounce 0.5s ease-in-out infinite alternate" :
-      state === "concerned"? "zappy-shake 0.6s ease-in-out" :
-      "none",
-    filter:
-      state === "concerned" ? "grayscale(30%) brightness(0.9)" :
-      state === "cheering"  ? "brightness(1.1) saturate(1.2)" :
+      state === "loading"   ? "zappy-float 1.4s ease-in-out infinite" :
+      state === "cheering"  ? "zappy-bounce 0.5s ease-in-out infinite alternate" :
+      state === "concerned" ? "zappy-shake 0.6s ease-in-out" :
+      state === "waiting"   ? "zappy-tap 1.2s ease-in-out infinite" :
       "none",
     transition: "filter 0.3s ease",
   };
@@ -60,10 +69,15 @@ export default function ZappyMascot({ state, size = 120 }: ZappyMascotProps) {
           60%      { transform: translateX(-4px) rotate(-1deg); }
           80%      { transform: translateX(4px) rotate(1deg); }
         }
+        @keyframes zappy-tap {
+          0%, 100% { transform: translateY(0px) rotate(0deg); }
+          30%      { transform: translateY(-3px) rotate(-1deg); }
+          60%      { transform: translateY(2px) rotate(1deg); }
+        }
       `}</style>
       <div style={wrapperStyle}>
         <img
-          src={ZAPPY_CDN}
+          src={src}
           alt={`Zappy — ${state}`}
           style={imageStyle}
           draggable={false}

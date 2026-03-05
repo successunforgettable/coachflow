@@ -1,0 +1,146 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 500" width="400" height="500">
+  <defs>
+    <radialGradient id="visorGrad" cx="42%" cy="38%" r="58%">
+      <stop offset="0%"  stop-color="#2E1065"/>
+      <stop offset="55%" stop-color="#5B21B6"/>
+      <stop offset="100%" stop-color="#8B5CF6"/>
+    </radialGradient>
+    <radialGradient id="bodyGrad" cx="38%" cy="28%" r="66%">
+      <stop offset="0%"  stop-color="#FF7A45"/>
+      <stop offset="100%" stop-color="#E04010"/>
+    </radialGradient>
+    <radialGradient id="bellyGrad" cx="50%" cy="40%" r="55%">
+      <stop offset="0%"  stop-color="#FFFAF3"/>
+      <stop offset="100%" stop-color="#F5F1EA"/>
+    </radialGradient>
+    <radialGradient id="earInnerGrad" cx="50%" cy="70%" r="55%">
+      <stop offset="0%"  stop-color="#FFE4C0"/>
+      <stop offset="100%" stop-color="#F5C090"/>
+    </radialGradient>
+    <radialGradient id="eyeWhite" cx="38%" cy="32%" r="58%">
+      <stop offset="0%"  stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#EDE8FF"/>
+    </radialGradient>
+    <linearGradient id="headsetGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"  stop-color="#C4B5FD"/>
+      <stop offset="100%" stop-color="#7C3AED"/>
+    </linearGradient>
+    <radialGradient id="tailGrad" cx="30%" cy="30%" r="70%">
+      <stop offset="0%"  stop-color="#FF7A45"/>
+      <stop offset="100%" stop-color="#E04010"/>
+    </radialGradient>
+  </defs>
+
+  <!-- FLAT PILL SHADOW -->
+  <rect x="110" y="474" width="180" height="14" rx="7" fill="#B03A0A" opacity="0.18"/>
+
+  <!-- CONFETTI — rounded rects and circles only, brand palette -->
+  <rect x="38"  y="68"  width="18" height="10" rx="5"   fill="#FF5B1D" opacity="0.9"  transform="rotate(-28 47 73)"/>
+  <rect x="55"  y="96"  width="13" height="8"  rx="4"   fill="#8B5CF6" opacity="0.85" transform="rotate(18 61 100)"/>
+  <circle cx="70"  cy="54"  r="8"  fill="#FFD700" opacity="0.9"/>
+  <rect x="24"  y="118" width="15" height="9"  rx="4.5" fill="#8B5CF6" opacity="0.8"  transform="rotate(38 31 122)"/>
+  <circle cx="44"  cy="140" r="6"  fill="#FF5B1D" opacity="0.75"/>
+  <rect x="60"  y="152" width="11" height="7"  rx="3.5" fill="#FFD700" opacity="0.85" transform="rotate(-12 65 155)"/>
+  <rect x="146" y="14"  width="15" height="9"  rx="4.5" fill="#8B5CF6" opacity="0.9"  transform="rotate(22 153 18)"/>
+  <circle cx="176" cy="10"  r="7"  fill="#FF5B1D" opacity="0.85"/>
+  <rect x="196" y="6"   width="18" height="10" rx="5"   fill="#FFD700" opacity="0.9"  transform="rotate(-16 205 11)"/>
+  <circle cx="222" cy="14"  r="6"  fill="#8B5CF6" opacity="0.8"/>
+  <rect x="240" y="20"  width="13" height="8"  rx="4"   fill="#FF5B1D" opacity="0.85" transform="rotate(32 246 24)"/>
+  <rect x="316" y="62"  width="18" height="10" rx="5"   fill="#FFD700" opacity="0.9"  transform="rotate(22 325 67)"/>
+  <circle cx="342" cy="90"  r="8"  fill="#8B5CF6" opacity="0.85"/>
+  <rect x="328" y="112" width="13" height="8"  rx="4"   fill="#FF5B1D" opacity="0.8"  transform="rotate(-20 334 116)"/>
+  <circle cx="354" cy="134" r="6"  fill="#FFD700" opacity="0.9"/>
+  <rect x="318" y="148" width="15" height="9"  rx="4.5" fill="#8B5CF6" opacity="0.75" transform="rotate(14 325 152)"/>
+  <circle cx="84"  cy="176" r="5"  fill="#FFD700" opacity="0.7"/>
+  <circle cx="316" cy="176" r="5"  fill="#FF5B1D" opacity="0.7"/>
+
+  <!-- TAIL -->
+  <ellipse cx="296" cy="348" rx="48" ry="64" fill="url(#tailGrad)" transform="rotate(-18 296 348)"/>
+  <ellipse cx="306" cy="308" rx="26" ry="34" fill="url(#bellyGrad)" transform="rotate(-22 306 308)"/>
+  <g transform="translate(284,326) rotate(-12)">
+    <path d="M9,0 L2,15 L8,15 L1,30 L16,10 L9,10 Z" fill="#FFD700" stroke="#FFB800" stroke-width="0.5" stroke-linejoin="round"/>
+  </g>
+
+  <!-- BODY -->
+  <rect x="140" y="268" width="120" height="122" rx="50" fill="url(#bodyGrad)"/>
+  <ellipse cx="200" cy="312" rx="40" ry="48" fill="url(#bellyGrad)"/>
+  <g transform="translate(187,292)">
+    <path d="M10,0 L3,18 L9,18 L2,36 L18,12 L11,12 Z" fill="#FFD700" stroke="#FFB800" stroke-width="0.5" stroke-linejoin="round"/>
+  </g>
+
+  <!-- LEGS — both planted, slight bounce stance -->
+  <rect x="154" y="368" width="34" height="50" rx="17" fill="url(#bodyGrad)"/>
+  <ellipse cx="171" cy="420" rx="21" ry="13" fill="#E04010"/>
+  <rect x="212" y="368" width="34" height="50" rx="17" fill="url(#bodyGrad)"/>
+  <ellipse cx="229" cy="420" rx="21" ry="13" fill="#E04010"/>
+
+  <!-- LEFT ARM — raised high, elbow bent outward, paw open above head -->
+  <rect x="106" y="246" width="46" height="24" rx="12" fill="url(#bodyGrad)" transform="rotate(-55 129 258)"/>
+  <rect x="76"  y="200" width="42" height="22" rx="11" fill="url(#bodyGrad)" transform="rotate(-72 97 211)"/>
+  <circle cx="66" cy="184" r="18" fill="#E04010"/>
+  <circle cx="56" cy="175" r="5.5" fill="#FF7A45"/>
+  <circle cx="66" cy="171" r="5.5" fill="#FF7A45"/>
+  <circle cx="76" cy="175" r="5.5" fill="#FF7A45"/>
+
+  <!-- RIGHT ARM — raised high, elbow bent outward, paw open above head -->
+  <rect x="248" y="246" width="46" height="24" rx="12" fill="url(#bodyGrad)" transform="rotate(55 271 258)"/>
+  <rect x="282" y="200" width="42" height="22" rx="11" fill="url(#bodyGrad)" transform="rotate(72 303 211)"/>
+  <circle cx="334" cy="184" r="18" fill="#E04010"/>
+  <circle cx="324" cy="175" r="5.5" fill="#FF7A45"/>
+  <circle cx="334" cy="171" r="5.5" fill="#FF7A45"/>
+  <circle cx="344" cy="175" r="5.5" fill="#FF7A45"/>
+
+  <!-- HEAD — locked taller oval -->
+  <ellipse cx="200" cy="152" rx="74" ry="88" fill="url(#bodyGrad)"/>
+
+  <!-- EARS — locked pointed fox paths -->
+  <path d="M126,118 C120,100 128,52 148,32 C168,52 176,100 170,118 C162,112 154,110 148,110 C142,110 134,112 126,118 Z" fill="url(#bodyGrad)"/>
+  <path d="M134,116 C130,102 136,64 148,46 C160,64 166,102 162,116 C156,112 152,110 148,110 C144,110 140,112 134,116 Z" fill="url(#earInnerGrad)"/>
+  <path d="M230,118 C224,100 232,52 252,32 C272,52 280,100 274,118 C266,112 258,110 252,110 C246,110 238,112 230,118 Z" fill="url(#bodyGrad)"/>
+  <path d="M238,116 C234,102 240,64 252,46 C264,64 270,102 266,116 C260,112 256,110 252,110 C248,110 244,112 238,116 Z" fill="url(#earInnerGrad)"/>
+
+  <!-- HEADSET BAND + CUPS -->
+  <path d="M152,148 Q200,78 248,148" stroke="url(#headsetGrad)" stroke-width="13" fill="none" stroke-linecap="round"/>
+  <circle cx="152" cy="148" r="15" fill="url(#headsetGrad)"/>
+  <circle cx="152" cy="148" r="9"  fill="#8B5CF6"/>
+  <circle cx="248" cy="148" r="15" fill="url(#headsetGrad)"/>
+  <circle cx="248" cy="148" r="9"  fill="#8B5CF6"/>
+
+  <!-- VISOR — locked goggle band -->
+  <rect x="138" y="128" width="124" height="54" rx="27" fill="url(#visorGrad)"/>
+  <ellipse cx="172" cy="142" rx="20" ry="10" fill="#FFFFFF" opacity="0.16" transform="rotate(-18 172 142)"/>
+
+  <!-- EYES — wide open, joy (pupils centered, bright) -->
+  <circle cx="172" cy="152" r="20" fill="url(#eyeWhite)"/>
+  <circle cx="172" cy="152" r="20" fill="none" stroke="#2E1065" stroke-width="2"/>
+  <circle cx="172" cy="152" r="12" fill="#1A0840"/>
+  <circle cx="166" cy="146" r="4.5" fill="#FFFFFF" opacity="0.92"/>
+  <circle cx="176" cy="154" r="2"   fill="#FFFFFF" opacity="0.5"/>
+
+  <circle cx="228" cy="152" r="20" fill="url(#eyeWhite)"/>
+  <circle cx="228" cy="152" r="20" fill="none" stroke="#2E1065" stroke-width="2"/>
+  <circle cx="228" cy="152" r="12" fill="#1A0840"/>
+  <circle cx="222" cy="146" r="4.5" fill="#FFFFFF" opacity="0.92"/>
+  <circle cx="232" cy="154" r="2"   fill="#FFFFFF" opacity="0.5"/>
+
+  <!-- BROWS — raised high, arched upward (pure joy) -->
+  <path d="M152,118 Q168,108 184,112" stroke="#2E1065" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <path d="M216,112 Q232,108 248,118" stroke="#2E1065" stroke-width="5" fill="none" stroke-linecap="round"/>
+
+  <!-- MUZZLE — locked protruding snout -->
+  <ellipse cx="200" cy="196" rx="34" ry="28" fill="url(#bellyGrad)"/>
+  <ellipse cx="200" cy="182" rx="11" ry="8" fill="#2D1208"/>
+  <ellipse cx="197" cy="180" rx="3.5" ry="2.5" fill="#FFFFFF" opacity="0.45"/>
+
+  <!-- MOUTH — big open smile with teeth (joy) -->
+  <path d="M178,192 Q200,220 222,192" stroke="#2D1208" stroke-width="3.5" fill="#2D1208" stroke-linecap="round"/>
+  <!-- Teeth row inside smile -->
+  <rect x="185" y="194" width="30" height="13" rx="6.5" fill="#FFFFFF"/>
+  <!-- Tongue -->
+  <ellipse cx="200" cy="210" rx="11" ry="7" fill="#FF5B1D" opacity="0.85"/>
+
+  <!-- Rosy cheeks -->
+  <ellipse cx="154" cy="188" rx="15" ry="9" fill="#FF5B1D" opacity="0.2"/>
+  <ellipse cx="246" cy="188" rx="15" ry="9" fill="#FF5B1D" opacity="0.2"/>
+
+</svg>

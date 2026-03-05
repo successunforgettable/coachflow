@@ -1,0 +1,158 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 500" width="400" height="500">
+  <defs>
+    <radialGradient id="visorGrad" cx="42%" cy="38%" r="58%">
+      <stop offset="0%"  stop-color="#2E1065"/>
+      <stop offset="55%" stop-color="#5B21B6"/>
+      <stop offset="100%" stop-color="#8B5CF6"/>
+    </radialGradient>
+    <radialGradient id="bodyGrad" cx="38%" cy="28%" r="66%">
+      <stop offset="0%"  stop-color="#FF7A45"/>
+      <stop offset="100%" stop-color="#E04010"/>
+    </radialGradient>
+    <radialGradient id="bellyGrad" cx="50%" cy="40%" r="55%">
+      <stop offset="0%"  stop-color="#FFFAF3"/>
+      <stop offset="100%" stop-color="#F5F1EA"/>
+    </radialGradient>
+    <radialGradient id="earInnerGrad" cx="50%" cy="70%" r="55%">
+      <stop offset="0%"  stop-color="#FFE4C0"/>
+      <stop offset="100%" stop-color="#F5C090"/>
+    </radialGradient>
+    <radialGradient id="eyeWhite" cx="38%" cy="32%" r="58%">
+      <stop offset="0%"  stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#EDE8FF"/>
+    </radialGradient>
+    <linearGradient id="headsetGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"  stop-color="#C4B5FD"/>
+      <stop offset="100%" stop-color="#7C3AED"/>
+    </linearGradient>
+    <radialGradient id="tailGrad" cx="30%" cy="30%" r="70%">
+      <stop offset="0%"  stop-color="#FF7A45"/>
+      <stop offset="100%" stop-color="#E04010"/>
+    </radialGradient>
+    <!-- Watch face -->
+    <radialGradient id="watchFace" cx="50%" cy="40%" r="55%">
+      <stop offset="0%"  stop-color="#EDE8FF"/>
+      <stop offset="100%" stop-color="#C4B5FD"/>
+    </radialGradient>
+  </defs>
+
+  <!-- FLAT PILL SHADOW -->
+  <rect x="110" y="474" width="180" height="14" rx="7" fill="#B03A0A" opacity="0.18"/>
+
+  <!-- TAIL -->
+  <ellipse cx="296" cy="348" rx="48" ry="64" fill="url(#tailGrad)" transform="rotate(-18 296 348)"/>
+  <ellipse cx="306" cy="308" rx="26" ry="34" fill="url(#bellyGrad)" transform="rotate(-22 306 308)"/>
+  <g transform="translate(284,326) rotate(-12)">
+    <path d="M9,0 L2,15 L8,15 L1,30 L16,10 L9,10 Z" fill="#FFD700" stroke="#FFB800" stroke-width="0.5" stroke-linejoin="round"/>
+  </g>
+
+  <!-- BODY -->
+  <rect x="140" y="268" width="120" height="122" rx="50" fill="url(#bodyGrad)"/>
+  <ellipse cx="200" cy="312" rx="40" ry="48" fill="url(#bellyGrad)"/>
+  <g transform="translate(187,292)">
+    <path d="M10,0 L3,18 L9,18 L2,36 L18,12 L11,12 Z" fill="#FFD700" stroke="#FFB800" stroke-width="0.5" stroke-linejoin="round"/>
+  </g>
+
+  <!-- LEGS — one foot slightly raised (impatient tap) -->
+  <rect x="154" y="368" width="34" height="50" rx="17" fill="url(#bodyGrad)"/>
+  <ellipse cx="171" cy="420" rx="21" ry="13" fill="#E04010"/>
+  <!-- Right leg raised slightly, toe tap -->
+  <rect x="210" y="374" width="34" height="44" rx="17" fill="url(#bodyGrad)" transform="rotate(-8 227 396)"/>
+  <ellipse cx="226" cy="418" rx="21" ry="13" fill="#E04010" transform="rotate(-8 226 418)"/>
+
+  <!-- LEFT ARM — crossed over body (resting on right arm) -->
+  <!-- Upper arm going right across body -->
+  <rect x="132" y="290" width="60" height="24" rx="12" fill="url(#bodyGrad)" transform="rotate(-12 162 302)"/>
+  <!-- Forearm resting across -->
+  <rect x="152" y="306" width="56" height="22" rx="11" fill="url(#bodyGrad)" transform="rotate(-6 180 317)"/>
+  <!-- Left paw tucked under right arm -->
+  <circle cx="210" cy="316" r="17" fill="#E04010"/>
+  <circle cx="202" cy="310" r="4.5" fill="#FF7A45"/>
+  <circle cx="210" cy="307" r="4.5" fill="#FF7A45"/>
+  <circle cx="218" cy="310" r="4.5" fill="#FF7A45"/>
+
+  <!-- RIGHT ARM — pointing upward toward watch on left wrist area -->
+  <!-- Upper arm going up-left -->
+  <rect x="210" y="276" width="48" height="24" rx="12" fill="url(#bodyGrad)" transform="rotate(-50 234 288)"/>
+  <!-- Forearm -->
+  <rect x="192" y="250" width="44" height="22" rx="11" fill="url(#bodyGrad)" transform="rotate(-65 214 261)"/>
+  <!-- Right paw pointing (index finger extended) -->
+  <circle cx="176" cy="232" r="16" fill="#E04010"/>
+  <!-- Pointing finger -->
+  <rect x="162" y="210" width="12" height="26" rx="6" fill="#E04010"/>
+  <circle cx="168" cy="208" r="7" fill="#E04010"/>
+  <!-- Knuckles on other fingers (tucked) -->
+  <circle cx="170" cy="240" r="4" fill="#FF7A45"/>
+  <circle cx="178" cy="242" r="4" fill="#FF7A45"/>
+  <circle cx="186" cy="240" r="4" fill="#FF7A45"/>
+
+  <!-- WATCH on right wrist -->
+  <!-- Watch strap -->
+  <rect x="184" y="254" width="28" height="10" rx="5" fill="#8B5CF6"/>
+  <!-- Watch case -->
+  <rect x="182" y="246" width="32" height="22" rx="8" fill="#7C3AED"/>
+  <!-- Watch face -->
+  <rect x="186" y="249" width="24" height="16" rx="6" fill="url(#watchFace)"/>
+  <!-- Clock hands -->
+  <line x1="198" y1="257" x2="198" y2="252" stroke="#2E1065" stroke-width="2" stroke-linecap="round"/>
+  <line x1="198" y1="257" x2="203" y2="257" stroke="#FF5B1D" stroke-width="2" stroke-linecap="round"/>
+  <!-- Watch crown -->
+  <rect x="214" y="253" width="5" height="8" rx="2.5" fill="#6D28D9"/>
+
+  <!-- HEAD — locked taller oval -->
+  <ellipse cx="200" cy="152" rx="74" ry="88" fill="url(#bodyGrad)"/>
+
+  <!-- EARS — locked pointed fox paths -->
+  <path d="M126,118 C120,100 128,52 148,32 C168,52 176,100 170,118 C162,112 154,110 148,110 C142,110 134,112 126,118 Z" fill="url(#bodyGrad)"/>
+  <path d="M134,116 C130,102 136,64 148,46 C160,64 166,102 162,116 C156,112 152,110 148,110 C144,110 140,112 134,116 Z" fill="url(#earInnerGrad)"/>
+  <path d="M230,118 C224,100 232,52 252,32 C272,52 280,100 274,118 C266,112 258,110 252,110 C246,110 238,112 230,118 Z" fill="url(#bodyGrad)"/>
+  <path d="M238,116 C234,102 240,64 252,46 C264,64 270,102 266,116 C260,112 256,110 252,110 C248,110 244,112 238,116 Z" fill="url(#earInnerGrad)"/>
+
+  <!-- HEADSET BAND + CUPS -->
+  <path d="M152,148 Q200,78 248,148" stroke="url(#headsetGrad)" stroke-width="13" fill="none" stroke-linecap="round"/>
+  <circle cx="152" cy="148" r="15" fill="url(#headsetGrad)"/>
+  <circle cx="152" cy="148" r="9"  fill="#8B5CF6"/>
+  <circle cx="248" cy="148" r="15" fill="url(#headsetGrad)"/>
+  <circle cx="248" cy="148" r="9"  fill="#8B5CF6"/>
+
+  <!-- VISOR — locked goggle band -->
+  <rect x="138" y="128" width="124" height="54" rx="27" fill="url(#visorGrad)"/>
+  <ellipse cx="172" cy="142" rx="20" ry="10" fill="#FFFFFF" opacity="0.16" transform="rotate(-18 172 142)"/>
+
+  <!-- EYES — half-lidded, slightly bored (pupils centered, lids lowered) -->
+  <circle cx="172" cy="152" r="20" fill="url(#eyeWhite)"/>
+  <circle cx="172" cy="152" r="20" fill="none" stroke="#2E1065" stroke-width="2"/>
+  <circle cx="172" cy="154" r="12" fill="#1A0840"/>
+  <circle cx="166" cy="148" r="4.5" fill="#FFFFFF" opacity="0.92"/>
+  <circle cx="176" cy="156" r="2"   fill="#FFFFFF" opacity="0.5"/>
+  <!-- Left eyelid (half-closed) -->
+  <path d="M152,144 Q172,136 192,144" fill="#E04010" stroke="none"/>
+
+  <circle cx="228" cy="152" r="20" fill="url(#eyeWhite)"/>
+  <circle cx="228" cy="152" r="20" fill="none" stroke="#2E1065" stroke-width="2"/>
+  <circle cx="228" cy="154" r="12" fill="#1A0840"/>
+  <circle cx="222" cy="148" r="4.5" fill="#FFFFFF" opacity="0.92"/>
+  <circle cx="232" cy="156" r="2"   fill="#FFFFFF" opacity="0.5"/>
+  <!-- Right eyelid (half-closed) -->
+  <path d="M208,144 Q228,136 248,144" fill="#E04010" stroke="none"/>
+
+  <!-- BROWS — flat and slightly raised (impatient, not angry) -->
+  <path d="M152,122 Q168,116 184,118" stroke="#2E1065" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <path d="M216,118 Q232,116 248,122" stroke="#2E1065" stroke-width="5" fill="none" stroke-linecap="round"/>
+
+  <!-- MUZZLE — locked protruding snout -->
+  <ellipse cx="200" cy="196" rx="34" ry="28" fill="url(#bellyGrad)"/>
+  <ellipse cx="200" cy="182" rx="11" ry="8" fill="#2D1208"/>
+  <ellipse cx="197" cy="180" rx="3.5" ry="2.5" fill="#FFFFFF" opacity="0.45"/>
+
+  <!-- MOUTH — small neutral pout (slightly pursed, playfully impatient) -->
+  <path d="M188,200 Q200,206 212,200" stroke="#2D1208" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+  <!-- Small pout bump in centre -->
+  <ellipse cx="200" cy="204" rx="6" ry="4" fill="#2D1208" opacity="0.15"/>
+
+  <!-- Impatience indicator: small "..." dots above head -->
+  <circle cx="188" cy="44" r="5" fill="#8B5CF6" opacity="0.75"/>
+  <circle cx="200" cy="38" r="5" fill="#8B5CF6" opacity="0.85"/>
+  <circle cx="212" cy="44" r="5" fill="#8B5CF6" opacity="0.75"/>
+
+</svg>

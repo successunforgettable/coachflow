@@ -1,0 +1,149 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 500" width="400" height="500">
+  <defs>
+    <radialGradient id="visorGrad" cx="42%" cy="38%" r="58%">
+      <stop offset="0%"  stop-color="#2E1065"/>
+      <stop offset="55%" stop-color="#5B21B6"/>
+      <stop offset="100%" stop-color="#8B5CF6"/>
+    </radialGradient>
+    <radialGradient id="bodyGrad" cx="38%" cy="28%" r="66%">
+      <stop offset="0%"  stop-color="#FF7A45"/>
+      <stop offset="100%" stop-color="#E04010"/>
+    </radialGradient>
+    <radialGradient id="bellyGrad" cx="50%" cy="40%" r="55%">
+      <stop offset="0%"  stop-color="#FFFAF3"/>
+      <stop offset="100%" stop-color="#F5F1EA"/>
+    </radialGradient>
+    <radialGradient id="earInnerGrad" cx="50%" cy="70%" r="55%">
+      <stop offset="0%"  stop-color="#FFE4C0"/>
+      <stop offset="100%" stop-color="#F5C090"/>
+    </radialGradient>
+    <radialGradient id="eyeWhite" cx="38%" cy="32%" r="58%">
+      <stop offset="0%"  stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#EDE8FF"/>
+    </radialGradient>
+    <linearGradient id="headsetGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"  stop-color="#C4B5FD"/>
+      <stop offset="100%" stop-color="#7C3AED"/>
+    </linearGradient>
+    <radialGradient id="tailGrad" cx="30%" cy="30%" r="70%">
+      <stop offset="0%"  stop-color="#FF7A45"/>
+      <stop offset="100%" stop-color="#E04010"/>
+    </radialGradient>
+    <!-- Red clipboard gradient -->
+    <linearGradient id="clipboardGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%"  stop-color="#FF6B6B"/>
+      <stop offset="100%" stop-color="#DC2626"/>
+    </linearGradient>
+  </defs>
+
+  <!-- FLAT PILL SHADOW -->
+  <rect x="110" y="474" width="180" height="14" rx="7" fill="#B03A0A" opacity="0.18"/>
+
+  <!-- TAIL -->
+  <ellipse cx="296" cy="348" rx="48" ry="64" fill="url(#tailGrad)" transform="rotate(-18 296 348)"/>
+  <ellipse cx="306" cy="308" rx="26" ry="34" fill="url(#bellyGrad)" transform="rotate(-22 306 308)"/>
+  <g transform="translate(284,326) rotate(-12)">
+    <path d="M9,0 L2,15 L8,15 L1,30 L16,10 L9,10 Z" fill="#FFD700" stroke="#FFB800" stroke-width="0.5" stroke-linejoin="round"/>
+  </g>
+
+  <!-- BODY -->
+  <rect x="140" y="268" width="120" height="122" rx="50" fill="url(#bodyGrad)"/>
+  <ellipse cx="200" cy="312" rx="40" ry="48" fill="url(#bellyGrad)"/>
+  <g transform="translate(187,292)">
+    <path d="M10,0 L3,18 L9,18 L2,36 L18,12 L11,12 Z" fill="#FFD700" stroke="#FFB800" stroke-width="0.5" stroke-linejoin="round"/>
+  </g>
+
+  <!-- LEGS -->
+  <rect x="154" y="368" width="34" height="50" rx="17" fill="url(#bodyGrad)"/>
+  <ellipse cx="171" cy="420" rx="21" ry="13" fill="#E04010"/>
+  <rect x="212" y="372" width="34" height="46" rx="17" fill="url(#bodyGrad)" transform="rotate(5 229 395)"/>
+  <ellipse cx="232" cy="420" rx="21" ry="13" fill="#E04010" transform="rotate(5 232 420)"/>
+
+  <!-- RED CLIPBOARD (held in left hand, slightly tilted) -->
+  <!-- Clipboard body -->
+  <rect x="52" y="248" width="84" height="110" rx="12" fill="url(#clipboardGrad)" transform="rotate(-8 94 303)"/>
+  <!-- Clipboard paper -->
+  <rect x="60" y="258" width="68" height="90"  rx="8"  fill="#FFF5F5" transform="rotate(-8 94 303)"/>
+  <!-- Clipboard clip at top -->
+  <rect x="82" y="244" width="24" height="14" rx="7" fill="#B91C1C" transform="rotate(-8 94 251)"/>
+  <!-- Lines on clipboard paper -->
+  <rect x="66" y="272" width="52" height="6" rx="3" fill="#FCA5A5" opacity="0.8" transform="rotate(-8 92 275)"/>
+  <rect x="66" y="284" width="44" height="6" rx="3" fill="#FCA5A5" opacity="0.6" transform="rotate(-8 88 287)"/>
+  <rect x="66" y="296" width="48" height="6" rx="3" fill="#FCA5A5" opacity="0.8" transform="rotate(-8 90 299)"/>
+  <rect x="66" y="308" width="38" height="6" rx="3" fill="#FCA5A5" opacity="0.6" transform="rotate(-8 85 311)"/>
+  <!-- Exclamation mark on clipboard -->
+  <rect x="88" y="318" width="8" height="20" rx="4" fill="#DC2626" opacity="0.85" transform="rotate(-8 92 328)"/>
+  <circle cx="91" cy="344" r="5" fill="#DC2626" opacity="0.85" transform="rotate(-8 92 344)"/>
+
+  <!-- LEFT ARM — holding clipboard out to the side -->
+  <rect x="102" y="278" width="48" height="24" rx="12" fill="url(#bodyGrad)" transform="rotate(20 126 290)"/>
+  <rect x="72"  y="296" width="44" height="22" rx="11" fill="url(#bodyGrad)" transform="rotate(10 94 307)"/>
+  <!-- Left paw gripping clipboard -->
+  <circle cx="80" cy="318" r="17" fill="#E04010"/>
+  <circle cx="72" cy="312" r="4.5" fill="#FF7A45"/>
+  <circle cx="80" cy="309" r="4.5" fill="#FF7A45"/>
+  <circle cx="88" cy="312" r="4.5" fill="#FF7A45"/>
+
+  <!-- RIGHT ARM — hand raised to cheek (worried gesture) -->
+  <!-- Upper arm going up toward face -->
+  <rect x="252" y="268" width="46" height="24" rx="12" fill="url(#bodyGrad)" transform="rotate(-42 275 280)"/>
+  <!-- Forearm -->
+  <rect x="270" y="238" width="42" height="22" rx="11" fill="url(#bodyGrad)" transform="rotate(-60 291 249)"/>
+  <!-- Right paw at cheek -->
+  <circle cx="278" cy="210" r="17" fill="#E04010"/>
+  <circle cx="270" cy="204" r="4.5" fill="#FF7A45"/>
+  <circle cx="278" cy="201" r="4.5" fill="#FF7A45"/>
+  <circle cx="286" cy="204" r="4.5" fill="#FF7A45"/>
+
+  <!-- HEAD — locked taller oval -->
+  <ellipse cx="200" cy="152" rx="74" ry="88" fill="url(#bodyGrad)"/>
+
+  <!-- EARS — locked pointed fox paths -->
+  <path d="M126,118 C120,100 128,52 148,32 C168,52 176,100 170,118 C162,112 154,110 148,110 C142,110 134,112 126,118 Z" fill="url(#bodyGrad)"/>
+  <path d="M134,116 C130,102 136,64 148,46 C160,64 166,102 162,116 C156,112 152,110 148,110 C144,110 140,112 134,116 Z" fill="url(#earInnerGrad)"/>
+  <path d="M230,118 C224,100 232,52 252,32 C272,52 280,100 274,118 C266,112 258,110 252,110 C246,110 238,112 230,118 Z" fill="url(#bodyGrad)"/>
+  <path d="M238,116 C234,102 240,64 252,46 C264,64 270,102 266,116 C260,112 256,110 252,110 C248,110 244,112 238,116 Z" fill="url(#earInnerGrad)"/>
+
+  <!-- HEADSET BAND + CUPS -->
+  <path d="M152,148 Q200,78 248,148" stroke="url(#headsetGrad)" stroke-width="13" fill="none" stroke-linecap="round"/>
+  <circle cx="152" cy="148" r="15" fill="url(#headsetGrad)"/>
+  <circle cx="152" cy="148" r="9"  fill="#8B5CF6"/>
+  <circle cx="248" cy="148" r="15" fill="url(#headsetGrad)"/>
+  <circle cx="248" cy="148" r="9"  fill="#8B5CF6"/>
+
+  <!-- VISOR — locked goggle band -->
+  <rect x="138" y="128" width="124" height="54" rx="27" fill="url(#visorGrad)"/>
+  <ellipse cx="172" cy="142" rx="20" ry="10" fill="#FFFFFF" opacity="0.16" transform="rotate(-18 172 142)"/>
+
+  <!-- EYES — slightly wide, worried (pupils slightly up) -->
+  <circle cx="172" cy="152" r="20" fill="url(#eyeWhite)"/>
+  <circle cx="172" cy="152" r="20" fill="none" stroke="#2E1065" stroke-width="2"/>
+  <circle cx="173" cy="150" r="12" fill="#1A0840"/>
+  <circle cx="167" cy="145" r="4.5" fill="#FFFFFF" opacity="0.92"/>
+  <circle cx="177" cy="153" r="2"   fill="#FFFFFF" opacity="0.5"/>
+
+  <circle cx="228" cy="152" r="20" fill="url(#eyeWhite)"/>
+  <circle cx="228" cy="152" r="20" fill="none" stroke="#2E1065" stroke-width="2"/>
+  <circle cx="229" cy="150" r="12" fill="#1A0840"/>
+  <circle cx="223" cy="145" r="4.5" fill="#FFFFFF" opacity="0.92"/>
+  <circle cx="233" cy="153" r="2"   fill="#FFFFFF" opacity="0.5"/>
+
+  <!-- BROWS — worried: inner ends angled DOWN toward centre, outer ends up -->
+  <!-- Left brow: right end dips down toward nose bridge -->
+  <path d="M152,122 Q165,118 182,126" stroke="#2E1065" stroke-width="5.5" fill="none" stroke-linecap="round"/>
+  <!-- Right brow: left end dips down toward nose bridge -->
+  <path d="M218,126 Q235,118 248,122" stroke="#2E1065" stroke-width="5.5" fill="none" stroke-linecap="round"/>
+
+  <!-- MUZZLE — locked protruding snout -->
+  <ellipse cx="200" cy="196" rx="34" ry="28" fill="url(#bellyGrad)"/>
+  <ellipse cx="200" cy="182" rx="11" ry="8" fill="#2D1208"/>
+  <ellipse cx="197" cy="180" rx="3.5" ry="2.5" fill="#FFFFFF" opacity="0.45"/>
+
+  <!-- MOUTH — small uncertain downward curve (worried frown) -->
+  <path d="M186,204 Q200,196 214,204" stroke="#2D1208" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+
+  <!-- Worry sweat drop (right side of forehead) -->
+  <ellipse cx="258" cy="112" rx="6" ry="9" fill="#C4B5FD" opacity="0.85" transform="rotate(14 258 112)"/>
+  <ellipse cx="256" cy="108" rx="2.5" ry="1.8" fill="#FFFFFF" opacity="0.5"/>
+
+</svg>

@@ -1,0 +1,183 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 500" width="400" height="500">
+  <defs>
+    <radialGradient id="visorGrad" cx="42%" cy="38%" r="58%">
+      <stop offset="0%"  stop-color="#2E1065"/>
+      <stop offset="55%" stop-color="#5B21B6"/>
+      <stop offset="100%" stop-color="#8B5CF6"/>
+    </radialGradient>
+    <radialGradient id="bodyGrad" cx="38%" cy="28%" r="66%">
+      <stop offset="0%"  stop-color="#FF7A45"/>
+      <stop offset="100%" stop-color="#E04010"/>
+    </radialGradient>
+    <radialGradient id="bellyGrad" cx="50%" cy="40%" r="55%">
+      <stop offset="0%"  stop-color="#FFFAF3"/>
+      <stop offset="100%" stop-color="#F5F1EA"/>
+    </radialGradient>
+    <radialGradient id="earInnerGrad" cx="50%" cy="70%" r="55%">
+      <stop offset="0%"  stop-color="#FFE4C0"/>
+      <stop offset="100%" stop-color="#F5C090"/>
+    </radialGradient>
+    <radialGradient id="eyeWhite" cx="38%" cy="32%" r="58%">
+      <stop offset="0%"  stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#EDE8FF"/>
+    </radialGradient>
+    <radialGradient id="screenGrad" cx="50%" cy="50%" r="60%">
+      <stop offset="0%"  stop-color="#DDD6FE"/>
+      <stop offset="100%" stop-color="#C4B5FD"/>
+    </radialGradient>
+    <linearGradient id="headsetGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"  stop-color="#C4B5FD"/>
+      <stop offset="100%" stop-color="#7C3AED"/>
+    </linearGradient>
+    <radialGradient id="tailGrad" cx="30%" cy="30%" r="70%">
+      <stop offset="0%"  stop-color="#FF7A45"/>
+      <stop offset="100%" stop-color="#E04010"/>
+    </radialGradient>
+  </defs>
+
+  <!-- FLAT PILL SHADOW -->
+  <rect x="110" y="474" width="180" height="14" rx="7" fill="#B03A0A" opacity="0.18"/>
+
+  <!-- TAIL -->
+  <ellipse cx="296" cy="348" rx="48" ry="64" fill="url(#tailGrad)" transform="rotate(-18 296 348)"/>
+  <ellipse cx="306" cy="308" rx="26" ry="34" fill="url(#bellyGrad)" transform="rotate(-22 306 308)"/>
+  <g transform="translate(284,326) rotate(-12)">
+    <path d="M9,0 L2,15 L8,15 L1,30 L16,10 L9,10 Z" fill="#FFD700" stroke="#FFB800" stroke-width="0.5" stroke-linejoin="round"/>
+  </g>
+
+  <!-- BODY -->
+  <rect x="140" y="268" width="120" height="122" rx="50" fill="url(#bodyGrad)"/>
+  <ellipse cx="200" cy="312" rx="40" ry="48" fill="url(#bellyGrad)"/>
+  <g transform="translate(187,292)">
+    <path d="M10,0 L3,18 L9,18 L2,36 L18,12 L11,12 Z" fill="#FFD700" stroke="#FFB800" stroke-width="0.5" stroke-linejoin="round"/>
+  </g>
+
+  <!-- LEGS / FEET -->
+  <rect x="154" y="368" width="34" height="50" rx="17" fill="url(#bodyGrad)"/>
+  <ellipse cx="171" cy="420" rx="21" ry="13" fill="#E04010"/>
+  <rect x="212" y="372" width="34" height="46" rx="17" fill="url(#bodyGrad)" transform="rotate(7 229 395)"/>
+  <ellipse cx="232" cy="420" rx="21" ry="13" fill="#E04010" transform="rotate(7 232 420)"/>
+
+  <!-- LEFT ARM — reaching forward to keyboard -->
+  <rect x="94" y="282" width="50" height="26" rx="13" fill="url(#bodyGrad)" transform="rotate(28 119 295)"/>
+  <rect x="70" y="306" width="46" height="22" rx="11" fill="url(#bodyGrad)" transform="rotate(8 93 317)"/>
+  <circle cx="82" cy="330" r="17" fill="#E04010"/>
+  <circle cx="74" cy="324" r="4.5" fill="#FF7A45"/>
+  <circle cx="82" cy="321" r="4.5" fill="#FF7A45"/>
+  <circle cx="90" cy="324" r="4.5" fill="#FF7A45"/>
+
+  <!-- RIGHT ARM — reaching forward to keyboard -->
+  <rect x="256" y="282" width="50" height="26" rx="13" fill="url(#bodyGrad)" transform="rotate(-28 281 295)"/>
+  <rect x="284" y="306" width="46" height="22" rx="11" fill="url(#bodyGrad)" transform="rotate(-8 307 317)"/>
+  <circle cx="318" cy="330" r="17" fill="#E04010"/>
+  <circle cx="310" cy="324" r="4.5" fill="#FF7A45"/>
+  <circle cx="318" cy="321" r="4.5" fill="#FF7A45"/>
+  <circle cx="326" cy="324" r="4.5" fill="#FF7A45"/>
+
+  <!-- LAPTOP -->
+  <rect x="94" y="186" width="212" height="150" rx="14" fill="#7C3AED"/>
+  <rect x="102" y="194" width="196" height="134" rx="10" fill="#6D28D9"/>
+  <rect x="110" y="202" width="180" height="118" rx="8" fill="url(#screenGrad)"/>
+  <rect x="122" y="218" width="96"  height="7" rx="3.5" fill="#7C3AED" opacity="0.65"/>
+  <rect x="122" y="232" width="126" height="7" rx="3.5" fill="#7C3AED" opacity="0.45"/>
+  <rect x="122" y="246" width="78"  height="7" rx="3.5" fill="#7C3AED" opacity="0.65"/>
+  <rect x="122" y="260" width="110" height="7" rx="3.5" fill="#7C3AED" opacity="0.45"/>
+  <rect x="122" y="274" width="88"  height="7" rx="3.5" fill="#7C3AED" opacity="0.65"/>
+  <rect x="122" y="288" width="136" height="7" rx="3.5" fill="#7C3AED" opacity="0.45"/>
+  <rect x="262" y="288" width="8"   height="7" rx="3"   fill="#FF5B1D" opacity="0.9"/>
+  <rect x="238" y="218" width="38"  height="18" rx="9"  fill="#FF5B1D"/>
+  <text x="257" y="231" font-family="Arial, sans-serif" font-size="9" font-weight="bold" fill="#FFFFFF" text-anchor="middle">ZAP</text>
+  <rect x="110" y="334" width="180" height="8" rx="4" fill="#6D28D9"/>
+  <rect x="76"  y="340" width="248" height="34" rx="10" fill="#8B5CF6"/>
+  <rect x="84"  y="344" width="232" height="24" rx="8"  fill="#A78BFA"/>
+  <rect x="96"  y="348" width="208" height="6"  rx="3"  fill="#7C3AED" opacity="0.45"/>
+  <rect x="100" y="358" width="200" height="6"  rx="3"  fill="#7C3AED" opacity="0.45"/>
+
+  <!-- HEAD — locked taller oval -->
+  <ellipse cx="200" cy="152" rx="74" ry="88" fill="url(#bodyGrad)"/>
+
+  <!-- ═══════════════════════════════════════
+       EARS — soft pointed fox triangles
+       Built with cubic bezier paths:
+       - Wide rounded base blending into head
+       - Sides curve inward slightly
+       - Tip comes to a clear soft point
+  ════════════════════════════════════════ -->
+  <!-- Left ear OUTER — pointed fox shape -->
+  <path d="
+    M126,118
+    C120,100 128,52 148,32
+    C168,52 176,100 170,118
+    C162,112 154,110 148,110
+    C142,110 134,112 126,118
+    Z"
+    fill="url(#bodyGrad)"/>
+  <!-- Left ear INNER — cream fill, slightly smaller -->
+  <path d="
+    M134,116
+    C130,102 136,64 148,46
+    C160,64 166,102 162,116
+    C156,112 152,110 148,110
+    C144,110 140,112 134,116
+    Z"
+    fill="url(#earInnerGrad)"/>
+
+  <!-- Right ear OUTER — mirrored -->
+  <path d="
+    M230,118
+    C224,100 232,52 252,32
+    C272,52 280,100 274,118
+    C266,112 258,110 252,110
+    C246,110 238,112 230,118
+    Z"
+    fill="url(#bodyGrad)"/>
+  <!-- Right ear INNER -->
+  <path d="
+    M238,116
+    C234,102 240,64 252,46
+    C264,64 270,102 266,116
+    C260,112 256,110 252,110
+    C248,110 244,112 238,116
+    Z"
+    fill="url(#earInnerGrad)"/>
+
+  <!-- HEADSET BAND + CUPS -->
+  <path d="M152,148 Q200,78 248,148" stroke="url(#headsetGrad)" stroke-width="13" fill="none" stroke-linecap="round"/>
+  <circle cx="152" cy="148" r="15" fill="url(#headsetGrad)"/>
+  <circle cx="152" cy="148" r="9"  fill="#8B5CF6"/>
+  <circle cx="248" cy="148" r="15" fill="url(#headsetGrad)"/>
+  <circle cx="248" cy="148" r="9"  fill="#8B5CF6"/>
+
+  <!-- VISOR — locked goggle band, eye region only -->
+  <rect x="138" y="128" width="124" height="54" rx="27" fill="url(#visorGrad)"/>
+  <ellipse cx="172" cy="142" rx="20" ry="10" fill="#FFFFFF" opacity="0.16" transform="rotate(-18 172 142)"/>
+
+  <!-- EYES -->
+  <circle cx="172" cy="152" r="20" fill="url(#eyeWhite)"/>
+  <circle cx="172" cy="152" r="20" fill="none" stroke="#2E1065" stroke-width="2"/>
+  <circle cx="174" cy="154" r="12" fill="#1A0840"/>
+  <circle cx="168" cy="148" r="4.5" fill="#FFFFFF" opacity="0.92"/>
+  <circle cx="178" cy="156" r="2"   fill="#FFFFFF" opacity="0.5"/>
+
+  <circle cx="228" cy="152" r="20" fill="url(#eyeWhite)"/>
+  <circle cx="228" cy="152" r="20" fill="none" stroke="#2E1065" stroke-width="2"/>
+  <circle cx="230" cy="154" r="12" fill="#1A0840"/>
+  <circle cx="224" cy="148" r="4.5" fill="#FFFFFF" opacity="0.92"/>
+  <circle cx="234" cy="156" r="2"   fill="#FFFFFF" opacity="0.5"/>
+
+  <!-- BROWS — furrowed inward (concentration) -->
+  <path d="M152,124 Q168,116 184,120" stroke="#2E1065" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <path d="M216,120 Q232,116 248,124" stroke="#2E1065" stroke-width="5" fill="none" stroke-linecap="round"/>
+
+  <!-- MUZZLE — locked protruding snout -->
+  <ellipse cx="200" cy="196" rx="34" ry="28" fill="url(#bellyGrad)"/>
+  <ellipse cx="200" cy="182" rx="11" ry="8" fill="#2D1208"/>
+  <ellipse cx="197" cy="180" rx="3.5" ry="2.5" fill="#FFFFFF" opacity="0.45"/>
+  <path d="M184,196 Q200,210 216,196" stroke="#2D1208" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+  <ellipse cx="200" cy="206" rx="7" ry="5" fill="#FF5B1D" opacity="0.65"/>
+
+  <!-- SWEAT DROP -->
+  <ellipse cx="260" cy="108" rx="6" ry="9" fill="#C4B5FD" opacity="0.82" transform="rotate(14 260 108)"/>
+  <ellipse cx="258" cy="104" rx="2.5" ry="1.8" fill="#FFFFFF" opacity="0.5"/>
+
+</svg>
