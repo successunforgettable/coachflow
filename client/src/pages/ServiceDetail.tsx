@@ -123,7 +123,7 @@ export default function ServiceDetail() {
   }
 
   if (!isAuthenticated) {
-    window.location.href = "/login";
+    window.location.href = "/";
     return null;
   }
 

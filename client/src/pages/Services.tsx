@@ -55,7 +55,7 @@ export default function Services() {
 
   // Redirect to login if not authenticated
   if (!authLoading && !isAuthenticated) {
-    window.location.href = "/login";
+    window.location.href = "/";
     return null;
   }
 

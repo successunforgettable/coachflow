@@ -142,7 +142,7 @@ export default function WhatsAppSequenceGenerator() {
     );
   }
   if (!isAuthenticated) {
-    window.location.href = "/login";
+    window.location.href = "/";
     return null;
   }
 

@@ -4,11 +4,12 @@
  *             Fork Point Modal (first-time only), Persistent Buttons
  * All isolated within [data-v2] scope. No existing routes touched.
  */
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useLocation } from "wouter";
 import V2Layout from "./V2Layout";
 import V2ToolLibrary from "./V2ToolLibrary";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 type NodeState = "completed" | "active" | "locked";
@@ -214,6 +215,20 @@ const MILESTONE_TO_NODE: Record<string, number> = {
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function V2Dashboard() {
   const [, navigate] = useLocation();
+  const { user, logout } = useAuth();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
   const [activeTab, setActiveTab] = useState<"guided" | "tools">(
     () => new URLSearchParams(window.location.search).get("tab") === "tools" ? "tools" : "guided"
   );
@@ -297,22 +312,137 @@ export default function V2Dashboard() {
             fontSize: "22px",
             color: "var(--v2-text-color)",
           }}>ZAP</span>
-          <a
-            href="/dashboard"
-            style={{
-              fontFamily: "var(--v2-font-body)",
-              fontSize: "12px",
-              color: "#777",
-              textDecoration: "none",
-              borderBottom: "1px solid #ccc",
-              paddingBottom: "1px",
-              transition: "color 0.15s ease",
-            }}
-            onMouseEnter={e => (e.currentTarget.style.color = "#444")}
-            onMouseLeave={e => (e.currentTarget.style.color = "#777")}
-          >
-            Switch to Classic View
-          </a>
+          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+            <a
+              href="/dashboard"
+              style={{
+                fontFamily: "var(--v2-font-body)",
+                fontSize: "12px",
+                color: "#777",
+                textDecoration: "none",
+                borderBottom: "1px solid #ccc",
+                paddingBottom: "1px",
+                transition: "color 0.15s ease",
+              }}
+              onMouseEnter={e => (e.currentTarget.style.color = "#444")}
+              onMouseLeave={e => (e.currentTarget.style.color = "#777")}
+            >
+              Switch to Classic View
+            </a>
+
+            {/* User menu */}
+            <div ref={menuRef} style={{ position: "relative" }}>
+              <button
+                onClick={() => setMenuOpen(v => !v)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  background: "none",
+                  border: "1.5px solid rgba(139,92,246,0.25)",
+                  borderRadius: "999px",
+                  padding: "4px 12px 4px 4px",
+                  cursor: "pointer",
+                  fontFamily: "var(--v2-font-body)",
+                  fontSize: "13px",
+                  color: "var(--v2-text-color)",
+                  transition: "border-color 0.15s ease",
+                }}
+                onMouseEnter={e => (e.currentTarget.style.borderColor = "rgba(139,92,246,0.6)")}
+                onMouseLeave={e => (e.currentTarget.style.borderColor = "rgba(139,92,246,0.25)")}
+              >
+                {/* Avatar circle */}
+                <div style={{
+                  width: "28px",
+                  height: "28px",
+                  borderRadius: "50%",
+                  background: "linear-gradient(135deg, #FF5B1D, #8B5CF6)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#fff",
+                  fontWeight: 700,
+                  fontSize: "12px",
+                  flexShrink: 0,
+                }}>
+                  {user?.name?.charAt(0).toUpperCase() || "?"}
+                </div>
+                <span style={{ maxWidth: "120px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {user?.name || "Account"}
+                </span>
+                {/* Chevron */}
+                <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{ flexShrink: 0, opacity: 0.5, transform: menuOpen ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>
+                  <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+
+              {/* Dropdown */}
+              {menuOpen && (
+                <div style={{
+                  position: "absolute",
+                  top: "calc(100% + 8px)",
+                  right: 0,
+                  background: "#fff",
+                  border: "1px solid rgba(0,0,0,0.1)",
+                  borderRadius: "12px",
+                  boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+                  minWidth: "180px",
+                  zIndex: 100,
+                  overflow: "hidden",
+                  fontFamily: "var(--v2-font-body)",
+                }}>
+                  {/* User info */}
+                  <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(0,0,0,0.07)" }}>
+                    <div style={{ fontSize: "13px", fontWeight: 600, color: "#1a1a1a", marginBottom: "2px" }}>{user?.name}</div>
+                    <div style={{ fontSize: "11px", color: "#888", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user?.email}</div>
+                  </div>
+                  {/* Settings */}
+                  <a
+                    href="/settings"
+                    onClick={() => setMenuOpen(false)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                      padding: "10px 16px",
+                      fontSize: "13px",
+                      color: "#333",
+                      textDecoration: "none",
+                      transition: "background 0.1s",
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.background = "#f5f5f5")}
+                    onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    Settings
+                  </a>
+                  {/* Sign out */}
+                  <button
+                    onClick={() => { setMenuOpen(false); logout(); }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                      padding: "10px 16px",
+                      fontSize: "13px",
+                      color: "#ef4444",
+                      background: "none",
+                      border: "none",
+                      width: "100%",
+                      textAlign: "left",
+                      cursor: "pointer",
+                      transition: "background 0.1s",
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.background = "#fef2f2")}
+                    onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                    Sign out
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         </header>
 
         {/* ── COMPONENT 1: Nav Tabs ── */}

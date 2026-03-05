@@ -90,9 +90,9 @@ export default function Dashboard() {
     enabled: isAuthenticated,
   });
 
-  // Redirect to login if not authenticated
+  // Redirect to home if not authenticated
   if (!authLoading && !isAuthenticated) {
-    window.location.href = "/login";
+    window.location.href = "/";
     return null;
   }
 

@@ -130,7 +130,7 @@ export default function AdCreativesGenerator() {
   }
 
   if (!isAuthenticated) {
-    window.location.href = "/login";
+    window.location.href = "/";
     return null;
   }
 
