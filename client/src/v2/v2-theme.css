@@ -187,6 +187,13 @@
   flex-wrap: wrap;
 }
 
+/* ─── Tool Library Grid ─────────────────────────────────────── */
+[data-v2] .v2-tool-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
 /* ─── Mobile Responsive (≤ 768px) ───────────────────────────── */
 @media (max-width: 768px) {
 

@@ -7,6 +7,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useLocation } from "wouter";
 import V2Layout from "./V2Layout";
+import V2ToolLibrary from "./V2ToolLibrary";
 import { trpc } from "@/lib/trpc";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -213,7 +214,9 @@ const MILESTONE_TO_NODE: Record<string, number> = {
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function V2Dashboard() {
   const [, navigate] = useLocation();
-  const [activeTab, setActiveTab] = useState<"guided" | "tools">("guided");
+  const [activeTab, setActiveTab] = useState<"guided" | "tools">(
+    () => new URLSearchParams(window.location.search).get("tab") === "tools" ? "tools" : "guided"
+  );
 
   // ── Real progress data from backend ──
   const { data: progressData } = trpc.progress.getProgress.useQuery();
@@ -266,7 +269,7 @@ export default function V2Dashboard() {
   }
 
   function handleTabTools() {
-    navigate("/dashboard");
+    setActiveTab("tools");
   }
 
   const progressPct = Math.round((completedCount / totalCount) * 100);
@@ -286,7 +289,7 @@ export default function V2Dashboard() {
       <div className="v2-container" style={{ paddingTop: "32px", paddingBottom: "64px" }}>
 
         {/* ── Header ── */}
-        <header style={{ marginBottom: "32px" }}>
+        <header style={{ marginBottom: "32px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span style={{
             fontFamily: "var(--v2-font-heading)",
             fontStyle: "italic",
@@ -294,6 +297,22 @@ export default function V2Dashboard() {
             fontSize: "22px",
             color: "var(--v2-text-color)",
           }}>ZAP</span>
+          <a
+            href="/dashboard"
+            style={{
+              fontFamily: "var(--v2-font-body)",
+              fontSize: "12px",
+              color: "#777",
+              textDecoration: "none",
+              borderBottom: "1px solid #ccc",
+              paddingBottom: "1px",
+              transition: "color 0.15s ease",
+            }}
+            onMouseEnter={e => (e.currentTarget.style.color = "#444")}
+            onMouseLeave={e => (e.currentTarget.style.color = "#777")}
+          >
+            Switch to Classic View
+          </a>
         </header>
 
         {/* ── COMPONENT 1: Nav Tabs ── */}
@@ -404,18 +423,22 @@ export default function V2Dashboard() {
 
 
 
-        {/* ── COMPONENT 2: 11-Step Winding Path ── */}
-        <div className="v2-path-wrapper">
-          {nodes.map((node, idx) => (
-            <div key={node.id} className="v2-path-column">
-              {/* Connector above (except first node) */}
-              {idx > 0 && (
-                <Connector fromCompleted={nodes[idx - 1].state === "completed"} />
-              )}
-              <PathNode node={node} isMobile={isMobile} onNodeClick={handleNodeClick} />
-            </div>
-          ))}
-        </div>
+        {/* ── COMPONENT 2: 11-Step Winding Path (Guided) OR Tool Library ── */}
+        {activeTab === "guided" ? (
+          <div className="v2-path-wrapper">
+            {nodes.map((node, idx) => (
+              <div key={node.id} className="v2-path-column">
+                {/* Connector above (except first node) */}
+                {idx > 0 && (
+                  <Connector fromCompleted={nodes[idx - 1].state === "completed"} />
+                )}
+                <PathNode node={node} isMobile={isMobile} onNodeClick={handleNodeClick} />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <V2ToolLibrary />
+        )}
 
       </div>
     </V2Layout>

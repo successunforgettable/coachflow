@@ -26,10 +26,10 @@ export default function LandingPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const { startTour } = useTour();
 
-  // Redirect authenticated users to dashboard
+  // Redirect authenticated users to V2 dashboard
   useEffect(() => {
     if (isAuthenticated) {
-      setLocation("/dashboard");
+      setLocation("/v2-dashboard");
     }
   }, [isAuthenticated, setLocation]);
 
