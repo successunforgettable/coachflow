@@ -133,9 +133,9 @@ function ForkModal({ onGuide, onJump }: { onGuide: () => void; onJump: () => voi
       {/* Bottom-sheet on mobile handled via CSS class */}
       <div className="v2-fork-modal">
         <img
-          src="https://files.manuscdn.com/user_upload_by_module/session_file/310419663026750612/kDFAJbylaPslNtEG.jpg"
+          src="https://files.manuscdn.com/user_upload_by_module/session_file/310419663026750612/yEmwjxjbsCjMaqII.png"
           alt="Zappy the fox mascot"
-          style={{ width: "96px", height: "96px", objectFit: "cover", borderRadius: "50%", margin: "0 auto 20px", display: "block", border: "3px solid #FF5B1D" }}
+          style={{ width: "120px", height: "120px", objectFit: "contain", borderRadius: "0", margin: "0 auto 20px", display: "block" }}
         />
         <h2 style={{
           fontFamily: "var(--v2-font-heading)",
@@ -201,18 +201,6 @@ export default function V2Dashboard() {
 
   const completedCount = nodes.filter(n => n.state === "completed").length;
   const totalCount = nodes.length;
-
-  // Simulate ICP completion (for screenshot 3 trigger)
-  function simulateICPComplete() {
-    setNodes(prev => prev.map(n =>
-      n.id === 2 ? { ...n, state: "completed" } :
-      n.id === 3 ? { ...n, state: "active" } :
-      n
-    ));
-    if (!forkDismissed) {
-      setShowModal(true);
-    }
-  }
 
   function handleGuide() {
     setShowModal(false);
@@ -357,26 +345,7 @@ export default function V2Dashboard() {
           </div>
         )}
 
-        {/* ── Dev helper: simulate ICP complete (for screenshot) ── */}
-        <div style={{ marginBottom: "24px" }}>
-          <button
-            onClick={simulateICPComplete}
-            style={{
-              fontFamily: "var(--v2-font-body)",
-              fontSize: "12px",
-              fontWeight: 600,
-              color: "var(--v2-accent-purple)",
-              background: "rgba(139,92,246,0.08)",
-              border: "1px dashed var(--v2-accent-purple)",
-              borderRadius: "var(--v2-border-radius-pill)",
-              padding: "6px 14px",
-              cursor: "pointer",
-              letterSpacing: "0.04em",
-            }}
-          >
-            ⚡ Simulate ICP Complete (Sprint 2 QA)
-          </button>
-        </div>
+
 
         {/* ── COMPONENT 2: 11-Step Winding Path ── */}
         <div className="v2-path-wrapper">
