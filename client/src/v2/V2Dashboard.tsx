@@ -234,7 +234,17 @@ export default function V2Dashboard() {
   );
 
   // ── Real progress data from backend ──
-  const { data: progressData } = trpc.progress.getProgress.useQuery();
+  const { data: progressData, isLoading: progressLoading } = trpc.progress.getProgress.useQuery();
+
+  // ── First-time gate: no service saved yet ──
+  // While loading we show nothing to avoid flicker.
+  // Once loaded, if the "service" milestone is not completed the user sees the
+  // welcome screen instead of the winding path + tabs.
+  const isFirstTime = !progressLoading &&
+    progressData !== undefined &&
+    !progressData.milestones?.some(
+      (m: { id: string; completed: boolean }) => m.id === "service" && m.completed
+    );
 
   // ── Derive node states from real data (strict sequential logic) ──
   const nodes = useMemo<PathNode[]>(() => {
@@ -469,6 +479,73 @@ export default function V2Dashboard() {
           </div>
         </header>
 
+        {/* ── FIRST-TIME WELCOME SCREEN ── */}
+        {isFirstTime ? (
+          <div style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            minHeight: "60vh",
+            textAlign: "center",
+            padding: "0 24px",
+          }}>
+            <img
+              src="/zappy-waiting.svg"
+              alt="Zappy waiting"
+              style={{ width: "180px", height: "180px", marginBottom: "28px" }}
+            />
+            <h2 style={{
+              fontFamily: "var(--v2-font-heading)",
+              fontWeight: 800,
+              fontSize: "22px",
+              color: "var(--v2-text-color)",
+              marginBottom: "12px",
+              lineHeight: 1.3,
+              maxWidth: "420px",
+            }}>
+              Let&apos;s build your first campaign. It starts with one sentence about what you do.
+            </h2>
+            <button
+              onClick={() => navigate("/services")}
+              style={{
+                background: "var(--v2-primary-btn, #FF5B1D)",
+                color: "#fff",
+                border: "none",
+                borderRadius: "var(--v2-border-radius-pill, 999px)",
+                padding: "16px 40px",
+                fontFamily: "var(--v2-font-body)",
+                fontWeight: 700,
+                fontSize: "17px",
+                cursor: "pointer",
+                marginBottom: "14px",
+                boxShadow: "0 4px 20px rgba(255,91,29,0.30)",
+                transition: "transform 0.15s ease, box-shadow 0.15s ease",
+              }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-2px)";
+                (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 8px 28px rgba(255,91,29,0.40)";
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLButtonElement).style.transform = "";
+                (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 4px 20px rgba(255,91,29,0.30)";
+              }}
+            >
+              Define My Service
+            </button>
+            <p style={{
+              fontFamily: "var(--v2-font-body)",
+              fontSize: "13px",
+              color: "rgba(26,22,36,0.45)",
+              margin: 0,
+            }}>
+              Takes 2 minutes. Powers everything else.
+            </p>
+          </div>
+        ) : null}
+
+        {!isFirstTime && (
+        <>
         {/* ── COMPONENT 1: Nav Tabs ── */}
         <div style={{
           display: "inline-flex",
@@ -592,6 +669,9 @@ export default function V2Dashboard() {
           </div>
         ) : (
           <V2ToolLibrary />
+        )}
+
+        </>
         )}
 
       </div>
