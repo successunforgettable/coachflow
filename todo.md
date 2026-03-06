@@ -3757,3 +3757,6 @@ Scene 5 (6s): "Stop being invisible. Your next client is already on Facebook..."
 - [x] Add ICP gate to Tool Library: Zappy prompt card when no ICP exists
 - [x] Add ICP selector dropdown to Tool Library: "Generating for: [ICP Name]"
 - [x] Pass selected ICP id to all generator cards via URL param
+
+## Bug Fixes
+- [x] Fix sign-out: clicking Sign out does not redirect to login page / clear session properly

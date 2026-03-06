@@ -32,12 +32,17 @@ export function useAuth(options?: UseAuthOptions) {
         error instanceof TRPCClientError &&
         error.data?.code === "UNAUTHORIZED"
       ) {
-        return;
+        // already logged out — still redirect
+      } else {
+        // non-auth errors: still redirect after cleanup
+        console.error("Logout error:", error);
       }
-      throw error;
     } finally {
       utils.auth.me.setData(undefined, null);
-      await utils.auth.me.invalidate();
+      // Clear any cached user info from localStorage
+      try { localStorage.removeItem("manus-runtime-user-info"); } catch {}
+      // Redirect to Manus OAuth login page
+      window.location.href = getLoginUrl();
     }
   }, [logoutMutation, utils]);
 
