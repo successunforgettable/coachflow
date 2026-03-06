@@ -264,23 +264,23 @@ function DashboardLayoutContent({
                 );
               })}
               
-              {/* Admin-only Compliance Admin link */}
-              {user?.role === 'admin' && (
+              {/* Admin Panel link — visible to admin and superuser roles only */}
+              {(user?.role === 'admin' || user?.role === 'superuser') && (
                 <SidebarMenuItem>
                   <SidebarMenuButton
-                    isActive={location === '/admin/compliance'}
-                    onClick={() => setLocation('/admin/compliance')}
-                    tooltip="Compliance Admin"
+                    isActive={location === '/admin' || location.startsWith('/admin/')}
+                    onClick={() => setLocation('/admin')}
+                    tooltip="Admin Panel"
                     className={`h-10 transition-all font-normal ${
-                      location === '/admin/compliance'
+                      location === '/admin' || location.startsWith('/admin/')
                         ? 'bg-primary/20 text-primary font-semibold border-l-2 border-primary rounded-l-none'
                         : 'text-sidebar-foreground/70 hover:text-sidebar-foreground'
                     }`}
                   >
                     <Shield
-                      className={`h-4 w-4 flex-shrink-0 ${location === '/admin/compliance' ? 'text-primary' : 'text-muted-foreground'}`}
+                      className={`h-4 w-4 flex-shrink-0 ${location === '/admin' || location.startsWith('/admin/') ? 'text-primary' : 'text-muted-foreground'}`}
                     />
-                    <span>Compliance Admin</span>
+                    <span>Admin Panel</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               )}

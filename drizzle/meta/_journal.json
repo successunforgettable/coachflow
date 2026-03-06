@@ -337,6 +337,13 @@
       "when": 1772726336376,
       "tag": "0047_dizzy_santa_claus",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "5",
+      "when": 1772789550060,
+      "tag": "0048_secret_warpath",
+      "breakpoints": true
     }
   ]
 }

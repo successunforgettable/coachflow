@@ -1066,3 +1066,59 @@ export const icpAngleSuggestions = mysqlTable("icp_angle_suggestions", {
 }));
 export type IcpAngleSuggestion = typeof icpAngleSuggestions.$inferSelect;
 export type InsertIcpAngleSuggestion = typeof icpAngleSuggestions.$inferInsert;
+
+/**
+ * Admin Audit Log — tracks all admin actions with full before/after details
+ */
+export const adminAuditLog = mysqlTable("admin_audit_log", {
+  id: int("id").autoincrement().primaryKey(),
+  adminUserId: int("admin_user_id").notNull().references(() => users.id),
+  actionType: varchar("action_type", { length: 100 }).notNull(),
+  targetUserId: int("target_user_id").references(() => users.id),
+  details: text("details").default("{}").notNull(),
+  ipAddress: varchar("ip_address", { length: 100 }),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  adminUserIdIdx: index("idx_audit_adminUserId").on(table.adminUserId),
+  targetUserIdIdx: index("idx_audit_targetUserId").on(table.targetUserId),
+  createdAtIdx: index("idx_audit_createdAt").on(table.createdAt),
+}));
+export type AdminAuditLog = typeof adminAuditLog.$inferSelect;
+export type InsertAdminAuditLog = typeof adminAuditLog.$inferInsert;
+
+/**
+ * User Notes — internal admin notes on user accounts
+ */
+export const userNotes = mysqlTable("user_notes", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  adminUserId: int("admin_user_id").notNull().references(() => users.id),
+  note: text("note").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  userIdIdx: index("idx_userNotes_userId").on(table.userId),
+}));
+export type UserNote = typeof userNotes.$inferSelect;
+export type InsertUserNote = typeof userNotes.$inferInsert;
+
+/**
+ * Content Flags — flagged generated content for moderation
+ */
+export const contentFlags = mysqlTable("content_flags", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  contentType: varchar("content_type", { length: 100 }).notNull(),
+  contentId: int("content_id").notNull(),
+  contentText: text("content_text"),
+  flagReason: text("flag_reason"),
+  status: varchar("status", { length: 50 }).default("pending").notNull(),
+  resolvedBy: int("resolved_by").references(() => users.id),
+  resolvedAt: timestamp("resolved_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  userIdIdx: index("idx_contentFlags_userId").on(table.userId),
+  statusIdx: index("idx_contentFlags_status").on(table.status),
+}));
+export type ContentFlag = typeof contentFlags.$inferSelect;
+export type InsertContentFlag = typeof contentFlags.$inferInsert;

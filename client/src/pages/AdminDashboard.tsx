@@ -29,7 +29,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { Shield, Users, TrendingUp, Search, RefreshCw, Edit } from "lucide-react";
+import { Shield, Users, TrendingUp, Search, RefreshCw, Edit, Download, CheckSquare, Square, UserCog, Link as LinkIcon, ExternalLink } from "lucide-react";
 import { useLocation } from "wouter";
 import { FinancialMetricsCard } from "@/components/admin/FinancialMetricsCard";
 import { RevenueByTierChart } from "@/components/admin/RevenueByTierChart";
@@ -45,6 +45,12 @@ export default function AdminDashboard() {
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [showTierDialog, setShowTierDialog] = useState(false);
   const [newTier, setNewTier] = useState<"trial" | "pro" | "agency">("trial");
+  const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
+  const [showBulkTierDialog, setShowBulkTierDialog] = useState(false);
+  const [bulkNewTier, setBulkNewTier] = useState<"trial" | "pro" | "agency">("trial");
+  const [showSuperuserDialog, setShowSuperuserDialog] = useState(false);
+  const [superuserTarget, setSuperuserTarget] = useState<any>(null);
+  const [superuserAction, setSuperuserAction] = useState<"grant" | "revoke">("grant");
 
   // Check if user is admin
   if (!authLoading && user?.role !== "admin") {
@@ -84,6 +90,83 @@ export default function AdminDashboard() {
   });
 
   // Filter users
+  const bulkResetMutation = trpc.admin.bulkResetQuota.useMutation({
+    onSuccess: (data: any) => {
+      toast.success(`Quota reset for ${data.count} users`);
+      setSelectedUserIds([]);
+      refetchUsers();
+    },
+    onError: () => toast.error("Bulk reset failed"),
+  });
+
+  const bulkTierMutation = trpc.admin.bulkChangeTier.useMutation({
+    onSuccess: (data: any) => {
+      toast.success(`Tier updated for ${data.count} users`);
+      setSelectedUserIds([]);
+      setShowBulkTierDialog(false);
+      refetchUsers();
+    },
+    onError: () => toast.error("Bulk tier change failed"),
+  });
+
+  const createSuperUserMutation = trpc.admin.createSuperUser.useMutation({
+    onSuccess: () => {
+      toast.success("Superuser role granted");
+      setShowSuperuserDialog(false);
+      refetchUsers();
+    },
+    onError: () => toast.error("Failed to grant superuser"),
+  });
+
+  const revokeSuperUserMutation = trpc.admin.revokeSuperUser.useMutation({
+    onSuccess: () => {
+      toast.success("Superuser role revoked");
+      setShowSuperuserDialog(false);
+      refetchUsers();
+    },
+    onError: () => toast.error("Failed to revoke superuser"),
+  });
+
+  const { data: superUsers } = trpc.admin.listSuperUsers.useQuery();
+
+  const exportCSV = () => {
+    const users = filteredUsers || [];
+    const headers = ["ID", "Name", "Email", "Tier", "Status", "Role", "Joined", "Last Sign-In", "Total Generations"];
+    const rows = users.map((u: any) => {
+      const total = (u.headlineGeneratedCount || 0) + (u.hvcoGeneratedCount || 0) +
+        (u.heroMechanismGeneratedCount || 0) + (u.icpGeneratedCount || 0) +
+        (u.adCopyGeneratedCount || 0) + (u.emailSeqGeneratedCount || 0) +
+        (u.whatsappSeqGeneratedCount || 0) + (u.landingPageGeneratedCount || 0) +
+        (u.offerGeneratedCount || 0);
+      return [u.id, u.name || "", u.email || "", u.subscriptionTier || "trial",
+        u.subscriptionStatus || "", u.role || "user",
+        new Date(u.createdAt).toLocaleDateString(),
+        u.lastSignedIn ? new Date(u.lastSignedIn).toLocaleDateString() : "",
+        total];
+    });
+    const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `users-export-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${users.length} users to CSV`);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedUserIds.length === (filteredUsers?.length || 0)) {
+      setSelectedUserIds([]);
+    } else {
+      setSelectedUserIds((filteredUsers || []).map((u: any) => u.id));
+    }
+  };
+
+  const toggleSelectUser = (id: number) => {
+    setSelectedUserIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
   const filteredUsers = allUsers?.filter((u: any) => {
     const matchesSearch =
       u.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -129,11 +212,27 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-8 py-8 max-w-7xl">
         {/* Header */}
-        <div className="flex items-center gap-3 mb-8">
-          <Shield className="w-8 h-8 text-primary" />
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Admin Dashboard</h1>
-            <p className="text-muted-foreground mt-1">Manage users and quota limits</p>
+        <div className="flex items-start justify-between gap-3 mb-8">
+          <div className="flex items-center gap-3">
+            <Shield className="w-8 h-8 text-primary" />
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">Admin Dashboard</h1>
+              <p className="text-muted-foreground mt-1">Manage users and quota limits</p>
+            </div>
+          </div>
+          <div className="flex gap-2 flex-wrap justify-end">
+            <Button variant="outline" size="sm" onClick={() => setLocation("/admin/audit-log")}>
+              Audit Log
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setLocation("/admin/content-moderation")}>
+              Content Moderation
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setLocation("/admin/system-health")}>
+              System Health
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setLocation("/admin/compliance")}>
+              Compliance
+            </Button>
           </div>
         </div>
 
@@ -277,6 +376,21 @@ export default function AdminDashboard() {
             <CardTitle>User Management</CardTitle>
             <CardDescription>View and manage all user accounts and quotas</CardDescription>
 
+            {/* Bulk actions bar */}
+            {selectedUserIds.length > 0 && (
+              <div className="flex items-center gap-3 mt-4 p-3 bg-primary/5 border border-primary/20 rounded-lg">
+                <span className="text-sm font-medium">{selectedUserIds.length} selected</span>
+                <Button size="sm" variant="outline" onClick={() => bulkResetMutation.mutate({ userIds: selectedUserIds })} disabled={bulkResetMutation.isPending}>
+                  <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Reset Quota
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setShowBulkTierDialog(true)}>
+                  <Edit className="h-3.5 w-3.5 mr-1.5" /> Change Tier
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setSelectedUserIds([])} className="ml-auto text-muted-foreground">
+                  Clear selection
+                </Button>
+              </div>
+            )}
             {/* Search and Filter */}
             <div className="flex gap-4 mt-4">
               <div className="relative flex-1">
@@ -288,6 +402,9 @@ export default function AdminDashboard() {
                   className="pl-10"
                 />
               </div>
+              <Button variant="outline" size="sm" onClick={exportCSV} className="shrink-0">
+                <Download className="h-4 w-4 mr-2" /> Export CSV
+              </Button>
               <Select value={tierFilter} onValueChange={setTierFilter}>
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Filter by tier" />
@@ -305,6 +422,13 @@ export default function AdminDashboard() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10">
+                    <button onClick={toggleSelectAll} className="text-muted-foreground hover:text-foreground">
+                      {selectedUserIds.length > 0 && selectedUserIds.length === (filteredUsers?.length ?? 0) && (filteredUsers?.length ?? 0) > 0
+                        ? <CheckSquare className="h-4 w-4" />
+                        : <Square className="h-4 w-4" />}
+                    </button>
+                  </TableHead>
                   <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Tier</TableHead>
@@ -326,8 +450,17 @@ export default function AdminDashboard() {
                     u.offerGeneratedCount;
 
                   return (
-                    <TableRow key={u.id}>
-                      <TableCell className="font-medium">{u.name || "N/A"}</TableCell>
+                    <TableRow key={u.id} className={selectedUserIds.includes(u.id) ? "bg-primary/5" : ""}>
+                      <TableCell>
+                          <button onClick={() => toggleSelectUser(u.id)} className="text-muted-foreground hover:text-foreground">
+                            {selectedUserIds.includes(u.id) ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4" />}
+                          </button>
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          <button className="hover:underline text-left" onClick={() => setLocation(`/admin/users/${u.id}`)}>
+                            {u.name || "N/A"}
+                          </button>
+                        </TableCell>
                       <TableCell>{u.email || "N/A"}</TableCell>
                       <TableCell>
                         <Badge className={getTierBadgeColor(u.subscriptionTier)}>
@@ -346,11 +479,19 @@ export default function AdminDashboard() {
                             size="sm"
                             onClick={() => {
                               setSelectedUser(u);
-                              setShowResetDialog(true);
+                              setNewTier(u.subscriptionTier as any || "trial");
+                              setShowTierDialog(true);
                             }}
                           >
-                            <RefreshCw className="w-4 h-4 mr-1" />
-                            Reset Quota
+                            <Edit className="w-4 h-4 mr-1" />
+                            Change Tier
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setLocation(`/admin/users/${u.id}`)}
+                          >
+                            <ExternalLink className="w-4 h-4" />
                           </Button>
                           <Button
                             variant="outline"
@@ -379,6 +520,95 @@ export default function AdminDashboard() {
             )}
           </CardContent>
         </Card>
+
+        {/* Superuser Management Section */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <UserCog className="h-5 w-5" /> Superuser Management
+            </CardTitle>
+            <CardDescription>Superusers have unlimited quota across all generators. Grant or revoke this privilege carefully.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {!superUsers || (superUsers as any[]).length === 0 ? (
+              <p className="text-sm text-muted-foreground">No superusers currently. Grant superuser status from the user table below.</p>
+            ) : (
+              <div className="space-y-2">
+                {(superUsers as any[]).map((su: any) => (
+                  <div key={su.id} className="flex items-center gap-3 p-3 rounded-lg bg-purple-50 border border-purple-200">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">{su.name || "Unnamed"}</p>
+                      <p className="text-xs text-muted-foreground">{su.email} · ID #{su.id}</p>
+                    </div>
+                    <Badge className="bg-purple-100 text-purple-700">SUPERUSER</Badge>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-red-600 border-red-200 hover:bg-red-50"
+                      onClick={() => { setSuperuserTarget(su); setSuperuserAction("revoke"); setShowSuperuserDialog(true); }}
+                    >
+                      Revoke
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground mt-3">To grant superuser, click the user row in the table below and use the Change Tier action, or use the View Details page.</p>
+          </CardContent>
+        </Card>
+
+        {/* Bulk Tier Change Dialog */}
+        <Dialog open={showBulkTierDialog} onOpenChange={setShowBulkTierDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Bulk Change Tier</DialogTitle>
+              <DialogDescription>Change tier for {selectedUserIds.length} selected users.</DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              <label className="text-sm font-medium mb-2 block">New Tier</label>
+              <Select value={bulkNewTier} onValueChange={(v: any) => setBulkNewTier(v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="trial">Trial</SelectItem>
+                  <SelectItem value="pro">Pro</SelectItem>
+                  <SelectItem value="agency">Agency</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowBulkTierDialog(false)}>Cancel</Button>
+              <Button onClick={() => bulkTierMutation.mutate({ userIds: selectedUserIds, newTier: bulkNewTier })} disabled={bulkTierMutation.isPending}>
+                {bulkTierMutation.isPending ? "Updating…" : "Update Tier"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Superuser Management Dialog */}
+        <Dialog open={showSuperuserDialog} onOpenChange={setShowSuperuserDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{superuserAction === "grant" ? "Grant Superuser" : "Revoke Superuser"}</DialogTitle>
+              <DialogDescription>
+                {superuserAction === "grant"
+                  ? `Grant superuser (unlimited quota) to ${superuserTarget?.name || superuserTarget?.email}?`
+                  : `Revoke superuser from ${superuserTarget?.name || superuserTarget?.email} and downgrade to regular user?`}
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowSuperuserDialog(false)}>Cancel</Button>
+              <Button
+                variant={superuserAction === "revoke" ? "destructive" : "default"}
+                onClick={() => superuserAction === "grant"
+                  ? createSuperUserMutation.mutate({ userId: superuserTarget?.id })
+                  : revokeSuperUserMutation.mutate({ userId: superuserTarget?.id })}
+                disabled={createSuperUserMutation.isPending || revokeSuperUserMutation.isPending}
+              >
+                {createSuperUserMutation.isPending || revokeSuperUserMutation.isPending ? "Saving…" : "Confirm"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Reset Quota Dialog */}
         <Dialog open={showResetDialog} onOpenChange={setShowResetDialog}>

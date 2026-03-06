@@ -217,29 +217,50 @@ export const adminRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
 
-      // For now, return mock data (will be replaced with actual financial_metrics table data)
-      const data = [];
+      const allUsers = await db.select().from(users);
       const today = new Date();
+      const startDate = new Date(today);
+      startDate.setDate(startDate.getDate() - (input.days - 1));
 
+      // Build a day-by-day array using real user data
+      const data = [];
       for (let i = input.days - 1; i >= 0; i--) {
-        const date = new Date(today);
-        date.setDate(date.getDate() - i);
+        const dayStart = new Date(today);
+        dayStart.setDate(dayStart.getDate() - i);
+        dayStart.setHours(0, 0, 0, 0);
+        const dayEnd = new Date(dayStart);
+        dayEnd.setHours(23, 59, 59, 999);
 
-        // Calculate MRR for this date (simplified - in production, use financial_metrics table)
-        const allUsers = await db.select().from(users);
-        const activeUsers = allUsers.filter(
-          (u) => u.subscriptionStatus === "active" || u.subscriptionStatus === "trialing"
-        );
-        const mrr = activeUsers.reduce((sum, u) => {
-          const tierPrice = TIER_PRICES[u.subscriptionTier || "trial"];
-          return sum + tierPrice;
+        // New subscriptions created on this day (createdAt falls within the day)
+        const newSubs = allUsers.filter((u) => {
+          const created = new Date(u.createdAt);
+          return created >= dayStart && created <= dayEnd &&
+            (u.subscriptionStatus === "active" || u.subscriptionStatus === "trialing");
+        }).length;
+
+        // Churned subscriptions: canceled status and updatedAt falls within the day
+        const churnedSubs = allUsers.filter((u) => {
+          const updated = new Date(u.updatedAt);
+          return u.subscriptionStatus === "canceled" && updated >= dayStart && updated <= dayEnd;
+        }).length;
+
+        // MRR as of this day: users who were active/trialing and created on or before this day
+        const activeThatDay = allUsers.filter((u) => {
+          const created = new Date(u.createdAt);
+          return (
+            created <= dayEnd &&
+            (u.subscriptionStatus === "active" || u.subscriptionStatus === "trialing")
+          );
+        });
+        const mrr = activeThatDay.reduce((sum, u) => {
+          return sum + TIER_PRICES[u.subscriptionTier || "trial"];
         }, 0);
 
         data.push({
-          date: date.toISOString().split("T")[0],
+          date: dayStart.toISOString().split("T")[0],
           mrr,
-          newSubs: 0, // Will be calculated from actual data
-          churnedSubs: 0, // Will be calculated from actual data
+          newSubs,
+          churnedSubs,
         });
       }
 
@@ -642,17 +663,49 @@ export const adminRouter = router({
     );
 
     // Users who hit quota limit and didn't upgrade
-    const quotaLimitUsers = allUsers.filter(
-      (u) =>
-        u.subscriptionTier === "trial" &&
-        (u.headlineGeneratedCount >= 0 || // Trial has 0 headline quota
-          u.hvcoGeneratedCount >= 0 ||
-          u.heroMechanismGeneratedCount >= 0)
-    );
+    // Only flag users whose usage has reached or exceeded their tier limit for at least one generator
+    const TRIAL_LIMITS: Record<string, number> = { icp: 2, adCopy: 5, email: 2, whatsapp: 2, landingPages: 2, offers: 2 };
+    const PRO_LIMITS: Record<string, number> = { headlines: 6, hvco: 3, heroMechanisms: 4, icp: 50, adCopy: 100, email: 20, whatsapp: 20, landingPages: 10, offers: 10 };
+
+    const quotaLimitUsers = allUsers.filter((u) => {
+      const tier = u.subscriptionTier || "trial";
+      if (tier === "agency") return false;
+      const limits = tier === "pro" ? PRO_LIMITS : TRIAL_LIMITS;
+      return (
+        (limits.icp > 0 && u.icpGeneratedCount >= limits.icp) ||
+        (limits.adCopy > 0 && u.adCopyGeneratedCount >= limits.adCopy) ||
+        (limits.email > 0 && u.emailSeqGeneratedCount >= limits.email) ||
+        (limits.whatsapp > 0 && u.whatsappSeqGeneratedCount >= limits.whatsapp) ||
+        (limits.landingPages > 0 && u.landingPageGeneratedCount >= limits.landingPages) ||
+        (limits.offers > 0 && u.offerGeneratedCount >= limits.offers) ||
+        (limits.headlines > 0 && u.headlineGeneratedCount >= limits.headlines) ||
+        (limits.hvco > 0 && u.hvcoGeneratedCount >= limits.hvco) ||
+        (limits.heroMechanisms > 0 && u.heroMechanismGeneratedCount >= limits.heroMechanisms)
+      );
+    });
+
+    const enrichedQuotaUsers = quotaLimitUsers.map((u) => {
+      const tier = u.subscriptionTier || "trial";
+      const limits = tier === "pro" ? PRO_LIMITS : TRIAL_LIMITS;
+      const exhaustedGenerators: Array<{ type: string; used: number; limit: number }> = [];
+      if (limits.icp > 0 && u.icpGeneratedCount >= limits.icp) exhaustedGenerators.push({ type: "ICP", used: u.icpGeneratedCount, limit: limits.icp });
+      if (limits.adCopy > 0 && u.adCopyGeneratedCount >= limits.adCopy) exhaustedGenerators.push({ type: "Ad Copy", used: u.adCopyGeneratedCount, limit: limits.adCopy });
+      if (limits.email > 0 && u.emailSeqGeneratedCount >= limits.email) exhaustedGenerators.push({ type: "Email", used: u.emailSeqGeneratedCount, limit: limits.email });
+      if (limits.whatsapp > 0 && u.whatsappSeqGeneratedCount >= limits.whatsapp) exhaustedGenerators.push({ type: "WhatsApp", used: u.whatsappSeqGeneratedCount, limit: limits.whatsapp });
+      if (limits.landingPages > 0 && u.landingPageGeneratedCount >= limits.landingPages) exhaustedGenerators.push({ type: "Landing Pages", used: u.landingPageGeneratedCount, limit: limits.landingPages });
+      if (limits.offers > 0 && u.offerGeneratedCount >= limits.offers) exhaustedGenerators.push({ type: "Offers", used: u.offerGeneratedCount, limit: limits.offers });
+      if (limits.headlines > 0 && u.headlineGeneratedCount >= limits.headlines) exhaustedGenerators.push({ type: "Headlines", used: u.headlineGeneratedCount, limit: limits.headlines });
+      if (limits.hvco > 0 && u.hvcoGeneratedCount >= limits.hvco) exhaustedGenerators.push({ type: "HVCO", used: u.hvcoGeneratedCount, limit: limits.hvco });
+      if (limits.heroMechanisms > 0 && u.heroMechanismGeneratedCount >= limits.heroMechanisms) exhaustedGenerators.push({ type: "Hero Mechanisms", used: u.heroMechanismGeneratedCount, limit: limits.heroMechanisms });
+      const daysSinceActive = u.lastSignedIn
+        ? Math.floor((Date.now() - new Date(u.lastSignedIn).getTime()) / (1000 * 60 * 60 * 24))
+        : null;
+      return { ...u, exhaustedGenerators, daysSinceActive };
+    });
 
     return {
       inactiveUsers,
-      quotaLimitUsers,
+      quotaLimitUsers: enrichedQuotaUsers,
     };
   }),
 

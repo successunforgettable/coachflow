@@ -37,6 +37,10 @@ import AdminDashboard from "./pages/AdminDashboard";
 import AnalyticsDashboard from "./pages/AnalyticsDashboard";
 import ComplianceAdmin from "./pages/admin/ComplianceAdmin";
 import ComplianceAnalytics from "./pages/admin/ComplianceAnalytics";
+import AdminUserDetail from "./pages/admin/AdminUserDetail";
+import AdminAuditLog from "./pages/admin/AdminAuditLog";
+import AdminContentModeration from "./pages/admin/AdminContentModeration";
+import AdminSystemHealth from "./pages/admin/AdminSystemHealth";
 import OnboardingPage from "./pages/OnboardingPage";
 import Settings from "./pages/Settings";
 import { Terms } from "./pages/Terms";
@@ -95,6 +99,10 @@ function Router() {
       <Route path={"/hero-mechanisms/new"} component={HeroMechanismsNew} />
       <Route path={"/hero-mechanisms/:mechanismSetId"} component={HeroMechanismsDetail} />
       <Route path={"/admin"} component={AdminDashboard} />
+      <Route path="/admin/users/:userId" component={AdminUserDetail} />
+      <Route path="/admin/audit-log" component={AdminAuditLog} />
+      <Route path="/admin/content-moderation" component={AdminContentModeration} />
+      <Route path="/admin/system-health" component={AdminSystemHealth} />
       <Route path="/admin/compliance" component={ComplianceAdmin} />
       <Route path="/admin/compliance/analytics" component={ComplianceAnalytics} />
       <Route path={"/analytics"} component={AnalyticsDashboard} />

@@ -6,6 +6,31 @@ interface BreadcrumbItem {
   path?: string;
 }
 
+// Human-readable label overrides for specific path segments
+const SEGMENT_LABELS: Record<string, string> = {
+  admin: "Admin Panel",
+  "audit-log": "Audit Log",
+  "content-moderation": "Content Moderation",
+  "system-health": "System Health",
+  users: "Users",
+  compliance: "Compliance",
+  analytics: "Analytics",
+  "ad-copy": "Your Ads",
+  "landing-pages": "Your Landing Page",
+  hvco: "Your Free Opt-In",
+  "hero-mechanisms": "Your Unique Method",
+  headlines: "Your Headlines",
+  offers: "Your Sales Offer",
+  campaigns: "Campaigns",
+  settings: "Settings",
+  generators: "Generators",
+  icp: "Ideal Customer",
+  email: "Email Follow-Up",
+  whatsapp: "WhatsApp Follow-Up",
+  videos: "My Videos",
+  "video-credits": "Video Credits",
+};
+
 export function Breadcrumb() {
   const [location] = useLocation();
 
@@ -23,12 +48,14 @@ export function Breadcrumb() {
   let currentPath = "";
   pathSegments.forEach((segment, index) => {
     currentPath += `/${segment}`;
-    
-    // Format label (capitalize, replace hyphens)
-    const label = segment
-      .split("-")
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(" ");
+
+    // Use override label if available, otherwise auto-format
+    const label =
+      SEGMENT_LABELS[segment] ??
+      segment
+        .split("-")
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" ");
 
     // Last segment is current page (no link)
     if (index === pathSegments.length - 1) {
