@@ -1,5 +1,5 @@
 /**
- * V2GeneratorWizard — Sprint 4
+ * V2GeneratorWizard — Sprint 4 + Error States (Sprint 6)
  *
  * Progressive disclosure component for V2 dashboard.
  * Shown when a user clicks an Active node on the path.
@@ -10,8 +10,14 @@
  * - react-confetti on 100/100 Meta compliance
  * - Compliance violation list on sub-100 score
  * - MANDATORY: console.log('ZAP V2 Payload Check:', payload) before every API call
+ *
+ * Sprint 6 additions (error states):
+ * - Scenario 1: API timeout (30s) → "timeout" status → ConcernedState
+ * - Scenario 2: Mid-generation failure → "error" status → ConcernedState + Generate Again
+ * - Scenario 3: Network loss during generation → "offline" status → ConcernedState + Try Again
+ * - Demo params: ?demo=timeout | ?demo=error | ?demo=offline (in addition to existing ones)
  */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Confetti from "react-confetti";
 import { trpc } from "@/lib/trpc";
 import V2Layout from "./V2Layout";
@@ -77,6 +83,40 @@ const cardStyle: React.CSSProperties = {
   maxWidth: "560px",
   margin: "0 auto",
   width: "100%",
+};
+
+// ─── Shared button styles ─────────────────────────────────────────────────────
+const primaryBtnStyle: React.CSSProperties = {
+  display: "block",
+  width: "100%",
+  background: "var(--v2-primary-btn)",
+  color: "#fff",
+  border: "none",
+  borderRadius: "var(--v2-border-radius-pill)",
+  padding: "18px 32px",
+  fontSize: "18px",
+  fontFamily: "var(--v2-font-body)",
+  fontWeight: 700,
+  cursor: "pointer",
+  letterSpacing: "0.01em",
+  transition: "opacity 0.18s ease, transform 0.12s ease",
+  marginBottom: "20px",
+};
+
+const secondaryBtnStyle: React.CSSProperties = {
+  display: "block",
+  width: "100%",
+  background: "transparent",
+  color: "#777",
+  border: "1px solid rgba(26,22,36,0.15)",
+  borderRadius: "var(--v2-border-radius-pill)",
+  padding: "12px 24px",
+  fontSize: "14px",
+  fontFamily: "var(--v2-font-body)",
+  fontWeight: 600,
+  cursor: "pointer",
+  marginTop: "16px",
+  marginBottom: "8px",
 };
 
 // ─── Advanced field renderer ──────────────────────────────────────────────────
@@ -294,10 +334,10 @@ function ConcernedState({ score, violations }: { score: number; violations: stri
           fontWeight: 900,
           fontSize: "18px",
           color: "#C0390A",
-          margin: "0 0 4px",
+          margin: "0 0 8px",
           textAlign: "center",
         }}>
-          {score}/100 — Let's fix a few things before these go live.
+          {score}/100 — Needs Review
         </p>
         {violations.length > 0 && (
           <ul style={{
@@ -311,6 +351,61 @@ function ConcernedState({ score, violations }: { score: number; violations: stri
             {violations.map((v, i) => <li key={i}>{v}</li>)}
           </ul>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Error Banner: shared layout for timeout / error / offline ────────────────
+function ErrorBanner({
+  message,
+  retryLabel,
+  onRetry,
+}: {
+  message: string;
+  retryLabel: string;
+  onRetry: () => void;
+}) {
+  return (
+    <div style={{
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      gap: "20px",
+      padding: "8px 0 16px",
+    }}>
+      <ZappyMascot state="concerned" size={100} />
+      <div style={{
+        background: "rgba(255,91,29,0.06)",
+        border: "1px solid rgba(255,91,29,0.20)",
+        borderRadius: "16px",
+        padding: "20px 24px",
+        width: "100%",
+        textAlign: "center",
+      }}>
+        <p style={{
+          fontFamily: "var(--v2-font-body)",
+          fontSize: "15px",
+          fontWeight: 600,
+          color: "#8B2500",
+          margin: "0 0 16px",
+          lineHeight: 1.6,
+        }}>
+          {message}
+        </p>
+        <button
+          onClick={onRetry}
+          style={{
+            ...primaryBtnStyle,
+            marginBottom: 0,
+            fontSize: "15px",
+            padding: "14px 32px",
+          }}
+          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.88"; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; }}
+        >
+          {retryLabel}
+        </button>
       </div>
     </div>
   );
@@ -338,13 +433,29 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
   });
 
   // ── UI state ──
-  type WizardStatus = "idle" | "waiting" | "loading" | "success" | "concerned" | "missing_data";
+  type WizardStatus =
+    | "idle"
+    | "waiting"
+    | "loading"
+    | "success"
+    | "concerned"
+    | "missing_data"
+    | "timeout"    // Scenario 1: 30s no response
+    | "error"      // Scenario 2: mid-generation failure
+    | "offline";   // Scenario 3: network lost during generation
+
   const [status, setStatus] = useState<WizardStatus>("idle");
   const [errorMsg, setErrorMsg] = useState("");
   const [complianceScore, setComplianceScore] = useState(100);
   const [complianceViolations, setComplianceViolations] = useState<string[]>([]);
 
-  // ── Demo mode: ?demo=missing | ?demo=success | ?demo=concerned ──
+  // ── Timeout ref (cleared on success/error) ──
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ── Stored payload ref for retry ──
+  const lastPayloadRef = useRef<Record<string, unknown> | null>(null);
+
+  // ── Demo mode params ──
   const demoMode = typeof window !== "undefined"
     ? new URLSearchParams(window.location.search).get("demo")
     : null;
@@ -352,6 +463,9 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
   const isDemoSuccess   = demoMode === "success";
   const isDemoConcerned = demoMode === "concerned";
   const isDemoLoading   = demoMode === "loading";
+  const isDemoTimeout   = demoMode === "timeout";
+  const isDemoError     = demoMode === "error";
+  const isDemoOffline   = demoMode === "offline";
 
   // ── Fetch service (real data, not mock) ──
   const { data: serviceData } = trpc.services.list.useQuery(undefined, {
@@ -387,8 +501,70 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
         "Headline contains prohibited financial promise language",
       ]);
       setStatus("concerned");
+    } else if (isDemoTimeout) {
+      setStatus("timeout");
+    } else if (isDemoError) {
+      setStatus("error");
+    } else if (isDemoOffline) {
+      setStatus("offline");
     }
-  }, [isDemoSuccess, isDemoConcerned]);
+  }, [isDemoSuccess, isDemoConcerned, isDemoTimeout, isDemoError, isDemoOffline]);
+
+  // ── Network loss listener (only active during generation) ──
+  useEffect(() => {
+    if (status !== "loading" && status !== "waiting") return;
+
+    function handleOffline() {
+      clearTimeout(timeoutRef.current ?? undefined);
+      setStatus("offline");
+    }
+
+    window.addEventListener("offline", handleOffline);
+    return () => window.removeEventListener("offline", handleOffline);
+  }, [status]);
+
+  // ── Cleanup timeout on unmount ──
+  useEffect(() => {
+    return () => { clearTimeout(timeoutRef.current ?? undefined); };
+  }, []);
+
+  // ── Core generation logic (extracted for retry support) ──
+  const runGeneration = useCallback((payload: Record<string, unknown>) => {
+    lastPayloadRef.current = payload;
+
+    // Show waiting (queued) briefly before loading kicks in
+    setStatus("waiting");
+
+    const waitTimer = setTimeout(() => {
+      setStatus("loading");
+
+      // ── Scenario 1: 30-second timeout ──
+      timeoutRef.current = setTimeout(() => {
+        setStatus("timeout");
+      }, 30_000);
+
+      // Simulate API response (real API wiring replaces this block)
+      setTimeout(() => {
+        try {
+          clearTimeout(timeoutRef.current ?? undefined);
+          // Simulate a 100/100 compliance result for real users
+          const simulatedScore = 100;
+          setComplianceScore(simulatedScore);
+          if (simulatedScore === 100) {
+            setStatus("success");
+          } else {
+            setComplianceViolations(["Example violation — real violations come from API response"]);
+            setStatus("concerned");
+          }
+        } catch {
+          clearTimeout(timeoutRef.current ?? undefined);
+          setStatus("error");
+        }
+      }, 2200);
+    }, 1200);
+
+    return () => clearTimeout(waitTimer);
+  }, []);
 
   // ── Generate Now handler ──
   function handleGenerateNow() {
@@ -445,27 +621,21 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
     // ── MANDATORY SAFETY LOG — DO NOT REMOVE ──
     console.log("ZAP V2 Payload Check:", payload);
 
-    // ── Fire the API ──
-    // Show waiting (queued) briefly before loading kicks in
-    setStatus("waiting");
-    setTimeout(() => setStatus("loading"), 1200);
+    runGeneration(payload);
+  }
 
-    // Simulate API response with compliance check (real API wiring in Sprint 5)
-    setTimeout(() => {
-      // Simulate a 100/100 compliance result for real users
-      const simulatedScore = 100;
-      setComplianceScore(simulatedScore);
-      if (simulatedScore === 100) {
-        setStatus("success");
-      } else {
-        setComplianceViolations(["Example violation — real violations come from API response"]);
-        setStatus("concerned");
-      }
-    }, 2200);
+  // ── Retry handler: re-runs the exact same payload ──
+  function handleRetry() {
+    if (lastPayloadRef.current) {
+      runGeneration(lastPayloadRef.current);
+    } else {
+      setStatus("idle");
+    }
   }
 
   // ── Determine which body to render ──
   const showGenerateButton = status === "idle" || status === "missing_data";
+  const isErrorState = status === "timeout" || status === "error" || status === "offline";
 
   return (
     <V2Layout>
@@ -528,9 +698,36 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
           {/* ── SUCCESS STATE ── */}
           {status === "success" && <SuccessState score={complianceScore} />}
 
-          {/* ── CONCERNED STATE ── */}
+          {/* ── CONCERNED STATE (compliance violations) ── */}
           {status === "concerned" && (
             <ConcernedState score={complianceScore} violations={complianceViolations} />
+          )}
+
+          {/* ── SCENARIO 1: API TIMEOUT ── */}
+          {status === "timeout" && (
+            <ErrorBanner
+              message="Zappy timed out waiting for the AI. Your internet is fine — the server just got busy. Try again."
+              retryLabel="Try Again"
+              onRetry={handleRetry}
+            />
+          )}
+
+          {/* ── SCENARIO 2: MID-GENERATION FAILURE ── */}
+          {status === "error" && (
+            <ErrorBanner
+              message="Something went wrong halfway through. Your inputs are saved — just hit Generate Again."
+              retryLabel="Generate Again"
+              onRetry={handleRetry}
+            />
+          )}
+
+          {/* ── SCENARIO 3: NETWORK LOSS ── */}
+          {status === "offline" && (
+            <ErrorBanner
+              message="Zappy lost the connection. Check your internet and try again."
+              retryLabel="Try Again"
+              onRetry={handleRetry}
+            />
           )}
 
           {/* ── MISSING DATA MESSAGE ── */}
@@ -554,22 +751,7 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
           {showGenerateButton && (
             <button
               onClick={handleGenerateNow}
-              style={{
-                display: "block",
-                width: "100%",
-                background: "var(--v2-primary-btn)",
-                color: "#fff",
-                border: "none",
-                borderRadius: "var(--v2-border-radius-pill)",
-                padding: "18px 32px",
-                fontSize: "18px",
-                fontFamily: "var(--v2-font-body)",
-                fontWeight: 700,
-                cursor: "pointer",
-                letterSpacing: "0.01em",
-                transition: "opacity 0.18s ease, transform 0.12s ease",
-                marginBottom: "20px",
-              }}
+              style={primaryBtnStyle}
               onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.88"; }}
               onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; }}
             >
@@ -577,27 +759,23 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
             </button>
           )}
 
-          {/* ── Try Again button after concerned/success ── */}
+          {/* ── Try Again / Generate Again button after concerned/success ── */}
           {(status === "success" || status === "concerned") && (
             <button
               onClick={() => setStatus("idle")}
-              style={{
-                display: "block",
-                width: "100%",
-                background: "transparent",
-                color: "#777",
-                border: "1px solid rgba(26,22,36,0.15)",
-                borderRadius: "var(--v2-border-radius-pill)",
-                padding: "12px 24px",
-                fontSize: "14px",
-                fontFamily: "var(--v2-font-body)",
-                fontWeight: 600,
-                cursor: "pointer",
-                marginTop: "16px",
-                marginBottom: "8px",
-              }}
+              style={secondaryBtnStyle}
             >
               ↺ Generate Again
+            </button>
+          )}
+
+          {/* ── Back to idle after error states (secondary option) ── */}
+          {isErrorState && (
+            <button
+              onClick={() => setStatus("idle")}
+              style={{ ...secondaryBtnStyle, marginTop: "8px" }}
+            >
+              ← Back
             </button>
           )}
 

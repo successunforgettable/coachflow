@@ -220,11 +220,11 @@ export default function V2ToolLibrary() {
     );
   }
 
-  // ── ICP Gate: no ICPs exist ────────────────────────────────────────────────
+  // ── ICP Gate: no ICPs exist (Scenario 4) ────────────────────────────────────
   if (noIcps) {
     return (
       <div style={{ paddingBottom: "64px" }}>
-        {/* Gate card */}
+        {/* Gate card — Scenario 4: ICP not selected */}
         <div
           style={{
             background: "#fff",
@@ -239,7 +239,7 @@ export default function V2ToolLibrary() {
             gap: "20px",
           }}
         >
-          <ZappyMascot state="idle" size={100} />
+          <ZappyMascot state="waiting" size={100} />
           <div>
             <h2
               style={{
@@ -252,7 +252,7 @@ export default function V2ToolLibrary() {
                 lineHeight: 1.3,
               }}
             >
-              First, build your AI Profile
+              Pick an ICP first so Zappy knows who we&apos;re targeting.
             </h2>
             <p
               style={{
@@ -264,7 +264,7 @@ export default function V2ToolLibrary() {
                 maxWidth: "380px",
               }}
             >
-              It powers every generator — no re-entering data, ever.
+              Your Ideal Customer Profile powers every generator — no re-entering data, ever.
             </p>
           </div>
           <button
