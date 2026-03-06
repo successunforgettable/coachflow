@@ -240,11 +240,13 @@ export default function V2Dashboard() {
   // While loading we show nothing to avoid flicker.
   // Once loaded, if the "service" milestone is not completed the user sees the
   // welcome screen instead of the winding path + tabs.
-  const isFirstTime = !progressLoading &&
+  // ?demo=welcome forces the welcome screen for screenshot/QA purposes.
+  const demoWelcome = new URLSearchParams(window.location.search).get("demo") === "welcome";
+  const isFirstTime = demoWelcome || (!progressLoading &&
     progressData !== undefined &&
     !progressData.milestones?.some(
       (m: { id: string; completed: boolean }) => m.id === "service" && m.completed
-    );
+    ));
 
   // ── Derive node states from real data (strict sequential logic) ──
   const nodes = useMemo<PathNode[]>(() => {
