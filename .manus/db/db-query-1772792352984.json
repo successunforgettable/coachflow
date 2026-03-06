@@ -1,0 +1,30 @@
+{
+  "query": "SELECT TABLE_NAME, TABLE_ROWS, CREATE_TIME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('admin_audit_log', 'user_notes', 'content_flags', 'system_health_metrics') ORDER BY TABLE_NAME;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT TABLE_NAME, TABLE_ROWS, CREATE_TIME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('admin_audit_log', 'user_notes', 'content_flags', 'system_health_metrics') ORDER BY TABLE_NAME;",
+  "rows": [
+    {
+      "TABLE_NAME": "admin_audit_log",
+      "TABLE_ROWS": "0",
+      "CREATE_TIME": "2026-02-19 22:38:00"
+    },
+    {
+      "TABLE_NAME": "content_flags",
+      "TABLE_ROWS": "0",
+      "CREATE_TIME": "2026-02-19 09:40:29"
+    },
+    {
+      "TABLE_NAME": "system_health_metrics",
+      "TABLE_ROWS": "0",
+      "CREATE_TIME": "2026-02-19 09:41:28"
+    },
+    {
+      "TABLE_NAME": "user_notes",
+      "TABLE_ROWS": "0",
+      "CREATE_TIME": "2026-02-19 22:38:00"
+    }
+  ],
+  "messages": [],
+  "stdout": "TABLE_NAME\tTABLE_ROWS\tCREATE_TIME\nadmin_audit_log\t0\t2026-02-19 22:38:00\ncontent_flags\t0\t2026-02-19 09:40:29\nsystem_health_metrics\t0\t2026-02-19 09:41:28\nuser_notes\t0\t2026-02-19 22:38:00\n",
+  "stderr": "",
+  "execution_time_ms": 1588
+}

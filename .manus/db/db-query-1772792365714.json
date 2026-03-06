@@ -1,0 +1,234 @@
+{
+  "query": "SELECT TABLE_NAME, COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('admin_audit_log', 'user_notes', 'content_flags', 'system_health_metrics') ORDER BY TABLE_NAME, ORDINAL_POSITION;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT TABLE_NAME, COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('admin_audit_log', 'user_notes', 'content_flags', 'system_health_metrics') ORDER BY TABLE_NAME, ORDINAL_POSITION;",
+  "rows": [
+    {
+      "TABLE_NAME": "admin_audit_log",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL"
+    },
+    {
+      "TABLE_NAME": "admin_audit_log",
+      "COLUMN_NAME": "admin_user_id",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL"
+    },
+    {
+      "TABLE_NAME": "admin_audit_log",
+      "COLUMN_NAME": "action_type",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL"
+    },
+    {
+      "TABLE_NAME": "admin_audit_log",
+      "COLUMN_NAME": "target_user_id",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL"
+    },
+    {
+      "TABLE_NAME": "admin_audit_log",
+      "COLUMN_NAME": "details",
+      "COLUMN_TYPE": "json",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL"
+    },
+    {
+      "TABLE_NAME": "admin_audit_log",
+      "COLUMN_NAME": "ip_address",
+      "COLUMN_TYPE": "varchar(45)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL"
+    },
+    {
+      "TABLE_NAME": "admin_audit_log",
+      "COLUMN_NAME": "user_agent",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL"
+    },
+    {
+      "TABLE_NAME": "admin_audit_log",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP"
+    },
+    {
+      "TABLE_NAME": "content_flags",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL"
+    },
+    {
+      "TABLE_NAME": "content_flags",
+      "COLUMN_NAME": "content_type",
+      "COLUMN_TYPE": "enum('headline','hvco','heroMechanism','icp','adCopy','email','whatsapp','landingPage','offer')",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL"
+    },
+    {
+      "TABLE_NAME": "content_flags",
+      "COLUMN_NAME": "content_id",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL"
+    },
+    {
+      "TABLE_NAME": "content_flags",
+      "COLUMN_NAME": "user_id",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL"
+    },
+    {
+      "TABLE_NAME": "content_flags",
+      "COLUMN_NAME": "flagged_by_admin_id",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL"
+    },
+    {
+      "TABLE_NAME": "content_flags",
+      "COLUMN_NAME": "reason",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL"
+    },
+    {
+      "TABLE_NAME": "content_flags",
+      "COLUMN_NAME": "status",
+      "COLUMN_TYPE": "enum('pending','resolved','dismissed')",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "pending"
+    },
+    {
+      "TABLE_NAME": "content_flags",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP"
+    },
+    {
+      "TABLE_NAME": "content_flags",
+      "COLUMN_NAME": "resolved_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL"
+    },
+    {
+      "TABLE_NAME": "system_health_metrics",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL"
+    },
+    {
+      "TABLE_NAME": "system_health_metrics",
+      "COLUMN_NAME": "metric_date",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL"
+    },
+    {
+      "TABLE_NAME": "system_health_metrics",
+      "COLUMN_NAME": "api_error_count",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "0"
+    },
+    {
+      "TABLE_NAME": "system_health_metrics",
+      "COLUMN_NAME": "api_success_count",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "0"
+    },
+    {
+      "TABLE_NAME": "system_health_metrics",
+      "COLUMN_NAME": "llm_error_count",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "0"
+    },
+    {
+      "TABLE_NAME": "system_health_metrics",
+      "COLUMN_NAME": "llm_success_count",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "0"
+    },
+    {
+      "TABLE_NAME": "system_health_metrics",
+      "COLUMN_NAME": "webhook_delivery_success",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "0"
+    },
+    {
+      "TABLE_NAME": "system_health_metrics",
+      "COLUMN_NAME": "webhook_delivery_failed",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "0"
+    },
+    {
+      "TABLE_NAME": "system_health_metrics",
+      "COLUMN_NAME": "storage_usage_bytes",
+      "COLUMN_TYPE": "bigint",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "0"
+    },
+    {
+      "TABLE_NAME": "system_health_metrics",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP"
+    },
+    {
+      "TABLE_NAME": "user_notes",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL"
+    },
+    {
+      "TABLE_NAME": "user_notes",
+      "COLUMN_NAME": "user_id",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL"
+    },
+    {
+      "TABLE_NAME": "user_notes",
+      "COLUMN_NAME": "admin_user_id",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL"
+    },
+    {
+      "TABLE_NAME": "user_notes",
+      "COLUMN_NAME": "note",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL"
+    },
+    {
+      "TABLE_NAME": "user_notes",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP"
+    }
+  ],
+  "messages": [],
+  "stdout": "TABLE_NAME\tCOLUMN_NAME\tCOLUMN_TYPE\tIS_NULLABLE\tCOLUMN_DEFAULT\nadmin_audit_log\tid\tint\tNO\tNULL\nadmin_audit_log\tadmin_user_id\tint\tNO\tNULL\nadmin_audit_log\taction_type\tvarchar(50)\tNO\tNULL\nadmin_audit_log\ttarget_user_id\tint\tYES\tNULL\nadmin_audit_log\tdetails\tjson\tYES\tNULL\nadmin_audit_log\tip_address\tvarchar(45)\tYES\tNULL\nadmin_audit_log\tuser_agent\ttext\tYES\tNULL\nadmin_audit_log\tcreated_at\ttimestamp\tYES\tCURRENT_TIMESTAMP\ncontent_flags\tid\tint\tNO\tNULL\ncontent_flags\tcontent_type\tenum('headline','hvco','heroMechanism','icp','adCopy','email','whatsapp','landingPage','offer')\tNO\tNULL\ncontent_flags\tcontent_id\tint\tNO\tNULL\ncontent_flags\tuser_id\tint\tNO\tNULL\ncontent_flags\tflagged_by_admin_id\tint\tNO\tNULL\ncontent_flags\treason\ttext\tYES\tNULL\ncontent_flags\tstatus\tenum('pending','resolved','dismissed')\tYES\tpending\ncontent_flags\tcreated_at\ttimestamp\tYES\tCURRENT_TIMESTAMP\ncontent_flags\tresolved_at\ttimestamp\tYES\tNULL\nsystem_health_metrics\tid\tint\tNO\tNULL\nsystem_health_metrics\tmetric_date\ttimestamp\tNO\tNULL\nsystem_health_metrics\tapi_error_count\tint\tYES\t0\nsystem_health_metrics\tapi_success_count\tint\tYES\t0\nsystem_health_metrics\tllm_error_count\tint\tYES\t0\nsystem_health_metrics\tllm_success_count\tint\tYES\t0\nsystem_health_metrics\twebhook_delivery_success\tint\tYES\t0\nsystem_health_metrics\twebhook_delivery_failed\tint\tYES\t0\nsystem_health_metrics\tstorage_usage_bytes\tbigint\tYES\t0\nsystem_health_metrics\tcreated_at\ttimestamp\tYES\tCURRENT_TIMESTAMP\nuser_notes\tid\tint\tNO\tNULL\nuser_notes\tuser_id\tint\tNO\tNULL\nuser_notes\tadmin_user_id\tint\tNO\tNULL\nuser_notes\tnote\ttext\tNO\tNULL\nuser_notes\tcreated_at\ttimestamp\tYES\tCURRENT_TIMESTAMP\n",
+  "stderr": "",
+  "execution_time_ms": 1671
+}

@@ -1,4 +1,4 @@
-import { decimal, int, json, mysqlEnum, mysqlTable, text, timestamp, varchar, date, boolean, uniqueIndex, index, unique } from "drizzle-orm/mysql-core";
+import { bigint, decimal, int, json, mysqlEnum, mysqlTable, text, timestamp, varchar, date, boolean, uniqueIndex, index, unique } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -1122,3 +1122,21 @@ export const contentFlags = mysqlTable("content_flags", {
 }));
 export type ContentFlag = typeof contentFlags.$inferSelect;
 export type InsertContentFlag = typeof contentFlags.$inferInsert;
+
+/**
+ * System Health Metrics — periodic snapshots of system health data
+ */
+export const systemHealthMetrics = mysqlTable("system_health_metrics", {
+  id: int("id").autoincrement().primaryKey(),
+  metricDate: timestamp("metric_date").notNull(),
+  apiErrorCount: int("api_error_count").default(0),
+  apiSuccessCount: int("api_success_count").default(0),
+  llmErrorCount: int("llm_error_count").default(0),
+  llmSuccessCount: int("llm_success_count").default(0),
+  webhookDeliverySuccess: int("webhook_delivery_success").default(0),
+  webhookDeliveryFailed: int("webhook_delivery_failed").default(0),
+  storageUsageBytes: bigint("storage_usage_bytes", { mode: "number" }).default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+export type SystemHealthMetric = typeof systemHealthMetrics.$inferSelect;
+export type InsertSystemHealthMetric = typeof systemHealthMetrics.$inferInsert;
