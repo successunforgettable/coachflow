@@ -48,6 +48,7 @@ export default function AdminUserDetail() {
   const [tierDialogOpen, setTierDialogOpen] = useState(false);
   const [bonusDialogOpen, setBonusDialogOpen] = useState(false);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [cancelMode, setCancelMode] = useState<"period_end" | "immediate">("period_end");
 
   // Queries
   const allUsers = trpc.admin.getAllUsers.useQuery();
@@ -215,7 +216,7 @@ export default function AdminUserDetail() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
-            <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+            <Dialog open={cancelDialogOpen} onOpenChange={(open) => { setCancelDialogOpen(open); if (!open) setCancelMode("period_end"); }}>
               <DialogTrigger asChild>
                 <Button variant="outline" size="sm" className="text-destructive border-destructive/30 hover:bg-destructive/10">
                   Cancel Subscription
@@ -223,13 +224,53 @@ export default function AdminUserDetail() {
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader><DialogTitle>Cancel Subscription</DialogTitle></DialogHeader>
-                <p className="text-sm text-muted-foreground">This will cancel at the end of the current billing period. The user will retain access until then.</p>
-                <DialogFooter>
-                  <Button variant="destructive" onClick={() => cancelSub.mutate({ userId, cancelAtPeriodEnd: true })} disabled={cancelSub.isPending}>
-                    {cancelSub.isPending ? "Canceling…" : "Cancel at Period End"}
-                  </Button>
-                  <Button variant="outline" onClick={() => cancelSub.mutate({ userId, cancelAtPeriodEnd: false })} disabled={cancelSub.isPending}>
-                    Cancel Immediately
+                <p className="text-sm text-muted-foreground mb-4">
+                  You are about to cancel the subscription for <strong>{user?.name || user?.email}</strong>. Choose how to cancel:
+                </p>
+                <div className="space-y-3 mb-2">
+                  <label
+                    className="flex items-start gap-3 p-3 rounded-lg border cursor-pointer hover:bg-muted/40 transition-colors"
+                    style={{ borderColor: cancelMode === "period_end" ? "hsl(var(--primary))" : "hsl(var(--border))" }}
+                  >
+                    <input
+                      type="radio"
+                      name="cancelMode"
+                      value="period_end"
+                      checked={cancelMode === "period_end"}
+                      onChange={() => setCancelMode("period_end")}
+                      className="mt-0.5"
+                    />
+                    <div>
+                      <p className="text-sm font-semibold">Cancel at end of billing period</p>
+                      <p className="text-xs text-muted-foreground">Access continues until the current period ends. No further charges.</p>
+                    </div>
+                  </label>
+                  <label
+                    className="flex items-start gap-3 p-3 rounded-lg border cursor-pointer hover:bg-muted/40 transition-colors"
+                    style={{ borderColor: cancelMode === "immediate" ? "hsl(var(--destructive))" : "hsl(var(--border))" }}
+                  >
+                    <input
+                      type="radio"
+                      name="cancelMode"
+                      value="immediate"
+                      checked={cancelMode === "immediate"}
+                      onChange={() => setCancelMode("immediate")}
+                      className="mt-0.5"
+                    />
+                    <div>
+                      <p className="text-sm font-semibold">Cancel immediately</p>
+                      <p className="text-xs text-muted-foreground">Access ends now. No refund is issued.</p>
+                    </div>
+                  </label>
+                </div>
+                <DialogFooter className="mt-2">
+                  <Button variant="outline" onClick={() => { setCancelDialogOpen(false); setCancelMode("period_end"); }}>Keep Subscription</Button>
+                  <Button
+                    variant="destructive"
+                    onClick={() => cancelSub.mutate({ userId, cancelAtPeriodEnd: cancelMode === "period_end" })}
+                    disabled={cancelSub.isPending}
+                  >
+                    {cancelSub.isPending ? "Canceling…" : "Confirm Cancel"}
                   </Button>
                 </DialogFooter>
               </DialogContent>
