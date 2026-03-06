@@ -45,13 +45,13 @@ export default function OnboardingProgressTracker({ className }: OnboardingProgr
   const getButtonRoute = () => {
     // Find first incomplete milestone
     const nextMilestone = milestones.find(m => !m.completed);
-    if (nextMilestone) return nextMilestone.route;
+    if (nextMilestone) return (nextMilestone as any).route ?? "/v2-dashboard";
     
     // All complete - go to campaigns
     if (progress === 100) return "/campaigns";
     
     // Fallback
-    return "/dashboard";
+    return "/v2-dashboard";
   };
 
   const handleButtonClick = () => {

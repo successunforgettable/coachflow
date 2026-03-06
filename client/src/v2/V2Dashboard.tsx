@@ -236,20 +236,44 @@ export default function V2Dashboard() {
   // ── Real progress data from backend ──
   const { data: progressData } = trpc.progress.getProgress.useQuery();
 
-  // ── Derive node states from real data ──
+  // ── Derive node states from real data (strict sequential logic) ──
   const nodes = useMemo<PathNode[]>(() => {
-    if (!progressData?.milestones) return INITIAL_NODES;
-    const base = INITIAL_NODES.map(n => ({ ...n }));
-    // Apply completed states from real data
-    progressData.milestones.forEach(m => {
-      const idx = MILESTONE_TO_NODE[m.id];
-      if (idx !== undefined && m.completed) {
-        base[idx].state = "completed";
+    // Start all nodes as locked
+    const base: PathNode[] = INITIAL_NODES.map(n => ({ ...n, state: "locked" as NodeState }));
+
+    if (!progressData?.milestones) {
+      // While loading: node 1 is active, rest locked
+      base[0].state = "active";
+      return base;
+    }
+
+    // Build a set of completed milestone IDs from real backend data
+    const completedIds = new Set(
+      progressData.milestones.filter((m: { id: string; completed: boolean }) => m.completed).map((m: { id: string }) => m.id)
+    );
+
+    // Sequential pass:
+    //   - A node is Completed only if its milestone is done AND all previous nodes are Completed.
+    //   - The first non-Completed node becomes Active.
+    //   - All nodes after the Active node remain Locked.
+    let activeSet = false;
+    for (let i = 0; i < base.length; i++) {
+      const milestoneId = Object.keys(MILESTONE_TO_NODE).find(
+        k => MILESTONE_TO_NODE[k] === i
+      );
+      const isDone = milestoneId ? completedIds.has(milestoneId) : false;
+
+      if (!activeSet) {
+        if (isDone) {
+          base[i].state = "completed";
+        } else {
+          base[i].state = "active";
+          activeSet = true;
+        }
       }
-    });
-    // Set the first non-completed node as active
-    const firstLocked = base.findIndex(n => n.state !== "completed");
-    if (firstLocked !== -1) base[firstLocked].state = "active";
+      // Nodes after the active node remain "locked"
+    }
+
     return base;
   }, [progressData]);
   const [showModal, setShowModal] = useState(false);

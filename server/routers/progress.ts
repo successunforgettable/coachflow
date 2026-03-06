@@ -1,12 +1,28 @@
 import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
-import { eq, and, sql } from "drizzle-orm";
-import { users, services, idealCustomerProfiles, offers, headlines, hvcoTitles, heroMechanisms, adCopy, landingPages, emailSequences, whatsappSequences, campaigns } from "../../drizzle/schema";
+import { eq } from "drizzle-orm";
+import {
+  services,
+  idealCustomerProfiles,
+  offers,
+  heroMechanisms,
+  hvcoTitles,
+  headlines,
+  adCopy,
+  landingPages,
+  emailSequences,
+  whatsappSequences,
+  metaPublishedAds,
+} from "../../drizzle/schema";
 
 export const progressRouter = router({
   /**
-   * Get user's onboarding progress for the 30-day tracker
-   * Returns progress percentage and milestone completion status
+   * Get user's campaign path completion for the 11-step V2 winding path.
+   * Returns real completion booleans for each node — no time gate.
+   * Node order matches V2Dashboard MILESTONE_TO_NODE mapping exactly:
+   *   0 service → 1 icp → 2 offer → 3 heroMechanism → 4 hvco →
+   *   5 headlines → 6 adCopy → 7 landingPage → 8 emailSequence →
+   *   9 whatsappSequence → 10 campaign (metaPublishedAds)
    */
   getProgress: protectedProcedure.query(async ({ ctx }) => {
     const db = await getDb();
@@ -14,136 +30,65 @@ export const progressRouter = router({
 
     const userId = ctx.user.id;
 
-    // Check if user is within 30 days of signup
-    const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
-
-    if (!user) throw new Error("User not found");
-
-    const signupDate = new Date(user.createdAt);
-    const now = new Date();
-    const daysSinceSignup = Math.floor((now.getTime() - signupDate.getTime()) / (1000 * 60 * 60 * 24));
-    const isWithin30Days = daysSinceSignup <= 30;
-
-    // If past 30 days, return null to hide tracker
-    if (!isWithin30Days) {
-      return {
-        visible: false,
-        daysSinceSignup,
-        progress: 100,
-        milestones: [],
-      };
-    }
-
-    // Check milestone completion for all 11 steps
+    // Parallel queries — one per node, read-only, no schema changes
     const [
       userServices,
       userIcps,
       userOffers,
-      userHeadlines,
-      userHvco,
       userHeroMechanisms,
+      userHvco,
+      userHeadlines,
       userAdCopy,
       userLandingPages,
       userEmailSequences,
       userWhatsappSequences,
-      userCampaigns,
+      userMetaPublished,
     ] = await Promise.all([
-      db.select().from(services).where(eq(services.userId, userId)).limit(1),
-      db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.userId, userId)).limit(1),
-      db.select().from(offers).where(eq(offers.userId, userId)).limit(1),
-      db.select().from(headlines).where(eq(headlines.userId, userId)).limit(1),
-      db.select().from(hvcoTitles).where(eq(hvcoTitles.userId, userId)).limit(1),
-      db.select().from(heroMechanisms).where(eq(heroMechanisms.userId, userId)).limit(1),
-      db.select().from(adCopy).where(eq(adCopy.userId, userId)).limit(1),
-      db.select().from(landingPages).where(eq(landingPages.userId, userId)).limit(1),
-      db.select().from(emailSequences).where(eq(emailSequences.userId, userId)).limit(1),
-      db.select().from(whatsappSequences).where(eq(whatsappSequences.userId, userId)).limit(1),
-      db.select().from(campaigns).where(eq(campaigns.userId, userId)).limit(1),
+      // Node 1 — Service
+      db.select({ id: services.id }).from(services).where(eq(services.userId, userId)).limit(1),
+      // Node 2 — ICP
+      db.select({ id: idealCustomerProfiles.id }).from(idealCustomerProfiles).where(eq(idealCustomerProfiles.userId, userId)).limit(1),
+      // Node 3 — Offer
+      db.select({ id: offers.id }).from(offers).where(eq(offers.userId, userId)).limit(1),
+      // Node 4 — Unique Method (heroMechanism)
+      db.select({ id: heroMechanisms.id }).from(heroMechanisms).where(eq(heroMechanisms.userId, userId)).limit(1),
+      // Node 5 — Free Opt-In (hvcoTitles)
+      db.select({ id: hvcoTitles.id }).from(hvcoTitles).where(eq(hvcoTitles.userId, userId)).limit(1),
+      // Node 6 — Headlines
+      db.select({ id: headlines.id }).from(headlines).where(eq(headlines.userId, userId)).limit(1),
+      // Node 7 — Ad Copy
+      db.select({ id: adCopy.id }).from(adCopy).where(eq(adCopy.userId, userId)).limit(1),
+      // Node 8 — Landing Page
+      db.select({ id: landingPages.id }).from(landingPages).where(eq(landingPages.userId, userId)).limit(1),
+      // Node 9 — Email Sequence
+      db.select({ id: emailSequences.id }).from(emailSequences).where(eq(emailSequences.userId, userId)).limit(1),
+      // Node 10 — WhatsApp Sequence
+      db.select({ id: whatsappSequences.id }).from(whatsappSequences).where(eq(whatsappSequences.userId, userId)).limit(1),
+      // Node 11 — Push to Meta / GoHighLevel (metaPublishedAds)
+      db.select({ id: metaPublishedAds.id }).from(metaPublishedAds).where(eq(metaPublishedAds.userId, userId)).limit(1),
     ]);
 
-    // 11-step milestone sequence (logical flow)
+    // Milestone array — IDs must match MILESTONE_TO_NODE keys in V2Dashboard exactly
     const milestones = [
-      // Phase 1: Foundation (WHO + WHAT)
-      {
-        id: "service",
-        label: "1. Service defined",
-        completed: userServices.length > 0,
-        route: "/services",
-      },
-      {
-        id: "icp",
-        label: "2. Dream Buyer created",
-        completed: userIcps.length > 0,
-        route: "/generators/icp",
-      },
-      {
-        id: "offer",
-        label: "3. Offer crafted",
-        completed: userOffers.length > 0,
-        route: "/offers",
-      },
-      // Phase 2: Content Creation (HOW)
-      {
-        id: "headlines",
-        label: "4. Headlines generated",
-        completed: userHeadlines.length > 0,
-        route: "/headlines",
-      },
-      {
-        id: "hvco",
-        label: "5. HVCO titles created",
-        completed: userHvco.length > 0,
-        route: "/hvco-titles",
-      },
-      {
-        id: "heroMechanism",
-        label: "6. Hero mechanism defined",
-        completed: userHeroMechanisms.length > 0,
-        route: "/hero-mechanisms",
-      },
-      {
-        id: "adCopy",
-        label: "7. Ad copy written",
-        completed: userAdCopy.length > 0,
-        route: "/ad-copy",
-      },
-      // Phase 3: Campaign Assets (WHERE)
-      {
-        id: "landingPage",
-        label: "8. Landing page built",
-        completed: userLandingPages.length > 0,
-        route: "/landing-pages",
-      },
-      {
-        id: "emailSequence",
-        label: "9. Email sequence created",
-        completed: userEmailSequences.length > 0,
-        route: "/generators/email",
-      },
-      {
-        id: "whatsappSequence",
-        label: "10. WhatsApp sequence created",
-        completed: userWhatsappSequences.length > 0,
-        route: "/generators/whatsapp",
-      },
-      // Phase 4: Launch (GO LIVE)
-      {
-        id: "campaign",
-        label: "11. Campaign launched",
-        completed: userCampaigns.length > 0,
-        route: "/campaigns",
-      },
+      { id: "service",          label: "Service defined",           completed: userServices.length > 0 },
+      { id: "icp",              label: "Dream Buyer created",       completed: userIcps.length > 0 },
+      { id: "offer",            label: "Offer crafted",             completed: userOffers.length > 0 },
+      { id: "heroMechanism",    label: "Unique Method defined",     completed: userHeroMechanisms.length > 0 },
+      { id: "hvco",             label: "Free Opt-In created",       completed: userHvco.length > 0 },
+      { id: "headlines",        label: "Headlines generated",       completed: userHeadlines.length > 0 },
+      { id: "adCopy",           label: "Ad Copy written",           completed: userAdCopy.length > 0 },
+      { id: "landingPage",      label: "Landing Page built",        completed: userLandingPages.length > 0 },
+      { id: "emailSequence",    label: "Email Sequence created",    completed: userEmailSequences.length > 0 },
+      { id: "whatsappSequence", label: "WhatsApp Sequence created", completed: userWhatsappSequences.length > 0 },
+      { id: "campaign",         label: "Pushed to Meta / GoHighLevel", completed: userMetaPublished.length > 0 },
     ];
 
     const completedCount = milestones.filter(m => m.completed).length;
     const totalCount = milestones.length;
-
-    // Calculate progress percentage based on 11 steps
     const progress = Math.round((completedCount / totalCount) * 100);
 
     return {
       visible: true,
-      daysSinceSignup,
       progress,
       completedCount,
       totalCount,
