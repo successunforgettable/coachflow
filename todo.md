@@ -3760,3 +3760,4 @@ Scene 5 (6s): "Stop being invisible. Your next client is already on Facebook..."
 
 ## Bug Fixes
 - [x] Fix sign-out: clicking Sign out does not redirect to login page / clear session properly
+- [x] Fix OAuth login loop: add /manus-oauth/callback route alias so custom domain login completes
