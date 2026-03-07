@@ -1,4 +1,3 @@
-import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { TRPCClientError } from "@trpc/client";
 import { useCallback, useEffect, useMemo } from "react";
@@ -9,7 +8,7 @@ type UseAuthOptions = {
 };
 
 export function useAuth(options?: UseAuthOptions) {
-  const { redirectOnUnauthenticated = false, redirectPath = '/' } =
+  const { redirectOnUnauthenticated = false, redirectPath = '/login' } =
     options ?? {};
   const utils = trpc.useUtils();
 
@@ -41,8 +40,8 @@ export function useAuth(options?: UseAuthOptions) {
       utils.auth.me.setData(undefined, null);
       // Clear any cached user info from localStorage
       try { localStorage.removeItem("manus-runtime-user-info"); } catch {}
-      // Redirect to Manus OAuth login page
-      window.location.href = getLoginUrl();
+      // Redirect to custom ZAP login page (no Manus OAuth)
+      window.location.href = "/login";
     }
   }, [logoutMutation, utils]);
 

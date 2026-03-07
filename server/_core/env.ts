@@ -11,4 +11,9 @@ export const ENV = {
   creatomateApiKey: process.env.CREATOMATE_API_KEY ?? "",
   replicateApiKey: process.env.REPLICATE_API_KEY ?? "",
   anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? "",
+  // Custom auth (Google OAuth + magic links)
+  googleClientId: process.env.GOOGLE_CLIENT_ID ?? "",
+  googleClientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
+  resendApiKey: process.env.RESEND_API_KEY ?? "",
+  appUrl: process.env.VITE_APP_URL ?? "https://zapcampaigns.com",
 };

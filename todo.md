@@ -3761,3 +3761,13 @@ Scene 5 (6s): "Stop being invisible. Your next client is already on Facebook..."
 ## Bug Fixes
 - [x] Fix sign-out: clicking Sign out does not redirect to login page / clear session properly
 - [x] Fix OAuth login loop: add /manus-oauth/callback route alias so custom domain login completes
+
+## Custom Auth System (Manus OAuth Replacement)
+- [x] Build custom auth backend: Google OAuth 2.0 + email magic link (no Manus dependency)
+- [x] Custom ZAP-branded login page at /login (cream background, Google + magic link)
+- [x] useAuth.ts redirects to /login instead of manus.im
+- [x] main.tsx unauthorized handler redirects to /login
+- [x] DashboardLayout unauthenticated state redirects to /login
+- [x] const.ts getLoginUrl() returns /login (not Manus OAuth URL)
+- [x] 12 vitest tests for custom auth system — all pass
+- [x] Fix sign-out bug: now redirects to /login after clearing session

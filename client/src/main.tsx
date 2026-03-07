@@ -6,7 +6,6 @@ import { createRoot } from "react-dom/client";
 import superjson from "superjson";
 import App from "./App";
 import ErrorBoundary from "./components/ErrorBoundary";
-import { getLoginUrl } from "./const";
 import "./index.css";
 import { TourProvider } from "./contexts/TourContext";
 
@@ -17,10 +16,12 @@ const redirectToLoginIfUnauthorized = (error: unknown) => {
   if (typeof window === "undefined") return;
 
   const isUnauthorized = error.message === UNAUTHED_ERR_MSG;
-
   if (!isUnauthorized) return;
 
-  window.location.href = "/";
+  // Redirect to ZAP login page (custom auth, no Manus OAuth)
+  if (window.location.pathname !== "/login") {
+    window.location.href = "/login";
+  }
 };
 
 queryClient.getQueryCache().subscribe(event => {
