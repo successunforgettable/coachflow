@@ -1,0 +1,21 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Signing in to ZAP…</title>
+    <script>
+      // Immediately redirect to the Express OAuth handler preserving code + state.
+      // This file is served as a static asset by the Manus platform proxy, so it
+      // loads instantly (no React bundle) and fires before the OAuth code expires.
+      (function () {
+        var search = window.location.search;
+        window.location.replace("/api/oauth/callback" + search);
+      })();
+    </script>
+  </head>
+  <body>
+    <p style="font-family:sans-serif;text-align:center;margin-top:40vh;color:#666">
+      Signing in to ZAP…
+    </p>
+  </body>
+</html>
