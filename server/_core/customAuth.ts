@@ -4,7 +4,11 @@
  *   1. Google OAuth 2.0 (direct, no Manus involved)
  *   2. Email magic link (via Resend)
  *
- * Users never see manus.im — all auth happens on zapcampaigns.com or Google.
+ * ALL routes are under /api/auth/* so the Manus platform proxy forwards them
+ * to our Express server. Routes outside /api/* are served as static SPA HTML.
+ *
+ * Google Cloud Console redirect URI must be:
+ *   https://zapcampaigns.com/api/auth/google/callback
  */
 import crypto from "crypto";
 import type { Express, Request, Response } from "express";
@@ -23,12 +27,16 @@ const FROM_EMAIL = "ZAP <noreply@zapcampaigns.com>";
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function generateOpenId(): string {
-  // Generate a unique openId for users who sign up via custom auth
   return `zap_${crypto.randomBytes(16).toString("hex")}`;
 }
 
 function generateToken(): string {
   return crypto.randomBytes(32).toString("hex");
+}
+
+/** Always use the production domain for redirect URIs — never trust x-forwarded-host */
+function getBaseUrl(): string {
+  return (ENV.appUrl || "https://zapcampaigns.com").replace(/\/$/, "");
 }
 
 async function createSession(req: Request, res: Response, openId: string, name: string) {
@@ -49,19 +57,16 @@ async function upsertUserByEmail(
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  // Check if user already exists by email
   const existing = await db.select().from(users).where(eq(users.email, email)).limit(1);
 
   if (existing.length > 0) {
     const user = existing[0];
-    // Update last signed in and name if changed
     await db.update(users)
       .set({ lastSignedIn: new Date(), name: name || user.name, loginMethod })
       .where(eq(users.id, user.id));
     return user;
   }
 
-  // New user — create with a generated openId
   const openId = googleOpenId ?? generateOpenId();
   const now = new Date();
   await db.insert(users).values({
@@ -69,7 +74,7 @@ async function upsertUserByEmail(
     email,
     name,
     loginMethod,
-    emailVerified: loginMethod === "google", // Google users are pre-verified
+    emailVerified: loginMethod === "google",
     lastSignedIn: now,
     role: "user",
   });
@@ -80,17 +85,15 @@ async function upsertUserByEmail(
 
 // ─── Google OAuth ─────────────────────────────────────────────────────────────
 
-function getGoogleAuthUrl(req: Request): string {
-  const baseUrl = `${req.headers["x-forwarded-proto"] || "https"}://${req.headers["x-forwarded-host"] || req.headers.host}`;
-  const redirectUri = `${baseUrl}/auth/google/callback`;
-  const state = Buffer.from(JSON.stringify({ returnTo: "/" })).toString("base64url");
+function getGoogleAuthUrl(state?: string): string {
+  const redirectUri = `${getBaseUrl()}/api/auth/google/callback`;
 
   const params = new URLSearchParams({
     client_id: ENV.googleClientId,
     redirect_uri: redirectUri,
     response_type: "code",
     scope: "openid email profile",
-    state,
+    state: state || Buffer.from(JSON.stringify({ returnTo: "/v2-dashboard" })).toString("base64url"),
     access_type: "offline",
     prompt: "select_account",
   });
@@ -98,7 +101,9 @@ function getGoogleAuthUrl(req: Request): string {
   return `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
 }
 
-async function exchangeGoogleCode(code: string, redirectUri: string) {
+async function exchangeGoogleCode(code: string) {
+  const redirectUri = `${getBaseUrl()}/api/auth/google/callback`;
+
   const response = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -139,8 +144,8 @@ async function getGoogleUserInfo(accessToken: string) {
 
 // ─── Magic Link ───────────────────────────────────────────────────────────────
 
-async function sendMagicLink(email: string, token: string, baseUrl: string) {
-  const magicUrl = `${baseUrl}/auth/magic?token=${token}`;
+async function sendMagicLink(email: string, token: string) {
+  const magicUrl = `${getBaseUrl()}/api/auth/magic?token=${token}`;
 
   const { error } = await resend.emails.send({
     from: FROM_EMAIL,
@@ -194,30 +199,33 @@ async function sendMagicLink(email: string, token: string, baseUrl: string) {
 
 export function registerCustomAuthRoutes(app: Express) {
   // ── Google OAuth initiation ──
-  app.get("/auth/google", (req, res) => {
-    const url = getGoogleAuthUrl(req);
+  // /api/auth/google → redirects to Google's OAuth consent screen
+  app.get("/api/auth/google", (req, res) => {
+    const stateRaw = req.query.state as string | undefined;
+    const url = getGoogleAuthUrl(stateRaw);
+    console.log("[CustomAuth] Redirecting to Google OAuth:", url.substring(0, 80) + "...");
     res.redirect(302, url);
   });
 
   // ── Google OAuth callback ──
-  app.get("/auth/google/callback", async (req, res) => {
+  // Google redirects here after user grants permission
+  app.get("/api/auth/google/callback", async (req, res) => {
     const code = req.query.code as string | undefined;
     const stateRaw = req.query.state as string | undefined;
+    const error = req.query.error as string | undefined;
 
-    if (!code) {
-      res.redirect(302, "/?error=google_auth_failed");
+    if (error || !code) {
+      console.error("[CustomAuth] Google OAuth error:", error);
+      res.redirect(302, "/login?error=google_auth_failed");
       return;
     }
 
     try {
-      const baseUrl = `${req.headers["x-forwarded-proto"] || "https"}://${req.headers["x-forwarded-host"] || req.headers.host}`;
-      const redirectUri = `${baseUrl}/auth/google/callback`;
-
-      const tokens = await exchangeGoogleCode(code, redirectUri);
+      const tokens = await exchangeGoogleCode(code);
       const googleUser = await getGoogleUserInfo(tokens.access_token);
 
       if (!googleUser.email) {
-        res.redirect(302, "/?error=no_email");
+        res.redirect(302, "/login?error=no_email");
         return;
       }
 
@@ -230,7 +238,6 @@ export function registerCustomAuthRoutes(app: Express) {
 
       await createSession(req, res, user.openId, user.name || "");
 
-      // Determine return URL from state
       let returnTo = "/v2-dashboard";
       if (stateRaw) {
         try {
@@ -243,14 +250,14 @@ export function registerCustomAuthRoutes(app: Express) {
 
       console.log(`[CustomAuth] Google login success: ${googleUser.email}`);
       res.redirect(302, returnTo);
-    } catch (error) {
-      console.error("[CustomAuth] Google callback error:", error);
-      res.redirect(302, "/?error=google_auth_failed");
+    } catch (err) {
+      console.error("[CustomAuth] Google callback error:", err);
+      res.redirect(302, "/login?error=google_auth_failed");
     }
   });
 
   // ── Magic link request ──
-  app.post("/auth/magic/request", async (req, res) => {
+  app.post("/api/auth/magic/request", async (req, res) => {
     const { email } = req.body as { email?: string };
 
     if (!email || !email.includes("@")) {
@@ -262,11 +269,9 @@ export function registerCustomAuthRoutes(app: Express) {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
-      // Find or create user
       let userRow = (await db.select().from(users).where(eq(users.email, email)).limit(1))[0];
 
       if (!userRow) {
-        // Create a placeholder user — will be fully set up on first login
         const openId = generateOpenId();
         await db.insert(users).values({
           openId,
@@ -280,10 +285,8 @@ export function registerCustomAuthRoutes(app: Express) {
         userRow = (await db.select().from(users).where(eq(users.email, email)).limit(1))[0];
       }
 
-      // Delete any existing tokens for this user
       await db.delete(emailVerificationTokens).where(eq(emailVerificationTokens.userId, userRow.id));
 
-      // Create new magic link token (15 min expiry)
       const token = generateToken();
       const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
       await db.insert(emailVerificationTokens).values({
@@ -292,18 +295,17 @@ export function registerCustomAuthRoutes(app: Express) {
         expiresAt,
       });
 
-      const baseUrl = `${req.headers["x-forwarded-proto"] || "https"}://${req.headers["x-forwarded-host"] || req.headers.host}`;
-      await sendMagicLink(email, token, baseUrl);
+      await sendMagicLink(email, token);
 
       res.json({ ok: true, message: "Magic link sent" });
-    } catch (error) {
-      console.error("[CustomAuth] Magic link request error:", error);
+    } catch (err) {
+      console.error("[CustomAuth] Magic link request error:", err);
       res.status(500).json({ error: "Failed to send magic link" });
     }
   });
 
   // ── Magic link verification ──
-  app.get("/auth/magic", async (req, res) => {
+  app.get("/api/auth/magic", async (req, res) => {
     const token = req.query.token as string | undefined;
 
     if (!token) {
@@ -330,7 +332,6 @@ export function registerCustomAuthRoutes(app: Express) {
         return;
       }
 
-      // Get the user
       const userRow = (await db.select().from(users).where(eq(users.id, tokenRow.userId)).limit(1))[0];
 
       if (!userRow) {
@@ -338,27 +339,24 @@ export function registerCustomAuthRoutes(app: Express) {
         return;
       }
 
-      // Mark email as verified and update last signed in
       await db.update(users)
         .set({ emailVerified: true, lastSignedIn: new Date() })
         .where(eq(users.id, userRow.id));
 
-      // Delete the used token
       await db.delete(emailVerificationTokens).where(eq(emailVerificationTokens.id, tokenRow.id));
 
-      // Create session
       await createSession(req, res, userRow.openId, userRow.name || "");
 
       console.log(`[CustomAuth] Magic link login success: ${userRow.email}`);
       res.redirect(302, "/v2-dashboard");
-    } catch (error) {
-      console.error("[CustomAuth] Magic link verification error:", error);
+    } catch (err) {
+      console.error("[CustomAuth] Magic link verification error:", err);
       res.redirect(302, "/login?error=auth_failed");
     }
   });
 
   // ── Logout ──
-  app.get("/auth/logout", (req, res) => {
+  app.get("/api/auth/logout", (req, res) => {
     res.clearCookie(COOKIE_NAME);
     res.redirect(302, "/login");
   });

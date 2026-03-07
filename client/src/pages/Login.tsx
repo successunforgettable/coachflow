@@ -16,7 +16,7 @@ export default function Login() {
   }, []);
 
   const handleGoogleLogin = () => {
-    window.location.href = "/auth/google";
+    window.location.href = "/api/auth/google";
   };
 
   const handleMagicLink = async (e: React.FormEvent) => {
@@ -29,7 +29,7 @@ export default function Login() {
     setErrorMsg("");
 
     try {
-      const res = await fetch("/auth/magic/request", {
+      const res = await fetch("/api/auth/magic/request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
