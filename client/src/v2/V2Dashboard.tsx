@@ -302,6 +302,15 @@ export default function V2Dashboard() {
     return () => window.removeEventListener("resize", check);
   }, []);
 
+  // Show fork modal when ICP (node 2) is first completed
+  useEffect(() => {
+    if (forkDismissed) return;
+    const icpNode = nodes.find(n => n.id === 2);
+    if (icpNode && icpNode.state === "completed") {
+      setShowModal(true);
+    }
+  }, [nodes, forkDismissed]);
+
   // Real counts from derived node states
   const completedCount = nodes.filter(n => n.state === "completed").length;
   const totalCount = nodes.length;

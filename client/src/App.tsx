@@ -73,7 +73,7 @@ function Router() {
       <Route path={"/services"} component={Services} />
       <Route path={"/services/:id"} component={ServiceDetail} />
       <Route path={"/generators/icp"} component={ICPGenerator} />
-      <Route path={"/ pricing"} component={Pricing} />
+      <Route path={"/pricing"} component={Pricing} />
       <Route path={"/video-credits"} component={VideoCredits} />      <Route path={"/ad-copy"} component={AdCopyGenerator} />
       <Route path={"/ad-copy/:adSetId"} component={AdCopyDetail} />
       <Route path={"/ad-creatives"} component={AdCreativesGenerator} />

@@ -151,7 +151,7 @@ export default function Pricing() {
                 ) : status?.tier === "pro" ? (
                   "Current Plan"
                 ) : (
-                  `Start {trialDays}-Day Free Trial`
+                  `Start ${trialDays}-Day Free Trial`
                 )}
               </Button>
 
