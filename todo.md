@@ -3774,3 +3774,17 @@ Scene 5 (6s): "Stop being invisible. Your next client is already on Facebook..."
 
 ## Critical Bug Fixes
 - [ ] Fix login loop on zapcampaigns.com - OAuth callback failing for new users on live domain
+
+## V2 Wizard — Wire Real Generation (Mar 8, 2026)
+- [x] ICP step: simplified inline form (name input + generate button → real trpc.icps.generate mutation)
+- [x] Offer step: wire to trpc.offers.generate (serviceId, offerType=standard)
+- [x] Unique Method step: wire to trpc.heroMechanisms.generate (serviceId + service fields)
+- [x] Free Opt-In step: wire to trpc.hvco.generate (serviceId + service fields)
+- [x] Headlines step: wire to trpc.headlines.generate (serviceId + service fields)
+- [x] Ad Copy step: wire to trpc.adCopy.generate (serviceId + service fields)
+- [x] Landing Page step: wire to trpc.landingPages.generate (serviceId)
+- [x] Email Sequence step: wire to trpc.emailSequences.generate (serviceId, sequenceType=welcome, name)
+- [x] WhatsApp Sequence step: wire to trpc.whatsappSequences.generate (serviceId, sequenceType=engagement, name)
+- [x] Push to Meta step: show instructions/link (no generation needed)
+- [x] Show generated results panel after success (content preview + "View Full" link)
+- [x] Node states update automatically after generation (progress invalidation)

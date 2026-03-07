@@ -250,7 +250,7 @@ function LoadingState() {
 }
 
 // ─── Success State: Zappy cheering + confetti ─────────────────────────────────
-function SuccessState({ score }: { score: number }) {
+function SuccessState({ score, resultUrl }: { score: number; resultUrl?: string | null }) {
   const [windowSize, setWindowSize] = useState({ width: window.innerWidth, height: window.innerHeight });
 
   useEffect(() => {
@@ -304,6 +304,26 @@ function SuccessState({ score }: { score: number }) {
           }}>
             Your assets are ready.
           </p>
+          {resultUrl && (
+            <a
+              href={resultUrl}
+              style={{
+                display: "inline-block",
+                marginTop: "12px",
+                background: "var(--v2-primary-btn)",
+                color: "#fff",
+                borderRadius: "var(--v2-border-radius-pill)",
+                padding: "10px 24px",
+                fontFamily: "var(--v2-font-body)",
+                fontWeight: 700,
+                fontSize: "15px",
+                textDecoration: "none",
+                letterSpacing: "0.01em",
+              }}
+            >
+              View Results →
+            </a>
+          )}
         </div>
       </div>
     </>
@@ -448,6 +468,22 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
   const [errorMsg, setErrorMsg] = useState("");
   const [complianceScore, setComplianceScore] = useState(100);
   const [complianceViolations, setComplianceViolations] = useState<string[]>([]);
+  // ── Result URL (shown after real generation) ──
+  const [resultUrl, setResultUrl] = useState<string | null>(null);
+  // ── ICP name input (only for ICP step) ──
+  const [icpName, setIcpName] = useState("");
+  // ── tRPC utils for cache invalidation ──
+  const utils = trpc.useUtils();
+  // ── Real mutations ──
+  const generateIcp = trpc.icps.generate.useMutation();
+  const generateOffer = trpc.offers.generate.useMutation();
+  const generateHeroMechanism = trpc.heroMechanisms.generate.useMutation();
+  const generateHvco = trpc.hvco.generate.useMutation();
+  const generateHeadlines = trpc.headlines.generate.useMutation();
+  const generateAdCopy = trpc.adCopy.generate.useMutation();
+  const generateLandingPage = trpc.landingPages.generate.useMutation();
+  const generateEmailSequence = trpc.emailSequences.generate.useMutation();
+  const generateWhatsappSequence = trpc.whatsappSequences.generate.useMutation();
 
   // ── Timeout ref (cleared on success/error) ──
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -528,43 +564,112 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
     return () => { clearTimeout(timeoutRef.current ?? undefined); };
   }, []);
 
-  // ── Core generation logic (extracted for retry support) ──
-  const runGeneration = useCallback((payload: Record<string, unknown>) => {
+  // ── Core generation logic — real tRPC mutations for all 11 steps ──
+  const runGeneration = useCallback(async (payload: Record<string, unknown>) => {
     lastPayloadRef.current = payload;
-
-    // Show waiting (queued) briefly before loading kicks in
     setStatus("waiting");
-
-    const waitTimer = setTimeout(() => {
-      setStatus("loading");
-
-      // ── Scenario 1: 30-second timeout ──
-      timeoutRef.current = setTimeout(() => {
-        setStatus("timeout");
-      }, 30_000);
-
-      // Simulate API response (real API wiring replaces this block)
-      setTimeout(() => {
-        try {
-          clearTimeout(timeoutRef.current ?? undefined);
-          // Simulate a 100/100 compliance result for real users
-          const simulatedScore = 100;
-          setComplianceScore(simulatedScore);
-          if (simulatedScore === 100) {
-            setStatus("success");
-          } else {
-            setComplianceViolations(["Example violation — real violations come from API response"]);
-            setStatus("concerned");
-          }
-        } catch {
-          clearTimeout(timeoutRef.current ?? undefined);
-          setStatus("error");
-        }
-      }, 2200);
-    }, 1200);
-
-    return () => clearTimeout(waitTimer);
-  }, []);
+    await new Promise(r => setTimeout(r, 800));
+    setStatus("loading");
+    // 90-second timeout for AI generation
+    timeoutRef.current = setTimeout(() => setStatus("timeout"), 90_000);
+    try {
+      const svcId = payload.serviceId as number;
+      const svc = activeService;
+      let url: string | null = null;
+      if (step === "icp") {
+        const result = await generateIcp.mutateAsync({
+          serviceId: svcId,
+          name: (payload.icpName as string) || (svc?.avatarName ? `${svc.avatarName} Profile` : "My Ideal Customer"),
+        });
+        if (result?.id) url = `/generators/icp?highlight=${result.id}`;
+      } else if (step === "offer") {
+        const result = await generateOffer.mutateAsync({
+          serviceId: svcId,
+          offerType: "premium",
+        });
+        if (result?.id) url = `/offers/${result.id}`;
+      } else if (step === "uniqueMethod") {
+        const result = await generateHeroMechanism.mutateAsync({
+          serviceId: svcId,
+          targetMarket: svc?.targetCustomer || "",
+          pressingProblem: svc?.painPoints || "",
+          whyProblem: svc?.whyProblemExists || "",
+          whatTried: svc?.failedSolutions || "",
+          whyExistingNotWork: svc?.failedSolutions || "",
+          desiredOutcome: svc?.mainBenefit || "",
+          credibility: svc?.pressFeatures || "",
+          socialProof: svc?.socialProofStat || "",
+        });
+        if (result?.mechanismSetId) url = `/hero-mechanisms/${result.mechanismSetId}`;
+      } else if (step === "freeOptIn") {
+        const result = await generateHvco.mutateAsync({
+          serviceId: svcId,
+          targetMarket: svc?.targetCustomer || "",
+          hvcoTopic: svc?.hvcoTopic || svc?.mainBenefit || "",
+        });
+        if (result?.hvcoSetId) url = `/hvco-titles/${result.hvcoSetId}`;
+      } else if (step === "headlines") {
+        const result = await generateHeadlines.mutateAsync({
+          serviceId: svcId,
+          targetMarket: svc?.targetCustomer || "",
+          pressingProblem: svc?.painPoints || "",
+          desiredOutcome: svc?.mainBenefit || "",
+          uniqueMechanism: svc?.uniqueMechanismSuggestion || "",
+        });
+        if (result?.headlineSetId) url = `/headlines/${result.headlineSetId}`;
+      } else if (step === "adCopy") {
+        const result = await generateAdCopy.mutateAsync({
+          serviceId: svcId,
+          adType: "lead_gen",
+          adStyle: "conversational",
+          adCallToAction: "Book a Free Call",
+          targetMarket: svc?.targetCustomer || "",
+          productCategory: svc?.category || "coaching",
+          specificProductName: svc?.name || "",
+          pressingProblem: svc?.painPoints || "",
+          desiredOutcome: svc?.mainBenefit || "",
+        });
+        if (result?.adSetId) url = `/ad-copy/${result.adSetId}`;
+      } else if (step === "landingPage") {
+        const result = await generateLandingPage.mutateAsync({
+          serviceId: svcId,
+        });
+        if (result?.id) url = `/landing-pages/${result.id}`;
+      } else if (step === "emailSequence") {
+        const result = await generateEmailSequence.mutateAsync({
+          serviceId: svcId,
+          sequenceType: "welcome",
+          name: `${svc?.name || "My Service"} — Welcome Sequence`,
+        });
+        if (result?.id) url = `/generators/email`;
+      } else if (step === "whatsappSequence") {
+        const result = await generateWhatsappSequence.mutateAsync({
+          serviceId: svcId,
+          sequenceType: "engagement",
+          name: `${svc?.name || "My Service"} — Engagement Sequence`,
+        });
+        if (result?.id) url = `/generators/whatsapp`;
+      } else if (step === "pushToMeta") {
+        // No generation needed — just show instructions
+        url = `/ad-copy`;
+      }
+      clearTimeout(timeoutRef.current ?? undefined);
+      setResultUrl(url);
+      setComplianceScore(100);
+      setStatus("success");
+      // Invalidate progress so nodes turn green
+      utils.progress.getProgress.invalidate();
+    } catch (err: unknown) {
+      clearTimeout(timeoutRef.current ?? undefined);
+      const msg = err instanceof Error ? err.message : "";
+      if (msg.includes("limit") || msg.includes("quota") || msg.includes("FORBIDDEN")) {
+        setErrorMsg(msg);
+        setStatus("missing_data");
+      } else {
+        setStatus("error");
+      }
+    }
+  }, [step, activeService, generateIcp, generateOffer, generateHeroMechanism, generateHvco, generateHeadlines, generateAdCopy, generateLandingPage, generateEmailSequence, generateWhatsappSequence, utils]);
 
   // ── Generate Now handler ──
   function handleGenerateNow() {
@@ -617,10 +722,12 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
     }
 
     payload.advancedOverrides = { ...fieldValues };
-
+    // Add ICP name from the inline input field
+    if (step === "icp" && icpName.trim()) {
+      payload.icpName = icpName.trim();
+    }
     // ── MANDATORY SAFETY LOG — DO NOT REMOVE ──
     console.log("ZAP V2 Payload Check:", payload);
-
     runGeneration(payload);
   }
 
@@ -696,7 +803,7 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
           {status === "loading" && <LoadingState />}
 
           {/* ── SUCCESS STATE ── */}
-          {status === "success" && <SuccessState score={complianceScore} />}
+          {status === "success" && <SuccessState score={complianceScore} resultUrl={resultUrl} />}
 
           {/* ── CONCERNED STATE (compliance violations) ── */}
           {status === "concerned" && (
@@ -747,6 +854,45 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
             </div>
           )}
 
+          {/* ── IDLE STATE: Zappy waiting ── */}
+          {status === "idle" && (
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: "8px" }}>
+              <ZappyMascot state="waiting" size={90} />
+            </div>
+          )}
+          {/* ── ICP NAME INPUT (only shown for ICP step in idle state) ── */}
+          {step === "icp" && showGenerateButton && (
+            <div style={{ marginBottom: "20px" }}>
+              <label style={{
+                display: "block",
+                fontFamily: "var(--v2-font-body)",
+                fontWeight: 600,
+                fontSize: "14px",
+                color: "var(--v2-text-color)",
+                marginBottom: "8px",
+              }}>
+                Name your Ideal Customer Profile
+              </label>
+              <input
+                type="text"
+                value={icpName}
+                onChange={e => setIcpName(e.target.value)}
+                placeholder="e.g. Ambitious Executive, Mid-Career Professional"
+                style={{
+                  width: "100%",
+                  fontFamily: "var(--v2-font-body)",
+                  fontSize: "14px",
+                  color: "var(--v2-text-color)",
+                  background: "#F9F7F4",
+                  border: "1px solid rgba(26,22,36,0.15)",
+                  borderRadius: "12px",
+                  padding: "12px 16px",
+                  outline: "none",
+                  boxSizing: "border-box" as const,
+                }}
+              />
+            </div>
+          )}
           {/* ── GENERATE NOW button (only shown in idle / missing_data states) ── */}
           {showGenerateButton && (
             <button
@@ -762,7 +908,7 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
           {/* ── Try Again / Generate Again button after concerned/success ── */}
           {(status === "success" || status === "concerned") && (
             <button
-              onClick={() => setStatus("idle")}
+              onClick={() => { setStatus("idle"); setResultUrl(null); }}
               style={secondaryBtnStyle}
             >
               ↺ Generate Again
