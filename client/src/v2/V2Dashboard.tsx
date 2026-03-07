@@ -96,7 +96,7 @@ function PathNode({ node, isMobile, onNodeClick }: { node: PathNode; isMobile: b
 
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
-      <div style={nodeStyle}>
+      <div style={nodeStyle} onClick={() => node.state !== "locked" && onNodeClick(node)}>
         {node.state === "completed" && <Checkmark />}
         {node.state === "active" && (
           <span style={{ color: "#fff", fontFamily: "var(--v2-font-body)", fontWeight: 700, fontSize: isMobile ? "13px" : "15px" }}>
