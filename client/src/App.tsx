@@ -61,6 +61,7 @@ import V2GeneratorWizardPage from "./v2/V2GeneratorWizardPage";
 import Login from "./pages/Login";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+import OAuthCallback from "./pages/OAuthCallback";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -119,6 +120,10 @@ function Router() {
       <Route path={"/privacy"} component={Privacy} />
       <Route path={"/signup"} component={Signup} />
       <Route path={"/login"} component={Login} />
+      {/* OAuth callback shim: Manus platform sends /manus-oauth/callback to the static frontend.
+          This component immediately redirects to /api/oauth/callback (which Express handles)
+          preserving all query params so the session cookie gets set correctly. */}
+      <Route path={"/manus-oauth/callback"} component={OAuthCallback} />
       <Route path={"/forgot-password"} component={ForgotPassword} />
       <Route path={"/reset-password"} component={ResetPassword} />
       {/* V2 Sandbox — isolated, does not affect any existing route */}
