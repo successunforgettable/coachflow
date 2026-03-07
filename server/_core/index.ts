@@ -377,6 +377,23 @@ async function startServer() {
     }
   });
 
+  // TEMP: E2E test login endpoint (dev/preview only — not in production)
+  if (process.env.NODE_ENV !== "production") {
+    app.get("/api/test-login/:openId", async (req, res) => {
+      try {
+        const { COOKIE_NAME, ONE_YEAR_MS } = await import("../../shared/const");
+        const { getSessionCookieOptions } = await import("./cookies");
+        const { openId } = req.params;
+        const token = await sdk.createSessionToken(openId, { name: "Test User E2E", expiresInMs: ONE_YEAR_MS });
+        const cookieOptions = getSessionCookieOptions(req);
+        res.cookie(COOKIE_NAME, token, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+        res.redirect("/v2-dashboard");
+      } catch (err) {
+        res.status(500).json({ error: String(err) });
+      }
+    });
+  }
+
   // tRPC API
   app.use(
     "/api/trpc",

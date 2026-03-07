@@ -3,6 +3,7 @@ import type { Express, Request, Response } from "express";
 import * as db from "../db";
 import { getSessionCookieOptions } from "./cookies";
 import { sdk } from "./sdk";
+import { ENV } from "./env";
 
 function getQueryParam(req: Request, key: string): string | undefined {
   const value = req.query[key];
@@ -29,15 +30,22 @@ async function handleOAuthCallback(req: Request, res: Response) {
 
   try {
     // Determine the actual redirectUri used for this callback route.
-    // The Manus platform registers /manus-oauth/callback for custom domains.
-    // We must pass this as the redirectUri to ExchangeToken, not the state value
-    // (which the platform uses to encode the post-login return URL).
-    const protocol = req.headers["x-forwarded-proto"] || req.protocol || "https";
+    // Use ENV.appUrl (VITE_APP_URL) to build the redirect URI reliably in production.
+    // Request headers like x-forwarded-host can be unreliable behind the Manus proxy.
+    const appBase = (ENV.appUrl || "").replace(/\/$/, ""); // strip trailing slash
+    const actualRedirectUri = `${appBase}${req.path}`;
     const host = req.headers["x-forwarded-host"] || req.headers.host || "";
-    const actualRedirectUri = `${protocol}://${host}${req.path}`;
+
+    console.log("[OAuth] Callback fired:", {
+      path: req.path,
+      appBase,
+      actualRedirectUri,
+      stateDecoded: (() => { try { return atob(state); } catch { return "decode-failed"; } })()
+    });
 
     // Build a state value that the SDK will decode back to the correct redirectUri
     const exchangeState = buildStateForExchange(actualRedirectUri);
+    console.log("[OAuth] Sending to Manus API - redirectUri:", actualRedirectUri);
 
     const tokenResponse = await sdk.exchangeCodeForToken(code, exchangeState);
     const userInfo = await sdk.getUserInfo(tokenResponse.accessToken);

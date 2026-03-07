@@ -3771,3 +3771,6 @@ Scene 5 (6s): "Stop being invisible. Your next client is already on Facebook..."
 - [x] const.ts getLoginUrl() returns /login (not Manus OAuth URL)
 - [x] 12 vitest tests for custom auth system — all pass
 - [x] Fix sign-out bug: now redirects to /login after clearing session
+
+## Critical Bug Fixes
+- [ ] Fix login loop on zapcampaigns.com - OAuth callback failing for new users on live domain
