@@ -243,3 +243,11 @@
 - [x] Rename "Agency" → "ZAP Pro Plus" everywhere (card title, description, button: "Go Pro Plus")
 - [x] Remove agency/client-management copy from ZAP Pro Plus description
 - [x] Add "New here? Create a free account" signup link below each paid tier subscribe button
+
+## Zappy Landing Page Presence (Mar 9, 2026)
+
+- [x] Change 1: Hero Zappy width/height 110px → 160px
+- [x] Change 2: Compliance section — add zappy-cheering.svg (100px, fadeUp 0.4s) when score hits 100 + confetti
+- [x] Change 3: Pricing Teaser — add zappy-waiting.svg (80px, breathing, centred) above headline
+- [x] Change 4: Nav logo — no size change (already correct)
+- [x] Change 5: Path section hopping Zappy 28px → 36px

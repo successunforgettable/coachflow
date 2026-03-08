@@ -328,7 +328,7 @@ function HeroSection({ onCampaignSelect }: { onCampaignSelect: (type: string) =>
           src={zappyState === "working" ? ZAPPY_WORKING : ZAPPY_WAITING}
           alt="Zappy"
           style={{
-            width: 110, height: 110, margin: "0 auto 24px", display: "block",
+            width: 160, height: 160, margin: "0 auto 24px", display: "block",
             animation: zappyState === "working" ? "zappyHop 0.6s ease infinite" : "zappyBreathe 3s ease infinite",
             transition: "all 0.3s",
           }}
@@ -482,7 +482,7 @@ function PathSection({ onCTA }: { onCTA: () => void }) {
                   }}>
                     {isLit ? "✓" : node.id}
                     {zappyHere && (
-                      <img src={ZAPPY_WORKING} alt="" style={{ position: "absolute", top: -28, left: "50%", transform: "translateX(-50%)", width: 28, height: 28, animation: "zappyHop 0.6s ease infinite" }} />
+                      <img src={ZAPPY_WORKING} alt="" style={{ position: "absolute", top: -36, left: "50%", transform: "translateX(-50%)", width: 36, height: 36, animation: "zappyHop 0.6s ease infinite" }} />
                     )}
                   </div>
                   {/* Label */}
@@ -698,6 +698,13 @@ function ComplianceSection() {
         <p style={{ fontSize: 15, color: MUTED, lineHeight: 1.6 }}>
           Meta compliance scoring is included on every ZAP Pro campaign. No extra tool. No extra cost.
         </p>
+        {isMax && (
+          <img
+            src={ZAPPY_CHEERING}
+            alt="Zappy cheering"
+            style={{ width: 100, height: 100, margin: "32px auto 0", display: "block", animation: "fadeUp 0.4s ease" }}
+          />
+        )}
       </div>
     </section>
   );
@@ -735,6 +742,11 @@ function PricingTeaserSection({ onCTA }: { onCTA: () => void }) {
   return (
     <section id="pricing-teaser" style={{ background: "#EDE8DF", padding: "100px 24px", textAlign: "center" }}>
       <div style={{ maxWidth: 960, margin: "0 auto" }}>
+        <img
+          src={ZAPPY_WAITING}
+          alt="Zappy"
+          style={{ width: 80, height: 80, margin: "0 auto 24px", display: "block", animation: "zappyBreathe 3s ease infinite" }}
+        />
         <h2 style={{ fontFamily: "'Fraunces', serif", fontStyle: "italic", fontWeight: 900, fontSize: "clamp(28px, 5vw, 48px)", color: INK, margin: "0 0 12px", letterSpacing: "-0.5px" }}>
           One plan for serious operators.
         </h2>
