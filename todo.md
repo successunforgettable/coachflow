@@ -279,3 +279,13 @@
 - [x] ZAP Pro: $147/mo or $1,470/yr with "Saves $294 vs monthly" line
 - [x] ZAP Pro Plus: $497/mo or $4,970/yr with "Saves $994 vs monthly" line
 - [x] Free tier price unchanged on toggle
+
+## Pricing Page Theme Fix (Mar 9, 2026)
+
+- [x] Apply V2 cream/light theme to /pricing page — currently rendering in dark app theme
+
+## Pricing Page V2 Redesign (Mar 9, 2026)
+
+- [x] Rewrite Pricing.tsx with hardcoded V2 cream inline styles matching LandingPage.tsx design tokens
+- [x] Wire annual toggle to STRIPE_PRO_YEARLY_PRICE_ID / STRIPE_AGENCY_YEARLY_PRICE_ID in createCheckoutSession (already correct in server)
+- [x] Move Most Popular badge and highlight border from ZAP Pro Plus to ZAP Pro
