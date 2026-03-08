@@ -719,6 +719,25 @@ function V2ServiceStep({ onBack, onComplete }: { onBack?: () => void; onComplete
         }}>
           You can add more details to your service profile later. This gets you started.
         </p>
+
+        <a
+          href="/v2-dashboard"
+          style={{
+            fontFamily: "var(--v2-font-body)",
+            fontSize: "12px",
+            color: "rgba(26,22,36,0.38)",
+            textDecoration: "none",
+            marginTop: "10px",
+            display: "inline-block",
+            borderBottom: "1px solid rgba(26,22,36,0.15)",
+            paddingBottom: "1px",
+            transition: "color 0.15s ease",
+          }}
+          onMouseEnter={e => (e.currentTarget.style.color = "rgba(26,22,36,0.65)")}
+          onMouseLeave={e => (e.currentTarget.style.color = "rgba(26,22,36,0.38)")}
+        >
+          ← Back to Campaign Path
+        </a>
       </div>
     </V2Layout>
   );
