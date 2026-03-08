@@ -269,6 +269,66 @@ export default function Pricing() {
           </Card>
         </div>
 
+        {/* Comparison Table */}
+        <div className="mt-16 max-w-6xl mx-auto">
+          <h2 className="text-2xl font-bold text-foreground text-center mb-8">Compare Plans</h2>
+          <div style={{
+            background: "#F5F1EA",
+            borderRadius: 24,
+            overflow: "hidden",
+            border: "1px solid rgba(26,22,36,0.08)",
+            fontFamily: "'Instrument Sans', sans-serif",
+            boxShadow: "0 4px 24px rgba(0,0,0,0.06)",
+          }}>
+            {/* Table header */}
+            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", background: "#1A1624" }}>
+              {["Feature", "Free", "ZAP Pro", "ZAP Pro Plus"].map((col, i) => (
+                <div key={col} style={{
+                  padding: "16px 20px",
+                  color: "#F5F1EA",
+                  fontWeight: 700,
+                  fontSize: 14,
+                  textAlign: i === 0 ? "left" : "center",
+                  borderLeft: i === 2 ? "3px solid #FF5B1D" : "none",
+                }}>{col}</div>
+              ))}
+            </div>
+            {/* Table rows */}
+            {[
+              { feature: "ICP Profiles",           free: "1",              pro: "3",              plus: "Unlimited" },
+              { feature: "Generations per tool",   free: "3",              pro: "50–100",         plus: "Unlimited" },
+              { feature: "Meta Compliance Scoring",free: false,            pro: true,             plus: true },
+              { feature: "GHL & Meta Push",         free: false,            pro: true,             plus: true },
+              { feature: "PDF Export",              free: false,            pro: true,             plus: true },
+              { feature: "Video Credits",           free: "2 welcome",      pro: "10/month",       plus: "25/month" },
+              { feature: "Campaign Cloning",        free: false,            pro: false,            plus: true },
+              { feature: "Kill/Scale Automation",   free: false,            pro: false,            plus: true },
+              { feature: "White-Label Reports",     free: false,            pro: false,            plus: true },
+            ].map((row, rowIdx) => (
+              <div key={row.feature} style={{
+                display: "grid",
+                gridTemplateColumns: "2fr 1fr 1fr 1fr",
+                background: rowIdx % 2 === 0 ? "rgba(26,22,36,0.02)" : "transparent",
+                borderTop: "1px solid rgba(26,22,36,0.06)",
+              }}>
+                <div style={{ padding: "14px 20px", fontSize: 14, fontWeight: 500, color: "#1A1624" }}>{row.feature}</div>
+                {[row.free, row.pro, row.plus].map((val, colIdx) => (
+                  <div key={colIdx} style={{
+                    padding: "14px 20px",
+                    textAlign: "center",
+                    fontSize: 15,
+                    borderLeft: colIdx === 1 ? "3px solid #FF5B1D" : "none",
+                    color: val === true ? "#22C55E" : val === false ? "#9CA3AF" : "#1A1624",
+                    fontWeight: typeof val === "string" ? 500 : 700,
+                  }}>
+                    {val === true ? "✓" : val === false ? "✗" : val}
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* FAQ */}
         <div className="mt-16 max-w-3xl mx-auto">
           <h2 className="text-2xl font-bold text-foreground text-center mb-8">

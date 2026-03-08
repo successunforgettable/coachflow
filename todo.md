@@ -262,3 +262,9 @@
 ## Hero Headline Animation (Mar 9, 2026)
 
 - [x] Stagger hero h1 lines with fadeUp animation (200ms delay between each line, animation-fill-mode: both)
+
+## Products.ts & Pricing Table (Mar 9, 2026)
+
+- [x] Update tiers.PRO.features array in server/stripe/products.ts (7 correct features)
+- [x] Update tiers.PRO_PLUS / AGENCY features array in server/stripe/products.ts (8 correct features, no unbuilt items)
+- [x] Add comparison table to /pricing page (9 rows, 4 columns, V2 design system styling)
