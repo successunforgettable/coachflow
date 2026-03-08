@@ -219,3 +219,9 @@
 - [ ] Mobile responsive — all sections stack below 768px
 - [ ] Signup/register modal triggered by campaign tile CTAs
 - [ ] Checkpoint and deploy
+
+## Landing Page Targeted Fixes (Mar 8, 2026)
+
+- [x] Fix 1: PricingTeaserSection — ZAP Pro CTA "Start Free Trial" → "Start ZAP Pro"; Pro Plus CTA "Start Free Trial" → "Go Pro Plus"
+- [x] Fix 2: HeroSection — wipeOrange transformOrigin "right" → "left" (left-to-right sweep)
+- [x] Fix 3: PathSection — node lighting setTimeout 260ms → 400ms (slower reveal)

@@ -319,7 +319,7 @@ function HeroSection({ onCampaignSelect }: { onCampaignSelect: (type: string) =>
 
       {/* Orange wipe overlay */}
       {showWipe && (
-        <div style={{ position: "absolute", inset: 0, background: ORANGE, zIndex: 10, transformOrigin: "right", animation: "wipeOrange 0.5s ease forwards" }} />
+        <div style={{ position: "absolute", inset: 0, background: ORANGE, zIndex: 10, transformOrigin: "left", animation: "wipeOrange 0.5s ease forwards" }} />
       )}
 
       <div style={{ maxWidth: 700, width: "100%", textAlign: "center", position: "relative", zIndex: 1 }}>
@@ -430,7 +430,7 @@ function PathSection({ onCTA }: { onCTA: () => void }) {
 
   useEffect(() => {
     if (!started || litCount >= PATH_NODES.length) return;
-    const t = setTimeout(() => setLitCount(c => c + 1), 260);
+    const t = setTimeout(() => setLitCount(c => c + 1), 400);
     return () => clearTimeout(t);
   }, [started, litCount]);
 
@@ -719,7 +719,7 @@ function PricingTeaserSection({ onCTA }: { onCTA: () => void }) {
       price: "$147",
       period: "/month",
       desc: "$4.90/day. Less than one failed Meta ad click.",
-      cta: "Start Free Trial",
+      cta: "Start ZAP Pro",
       highlight: true,
     },
     {
@@ -727,7 +727,7 @@ function PricingTeaserSection({ onCTA }: { onCTA: () => void }) {
       price: "$497",
       period: "/month",
       desc: "Unlimited everything. Run 10 campaigns simultaneously.",
-      cta: "Start Free Trial",
+      cta: "Go Pro Plus",
       highlight: false,
     },
   ];
