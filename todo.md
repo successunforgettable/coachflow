@@ -3788,3 +3788,14 @@ Scene 5 (6s): "Stop being invisible. Your next client is already on Facebook..."
 - [x] Push to Meta step: show instructions/link (no generation needed)
 - [x] Show generated results panel after success (content preview + "View Full" link)
 - [x] Node states update automatically after generation (progress invalidation)
+
+## V2 Landing Page — Cream Aesthetic
+- [x] Section 1: Hero with Zappy on pill input, 4 campaign tiles, orange wipe transition
+- [x] Section 2: 11-step winding path with scroll-triggered animations and Zappy hopping
+- [x] Section 3: No Blank Pages split screen comparison with animated generator card
+- [x] Section 4: Compliance score card 72→100 with Zappy states and confetti
+- [x] Section 5: Footer CTA with Zappy waiting and pill button
+- [x] Navigation: pill shape buttons, orange CTA, ZAP logo
+- [x] Fonts: Fraunces italic 900 + Instrument Sans (already in index.html)
+- [x] Confetti: react-confetti (already installed)
+- [x] All Zappy SVGs: waiting, working, cheering, concerned
