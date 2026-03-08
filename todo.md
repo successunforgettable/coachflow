@@ -301,3 +301,9 @@
 
 - [x] Task 1: Add "← swipe to compare →" hint below comparison table on Pricing.tsx (visible only under 640px)
 - [x] Task 2: Full mobile audit and clamp() layout fixes on LandingPage.tsx (hero, path, problem/solution, compliance, pricing teaser, footer)
+
+## Hero Pre-fill + Pricing Teaser Toggle (Mar 9, 2026)
+
+- [ ] Task 1: LandingPage.tsx — save inputVal to sessionStorage key zap_service_prefill on tile CTA click
+- [ ] Task 1: V2GeneratorWizard.tsx — read + pre-fill Service name input from sessionStorage on mount, clear key after read
+- [ ] Task 2: LandingPage.tsx PricingTeaserSection — add Monthly/Annual pill toggle with 2 MONTHS FREE badge, correct prices and savings text

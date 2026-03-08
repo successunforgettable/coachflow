@@ -385,7 +385,7 @@ function HeroSection({ onCampaignSelect }: { onCampaignSelect: (type: string) =>
                 <div style={{ fontSize: 30, marginBottom: 8 }}>{tile.emoji}</div>
                 <div style={{ fontFamily: "'Fraunces', serif", fontStyle: "italic", fontWeight: 900, fontSize: 16, color: INK, marginBottom: 6 }}>{tile.label}</div>
                 <div style={{ fontSize: 12, color: MUTED, marginBottom: 16, lineHeight: 1.4 }}>{tile.desc}</div>
-                <PillBtn size="sm" onClick={() => onCampaignSelect(tile.label)} style={{ width: "100%" }}>
+                <PillBtn size="sm" onClick={() => { if (inputVal.trim()) { sessionStorage.setItem("zap_service_prefill", inputVal.trim()); } onCampaignSelect(tile.label); }} style={{ width: "100%" }}>
                   Build This Free
                 </PillBtn>
               </div>
@@ -714,27 +714,33 @@ function ComplianceSection() {
 
 // ─── Section 5: Pricing Teaser ───────────────────────────────────────────────────
 function PricingTeaserSection({ onCTA }: { onCTA: () => void }) {
+  const [billing, setBilling] = useState<"monthly" | "annual">("monthly");
+  const isAnnual = billing === "annual";
+
   const tiers = [
     {
       name: "Free",
       price: "$0",
       period: "forever",
+      savings: null,
       desc: "1 ICP. See the quality before you commit.",
       cta: "Start Free",
       highlight: false,
     },
     {
       name: "ZAP Pro",
-      price: "$147",
-      period: "/month",
+      price: isAnnual ? "$1,470" : "$147",
+      period: isAnnual ? "/year" : "/month",
+      savings: isAnnual ? "Saves $294 vs monthly" : null,
       desc: "$4.90/day. Less than one failed Meta ad click.",
       cta: "Start ZAP Pro",
       highlight: true,
     },
     {
       name: "ZAP Pro Plus",
-      price: "$497",
-      period: "/month",
+      price: isAnnual ? "$4,970" : "$497",
+      period: isAnnual ? "/year" : "/month",
+      savings: isAnnual ? "Saves $994 vs monthly" : null,
       desc: "Unlimited everything. Run 10 campaigns simultaneously.",
       cta: "Go Pro Plus",
       highlight: false,
@@ -752,9 +758,41 @@ function PricingTeaserSection({ onCTA }: { onCTA: () => void }) {
         <h2 style={{ fontFamily: "'Fraunces', serif", fontStyle: "italic", fontWeight: 900, fontSize: "clamp(28px, 5vw, 48px)", color: INK, margin: "0 0 12px", letterSpacing: "-0.5px" }}>
           One plan for serious operators.
         </h2>
-        <p style={{ fontSize: 18, color: MUTED, margin: "0 0 56px", lineHeight: 1.6 }}>
+        <p style={{ fontSize: 18, color: MUTED, margin: "0 0 32px", lineHeight: 1.6 }}>
           Start free. Upgrade when you're ready.
         </p>
+
+        {/* Billing toggle */}
+        <div style={{ display: "inline-flex", background: "rgba(26,22,36,0.08)", borderRadius: 9999, padding: 4, marginBottom: 48, gap: 4 }}>
+          <button
+            onClick={() => setBilling("monthly")}
+            style={{
+              borderRadius: 9999, border: "none", cursor: "pointer",
+              padding: "8px 22px", fontSize: 14, fontWeight: 600,
+              fontFamily: "'Instrument Sans', sans-serif",
+              background: !isAnnual ? INK : "transparent",
+              color: !isAnnual ? "#fff" : MUTED,
+              transition: "all 0.2s",
+            }}
+          >Monthly</button>
+          <button
+            onClick={() => setBilling("annual")}
+            style={{
+              borderRadius: 9999, border: "none", cursor: "pointer",
+              padding: "8px 22px", fontSize: 14, fontWeight: 600,
+              fontFamily: "'Instrument Sans', sans-serif",
+              background: isAnnual ? INK : "transparent",
+              color: isAnnual ? "#fff" : MUTED,
+              transition: "all 0.2s",
+              display: "flex", alignItems: "center", gap: 8,
+            }}
+          >
+            Annual
+            <span style={{ background: ORANGE, color: "#fff", fontSize: 9, fontWeight: 800, padding: "2px 8px", borderRadius: 9999, letterSpacing: 0.8, textTransform: "uppercase" as const }}>
+              2 MONTHS FREE
+            </span>
+          </button>
+        </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20, marginBottom: 40, alignItems: "center" }} className="lp-pricing-grid">
           {tiers.map((tier) => (
@@ -776,11 +814,14 @@ function PricingTeaserSection({ onCTA }: { onCTA: () => void }) {
                 </div>
               )}
               <div style={{ fontFamily: "'Fraunces', serif", fontStyle: "italic", fontWeight: 900, fontSize: 20, color: tier.highlight ? "#fff" : INK, marginBottom: 8 }}>{tier.name}</div>
-              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: 2, marginBottom: 12 }}>
+              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: 2, marginBottom: 4 }}>
                 <span style={{ fontFamily: "'Fraunces', serif", fontWeight: 900, fontSize: 40, color: tier.highlight ? "#fff" : INK }}>{tier.price}</span>
                 <span style={{ fontSize: 14, color: tier.highlight ? "rgba(255,255,255,0.55)" : MUTED }}>{tier.period}</span>
               </div>
-              <p style={{ fontSize: 14, color: tier.highlight ? "rgba(255,255,255,0.6)" : MUTED, lineHeight: 1.5, marginBottom: 24, minHeight: 44 }}>{tier.desc}</p>
+              {tier.savings && (
+                <p style={{ fontSize: 12, color: ORANGE, fontWeight: 600, margin: "0 0 8px", fontFamily: "'Instrument Sans', sans-serif" }}>{tier.savings}</p>
+              )}
+              <p style={{ fontSize: 14, color: tier.highlight ? "rgba(255,255,255,0.6)" : MUTED, lineHeight: 1.5, marginBottom: 24, minHeight: 44, marginTop: tier.savings ? 0 : 8 }}>{tier.desc}</p>
               <PillBtn
                 size="md"
                 variant={tier.highlight ? "orange" : "outline"}

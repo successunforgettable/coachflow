@@ -30,11 +30,12 @@ export default function Services() {
 
   // Pre-fill service name from landing page hero input
   useEffect(() => {
-    const stored = sessionStorage.getItem("zap_programme_name");
+    const stored = sessionStorage.getItem("zap_service_prefill") || sessionStorage.getItem("zap_programme_name");
     if (stored) {
       setFormData(prev => ({ ...prev, name: stored }));
       setPreFillName(stored);
       setShowCreateForm(true);
+      sessionStorage.removeItem("zap_service_prefill");
       sessionStorage.removeItem("zap_programme_name");
     }
   }, []);
