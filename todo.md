@@ -340,3 +340,9 @@
 - [x] Increase ICP client timeout from 90s to 150s (V2 wizard only)
 - [x] Progressive messaging during ICP generation with 20s intervals
 - [x] Elapsed time counter updating every second in muted text
+
+## Bug A Fix — Zod max() Limits (Mar 9, 2026)
+
+- [x] heroMechanisms.ts — raise all input string max() limits to max(1000) (targetMarket, pressingProblem, whyProblem, whatTried, whyExistingNotWork, descriptor, application, desiredOutcome, credibility, socialProof)
+- [x] hvco.ts — raise targetMarket and hvcoTopic max() to max(1000)
+- [x] headlines.ts — raise targetMarket max() from max(255) to max(1000)

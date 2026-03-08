@@ -48,8 +48,8 @@ export const hvcoRouter = router({
       z.object({
         serviceId: z.number(),
         campaignId: z.number().optional(),
-        targetMarket: z.string().max(100),
-        hvcoTopic: z.string().max(800),
+        targetMarket: z.string().max(1000),
+        hvcoTopic: z.string().max(1000),
         powerMode: z.boolean().optional(),
       })
     )
