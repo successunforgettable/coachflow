@@ -272,13 +272,15 @@ export default function Pricing() {
         {/* Comparison Table */}
         <div className="mt-16 max-w-6xl mx-auto">
           <h2 className="text-2xl font-bold text-foreground text-center mb-8">Compare Plans</h2>
+          {/* Horizontal scroll wrapper for mobile */}
+          <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch", borderRadius: 24, boxShadow: "0 4px 24px rgba(0,0,0,0.06)" }}>
           <div style={{
             background: "#F5F1EA",
             borderRadius: 24,
             overflow: "hidden",
             border: "1px solid rgba(26,22,36,0.08)",
             fontFamily: "'Instrument Sans', sans-serif",
-            boxShadow: "0 4px 24px rgba(0,0,0,0.06)",
+            minWidth: 600,
           }}>
             {/* Table header */}
             <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", background: "#1A1624" }}>
@@ -327,6 +329,7 @@ export default function Pricing() {
               </div>
             ))}
           </div>
+          </div>{/* end scroll wrapper */}
         </div>
 
         {/* FAQ */}

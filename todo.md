@@ -268,3 +268,7 @@
 - [x] Update tiers.PRO.features array in server/stripe/products.ts (7 correct features)
 - [x] Update tiers.PRO_PLUS / AGENCY features array in server/stripe/products.ts (8 correct features, no unbuilt items)
 - [x] Add comparison table to /pricing page (9 rows, 4 columns, V2 design system styling)
+
+## Pricing Table Mobile Fix (Mar 9, 2026)
+
+- [x] Wrap comparison table in horizontal scroll container with min-width 600px to prevent overflow on mobile
