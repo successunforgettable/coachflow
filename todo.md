@@ -258,3 +258,7 @@
 - [x] Update ZAP Pro Plus feature list to correct live features
 - [x] Add Free tier card as first column (3-column layout matching landing page)
 - [x] Update FAQ "What makes ZAP unique?" answer with 11-step path + Zappy description
+
+## Hero Headline Animation (Mar 9, 2026)
+
+- [x] Stagger hero h1 lines with fadeUp animation (200ms delay between each line, animation-fill-mode: both)

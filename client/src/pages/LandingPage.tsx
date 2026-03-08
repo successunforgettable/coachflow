@@ -334,9 +334,11 @@ function HeroSection({ onCampaignSelect }: { onCampaignSelect: (type: string) =>
           }}
         />
 
-        {/* Headline */}
-        <h1 style={{ fontFamily: "'Fraunces', serif", fontStyle: "italic", fontWeight: 900, fontSize: "clamp(36px, 6vw, 62px)", color: INK, margin: "0 0 16px", lineHeight: 1.1, letterSpacing: "-1px" }}>
-          Your next campaign starts<br />with one sentence.
+        {/* Headline — staggered fadeUp per line */}
+        <h1 style={{ fontFamily: "'Fraunces', serif", fontStyle: "italic", fontWeight: 900, fontSize: "clamp(36px, 6vw, 62px)", color: INK, margin: "0 0 16px", lineHeight: 1.1, letterSpacing: "-1px", display: "flex", flexDirection: "column", alignItems: "center", gap: 0 }}>
+          <span style={{ display: "block", opacity: 0, animation: "fadeUp 0.6s ease 0ms both" }}>Your next campaign</span>
+          <span style={{ display: "block", opacity: 0, animation: "fadeUp 0.6s ease 200ms both" }}>starts</span>
+          <span style={{ display: "block", opacity: 0, animation: "fadeUp 0.6s ease 400ms both" }}>with one sentence.</span>
         </h1>
 
         {/* Sub */}
