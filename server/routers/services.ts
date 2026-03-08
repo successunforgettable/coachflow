@@ -139,9 +139,12 @@ export const servicesRouter = router({
       if (!service) throw new Error("Service not found");
 
       // Determine which fields need to be generated vs already filled
-      const needsDescription = !service.description?.trim();
-      const needsTargetCustomer = !service.targetCustomer?.trim();
-      const needsMainBenefit = !service.mainBenefit?.trim();
+      // Treat placeholder values ("To be defined") as empty — same logic as frontend
+      const isPlaceholder = (v: string | null | undefined) =>
+        !v?.trim() || v.trim().toLowerCase() === 'to be defined';
+      const needsDescription = isPlaceholder(service.description);
+      const needsTargetCustomer = isPlaceholder(service.targetCustomer);
+      const needsMainBenefit = isPlaceholder(service.mainBenefit);
 
       const prompt = `You are a world-class direct response copywriter and market researcher.
 
@@ -217,10 +220,10 @@ Return JSON with these exact fields:
       });
 
       const rawContent = response.choices[0].message.content;
-      let expanded: Record<string, string>;
+      let expanded: Record<string, unknown>;
 
       // Helper: try to parse JSON from a string, stripping markdown fences first
-      const tryParse = (s: string): Record<string, string> | null => {
+      const tryParse = (s: string): Record<string, unknown> | null => {
         try {
           const stripped = s
             .replace(/^```(?:json)?\s*/i, "")

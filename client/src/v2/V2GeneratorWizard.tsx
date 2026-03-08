@@ -500,8 +500,10 @@ function V2ServiceStep({ onBack, onComplete }: { onBack?: () => void; onComplete
       // Only pre-fill name if no sessionStorage value was set
       if (!preFillName) setServiceName(svc.name || "");
       setServiceDescription(svc.description || "");
-      setTargetCustomer(svc.targetCustomer && svc.targetCustomer !== "To be defined" ? svc.targetCustomer : "");
-      setMainBenefit(svc.mainBenefit && svc.mainBenefit !== "To be defined" ? svc.mainBenefit : "");
+      const isPlaceholderVal = (v: string | null | undefined) =>
+        !v?.trim() || v.trim().toLowerCase() === 'to be defined';
+      setTargetCustomer(!isPlaceholderVal(svc.targetCustomer) ? (svc.targetCustomer ?? "") : "");
+      setMainBenefit(!isPlaceholderVal(svc.mainBenefit) ? (svc.mainBenefit ?? "") : "");
       setPainPoints(svc.painPoints || "");
       setHvcoTopic(svc.hvcoTopic || "");
       setUniqueMechanism(svc.uniqueMechanismSuggestion || "");
@@ -591,13 +593,15 @@ function V2ServiceStep({ onBack, onComplete }: { onBack?: () => void; onComplete
         if (descVal && descVal !== svc.name) setServiceDescription(descVal);
       }
       // targetCustomer: use exp.targetCustomer (generated) or svc value if not placeholder
-      if (!targetCustomer.trim()) {
-        const tcVal = exp.targetCustomer || (svc.targetCustomer !== "To be defined" ? svc.targetCustomer : "") || "";
+      const isPlaceholder = (v: string | undefined | null) =>
+        !v?.trim() || v.trim().toLowerCase() === 'to be defined';
+      if (isPlaceholder(targetCustomer)) {
+        const tcVal = exp.targetCustomer || (!isPlaceholder(svc.targetCustomer) ? svc.targetCustomer : "") || "";
         if (tcVal) setTargetCustomer(tcVal);
       }
       // mainBenefit: use exp.mainBenefit (generated) or svc value if not placeholder
-      if (!mainBenefit.trim()) {
-        const mbVal = exp.mainBenefit || (svc.mainBenefit !== "To be defined" ? svc.mainBenefit : "") || "";
+      if (isPlaceholder(mainBenefit)) {
+        const mbVal = exp.mainBenefit || (!isPlaceholder(svc.mainBenefit) ? svc.mainBenefit : "") || "";
         if (mbVal) setMainBenefit(mbVal);
       }
       if (!painPoints.trim() && exp.painPoints) setPainPoints(exp.painPoints);

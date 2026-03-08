@@ -326,3 +326,11 @@
 - [ ] Node 5 (Free Opt-In) FAIL — hvco.generate Zod validation: targetMarket max 100 chars — same root cause as Node 4
 - [ ] Node 2 (ICP) — ICP generation takes ~109 seconds but client timeout is 90 seconds → shows "Zappy timed out" even though data was saved. ICP node shows green on dashboard because data was saved.
 - [ ] Nodes 6-11 — NOT locked on Free tier (all show "Generate Now" button) — expected to show upgrade/lock message per test spec
+
+## Task 1 — expandProfile Fix (Mar 9, 2026)
+
+- [x] Fix server: treat "To be defined" as empty in needsTargetCustomer / needsMainBenefit checks
+- [x] Fix frontend: treat "To be defined" as empty in handleZapExpand (isPlaceholder helper)
+- [x] Fix frontend: initialization useEffect also treats "To be defined" as empty
+- [ ] BUG FOUND: expandProfile DB update fails when hvcoTopic > 300 chars (varchar limit) — needs investigation
+- [ ] BUG FOUND: targetCustomer / mainBenefit still not populating in UI after fix — "[Max Depth]" in network log suggests serialization issue
