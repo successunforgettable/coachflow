@@ -312,7 +312,7 @@ function HeroSection({ onCampaignSelect }: { onCampaignSelect: (type: string) =>
   };
 
   return (
-    <section style={{ background: CREAM, minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "100px 24px 80px", position: "relative", overflow: "hidden" }}>
+    <section style={{ background: CREAM, minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "clamp(60px,8vw,100px) clamp(16px,4vw,24px) clamp(48px,6vw,80px)", position: "relative", overflow: "hidden" }}>
       {/* Background blobs */}
       <div style={{ position: "absolute", top: "8%", right: "-8%", width: 500, height: 500, borderRadius: "50%", background: `radial-gradient(circle, rgba(255,91,29,0.07) 0%, transparent 70%)`, pointerEvents: "none" }} />
       <div style={{ position: "absolute", bottom: "5%", left: "-5%", width: 400, height: 400, borderRadius: "50%", background: `radial-gradient(circle, rgba(139,92,246,0.05) 0%, transparent 70%)`, pointerEvents: "none" }} />
@@ -437,7 +437,7 @@ function PathSection({ onCTA }: { onCTA: () => void }) {
   }, [started, litCount]);
 
   return (
-    <section id="path" ref={sectionRef} style={{ background: CREAM, padding: "100px 24px" }}>
+    <section id="path" ref={sectionRef} style={{ background: CREAM, padding: "clamp(56px,8vw,100px) clamp(16px,4vw,24px)" }}>
       <div style={{ maxWidth: 900, margin: "0 auto", textAlign: "center" }}>
         <h2 style={{ fontFamily: "'Fraunces', serif", fontStyle: "italic", fontWeight: 900, fontSize: "clamp(28px, 5vw, 48px)", color: INK, margin: "0 0 12px", letterSpacing: "-0.5px" }}>
           One path. Every asset you need to launch.
@@ -535,7 +535,7 @@ function ProblemSolutionSection({ onCTA }: { onCTA: () => void }) {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", minHeight: 580 }} className="lp-split-grid">
         {/* LEFT — Before ZAP (dark) */}
         <div style={{
-          background: INK, padding: "80px 48px",
+          background: INK, padding: "clamp(40px,6vw,80px) clamp(20px,4vw,48px)",
           opacity: visible ? 1 : 0, transform: visible ? "translateX(0)" : "translateX(-40px)",
           transition: "all 0.7s ease",
         }}>
@@ -564,7 +564,7 @@ function ProblemSolutionSection({ onCTA }: { onCTA: () => void }) {
 
         {/* RIGHT — With ZAP (cream) */}
         <div style={{
-          background: CREAM, padding: "80px 48px",
+          background: CREAM, padding: "clamp(40px,6vw,80px) clamp(20px,4vw,48px)",
           opacity: visible ? 1 : 0, transform: visible ? "translateX(0)" : "translateX(40px)",
           transition: "all 0.7s ease 0.15s",
         }}>
@@ -646,7 +646,7 @@ function ComplianceSection() {
   const isMax = score === 100;
 
   return (
-    <section id="compliance" ref={sectionRef} style={{ background: CREAM, padding: "100px 24px", textAlign: "center", position: "relative", overflow: "hidden" }}>
+    <section id="compliance" ref={sectionRef} style={{ background: CREAM, padding: "clamp(56px,8vw,100px) clamp(16px,4vw,24px)", textAlign: "center", position: "relative", overflow: "hidden" }}>
       {showConfetti && <Confetti width={windowSize.width} height={windowSize.height} recycle={false} numberOfPieces={300} colors={[ORANGE, PURPLE, "#22C55E", "#F59E0B"]} />}
 
       <div style={{ maxWidth: 600, margin: "0 auto" }}>
@@ -659,7 +659,7 @@ function ComplianceSection() {
 
         {/* Score card */}
         <div style={{
-          background: "#fff", borderRadius: 32, padding: "48px 40px",
+          background: "#fff", borderRadius: 32, padding: "clamp(28px,5vw,48px) clamp(20px,4vw,40px)",
           boxShadow: isMax ? `0 0 0 3px ${ORANGE}, 0 20px 60px rgba(255,91,29,0.18)` : "0 8px 40px rgba(0,0,0,0.07)",
           transition: "box-shadow 0.5s",
           maxWidth: 380, margin: "0 auto 32px",
@@ -742,7 +742,7 @@ function PricingTeaserSection({ onCTA }: { onCTA: () => void }) {
   ];
 
   return (
-    <section id="pricing-teaser" style={{ background: "#EDE8DF", padding: "100px 24px", textAlign: "center" }}>
+    <section id="pricing-teaser" style={{ background: "#EDE8DF", padding: "clamp(56px,8vw,100px) clamp(16px,4vw,24px)", textAlign: "center" }}>
       <div style={{ maxWidth: 960, margin: "0 auto" }}>
         <img
           src={ZAPPY_WAITING}
@@ -763,7 +763,7 @@ function PricingTeaserSection({ onCTA }: { onCTA: () => void }) {
               style={{
                 background: tier.highlight ? INK : "#fff",
                 borderRadius: 24,
-                padding: "36px 28px",
+                padding: "clamp(24px,3vw,36px) clamp(16px,2.5vw,28px)",
                 boxShadow: tier.highlight ? `0 16px 48px rgba(26,22,36,0.2)` : "0 4px 20px rgba(0,0,0,0.05)",
                 border: tier.highlight ? `2px solid ${ORANGE}` : "1px solid rgba(0,0,0,0.06)",
                 position: "relative" as const,
@@ -811,7 +811,7 @@ function PricingTeaserSection({ onCTA }: { onCTA: () => void }) {
 // ─── Section 6: Footer CTA ───────────────────────────────────────────────────────
 function FooterCTASection({ onCTA }: { onCTA: () => void }) {
   return (
-    <section style={{ background: INK, padding: "100px 24px 80px", textAlign: "center" }}>
+    <section style={{ background: INK, padding: "clamp(56px,8vw,100px) clamp(16px,4vw,24px) clamp(48px,6vw,80px)", textAlign: "center" }}>
       <div style={{ maxWidth: 600, margin: "0 auto" }}>
         <img src={ZAPPY_WAITING} alt="Zappy waiting" style={{ width: 120, height: 120, margin: "0 auto 32px", display: "block", animation: "zappyBreathe 3s ease infinite" }} />
         <h2 style={{ fontFamily: "'Fraunces', serif", fontStyle: "italic", fontWeight: 900, fontSize: "clamp(28px, 5vw, 52px)", color: CREAM, margin: "0 0 16px", letterSpacing: "-0.5px", lineHeight: 1.1 }}>

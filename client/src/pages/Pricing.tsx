@@ -446,9 +446,14 @@ export default function Pricing() {
                 </div>
               ))}
             </div>
-          </div>
+           </div>
+          {/* Swipe hint — mobile only */}
+          <p style={{
+            textAlign: "center", fontSize: 12, color: "#9ca3af",
+            fontFamily: fontBody, marginTop: 10, marginBottom: 0,
+            display: "block",
+          }} className="swipe-hint">← swipe to compare →</p>
         </div>
-
         {/* ── FAQ ── */}
         <div style={{ maxWidth: 720, margin: "0 auto" }}>
           <h2 style={{

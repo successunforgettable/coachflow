@@ -296,3 +296,8 @@
 - [x] Remove scale(1.03) on ZAP Pro card on mobile to prevent horizontal scroll
 - [x] Reduce card padding on mobile (36px 32px → 28px 20px)
 - [x] Reduce section padding on mobile (80px → 48px top/bottom)
+
+## Swipe Hint + Landing Page Mobile Audit (Mar 9, 2026)
+
+- [x] Task 1: Add "← swipe to compare →" hint below comparison table on Pricing.tsx (visible only under 640px)
+- [x] Task 2: Full mobile audit and clamp() layout fixes on LandingPage.tsx (hero, path, problem/solution, compliance, pricing teaser, footer)

@@ -635,3 +635,9 @@
     display: block;
   }
 }
+
+/* Pricing page swipe hint — mobile only */
+.swipe-hint { display: none; }
+@media (max-width: 639px) {
+  .swipe-hint { display: block !important; }
+}
