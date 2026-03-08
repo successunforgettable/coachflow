@@ -1,15 +1,25 @@
 /**
  * Stripe Products and Prices Configuration
- * 
- * Define all subscription tiers and pricing here.
- * These IDs should match your Stripe Dashboard products.
+ *
+ * ZAP Campaigns — Confirmed pricing (March 2026):
+ *   ZAP Pro Monthly:      $147 / month
+ *   ZAP Pro Yearly:       $1,470 / year  (~$122.50/month, 2 months free)
+ *   ZAP Pro Plus Monthly: $497 / month
+ *   ZAP Pro Plus Yearly:  $4,970 / year  (~$414/month, 2 months free)
+ *
+ * Price IDs are read from environment variables.
+ * Set these in Settings → Secrets before going live:
+ *   STRIPE_PRO_MONTHLY_PRICE_ID
+ *   STRIPE_PRO_YEARLY_PRICE_ID
+ *   STRIPE_AGENCY_MONTHLY_PRICE_ID   (maps to ZAP Pro Plus monthly)
+ *   STRIPE_AGENCY_YEARLY_PRICE_ID    (maps to ZAP Pro Plus yearly)
  */
 
 export const SUBSCRIPTION_TIERS = {
   PRO: {
-    name: "Pro",
-    priceMonthly: 49,
-    priceYearly: 490, // ~$41/month (2 months free)
+    name: "ZAP Pro",
+    priceMonthly: 147,
+    priceYearly: 1470, // ~$122.50/month (2 months free)
     features: [
       "Unlimited services",
       "6 headline generations/month",
@@ -27,11 +37,11 @@ export const SUBSCRIPTION_TIERS = {
     stripePriceIdYearly: process.env.STRIPE_PRO_YEARLY_PRICE_ID || "price_pro_yearly",
   },
   AGENCY: {
-    name: "Agency",
-    priceMonthly: 149,
-    priceYearly: 1490, // ~$124/month (2 months free)
+    name: "ZAP Pro Plus",
+    priceMonthly: 497,
+    priceYearly: 4970, // ~$414/month (2 months free)
     features: [
-      "Everything in Pro",
+      "Everything in ZAP Pro",
       "Unlimited headlines",
       "Unlimited HVCO titles",
       "Unlimited hero mechanisms",

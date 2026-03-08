@@ -225,3 +225,10 @@
 - [x] Fix 1: PricingTeaserSection — ZAP Pro CTA "Start Free Trial" → "Start ZAP Pro"; Pro Plus CTA "Start Free Trial" → "Go Pro Plus"
 - [x] Fix 2: HeroSection — wipeOrange transformOrigin "right" → "left" (left-to-right sweep)
 - [x] Fix 3: PathSection — node lighting setTimeout 260ms → 400ms (slower reveal)
+
+## Stripe Pricing Fix (Mar 8, 2026)
+
+- [ ] Step 1: Update server/stripe/products.ts — Pro $147/mo, $1,470/yr; Agency (Pro Plus) $497/mo, $4,970/yr
+- [ ] Step 2: Confirm 4 Stripe live price IDs in env vars
+- [ ] Step 3: Screenshot proof of products.ts + Stripe dashboard
+- [ ] Step 4: Publish to zapcampaigns.com (only after Steps 1-3 confirmed)

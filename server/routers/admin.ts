@@ -7,12 +7,12 @@ import { eq, and, gte, lte, sql } from "drizzle-orm";
 import Stripe from "stripe";
 import { auditedAdminProcedure } from "../_core/auditedAdminProcedure";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2026-01-28.clover" });
+const stripe = new Stripe((process.env.CUSTOM_STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY)!, { apiVersion: "2026-01-28.clover" });
 
 // Pricing constants
 const TIER_PRICES = {
   trial: 0,
-  pro: 49,
+  pro: 147,
   agency: 199,
 };
 
