@@ -319,6 +319,9 @@ export default function V2Dashboard() {
     setShowModal(false);
     setForkDismissed(true);
     localStorage.setItem("v2_fork_dismissed", "true");
+    // Navigate to the first non-completed node that has a wizard step
+    const nextNode = nodes.find(n => (n.state === "active" || n.state === "locked") && NODE_STEP_MAP[n.id]);
+    navigate(`/v2-dashboard/wizard/${nextNode ? NODE_STEP_MAP[nextNode.id] : "offer"}`);
   }
 
   function handleJump() {

@@ -3808,3 +3808,10 @@ Scene 5 (6s): "Stop being invisible. Your next client is already on Facebook..."
 - [x] Hamburger opens/closes dropdown with all 4 nav links
 - [x] Hamburger icon toggles to X when menu is open
 - [x] Mobile CTA button (Start Free / Dashboard) always visible in nav
+
+## Guided Path End-to-End Fix (Mar 8 2026)
+- [ ] Fork modal: "Guide Me Step by Step" navigates to Node 3 (Offer) wizard
+- [ ] V2 wizard: success state shows "Continue to Next Step" button linking to next node
+- [ ] V2 wizard: all 11 steps correctly chained (1→2→3→...→11→done)
+- [ ] Services form: pre-fill confirmation banner when name comes from hero sessionStorage
+- [ ] Mobile nav: overlay dropdown (sheet) instead of push-down

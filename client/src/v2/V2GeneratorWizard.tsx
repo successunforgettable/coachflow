@@ -22,7 +22,7 @@ import Confetti from "react-confetti";
 import { trpc } from "@/lib/trpc";
 import V2Layout from "./V2Layout";
 import ZappyMascot from "./ZappyMascot";
-import { type WizardStep, STEP_LABELS } from "./v2-constants";
+import { type WizardStep, STEP_LABELS, getNextStep } from "./v2-constants";
 
 export type { WizardStep };
 
@@ -250,7 +250,12 @@ function LoadingState() {
 }
 
 // ─── Success State: Zappy cheering + confetti ─────────────────────────────────
-function SuccessState({ score, resultUrl }: { score: number; resultUrl?: string | null }) {
+function SuccessState({ score, resultUrl, nextStepUrl, isLastStep }: {
+  score: number;
+  resultUrl?: string | null;
+  nextStepUrl?: string | null;
+  isLastStep?: boolean;
+}) {
   const [windowSize, setWindowSize] = useState({ width: window.innerWidth, height: window.innerHeight });
 
   useEffect(() => {
@@ -304,26 +309,68 @@ function SuccessState({ score, resultUrl }: { score: number; resultUrl?: string 
           }}>
             Your assets are ready.
           </p>
-          {resultUrl && (
-            <a
-              href={resultUrl}
-              style={{
-                display: "inline-block",
-                marginTop: "12px",
-                background: "var(--v2-primary-btn)",
-                color: "#fff",
-                borderRadius: "var(--v2-border-radius-pill)",
-                padding: "10px 24px",
-                fontFamily: "var(--v2-font-body)",
-                fontWeight: 700,
-                fontSize: "15px",
-                textDecoration: "none",
-                letterSpacing: "0.01em",
-              }}
-            >
-              View Results →
-            </a>
-          )}
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "14px", width: "100%" }}>
+            {isLastStep ? (
+              <a
+                href="/v2-dashboard"
+                style={{
+                  display: "block",
+                  background: "#58CC02",
+                  color: "#fff",
+                  borderRadius: "var(--v2-border-radius-pill)",
+                  padding: "12px 28px",
+                  fontFamily: "var(--v2-font-body)",
+                  fontWeight: 700,
+                  fontSize: "15px",
+                  textDecoration: "none",
+                  letterSpacing: "0.01em",
+                  textAlign: "center",
+                }}
+              >
+                🎉 Campaign Complete — View Dashboard
+              </a>
+            ) : nextStepUrl ? (
+              <a
+                href={nextStepUrl}
+                style={{
+                  display: "block",
+                  background: "var(--v2-primary-btn)",
+                  color: "#fff",
+                  borderRadius: "var(--v2-border-radius-pill)",
+                  padding: "12px 28px",
+                  fontFamily: "var(--v2-font-body)",
+                  fontWeight: 700,
+                  fontSize: "15px",
+                  textDecoration: "none",
+                  letterSpacing: "0.01em",
+                  textAlign: "center",
+                }}
+              >
+                Continue to Next Step →
+              </a>
+            ) : null}
+            {resultUrl && (
+              <a
+                href={resultUrl}
+                style={{
+                  display: "block",
+                  background: "rgba(26,22,36,0.06)",
+                  color: "var(--v2-text-color)",
+                  borderRadius: "var(--v2-border-radius-pill)",
+                  padding: "10px 24px",
+                  fontFamily: "var(--v2-font-body)",
+                  fontWeight: 600,
+                  fontSize: "14px",
+                  textDecoration: "none",
+                  letterSpacing: "0.01em",
+                  textAlign: "center",
+                  border: "1px solid rgba(26,22,36,0.12)",
+                }}
+              >
+                View Results →
+              </a>
+            )}
+          </div>
         </div>
       </div>
     </>
@@ -803,7 +850,14 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
           {status === "loading" && <LoadingState />}
 
           {/* ── SUCCESS STATE ── */}
-          {status === "success" && <SuccessState score={complianceScore} resultUrl={resultUrl} />}
+          {status === "success" && (
+            <SuccessState
+              score={complianceScore}
+              resultUrl={resultUrl}
+              nextStepUrl={(() => { const next = getNextStep(step); return next ? `/v2-dashboard/wizard/${next}` : null; })()}
+              isLastStep={step === "pushToMeta"}
+            />
+          )}
 
           {/* ── CONCERNED STATE (compliance violations) ── */}
           {status === "concerned" && (

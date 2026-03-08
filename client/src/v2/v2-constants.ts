@@ -29,6 +29,28 @@ export const STEP_LABELS: Record<WizardStep, string> = {
   pushToMeta:        "Push to Meta / GoHighLevel",
 };
 
+// Ordered step sequence for "Continue to Next Step" navigation
+export const ORDERED_STEPS: WizardStep[] = [
+  "icp",
+  "offer",
+  "uniqueMethod",
+  "freeOptIn",
+  "headlines",
+  "adCopy",
+  "landingPage",
+  "emailSequence",
+  "whatsappSequence",
+  "pushToMeta",
+];
+
+/**
+ * Returns the next step after the given one, or null if it's the last step.
+ */
+export function getNextStep(step: WizardStep): WizardStep | null {
+  const idx = ORDERED_STEPS.indexOf(step);
+  return idx >= 0 && idx < ORDERED_STEPS.length - 1 ? ORDERED_STEPS[idx + 1] : null;
+}
+
 // Map from path node id to wizard step key
 export const NODE_STEP_MAP: Record<string, WizardStep> = {
   icp:               "icp",

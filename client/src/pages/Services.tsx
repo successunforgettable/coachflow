@@ -16,6 +16,7 @@ export default function Services() {
   const { user, loading: authLoading, isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [preFillName, setPreFillName] = useState<string | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -32,6 +33,7 @@ export default function Services() {
     const stored = sessionStorage.getItem("zap_programme_name");
     if (stored) {
       setFormData(prev => ({ ...prev, name: stored }));
+      setPreFillName(stored);
       setShowCreateForm(true);
       sessionStorage.removeItem("zap_programme_name");
     }
@@ -112,6 +114,31 @@ export default function Services() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
+                {preFillName && (
+                  <div style={{
+                    background: "rgba(255,91,29,0.08)",
+                    border: "1px solid rgba(255,91,29,0.25)",
+                    borderRadius: "12px",
+                    padding: "12px 16px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    fontSize: "14px",
+                    fontWeight: 600,
+                    color: "#C0390A",
+                  }}>
+                    <span style={{ fontSize: "20px" }}>🦊</span>
+                    <span>You typed <strong>"{preFillName}"</strong> — let's build it! We've pre-filled your programme name below.</span>
+                    <button
+                      type="button"
+                      onClick={() => setPreFillName(null)}
+                      style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", color: "#C0390A", fontSize: "16px", lineHeight: 1 }}
+                      aria-label="Dismiss"
+                    >
+                      ×
+                    </button>
+                  </div>
+                )}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="name">Service Name *</Label>

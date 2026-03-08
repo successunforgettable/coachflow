@@ -211,30 +211,43 @@ function LandingNav({ onGetStarted }: { onGetStarted: () => void }) {
         </div>
       </div>
 
-      {/* Mobile Dropdown Menu */}
+      {/* Mobile Dropdown Menu — fixed overlay so page content doesn't shift */}
       {menuOpen && (
-        <div className="lp-nav-mobile" style={{
-          display: "block",
-          background: CREAM,
-          borderTop: "1px solid rgba(26,22,36,0.09)",
-          padding: "8px 0 16px",
-        }}>
-          {NAV_LINKS.map(({ href, label }) => (
-            <button
-              key={href}
-              onClick={() => handleNavLink(href)}
-              style={{
-                display: "block", width: "100%", textAlign: "left",
-                fontFamily: "'Instrument Sans', sans-serif", fontWeight: 500,
-                fontSize: 16, color: INK,
-                background: "none", border: "none", cursor: "pointer",
-                padding: "13px 24px",
-              }}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <>
+          {/* Backdrop */}
+          <div
+            onClick={() => setMenuOpen(false)}
+            style={{
+              position: "fixed", inset: 0, top: 64, zIndex: 98,
+              background: "rgba(26,22,36,0.18)",
+            }}
+          />
+          {/* Sheet */}
+          <div style={{
+            position: "fixed", top: 64, left: 0, right: 0, zIndex: 99,
+            background: CREAM,
+            borderBottom: "1px solid rgba(26,22,36,0.12)",
+            boxShadow: "0 8px 32px rgba(26,22,36,0.12)",
+            padding: "8px 0 20px",
+          }}>
+            {NAV_LINKS.map(({ href, label }) => (
+              <button
+                key={href}
+                onClick={() => handleNavLink(href)}
+                style={{
+                  display: "block", width: "100%", textAlign: "left",
+                  fontFamily: "'Instrument Sans', sans-serif", fontWeight: 500,
+                  fontSize: 17, color: INK,
+                  background: "none", border: "none", cursor: "pointer",
+                  padding: "14px 24px",
+                  borderBottom: "1px solid rgba(26,22,36,0.06)",
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </>
       )}
 
       {/* Responsive breakpoint */}
