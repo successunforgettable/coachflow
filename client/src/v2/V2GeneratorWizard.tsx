@@ -18,6 +18,7 @@
  * - Demo params: ?demo=timeout | ?demo=error | ?demo=offline (in addition to existing ones)
  */
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useLocation } from "wouter";
 import Confetti from "react-confetti";
 import { trpc } from "@/lib/trpc";
 import V2Layout from "./V2Layout";
@@ -37,6 +38,7 @@ interface AdvancedField {
 }
 
 const ADVANCED_FIELDS: Record<WizardStep, AdvancedField[]> = {
+  service: [],
   icp: [
     { key: "name", label: "ICP Name / Label", type: "text", placeholder: "e.g. Mid-Career Professional", sourceNote: "Auto-generated from your service avatar" },
   ],
@@ -250,9 +252,8 @@ function LoadingState() {
 }
 
 // ─── Success State: Zappy cheering + confetti ─────────────────────────────────
-function SuccessState({ score, resultUrl, nextStepUrl, isLastStep }: {
+function SuccessState({ score, nextStepUrl, isLastStep }: {
   score: number;
-  resultUrl?: string | null;
   nextStepUrl?: string | null;
   isLastStep?: boolean;
 }) {
@@ -349,27 +350,7 @@ function SuccessState({ score, resultUrl, nextStepUrl, isLastStep }: {
                 Continue to Next Step →
               </a>
             ) : null}
-            {resultUrl && (
-              <a
-                href={resultUrl}
-                style={{
-                  display: "block",
-                  background: "rgba(26,22,36,0.06)",
-                  color: "var(--v2-text-color)",
-                  borderRadius: "var(--v2-border-radius-pill)",
-                  padding: "10px 24px",
-                  fontFamily: "var(--v2-font-body)",
-                  fontWeight: 600,
-                  fontSize: "14px",
-                  textDecoration: "none",
-                  letterSpacing: "0.01em",
-                  textAlign: "center",
-                  border: "1px solid rgba(26,22,36,0.12)",
-                }}
-              >
-                View Results →
-              </a>
-            )}
+
           </div>
         </div>
       </div>
@@ -478,6 +459,271 @@ function ErrorBanner({
   );
 }
 
+// ─── V2 Service Step — collects service name + description, saves via API ────
+function V2ServiceStep({ onBack, onComplete }: { onBack?: () => void; onComplete: () => void }) {
+  const utils = trpc.useUtils();
+  const { data: existingServices, isLoading: servicesLoading } = trpc.services.list.useQuery();
+  const createService = trpc.services.create.useMutation();
+  const updateService = trpc.services.update.useMutation();
+
+  // sessionStorage pre-fill
+  const [preFillName, setPreFillName] = useState<string | null>(null);
+  const [serviceName, setServiceName] = useState("");
+  const [serviceDescription, setServiceDescription] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+
+  useEffect(() => {
+    const stored = sessionStorage.getItem("zap_service_prefill");
+    if (stored) {
+      setPreFillName(stored);
+      setServiceName(stored);
+      sessionStorage.removeItem("zap_service_prefill");
+    }
+  }, []);
+
+  // If a service already exists, pre-fill with its data
+  useEffect(() => {
+    if (existingServices && existingServices.length > 0 && !preFillName) {
+      const svc = existingServices[0];
+      setServiceName(svc.name || "");
+      setServiceDescription(svc.description || "");
+    }
+  }, [existingServices, preFillName]);
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%",
+    fontFamily: "var(--v2-font-body)",
+    fontSize: "15px",
+    color: "var(--v2-text-color)",
+    background: "#F9F7F4",
+    border: "1px solid rgba(26,22,36,0.15)",
+    borderRadius: "12px",
+    padding: "14px 16px",
+    outline: "none",
+    boxSizing: "border-box" as const,
+    transition: "border-color 0.15s ease",
+  };
+
+  async function handleSave() {
+    if (!serviceName.trim()) {
+      setSaveError("Please enter your service name.");
+      return;
+    }
+    setSaving(true);
+    setSaveError("");
+    try {
+      const existing = existingServices && existingServices.length > 0 ? existingServices[0] : null;
+      if (existing) {
+        await updateService.mutateAsync({
+          id: existing.id,
+          name: serviceName.trim(),
+          description: serviceDescription.trim() || serviceName.trim(),
+        });
+      } else {
+        await createService.mutateAsync({
+          name: serviceName.trim(),
+          description: serviceDescription.trim() || serviceName.trim(),
+          category: "coaching",
+          targetCustomer: "To be defined",
+          mainBenefit: "To be defined",
+        });
+      }
+      utils.services.list.invalidate();
+      utils.progress.getProgress.invalidate();
+      onComplete();
+    } catch (err: unknown) {
+      setSaveError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <V2Layout>
+      <div style={{
+        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "flex-start",
+        padding: "48px 16px 64px",
+      }}>
+        {/* Back link */}
+        {onBack && (
+          <button
+            onClick={onBack}
+            style={{
+              alignSelf: "flex-start",
+              marginBottom: "24px",
+              fontFamily: "var(--v2-font-body)",
+              fontSize: "14px",
+              color: "#777",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: "0",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+            }}
+          >
+            ← Back to Campaign Path
+          </button>
+        )}
+
+        <div style={cardStyle}>
+          {/* sessionStorage pre-fill banner */}
+          {preFillName && (
+            <div style={{
+              background: "rgba(255,91,29,0.08)",
+              border: "1px solid rgba(255,91,29,0.30)",
+              borderRadius: "12px",
+              padding: "12px 16px",
+              marginBottom: "24px",
+              fontFamily: "var(--v2-font-body)",
+              fontSize: "14px",
+              color: "#C0390A",
+              display: "flex",
+              alignItems: "flex-start",
+              gap: "10px",
+            }}>
+              <span style={{ fontSize: "18px", lineHeight: 1 }}>⚡</span>
+              <span>You typed <strong>&ldquo;{preFillName}&rdquo;</strong> — let&apos;s build it! We&apos;ve pre-filled your programme name below.</span>
+            </div>
+          )}
+
+          <h1 style={{
+            fontFamily: "var(--v2-font-heading)",
+            fontStyle: "italic",
+            fontWeight: 900,
+            fontSize: "clamp(22px, 5vw, 30px)",
+            color: "var(--v2-text-color)",
+            lineHeight: 1.2,
+            marginBottom: "8px",
+            marginTop: 0,
+            textAlign: "center",
+          }}>
+            What&apos;s your service called?
+          </h1>
+          <p style={{
+            fontFamily: "var(--v2-font-body)",
+            fontSize: "15px",
+            color: "rgba(26,22,36,0.55)",
+            textAlign: "center",
+            marginBottom: "32px",
+            marginTop: 0,
+            lineHeight: 1.5,
+          }}>
+            This powers every asset Zappy writes for you.
+          </p>
+
+          {servicesLoading ? (
+            <div style={{ display: "flex", justifyContent: "center", padding: "24px 0" }}>
+              <div style={{
+                width: "32px",
+                height: "32px",
+                borderRadius: "50%",
+                border: "3px solid #F5F1EA",
+                borderTopColor: "#FF5B1D",
+                animation: "v2-spin 1s linear infinite",
+              }} />
+            </div>
+          ) : (
+            <>
+              <div style={{ marginBottom: "20px" }}>
+                <label style={{
+                  display: "block",
+                  fontFamily: "var(--v2-font-body)",
+                  fontWeight: 700,
+                  fontSize: "14px",
+                  color: "var(--v2-text-color)",
+                  marginBottom: "8px",
+                }}>
+                  Service Name
+                </label>
+                <input
+                  type="text"
+                  value={serviceName}
+                  onChange={e => setServiceName(e.target.value)}
+                  placeholder="e.g. Meta Ads Mastery for Coaches"
+                  style={inputStyle}
+                  onFocus={e => { (e.target as HTMLInputElement).style.borderColor = "#FF5B1D"; }}
+                  onBlur={e => { (e.target as HTMLInputElement).style.borderColor = "rgba(26,22,36,0.15)"; }}
+                />
+              </div>
+
+              <div style={{ marginBottom: "28px" }}>
+                <label style={{
+                  display: "block",
+                  fontFamily: "var(--v2-font-body)",
+                  fontWeight: 700,
+                  fontSize: "14px",
+                  color: "var(--v2-text-color)",
+                  marginBottom: "8px",
+                }}>
+                  What do you help people with? <span style={{ fontWeight: 400, color: "rgba(26,22,36,0.45)" }}>(optional)</span>
+                </label>
+                <textarea
+                  value={serviceDescription}
+                  onChange={e => setServiceDescription(e.target.value)}
+                  placeholder="e.g. I help coaches fill their programmes with Meta ads without wasting money on the wrong audiences"
+                  rows={3}
+                  style={{ ...inputStyle, resize: "vertical" as const }}
+                  onFocus={e => { (e.target as HTMLTextAreaElement).style.borderColor = "#FF5B1D"; }}
+                  onBlur={e => { (e.target as HTMLTextAreaElement).style.borderColor = "rgba(26,22,36,0.15)"; }}
+                />
+              </div>
+
+              {saveError && (
+                <div style={{
+                  background: "rgba(255,91,29,0.08)",
+                  border: "1px solid rgba(255,91,29,0.25)",
+                  borderRadius: "12px",
+                  padding: "12px 16px",
+                  marginBottom: "16px",
+                  fontFamily: "var(--v2-font-body)",
+                  fontSize: "14px",
+                  color: "#C0390A",
+                  textAlign: "center",
+                }}>
+                  {saveError}
+                </div>
+              )}
+
+              <button
+                onClick={handleSave}
+                disabled={saving || !serviceName.trim()}
+                style={{
+                  ...primaryBtnStyle,
+                  opacity: saving || !serviceName.trim() ? 0.6 : 1,
+                  cursor: saving || !serviceName.trim() ? "not-allowed" : "pointer",
+                }}
+                onMouseEnter={e => { if (!saving && serviceName.trim()) (e.currentTarget as HTMLButtonElement).style.opacity = "0.88"; }}
+                onMouseLeave={e => { if (!saving && serviceName.trim()) (e.currentTarget as HTMLButtonElement).style.opacity = "1"; }}
+              >
+                {saving ? "Saving…" : "Save & Continue →"}
+              </button>
+            </>
+          )}
+        </div>
+
+        <p style={{
+          fontFamily: "var(--v2-font-body)",
+          fontSize: "12px",
+          color: "#999",
+          textAlign: "center",
+          marginTop: "20px",
+          maxWidth: "400px",
+          lineHeight: 1.6,
+        }}>
+          You can add more details to your service profile later. This gets you started.
+        </p>
+      </div>
+    </V2Layout>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 interface V2GeneratorWizardProps {
   step: WizardStep;
@@ -486,6 +732,18 @@ interface V2GeneratorWizardProps {
 }
 
 export default function V2GeneratorWizard({ step, serviceId, onBack }: V2GeneratorWizardProps) {
+  const [, navigate] = useLocation();
+
+  // ── Service step: render dedicated V2ServiceStep component ──
+  if (step === "service") {
+    return (
+      <V2ServiceStep
+        onBack={onBack}
+        onComplete={() => navigate("/v2-dashboard/wizard/icp")}
+      />
+    );
+  }
+
   const stepLabel = STEP_LABELS[step];
   const advancedFields = ADVANCED_FIELDS[step];
 
@@ -515,8 +773,6 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
   const [errorMsg, setErrorMsg] = useState("");
   const [complianceScore, setComplianceScore] = useState(100);
   const [complianceViolations, setComplianceViolations] = useState<string[]>([]);
-  // ── Result URL (shown after real generation) ──
-  const [resultUrl, setResultUrl] = useState<string | null>(null);
   // ── ICP name input (only for ICP step) ──
   const [icpName, setIcpName] = useState("");
   // ── tRPC utils for cache invalidation ──
@@ -622,21 +878,20 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
     try {
       const svcId = payload.serviceId as number;
       const svc = activeService;
-      let url: string | null = null;
       if (step === "icp") {
-        const result = await generateIcp.mutateAsync({
+        await generateIcp.mutateAsync({
           serviceId: svcId,
           name: (payload.icpName as string) || (svc?.avatarName ? `${svc.avatarName} Profile` : "My Ideal Customer"),
         });
-        if (result?.id) url = `/generators/icp?highlight=${result.id}`;
+        // result saved
       } else if (step === "offer") {
-        const result = await generateOffer.mutateAsync({
+        await generateOffer.mutateAsync({
           serviceId: svcId,
           offerType: "premium",
         });
-        if (result?.id) url = `/offers/${result.id}`;
+        // result saved
       } else if (step === "uniqueMethod") {
-        const result = await generateHeroMechanism.mutateAsync({
+        await generateHeroMechanism.mutateAsync({
           serviceId: svcId,
           targetMarket: svc?.targetCustomer || "",
           pressingProblem: svc?.painPoints || "",
@@ -647,25 +902,25 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
           credibility: svc?.pressFeatures || "",
           socialProof: svc?.socialProofStat || "",
         });
-        if (result?.mechanismSetId) url = `/hero-mechanisms/${result.mechanismSetId}`;
+        // result saved
       } else if (step === "freeOptIn") {
-        const result = await generateHvco.mutateAsync({
+        await generateHvco.mutateAsync({
           serviceId: svcId,
           targetMarket: svc?.targetCustomer || "",
           hvcoTopic: svc?.hvcoTopic || svc?.mainBenefit || "",
         });
-        if (result?.hvcoSetId) url = `/hvco-titles/${result.hvcoSetId}`;
+        // result saved
       } else if (step === "headlines") {
-        const result = await generateHeadlines.mutateAsync({
+        await generateHeadlines.mutateAsync({
           serviceId: svcId,
           targetMarket: svc?.targetCustomer || "",
           pressingProblem: svc?.painPoints || "",
           desiredOutcome: svc?.mainBenefit || "",
           uniqueMechanism: svc?.uniqueMechanismSuggestion || "",
         });
-        if (result?.headlineSetId) url = `/headlines/${result.headlineSetId}`;
+        // result saved
       } else if (step === "adCopy") {
-        const result = await generateAdCopy.mutateAsync({
+        await generateAdCopy.mutateAsync({
           serviceId: svcId,
           adType: "lead_gen",
           adStyle: "conversational",
@@ -676,32 +931,30 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
           pressingProblem: svc?.painPoints || "",
           desiredOutcome: svc?.mainBenefit || "",
         });
-        if (result?.adSetId) url = `/ad-copy/${result.adSetId}`;
+        // result saved
       } else if (step === "landingPage") {
-        const result = await generateLandingPage.mutateAsync({
+        await generateLandingPage.mutateAsync({
           serviceId: svcId,
         });
-        if (result?.id) url = `/landing-pages/${result.id}`;
+        // result saved
       } else if (step === "emailSequence") {
-        const result = await generateEmailSequence.mutateAsync({
+        await generateEmailSequence.mutateAsync({
           serviceId: svcId,
           sequenceType: "welcome",
           name: `${svc?.name || "My Service"} — Welcome Sequence`,
         });
-        if (result?.id) url = `/generators/email`;
+        // result saved
       } else if (step === "whatsappSequence") {
-        const result = await generateWhatsappSequence.mutateAsync({
+        await generateWhatsappSequence.mutateAsync({
           serviceId: svcId,
           sequenceType: "engagement",
           name: `${svc?.name || "My Service"} — Engagement Sequence`,
         });
-        if (result?.id) url = `/generators/whatsapp`;
+        // result saved
       } else if (step === "pushToMeta") {
         // No generation needed — just show instructions
-        url = `/ad-copy`;
       }
       clearTimeout(timeoutRef.current ?? undefined);
-      setResultUrl(url);
       setComplianceScore(100);
       setStatus("success");
       // Invalidate progress so nodes turn green
@@ -853,7 +1106,6 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
           {status === "success" && (
             <SuccessState
               score={complianceScore}
-              resultUrl={resultUrl}
               nextStepUrl={(() => { const next = getNextStep(step); return next ? `/v2-dashboard/wizard/${next}` : null; })()}
               isLastStep={step === "pushToMeta"}
             />
@@ -962,7 +1214,7 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
           {/* ── Try Again / Generate Again button after concerned/success ── */}
           {(status === "success" || status === "concerned") && (
             <button
-              onClick={() => { setStatus("idle"); setResultUrl(null); }}
+              onClick={() => { setStatus("idle"); }}
               style={secondaryBtnStyle}
             >
               ↺ Generate Again

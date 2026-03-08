@@ -56,6 +56,7 @@ function LockIcon() {
 
 // ─── Node ID to wizard step mapping ─────────────────────────────────────────
 const NODE_STEP_MAP: Record<number, string> = {
+  1:  "service",
   2:  "icp",
   3:  "offer",
   4:  "uniqueMethod",
@@ -521,7 +522,7 @@ export default function V2Dashboard() {
               Let&apos;s build your first campaign. It starts with one sentence about what you do.
             </h2>
             <button
-              onClick={() => navigate("/services")}
+              onClick={() => navigate("/v2-dashboard/wizard/service")}
               style={{
                 background: "var(--v2-primary-btn, #FF5B1D)",
                 color: "#fff",

@@ -5,6 +5,7 @@
  */
 
 export type WizardStep =
+  | "service"
   | "icp"
   | "offer"
   | "uniqueMethod"
@@ -17,6 +18,7 @@ export type WizardStep =
   | "pushToMeta";
 
 export const STEP_LABELS: Record<WizardStep, string> = {
+  service:           "Your Service",
   icp:               "Ideal Customer Profile",
   offer:             "Sales Offer",
   uniqueMethod:      "Unique Method",
@@ -31,6 +33,7 @@ export const STEP_LABELS: Record<WizardStep, string> = {
 
 // Ordered step sequence for "Continue to Next Step" navigation
 export const ORDERED_STEPS: WizardStep[] = [
+  "service",
   "icp",
   "offer",
   "uniqueMethod",
@@ -53,6 +56,7 @@ export function getNextStep(step: WizardStep): WizardStep | null {
 
 // Map from path node id to wizard step key
 export const NODE_STEP_MAP: Record<string, WizardStep> = {
+  service:           "service",
   icp:               "icp",
   offer:             "offer",
   uniqueMethod:      "uniqueMethod",

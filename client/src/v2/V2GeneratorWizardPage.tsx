@@ -13,6 +13,7 @@ import { type WizardStep, STEP_LABELS } from "./v2-constants";
 export { STEP_LABELS };
 
 const VALID_STEPS: WizardStep[] = [
+  "service",
   "icp",
   "offer",
   "uniqueMethod",
