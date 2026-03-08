@@ -3799,3 +3799,12 @@ Scene 5 (6s): "Stop being invisible. Your next client is already on Facebook..."
 - [x] Fonts: Fraunces italic 900 + Instrument Sans (already in index.html)
 - [x] Confetti: react-confetti (already installed)
 - [x] All Zappy SVGs: waiting, working, cheering, concerned
+
+## Feature: Hero sessionStorage Pre-fill + Mobile Nav (Mar 8 2026)
+- [x] Services.tsx reads zap_programme_name from sessionStorage on mount and auto-opens form with pre-filled name
+- [x] sessionStorage key cleared after reading to prevent stale pre-fill on future visits
+- [x] LandingNav replaced with mobile-responsive version
+- [x] Desktop links hidden on screens <640px, replaced with pill hamburger button
+- [x] Hamburger opens/closes dropdown with all 4 nav links
+- [x] Hamburger icon toggles to X when menu is open
+- [x] Mobile CTA button (Start Free / Dashboard) always visible in nav

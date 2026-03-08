@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
 import { getLoginUrl } from "@/const";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Loader2, Plus, Trash2, Edit } from "lucide-react";
 import { useLocation } from "wouter";
 import PageHeader from "@/components/PageHeader";
@@ -16,7 +16,7 @@ export default function Services() {
   const { user, loading: authLoading, isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
   const [showCreateForm, setShowCreateForm] = useState(false);
-  
+
   // Form state
   const [formData, setFormData] = useState({
     name: "",
@@ -26,6 +26,16 @@ export default function Services() {
     mainBenefit: "",
     price: "",
   });
+
+  // Pre-fill service name from landing page hero input
+  useEffect(() => {
+    const stored = sessionStorage.getItem("zap_programme_name");
+    if (stored) {
+      setFormData(prev => ({ ...prev, name: stored }));
+      setShowCreateForm(true);
+      sessionStorage.removeItem("zap_programme_name");
+    }
+  }, []);
 
   // tRPC queries and mutations
   const { data: services, isLoading, refetch } = trpc.services.list.useQuery(undefined, {

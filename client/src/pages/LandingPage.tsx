@@ -123,6 +123,25 @@ function PillBtn({
 function LandingNav({ onGetStarted }: { onGetStarted: () => void }) {
   const { isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const NAV_LINKS = [
+    { href: "#path",       label: "How it Works" },
+    { href: "#noblank",    label: "Features" },
+    { href: "#compliance", label: "Compliance" },
+    { href: "/pricing",    label: "Pricing" },
+  ];
+
+  const handleNavLink = (href: string) => {
+    setMenuOpen(false);
+    if (href.startsWith("#")) {
+      const el = document.querySelector(href);
+      if (el) el.scrollIntoView({ behavior: "smooth" });
+    } else {
+      setLocation(href);
+    }
+  };
+
   return (
     <nav style={{
       position: "sticky", top: 0, zIndex: 100,
@@ -142,20 +161,18 @@ function LandingNav({ onGetStarted }: { onGetStarted: () => void }) {
           <img src="/zap-logo.png" alt="ZAP" style={{ height: 36, width: 36, objectFit: "contain" }} />
           <span className="lp-h" style={{ fontSize: 22, color: INK }}>ZAP</span>
         </div>
-        {/* Links */}
-        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          {["#path", "#noblank", "#compliance"].map((href, i) => (
-            <a key={href} href={href} className="lp-nav-link" style={{
+
+        {/* Desktop Links (hidden on mobile via CSS) */}
+        <div className="lp-nav-desktop" style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          {NAV_LINKS.map(({ href, label }) => (
+            <button key={href} onClick={() => handleNavLink(href)} className="lp-nav-link" style={{
               fontFamily: "'Instrument Sans', sans-serif", fontWeight: 500,
-              fontSize: 15, color: INK, textDecoration: "none", padding: "8px 14px",
+              fontSize: 15, color: INK, background: "none", border: "none",
+              cursor: "pointer", padding: "8px 14px",
             }}>
-              {["How it Works", "Features", "Compliance"][i]}
-            </a>
+              {label}
+            </button>
           ))}
-          <a href="/pricing" className="lp-nav-link" style={{
-            fontFamily: "'Instrument Sans', sans-serif", fontWeight: 500,
-            fontSize: 15, color: INK, textDecoration: "none", padding: "8px 14px",
-          }}>Pricing</a>
           <div style={{ marginLeft: 8 }}>
             {isAuthenticated
               ? <PillBtn onClick={() => setLocation("/v2-dashboard")}>Go to Dashboard</PillBtn>
@@ -163,7 +180,70 @@ function LandingNav({ onGetStarted }: { onGetStarted: () => void }) {
             }
           </div>
         </div>
+
+        {/* Mobile: CTA + Hamburger (hidden on desktop via CSS) */}
+        <div className="lp-nav-mobile" style={{ display: "none", alignItems: "center", gap: 10 }}>
+          {isAuthenticated
+            ? <PillBtn onClick={() => setLocation("/v2-dashboard")}>Dashboard</PillBtn>
+            : <PillBtn onClick={onGetStarted}>Start Free</PillBtn>
+          }
+          <button
+            onClick={() => setMenuOpen(o => !o)}
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            style={{
+              background: menuOpen ? INK : "rgba(26,22,36,0.08)",
+              border: "none", borderRadius: 9999,
+              width: 40, height: 40,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              cursor: "pointer", transition: "background 0.2s", flexShrink: 0,
+            }}
+          >
+            {menuOpen ? (
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M2 2L14 14M14 2L2 14" stroke={CREAM} strokeWidth="2.2" strokeLinecap="round"/>
+              </svg>
+            ) : (
+              <svg width="18" height="14" viewBox="0 0 18 14" fill="none">
+                <path d="M1 1H17M1 7H17M1 13H17" stroke={INK} strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+            )}
+          </button>
+        </div>
       </div>
+
+      {/* Mobile Dropdown Menu */}
+      {menuOpen && (
+        <div className="lp-nav-mobile" style={{
+          display: "block",
+          background: CREAM,
+          borderTop: "1px solid rgba(26,22,36,0.09)",
+          padding: "8px 0 16px",
+        }}>
+          {NAV_LINKS.map(({ href, label }) => (
+            <button
+              key={href}
+              onClick={() => handleNavLink(href)}
+              style={{
+                display: "block", width: "100%", textAlign: "left",
+                fontFamily: "'Instrument Sans', sans-serif", fontWeight: 500,
+                fontSize: 16, color: INK,
+                background: "none", border: "none", cursor: "pointer",
+                padding: "13px 24px",
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Responsive breakpoint */}
+      <style>{`
+        @media (max-width: 640px) {
+          .lp-nav-desktop { display: none !important; }
+          .lp-nav-mobile  { display: flex !important; }
+        }
+      `}</style>
     </nav>
   );
 }
