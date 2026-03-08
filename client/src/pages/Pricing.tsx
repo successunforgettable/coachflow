@@ -149,7 +149,7 @@ export default function Pricing() {
   const section: React.CSSProperties = {
     maxWidth: 1200,
     margin: "0 auto",
-    padding: "80px 24px",
+    padding: "clamp(40px, 6vw, 80px) clamp(16px, 4vw, 24px)",
   };
 
   const pillBtn = (active: boolean): React.CSSProperties => ({
@@ -171,11 +171,11 @@ export default function Pricing() {
   const card = (highlight: boolean): React.CSSProperties => ({
     background: highlight ? INK : "#fff",
     borderRadius: 24,
-    padding: "36px 32px",
+    padding: "clamp(24px, 4vw, 36px) clamp(18px, 3vw, 32px)",
     border: highlight ? `2px solid ${ORANGE}` : `1px solid ${BORDER}`,
     boxShadow: highlight ? `0 16px 48px rgba(26,22,36,0.18)` : "0 4px 20px rgba(0,0,0,0.05)",
     position: "relative",
-    transform: highlight ? "scale(1.03)" : "scale(1)",
+    transform: "scale(1)",
     transition: "transform 0.2s",
     display: "flex",
     flexDirection: "column" as const,
@@ -205,7 +205,7 @@ export default function Pricing() {
       {/* ── Nav ── */}
       <nav style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "0 32px", height: 64,
+        padding: "0 clamp(16px, 4vw, 32px)", height: 64,
         borderBottom: `1px solid ${BORDER}`,
         background: CREAM,
         position: "sticky", top: 0, zIndex: 100,

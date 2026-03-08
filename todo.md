@@ -289,3 +289,10 @@
 - [x] Rewrite Pricing.tsx with hardcoded V2 cream inline styles matching LandingPage.tsx design tokens
 - [x] Wire annual toggle to STRIPE_PRO_YEARLY_PRICE_ID / STRIPE_AGENCY_YEARLY_PRICE_ID in createCheckoutSession (already correct in server)
 - [x] Move Most Popular badge and highlight border from ZAP Pro Plus to ZAP Pro
+
+## Pricing Page Mobile Fixes (Mar 9, 2026)
+
+- [x] Fix nav padding overflow on mobile (0 32px → 0 16px on small screens)
+- [x] Remove scale(1.03) on ZAP Pro card on mobile to prevent horizontal scroll
+- [x] Reduce card padding on mobile (36px 32px → 28px 20px)
+- [x] Reduce section padding on mobile (80px → 48px top/bottom)
