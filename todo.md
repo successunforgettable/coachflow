@@ -251,3 +251,10 @@
 - [x] Change 3: Pricing Teaser — add zappy-waiting.svg (80px, breathing, centred) above headline
 - [x] Change 4: Nav logo — no size change (already correct)
 - [x] Change 5: Path section hopping Zappy 28px → 36px
+
+## Pricing Page Update 2 (Mar 9, 2026)
+
+- [x] Remove unbuilt features from ZAP Pro Plus (White-label option, Team collaboration)
+- [x] Update ZAP Pro Plus feature list to correct live features
+- [x] Add Free tier card as first column (3-column layout matching landing page)
+- [x] Update FAQ "What makes ZAP unique?" answer with 11-step path + Zappy description

@@ -3,10 +3,27 @@ import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
-import { getLoginUrl } from "@/const";
 import { Check, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+
+const FREE_FEATURES = [
+  "1 ICP Profile",
+  "11-step campaign path visible",
+  "3 generations per tool on nodes 3–5",
+  "2 welcome video credits",
+];
+
+const PRO_PLUS_FEATURES = [
+  "Everything in ZAP Pro",
+  "Unlimited ICP Profiles",
+  "Unlimited Generations",
+  "Multi-ICP Campaign Cloning",
+  "Kill/Scale Automation",
+  "White-Label Reports",
+  "25 Video Credits per month",
+  "Priority Support",
+];
 
 export default function Pricing() {
   const { isAuthenticated, loading: authLoading } = useAuth();
@@ -34,21 +51,13 @@ export default function Pricing() {
       window.location.href = "/login";
       return;
     }
-
-    createCheckoutMutation.mutate({
-      tier,
-      interval: selectedInterval,
-    });
+    createCheckoutMutation.mutate({ tier, interval: selectedInterval });
   };
 
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-      <PageHeader 
-        title="Pricing" 
-        description="Choose your subscription plan"
-        backTo="/dashboard"
-      />
+        <PageHeader title="Pricing" description="Choose your subscription plan" backTo="/dashboard" />
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
@@ -59,19 +68,16 @@ export default function Pricing() {
 
   return (
     <div className="min-h-screen bg-background">
-      <PageHeader 
-        title="Pricing" 
-        description="Choose your subscription plan"
-        backTo="/dashboard"
-      />
+      <PageHeader title="Pricing" description="Choose your subscription plan" backTo="/dashboard" />
       <div className="container mx-auto px-4 py-16 max-w-7xl">
+
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
             Simple, Transparent Pricing
           </h1>
           <p className="text-xl text-muted-foreground mb-8">
-            Start with a {trialDays}-day free trial. No credit card required.
+            Start free. Upgrade when you're ready.
           </p>
 
           {/* Billing Toggle */}
@@ -118,8 +124,39 @@ export default function Pricing() {
           )}
         </div>
 
-        {/* Pricing Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+        {/* Pricing Cards — 3 columns */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto items-start">
+
+          {/* Free Tier */}
+          <Card className="border-2 hover:border-primary transition-colors">
+            <CardHeader>
+              <CardTitle className="text-2xl">Free</CardTitle>
+              <CardDescription>See the quality before you commit</CardDescription>
+              <div className="mt-4">
+                <span className="text-4xl font-bold text-foreground">$0</span>
+                <span className="text-muted-foreground"> forever</span>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Button
+                asChild
+                variant="outline"
+                className="w-full mb-6 bg-background"
+              >
+                <a href="/signup">Start Free</a>
+              </Button>
+
+              <div className="space-y-3">
+                {FREE_FEATURES.map((feature, index) => (
+                  <div key={index} className="flex items-start gap-3">
+                    <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                    <span className="text-foreground">{feature}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
           {/* ZAP Pro Tier */}
           <Card className="border-2 hover:border-primary transition-colors">
             <CardHeader>
@@ -141,7 +178,7 @@ export default function Pricing() {
               <Button
                 onClick={() => handleSubscribe("pro")}
                 disabled={createCheckoutMutation.isPending || status?.tier === "pro"}
-                className="w-full mb-6"
+                className="w-full mb-2"
               >
                 {createCheckoutMutation.isPending ? (
                   <>
@@ -198,7 +235,7 @@ export default function Pricing() {
               <Button
                 onClick={() => handleSubscribe("agency")}
                 disabled={createCheckoutMutation.isPending || status?.tier === "agency"}
-                className="w-full mb-6"
+                className="w-full mb-2"
               >
                 {createCheckoutMutation.isPending ? (
                   <>
@@ -221,7 +258,7 @@ export default function Pricing() {
               )}
 
               <div className="space-y-3">
-                {tiers?.AGENCY.features.map((feature, index) => (
+                {PRO_PLUS_FEATURES.map((feature, index) => (
                   <div key={index} className="flex items-start gap-3">
                     <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
                     <span className="text-foreground">{feature}</span>
@@ -268,9 +305,7 @@ export default function Pricing() {
                 What makes ZAP unique?
               </h3>
               <p className="text-muted-foreground">
-                ZAP is specifically designed for coaches, speakers, and consultants with
-                9 AI-powered content generators, integrated email/WhatsApp/SMS sequences, simple onboarding,
-                and a complete campaign builder - all in one platform.
+                ZAP is built around an 11-step guided campaign path. You define your service and your ideal customer once, and Zappy — your AI campaign guide — builds every asset from that foundation. Ad copy, email sequences, landing pages, WhatsApp sequences and more all know exactly who they're talking to without you re-explaining anything. Plus every asset is scored for Meta compliance before you spend a dollar.
               </p>
             </div>
           </div>
@@ -283,7 +318,7 @@ export default function Pricing() {
               Important Disclaimer
             </h3>
             <p className="text-sm text-muted-foreground leading-relaxed text-center">
-              <strong className="text-foreground">Earnings & Results Disclaimer:</strong> Results may vary significantly. No income, revenue, profit, or business success guarantees are made or implied. Success depends on individual effort, skill level, market conditions, business model, competition, and numerous other factors beyond our control. The testimonials, case studies, and examples shown (if any) are exceptional results and should not be interpreted as typical, average, or guaranteed outcomes. Your results may be better, worse, or non-existent. ZAP is a software tool that assists with marketing content creation and campaign management; it does not guarantee business success, customer acquisition, sales, or financial outcomes. Past performance is not indicative of future results. You are solely responsible for your business decisions and outcomes.
+              <strong className="text-foreground">Earnings &amp; Results Disclaimer:</strong> Results may vary significantly. No income, revenue, profit, or business success guarantees are made or implied. Success depends on individual effort, skill level, market conditions, business model, competition, and numerous other factors beyond our control. The testimonials, case studies, and examples shown (if any) are exceptional results and should not be interpreted as typical, average, or guaranteed outcomes. Your results may be better, worse, or non-existent. ZAP is a software tool that assists with marketing content creation and campaign management; it does not guarantee business success, customer acquisition, sales, or financial outcomes. Past performance is not indicative of future results. You are solely responsible for your business decisions and outcomes.
             </p>
           </div>
         </div>
