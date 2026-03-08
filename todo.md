@@ -236,3 +236,10 @@
 ## Auth Wiring Fix (Mar 9, 2026)
 
 - [x] Fix Pricing page unauthenticated redirect: "/" → "/login"
+
+## Pricing Page Update (Mar 9, 2026)
+
+- [x] Rename "Pro" → "ZAP Pro" everywhere (card title, description, button: "Start ZAP Pro")
+- [x] Rename "Agency" → "ZAP Pro Plus" everywhere (card title, description, button: "Go Pro Plus")
+- [x] Remove agency/client-management copy from ZAP Pro Plus description
+- [x] Add "New here? Create a free account" signup link below each paid tier subscribe button

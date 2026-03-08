@@ -120,11 +120,11 @@ export default function Pricing() {
 
         {/* Pricing Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-          {/* Pro Tier */}
+          {/* ZAP Pro Tier */}
           <Card className="border-2 hover:border-primary transition-colors">
             <CardHeader>
-              <CardTitle className="text-2xl">Pro</CardTitle>
-              <CardDescription>Perfect for individual coaches and consultants</CardDescription>
+              <CardTitle className="text-2xl">ZAP Pro</CardTitle>
+              <CardDescription>For coaches and consultants ready to launch their first high-converting campaign</CardDescription>
               <div className="mt-4">
                 <span className="text-4xl font-bold text-foreground">
                   ${selectedInterval === "monthly" ? tiers?.PRO.priceMonthly : Math.round((tiers?.PRO.priceYearly || 0) / 12)}
@@ -151,9 +151,17 @@ export default function Pricing() {
                 ) : status?.tier === "pro" ? (
                   "Current Plan"
                 ) : (
-                  `Start ${trialDays}-Day Free Trial`
+                  "Start ZAP Pro"
                 )}
               </Button>
+              {status?.tier !== "pro" && (
+                <p className="text-center text-xs text-muted-foreground mb-4">
+                  New here?{" "}
+                  <a href="/signup" className="underline hover:text-foreground transition-colors">
+                    Create a free account
+                  </a>
+                </p>
+              )}
 
               <div className="space-y-3">
                 {tiers?.PRO.features.map((feature, index) => (
@@ -166,14 +174,14 @@ export default function Pricing() {
             </CardContent>
           </Card>
 
-          {/* Agency Tier */}
+          {/* ZAP Pro Plus Tier */}
           <Card className="border-2 border-primary relative">
             <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-primary text-primary-foreground px-4 py-1 rounded-full text-sm font-medium">
               Most Popular
             </div>
             <CardHeader>
-              <CardTitle className="text-2xl">Agency</CardTitle>
-              <CardDescription>For agencies and teams managing multiple clients</CardDescription>
+              <CardTitle className="text-2xl">ZAP Pro Plus</CardTitle>
+              <CardDescription>For high-volume operators and multi-brand scalers running 10+ campaigns simultaneously</CardDescription>
               <div className="mt-4">
                 <span className="text-4xl font-bold text-foreground">
                   ${selectedInterval === "monthly" ? tiers?.AGENCY.priceMonthly : Math.round((tiers?.AGENCY.priceYearly || 0) / 12)}
@@ -200,9 +208,17 @@ export default function Pricing() {
                 ) : status?.tier === "agency" ? (
                   "Current Plan"
                 ) : (
-                  `Start ${trialDays}-Day Free Trial`
+                  "Go Pro Plus"
                 )}
               </Button>
+              {status?.tier !== "agency" && (
+                <p className="text-center text-xs text-muted-foreground mb-4">
+                  New here?{" "}
+                  <a href="/signup" className="underline hover:text-foreground transition-colors">
+                    Create a free account
+                  </a>
+                </p>
+              )}
 
               <div className="space-y-3">
                 {tiers?.AGENCY.features.map((feature, index) => (
