@@ -207,40 +207,37 @@ function WaitingState() {
 }
 
 // ─── Loading State: Zappy + progress ring ────────────────────────────────────
-const ICP_MESSAGES = [
-  "Zappy is analysing your ideal customer…",
-  "Building a detailed psychological profile…",
-  "Identifying the exact pain points and triggers…",
-  "Almost there — writing your full ICP now…",
+const LOADING_MESSAGES = [
+  "Zappy is analysing your inputs…",
+  "Building your assets from your AI Profile…",
+  "Applying Meta compliance checks…",
+  "Almost there — finalising your content now…",
 ];
 
-function LoadingState({ step }: { step?: string }) {
-  const isIcp = step === "icp";
+function LoadingState({ step: _step }: { step?: string }) {
   const [msgIndex, setMsgIndex] = useState(0);
   const [visible, setVisible] = useState(true);
   const [elapsed, setElapsed] = useState(0);
 
   // Cycle messages every 20 seconds with fade
   useEffect(() => {
-    if (!isIcp) return;
     const interval = setInterval(() => {
       setVisible(false);
       setTimeout(() => {
-        setMsgIndex(prev => Math.min(prev + 1, ICP_MESSAGES.length - 1));
+        setMsgIndex(prev => Math.min(prev + 1, LOADING_MESSAGES.length - 1));
         setVisible(true);
       }, 400);
     }, 20_000);
     return () => clearInterval(interval);
-  }, [isIcp]);
+  }, []);
 
   // Elapsed timer — updates every second
   useEffect(() => {
-    if (!isIcp) return;
     const timer = setInterval(() => setElapsed(prev => prev + 1), 1_000);
     return () => clearInterval(timer);
-  }, [isIcp]);
+  }, []);
 
-  const displayMessage = isIcp ? ICP_MESSAGES[msgIndex] : "Zappy is writing your Meta-compliant assets…";
+  const displayMessage = LOADING_MESSAGES[msgIndex];
 
   return (
     <>
@@ -287,8 +284,7 @@ function LoadingState({ step }: { step?: string }) {
           }}>
             {displayMessage}
           </p>
-          {isIcp && (
-            <p style={{
+          <p style={{
               fontFamily: "var(--v2-font-body)",
               fontSize: "13px",
               fontWeight: 400,
@@ -297,7 +293,6 @@ function LoadingState({ step }: { step?: string }) {
             }}>
               {elapsed}s
             </p>
-          )}
         </div>
       </div>
     </>
