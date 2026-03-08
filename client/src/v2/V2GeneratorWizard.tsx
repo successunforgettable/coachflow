@@ -459,7 +459,7 @@ function ErrorBanner({
   );
 }
 
-// ─── V2 Service Step — collects service name + description, saves via API ────
+// ─── V2 Service Step — collects 7 service fields, saves via API ────────────────
 function V2ServiceStep({ onBack, onComplete }: { onBack?: () => void; onComplete: () => void }) {
   const utils = trpc.useUtils();
   const { data: existingServices, isLoading: servicesLoading } = trpc.services.list.useQuery();
@@ -468,11 +468,19 @@ function V2ServiceStep({ onBack, onComplete }: { onBack?: () => void; onComplete
 
   // sessionStorage pre-fill
   const [preFillName, setPreFillName] = useState<string | null>(null);
+  // Core fields
   const [serviceName, setServiceName] = useState("");
   const [serviceDescription, setServiceDescription] = useState("");
+  // 5 additional fields
+  const [targetCustomer, setTargetCustomer] = useState("");
+  const [mainBenefit, setMainBenefit] = useState("");
+  const [painPoints, setPainPoints] = useState("");
+  const [hvcoTopic, setHvcoTopic] = useState("");
+  const [uniqueMechanism, setUniqueMechanism] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
 
+  // sessionStorage pre-fill (runs once on mount)
   useEffect(() => {
     const stored = sessionStorage.getItem("zap_service_prefill");
     if (stored) {
@@ -482,14 +490,35 @@ function V2ServiceStep({ onBack, onComplete }: { onBack?: () => void; onComplete
     }
   }, []);
 
-  // If a service already exists, pre-fill with its data
+  // Pre-populate all 7 fields from existing DB data on mount
   useEffect(() => {
-    if (existingServices && existingServices.length > 0 && !preFillName) {
+    if (existingServices && existingServices.length > 0) {
       const svc = existingServices[0];
-      setServiceName(svc.name || "");
+      // Only pre-fill name if no sessionStorage value was set
+      if (!preFillName) setServiceName(svc.name || "");
       setServiceDescription(svc.description || "");
+      setTargetCustomer(svc.targetCustomer && svc.targetCustomer !== "To be defined" ? svc.targetCustomer : "");
+      setMainBenefit(svc.mainBenefit && svc.mainBenefit !== "To be defined" ? svc.mainBenefit : "");
+      setPainPoints(svc.painPoints || "");
+      setHvcoTopic(svc.hvcoTopic || "");
+      setUniqueMechanism(svc.uniqueMechanismSuggestion || "");
     }
-  }, [existingServices, preFillName]);
+  }, [existingServices]); // intentionally omit preFillName to avoid overwriting on re-render
+
+  // Quality indicator: count filled fields out of 7
+  const filledCount = [
+    serviceName.trim(),
+    serviceDescription.trim(),
+    targetCustomer.trim(),
+    mainBenefit.trim(),
+    painPoints.trim(),
+    hvcoTopic.trim(),
+    uniqueMechanism.trim(),
+  ].filter(Boolean).length;
+
+  const qualityLabel = filledCount >= 6 ? "Strong" : filledCount >= 3 ? "Good" : "Basic";
+  const qualityColor = filledCount >= 6 ? "#16a34a" : filledCount >= 3 ? "#d97706" : "#FF5B1D";
+  const qualityBg = filledCount >= 6 ? "rgba(22,163,74,0.10)" : filledCount >= 3 ? "rgba(217,119,6,0.10)" : "rgba(255,91,29,0.10)";
 
   const inputStyle: React.CSSProperties = {
     width: "100%",
@@ -505,6 +534,24 @@ function V2ServiceStep({ onBack, onComplete }: { onBack?: () => void; onComplete
     transition: "border-color 0.15s ease",
   };
 
+  const labelStyle: React.CSSProperties = {
+    display: "block",
+    fontFamily: "var(--v2-font-body)",
+    fontWeight: 700,
+    fontSize: "14px",
+    color: "var(--v2-text-color)",
+    marginBottom: "8px",
+  };
+
+  const optionalTag = <span style={{ fontWeight: 400, color: "rgba(26,22,36,0.45)" }}>(optional)</span>;
+
+  function handleFocus(e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) {
+    (e.target as HTMLElement).style.borderColor = "#FF5B1D";
+  }
+  function handleBlur(e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) {
+    (e.target as HTMLElement).style.borderColor = "rgba(26,22,36,0.15)";
+  }
+
   async function handleSave() {
     if (!serviceName.trim()) {
       setSaveError("Please enter your service name.");
@@ -514,19 +561,23 @@ function V2ServiceStep({ onBack, onComplete }: { onBack?: () => void; onComplete
     setSaveError("");
     try {
       const existing = existingServices && existingServices.length > 0 ? existingServices[0] : null;
+      const payload = {
+        name: serviceName.trim(),
+        description: serviceDescription.trim() || serviceName.trim(),
+        ...(targetCustomer.trim() ? { targetCustomer: targetCustomer.trim() } : {}),
+        ...(mainBenefit.trim() ? { mainBenefit: mainBenefit.trim() } : {}),
+        ...(painPoints.trim() ? { painPoints: painPoints.trim() } : {}),
+        ...(hvcoTopic.trim() ? { hvcoTopic: hvcoTopic.trim() } : {}),
+        ...(uniqueMechanism.trim() ? { uniqueMechanismSuggestion: uniqueMechanism.trim() } : {}),
+      };
       if (existing) {
-        await updateService.mutateAsync({
-          id: existing.id,
-          name: serviceName.trim(),
-          description: serviceDescription.trim() || serviceName.trim(),
-        });
+        await updateService.mutateAsync({ id: existing.id, ...payload });
       } else {
         await createService.mutateAsync({
-          name: serviceName.trim(),
-          description: serviceDescription.trim() || serviceName.trim(),
+          ...payload,
           category: "coaching",
-          targetCustomer: "To be defined",
-          mainBenefit: "To be defined",
+          targetCustomer: targetCustomer.trim() || "To be defined",
+          mainBenefit: mainBenefit.trim() || "To be defined",
         });
       }
       utils.services.list.invalidate();
@@ -631,48 +682,168 @@ function V2ServiceStep({ onBack, onComplete }: { onBack?: () => void; onComplete
             </div>
           ) : (
             <>
+              {/* ── Core fields ── */}
               <div style={{ marginBottom: "20px" }}>
-                <label style={{
-                  display: "block",
-                  fontFamily: "var(--v2-font-body)",
-                  fontWeight: 700,
-                  fontSize: "14px",
-                  color: "var(--v2-text-color)",
-                  marginBottom: "8px",
-                }}>
-                  Service Name
-                </label>
+                <label style={labelStyle}>Service Name</label>
                 <input
                   type="text"
                   value={serviceName}
                   onChange={e => setServiceName(e.target.value)}
                   placeholder="e.g. Meta Ads Mastery for Coaches"
                   style={inputStyle}
-                  onFocus={e => { (e.target as HTMLInputElement).style.borderColor = "#FF5B1D"; }}
-                  onBlur={e => { (e.target as HTMLInputElement).style.borderColor = "rgba(26,22,36,0.15)"; }}
+                  onFocus={handleFocus}
+                  onBlur={handleBlur}
                 />
               </div>
 
               <div style={{ marginBottom: "28px" }}>
-                <label style={{
-                  display: "block",
-                  fontFamily: "var(--v2-font-body)",
-                  fontWeight: 700,
-                  fontSize: "14px",
-                  color: "var(--v2-text-color)",
-                  marginBottom: "8px",
-                }}>
-                  What do you help people with? <span style={{ fontWeight: 400, color: "rgba(26,22,36,0.45)" }}>(optional)</span>
-                </label>
+                <label style={labelStyle}>What do you help people with? {optionalTag}</label>
                 <textarea
                   value={serviceDescription}
                   onChange={e => setServiceDescription(e.target.value)}
                   placeholder="e.g. I help coaches fill their programmes with Meta ads without wasting money on the wrong audiences"
                   rows={3}
                   style={{ ...inputStyle, resize: "vertical" as const }}
-                  onFocus={e => { (e.target as HTMLTextAreaElement).style.borderColor = "#FF5B1D"; }}
-                  onBlur={e => { (e.target as HTMLTextAreaElement).style.borderColor = "rgba(26,22,36,0.15)"; }}
+                  onFocus={handleFocus}
+                  onBlur={handleBlur}
                 />
+              </div>
+
+              {/* ── Section label for optional fields ── */}
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                marginBottom: "20px",
+              }}>
+                <div style={{ flex: 1, height: "1px", background: "rgba(26,22,36,0.10)" }} />
+                <span style={{
+                  fontFamily: "var(--v2-font-body)",
+                  fontSize: "12px",
+                  fontWeight: 600,
+                  color: "#FF5B1D",
+                  whiteSpace: "nowrap",
+                  letterSpacing: "0.02em",
+                }}>
+                  The more you add, the better your campaign output.
+                </span>
+                <div style={{ flex: 1, height: "1px", background: "rgba(26,22,36,0.10)" }} />
+              </div>
+
+              {/* ── 5 optional fields ── */}
+              <div style={{ marginBottom: "20px" }}>
+                <label style={labelStyle}>Who is your ideal customer? {optionalTag}</label>
+                <input
+                  type="text"
+                  value={targetCustomer}
+                  onChange={e => setTargetCustomer(e.target.value)}
+                  placeholder="e.g. Female coaches aged 35-50 who want to grow their online business"
+                  style={inputStyle}
+                  onFocus={handleFocus}
+                  onBlur={handleBlur}
+                />
+              </div>
+
+              <div style={{ marginBottom: "20px" }}>
+                <label style={labelStyle}>What is the biggest result you deliver? {optionalTag}</label>
+                <input
+                  type="text"
+                  value={mainBenefit}
+                  onChange={e => setMainBenefit(e.target.value)}
+                  placeholder="e.g. A fully booked coaching practice in 90 days"
+                  style={inputStyle}
+                  onFocus={handleFocus}
+                  onBlur={handleBlur}
+                />
+              </div>
+
+              <div style={{ marginBottom: "20px" }}>
+                <label style={labelStyle}>What pain or frustration does your customer feel right now? {optionalTag}</label>
+                <textarea
+                  value={painPoints}
+                  onChange={e => setPainPoints(e.target.value)}
+                  placeholder="e.g. Struggling to get consistent leads, wasting money on ads that don't convert"
+                  rows={2}
+                  style={{ ...inputStyle, resize: "vertical" as const }}
+                  onFocus={handleFocus}
+                  onBlur={handleBlur}
+                />
+              </div>
+
+              <div style={{ marginBottom: "20px" }}>
+                <label style={labelStyle}>What would you offer as a free lead magnet? {optionalTag}</label>
+                <input
+                  type="text"
+                  value={hvcoTopic}
+                  onChange={e => setHvcoTopic(e.target.value)}
+                  placeholder="e.g. Free guide: 5 Meta ad mistakes coaches make"
+                  style={inputStyle}
+                  onFocus={handleFocus}
+                  onBlur={handleBlur}
+                />
+              </div>
+
+              <div style={{ marginBottom: "28px" }}>
+                <label style={labelStyle}>What makes your method different from everyone else? {optionalTag}</label>
+                <textarea
+                  value={uniqueMechanism}
+                  onChange={e => setUniqueMechanism(e.target.value)}
+                  placeholder="e.g. The Heart-Mind Activation System — a neuroscience-backed coaching framework"
+                  rows={2}
+                  style={{ ...inputStyle, resize: "vertical" as const }}
+                  onFocus={handleFocus}
+                  onBlur={handleBlur}
+                />
+              </div>
+
+              {/* ── Campaign quality indicator ── */}
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                background: qualityBg,
+                borderRadius: "12px",
+                padding: "12px 16px",
+                marginBottom: "20px",
+                transition: "background 0.3s ease",
+              }}>
+                <span style={{
+                  fontFamily: "var(--v2-font-body)",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  color: "var(--v2-text-color)",
+                }}>
+                  Campaign quality
+                </span>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <div style={{
+                    display: "flex",
+                    gap: "4px",
+                  }}>
+                    {[1,2,3,4,5,6,7].map(i => (
+                      <div key={i} style={{
+                        width: "18px",
+                        height: "6px",
+                        borderRadius: "3px",
+                        background: i <= filledCount ? qualityColor : "rgba(26,22,36,0.12)",
+                        transition: "background 0.2s ease",
+                      }} />
+                    ))}
+                  </div>
+                  <span style={{
+                    fontFamily: "var(--v2-font-body)",
+                    fontSize: "12px",
+                    fontWeight: 700,
+                    color: qualityColor,
+                    background: qualityBg,
+                    border: `1px solid ${qualityColor}`,
+                    borderRadius: "999px",
+                    padding: "2px 10px",
+                    transition: "all 0.3s ease",
+                  }}>
+                    {qualityLabel}
+                  </span>
+                </div>
               </div>
 
               {saveError && (
