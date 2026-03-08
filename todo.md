@@ -307,3 +307,22 @@
 - [ ] Task 1: LandingPage.tsx — save inputVal to sessionStorage key zap_service_prefill on tile CTA click
 - [ ] Task 1: V2GeneratorWizard.tsx — read + pre-fill Service name input from sessionStorage on mount, clear key after read
 - [ ] Task 2: LandingPage.tsx PricingTeaserSection — add Monthly/Annual pill toggle with 2 MONTHS FREE badge, correct prices and savings text
+
+---
+
+## TASK 1 — expandProfile All 7 Fields Fix (March 9, 2026)
+
+- [x] React hooks violation fixed in V2GeneratorWizard.tsx — early return moved after all hooks
+- [x] expandProfile server returns all 7 fields: description, targetCustomer, mainBenefit, painPoints, hvcoTopic, uniqueMechanismSuggestion, plus deep-research fields
+- [x] TypeScript errors in CreateServiceStep.tsx fixed — explicit return type on expandedResult
+- [x] Only empty fields are overwritten — user-filled content is preserved
+- [x] Quality reaches Strong (6/7 filled) after single "Let Zappy fill this in" click
+
+---
+
+## BUGS FOUND IN 11-NODE E2E TEST (March 9, 2026) — DO NOT FIX YET
+
+- [ ] Node 4 (Unique Method) FAIL — heroMechanisms.generate Zod validation: targetMarket max 100 chars, pressingProblem max 200 chars, whyProblem/whatTried/whyExistingNotWork max 300 chars — ICP-generated content exceeds all these limits
+- [ ] Node 5 (Free Opt-In) FAIL — hvco.generate Zod validation: targetMarket max 100 chars — same root cause as Node 4
+- [ ] Node 2 (ICP) — ICP generation takes ~109 seconds but client timeout is 90 seconds → shows "Zappy timed out" even though data was saved. ICP node shows green on dashboard because data was saved.
+- [ ] Nodes 6-11 — NOT locked on Free tier (all show "Generate Now" button) — expected to show upgrade/lock message per test spec

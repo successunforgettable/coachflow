@@ -584,9 +584,22 @@ function V2ServiceStep({ onBack, onComplete }: { onBack?: () => void; onComplete
     try {
       const result = await expandProfile.mutateAsync({ serviceId: svc.id });
       const exp = result.expanded as Record<string, string>;
-      // Only fill empty fields — server returns mapped field names (hvcoTopic, uniqueMechanismSuggestion)
-      if (!targetCustomer.trim() && svc.targetCustomer && svc.targetCustomer !== "To be defined") setTargetCustomer(svc.targetCustomer);
-      if (!mainBenefit.trim() && svc.mainBenefit && svc.mainBenefit !== "To be defined") setMainBenefit(svc.mainBenefit);
+      // Only fill empty fields — never overwrite user-typed content
+      // description: use exp.description (generated) or fall back to svc.description
+      if (!serviceDescription.trim()) {
+        const descVal = exp.description || svc.description || "";
+        if (descVal && descVal !== svc.name) setServiceDescription(descVal);
+      }
+      // targetCustomer: use exp.targetCustomer (generated) or svc value if not placeholder
+      if (!targetCustomer.trim()) {
+        const tcVal = exp.targetCustomer || (svc.targetCustomer !== "To be defined" ? svc.targetCustomer : "") || "";
+        if (tcVal) setTargetCustomer(tcVal);
+      }
+      // mainBenefit: use exp.mainBenefit (generated) or svc value if not placeholder
+      if (!mainBenefit.trim()) {
+        const mbVal = exp.mainBenefit || (svc.mainBenefit !== "To be defined" ? svc.mainBenefit : "") || "";
+        if (mbVal) setMainBenefit(mbVal);
+      }
       if (!painPoints.trim() && exp.painPoints) setPainPoints(exp.painPoints);
       if (!hvcoTopic.trim() && exp.hvcoTopic) setHvcoTopic(exp.hvcoTopic);
       if (!uniqueMechanism.trim() && exp.uniqueMechanismSuggestion) setUniqueMechanism(exp.uniqueMechanismSuggestion);
@@ -1032,26 +1045,20 @@ interface V2GeneratorWizardProps {
 export default function V2GeneratorWizard({ step, serviceId, onBack }: V2GeneratorWizardProps) {
   const [, navigate] = useLocation();
 
-  // ── Service step: render dedicated V2ServiceStep component ──
-  if (step === "service") {
-    return (
-      <V2ServiceStep
-        onBack={onBack}
-        onComplete={() => navigate("/v2-dashboard/wizard/icp")}
-      />
-    );
-  }
+  // NOTE: All hooks MUST be called unconditionally before any early returns
+  // to comply with React's Rules of Hooks.
 
-  const stepLabel = STEP_LABELS[step];
-  const advancedFields = ADVANCED_FIELDS[step];
+  const stepLabel = step !== "service" ? STEP_LABELS[step] : "";
+  const advancedFields = step !== "service" ? ADVANCED_FIELDS[step] : [];
 
   // ── Accordion state ──
   const [accordionOpen, setAccordionOpen] = useState(false);
 
   // ── Advanced field overrides ──
   const [fieldValues, setFieldValues] = useState<Record<string, string>>(() => {
+    const fields = step !== "service" ? ADVANCED_FIELDS[step] : [];
     const defaults: Record<string, string> = {};
-    advancedFields.forEach(f => { defaults[f.key] = f.options ? f.options[0] : ""; });
+    fields.forEach(f => { defaults[f.key] = f.options ? f.options[0] : ""; });
     return defaults;
   });
 
@@ -1336,6 +1343,17 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
     } else {
       setStatus("idle");
     }
+  }
+
+  // ── Service step: render dedicated V2ServiceStep component ──
+  // This early return is placed AFTER all hooks to comply with React's Rules of Hooks.
+  if (step === "service") {
+    return (
+      <V2ServiceStep
+        onBack={onBack}
+        onComplete={() => navigate("/v2-dashboard/wizard/icp")}
+      />
+    );
   }
 
   // ── Determine which body to render ──

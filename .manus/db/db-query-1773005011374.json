@@ -1,0 +1,20 @@
+{
+  "query": "SELECT whyProblemExists, falseBeliefsVsRealReasons, failedSolutions, hiddenReasons, riskReversal, uniqueMechanismSuggestion, avatarName, avatarTitle FROM services LIMIT 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT whyProblemExists, falseBeliefsVsRealReasons, failedSolutions, hiddenReasons, riskReversal, uniqueMechanismSuggestion, avatarName, avatarTitle FROM services LIMIT 1;",
+  "rows": [
+    {
+      "whyProblemExists": "NULL",
+      "falseBeliefsVsRealReasons": "NULL",
+      "failedSolutions": "NULL",
+      "hiddenReasons": "NULL",
+      "riskReversal": "NULL",
+      "uniqueMechanismSuggestion": "NULL",
+      "avatarName": "NULL",
+      "avatarTitle": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "whyProblemExists\tfalseBeliefsVsRealReasons\tfailedSolutions\thiddenReasons\triskReversal\tuniqueMechanismSuggestion\tavatarName\tavatarTitle\nNULL\tNULL\tNULL\tNULL\tNULL\tNULL\tNULL\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 1605
+}

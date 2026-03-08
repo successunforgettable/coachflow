@@ -138,20 +138,24 @@ export const servicesRouter = router({
 
       if (!service) throw new Error("Service not found");
 
-      // --- EXACT PROMPT FROM BUILD PLAN (verbatim, variable names adapted) ---
+      // Determine which fields need to be generated vs already filled
+      const needsDescription = !service.description?.trim();
+      const needsTargetCustomer = !service.targetCustomer?.trim();
+      const needsMainBenefit = !service.mainBenefit?.trim();
+
       const prompt = `You are a world-class direct response copywriter and market researcher.
 
 A coach/consultant has described their service:
-- Name: ${service.name}
-- Target Customer: ${service.targetCustomer}
-- Main Benefit: ${service.mainBenefit}
-- Description: ${service.description}
+- Name: ${service.name}${service.description?.trim() ? `\n- Description: ${service.description}` : ""}${service.targetCustomer?.trim() ? `\n- Target Customer: ${service.targetCustomer}` : ""}${service.mainBenefit?.trim() ? `\n- Main Benefit: ${service.mainBenefit}` : ""}
 
-Based on this, generate a complete marketing intelligence profile.
-Be specific to their niche — not generic. Use language their customer would actually use.
+Based on this service name${!service.targetCustomer?.trim() || !service.mainBenefit?.trim() ? " (and any other details provided)" : ""}, generate a complete marketing intelligence profile for a coach in this niche.
+Be specific — not generic. Use language their customer would actually use.
 
 Return JSON with these exact fields:
 {
+  "description": "A compelling 1-2 sentence description of what this service does and who it's for",
+  "targetCustomer": "Specific demographic and psychographic description of the ideal customer (age, situation, desire)",
+  "mainBenefit": "The single biggest transformation or result the customer gets — specific and outcome-focused",
   "painPoints": "3-5 specific pain points their customer feels daily",
   "falseBeliefsVsRealReasons": "3-5 pairs in format: what customer thinks is stopping them | what is really stopping them",
   "failedSolutions": "3-5 things they have tried before and exactly why each one failed for this specific audience",
@@ -171,12 +175,15 @@ Return JSON with these exact fields:
         ],
         response_format: {
           type: "json_schema",
-          json_schema: {
+            json_schema: {
             name: "service_profile_expansion",
             strict: true,
             schema: {
               type: "object",
               properties: {
+                description: { type: "string" },
+                targetCustomer: { type: "string" },
+                mainBenefit: { type: "string" },
                 painPoints: { type: "string" },
                 falseBeliefsVsRealReasons: { type: "string" },
                 failedSolutions: { type: "string" },
@@ -189,6 +196,9 @@ Return JSON with these exact fields:
                 avatarTitle: { type: "string" },
               },
               required: [
+                "description",
+                "targetCustomer",
+                "mainBenefit",
                 "painPoints",
                 "falseBeliefsVsRealReasons",
                 "failedSolutions",
@@ -208,57 +218,117 @@ Return JSON with these exact fields:
 
       const rawContent = response.choices[0].message.content;
       let expanded: Record<string, string>;
-      try {
-        if (typeof rawContent !== "string") {
-          // Already a parsed object (some LLM backends return objects directly)
-          expanded = rawContent as unknown as Record<string, string>;
-        } else {
-          // Strip markdown code fences if present (e.g. ```json ... ```)
-          const stripped = rawContent
+
+      // Helper: try to parse JSON from a string, stripping markdown fences first
+      const tryParse = (s: string): Record<string, string> | null => {
+        try {
+          const stripped = s
             .replace(/^```(?:json)?\s*/i, "")
             .replace(/\s*```\s*$/, "")
             .trim();
-          expanded = JSON.parse(stripped);
+          return JSON.parse(stripped);
+        } catch {
+          return null;
         }
-      } catch {
-        // Last resort: extract JSON object from raw string
-        const raw = rawContent?.toString() ?? "";
-        const match = raw.match(/\{[\s\S]*\}/);
-        if (match) {
-          try {
-            expanded = JSON.parse(match[0]);
-          } catch {
+      };
+
+      if (typeof rawContent !== "string") {
+        // Already a parsed object (some LLM backends return objects directly)
+        expanded = rawContent as unknown as Record<string, string>;
+      } else {
+        const parsed = tryParse(rawContent);
+        if (parsed) {
+          expanded = parsed;
+        } else {
+          // Claude sometimes wraps JSON in a preamble — find the first '{' and parse from there
+          const firstBrace = rawContent.indexOf('{');
+          const lastBrace = rawContent.lastIndexOf('}');
+          if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+            const jsonSlice = rawContent.slice(firstBrace, lastBrace + 1);
+            const sliceParsed = tryParse(jsonSlice);
+            if (sliceParsed) {
+              expanded = sliceParsed;
+            } else {
+              console.error('[expandProfile] Raw LLM output (first 500 chars):', rawContent.slice(0, 500));
+              throw new Error("AI returned invalid JSON during profile expansion");
+            }
+          } else {
+            console.error('[expandProfile] Raw LLM output (first 500 chars):', rawContent.slice(0, 500));
             throw new Error("AI returned invalid JSON during profile expansion");
           }
-        } else {
-          throw new Error("AI returned invalid JSON during profile expansion");
         }
       }
 
-      // Map LLM field names to DB column names
+      // Helper to normalize a field: join arrays to newline-separated string, then truncate
+      const normalize = (v: unknown, max: number): string => {
+        if (Array.isArray(v)) return v.map(String).join('\n').slice(0, max);
+        if (typeof v === 'string') return v.slice(0, max);
+        if (v == null) return '';
+        return String(v).slice(0, max);
+      };
+      const trunc = normalize; // alias for clarity
+
+      // Map LLM field names to DB column names.
+      // Only overwrite fields that were empty — never overwrite user-filled content.
+      // Truncate to column limits: text = 65535, varchar(300) = 300, varchar(100) = 100
       const updateFields: Record<string, string> = {
-        painPoints: expanded.painPoints || "",
-        falseBeliefsVsRealReasons: expanded.falseBeliefsVsRealReasons || "",
-        failedSolutions: expanded.failedSolutions || "",
-        hiddenReasons: expanded.hiddenReasons || "",
-        whyProblemExists: expanded.whyProblemExists || "",
-        uniqueMechanismSuggestion: expanded.uniqueMechanismSuggestion || "",
-        hvcoTopic: expanded.hvcoTopicSuggestion || "",
-        riskReversal: expanded.riskReversalSuggestion || "",
-        avatarName: expanded.avatarName || "",
-        avatarTitle: expanded.avatarTitle || "",
+        // Always overwrite deep-research fields (not user-editable in the form)
+        painPoints: trunc(expanded.painPoints, 65535),
+        falseBeliefsVsRealReasons: trunc(expanded.falseBeliefsVsRealReasons, 65535),
+        failedSolutions: trunc(expanded.failedSolutions, 65535),
+        hiddenReasons: trunc(expanded.hiddenReasons, 65535),
+        whyProblemExists: trunc(expanded.whyProblemExists, 65535),
+        riskReversal: trunc(expanded.riskReversalSuggestion, 65535),
+        avatarName: trunc(expanded.avatarName, 100),
+        avatarTitle: trunc(expanded.avatarTitle, 100),
+        // Only overwrite user-visible fields if they were empty
+        ...(needsDescription && expanded.description ? { description: trunc(expanded.description, 65535) } : {}),
+        ...(needsTargetCustomer && expanded.targetCustomer ? { targetCustomer: trunc(expanded.targetCustomer, 65535) } : {}),
+        ...(needsMainBenefit && expanded.mainBenefit ? { mainBenefit: trunc(expanded.mainBenefit, 65535) } : {}),
+        uniqueMechanismSuggestion: trunc(expanded.uniqueMechanismSuggestion, 65535),
+        hvcoTopic: trunc(expanded.hvcoTopicSuggestion, 300),
       };
 
       // REQUIREMENT 3: Save to DB BEFORE returning — persists even if user skips review
-      await db
-        .update(services)
-        .set({ ...updateFields, updatedAt: new Date() })
-        .where(eq(services.id, input.serviceId));
+      try {
+        await db
+          .update(services)
+          .set({ ...updateFields, updatedAt: new Date() })
+          .where(eq(services.id, input.serviceId));
+      } catch (dbErr: unknown) {
+        const e = dbErr as { code?: string; sqlMessage?: string; message?: string };
+        console.error('[expandProfile] DB update failed:', {
+          code: e.code,
+          sqlMessage: e.sqlMessage,
+          message: e.message,
+          fieldLengths: Object.fromEntries(
+            Object.entries(updateFields).map(([k, v]) => [k, typeof v === 'string' ? v.length : v])
+          ),
+        });
+        throw dbErr;
+      }
 
       // Return the expanded fields so the review screen can display them
+      // Always include all generated fields (even if not saved to DB) so frontend can pre-fill form
+      const expandedResult = {
+        painPoints: updateFields.painPoints || '',
+        falseBeliefsVsRealReasons: updateFields.falseBeliefsVsRealReasons || '',
+        failedSolutions: updateFields.failedSolutions || '',
+        hiddenReasons: updateFields.hiddenReasons || '',
+        whyProblemExists: updateFields.whyProblemExists || '',
+        riskReversal: updateFields.riskReversal || '',
+        avatarName: updateFields.avatarName || '',
+        avatarTitle: updateFields.avatarTitle || '',
+        uniqueMechanismSuggestion: updateFields.uniqueMechanismSuggestion || '',
+        hvcoTopic: updateFields.hvcoTopic || '',
+        // Include user-visible generated fields even if they weren't saved (already had content)
+        targetCustomer: trunc(expanded.targetCustomer, 65535) || updateFields.targetCustomer || '',
+        mainBenefit: trunc(expanded.mainBenefit, 65535) || updateFields.mainBenefit || '',
+        description: trunc(expanded.description, 65535) || updateFields.description || '',
+      };
       return {
         serviceId: input.serviceId,
-        expanded: updateFields,
+        expanded: expandedResult,
       };
     }),
 

@@ -1,0 +1,65 @@
+{
+  "query": "SELECT COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'services' AND COLUMN_NAME IN ('whyProblemExists', 'painPoints', 'falseBeliefsVsRealReasons', 'failedSolutions', 'hiddenReasons', 'riskReversal', 'uniqueMechanismSuggestion', 'hvcoTopic', 'description', 'targetCustomer', 'mainBenefit') ORDER BY COLUMN_NAME;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'services' AND COLUMN_NAME IN ('whyProblemExists', 'painPoints', 'falseBeliefsVsRealReasons', 'failedSolutions', 'hiddenReasons', 'riskReversal', 'uniqueMechanismSuggestion', 'hvcoTopic', 'description', 'targetCustomer', 'mainBenefit') ORDER BY COLUMN_NAME;",
+  "rows": [
+    {
+      "COLUMN_NAME": "description",
+      "DATA_TYPE": "text",
+      "CHARACTER_MAXIMUM_LENGTH": "65535"
+    },
+    {
+      "COLUMN_NAME": "failedSolutions",
+      "DATA_TYPE": "text",
+      "CHARACTER_MAXIMUM_LENGTH": "65535"
+    },
+    {
+      "COLUMN_NAME": "falseBeliefsVsRealReasons",
+      "DATA_TYPE": "text",
+      "CHARACTER_MAXIMUM_LENGTH": "65535"
+    },
+    {
+      "COLUMN_NAME": "hiddenReasons",
+      "DATA_TYPE": "text",
+      "CHARACTER_MAXIMUM_LENGTH": "65535"
+    },
+    {
+      "COLUMN_NAME": "hvcoTopic",
+      "DATA_TYPE": "varchar",
+      "CHARACTER_MAXIMUM_LENGTH": "300"
+    },
+    {
+      "COLUMN_NAME": "mainBenefit",
+      "DATA_TYPE": "varchar",
+      "CHARACTER_MAXIMUM_LENGTH": "500"
+    },
+    {
+      "COLUMN_NAME": "painPoints",
+      "DATA_TYPE": "text",
+      "CHARACTER_MAXIMUM_LENGTH": "65535"
+    },
+    {
+      "COLUMN_NAME": "riskReversal",
+      "DATA_TYPE": "text",
+      "CHARACTER_MAXIMUM_LENGTH": "65535"
+    },
+    {
+      "COLUMN_NAME": "targetCustomer",
+      "DATA_TYPE": "varchar",
+      "CHARACTER_MAXIMUM_LENGTH": "500"
+    },
+    {
+      "COLUMN_NAME": "uniqueMechanismSuggestion",
+      "DATA_TYPE": "text",
+      "CHARACTER_MAXIMUM_LENGTH": "65535"
+    },
+    {
+      "COLUMN_NAME": "whyProblemExists",
+      "DATA_TYPE": "text",
+      "CHARACTER_MAXIMUM_LENGTH": "65535"
+    }
+  ],
+  "messages": [],
+  "stdout": "COLUMN_NAME\tDATA_TYPE\tCHARACTER_MAXIMUM_LENGTH\ndescription\ttext\t65535\nfailedSolutions\ttext\t65535\nfalseBeliefsVsRealReasons\ttext\t65535\nhiddenReasons\ttext\t65535\nhvcoTopic\tvarchar\t300\nmainBenefit\tvarchar\t500\npainPoints\ttext\t65535\nriskReversal\ttext\t65535\ntargetCustomer\tvarchar\t500\nuniqueMechanismSuggestion\ttext\t65535\nwhyProblemExists\ttext\t65535\n",
+  "stderr": "",
+  "execution_time_ms": 1817
+}
