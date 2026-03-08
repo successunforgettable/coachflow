@@ -80,30 +80,63 @@ export default function Pricing() {
             Start free. Upgrade when you're ready.
           </p>
 
-          {/* Billing Toggle */}
-          <div className="flex items-center justify-center gap-4 mb-8">
+          {/* Billing Toggle — pill style matching landing page */}
+          <div style={{
+            display: "inline-flex",
+            background: "rgba(26,22,36,0.08)",
+            borderRadius: 9999,
+            padding: 4,
+            gap: 4,
+            marginBottom: 32,
+            fontFamily: "'Instrument Sans', sans-serif",
+          }}>
             <button
               onClick={() => setSelectedInterval("monthly")}
-              className={`px-6 py-2 rounded-lg font-medium transition-colors ${
-                selectedInterval === "monthly"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-accent text-accent-foreground hover:bg-accent/80"
-              }`}
+              style={{
+                padding: "10px 24px",
+                borderRadius: 9999,
+                border: "none",
+                cursor: "pointer",
+                fontWeight: 600,
+                fontSize: 14,
+                transition: "all 0.2s",
+                background: selectedInterval === "monthly" ? "#1A1624" : "transparent",
+                color: selectedInterval === "monthly" ? "#F5F1EA" : "#1A1624",
+              }}
             >
               Monthly
             </button>
             <button
               onClick={() => setSelectedInterval("yearly")}
-              className={`px-6 py-2 rounded-lg font-medium transition-colors ${
-                selectedInterval === "yearly"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-accent text-accent-foreground hover:bg-accent/80"
-              }`}
+              style={{
+                padding: "10px 24px",
+                borderRadius: 9999,
+                border: "none",
+                cursor: "pointer",
+                fontWeight: 600,
+                fontSize: 14,
+                transition: "all 0.2s",
+                background: selectedInterval === "yearly" ? "#1A1624" : "transparent",
+                color: selectedInterval === "yearly" ? "#F5F1EA" : "#1A1624",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+              }}
             >
-              Yearly
-              <span className="ml-2 text-xs bg-green-500 text-white px-2 py-1 rounded">
-                Save 17%
-              </span>
+              Annual
+              {selectedInterval === "yearly" && (
+                <span style={{
+                  background: "#FF5B1D",
+                  color: "#fff",
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase" as const,
+                  padding: "2px 8px",
+                  borderRadius: 9999,
+                  whiteSpace: "nowrap" as const,
+                }}>2 Months Free</span>
+              )}
             </button>
           </div>
 
@@ -164,12 +197,14 @@ export default function Pricing() {
               <CardDescription>For coaches and consultants ready to launch their first high-converting campaign</CardDescription>
               <div className="mt-4">
                 <span className="text-4xl font-bold text-foreground">
-                  ${selectedInterval === "monthly" ? tiers?.PRO.priceMonthly : Math.round((tiers?.PRO.priceYearly || 0) / 12)}
+                  ${selectedInterval === "monthly" ? "147" : "1,470"}
                 </span>
-                <span className="text-muted-foreground">/month</span>
+                <span className="text-muted-foreground">
+                  {selectedInterval === "monthly" ? "/month" : "/year"}
+                </span>
                 {selectedInterval === "yearly" && (
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Billed ${tiers?.PRO.priceYearly}/year
+                  <p className="text-sm mt-1" style={{ color: "#FF5B1D", fontWeight: 600 }}>
+                    Saves $294 vs monthly
                   </p>
                 )}
               </div>
@@ -221,12 +256,14 @@ export default function Pricing() {
               <CardDescription>For high-volume operators and multi-brand scalers running 10+ campaigns simultaneously</CardDescription>
               <div className="mt-4">
                 <span className="text-4xl font-bold text-foreground">
-                  ${selectedInterval === "monthly" ? tiers?.AGENCY.priceMonthly : Math.round((tiers?.AGENCY.priceYearly || 0) / 12)}
+                  ${selectedInterval === "monthly" ? "497" : "4,970"}
                 </span>
-                <span className="text-muted-foreground">/month</span>
+                <span className="text-muted-foreground">
+                  {selectedInterval === "monthly" ? "/month" : "/year"}
+                </span>
                 {selectedInterval === "yearly" && (
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Billed ${tiers?.AGENCY.priceYearly}/year
+                  <p className="text-sm mt-1" style={{ color: "#FF5B1D", fontWeight: 600 }}>
+                    Saves $994 vs monthly
                   </p>
                 )}
               </div>

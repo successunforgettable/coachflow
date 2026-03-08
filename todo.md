@@ -272,3 +272,10 @@
 ## Pricing Table Mobile Fix (Mar 9, 2026)
 
 - [x] Wrap comparison table in horizontal scroll container with min-width 600px to prevent overflow on mobile
+
+## Pricing Billing Toggle (Mar 9, 2026)
+
+- [x] Add monthly/annual pill toggle above tier cards — default Monthly, Annual shows "2 MONTHS FREE" badge
+- [x] ZAP Pro: $147/mo or $1,470/yr with "Saves $294 vs monthly" line
+- [x] ZAP Pro Plus: $497/mo or $4,970/yr with "Saves $994 vs monthly" line
+- [x] Free tier price unchanged on toggle
