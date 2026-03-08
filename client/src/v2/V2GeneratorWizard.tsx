@@ -479,6 +479,9 @@ function V2ServiceStep({ onBack, onComplete }: { onBack?: () => void; onComplete
   const [uniqueMechanism, setUniqueMechanism] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const [zapExpanding, setZapExpanding] = useState(false);
+  const [zapWrote, setZapWrote] = useState(false);
+  const expandProfile = trpc.services.expandProfile.useMutation();
 
   // sessionStorage pre-fill (runs once on mount)
   useEffect(() => {
@@ -550,6 +553,50 @@ function V2ServiceStep({ onBack, onComplete }: { onBack?: () => void; onComplete
   }
   function handleBlur(e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) {
     (e.target as HTMLElement).style.borderColor = "rgba(26,22,36,0.15)";
+  }
+
+  async function handleZapExpand() {
+    const existing = existingServices && existingServices.length > 0 ? existingServices[0] : null;
+    if (!existing) {
+      // Need to save the service first so expandProfile has a serviceId
+      setSaving(true);
+      setSaveError("");
+      try {
+        await createService.mutateAsync({
+          name: serviceName.trim(),
+          description: serviceName.trim(),
+          category: "coaching",
+          targetCustomer: "To be defined",
+          mainBenefit: "To be defined",
+        });
+        await utils.services.list.invalidate();
+      } catch {
+        setSaving(false);
+        return;
+      }
+      setSaving(false);
+    }
+    // Re-fetch to get the saved service id
+    const refreshed = await utils.services.list.fetch();
+    const svc = refreshed?.[0];
+    if (!svc) return;
+    setZapExpanding(true);
+    try {
+      const result = await expandProfile.mutateAsync({ serviceId: svc.id });
+      const exp = result.expanded as Record<string, string>;
+      // Only fill empty fields
+      if (!serviceDescription.trim() && exp.painPoints) setServiceDescription("");
+      if (!targetCustomer.trim() && svc.targetCustomer && svc.targetCustomer !== "To be defined") setTargetCustomer(svc.targetCustomer);
+      if (!mainBenefit.trim() && svc.mainBenefit && svc.mainBenefit !== "To be defined") setMainBenefit(svc.mainBenefit);
+      if (!painPoints.trim() && exp.painPoints) setPainPoints(exp.painPoints);
+      if (!hvcoTopic.trim() && exp.hvcoTopic) setHvcoTopic(exp.hvcoTopic);
+      if (!uniqueMechanism.trim() && exp.uniqueMechanismSuggestion) setUniqueMechanism(exp.uniqueMechanismSuggestion);
+      setZapWrote(true);
+    } catch {
+      // silently fail — user can still fill manually
+    } finally {
+      setZapExpanding(false);
+    }
   }
 
   async function handleSave() {
@@ -688,12 +735,60 @@ function V2ServiceStep({ onBack, onComplete }: { onBack?: () => void; onComplete
                 <input
                   type="text"
                   value={serviceName}
-                  onChange={e => setServiceName(e.target.value)}
+                  onChange={e => { setServiceName(e.target.value); setZapWrote(false); }}
                   placeholder="e.g. Meta Ads Mastery for Coaches"
                   style={inputStyle}
                   onFocus={handleFocus}
                   onBlur={handleBlur}
                 />
+                {/* Expand with AI button — visible once name has 3+ chars */}
+                {serviceName.trim().length >= 3 && (
+                  <div style={{ marginTop: "10px", display: "flex", alignItems: "center", gap: "10px" }}>
+                    {zapExpanding ? (
+                      <>
+                        <div style={{
+                          width: "18px",
+                          height: "18px",
+                          borderRadius: "50%",
+                          border: "2px solid rgba(255,91,29,0.25)",
+                          borderTopColor: "#FF5B1D",
+                          animation: "v2-spin 1s linear infinite",
+                          flexShrink: 0,
+                        }} />
+                        <span style={{
+                          fontFamily: "var(--v2-font-body)",
+                          fontSize: "13px",
+                          color: "rgba(26,22,36,0.55)",
+                          fontStyle: "italic",
+                        }}>Zappy is writing your profile...</span>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleZapExpand}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          padding: "5px 14px",
+                          borderRadius: "999px",
+                          background: "#FF5B1D",
+                          color: "#fff",
+                          fontFamily: "var(--v2-font-body)",
+                          fontSize: "13px",
+                          fontWeight: 600,
+                          border: "none",
+                          cursor: "pointer",
+                          transition: "opacity 0.15s ease",
+                        }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.85"; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; }}
+                      >
+                        Let Zappy fill this in →
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div style={{ marginBottom: "28px" }}>
@@ -795,6 +890,20 @@ function V2ServiceStep({ onBack, onComplete }: { onBack?: () => void; onComplete
                   onBlur={handleBlur}
                 />
               </div>
+
+              {/* ── Zappy wrote notice ── */}
+              {zapWrote && (
+                <div style={{
+                  marginBottom: "16px",
+                  fontFamily: "var(--v2-font-body)",
+                  fontSize: "13px",
+                  color: "rgba(26,22,36,0.45)",
+                  fontStyle: "italic",
+                  textAlign: "center",
+                }}>
+                  Zappy wrote this — edit anything before saving.
+                </div>
+              )}
 
               {/* ── Campaign quality indicator ── */}
               <div style={{

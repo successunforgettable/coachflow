@@ -18,6 +18,7 @@ interface PathNode {
   id: number;
   label: string;
   state: NodeState;
+  qualityScore?: number; // 0–7, only used for node 1
 }
 
 // ─── Initial 11-step data (mock states per spec) ─────────────────────────────
@@ -70,6 +71,26 @@ const NODE_STEP_MAP: Record<number, string> = {
 };
 
 // ─── Single Path Node ────────────────────────────────────────────────────────
+function QualityPill({ score }: { score: number }) {
+  if (score === 0) return null;
+  const label = score <= 2 ? "Basic" : score <= 5 ? "Good" : "Strong";
+  const color = score <= 2 ? "#FF5B1D" : score <= 5 ? "#F59E0B" : "#22C55E";
+  const bg   = score <= 2 ? "rgba(255,91,29,0.12)" : score <= 5 ? "rgba(245,158,11,0.12)" : "rgba(34,197,94,0.12)";
+  return (
+    <span style={{
+      display: "inline-block",
+      padding: "2px 8px",
+      borderRadius: "999px",
+      background: bg,
+      color,
+      fontFamily: "var(--v2-font-body)",
+      fontSize: "11px",
+      fontWeight: 600,
+      letterSpacing: "0.02em",
+    }}>{label}</span>
+  );
+}
+
 function PathNode({ node, isMobile, onNodeClick }: { node: PathNode; isMobile: boolean; onNodeClick: (node: PathNode) => void }) {
   const size = isMobile ? 60 : 80;
 
@@ -117,6 +138,9 @@ function PathNode({ node, isMobile, onNodeClick }: { node: PathNode; isMobile: b
       }}>
         {node.label}
       </span>
+      {node.id === 1 && node.qualityScore !== undefined && node.qualityScore > 0 && (
+        <QualityPill score={node.qualityScore} />
+      )}
     </div>
   );
 }
@@ -237,6 +261,23 @@ export default function V2Dashboard() {
   // ── Real progress data from backend ──
   const { data: progressData, isLoading: progressLoading } = trpc.progress.getProgress.useQuery();
 
+  // ── Service quality score for Node 1 pill ──
+  const { data: servicesData } = trpc.services.list.useQuery();
+  const serviceQualityScore = useMemo(() => {
+    const svc = servicesData?.[0];
+    if (!svc) return 0;
+    const fields = [
+      svc.name,
+      svc.description,
+      svc.targetCustomer,
+      svc.mainBenefit,
+      svc.painPoints,
+      svc.hvcoTopic,
+      svc.uniqueMechanismSuggestion,
+    ];
+    return fields.filter(f => f && String(f).trim().length > 0).length;
+  }, [servicesData]);
+
   // ── First-time gate: no service saved yet ──
   // While loading we show nothing to avoid flicker.
   // Once loaded, if the "service" milestone is not completed the user sees the
@@ -287,8 +328,11 @@ export default function V2Dashboard() {
       // Nodes after the active node remain "locked"
     }
 
+    // Attach quality score to node 1
+    base[0].qualityScore = serviceQualityScore;
+
     return base;
-  }, [progressData]);
+  }, [progressData, serviceQualityScore]);
   const [showModal, setShowModal] = useState(false);
   const [forkDismissed, setForkDismissed] = useState(() => {
     return localStorage.getItem("v2_fork_dismissed") === "true";
