@@ -1,0 +1,21 @@
+{
+  "query": "\nSELECT \n  u.email,\n  s.id as service_id,\n  LENGTH(s.targetCustomer) as tc_len,\n  LENGTH(s.painPoints) as pp_len,\n  LENGTH(s.falseBeliefsVsRealReasons) as fb_len,\n  LENGTH(s.failedSolutions) as fs_len,\n  LENGTH(s.hiddenReasons) as hr_len,\n  LENGTH(s.riskReversal) as rr_len,\n  LENGTH(s.whyProblemExists) as wp_len\nFROM services s\nJOIN users u ON s.userId = u.id\nWHERE u.email = 'zaptest+fresh@gmail.com';\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute \nSELECT \n  u.email,\n  s.id as service_id,\n  LENGTH(s.targetCustomer) as tc_len,\n  LENGTH(s.painPoints) as pp_len,\n  LENGTH(s.falseBeliefsVsRealReasons) as fb_len,\n  LENGTH(s.failedSolutions) as fs_len,\n  LENGTH(s.hiddenReasons) as hr_len,\n  LENGTH(s.riskReversal) as rr_len,\n  LENGTH(s.whyProblemExists) as wp_len\nFROM services s\nJOIN users u ON s.userId = u.id\nWHERE u.email = 'zaptest+fresh@gmail.com';\n",
+  "rows": [
+    {
+      "email": "zaptest+fresh@gmail.com",
+      "service_id": "1440002",
+      "tc_len": "280",
+      "pp_len": "505",
+      "fb_len": "687",
+      "fs_len": "1048",
+      "hr_len": "864",
+      "rr_len": "240",
+      "wp_len": "451"
+    }
+  ],
+  "messages": [],
+  "stdout": "email\tservice_id\ttc_len\tpp_len\tfb_len\tfs_len\thr_len\trr_len\twp_len\nzaptest+fresh@gmail.com\t1440002\t280\t505\t687\t1048\t864\t240\t451\n",
+  "stderr": "",
+  "execution_time_ms": 1581
+}

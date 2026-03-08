@@ -53,16 +53,16 @@ export const heroMechanismsRouter = router({
       z.object({
         serviceId: z.number(),
         campaignId: z.number().optional(),
-        targetMarket: z.string().max(1000),
-        pressingProblem: z.string().max(1000),
-        whyProblem: z.string().max(1000),
-        whatTried: z.string().max(1000),
-        whyExistingNotWork: z.string().max(1000),
-        descriptor: z.string().max(1000).optional(), // Strategy, Framework, Method, System, etc.
-        application: z.string().max(1000).optional(), // How it's applied
-        desiredOutcome: z.string().max(1000),
-        credibility: z.string().max(1000), // Authority figure
-        socialProof: z.string().max(1000), // Publications, features
+        targetMarket: z.string().max(5000),
+        pressingProblem: z.string().max(5000),
+        whyProblem: z.string().max(5000),
+        whatTried: z.string().max(5000),
+        whyExistingNotWork: z.string().max(5000),
+        descriptor: z.string().max(5000).optional(), // Strategy, Framework, Method, System, etc.
+        application: z.string().max(5000).optional(), // How it's applied
+        desiredOutcome: z.string().max(5000),
+        credibility: z.string().max(5000), // Authority figure
+        socialProof: z.string().max(5000), // Publications, features
       })
     )
     .mutation(async ({ ctx, input }) => {

@@ -1,0 +1,21 @@
+{
+  "query": "\nSELECT \n  u.email,\n  s.id as service_id,\n  s.name as service_name,\n  LENGTH(s.targetCustomer) as tc_len,\n  LEFT(s.targetCustomer, 100) as tc_preview,\n  LENGTH(s.painPoints) as pp_len,\n  LENGTH(s.falseBeliefsVsRealReasons) as fb_len,\n  LENGTH(s.failedSolutions) as fs_len,\n  LENGTH(s.hiddenReasons) as hr_len\nFROM services s\nJOIN users u ON s.userId = u.id\nWHERE u.email = 'zaptest+fresh@gmail.com'\nORDER BY s.id DESC\nLIMIT 1;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute \nSELECT \n  u.email,\n  s.id as service_id,\n  s.name as service_name,\n  LENGTH(s.targetCustomer) as tc_len,\n  LEFT(s.targetCustomer, 100) as tc_preview,\n  LENGTH(s.painPoints) as pp_len,\n  LENGTH(s.falseBeliefsVsRealReasons) as fb_len,\n  LENGTH(s.failedSolutions) as fs_len,\n  LENGTH(s.hiddenReasons) as hr_len\nFROM services s\nJOIN users u ON s.userId = u.id\nWHERE u.email = 'zaptest+fresh@gmail.com'\nORDER BY s.id DESC\nLIMIT 1;\n",
+  "rows": [
+    {
+      "email": "zaptest+fresh@gmail.com",
+      "service_id": "1440002",
+      "service_name": "Business Coaching for Entrepreneurs",
+      "tc_len": "280",
+      "tc_preview": "Entrepreneurs age 35-52 who have been in business 3-7 years, generating $150K-$750K annually but stu",
+      "pp_len": "505",
+      "fb_len": "687",
+      "fs_len": "1048",
+      "hr_len": "864"
+    }
+  ],
+  "messages": [],
+  "stdout": "email\tservice_id\tservice_name\ttc_len\ttc_preview\tpp_len\tfb_len\tfs_len\thr_len\nzaptest+fresh@gmail.com\t1440002\tBusiness Coaching for Entrepreneurs\t280\tEntrepreneurs age 35-52 who have been in business 3-7 years, generating $150K-$750K annually but stu\t505\t687\t1048\t864\n",
+  "stderr": "",
+  "execution_time_ms": 1890
+}

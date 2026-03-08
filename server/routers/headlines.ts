@@ -192,7 +192,7 @@ export const headlinesRouter = router({
       z.object({
         serviceId: z.number().optional(),
         campaignId: z.number().optional(),
-        targetMarket: z.string().max(1000),
+        targetMarket: z.string().max(5000),
         pressingProblem: z.string(),
         desiredOutcome: z.string(),
         uniqueMechanism: z.string(),
