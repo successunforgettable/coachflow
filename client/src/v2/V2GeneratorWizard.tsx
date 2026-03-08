@@ -207,12 +207,50 @@ function WaitingState() {
 }
 
 // ─── Loading State: Zappy + progress ring ────────────────────────────────────
-function LoadingState() {
+const ICP_MESSAGES = [
+  "Zappy is analysing your ideal customer…",
+  "Building a detailed psychological profile…",
+  "Identifying the exact pain points and triggers…",
+  "Almost there — writing your full ICP now…",
+];
+
+function LoadingState({ step }: { step?: string }) {
+  const isIcp = step === "icp";
+  const [msgIndex, setMsgIndex] = useState(0);
+  const [visible, setVisible] = useState(true);
+  const [elapsed, setElapsed] = useState(0);
+
+  // Cycle messages every 20 seconds with fade
+  useEffect(() => {
+    if (!isIcp) return;
+    const interval = setInterval(() => {
+      setVisible(false);
+      setTimeout(() => {
+        setMsgIndex(prev => Math.min(prev + 1, ICP_MESSAGES.length - 1));
+        setVisible(true);
+      }, 400);
+    }, 20_000);
+    return () => clearInterval(interval);
+  }, [isIcp]);
+
+  // Elapsed timer — updates every second
+  useEffect(() => {
+    if (!isIcp) return;
+    const timer = setInterval(() => setElapsed(prev => prev + 1), 1_000);
+    return () => clearInterval(timer);
+  }, [isIcp]);
+
+  const displayMessage = isIcp ? ICP_MESSAGES[msgIndex] : "Zappy is writing your Meta-compliant assets…";
+
   return (
     <>
       <style>{`
         @keyframes v2-spin {
           to { transform: rotate(360deg); }
+        }
+        @keyframes v2-fade-in {
+          from { opacity: 0; transform: translateY(4px); }
+          to   { opacity: 1; transform: translateY(0); }
         }
       `}</style>
       <div style={{
@@ -235,17 +273,32 @@ function LoadingState() {
             flexShrink: 0,
           }} />
         </div>
-        <p style={{
-          fontFamily: "var(--v2-font-body)",
-          fontSize: "15px",
-          fontWeight: 600,
-          color: "var(--v2-text-color)",
-          textAlign: "center",
-          margin: 0,
-          lineHeight: 1.5,
-        }}>
-          Zappy is writing your Meta-compliant assets…
-        </p>
+        <div style={{ textAlign: "center" }}>
+          <p style={{
+            fontFamily: "var(--v2-font-body)",
+            fontSize: "15px",
+            fontWeight: 600,
+            color: "var(--v2-text-color)",
+            margin: "0 0 8px",
+            lineHeight: 1.5,
+            opacity: visible ? 1 : 0,
+            transform: visible ? "translateY(0)" : "translateY(4px)",
+            transition: "opacity 0.4s ease, transform 0.4s ease",
+          }}>
+            {displayMessage}
+          </p>
+          {isIcp && (
+            <p style={{
+              fontFamily: "var(--v2-font-body)",
+              fontSize: "13px",
+              fontWeight: 400,
+              color: "#999",
+              margin: 0,
+            }}>
+              {elapsed}s
+            </p>
+          )}
+        </div>
       </div>
     </>
   );
@@ -1182,8 +1235,8 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
     setStatus("waiting");
     await new Promise(r => setTimeout(r, 800));
     setStatus("loading");
-    // 90-second timeout for AI generation
-    timeoutRef.current = setTimeout(() => setStatus("timeout"), 90_000);
+    // 150-second timeout for AI generation (ICP can take 90-120s)
+    timeoutRef.current = setTimeout(() => setStatus("timeout"), 150_000);
     try {
       const svcId = payload.serviceId as number;
       const svc = activeService;
@@ -1420,7 +1473,7 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
           {status === "waiting" && <WaitingState />}
 
           {/* ── LOADING STATE ── */}
-          {status === "loading" && <LoadingState />}
+          {status === "loading" && <LoadingState step={step} />}
 
           {/* ── SUCCESS STATE ── */}
           {status === "success" && (

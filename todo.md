@@ -334,3 +334,9 @@
 - [x] Fix frontend: initialization useEffect also treats "To be defined" as empty
 - [ ] BUG FOUND: expandProfile DB update fails when hvcoTopic > 300 chars (varchar limit) — needs investigation
 - [ ] BUG FOUND: targetCustomer / mainBenefit still not populating in UI after fix — "[Max Depth]" in network log suggests serialization issue
+
+## ICP Generation UX Fix — V2 Wizard Only (Mar 9, 2026)
+
+- [x] Increase ICP client timeout from 90s to 150s (V2 wizard only)
+- [x] Progressive messaging during ICP generation with 20s intervals
+- [x] Elapsed time counter updating every second in muted text
