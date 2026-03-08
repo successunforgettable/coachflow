@@ -584,8 +584,7 @@ function V2ServiceStep({ onBack, onComplete }: { onBack?: () => void; onComplete
     try {
       const result = await expandProfile.mutateAsync({ serviceId: svc.id });
       const exp = result.expanded as Record<string, string>;
-      // Only fill empty fields
-      if (!serviceDescription.trim() && exp.painPoints) setServiceDescription("");
+      // Only fill empty fields — server returns mapped field names (hvcoTopic, uniqueMechanismSuggestion)
       if (!targetCustomer.trim() && svc.targetCustomer && svc.targetCustomer !== "To be defined") setTargetCustomer(svc.targetCustomer);
       if (!mainBenefit.trim() && svc.mainBenefit && svc.mainBenefit !== "To be defined") setMainBenefit(svc.mainBenefit);
       if (!painPoints.trim() && exp.painPoints) setPainPoints(exp.painPoints);

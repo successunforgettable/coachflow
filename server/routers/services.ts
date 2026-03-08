@@ -206,12 +206,33 @@ Return JSON with these exact fields:
         },
       });
 
-      const raw = response.choices[0].message.content;
+      const rawContent = response.choices[0].message.content;
       let expanded: Record<string, string>;
       try {
-        expanded = typeof raw === "string" ? JSON.parse(raw) : raw;
+        if (typeof rawContent !== "string") {
+          // Already a parsed object (some LLM backends return objects directly)
+          expanded = rawContent as unknown as Record<string, string>;
+        } else {
+          // Strip markdown code fences if present (e.g. ```json ... ```)
+          const stripped = rawContent
+            .replace(/^```(?:json)?\s*/i, "")
+            .replace(/\s*```\s*$/, "")
+            .trim();
+          expanded = JSON.parse(stripped);
+        }
       } catch {
-        throw new Error("AI returned invalid JSON during profile expansion");
+        // Last resort: extract JSON object from raw string
+        const raw = rawContent?.toString() ?? "";
+        const match = raw.match(/\{[\s\S]*\}/);
+        if (match) {
+          try {
+            expanded = JSON.parse(match[0]);
+          } catch {
+            throw new Error("AI returned invalid JSON during profile expansion");
+          }
+        } else {
+          throw new Error("AI returned invalid JSON during profile expansion");
+        }
       }
 
       // Map LLM field names to DB column names

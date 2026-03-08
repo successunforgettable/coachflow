@@ -1,0 +1,37 @@
+{
+  "query": "SELECT id, name, targetCustomer, mainBenefit, painPoints, hvcoTopic, uniqueMechanismSuggestion FROM services ORDER BY id DESC LIMIT 3;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT id, name, targetCustomer, mainBenefit, painPoints, hvcoTopic, uniqueMechanismSuggestion FROM services ORDER BY id DESC LIMIT 3;",
+  "rows": [
+    {
+      "id": "1380001",
+      "name": "Meta Ads Mastery for Coaches",
+      "targetCustomer": "To be defined",
+      "mainBenefit": "To be defined",
+      "painPoints": "NULL",
+      "hvcoTopic": "NULL",
+      "uniqueMechanismSuggestion": "NULL"
+    },
+    {
+      "id": "1350004",
+      "name": "Test Coaching Service",
+      "targetCustomer": "Tech entrepreneurs seeking business growth",
+      "mainBenefit": "Scale your business to 7 figures",
+      "painPoints": "NULL",
+      "hvcoTopic": "NULL",
+      "uniqueMechanismSuggestion": "NULL"
+    },
+    {
+      "id": "1350002",
+      "name": "Crypto Coaching",
+      "targetCustomer": "UAE Expats",
+      "mainBenefit": "Safe crypto income in 6 months",
+      "painPoints": "NULL",
+      "hvcoTopic": "NULL",
+      "uniqueMechanismSuggestion": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\ttargetCustomer\tmainBenefit\tpainPoints\thvcoTopic\tuniqueMechanismSuggestion\n1380001\tMeta Ads Mastery for Coaches\tTo be defined\tTo be defined\tNULL\tNULL\tNULL\n1350004\tTest Coaching Service\tTech entrepreneurs seeking business growth\tScale your business to 7 figures\tNULL\tNULL\tNULL\n1350002\tCrypto Coaching\tUAE Expats\tSafe crypto income in 6 months\tNULL\tNULL\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 1538
+}

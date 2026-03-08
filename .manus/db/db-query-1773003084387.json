@@ -1,0 +1,31 @@
+{
+  "query": "SELECT id, name, LEFT(painPoints, 80) as painPoints, LEFT(hvcoTopic, 80) as hvcoTopic, LEFT(uniqueMechanismSuggestion, 80) as uniqueMechanism FROM services ORDER BY id DESC LIMIT 3;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT id, name, LEFT(painPoints, 80) as painPoints, LEFT(hvcoTopic, 80) as hvcoTopic, LEFT(uniqueMechanismSuggestion, 80) as uniqueMechanism FROM services ORDER BY id DESC LIMIT 3;",
+  "rows": [
+    {
+      "id": "1380001",
+      "name": "Meta Ads Mastery for Coaches",
+      "painPoints": "NULL",
+      "hvcoTopic": "NULL",
+      "uniqueMechanism": "NULL"
+    },
+    {
+      "id": "1350004",
+      "name": "Test Coaching Service",
+      "painPoints": "NULL",
+      "hvcoTopic": "NULL",
+      "uniqueMechanism": "NULL"
+    },
+    {
+      "id": "1350002",
+      "name": "Crypto Coaching",
+      "painPoints": "NULL",
+      "hvcoTopic": "NULL",
+      "uniqueMechanism": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tpainPoints\thvcoTopic\tuniqueMechanism\n1380001\tMeta Ads Mastery for Coaches\tNULL\tNULL\tNULL\n1350004\tTest Coaching Service\tNULL\tNULL\tNULL\n1350002\tCrypto Coaching\tNULL\tNULL\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 1588
+}
