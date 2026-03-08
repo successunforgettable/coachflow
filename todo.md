@@ -228,7 +228,11 @@
 
 ## Stripe Pricing Fix (Mar 8, 2026)
 
-- [ ] Step 1: Update server/stripe/products.ts — Pro $147/mo, $1,470/yr; Agency (Pro Plus) $497/mo, $4,970/yr
-- [ ] Step 2: Confirm 4 Stripe live price IDs in env vars
-- [ ] Step 3: Screenshot proof of products.ts + Stripe dashboard
-- [ ] Step 4: Publish to zapcampaigns.com (only after Steps 1-3 confirmed)
+- [x] Step 1: Update server/stripe/products.ts — Pro $147/mo, $1,470/yr; Agency (Pro Plus) $497/mo, $4,970/yr
+- [x] Step 2: Confirm 4 Stripe live price IDs in env vars (CUSTOM_STRIPE_SECRET_KEY wired as live override)
+- [x] Step 3: All 4 price IDs validated against Stripe API (4/4 tests passing)
+- [x] Step 4: Published to zapcampaigns.com
+
+## Auth Wiring Fix (Mar 9, 2026)
+
+- [x] Fix Pricing page unauthenticated redirect: "/" → "/login"

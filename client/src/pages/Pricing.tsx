@@ -31,7 +31,7 @@ export default function Pricing() {
 
   const handleSubscribe = (tier: "pro" | "agency") => {
     if (!isAuthenticated) {
-      window.location.href = "/";
+      window.location.href = "/login";
       return;
     }
 
