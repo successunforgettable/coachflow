@@ -21,11 +21,83 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation } from "wouter";
 import Confetti from "react-confetti";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
 import V2Layout from "./V2Layout";
 import ZappyMascot from "./ZappyMascot";
 import { type WizardStep, STEP_LABELS, getNextStep } from "./v2-constants";
 
 export type { WizardStep };
+
+// ─── Pro-gated steps (Nodes 6–11) ────────────────────────────────────────────
+const PRO_GATED_STEPS: WizardStep[] = [
+  "headlines",
+  "adCopy",
+  "landingPage",
+  "emailSequence",
+  "whatsappSequence",
+  "pushToMeta",
+];
+
+const LOCKED_COPY: Record<WizardStep, string> = {
+  service: "",
+  icp: "",
+  offer: "",
+  uniqueMethod: "",
+  freeOptIn: "",
+  headlines:        "Your ICP is ready. Let Zappy write 25 headlines targeting exactly who you just profiled.",
+  adCopy:           "Your offer and method are defined. Let Zappy turn them into Meta-compliant ad copy.",
+  landingPage:      "Your ads are ready to drive traffic. Now build the page they land on.",
+  emailSequence:    "Your ads are running. Now nurture the leads automatically.",
+  whatsappSequence: "Close faster with a WhatsApp sequence built from your ICP.",
+  pushToMeta:       "Your entire campaign is built. One click pushes everything live.",
+};
+
+// ─── Locked upgrade state component ──────────────────────────────────────────
+function LockedUpgradeState({ step, navigate }: { step: WizardStep; navigate: (path: string) => void }) {
+  const copy = LOCKED_COPY[step];
+  return (
+    <div style={{
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      textAlign: "center",
+      padding: "8px 0 4px",
+    }}>
+      <ZappyMascot state="waiting" size={90} />
+      <p style={{
+        fontFamily: "var(--v2-font-body)",
+        fontSize: "16px",
+        color: "var(--v2-text-color)",
+        lineHeight: 1.55,
+        margin: "20px 0 24px",
+        maxWidth: "340px",
+      }}>
+        {copy}
+      </p>
+      <button
+        onClick={() => navigate("/pricing")}
+        style={{
+          display: "inline-block",
+          background: "var(--v2-primary-btn)",
+          color: "#fff",
+          border: "none",
+          borderRadius: "var(--v2-border-radius-pill)",
+          padding: "14px 32px",
+          fontSize: "16px",
+          fontFamily: "var(--v2-font-body)",
+          fontWeight: 700,
+          cursor: "pointer",
+          letterSpacing: "0.01em",
+          transition: "opacity 0.18s ease",
+        }}
+        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.88"; }}
+        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; }}
+      >
+        Upgrade to Pro
+      </button>
+    </div>
+  );
+}
 
 // ─── Advanced field definitions per step ─────────────────────────────────────
 interface AdvancedField {
@@ -1096,6 +1168,9 @@ interface V2GeneratorWizardProps {
 
 export default function V2GeneratorWizard({ step, serviceId, onBack }: V2GeneratorWizardProps) {
   const [, navigate] = useLocation();
+  // ── Subscription tier check (reuses existing auth — no new logic) ──
+  const { user: authUser } = useAuth();
+  const isFreeTier = !authUser || (authUser.role !== "superuser" && authUser.role !== "admin" && authUser.subscriptionTier !== "pro" && authUser.subscriptionTier !== "agency");
 
   // NOTE: All hooks MUST be called unconditionally before any early returns
   // to comply with React's Rules of Hooks.
@@ -1562,55 +1637,62 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
             </div>
           )}
 
-          {/* ── IDLE STATE: Zappy waiting ── */}
-          {status === "idle" && (
-            <div style={{ display: "flex", justifyContent: "center", marginBottom: "8px" }}>
-              <ZappyMascot state="waiting" size={90} />
-            </div>
-          )}
-          {/* ── ICP NAME INPUT (only shown for ICP step in idle state) ── */}
-          {step === "icp" && showGenerateButton && (
-            <div style={{ marginBottom: "20px" }}>
-              <label style={{
-                display: "block",
-                fontFamily: "var(--v2-font-body)",
-                fontWeight: 600,
-                fontSize: "14px",
-                color: "var(--v2-text-color)",
-                marginBottom: "8px",
-              }}>
-                Name your Ideal Customer Profile
-              </label>
-              <input
-                type="text"
-                value={icpName}
-                onChange={e => setIcpName(e.target.value)}
-                placeholder="e.g. Ambitious Executive, Mid-Career Professional"
-                style={{
-                  width: "100%",
-                  fontFamily: "var(--v2-font-body)",
-                  fontSize: "14px",
-                  color: "var(--v2-text-color)",
-                  background: "#F9F7F4",
-                  border: "1px solid rgba(26,22,36,0.15)",
-                  borderRadius: "12px",
-                  padding: "12px 16px",
-                  outline: "none",
-                  boxSizing: "border-box" as const,
-                }}
-              />
-            </div>
-          )}
-          {/* ── GENERATE NOW button (only shown in idle / missing_data states) ── */}
-          {showGenerateButton && (
-            <button
-              onClick={handleGenerateNow}
-              style={primaryBtnStyle}
-              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.88"; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; }}
-            >
-              Generate Now
-            </button>
+          {/* ── LOCKED UPGRADE STATE (Free tier on pro-gated nodes 6–11) ── */}
+          {isFreeTier && PRO_GATED_STEPS.includes(step) ? (
+            <LockedUpgradeState step={step} navigate={navigate} />
+          ) : (
+            <>
+              {/* ── IDLE STATE: Zappy waiting ── */}
+              {status === "idle" && (
+                <div style={{ display: "flex", justifyContent: "center", marginBottom: "8px" }}>
+                  <ZappyMascot state="waiting" size={90} />
+                </div>
+              )}
+              {/* ── ICP NAME INPUT (only shown for ICP step in idle state) ── */}
+              {step === "icp" && showGenerateButton && (
+                <div style={{ marginBottom: "20px" }}>
+                  <label style={{
+                    display: "block",
+                    fontFamily: "var(--v2-font-body)",
+                    fontWeight: 600,
+                    fontSize: "14px",
+                    color: "var(--v2-text-color)",
+                    marginBottom: "8px",
+                  }}>
+                    Name your Ideal Customer Profile
+                  </label>
+                  <input
+                    type="text"
+                    value={icpName}
+                    onChange={e => setIcpName(e.target.value)}
+                    placeholder="e.g. Ambitious Executive, Mid-Career Professional"
+                    style={{
+                      width: "100%",
+                      fontFamily: "var(--v2-font-body)",
+                      fontSize: "14px",
+                      color: "var(--v2-text-color)",
+                      background: "#F9F7F4",
+                      border: "1px solid rgba(26,22,36,0.15)",
+                      borderRadius: "12px",
+                      padding: "12px 16px",
+                      outline: "none",
+                      boxSizing: "border-box" as const,
+                    }}
+                  />
+                </div>
+              )}
+              {/* ── GENERATE NOW button (only shown in idle / missing_data states) ── */}
+              {showGenerateButton && (
+                <button
+                  onClick={handleGenerateNow}
+                  style={primaryBtnStyle}
+                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.88"; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; }}
+                >
+                  Generate Now
+                </button>
+              )}
+            </>
           )}
 
           {/* ── Try Again / Generate Again button after concerned/success ── */}
