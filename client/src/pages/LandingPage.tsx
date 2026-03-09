@@ -686,10 +686,10 @@ function HeroSection({ onCampaignSelect: _onCampaignSelect }: { onCampaignSelect
                         {/* Copy button */}
                         <button
                           onClick={() => {
-                            navigator.clipboard.writeText(card.value).then(() => {
-                              setCopiedCard(card.key);
-                              setTimeout(() => setCopiedCard(null), 2000);
-                            });
+                            // Show tick immediately (optimistic), attempt clipboard in background
+                            setCopiedCard(card.key);
+                            setTimeout(() => setCopiedCard(null), 2000);
+                            try { navigator.clipboard.writeText(card.value); } catch {}
                           }}
                           title="Copy to clipboard"
                           style={{
