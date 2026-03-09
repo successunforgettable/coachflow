@@ -8,8 +8,9 @@
  *   Pills: border-radius 9999px   Cards: border-radius 24px min
  */
 import { useLocation } from "wouter";
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import Confetti from "react-confetti";
+import { trpc } from "@/lib/trpc";
 
 // ─── Design tokens ──────────────────────────────────────────────────────────────
 const CREAM  = "#F5F1EA";
@@ -19,9 +20,14 @@ const PURPLE = "#8B5CF6";
 const MUTED  = "#7A6F6A";
 
 // ─── Zappy SVG paths ────────────────────────────────────────────────────────────
-const ZAPPY_WAITING  = "/zappy-waiting.svg";
-const ZAPPY_WORKING  = "/zappy-working.svg";
-const ZAPPY_CHEERING = "/zappy-cheering.svg";
+const ZAPPY_WAITING   = "/zappy-waiting.svg";
+const ZAPPY_WORKING   = "/zappy-working.svg";
+const ZAPPY_CHEERING  = "/zappy-cheering.svg";
+const ZAPPY_CONCERNED = "/zappy-concerned.svg";
+
+// ─── Validation constants ────────────────────────────────────────────────────────
+const VAGUE1 = new Set(["people","everyone","anyone","all","everybody","someone","humans","clients","customers"]);
+const VAGUE2 = new Set(["success","money","happiness","help","better","growth","results","more","freedom"]);
 
 // ─── Campaign tiles ─────────────────────────────────────────────────────────────
 const CAMPAIGN_TILES = [
@@ -286,129 +292,442 @@ function LandingNav({ onCTA }: { onCTA: () => void }) {
   );
 }
 
-// ─── Section 1: Hero ─────────────────────────────────────────────────────────────
-function HeroSection({ onCampaignSelect }: { onCampaignSelect: (type: string) => void }) {
-  const [inputVal, setInputVal] = useState("");
-  const [showTiles, setShowTiles] = useState(false);
-  const [zappyState, setZappyState] = useState<"waiting" | "working">("waiting");
-  const [showWipe, setShowWipe] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+// ─── Section 1: Hero — 3-step gamified flow ──────────────────────────────────────
+const STEP1_MSGS = [
+  "Yes! Let's build something great for them.",
+  "Love it. Now the exciting part…",
+  "Perfect. They're going to love what we build.",
+];
+const STEP2_MSGS = [
+  "That's a powerful result. Last one…",
+  "They need that. One more question…",
+  "Brilliant. Almost there…",
+];
 
-  const handleShowMe = useCallback(() => {
-    if (!inputVal.trim()) {
-      inputRef.current?.focus();
+type HeroStep = "step1" | "step2" | "step3" | "assembling" | "done";
+type ZappyState = "waiting" | "cheering" | "working" | "concerned";
+
+interface ConfettiConfig { run: boolean; colors: string[]; }
+
+function HeroSection({ onCampaignSelect: _onCampaignSelect }: { onCampaignSelect: (type: string) => void }) {
+  const [, navigate] = useLocation();
+  const [step, setStep] = useState<HeroStep>("step1");
+  const [ans1, setAns1] = useState("");
+  const [ans2, setAns2] = useState("");
+  const [ans3, setAns3] = useState("");
+  const [zappy, setZappy] = useState<ZappyState>("waiting");
+  const [bubble, setBubble] = useState<string | null>(null);
+  const [confetti, setConfetti] = useState<ConfettiConfig>({ run: false, colors: [] });
+  const [sentence, setSentence] = useState("");
+  const [displayedSentence, setDisplayedSentence] = useState("");
+  const [editing, setEditing] = useState(false);
+  const [assets, setAssets] = useState<{ headline: string; icpHook: string; adAngle: string } | null>(null);
+  const [visibleCards, setVisibleCards] = useState(0);
+  const [fadeStep, setFadeStep] = useState(true);
+  const inputRef1 = useRef<HTMLInputElement>(null);
+  const inputRef2 = useRef<HTMLInputElement>(null);
+  const inputRef3 = useRef<HTMLInputElement>(null);
+
+  const generateAssets = trpc.landing.generatePreviewAssets.useMutation();
+
+  const zappySrc = useMemo(() => {
+    if (zappy === "cheering") return ZAPPY_CHEERING;
+    if (zappy === "working") return ZAPPY_WORKING;
+    if (zappy === "concerned") return ZAPPY_CONCERNED;
+    return ZAPPY_WAITING;
+  }, [zappy]);
+
+  const zappyAnim = useMemo(() => {
+    if (zappy === "cheering") return "zappyHop 0.5s ease infinite";
+    if (zappy === "working") return "zappyHop 0.6s ease infinite";
+    if (zappy === "concerned") return "zappyBreathe 2s ease infinite";
+    return "zappyBreathe 3s ease infinite";
+  }, [zappy]);
+
+  const showConcerned = useCallback((msg: string) => {
+    setZappy("concerned");
+    setBubble(msg);
+    // Auto-clear after 4s so user can try again
+    setTimeout(() => { setBubble(null); setZappy("waiting"); }, 4000);
+  }, []);
+
+  const fireConfetti = useCallback((colors: string[]) => {
+    setConfetti({ run: true, colors });
+    setTimeout(() => setConfetti({ run: false, colors }), 3500);
+  }, []);
+
+  const showBubble = useCallback((msg: string, duration = 1500) => {
+    setBubble(msg);
+    return new Promise<void>(res => setTimeout(() => { setBubble(null); res(); }, duration));
+  }, []);
+
+  const transitionTo = useCallback((nextStep: HeroStep) => {
+    setFadeStep(false);
+    setTimeout(() => { setStep(nextStep); setFadeStep(true); }, 350);
+  }, []);
+
+  const handleStep1 = useCallback(async () => {
+    const v = ans1.trim();
+    if (!v) { inputRef1.current?.focus(); return; }
+    // Validation: too short
+    if (v.length < 3) {
+      showConcerned("That's a bit short — can you be more specific? For example: female coaches, corporate executives, new mums");
       return;
     }
-    setZappyState("working");
-    setShowWipe(true);
-    setTimeout(() => {
-      setShowWipe(false);
-      setShowTiles(true);
-    }, 500);
-  }, [inputVal]);
+    // Validation: vague word
+    if (VAGUE1.has(v.toLowerCase())) {
+      showConcerned("Who specifically? The more specific you are, the better your campaign. For example: burned out teachers, first-time entrepreneurs, online coaches");
+      return;
+    }
+    setZappy("cheering");
+    fireConfetti([ORANGE, PURPLE, "#FFD700"]);
+    const msg = STEP1_MSGS[Math.floor(Math.random() * STEP1_MSGS.length)];
+    await showBubble(msg, 1500);
+    setZappy("waiting");
+    transitionTo("step2");
+    setTimeout(() => inputRef2.current?.focus(), 400);
+  }, [ans1, fireConfetti, showBubble, showConcerned, transitionTo]);
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") handleShowMe();
-  };
+  const handleStep2 = useCallback(async () => {
+    const v = ans2.trim();
+    if (!v) { inputRef2.current?.focus(); return; }
+    // Validation: too short
+    if (v.length < 4) {
+      showConcerned("Can you say a bit more? For example: a fully booked practice, consistent 10k months, leaving their 9-5");
+      return;
+    }
+    // Validation: vague word
+    if (VAGUE2.has(v.toLowerCase())) {
+      showConcerned("What's the actual outcome they get? Be specific — for example: a fully booked coaching practice in 90 days, doubling their revenue, getting off the hamster wheel");
+      return;
+    }
+    setZappy("cheering");
+    fireConfetti(["#22C55E", ORANGE, "#FFD700"]);
+    const msg = STEP2_MSGS[Math.floor(Math.random() * STEP2_MSGS.length)];
+    await showBubble(msg, 1500);
+    setZappy("waiting");
+    transitionTo("step3");
+    setTimeout(() => inputRef3.current?.focus(), 400);
+  }, [ans2, fireConfetti, showBubble, showConcerned, transitionTo]);
+
+  const handleStep3 = useCallback(async () => {
+    const v = ans3.trim();
+    if (!v) { inputRef3.current?.focus(); return; }
+    // Validation: too short
+    if (v.length < 5) {
+      showConcerned("Tell me a bit more about their frustration. For example: getting consistent leads, charging premium prices, wasting money on ads that don't convert");
+      return;
+    }
+    // Validation: single word (no spaces)
+    if (!v.includes(" ")) {
+      showConcerned("Can you describe the struggle in a few words? For example: not knowing where their next client is coming from, feeling invisible online");
+      return;
+    }
+    setZappy("working");
+    setBubble("Zappy is building your service profile…");
+    transitionTo("assembling");
+
+    const full = `I help ${ans1.trim()} get ${ans2.trim()} even if they're struggling with ${ans3.trim()}`;
+    setSentence(full);
+
+    // Animate word-by-word assembly
+    const words = full.split(" ");
+    setDisplayedSentence("");
+    let built = "";
+    for (let i = 0; i < words.length; i++) {
+      built += (i === 0 ? "" : " ") + words[i];
+      setDisplayedSentence(built);
+      await new Promise(r => setTimeout(r, 80));
+    }
+
+    // Sentence complete
+    setBubble(null);
+    setZappy("cheering");
+    fireConfetti([ORANGE, PURPLE, "#22C55E", "#FFD700", "#FF69B4"]);
+    await showBubble("Here's your service in one sentence — does this sound right?", 2000);
+    setStep("done");
+    setFadeStep(true);
+  }, [ans1, ans2, ans3, fireConfetti, showBubble, showConcerned, transitionTo]);
+
+  const handleAccept = useCallback(async (finalSentence: string) => {
+    sessionStorage.setItem("zap_service_prefill", finalSentence.trim());
+    setZappy("working");
+    setBubble("Generating your first campaign assets…");
+    setTimeout(() => setBubble(null), 2000);
+
+    try {
+      const result = await generateAssets.mutateAsync({ serviceSentence: finalSentence.trim() });
+      setAssets(result);
+      setZappy("cheering");
+      // Stagger card reveal
+      setVisibleCards(0);
+      setTimeout(() => setVisibleCards(1), 300);
+      setTimeout(() => setVisibleCards(2), 600);
+      setTimeout(() => setVisibleCards(3), 900);
+      setTimeout(() => {
+        setBubble("Your campaign has already started.");
+        fireConfetti([ORANGE, PURPLE, "#22C55E"]);
+        setTimeout(() => setBubble(null), 3000);
+      }, 1200);
+    } catch {
+      setBubble("Oops — couldn't generate assets. Try again!");
+      setTimeout(() => setBubble(null), 3000);
+      setZappy("waiting");
+    }
+  }, [generateAssets, fireConfetti]);
+
+  const zappySize = "clamp(80px, 12vw, 120px)";
 
   return (
-    <section style={{ background: CREAM, minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "clamp(60px,8vw,100px) clamp(16px,4vw,24px) clamp(48px,6vw,80px)", position: "relative", overflow: "hidden" }}>
+    <section style={{ background: CREAM, minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "clamp(80px,10vw,120px) clamp(16px,4vw,24px) clamp(48px,6vw,80px)", position: "relative", overflow: "hidden" }}>
+      {/* Confetti */}
+      {confetti.run && (
+        <Confetti
+          width={typeof window !== "undefined" ? window.innerWidth : 1200}
+          height={typeof window !== "undefined" ? window.innerHeight : 800}
+          colors={confetti.colors}
+          numberOfPieces={step === "done" && assets ? 300 : 120}
+          recycle={false}
+          style={{ position: "fixed", top: 0, left: 0, zIndex: 999, pointerEvents: "none" }}
+        />
+      )}
+
       {/* Background blobs */}
       <div style={{ position: "absolute", top: "8%", right: "-8%", width: 500, height: 500, borderRadius: "50%", background: `radial-gradient(circle, rgba(255,91,29,0.07) 0%, transparent 70%)`, pointerEvents: "none" }} />
       <div style={{ position: "absolute", bottom: "5%", left: "-5%", width: 400, height: 400, borderRadius: "50%", background: `radial-gradient(circle, rgba(139,92,246,0.05) 0%, transparent 70%)`, pointerEvents: "none" }} />
 
-      {/* Orange wipe overlay */}
-      {showWipe && (
-        <div style={{ position: "absolute", inset: 0, background: ORANGE, zIndex: 10, transformOrigin: "left", animation: "wipeOrange 0.5s ease forwards" }} />
-      )}
-
-      <div style={{ maxWidth: 700, width: "100%", textAlign: "center", position: "relative", zIndex: 1 }}>
+      <div style={{ maxWidth: 640, width: "100%", textAlign: "center", position: "relative", zIndex: 1 }}>
         {/* Zappy */}
-        <img
-          src={zappyState === "working" ? ZAPPY_WORKING : ZAPPY_WAITING}
-          alt="Zappy"
-          style={{
-            width: 160, height: 160, margin: "0 auto 24px", display: "block",
-            animation: zappyState === "working" ? "zappyHop 0.6s ease infinite" : "zappyBreathe 3s ease infinite",
-            transition: "all 0.3s",
-          }}
-        />
-
-        {/* Headline — staggered fadeUp per line */}
-        <h1 style={{ fontFamily: "'Fraunces', serif", fontStyle: "italic", fontWeight: 900, fontSize: "clamp(36px, 6vw, 62px)", color: INK, margin: "0 0 16px", lineHeight: 1.1, letterSpacing: "-1px", display: "flex", flexDirection: "column", alignItems: "center", gap: 0 }}>
-          <span style={{ display: "block", opacity: 0, animation: "fadeUp 0.6s ease 0ms both" }}>Your next campaign</span>
-          <span style={{ display: "block", opacity: 0, animation: "fadeUp 0.6s ease 200ms both" }}>starts</span>
-          <span style={{ display: "block", opacity: 0, animation: "fadeUp 0.6s ease 400ms both" }}>with one sentence.</span>
-        </h1>
-
-        {/* Sub */}
-        <p style={{ fontFamily: "'Instrument Sans', sans-serif", fontSize: "clamp(16px, 2.5vw, 20px)", color: MUTED, margin: "0 0 40px", lineHeight: 1.6 }}>
-          Type what you do below and watch Zappy build your campaign path live.
-        </p>
-
-        {/* Input row */}
-        <div style={{ display: "flex", maxWidth: 600, margin: "0 auto 16px", background: "#fff", borderRadius: 9999, border: `2px solid rgba(26,22,36,0.12)`, overflow: "hidden", boxShadow: "0 4px 24px rgba(0,0,0,0.08)" }}>
-          <input
-            ref={inputRef}
-            type="text"
-            value={inputVal}
-            onChange={e => setInputVal(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="e.g. I help coaches fill their programmes with Meta ads"
-            style={{ flex: 1, border: "none", outline: "none", padding: "16px 20px", fontSize: 15, fontFamily: "'Instrument Sans', sans-serif", background: "transparent", color: INK, minWidth: 0 }}
+        <div style={{ position: "relative", display: "inline-block", marginBottom: 24 }}>
+          <img
+            src={zappySrc}
+            alt="Zappy"
+            style={{ width: zappySize, height: zappySize, display: "block", animation: zappyAnim, transition: "all 0.3s" }}
           />
-          <button
-            onClick={handleShowMe}
-            style={{ background: ORANGE, color: "#fff", border: "none", borderRadius: 9999, margin: 4, padding: "12px 24px", fontSize: 15, fontWeight: 600, fontFamily: "'Instrument Sans', sans-serif", cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0, transition: "opacity 0.15s" }}
-            onMouseEnter={e => (e.currentTarget.style.opacity = "0.85")}
-            onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
-          >
-            Show Me
-          </button>
+          {/* Bubble */}
+          {bubble && (
+            <div style={{
+              position: "absolute", bottom: "calc(100% + 8px)", left: "50%", transform: "translateX(-50%)",
+              background: INK, color: "#fff", borderRadius: 12, padding: "8px 14px", fontSize: 13,
+              fontFamily: "'Instrument Sans', sans-serif", whiteSpace: "normal", maxWidth: 280,
+              textAlign: "center", lineHeight: 1.4,
+              animation: "fadeUp 0.3s ease", zIndex: 10, boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
+            }}>
+              {bubble}
+              <div style={{ position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)", width: 0, height: 0, borderLeft: "6px solid transparent", borderRight: "6px solid transparent", borderTop: `6px solid ${INK}` }} />
+            </div>
+          )}
         </div>
 
-        {/* Campaign tiles — appear after typing */}
-        {showTiles && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16, marginTop: 24 }} className="lp-tiles-grid">
-            {CAMPAIGN_TILES.map((tile, i) => (
-              <div
-                key={tile.label}
-                style={{
-                  background: "#fff", borderRadius: 24, padding: "24px 20px", textAlign: "center", cursor: "pointer",
-                  boxShadow: "0 2px 12px rgba(0,0,0,0.06)", border: `1px solid rgba(26,22,36,0.06)`,
-                  animation: `tileIn 0.4s ease ${i * 0.12}s both`,
-                  transition: "transform 0.2s, box-shadow 0.2s",
-                }}
-                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(-4px)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 8px 28px rgba(0,0,0,0.12)"; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 2px 12px rgba(0,0,0,0.06)"; }}
-              >
-                <div style={{ fontSize: 30, marginBottom: 8 }}>{tile.emoji}</div>
-                <div style={{ fontFamily: "'Fraunces', serif", fontStyle: "italic", fontWeight: 900, fontSize: 16, color: INK, marginBottom: 6 }}>{tile.label}</div>
-                <div style={{ fontSize: 12, color: MUTED, marginBottom: 16, lineHeight: 1.4 }}>{tile.desc}</div>
-                <PillBtn size="sm" onClick={() => { if (inputVal.trim()) { sessionStorage.setItem("zap_service_prefill", inputVal.trim()); } onCampaignSelect(tile.label); }} style={{ width: "100%" }}>
-                  Build This Free
-                </PillBtn>
+        {/* Step content */}
+        <div style={{ opacity: fadeStep ? 1 : 0, transform: fadeStep ? "translateY(0)" : "translateY(12px)", transition: "opacity 0.35s ease, transform 0.35s ease" }}>
+
+          {/* ── STEP 1 ── */}
+          {step === "step1" && (
+            <>
+              <h1 style={{ fontFamily: "'Fraunces', serif", fontStyle: "italic", fontWeight: 900, fontSize: "clamp(28px, 5vw, 36px)", color: INK, margin: "0 0 28px", lineHeight: 1.2, animation: "fadeUp 0.5s ease" }}>
+                Who do you help?
+              </h1>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 520, margin: "0 auto" }} className="hero-input-row">
+                <input
+                  ref={inputRef1}
+                  type="text"
+                  value={ans1}
+                  onChange={e => setAns1(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && handleStep1()}
+                  placeholder="e.g. coaches, executives, mums, dentists"
+                  autoFocus
+                  style={{ flex: 1, border: `2px solid rgba(26,22,36,0.12)`, outline: "none", padding: "14px 20px", fontSize: 15, fontFamily: "'Instrument Sans', sans-serif", background: "#fff", color: INK, borderRadius: 9999, boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}
+                />
+                <button
+                  onClick={handleStep1}
+                  style={{ background: ORANGE, color: "#fff", border: "none", borderRadius: 9999, padding: "14px 28px", fontSize: 15, fontWeight: 600, fontFamily: "'Instrument Sans', sans-serif", cursor: "pointer", transition: "opacity 0.15s", whiteSpace: "nowrap" }}
+                  onMouseEnter={e => (e.currentTarget.style.opacity = "0.85")}
+                  onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
+                >
+                  That's them →
+                </button>
               </div>
+            </>
+          )}
+
+          {/* ── STEP 2 ── */}
+          {step === "step2" && (
+            <>
+              <h1 style={{ fontFamily: "'Fraunces', serif", fontStyle: "italic", fontWeight: 900, fontSize: "clamp(28px, 5vw, 36px)", color: INK, margin: "0 0 28px", lineHeight: 1.2, animation: "fadeUp 0.5s ease" }}>
+                What's the biggest result you give them?
+              </h1>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 520, margin: "0 auto" }} className="hero-input-row">
+                <input
+                  ref={inputRef2}
+                  type="text"
+                  value={ans2}
+                  onChange={e => setAns2(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && handleStep2()}
+                  placeholder="e.g. fully booked practice, consistent leads, 6-figure income"
+                  style={{ flex: 1, border: `2px solid rgba(26,22,36,0.12)`, outline: "none", padding: "14px 20px", fontSize: 15, fontFamily: "'Instrument Sans', sans-serif", background: "#fff", color: INK, borderRadius: 9999, boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}
+                />
+                <button
+                  onClick={handleStep2}
+                  style={{ background: ORANGE, color: "#fff", border: "none", borderRadius: 9999, padding: "14px 28px", fontSize: 15, fontWeight: 600, fontFamily: "'Instrument Sans', sans-serif", cursor: "pointer", transition: "opacity 0.15s", whiteSpace: "nowrap" }}
+                  onMouseEnter={e => (e.currentTarget.style.opacity = "0.85")}
+                  onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
+                >
+                  That's the result →
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* ── STEP 3 ── */}
+          {step === "step3" && (
+            <>
+              <h1 style={{ fontFamily: "'Fraunces', serif", fontStyle: "italic", fontWeight: 900, fontSize: "clamp(28px, 5vw, 36px)", color: INK, margin: "0 0 28px", lineHeight: 1.2, animation: "fadeUp 0.5s ease" }}>
+                What are they struggling with right now?
+              </h1>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 520, margin: "0 auto" }} className="hero-input-row">
+                <input
+                  ref={inputRef3}
+                  type="text"
+                  value={ans3}
+                  onChange={e => setAns3(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && handleStep3()}
+                  placeholder="e.g. getting consistent leads, charging premium prices, finding time"
+                  style={{ flex: 1, border: `2px solid rgba(26,22,36,0.12)`, outline: "none", padding: "14px 20px", fontSize: 15, fontFamily: "'Instrument Sans', sans-serif", background: "#fff", color: INK, borderRadius: 9999, boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}
+                />
+                <button
+                  onClick={handleStep3}
+                  style={{ background: ORANGE, color: "#fff", border: "none", borderRadius: 9999, padding: "14px 28px", fontSize: 15, fontWeight: 600, fontFamily: "'Instrument Sans', sans-serif", cursor: "pointer", transition: "opacity 0.15s", whiteSpace: "nowrap" }}
+                  onMouseEnter={e => (e.currentTarget.style.opacity = "0.85")}
+                  onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
+                >
+                  Got it →
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* ── ASSEMBLING ── */}
+          {step === "assembling" && (
+            <>
+              <h1 style={{ fontFamily: "'Fraunces', serif", fontStyle: "italic", fontWeight: 900, fontSize: "clamp(22px, 4vw, 30px)", color: INK, margin: "0 0 24px", lineHeight: 1.2 }}>
+                Building your sentence…
+              </h1>
+              <div style={{ background: "#fff", borderRadius: 20, padding: "24px 28px", boxShadow: "0 4px 24px rgba(0,0,0,0.08)", border: `1px solid rgba(26,22,36,0.06)`, minHeight: 72, textAlign: "left" }}>
+                <p style={{ fontFamily: "'Fraunces', serif", fontStyle: "italic", fontWeight: 700, fontSize: "clamp(16px, 3vw, 20px)", color: INK, margin: 0, lineHeight: 1.5 }}>
+                  {displayedSentence}<span style={{ display: "inline-block", width: 2, height: "1em", background: ORANGE, marginLeft: 2, animation: "zappyBreathe 0.8s ease infinite", verticalAlign: "text-bottom" }} />
+                </p>
+              </div>
+            </>
+          )}
+
+          {/* ── DONE — sentence review + asset cards ── */}
+          {step === "done" && (
+            <>
+              {!assets ? (
+                <>
+                  <h1 style={{ fontFamily: "'Fraunces', serif", fontStyle: "italic", fontWeight: 900, fontSize: "clamp(22px, 4vw, 28px)", color: INK, margin: "0 0 20px", lineHeight: 1.2, animation: "fadeUp 0.5s ease" }}>
+                    Here's your service in one sentence
+                  </h1>
+                  {editing ? (
+                    <textarea
+                      value={sentence}
+                      onChange={e => setSentence(e.target.value)}
+                      rows={3}
+                      style={{ width: "100%", border: `2px solid ${ORANGE}`, outline: "none", padding: "14px 18px", fontSize: 16, fontFamily: "'Fraunces', serif", fontStyle: "italic", fontWeight: 700, background: "#fff", color: INK, borderRadius: 16, boxShadow: "0 2px 12px rgba(0,0,0,0.06)", resize: "vertical", lineHeight: 1.5, marginBottom: 16 }}
+                    />
+                  ) : (
+                    <div style={{ background: "#fff", borderRadius: 20, padding: "20px 24px", boxShadow: "0 4px 24px rgba(0,0,0,0.08)", border: `1px solid rgba(26,22,36,0.06)`, marginBottom: 20, animation: "fadeUp 0.5s ease" }}>
+                      <p style={{ fontFamily: "'Fraunces', serif", fontStyle: "italic", fontWeight: 700, fontSize: "clamp(16px, 3vw, 20px)", color: INK, margin: 0, lineHeight: 1.5 }}>
+                        {sentence}
+                      </p>
+                    </div>
+                  )}
+                  <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+                    <button
+                      onClick={() => editing ? handleAccept(sentence) : handleAccept(sentence)}
+                      style={{ background: ORANGE, color: "#fff", border: "none", borderRadius: 9999, padding: "14px 32px", fontSize: 15, fontWeight: 600, fontFamily: "'Instrument Sans', sans-serif", cursor: "pointer", transition: "opacity 0.15s" }}
+                      onMouseEnter={e => (e.currentTarget.style.opacity = "0.85")}
+                      onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
+                    >
+                      {editing ? "Save my sentence →" : "Yes, that's me →"}
+                    </button>
+                    {!editing && (
+                      <button
+                        onClick={() => setEditing(true)}
+                        style={{ background: "transparent", color: INK, border: `2px solid rgba(26,22,36,0.2)`, borderRadius: 9999, padding: "14px 28px", fontSize: 15, fontWeight: 600, fontFamily: "'Instrument Sans', sans-serif", cursor: "pointer", transition: "border-color 0.15s" }}
+                        onMouseEnter={e => (e.currentTarget.style.borderColor = INK)}
+                        onMouseLeave={e => (e.currentTarget.style.borderColor = "rgba(26,22,36,0.2)")}
+                      >
+                        Let me edit it
+                      </button>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Asset cards */}
+                  {([
+                    { key: "headline",  label: "Your headline",       value: assets.headline },
+                    { key: "icpHook",   label: "Your ideal customer", value: assets.icpHook },
+                    { key: "adAngle",   label: "Your ad angle",       value: assets.adAngle },
+                  ] as const).map((card, i) => (
+                    visibleCards > i && (
+                      <div
+                        key={card.key}
+                        style={{
+                          background: "#fff", borderRadius: 20, padding: "20px 24px",
+                          boxShadow: "0 4px 24px rgba(0,0,0,0.08)", border: `1px solid rgba(26,22,36,0.06)`,
+                          marginBottom: 12, textAlign: "left",
+                          animation: "fadeUp 0.5s ease",
+                        }}
+                      >
+                        <p style={{ fontSize: 11, fontWeight: 700, color: ORANGE, textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 6px", fontFamily: "'Instrument Sans', sans-serif" }}>
+                          {card.label}
+                        </p>
+                        <p style={{ fontFamily: "'Fraunces', serif", fontStyle: "italic", fontWeight: 700, fontSize: "clamp(15px, 2.5vw, 18px)", color: INK, margin: 0, lineHeight: 1.4 }}>
+                          {card.value}
+                        </p>
+                      </div>
+                    )
+                  ))}
+
+                  {/* Final CTA */}
+                  {visibleCards >= 3 && (
+                    <div style={{ marginTop: 28, animation: "fadeUp 0.5s ease" }}>
+                      <button
+                        onClick={() => navigate("/signup")}
+                        style={{ background: ORANGE, color: "#fff", border: "none", borderRadius: 9999, padding: "18px 48px", fontSize: 17, fontWeight: 700, fontFamily: "'Instrument Sans', sans-serif", cursor: "pointer", transition: "opacity 0.15s, transform 0.15s", display: "block", width: "100%", maxWidth: 400, margin: "0 auto" }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.opacity = "0.88"; (e.currentTarget as HTMLElement).style.transform = "scale(1.02)"; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.opacity = "1"; (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
+                      >
+                        Build my full campaign free →
+                      </button>
+                      <p style={{ fontSize: 12, color: MUTED, marginTop: 10, fontFamily: "'Instrument Sans', sans-serif" }}>
+                        No credit card required · Takes 2 minutes
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+            </>
+          )}
+
+        </div>{/* end fade wrapper */}
+
+        {/* Step dots */}
+        {(step === "step1" || step === "step2" || step === "step3") && (
+          <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 32 }}>
+            {(["step1", "step2", "step3"] as HeroStep[]).map((s, i) => (
+              <div key={s} style={{ width: 8, height: 8, borderRadius: "50%", background: step === s ? ORANGE : "rgba(26,22,36,0.15)", transition: "background 0.3s" }} />
             ))}
-          </div>
-        )}
-
-        <p style={{ fontSize: 13, color: MUTED, marginTop: showTiles ? 20 : 8, fontFamily: "'Instrument Sans', sans-serif" }}>
-          No credit card required. Your first ICP is always free.
-        </p>
-
-        {/* Scroll hint */}
-        {!showTiles && (
-          <div style={{ marginTop: 48, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, opacity: 0.35, animation: "zappyBreathe 2.5s ease infinite" }}>
-            <span style={{ fontSize: 12, color: INK, fontFamily: "'Instrument Sans', sans-serif" }}>Scroll to see how it works</span>
-            <svg width="14" height="20" viewBox="0 0 14 20" fill="none"><path d="M7 0v14M1 8l6 6 6-6" stroke={INK} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </div>
         )}
       </div>
 
       <style>{`
-        @media (max-width: 480px) {
-          .lp-tiles-grid { grid-template-columns: 1fr !important; }
+        @media (min-width: 480px) {
+          .hero-input-row { flex-direction: row !important; }
         }
       `}</style>
     </section>
