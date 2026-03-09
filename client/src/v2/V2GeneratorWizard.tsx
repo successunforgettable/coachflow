@@ -38,6 +38,15 @@ const PRO_GATED_STEPS: WizardStep[] = [
   "pushToMeta",
 ];
 
+const UTM_PATHS: Partial<Record<WizardStep, string>> = {
+  headlines:        "/pricing?utm_source=v2_wizard&utm_medium=lock&utm_campaign=node6",
+  adCopy:           "/pricing?utm_source=v2_wizard&utm_medium=lock&utm_campaign=node7",
+  landingPage:      "/pricing?utm_source=v2_wizard&utm_medium=lock&utm_campaign=node8",
+  emailSequence:    "/pricing?utm_source=v2_wizard&utm_medium=lock&utm_campaign=node9",
+  whatsappSequence: "/pricing?utm_source=v2_wizard&utm_medium=lock&utm_campaign=node10",
+  pushToMeta:       "/pricing?utm_source=v2_wizard&utm_medium=lock&utm_campaign=node11",
+};
+
 const LOCKED_COPY: Record<WizardStep, string> = {
   service: "",
   icp: "",
@@ -75,7 +84,7 @@ function LockedUpgradeState({ step, navigate }: { step: WizardStep; navigate: (p
         {copy}
       </p>
       <button
-        onClick={() => navigate("/pricing")}
+        onClick={() => navigate(UTM_PATHS[step] ?? "/pricing")}
         style={{
           display: "inline-block",
           background: "var(--v2-primary-btn)",
