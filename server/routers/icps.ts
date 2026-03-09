@@ -1,7 +1,8 @@
 import { z } from "zod";
+import { randomUUID } from "crypto";
 import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
-import { idealCustomerProfiles, services } from "../../drizzle/schema";
+import { idealCustomerProfiles, services, jobs } from "../../drizzle/schema";
 
 function stripMarkdownJson(content: string): string {
   return content.replace(/^```json\s*|^```\s*|\s*```$/gm, '').trim();
@@ -306,6 +307,101 @@ Format as JSON with these exact keys (use bullet points • for lists):
         .limit(1);
 
       return newICP;
+    }),
+
+  /**
+   * generateAsync — background job version of generate.
+   * Returns jobId immediately; ICP generation runs via setImmediate.
+   * Client polls GET /api/jobs/:jobId every 5s.
+   */
+  generateAsync: protectedProcedure
+    .input(generateICPSchema)
+    .mutation(async ({ ctx, input }) => {
+      const { user } = ctx;
+      await checkAndResetQuotaIfNeeded(user.id);
+      if (user.role !== "superuser") {
+        const limit = getQuotaLimit(user.subscriptionTier, "icp");
+        if (user.icpGeneratedCount >= limit) {
+          throw new TRPCError({ code: "FORBIDDEN", message: `You've reached your monthly limit of ${limit} ICP generations. Upgrade to generate more.` });
+        }
+      }
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      const [service] = await db.select().from(services)
+        .where(and(eq(services.id, input.serviceId), eq(services.userId, user.id))).limit(1);
+      if (!service) throw new Error("Service not found");
+
+      const capturedInput = { ...input };
+      const capturedUserId = user.id;
+      const capturedService = { ...service };
+
+      const jobId = randomUUID();
+      await db.insert(jobs).values({ id: jobId, userId: String(capturedUserId), status: "pending" });
+
+      setImmediate(async () => {
+        try {
+          const bgDb = await getDb();
+          if (!bgDb) throw new Error("Database not available in background job");
+
+          const prompt = `You are an expert marketing strategist. Create a detailed Ideal Customer Profile (ICP) for the following service:\n\nService Name: ${capturedService.name}\nCategory: ${capturedService.category}\nDescription: ${capturedService.description}\nTarget Customer: ${capturedService.targetCustomer}\nMain Benefit: ${capturedService.mainBenefit}\n\nGenerate a comprehensive ICP with ALL 17 sections (Industry standard):\n\n1. INTRODUCTION: 2-3 paragraph overview of who this person is\n2. FEARS: 5-7 specific fears that keep them up at night\n3. HOPES & DREAMS: 5-7 aspirations and what they dream about achieving\n4. DEMOGRAPHICS: JSON object with age_range, gender, income_level, education, occupation, location, family_status\n5. PSYCHOGRAPHICS: Personality traits, lifestyle, attitudes, interests (3-4 paragraphs)\n6. PAINS: 7-10 specific pain points they experience daily\n7. FRUSTRATIONS: 5-7 daily frustrations and annoyances\n8. GOALS: 6-8 specific goals they want to achieve\n9. VALUES: 5-7 core values that guide their decisions\n10. OBJECTIONS: 5-7 common objections to buying your service\n11. BUYING TRIGGERS: 5-7 specific triggers that make them ready to buy\n12. MEDIA CONSUMPTION: Where they consume content (platforms, channels, formats)\n13. INFLUENCERS: Who they follow, trust, and listen to\n14. COMMUNICATION STYLE: How they prefer to communicate and be communicated with\n15. DECISION MAKING: How they make purchasing decisions (process, timeline, factors)\n16. SUCCESS METRICS: How they measure success in their life/business\n17. IMPLEMENTATION BARRIERS: What stops them from taking action after buying\n\nFormat as JSON with these exact keys (use bullet points \u2022 for lists):\n{\n  "introduction": "...",\n  "fears": "\u2022 Fear 1\\n\u2022 Fear 2\\n...",\n  "hopesDreams": "\u2022 Dream 1\\n\u2022 Dream 2\\n...",\n  "demographics": { ... },\n  "psychographics": "...",\n  "pains": "\u2022 Pain 1\\n\u2022 Pain 2\\n...",\n  "frustrations": "\u2022 Frustration 1\\n\u2022 Frustration 2\\n...",\n  "goals": "\u2022 Goal 1\\n\u2022 Goal 2\\n...",\n  "values": "\u2022 Value 1\\n\u2022 Value 2\\n...",\n  "objections": "\u2022 Objection 1\\n\u2022 Objection 2\\n...",\n  "buyingTriggers": "\u2022 Trigger 1\\n\u2022 Trigger 2\\n...",\n  "mediaConsumption": "...",\n  "influencers": "...",\n  "communicationStyle": "...",\n  "decisionMaking": "...",\n  "successMetrics": "...",\n  "implementationBarriers": "..."\n}`;
+
+          const response = await invokeLLM({
+            messages: [
+              { role: "system", content: "You are an expert marketing strategist specializing in creating detailed customer profiles for coaches, speakers, and consultants. Always respond with valid JSON." },
+              { role: "user", content: prompt },
+            ],
+            response_format: { type: "json_schema", json_schema: { name: "ideal_customer_profile_17_tabs", strict: true, schema: { type: "object", properties: { introduction: { type: "string" }, fears: { type: "string" }, hopesDreams: { type: "string" }, demographics: { type: "object", properties: { age_range: { type: "string" }, gender: { type: "string" }, income_level: { type: "string" }, education: { type: "string" }, occupation: { type: "string" }, location: { type: "string" }, family_status: { type: "string" } }, required: ["age_range","gender","income_level","education","occupation","location","family_status"], additionalProperties: false }, psychographics: { type: "string" }, pains: { type: "string" }, frustrations: { type: "string" }, goals: { type: "string" }, values: { type: "string" }, objections: { type: "string" }, buyingTriggers: { type: "string" }, mediaConsumption: { type: "string" }, influencers: { type: "string" }, communicationStyle: { type: "string" }, decisionMaking: { type: "string" }, successMetrics: { type: "string" }, implementationBarriers: { type: "string" } }, required: ["introduction","fears","hopesDreams","demographics","psychographics","pains","frustrations","goals","values","objections","buyingTriggers","mediaConsumption","influencers","communicationStyle","decisionMaking","successMetrics","implementationBarriers"], additionalProperties: false } } },
+          });
+
+          const content = response.choices[0].message.content;
+          if (typeof content !== 'string') throw new Error('Invalid response format from AI');
+          const icpData = JSON.parse(stripMarkdownJson(content));
+
+          const insertResult: any = await bgDb.insert(idealCustomerProfiles).values({
+            userId: capturedUserId,
+            serviceId: capturedInput.serviceId,
+            campaignId: capturedInput.campaignId,
+            name: capturedInput.name,
+            introduction: icpData.introduction,
+            fears: icpData.fears,
+            hopesDreams: icpData.hopesDreams,
+            demographics: icpData.demographics,
+            psychographics: icpData.psychographics,
+            pains: icpData.pains,
+            frustrations: icpData.frustrations,
+            goals: icpData.goals,
+            values: icpData.values,
+            objections: icpData.objections,
+            buyingTriggers: icpData.buyingTriggers,
+            mediaConsumption: icpData.mediaConsumption,
+            influencers: icpData.influencers,
+            communicationStyle: icpData.communicationStyle,
+            decisionMaking: icpData.decisionMaking,
+            successMetrics: icpData.successMetrics,
+            implementationBarriers: icpData.implementationBarriers,
+            painPoints: icpData.pains,
+            desiredOutcomes: icpData.goals,
+            valuesMotivations: icpData.values,
+          });
+
+          const [newICP] = await bgDb.select().from(idealCustomerProfiles)
+            .where(eq(idealCustomerProfiles.id, insertResult[0].insertId)).limit(1);
+
+          await bgDb.update(jobs)
+            .set({ status: "complete", result: JSON.stringify({ icpId: newICP?.id }) })
+            .where(eq(jobs.id, jobId));
+          console.log(`[icps.generateAsync] Job ${jobId} completed, icpId: ${newICP?.id}`);
+        } catch (err: unknown) {
+          const errorMessage = err instanceof Error ? err.message : String(err);
+          console.error(`[icps.generateAsync] Job ${jobId} failed:`, errorMessage);
+          try {
+            const bgDb2 = await getDb();
+            if (bgDb2) await bgDb2.update(jobs).set({ status: "failed", error: errorMessage.slice(0, 1024) }).where(eq(jobs.id, jobId));
+          } catch { /* ignore */ }
+        }
+      });
+
+      return { jobId };
     }),
 
   // Update ICP

@@ -39,14 +39,28 @@ async function startServer() {
   app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), handleStripeWebhook);
   
   // Jobs polling endpoint — returns job status/result for background generation
+  // Requires authentication; enforces userId ownership so users can only poll their own jobs
   app.get("/api/jobs/:jobId", async (req, res) => {
     try {
+      // Authenticate the request
+      let user: { id: number | string } | null = null;
+      try {
+        user = await sdk.authenticateRequest(req);
+      } catch {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+      if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+
       const { getDb } = await import("../db");
       const { jobs } = await import("../../drizzle/schema");
-      const { eq } = await import("drizzle-orm");
+      const { eq, and } = await import("drizzle-orm");
       const db = await getDb();
       if (!db) { res.status(503).json({ error: "Database not available" }); return; }
-      const [job] = await db.select().from(jobs).where(eq(jobs.id, req.params.jobId)).limit(1);
+      // Ownership check: only the job owner can poll
+      const [job] = await db.select().from(jobs)
+        .where(and(eq(jobs.id, req.params.jobId), eq(jobs.userId, String(user.id))))
+        .limit(1);
       if (!job) { res.status(404).json({ error: "Job not found" }); return; }
       res.json({ status: job.status, result: job.result ? JSON.parse(job.result) : null, error: job.error });
     } catch (err: unknown) {
@@ -54,6 +68,22 @@ async function startServer() {
       res.status(500).json({ error: msg });
     }
   });
+
+  // Daily cleanup cron — delete jobs older than 24 hours to prevent table bloat
+  setInterval(async () => {
+    try {
+      const { getDb } = await import("../db");
+      const { jobs } = await import("../../drizzle/schema");
+      const { lt } = await import("drizzle-orm");
+      const db = await getDb();
+      if (!db) return;
+      const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      await db.delete(jobs).where(lt(jobs.createdAt, cutoff));
+      console.log(`[jobs-cleanup] Deleted jobs older than ${cutoff.toISOString()}`);
+    } catch (err) {
+      console.error("[jobs-cleanup] Error:", err);
+    }
+  }, 24 * 60 * 60 * 1000); // runs every 24 hours
 
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));

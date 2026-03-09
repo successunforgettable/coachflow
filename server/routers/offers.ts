@@ -1,7 +1,8 @@
 import { z } from "zod";
+import { randomUUID } from "crypto";
 import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
-import { offers, services, idealCustomerProfiles, sourceOfTruth, campaigns } from "../../drizzle/schema";
+import { offers, services, idealCustomerProfiles, sourceOfTruth, campaigns, jobs } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { generateAllOfferAngles } from "../offersGenerator";
 import { getQuotaLimit } from "../quotaLimits";
@@ -200,6 +201,122 @@ export const offersRouter = router({
         .limit(1);
 
       return newOffer;
+    }),
+
+  /**
+   * generateAsync — background job version of generate.
+   * Returns jobId immediately; offer generation runs via setImmediate.
+   */
+  generateAsync: protectedProcedure
+    .input(generateOfferSchema)
+    .mutation(async ({ ctx, input }) => {
+      const { user } = ctx;
+      await checkAndResetQuotaIfNeeded(user.id);
+      if (user.role !== "superuser") {
+        const limit = getQuotaLimit(user.subscriptionTier, "offers");
+        if (user.offerGeneratedCount >= limit) {
+          throw new TRPCError({ code: "FORBIDDEN", message: `You've reached your monthly limit of ${limit} offers. Upgrade to generate more.` });
+        }
+      }
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      const [service] = await db.select().from(services)
+        .where(and(eq(services.id, input.serviceId), eq(services.userId, user.id))).limit(1);
+      if (!service) throw new Error("Service not found");
+
+      let campaignRecord: any;
+      if (input.campaignId) {
+        [campaignRecord] = await db.select().from(campaigns)
+          .where(and(eq(campaigns.id, input.campaignId), eq(campaigns.userId, user.id))).limit(1);
+      }
+      let icp: any;
+      if (campaignRecord?.icpId) {
+        [icp] = await db.select().from(idealCustomerProfiles)
+          .where(eq(idealCustomerProfiles.id, campaignRecord.icpId)).limit(1);
+      }
+      if (!icp) {
+        [icp] = await db.select().from(idealCustomerProfiles)
+          .where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
+      }
+      const [sot] = await db.select().from(sourceOfTruth)
+        .where(eq(sourceOfTruth.userId, user.id)).limit(1);
+
+      const capturedInput = { ...input };
+      const capturedUserId = user.id;
+      const capturedService = { ...service };
+      const capturedIcp = icp ? { ...icp } : undefined;
+      const capturedSot = sot ? { ...sot } : undefined;
+
+      const jobId = randomUUID();
+      await db.insert(jobs).values({ id: jobId, userId: String(capturedUserId), status: "pending" });
+
+      setImmediate(async () => {
+        try {
+          const bgDb = await getDb();
+          if (!bgDb) throw new Error("Database not available in background job");
+
+          const icpContext = capturedIcp ? [
+            'IDEAL CUSTOMER PROFILE — use this to make every offer specific and targeted:',
+            capturedIcp.objections ? `Their objections to buying: ${capturedIcp.objections}` : '',
+            capturedIcp.buyingTriggers ? `What makes them buy: ${capturedIcp.buyingTriggers}` : '',
+            capturedIcp.implementationBarriers ? `What stops them from taking action: ${capturedIcp.implementationBarriers}` : '',
+            capturedIcp.successMetrics ? `How they measure success: ${capturedIcp.successMetrics}` : '',
+          ].filter(Boolean).join('\n').trim() : '';
+
+          const sotLines = capturedSot ? [
+            capturedSot.coreOffer ? `Core offer: ${capturedSot.coreOffer}` : '',
+            capturedSot.targetAudience ? `Target audience: ${capturedSot.targetAudience}` : '',
+            capturedSot.mainPainPoint ? `Main pain point: ${capturedSot.mainPainPoint}` : '',
+            capturedSot.mainBenefits ? `Main benefits: ${capturedSot.mainBenefits}` : '',
+            capturedSot.uniqueValue ? `Unique value: ${capturedSot.uniqueValue}` : '',
+            capturedSot.idealCustomerAvatar ? `Ideal customer: ${capturedSot.idealCustomerAvatar}` : '',
+          ].filter(Boolean) : [];
+          const sotContext = sotLines.length > 0
+            ? ['BRAND CONTEXT — this is the approved brand voice. All copy must be consistent with this:', ...sotLines].join('\n')
+            : '';
+
+          const socialProof = { hasCustomers: !!capturedService.totalCustomers && capturedService.totalCustomers > 0, customerCount: capturedService.totalCustomers || 0 };
+          const enrichedTargetCustomer = sotContext || icpContext
+            ? `${sotContext ? `${sotContext}\n\n` : ''}${capturedService.targetCustomer || 'Target Customer'}${icpContext ? `\n\n${icpContext}` : ''}`
+            : capturedService.targetCustomer || 'Target Customer';
+
+          const allAngles = await generateAllOfferAngles(
+            capturedService.name,
+            capturedService.description || "",
+            enrichedTargetCustomer,
+            capturedService.mainBenefit || "Main Benefit",
+            capturedInput.offerType,
+            socialProof
+          );
+
+          const insertResult: any = await bgDb.insert(offers).values({
+            userId: capturedUserId,
+            serviceId: capturedInput.serviceId,
+            campaignId: capturedInput.campaignId || null,
+            productName: capturedService.name,
+            offerType: capturedInput.offerType,
+            godfatherAngle: allAngles.godfather,
+            freeAngle: allAngles.free,
+            dollarAngle: allAngles.dollar,
+            activeAngle: "godfather",
+            rating: 0,
+          });
+
+          await bgDb.update(jobs)
+            .set({ status: "complete", result: JSON.stringify({ offerId: insertResult[0].insertId }) })
+            .where(eq(jobs.id, jobId));
+          console.log(`[offers.generateAsync] Job ${jobId} completed`);
+        } catch (err: unknown) {
+          const errorMessage = err instanceof Error ? err.message : String(err);
+          console.error(`[offers.generateAsync] Job ${jobId} failed:`, errorMessage);
+          try {
+            const bgDb2 = await getDb();
+            if (bgDb2) await bgDb2.update(jobs).set({ status: "failed", error: errorMessage.slice(0, 1024) }).where(eq(jobs.id, jobId));
+          } catch { /* ignore */ }
+        }
+      });
+
+      return { jobId };
     }),
 
   // Update active angle

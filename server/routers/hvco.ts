@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { randomUUID } from "crypto";
 import { publicProcedure, protectedProcedure, router } from "../_core/trpc";
 import { invokeLLM } from "../_core/llm";
 import { 
@@ -11,7 +12,7 @@ import {
   incrementHvcoCount
 } from "../db";
 import { getDb } from "../db";
-import { services, idealCustomerProfiles, sourceOfTruth, campaigns } from "../../drizzle/schema";
+import { services, idealCustomerProfiles, sourceOfTruth, campaigns, jobs } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { getQuotaLimit } from "../quotaLimits";
@@ -339,6 +340,123 @@ Return ONLY a JSON array of 20 subheadline strings, nothing else.`;
       await incrementHvcoCount(user.id);
 
       return { hvcoSetId };
+    }),
+
+  /**
+   * generateAsync — background job version of generate.
+   * Returns jobId immediately; HVCO generation runs via setImmediate.
+   */
+  generateAsync: protectedProcedure
+    .input(z.object({
+      serviceId: z.number(),
+      campaignId: z.number().optional(),
+      targetMarket: z.string().max(5000),
+      hvcoTopic: z.string().max(5000),
+      powerMode: z.boolean().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const { user } = ctx;
+      await checkAndResetQuotaIfNeeded(user.id);
+      if (user.role !== "superuser") {
+        const limit = getQuotaLimit(user.subscriptionTier, "hvco");
+        if (user.hvcoGeneratedCount >= limit) {
+          throw new TRPCError({ code: "FORBIDDEN", message: `You've reached your monthly limit of ${limit} HVCO title sets. Upgrade to generate more.` });
+        }
+      }
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      const [service] = await db.select().from(services).where(eq(services.id, input.serviceId)).limit(1);
+      if (!service) throw new Error("Service not found");
+
+      let campaignRecord: any;
+      if (input.campaignId) {
+        [campaignRecord] = await db.select().from(campaigns)
+          .where(and(eq(campaigns.id, input.campaignId), eq(campaigns.userId, user.id))).limit(1);
+      }
+      let icp: any;
+      if (campaignRecord?.icpId) {
+        [icp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.id, campaignRecord.icpId)).limit(1);
+      }
+      if (!icp) {
+        [icp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
+      }
+      const [sot] = await db.select().from(sourceOfTruth).where(eq(sourceOfTruth.userId, user.id)).limit(1);
+
+      const capturedInput = { ...input };
+      const capturedUserId = user.id;
+      const capturedService = { ...service };
+      const capturedIcp = icp ? { ...icp } : undefined;
+      const capturedSot = sot ? { ...sot } : undefined;
+
+      const jobId = randomUUID();
+      await db.insert(jobs).values({ id: jobId, userId: String(capturedUserId), status: "pending" });
+
+      setImmediate(async () => {
+        try {
+          const bgDb = await getDb();
+          if (!bgDb) throw new Error("Database not available in background job");
+          const countMultiplier = capturedInput.powerMode ? 3 : 1;
+
+          const icpContext = capturedIcp ? [
+            'IDEAL CUSTOMER PROFILE — use this to make every title specific and targeted:',
+            capturedIcp.pains ? `Their daily pains: ${capturedIcp.pains}` : '',
+            capturedIcp.goals ? `Their goals and aspirations: ${capturedIcp.goals}` : '',
+            capturedIcp.implementationBarriers ? `What stops them from taking action: ${capturedIcp.implementationBarriers}` : '',
+          ].filter(Boolean).join('\n').trim() : '';
+
+          const sotLines = capturedSot ? [
+            capturedSot.coreOffer ? `Core offer: ${capturedSot.coreOffer}` : '',
+            capturedSot.targetAudience ? `Target audience: ${capturedSot.targetAudience}` : '',
+            capturedSot.mainPainPoint ? `Main pain point: ${capturedSot.mainPainPoint}` : '',
+            capturedSot.mainBenefits ? `Main benefits: ${capturedSot.mainBenefits}` : '',
+            capturedSot.uniqueValue ? `Unique value: ${capturedSot.uniqueValue}` : '',
+            capturedSot.idealCustomerAvatar ? `Ideal customer: ${capturedSot.idealCustomerAvatar}` : '',
+          ].filter(Boolean) : [];
+          const sotContext = sotLines.length > 0 ? ['BRAND CONTEXT — this is the approved brand voice. All copy must be consistent with this:', ...sotLines].join('\n') : '';
+
+          const resolvedTargetMarket = capturedInput.targetMarket?.trim() || capturedService.targetCustomer || "";
+          const resolvedHvcoTopic = capturedInput.hvcoTopic?.trim() || capturedService.hvcoTopic || "";
+          const hvcoSetId = nanoid();
+          const allTitles: any[] = [];
+
+          const longTitlesPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert copywriter creating compelling HVCO (High-Value Content Offer) titles.\n\nProduct: ${capturedService.name}\nTarget Market: ${resolvedTargetMarket}\nHVCO Topic: ${resolvedHvcoTopic}\n${icpContext ? `\n${icpContext}\n` : ''}\nCreate 20 LONG, benefit-first titles (3-5 words each) following this pattern:\n[Specific Number/Timeframe] [Action/Benefit] [to/for] [Concrete Outcome]\n\nReturn ONLY a JSON array of ${20 * countMultiplier} title strings, nothing else.`;
+          const longR = await invokeLLM({ messages: [{ role: "system", content: "You are a direct response copywriting expert. Return ONLY valid JSON arrays." }, { role: "user", content: longTitlesPrompt }] });
+          const longContent = typeof longR.choices[0].message.content === 'string' ? longR.choices[0].message.content : JSON.stringify(longR.choices[0].message.content);
+          JSON.parse(stripMarkdownJson(longContent)).forEach((title: string) => allTitles.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId, hvcoSetId, tabType: "long" as const, title, targetMarket: capturedInput.targetMarket, hvcoTopic: capturedInput.hvcoTopic }));
+
+          const shortTitlesPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert copywriter creating compelling HVCO titles.\n\nProduct: ${capturedService.name}\nTarget Market: ${resolvedTargetMarket}\nHVCO Topic: ${resolvedHvcoTopic}\n${icpContext ? `\n${icpContext}\n` : ''}\nCreate 20 SHORT, benefit-focused titles (2-4 words each).\n\nReturn ONLY a JSON array of ${20 * countMultiplier} title strings, nothing else.`;
+          const shortR = await invokeLLM({ messages: [{ role: "system", content: "You are a direct response copywriting expert. Return ONLY valid JSON arrays." }, { role: "user", content: shortTitlesPrompt }] });
+          const shortContent = typeof shortR.choices[0].message.content === 'string' ? shortR.choices[0].message.content : JSON.stringify(shortR.choices[0].message.content);
+          JSON.parse(stripMarkdownJson(shortContent)).forEach((title: string) => allTitles.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId, hvcoSetId, tabType: "short" as const, title, targetMarket: capturedInput.targetMarket, hvcoTopic: capturedInput.hvcoTopic }));
+
+          const powerPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert copywriter creating compelling HVCO titles.\n\nProduct: ${capturedService.name}\nTarget Market: ${resolvedTargetMarket}\nHVCO Topic: ${resolvedHvcoTopic}\n${icpContext ? `\n${icpContext}\n` : ''}\nCreate 30 BEAST MODE titles - a mix of long and short, all highly creative and attention-grabbing.\n\nReturn ONLY a JSON array of 30 title strings, nothing else.`;
+          const powerR = await invokeLLM({ messages: [{ role: "system", content: "You are a direct response copywriting expert. Return ONLY valid JSON arrays." }, { role: "user", content: powerPrompt }] });
+          const powerContent = typeof powerR.choices[0].message.content === 'string' ? powerR.choices[0].message.content : JSON.stringify(powerR.choices[0].message.content);
+          JSON.parse(stripMarkdownJson(powerContent)).forEach((title: string) => allTitles.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId, hvcoSetId, tabType: "beast_mode" as const, title, targetMarket: capturedInput.targetMarket, hvcoTopic: capturedInput.hvcoTopic }));
+
+          const subPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert copywriter creating compelling subheadlines for HVCOs.\n\nProduct: ${capturedService.name}\nTarget Market: ${resolvedTargetMarket}\nHVCO Topic: ${resolvedHvcoTopic}\n${icpContext ? `\n${icpContext}\n` : ''}\nCreate 20 SUBHEADLINES that support and expand on the main title.\n\nReturn ONLY a JSON array of 20 subheadline strings, nothing else.`;
+          const subR = await invokeLLM({ messages: [{ role: "system", content: "You are a direct response copywriting expert. Return ONLY valid JSON arrays." }, { role: "user", content: subPrompt }] });
+          const subContent = typeof subR.choices[0].message.content === 'string' ? subR.choices[0].message.content : JSON.stringify(subR.choices[0].message.content);
+          JSON.parse(stripMarkdownJson(subContent)).forEach((title: string) => allTitles.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId, hvcoSetId, tabType: "subheadlines" as const, title, targetMarket: capturedInput.targetMarket, hvcoTopic: capturedInput.hvcoTopic }));
+
+          await createHvcoTitles(allTitles);
+          await incrementHvcoCount(capturedUserId);
+
+          await bgDb.update(jobs)
+            .set({ status: "complete", result: JSON.stringify({ hvcoSetId }) })
+            .where(eq(jobs.id, jobId));
+          console.log(`[hvco.generateAsync] Job ${jobId} completed, hvcoSetId: ${hvcoSetId}`);
+        } catch (err: unknown) {
+          const errorMessage = err instanceof Error ? err.message : String(err);
+          console.error(`[hvco.generateAsync] Job ${jobId} failed:`, errorMessage);
+          try {
+            const bgDb2 = await getDb();
+            if (bgDb2) await bgDb2.update(jobs).set({ status: "failed", error: errorMessage.slice(0, 1024) }).where(eq(jobs.id, jobId));
+          } catch { /* ignore */ }
+        }
+      });
+
+      return { jobId };
     }),
 
   /**

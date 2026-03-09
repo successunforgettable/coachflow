@@ -479,7 +479,7 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
 
       // Insert pending job
       const jobId = randomUUID();
-      await db.insert(jobs).values({ id: jobId, status: "pending" });
+      await db.insert(jobs).values({ id: jobId, userId: String(user.id), status: "pending" });
 
       // Fire generation outside the request cycle
       setImmediate(async () => {

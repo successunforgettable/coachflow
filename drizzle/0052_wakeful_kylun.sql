@@ -1,0 +1,1 @@
+ALTER TABLE `jobs` ADD `userId` varchar(36) DEFAULT '' NOT NULL;

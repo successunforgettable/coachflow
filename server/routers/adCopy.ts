@@ -1,7 +1,8 @@
 import { z } from "zod";
+import { randomUUID } from "crypto";
 import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
-import { adCopy, services, campaigns, idealCustomerProfiles, sourceOfTruth } from "../../drizzle/schema";
+import { adCopy, services, campaigns, idealCustomerProfiles, sourceOfTruth, jobs } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { invokeLLM } from "../_core/llm";
 import { nanoid } from "nanoid";
@@ -651,6 +652,130 @@ Format as JSON array:
         bodyCount: bodyData.bodies.length,
         linkCount: linkData.links.length,
       };
+    }),
+
+  /**
+   * generateAsync — background job version of generate.
+   * Returns jobId immediately; ad copy generation runs via setImmediate.
+   */
+  generateAsync: protectedProcedure
+    .input(generateAdCopySchema)
+    .mutation(async ({ ctx, input }) => {
+      const { user } = ctx;
+      await checkAndResetQuotaIfNeeded(user.id);
+      if (user.role !== "superuser") {
+        const limit = getQuotaLimit(user.subscriptionTier, "adCopy");
+        if (user.adCopyGeneratedCount >= limit) {
+          throw new TRPCError({ code: "FORBIDDEN", message: `You've reached your monthly limit of ${limit} ad copy sets. Upgrade to generate more.` });
+        }
+      }
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      const [service] = await db.select().from(services)
+        .where(and(eq(services.id, input.serviceId), eq(services.userId, user.id))).limit(1);
+      if (!service) throw new Error("Service not found");
+
+      let campaignRecord: any;
+      if (input.campaignId) {
+        [campaignRecord] = await db.select().from(campaigns)
+          .where(and(eq(campaigns.id, input.campaignId), eq(campaigns.userId, user.id))).limit(1);
+      }
+      let icp: any;
+      if (campaignRecord?.icpId) { [icp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.id, campaignRecord.icpId)).limit(1); }
+      if (!icp) { [icp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1); }
+      const [sot] = await db.select().from(sourceOfTruth).where(eq(sourceOfTruth.userId, user.id)).limit(1);
+
+      const capturedInput = { ...input };
+      const capturedUserId = user.id;
+      const capturedService = { ...service };
+      const capturedIcp = icp ? { ...icp } : undefined;
+      const capturedSot = sot ? { ...sot } : undefined;
+
+      const jobId = randomUUID();
+      await db.insert(jobs).values({ id: jobId, userId: String(capturedUserId), status: "pending" });
+
+      setImmediate(async () => {
+        try {
+          const bgDb = await getDb();
+          if (!bgDb) throw new Error("Database not available in background job");
+
+          const icpContext = capturedIcp ? `\nIDEAL CUSTOMER PROFILE — use this to make every line of copy specific and targeted:\n${capturedIcp.pains ? `Their daily pains: ${capturedIcp.pains}` : ''}\n${capturedIcp.fears ? `Their deep fears: ${capturedIcp.fears}` : ''}\n${capturedIcp.objections ? `Their objections to buying: ${capturedIcp.objections}` : ''}\n${capturedIcp.buyingTriggers ? `What makes them buy: ${capturedIcp.buyingTriggers}` : ''}\n${capturedIcp.communicationStyle ? `How they communicate: ${capturedIcp.communicationStyle}` : ''}`.trim() : '';
+          const sotLines = capturedSot ? [capturedSot.coreOffer ? `Core offer: ${capturedSot.coreOffer}` : '', capturedSot.targetAudience ? `Target audience: ${capturedSot.targetAudience}` : '', capturedSot.mainPainPoint ? `Main pain point: ${capturedSot.mainPainPoint}` : '', capturedSot.mainBenefits ? `Main benefits: ${capturedSot.mainBenefits}` : '', capturedSot.uniqueValue ? `Unique value: ${capturedSot.uniqueValue}` : '', capturedSot.idealCustomerAvatar ? `Ideal customer: ${capturedSot.idealCustomerAvatar}` : ''].filter(Boolean) : [];
+          const sotContext = sotLines.length > 0 ? ['BRAND CONTEXT — this is the approved brand voice. All copy must be consistent with this:', ...sotLines].join('\n') : '';
+
+          const resolvedPressingProblem = capturedInput.pressingProblem?.trim() || capturedService.painPoints || "";
+          const resolvedDesiredOutcome = capturedInput.desiredOutcome?.trim() || capturedService.mainBenefit || "";
+          const resolvedUniqueMechanism = capturedInput.uniqueMechanism?.trim() || capturedService.uniqueMechanismSuggestion || "";
+          const resolvedCredibleAuthority = capturedInput.credibleAuthority?.trim() || capturedService.pressFeatures || "";
+          const resolvedFeaturedIn = capturedInput.featuredIn?.trim() || capturedService.pressFeatures || "";
+          const resolvedNumberOfReviews = capturedInput.numberOfReviews?.trim() || capturedService.totalReviews?.toString() || "";
+          const resolvedAverageReviewRating = capturedInput.averageReviewRating?.trim() || capturedService.averageRating?.toString() || "";
+          const resolvedTotalCustomers = capturedInput.totalCustomers?.trim() || capturedService.totalCustomers?.toString() || "";
+          const resolvedTestimonials = capturedInput.testimonials?.trim() || [capturedService.testimonial1Quote, capturedService.testimonial2Quote, capturedService.testimonial3Quote].filter(Boolean).join(" | ") || "";
+
+          const socialProof = { hasCustomers: !!capturedService.totalCustomers && capturedService.totalCustomers > 0, hasRating: !!capturedService.averageRating && parseFloat(capturedService.averageRating) > 0, hasReviews: !!capturedService.totalReviews && capturedService.totalReviews > 0, hasTestimonials: !!capturedService.testimonial1Name || !!capturedService.testimonial2Name || !!capturedService.testimonial3Name, hasPress: !!capturedService.pressFeatures && capturedService.pressFeatures.trim().length > 0, customerCount: capturedService.totalCustomers || 0, rating: capturedService.averageRating || '', reviewCount: capturedService.totalReviews || 0, press: capturedService.pressFeatures || '' };
+          const adSetId = nanoid();
+          const count = capturedInput.powerMode ? 30 : 15;
+          const adTypeContext = capturedInput.adType === "lead_gen" ? "Lead Generation (free webinar, consultation, download)" : "E-commerce (direct product sale)";
+          const socialProofGuidance = socialProof.hasCustomers || socialProof.hasRating || socialProof.hasReviews ? `REAL SOCIAL PROOF AVAILABLE - Use these verified numbers:\n- ${socialProof.customerCount} total customers\n- ${socialProof.rating} average rating\n- ${socialProof.reviewCount} reviews\nYou MUST use these exact numbers when incorporating social proof. Do not fabricate or inflate.` : `NO SOCIAL PROOF DATA PROVIDED - Use launch-safe alternatives:\n- Focus on benefit claims and outcomes ("Get X result")\n- Use curiosity hooks ("The method that...")\n- Use contrast ("Before vs After")\n- DO NOT mention customer counts, ratings, or reviews\n- DO NOT fabricate testimonials or statistics`;
+
+          const headlinePrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ${count} high-converting ad HEADLINES for this service:\n\nService: ${capturedService.name}\nCategory: ${capturedService.category}\nTarget Market: ${capturedInput.targetMarket}\nProduct Category: ${capturedInput.productCategory}\nSpecific Product Name: ${capturedInput.specificProductName}\nPressing Problem: ${resolvedPressingProblem}\nDesired Outcome: ${resolvedDesiredOutcome}\nUnique Mechanism: ${resolvedUniqueMechanism || 'N/A'}\nKey Benefits: ${capturedInput.listBenefits || 'N/A'}\n\n${socialProofGuidance}\n\n${icpContext}\n\nAd Type: ${adTypeContext}\nAd Style: ${capturedInput.adStyle}\nCall To Action: ${capturedInput.adCallToAction}\n\nCreate ${count} attention-grabbing headlines (max 40 characters each).\n\nFormat as JSON array: { "headlines": ["headline 1", ...] }`;
+          const headlineResponse = await invokeLLM({ messages: [{ role: "system", content: `${META_COMPLIANCE_RULES}\n\nYou are an expert ad copywriter who specializes in Meta-compliant advertising for coaches, speakers and consultants. Always respond with valid JSON.` }, { role: "user", content: headlinePrompt }], response_format: { type: "json_schema", json_schema: { name: "ad_headlines", strict: true, schema: { type: "object", properties: { headlines: { type: "array", items: { type: "string" } } }, required: ["headlines"], additionalProperties: false } } } });
+          const headlineContent = headlineResponse.choices[0].message.content;
+          if (typeof headlineContent !== "string") throw new Error("Invalid headline response");
+          const headlineData = JSON.parse(stripMarkdownJson(headlineContent));
+
+          const { ALL_BODY_ANGLES, BODY_ANGLE_PROMPTS } = await import('../adCopyAngles');
+          const selectedAngles = ALL_BODY_ANGLES.slice(0, Math.min(count, 15));
+          const bodyPromises = selectedAngles.map(async (angle: string) => {
+            const anglePrompt = (BODY_ANGLE_PROMPTS as any)[angle];
+            const bodyPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ONE high-converting ad BODY COPY using the ${angle.replace('_', ' ')} angle:\n\nService: ${capturedService.name}\nTarget Market: ${capturedInput.targetMarket}\nPressing Problem: ${resolvedPressingProblem}\nDesired Outcome: ${resolvedDesiredOutcome}\nUnique Mechanism: ${resolvedUniqueMechanism || 'N/A'}\n\n${socialProofGuidance}\n\n${icpContext}\n\nAd Type: ${adTypeContext}\nAd Style: ${capturedInput.adStyle}\nCall To Action: ${capturedInput.adCallToAction}\n\n${anglePrompt}\n\nCreate ONE body copy (125-150 words). End with clear call-to-action: ${capturedInput.adCallToAction}\n\nReturn ONLY the body text as a single string, no JSON wrapper.`;
+            const r = await invokeLLM({ messages: [{ role: "system", content: `${META_COMPLIANCE_RULES}\n\nYou are an expert ad copywriter who specializes in Meta-compliant advertising for coaches, speakers and consultants.` }, { role: "user", content: bodyPrompt }] });
+            const rawContent = r.choices[0]?.message?.content;
+            if (!rawContent) throw new Error(`Empty response for ${angle} angle`);
+            const content = typeof rawContent === 'string' ? rawContent.trim() : '';
+            return { angle, body: content };
+          });
+          const bodyResults = await Promise.all(bodyPromises);
+          const bodyData = { bodies: bodyResults.map((r: any) => r.body) };
+
+          const linkPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ${count} high-converting LINK DESCRIPTIONS for this service:\n\nService: ${capturedService.name}\nTarget Market: ${capturedInput.targetMarket}\nDesired Outcome: ${resolvedDesiredOutcome}\nCall To Action: ${capturedInput.adCallToAction}\n\n${icpContext}\n\nAd Type: ${adTypeContext}\nAd Style: ${capturedInput.adStyle}\n\nCreate ${count} clear, action-oriented link descriptions (max 30 characters each).\n\nFormat as JSON array: { "links": ["link 1", ...] }`;
+          const linkResponse = await invokeLLM({ messages: [{ role: "system", content: `${META_COMPLIANCE_RULES}\n\nYou are an expert ad copywriter who specializes in Meta-compliant advertising for coaches, speakers and consultants. Always respond with valid JSON.` }, { role: "user", content: linkPrompt }], response_format: { type: "json_schema", json_schema: { name: "ad_links", strict: true, schema: { type: "object", properties: { links: { type: "array", items: { type: "string" } } }, required: ["links"], additionalProperties: false } } } });
+          const linkContent = linkResponse.choices[0].message.content;
+          if (typeof linkContent !== "string") throw new Error("Invalid link response");
+          const linkData = JSON.parse(stripMarkdownJson(linkContent));
+
+          const allInserts: any[] = [];
+          for (const headline of headlineData.headlines) {
+            const complianceResult = await checkCompliance(headline, { userId: capturedUserId, generatorType: 'adCopy', trackUsage: true });
+            allInserts.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, adSetId, adType: capturedInput.adType, adStyle: capturedInput.adStyle, adCallToAction: capturedInput.adCallToAction, contentType: "headline" as const, content: headline, targetMarket: capturedInput.targetMarket, productCategory: capturedInput.productCategory, specificProductName: capturedInput.specificProductName, pressingProblem: capturedInput.pressingProblem, desiredOutcome: capturedInput.desiredOutcome, uniqueMechanism: capturedInput.uniqueMechanism || null, listBenefits: capturedInput.listBenefits || null, specificTechnology: capturedInput.specificTechnology || null, scientificStudies: capturedInput.scientificStudies || null, credibleAuthority: capturedInput.credibleAuthority || null, featuredIn: capturedInput.featuredIn || null, numberOfReviews: capturedInput.numberOfReviews || null, averageReviewRating: capturedInput.averageReviewRating || null, totalCustomers: capturedInput.totalCustomers || null, testimonials: capturedInput.testimonials || null, complianceScore: complianceResult.score, complianceVersion: complianceResult.version, complianceCheckedAt: new Date() });
+          }
+          for (const result of bodyResults) {
+            const complianceResult = await checkCompliance((result as any).body, { userId: capturedUserId, generatorType: 'adCopy', trackUsage: true });
+            allInserts.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, adSetId, adType: capturedInput.adType, adStyle: capturedInput.adStyle, adCallToAction: capturedInput.adCallToAction, contentType: "body" as const, bodyAngle: (result as any).angle, content: (result as any).body, targetMarket: capturedInput.targetMarket, productCategory: capturedInput.productCategory, specificProductName: capturedInput.specificProductName, pressingProblem: capturedInput.pressingProblem, desiredOutcome: capturedInput.desiredOutcome, uniqueMechanism: capturedInput.uniqueMechanism || null, listBenefits: capturedInput.listBenefits || null, specificTechnology: capturedInput.specificTechnology || null, scientificStudies: capturedInput.scientificStudies || null, credibleAuthority: capturedInput.credibleAuthority || null, featuredIn: capturedInput.featuredIn || null, numberOfReviews: capturedInput.numberOfReviews || null, averageReviewRating: capturedInput.averageReviewRating || null, totalCustomers: capturedInput.totalCustomers || null, testimonials: capturedInput.testimonials || null, complianceScore: complianceResult.score, complianceVersion: complianceResult.version, complianceCheckedAt: new Date() });
+          }
+          for (const link of linkData.links) {
+            const complianceResult = await checkCompliance(link);
+            allInserts.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, adSetId, adType: capturedInput.adType, adStyle: capturedInput.adStyle, adCallToAction: capturedInput.adCallToAction, contentType: "link" as const, content: link, targetMarket: capturedInput.targetMarket, productCategory: capturedInput.productCategory, specificProductName: capturedInput.specificProductName, pressingProblem: capturedInput.pressingProblem, desiredOutcome: capturedInput.desiredOutcome, uniqueMechanism: capturedInput.uniqueMechanism || null, listBenefits: capturedInput.listBenefits || null, specificTechnology: capturedInput.specificTechnology || null, scientificStudies: capturedInput.scientificStudies || null, credibleAuthority: capturedInput.credibleAuthority || null, featuredIn: capturedInput.featuredIn || null, numberOfReviews: capturedInput.numberOfReviews || null, averageReviewRating: capturedInput.averageReviewRating || null, totalCustomers: capturedInput.totalCustomers || null, testimonials: capturedInput.testimonials || null, complianceScore: complianceResult.score, complianceVersion: complianceResult.version, complianceCheckedAt: new Date() });
+          }
+
+          await bgDb.insert(adCopy).values(allInserts);
+
+          await bgDb.update(jobs)
+            .set({ status: "complete", result: JSON.stringify({ adSetId, count: allInserts.length, headlineCount: headlineData.headlines.length, bodyCount: bodyData.bodies.length, linkCount: linkData.links.length }) })
+            .where(eq(jobs.id, jobId));
+          console.log(`[adCopy.generateAsync] Job ${jobId} completed, adSetId: ${adSetId}`);
+        } catch (err: unknown) {
+          const errorMessage = err instanceof Error ? err.message : String(err);
+          console.error(`[adCopy.generateAsync] Job ${jobId} failed:`, errorMessage);
+          try {
+            const bgDb2 = await getDb();
+            if (bgDb2) await bgDb2.update(jobs).set({ status: "failed", error: errorMessage.slice(0, 1024) }).where(eq(jobs.id, jobId));
+          } catch { /* ignore */ }
+        }
+      });
+
+      return { jobId };
     }),
 
   // Update ad copy

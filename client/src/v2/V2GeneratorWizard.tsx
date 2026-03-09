@@ -1134,18 +1134,18 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
   const [icpName, setIcpName] = useState("");
   // ── tRPC utils for cache invalidation ──
   const utils = trpc.useUtils();
-  // ── Real mutations ──
-  const generateIcp = trpc.icps.generate.useMutation();
-  const generateOffer = trpc.offers.generate.useMutation();
+  // ── Real mutations (all use generateAsync + polling pattern) ──
+  const generateIcpAsync = trpc.icps.generateAsync.useMutation();
+  const generateOfferAsync = trpc.offers.generateAsync.useMutation();
   const generateHeroMechanismAsync = trpc.heroMechanisms.generateAsync.useMutation();
-  // Polling interval ref for Node 4 background job
+  const generateHvcoAsync = trpc.hvco.generateAsync.useMutation();
+  const generateHeadlinesAsync = trpc.headlines.generateAsync.useMutation();
+  const generateAdCopyAsync = trpc.adCopy.generateAsync.useMutation();
+  const generateLandingPageAsync = trpc.landingPages.generateAsync.useMutation();
+  const generateEmailSequenceAsync = trpc.emailSequences.generateAsync.useMutation();
+  const generateWhatsappSequenceAsync = trpc.whatsappSequences.generateAsync.useMutation();
+  // Polling interval ref for background jobs
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const generateHvco = trpc.hvco.generate.useMutation();
-  const generateHeadlines = trpc.headlines.generate.useMutation();
-  const generateAdCopy = trpc.adCopy.generate.useMutation();
-  const generateLandingPage = trpc.landingPages.generate.useMutation();
-  const generateEmailSequence = trpc.emailSequences.generate.useMutation();
-  const generateWhatsappSequence = trpc.whatsappSequences.generate.useMutation();
 
   // ── Timeout ref (cleared on success/error) ──
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1235,25 +1235,53 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
     setStatus("waiting");
     await new Promise(r => setTimeout(r, 800));
     setStatus("loading");
-    // 150-second timeout for AI generation (ICP can take 90-120s)
-    timeoutRef.current = setTimeout(() => setStatus("timeout"), 150_000);
+    // 300-second timeout — background jobs poll for up to 300s
+    timeoutRef.current = setTimeout(() => setStatus("timeout"), 310_000);
     try {
       const svcId = payload.serviceId as number;
       const svc = activeService;
+
+      // ── Shared polling helper ──
+      const pollJob = (jobId: string) => new Promise<void>((resolve, reject) => {
+        const pollStart = Date.now();
+        const MAX_POLL_MS = 300_000;
+        pollIntervalRef.current = setInterval(async () => {
+          try {
+            const res = await fetch(`/api/jobs/${jobId}`);
+            const data = await res.json() as { status: string; result: unknown; error?: string };
+            if (data.status === "complete") {
+              clearInterval(pollIntervalRef.current!);
+              pollIntervalRef.current = null;
+              resolve();
+            } else if (data.status === "failed") {
+              clearInterval(pollIntervalRef.current!);
+              pollIntervalRef.current = null;
+              reject(new Error(data.error || "Background job failed"));
+            } else if (Date.now() - pollStart > MAX_POLL_MS) {
+              clearInterval(pollIntervalRef.current!);
+              pollIntervalRef.current = null;
+              reject(new Error("Generation timed out after 300 seconds"));
+            }
+          } catch (pollErr) {
+            clearInterval(pollIntervalRef.current!);
+            pollIntervalRef.current = null;
+            reject(pollErr);
+          }
+        }, 5_000);
+      });
       if (step === "icp") {
-        await generateIcp.mutateAsync({
+        const { jobId } = await generateIcpAsync.mutateAsync({
           serviceId: svcId,
           name: (payload.icpName as string) || (svc?.avatarName ? `${svc.avatarName} Profile` : "My Ideal Customer"),
         });
-        // result saved
+        await pollJob(jobId);
       } else if (step === "offer") {
-        await generateOffer.mutateAsync({
+        const { jobId } = await generateOfferAsync.mutateAsync({
           serviceId: svcId,
           offerType: "premium",
         });
-        // result saved
+        await pollJob(jobId);
       } else if (step === "uniqueMethod") {
-        // Background job pattern — returns immediately with jobId, then poll
         const { jobId } = await generateHeroMechanismAsync.mutateAsync({
           serviceId: svcId,
           targetMarket: svc?.targetCustomer || "",
@@ -1265,53 +1293,25 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
           credibility: svc?.pressFeatures || "",
           socialProof: svc?.socialProofStat || "",
         });
-        // Poll /api/jobs/:jobId every 5s; 300s total timeout
-        await new Promise<void>((resolve, reject) => {
-          const pollStart = Date.now();
-          const MAX_POLL_MS = 300_000;
-          pollIntervalRef.current = setInterval(async () => {
-            try {
-              const res = await fetch(`/api/jobs/${jobId}`);
-              const data = await res.json() as { status: string; result: unknown; error?: string };
-              if (data.status === "complete") {
-                clearInterval(pollIntervalRef.current!);
-                pollIntervalRef.current = null;
-                resolve();
-              } else if (data.status === "failed") {
-                clearInterval(pollIntervalRef.current!);
-                pollIntervalRef.current = null;
-                reject(new Error(data.error || "Background job failed"));
-              } else if (Date.now() - pollStart > MAX_POLL_MS) {
-                clearInterval(pollIntervalRef.current!);
-                pollIntervalRef.current = null;
-                reject(new Error("Generation timed out after 300 seconds"));
-              }
-            } catch (pollErr) {
-              clearInterval(pollIntervalRef.current!);
-              pollIntervalRef.current = null;
-              reject(pollErr);
-            }
-          }, 5_000);
-        });
-        // result saved
+        await pollJob(jobId);
       } else if (step === "freeOptIn") {
-        await generateHvco.mutateAsync({
+        const { jobId } = await generateHvcoAsync.mutateAsync({
           serviceId: svcId,
           targetMarket: svc?.targetCustomer || "",
           hvcoTopic: svc?.hvcoTopic || svc?.mainBenefit || "",
         });
-        // result saved
+        await pollJob(jobId);
       } else if (step === "headlines") {
-        await generateHeadlines.mutateAsync({
+        const { jobId } = await generateHeadlinesAsync.mutateAsync({
           serviceId: svcId,
           targetMarket: svc?.targetCustomer || "",
           pressingProblem: svc?.painPoints || "",
           desiredOutcome: svc?.mainBenefit || "",
           uniqueMechanism: svc?.uniqueMechanismSuggestion || "",
         });
-        // result saved
+        await pollJob(jobId);
       } else if (step === "adCopy") {
-        await generateAdCopy.mutateAsync({
+        const { jobId } = await generateAdCopyAsync.mutateAsync({
           serviceId: svcId,
           adType: "lead_gen",
           adStyle: "conversational",
@@ -1322,26 +1322,26 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
           pressingProblem: svc?.painPoints || "",
           desiredOutcome: svc?.mainBenefit || "",
         });
-        // result saved
+        await pollJob(jobId);
       } else if (step === "landingPage") {
-        await generateLandingPage.mutateAsync({
+        const { jobId } = await generateLandingPageAsync.mutateAsync({
           serviceId: svcId,
         });
-        // result saved
+        await pollJob(jobId);
       } else if (step === "emailSequence") {
-        await generateEmailSequence.mutateAsync({
+        const { jobId } = await generateEmailSequenceAsync.mutateAsync({
           serviceId: svcId,
           sequenceType: "welcome",
           name: `${svc?.name || "My Service"} — Welcome Sequence`,
         });
-        // result saved
+        await pollJob(jobId);
       } else if (step === "whatsappSequence") {
-        await generateWhatsappSequence.mutateAsync({
+        const { jobId } = await generateWhatsappSequenceAsync.mutateAsync({
           serviceId: svcId,
           sequenceType: "engagement",
           name: `${svc?.name || "My Service"} — Engagement Sequence`,
         });
-        // result saved
+        await pollJob(jobId);
       } else if (step === "pushToMeta") {
         // No generation needed — just show instructions
       }
@@ -1360,7 +1360,7 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
         setStatus("error");
       }
     }
-  }, [step, activeService, generateIcp, generateOffer, generateHeroMechanismAsync, generateHvco, generateHeadlines, generateAdCopy, generateLandingPage, generateEmailSequence, generateWhatsappSequence, utils, pollIntervalRef]);
+  }, [step, activeService, generateIcpAsync, generateOfferAsync, generateHeroMechanismAsync, generateHvcoAsync, generateHeadlinesAsync, generateAdCopyAsync, generateLandingPageAsync, generateEmailSequenceAsync, generateWhatsappSequenceAsync, utils, pollIntervalRef]);
 
   // ── Generate Now handler ──
   function handleGenerateNow() {

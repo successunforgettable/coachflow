@@ -1146,6 +1146,7 @@ export type InsertSystemHealthMetric = typeof systemHealthMetrics.$inferInsert;
 // ---------------------------------------------------------------------------
 export const jobs = mysqlTable("jobs", {
   id: varchar("id", { length: 36 }).primaryKey(), // UUID
+  userId: varchar("userId", { length: 36 }).notNull().default(""), // Owner — used for ownership check in GET /api/jobs/:jobId
   status: mysqlEnum("status", ["pending", "complete", "failed"]).notNull().default("pending"),
   result: text("result"), // JSON stored as longtext-compatible text
   error: varchar("error", { length: 1024 }),

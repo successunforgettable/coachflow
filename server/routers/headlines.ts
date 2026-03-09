@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { randomUUID } from "crypto";
 import { nanoid } from "nanoid";
 import { protectedProcedure, router } from "../_core/trpc";
 import { invokeLLM } from "../_core/llm";
@@ -10,7 +11,7 @@ import {
   deleteHeadlineSet,
   incrementHeadlineCount,
 } from "../db";
-import { headlines } from "../../drizzle/schema";
+import { headlines, jobs } from "../../drizzle/schema";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 import { checkCompliance } from "../lib/complianceChecker";
@@ -420,6 +421,133 @@ export const headlinesRouter = router({
         headlineSetId,
         count: allHeadlines.length,
       };
+    }),
+
+  /**
+   * generateAsync — background job version of generate.
+   * Returns jobId immediately; headline generation runs via setImmediate.
+   */
+  generateAsync: protectedProcedure
+    .input(z.object({
+      serviceId: z.number().optional(),
+      campaignId: z.number().optional(),
+      targetMarket: z.string().max(5000),
+      pressingProblem: z.string(),
+      desiredOutcome: z.string(),
+      uniqueMechanism: z.string(),
+      powerMode: z.boolean().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const { user } = ctx;
+      await checkAndResetQuotaIfNeeded(user.id);
+      if (user.role !== "superuser") {
+        const maxHeadlines = user.subscriptionTier === "agency" ? 20 : 6;
+        if (user.headlineGeneratedCount >= maxHeadlines) {
+          throw new TRPCError({ code: "FORBIDDEN", message: `You've reached your monthly limit of ${maxHeadlines} headline sets. Upgrade to generate more.` });
+        }
+      }
+
+      // Pre-fetch service/ICP/SOT data before firing setImmediate
+      let autoPopData: any = {};
+      let icpContext = '';
+      let sotContext = '';
+      if (input.serviceId) {
+        const { getDb } = await import("../db");
+        const { services, idealCustomerProfiles, sourceOfTruth, campaigns } = await import("../../drizzle/schema");
+        const { eq, and: andOp } = await import("drizzle-orm");
+        const db = await getDb();
+        if (db) {
+          const serviceData = await db.select().from(services).where(eq(services.id, input.serviceId)).limit(1);
+          if (serviceData.length > 0) {
+            const service = serviceData[0];
+            autoPopData = { avatarName: service.avatarName, avatarTitle: service.avatarTitle, mechanismDescriptor: service.mechanismDescriptor, resolvedPressingProblem: input.pressingProblem?.trim() || service.painPoints || "", resolvedDesiredOutcome: input.desiredOutcome?.trim() || service.mainBenefit || "", resolvedUniqueMechanism: input.uniqueMechanism?.trim() || service.uniqueMechanismSuggestion || "" };
+          }
+          let campaignRecord: any;
+          if (input.campaignId) {
+            [campaignRecord] = await db.select().from(campaigns).where(andOp(eq(campaigns.id, input.campaignId), eq(campaigns.userId, user.id))).limit(1);
+          }
+          let icp: any;
+          if (campaignRecord?.icpId) { [icp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.id, campaignRecord.icpId)).limit(1); }
+          if (!icp) { [icp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId!)).limit(1); }
+          if (icp) { icpContext = ['IDEAL CUSTOMER PROFILE — use this to make every line of copy specific and targeted:', icp.pains ? `Their daily pains: ${icp.pains}` : '', icp.fears ? `Their deep fears: ${icp.fears}` : '', icp.buyingTriggers ? `What makes them buy: ${icp.buyingTriggers}` : ''].filter(Boolean).join('\n').trim(); }
+          const [sot] = await db.select().from(sourceOfTruth).where(eq(sourceOfTruth.userId, user.id)).limit(1);
+          const sotLines = sot ? [sot.coreOffer ? `Core offer: ${sot.coreOffer}` : '', sot.targetAudience ? `Target audience: ${sot.targetAudience}` : '', sot.mainPainPoint ? `Main pain point: ${sot.mainPainPoint}` : '', sot.mainBenefits ? `Main benefits: ${sot.mainBenefits}` : '', sot.uniqueValue ? `Unique value: ${sot.uniqueValue}` : '', sot.idealCustomerAvatar ? `Ideal customer: ${sot.idealCustomerAvatar}` : ''].filter(Boolean) : [];
+          sotContext = sotLines.length > 0 ? ['BRAND CONTEXT — this is the approved brand voice. All copy must be consistent with this:', ...sotLines].join('\n') : '';
+        }
+      }
+
+      const { getDb: getDbBg } = await import("../db");
+      const { eq: eqBg } = await import("drizzle-orm");
+      const dbForJob = await getDbBg();
+      if (!dbForJob) throw new Error("Database not available");
+
+      const capturedInput = { ...input };
+      const capturedUserId = user.id;
+      const capturedAutoPopData = { ...autoPopData };
+      const capturedIcpContext = icpContext;
+      const capturedSotContext = sotContext;
+
+      const jobId = randomUUID();
+      await dbForJob.insert(jobs).values({ id: jobId, userId: String(capturedUserId), status: "pending" });
+
+      setImmediate(async () => {
+        try {
+          const bgDb = await getDbBg();
+          if (!bgDb) throw new Error("Database not available in background job");
+          const countMultiplier = capturedInput.powerMode ? 3 : 1;
+          const headlineSetId = nanoid();
+          const allHeadlines: Array<typeof headlines.$inferInsert> = [];
+
+          for (const [formulaType, promptTemplate] of Object.entries(FORMULA_PROMPTS)) {
+            const modifiedTemplate = (promptTemplate as string).replace(/Generate 5/g, `Generate ${5 * countMultiplier}`);
+            const resolvedPressingProblem = capturedAutoPopData.resolvedPressingProblem ?? capturedInput.pressingProblem;
+            const resolvedDesiredOutcome = capturedAutoPopData.resolvedDesiredOutcome ?? capturedInput.desiredOutcome;
+            const resolvedUniqueMechanism = capturedAutoPopData.resolvedUniqueMechanism ?? capturedInput.uniqueMechanism;
+            const prompt = modifiedTemplate
+              .replace(/{targetMarket}/g, capturedInput.targetMarket)
+              .replace(/{pressingProblem}/g, resolvedPressingProblem)
+              .replace(/{desiredOutcome}/g, resolvedDesiredOutcome)
+              .replace(/{uniqueMechanism}/g, resolvedUniqueMechanism);
+            const promptWithIcp = capturedIcpContext ? prompt.replace(/\n\nGenerate /, `\n\n${capturedIcpContext}\n\nGenerate `) : prompt;
+            const promptWithSot = capturedSotContext ? `${capturedSotContext}\n\n${promptWithIcp}` : promptWithIcp;
+
+            const response = await invokeLLM({ messages: [{ role: "system", content: "You are an expert direct response copywriter. Return ONLY valid JSON, no markdown, no explanations." }, { role: "user", content: promptWithSot }] });
+            const content = response.choices[0].message.content;
+            if (typeof content !== "string") throw new Error("Invalid LLM response");
+            const parsed = JSON.parse(stripMarkdownJson(content));
+
+            if (formulaType === "story" || formulaType === "question" || formulaType === "urgency") {
+              parsed.forEach((headline: string) => allHeadlines.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId, headlineSetId, formulaType: formulaType as any, headline, subheadline: null, eyebrow: null, targetMarket: capturedInput.targetMarket, pressingProblem: capturedInput.pressingProblem, desiredOutcome: capturedInput.desiredOutcome, uniqueMechanism: capturedInput.uniqueMechanism }));
+            } else if (formulaType === "eyebrow") {
+              parsed.forEach((item: { eyebrow: string; main: string; sub: string }) => allHeadlines.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId, headlineSetId, formulaType: "eyebrow", headline: item.main, subheadline: item.sub, eyebrow: item.eyebrow, targetMarket: capturedInput.targetMarket, pressingProblem: capturedInput.pressingProblem, desiredOutcome: capturedInput.desiredOutcome, uniqueMechanism: capturedInput.uniqueMechanism }));
+            } else if (formulaType === "authority") {
+              parsed.forEach((item: { main: string; sub: string }) => allHeadlines.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId, headlineSetId, formulaType: "authority", headline: item.main, subheadline: item.sub, eyebrow: null, targetMarket: capturedInput.targetMarket, pressingProblem: capturedInput.pressingProblem, desiredOutcome: capturedInput.desiredOutcome, uniqueMechanism: capturedInput.uniqueMechanism }));
+            }
+          }
+
+          const headlinesWithCompliance = await Promise.all(allHeadlines.map(async (headline) => {
+            const complianceResult = await checkCompliance(headline.headline, { userId: capturedUserId, generatorType: 'headlines', trackUsage: true });
+            return { ...headline, complianceScore: complianceResult.score, complianceVersion: complianceResult.version, complianceCheckedAt: new Date() };
+          }));
+
+          await createHeadlines(headlinesWithCompliance);
+          await incrementHeadlineCount(capturedUserId);
+
+          await bgDb.update(jobs)
+            .set({ status: "complete", result: JSON.stringify({ headlineSetId, count: allHeadlines.length }) })
+            .where(eqBg(jobs.id, jobId));
+          console.log(`[headlines.generateAsync] Job ${jobId} completed, headlineSetId: ${headlineSetId}`);
+        } catch (err: unknown) {
+          const errorMessage = err instanceof Error ? err.message : String(err);
+          console.error(`[headlines.generateAsync] Job ${jobId} failed:`, errorMessage);
+          try {
+            const bgDb2 = await getDbBg();
+            if (bgDb2) await bgDb2.update(jobs).set({ status: "failed", error: errorMessage.slice(0, 1024) }).where(eqBg(jobs.id, jobId));
+          } catch { /* ignore */ }
+        }
+      });
+
+      return { jobId };
     }),
 
   // Rate a headline
