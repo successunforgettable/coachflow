@@ -310,10 +310,13 @@ export async function generateAllAngles(
   free: LandingPageContent;
   dollar: LandingPageContent;
 }> {
-  // Generate all 4 angles in parallel to stay within gateway timeout
-  const [original, godfather, free, dollar] = await Promise.all([
+  // Generate in 2 batches of 2 to avoid overwhelming the LLM API with 4 concurrent
+  // large JSON-structured requests (each ~8k tokens), which can cause "fetch failed" timeouts.
+  const [original, godfather] = await Promise.all([
     generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'original', socialProof),
     generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'godfather', socialProof),
+  ]);
+  const [free, dollar] = await Promise.all([
     generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'free', socialProof),
     generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'dollar', socialProof),
   ]);

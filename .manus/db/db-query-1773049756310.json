@@ -1,0 +1,65 @@
+{
+  "query": "DESCRIBE jobs; SELECT id, status, error, created_at FROM jobs ORDER BY created_at DESC LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute DESCRIBE jobs; SELECT id, status, error, created_at FROM jobs ORDER BY created_at DESC LIMIT 5;",
+  "rows": [
+    {
+      "Field": "id",
+      "Type": "varchar(36)",
+      "Null": "NO",
+      "Key": "PRI",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "status",
+      "Type": "enum('pending','complete','failed')",
+      "Null": "NO",
+      "Key": "",
+      "Default": "pending",
+      "Extra": ""
+    },
+    {
+      "Field": "result",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "error",
+      "Type": "varchar(1024)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "created_at",
+      "Type": "timestamp",
+      "Null": "NO",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": ""
+    },
+    {
+      "Field": "userId",
+      "Type": "varchar(36)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "",
+      "Extra": ""
+    }
+  ],
+  "messages": [
+    "id\tstatus\terror\tcreated_at",
+    "2091576c-c1d1-4e0b-a357-190d41339315\tfailed\tFailed query: insert into `adCopy` (`id`, `userId`, `serviceId`, `campaignId`, `adSetId`, `adType`, `adStyle`, `adCallToAction`, `contentType`, `bodyAngle`, `content`, `targetMarket`, `productCategory`, `specificProductName`, `pressingProblem`, `desiredOutcome`, `uniqueMechanism`, `listBenefits`, `specificTechnology`, `scientificStudies`, `credibleAuthority`, `featuredIn`, `numberOfReviews`, `averageReviewRating`, `totalCustomers`, `testimonials`, `rating`, `complianceScore`, `complianceVersion`, `complianceCheckedAt`, `createdAt`, `updatedAt`) values (default, ?, ?, ?, ?, ?, ?, ?, ?, default, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, default, ?, ?, ?, default, default), (default, ?, ?, ?, ?, ?, ?, ?, ?, default, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, default, ?, ?, ?, default, default), (default, ?, ?, ?, ?, ?, ?, ?, ?, default, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, default, ?, ?, ?, default, default), (default, ?, ?, ?, ?, ?, ?, ?, ?, default, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, \t2026-03-09 09:46:56",
+    "b28d48c1-bcaa-4e62-adf8-9ab857ee235c\tcomplete\tNULL\t2026-03-09 01:04:55",
+    "3c7287b7-aa1b-4d3e-b337-040f7f346c60\tcomplete\tNULL\t2026-03-09 01:01:58",
+    "a5d71075-b53d-4eef-802e-6c0eefca43cb\tcomplete\tNULL\t2026-03-09 00:29:13",
+    "cdd77889-2744-4d33-901b-5e44b7a51017\tfailed\tFailed query: insert into `heroMechanisms` (`id`, `userId`, `serviceId`, `campaignId`, `mechanismSetId`, `tabType`, `mechanismName`, `mechanismDescription`, `targetMarket`, `pressingProblem`, `whyProblem`, `whatTried`, `whyExistingNotWork`, `descriptor`, `application`, `desiredOutcome`, `credibility`, `socialProof`, `rating`, `isFavorite`, `createdAt`, `updatedAt`) values (default, ?, ?, default, ?, ?, ?, ?, ?, ?, ?, ?, ?, default, default, ?, ?, ?, default, default, default, default), (default, ?, ?, default, ?, ?, ?, ?, ?, ?, ?, ?, ?, default, default, ?, ?, ?, default, default, default, default), (default, ?, ?, default, ?, ?, ?, ?, ?, ?, ?, ?, ?, default, default, ?, ?, ?, default, default, default, default), (default, ?, ?, default, ?, ?, ?, ?, ?, ?, ?, ?, ?, default, default, ?, ?, ?, default, default, default, default), (default, ?, ?, default, ?, ?, ?, ?, ?, ?, ?, ?, ?, default, default, ?, ?, ?, default, default, default, default), (default, ?, ?, default, ?, ?, ?, ?, ?, ?, ?, ?, ?, default, default,\t2026-03-09 00:20:17"
+  ],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\nid\tvarchar(36)\tNO\tPRI\tNULL\t\nstatus\tenum('pending','complete','failed')\tNO\t\tpending\t\nresult\ttext\tYES\t\tNULL\t\nerror\tvarchar(1024)\tYES\t\tNULL\t\ncreated_at\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\t\nuserId\tvarchar(36)\tNO\t\t\t\nid\tstatus\terror\tcreated_at\n2091576c-c1d1-4e0b-a357-190d41339315\tfailed\tFailed query: insert into `adCopy` (`id`, `userId`, `serviceId`, `campaignId`, `adSetId`, `adType`, `adStyle`, `adCallToAction`, `contentType`, `bodyAngle`, `content`, `targetMarket`, `productCategory`, `specificProductName`, `pressingProblem`, `desiredOutcome`, `uniqueMechanism`, `listBenefits`, `specificTechnology`, `scientificStudies`, `credibleAuthority`, `featuredIn`, `numberOfReviews`, `averageReviewRating`, `totalCustomers`, `testimonials`, `rating`, `complianceScore`, `complianceVersion`, `complianceCheckedAt`, `createdAt`, `updatedAt`) values (default, ?, ?, ?, ?, ?, ?, ?, ?, default, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, default, ?, ?, ?, default, default), (default, ?, ?, ?, ?, ?, ?, ?, ?, default, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, default, ?, ?, ?, default, default), (default, ?, ?, ?, ?, ?, ?, ?, ?, default, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, default, ?, ?, ?, default, default), (default, ?, ?, ?, ?, ?, ?, ?, ?, default, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, \t2026-03-09 09:46:56\nb28d48c1-bcaa-4e62-adf8-9ab857ee235c\tcomplete\tNULL\t2026-03-09 01:04:55\n3c7287b7-aa1b-4d3e-b337-040f7f346c60\tcomplete\tNULL\t2026-03-09 01:01:58\na5d71075-b53d-4eef-802e-6c0eefca43cb\tcomplete\tNULL\t2026-03-09 00:29:13\ncdd77889-2744-4d33-901b-5e44b7a51017\tfailed\tFailed query: insert into `heroMechanisms` (`id`, `userId`, `serviceId`, `campaignId`, `mechanismSetId`, `tabType`, `mechanismName`, `mechanismDescription`, `targetMarket`, `pressingProblem`, `whyProblem`, `whatTried`, `whyExistingNotWork`, `descriptor`, `application`, `desiredOutcome`, `credibility`, `socialProof`, `rating`, `isFavorite`, `createdAt`, `updatedAt`) values (default, ?, ?, default, ?, ?, ?, ?, ?, ?, ?, ?, ?, default, default, ?, ?, ?, default, default, default, default), (default, ?, ?, default, ?, ?, ?, ?, ?, ?, ?, ?, ?, default, default, ?, ?, ?, default, default, default, default), (default, ?, ?, default, ?, ?, ?, ?, ?, ?, ?, ?, ?, default, default, ?, ?, ?, default, default, default, default), (default, ?, ?, default, ?, ?, ?, ?, ?, ?, ?, ?, ?, default, default, ?, ?, ?, default, default, default, default), (default, ?, ?, default, ?, ?, ?, ?, ?, ?, ?, ?, ?, default, default, ?, ?, ?, default, default, default, default), (default, ?, ?, default, ?, ?, ?, ?, ?, ?, ?, ?, ?, default, default,\t2026-03-09 00:20:17\n",
+  "stderr": "",
+  "execution_time_ms": 1762
+}

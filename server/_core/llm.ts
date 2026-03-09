@@ -266,15 +266,24 @@ async function invokeClaudeAPI(params: InvokeParams): Promise<InvokeResult> {
     };
     if (systemContent) body.system = systemContent;
 
-    response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": ENV.anthropicApiKey,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-      },
-      body: JSON.stringify(body),
-    });
+    // 5-minute timeout to prevent "fetch failed" on long generations
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5 * 60 * 1000);
+
+    try {
+      response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "x-api-key": ENV.anthropicApiKey,
+          "anthropic-version": "2023-06-01",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     if (response.ok) break; // success — stop trying models
 
@@ -286,6 +295,7 @@ async function invokeClaudeAPI(params: InvokeParams): Promise<InvokeResult> {
       throw new Error(`Claude API failed: ${response.status} – ${lastError}`);
     }
   }
+  // (end of model retry loop)
 
   if (!response || !response.ok) {
     throw new Error(`Claude API failed on all models: ${lastError}`);

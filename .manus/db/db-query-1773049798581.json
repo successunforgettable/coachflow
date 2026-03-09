@@ -1,0 +1,15 @@
+{
+  "query": "SELECT id, status, LEFT(error, 500) as error_excerpt FROM jobs WHERE id = '2091576c-c1d1-4e0b-a357-190d41339315';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT id, status, LEFT(error, 500) as error_excerpt FROM jobs WHERE id = '2091576c-c1d1-4e0b-a357-190d41339315';",
+  "rows": [
+    {
+      "id": "2091576c-c1d1-4e0b-a357-190d41339315",
+      "status": "failed",
+      "error_excerpt": "Failed query: insert into `adCopy` (`id`, `userId`, `serviceId`, `campaignId`, `adSetId`, `adType`, `adStyle`, `adCallToAction`, `contentType`, `bodyAngle`, `content`, `targetMarket`, `productCategory`, `specificProductName`, `pressingProblem`, `desiredOutcome`, `uniqueMechanism`, `listBenefits`, `specificTechnology`, `scientificStudies`, `credibleAuthority`, `featuredIn`, `numberOfReviews`, `averageReviewRating`, `totalCustomers`, `testimonials`, `rating`, `complianceScore`, `complianceVersion`"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tstatus\terror_excerpt\n2091576c-c1d1-4e0b-a357-190d41339315\tfailed\tFailed query: insert into `adCopy` (`id`, `userId`, `serviceId`, `campaignId`, `adSetId`, `adType`, `adStyle`, `adCallToAction`, `contentType`, `bodyAngle`, `content`, `targetMarket`, `productCategory`, `specificProductName`, `pressingProblem`, `desiredOutcome`, `uniqueMechanism`, `listBenefits`, `specificTechnology`, `scientificStudies`, `credibleAuthority`, `featuredIn`, `numberOfReviews`, `averageReviewRating`, `totalCustomers`, `testimonials`, `rating`, `complianceScore`, `complianceVersion`\n",
+  "stderr": "",
+  "execution_time_ms": 1507
+}

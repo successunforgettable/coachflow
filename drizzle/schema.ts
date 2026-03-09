@@ -288,26 +288,26 @@ export const adCopy = mysqlTable("adCopy", {
   campaignId: int("campaignId").references(() => campaigns.id, { onDelete: "set null" }),
   adSetId: varchar("adSetId", { length: 21 }).notNull(), // nanoid for grouping
   adType: mysqlEnum("adType", ["lead_gen", "ecommerce"]).notNull(), // Kong: Lead Gen / Ecommerce
-  adStyle: varchar("adStyle", { length: 100 }), // Hero Ad, Weird Authority Ad, Secret Info, Commitment & Consistency
-  adCallToAction: varchar("adCallToAction", { length: 100 }), // Download free report, Watch free video, Book free call
+  adStyle: text("adStyle"), // Hero Ad, Weird Authority Ad, Secret Info, Commitment & Consistency
+  adCallToAction: text("adCallToAction"), // Download free report, Watch free video, Book free call
   contentType: mysqlEnum("contentType", ["headline", "body", "link"]).notNull(),
   bodyAngle: varchar("bodyAngle", { length: 50 }), // Angle type for body variations (Issue 3)
   content: text("content").notNull(), // The actual headline/body/link text
-  // Generation parameters for regeneration - 17 Kong fields
-  targetMarket: varchar("targetMarket", { length: 52 }), // Kong: 52 char limit
-  productCategory: varchar("productCategory", { length: 79 }), // Kong: 79 char limit
-  specificProductName: varchar("specificProductName", { length: 72 }), // Kong: 72 char limit
-  pressingProblem: varchar("pressingProblem", { length: 48 }), // Kong: 48 char limit
-  desiredOutcome: varchar("desiredOutcome", { length: 25 }), // Kong: 25 char limit
-  uniqueMechanism: text("uniqueMechanism"), // Kong: 0 char limit (unlimited)
-  listBenefits: text("listBenefits"), // Kong: 0 char limit
-  specificTechnology: varchar("specificTechnology", { length: 23 }), // Kong: 23 char limit
-  scientificStudies: varchar("scientificStudies", { length: 31 }), // Kong: 31 char limit
-  credibleAuthority: varchar("credibleAuthority", { length: 70 }), // Kong: 70 char limit
-  featuredIn: varchar("featuredIn", { length: 65 }), // Kong: 65 char limit (social proof)
-  numberOfReviews: varchar("numberOfReviews", { length: 20 }),
-  averageReviewRating: varchar("averageReviewRating", { length: 10 }),
-  totalCustomers: varchar("totalCustomers", { length: 20 }),
+  // Generation parameters for regeneration - 17 Kong fields (expanded to text to handle AI-generated content)
+  targetMarket: text("targetMarket"),
+  productCategory: text("productCategory"),
+  specificProductName: text("specificProductName"),
+  pressingProblem: text("pressingProblem"),
+  desiredOutcome: text("desiredOutcome"),
+  uniqueMechanism: text("uniqueMechanism"),
+  listBenefits: text("listBenefits"),
+  specificTechnology: text("specificTechnology"),
+  scientificStudies: text("scientificStudies"),
+  credibleAuthority: text("credibleAuthority"),
+  featuredIn: text("featuredIn"),
+  numberOfReviews: text("numberOfReviews"),
+  averageReviewRating: text("averageReviewRating"),
+  totalCustomers: text("totalCustomers"),
   testimonials: text("testimonials"), // Kong: 511 char limit
   rating: int("rating").default(0),
   // Meta Compliance fields
