@@ -47,7 +47,15 @@ Return JSON exactly like this:
         },
       });
 
-      const content = response.choices?.[0]?.message?.content ?? "{}";
+      const msgContent = response.choices?.[0]?.message?.content;
+      // content can be a string or an array of content parts
+      const rawContent: string = typeof msgContent === "string"
+        ? msgContent
+        : Array.isArray(msgContent)
+          ? (msgContent.find((c: { type: string }) => c.type === "text") as { type: string; text: string } | undefined)?.text ?? "{}"
+          : "{}";
+      // Strip markdown code fences if the LLM wraps the JSON
+      const content = rawContent.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/i, "").trim();
       const parsed = JSON.parse(content) as {
         headline: string;
         icpHook: string;
