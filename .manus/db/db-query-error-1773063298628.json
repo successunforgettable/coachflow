@@ -1,0 +1,8 @@
+{
+  "query": "DELETE FROM landingPages WHERE userId = (SELECT id FROM users WHERE email LIKE '%zaptest%fresh%') ORDER BY createdAt DESC LIMIT 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute DELETE FROM landingPages WHERE userId = (SELECT id FROM users WHERE email LIKE '%zaptest%fresh%') ORDER BY createdAt DESC LIMIT 1;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1242 (21000) at line 1: Subquery returns more than 1 row"
+  ]
+}

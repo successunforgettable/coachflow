@@ -1280,6 +1280,10 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
   const demoMode = typeof window !== "undefined"
     ? new URLSearchParams(window.location.search).get("demo")
     : null;
+  // ?progress=2 → shows "Generating angle 2 of 4…" in LoadingState for screenshot demos
+  const demoProgressAngle = typeof window !== "undefined"
+    ? new URLSearchParams(window.location.search).get("progress")
+    : null;
   const isDemoMissing   = demoMode === "missing";
   const isDemoSuccess   = demoMode === "success";
   const isDemoConcerned = demoMode === "concerned";
@@ -1311,6 +1315,13 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
   useEffect(() => {
     if (isDemoLoading) {
       setStatus("loading");
+      // If ?progress=N is set, show the angle progress label in the loading state
+      if (demoProgressAngle) {
+        const n = parseInt(demoProgressAngle, 10);
+        if (!isNaN(n) && n >= 1 && n <= 4) {
+          setProgressLabel(`Generating angle ${n} of 4…`);
+        }
+      }
     } else if (isDemoSuccess) {
       setComplianceScore(100);
       setStatus("success");
@@ -1329,7 +1340,7 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
     } else if (isDemoOffline) {
       setStatus("offline");
     }
-  }, [isDemoSuccess, isDemoConcerned, isDemoTimeout, isDemoError, isDemoOffline]);
+  }, [isDemoLoading, isDemoSuccess, isDemoConcerned, isDemoTimeout, isDemoError, isDemoOffline, demoProgressAngle]);
 
   // ── Network loss listener (only active during generation) ──
   useEffect(() => {
