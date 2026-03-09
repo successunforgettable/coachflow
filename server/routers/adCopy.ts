@@ -767,7 +767,81 @@ Format as JSON array:
           console.log(`[adCopy.generateAsync] Job ${jobId} completed, adSetId: ${adSetId}`);
         } catch (err: unknown) {
           const errorMessage = err instanceof Error ? err.message : String(err);
-          console.error(`[adCopy.generateAsync] Job ${jobId} failed:`, errorMessage);
+          // ── Network-error auto-retry (once, 30-second delay) ─────────────────
+          // Only retry on transient network failures — never on Zod/validation errors.
+          const isNetworkError = errorMessage.includes('fetch failed') || errorMessage.includes('AbortError') || errorMessage.includes('ECONNRESET') || errorMessage.includes('ETIMEDOUT') || errorMessage.includes('network timeout');
+          if (isNetworkError) {
+            try {
+              const checkDb = await getDb();
+              const [currentJob] = checkDb ? await checkDb.select().from(jobs).where(eq(jobs.id, jobId)).limit(1) : [];
+              const retryCount = (currentJob as any)?.retryCount ?? 0;
+              if (retryCount < 1) {
+                console.warn(`[adCopy.generateAsync] Job ${jobId} network error (attempt ${retryCount + 1}), retrying in 30s:`, errorMessage);
+                if (checkDb) await checkDb.update(jobs).set({ retryCount: retryCount + 1, progress: JSON.stringify({ step: 0, total: 1, label: 'Network hiccup — retrying in 30s…' }) }).where(eq(jobs.id, jobId));
+                await new Promise(resolve => setTimeout(resolve, 30_000));
+                // Re-run the full generation logic using the same captured closure variables
+                setImmediate(async () => {
+                  try {
+                    const retryDb = await getDb();
+                    if (!retryDb) throw new Error('Database not available on retry');
+                    const retryIcpContext = capturedIcp ? `\nIDEAL CUSTOMER PROFILE:\n${capturedIcp.pains ? `Their daily pains: ${capturedIcp.pains}` : ''}\n${capturedIcp.fears ? `Their deep fears: ${capturedIcp.fears}` : ''}\n${capturedIcp.objections ? `Their objections to buying: ${capturedIcp.objections}` : ''}\n${capturedIcp.buyingTriggers ? `What makes them buy: ${capturedIcp.buyingTriggers}` : ''}\n${capturedIcp.communicationStyle ? `How they communicate: ${capturedIcp.communicationStyle}` : ''}`.trim() : '';
+                    const retrySotLines = capturedSot ? [capturedSot.coreOffer ? `Core offer: ${capturedSot.coreOffer}` : '', capturedSot.targetAudience ? `Target audience: ${capturedSot.targetAudience}` : '', capturedSot.mainPainPoint ? `Main pain point: ${capturedSot.mainPainPoint}` : ''].filter(Boolean) : [];
+                    const retrySotContext = retrySotLines.length > 0 ? ['BRAND CONTEXT:', ...retrySotLines].join('\n') : '';
+                    const retryResolvedPressingProblem = capturedInput.pressingProblem?.trim() || capturedService.painPoints || '';
+                    const retryResolvedDesiredOutcome = capturedInput.desiredOutcome?.trim() || capturedService.mainBenefit || '';
+                    const retryResolvedUniqueMechanism = capturedInput.uniqueMechanism?.trim() || capturedService.uniqueMechanismSuggestion || '';
+                    const retrySocialProof = { hasCustomers: !!capturedService.totalCustomers && capturedService.totalCustomers > 0, hasRating: !!capturedService.averageRating && parseFloat(capturedService.averageRating) > 0, hasReviews: !!capturedService.totalReviews && capturedService.totalReviews > 0, customerCount: capturedService.totalCustomers || 0, rating: capturedService.averageRating || '', reviewCount: capturedService.totalReviews || 0 };
+                    const retrySocialProofGuidance = retrySocialProof.hasCustomers || retrySocialProof.hasRating || retrySocialProof.hasReviews ? `REAL SOCIAL PROOF: ${retrySocialProof.customerCount} customers, ${retrySocialProof.rating} rating, ${retrySocialProof.reviewCount} reviews.` : 'NO SOCIAL PROOF DATA - use benefit claims only.';
+                    const retryAdSetId = nanoid();
+                    const retryCount = capturedInput.powerMode ? 30 : 15;
+                    const retryAdTypeContext = capturedInput.adType === 'lead_gen' ? 'Lead Generation' : 'E-commerce';
+                    const retryHeadlinePrompt = `${retrySotContext ? `${retrySotContext}\n\n` : ''}Create ${retryCount} ad headlines for: ${capturedService.name}. Target: ${capturedInput.targetMarket}. Problem: ${retryResolvedPressingProblem}. Outcome: ${retryResolvedDesiredOutcome}. ${retrySocialProofGuidance}\n\nFormat: { "headlines": ["headline 1", ...] }`;
+                    const retryHeadlineResp = await invokeLLM({ messages: [{ role: 'system', content: `${META_COMPLIANCE_RULES}\n\nAlways respond with valid JSON.` }, { role: 'user', content: retryHeadlinePrompt }], response_format: { type: 'json_schema', json_schema: { name: 'ad_headlines', strict: true, schema: { type: 'object', properties: { headlines: { type: 'array', items: { type: 'string' } } }, required: ['headlines'], additionalProperties: false } } } });
+                    const retryHeadlineContent = retryHeadlineResp.choices[0].message.content;
+                    if (typeof retryHeadlineContent !== 'string') throw new Error('Invalid retry headline response');
+                    const retryHeadlineData = JSON.parse(stripMarkdownJson(retryHeadlineContent));
+                    const { ALL_BODY_ANGLES: RETRY_ANGLES, BODY_ANGLE_PROMPTS: RETRY_ANGLE_PROMPTS } = await import('../adCopyAngles');
+                    const retrySelectedAngles = RETRY_ANGLES.slice(0, Math.min(retryCount, 15));
+                    const retryBodyResults = await Promise.all(retrySelectedAngles.map(async (angle: string) => {
+                      const anglePrompt = (RETRY_ANGLE_PROMPTS as any)[angle];
+                      const bp = `Create ONE ad body using ${angle} angle for: ${capturedService.name}. Problem: ${retryResolvedPressingProblem}. Outcome: ${retryResolvedDesiredOutcome}. ${retrySocialProofGuidance}\n\n${retryIcpContext}\n\n${anglePrompt}\n\nReturn ONLY the body text (125-150 words), no JSON.`;
+                      const r = await invokeLLM({ messages: [{ role: 'system', content: META_COMPLIANCE_RULES }, { role: 'user', content: bp }] });
+                      const rawContent = r.choices[0]?.message?.content;
+                      const content = typeof rawContent === 'string' ? rawContent.trim() : (Array.isArray(rawContent) ? '' : String(rawContent || ''));
+                      return { angle, body: content };
+                    }));
+                    const retryLinkPrompt = `Create ${retryCount} ad link descriptions for: ${capturedService.name}. CTA: ${capturedInput.adCallToAction}. Format: { "links": ["link 1", ...] }`;
+                    const retryLinkResp = await invokeLLM({ messages: [{ role: 'system', content: `${META_COMPLIANCE_RULES}\n\nAlways respond with valid JSON.` }, { role: 'user', content: retryLinkPrompt }], response_format: { type: 'json_schema', json_schema: { name: 'ad_links', strict: true, schema: { type: 'object', properties: { links: { type: 'array', items: { type: 'string' } } }, required: ['links'], additionalProperties: false } } } });
+                    const retryLinkContent = retryLinkResp.choices[0].message.content;
+                    if (typeof retryLinkContent !== 'string') throw new Error('Invalid retry link response');
+                    const retryLinkData = JSON.parse(stripMarkdownJson(retryLinkContent));
+                    const retryInserts: any[] = [];
+                    for (const h of retryHeadlineData.headlines) {
+                      const cr = await checkCompliance(h, { userId: capturedUserId, generatorType: 'adCopy', trackUsage: false });
+                      retryInserts.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, adSetId: retryAdSetId, adType: capturedInput.adType, adStyle: capturedInput.adStyle, adCallToAction: capturedInput.adCallToAction, contentType: 'headline' as const, content: h, targetMarket: capturedInput.targetMarket, productCategory: capturedInput.productCategory, specificProductName: capturedInput.specificProductName, pressingProblem: capturedInput.pressingProblem, desiredOutcome: capturedInput.desiredOutcome, uniqueMechanism: capturedInput.uniqueMechanism || null, listBenefits: capturedInput.listBenefits || null, specificTechnology: capturedInput.specificTechnology || null, scientificStudies: capturedInput.scientificStudies || null, credibleAuthority: capturedInput.credibleAuthority || null, featuredIn: capturedInput.featuredIn || null, numberOfReviews: capturedInput.numberOfReviews || null, averageReviewRating: capturedInput.averageReviewRating || null, totalCustomers: capturedInput.totalCustomers || null, testimonials: capturedInput.testimonials || null, complianceScore: cr.score, complianceVersion: cr.version, complianceCheckedAt: new Date() });
+                    }
+                    for (const result of retryBodyResults) {
+                      const cr = await checkCompliance(result.body, { userId: capturedUserId, generatorType: 'adCopy', trackUsage: false });
+                      retryInserts.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, adSetId: retryAdSetId, adType: capturedInput.adType, adStyle: capturedInput.adStyle, adCallToAction: capturedInput.adCallToAction, contentType: 'body' as const, bodyAngle: result.angle, content: result.body, targetMarket: capturedInput.targetMarket, productCategory: capturedInput.productCategory, specificProductName: capturedInput.specificProductName, pressingProblem: capturedInput.pressingProblem, desiredOutcome: capturedInput.desiredOutcome, uniqueMechanism: capturedInput.uniqueMechanism || null, listBenefits: capturedInput.listBenefits || null, specificTechnology: capturedInput.specificTechnology || null, scientificStudies: capturedInput.scientificStudies || null, credibleAuthority: capturedInput.credibleAuthority || null, featuredIn: capturedInput.featuredIn || null, numberOfReviews: capturedInput.numberOfReviews || null, averageReviewRating: capturedInput.averageReviewRating || null, totalCustomers: capturedInput.totalCustomers || null, testimonials: capturedInput.testimonials || null, complianceScore: cr.score, complianceVersion: cr.version, complianceCheckedAt: new Date() });
+                    }
+                    for (const link of retryLinkData.links) {
+                      const cr = await checkCompliance(link);
+                      retryInserts.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, adSetId: retryAdSetId, adType: capturedInput.adType, adStyle: capturedInput.adStyle, adCallToAction: capturedInput.adCallToAction, contentType: 'link' as const, content: link, targetMarket: capturedInput.targetMarket, productCategory: capturedInput.productCategory, specificProductName: capturedInput.specificProductName, pressingProblem: capturedInput.pressingProblem, desiredOutcome: capturedInput.desiredOutcome, uniqueMechanism: capturedInput.uniqueMechanism || null, listBenefits: capturedInput.listBenefits || null, specificTechnology: capturedInput.specificTechnology || null, scientificStudies: capturedInput.scientificStudies || null, credibleAuthority: capturedInput.credibleAuthority || null, featuredIn: capturedInput.featuredIn || null, numberOfReviews: capturedInput.numberOfReviews || null, averageReviewRating: capturedInput.averageReviewRating || null, totalCustomers: capturedInput.totalCustomers || null, testimonials: capturedInput.testimonials || null, complianceScore: cr.score, complianceVersion: cr.version, complianceCheckedAt: new Date() });
+                    }
+                    if (retryInserts.length > 0) await retryDb.insert(adCopy).values(retryInserts);
+                    await retryDb.update(jobs).set({ status: 'complete', result: JSON.stringify({ adSetId: retryAdSetId, count: retryInserts.length }) }).where(eq(jobs.id, jobId));
+                    console.log(`[adCopy.generateAsync] Job ${jobId} retry succeeded, adSetId: ${retryAdSetId}`);
+                  } catch (retryErr: unknown) {
+                    const retryMsg = retryErr instanceof Error ? retryErr.message : String(retryErr);
+                    console.error(`[adCopy.generateAsync] Job ${jobId} retry also failed:`, retryMsg);
+                    try { const fd = await getDb(); if (fd) await fd.update(jobs).set({ status: 'failed', error: retryMsg.slice(0, 1024) }).where(eq(jobs.id, jobId)); } catch { /* ignore */ }
+                  }
+                });
+                return; // Don't mark as failed yet — retry is in flight
+              }
+            } catch { /* if retry setup fails, fall through to permanent failure */ }
+          }
+          console.error(`[adCopy.generateAsync] Job ${jobId} failed (permanent):`, errorMessage);
           try {
             const bgDb2 = await getDb();
             if (bgDb2) await bgDb2.update(jobs).set({ status: "failed", error: errorMessage.slice(0, 1024) }).where(eq(jobs.id, jobId));

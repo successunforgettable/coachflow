@@ -62,7 +62,7 @@ async function startServer() {
         .where(and(eq(jobs.id, req.params.jobId), eq(jobs.userId, String(user.id))))
         .limit(1);
       if (!job) { res.status(404).json({ error: "Job not found" }); return; }
-      res.json({ status: job.status, result: job.result ? JSON.parse(job.result) : null, error: job.error });
+      res.json({ status: job.status, result: job.result ? JSON.parse(job.result) : null, error: job.error, progress: job.progress ? (() => { try { return JSON.parse(job.progress); } catch { return null; } })() : null });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       res.status(500).json({ error: msg });

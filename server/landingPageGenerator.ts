@@ -297,13 +297,16 @@ Use direct response copywriting principles: pain agitation, unique mechanism, so
   return validated;
 }
 
-// Generate all 4 angles at once
+// Generate all 4 angles at once.
+// onAngleComplete(completed, total) is called after each angle finishes so callers
+// can write real progress updates to the job record during generation.
 export async function generateAllAngles(
   productName: string,
   productDescription: string,
   avatarName: string,
   avatarDescription: string,
-  socialProof: any
+  socialProof: any,
+  onAngleComplete?: (completed: number, total: number) => Promise<void>
 ): Promise<{
   original: LandingPageContent;
   godfather: LandingPageContent;
@@ -312,13 +315,22 @@ export async function generateAllAngles(
 }> {
   // Generate in 2 batches of 2 to avoid overwhelming the LLM API with 4 concurrent
   // large JSON-structured requests (each ~8k tokens), which can cause "fetch failed" timeouts.
+  const TOTAL = 4;
+  let completed = 0;
+  const notify = async () => {
+    completed++;
+    if (onAngleComplete) {
+      try { await onAngleComplete(completed, TOTAL); } catch { /* progress write failure is non-fatal */ }
+    }
+  };
+
   const [original, godfather] = await Promise.all([
-    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'original', socialProof),
-    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'godfather', socialProof),
+    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'original', socialProof).then(async r => { await notify(); return r; }),
+    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'godfather', socialProof).then(async r => { await notify(); return r; }),
   ]);
   const [free, dollar] = await Promise.all([
-    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'free', socialProof),
-    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'dollar', socialProof),
+    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'free', socialProof).then(async r => { await notify(); return r; }),
+    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'dollar', socialProof).then(async r => { await notify(); return r; }),
   ]);
   return { original, godfather, free, dollar };
 }

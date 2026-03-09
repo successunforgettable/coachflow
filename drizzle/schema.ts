@@ -1150,6 +1150,8 @@ export const jobs = mysqlTable("jobs", {
   status: mysqlEnum("status", ["pending", "complete", "failed"]).notNull().default("pending"),
   result: text("result"), // JSON stored as longtext-compatible text
   error: varchar("error", { length: 1024 }),
+  progress: text("progress"), // JSON: { step: number, total: number, label: string } — updated during generation
+  retryCount: int("retry_count").notNull().default(0), // Number of automatic retries attempted
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 export type Job = typeof jobs.$inferSelect;

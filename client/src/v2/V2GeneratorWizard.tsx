@@ -295,13 +295,17 @@ const LOADING_MESSAGES = [
   "Almost there — finalising your content now…",
 ];
 
-function LoadingState({ step: _step }: { step?: string }) {
+function LoadingState({ step: _step, progressLabel }: { step?: string; progressLabel?: string | null }) {
   const [msgIndex, setMsgIndex] = useState(0);
   const [visible, setVisible] = useState(true);
   const [elapsed, setElapsed] = useState(0);
+  // Track previous progressLabel to trigger fade animation on change
+  const [labelVisible, setLabelVisible] = useState(true);
+  const prevLabelRef = useRef(progressLabel);
 
-  // Cycle messages every 20 seconds with fade
+  // Cycle messages every 20 seconds with fade (only when no real progress label)
   useEffect(() => {
+    if (progressLabel) return; // real progress takes over
     const interval = setInterval(() => {
       setVisible(false);
       setTimeout(() => {
@@ -310,7 +314,19 @@ function LoadingState({ step: _step }: { step?: string }) {
       }, 400);
     }, 20_000);
     return () => clearInterval(interval);
-  }, []);
+  }, [progressLabel]);
+
+  // Fade animation when progressLabel changes
+  useEffect(() => {
+    if (progressLabel !== prevLabelRef.current) {
+      setLabelVisible(false);
+      const t = setTimeout(() => {
+        prevLabelRef.current = progressLabel;
+        setLabelVisible(true);
+      }, 300);
+      return () => clearTimeout(t);
+    }
+  }, [progressLabel]);
 
   // Elapsed timer — updates every second
   useEffect(() => {
@@ -318,7 +334,7 @@ function LoadingState({ step: _step }: { step?: string }) {
     return () => clearInterval(timer);
   }, []);
 
-  const displayMessage = LOADING_MESSAGES[msgIndex];
+  const displayMessage = progressLabel ?? LOADING_MESSAGES[msgIndex];
 
   return (
     <>
@@ -359,12 +375,33 @@ function LoadingState({ step: _step }: { step?: string }) {
             color: "var(--v2-text-color)",
             margin: "0 0 8px",
             lineHeight: 1.5,
-            opacity: visible ? 1 : 0,
-            transform: visible ? "translateY(0)" : "translateY(4px)",
-            transition: "opacity 0.4s ease, transform 0.4s ease",
+            opacity: progressLabel ? (labelVisible ? 1 : 0) : (visible ? 1 : 0),
+            transform: (progressLabel ? labelVisible : visible) ? "translateY(0)" : "translateY(4px)",
+            transition: "opacity 0.3s ease, transform 0.3s ease",
           }}>
             {displayMessage}
           </p>
+          {/* Angle step dots — only shown when real progress data is available */}
+          {progressLabel && (() => {
+            // Parse "Generating angle X of 4" or "Finalising" from the label
+            const match = progressLabel.match(/(\d+) of (\d+)/);
+            const total = match ? parseInt(match[2]) : 4;
+            const completed = match ? parseInt(match[1]) - 1 : total;
+            return (
+              <div style={{ display: "flex", gap: "8px", justifyContent: "center", margin: "4px 0 8px" }}>
+                {Array.from({ length: total }).map((_, i) => (
+                  <div key={i} style={{
+                    width: "10px",
+                    height: "10px",
+                    borderRadius: "50%",
+                    background: i < completed ? "#58CC02" : i === completed ? "#FF5B1D" : "#E5E0D8",
+                    transition: "background 0.4s ease",
+                    flexShrink: 0,
+                  }} />
+                ))}
+              </div>
+            );
+          })()}
           <p style={{
               fontFamily: "var(--v2-font-body)",
               fontSize: "13px",
@@ -1214,6 +1251,8 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
   const [errorMsg, setErrorMsg] = useState("");
   const [complianceScore, setComplianceScore] = useState(100);
   const [complianceViolations, setComplianceViolations] = useState<string[]>([]);
+  // Real-time progress label from background job (e.g. "Generating angle 1 of 4…")
+  const [progressLabel, setProgressLabel] = useState<string | null>(null);
   // ── ICP name input (only for ICP step) ──
   const [icpName, setIcpName] = useState("");
   // ── tRPC utils for cache invalidation ──
@@ -1325,14 +1364,23 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
       const svcId = payload.serviceId as number;
       const svc = activeService;
 
+      // Reset progress label at the start of each generation
+      setProgressLabel(null);
       // ── Shared polling helper ──
-      const pollJob = (jobId: string) => new Promise<void>((resolve, reject) => {
+      // onProgress: optional callback fired whenever the job's progress label changes
+      const pollJob = (jobId: string, onProgress?: (label: string) => void) => new Promise<void>((resolve, reject) => {
         const pollStart = Date.now();
         const MAX_POLL_MS = 300_000;
+        let lastLabel: string | undefined;
         pollIntervalRef.current = setInterval(async () => {
           try {
             const res = await fetch(`/api/jobs/${jobId}`);
-            const data = await res.json() as { status: string; result: unknown; error?: string };
+            const data = await res.json() as { status: string; result: unknown; error?: string; progress?: { step: number; total: number; label: string } | null };
+            // Fire progress callback when label changes
+            if (onProgress && data.progress?.label && data.progress.label !== lastLabel) {
+              lastLabel = data.progress.label;
+              onProgress(data.progress.label);
+            }
             if (data.status === "complete") {
               clearInterval(pollIntervalRef.current!);
               pollIntervalRef.current = null;
@@ -1411,7 +1459,8 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
         const { jobId } = await generateLandingPageAsync.mutateAsync({
           serviceId: svcId,
         });
-        await pollJob(jobId);
+        // Pass onProgress so the LoadingState shows "Generating angle X of 4…" in real time
+        await pollJob(jobId, (label) => setProgressLabel(label));
       } else if (step === "emailSequence") {
         const { jobId } = await generateEmailSequenceAsync.mutateAsync({
           serviceId: svcId,
@@ -1586,7 +1635,7 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
           {status === "waiting" && <WaitingState />}
 
           {/* ── LOADING STATE ── */}
-          {status === "loading" && <LoadingState step={step} />}
+          {status === "loading" && <LoadingState step={step} progressLabel={progressLabel} />}
 
           {/* ── SUCCESS STATE ── */}
           {status === "success" && (

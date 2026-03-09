@@ -342,6 +342,9 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
       const jobId = randomUUID();
       await db.insert(jobs).values({ id: jobId, userId: String(capturedUserId), status: "pending" });
 
+      // ── Pre-compute socialProof outside try so retry block can access it ──
+      const bgSocialProof = { hasCustomers: !!capturedService.totalCustomers && capturedService.totalCustomers > 0, hasRating: !!capturedService.averageRating && parseFloat(capturedService.averageRating) > 0, hasReviews: !!capturedService.totalReviews && capturedService.totalReviews > 0, hasTestimonials: !!capturedService.testimonial1Name || !!capturedService.testimonial2Name || !!capturedService.testimonial3Name, hasPress: !!capturedService.pressFeatures && capturedService.pressFeatures.trim().length > 0, customerCount: capturedService.totalCustomers || 0, rating: capturedService.averageRating || '', reviewCount: capturedService.totalReviews || 0, testimonials: [capturedService.testimonial1Name ? { name: capturedService.testimonial1Name, title: capturedService.testimonial1Title || '', quote: capturedService.testimonial1Quote || '' } : null, capturedService.testimonial2Name ? { name: capturedService.testimonial2Name, title: capturedService.testimonial2Title || '', quote: capturedService.testimonial2Quote || '' } : null, capturedService.testimonial3Name ? { name: capturedService.testimonial3Name, title: capturedService.testimonial3Title || '', quote: capturedService.testimonial3Quote || '' } : null].filter(Boolean), press: capturedService.pressFeatures || '' };
+
       setImmediate(async () => {
         try {
           const bgDb = await getDb();
@@ -354,7 +357,7 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
           const campaignTypeContextMap: Record<string, string> = { webinar: `CAMPAIGN TYPE: Webinar\nFraming: Show-up urgency. Copy must give a compelling reason to attend live.\nCTA language: Register now / Save your seat / Join us live on [date]`, challenge: `CAMPAIGN TYPE: Challenge\nFraming: Community commitment. Daily wins build momentum.\nCTA language: Join the challenge / Claim your spot / Start with us on [date]`, course_launch: `CAMPAIGN TYPE: Course Launch\nFraming: Transformation journey.\nCTA language: Enrol now / Join the programme / Claim your place before [date]`, product_launch: `CAMPAIGN TYPE: Product Launch\nFraming: Early access and founding member status.\nCTA language: Get early access / Become a founding member / Lock in launch pricing` };
           const campaignTypeContext = campaignTypeContextMap[capturedCampaignType] || campaignTypeContextMap['course_launch'];
 
-          const socialProof = { hasCustomers: !!capturedService.totalCustomers && capturedService.totalCustomers > 0, hasRating: !!capturedService.averageRating && parseFloat(capturedService.averageRating) > 0, hasReviews: !!capturedService.totalReviews && capturedService.totalReviews > 0, hasTestimonials: !!capturedService.testimonial1Name || !!capturedService.testimonial2Name || !!capturedService.testimonial3Name, hasPress: !!capturedService.pressFeatures && capturedService.pressFeatures.trim().length > 0, customerCount: capturedService.totalCustomers || 0, rating: capturedService.averageRating || '', reviewCount: capturedService.totalReviews || 0, testimonials: [capturedService.testimonial1Name ? { name: capturedService.testimonial1Name, title: capturedService.testimonial1Title || '', quote: capturedService.testimonial1Quote || '' } : null, capturedService.testimonial2Name ? { name: capturedService.testimonial2Name, title: capturedService.testimonial2Title || '', quote: capturedService.testimonial2Quote || '' } : null, capturedService.testimonial3Name ? { name: capturedService.testimonial3Name, title: capturedService.testimonial3Title || '', quote: capturedService.testimonial3Quote || '' } : null].filter(Boolean), press: capturedService.pressFeatures || '' };
+          const socialProof = bgSocialProof;
 
           let avatarName = capturedInput.avatarName || `${capturedService.targetCustomer}`;
           let avatarDescription = capturedInput.avatarDescription || capturedService.description || "Target Customer";
@@ -365,7 +368,19 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
           }
           const enrichedAvatarDescription = [sotContext || null, avatarDescription || null, campaignTypeContext || null, icpContext || null].filter(Boolean).join('\n\n');
 
-          const allAngles = await generateAllAngles(capturedService.name, capturedService.description || "", avatarName, enrichedAvatarDescription, socialProof);
+          // ── Helper: write real angle-progress to job record ──────────────────
+          const writeProgress = async (completed: number, total: number) => {
+            const label = completed < total
+              ? `Generating angle ${completed + 1} of ${total}…`
+              : `Finalising your landing page…`;
+            try {
+              await bgDb.update(jobs)
+                .set({ progress: JSON.stringify({ step: completed, total, label }) })
+                .where(eq(jobs.id, jobId));
+            } catch { /* non-fatal */ }
+          };
+
+          const allAngles = await generateAllAngles(capturedService.name, capturedService.description || "", avatarName, enrichedAvatarDescription, socialProof, writeProgress);
 
           const insertResult: any = await bgDb.insert(landingPages).values({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, productName: capturedService.name, productDescription: capturedService.description || "", avatarName, avatarDescription, originalAngle: allAngles.original, godfatherAngle: allAngles.godfather, freeAngle: allAngles.free, dollarAngle: allAngles.dollar, activeAngle: "original", rating: 0 });
           await bgDb.update(users).set({ landingPageGeneratedCount: capturedUser.landingPageGeneratedCount + 1 }).where(eq(users.id, capturedUserId));
@@ -377,7 +392,45 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
           console.log(`[landingPages.generateAsync] Job ${jobId} completed, landingPageId: ${newPage?.id}`);
         } catch (err: unknown) {
           const errorMessage = err instanceof Error ? err.message : String(err);
-          console.error(`[landingPages.generateAsync] Job ${jobId} failed:`, errorMessage);
+          // ── Network-error auto-retry (once, 30-second delay) ─────────────────
+          // Only retry on transient network failures — never on Zod/validation errors.
+          const isNetworkError = errorMessage.includes('fetch failed') || errorMessage.includes('AbortError') || errorMessage.includes('ECONNRESET') || errorMessage.includes('ETIMEDOUT') || errorMessage.includes('network timeout');
+          if (isNetworkError) {
+            try {
+              const checkDb = await getDb();
+              const [currentJob] = checkDb ? await checkDb.select().from(jobs).where(eq(jobs.id, jobId)).limit(1) : [];
+              const retryCount = (currentJob as any)?.retryCount ?? 0;
+              if (retryCount < 1) {
+                console.warn(`[landingPages.generateAsync] Job ${jobId} network error (attempt ${retryCount + 1}), retrying in 30s:`, errorMessage);
+                if (checkDb) await checkDb.update(jobs).set({ retryCount: retryCount + 1, progress: JSON.stringify({ step: 0, total: 4, label: 'Network hiccup — retrying in 30s…' }) }).where(eq(jobs.id, jobId));
+                await new Promise(resolve => setTimeout(resolve, 30_000));
+                setImmediate(async () => {
+                  try {
+                    const retryDb = await getDb();
+                    if (!retryDb) throw new Error('Database not available on retry');
+                    const writeProgressRetry = async (completed: number, total: number) => {
+                      const label = completed < total ? `Generating angle ${completed + 1} of ${total}…` : `Finalising your landing page…`;
+                      try { await retryDb.update(jobs).set({ progress: JSON.stringify({ step: completed, total, label }) }).where(eq(jobs.id, jobId)); } catch { /* non-fatal */ }
+                    };
+                    const retryAvatarName = capturedInput.avatarName || `${capturedService.targetCustomer}`;
+                    const retryAvatarDescription = capturedInput.avatarDescription || capturedService.description || 'Target Customer';
+                    const retryAngles = await generateAllAngles(capturedService.name, capturedService.description || '', retryAvatarName, retryAvatarDescription, bgSocialProof, writeProgressRetry);
+                    const retryInsert: any = await retryDb.insert(landingPages).values({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, productName: capturedService.name, productDescription: capturedService.description || '', avatarName: retryAvatarName, avatarDescription: retryAvatarDescription, originalAngle: retryAngles.original, godfatherAngle: retryAngles.godfather, freeAngle: retryAngles.free, dollarAngle: retryAngles.dollar, activeAngle: 'original', rating: 0 });
+                    await retryDb.update(users).set({ landingPageGeneratedCount: capturedUser.landingPageGeneratedCount + 1 }).where(eq(users.id, capturedUserId));
+                    const [retryPage] = await retryDb.select().from(landingPages).where(eq(landingPages.id, retryInsert[0].insertId)).limit(1);
+                    await retryDb.update(jobs).set({ status: 'complete', result: JSON.stringify({ id: retryPage?.id }) }).where(eq(jobs.id, jobId));
+                    console.log(`[landingPages.generateAsync] Job ${jobId} retry succeeded, landingPageId: ${retryPage?.id}`);
+                  } catch (retryErr: unknown) {
+                    const retryMsg = retryErr instanceof Error ? retryErr.message : String(retryErr);
+                    console.error(`[landingPages.generateAsync] Job ${jobId} retry also failed:`, retryMsg);
+                    try { const fd = await getDb(); if (fd) await fd.update(jobs).set({ status: 'failed', error: retryMsg.slice(0, 1024) }).where(eq(jobs.id, jobId)); } catch { /* ignore */ }
+                  }
+                });
+                return; // Don't mark as failed yet — retry is in flight
+              }
+            } catch { /* if retry setup fails, fall through to permanent failure */ }
+          }
+          console.error(`[landingPages.generateAsync] Job ${jobId} failed (permanent):`, errorMessage);
           try {
             const bgDb2 = await getDb();
             if (bgDb2) await bgDb2.update(jobs).set({ status: "failed", error: errorMessage.slice(0, 1024) }).where(eq(jobs.id, jobId));
