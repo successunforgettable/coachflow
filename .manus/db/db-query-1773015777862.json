@@ -1,0 +1,17 @@
+{
+  "query": "SELECT id, status, error, LEFT(result, 200) as result_preview, created_at FROM jobs ORDER BY created_at DESC LIMIT 3;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT id, status, error, LEFT(result, 200) as result_preview, created_at FROM jobs ORDER BY created_at DESC LIMIT 3;",
+  "rows": [
+    {
+      "id": "cdd77889-2744-4d33-901b-5e44b7a51017",
+      "status": "failed",
+      "error": "Failed query: insert into `heroMechanisms` (`id`, `userId`, `serviceId`, `campaignId`, `mechanismSetId`, `tabType`, `mechanismName`, `mechanismDescription`, `targetMarket`, `pressingProblem`, `whyProblem`, `whatTried`, `whyExistingNotWork`, `descriptor`, `application`, `desiredOutcome`, `credibility`, `socialProof`, `rating`, `isFavorite`, `createdAt`, `updatedAt`) values (default, ?, ?, default, ?, ?, ?, ?, ?, ?, ?, ?, ?, default, default, ?, ?, ?, default, default, default, default), (default, ?, ?, default, ?, ?, ?, ?, ?, ?, ?, ?, ?, default, default, ?, ?, ?, default, default, default, default), (default, ?, ?, default, ?, ?, ?, ?, ?, ?, ?, ?, ?, default, default, ?, ?, ?, default, default, default, default), (default, ?, ?, default, ?, ?, ?, ?, ?, ?, ?, ?, ?, default, default, ?, ?, ?, default, default, default, default), (default, ?, ?, default, ?, ?, ?, ?, ?, ?, ?, ?, ?, default, default, ?, ?, ?, default, default, default, default), (default, ?, ?, default, ?, ?, ?, ?, ?, ?, ?, ?, ?, default, default,",
+      "result_preview": "NULL",
+      "created_at": "2026-03-09 00:20:17"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tstatus\terror\tresult_preview\tcreated_at\ncdd77889-2744-4d33-901b-5e44b7a51017\tfailed\tFailed query: insert into `heroMechanisms` (`id`, `userId`, `serviceId`, `campaignId`, `mechanismSetId`, `tabType`, `mechanismName`, `mechanismDescription`, `targetMarket`, `pressingProblem`, `whyProblem`, `whatTried`, `whyExistingNotWork`, `descriptor`, `application`, `desiredOutcome`, `credibility`, `socialProof`, `rating`, `isFavorite`, `createdAt`, `updatedAt`) values (default, ?, ?, default, ?, ?, ?, ?, ?, ?, ?, ?, ?, default, default, ?, ?, ?, default, default, default, default), (default, ?, ?, default, ?, ?, ?, ?, ?, ?, ?, ?, ?, default, default, ?, ?, ?, default, default, default, default), (default, ?, ?, default, ?, ?, ?, ?, ?, ?, ?, ?, ?, default, default, ?, ?, ?, default, default, default, default), (default, ?, ?, default, ?, ?, ?, ?, ?, ?, ?, ?, ?, default, default, ?, ?, ?, default, default, default, default), (default, ?, ?, default, ?, ?, ?, ?, ?, ?, ?, ?, ?, default, default, ?, ?, ?, default, default, default, default), (default, ?, ?, default, ?, ?, ?, ?, ?, ?, ?, ?, ?, default, default,\tNULL\t2026-03-09 00:20:17\n",
+  "stderr": "",
+  "execution_time_ms": 1597
+}

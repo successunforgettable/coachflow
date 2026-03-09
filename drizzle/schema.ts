@@ -575,16 +575,16 @@ export const heroMechanisms = mysqlTable("heroMechanisms", {
   mechanismName: varchar("mechanismName", { length: 255 }).notNull(), // e.g., "Breakthrough Neural Nexus System"
   mechanismDescription: text("mechanismDescription").notNull(), // Full paragraph explanation
   // Input data used to generate (stored for regeneration)
-  targetMarket: varchar("targetMarket", { length: 500 }).notNull(), // Increased from 100 to 500 (Phase 39 FIX 1)
-  pressingProblem: varchar("pressingProblem", { length: 500 }).notNull(), // Increased from 200 to 500 (Phase 39 FIX 1)
+  targetMarket: text("targetMarket").notNull(), // Expanded to text for AI-generated content
+  pressingProblem: text("pressingProblem").notNull(), // Expanded to text for AI-generated content
   whyProblem: text("whyProblem").notNull(), // 300 chars
   whatTried: text("whatTried").notNull(), // 300 chars
   whyExistingNotWork: text("whyExistingNotWork").notNull(), // 300 chars
   descriptor: varchar("descriptor", { length: 50 }), // Strategy, Framework, Method, System, etc.
   application: varchar("application", { length: 100 }), // How it's applied
-  desiredOutcome: varchar("desiredOutcome", { length: 500 }).notNull(), // Increased from 200 to 500 (Phase 39 FIX 1)
-  credibility: varchar("credibility", { length: 200 }).notNull(), // Authority figure
-  socialProof: varchar("socialProof", { length: 200 }).notNull(), // Publications, features
+  desiredOutcome: text("desiredOutcome").notNull(), // Expanded to text for AI-generated content
+  credibility: text("credibility").notNull(), // Expanded to text for AI-generated content
+  socialProof: text("socialProof").notNull(), // Expanded to text for AI-generated content
   // Metadata
   rating: int("rating").default(0), // -1 = thumbs down, 0 = no rating, 1 = thumbs up
   isFavorite: boolean("isFavorite").default(false),

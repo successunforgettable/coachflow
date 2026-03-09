@@ -1,0 +1,120 @@
+{
+  "query": "SELECT COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'heroMechanisms' AND TABLE_SCHEMA = DATABASE() ORDER BY ORDINAL_POSITION;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'heroMechanisms' AND TABLE_SCHEMA = DATABASE() ORDER BY ORDINAL_POSITION;",
+  "rows": [
+    {
+      "COLUMN_NAME": "id",
+      "DATA_TYPE": "int",
+      "CHARACTER_MAXIMUM_LENGTH": "NULL"
+    },
+    {
+      "COLUMN_NAME": "userId",
+      "DATA_TYPE": "int",
+      "CHARACTER_MAXIMUM_LENGTH": "NULL"
+    },
+    {
+      "COLUMN_NAME": "serviceId",
+      "DATA_TYPE": "int",
+      "CHARACTER_MAXIMUM_LENGTH": "NULL"
+    },
+    {
+      "COLUMN_NAME": "campaignId",
+      "DATA_TYPE": "int",
+      "CHARACTER_MAXIMUM_LENGTH": "NULL"
+    },
+    {
+      "COLUMN_NAME": "mechanismSetId",
+      "DATA_TYPE": "varchar",
+      "CHARACTER_MAXIMUM_LENGTH": "50"
+    },
+    {
+      "COLUMN_NAME": "tabType",
+      "DATA_TYPE": "enum",
+      "CHARACTER_MAXIMUM_LENGTH": "15"
+    },
+    {
+      "COLUMN_NAME": "mechanismName",
+      "DATA_TYPE": "varchar",
+      "CHARACTER_MAXIMUM_LENGTH": "255"
+    },
+    {
+      "COLUMN_NAME": "mechanismDescription",
+      "DATA_TYPE": "text",
+      "CHARACTER_MAXIMUM_LENGTH": "65535"
+    },
+    {
+      "COLUMN_NAME": "targetMarket",
+      "DATA_TYPE": "varchar",
+      "CHARACTER_MAXIMUM_LENGTH": "500"
+    },
+    {
+      "COLUMN_NAME": "pressingProblem",
+      "DATA_TYPE": "varchar",
+      "CHARACTER_MAXIMUM_LENGTH": "500"
+    },
+    {
+      "COLUMN_NAME": "whyProblem",
+      "DATA_TYPE": "text",
+      "CHARACTER_MAXIMUM_LENGTH": "65535"
+    },
+    {
+      "COLUMN_NAME": "whatTried",
+      "DATA_TYPE": "text",
+      "CHARACTER_MAXIMUM_LENGTH": "65535"
+    },
+    {
+      "COLUMN_NAME": "whyExistingNotWork",
+      "DATA_TYPE": "text",
+      "CHARACTER_MAXIMUM_LENGTH": "65535"
+    },
+    {
+      "COLUMN_NAME": "descriptor",
+      "DATA_TYPE": "varchar",
+      "CHARACTER_MAXIMUM_LENGTH": "50"
+    },
+    {
+      "COLUMN_NAME": "application",
+      "DATA_TYPE": "varchar",
+      "CHARACTER_MAXIMUM_LENGTH": "100"
+    },
+    {
+      "COLUMN_NAME": "desiredOutcome",
+      "DATA_TYPE": "varchar",
+      "CHARACTER_MAXIMUM_LENGTH": "500"
+    },
+    {
+      "COLUMN_NAME": "credibility",
+      "DATA_TYPE": "varchar",
+      "CHARACTER_MAXIMUM_LENGTH": "200"
+    },
+    {
+      "COLUMN_NAME": "socialProof",
+      "DATA_TYPE": "varchar",
+      "CHARACTER_MAXIMUM_LENGTH": "200"
+    },
+    {
+      "COLUMN_NAME": "rating",
+      "DATA_TYPE": "int",
+      "CHARACTER_MAXIMUM_LENGTH": "NULL"
+    },
+    {
+      "COLUMN_NAME": "isFavorite",
+      "DATA_TYPE": "tinyint",
+      "CHARACTER_MAXIMUM_LENGTH": "NULL"
+    },
+    {
+      "COLUMN_NAME": "createdAt",
+      "DATA_TYPE": "timestamp",
+      "CHARACTER_MAXIMUM_LENGTH": "NULL"
+    },
+    {
+      "COLUMN_NAME": "updatedAt",
+      "DATA_TYPE": "timestamp",
+      "CHARACTER_MAXIMUM_LENGTH": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "COLUMN_NAME\tDATA_TYPE\tCHARACTER_MAXIMUM_LENGTH\nid\tint\tNULL\nuserId\tint\tNULL\nserviceId\tint\tNULL\ncampaignId\tint\tNULL\nmechanismSetId\tvarchar\t50\ntabType\tenum\t15\nmechanismName\tvarchar\t255\nmechanismDescription\ttext\t65535\ntargetMarket\tvarchar\t500\npressingProblem\tvarchar\t500\nwhyProblem\ttext\t65535\nwhatTried\ttext\t65535\nwhyExistingNotWork\ttext\t65535\ndescriptor\tvarchar\t50\napplication\tvarchar\t100\ndesiredOutcome\tvarchar\t500\ncredibility\tvarchar\t200\nsocialProof\tvarchar\t200\nrating\tint\tNULL\nisFavorite\ttinyint\tNULL\ncreatedAt\ttimestamp\tNULL\nupdatedAt\ttimestamp\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 1691
+}
