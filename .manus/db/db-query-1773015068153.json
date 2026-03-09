@@ -1,0 +1,13 @@
+{
+  "query": "SHOW TABLES LIKE 'jobs';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SHOW TABLES LIKE 'jobs';",
+  "rows": [
+    {
+      "Tables_in_jQsGzEaS9E2xgaK8jEKUPB (jobs)": "jobs"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_jQsGzEaS9E2xgaK8jEKUPB (jobs)\njobs\n",
+  "stderr": "",
+  "execution_time_ms": 2775
+}

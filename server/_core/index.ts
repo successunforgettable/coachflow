@@ -38,6 +38,23 @@ async function startServer() {
   const { handleStripeWebhook } = await import("../stripe/webhook");
   app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), handleStripeWebhook);
   
+  // Jobs polling endpoint — returns job status/result for background generation
+  app.get("/api/jobs/:jobId", async (req, res) => {
+    try {
+      const { getDb } = await import("../db");
+      const { jobs } = await import("../../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+      const db = await getDb();
+      if (!db) { res.status(503).json({ error: "Database not available" }); return; }
+      const [job] = await db.select().from(jobs).where(eq(jobs.id, req.params.jobId)).limit(1);
+      if (!job) { res.status(404).json({ error: "Job not found" }); return; }
+      res.json({ status: job.status, result: job.result ? JSON.parse(job.result) : null, error: job.error });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: msg });
+    }
+  });
+
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));

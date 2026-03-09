@@ -1137,7 +1137,9 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
   // ── Real mutations ──
   const generateIcp = trpc.icps.generate.useMutation();
   const generateOffer = trpc.offers.generate.useMutation();
-  const generateHeroMechanism = trpc.heroMechanisms.generate.useMutation();
+  const generateHeroMechanismAsync = trpc.heroMechanisms.generateAsync.useMutation();
+  // Polling interval ref for Node 4 background job
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const generateHvco = trpc.hvco.generate.useMutation();
   const generateHeadlines = trpc.headlines.generate.useMutation();
   const generateAdCopy = trpc.adCopy.generate.useMutation();
@@ -1219,9 +1221,12 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
     return () => window.removeEventListener("offline", handleOffline);
   }, [status]);
 
-  // ── Cleanup timeout on unmount ──
+  // ── Cleanup timeout and poll interval on unmount ──
   useEffect(() => {
-    return () => { clearTimeout(timeoutRef.current ?? undefined); };
+    return () => {
+      clearTimeout(timeoutRef.current ?? undefined);
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    };
   }, []);
 
   // ── Core generation logic — real tRPC mutations for all 11 steps ──
@@ -1248,7 +1253,8 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
         });
         // result saved
       } else if (step === "uniqueMethod") {
-        await generateHeroMechanism.mutateAsync({
+        // Background job pattern — returns immediately with jobId, then poll
+        const { jobId } = await generateHeroMechanismAsync.mutateAsync({
           serviceId: svcId,
           targetMarket: svc?.targetCustomer || "",
           pressingProblem: svc?.painPoints || "",
@@ -1258,6 +1264,34 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
           desiredOutcome: svc?.mainBenefit || "",
           credibility: svc?.pressFeatures || "",
           socialProof: svc?.socialProofStat || "",
+        });
+        // Poll /api/jobs/:jobId every 5s; 300s total timeout
+        await new Promise<void>((resolve, reject) => {
+          const pollStart = Date.now();
+          const MAX_POLL_MS = 300_000;
+          pollIntervalRef.current = setInterval(async () => {
+            try {
+              const res = await fetch(`/api/jobs/${jobId}`);
+              const data = await res.json() as { status: string; result: unknown; error?: string };
+              if (data.status === "complete") {
+                clearInterval(pollIntervalRef.current!);
+                pollIntervalRef.current = null;
+                resolve();
+              } else if (data.status === "failed") {
+                clearInterval(pollIntervalRef.current!);
+                pollIntervalRef.current = null;
+                reject(new Error(data.error || "Background job failed"));
+              } else if (Date.now() - pollStart > MAX_POLL_MS) {
+                clearInterval(pollIntervalRef.current!);
+                pollIntervalRef.current = null;
+                reject(new Error("Generation timed out after 300 seconds"));
+              }
+            } catch (pollErr) {
+              clearInterval(pollIntervalRef.current!);
+              pollIntervalRef.current = null;
+              reject(pollErr);
+            }
+          }, 5_000);
         });
         // result saved
       } else if (step === "freeOptIn") {
@@ -1326,7 +1360,7 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
         setStatus("error");
       }
     }
-  }, [step, activeService, generateIcp, generateOffer, generateHeroMechanism, generateHvco, generateHeadlines, generateAdCopy, generateLandingPage, generateEmailSequence, generateWhatsappSequence, utils]);
+  }, [step, activeService, generateIcp, generateOffer, generateHeroMechanismAsync, generateHvco, generateHeadlines, generateAdCopy, generateLandingPage, generateEmailSequence, generateWhatsappSequence, utils, pollIntervalRef]);
 
   // ── Generate Now handler ──
   function handleGenerateNow() {

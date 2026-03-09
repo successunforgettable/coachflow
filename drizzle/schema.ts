@@ -1140,3 +1140,16 @@ export const systemHealthMetrics = mysqlTable("system_health_metrics", {
 });
 export type SystemHealthMetric = typeof systemHealthMetrics.$inferSelect;
 export type InsertSystemHealthMetric = typeof systemHealthMetrics.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// Background job queue table for async AI generation polling
+// ---------------------------------------------------------------------------
+export const jobs = mysqlTable("jobs", {
+  id: varchar("id", { length: 36 }).primaryKey(), // UUID
+  status: mysqlEnum("status", ["pending", "complete", "failed"]).notNull().default("pending"),
+  result: text("result"), // JSON stored as longtext-compatible text
+  error: varchar("error", { length: 1024 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type Job = typeof jobs.$inferSelect;
+export type InsertJob = typeof jobs.$inferInsert;

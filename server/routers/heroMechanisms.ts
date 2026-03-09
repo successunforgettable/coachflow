@@ -11,9 +11,10 @@ import {
   incrementHeroMechanismCount
 } from "../db";
 import { getDb } from "../db";
-import { services, idealCustomerProfiles, sourceOfTruth, campaigns } from "../../drizzle/schema";
+import { services, idealCustomerProfiles, sourceOfTruth, campaigns, jobs } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { nanoid } from "nanoid";
+import { randomUUID } from "crypto";
 import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
@@ -402,5 +403,194 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
     .mutation(async ({ ctx, input }) => {
       await deleteHeroMechanismSet(input.mechanismSetId, ctx.user.id);
       return { success: true };
+    }),
+
+  /**
+   * generateAsync — background job version of generate.
+   * Immediately returns a jobId; generation runs via setImmediate outside the
+   * HTTP request cycle so platform-level proxy timeouts cannot kill it.
+   * Client polls GET /api/jobs/:jobId every 5 s for completion.
+   */
+  generateAsync: protectedProcedure
+    .input(
+      z.object({
+        serviceId: z.number(),
+        campaignId: z.number().optional(),
+        targetMarket: z.string().max(5000),
+        pressingProblem: z.string().max(5000),
+        whyProblem: z.string().max(5000),
+        whatTried: z.string().max(5000),
+        whyExistingNotWork: z.string().max(5000),
+        descriptor: z.string().max(5000).optional(),
+        application: z.string().max(5000).optional(),
+        desiredOutcome: z.string().max(5000),
+        credibility: z.string().max(5000),
+        socialProof: z.string().max(5000),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { user } = ctx;
+
+      // Quota check (same as generate)
+      await checkAndResetQuotaIfNeeded(ctx.user.id);
+      if (user.role !== "superuser") {
+        const limit = getQuotaLimit(user.subscriptionTier, "heroMechanisms");
+        if (user.heroMechanismGeneratedCount >= limit) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: `You've reached your monthly limit of ${limit} Hero Mechanism sets. Upgrade to generate more.`,
+          });
+        }
+      }
+
+      // Fetch all context data synchronously before returning
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const [service] = await db.select().from(services)
+        .where(eq(services.id, input.serviceId)).limit(1);
+      if (!service) throw new Error("Service not found");
+
+      let campaignRecord;
+      if (input.campaignId) {
+        [campaignRecord] = await db.select().from(campaigns)
+          .where(and(eq(campaigns.id, input.campaignId), eq(campaigns.userId, ctx.user.id))).limit(1);
+      }
+
+      let icp;
+      if (campaignRecord?.icpId) {
+        [icp] = await db.select().from(idealCustomerProfiles)
+          .where(eq(idealCustomerProfiles.id, campaignRecord.icpId)).limit(1);
+      }
+      if (!icp) {
+        [icp] = await db.select().from(idealCustomerProfiles)
+          .where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
+      }
+
+      const [sot] = await db.select().from(sourceOfTruth)
+        .where(eq(sourceOfTruth.userId, ctx.user.id)).limit(1);
+
+      // Capture everything needed inside the closure
+      const capturedInput = { ...input };
+      const capturedUserId = user.id;
+      const capturedService = { ...service };
+      const capturedIcp = icp ? { ...icp } : undefined;
+      const capturedSot = sot ? { ...sot } : undefined;
+
+      // Insert pending job
+      const jobId = randomUUID();
+      await db.insert(jobs).values({ id: jobId, status: "pending" });
+
+      // Fire generation outside the request cycle
+      setImmediate(async () => {
+        try {
+          const bgDb = await getDb();
+          if (!bgDb) throw new Error("Database not available in background job");
+
+          // Rebuild context strings
+          const bgIcpContext = capturedIcp ? [
+            'IDEAL CUSTOMER PROFILE — use this to make every mechanism specific and targeted:',
+            capturedIcp.pains ? `Their daily pains: ${capturedIcp.pains}` : '',
+            capturedIcp.frustrations ? `Their frustrations: ${capturedIcp.frustrations}` : '',
+            capturedIcp.implementationBarriers ? `What stops them from taking action: ${capturedIcp.implementationBarriers}` : '',
+          ].filter(Boolean).join('\n').trim() : '';
+
+          const bgSotLines = capturedSot ? [
+            capturedSot.coreOffer        ? `Core offer: ${capturedSot.coreOffer}` : '',
+            capturedSot.targetAudience   ? `Target audience: ${capturedSot.targetAudience}` : '',
+            capturedSot.mainPainPoint    ? `Main pain point: ${capturedSot.mainPainPoint}` : '',
+            capturedSot.mainBenefits     ? `Main benefits: ${capturedSot.mainBenefits}` : '',
+            capturedSot.uniqueValue      ? `Unique value: ${capturedSot.uniqueValue}` : '',
+            capturedSot.idealCustomerAvatar ? `Ideal customer: ${capturedSot.idealCustomerAvatar}` : '',
+          ].filter(Boolean) : [];
+          const bgSotContext = bgSotLines.length > 0
+            ? ['BRAND CONTEXT — this is the approved brand voice. All copy must be consistent with this:', ...bgSotLines].join('\n')
+            : '';
+
+          const bgResolvedPressingProblem = capturedInput.pressingProblem?.trim() || capturedService.painPoints || "";
+          const bgResolvedWhyProblem = capturedInput.whyProblem?.trim() || capturedService.whyProblemExists || "";
+          const bgResolvedWhatTried = capturedInput.whatTried?.trim() || capturedService.failedSolutions || "";
+          const bgResolvedWhyExistingNotWork = capturedInput.whyExistingNotWork?.trim() || capturedService.failedSolutions || "";
+          const bgResolvedCredibility = capturedInput.credibility?.trim() || capturedService.pressFeatures || "";
+
+          const mechanismSetId = nanoid();
+          const allMechanisms: any[] = [];
+
+          // --- Hero Mechanisms (5 variations) ---
+          const heroMechanismsPrompt = `${bgSotContext ? `${bgSotContext}\n\n` : ''}You are an expert direct response copywriter creating compelling Hero Mechanisms.\n\nProduct: ${capturedService.name}\nTarget Market: ${capturedInput.targetMarket}\nPressing Problem: ${bgResolvedPressingProblem}\nWhy Problem Exists: ${bgResolvedWhyProblem}\nWhat They've Tried: ${bgResolvedWhatTried}\nWhy Existing Solutions Fail: ${bgResolvedWhyExistingNotWork}\nDescriptor: ${capturedInput.descriptor || "System"}\nApplication: ${capturedInput.application || "Use this system"}\nDesired Outcome: ${capturedInput.desiredOutcome}\nCredibility: ${bgResolvedCredibility}\nSocial Proof: ${capturedInput.socialProof}\n${bgIcpContext ? `\n${bgIcpContext}\n` : ''}\nCreate 5 HERO MECHANISMS. Each mechanism must have:\n1. A creative, unique NAME using the descriptor\n2. A full PARAGRAPH description (150-200 words) that includes how it works, who developed it, specific outcome, emotional transformation, and why it's different.\n\nReturn ONLY a JSON array of 5 objects with "name" and "description" fields, nothing else.`;
+
+          const heroMechanismsResponse = await invokeLLM({
+            messages: [
+              { role: "system", content: "You are a direct response copywriting expert. Return ONLY valid JSON arrays." },
+              { role: "user", content: heroMechanismsPrompt }
+            ],
+          });
+          const heroMechanismsContent = typeof heroMechanismsResponse.choices[0].message.content === 'string'
+            ? heroMechanismsResponse.choices[0].message.content
+            : JSON.stringify(heroMechanismsResponse.choices[0].message.content);
+          const heroMechanisms = JSON.parse(stripMarkdownJson(heroMechanismsContent));
+          heroMechanisms.forEach((m: { name: string; description: string }) => {
+            allMechanisms.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId, mechanismSetId, tabType: "hero_mechanisms" as const, mechanismName: m.name, mechanismDescription: m.description, targetMarket: capturedInput.targetMarket, pressingProblem: capturedInput.pressingProblem, whyProblem: capturedInput.whyProblem, whatTried: capturedInput.whatTried, whyExistingNotWork: capturedInput.whyExistingNotWork, descriptor: capturedInput.descriptor, application: capturedInput.application, desiredOutcome: capturedInput.desiredOutcome, credibility: capturedInput.credibility, socialProof: capturedInput.socialProof });
+          });
+
+          // --- Headline Ideas (5 variations) ---
+          const headlineIdeasPrompt = `${bgSotContext ? `${bgSotContext}\n\n` : ''}You are an expert direct response copywriter creating compelling headlines for Hero Mechanisms.\n\nProduct: ${capturedService.name}\nTarget Market: ${capturedInput.targetMarket}\nPressing Problem: ${bgResolvedPressingProblem}\nDesired Outcome: ${capturedInput.desiredOutcome}\n${bgIcpContext ? `\n${bgIcpContext}\n` : ''}\nCreate 5 HEADLINE IDEAS. Each should have a creative NAME (the headline) and a DESCRIPTION (50-100 words explaining why it works).\n\nReturn ONLY a JSON array of 5 objects with "name" and "description" fields, nothing else.`;
+
+          const headlineIdeasResponse = await invokeLLM({
+            messages: [
+              { role: "system", content: "You are a direct response copywriting expert. Return ONLY valid JSON arrays." },
+              { role: "user", content: headlineIdeasPrompt }
+            ],
+          });
+          const headlineIdeasContent = typeof headlineIdeasResponse.choices[0].message.content === 'string'
+            ? headlineIdeasResponse.choices[0].message.content
+            : JSON.stringify(headlineIdeasResponse.choices[0].message.content);
+          const headlineIdeas = JSON.parse(stripMarkdownJson(headlineIdeasContent));
+          headlineIdeas.forEach((m: { name: string; description: string }) => {
+            allMechanisms.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId, mechanismSetId, tabType: "headline_ideas" as const, mechanismName: m.name, mechanismDescription: m.description, targetMarket: capturedInput.targetMarket, pressingProblem: capturedInput.pressingProblem, whyProblem: capturedInput.whyProblem, whatTried: capturedInput.whatTried, whyExistingNotWork: capturedInput.whyExistingNotWork, descriptor: capturedInput.descriptor, application: capturedInput.application, desiredOutcome: capturedInput.desiredOutcome, credibility: capturedInput.credibility, socialProof: capturedInput.socialProof });
+          });
+
+          // --- Power Mode (5 extra powerful variations) ---
+          const powerModePrompt = `${bgSotContext ? `${bgSotContext}\n\n` : ''}You are an expert direct response copywriter creating BEAST MODE Hero Mechanisms.\n\nProduct: ${capturedService.name}\nTarget Market: ${capturedInput.targetMarket}\nPressing Problem: ${bgResolvedPressingProblem}\nWhy Problem Exists: ${bgResolvedWhyProblem}\nWhat They've Tried: ${bgResolvedWhatTried}\nWhy Existing Solutions Fail: ${bgResolvedWhyExistingNotWork}\nDescriptor: ${capturedInput.descriptor || "System"}\nDesired Outcome: ${capturedInput.desiredOutcome}\nCredibility: ${bgResolvedCredibility}\nSocial Proof: ${capturedInput.socialProof}\n${bgIcpContext ? `\n${bgIcpContext}\n` : ''}\nCreate 5 BEAST MODE mechanisms with ultra-creative names and comprehensive descriptions (200-250 words) that include specific numbers, timeframes, results, and address objections.\n\nReturn ONLY a JSON array of 5 objects with "name" and "description" fields, nothing else.`;
+
+          const powerModeResponse = await invokeLLM({
+            messages: [
+              { role: "system", content: "You are a direct response copywriting expert. Return ONLY valid JSON arrays." },
+              { role: "user", content: powerModePrompt }
+            ],
+          });
+          const powerModeContent = typeof powerModeResponse.choices[0].message.content === 'string'
+            ? powerModeResponse.choices[0].message.content
+            : JSON.stringify(powerModeResponse.choices[0].message.content);
+          const powerMode = JSON.parse(stripMarkdownJson(powerModeContent));
+          powerMode.forEach((m: { name: string; description: string }) => {
+            allMechanisms.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId, mechanismSetId, tabType: "beast_mode" as const, mechanismName: m.name, mechanismDescription: m.description, targetMarket: capturedInput.targetMarket, pressingProblem: capturedInput.pressingProblem, whyProblem: capturedInput.whyProblem, whatTried: capturedInput.whatTried, whyExistingNotWork: capturedInput.whyExistingNotWork, descriptor: capturedInput.descriptor, application: capturedInput.application, desiredOutcome: capturedInput.desiredOutcome, credibility: capturedInput.credibility, socialProof: capturedInput.socialProof });
+          });
+
+          // Save all mechanisms and increment quota
+          await createHeroMechanisms(allMechanisms);
+          await incrementHeroMechanismCount(capturedUserId);
+
+          // Mark job complete
+          await bgDb.update(jobs)
+            .set({ status: "complete", result: JSON.stringify({ mechanismSetId }) })
+            .where(eq(jobs.id, jobId));
+          console.log(`[generateAsync] Job ${jobId} completed, mechanismSetId: ${mechanismSetId}`);
+        } catch (err: unknown) {
+          const errorMessage = err instanceof Error ? err.message : String(err);
+          console.error(`[generateAsync] Job ${jobId} failed:`, errorMessage);
+          try {
+            const bgDb2 = await getDb();
+            if (bgDb2) {
+              await bgDb2.update(jobs)
+                .set({ status: "failed", error: errorMessage.slice(0, 1024) })
+                .where(eq(jobs.id, jobId));
+            }
+          } catch { /* ignore */ }
+        }
+      });
+
+      // Return immediately — HTTP connection closes in <1s
+      return { jobId };
     }),
 });
