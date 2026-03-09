@@ -1,0 +1,8 @@
+{
+  "query": "SELECT id, name, email FROM user WHERE email LIKE '%zaptest%fresh%' OR email LIKE '%fresh%' LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT id, name, email FROM user WHERE email LIKE '%zaptest%fresh%' OR email LIKE '%fresh%' LIMIT 5;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1146 (42S02) at line 1: Table 'jqsgzeas9e2xgak8jekupb.user' doesn't exist"
+  ]
+}

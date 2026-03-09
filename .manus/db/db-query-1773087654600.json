@@ -1,0 +1,9 @@
+{
+  "query": "\nINSERT INTO offers (\n  userId, serviceId, productName, offerType,\n  godfatherAngle, activeAngle,\n  createdAt, updatedAt\n) VALUES (\n  7110001, 1470001,\n  'Life Coach Success Accelerator',\n  'premium',\n  '{\"headline\":\"The 5-Figure Coach Blueprint: Build a Thriving Practice with Consistent 5-Figure Months\",\"subheadline\":\"Using the Heart-Mind Activation Method to attract premium clients on autopilot\",\"bonuses\":[\"Done-for-you lead generation templates\",\"90-day accountability coaching\",\"Private community access\"],\"guarantee\":\"30-day money-back guarantee\",\"price\":\"$3,997\",\"cta\":\"Enroll Now and Start Getting Consistent Leads\"}',\n  'godfather',\n  NOW(), NOW()\n);\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute \nINSERT INTO offers (\n  userId, serviceId, productName, offerType,\n  godfatherAngle, activeAngle,\n  createdAt, updatedAt\n) VALUES (\n  7110001, 1470001,\n  'Life Coach Success Accelerator',\n  'premium',\n  '{\"headline\":\"The 5-Figure Coach Blueprint: Build a Thriving Practice with Consistent 5-Figure Months\",\"subheadline\":\"Using the Heart-Mind Activation Method to attract premium clients on autopilot\",\"bonuses\":[\"Done-for-you lead generation templates\",\"90-day accountability coaching\",\"Private community access\"],\"guarantee\":\"30-day money-back guarantee\",\"price\":\"$3,997\",\"cta\":\"Enroll Now and Start Getting Consistent Leads\"}',\n  'godfather',\n  NOW(), NOW()\n);\n",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1636
+}

@@ -45,6 +45,7 @@ import OnboardingPage from "./pages/OnboardingPage";
 import Settings from "./pages/Settings";
 import { Terms } from "./pages/Terms";
 import { Privacy } from "./pages/Privacy";
+import { GettingStarted } from "./pages/GettingStarted";
 import Integrations from "./pages/settings/Integrations";
 import MetaCampaigns from "./pages/MetaCampaigns";
 import CampaignAlerts from "./pages/CampaignAlerts";
@@ -118,6 +119,7 @@ function Router() {
       <Route path={"/meta/alerts"} component={CampaignAlerts} />
       <Route path={"/terms"} component={Terms} />
       <Route path={"/privacy"} component={Privacy} />
+      <Route path={"/getting-started"} component={GettingStarted} />
       <Route path={"/signup"} component={Signup} />
       <Route path={"/login"} component={Login} />
       {/* OAuth callback shim: Manus platform sends /manus-oauth/callback to the static frontend.

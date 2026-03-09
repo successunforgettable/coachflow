@@ -1,0 +1,13 @@
+{
+  "query": "SELECT id FROM services WHERE userId = 7110001 LIMIT 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT id FROM services WHERE userId = 7110001 LIMIT 1;",
+  "rows": [
+    {
+      "id": "1470001"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\n1470001\n",
+  "stderr": "",
+  "execution_time_ms": 1545
+}

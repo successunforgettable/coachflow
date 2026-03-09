@@ -1,0 +1,13 @@
+{
+  "query": "SELECT id FROM users WHERE email = 'zapreviewer@zapcampaigns.com' LIMIT 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT id FROM users WHERE email = 'zapreviewer@zapcampaigns.com' LIMIT 1;",
+  "rows": [
+    {
+      "id": "7110001"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\n7110001\n",
+  "stderr": "",
+  "execution_time_ms": 1546
+}

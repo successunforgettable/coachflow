@@ -1,0 +1,23 @@
+{
+  "query": "\nSELECT \n  (SELECT COUNT(*) FROM services WHERE userId = 7110001) as node1_service,\n  (SELECT COUNT(*) FROM idealCustomerProfiles WHERE userId = 7110001) as node2_icp,\n  (SELECT COUNT(*) FROM offers WHERE userId = 7110001) as node3_offer,\n  (SELECT COUNT(*) FROM heroMechanisms WHERE userId = 7110001) as node4_mechanism,\n  (SELECT COUNT(*) FROM hvcoTitles WHERE userId = 7110001) as node5_hvco,\n  (SELECT COUNT(*) FROM headlines WHERE userId = 7110001) as node6_headlines,\n  (SELECT COUNT(*) FROM adCopy WHERE userId = 7110001) as node7_adcopy,\n  (SELECT COUNT(*) FROM landingPages WHERE userId = 7110001) as node8_landing,\n  (SELECT COUNT(*) FROM emailSequences WHERE userId = 7110001) as node9_email,\n  (SELECT COUNT(*) FROM whatsappSequences WHERE userId = 7110001) as node10_whatsapp,\n  (SELECT COUNT(*) FROM meta_published_ads WHERE userId = 7110001) as node11_meta;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute \nSELECT \n  (SELECT COUNT(*) FROM services WHERE userId = 7110001) as node1_service,\n  (SELECT COUNT(*) FROM idealCustomerProfiles WHERE userId = 7110001) as node2_icp,\n  (SELECT COUNT(*) FROM offers WHERE userId = 7110001) as node3_offer,\n  (SELECT COUNT(*) FROM heroMechanisms WHERE userId = 7110001) as node4_mechanism,\n  (SELECT COUNT(*) FROM hvcoTitles WHERE userId = 7110001) as node5_hvco,\n  (SELECT COUNT(*) FROM headlines WHERE userId = 7110001) as node6_headlines,\n  (SELECT COUNT(*) FROM adCopy WHERE userId = 7110001) as node7_adcopy,\n  (SELECT COUNT(*) FROM landingPages WHERE userId = 7110001) as node8_landing,\n  (SELECT COUNT(*) FROM emailSequences WHERE userId = 7110001) as node9_email,\n  (SELECT COUNT(*) FROM whatsappSequences WHERE userId = 7110001) as node10_whatsapp,\n  (SELECT COUNT(*) FROM meta_published_ads WHERE userId = 7110001) as node11_meta;\n",
+  "rows": [
+    {
+      "node1_service": "1",
+      "node2_icp": "1",
+      "node3_offer": "1",
+      "node4_mechanism": "1",
+      "node5_hvco": "1",
+      "node6_headlines": "1",
+      "node7_adcopy": "1",
+      "node8_landing": "1",
+      "node9_email": "1",
+      "node10_whatsapp": "1",
+      "node11_meta": "0"
+    }
+  ],
+  "messages": [],
+  "stdout": "node1_service\tnode2_icp\tnode3_offer\tnode4_mechanism\tnode5_hvco\tnode6_headlines\tnode7_adcopy\tnode8_landing\tnode9_email\tnode10_whatsapp\tnode11_meta\n1\t1\t1\t1\t1\t1\t1\t1\t1\t1\t0\n",
+  "stderr": "",
+  "execution_time_ms": 1660
+}
