@@ -323,6 +323,7 @@ function HeroSection({ onCampaignSelect: _onCampaignSelect }: { onCampaignSelect
   const [editing, setEditing] = useState(false);
   const [assets, setAssets] = useState<{ headline: string; icpHook: string; adAngle: string } | null>(null);
   const [visibleCards, setVisibleCards] = useState(0);
+  const [copiedCard, setCopiedCard] = useState<string | null>(null);
   const [fadeStep, setFadeStep] = useState(true);
   const inputRef1 = useRef<HTMLInputElement>(null);
   const inputRef2 = useRef<HTMLInputElement>(null);
@@ -678,14 +679,44 @@ function HeroSection({ onCampaignSelect: _onCampaignSelect }: { onCampaignSelect
                         style={{
                           background: "#fff", borderRadius: 20, padding: "20px 24px",
                           boxShadow: "0 4px 24px rgba(0,0,0,0.08)", border: `1px solid rgba(26,22,36,0.06)`,
-                          marginBottom: 12, textAlign: "left",
+                          marginBottom: 12, textAlign: "left", position: "relative",
                           animation: "fadeUp 0.5s ease",
                         }}
                       >
+                        {/* Copy button */}
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(card.value).then(() => {
+                              setCopiedCard(card.key);
+                              setTimeout(() => setCopiedCard(null), 2000);
+                            });
+                          }}
+                          title="Copy to clipboard"
+                          style={{
+                            position: "absolute", top: 14, right: 14,
+                            background: "transparent", border: "none", cursor: "pointer",
+                            padding: 4, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center",
+                            color: copiedCard === card.key ? "#22c55e" : "rgba(26,22,36,0.3)",
+                            transition: "color 0.2s",
+                          }}
+                          onMouseEnter={e => { if (copiedCard !== card.key) (e.currentTarget as HTMLElement).style.color = "rgba(26,22,36,0.6)"; }}
+                          onMouseLeave={e => { if (copiedCard !== card.key) (e.currentTarget as HTMLElement).style.color = "rgba(26,22,36,0.3)"; }}
+                        >
+                          {copiedCard === card.key ? (
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                              <path d="M3 8.5L6.5 12L13 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          ) : (
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                              <rect x="5" y="1" width="9" height="11" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+                              <path d="M11 4H3a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                            </svg>
+                          )}
+                        </button>
                         <p style={{ fontSize: 11, fontWeight: 700, color: ORANGE, textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 6px", fontFamily: "'Instrument Sans', sans-serif" }}>
                           {card.label}
                         </p>
-                        <p style={{ fontFamily: "'Fraunces', serif", fontStyle: "italic", fontWeight: 700, fontSize: "clamp(15px, 2.5vw, 18px)", color: INK, margin: 0, lineHeight: 1.4 }}>
+                        <p style={{ fontFamily: "'Fraunces', serif", fontStyle: "italic", fontWeight: 700, fontSize: "clamp(15px, 2.5vw, 18px)", color: INK, margin: 0, lineHeight: 1.4, paddingRight: 28 }}>
                           {card.value}
                         </p>
                       </div>
