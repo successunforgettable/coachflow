@@ -83,6 +83,17 @@ function CampaignCard({ campaign }: { campaign: any }) {
     { label: "Active Angle", value: landingPage?.activeAngle },
   ].filter(a => a.value);
 
+  // Helper to safely stringify any value for display
+  const safeStr = (v: any): string => {
+    if (!v) return '';
+    if (typeof v === 'string') return v;
+    if (typeof v === 'object') {
+      // Format object fields as readable text
+      return Object.entries(v).map(([k, val]) => `${k.charAt(0).toUpperCase() + k.slice(1)}: ${val}`).join('\n\n');
+    }
+    return String(v);
+  };
+
   // Offer angles
   const offerAngles = [
     { label: "Godfather Offer", value: offer?.godfatherAngle },
@@ -163,7 +174,7 @@ function CampaignCard({ campaign }: { campaign: any }) {
           {offerAngles.map((a, i) => (
             <div key={i} className="mt-2">
               <p className="font-semibold text-xs text-orange-700">{a.label}:</p>
-              <p className="text-xs mt-0.5 whitespace-pre-wrap">{a.value}</p>
+              <p className="text-xs mt-0.5 whitespace-pre-wrap">{safeStr(a.value)}</p>
             </div>
           ))}
         </Section>
@@ -225,7 +236,7 @@ function CampaignCard({ campaign }: { campaign: any }) {
           {lpAngles.map((a, i) => (
             <div key={i} className="mt-3">
               <p className="font-semibold text-xs text-cyan-700">{a.label}:</p>
-              <p className="text-xs mt-0.5 whitespace-pre-wrap bg-cyan-50 p-2 rounded">{a.value}</p>
+              <p className="text-xs mt-0.5 whitespace-pre-wrap bg-cyan-50 p-2 rounded">{safeStr(a.value)}</p>
             </div>
           ))}
         </Section>
