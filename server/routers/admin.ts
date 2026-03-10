@@ -2,7 +2,7 @@ import { z } from "zod";
 import { router, protectedProcedure } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "../db";
-import { users } from "../../drizzle/schema";
+import { users, services, idealCustomerProfiles, offers, heroMechanisms, hvcoTitles, headlines, adCopy, landingPages, emailSequences, whatsappSequences, metaPublishedAds } from "../../drizzle/schema";
 import { eq, and, gte, lte, sql } from "drizzle-orm";
 import Stripe from "stripe";
 import { auditedAdminProcedure } from "../_core/auditedAdminProcedure";
@@ -34,6 +34,44 @@ export const adminRouter = router({
   /**
    * Get all users with their quota usage
    */
+  /**
+   * Get all test campaign data for the /admin/test-campaigns report page
+   */
+  getTestCampaigns: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+    const TEST_EMAILS = [
+      'test-fitness@zapcampaigns.com',
+      'test-realestate@zapcampaigns.com',
+      'test-mindset@zapcampaigns.com',
+      'test-relationships@zapcampaigns.com',
+      'test-business@zapcampaigns.com',
+    ];
+    const testUsers = await db.select().from(users).where(
+      sql`${users.email} IN (${sql.join(TEST_EMAILS.map(e => sql`${e}`), sql`, `)})`
+    );
+    const campaigns = await Promise.all(testUsers.map(async (u) => {
+      const [svc] = await db.select().from(services).where(eq(services.userId, u.id)).limit(1);
+      if (!svc) return { user: u, service: null, nodes: {} };
+      const [icp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.userId, u.id)).limit(1);
+      const [offer] = await db.select().from(offers).where(eq(offers.userId, u.id)).limit(1);
+      const mechanisms = await db.select().from(heroMechanisms).where(eq(heroMechanisms.userId, u.id)).limit(3);
+      const hvcos = await db.select().from(hvcoTitles).where(eq(hvcoTitles.userId, u.id)).limit(5);
+      const hdlines = await db.select().from(headlines).where(eq(headlines.userId, u.id)).limit(5);
+      const ads = await db.select().from(adCopy).where(eq(adCopy.userId, u.id)).limit(9);
+      const [lp] = await db.select().from(landingPages).where(eq(landingPages.userId, u.id)).limit(1);
+      const [email] = await db.select().from(emailSequences).where(eq(emailSequences.userId, u.id)).limit(1);
+      const [whatsapp] = await db.select().from(whatsappSequences).where(eq(whatsappSequences.userId, u.id)).limit(1);
+      const [meta] = await db.select().from(metaPublishedAds).where(eq(metaPublishedAds.userId, u.id)).limit(1);
+      return {
+        user: u,
+        service: svc,
+        nodes: { icp, offer, mechanisms, hvcos, headlines: hdlines, adCopy: ads, landingPage: lp, emailSequence: email, whatsappSequence: whatsapp, metaPublished: meta },
+      };
+    }));
+    return campaigns;
+  }),
+
   getAllUsers: adminProcedure.query(async () => {
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });

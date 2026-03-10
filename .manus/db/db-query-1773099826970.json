@@ -1,0 +1,52 @@
+{
+  "query": "SELECT id, email, name, subscriptionTier, subscriptionStatus FROM users WHERE email LIKE 'test-%@zapcampaigns.com' ORDER BY id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT id, email, name, subscriptionTier, subscriptionStatus FROM users WHERE email LIKE 'test-%@zapcampaigns.com' ORDER BY id;",
+  "rows": [
+    {
+      "id": "6150033",
+      "email": "test-e2e@zapcampaigns.com",
+      "name": "Test User E2E",
+      "subscriptionTier": "trial",
+      "subscriptionStatus": "trialing"
+    },
+    {
+      "id": "7200001",
+      "email": "test-fitness@zapcampaigns.com",
+      "name": "Test Fitness Coach",
+      "subscriptionTier": "pro",
+      "subscriptionStatus": "active"
+    },
+    {
+      "id": "7200002",
+      "email": "test-realestate@zapcampaigns.com",
+      "name": "Test Real Estate Coach",
+      "subscriptionTier": "pro",
+      "subscriptionStatus": "active"
+    },
+    {
+      "id": "7200003",
+      "email": "test-mindset@zapcampaigns.com",
+      "name": "Test Mindset Coach",
+      "subscriptionTier": "pro",
+      "subscriptionStatus": "active"
+    },
+    {
+      "id": "7200004",
+      "email": "test-relationships@zapcampaigns.com",
+      "name": "Test Relationship Coach",
+      "subscriptionTier": "pro",
+      "subscriptionStatus": "active"
+    },
+    {
+      "id": "7200005",
+      "email": "test-business@zapcampaigns.com",
+      "name": "Test Business Coach",
+      "subscriptionTier": "pro",
+      "subscriptionStatus": "active"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\temail\tname\tsubscriptionTier\tsubscriptionStatus\n6150033\ttest-e2e@zapcampaigns.com\tTest User E2E\ttrial\ttrialing\n7200001\ttest-fitness@zapcampaigns.com\tTest Fitness Coach\tpro\tactive\n7200002\ttest-realestate@zapcampaigns.com\tTest Real Estate Coach\tpro\tactive\n7200003\ttest-mindset@zapcampaigns.com\tTest Mindset Coach\tpro\tactive\n7200004\ttest-relationships@zapcampaigns.com\tTest Relationship Coach\tpro\tactive\n7200005\ttest-business@zapcampaigns.com\tTest Business Coach\tpro\tactive\n",
+  "stderr": "",
+  "execution_time_ms": 1608
+}

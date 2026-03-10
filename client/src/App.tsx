@@ -41,6 +41,7 @@ import AdminUserDetail from "./pages/admin/AdminUserDetail";
 import AdminAuditLog from "./pages/admin/AdminAuditLog";
 import AdminContentModeration from "./pages/admin/AdminContentModeration";
 import AdminSystemHealth from "./pages/admin/AdminSystemHealth";
+import AdminTestCampaigns from "./pages/admin/AdminTestCampaigns";
 import OnboardingPage from "./pages/OnboardingPage";
 import Settings from "./pages/Settings";
 import { Terms } from "./pages/Terms";
@@ -107,6 +108,7 @@ function Router() {
       <Route path="/admin/system-health" component={AdminSystemHealth} />
       <Route path="/admin/compliance" component={ComplianceAdmin} />
       <Route path="/admin/compliance/analytics" component={ComplianceAnalytics} />
+      <Route path="/admin/test-campaigns" component={AdminTestCampaigns} />
       <Route path={"/analytics"} component={AnalyticsDashboard} />
       <Route path={"/onboarding"} component={OnboardingPage} />
       <Route path={"/settings"} component={Settings} />      <Route path={"/settings/integrations"} component={Integrations} />
