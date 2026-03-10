@@ -1,0 +1,40 @@
+{
+  "query": "SELECT id, email, role, subscriptionTier FROM users WHERE role = 'admin' LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT id, email, role, subscriptionTier FROM users WHERE role = 'admin' LIMIT 5;",
+  "rows": [
+    {
+      "id": "1",
+      "email": "arfeen@arfeenkhan.com",
+      "role": "admin",
+      "subscriptionTier": "agency"
+    },
+    {
+      "id": "1260098",
+      "email": "admin-1771684070491@test.com",
+      "role": "admin",
+      "subscriptionTier": "trial"
+    },
+    {
+      "id": "1260101",
+      "email": "admin-1771684072750@test.com",
+      "role": "admin",
+      "subscriptionTier": "trial"
+    },
+    {
+      "id": "1260103",
+      "email": "admin-1771684073631@test.com",
+      "role": "admin",
+      "subscriptionTier": "trial"
+    },
+    {
+      "id": "1260105",
+      "email": "admin-1771684075188@test.com",
+      "role": "admin",
+      "subscriptionTier": "trial"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\temail\trole\tsubscriptionTier\n1\tarfeen@arfeenkhan.com\tadmin\tagency\n1260098\tadmin-1771684070491@test.com\tadmin\ttrial\n1260101\tadmin-1771684072750@test.com\tadmin\ttrial\n1260103\tadmin-1771684073631@test.com\tadmin\ttrial\n1260105\tadmin-1771684075188@test.com\tadmin\ttrial\n",
+  "stderr": "",
+  "execution_time_ms": 1984
+}
