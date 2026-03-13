@@ -1,0 +1,15 @@
+{
+  "query": "SELECT id, email, openId FROM users WHERE email = 'test-fitness@zapcampaigns.com' LIMIT 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT id, email, openId FROM users WHERE email = 'test-fitness@zapcampaigns.com' LIMIT 1;",
+  "rows": [
+    {
+      "id": "7200001",
+      "email": "test-fitness@zapcampaigns.com",
+      "openId": "test-fitness-openid"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\temail\topenId\n7200001\ttest-fitness@zapcampaigns.com\ttest-fitness-openid\n",
+  "stderr": "",
+  "execution_time_ms": 1694
+}
