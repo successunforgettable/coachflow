@@ -27,6 +27,13 @@ import ZappyMascot from "./ZappyMascot";
 import { type WizardStep, STEP_LABELS, getNextStep } from "./v2-constants";
 import V2HeadlinesResultPanel from "./V2HeadlinesResultPanel";
 import V2AdCopyResultPanel from "./V2AdCopyResultPanel";
+import V2ICPResultPanel from "./V2ICPResultPanel";
+import V2OfferResultPanel from "./V2OfferResultPanel";
+import V2UniqueMethodResultPanel from "./V2UniqueMethodResultPanel";
+import V2FreeOptInResultPanel from "./V2FreeOptInResultPanel";
+import V2LandingPageResultPanel from "./V2LandingPageResultPanel";
+import V2EmailSequenceResultPanel from "./V2EmailSequenceResultPanel";
+import V2WhatsAppResultPanel from "./V2WhatsAppResultPanel";
 
 export type { WizardStep };
 
@@ -1258,6 +1265,14 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
   // R1a: set IDs captured from pollJob result — used to render result panels after generation
   const [latestHeadlineSetId, setLatestHeadlineSetId] = useState<string | null>(null);
   const [latestAdSetId, setLatestAdSetId] = useState<string | null>(null);
+  // R1b: set IDs for nodes 2, 3, 4, 5, 8, 9, 10
+  const [latestIcpId, setLatestIcpId] = useState<number | null>(null);
+  const [latestOfferId, setLatestOfferId] = useState<number | null>(null);
+  const [latestMechanismSetId, setLatestMechanismSetId] = useState<string | null>(null);
+  const [latestHvcoSetId, setLatestHvcoSetId] = useState<string | null>(null);
+  const [latestLandingPageId, setLatestLandingPageId] = useState<number | null>(null);
+  const [latestEmailSequenceId, setLatestEmailSequenceId] = useState<number | null>(null);
+  const [latestWhatsappSequenceId, setLatestWhatsappSequenceId] = useState<number | null>(null);
   // ── ICP name input (only for ICP step) ──
   const [icpName, setIcpName] = useState("");
   // ── tRPC utils for cache invalidation ──
@@ -1384,7 +1399,7 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
       setProgressLabel(null);
       // ── Shared polling helper ──
       // onProgress: optional callback fired whenever the job's progress label changes
-      type JobResult = { headlineSetId?: string; adSetId?: string; [key: string]: unknown };
+      type JobResult = { headlineSetId?: string; adSetId?: string; icpId?: number; offerId?: number; mechanismSetId?: string; hvcoSetId?: string; id?: number; [key: string]: unknown };
       const pollJob = (jobId: string, onProgress?: (label: string) => void) => new Promise<JobResult>((resolve, reject) => {
         const pollStart = Date.now();
         const MAX_POLL_MS = 300_000;
@@ -1426,13 +1441,15 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
           serviceId: svcId,
           name: (payload.icpName as string) || (svc?.avatarName ? `${svc.avatarName} Profile` : "My Ideal Customer"),
         });
-        await pollJob(jobId);
+        const icpResult = await pollJob(jobId);
+        if (typeof icpResult.icpId === 'number') setLatestIcpId(icpResult.icpId);
       } else if (step === "offer") {
         const { jobId } = await generateOfferAsync.mutateAsync({
           serviceId: svcId,
           offerType: "premium",
         });
-        await pollJob(jobId);
+        const offerResult = await pollJob(jobId);
+        if (typeof offerResult.offerId === 'number') setLatestOfferId(offerResult.offerId);
       } else if (step === "uniqueMethod") {
         const { jobId } = await generateHeroMechanismAsync.mutateAsync({
           serviceId: svcId,
@@ -1445,14 +1462,16 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
           credibility: svc?.pressFeatures || "",
           socialProof: svc?.socialProofStat || "",
         });
-        await pollJob(jobId);
+        const mechResult = await pollJob(jobId);
+        if (typeof mechResult.mechanismSetId === 'string') setLatestMechanismSetId(mechResult.mechanismSetId);
       } else if (step === "freeOptIn") {
         const { jobId } = await generateHvcoAsync.mutateAsync({
           serviceId: svcId,
           targetMarket: svc?.targetCustomer || "",
           hvcoTopic: svc?.hvcoTopic || svc?.mainBenefit || "",
         });
-        await pollJob(jobId);
+        const hvcoResult = await pollJob(jobId);
+        if (typeof hvcoResult.hvcoSetId === 'string') setLatestHvcoSetId(hvcoResult.hvcoSetId);
       } else if (step === "headlines") {
         const { jobId } = await generateHeadlinesAsync.mutateAsync({
           serviceId: svcId,
@@ -1486,21 +1505,24 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
           serviceId: svcId,
         });
         // Pass onProgress so the LoadingState shows "Generating angle X of 4…" in real time
-        await pollJob(jobId, (label) => setProgressLabel(label));
+        const lpResult = await pollJob(jobId, (label) => setProgressLabel(label));
+        if (typeof lpResult.id === 'number') setLatestLandingPageId(lpResult.id);
       } else if (step === "emailSequence") {
         const { jobId } = await generateEmailSequenceAsync.mutateAsync({
           serviceId: svcId,
           sequenceType: "welcome",
           name: `${svc?.name || "My Service"} — Welcome Sequence`,
         });
-        await pollJob(jobId);
+        const emailResult = await pollJob(jobId);
+        if (typeof emailResult.id === 'number') setLatestEmailSequenceId(emailResult.id);
       } else if (step === "whatsappSequence") {
         const { jobId } = await generateWhatsappSequenceAsync.mutateAsync({
           serviceId: svcId,
           sequenceType: "engagement",
           name: `${svc?.name || "My Service"} — Engagement Sequence`,
         });
-        await pollJob(jobId);
+        const waResult = await pollJob(jobId);
+        if (typeof waResult.id === 'number') setLatestWhatsappSequenceId(waResult.id);
       } else if (step === "pushToMeta") {
         // No generation needed — just show instructions
       }
@@ -1687,6 +1709,76 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
             <V2AdCopyResultPanel
               adSetId={latestAdSetId}
               serviceId={activeService.id}
+              onContinue={() => {
+                const next = getNextStep(step);
+                if (next) navigate(`/v2-dashboard/wizard/${next}`);
+              }}
+            />
+          )}
+          {/* ── R1b: NODE 2 ICP RESULT PANEL ── */}
+          {status === "success" && step === "icp" && latestIcpId && (
+            <V2ICPResultPanel
+              icpId={latestIcpId}
+              onContinue={() => {
+                const next = getNextStep(step);
+                if (next) navigate(`/v2-dashboard/wizard/${next}`);
+              }}
+            />
+          )}
+          {/* ── R1b: NODE 3 OFFER RESULT PANEL ── */}
+          {status === "success" && step === "offer" && latestOfferId && (
+            <V2OfferResultPanel
+              offerId={latestOfferId}
+              onContinue={() => {
+                const next = getNextStep(step);
+                if (next) navigate(`/v2-dashboard/wizard/${next}`);
+              }}
+            />
+          )}
+          {/* ── R1b: NODE 4 UNIQUE METHOD RESULT PANEL ── */}
+          {status === "success" && step === "uniqueMethod" && latestMechanismSetId && (
+            <V2UniqueMethodResultPanel
+              mechanismSetId={latestMechanismSetId}
+              onContinue={() => {
+                const next = getNextStep(step);
+                if (next) navigate(`/v2-dashboard/wizard/${next}`);
+              }}
+            />
+          )}
+          {/* ── R1b: NODE 5 FREE OPT-IN RESULT PANEL ── */}
+          {status === "success" && step === "freeOptIn" && latestHvcoSetId && (
+            <V2FreeOptInResultPanel
+              hvcoSetId={latestHvcoSetId}
+              onContinue={() => {
+                const next = getNextStep(step);
+                if (next) navigate(`/v2-dashboard/wizard/${next}`);
+              }}
+            />
+          )}
+          {/* ── R1b: NODE 8 LANDING PAGE RESULT PANEL ── */}
+          {status === "success" && step === "landingPage" && latestLandingPageId && (
+            <V2LandingPageResultPanel
+              landingPageId={latestLandingPageId}
+              onContinue={() => {
+                const next = getNextStep(step);
+                if (next) navigate(`/v2-dashboard/wizard/${next}`);
+              }}
+            />
+          )}
+          {/* ── R1b: NODE 9 EMAIL SEQUENCE RESULT PANEL ── */}
+          {status === "success" && step === "emailSequence" && latestEmailSequenceId && (
+            <V2EmailSequenceResultPanel
+              emailSequenceId={latestEmailSequenceId}
+              onContinue={() => {
+                const next = getNextStep(step);
+                if (next) navigate(`/v2-dashboard/wizard/${next}`);
+              }}
+            />
+          )}
+          {/* ── R1b: NODE 10 WHATSAPP RESULT PANEL ── */}
+          {status === "success" && step === "whatsappSequence" && latestWhatsappSequenceId && (
+            <V2WhatsAppResultPanel
+              whatsappSequenceId={latestWhatsappSequenceId}
               onContinue={() => {
                 const next = getNextStep(step);
                 if (next) navigate(`/v2-dashboard/wizard/${next}`);
