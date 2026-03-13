@@ -1392,7 +1392,7 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
         pollIntervalRef.current = setInterval(async () => {
           try {
             const res = await fetch(`/api/jobs/${jobId}`);
-            const data = await res.json() as { status: string; result: string | null; error?: string; progress?: { step: number; total: number; label: string } | null };
+            const data = await res.json() as { status: string; result: JobResult | null; error?: string; progress?: { step: number; total: number; label: string } | null };
             // Fire progress callback when label changes
             if (onProgress && data.progress?.label && data.progress.label !== lastLabel) {
               lastLabel = data.progress.label;
@@ -1401,8 +1401,8 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
             if (data.status === "complete") {
               clearInterval(pollIntervalRef.current!);
               pollIntervalRef.current = null;
-              let parsed: JobResult = {};
-              try { if (data.result) parsed = JSON.parse(data.result as string) as JobResult; } catch {}
+              // API already JSON.parses result — use directly
+              const parsed: JobResult = (data.result && typeof data.result === 'object') ? data.result : {};
               console.log('[ZAP R1a] pollJob complete — result payload:', parsed);
               resolve(parsed);
             } else if (data.status === "failed") {
