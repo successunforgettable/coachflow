@@ -21,19 +21,42 @@ interface FaqItem {
   answer: string;
 }
 
-interface AngleContent {
+interface TestimonialItem {
+  name?: string;
+  quote?: string;
   headline?: string;
+  location?: string;
+}
+
+interface ConsultationItem {
+  title?: string;
+  description?: string;
+}
+
+interface QuizSection {
+  question?: string;
+  options?: string[];
+  answer?: string;
+}
+
+// Matches LandingPageContent from drizzle/schema.ts exactly
+interface AngleContent {
+  eyebrowHeadline?: string;
+  mainHeadline?: string;
   subheadline?: string;
-  heroSection?: string;
-  problemSection?: string;
-  solutionSection?: string;
-  mechanismSection?: string;
-  benefitsSection?: string;
-  socialProof?: string;
-  offerSection?: string;
-  ctaSection?: string;
-  closingSection?: string;
-  faqSection?: string | FaqItem[];
+  primaryCta?: string;
+  asSeenIn?: string[];
+  quizSection?: QuizSection | string;
+  problemAgitation?: string;
+  solutionIntro?: string;
+  whyOldFail?: string;
+  uniqueMechanism?: string;
+  testimonials?: TestimonialItem[];
+  insiderAdvantages?: string;
+  scarcityUrgency?: string;
+  shockingStat?: string;
+  timeSavingBenefit?: string;
+  consultationOutline?: ConsultationItem[] | string;
   [key: string]: unknown;
 }
 
@@ -45,18 +68,22 @@ const ANGLE_TABS: { key: AngleKey; label: string }[] = [
 ];
 
 const SECTION_DEFS: { key: keyof AngleContent; label: string }[] = [
-  { key: "headline",         label: "Headline" },
-  { key: "subheadline",      label: "Subheadline" },
-  { key: "heroSection",      label: "Hero Section" },
-  { key: "problemSection",   label: "Problem Section" },
-  { key: "solutionSection",  label: "Solution Section" },
-  { key: "mechanismSection", label: "Mechanism Section" },
-  { key: "benefitsSection",  label: "Benefits Section" },
-  { key: "socialProof",      label: "Social Proof" },
-  { key: "offerSection",     label: "Offer Section" },
-  { key: "ctaSection",       label: "CTA Section" },
-  { key: "closingSection",   label: "Closing Section" },
-  { key: "faqSection",       label: "FAQ Section" },
+  { key: "eyebrowHeadline",    label: "Eyebrow Headline" },
+  { key: "mainHeadline",       label: "Main Headline" },
+  { key: "subheadline",        label: "Subheadline" },
+  { key: "shockingStat",       label: "Shocking Stat" },
+  { key: "problemAgitation",   label: "Problem Agitation" },
+  { key: "solutionIntro",      label: "Solution Intro" },
+  { key: "uniqueMechanism",    label: "Unique Mechanism" },
+  { key: "insiderAdvantages",  label: "Insider Advantages" },
+  { key: "testimonials",       label: "Testimonials" },
+  { key: "timeSavingBenefit",  label: "Time-Saving Benefit" },
+  { key: "primaryCta",         label: "Primary CTA" },
+  { key: "scarcityUrgency",    label: "Scarcity / Urgency" },
+  { key: "asSeenIn",           label: "As Seen In" },
+  { key: "consultationOutline",label: "Consultation Outline" },
+  { key: "quizSection",        label: "Quiz Section" },
+  { key: "whyOldFail",         label: "Why Old Methods Fail" },
 ];
 
 // ─── Shared icon-button style ─────────────────────────────────────────────────
@@ -103,6 +130,33 @@ function FaqContent({ raw }: { raw: unknown }) {
   );
 }
 
+// ─── Serialize complex values to readable text ───────────────────────────────
+function serializeValue(val: unknown): string {
+  if (val === null || val === undefined) return "";
+  if (typeof val === "string") return val;
+  if (Array.isArray(val)) {
+    return val.map((item, i) => {
+      if (typeof item === "string") return `${i + 1}. ${item}`;
+      if (typeof item === "object" && item !== null) {
+        const obj = item as Record<string, unknown>;
+        // Testimonial
+        if (obj.quote) return `${obj.name ?? ""}: "${obj.quote}" — ${obj.location ?? ""}`;
+        // Consultation outline
+        if (obj.title) return `${obj.title}: ${obj.description ?? ""}`;
+        return JSON.stringify(item);
+      }
+      return String(item);
+    }).join("\n\n");
+  }
+  if (typeof val === "object") {
+    const obj = val as Record<string, unknown>;
+    // Quiz section
+    if (obj.question) return `Q: ${obj.question}\nOptions: ${Array.isArray(obj.options) ? obj.options.join(", ") : ""}\nAnswer: ${obj.answer ?? ""}`;
+    return JSON.stringify(val, null, 2);
+  }
+  return String(val);
+}
+
 // ─── Editable section card ────────────────────────────────────────────────────
 function SectionCard({
   label,
@@ -113,8 +167,7 @@ function SectionCard({
   sectionKey: keyof AngleContent;
   initialValue: unknown;
 }) {
-  const isFaq = sectionKey === "faqSection";
-  const textValue = isFaq ? "" : String(initialValue ?? "");
+  const textValue = serializeValue(initialValue);
   const [value, setValue] = useState(textValue);
   const [editing, setEditing] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -145,9 +198,7 @@ function SectionCard({
         {label}
       </p>
 
-      {isFaq ? (
-        <FaqContent raw={initialValue} />
-      ) : editing ? (
+      {editing ? (
         <textarea
           autoFocus
           value={value}
@@ -188,20 +239,18 @@ function SectionCard({
       )}
 
       {/* Controls row */}
-      <div style={{ display: "flex", gap: "8px", marginTop: isFaq ? "10px" : "0", alignItems: "center", flexWrap: "wrap" }}>
-        {!isFaq && (
-          <button
-            onClick={handleCopy}
-            style={{
-              ...iconBtn,
-              background: copied ? "rgba(88,204,2,0.12)" : undefined,
-              borderColor: copied ? "rgba(88,204,2,0.40)" : undefined,
-            }}
-            title="Copy"
-          >
-            {copied ? "✓" : "⎘"}
-          </button>
-        )}
+      <div style={{ display: "flex", gap: "8px", marginTop: "8px", alignItems: "center", flexWrap: "wrap" }}>
+        <button
+          onClick={handleCopy}
+          style={{
+            ...iconBtn,
+            background: copied ? "rgba(88,204,2,0.12)" : undefined,
+            borderColor: copied ? "rgba(88,204,2,0.40)" : undefined,
+          }}
+          title="Copy"
+        >
+          {copied ? "✓" : "⎘"}
+        </button>
         <button
           onClick={() => toast.info("Individual section regeneration coming in Phase L")}
           style={{
@@ -377,7 +426,7 @@ export default function V2LandingPageResultPanel({
             color: "#777",
             margin: "3px 0 0",
           }}>
-            {lp.productName || "Your Product"} — 4 angles × 12 sections
+            {lp.productName || "Your Product"} — 4 angles × 16 sections
           </p>
         </div>
       </div>

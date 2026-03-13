@@ -4,7 +4,7 @@
  * Flat list of 7 WhatsApp message cards.
  * Each card: timing badge, message text, emojis inline, copy, thumbs-up,
  * thumbs-down, star (UI state only), Regenerate Message (Phase L toast).
- * Uses msg.message (not msg.text) per confirmed DB schema.
+ * Uses msg.text per confirmed live DB field name (not msg.message).
  */
 import { useState } from "react";
 import { trpc } from "../lib/trpc";
@@ -13,10 +13,15 @@ import ZappyMascot from "./ZappyMascot";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface WhatsAppMessage {
-  day: number;
-  message: string;
-  timing: string;
-  emojis: string[];
+  delay?: number;
+  delayUnit?: string;
+  mediaType?: string | null;
+  mediaUrl?: string | null;
+  text?: string;
+  // legacy field name — some older records may use 'message'
+  message?: string;
+  timing?: string;
+  emojis?: string[];
 }
 
 // ─── Shared icon-button style ─────────────────────────────────────────────────
@@ -43,7 +48,9 @@ function MessageCard({ msg, index }: { msg: WhatsAppMessage; index: number }) {
   const [starred, setStarred]     = useState(false);
 
   const emojis = Array.isArray(msg.emojis) ? msg.emojis : [];
-  const fullText = `${msg.message}${emojis.length ? " " + emojis.join(" ") : ""}`;
+  // DB stores field as 'text'; older records may use 'message'
+  const messageText = msg.text ?? msg.message ?? "";
+  const fullText = `${messageText}${emojis.length ? " " + emojis.join(" ") : ""}`;
 
   function handleCopy() {
     navigator.clipboard.writeText(fullText).catch(() => {});
@@ -96,7 +103,7 @@ function MessageCard({ msg, index }: { msg: WhatsAppMessage; index: number }) {
         margin: "0 0 12px",
         whiteSpace: "pre-wrap",
       }}>
-        {msg.message}
+        {messageText}
         {emojis.length > 0 && (
           <span style={{ marginLeft: "6px", fontSize: "16px" }}>
             {emojis.join(" ")}
