@@ -340,7 +340,7 @@ Return as a JSON object with a 'messages' key containing the array.`;
         throw new Error("LLM did not return a valid messages array");
       }
       sequenceData.messages = sequenceData.messages.map((msg: any, idx: number) => ({
-        text: msg.text || `Message ${idx + 1}: Check this out`,
+        text: msg.message || msg.text || `Message ${idx + 1}: Check this out`,
         delay: msg.delay || (idx * 24),
         delayUnit: msg.delayUnit || 'hours',
         mediaUrl: msg.mediaUrl || null,
@@ -432,7 +432,7 @@ Return as a JSON object with a 'messages' key containing the array.`;
           let sequenceData = JSON.parse(stripMarkdownJson(content));
           if (Array.isArray(sequenceData)) sequenceData = { messages: sequenceData };
           if (!sequenceData.messages || !Array.isArray(sequenceData.messages)) throw new Error("LLM did not return a valid messages array");
-          sequenceData.messages = sequenceData.messages.map((msg: any, idx: number) => ({ text: msg.text || `Message ${idx + 1}: Check this out`, delay: msg.delay || (idx * 24), delayUnit: msg.delayUnit || 'hours', mediaUrl: msg.mediaUrl || null, mediaType: msg.mediaType || null }));
+          sequenceData.messages = sequenceData.messages.map((msg: any, idx: number) => ({ text: msg.message || msg.text || `Message ${idx + 1}: Check this out`, delay: msg.delay || (idx * 24), delayUnit: msg.delayUnit || 'hours', mediaUrl: msg.mediaUrl || null, mediaType: msg.mediaType || null }));
 
           const insertResult: any = await bgDb.insert(whatsappSequences).values({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, sequenceType: capturedInput.sequenceType, name: capturedInput.name, messages: sequenceData.messages });
           const [newSequence] = await bgDb.select().from(whatsappSequences).where(eq(whatsappSequences.id, insertResult[0].insertId)).limit(1);
