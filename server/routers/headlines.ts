@@ -570,4 +570,43 @@ export const headlinesRouter = router({
       await deleteHeadlineSet(input.headlineSetId, ctx.user.id);
       return { success: true };
     }),
+
+  // Get the most recent headline set for a given serviceId (V2 results panel revisit)
+  getLatestByServiceId: protectedProcedure
+    .input(z.object({ serviceId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const { getDb } = await import("../db");
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      const { headlines: headlinesTable } = await import("../../drizzle/schema");
+      const { eq, and, desc } = await import("drizzle-orm");
+      const [latest] = await db
+        .select({ headlineSetId: headlinesTable.headlineSetId })
+        .from(headlinesTable)
+        .where(and(eq(headlinesTable.userId, ctx.user.id), eq(headlinesTable.serviceId, input.serviceId)))
+        .orderBy(desc(headlinesTable.createdAt))
+        .limit(1);
+      if (!latest) return null;
+      const rows = await getHeadlinesBySetId(latest.headlineSetId, ctx.user.id);
+      if (rows.length === 0) return null;
+      const grouped = {
+        story:     rows.filter(h => h.formulaType === "story"),
+        eyebrow:   rows.filter(h => h.formulaType === "eyebrow"),
+        question:  rows.filter(h => h.formulaType === "question"),
+        authority: rows.filter(h => h.formulaType === "authority"),
+        urgency:   rows.filter(h => h.formulaType === "urgency"),
+      };
+      return {
+        headlineSetId: latest.headlineSetId,
+        headlines: grouped,
+        metadata: {
+          serviceId: rows[0].serviceId,
+          targetMarket: rows[0].targetMarket,
+          pressingProblem: rows[0].pressingProblem,
+          desiredOutcome: rows[0].desiredOutcome,
+          uniqueMechanism: rows[0].uniqueMechanism,
+          createdAt: rows[0].createdAt,
+        },
+      };
+    }),
 });

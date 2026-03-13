@@ -912,4 +912,43 @@ Format as JSON array:
 
       return { success: true };
     }),
+
+  // Get the most recent ad set for a given serviceId (V2 results panel revisit)
+  getLatestByServiceId: protectedProcedure
+    .input(z.object({ serviceId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      // Find the most recent adSetId for this user + service
+      const [latest] = await db
+        .select({ adSetId: adCopy.adSetId })
+        .from(adCopy)
+        .where(and(eq(adCopy.userId, ctx.user.id), eq(adCopy.serviceId, input.serviceId)))
+        .orderBy(desc(adCopy.createdAt))
+        .limit(1);
+      if (!latest) return null;
+      const ads = await db
+        .select()
+        .from(adCopy)
+        .where(and(eq(adCopy.adSetId, latest.adSetId), eq(adCopy.userId, ctx.user.id)))
+        .orderBy(desc(adCopy.createdAt));
+      if (ads.length === 0) return null;
+      return {
+        adSetId: ads[0].adSetId,
+        adType: ads[0].adType,
+        serviceId: ads[0].serviceId,
+        campaignId: ads[0].campaignId,
+        adStyle: ads[0].adStyle,
+        adCallToAction: ads[0].adCallToAction,
+        targetMarket: ads[0].targetMarket,
+        productCategory: ads[0].productCategory,
+        specificProductName: ads[0].specificProductName,
+        pressingProblem: ads[0].pressingProblem,
+        desiredOutcome: ads[0].desiredOutcome,
+        createdAt: ads[0].createdAt,
+        headlines: ads.filter(a => a.contentType === "headline"),
+        bodies:    ads.filter(a => a.contentType === "body"),
+        links:     ads.filter(a => a.contentType === "link"),
+      };
+    }),
 });

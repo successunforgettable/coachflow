@@ -25,6 +25,8 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import V2Layout from "./V2Layout";
 import ZappyMascot from "./ZappyMascot";
 import { type WizardStep, STEP_LABELS, getNextStep } from "./v2-constants";
+import V2HeadlinesResultPanel from "./V2HeadlinesResultPanel";
+import V2AdCopyResultPanel from "./V2AdCopyResultPanel";
 
 export type { WizardStep };
 
@@ -1253,6 +1255,9 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
   const [complianceViolations, setComplianceViolations] = useState<string[]>([]);
   // Real-time progress label from background job (e.g. "Generating angle 1 of 4…")
   const [progressLabel, setProgressLabel] = useState<string | null>(null);
+  // R1a: set IDs captured from pollJob result — used to render result panels after generation
+  const [latestHeadlineSetId, setLatestHeadlineSetId] = useState<string | null>(null);
+  const [latestAdSetId, setLatestAdSetId] = useState<string | null>(null);
   // ── ICP name input (only for ICP step) ──
   const [icpName, setIcpName] = useState("");
   // ── tRPC utils for cache invalidation ──
@@ -1379,14 +1384,15 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
       setProgressLabel(null);
       // ── Shared polling helper ──
       // onProgress: optional callback fired whenever the job's progress label changes
-      const pollJob = (jobId: string, onProgress?: (label: string) => void) => new Promise<void>((resolve, reject) => {
+      type JobResult = { headlineSetId?: string; adSetId?: string; [key: string]: unknown };
+      const pollJob = (jobId: string, onProgress?: (label: string) => void) => new Promise<JobResult>((resolve, reject) => {
         const pollStart = Date.now();
         const MAX_POLL_MS = 300_000;
         let lastLabel: string | undefined;
         pollIntervalRef.current = setInterval(async () => {
           try {
             const res = await fetch(`/api/jobs/${jobId}`);
-            const data = await res.json() as { status: string; result: unknown; error?: string; progress?: { step: number; total: number; label: string } | null };
+            const data = await res.json() as { status: string; result: string | null; error?: string; progress?: { step: number; total: number; label: string } | null };
             // Fire progress callback when label changes
             if (onProgress && data.progress?.label && data.progress.label !== lastLabel) {
               lastLabel = data.progress.label;
@@ -1395,7 +1401,10 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
             if (data.status === "complete") {
               clearInterval(pollIntervalRef.current!);
               pollIntervalRef.current = null;
-              resolve();
+              let parsed: JobResult = {};
+              try { if (data.result) parsed = JSON.parse(data.result as string) as JobResult; } catch {}
+              console.log('[ZAP R1a] pollJob complete — result payload:', parsed);
+              resolve(parsed);
             } else if (data.status === "failed") {
               clearInterval(pollIntervalRef.current!);
               pollIntervalRef.current = null;
@@ -1452,7 +1461,10 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
           desiredOutcome: svc?.mainBenefit || "",
           uniqueMechanism: svc?.uniqueMechanismSuggestion || "",
         });
-        await pollJob(jobId);
+        const headlineResult = await pollJob(jobId);
+        if (headlineResult.headlineSetId) {
+          setLatestHeadlineSetId(headlineResult.headlineSetId);
+        }
       } else if (step === "adCopy") {
         const { jobId } = await generateAdCopyAsync.mutateAsync({
           serviceId: svcId,
@@ -1465,7 +1477,10 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
           pressingProblem: svc?.painPoints || "",
           desiredOutcome: svc?.mainBenefit || "",
         });
-        await pollJob(jobId);
+        const adCopyResult = await pollJob(jobId);
+        if (adCopyResult.adSetId) {
+          setLatestAdSetId(adCopyResult.adSetId);
+        }
       } else if (step === "landingPage") {
         const { jobId } = await generateLandingPageAsync.mutateAsync({
           serviceId: svcId,
@@ -1654,6 +1669,28 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
               score={complianceScore}
               nextStepUrl={(() => { const next = getNextStep(step); return next ? `/v2-dashboard/wizard/${next}` : null; })()}
               isLastStep={step === "pushToMeta"}
+            />
+          )}
+          {/* ── R1a: NODE 6 HEADLINES RESULT PANEL ── */}
+          {status === "success" && step === "headlines" && latestHeadlineSetId && activeService && (
+            <V2HeadlinesResultPanel
+              headlineSetId={latestHeadlineSetId}
+              serviceId={activeService.id}
+              onContinue={() => {
+                const next = getNextStep(step);
+                if (next) navigate(`/v2-dashboard/wizard/${next}`);
+              }}
+            />
+          )}
+          {/* ── R1a: NODE 7 AD COPY RESULT PANEL ── */}
+          {status === "success" && step === "adCopy" && latestAdSetId && activeService && (
+            <V2AdCopyResultPanel
+              adSetId={latestAdSetId}
+              serviceId={activeService.id}
+              onContinue={() => {
+                const next = getNextStep(step);
+                if (next) navigate(`/v2-dashboard/wizard/${next}`);
+              }}
             />
           )}
 
