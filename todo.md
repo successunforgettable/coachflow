@@ -348,8 +348,8 @@
 - [x] headlines.ts — raise targetMarket max() from max(255) to max(1000)
 
 ## R1a — Node 6 & Node 7 Results Panels (Mar 14, 2026)
-- [ ] server/routers/headlines.ts — add getLatestByServiceId query procedure
-- [ ] server/routers/adCopy.ts — add getLatestByServiceId query procedure
-- [ ] client/src/v2/V2HeadlinesResultPanel.tsx — new file: 5-tab panel (Story/Eyebrow/Question/Authority/Urgency), per-card copy/thumbs/star/compliance badge, fixed Continue button
-- [ ] client/src/v2/V2AdCopyResultPanel.tsx — new file: 3-tab panel (Headlines/Body Copy/Links), angle pill badge, compliance badge, Publish to Meta toast, fixed Continue button
-- [ ] client/src/v2/V2GeneratorWizard.tsx — pollJob resolves with data.result, store headlineSetId/adSetId state, render result panels below success state for Node 6 and Node 7
+- [x] server/routers/headlines.ts — add getLatestByServiceId query procedure
+- [x] server/routers/adCopy.ts — add getLatestByServiceId query procedure
+- [x] client/src/v2/V2HeadlinesResultPanel.tsx — new file: 5-tab panel (Story/Eyebrow/Question/Authority/Urgency), per-card copy/thumbs/star/compliance badge, fixed Continue button
+- [x] client/src/v2/V2AdCopyResultPanel.tsx — new file: 3-tab panel (Headlines/Body Copy/Links), angle pill badge, compliance badge, Publish to Meta toast, fixed Continue button
+- [x] client/src/v2/V2GeneratorWizard.tsx — pollJob resolves with data.result, store headlineSetId/adSetId state, render result panels below success state for Node 6 and Node 7

@@ -1,0 +1,20 @@
+{
+  "query": "SELECT * FROM jobs WHERE status = 'complete' ORDER BY created_at DESC LIMIT 2;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT * FROM jobs WHERE status = 'complete' ORDER BY created_at DESC LIMIT 2;",
+  "rows": [
+    {
+      "id": "3adf1c08-11ac-4ce4-9349-bb2efb190ed3",
+      "status": "complete",
+      "result": "{\"headlineSetId\":\"AMieSEKYI4pKdNzAX_KtR\",\"count\":25}",
+      "error": "NULL",
+      "created_at": "2026-03-13 21:36:50",
+      "userId": "6720069",
+      "progress": "NULL",
+      "retry_count": "0"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tstatus\tresult\terror\tcreated_at\tuserId\tprogress\tretry_count\n3adf1c08-11ac-4ce4-9349-bb2efb190ed3\tcomplete\t{\"headlineSetId\":\"AMieSEKYI4pKdNzAX_KtR\",\"count\":25}\tNULL\t2026-03-13 21:36:50\t6720069\tNULL\t0\n",
+  "stderr": "",
+  "execution_time_ms": 1587
+}
