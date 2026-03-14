@@ -4,6 +4,7 @@ import { getDb } from "../db";
 import { services } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { invokeLLM } from "../_core/llm";
+import { filterRecord, getGlobalNegativePrompts } from "../lib/complianceFilter";
 
 const createServiceSchema = z.object({
   name: z.string().min(1, "Name is required").max(255),
@@ -271,25 +272,33 @@ Return JSON with these exact fields:
       };
       const trunc = normalize; // alias for clarity
 
+      // Compliance pre-filter on AI-generated service fields before DB write
+      const SERVICE_FILTER_FIELDS = ["painPoints", "targetCustomer", "description", "mainBenefit", "falseBeliefsVsRealReasons", "failedSolutions", "hiddenReasons"];
+      const { cleaned: cleanedServiceData, classification: serviceClassification, allFlaggedTerms: serviceFlaggedTerms } = filterRecord(expanded, SERVICE_FILTER_FIELDS);
+      if (serviceClassification === "REJECTED") {
+        throw new Error(`Generated service content contained prohibited language. Please regenerate. Flagged: ${serviceFlaggedTerms.join("; ")}`);
+      }
+      const filteredExpanded = { ...expanded, ...cleanedServiceData };
+
       // Map LLM field names to DB column names.
       // Only overwrite fields that were empty — never overwrite user-filled content.
       // Truncate to column limits: text = 65535, varchar(300) = 300, varchar(100) = 100
       const updateFields: Record<string, string> = {
         // Always overwrite deep-research fields (not user-editable in the form)
-        painPoints: trunc(expanded.painPoints, 65535),
-        falseBeliefsVsRealReasons: trunc(expanded.falseBeliefsVsRealReasons, 65535),
-        failedSolutions: trunc(expanded.failedSolutions, 65535),
-        hiddenReasons: trunc(expanded.hiddenReasons, 65535),
-        whyProblemExists: trunc(expanded.whyProblemExists, 65535),
-        riskReversal: trunc(expanded.riskReversalSuggestion, 65535),
-        avatarName: trunc(expanded.avatarName, 100),
-        avatarTitle: trunc(expanded.avatarTitle, 100),
+        painPoints: trunc(filteredExpanded.painPoints, 65535),
+        falseBeliefsVsRealReasons: trunc(filteredExpanded.falseBeliefsVsRealReasons, 65535),
+        failedSolutions: trunc(filteredExpanded.failedSolutions, 65535),
+        hiddenReasons: trunc(filteredExpanded.hiddenReasons, 65535),
+        whyProblemExists: trunc(filteredExpanded.whyProblemExists, 65535),
+        riskReversal: trunc(filteredExpanded.riskReversalSuggestion, 65535),
+        avatarName: trunc(filteredExpanded.avatarName, 100),
+        avatarTitle: trunc(filteredExpanded.avatarTitle, 100),
         // Only overwrite user-visible fields if they were empty
-        ...(needsDescription && expanded.description ? { description: trunc(expanded.description, 65535) } : {}),
-        ...(needsTargetCustomer && expanded.targetCustomer ? { targetCustomer: trunc(expanded.targetCustomer, 65535) } : {}),
-        ...(needsMainBenefit && expanded.mainBenefit ? { mainBenefit: trunc(expanded.mainBenefit, 65535) } : {}),
-        uniqueMechanismSuggestion: trunc(expanded.uniqueMechanismSuggestion, 65535),
-        hvcoTopic: trunc(expanded.hvcoTopicSuggestion, 300),
+        ...(needsDescription && filteredExpanded.description ? { description: trunc(filteredExpanded.description, 65535) } : {}),
+        ...(needsTargetCustomer && filteredExpanded.targetCustomer ? { targetCustomer: trunc(filteredExpanded.targetCustomer, 65535) } : {}),
+        ...(needsMainBenefit && filteredExpanded.mainBenefit ? { mainBenefit: trunc(filteredExpanded.mainBenefit, 65535) } : {}),
+        uniqueMechanismSuggestion: trunc(filteredExpanded.uniqueMechanismSuggestion, 65535),
+        hvcoTopic: trunc(filteredExpanded.hvcoTopicSuggestion, 300),
       };
 
       // REQUIREMENT 3: Save to DB BEFORE returning — persists even if user skips review

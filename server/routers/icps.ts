@@ -9,6 +9,7 @@ function stripMarkdownJson(content: string): string {
 }
 import { eq, and, desc } from "drizzle-orm";
 import { invokeLLM } from "../_core/llm";
+import { filterRecord, getGlobalNegativePrompts } from "../lib/complianceFilter";
 import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
@@ -185,7 +186,7 @@ Format as JSON with these exact keys (use bullet points • for lists):
           {
             role: "system",
             content:
-              "You are an expert marketing strategist specializing in creating detailed customer profiles for coaches, speakers, and consultants. Always respond with valid JSON.",
+              `You are an expert marketing strategist specializing in creating detailed customer profiles for coaches, speakers, and consultants. Always respond with valid JSON. Never produce content containing: ${getGlobalNegativePrompts().join(", ")}.`,
           },
           { role: "user", content: prompt },
         ],
@@ -267,6 +268,14 @@ Format as JSON with these exact keys (use bullet points • for lists):
       }
       const icpData = JSON.parse(stripMarkdownJson(content));
 
+      // Compliance pre-filter before DB write
+      const ICP_FILTER_FIELDS = ["introduction", "fears", "hopesDreams", "pains", "frustrations", "goals", "objections", "buyingTriggers"];
+      const { cleaned: cleanedIcpData, classification: icpClassification, allFlaggedTerms: icpFlaggedTerms } = filterRecord(icpData as Record<string, unknown>, ICP_FILTER_FIELDS);
+      if (icpClassification === "REJECTED") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: `Some generated content contained prohibited language and could not be saved. Please regenerate. Flagged: ${icpFlaggedTerms.join("; ")}` });
+      }
+      const filteredIcpData = { ...icpData, ...cleanedIcpData };
+
       // Save to database - ALL 17 sections
       const insertResult: any = await db
         .insert(idealCustomerProfiles)
@@ -276,27 +285,27 @@ Format as JSON with these exact keys (use bullet points • for lists):
           campaignId: input.campaignId,
           name: input.name,
           // 17 tabs
-          introduction: icpData.introduction,
-          fears: icpData.fears,
-          hopesDreams: icpData.hopesDreams,
-          demographics: icpData.demographics,
-          psychographics: icpData.psychographics,
-          pains: icpData.pains,
-          frustrations: icpData.frustrations,
-          goals: icpData.goals,
-          values: icpData.values,
-          objections: icpData.objections,
-          buyingTriggers: icpData.buyingTriggers,
-          mediaConsumption: icpData.mediaConsumption,
-          influencers: icpData.influencers,
-          communicationStyle: icpData.communicationStyle,
-          decisionMaking: icpData.decisionMaking,
-          successMetrics: icpData.successMetrics,
-          implementationBarriers: icpData.implementationBarriers,
+          introduction: filteredIcpData.introduction,
+          fears: filteredIcpData.fears,
+          hopesDreams: filteredIcpData.hopesDreams,
+          demographics: filteredIcpData.demographics,
+          psychographics: filteredIcpData.psychographics,
+          pains: filteredIcpData.pains,
+          frustrations: filteredIcpData.frustrations,
+          goals: filteredIcpData.goals,
+          values: filteredIcpData.values,
+          objections: filteredIcpData.objections,
+          buyingTriggers: filteredIcpData.buyingTriggers,
+          mediaConsumption: filteredIcpData.mediaConsumption,
+          influencers: filteredIcpData.influencers,
+          communicationStyle: filteredIcpData.communicationStyle,
+          decisionMaking: filteredIcpData.decisionMaking,
+          successMetrics: filteredIcpData.successMetrics,
+          implementationBarriers: filteredIcpData.implementationBarriers,
           // Legacy fields for backward compatibility
-          painPoints: icpData.pains, // Map to old field
-          desiredOutcomes: icpData.goals, // Map to old field
-          valuesMotivations: icpData.values, // Map to old field
+          painPoints: filteredIcpData.pains, // Map to old field
+          desiredOutcomes: filteredIcpData.goals, // Map to old field
+          valuesMotivations: filteredIcpData.values, // Map to old field
         });
 
       // Fetch the created ICP
@@ -347,7 +356,7 @@ Format as JSON with these exact keys (use bullet points • for lists):
 
           const response = await invokeLLM({
             messages: [
-              { role: "system", content: "You are an expert marketing strategist specializing in creating detailed customer profiles for coaches, speakers, and consultants. Always respond with valid JSON." },
+              { role: "system", content: `You are an expert marketing strategist specializing in creating detailed customer profiles for coaches, speakers, and consultants. Always respond with valid JSON. Never produce content containing: ${getGlobalNegativePrompts().join(", ")}.` },
               { role: "user", content: prompt },
             ],
             response_format: { type: "json_schema", json_schema: { name: "ideal_customer_profile_17_tabs", strict: true, schema: { type: "object", properties: { introduction: { type: "string" }, fears: { type: "string" }, hopesDreams: { type: "string" }, demographics: { type: "object", properties: { age_range: { type: "string" }, gender: { type: "string" }, income_level: { type: "string" }, education: { type: "string" }, occupation: { type: "string" }, location: { type: "string" }, family_status: { type: "string" } }, required: ["age_range","gender","income_level","education","occupation","location","family_status"], additionalProperties: false }, psychographics: { type: "string" }, pains: { type: "string" }, frustrations: { type: "string" }, goals: { type: "string" }, values: { type: "string" }, objections: { type: "string" }, buyingTriggers: { type: "string" }, mediaConsumption: { type: "string" }, influencers: { type: "string" }, communicationStyle: { type: "string" }, decisionMaking: { type: "string" }, successMetrics: { type: "string" }, implementationBarriers: { type: "string" } }, required: ["introduction","fears","hopesDreams","demographics","psychographics","pains","frustrations","goals","values","objections","buyingTriggers","mediaConsumption","influencers","communicationStyle","decisionMaking","successMetrics","implementationBarriers"], additionalProperties: false } } },
@@ -357,31 +366,39 @@ Format as JSON with these exact keys (use bullet points • for lists):
           if (typeof content !== 'string') throw new Error('Invalid response format from AI');
           const icpData = JSON.parse(stripMarkdownJson(content));
 
+          // Compliance pre-filter before DB write (async path)
+          const ICP_FILTER_FIELDS_ASYNC = ["introduction", "fears", "hopesDreams", "pains", "frustrations", "goals", "objections", "buyingTriggers"];
+          const { cleaned: cleanedIcpDataAsync, classification: icpClassificationAsync, allFlaggedTerms: icpFlaggedTermsAsync } = filterRecord(icpData as Record<string, unknown>, ICP_FILTER_FIELDS_ASYNC);
+          if (icpClassificationAsync === "REJECTED") {
+            throw new Error(`Some generated content contained prohibited language and could not be saved. Flagged: ${icpFlaggedTermsAsync.join("; ")}`);
+          }
+          const filteredIcpDataAsync = { ...icpData, ...cleanedIcpDataAsync };
+
           const insertResult: any = await bgDb.insert(idealCustomerProfiles).values({
             userId: capturedUserId,
             serviceId: capturedInput.serviceId,
             campaignId: capturedInput.campaignId,
             name: capturedInput.name,
-            introduction: icpData.introduction,
-            fears: icpData.fears,
-            hopesDreams: icpData.hopesDreams,
-            demographics: icpData.demographics,
-            psychographics: icpData.psychographics,
-            pains: icpData.pains,
-            frustrations: icpData.frustrations,
-            goals: icpData.goals,
-            values: icpData.values,
-            objections: icpData.objections,
-            buyingTriggers: icpData.buyingTriggers,
-            mediaConsumption: icpData.mediaConsumption,
-            influencers: icpData.influencers,
-            communicationStyle: icpData.communicationStyle,
-            decisionMaking: icpData.decisionMaking,
-            successMetrics: icpData.successMetrics,
-            implementationBarriers: icpData.implementationBarriers,
-            painPoints: icpData.pains,
-            desiredOutcomes: icpData.goals,
-            valuesMotivations: icpData.values,
+            introduction: filteredIcpDataAsync.introduction,
+            fears: filteredIcpDataAsync.fears,
+            hopesDreams: filteredIcpDataAsync.hopesDreams,
+            demographics: filteredIcpDataAsync.demographics,
+            psychographics: filteredIcpDataAsync.psychographics,
+            pains: filteredIcpDataAsync.pains,
+            frustrations: filteredIcpDataAsync.frustrations,
+            goals: filteredIcpDataAsync.goals,
+            values: filteredIcpDataAsync.values,
+            objections: filteredIcpDataAsync.objections,
+            buyingTriggers: filteredIcpDataAsync.buyingTriggers,
+            mediaConsumption: filteredIcpDataAsync.mediaConsumption,
+            influencers: filteredIcpDataAsync.influencers,
+            communicationStyle: filteredIcpDataAsync.communicationStyle,
+            decisionMaking: filteredIcpDataAsync.decisionMaking,
+            successMetrics: filteredIcpDataAsync.successMetrics,
+            implementationBarriers: filteredIcpDataAsync.implementationBarriers,
+            painPoints: filteredIcpDataAsync.pains,
+            desiredOutcomes: filteredIcpDataAsync.goals,
+            valuesMotivations: filteredIcpDataAsync.values,
           });
 
           const [newICP] = await bgDb.select().from(idealCustomerProfiles)
