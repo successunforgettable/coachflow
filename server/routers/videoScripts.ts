@@ -5,7 +5,9 @@
 import { z } from "zod";
 import { router, protectedProcedure } from "../_core/trpc";
 import { getDb } from "../db";
-import { videoScripts, services } from "../../drizzle/schema";
+import { videoScripts, services, jobs } from "../../drizzle/schema";
+import { randomUUID } from "crypto";
+import { TRPCError } from "@trpc/server";
 import { eq, and, desc } from "drizzle-orm";
 import { invokeLLM } from "../_core/llm";
 
@@ -994,6 +996,124 @@ export const videoScriptsRouter = router({
       creditCost: getCreditCost(s.duration),
     }));
   }),
+
+  /**
+   * generateAsync — wraps the synchronous generate in the standard V2 background
+   * job pattern. Returns jobId immediately; script generation runs via setImmediate.
+   * On completion stores { scriptId, scenes, voiceoverText, creditCost } in jobs.result.
+   */
+  generateAsync: protectedProcedure
+    .input(
+      z.object({
+        serviceId: z.number(),
+        campaignId: z.number().optional(),
+        videoType: z.enum(["explainer", "proof_results", "testimonial", "mechanism_reveal"]),
+        duration: z.enum(["15", "30", "60", "90"]),
+        visualStyle: z.enum(["text_only", "kinetic_typography", "motion_graphics", "stats_card"]),
+      })
+    )
+    .mutation(async ({ ctx, input }: { ctx: any; input: any }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      // Pre-fetch service data synchronously before setImmediate
+      const [service] = await db
+        .select()
+        .from(services)
+        .where(and(eq(services.id, input.serviceId), eq(services.userId, ctx.user.id)))
+        .limit(1);
+      if (!service) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Service not found" });
+      }
+      const capturedUserId = ctx.user.id;
+      const capturedInput = { ...input };
+      const capturedService = { ...service };
+      // Create job record
+      const jobId = randomUUID();
+      await db.insert(jobs).values({ id: jobId, userId: String(capturedUserId), status: "pending" });
+      // Fire background generation
+      setImmediate(async () => {
+        try {
+          const { getDb: getDbBg } = await import("../db");
+          const { eq: eqBg } = await import("drizzle-orm");
+          const bgDb = await getDbBg();
+          if (!bgDb) throw new Error("Database not available in background job");
+          const { videoScripts: videoScriptsTable, jobs: jobsTable } = await import("../../drizzle/schema");
+          // Use the exact V1 prompt verbatim
+          const prompt = buildScriptPrompt(
+            capturedInput.videoType,
+            parseInt(capturedInput.duration),
+            capturedService
+          );
+          const { invokeLLM: invokeLLMBg } = await import("../_core/llm");
+          const response = await invokeLLMBg({
+            messages: [{ role: "user", content: prompt }],
+            maxTokens: 2000,
+          });
+          const rawContent = response.choices[0]?.message?.content;
+          if (!rawContent || typeof rawContent !== "string") throw new Error("Invalid AI response");
+          const cleaned = rawContent.replace(/```json|```/g, "").trim();
+          let parsed: any;
+          try {
+            parsed = JSON.parse(cleaned);
+          } catch {
+            throw new Error("Script generation failed — LLM did not return valid JSON");
+          }
+          if (!parsed.scenes || parsed.scenes.length !== 5) {
+            throw new Error(`Invalid script structure — expected 5 scenes, got ${parsed.scenes?.length ?? 0}`);
+          }
+          const totalWords = parsed.scenes.reduce(
+            (sum: number, s: any) => sum + (s.voiceoverText?.trim().split(/\s+/).length || 0),
+            0
+          );
+          if (totalWords > 150) {
+            throw new Error(`Script too long: ${totalWords} words. Maximum 150.`);
+          }
+          const voiceoverText = parsed.scenes.map((s: any) => s.voiceoverText).join(" ");
+          const enrichedScenes = parsed.scenes.map((s: any, i: number) =>
+            i === 0
+              ? { ...s, _angle: parsed.angle, _nicheWorld: parsed.nicheWorld, _wordCount: totalWords }
+              : s
+          );
+          const [record] = await bgDb.insert(videoScriptsTable).values({
+            userId: capturedUserId,
+            serviceId: capturedInput.serviceId,
+            campaignId: capturedInput.campaignId ?? null,
+            videoType: capturedInput.videoType,
+            duration: capturedInput.duration,
+            visualStyle: capturedInput.visualStyle,
+            scenes: enrichedScenes,
+            voiceoverText,
+            status: "draft",
+          });
+          const scriptId = (record as any).insertId;
+          const creditCost = getCreditCost(capturedInput.duration);
+          await bgDb
+            .update(jobsTable)
+            .set({
+              status: "complete",
+              result: JSON.stringify({ scriptId, scenes: enrichedScenes, voiceoverText, creditCost }),
+            })
+            .where(eqBg(jobsTable.id, jobId));
+          console.log(`[videoScripts.generateAsync] Job ${jobId} complete — scriptId: ${scriptId}`);
+        } catch (err: unknown) {
+          const errorMessage = err instanceof Error ? err.message : String(err);
+          console.error(`[videoScripts.generateAsync] Job ${jobId} failed:`, errorMessage);
+          try {
+            const { getDb: getDbBg2 } = await import("../db");
+            const { eq: eqBg2 } = await import("drizzle-orm");
+            const { jobs: jobsTable2 } = await import("../../drizzle/schema");
+            const bgDb2 = await getDbBg2();
+            if (bgDb2) {
+              await bgDb2
+                .update(jobsTable2)
+                .set({ status: "failed", error: errorMessage.slice(0, 1024) })
+                .where(eqBg2(jobsTable2.id, jobId));
+            }
+          } catch { /* ignore */ }
+        }
+      });
+      return { jobId };
+    }),
 });
 
 // Export helper functions for campaign batch generation

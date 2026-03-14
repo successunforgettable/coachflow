@@ -10,6 +10,7 @@ import { useLocation } from "wouter";
 import ZappyMascot from "./ZappyMascot";
 import { trpc } from "@/lib/trpc";
 import V2AdImageCreator from "./V2AdImageCreator";
+import V2VideoCreator from "./V2VideoCreator";
 
 // ─── Generator definitions ────────────────────────────────────────────────────
 const GENERATORS = [
@@ -72,6 +73,12 @@ const GENERATORS = [
     name: "Ad Images",
     description: "5 scroll-stopping ad image variations — tabloid aesthetic, Meta-compliant headlines, ready to download.",
     emoji: "🖼️",
+  },
+  {
+    step: "videoCreator",
+    name: "Video Creator",
+    description: "AI-generated video ads with voiceover and motion graphics — script first (free), then render with credits.",
+    emoji: "🎬",
   },
 ];
 
@@ -198,6 +205,11 @@ export default function V2ToolLibrary() {
     // Ad Images opens inline in the Tool Library (no route change)
     if (step === "adImages") {
       setOpenPanel("adImages");
+      return;
+    }
+    // Video Creator opens inline in the Tool Library (no route change)
+    if (step === "videoCreator") {
+      setOpenPanel("videoCreator");
       return;
     }
     // Pass selected ICP id as query param so wizard can use it
@@ -452,7 +464,6 @@ export default function V2ToolLibrary() {
       {/* ── Ad Images inline panel ── */}
       {openPanel === "adImages" && (
         <div style={{ marginBottom: "32px" }}>
-          {/* Back button */}
           <button
             onClick={() => setOpenPanel(null)}
             style={{
@@ -472,6 +483,31 @@ export default function V2ToolLibrary() {
             ← Back to Tool Library
           </button>
           <V2AdImageCreator />
+        </div>
+      )}
+
+      {/* ── Video Creator inline panel ── */}
+      {openPanel === "videoCreator" && (
+        <div style={{ marginBottom: "32px" }}>
+          <button
+            onClick={() => setOpenPanel(null)}
+            style={{
+              background: "transparent",
+              border: "none",
+              fontFamily: "var(--v2-font-body)",
+              fontSize: "13px",
+              fontWeight: 700,
+              color: "#888",
+              cursor: "pointer",
+              padding: "0 0 16px 0",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+            }}
+          >
+            ← Back to Tool Library
+          </button>
+          <V2VideoCreator />
         </div>
       )}
 

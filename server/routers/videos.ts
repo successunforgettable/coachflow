@@ -10,7 +10,7 @@ import { TRPCError } from "@trpc/server";
 import { publicProcedure, protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { videos, videoScripts, videoCredits, videoCreditTransactions } from "../../drizzle/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { readFileSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
@@ -417,6 +417,39 @@ export const videosRouter = router({
       await db.delete(videos).where(eq(videos.id, input.videoId));
 
       return { success: true };
+    }),
+
+  /**
+   * getLatestByServiceId — returns the most recent succeeded video for a service.
+   * Used by V2VideoCreator to restore the last result on Tool Library re-open.
+   */
+  getLatestByServiceId: protectedProcedure
+    .input(z.object({ serviceId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const [video] = await db
+        .select()
+        .from(videos)
+        .where(
+          and(
+            eq(videos.userId, ctx.user.id),
+            eq(videos.serviceId, input.serviceId),
+            eq(videos.creatomateStatus, "succeeded")
+          )
+        )
+        .orderBy(desc(videos.createdAt))
+        .limit(1);
+      if (!video) return null;
+      // Fetch the associated script
+      const [script] = video.scriptId
+        ? await db
+            .select()
+            .from(videoScripts)
+            .where(eq(videoScripts.id, video.scriptId))
+            .limit(1)
+        : [];
+      return { ...video, script: script ?? null };
     }),
 });
 

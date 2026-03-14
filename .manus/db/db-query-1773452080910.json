@@ -1,0 +1,166 @@
+{
+  "query": "SELECT COLUMN_NAME, DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'users' ORDER BY ORDINAL_POSITION;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT COLUMN_NAME, DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'users' ORDER BY ORDINAL_POSITION;",
+  "rows": [
+    {
+      "COLUMN_NAME": "id",
+      "DATA_TYPE": "int"
+    },
+    {
+      "COLUMN_NAME": "openId",
+      "DATA_TYPE": "varchar"
+    },
+    {
+      "COLUMN_NAME": "name",
+      "DATA_TYPE": "text"
+    },
+    {
+      "COLUMN_NAME": "email",
+      "DATA_TYPE": "varchar"
+    },
+    {
+      "COLUMN_NAME": "loginMethod",
+      "DATA_TYPE": "varchar"
+    },
+    {
+      "COLUMN_NAME": "role",
+      "DATA_TYPE": "enum"
+    },
+    {
+      "COLUMN_NAME": "createdAt",
+      "DATA_TYPE": "timestamp"
+    },
+    {
+      "COLUMN_NAME": "updatedAt",
+      "DATA_TYPE": "timestamp"
+    },
+    {
+      "COLUMN_NAME": "lastSignedIn",
+      "DATA_TYPE": "timestamp"
+    },
+    {
+      "COLUMN_NAME": "subscription_plan",
+      "DATA_TYPE": "varchar"
+    },
+    {
+      "COLUMN_NAME": "subscription_status",
+      "DATA_TYPE": "varchar"
+    },
+    {
+      "COLUMN_NAME": "trial_ends_at",
+      "DATA_TYPE": "timestamp"
+    },
+    {
+      "COLUMN_NAME": "stripe_customer_id",
+      "DATA_TYPE": "varchar"
+    },
+    {
+      "COLUMN_NAME": "stripe_subscription_id",
+      "DATA_TYPE": "varchar"
+    },
+    {
+      "COLUMN_NAME": "stripeCustomerId",
+      "DATA_TYPE": "varchar"
+    },
+    {
+      "COLUMN_NAME": "stripeSubscriptionId",
+      "DATA_TYPE": "varchar"
+    },
+    {
+      "COLUMN_NAME": "subscriptionTier",
+      "DATA_TYPE": "enum"
+    },
+    {
+      "COLUMN_NAME": "subscriptionStatus",
+      "DATA_TYPE": "enum"
+    },
+    {
+      "COLUMN_NAME": "trialEndsAt",
+      "DATA_TYPE": "timestamp"
+    },
+    {
+      "COLUMN_NAME": "subscriptionEndsAt",
+      "DATA_TYPE": "timestamp"
+    },
+    {
+      "COLUMN_NAME": "icpGeneratedCount",
+      "DATA_TYPE": "int"
+    },
+    {
+      "COLUMN_NAME": "adCopyGeneratedCount",
+      "DATA_TYPE": "int"
+    },
+    {
+      "COLUMN_NAME": "emailSeqGeneratedCount",
+      "DATA_TYPE": "int"
+    },
+    {
+      "COLUMN_NAME": "whatsappSeqGeneratedCount",
+      "DATA_TYPE": "int"
+    },
+    {
+      "COLUMN_NAME": "landingPageGeneratedCount",
+      "DATA_TYPE": "int"
+    },
+    {
+      "COLUMN_NAME": "offerGeneratedCount",
+      "DATA_TYPE": "int"
+    },
+    {
+      "COLUMN_NAME": "usageResetAt",
+      "DATA_TYPE": "timestamp"
+    },
+    {
+      "COLUMN_NAME": "hvcoGeneratedCount",
+      "DATA_TYPE": "int"
+    },
+    {
+      "COLUMN_NAME": "heroMechanismGeneratedCount",
+      "DATA_TYPE": "int"
+    },
+    {
+      "COLUMN_NAME": "headlineGeneratedCount",
+      "DATA_TYPE": "int"
+    },
+    {
+      "COLUMN_NAME": "powerMode",
+      "DATA_TYPE": "tinyint"
+    },
+    {
+      "COLUMN_NAME": "dismissedWelcomeBanner",
+      "DATA_TYPE": "tinyint"
+    },
+    {
+      "COLUMN_NAME": "onboardingComplete",
+      "DATA_TYPE": "tinyint"
+    },
+    {
+      "COLUMN_NAME": "onboardingStage",
+      "DATA_TYPE": "int"
+    },
+    {
+      "COLUMN_NAME": "activityStreak",
+      "DATA_TYPE": "int"
+    },
+    {
+      "COLUMN_NAME": "lastActivityDate",
+      "DATA_TYPE": "date"
+    },
+    {
+      "COLUMN_NAME": "streakUpdatedAt",
+      "DATA_TYPE": "timestamp"
+    },
+    {
+      "COLUMN_NAME": "passwordHash",
+      "DATA_TYPE": "varchar"
+    },
+    {
+      "COLUMN_NAME": "emailVerified",
+      "DATA_TYPE": "tinyint"
+    }
+  ],
+  "messages": [],
+  "stdout": "COLUMN_NAME\tDATA_TYPE\nid\tint\nopenId\tvarchar\nname\ttext\nemail\tvarchar\nloginMethod\tvarchar\nrole\tenum\ncreatedAt\ttimestamp\nupdatedAt\ttimestamp\nlastSignedIn\ttimestamp\nsubscription_plan\tvarchar\nsubscription_status\tvarchar\ntrial_ends_at\ttimestamp\nstripe_customer_id\tvarchar\nstripe_subscription_id\tvarchar\nstripeCustomerId\tvarchar\nstripeSubscriptionId\tvarchar\nsubscriptionTier\tenum\nsubscriptionStatus\tenum\ntrialEndsAt\ttimestamp\nsubscriptionEndsAt\ttimestamp\nicpGeneratedCount\tint\nadCopyGeneratedCount\tint\nemailSeqGeneratedCount\tint\nwhatsappSeqGeneratedCount\tint\nlandingPageGeneratedCount\tint\nofferGeneratedCount\tint\nusageResetAt\ttimestamp\nhvcoGeneratedCount\tint\nheroMechanismGeneratedCount\tint\nheadlineGeneratedCount\tint\npowerMode\ttinyint\ndismissedWelcomeBanner\ttinyint\nonboardingComplete\ttinyint\nonboardingStage\tint\nactivityStreak\tint\nlastActivityDate\tdate\nstreakUpdatedAt\ttimestamp\npasswordHash\tvarchar\nemailVerified\ttinyint\n",
+  "stderr": "",
+  "execution_time_ms": 1537
+}

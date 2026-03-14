@@ -1,0 +1,16 @@
+{
+  "query": "INSERT INTO users (openId, name, email, role, emailVerified, loginMethod) VALUES ('test-screenshot-zap-001', 'ZAP Tester', 'tester@zapcampaigns.com', 'user', true, 'email') ON DUPLICATE KEY UPDATE name='ZAP Tester'; SELECT id, openId, name, email FROM users WHERE openId='test-screenshot-zap-001';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute INSERT INTO users (openId, name, email, role, emailVerified, loginMethod) VALUES ('test-screenshot-zap-001', 'ZAP Tester', 'tester@zapcampaigns.com', 'user', true, 'email') ON DUPLICATE KEY UPDATE name='ZAP Tester'; SELECT id, openId, name, email FROM users WHERE openId='test-screenshot-zap-001';",
+  "rows": [
+    {
+      "id": "7530006",
+      "openId": "test-screenshot-zap-001",
+      "name": "ZAP Tester",
+      "email": "tester@zapcampaigns.com"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\topenId\tname\temail\n7530006\ttest-screenshot-zap-001\tZAP Tester\ttester@zapcampaigns.com\n",
+  "stderr": "",
+  "execution_time_ms": 1710
+}
