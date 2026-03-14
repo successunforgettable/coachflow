@@ -353,3 +353,13 @@
 - [x] client/src/v2/V2HeadlinesResultPanel.tsx — new file: 5-tab panel (Story/Eyebrow/Question/Authority/Urgency), per-card copy/thumbs/star/compliance badge, fixed Continue button
 - [x] client/src/v2/V2AdCopyResultPanel.tsx — new file: 3-tab panel (Headlines/Body Copy/Links), angle pill badge, compliance badge, Publish to Meta toast, fixed Continue button
 - [x] client/src/v2/V2GeneratorWizard.tsx — pollJob resolves with data.result, store headlineSetId/adSetId state, render result panels below success state for Node 6 and Node 7
+
+## R2 — AD IMAGES (Scroll-Stopper Ad Creator) — March 14, 2026
+
+- [x] server/routers/adCreatives.ts — add generateAsync procedure (background job pattern)
+- [x] server/routers/adCreatives.ts — add getLatestByServiceId query
+- [x] client/src/v2/V2AdImageCreator.tsx — new component (full spec)
+- [x] client/src/v2/V2ToolLibrary.tsx — add Ad Images card
+- [x] TypeScript check (0 errors)
+- [ ] Checkpoint + deploy
+- [ ] Evidence screenshots from zapcampaigns.com

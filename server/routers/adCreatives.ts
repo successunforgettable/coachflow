@@ -1,12 +1,12 @@
 import { router, protectedProcedure } from "../_core/trpc";
 import { z } from "zod";
 import { getDb } from "../db";
-import { adCreatives, services, users } from "../../drizzle/schema";
+import { adCreatives, services, users, jobs } from "../../drizzle/schema";
 import { eq, and, desc, gte } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { generateImage } from "../_core/imageGeneration";
 import { storagePut } from "../storage";
-import { randomBytes } from "crypto";
+import { randomBytes, randomUUID } from "crypto";
 
 // Meta-prohibited phrases for compliance checking
 const PROHIBITED_PHRASES = [
@@ -367,6 +367,160 @@ export const adCreativesRouter = router({
         );
       
       return { success: true };
+    }),
+
+  /**
+   * getLatestByServiceId — returns the most recent batch for a given serviceId.
+   * Used by V2AdImageCreator to reload the last result on page revisit.
+   */
+  getLatestByServiceId: protectedProcedure
+    .input(z.object({ serviceId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      const [latest] = await db
+        .select()
+        .from(adCreatives)
+        .where(
+          and(
+            eq(adCreatives.userId, ctx.user.id),
+            eq(adCreatives.serviceId, input.serviceId)
+          )
+        )
+        .orderBy(desc(adCreatives.createdAt))
+        .limit(1);
+      if (!latest || !latest.batchId) return null;
+      const batch = await db
+        .select()
+        .from(adCreatives)
+        .where(
+          and(
+            eq(adCreatives.userId, ctx.user.id),
+            eq(adCreatives.batchId, latest.batchId)
+          )
+        )
+        .orderBy(adCreatives.variationNumber);
+      return { batchId: latest.batchId, creatives: batch };
+    }),
+
+  /**
+   * generateAsync — wraps the synchronous generate in the standard V2 background
+   * job pattern. Returns jobId immediately; image generation runs via setImmediate.
+   * On completion stores { batchId } in jobs.result.
+   */
+  generateAsync: protectedProcedure
+    .input(z.object({
+      serviceId: z.number(),
+      icpId: z.number().optional(),
+      visualStyle: z.string().optional(),
+      imageFormat: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      // Pre-fetch service data synchronously before setImmediate
+      const serviceRows = await db
+        .select()
+        .from(services)
+        .where(and(eq(services.id, input.serviceId), eq(services.userId, ctx.user.id)))
+        .limit(1);
+      if (serviceRows.length === 0) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Service not found" });
+      }
+      const svc = serviceRows[0];
+      const capturedUserId = ctx.user.id;
+      const capturedInput = { ...input };
+      const capturedSvc = { ...svc };
+      // Create job record
+      const jobId = randomUUID();
+      await db.insert(jobs).values({ id: jobId, userId: String(capturedUserId), status: "pending" });
+      // Fire background generation
+      setImmediate(async () => {
+        try {
+          const { getDb: getDbBg } = await import("../db");
+          const { eq: eqBg, and: andBg } = await import("drizzle-orm");
+          const bgDb = await getDbBg();
+          if (!bgDb) throw new Error("Database not available in background job");
+          const { adCreatives: adCreativesTable, jobs: jobsTable } = await import("../../drizzle/schema");
+          const { generateImage: genImg } = await import("../_core/imageGeneration");
+          const { storagePut: s3Put } = await import("../storage");
+          const { randomBytes: rb } = await import("crypto");
+          const mechanism = capturedSvc.uniqueMechanismSuggestion || capturedSvc.name || "System";
+          const niche = capturedSvc.category || "coaching";
+          const batchId = `batch-${Date.now()}-${rb(4).toString("hex")}`;
+          const customerCount = capturedSvc.totalCustomers || 0;
+          const variations = [
+            { style: "person_shocked", formula: "benefit" as const },
+            { style: "screenshot", formula: "social_proof" as const },
+            { style: "person_intense", formula: "curiosity" as const },
+            { style: "object", formula: "contrast" as const },
+            { style: "person_curious", formula: "challenge" as const },
+          ];
+          for (let i = 0; i < 5; i++) {
+            const variation = variations[i];
+            const headline = HEADLINE_FORMULAS[variation.formula](mechanism, niche, customerCount);
+            const complianceIssues = checkCompliance(
+              headline,
+              capturedSvc.mainBenefit || "",
+              capturedSvc.painPoints || ""
+            );
+            const imagePrompt = generateAdImagePrompt(
+              variation.style,
+              headline,
+              niche,
+              capturedSvc.painPoints || ""
+            );
+            console.log(`[adCreatives.generateAsync] Job ${jobId} — variation ${i + 1}/5`);
+            const imageResult = await genImg({ prompt: imagePrompt });
+            if (!imageResult.url) throw new Error(`Failed to generate image for variation ${i + 1}`);
+            const imageResponse = await fetch(imageResult.url);
+            const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
+            const fileKey = `ad-creatives/${capturedUserId}/${batchId}/variation-${i + 1}.png`;
+            const { url: s3Url } = await s3Put(fileKey, imageBuffer, "image/png");
+            await bgDb.insert(adCreativesTable).values({
+              userId: capturedUserId,
+              serviceId: capturedInput.serviceId,
+              niche,
+              productName: capturedSvc.name,
+              uniqueMechanism: mechanism,
+              targetAudience: capturedSvc.targetCustomer || "",
+              mainBenefit: capturedSvc.mainBenefit || "",
+              pressingProblem: capturedSvc.painPoints || "",
+              adType: "lead_gen",
+              designStyle: variation.style as any,
+              headlineFormula: variation.formula,
+              headline,
+              imageUrl: s3Url,
+              imageFormat: capturedInput.imageFormat || "1080x1080",
+              complianceChecked: true,
+              complianceIssues: complianceIssues.length > 0 ? JSON.stringify(complianceIssues) : null,
+              batchId,
+              variationNumber: i + 1,
+            } as any);
+          }
+          await bgDb
+            .update(jobsTable)
+            .set({ status: "complete", result: JSON.stringify({ batchId }) })
+            .where(eqBg(jobsTable.id, jobId));
+          console.log(`[adCreatives.generateAsync] Job ${jobId} complete — batchId: ${batchId}`);
+        } catch (err: unknown) {
+          const errorMessage = err instanceof Error ? err.message : String(err);
+          console.error(`[adCreatives.generateAsync] Job ${jobId} failed:`, errorMessage);
+          try {
+            const { getDb: getDbBg2 } = await import("../db");
+            const { eq: eqBg2 } = await import("drizzle-orm");
+            const { jobs: jobsTable2 } = await import("../../drizzle/schema");
+            const bgDb2 = await getDbBg2();
+            if (bgDb2) {
+              await bgDb2
+                .update(jobsTable2)
+                .set({ status: "failed", error: errorMessage.slice(0, 1024) })
+                .where(eqBg2(jobsTable2.id, jobId));
+            }
+          } catch { /* ignore */ }
+        }
+      });
+      return { jobId };
     }),
 });
 

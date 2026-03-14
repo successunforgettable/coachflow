@@ -9,6 +9,7 @@ import { useState, useMemo } from "react";
 import { useLocation } from "wouter";
 import ZappyMascot from "./ZappyMascot";
 import { trpc } from "@/lib/trpc";
+import V2AdImageCreator from "./V2AdImageCreator";
 
 // ─── Generator definitions ────────────────────────────────────────────────────
 const GENERATORS = [
@@ -65,6 +66,12 @@ const GENERATORS = [
     name: "Unique Method",
     description: "15 unique mechanism names and supporting copy that set your offer apart from every competitor.",
     emoji: "⚡",
+  },
+  {
+    step: "adImages",
+    name: "Ad Images",
+    description: "5 scroll-stopping ad image variations — tabloid aesthetic, Meta-compliant headlines, ready to download.",
+    emoji: "🖼️",
   },
 ];
 
@@ -160,6 +167,7 @@ function GeneratorCard({
 export default function V2ToolLibrary() {
   const [, navigate] = useLocation();
   const [selectedIcpId, setSelectedIcpId] = useState<number | null>(null);
+  const [openPanel, setOpenPanel] = useState<string | null>(null);
 
   // Demo mode: ?demo=noIcp forces the ICP gate for screenshot purposes
   const demoNoIcp = typeof window !== 'undefined' &&
@@ -187,6 +195,11 @@ export default function V2ToolLibrary() {
   );
 
   function handleOpen(step: string) {
+    // Ad Images opens inline in the Tool Library (no route change)
+    if (step === "adImages") {
+      setOpenPanel("adImages");
+      return;
+    }
     // Pass selected ICP id as query param so wizard can use it
     const icpParam = effectiveIcpId ? `?icpId=${effectiveIcpId}` : "";
     navigate(`/v2-dashboard/wizard/${step}${icpParam}`);
@@ -436,19 +449,47 @@ export default function V2ToolLibrary() {
         </div>
       </div>
 
-      {/* ── Generator grid ── */}
-      <div
-        className="v2-tool-grid"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-          gap: "20px",
-        }}
-      >
-        {GENERATORS.map((gen) => (
-          <GeneratorCard key={gen.step} gen={gen} onOpen={handleOpen} />
-        ))}
-      </div>
+      {/* ── Ad Images inline panel ── */}
+      {openPanel === "adImages" && (
+        <div style={{ marginBottom: "32px" }}>
+          {/* Back button */}
+          <button
+            onClick={() => setOpenPanel(null)}
+            style={{
+              background: "transparent",
+              border: "none",
+              fontFamily: "var(--v2-font-body)",
+              fontSize: "13px",
+              fontWeight: 700,
+              color: "#888",
+              cursor: "pointer",
+              padding: "0 0 16px 0",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+            }}
+          >
+            ← Back to Tool Library
+          </button>
+          <V2AdImageCreator />
+        </div>
+      )}
+
+      {/* ── Generator grid (hidden when panel is open) ── */}
+      {!openPanel && (
+        <div
+          className="v2-tool-grid"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+            gap: "20px",
+          }}
+        >
+          {GENERATORS.map((gen) => (
+            <GeneratorCard key={gen.step} gen={gen} onOpen={handleOpen} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
