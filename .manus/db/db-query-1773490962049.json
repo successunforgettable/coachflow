@@ -1,0 +1,23 @@
+{
+  "query": "\nSELECT u.id, u.name, u.email, u.loginMethod, u.subscriptionTier, u.subscriptionStatus, u.subscriptionEndsAt,\n       s.id as serviceId, s.name as serviceName, s.description, s.targetCustomer\nFROM users u\nLEFT JOIN services s ON s.userId = u.id\nWHERE u.email = 'zapreviewer@mailinator.com'\nLIMIT 5;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute \nSELECT u.id, u.name, u.email, u.loginMethod, u.subscriptionTier, u.subscriptionStatus, u.subscriptionEndsAt,\n       s.id as serviceId, s.name as serviceName, s.description, s.targetCustomer\nFROM users u\nLEFT JOIN services s ON s.userId = u.id\nWHERE u.email = 'zapreviewer@mailinator.com'\nLIMIT 5;\n",
+  "rows": [
+    {
+      "id": "7110001",
+      "name": "Meta Reviewer",
+      "email": "zapreviewer@mailinator.com",
+      "loginMethod": "email",
+      "subscriptionTier": "pro",
+      "subscriptionStatus": "active",
+      "subscriptionEndsAt": "2027-04-09 20:19:00",
+      "serviceId": "1470001",
+      "serviceName": "Life Coach Success Accelerator",
+      "description": "A comprehensive coaching program that helps life coaches build a thriving practice with consistent 5-figure months through proven marketing systems and the Heart-Mind Activation Method.",
+      "targetCustomer": "life coaches who want to build a profitable practice"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\temail\tloginMethod\tsubscriptionTier\tsubscriptionStatus\tsubscriptionEndsAt\tserviceId\tserviceName\tdescription\ttargetCustomer\n7110001\tMeta Reviewer\tzapreviewer@mailinator.com\temail\tpro\tactive\t2027-04-09 20:19:00\t1470001\tLife Coach Success Accelerator\tA comprehensive coaching program that helps life coaches build a thriving practice with consistent 5-figure months through proven marketing systems and the Heart-Mind Activation Method.\tlife coaches who want to build a profitable practice\n",
+  "stderr": "",
+  "execution_time_ms": 2458
+}

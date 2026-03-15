@@ -1,0 +1,26 @@
+{
+  "query": "SELECT id, name, email, loginMethod, subscriptionTier, subscriptionStatus FROM users WHERE email LIKE '%mailinator%' OR email LIKE '%zapreviewer%' LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT id, name, email, loginMethod, subscriptionTier, subscriptionStatus FROM users WHERE email LIKE '%mailinator%' OR email LIKE '%zapreviewer%' LIMIT 10;",
+  "rows": [
+    {
+      "id": "6690012",
+      "name": "Zappy Test Fresh",
+      "email": "zaptest.fresh.v2@mailinator.com",
+      "loginMethod": "email",
+      "subscriptionTier": "trial",
+      "subscriptionStatus": "trialing"
+    },
+    {
+      "id": "7110001",
+      "name": "Meta Reviewer",
+      "email": "zapreviewer@mailinator.com",
+      "loginMethod": "email",
+      "subscriptionTier": "pro",
+      "subscriptionStatus": "active"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\temail\tloginMethod\tsubscriptionTier\tsubscriptionStatus\n6690012\tZappy Test Fresh\tzaptest.fresh.v2@mailinator.com\temail\ttrial\ttrialing\n7110001\tMeta Reviewer\tzapreviewer@mailinator.com\temail\tpro\tactive\n",
+  "stderr": "",
+  "execution_time_ms": 1569
+}

@@ -1,0 +1,28 @@
+{
+  "query": "SELECT u.id, u.email, u.onboardingStage, uo.completed, uo.currentStep, s.id as serviceId, s.name as serviceName FROM users u LEFT JOIN user_onboarding uo ON uo.userId = u.id LEFT JOIN services s ON s.userId = u.id WHERE u.email LIKE '%zapreviewer%' OR u.email LIKE '%mailinator%';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT u.id, u.email, u.onboardingStage, uo.completed, uo.currentStep, s.id as serviceId, s.name as serviceName FROM users u LEFT JOIN user_onboarding uo ON uo.userId = u.id LEFT JOIN services s ON s.userId = u.id WHERE u.email LIKE '%zapreviewer%' OR u.email LIKE '%mailinator%';",
+  "rows": [
+    {
+      "id": "6690012",
+      "email": "zaptest.fresh.v2@mailinator.com",
+      "onboardingStage": "5",
+      "completed": "1",
+      "currentStep": "1",
+      "serviceId": "1410001",
+      "serviceName": "Mindset Mastery for Coaches"
+    },
+    {
+      "id": "7110001",
+      "email": "zapreviewer@mailinator.com",
+      "onboardingStage": "5",
+      "completed": "0",
+      "currentStep": "1",
+      "serviceId": "1470001",
+      "serviceName": "Life Coach Success Accelerator"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\temail\tonboardingStage\tcompleted\tcurrentStep\tserviceId\tserviceName\n6690012\tzaptest.fresh.v2@mailinator.com\t5\t1\t1\t1410001\tMindset Mastery for Coaches\n7110001\tzapreviewer@mailinator.com\t5\t0\t1\t1470001\tLife Coach Success Accelerator\n",
+  "stderr": "",
+  "execution_time_ms": 1598
+}

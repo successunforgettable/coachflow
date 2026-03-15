@@ -1,0 +1,14 @@
+{
+  "query": "SELECT COLUMN_NAME, COLUMN_TYPE FROM information_schema.COLUMNS WHERE TABLE_NAME = 'campaigns' AND COLUMN_NAME = 'campaignType';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute SELECT COLUMN_NAME, COLUMN_TYPE FROM information_schema.COLUMNS WHERE TABLE_NAME = 'campaigns' AND COLUMN_NAME = 'campaignType';",
+  "rows": [
+    {
+      "COLUMN_NAME": "campaignType",
+      "COLUMN_TYPE": "enum('webinar','challenge','course_launch','product_launch')"
+    }
+  ],
+  "messages": [],
+  "stdout": "COLUMN_NAME\tCOLUMN_TYPE\ncampaignType\tenum('webinar','challenge','course_launch','product_launch')\n",
+  "stderr": "",
+  "execution_time_ms": 1791
+}

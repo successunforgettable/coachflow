@@ -1,0 +1,8 @@
+{
+  "query": "UPDATE users SET plan = 'pro' WHERE email = 'zaptest@zapcampaigns.com' OR name = 'ZAP Tester' LIMIT 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute UPDATE users SET plan = 'pro' WHERE email = 'zaptest@zapcampaigns.com' OR name = 'ZAP Tester' LIMIT 1;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 1: Unknown column 'plan' in 'field list'"
+  ]
+}

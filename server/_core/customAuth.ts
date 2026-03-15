@@ -77,6 +77,9 @@ async function upsertUserByEmail(
     emailVerified: loginMethod === "google",
     lastSignedIn: now,
     role: "user",
+    subscriptionTier: "trial",
+    subscriptionStatus: "trialing",
+    trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14-day trial
   });
 
   const newUser = await db.select().from(users).where(eq(users.email, email)).limit(1);
@@ -281,6 +284,9 @@ export function registerCustomAuthRoutes(app: Express) {
           emailVerified: false,
           lastSignedIn: new Date(),
           role: "user",
+          subscriptionTier: "trial",
+          subscriptionStatus: "trialing",
+          trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14-day trial
         });
         userRow = (await db.select().from(users).where(eq(users.email, email)).limit(1))[0];
       }

@@ -1,0 +1,8 @@
+{
+  "query": "\nINSERT INTO users (\n  name,\n  email,\n  passwordHash,\n  emailVerified,\n  loginMethod,\n  role,\n  subscriptionTier,\n  subscriptionStatus,\n  subscriptionEndsAt,\n  videoCredits,\n  createdAt,\n  updatedAt\n) VALUES (\n  'ZAP Pro Tester',\n  'zapprotester@zapcampaigns.com',\n  '$2b$12$pydrJKvT.SaUiP0lX4.JG.AhMCQhiul4zuhMMNFPEjVl0hzeZUu76',\n  true,\n  'email',\n  'user',\n  'pro',\n  'active',\n  '2027-04-09 23:59:59',\n  10,\n  NOW(),\n  NOW()\n);\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute \nINSERT INTO users (\n  name,\n  email,\n  passwordHash,\n  emailVerified,\n  loginMethod,\n  role,\n  subscriptionTier,\n  subscriptionStatus,\n  subscriptionEndsAt,\n  videoCredits,\n  createdAt,\n  updatedAt\n) VALUES (\n  'ZAP Pro Tester',\n  'zapprotester@zapcampaigns.com',\n  '$2b$12$pydrJKvT.SaUiP0lX4.JG.AhMCQhiul4zuhMMNFPEjVl0hzeZUu76',\n  true,\n  'email',\n  'user',\n  'pro',\n  'active',\n  '2027-04-09 23:59:59',\n  10,\n  NOW(),\n  NOW()\n);\n",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 2: Unknown column 'videoCredits' in 'field list'"
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "query": "\nINSERT INTO users (\n  openId,\n  name,\n  email,\n  passwordHash,\n  emailVerified,\n  loginMethod,\n  role,\n  subscriptionTier,\n  subscriptionStatus,\n  subscriptionEndsAt,\n  createdAt,\n  updatedAt\n) VALUES (\n  'local_zapprotester_001',\n  'ZAP Pro Tester',\n  'zapprotester@zapcampaigns.com',\n  '$2b$12$pydrJKvT.SaUiP0lX4.JG.AhMCQhiul4zuhMMNFPEjVl0hzeZUu76',\n  true,\n  'email',\n  'user',\n  'pro',\n  'active',\n  '2027-04-09 23:59:59',\n  NOW(),\n  NOW()\n);\n\nINSERT INTO videoCredits (userId, balance, updatedAt)\nSELECT id, 10, NOW() FROM users WHERE email = 'zapprotester@zapcampaigns.com';\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3ve2VbkP4iEu522.root --database jQsGzEaS9E2xgaK8jEKUPB --execute \nINSERT INTO users (\n  openId,\n  name,\n  email,\n  passwordHash,\n  emailVerified,\n  loginMethod,\n  role,\n  subscriptionTier,\n  subscriptionStatus,\n  subscriptionEndsAt,\n  createdAt,\n  updatedAt\n) VALUES (\n  'local_zapprotester_001',\n  'ZAP Pro Tester',\n  'zapprotester@zapcampaigns.com',\n  '$2b$12$pydrJKvT.SaUiP0lX4.JG.AhMCQhiul4zuhMMNFPEjVl0hzeZUu76',\n  true,\n  'email',\n  'user',\n  'pro',\n  'active',\n  '2027-04-09 23:59:59',\n  NOW(),\n  NOW()\n);\n\nINSERT INTO videoCredits (userId, balance, updatedAt)\nSELECT id, 10, NOW() FROM users WHERE email = 'zapprotester@zapcampaigns.com';\n",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1789
+}
