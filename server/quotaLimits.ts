@@ -20,9 +20,9 @@ export type SubscriptionTier = "trial" | "pro" | "agency";
 
 export const QUOTA_LIMITS: Record<SubscriptionTier, Record<GeneratorType, number>> = {
   trial: {
-    headlines: 0,
-    hvco: 0,
-    heroMechanisms: 0,
+    headlines: Infinity,
+    hvco: Infinity,
+    heroMechanisms: Infinity,
     icp: 2,
     adCopy: 5,
     email: 2,
