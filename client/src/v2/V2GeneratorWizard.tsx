@@ -1331,6 +1331,105 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
   // ── Resolve the active ICP ──
   const activeIcp = isDemoMissing ? undefined : icpData?.[0];
 
+  // ── Generation history: load previous results on mount ──
+  const resolvedServiceId = activeService?.id;
+  const historyEnabled = !!resolvedServiceId && step !== "service" && !demoMode;
+
+  const historyIcp = trpc.icps.getLatestByServiceId.useQuery(
+    { serviceId: resolvedServiceId! },
+    { enabled: historyEnabled && step === "icp", staleTime: 60_000 }
+  );
+  const historyOffer = trpc.offers.getLatestByServiceId.useQuery(
+    { serviceId: resolvedServiceId! },
+    { enabled: historyEnabled && step === "offer", staleTime: 60_000 }
+  );
+  const historyMechanism = trpc.heroMechanisms.getLatestByServiceId.useQuery(
+    { serviceId: resolvedServiceId! },
+    { enabled: historyEnabled && step === "uniqueMethod", staleTime: 60_000 }
+  );
+  const historyHvco = trpc.hvco.getLatestByServiceId.useQuery(
+    { serviceId: resolvedServiceId! },
+    { enabled: historyEnabled && step === "freeOptIn", staleTime: 60_000 }
+  );
+  const historyHeadlines = trpc.headlines.getLatestByServiceId.useQuery(
+    { serviceId: resolvedServiceId! },
+    { enabled: historyEnabled && step === "headlines", staleTime: 60_000 }
+  );
+  const historyAdCopy = trpc.adCopy.getLatestByServiceId.useQuery(
+    { serviceId: resolvedServiceId! },
+    { enabled: historyEnabled && step === "adCopy", staleTime: 60_000 }
+  );
+  const historyLandingPage = trpc.landingPages.getLatestByServiceId.useQuery(
+    { serviceId: resolvedServiceId! },
+    { enabled: historyEnabled && step === "landingPage", staleTime: 60_000 }
+  );
+  const historyEmail = trpc.emailSequences.getLatestByServiceId.useQuery(
+    { serviceId: resolvedServiceId! },
+    { enabled: historyEnabled && step === "emailSequence", staleTime: 60_000 }
+  );
+  const historyWhatsapp = trpc.whatsappSequences.getLatestByServiceId.useQuery(
+    { serviceId: resolvedServiceId! },
+    { enabled: historyEnabled && step === "whatsappSequence", staleTime: 60_000 }
+  );
+
+  // Derive loading/fetched state for current step's history query
+  const historyLoading = (
+    (step === "icp" && historyIcp.isLoading) ||
+    (step === "offer" && historyOffer.isLoading) ||
+    (step === "uniqueMethod" && historyMechanism.isLoading) ||
+    (step === "freeOptIn" && historyHvco.isLoading) ||
+    (step === "headlines" && historyHeadlines.isLoading) ||
+    (step === "adCopy" && historyAdCopy.isLoading) ||
+    (step === "landingPage" && historyLandingPage.isLoading) ||
+    (step === "emailSequence" && historyEmail.isLoading) ||
+    (step === "whatsappSequence" && historyWhatsapp.isLoading)
+  );
+  const historyFetched = (
+    (step === "icp" && historyIcp.isFetched) ||
+    (step === "offer" && historyOffer.isFetched) ||
+    (step === "uniqueMethod" && historyMechanism.isFetched) ||
+    (step === "freeOptIn" && historyHvco.isFetched) ||
+    (step === "headlines" && historyHeadlines.isFetched) ||
+    (step === "adCopy" && historyAdCopy.isFetched) ||
+    (step === "landingPage" && historyLandingPage.isFetched) ||
+    (step === "emailSequence" && historyEmail.isFetched) ||
+    (step === "whatsappSequence" && historyWhatsapp.isFetched)
+  );
+
+  // Show loading state while history query is in flight
+  useEffect(() => {
+    if (!historyEnabled) return;
+    if (historyLoading && status === "idle") {
+      setStatus("loading");
+      setProgressLabel("Loading previous results…");
+    }
+  }, [historyEnabled, historyLoading, status]);
+
+  // When history query resolves, populate result IDs or revert to idle
+  useEffect(() => {
+    if (!historyEnabled || !historyFetched || historyLoading) return;
+    if (status !== "loading" && status !== "idle") return;
+
+    let found = false;
+    if (step === "icp" && historyIcp.data?.id) { setLatestIcpId(historyIcp.data.id); found = true; }
+    else if (step === "offer" && historyOffer.data?.id) { setLatestOfferId(historyOffer.data.id); found = true; }
+    else if (step === "uniqueMethod" && historyMechanism.data?.mechanismSetId) { setLatestMechanismSetId(historyMechanism.data.mechanismSetId); found = true; }
+    else if (step === "freeOptIn" && historyHvco.data?.hvcoSetId) { setLatestHvcoSetId(historyHvco.data.hvcoSetId); found = true; }
+    else if (step === "headlines" && historyHeadlines.data?.headlineSetId) { setLatestHeadlineSetId(historyHeadlines.data.headlineSetId); found = true; }
+    else if (step === "adCopy" && historyAdCopy.data?.adSetId) { setLatestAdSetId(historyAdCopy.data.adSetId); found = true; }
+    else if (step === "landingPage" && historyLandingPage.data?.id) { setLatestLandingPageId(historyLandingPage.data.id); found = true; }
+    else if (step === "emailSequence" && historyEmail.data?.id) { setLatestEmailSequenceId(historyEmail.data.id); found = true; }
+    else if (step === "whatsappSequence" && historyWhatsapp.data?.id) { setLatestWhatsappSequenceId(historyWhatsapp.data.id); found = true; }
+
+    if (found) {
+      setComplianceScore(100);
+      setStatus("success");
+    } else {
+      setStatus("idle");
+    }
+    setProgressLabel(null);
+  }, [historyEnabled, historyFetched, historyLoading, step]);
+
   // ── Demo state triggers (for screenshots) ──
   useEffect(() => {
     if (isDemoLoading) {

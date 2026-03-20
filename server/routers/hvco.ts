@@ -13,7 +13,7 @@ import {
 } from "../db";
 import { getDb } from "../db";
 import { services, idealCustomerProfiles, sourceOfTruth, campaigns, jobs } from "../../drizzle/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
@@ -515,5 +515,22 @@ Return ONLY a JSON array of 20 subheadline strings, nothing else.`;
     .mutation(async ({ ctx, input }) => {
       await deleteHvcoSet(input.hvcoSetId, ctx.user.id);
       return { success: true };
+    }),
+
+  // Get most recent HVCO set for a given serviceId (generation history)
+  getLatestByServiceId: protectedProcedure
+    .input(z.object({ serviceId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      const { hvcoTitles: hvcoTable } = await import("../../drizzle/schema");
+      const [latest] = await db
+        .select({ hvcoSetId: hvcoTable.hvcoSetId })
+        .from(hvcoTable)
+        .where(and(eq(hvcoTable.userId, ctx.user.id), eq(hvcoTable.serviceId, input.serviceId)))
+        .orderBy(desc(hvcoTable.createdAt))
+        .limit(1);
+      if (!latest) return null;
+      return { hvcoSetId: latest.hvcoSetId };
     }),
 });

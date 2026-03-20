@@ -493,4 +493,19 @@ Format as JSON with these exact keys (use bullet points • for lists):
 
       return { success: true };
     }),
+
+  // Get most recent ICP for a given serviceId (generation history)
+  getLatestByServiceId: protectedProcedure
+    .input(z.object({ serviceId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      const [latest] = await db
+        .select()
+        .from(idealCustomerProfiles)
+        .where(and(eq(idealCustomerProfiles.userId, ctx.user.id), eq(idealCustomerProfiles.serviceId, input.serviceId)))
+        .orderBy(desc(idealCustomerProfiles.createdAt))
+        .limit(1);
+      return latest ?? null;
+    }),
 });

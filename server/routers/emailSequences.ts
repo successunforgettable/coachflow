@@ -565,4 +565,19 @@ Return as a JSON object with an 'emails' key containing the array.`;
 
       return { success: true };
     }),
+
+  // Get most recent email sequence for a given serviceId (generation history)
+  getLatestByServiceId: protectedProcedure
+    .input(z.object({ serviceId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      const [latest] = await db
+        .select()
+        .from(emailSequences)
+        .where(and(eq(emailSequences.userId, ctx.user.id), eq(emailSequences.serviceId, input.serviceId)))
+        .orderBy(desc(emailSequences.createdAt))
+        .limit(1);
+      return latest ?? null;
+    }),
 });

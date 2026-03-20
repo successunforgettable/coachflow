@@ -12,7 +12,7 @@ import {
 } from "../db";
 import { getDb } from "../db";
 import { services, idealCustomerProfiles, sourceOfTruth, campaigns, jobs } from "../../drizzle/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { randomUUID } from "crypto";
 import { getQuotaLimit } from "../quotaLimits";
@@ -592,5 +592,22 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
 
       // Return immediately — HTTP connection closes in <1s
       return { jobId };
+    }),
+
+  // Get most recent mechanism set for a given serviceId (generation history)
+  getLatestByServiceId: protectedProcedure
+    .input(z.object({ serviceId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      const { heroMechanisms: heroMechanismsTable } = await import("../../drizzle/schema");
+      const [latest] = await db
+        .select({ mechanismSetId: heroMechanismsTable.mechanismSetId })
+        .from(heroMechanismsTable)
+        .where(and(eq(heroMechanismsTable.userId, ctx.user.id), eq(heroMechanismsTable.serviceId, input.serviceId)))
+        .orderBy(desc(heroMechanismsTable.createdAt))
+        .limit(1);
+      if (!latest) return null;
+      return { mechanismSetId: latest.mechanismSetId };
     }),
 });

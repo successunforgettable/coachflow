@@ -526,4 +526,19 @@ Return as a JSON object with a 'messages' key containing the array.`;
 
       return { success: true };
     }),
+
+  // Get most recent WhatsApp sequence for a given serviceId (generation history)
+  getLatestByServiceId: protectedProcedure
+    .input(z.object({ serviceId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      const [latest] = await db
+        .select()
+        .from(whatsappSequences)
+        .where(and(eq(whatsappSequences.userId, ctx.user.id), eq(whatsappSequences.serviceId, input.serviceId)))
+        .orderBy(desc(whatsappSequences.createdAt))
+        .limit(1);
+      return latest ?? null;
+    }),
 });

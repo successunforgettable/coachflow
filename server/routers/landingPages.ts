@@ -550,4 +550,19 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
 
       return { success: true };
     }),
+
+  // Get most recent landing page for a given serviceId (generation history)
+  getLatestByServiceId: protectedProcedure
+    .input(z.object({ serviceId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      const [latest] = await db
+        .select()
+        .from(landingPages)
+        .where(and(eq(landingPages.userId, ctx.user.id), eq(landingPages.serviceId, input.serviceId)))
+        .orderBy(desc(landingPages.createdAt))
+        .limit(1);
+      return latest ?? null;
+    }),
 });
