@@ -146,6 +146,10 @@ export const whatsappSequencesRouter = router({
       const sotContext = sotLines.length > 0
         ? ['BRAND CONTEXT — this is the approved brand voice. All copy must be consistent with this:', ...sotLines].join('\n')
         : '';
+      const coachContext = ctx.user.coachName
+        ? `COACH IDENTITY (use this to write in the coach's authentic first-person voice):\n- Name: ${ctx.user.coachName}\n- Gender: ${ctx.user.coachGender ?? 'not specified'}\n- Background: ${ctx.user.coachBackground ?? 'not specified'}\n\nAlways write as ${ctx.user.coachName}. Never invent fictional third-party experts or use generic placeholder names.`
+        : '';
+      const contextPrefix = [coachContext, sotContext].filter(Boolean).join('\n\n');
 
       // Campaign fetch — Item 1.5 (campaignType) + Item 1.1b (icpId)
       let icp: typeof idealCustomerProfiles.$inferSelect | undefined;
@@ -227,7 +231,7 @@ You MUST use these exact numbers. Do not fabricate.`
       let prompt = "";
 
       if (input.sequenceType === "engagement") {
-        prompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert WhatsApp marketer. Create a 3-message WhatsApp engagement sequence for event attendees.
+        prompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert WhatsApp marketer. Create a 3-message WhatsApp engagement sequence for event attendees.
 
 Service: ${service.name}
 Event: ${input.eventDetails?.eventName || "Event"}
@@ -258,7 +262,7 @@ Each message should:
 Return as a JSON object with a 'messages' key containing the array.`;
       } else {
         // sales sequence
-        prompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert WhatsApp marketer. Create a 3-message WhatsApp sales sequence for event attendees.
+        prompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert WhatsApp marketer. Create a 3-message WhatsApp sales sequence for event attendees.
 
 Service: ${service.name}
 Event: ${input.eventDetails?.eventName || "Event"}
@@ -401,6 +405,9 @@ Return as a JSON object with a 'messages' key containing the array.`;
       const capturedIcp = icp ? { ...icp } : undefined;
       const capturedSot = sot ? { ...sot } : undefined;
       const capturedCampaignType = campaignType;
+      const capturedCoachContext = user.coachName
+        ? `COACH IDENTITY (use this to write in the coach's authentic first-person voice):\n- Name: ${user.coachName}\n- Gender: ${user.coachGender ?? 'not specified'}\n- Background: ${user.coachBackground ?? 'not specified'}\n\nAlways write as ${user.coachName}. Never invent fictional third-party experts or use generic placeholder names.`
+        : '';
 
       const jobId = randomUUID();
       await db.insert(jobs).values({ id: jobId, userId: String(capturedUserId), status: "pending" });
@@ -412,6 +419,7 @@ Return as a JSON object with a 'messages' key containing the array.`;
 
           const sotLines = capturedSot ? [capturedSot.coreOffer ? `Core offer: ${capturedSot.coreOffer}` : '', capturedSot.targetAudience ? `Target audience: ${capturedSot.targetAudience}` : '', capturedSot.mainPainPoint ? `Main pain point: ${capturedSot.mainPainPoint}` : '', capturedSot.mainBenefits ? `Main benefits: ${capturedSot.mainBenefits}` : '', capturedSot.uniqueValue ? `Unique value: ${capturedSot.uniqueValue}` : '', capturedSot.idealCustomerAvatar ? `Ideal customer: ${capturedSot.idealCustomerAvatar}` : ''].filter(Boolean) : [];
           const sotContext = sotLines.length > 0 ? ['BRAND CONTEXT — this is the approved brand voice. All copy must be consistent with this:', ...sotLines].join('\n') : '';
+          const contextPrefix = [capturedCoachContext, sotContext].filter(Boolean).join('\n\n');
           const icpContext = capturedIcp ? `\nIDEAL CUSTOMER PROFILE — use this to make every line of copy specific and targeted:\n${capturedIcp.pains ? `Their daily pains: ${capturedIcp.pains}` : ''}\n${capturedIcp.fears ? `Their deep fears: ${capturedIcp.fears}` : ''}\n${capturedIcp.buyingTriggers ? `What makes them buy: ${capturedIcp.buyingTriggers}` : ''}\n${capturedIcp.communicationStyle ? `How they communicate: ${capturedIcp.communicationStyle}` : ''}`.trim() : '';
           const campaignTypeContextMap: Record<string, string> = { webinar: `CAMPAIGN TYPE: Webinar\nFraming: Show-up urgency. CTA language: Register now / Save your seat / Join us live on [date]`, challenge: `CAMPAIGN TYPE: Challenge\nFraming: Community commitment. CTA language: Join the challenge / Claim your spot / Start with us on [date]`, course_launch: `CAMPAIGN TYPE: Course Launch\nFraming: Transformation journey. CTA language: Enrol now / Join the programme / Claim your place before [date]`, product_launch: `CAMPAIGN TYPE: Product Launch\nFraming: Early access. CTA language: Get early access / Become a founding member / Lock in launch pricing` };
           const campaignTypeContext = campaignTypeContextMap[capturedCampaignType] || campaignTypeContextMap['course_launch'];
@@ -420,9 +428,9 @@ Return as a JSON object with a 'messages' key containing the array.`;
 
           let prompt = "";
           if (capturedInput.sequenceType === "engagement") {
-            prompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert WhatsApp marketer. Create a 3-message WhatsApp engagement sequence for event attendees.\n\nService: ${capturedService.name}\nEvent: ${capturedInput.eventDetails?.eventName || "Event"}\nHost: ${capturedInput.eventDetails?.hostName || "Host"}\nEvent Date: ${capturedInput.eventDetails?.eventDate || "Date"}\n\n${socialProofGuidance}\n\n${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}\n\nCreate 3 WhatsApp messages (Monday, Wednesday, Friday before event). Each message: 50-100 words, personal, conversational, emojis, clear CTA, use [First Name] for personalization.\n\nReturn as a JSON object with a 'messages' key containing the array.`;
+            prompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert WhatsApp marketer. Create a 3-message WhatsApp engagement sequence for event attendees.\n\nService: ${capturedService.name}\nEvent: ${capturedInput.eventDetails?.eventName || "Event"}\nHost: ${capturedInput.eventDetails?.hostName || "Host"}\nEvent Date: ${capturedInput.eventDetails?.eventDate || "Date"}\n\n${socialProofGuidance}\n\n${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}\n\nCreate 3 WhatsApp messages (Monday, Wednesday, Friday before event). Each message: 50-100 words, personal, conversational, emojis, clear CTA, use [First Name] for personalization.\n\nReturn as a JSON object with a 'messages' key containing the array.`;
           } else {
-            prompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert WhatsApp marketer. Create a 3-message WhatsApp sales sequence for event attendees.\n\nService: ${capturedService.name}\nEvent: ${capturedInput.eventDetails?.eventName || "Event"}\nOffer: ${capturedInput.eventDetails?.offerName || "Offer"}\nPrice: ${capturedInput.eventDetails?.price || "Price"}\n\n${socialProofGuidance}\n\n${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}\n\nCreate 3 WhatsApp messages (Day 1, 3, 5 after event). Each message: 50-100 words, personal, conversational, emojis, clear CTA, use [First Name] for personalization.\n\nReturn as a JSON object with a 'messages' key containing the array.`;
+            prompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert WhatsApp marketer. Create a 3-message WhatsApp sales sequence for event attendees.\n\nService: ${capturedService.name}\nEvent: ${capturedInput.eventDetails?.eventName || "Event"}\nOffer: ${capturedInput.eventDetails?.offerName || "Offer"}\nPrice: ${capturedInput.eventDetails?.price || "Price"}\n\n${socialProofGuidance}\n\n${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}\n\nCreate 3 WhatsApp messages (Day 1, 3, 5 after event). Each message: 50-100 words, personal, conversational, emojis, clear CTA, use [First Name] for personalization.\n\nReturn as a JSON object with a 'messages' key containing the array.`;
           }
 
           const response = await invokeLLM({ messages: [{ role: "system", content: "You are an expert WhatsApp marketer specializing in high-converting WhatsApp sequences for coaches, speakers, and consultants. Always respond with valid JSON." }, { role: "user", content: prompt }], response_format: { type: "json_schema", json_schema: { name: "whatsapp_sequence", strict: true, schema: { type: "object", properties: { messages: { type: "array", items: { type: "object", properties: { day: { type: "integer" }, message: { type: "string" }, cta: { type: "string" } }, required: ["day", "message", "cta"], additionalProperties: false } } }, required: ["messages"], additionalProperties: false } } } });

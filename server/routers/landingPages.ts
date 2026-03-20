@@ -249,9 +249,15 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
         // Otherwise keep original format
       }
 
-      // Append SOT + campaignType + ICP context to avatarDescription — Item 1.2 + 1.4 + 1.5
-      // Layer order: SOT → avatarDescription → campaignType → ICP
+      // Coach identity context
+      const coachContext = ctx.user.coachName
+        ? `COACH IDENTITY (use this to write in the coach's authentic first-person voice):\n- Name: ${ctx.user.coachName}\n- Gender: ${ctx.user.coachGender ?? 'not specified'}\n- Background: ${ctx.user.coachBackground ?? 'not specified'}\n\nAlways write as ${ctx.user.coachName}. Never invent fictional third-party experts or use generic placeholder names.`
+        : null;
+
+      // Append coach + SOT + campaignType + ICP context to avatarDescription
+      // Layer order: Coach → SOT → avatarDescription → campaignType → ICP
       const enrichedAvatarDescription = [
+        coachContext || null,
         sotContext || null,
         avatarDescription || null,
         campaignTypeContext || null,
@@ -338,6 +344,9 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
       const capturedIcp = icp ? { ...icp } : undefined;
       const capturedSot = sot ? { ...sot } : undefined;
       const capturedCampaignType = campaignType;
+      const capturedCoachContext = ctx.user.coachName
+        ? `COACH IDENTITY (use this to write in the coach's authentic first-person voice):\n- Name: ${ctx.user.coachName}\n- Gender: ${ctx.user.coachGender ?? 'not specified'}\n- Background: ${ctx.user.coachBackground ?? 'not specified'}\n\nAlways write as ${ctx.user.coachName}. Never invent fictional third-party experts or use generic placeholder names.`
+        : null;
 
       const jobId = randomUUID();
       await db.insert(jobs).values({ id: jobId, userId: String(capturedUserId), status: "pending" });
@@ -366,7 +375,7 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
             if (parts.length >= 3) { avatarName = `${parts[0]} the ${parts[2]}`; avatarDescription = parts.length >= 4 ? parts[3] : parts[2]; }
             else if (parts.length === 2) { avatarName = `${parts[0]} the ${parts[1]}`; avatarDescription = parts[1]; }
           }
-          const enrichedAvatarDescription = [sotContext || null, avatarDescription || null, campaignTypeContext || null, icpContext || null].filter(Boolean).join('\n\n');
+          const enrichedAvatarDescription = [capturedCoachContext || null, sotContext || null, avatarDescription || null, campaignTypeContext || null, icpContext || null].filter(Boolean).join('\n\n');
 
           // ── Helper: write real angle-progress to job record ──────────────────
           const writeProgress = async (completed: number, total: number) => {

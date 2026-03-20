@@ -312,6 +312,11 @@ export const headlinesRouter = router({
         // Inject SOT as outermost layer, then ICP — Item 1.2 + 1.4
         const promptWithIcp = icpContext ? prompt.replace(/\n\nGenerate /, `\n\n${icpContext}\n\nGenerate `) : prompt;
         const promptWithSot = sotContext ? `${sotContext}\n\n${promptWithIcp}` : promptWithIcp;
+        // Coach identity injection
+        const coachContext = ctx.user.coachName
+          ? `COACH IDENTITY (use this to write in the coach's authentic first-person voice):\n- Name: ${ctx.user.coachName}\n- Gender: ${ctx.user.coachGender ?? 'not specified'}\n- Background: ${ctx.user.coachBackground ?? 'not specified'}\n\nAlways write as ${ctx.user.coachName}. Never invent fictional third-party experts or use generic placeholder names.`
+          : null;
+        const finalPrompt = coachContext ? `${coachContext}\n\n${promptWithSot}` : promptWithSot;
 
         try {
           const response = await invokeLLM({
@@ -320,7 +325,7 @@ export const headlinesRouter = router({
                 role: "system",
                 content: "You are an expert direct response copywriter. Return ONLY valid JSON, no markdown, no explanations.",
               },
-              { role: "user", content: promptWithSot },
+              { role: "user", content: finalPrompt },
             ],
           });
 
@@ -486,6 +491,9 @@ export const headlinesRouter = router({
       const capturedAutoPopData = { ...autoPopData };
       const capturedIcpContext = icpContext;
       const capturedSotContext = sotContext;
+      const capturedCoachContext = user.coachName
+        ? `COACH IDENTITY (use this to write in the coach's authentic first-person voice):\n- Name: ${user.coachName}\n- Gender: ${user.coachGender ?? 'not specified'}\n- Background: ${user.coachBackground ?? 'not specified'}\n\nAlways write as ${user.coachName}. Never invent fictional third-party experts or use generic placeholder names.`
+        : null;
 
       const jobId = randomUUID();
       await dbForJob.insert(jobs).values({ id: jobId, userId: String(capturedUserId), status: "pending" });
@@ -510,8 +518,9 @@ export const headlinesRouter = router({
               .replace(/{uniqueMechanism}/g, resolvedUniqueMechanism);
             const promptWithIcp = capturedIcpContext ? prompt.replace(/\n\nGenerate /, `\n\n${capturedIcpContext}\n\nGenerate `) : prompt;
             const promptWithSot = capturedSotContext ? `${capturedSotContext}\n\n${promptWithIcp}` : promptWithIcp;
+            const finalPrompt = capturedCoachContext ? `${capturedCoachContext}\n\n${promptWithSot}` : promptWithSot;
 
-            const response = await invokeLLM({ messages: [{ role: "system", content: "You are an expert direct response copywriter. Return ONLY valid JSON, no markdown, no explanations." }, { role: "user", content: promptWithSot }] });
+            const response = await invokeLLM({ messages: [{ role: "system", content: "You are an expert direct response copywriter. Return ONLY valid JSON, no markdown, no explanations." }, { role: "user", content: finalPrompt }] });
             const content = response.choices[0].message.content;
             if (typeof content !== "string") throw new Error("Invalid LLM response");
             const parsed = JSON.parse(stripMarkdownJson(content));

@@ -131,6 +131,10 @@ export const hvcoRouter = router({
       const sotContext = sotLines.length > 0
         ? ['BRAND CONTEXT — this is the approved brand voice. All copy must be consistent with this:', ...sotLines].join('\n')
         : '';
+      const coachContext = user.coachName
+        ? `COACH IDENTITY (use this to write in the coach's authentic first-person voice):\n- Name: ${user.coachName}\n- Gender: ${user.coachGender ?? 'not specified'}\n- Background: ${user.coachBackground ?? 'not specified'}\n\nAlways write as ${user.coachName}. Never invent fictional third-party experts or use generic placeholder names.`
+        : '';
+      const contextPrefix = [coachContext, sotContext].filter(Boolean).join('\n\n');
 
       // Item 1.3 — Rule 4: server-side fallbacks so empty form fields fall back to service record
       const resolvedTargetMarket = input.targetMarket?.trim() || service.targetCustomer || "";
@@ -140,7 +144,7 @@ export const hvcoRouter = router({
       const allTitles: any[] = [];
 
       // Generate Long Titles (20 variations)
-      const longTitlesPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert copywriter creating compelling HVCO (High-Value Content Offer) titles.
+      const longTitlesPrompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert copywriter creating compelling HVCO (High-Value Content Offer) titles.
 
 Product: ${service.name}
 Target Market: ${resolvedTargetMarket}
@@ -194,7 +198,7 @@ Return ONLY a JSON array of ${20 * countMultiplier} title strings, nothing else.
       });
 
       // Generate Short Titles (20 variations)
-      const shortTitlesPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert copywriter creating compelling HVCO titles.
+      const shortTitlesPrompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert copywriter creating compelling HVCO titles.
 
 Product: ${service.name}
 Target Market: ${resolvedTargetMarket}
@@ -244,7 +248,7 @@ Return ONLY a JSON array of ${20 * countMultiplier} title strings, nothing else.
       });
 
       // Generate Power Mode Titles (30 extra variations)
-      const powerModeTitlesPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert copywriter creating compelling HVCO titles.
+      const powerModeTitlesPrompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert copywriter creating compelling HVCO titles.
 
 Product: ${service.name}
 Target Market: ${resolvedTargetMarket}
@@ -291,7 +295,7 @@ Return ONLY a JSON array of 30 title strings, nothing else.`;
       });
 
       // Generate Subheadlines (20 variations)
-      const subheadlinesPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert copywriter creating compelling subheadlines for HVCOs.
+      const subheadlinesPrompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert copywriter creating compelling subheadlines for HVCOs.
 
 Product: ${service.name}
 Target Market: ${resolvedTargetMarket}
@@ -387,6 +391,9 @@ Return ONLY a JSON array of 20 subheadline strings, nothing else.`;
       const capturedService = { ...service };
       const capturedIcp = icp ? { ...icp } : undefined;
       const capturedSot = sot ? { ...sot } : undefined;
+      const capturedCoachContext = user.coachName
+        ? `COACH IDENTITY (use this to write in the coach's authentic first-person voice):\n- Name: ${user.coachName}\n- Gender: ${user.coachGender ?? 'not specified'}\n- Background: ${user.coachBackground ?? 'not specified'}\n\nAlways write as ${user.coachName}. Never invent fictional third-party experts or use generic placeholder names.`
+        : '';
 
       const jobId = randomUUID();
       await db.insert(jobs).values({ id: jobId, userId: String(capturedUserId), status: "pending" });
@@ -413,28 +420,29 @@ Return ONLY a JSON array of 20 subheadline strings, nothing else.`;
             capturedSot.idealCustomerAvatar ? `Ideal customer: ${capturedSot.idealCustomerAvatar}` : '',
           ].filter(Boolean) : [];
           const sotContext = sotLines.length > 0 ? ['BRAND CONTEXT — this is the approved brand voice. All copy must be consistent with this:', ...sotLines].join('\n') : '';
+          const contextPrefix = [capturedCoachContext, sotContext].filter(Boolean).join('\n\n');
 
           const resolvedTargetMarket = capturedInput.targetMarket?.trim() || capturedService.targetCustomer || "";
           const resolvedHvcoTopic = capturedInput.hvcoTopic?.trim() || capturedService.hvcoTopic || "";
           const hvcoSetId = nanoid();
           const allTitles: any[] = [];
 
-          const longTitlesPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert copywriter creating compelling HVCO (High-Value Content Offer) titles.\n\nProduct: ${capturedService.name}\nTarget Market: ${resolvedTargetMarket}\nHVCO Topic: ${resolvedHvcoTopic}\n${icpContext ? `\n${icpContext}\n` : ''}\nCreate 20 LONG, benefit-first titles (3-5 words each) following this pattern:\n[Specific Number/Timeframe] [Action/Benefit] [to/for] [Concrete Outcome]\n\nReturn ONLY a JSON array of ${20 * countMultiplier} title strings, nothing else.`;
+          const longTitlesPrompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert copywriter creating compelling HVCO (High-Value Content Offer) titles.\n\nProduct: ${capturedService.name}\nTarget Market: ${resolvedTargetMarket}\nHVCO Topic: ${resolvedHvcoTopic}\n${icpContext ? `\n${icpContext}\n` : ''}\nCreate 20 LONG, benefit-first titles (3-5 words each) following this pattern:\n[Specific Number/Timeframe] [Action/Benefit] [to/for] [Concrete Outcome]\n\nReturn ONLY a JSON array of ${20 * countMultiplier} title strings, nothing else.`;
           const longR = await invokeLLM({ messages: [{ role: "system", content: "You are a direct response copywriting expert. Return ONLY valid JSON arrays." }, { role: "user", content: longTitlesPrompt }] });
           const longContent = typeof longR.choices[0].message.content === 'string' ? longR.choices[0].message.content : JSON.stringify(longR.choices[0].message.content);
           JSON.parse(stripMarkdownJson(longContent)).forEach((title: string) => allTitles.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId, hvcoSetId, tabType: "long" as const, title, targetMarket: capturedInput.targetMarket, hvcoTopic: capturedInput.hvcoTopic }));
 
-          const shortTitlesPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert copywriter creating compelling HVCO titles.\n\nProduct: ${capturedService.name}\nTarget Market: ${resolvedTargetMarket}\nHVCO Topic: ${resolvedHvcoTopic}\n${icpContext ? `\n${icpContext}\n` : ''}\nCreate 20 SHORT, benefit-focused titles (2-4 words each).\n\nReturn ONLY a JSON array of ${20 * countMultiplier} title strings, nothing else.`;
+          const shortTitlesPrompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert copywriter creating compelling HVCO titles.\n\nProduct: ${capturedService.name}\nTarget Market: ${resolvedTargetMarket}\nHVCO Topic: ${resolvedHvcoTopic}\n${icpContext ? `\n${icpContext}\n` : ''}\nCreate 20 SHORT, benefit-focused titles (2-4 words each).\n\nReturn ONLY a JSON array of ${20 * countMultiplier} title strings, nothing else.`;
           const shortR = await invokeLLM({ messages: [{ role: "system", content: "You are a direct response copywriting expert. Return ONLY valid JSON arrays." }, { role: "user", content: shortTitlesPrompt }] });
           const shortContent = typeof shortR.choices[0].message.content === 'string' ? shortR.choices[0].message.content : JSON.stringify(shortR.choices[0].message.content);
           JSON.parse(stripMarkdownJson(shortContent)).forEach((title: string) => allTitles.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId, hvcoSetId, tabType: "short" as const, title, targetMarket: capturedInput.targetMarket, hvcoTopic: capturedInput.hvcoTopic }));
 
-          const powerPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert copywriter creating compelling HVCO titles.\n\nProduct: ${capturedService.name}\nTarget Market: ${resolvedTargetMarket}\nHVCO Topic: ${resolvedHvcoTopic}\n${icpContext ? `\n${icpContext}\n` : ''}\nCreate 30 BEAST MODE titles - a mix of long and short, all highly creative and attention-grabbing.\n\nReturn ONLY a JSON array of 30 title strings, nothing else.`;
+          const powerPrompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert copywriter creating compelling HVCO titles.\n\nProduct: ${capturedService.name}\nTarget Market: ${resolvedTargetMarket}\nHVCO Topic: ${resolvedHvcoTopic}\n${icpContext ? `\n${icpContext}\n` : ''}\nCreate 30 BEAST MODE titles - a mix of long and short, all highly creative and attention-grabbing.\n\nReturn ONLY a JSON array of 30 title strings, nothing else.`;
           const powerR = await invokeLLM({ messages: [{ role: "system", content: "You are a direct response copywriting expert. Return ONLY valid JSON arrays." }, { role: "user", content: powerPrompt }] });
           const powerContent = typeof powerR.choices[0].message.content === 'string' ? powerR.choices[0].message.content : JSON.stringify(powerR.choices[0].message.content);
           JSON.parse(stripMarkdownJson(powerContent)).forEach((title: string) => allTitles.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId, hvcoSetId, tabType: "beast_mode" as const, title, targetMarket: capturedInput.targetMarket, hvcoTopic: capturedInput.hvcoTopic }));
 
-          const subPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert copywriter creating compelling subheadlines for HVCOs.\n\nProduct: ${capturedService.name}\nTarget Market: ${resolvedTargetMarket}\nHVCO Topic: ${resolvedHvcoTopic}\n${icpContext ? `\n${icpContext}\n` : ''}\nCreate 20 SUBHEADLINES that support and expand on the main title.\n\nReturn ONLY a JSON array of 20 subheadline strings, nothing else.`;
+          const subPrompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert copywriter creating compelling subheadlines for HVCOs.\n\nProduct: ${capturedService.name}\nTarget Market: ${resolvedTargetMarket}\nHVCO Topic: ${resolvedHvcoTopic}\n${icpContext ? `\n${icpContext}\n` : ''}\nCreate 20 SUBHEADLINES that support and expand on the main title.\n\nReturn ONLY a JSON array of 20 subheadline strings, nothing else.`;
           const subR = await invokeLLM({ messages: [{ role: "system", content: "You are a direct response copywriting expert. Return ONLY valid JSON arrays." }, { role: "user", content: subPrompt }] });
           const subContent = typeof subR.choices[0].message.content === 'string' ? subR.choices[0].message.content : JSON.stringify(subR.choices[0].message.content);
           JSON.parse(stripMarkdownJson(subContent)).forEach((title: string) => allTitles.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId, hvcoSetId, tabType: "subheadlines" as const, title, targetMarket: capturedInput.targetMarket, hvcoTopic: capturedInput.hvcoTopic }));
