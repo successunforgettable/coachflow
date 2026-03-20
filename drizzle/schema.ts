@@ -49,6 +49,10 @@ export const users = mysqlTable("users", {
   activityStreak: int("activityStreak").default(0).notNull(),
   lastActivityDate: date("lastActivityDate"),
   streakUpdatedAt: timestamp("streakUpdatedAt"),
+  // Coach profile fields
+  coachName: varchar("coach_name", { length: 255 }),
+  coachGender: varchar("coach_gender", { length: 50 }),
+  coachBackground: text("coach_background"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
