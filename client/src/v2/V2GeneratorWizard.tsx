@@ -133,9 +133,7 @@ const ADVANCED_FIELDS: Record<WizardStep, AdvancedField[]> = {
   icp: [
     { key: "name", label: "ICP Name / Label", type: "text", placeholder: "e.g. Mid-Career Professional", sourceNote: "Auto-generated from your service avatar" },
   ],
-  offer: [
-    { key: "offerType", label: "Offer Type", type: "select", options: ["standard", "premium", "vip"], sourceNote: "Defaults to 'premium'" },
-  ],
+  offer: [],
   uniqueMethod: [
     { key: "mechanismName", label: "Mechanism Name Override", type: "text", placeholder: "Leave blank to use AI suggestion", sourceNote: "AI generates this from your service description" },
     { key: "applicationMethod", label: "Application Method", type: "text", placeholder: "e.g. 6-week group coaching", sourceNote: "Pulled from your service profile" },
