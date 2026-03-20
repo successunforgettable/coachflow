@@ -148,7 +148,7 @@ export const emailSequencesRouter = router({
         ? ['BRAND CONTEXT — this is the approved brand voice. All copy must be consistent with this:', ...sotLines].join('\n')
         : '';
       const coachContext = ctx.user.coachName
-        ? `COACH IDENTITY (use this to write in the coach's authentic first-person voice):\n- Name: ${ctx.user.coachName}\n- Gender: ${ctx.user.coachGender ?? 'not specified'}\n- Background: ${ctx.user.coachBackground ?? 'not specified'}\n\nAlways write as ${ctx.user.coachName}. Never invent fictional third-party experts or use generic placeholder names.`
+        ? `COACH IDENTITY — ABSOLUTE PRIORITY — THIS OVERRIDES ALL OTHER CONTEXT:\n- The coach writing this content is: ${ctx.user.coachName}\n- Coach gender: ${ctx.user.coachGender ?? 'not specified'} — write ALL first-person content from this gender perspective without exception\n- Coach background: ${ctx.user.coachBackground ?? 'not specified'}\n\nCRITICAL RULES:\n1. Always sign off as ${ctx.user.coachName} — never write [Name] or any placeholder\n2. Write entirely in ${ctx.user.coachName}'s voice and gender perspective\n3. The ICP (ideal customer) may be a different gender — do not confuse ICP gender with coach gender\n4. Never invent fictional experts or third-party personas`
         : '';
       const contextPrefix = [coachContext, sotContext].filter(Boolean).join('\n\n');
 
@@ -443,7 +443,7 @@ Return as a JSON object with an 'emails' key containing the array.`;
       const capturedSot = sot ? { ...sot } : undefined;
       const capturedCampaignType = campaignType;
       const capturedCoachContext = user.coachName
-        ? `COACH IDENTITY (use this to write in the coach's authentic first-person voice):\n- Name: ${user.coachName}\n- Gender: ${user.coachGender ?? 'not specified'}\n- Background: ${user.coachBackground ?? 'not specified'}\n\nAlways write as ${user.coachName}. Never invent fictional third-party experts or use generic placeholder names.`
+        ? `COACH IDENTITY — ABSOLUTE PRIORITY — THIS OVERRIDES ALL OTHER CONTEXT:\n- The coach writing this content is: ${user.coachName}\n- Coach gender: ${user.coachGender ?? 'not specified'} — write ALL first-person content from this gender perspective without exception\n- Coach background: ${user.coachBackground ?? 'not specified'}\n\nCRITICAL RULES:\n1. Always sign off as ${user.coachName} — never write [Name] or any placeholder\n2. Write entirely in ${user.coachName}'s voice and gender perspective\n3. The ICP (ideal customer) may be a different gender — do not confuse ICP gender with coach gender\n4. Never invent fictional experts or third-party personas`
         : '';
 
       const jobId = randomUUID();
