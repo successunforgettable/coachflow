@@ -1698,10 +1698,6 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
             <V2HeadlinesResultPanel
               headlineSetId={latestHeadlineSetId}
               serviceId={activeService.id}
-              onContinue={() => {
-                const next = getNextStep(step);
-                if (next) navigate(`/v2-dashboard/wizard/${next}`);
-              }}
             />
           )}
           {/* ── R1a: NODE 7 AD COPY RESULT PANEL ── */}
@@ -1709,80 +1705,48 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
             <V2AdCopyResultPanel
               adSetId={latestAdSetId}
               serviceId={activeService.id}
-              onContinue={() => {
-                const next = getNextStep(step);
-                if (next) navigate(`/v2-dashboard/wizard/${next}`);
-              }}
             />
           )}
           {/* ── R1b: NODE 2 ICP RESULT PANEL ── */}
           {status === "success" && step === "icp" && latestIcpId && (
             <V2ICPResultPanel
               icpId={latestIcpId}
-              onContinue={() => {
-                const next = getNextStep(step);
-                if (next) navigate(`/v2-dashboard/wizard/${next}`);
-              }}
             />
           )}
           {/* ── R1b: NODE 3 OFFER RESULT PANEL ── */}
           {status === "success" && step === "offer" && latestOfferId && (
             <V2OfferResultPanel
               offerId={latestOfferId}
-              onContinue={() => {
-                const next = getNextStep(step);
-                if (next) navigate(`/v2-dashboard/wizard/${next}`);
-              }}
             />
           )}
           {/* ── R1b: NODE 4 UNIQUE METHOD RESULT PANEL ── */}
           {status === "success" && step === "uniqueMethod" && latestMechanismSetId && (
             <V2UniqueMethodResultPanel
               mechanismSetId={latestMechanismSetId}
-              onContinue={() => {
-                const next = getNextStep(step);
-                if (next) navigate(`/v2-dashboard/wizard/${next}`);
-              }}
             />
           )}
           {/* ── R1b: NODE 5 FREE OPT-IN RESULT PANEL ── */}
           {status === "success" && step === "freeOptIn" && latestHvcoSetId && (
             <V2FreeOptInResultPanel
               hvcoSetId={latestHvcoSetId}
-              onContinue={() => {
-                const next = getNextStep(step);
-                if (next) navigate(`/v2-dashboard/wizard/${next}`);
-              }}
             />
           )}
           {/* ── R1b: NODE 8 LANDING PAGE RESULT PANEL ── */}
           {status === "success" && step === "landingPage" && latestLandingPageId && (
             <V2LandingPageResultPanel
               landingPageId={latestLandingPageId}
-              onContinue={() => {
-                const next = getNextStep(step);
-                if (next) navigate(`/v2-dashboard/wizard/${next}`);
-              }}
             />
           )}
           {/* ── R1b: NODE 9 EMAIL SEQUENCE RESULT PANEL ── */}
           {status === "success" && step === "emailSequence" && latestEmailSequenceId && (
             <V2EmailSequenceResultPanel
               emailSequenceId={latestEmailSequenceId}
-              onContinue={() => {
-                const next = getNextStep(step);
-                if (next) navigate(`/v2-dashboard/wizard/${next}`);
-              }}
             />
           )}
           {/* ── R1b: NODE 10 WHATSAPP RESULT PANEL ── */}
           {status === "success" && step === "whatsappSequence" && latestWhatsappSequenceId && (
             <V2WhatsAppResultPanel
               whatsappSequenceId={latestWhatsappSequenceId}
-              onContinue={() => {
-                const next = getNextStep(step);
-                if (next) navigate(`/v2-dashboard/wizard/${next}`);
-              }}
             />
           )}
 

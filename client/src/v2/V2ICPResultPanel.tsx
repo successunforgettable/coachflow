@@ -192,10 +192,8 @@ function AccordionSection({
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function V2ICPResultPanel({
   icpId,
-  onContinue,
 }: {
   icpId: number;
-  onContinue: () => void;
 }) {
   const { data, isLoading, isError } = trpc.icps.get.useQuery(
     { id: icpId },
@@ -228,31 +226,8 @@ export default function V2ICPResultPanel({
       marginTop: "24px",
       position: "relative",
     }}>
-      {/* ── Fixed top-right Continue button ── */}
-      <div style={{ position: "absolute", top: "20px", right: "20px", zIndex: 10 }}>
-        <button
-          onClick={onContinue}
-          style={{
-            background: "#8B5CF6",
-            color: "#fff",
-            border: "none",
-            borderRadius: "9999px",
-            padding: "10px 22px",
-            fontFamily: "var(--v2-font-body)",
-            fontWeight: 700,
-            fontSize: "13px",
-            cursor: "pointer",
-            letterSpacing: "0.01em",
-            whiteSpace: "nowrap",
-            boxShadow: "0 2px 8px rgba(139,92,246,0.30)",
-          }}
-        >
-          Continue to Next Step →
-        </button>
-      </div>
-
       {/* ── Header ── */}
-      <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "24px", paddingRight: "180px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "24px" }}>
         <ZappyMascot state="cheering" size={56} />
         <div>
           <h2 style={{

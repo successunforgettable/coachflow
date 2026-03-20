@@ -4,12 +4,11 @@
  * Displays the generated headline set in a 5-tab layout (Story, Eyebrow,
  * Question, Authority, Urgency). Each card has copy, thumbs-up, thumbs-down,
  * and star controls (all UI-state only). Compliance badge reads complianceScore
- * from the DB row. Fixed "Continue to Next Step" button always visible top-right.
+ * from the DB row.
  *
  * Props:
  *   headlineSetId — nanoid from the job result
  *   serviceId     — numeric service ID (for getLatestByServiceId fallback)
- *   onContinue    — called when the user clicks "Continue to Next Step"
  */
 import { useState } from "react";
 import { trpc } from "../lib/trpc";
@@ -207,11 +206,9 @@ function TabPill({ label, count, active, onClick }: {
 export default function V2HeadlinesResultPanel({
   headlineSetId,
   serviceId: _serviceId,
-  onContinue,
 }: {
   headlineSetId: string;
   serviceId: number;
-  onContinue: () => void;
 }) {
   const [activeTab, setActiveTab] = useState<FormulaTab>("story");
 
@@ -257,31 +254,8 @@ export default function V2HeadlinesResultPanel({
       marginTop: "24px",
       position: "relative",
     }}>
-      {/* ── Fixed top-right Continue button ── */}
-      <div style={{ position: "absolute", top: "20px", right: "20px", zIndex: 10 }}>
-        <button
-          onClick={onContinue}
-          style={{
-            background: "#8B5CF6",
-            color: "#fff",
-            border: "none",
-            borderRadius: "9999px",
-            padding: "10px 22px",
-            fontFamily: "var(--v2-font-body)",
-            fontWeight: 700,
-            fontSize: "13px",
-            cursor: "pointer",
-            letterSpacing: "0.01em",
-            whiteSpace: "nowrap",
-            boxShadow: "0 2px 8px rgba(139,92,246,0.30)",
-          }}
-        >
-          Continue to Next Step →
-        </button>
-      </div>
-
       {/* ── Header ── */}
-      <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "20px", paddingRight: "180px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "20px" }}>
         <ZappyMascot state="cheering" size={56} />
         <div>
           <h2 style={{
