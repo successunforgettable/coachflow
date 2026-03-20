@@ -17,6 +17,7 @@ const generateWhatsAppSequenceSchema = z.object({
   serviceId: z.number(),
   campaignId: z.number().optional(),
   sequenceType: z.enum(["engagement", "sales"]),
+  sequenceLength: z.number().min(3).max(14).default(3),
   name: z.string().min(1).max(255),
   eventDetails: z
     .object({
@@ -231,7 +232,7 @@ You MUST use these exact numbers. Do not fabricate.`
       let prompt = "";
 
       if (input.sequenceType === "engagement") {
-        prompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert WhatsApp marketer. Create a 3-message WhatsApp engagement sequence for event attendees.
+        prompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert WhatsApp marketer. Create a WhatsApp engagement sequence for event attendees.
 
 Service: ${service.name}
 Event: ${input.eventDetails?.eventName || "Event"}
@@ -242,7 +243,7 @@ ${socialProofGuidance}
 
 ${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}
 
-Create 3 WhatsApp messages (Monday, Wednesday, Friday before event):
+Generate exactly ${input.sequenceLength} WhatsApp messages:
 1. WELCOME & EXPECTATION SETTING (Monday) - Personal welcome, what to expect
 2. EDUCATIONAL CONTENT (Wednesday) - Share valuable tip, build trust
 3. URGENCY & REMINDER (Friday) - Event reminder, create urgency
@@ -262,7 +263,7 @@ Each message should:
 Return as a JSON object with a 'messages' key containing the array.`;
       } else {
         // sales sequence
-        prompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert WhatsApp marketer. Create a 3-message WhatsApp sales sequence for event attendees.
+        prompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert WhatsApp marketer. Create a WhatsApp sales sequence for event attendees.
 
 Service: ${service.name}
 Event: ${input.eventDetails?.eventName || "Event"}
@@ -273,7 +274,7 @@ ${socialProofGuidance}
 
 ${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}
 
-Create 3 WhatsApp messages (Day 1, 3, 5 after event):
+Generate exactly ${input.sequenceLength} WhatsApp messages:
 1. EXCLUSIVE OFFER (Day 1) - Thank you, exclusive offer for attendees
 2. SUCCESS STORY (Day 3) - Social proof, case study, testimonial
 3. FINAL CALL (Day 5) - Scarcity, urgency, deadline
@@ -428,9 +429,9 @@ Return as a JSON object with a 'messages' key containing the array.`;
 
           let prompt = "";
           if (capturedInput.sequenceType === "engagement") {
-            prompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert WhatsApp marketer. Create a 3-message WhatsApp engagement sequence for event attendees.\n\nService: ${capturedService.name}\nEvent: ${capturedInput.eventDetails?.eventName || "Event"}\nHost: ${capturedInput.eventDetails?.hostName || "Host"}\nEvent Date: ${capturedInput.eventDetails?.eventDate || "Date"}\n\n${socialProofGuidance}\n\n${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}\n\nCreate 3 WhatsApp messages (Monday, Wednesday, Friday before event). Each message: 50-100 words, personal, conversational, emojis, clear CTA, use [First Name] for personalization.\n\nReturn as a JSON object with a 'messages' key containing the array.`;
+            prompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert WhatsApp marketer. Create a WhatsApp engagement sequence for event attendees.\n\nService: ${capturedService.name}\nEvent: ${capturedInput.eventDetails?.eventName || "Event"}\nHost: ${capturedInput.eventDetails?.hostName || "Host"}\nEvent Date: ${capturedInput.eventDetails?.eventDate || "Date"}\n\n${socialProofGuidance}\n\n${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}\n\nGenerate exactly ${capturedInput.sequenceLength} WhatsApp messages. Each message: 50-100 words, personal, conversational, emojis, clear CTA, use [First Name] for personalization.\n\nReturn as a JSON object with a 'messages' key containing the array.`;
           } else {
-            prompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert WhatsApp marketer. Create a 3-message WhatsApp sales sequence for event attendees.\n\nService: ${capturedService.name}\nEvent: ${capturedInput.eventDetails?.eventName || "Event"}\nOffer: ${capturedInput.eventDetails?.offerName || "Offer"}\nPrice: ${capturedInput.eventDetails?.price || "Price"}\n\n${socialProofGuidance}\n\n${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}\n\nCreate 3 WhatsApp messages (Day 1, 3, 5 after event). Each message: 50-100 words, personal, conversational, emojis, clear CTA, use [First Name] for personalization.\n\nReturn as a JSON object with a 'messages' key containing the array.`;
+            prompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert WhatsApp marketer. Create a WhatsApp sales sequence for event attendees.\n\nService: ${capturedService.name}\nEvent: ${capturedInput.eventDetails?.eventName || "Event"}\nOffer: ${capturedInput.eventDetails?.offerName || "Offer"}\nPrice: ${capturedInput.eventDetails?.price || "Price"}\n\n${socialProofGuidance}\n\n${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}\n\nGenerate exactly ${capturedInput.sequenceLength} WhatsApp messages. Each message: 50-100 words, personal, conversational, emojis, clear CTA, use [First Name] for personalization.\n\nReturn as a JSON object with a 'messages' key containing the array.`;
           }
 
           const response = await invokeLLM({ messages: [{ role: "system", content: "You are an expert WhatsApp marketer specializing in high-converting WhatsApp sequences for coaches, speakers, and consultants. Always respond with valid JSON." }, { role: "user", content: prompt }], response_format: { type: "json_schema", json_schema: { name: "whatsapp_sequence", strict: true, schema: { type: "object", properties: { messages: { type: "array", items: { type: "object", properties: { day: { type: "integer" }, message: { type: "string" }, cta: { type: "string" } }, required: ["day", "message", "cta"], additionalProperties: false } } }, required: ["messages"], additionalProperties: false } } } });

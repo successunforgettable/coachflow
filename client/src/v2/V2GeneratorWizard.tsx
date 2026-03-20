@@ -155,12 +155,12 @@ const ADVANCED_FIELDS: Record<WizardStep, AdvancedField[]> = {
     { key: "pageStyle", label: "Page Style", type: "select", options: ["VSL", "long-form", "short-form", "webinar-registration"], sourceNote: "Defaults to long-form" },
   ],
   emailSequence: [
-    { key: "sequenceType", label: "Sequence Type", type: "select", options: ["welcome", "nurture", "launch", "re-engagement"], sourceNote: "Defaults to nurture" },
-    { key: "emailCount", label: "Number of Emails", type: "select", options: ["3", "5", "7", "10"], sourceNote: "Defaults to 5" },
+    { key: "sequenceType", label: "Sequence Type", type: "select", options: ["welcome", "engagement", "sales"], sourceNote: "Defaults to welcome" },
+    { key: "emailCount", label: "Number of Emails", type: "select", options: ["3", "5", "7", "10", "14"], sourceNote: "Defaults to 3" },
   ],
   whatsappSequence: [
-    { key: "sequenceLength", label: "Sequence Length", type: "select", options: ["3", "5", "7"], sourceNote: "Defaults to 5" },
-    { key: "tone", label: "Tone", type: "select", options: ["conversational", "professional", "urgent"], sourceNote: "Pulled from your brand voice" },
+    { key: "sequenceType", label: "Sequence Type", type: "select", options: ["engagement", "sales"], sourceNote: "Defaults to engagement" },
+    { key: "sequenceLength", label: "Number of Messages", type: "select", options: ["3", "5", "7", "10", "14"], sourceNote: "Defaults to 3" },
   ],
   pushToMeta: [
     { key: "platform", label: "Platform", type: "select", options: ["Meta Ads Manager", "GoHighLevel"], sourceNote: "Defaults to Meta Ads Manager" },
@@ -1613,18 +1613,24 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
         const lpResult = await pollJob(jobId, (label) => setProgressLabel(label));
         if (typeof lpResult.id === 'number') setLatestLandingPageId(lpResult.id);
       } else if (step === "emailSequence") {
+        const emailSeqType = (fieldValues.sequenceType as "welcome" | "engagement" | "sales") || "welcome";
+        const emailSeqLength = Number(fieldValues.emailCount) || 3;
         const { jobId } = await generateEmailSequenceAsync.mutateAsync({
           serviceId: svcId,
-          sequenceType: "welcome",
-          name: `${svc?.name || "My Service"} — Welcome Sequence`,
+          sequenceType: emailSeqType,
+          sequenceLength: emailSeqLength,
+          name: `${svc?.name || "My Service"} — ${emailSeqType} Sequence — ${emailSeqLength} emails`,
         });
         const emailResult = await pollJob(jobId);
         if (typeof emailResult.id === 'number') setLatestEmailSequenceId(emailResult.id);
       } else if (step === "whatsappSequence") {
+        const waSeqType = (fieldValues.sequenceType as "engagement" | "sales") || "engagement";
+        const waSeqLength = Number(fieldValues.sequenceLength) || 3;
         const { jobId } = await generateWhatsappSequenceAsync.mutateAsync({
           serviceId: svcId,
-          sequenceType: "engagement",
-          name: `${svc?.name || "My Service"} — Engagement Sequence`,
+          sequenceType: waSeqType,
+          sequenceLength: waSeqLength,
+          name: `${svc?.name || "My Service"} — WhatsApp Sequence — ${waSeqLength} messages`,
         });
         const waResult = await pollJob(jobId);
         if (typeof waResult.id === 'number') setLatestWhatsappSequenceId(waResult.id);

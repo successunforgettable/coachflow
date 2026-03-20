@@ -17,6 +17,7 @@ const generateEmailSequenceSchema = z.object({
   serviceId: z.number(),
   campaignId: z.number().optional(),
   sequenceType: z.enum(["welcome", "engagement", "sales"]),
+  sequenceLength: z.number().min(3).max(14).default(3),
   name: z.string().min(1).max(255),
   eventDetails: z
     .object({
@@ -247,7 +248,7 @@ You MUST use these exact numbers and real names. Do not fabricate.`
       let prompt = "";
 
       if (input.sequenceType === "welcome") {
-        prompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert email marketer. Create a 3-email welcome sequence for new subscribers using Russell Brunson's Soap Opera Sequence framework.
+        prompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert email marketer. Create a welcome sequence for new subscribers using Russell Brunson's Soap Opera Sequence framework.
 
 Service: ${service.name}
 Category: ${service.category}
@@ -259,7 +260,7 @@ ${socialProofGuidance}
 
 ${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}
 
-Create 3 emails:
+Generate exactly ${input.sequenceLength} emails:
 1. SET THE STAGE (Day 1) - Welcome, set expectations, introduce yourself
 2. EPIPHANY (Day 3) - Share your transformation story, introduce solution
 3. HIDDEN BENEFITS (Day 5) - Show secondary benefits, soft CTA
@@ -272,7 +273,7 @@ Each email should have:
 
 Return as a JSON object with an 'emails' key containing the array.`;
       } else if (input.sequenceType === "engagement") {
-        prompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert email marketer. Create a 5-email engagement sequence for event attendees using Russell Brunson's Soap Opera Sequence.
+        prompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert email marketer. Create an engagement sequence for event attendees using Russell Brunson's Soap Opera Sequence.
 
 Service: ${service.name}
 Event: ${input.eventDetails?.eventName || "Event"}
@@ -282,7 +283,7 @@ ${socialProofGuidance}
 
 ${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}
 
-Create 5 emails (Monday to Friday before event):
+Generate exactly ${input.sequenceLength} emails:
 1. SET THE STAGE (Monday) - Introduce, set expectations
 2. OPEN WITH HIGH DRAMA (Tuesday) - Tell your biggest problem
 3. EPIPHANY (Wednesday) - Reveal solution, promote event
@@ -298,7 +299,7 @@ Each email should have:
 Return as a JSON object with an 'emails' key containing the array.`;
       } else {
         // sales sequence
-        prompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert email marketer. Create a 7-email sales sequence for event attendees who didn't buy.
+        prompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert email marketer. Create a sales sequence for event attendees who didn't buy.
 
 Service: ${service.name}
 Event: ${input.eventDetails?.eventName || "Event"}
@@ -310,7 +311,7 @@ ${socialProofGuidance}
 
 ${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}
 
-Create 7 emails (Day 1-7 after event):
+Generate exactly ${input.sequenceLength} emails:
 1. THANK YOU (Day 1) - Gratitude, recap key points
 2. CASE STUDY (Day 2) - Success story, social proof
 3. OBJECTION HANDLING (Day 3) - Address common objections
@@ -465,11 +466,11 @@ Return as a JSON object with an 'emails' key containing the array.`;
 
           let prompt = "";
           if (capturedInput.sequenceType === "welcome") {
-            prompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert email marketer. Create a 3-email welcome sequence for new subscribers using Russell Brunson's Soap Opera Sequence framework.\n\nService: ${capturedService.name}\nCategory: ${capturedService.category}\nDescription: ${capturedService.description}\nTarget Customer: ${capturedService.targetCustomer}\nMain Benefit: ${capturedService.mainBenefit}\n\n${socialProofGuidance}\n\n${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}\n\nCreate 3 emails (Day 1, 3, 5). Each email: subject line, preview text, body (200-300 words), CTA.\n\nReturn as a JSON object with an 'emails' key containing the array.`;
+            prompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert email marketer. Create a welcome sequence for new subscribers using Russell Brunson's Soap Opera Sequence framework.\n\nService: ${capturedService.name}\nCategory: ${capturedService.category}\nDescription: ${capturedService.description}\nTarget Customer: ${capturedService.targetCustomer}\nMain Benefit: ${capturedService.mainBenefit}\n\n${socialProofGuidance}\n\n${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}\n\nGenerate exactly ${capturedInput.sequenceLength} emails. Each email: subject line, preview text, body (200-300 words), CTA.\n\nReturn as a JSON object with an 'emails' key containing the array.`;
           } else if (capturedInput.sequenceType === "engagement") {
-            prompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert email marketer. Create a 5-email engagement sequence for event attendees using Russell Brunson's Soap Opera Sequence.\n\nService: ${capturedService.name}\nEvent: ${capturedInput.eventDetails?.eventName || "Event"}\nHost: ${capturedInput.eventDetails?.hostName || "Host"}\n\n${socialProofGuidance}\n\n${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}\n\nCreate 5 emails (Monday to Friday before event). Each email: subject line, preview text, body (200-300 words), CTA.\n\nReturn as a JSON object with an 'emails' key containing the array.`;
+            prompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert email marketer. Create an engagement sequence for event attendees using Russell Brunson's Soap Opera Sequence.\n\nService: ${capturedService.name}\nEvent: ${capturedInput.eventDetails?.eventName || "Event"}\nHost: ${capturedInput.eventDetails?.hostName || "Host"}\n\n${socialProofGuidance}\n\n${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}\n\nGenerate exactly ${capturedInput.sequenceLength} emails. Each email: subject line, preview text, body (200-300 words), CTA.\n\nReturn as a JSON object with an 'emails' key containing the array.`;
           } else {
-            prompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert email marketer. Create a 7-email sales sequence for event attendees who didn't buy.\n\nService: ${capturedService.name}\nEvent: ${capturedInput.eventDetails?.eventName || "Event"}\nOffer: ${capturedInput.eventDetails?.offerName || "Offer"}\nPrice: ${capturedInput.eventDetails?.price || "Price"}\nDeadline: ${capturedInput.eventDetails?.deadline || "Deadline"}\n\n${socialProofGuidance}\n\n${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}\n\nCreate 7 emails (Day 1-7 after event). Each email: subject line, preview text, body (250-350 words), CTA.\n\nReturn as a JSON object with an 'emails' key containing the array.`;
+            prompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert email marketer. Create a sales sequence for event attendees who didn't buy.\n\nService: ${capturedService.name}\nEvent: ${capturedInput.eventDetails?.eventName || "Event"}\nOffer: ${capturedInput.eventDetails?.offerName || "Offer"}\nPrice: ${capturedInput.eventDetails?.price || "Price"}\nDeadline: ${capturedInput.eventDetails?.deadline || "Deadline"}\n\n${socialProofGuidance}\n\n${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}\n\nGenerate exactly ${capturedInput.sequenceLength} emails. Each email: subject line, preview text, body (250-350 words), CTA.\n\nReturn as a JSON object with an 'emails' key containing the array.`;
           }
 
           const response = await invokeLLM({ messages: [{ role: "system", content: "You are an expert email marketer specializing in high-converting email sequences for coaches, speakers, and consultants. Use Russell Brunson's Soap Opera Sequence framework. Always respond with valid JSON." }, { role: "user", content: prompt }], response_format: { type: "json_schema", json_schema: { name: "email_sequence", strict: true, schema: { type: "object", properties: { emails: { type: "array", items: { type: "object", properties: { day: { type: "integer" }, subject: { type: "string" }, previewText: { type: "string" }, body: { type: "string" }, cta: { type: "string" } }, required: ["day", "subject", "previewText", "body", "cta"], additionalProperties: false } } }, required: ["emails"], additionalProperties: false } } } });
