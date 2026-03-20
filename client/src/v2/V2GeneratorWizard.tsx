@@ -34,6 +34,7 @@ import V2FreeOptInResultPanel from "./V2FreeOptInResultPanel";
 import V2LandingPageResultPanel from "./V2LandingPageResultPanel";
 import V2EmailSequenceResultPanel from "./V2EmailSequenceResultPanel";
 import V2WhatsAppResultPanel from "./V2WhatsAppResultPanel";
+import CoachIdentityModal from "./components/CoachIdentityModal";
 
 export type { WizardStep };
 
@@ -1227,6 +1228,11 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
   const { user: authUser } = useAuth();
   const isFreeTier = !authUser || (authUser.role !== "superuser" && authUser.role !== "admin" && authUser.subscriptionTier !== "pro" && authUser.subscriptionTier !== "agency");
 
+  // ── Coach identity modal gate ──
+  const coachProfileQuery = trpc.user.getCoachProfile.useQuery(undefined, { staleTime: 300_000 });
+  const [coachModalDismissed, setCoachModalDismissed] = useState(false);
+  const showCoachModal = coachProfileQuery.isFetched && !coachProfileQuery.data?.coachName && !coachModalDismissed;
+
   // NOTE: All hooks MUST be called unconditionally before any early returns
   // to comply with React's Rules of Hooks.
 
@@ -1709,6 +1715,18 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
     } else {
       setStatus("idle");
     }
+  }
+
+  // ── Coach identity modal — blocks entire wizard until completed ──
+  if (showCoachModal) {
+    return (
+      <V2Layout>
+        <CoachIdentityModal onComplete={() => {
+          setCoachModalDismissed(true);
+          coachProfileQuery.refetch();
+        }} />
+      </V2Layout>
+    );
   }
 
   // ── Service step: render dedicated V2ServiceStep component ──
