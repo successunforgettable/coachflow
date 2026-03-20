@@ -292,7 +292,7 @@ export default function V2OfferResultPanel({
       </div>
 
       {/* ── Active angle content ── */}
-      <AngleTabContent content={angles[resolvedTab]} />
+      <AngleTabContent key={resolvedTab} content={angles[resolvedTab]} />
 
       {/* ── Download TXT button ── */}
       <div style={{ marginTop: "20px", textAlign: "center" }}>
