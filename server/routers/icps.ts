@@ -464,6 +464,55 @@ Format as JSON with these exact keys (use bullet points • for lists):
       return updated;
     }),
 
+  // Regenerate a single section of an ICP via AI
+  regenerateSection: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      sectionKey: z.enum(["introduction", "fears", "hopesDreams", "psychographics", "pains", "frustrations", "goals", "values", "objections", "buyingTriggers", "mediaConsumption", "influencers", "communicationStyle", "decisionMaking", "successMetrics", "implementationBarriers"]),
+      promptOverride: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const [row] = await db
+        .select()
+        .from(idealCustomerProfiles)
+        .where(and(eq(idealCustomerProfiles.id, input.id), eq(idealCustomerProfiles.userId, ctx.user.id)))
+        .limit(1);
+
+      if (!row) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "ICP not found" });
+      }
+
+      const currentValue = (row as Record<string, unknown>)[input.sectionKey] as string ?? "";
+      const overrideInstruction = input.promptOverride?.trim()
+        ? ` Additional instruction: ${input.promptOverride.trim()}.`
+        : "";
+
+      const prompt = `Rewrite this section of an ideal customer profile. Section: ${input.sectionKey}. Current content: ${currentValue}.${overrideInstruction} Return a JSON object with exactly one key: value (string). No explanation, no markdown, just the JSON object.`;
+
+      const response = await invokeLLM({
+        messages: [
+          { role: "system", content: "You are an expert marketing strategist specializing in customer profiles for coaches and consultants. Respond with only valid JSON." },
+          { role: "user", content: prompt },
+        ],
+      });
+
+      const content = response.choices[0].message.content;
+      if (typeof content !== "string") throw new Error("Invalid response from AI");
+
+      const parsed = JSON.parse(stripMarkdownJson(content));
+      if (!parsed.value) throw new Error("AI response missing value field");
+
+      await db
+        .update(idealCustomerProfiles)
+        .set({ [input.sectionKey]: parsed.value, updatedAt: new Date() } as any)
+        .where(eq(idealCustomerProfiles.id, input.id));
+
+      return { sectionKey: input.sectionKey, value: parsed.value };
+    }),
+
   // Delete ICP
   delete: protectedProcedure
     .input(z.object({ id: z.number() }))
@@ -492,20 +541,5 @@ Format as JSON with these exact keys (use bullet points • for lists):
         .where(eq(idealCustomerProfiles.id, input.id));
 
       return { success: true };
-    }),
-
-  // Get most recent ICP for a given serviceId (generation history)
-  getLatestByServiceId: protectedProcedure
-    .input(z.object({ serviceId: z.number() }))
-    .query(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
-      const [latest] = await db
-        .select()
-        .from(idealCustomerProfiles)
-        .where(and(eq(idealCustomerProfiles.userId, ctx.user.id), eq(idealCustomerProfiles.serviceId, input.serviceId)))
-        .orderBy(desc(idealCustomerProfiles.createdAt))
-        .limit(1);
-      return latest ?? null;
     }),
 });
