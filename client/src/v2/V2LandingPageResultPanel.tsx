@@ -150,8 +150,14 @@ function serializeValue(val: unknown): string {
   }
   if (typeof val === "object") {
     const obj = val as Record<string, unknown>;
+    // Headline + content pattern (problemAgitation, solutionIntro, insiderAdvantages, etc.)
+    if (typeof obj.headline === "string" && typeof obj.content === "string") {
+      return `${obj.headline}\n\n${obj.content}`;
+    }
     // Quiz section
     if (obj.question) return `Q: ${obj.question}\nOptions: ${Array.isArray(obj.options) ? obj.options.join(", ") : ""}\nAnswer: ${obj.answer ?? ""}`;
+    // Generic object with content key
+    if (typeof obj.content === "string") return obj.content;
     return JSON.stringify(val, null, 2);
   }
   return String(val);

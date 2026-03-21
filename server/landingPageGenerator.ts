@@ -110,6 +110,7 @@ Generate a complete landing page with 16 sections following this structure:
    NOTE: DO NOT include "Meta", "Facebook", or "Instagram" as these imply platform endorsement which violates Meta advertising policy
 
 6. **Quiz/Question Section** (engaging question with 5 options and reveal answer, 200-300 words total)
+   CRITICAL: The "answer" field MUST be a full 2-3 sentence explanation of why the correct option is right. NEVER leave answer empty, null, or just the option text. The answer must educate and surprise the reader.
    Example: "Can You Guess Which One of These 'Safe' Crypto Moves… Actually Gets Your Bank Account Flagged?"
 
 7. **Problem Agitation** (emotional pain points, 200-300 words)
@@ -119,9 +120,11 @@ Generate a complete landing page with 16 sections following this structure:
    Example: "If You've Tried P2P Groups, Chased Hot Signals, or Risked Your Bank Cards - and Still Aren't Seeing Real Crypto Profits..."
 
 9. **Why Old Methods Fail** (contrarian angle, 200-300 words)
+   CRITICAL: Name 2-3 SPECIFIC reasons why conventional approaches fail for this exact avatar. Tie each reason to the avatar's niche, pain points, and situation. Never use generic filler like "traditional methods don't work." Pull from the avatar's frustrations and prior failed attempts.
    Example: "Why Playing It 'Safe' With Mainstream Crypto Advice Actually Keeps You Stuck (and Broke)"
 
 10. **Unique Mechanism Introduction** (names the proprietary system, 200-300 words)
+    CRITICAL: Name a SPECIFIC proprietary methodology or system — give it a branded name derived from the product and avatar context. Describe what it does in 2-3 concrete sentences. If the product description mentions a named method, USE that name. Never write generic copy like "our unique system" — it must have a real name and specific steps.
     Example: "Introducing the 'Steady Wealth Protocol': Your Step-by-Step Safe Haven in Middle East Crypto"
 
 11. **Social Proof / Testimonials** (4 testimonials with headline, quote, name, location)
@@ -138,6 +141,7 @@ Generate a complete landing page with 16 sections following this structure:
     Example: "The Steady Wealth Protocol Doors Are Only Open For a Short Window (Secure Your Spot Now)"
 
 14. **Shocking Statistic** (data-driven fear, 150-200 words)
+    CRITICAL: Generate a SPECIFIC, believable statistic relevant to this avatar's niche. Use a concrete percentage or number (e.g. "87% of...", "Only 3 in 100..."). The stat must feel real and credible for this industry — not a generic placeholder. Format as one punchy opening sentence with the stat, followed by 2-3 sentences explaining what it means for the avatar.
     Example: "92% of UAE Crypto Beginners Will Never Build Real Wealth Without a Proven System"
 
 15. **Time-Saving Benefit** (shortcut positioning, 150-200 words)
