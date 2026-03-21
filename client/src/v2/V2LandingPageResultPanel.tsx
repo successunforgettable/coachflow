@@ -157,20 +157,81 @@ function serializeValue(val: unknown): string {
   return String(val);
 }
 
+// ─── Inline regen panel ──────────────────────────────────────────────────────
+function LpRegenPanel({
+  landingPageId,
+  angle,
+  sectionKey,
+  onSuccess,
+  onClose,
+}: {
+  landingPageId: number;
+  angle: AngleKey;
+  sectionKey: string;
+  onSuccess: (newAngle: AngleContent) => void;
+  onClose: () => void;
+}) {
+  const [prompt, setPrompt] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const regenMutation = trpc.landingPages.regenerateSection.useMutation();
+
+  async function handleRegen() {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await regenMutation.mutateAsync({
+        landingPageId,
+        angle,
+        sectionKey,
+        userPrompt: prompt.trim() || undefined,
+      });
+      onSuccess(result as AngleContent);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Regeneration failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div style={{ marginTop: "10px", padding: "12px", background: "rgba(139,92,246,0.04)", borderRadius: "12px", border: "1px solid rgba(139,92,246,0.15)" }}>
+      <textarea value={prompt} onChange={e => setPrompt(e.target.value)} placeholder="Optional: describe what to change..."
+        style={{ width: "100%", minHeight: "56px", fontFamily: "var(--v2-font-body)", fontSize: "13px", color: "#1A1624", lineHeight: 1.5, border: "1px solid rgba(139,92,246,0.30)", borderRadius: "8px", padding: "8px 10px", resize: "vertical", outline: "none", background: "#FFFFFF", boxSizing: "border-box" }} />
+      <div style={{ display: "flex", gap: "8px", marginTop: "8px", alignItems: "center" }}>
+        <button onClick={handleRegen} disabled={loading}
+          style={{ background: loading ? "#ccc" : "#FF5B1D", color: "#fff", border: "none", borderRadius: "9999px", padding: "7px 18px", fontFamily: "var(--v2-font-body)", fontWeight: 700, fontSize: "12px", cursor: loading ? "not-allowed" : "pointer", letterSpacing: "0.01em", display: "flex", alignItems: "center", gap: "6px" }}>
+          {loading ? (<><span style={{ display: "inline-block", width: "12px", height: "12px", border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.6s linear infinite" }} /> Regenerating...</>) : "Regenerate"}
+        </button>
+        <button onClick={onClose} style={{ background: "none", border: "none", fontFamily: "var(--v2-font-body)", fontSize: "12px", color: "#888", cursor: "pointer", padding: "7px 10px" }}>Cancel</button>
+      </div>
+      {error && <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "12px", color: "#DC2626", margin: "6px 0 0" }}>{error}</p>}
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+}
+
 // ─── Editable section card ────────────────────────────────────────────────────
 function SectionCard({
   label,
   sectionKey,
   initialValue,
+  landingPageId,
+  angle,
+  onAngleUpdate,
 }: {
   label: string;
   sectionKey: keyof AngleContent;
   initialValue: unknown;
+  landingPageId: number;
+  angle: AngleKey;
+  onAngleUpdate: (newAngle: AngleContent) => void;
 }) {
   const textValue = serializeValue(initialValue);
   const [value, setValue] = useState(textValue);
   const [editing, setEditing] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [regenOpen, setRegenOpen] = useState(false);
 
   function handleCopy() {
     navigator.clipboard.writeText(value).catch(() => {});
@@ -242,33 +303,32 @@ function SectionCard({
       <div style={{ display: "flex", gap: "8px", marginTop: "8px", alignItems: "center", flexWrap: "wrap" }}>
         <button
           onClick={handleCopy}
-          style={{
-            ...iconBtn,
-            background: copied ? "rgba(88,204,2,0.12)" : undefined,
-            borderColor: copied ? "rgba(88,204,2,0.40)" : undefined,
-          }}
+          style={{ ...iconBtn, background: copied ? "rgba(88,204,2,0.12)" : undefined, borderColor: copied ? "rgba(88,204,2,0.40)" : undefined }}
           title="Copy"
         >
           {copied ? "✓" : "⎘"}
         </button>
         <button
-          onClick={() => toast.info("Individual section regeneration coming in Phase L")}
-          style={{
-            background: "rgba(26,22,36,0.06)",
-            border: "none",
-            borderRadius: "9999px",
-            padding: "6px 14px",
-            fontFamily: "var(--v2-font-body)",
-            fontWeight: 600,
-            fontSize: "12px",
-            color: "#555",
-            cursor: "pointer",
-            whiteSpace: "nowrap",
-          }}
+          onClick={() => setRegenOpen(p => !p)}
+          style={{ ...iconBtn, background: regenOpen ? "rgba(255,91,29,0.10)" : undefined, borderColor: regenOpen ? "rgba(255,91,29,0.40)" : undefined }}
+          title="Regenerate"
         >
-          ↻ Regenerate
+          ↺
         </button>
       </div>
+      {regenOpen && (
+        <LpRegenPanel
+          landingPageId={landingPageId}
+          angle={angle}
+          sectionKey={sectionKey as string}
+          onSuccess={(newAngle) => {
+            setValue(serializeValue(newAngle[sectionKey]));
+            onAngleUpdate(newAngle);
+            setRegenOpen(false);
+          }}
+          onClose={() => setRegenOpen(false)}
+        />
+      )}
     </div>
   );
 }
@@ -299,7 +359,12 @@ function TabPill({ label, active, onClick }: { label: string; active: boolean; o
 }
 
 // ─── Angle tab content ────────────────────────────────────────────────────────
-function AngleTabContent({ content }: { content: AngleContent }) {
+function AngleTabContent({ content, landingPageId, angle, onAngleUpdate }: {
+  content: AngleContent;
+  landingPageId: number;
+  angle: AngleKey;
+  onAngleUpdate: (newAngle: AngleContent) => void;
+}) {
   return (
     <div>
       {SECTION_DEFS.map(s => (
@@ -308,6 +373,9 @@ function AngleTabContent({ content }: { content: AngleContent }) {
           label={s.label}
           sectionKey={s.key}
           initialValue={content[s.key]}
+          landingPageId={landingPageId}
+          angle={angle}
+          onAngleUpdate={onAngleUpdate}
         />
       ))}
     </div>
@@ -365,12 +433,16 @@ export default function V2LandingPageResultPanel({
     return raw;
   }
 
-  const angles: Record<AngleKey, AngleContent> = {
+  const [angles, setAngles] = useState<Record<AngleKey, AngleContent>>(() => ({
     original:  parseAngle(lp.originalAngle),
     godfather: parseAngle(lp.godfatherAngle),
     free:      parseAngle(lp.freeAngle),
     dollar:    parseAngle(lp.dollarAngle),
-  };
+  }));
+
+  function handleAngleUpdate(angleKey: AngleKey, newAngle: AngleContent) {
+    setAngles(prev => ({ ...prev, [angleKey]: newAngle }));
+  }
 
   return (
     <div style={{
@@ -419,7 +491,13 @@ export default function V2LandingPageResultPanel({
       </div>
 
       {/* ── Active angle content ── */}
-      <AngleTabContent content={angles[resolvedTab]} />
+      <AngleTabContent
+        key={resolvedTab}
+        content={angles[resolvedTab]}
+        landingPageId={landingPageId}
+        angle={resolvedTab}
+        onAngleUpdate={(newAngle) => handleAngleUpdate(resolvedTab, newAngle)}
+      />
 
       {/* ── Download TXT button ── */}
       <div style={{ marginTop: "20px", textAlign: "center" }}>

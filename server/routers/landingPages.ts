@@ -8,6 +8,17 @@ import { getDb } from "../db";
 import { landingPages, services, users, campaigns, idealCustomerProfiles, sourceOfTruth, jobs } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { generateAllAngles } from "../landingPageGenerator";
+import { invokeLLM } from "../_core/llm";
+
+function stripMarkdownJson(content: string): string {
+  return content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
+}
+
+const LP_STRING_SECTIONS = new Set([
+  "eyebrowHeadline", "mainHeadline", "subheadline", "primaryCta",
+  "problemAgitation", "solutionIntro", "whyOldFail", "uniqueMechanism",
+  "insiderAdvantages", "scarcityUrgency", "shockingStat", "timeSavingBenefit",
+]);
 
 const generateLandingPageSchema = z.object({
   serviceId: z.number(),
@@ -249,15 +260,9 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
         // Otherwise keep original format
       }
 
-      // Coach identity context
-      const coachContext = ctx.user.coachName
-        ? `COACH IDENTITY — ABSOLUTE PRIORITY — THIS OVERRIDES ALL OTHER CONTEXT:\n- The coach writing this content is: ${ctx.user.coachName}\n- Coach gender: ${ctx.user.coachGender ?? 'not specified'} — write ALL first-person content from this gender perspective without exception\n- Coach background: ${ctx.user.coachBackground ?? 'not specified'}\n\nCRITICAL RULES:\n1. Always sign off as ${ctx.user.coachName} — never write [Name] or any placeholder\n2. Write entirely in ${ctx.user.coachName}'s voice and gender perspective\n3. The ICP (ideal customer) may be a different gender — do not confuse ICP gender with coach gender\n4. Never invent fictional experts or third-party personas`
-        : null;
-
-      // Append coach + SOT + campaignType + ICP context to avatarDescription
-      // Layer order: Coach → SOT → avatarDescription → campaignType → ICP
+      // Append SOT + campaignType + ICP context to avatarDescription — Item 1.2 + 1.4 + 1.5
+      // Layer order: SOT → avatarDescription → campaignType → ICP
       const enrichedAvatarDescription = [
-        coachContext || null,
         sotContext || null,
         avatarDescription || null,
         campaignTypeContext || null,
@@ -344,9 +349,6 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
       const capturedIcp = icp ? { ...icp } : undefined;
       const capturedSot = sot ? { ...sot } : undefined;
       const capturedCampaignType = campaignType;
-      const capturedCoachContext = ctx.user.coachName
-        ? `COACH IDENTITY — ABSOLUTE PRIORITY — THIS OVERRIDES ALL OTHER CONTEXT:\n- The coach writing this content is: ${ctx.user.coachName}\n- Coach gender: ${ctx.user.coachGender ?? 'not specified'} — write ALL first-person content from this gender perspective without exception\n- Coach background: ${ctx.user.coachBackground ?? 'not specified'}\n\nCRITICAL RULES:\n1. Always sign off as ${ctx.user.coachName} — never write [Name] or any placeholder\n2. Write entirely in ${ctx.user.coachName}'s voice and gender perspective\n3. The ICP (ideal customer) may be a different gender — do not confuse ICP gender with coach gender\n4. Never invent fictional experts or third-party personas`
-        : null;
 
       const jobId = randomUUID();
       await db.insert(jobs).values({ id: jobId, userId: String(capturedUserId), status: "pending" });
@@ -375,7 +377,7 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
             if (parts.length >= 3) { avatarName = `${parts[0]} the ${parts[2]}`; avatarDescription = parts.length >= 4 ? parts[3] : parts[2]; }
             else if (parts.length === 2) { avatarName = `${parts[0]} the ${parts[1]}`; avatarDescription = parts[1]; }
           }
-          const enrichedAvatarDescription = [capturedCoachContext || null, sotContext || null, avatarDescription || null, campaignTypeContext || null, icpContext || null].filter(Boolean).join('\n\n');
+          const enrichedAvatarDescription = [sotContext || null, avatarDescription || null, campaignTypeContext || null, icpContext || null].filter(Boolean).join('\n\n');
 
           // ── Helper: write real angle-progress to job record ──────────────────
           const writeProgress = async (completed: number, total: number) => {
@@ -532,6 +534,77 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
       return updated;
     }),
 
+  // Regenerate a single section within a landing page angle via AI
+  regenerateSection: protectedProcedure
+    .input(z.object({
+      landingPageId: z.number(),
+      angle: z.enum(["original", "godfather", "free", "dollar"]),
+      sectionKey: z.string(),
+      userPrompt: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const [row] = await db
+        .select()
+        .from(landingPages)
+        .where(and(eq(landingPages.id, input.landingPageId), eq(landingPages.userId, ctx.user.id)))
+        .limit(1);
+
+      if (!row) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Landing page not found" });
+      }
+
+      const angleColMap = { original: "originalAngle", godfather: "godfatherAngle", free: "freeAngle", dollar: "dollarAngle" } as const;
+      const angleCol = angleColMap[input.angle];
+      const rawAngle = row[angleCol];
+      const angleData: Record<string, unknown> = typeof rawAngle === "string" ? JSON.parse(rawAngle) : (rawAngle as Record<string, unknown>) ?? {};
+
+      const currentValue = angleData[input.sectionKey];
+      const serialized = typeof currentValue === "string" ? currentValue : JSON.stringify(currentValue);
+
+      const isStringSection = LP_STRING_SECTIONS.has(input.sectionKey);
+      const userInstruction = input.userPrompt?.trim() ? ` User instruction: ${input.userPrompt.trim()}.` : "";
+      const formatInstruction = isStringSection
+        ? "Return ONLY the rewritten text. No JSON, no markdown, no explanation."
+        : "Return ONLY valid JSON — no markdown, no explanation, no wrapping text.";
+
+      const prompt = `Rewrite the ${input.sectionKey} section for this landing page. Current value: ${serialized}.${userInstruction} ${formatInstruction}`;
+
+      const response = await invokeLLM({
+        messages: [
+          { role: "system", content: "You are a direct-response copywriter for high-ticket coaching offers." },
+          { role: "user", content: prompt },
+        ],
+      });
+
+      const content = response.choices[0].message.content;
+      if (typeof content !== "string") throw new Error("Invalid response from AI");
+
+      const cleaned = stripMarkdownJson(content);
+
+      let newValue: unknown;
+      if (isStringSection) {
+        newValue = cleaned;
+      } else {
+        try {
+          newValue = JSON.parse(cleaned);
+        } catch {
+          newValue = cleaned; // graceful fallback — store raw string
+        }
+      }
+
+      angleData[input.sectionKey] = newValue;
+
+      await db
+        .update(landingPages)
+        .set({ [angleCol]: JSON.stringify(angleData), updatedAt: new Date() })
+        .where(eq(landingPages.id, input.landingPageId));
+
+      return angleData;
+    }),
+
   // Delete landing page
   delete: protectedProcedure
     .input(z.object({ id: z.number() }))
@@ -558,20 +631,5 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
       await db.delete(landingPages).where(eq(landingPages.id, input.id));
 
       return { success: true };
-    }),
-
-  // Get most recent landing page for a given serviceId (generation history)
-  getLatestByServiceId: protectedProcedure
-    .input(z.object({ serviceId: z.number() }))
-    .query(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
-      const [latest] = await db
-        .select()
-        .from(landingPages)
-        .where(and(eq(landingPages.userId, ctx.user.id), eq(landingPages.serviceId, input.serviceId)))
-        .orderBy(desc(landingPages.createdAt))
-        .limit(1);
-      return latest ?? null;
     }),
 });
