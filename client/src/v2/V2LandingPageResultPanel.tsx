@@ -493,14 +493,16 @@ function LandingPageVisualRenderer({ angleData }: { angleData: AngleContent }) {
         ); })()}
 
         {/* 11. Shocking Stat */}
-        {isValid(c.shockingStat) && (
-          <section style={{ textAlign: "center", padding: "32px 0" }}>
-            <div style={{ fontSize: "clamp(36px, 6vw, 60px)", fontWeight: 700, color: "#ff3366", marginBottom: "12px" }}>
-              {(c.shockingStat as string).match(/\d+%/)?.[0] || ""}
-            </div>
-            <p style={{ fontSize: "20px", color: "#d1d5db", maxWidth: "40rem", margin: "0 auto" }}>{c.shockingStat}</p>
-          </section>
-        )}
+        {isValid(c.shockingStat) && (() => {
+          const statText = extractText(c.shockingStat);
+          const bigNumber = statText.match(/\d+%/)?.[0] || "";
+          return (
+            <section style={{ textAlign: "center", padding: "32px 0" }}>
+              {bigNumber && <div style={{ fontSize: "clamp(36px, 6vw, 60px)", fontWeight: 700, color: "#ff3366", marginBottom: "12px" }}>{bigNumber}</div>}
+              <p style={{ fontSize: "20px", color: "#d1d5db", maxWidth: "40rem", margin: "0 auto" }}>{statText}</p>
+            </section>
+          );
+        })()}
 
         {/* 12. Time-Saving Benefit */}
         {isValid(c.timeSavingBenefit) && (() => { const { heading, body } = splitHeadingBody(c.timeSavingBenefit); return (
