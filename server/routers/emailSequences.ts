@@ -17,7 +17,6 @@ const generateEmailSequenceSchema = z.object({
   serviceId: z.number(),
   campaignId: z.number().optional(),
   sequenceType: z.enum(["welcome", "engagement", "sales"]),
-  sequenceLength: z.number().min(3).max(14).default(3),
   name: z.string().min(1).max(255),
   eventDetails: z
     .object({
@@ -148,10 +147,6 @@ export const emailSequencesRouter = router({
       const sotContext = sotLines.length > 0
         ? ['BRAND CONTEXT — this is the approved brand voice. All copy must be consistent with this:', ...sotLines].join('\n')
         : '';
-      const coachContext = ctx.user.coachName
-        ? `COACH IDENTITY — ABSOLUTE PRIORITY — THIS OVERRIDES ALL OTHER CONTEXT:\n- The coach writing this content is: ${ctx.user.coachName}\n- Coach gender: ${ctx.user.coachGender ?? 'not specified'} — write ALL first-person content from this gender perspective without exception\n- Coach background: ${ctx.user.coachBackground ?? 'not specified'}\n\nCRITICAL RULES:\n1. Always sign off as ${ctx.user.coachName} — never write [Name] or any placeholder\n2. Write entirely in ${ctx.user.coachName}'s voice and gender perspective\n3. The ICP (ideal customer) may be a different gender — do not confuse ICP gender with coach gender\n4. Never invent fictional experts or third-party personas`
-        : '';
-      const contextPrefix = [coachContext, sotContext].filter(Boolean).join('\n\n');
 
       // Campaign fetch — Item 1.5 (campaignType) + Item 1.1b (icpId)
       let icp: typeof idealCustomerProfiles.$inferSelect | undefined;
@@ -248,7 +243,7 @@ You MUST use these exact numbers and real names. Do not fabricate.`
       let prompt = "";
 
       if (input.sequenceType === "welcome") {
-        prompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert email marketer. Create a welcome sequence for new subscribers using Russell Brunson's Soap Opera Sequence framework.
+        prompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert email marketer. Create a 3-email welcome sequence for new subscribers using Russell Brunson's Soap Opera Sequence framework.
 
 Service: ${service.name}
 Category: ${service.category}
@@ -260,7 +255,7 @@ ${socialProofGuidance}
 
 ${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}
 
-Generate exactly ${input.sequenceLength} emails:
+Create 3 emails:
 1. SET THE STAGE (Day 1) - Welcome, set expectations, introduce yourself
 2. EPIPHANY (Day 3) - Share your transformation story, introduce solution
 3. HIDDEN BENEFITS (Day 5) - Show secondary benefits, soft CTA
@@ -273,7 +268,7 @@ Each email should have:
 
 Return as a JSON object with an 'emails' key containing the array.`;
       } else if (input.sequenceType === "engagement") {
-        prompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert email marketer. Create an engagement sequence for event attendees using Russell Brunson's Soap Opera Sequence.
+        prompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert email marketer. Create a 5-email engagement sequence for event attendees using Russell Brunson's Soap Opera Sequence.
 
 Service: ${service.name}
 Event: ${input.eventDetails?.eventName || "Event"}
@@ -283,7 +278,7 @@ ${socialProofGuidance}
 
 ${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}
 
-Generate exactly ${input.sequenceLength} emails:
+Create 5 emails (Monday to Friday before event):
 1. SET THE STAGE (Monday) - Introduce, set expectations
 2. OPEN WITH HIGH DRAMA (Tuesday) - Tell your biggest problem
 3. EPIPHANY (Wednesday) - Reveal solution, promote event
@@ -299,7 +294,7 @@ Each email should have:
 Return as a JSON object with an 'emails' key containing the array.`;
       } else {
         // sales sequence
-        prompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert email marketer. Create a sales sequence for event attendees who didn't buy.
+        prompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert email marketer. Create a 7-email sales sequence for event attendees who didn't buy.
 
 Service: ${service.name}
 Event: ${input.eventDetails?.eventName || "Event"}
@@ -311,7 +306,7 @@ ${socialProofGuidance}
 
 ${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}
 
-Generate exactly ${input.sequenceLength} emails:
+Create 7 emails (Day 1-7 after event):
 1. THANK YOU (Day 1) - Gratitude, recap key points
 2. CASE STUDY (Day 2) - Success story, social proof
 3. OBJECTION HANDLING (Day 3) - Address common objections
@@ -443,9 +438,6 @@ Return as a JSON object with an 'emails' key containing the array.`;
       const capturedIcp = icp ? { ...icp } : undefined;
       const capturedSot = sot ? { ...sot } : undefined;
       const capturedCampaignType = campaignType;
-      const capturedCoachContext = user.coachName
-        ? `COACH IDENTITY — ABSOLUTE PRIORITY — THIS OVERRIDES ALL OTHER CONTEXT:\n- The coach writing this content is: ${user.coachName}\n- Coach gender: ${user.coachGender ?? 'not specified'} — write ALL first-person content from this gender perspective without exception\n- Coach background: ${user.coachBackground ?? 'not specified'}\n\nCRITICAL RULES:\n1. Always sign off as ${user.coachName} — never write [Name] or any placeholder\n2. Write entirely in ${user.coachName}'s voice and gender perspective\n3. The ICP (ideal customer) may be a different gender — do not confuse ICP gender with coach gender\n4. Never invent fictional experts or third-party personas`
-        : '';
 
       const jobId = randomUUID();
       await db.insert(jobs).values({ id: jobId, userId: String(capturedUserId), status: "pending" });
@@ -457,7 +449,6 @@ Return as a JSON object with an 'emails' key containing the array.`;
 
           const sotLines = capturedSot ? [capturedSot.coreOffer ? `Core offer: ${capturedSot.coreOffer}` : '', capturedSot.targetAudience ? `Target audience: ${capturedSot.targetAudience}` : '', capturedSot.mainPainPoint ? `Main pain point: ${capturedSot.mainPainPoint}` : '', capturedSot.mainBenefits ? `Main benefits: ${capturedSot.mainBenefits}` : '', capturedSot.uniqueValue ? `Unique value: ${capturedSot.uniqueValue}` : '', capturedSot.idealCustomerAvatar ? `Ideal customer: ${capturedSot.idealCustomerAvatar}` : ''].filter(Boolean) : [];
           const sotContext = sotLines.length > 0 ? ['BRAND CONTEXT — this is the approved brand voice. All copy must be consistent with this:', ...sotLines].join('\n') : '';
-          const contextPrefix = [capturedCoachContext, sotContext].filter(Boolean).join('\n\n');
           const icpContext = capturedIcp ? `\nIDEAL CUSTOMER PROFILE — use this to make every line of copy specific and targeted:\n${capturedIcp.pains ? `Their daily pains: ${capturedIcp.pains}` : ''}\n${capturedIcp.fears ? `Their deep fears: ${capturedIcp.fears}` : ''}\n${capturedIcp.objections ? `Their objections to buying: ${capturedIcp.objections}` : ''}\n${capturedIcp.buyingTriggers ? `What makes them buy: ${capturedIcp.buyingTriggers}` : ''}\n${capturedIcp.implementationBarriers ? `What stops them from taking action: ${capturedIcp.implementationBarriers}` : ''}`.trim() : '';
           const campaignTypeContextMap: Record<string, string> = { webinar: `CAMPAIGN TYPE: Webinar\nFraming: Show-up urgency. CTA language: Register now / Save your seat / Join us live on [date]`, challenge: `CAMPAIGN TYPE: Challenge\nFraming: Community commitment. CTA language: Join the challenge / Claim your spot / Start with us on [date]`, course_launch: `CAMPAIGN TYPE: Course Launch\nFraming: Transformation journey. CTA language: Enrol now / Join the programme / Claim your place before [date]`, product_launch: `CAMPAIGN TYPE: Product Launch\nFraming: Early access. CTA language: Get early access / Become a founding member / Lock in launch pricing` };
           const campaignTypeContext = campaignTypeContextMap[capturedCampaignType] || campaignTypeContextMap['course_launch'];
@@ -466,11 +457,11 @@ Return as a JSON object with an 'emails' key containing the array.`;
 
           let prompt = "";
           if (capturedInput.sequenceType === "welcome") {
-            prompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert email marketer. Create a welcome sequence for new subscribers using Russell Brunson's Soap Opera Sequence framework.\n\nService: ${capturedService.name}\nCategory: ${capturedService.category}\nDescription: ${capturedService.description}\nTarget Customer: ${capturedService.targetCustomer}\nMain Benefit: ${capturedService.mainBenefit}\n\n${socialProofGuidance}\n\n${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}\n\nGenerate exactly ${capturedInput.sequenceLength} emails. Each email: subject line, preview text, body (200-300 words), CTA.\n\nReturn as a JSON object with an 'emails' key containing the array.`;
+            prompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert email marketer. Create a 3-email welcome sequence for new subscribers using Russell Brunson's Soap Opera Sequence framework.\n\nService: ${capturedService.name}\nCategory: ${capturedService.category}\nDescription: ${capturedService.description}\nTarget Customer: ${capturedService.targetCustomer}\nMain Benefit: ${capturedService.mainBenefit}\n\n${socialProofGuidance}\n\n${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}\n\nCreate 3 emails (Day 1, 3, 5). Each email: subject line, preview text, body (200-300 words), CTA.\n\nReturn as a JSON object with an 'emails' key containing the array.`;
           } else if (capturedInput.sequenceType === "engagement") {
-            prompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert email marketer. Create an engagement sequence for event attendees using Russell Brunson's Soap Opera Sequence.\n\nService: ${capturedService.name}\nEvent: ${capturedInput.eventDetails?.eventName || "Event"}\nHost: ${capturedInput.eventDetails?.hostName || "Host"}\n\n${socialProofGuidance}\n\n${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}\n\nGenerate exactly ${capturedInput.sequenceLength} emails. Each email: subject line, preview text, body (200-300 words), CTA.\n\nReturn as a JSON object with an 'emails' key containing the array.`;
+            prompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert email marketer. Create a 5-email engagement sequence for event attendees using Russell Brunson's Soap Opera Sequence.\n\nService: ${capturedService.name}\nEvent: ${capturedInput.eventDetails?.eventName || "Event"}\nHost: ${capturedInput.eventDetails?.hostName || "Host"}\n\n${socialProofGuidance}\n\n${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}\n\nCreate 5 emails (Monday to Friday before event). Each email: subject line, preview text, body (200-300 words), CTA.\n\nReturn as a JSON object with an 'emails' key containing the array.`;
           } else {
-            prompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert email marketer. Create a sales sequence for event attendees who didn't buy.\n\nService: ${capturedService.name}\nEvent: ${capturedInput.eventDetails?.eventName || "Event"}\nOffer: ${capturedInput.eventDetails?.offerName || "Offer"}\nPrice: ${capturedInput.eventDetails?.price || "Price"}\nDeadline: ${capturedInput.eventDetails?.deadline || "Deadline"}\n\n${socialProofGuidance}\n\n${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}\n\nGenerate exactly ${capturedInput.sequenceLength} emails. Each email: subject line, preview text, body (250-350 words), CTA.\n\nReturn as a JSON object with an 'emails' key containing the array.`;
+            prompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert email marketer. Create a 7-email sales sequence for event attendees who didn't buy.\n\nService: ${capturedService.name}\nEvent: ${capturedInput.eventDetails?.eventName || "Event"}\nOffer: ${capturedInput.eventDetails?.offerName || "Offer"}\nPrice: ${capturedInput.eventDetails?.price || "Price"}\nDeadline: ${capturedInput.eventDetails?.deadline || "Deadline"}\n\n${socialProofGuidance}\n\n${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}\n\nCreate 7 emails (Day 1-7 after event). Each email: subject line, preview text, body (250-350 words), CTA.\n\nReturn as a JSON object with an 'emails' key containing the array.`;
           }
 
           const response = await invokeLLM({ messages: [{ role: "system", content: "You are an expert email marketer specializing in high-converting email sequences for coaches, speakers, and consultants. Use Russell Brunson's Soap Opera Sequence framework. Always respond with valid JSON." }, { role: "user", content: prompt }], response_format: { type: "json_schema", json_schema: { name: "email_sequence", strict: true, schema: { type: "object", properties: { emails: { type: "array", items: { type: "object", properties: { day: { type: "integer" }, subject: { type: "string" }, previewText: { type: "string" }, body: { type: "string" }, cta: { type: "string" } }, required: ["day", "subject", "previewText", "body", "cta"], additionalProperties: false } } }, required: ["emails"], additionalProperties: false } } } });
@@ -545,6 +536,63 @@ Return as a JSON object with an 'emails' key containing the array.`;
       return updated;
     }),
 
+  // Regenerate a single email within a sequence via AI
+  regenerateSingle: protectedProcedure
+    .input(z.object({ id: z.number(), index: z.number(), promptOverride: z.string().optional() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const [row] = await db
+        .select()
+        .from(emailSequences)
+        .where(and(eq(emailSequences.id, input.id), eq(emailSequences.userId, ctx.user.id)))
+        .limit(1);
+
+      if (!row) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Email sequence not found" });
+      }
+
+      const emails: any[] = typeof row.emails === "string" ? JSON.parse(row.emails) : (row.emails ?? []);
+
+      if (input.index < 0 || input.index >= emails.length) {
+        throw new TRPCError({ code: "NOT_FOUND", message: `Email index ${input.index} out of range (0-${emails.length - 1})` });
+      }
+
+      const target = emails[input.index];
+      const overrideInstruction = input.promptOverride?.trim()
+        ? ` Additional instruction: ${input.promptOverride.trim()}.`
+        : "";
+
+      const prompt = `Rewrite this email in a sequence for a coaching offer. Current subject: ${target.subject}. Current body: ${target.body}.${overrideInstruction} Return a JSON object with exactly two keys: subject (string) and body (string). No explanation, no markdown, just the JSON object.`;
+
+      const response = await invokeLLM({
+        messages: [
+          { role: "system", content: "You are an expert email copywriter for coaches and consultants. Respond with only valid JSON." },
+          { role: "user", content: prompt },
+        ],
+      });
+
+      const content = response.choices[0].message.content;
+      if (typeof content !== "string") {
+        throw new Error("Invalid response from AI");
+      }
+
+      const parsed = JSON.parse(stripMarkdownJson(content));
+      if (!parsed.subject || !parsed.body) {
+        throw new Error("AI response missing subject or body");
+      }
+
+      emails[input.index] = { ...emails[input.index], subject: parsed.subject, body: parsed.body };
+
+      await db
+        .update(emailSequences)
+        .set({ emails: JSON.stringify(emails), updatedAt: new Date() })
+        .where(eq(emailSequences.id, input.id));
+
+      return emails[input.index];
+    }),
+
   // Delete email sequence
   delete: protectedProcedure
     .input(z.object({ id: z.number() }))
@@ -573,20 +621,5 @@ Return as a JSON object with an 'emails' key containing the array.`;
         .where(eq(emailSequences.id, input.id));
 
       return { success: true };
-    }),
-
-  // Get most recent email sequence for a given serviceId (generation history)
-  getLatestByServiceId: protectedProcedure
-    .input(z.object({ serviceId: z.number() }))
-    .query(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
-      const [latest] = await db
-        .select()
-        .from(emailSequences)
-        .where(and(eq(emailSequences.userId, ctx.user.id), eq(emailSequences.serviceId, input.serviceId)))
-        .orderBy(desc(emailSequences.createdAt))
-        .limit(1);
-      return latest ?? null;
     }),
 });

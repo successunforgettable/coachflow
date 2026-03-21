@@ -1,13 +1,12 @@
 /**
  * V2EmailSequenceResultPanel — Node 9 Results Panel
  *
- * Flat list of 7 email cards. Each card: timing badge, subject (bold),
+ * Flat list of email cards. Each card: timing badge, subject (bold),
  * body (collapsed by default with expand/collapse), Copy Subject, Copy Body,
- * thumbs-up, thumbs-down, star (UI state only), Regenerate Email (Phase L toast).
+ * thumbs-up, thumbs-down, star (UI state only), per-item Regenerate via AI.
  */
 import { useState } from "react";
 import { trpc } from "../lib/trpc";
-import { toast } from "sonner";
 import ZappyMascot from "./ZappyMascot";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -34,22 +33,130 @@ const iconBtn: React.CSSProperties = {
   transition: "background 0.15s",
 };
 
+// ─── Inline regen panel ──────────────────────────────────────────────────────
+function EmailRegenPanel({
+  sequenceId,
+  index,
+  onSuccess,
+  onClose,
+}: {
+  sequenceId: number;
+  index: number;
+  onSuccess: (subject: string, body: string) => void;
+  onClose: () => void;
+}) {
+  const [prompt, setPrompt] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const regenMutation = trpc.emailSequences.regenerateSingle.useMutation();
+
+  async function handleRegen() {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await regenMutation.mutateAsync({
+        id: sequenceId,
+        index,
+        promptOverride: prompt.trim() || undefined,
+      });
+      onSuccess(result.subject, result.body);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Regeneration failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div style={{ marginTop: "10px", padding: "12px", background: "rgba(139,92,246,0.04)", borderRadius: "12px", border: "1px solid rgba(139,92,246,0.15)" }}>
+      <textarea
+        value={prompt}
+        onChange={e => setPrompt(e.target.value)}
+        placeholder="Optional: describe what to change..."
+        style={{
+          width: "100%",
+          minHeight: "56px",
+          fontFamily: "var(--v2-font-body)",
+          fontSize: "13px",
+          color: "#1A1624",
+          lineHeight: 1.5,
+          border: "1px solid rgba(139,92,246,0.30)",
+          borderRadius: "8px",
+          padding: "8px 10px",
+          resize: "vertical",
+          outline: "none",
+          background: "#FFFFFF",
+          boxSizing: "border-box",
+        }}
+      />
+      <div style={{ display: "flex", gap: "8px", marginTop: "8px", alignItems: "center" }}>
+        <button
+          onClick={handleRegen}
+          disabled={loading}
+          style={{
+            background: loading ? "#ccc" : "#FF5B1D",
+            color: "#fff",
+            border: "none",
+            borderRadius: "9999px",
+            padding: "7px 18px",
+            fontFamily: "var(--v2-font-body)",
+            fontWeight: 700,
+            fontSize: "12px",
+            cursor: loading ? "not-allowed" : "pointer",
+            letterSpacing: "0.01em",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+          }}
+        >
+          {loading ? (
+            <><span style={{ display: "inline-block", width: "12px", height: "12px", border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.6s linear infinite" }} /> Regenerating...</>
+          ) : (
+            "Regenerate"
+          )}
+        </button>
+        <button
+          onClick={onClose}
+          style={{
+            background: "none",
+            border: "none",
+            fontFamily: "var(--v2-font-body)",
+            fontSize: "12px",
+            color: "#888",
+            cursor: "pointer",
+            padding: "7px 10px",
+          }}
+        >
+          Cancel
+        </button>
+      </div>
+      {error && (
+        <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "12px", color: "#DC2626", margin: "6px 0 0" }}>{error}</p>
+      )}
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+}
+
 // ─── Email card ───────────────────────────────────────────────────────────────
-function EmailCard({ email, index }: { email: EmailItem; index: number }) {
+function EmailCard({ email, index, sequenceId }: { email: EmailItem; index: number; sequenceId: number }) {
+  const [subject, setSubject]   = useState(email.subject);
+  const [body, setBody]         = useState(email.body);
   const [expanded, setExpanded]   = useState(false);
   const [copiedSubj, setCopiedSubj] = useState(false);
   const [copiedBody, setCopiedBody] = useState(false);
   const [thumbUp, setThumbUp]     = useState(false);
   const [thumbDown, setThumbDown] = useState(false);
   const [starred, setStarred]     = useState(false);
+  const [regenOpen, setRegenOpen] = useState(false);
 
   function handleCopySubject() {
-    navigator.clipboard.writeText(email.subject).catch(() => {});
+    navigator.clipboard.writeText(subject).catch(() => {});
     setCopiedSubj(true);
     setTimeout(() => setCopiedSubj(false), 2000);
   }
   function handleCopyBody() {
-    navigator.clipboard.writeText(email.body).catch(() => {});
+    navigator.clipboard.writeText(body).catch(() => {});
     setCopiedBody(true);
     setTimeout(() => setCopiedBody(false), 2000);
   }
@@ -100,7 +207,7 @@ function EmailCard({ email, index }: { email: EmailItem; index: number }) {
         margin: "0 0 10px",
         lineHeight: 1.35,
       }}>
-        {email.subject}
+        {subject}
       </p>
 
       {/* Body (collapsed by default) */}
@@ -115,7 +222,7 @@ function EmailCard({ email, index }: { email: EmailItem; index: number }) {
           borderTop: "1px solid rgba(26,22,36,0.08)",
           paddingTop: "12px",
         }}>
-          {email.body}
+          {body}
         </p>
       )}
 
@@ -202,23 +309,21 @@ function EmailCard({ email, index }: { email: EmailItem; index: number }) {
         </button>
         {/* Regenerate */}
         <button
-          onClick={() => toast.info("Individual email regeneration coming in Phase L")}
-          style={{
-            background: "rgba(26,22,36,0.06)",
-            border: "none",
-            borderRadius: "9999px",
-            padding: "6px 14px",
-            fontFamily: "var(--v2-font-body)",
-            fontWeight: 600,
-            fontSize: "12px",
-            color: "#555",
-            cursor: "pointer",
-            whiteSpace: "nowrap",
-          }}
+          onClick={() => setRegenOpen(p => !p)}
+          style={{ ...iconBtn, background: regenOpen ? "rgba(255,91,29,0.10)" : undefined, borderColor: regenOpen ? "rgba(255,91,29,0.40)" : undefined }}
+          title="Regenerate"
         >
-          ↻ Regenerate
+          ↺
         </button>
       </div>
+      {regenOpen && (
+        <EmailRegenPanel
+          sequenceId={sequenceId}
+          index={index}
+          onSuccess={(newSubj, newBody) => { setSubject(newSubj); setBody(newBody); setRegenOpen(false); }}
+          onClose={() => setRegenOpen(false)}
+        />
+      )}
     </div>
   );
 }
@@ -226,8 +331,10 @@ function EmailCard({ email, index }: { email: EmailItem; index: number }) {
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function V2EmailSequenceResultPanel({
   emailSequenceId,
+  onContinue,
 }: {
   emailSequenceId: number;
+  onContinue: () => void;
 }) {
   const { data, isLoading, isError } = trpc.emailSequences.get.useQuery(
     { id: emailSequenceId },
@@ -266,8 +373,31 @@ export default function V2EmailSequenceResultPanel({
       marginTop: "24px",
       position: "relative",
     }}>
+      {/* ── Fixed top-right Continue button ── */}
+      <div style={{ position: "absolute", top: "20px", right: "20px", zIndex: 10 }}>
+        <button
+          onClick={onContinue}
+          style={{
+            background: "#8B5CF6",
+            color: "#fff",
+            border: "none",
+            borderRadius: "9999px",
+            padding: "10px 22px",
+            fontFamily: "var(--v2-font-body)",
+            fontWeight: 700,
+            fontSize: "13px",
+            cursor: "pointer",
+            letterSpacing: "0.01em",
+            whiteSpace: "nowrap",
+            boxShadow: "0 2px 8px rgba(139,92,246,0.30)",
+          }}
+        >
+          Continue to Next Step →
+        </button>
+      </div>
+
       {/* ── Header ── */}
-      <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "24px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "24px", paddingRight: "180px" }}>
         <ZappyMascot state="cheering" size={56} />
         <div>
           <h2 style={{
@@ -293,7 +423,7 @@ export default function V2EmailSequenceResultPanel({
 
       {/* ── Email cards ── */}
       {emails.map((email, i) => (
-        <EmailCard key={i} email={email} index={i} />
+        <EmailCard key={i} email={email} index={i} sequenceId={emailSequenceId} />
       ))}
       {emails.length === 0 && (
         <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#999", textAlign: "center", padding: "24px 0" }}>
