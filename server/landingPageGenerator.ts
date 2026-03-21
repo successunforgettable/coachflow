@@ -327,7 +327,25 @@ CRITICAL CONTENT: Every single one of the 16 sections MUST contain substantial c
   return validated;
 }
 
-// Generate all 4 angles at once.
+// Per-angle timeout wrapper — prevents one slow AI response from blocking the entire job
+async function generateWithTimeout(
+  productName: string,
+  productDescription: string,
+  avatarName: string,
+  avatarDescription: string,
+  angle: 'original' | 'godfather' | 'free' | 'dollar',
+  socialProof: any,
+  timeoutMs = 120_000
+): Promise<LandingPageContent> {
+  return Promise.race([
+    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, angle, socialProof),
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`Landing page ${angle} angle timed out after ${timeoutMs / 1000}s`)), timeoutMs)
+    ),
+  ]);
+}
+
+// Generate all 4 angles in parallel.
 // onAngleComplete(completed, total) is called after each angle finishes so callers
 // can write real progress updates to the job record during generation.
 export async function generateAllAngles(
@@ -343,8 +361,6 @@ export async function generateAllAngles(
   free: LandingPageContent;
   dollar: LandingPageContent;
 }> {
-  // Generate in 2 batches of 2 to avoid overwhelming the LLM API with 4 concurrent
-  // large JSON-structured requests (each ~8k tokens), which can cause "fetch failed" timeouts.
   const TOTAL = 4;
   let completed = 0;
   const notify = async () => {
@@ -354,13 +370,12 @@ export async function generateAllAngles(
     }
   };
 
-  const [original, godfather] = await Promise.all([
-    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'original', socialProof).then(async r => { await notify(); return r; }),
-    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'godfather', socialProof).then(async r => { await notify(); return r; }),
-  ]);
-  const [free, dollar] = await Promise.all([
-    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'free', socialProof).then(async r => { await notify(); return r; }),
-    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'dollar', socialProof).then(async r => { await notify(); return r; }),
+  // All 4 angles in parallel — cuts total time by ~75% vs sequential
+  const [original, godfather, free, dollar] = await Promise.all([
+    generateWithTimeout(productName, productDescription, avatarName, avatarDescription, 'original', socialProof).then(async r => { await notify(); return r; }),
+    generateWithTimeout(productName, productDescription, avatarName, avatarDescription, 'godfather', socialProof).then(async r => { await notify(); return r; }),
+    generateWithTimeout(productName, productDescription, avatarName, avatarDescription, 'free', socialProof).then(async r => { await notify(); return r; }),
+    generateWithTimeout(productName, productDescription, avatarName, avatarDescription, 'dollar', socialProof).then(async r => { await notify(); return r; }),
   ]);
   return { original, godfather, free, dollar };
 }
