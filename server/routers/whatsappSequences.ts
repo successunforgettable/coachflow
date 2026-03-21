@@ -17,7 +17,6 @@ const generateWhatsAppSequenceSchema = z.object({
   serviceId: z.number(),
   campaignId: z.number().optional(),
   sequenceType: z.enum(["engagement", "sales"]),
-  sequenceLength: z.number().min(3).max(14).default(3),
   name: z.string().min(1).max(255),
   eventDetails: z
     .object({
@@ -147,10 +146,6 @@ export const whatsappSequencesRouter = router({
       const sotContext = sotLines.length > 0
         ? ['BRAND CONTEXT — this is the approved brand voice. All copy must be consistent with this:', ...sotLines].join('\n')
         : '';
-      const coachContext = ctx.user.coachName
-        ? `COACH IDENTITY — ABSOLUTE PRIORITY — THIS OVERRIDES ALL OTHER CONTEXT:\n- The coach writing this content is: ${ctx.user.coachName}\n- Coach gender: ${ctx.user.coachGender ?? 'not specified'} — write ALL first-person content from this gender perspective without exception\n- Coach background: ${ctx.user.coachBackground ?? 'not specified'}\n\nCRITICAL RULES:\n1. Always sign off as ${ctx.user.coachName} — never write [Name] or any placeholder\n2. Write entirely in ${ctx.user.coachName}'s voice and gender perspective\n3. The ICP (ideal customer) may be a different gender — do not confuse ICP gender with coach gender\n4. Never invent fictional experts or third-party personas`
-        : '';
-      const contextPrefix = [coachContext, sotContext].filter(Boolean).join('\n\n');
 
       // Campaign fetch — Item 1.5 (campaignType) + Item 1.1b (icpId)
       let icp: typeof idealCustomerProfiles.$inferSelect | undefined;
@@ -232,7 +227,7 @@ You MUST use these exact numbers. Do not fabricate.`
       let prompt = "";
 
       if (input.sequenceType === "engagement") {
-        prompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert WhatsApp marketer. Create a WhatsApp engagement sequence for event attendees.
+        prompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert WhatsApp marketer. Create a 3-message WhatsApp engagement sequence for event attendees.
 
 Service: ${service.name}
 Event: ${input.eventDetails?.eventName || "Event"}
@@ -243,7 +238,7 @@ ${socialProofGuidance}
 
 ${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}
 
-Generate exactly ${input.sequenceLength} WhatsApp messages:
+Create 3 WhatsApp messages (Monday, Wednesday, Friday before event):
 1. WELCOME & EXPECTATION SETTING (Monday) - Personal welcome, what to expect
 2. EDUCATIONAL CONTENT (Wednesday) - Share valuable tip, build trust
 3. URGENCY & REMINDER (Friday) - Event reminder, create urgency
@@ -263,7 +258,7 @@ Each message should:
 Return as a JSON object with a 'messages' key containing the array.`;
       } else {
         // sales sequence
-        prompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert WhatsApp marketer. Create a WhatsApp sales sequence for event attendees.
+        prompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert WhatsApp marketer. Create a 3-message WhatsApp sales sequence for event attendees.
 
 Service: ${service.name}
 Event: ${input.eventDetails?.eventName || "Event"}
@@ -274,7 +269,7 @@ ${socialProofGuidance}
 
 ${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}
 
-Generate exactly ${input.sequenceLength} WhatsApp messages:
+Create 3 WhatsApp messages (Day 1, 3, 5 after event):
 1. EXCLUSIVE OFFER (Day 1) - Thank you, exclusive offer for attendees
 2. SUCCESS STORY (Day 3) - Social proof, case study, testimonial
 3. FINAL CALL (Day 5) - Scarcity, urgency, deadline
@@ -406,9 +401,6 @@ Return as a JSON object with a 'messages' key containing the array.`;
       const capturedIcp = icp ? { ...icp } : undefined;
       const capturedSot = sot ? { ...sot } : undefined;
       const capturedCampaignType = campaignType;
-      const capturedCoachContext = user.coachName
-        ? `COACH IDENTITY — ABSOLUTE PRIORITY — THIS OVERRIDES ALL OTHER CONTEXT:\n- The coach writing this content is: ${user.coachName}\n- Coach gender: ${user.coachGender ?? 'not specified'} — write ALL first-person content from this gender perspective without exception\n- Coach background: ${user.coachBackground ?? 'not specified'}\n\nCRITICAL RULES:\n1. Always sign off as ${user.coachName} — never write [Name] or any placeholder\n2. Write entirely in ${user.coachName}'s voice and gender perspective\n3. The ICP (ideal customer) may be a different gender — do not confuse ICP gender with coach gender\n4. Never invent fictional experts or third-party personas`
-        : '';
 
       const jobId = randomUUID();
       await db.insert(jobs).values({ id: jobId, userId: String(capturedUserId), status: "pending" });
@@ -420,7 +412,6 @@ Return as a JSON object with a 'messages' key containing the array.`;
 
           const sotLines = capturedSot ? [capturedSot.coreOffer ? `Core offer: ${capturedSot.coreOffer}` : '', capturedSot.targetAudience ? `Target audience: ${capturedSot.targetAudience}` : '', capturedSot.mainPainPoint ? `Main pain point: ${capturedSot.mainPainPoint}` : '', capturedSot.mainBenefits ? `Main benefits: ${capturedSot.mainBenefits}` : '', capturedSot.uniqueValue ? `Unique value: ${capturedSot.uniqueValue}` : '', capturedSot.idealCustomerAvatar ? `Ideal customer: ${capturedSot.idealCustomerAvatar}` : ''].filter(Boolean) : [];
           const sotContext = sotLines.length > 0 ? ['BRAND CONTEXT — this is the approved brand voice. All copy must be consistent with this:', ...sotLines].join('\n') : '';
-          const contextPrefix = [capturedCoachContext, sotContext].filter(Boolean).join('\n\n');
           const icpContext = capturedIcp ? `\nIDEAL CUSTOMER PROFILE — use this to make every line of copy specific and targeted:\n${capturedIcp.pains ? `Their daily pains: ${capturedIcp.pains}` : ''}\n${capturedIcp.fears ? `Their deep fears: ${capturedIcp.fears}` : ''}\n${capturedIcp.buyingTriggers ? `What makes them buy: ${capturedIcp.buyingTriggers}` : ''}\n${capturedIcp.communicationStyle ? `How they communicate: ${capturedIcp.communicationStyle}` : ''}`.trim() : '';
           const campaignTypeContextMap: Record<string, string> = { webinar: `CAMPAIGN TYPE: Webinar\nFraming: Show-up urgency. CTA language: Register now / Save your seat / Join us live on [date]`, challenge: `CAMPAIGN TYPE: Challenge\nFraming: Community commitment. CTA language: Join the challenge / Claim your spot / Start with us on [date]`, course_launch: `CAMPAIGN TYPE: Course Launch\nFraming: Transformation journey. CTA language: Enrol now / Join the programme / Claim your place before [date]`, product_launch: `CAMPAIGN TYPE: Product Launch\nFraming: Early access. CTA language: Get early access / Become a founding member / Lock in launch pricing` };
           const campaignTypeContext = campaignTypeContextMap[capturedCampaignType] || campaignTypeContextMap['course_launch'];
@@ -429,9 +420,9 @@ Return as a JSON object with a 'messages' key containing the array.`;
 
           let prompt = "";
           if (capturedInput.sequenceType === "engagement") {
-            prompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert WhatsApp marketer. Create a WhatsApp engagement sequence for event attendees.\n\nService: ${capturedService.name}\nEvent: ${capturedInput.eventDetails?.eventName || "Event"}\nHost: ${capturedInput.eventDetails?.hostName || "Host"}\nEvent Date: ${capturedInput.eventDetails?.eventDate || "Date"}\n\n${socialProofGuidance}\n\n${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}\n\nGenerate exactly ${capturedInput.sequenceLength} WhatsApp messages. Each message: 50-100 words, personal, conversational, emojis, clear CTA, use [First Name] for personalization.\n\nReturn as a JSON object with a 'messages' key containing the array.`;
+            prompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert WhatsApp marketer. Create a 3-message WhatsApp engagement sequence for event attendees.\n\nService: ${capturedService.name}\nEvent: ${capturedInput.eventDetails?.eventName || "Event"}\nHost: ${capturedInput.eventDetails?.hostName || "Host"}\nEvent Date: ${capturedInput.eventDetails?.eventDate || "Date"}\n\n${socialProofGuidance}\n\n${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}\n\nCreate 3 WhatsApp messages (Monday, Wednesday, Friday before event). Each message: 50-100 words, personal, conversational, emojis, clear CTA, use [First Name] for personalization.\n\nReturn as a JSON object with a 'messages' key containing the array.`;
           } else {
-            prompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert WhatsApp marketer. Create a WhatsApp sales sequence for event attendees.\n\nService: ${capturedService.name}\nEvent: ${capturedInput.eventDetails?.eventName || "Event"}\nOffer: ${capturedInput.eventDetails?.offerName || "Offer"}\nPrice: ${capturedInput.eventDetails?.price || "Price"}\n\n${socialProofGuidance}\n\n${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}\n\nGenerate exactly ${capturedInput.sequenceLength} WhatsApp messages. Each message: 50-100 words, personal, conversational, emojis, clear CTA, use [First Name] for personalization.\n\nReturn as a JSON object with a 'messages' key containing the array.`;
+            prompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert WhatsApp marketer. Create a 3-message WhatsApp sales sequence for event attendees.\n\nService: ${capturedService.name}\nEvent: ${capturedInput.eventDetails?.eventName || "Event"}\nOffer: ${capturedInput.eventDetails?.offerName || "Offer"}\nPrice: ${capturedInput.eventDetails?.price || "Price"}\n\n${socialProofGuidance}\n\n${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}\n\nCreate 3 WhatsApp messages (Day 1, 3, 5 after event). Each message: 50-100 words, personal, conversational, emojis, clear CTA, use [First Name] for personalization.\n\nReturn as a JSON object with a 'messages' key containing the array.`;
           }
 
           const response = await invokeLLM({ messages: [{ role: "system", content: "You are an expert WhatsApp marketer specializing in high-converting WhatsApp sequences for coaches, speakers, and consultants. Always respond with valid JSON." }, { role: "user", content: prompt }], response_format: { type: "json_schema", json_schema: { name: "whatsapp_sequence", strict: true, schema: { type: "object", properties: { messages: { type: "array", items: { type: "object", properties: { day: { type: "integer" }, message: { type: "string" }, cta: { type: "string" } }, required: ["day", "message", "cta"], additionalProperties: false } } }, required: ["messages"], additionalProperties: false } } } });
@@ -506,6 +497,64 @@ Return as a JSON object with a 'messages' key containing the array.`;
       return updated;
     }),
 
+  // Regenerate a single WhatsApp message within a sequence via AI
+  regenerateSingle: protectedProcedure
+    .input(z.object({ id: z.number(), index: z.number(), promptOverride: z.string().optional() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const [row] = await db
+        .select()
+        .from(whatsappSequences)
+        .where(and(eq(whatsappSequences.id, input.id), eq(whatsappSequences.userId, ctx.user.id)))
+        .limit(1);
+
+      if (!row) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "WhatsApp sequence not found" });
+      }
+
+      const messages: any[] = typeof row.messages === "string" ? JSON.parse(row.messages) : (row.messages ?? []);
+
+      if (input.index < 0 || input.index >= messages.length) {
+        throw new TRPCError({ code: "NOT_FOUND", message: `Message index ${input.index} out of range (0-${messages.length - 1})` });
+      }
+
+      const target = messages[input.index];
+      const originalText = target.text ?? target.message ?? "";
+      const overrideInstruction = input.promptOverride?.trim()
+        ? ` Additional instruction: ${input.promptOverride.trim()}.`
+        : "";
+
+      const prompt = `Rewrite this WhatsApp message for a coaching offer sequence. Original message: ${originalText}.${overrideInstruction} Return a JSON object with exactly one key: text (string). No explanation, no markdown, just the JSON object.`;
+
+      const response = await invokeLLM({
+        messages: [
+          { role: "system", content: "You are an expert WhatsApp copywriter for coaches and consultants. Respond with only valid JSON." },
+          { role: "user", content: prompt },
+        ],
+      });
+
+      const content = response.choices[0].message.content;
+      if (typeof content !== "string") {
+        throw new Error("Invalid response from AI");
+      }
+
+      const parsed = JSON.parse(stripMarkdownJson(content));
+      if (!parsed.text) {
+        throw new Error("AI response missing text field");
+      }
+
+      messages[input.index] = { ...messages[input.index], text: parsed.text };
+
+      await db
+        .update(whatsappSequences)
+        .set({ messages: JSON.stringify(messages), updatedAt: new Date() })
+        .where(eq(whatsappSequences.id, input.id));
+
+      return messages[input.index];
+    }),
+
   // Delete WhatsApp sequence
   delete: protectedProcedure
     .input(z.object({ id: z.number() }))
@@ -534,20 +583,5 @@ Return as a JSON object with a 'messages' key containing the array.`;
         .where(eq(whatsappSequences.id, input.id));
 
       return { success: true };
-    }),
-
-  // Get most recent WhatsApp sequence for a given serviceId (generation history)
-  getLatestByServiceId: protectedProcedure
-    .input(z.object({ serviceId: z.number() }))
-    .query(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
-      const [latest] = await db
-        .select()
-        .from(whatsappSequences)
-        .where(and(eq(whatsappSequences.userId, ctx.user.id), eq(whatsappSequences.serviceId, input.serviceId)))
-        .orderBy(desc(whatsappSequences.createdAt))
-        .limit(1);
-      return latest ?? null;
     }),
 });
