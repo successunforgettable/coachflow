@@ -402,6 +402,42 @@ export default function V2LandingPageResultPanel({
   const [activeTab, setActiveTab] = useState<AngleKey | null>(null);
   const resolvedTab: AngleKey = activeTab ?? defaultAngle;
 
+  function parseAngle(raw: AngleContent | string | undefined): AngleContent {
+    if (!raw) return {};
+    if (typeof raw === "string") {
+      try { return JSON.parse(raw); } catch { return {}; }
+    }
+    return raw;
+  }
+
+  const lp = data as {
+    productName?: string;
+    originalAngle?: AngleContent | string;
+    godfatherAngle?: AngleContent | string;
+    freeAngle?: AngleContent | string;
+    dollarAngle?: AngleContent | string;
+  } | undefined;
+
+  const [angles, setAngles] = useState<Record<AngleKey, AngleContent>>({
+    original: {}, godfather: {}, free: {}, dollar: {},
+  });
+
+  // Sync angles state when data first loads
+  const [anglesInitialized, setAnglesInitialized] = useState(false);
+  if (data && lp && !anglesInitialized) {
+    setAngles({
+      original:  parseAngle(lp.originalAngle),
+      godfather: parseAngle(lp.godfatherAngle),
+      free:      parseAngle(lp.freeAngle),
+      dollar:    parseAngle(lp.dollarAngle),
+    });
+    setAnglesInitialized(true);
+  }
+
+  function handleAngleUpdate(angleKey: AngleKey, newAngle: AngleContent) {
+    setAngles(prev => ({ ...prev, [angleKey]: newAngle }));
+  }
+
   if (isLoading) {
     return (
       <div style={{ textAlign: "center", padding: "40px 0", fontFamily: "var(--v2-font-body)", color: "#888" }}>
@@ -415,33 +451,6 @@ export default function V2LandingPageResultPanel({
         Could not load landing page. Try refreshing.
       </div>
     );
-  }
-
-  const lp = data as {
-    productName?: string;
-    originalAngle?: AngleContent | string;
-    godfatherAngle?: AngleContent | string;
-    freeAngle?: AngleContent | string;
-    dollarAngle?: AngleContent | string;
-  };
-
-  function parseAngle(raw: AngleContent | string | undefined): AngleContent {
-    if (!raw) return {};
-    if (typeof raw === "string") {
-      try { return JSON.parse(raw); } catch { return {}; }
-    }
-    return raw;
-  }
-
-  const [angles, setAngles] = useState<Record<AngleKey, AngleContent>>(() => ({
-    original:  parseAngle(lp.originalAngle),
-    godfather: parseAngle(lp.godfatherAngle),
-    free:      parseAngle(lp.freeAngle),
-    dollar:    parseAngle(lp.dollarAngle),
-  }));
-
-  function handleAngleUpdate(angleKey: AngleKey, newAngle: AngleContent) {
-    setAngles(prev => ({ ...prev, [angleKey]: newAngle }));
   }
 
   return (
