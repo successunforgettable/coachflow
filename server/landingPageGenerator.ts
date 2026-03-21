@@ -266,10 +266,10 @@ Use direct response copywriting principles: pain agitation, unique mechanism, so
       options: ['Option A', 'Option B', 'Option C', 'Option D'],
       answer: 'Option A'
     },
-    problemAgitation: parsed.problemAgitation || 'Many people struggle with this challenge every day.',
-    solutionIntro: parsed.solutionIntro || 'There is a proven solution that works.',
-    whyOldFail: parsed.whyOldFail || 'Traditional methods don\'t work because they miss the core issue.',
-    uniqueMechanism: parsed.uniqueMechanism || 'Our unique system addresses the root cause.',
+    problemAgitation: parsed.problemAgitation || '[Generation incomplete — please regenerate this section]',
+    solutionIntro: parsed.solutionIntro || '[Generation incomplete — please regenerate this section]',
+    whyOldFail: parsed.whyOldFail || '[Generation incomplete — please regenerate this section]',
+    uniqueMechanism: parsed.uniqueMechanism || '[Generation incomplete — please regenerate this section]',
     testimonials: Array.isArray(parsed.testimonials) && parsed.testimonials.length > 0 ? parsed.testimonials : [
       {
         headline: 'Life-Changing Results',
@@ -278,10 +278,10 @@ Use direct response copywriting principles: pain agitation, unique mechanism, so
         location: 'Worldwide'
       }
     ],
-    insiderAdvantages: parsed.insiderAdvantages || 'Get exclusive access to proven strategies.',
-    scarcityUrgency: parsed.scarcityUrgency || 'Limited spots available this month.',
-    shockingStat: parsed.shockingStat || 'Studies show this approach works 10x better.',
-    timeSavingBenefit: parsed.timeSavingBenefit || 'Save hours every week with this system.',
+    insiderAdvantages: parsed.insiderAdvantages || '[Generation incomplete — please regenerate this section]',
+    scarcityUrgency: parsed.scarcityUrgency || '[Generation incomplete — please regenerate this section]',
+    shockingStat: parsed.shockingStat || '[Generation incomplete — please regenerate this section]',
+    timeSavingBenefit: parsed.timeSavingBenefit || '[Generation incomplete — please regenerate this section]',
     consultationOutline: Array.isArray(parsed.consultationOutline) && parsed.consultationOutline.length > 0 ? parsed.consultationOutline : [
       {
         title: 'Assessment',
