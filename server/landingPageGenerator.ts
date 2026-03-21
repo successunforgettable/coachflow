@@ -157,11 +157,15 @@ Return as JSON matching the LandingPageContent type.
 Use the avatar's name, location, and description throughout the copy to personalize it.
 Make it compelling, benefit-driven, and conversion-focused.
 Use direct response copywriting principles: pain agitation, unique mechanism, social proof, scarcity, and strong CTAs.
+
+CRITICAL FORMATTING: All string values must be plain text. NO markdown syntax anywhere — no asterisks (*), no hash symbols (#), no bold (**text**), no italic (*text*), no bullet markers. Just clean sentences and paragraphs separated by line breaks.
+
+CRITICAL CONTENT: Every single one of the 16 sections MUST contain substantial content. Never return an empty string for any section. shockingStat must contain a specific statistic. whyOldFail must contain 2-3 named reasons. Every section must be 50+ words minimum.
 `;
 
   const response = await invokeLLM({
     messages: [
-      { role: "system", content: "You are a world-class direct response copywriter specializing in high-converting landing pages. You write compelling, benefit-driven copy that converts visitors into customers." },
+      { role: "system", content: "You are a world-class direct response copywriter specializing in high-converting landing pages. You write compelling, benefit-driven copy that converts visitors into customers. FORMATTING RULE: Return plain text only inside all JSON string values. No markdown. No asterisks (*). No hash symbols (#). No bold or italic formatting of any kind. No bullet markers. Just clean readable sentences and paragraphs." },
       { role: "user", content: prompt }
     ],
     response_format: {
@@ -253,24 +257,46 @@ Use direct response copywriting principles: pain agitation, unique mechanism, so
   // Strip markdown code fences if LLM wraps response in ```json ... ```
   const cleaned = content.replace(/^```json\s*|^```\s*|\s*```$/gm, '').trim();
   const parsed = JSON.parse(cleaned);
-  
+
+  // Strip any markdown formatting from all string values
+  function stripMarkdown(val: unknown): unknown {
+    if (typeof val === "string") {
+      return val
+        .replace(/\*\*(.*?)\*\*/g, '$1')  // **bold** → bold
+        .replace(/\*(.*?)\*/g, '$1')       // *italic* → italic
+        .replace(/^#{1,6}\s+/gm, '')       // # heading → heading
+        .replace(/^[-*]\s+/gm, '')         // - bullet → bullet
+        .trim();
+    }
+    if (Array.isArray(val)) return val.map(stripMarkdown);
+    if (val && typeof val === "object") {
+      const out: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(val as Record<string, unknown>)) {
+        out[k] = stripMarkdown(v);
+      }
+      return out;
+    }
+    return val;
+  }
+  const cleanParsed = stripMarkdown(parsed) as Record<string, unknown>;
+
   // Validate and add fallbacks for all required fields
   const validated: LandingPageContent = {
-    eyebrowHeadline: parsed.eyebrowHeadline || 'SPECIAL OFFER',
-    mainHeadline: parsed.mainHeadline || 'Transform Your Results Today',
-    subheadline: parsed.subheadline || 'Discover how to achieve your goals faster than ever before',
-    primaryCta: parsed.primaryCta || 'Get Started Now',
-    asSeenIn: Array.isArray(parsed.asSeenIn) && parsed.asSeenIn.length > 0 ? parsed.asSeenIn : ['Featured'],
-    quizSection: parsed.quizSection || {
+    eyebrowHeadline: (cleanParsed.eyebrowHeadline as string) || 'SPECIAL OFFER',
+    mainHeadline: (cleanParsed.mainHeadline as string) || 'Transform Your Results Today',
+    subheadline: (cleanParsed.subheadline as string) || 'Discover how to achieve your goals faster than ever before',
+    primaryCta: (cleanParsed.primaryCta as string) || 'Get Started Now',
+    asSeenIn: Array.isArray(cleanParsed.asSeenIn) && cleanParsed.asSeenIn.length > 0 ? cleanParsed.asSeenIn as string[] : ['Featured'],
+    quizSection: (cleanParsed.quizSection as any) || {
       question: 'What is your biggest challenge?',
       options: ['Option A', 'Option B', 'Option C', 'Option D'],
       answer: 'Option A'
     },
-    problemAgitation: parsed.problemAgitation || '[Generation incomplete — please regenerate this section]',
-    solutionIntro: parsed.solutionIntro || '[Generation incomplete — please regenerate this section]',
-    whyOldFail: parsed.whyOldFail || '[Generation incomplete — please regenerate this section]',
-    uniqueMechanism: parsed.uniqueMechanism || '[Generation incomplete — please regenerate this section]',
-    testimonials: Array.isArray(parsed.testimonials) && parsed.testimonials.length > 0 ? parsed.testimonials : [
+    problemAgitation: (cleanParsed.problemAgitation as string) || '[Generation incomplete — please regenerate this section]',
+    solutionIntro: (cleanParsed.solutionIntro as string) || '[Generation incomplete — please regenerate this section]',
+    whyOldFail: (cleanParsed.whyOldFail as string) || '[Generation incomplete — please regenerate this section]',
+    uniqueMechanism: (cleanParsed.uniqueMechanism as string) || '[Generation incomplete — please regenerate this section]',
+    testimonials: Array.isArray(cleanParsed.testimonials) && cleanParsed.testimonials.length > 0 ? cleanParsed.testimonials as any : [
       {
         headline: 'Life-Changing Results',
         quote: 'This completely transformed how I approach my goals.',
@@ -278,11 +304,11 @@ Use direct response copywriting principles: pain agitation, unique mechanism, so
         location: 'Worldwide'
       }
     ],
-    insiderAdvantages: parsed.insiderAdvantages || '[Generation incomplete — please regenerate this section]',
-    scarcityUrgency: parsed.scarcityUrgency || '[Generation incomplete — please regenerate this section]',
-    shockingStat: parsed.shockingStat || '[Generation incomplete — please regenerate this section]',
-    timeSavingBenefit: parsed.timeSavingBenefit || '[Generation incomplete — please regenerate this section]',
-    consultationOutline: Array.isArray(parsed.consultationOutline) && parsed.consultationOutline.length > 0 ? parsed.consultationOutline : [
+    insiderAdvantages: (cleanParsed.insiderAdvantages as string) || '[Generation incomplete — please regenerate this section]',
+    scarcityUrgency: (cleanParsed.scarcityUrgency as string) || '[Generation incomplete — please regenerate this section]',
+    shockingStat: (cleanParsed.shockingStat as string) || '[Generation incomplete — please regenerate this section]',
+    timeSavingBenefit: (cleanParsed.timeSavingBenefit as string) || '[Generation incomplete — please regenerate this section]',
+    consultationOutline: Array.isArray(cleanParsed.consultationOutline) && cleanParsed.consultationOutline.length > 0 ? cleanParsed.consultationOutline as any : [
       {
         title: 'Assessment',
         description: 'We evaluate your current situation'
