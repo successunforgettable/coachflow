@@ -10,8 +10,10 @@ import {
   updateHeadlineRating,
   deleteHeadlineSet,
   incrementHeadlineCount,
+  getDb,
 } from "../db";
 import { headlines, jobs } from "../../drizzle/schema";
+import { eq, and } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 import { checkCompliance } from "../lib/complianceChecker";
@@ -312,11 +314,6 @@ export const headlinesRouter = router({
         // Inject SOT as outermost layer, then ICP — Item 1.2 + 1.4
         const promptWithIcp = icpContext ? prompt.replace(/\n\nGenerate /, `\n\n${icpContext}\n\nGenerate `) : prompt;
         const promptWithSot = sotContext ? `${sotContext}\n\n${promptWithIcp}` : promptWithIcp;
-        // Coach identity injection
-        const coachContext = ctx.user.coachName
-          ? `COACH IDENTITY — ABSOLUTE PRIORITY — THIS OVERRIDES ALL OTHER CONTEXT:\n- The coach writing this content is: ${ctx.user.coachName}\n- Coach gender: ${ctx.user.coachGender ?? 'not specified'} — write ALL first-person content from this gender perspective without exception\n- Coach background: ${ctx.user.coachBackground ?? 'not specified'}\n\nCRITICAL RULES:\n1. Always sign off as ${ctx.user.coachName} — never write [Name] or any placeholder\n2. Write entirely in ${ctx.user.coachName}'s voice and gender perspective\n3. The ICP (ideal customer) may be a different gender — do not confuse ICP gender with coach gender\n4. Never invent fictional experts or third-party personas`
-          : null;
-        const finalPrompt = coachContext ? `${coachContext}\n\n${promptWithSot}` : promptWithSot;
 
         try {
           const response = await invokeLLM({
@@ -325,7 +322,7 @@ export const headlinesRouter = router({
                 role: "system",
                 content: "You are an expert direct response copywriter. Return ONLY valid JSON, no markdown, no explanations.",
               },
-              { role: "user", content: finalPrompt },
+              { role: "user", content: promptWithSot },
             ],
           });
 
@@ -491,9 +488,6 @@ export const headlinesRouter = router({
       const capturedAutoPopData = { ...autoPopData };
       const capturedIcpContext = icpContext;
       const capturedSotContext = sotContext;
-      const capturedCoachContext = user.coachName
-        ? `COACH IDENTITY — ABSOLUTE PRIORITY — THIS OVERRIDES ALL OTHER CONTEXT:\n- The coach writing this content is: ${user.coachName}\n- Coach gender: ${user.coachGender ?? 'not specified'} — write ALL first-person content from this gender perspective without exception\n- Coach background: ${user.coachBackground ?? 'not specified'}\n\nCRITICAL RULES:\n1. Always sign off as ${user.coachName} — never write [Name] or any placeholder\n2. Write entirely in ${user.coachName}'s voice and gender perspective\n3. The ICP (ideal customer) may be a different gender — do not confuse ICP gender with coach gender\n4. Never invent fictional experts or third-party personas`
-        : null;
 
       const jobId = randomUUID();
       await dbForJob.insert(jobs).values({ id: jobId, userId: String(capturedUserId), status: "pending" });
@@ -518,9 +512,8 @@ export const headlinesRouter = router({
               .replace(/{uniqueMechanism}/g, resolvedUniqueMechanism);
             const promptWithIcp = capturedIcpContext ? prompt.replace(/\n\nGenerate /, `\n\n${capturedIcpContext}\n\nGenerate `) : prompt;
             const promptWithSot = capturedSotContext ? `${capturedSotContext}\n\n${promptWithIcp}` : promptWithIcp;
-            const finalPrompt = capturedCoachContext ? `${capturedCoachContext}\n\n${promptWithSot}` : promptWithSot;
 
-            const response = await invokeLLM({ messages: [{ role: "system", content: "You are an expert direct response copywriter. Return ONLY valid JSON, no markdown, no explanations." }, { role: "user", content: finalPrompt }] });
+            const response = await invokeLLM({ messages: [{ role: "system", content: "You are an expert direct response copywriter. Return ONLY valid JSON, no markdown, no explanations." }, { role: "user", content: promptWithSot }] });
             const content = response.choices[0].message.content;
             if (typeof content !== "string") throw new Error("Invalid LLM response");
             const parsed = JSON.parse(stripMarkdownJson(content));
@@ -570,6 +563,56 @@ export const headlinesRouter = router({
     .mutation(async ({ ctx, input }) => {
       await updateHeadlineRating(input.headlineId, ctx.user.id, input.rating);
       return { success: true };
+    }),
+
+  regenerateSingle: protectedProcedure
+    .input(z.object({ id: z.number(), promptOverride: z.string().optional() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const [existing] = await db
+        .select()
+        .from(headlines)
+        .where(and(eq(headlines.id, input.id), eq(headlines.userId, ctx.user.id)))
+        .limit(1);
+
+      if (!existing) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Headline not found" });
+      }
+
+      const subheadlinePart = existing.subheadline ? ` Current subheadline: ${existing.subheadline}.` : "";
+      const overrideInstruction = input.promptOverride?.trim()
+        ? ` Additional instruction: ${input.promptOverride.trim()}.`
+        : "";
+
+      const prompt = `Rewrite this ad headline. Current headline: ${existing.headline}.${subheadlinePart}${overrideInstruction} Return a JSON object with keys: headline (string), subheadline (string or null). No explanation, no markdown.`;
+
+      const response = await invokeLLM({
+        messages: [
+          { role: "system", content: "You are an expert ad headline copywriter. Respond with only valid JSON." },
+          { role: "user", content: prompt },
+        ],
+      });
+
+      const content = response.choices[0].message.content;
+      if (typeof content !== "string") throw new Error("Invalid response from AI");
+
+      const parsed = JSON.parse(stripMarkdownJson(content));
+      if (!parsed.headline) throw new Error("AI response missing headline field");
+
+      await db
+        .update(headlines)
+        .set({ headline: parsed.headline, subheadline: parsed.subheadline ?? existing.subheadline, updatedAt: new Date() })
+        .where(eq(headlines.id, input.id));
+
+      const [updated] = await db
+        .select()
+        .from(headlines)
+        .where(eq(headlines.id, input.id))
+        .limit(1);
+
+      return updated;
     }),
 
   // Delete headline set

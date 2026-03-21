@@ -11,8 +11,8 @@ import {
   incrementHeroMechanismCount
 } from "../db";
 import { getDb } from "../db";
-import { services, idealCustomerProfiles, sourceOfTruth, campaigns, jobs } from "../../drizzle/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { services, idealCustomerProfiles, sourceOfTruth, campaigns, jobs, heroMechanisms } from "../../drizzle/schema";
+import { eq, and } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { randomUUID } from "crypto";
 import { getQuotaLimit } from "../quotaLimits";
@@ -142,10 +142,6 @@ export const heroMechanismsRouter = router({
       const sotContext = sotLines.length > 0
         ? ['BRAND CONTEXT — this is the approved brand voice. All copy must be consistent with this:', ...sotLines].join('\n')
         : '';
-      const coachContext = user.coachName
-        ? `COACH IDENTITY — ABSOLUTE PRIORITY — THIS OVERRIDES ALL OTHER CONTEXT:\n- The coach writing this content is: ${user.coachName}\n- Coach gender: ${user.coachGender ?? 'not specified'} — write ALL first-person content from this gender perspective without exception\n- Coach background: ${user.coachBackground ?? 'not specified'}\n\nCRITICAL RULES:\n1. Always sign off as ${user.coachName} — never write [Name] or any placeholder\n2. Write entirely in ${user.coachName}'s voice and gender perspective\n3. The ICP (ideal customer) may be a different gender — do not confuse ICP gender with coach gender\n4. Never invent fictional experts or third-party personas`
-        : '';
-      const contextPrefix = [coachContext, sotContext].filter(Boolean).join('\n\n');
 
       // Item 1.3 — Rule 4: server-side fallbacks for Hero Mechanism
       const resolvedPressingProblem = input.pressingProblem?.trim() || service.painPoints || "";
@@ -158,7 +154,7 @@ export const heroMechanismsRouter = router({
       const allMechanisms: any[] = [];
 
       // Generate Hero Mechanisms (5 variations)
-      const heroMechanismsPrompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert direct response copywriter creating compelling Hero Mechanisms.
+      const heroMechanismsPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert direct response copywriter creating compelling Hero Mechanisms.
 
 Product: ${service.name}
 Target Market: ${input.targetMarket}
@@ -224,7 +220,7 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
       });
 
       // Generate Headline Ideas (5 variations)
-      const headlineIdeasPrompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert direct response copywriter creating compelling headlines for Hero Mechanisms.
+      const headlineIdeasPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert direct response copywriter creating compelling headlines for Hero Mechanisms.
 
 Product: ${service.name}
 Target Market: ${input.targetMarket}
@@ -284,7 +280,7 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
       });
 
       // Generate Power Mode (5 extra powerful variations)
-      const powerModePrompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert direct response copywriter creating BEAST MODE Hero Mechanisms - the most powerful, compelling versions.
+      const powerModePrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert direct response copywriter creating BEAST MODE Hero Mechanisms - the most powerful, compelling versions.
 
 Product: ${service.name}
 Target Market: ${input.targetMarket}
@@ -399,6 +395,55 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
       return { success: true };
     }),
 
+  regenerateSingle: protectedProcedure
+    .input(z.object({ id: z.number(), promptOverride: z.string().optional() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const [existing] = await db
+        .select()
+        .from(heroMechanisms)
+        .where(and(eq(heroMechanisms.id, input.id), eq(heroMechanisms.userId, ctx.user.id)))
+        .limit(1);
+
+      if (!existing) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Hero mechanism not found" });
+      }
+
+      const overrideInstruction = input.promptOverride?.trim()
+        ? ` Additional instruction: ${input.promptOverride.trim()}.`
+        : "";
+
+      const prompt = `Rewrite this coaching mechanism. Current name: ${existing.mechanismName}. Current description: ${existing.mechanismDescription}.${overrideInstruction} Return a JSON object with keys: mechanismName (string), mechanismDescription (string). No explanation, no markdown.`;
+
+      const response = await invokeLLM({
+        messages: [
+          { role: "system", content: "You are an expert coaching mechanism copywriter. Respond with only valid JSON." },
+          { role: "user", content: prompt },
+        ],
+      });
+
+      const content = response.choices[0].message.content;
+      if (typeof content !== "string") throw new Error("Invalid response from AI");
+
+      const parsed = JSON.parse(stripMarkdownJson(content));
+      if (!parsed.mechanismName || !parsed.mechanismDescription) throw new Error("AI response missing required fields");
+
+      await db
+        .update(heroMechanisms)
+        .set({ mechanismName: parsed.mechanismName, mechanismDescription: parsed.mechanismDescription, updatedAt: new Date() })
+        .where(eq(heroMechanisms.id, input.id));
+
+      const [updated] = await db
+        .select()
+        .from(heroMechanisms)
+        .where(eq(heroMechanisms.id, input.id))
+        .limit(1);
+
+      return updated;
+    }),
+
   /**
    * Delete entire mechanism set
    */
@@ -480,9 +525,6 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
       const capturedService = { ...service };
       const capturedIcp = icp ? { ...icp } : undefined;
       const capturedSot = sot ? { ...sot } : undefined;
-      const capturedCoachContext = user.coachName
-        ? `COACH IDENTITY — ABSOLUTE PRIORITY — THIS OVERRIDES ALL OTHER CONTEXT:\n- The coach writing this content is: ${user.coachName}\n- Coach gender: ${user.coachGender ?? 'not specified'} — write ALL first-person content from this gender perspective without exception\n- Coach background: ${user.coachBackground ?? 'not specified'}\n\nCRITICAL RULES:\n1. Always sign off as ${user.coachName} — never write [Name] or any placeholder\n2. Write entirely in ${user.coachName}'s voice and gender perspective\n3. The ICP (ideal customer) may be a different gender — do not confuse ICP gender with coach gender\n4. Never invent fictional experts or third-party personas`
-        : '';
 
       // Insert pending job
       const jobId = randomUUID();
@@ -513,7 +555,6 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
           const bgSotContext = bgSotLines.length > 0
             ? ['BRAND CONTEXT — this is the approved brand voice. All copy must be consistent with this:', ...bgSotLines].join('\n')
             : '';
-          const bgContextPrefix = [capturedCoachContext, bgSotContext].filter(Boolean).join('\n\n');
 
           const bgResolvedPressingProblem = capturedInput.pressingProblem?.trim() || capturedService.painPoints || "";
           const bgResolvedWhyProblem = capturedInput.whyProblem?.trim() || capturedService.whyProblemExists || "";
@@ -525,7 +566,7 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
           const allMechanisms: any[] = [];
 
           // --- Hero Mechanisms (5 variations) ---
-          const heroMechanismsPrompt = `${bgContextPrefix ? `${bgContextPrefix}\n\n` : ''}You are an expert direct response copywriter creating compelling Hero Mechanisms.\n\nProduct: ${capturedService.name}\nTarget Market: ${capturedInput.targetMarket}\nPressing Problem: ${bgResolvedPressingProblem}\nWhy Problem Exists: ${bgResolvedWhyProblem}\nWhat They've Tried: ${bgResolvedWhatTried}\nWhy Existing Solutions Fail: ${bgResolvedWhyExistingNotWork}\nDescriptor: ${capturedInput.descriptor || "System"}\nApplication: ${capturedInput.application || "Use this system"}\nDesired Outcome: ${capturedInput.desiredOutcome}\nCredibility: ${bgResolvedCredibility}\nSocial Proof: ${capturedInput.socialProof}\n${bgIcpContext ? `\n${bgIcpContext}\n` : ''}\nCreate 5 HERO MECHANISMS. Each mechanism must have:\n1. A creative, unique NAME using the descriptor\n2. A full PARAGRAPH description (150-200 words) that includes how it works, who developed it, specific outcome, emotional transformation, and why it's different.\n\nReturn ONLY a JSON array of 5 objects with "name" and "description" fields, nothing else.`;
+          const heroMechanismsPrompt = `${bgSotContext ? `${bgSotContext}\n\n` : ''}You are an expert direct response copywriter creating compelling Hero Mechanisms.\n\nProduct: ${capturedService.name}\nTarget Market: ${capturedInput.targetMarket}\nPressing Problem: ${bgResolvedPressingProblem}\nWhy Problem Exists: ${bgResolvedWhyProblem}\nWhat They've Tried: ${bgResolvedWhatTried}\nWhy Existing Solutions Fail: ${bgResolvedWhyExistingNotWork}\nDescriptor: ${capturedInput.descriptor || "System"}\nApplication: ${capturedInput.application || "Use this system"}\nDesired Outcome: ${capturedInput.desiredOutcome}\nCredibility: ${bgResolvedCredibility}\nSocial Proof: ${capturedInput.socialProof}\n${bgIcpContext ? `\n${bgIcpContext}\n` : ''}\nCreate 5 HERO MECHANISMS. Each mechanism must have:\n1. A creative, unique NAME using the descriptor\n2. A full PARAGRAPH description (150-200 words) that includes how it works, who developed it, specific outcome, emotional transformation, and why it's different.\n\nReturn ONLY a JSON array of 5 objects with "name" and "description" fields, nothing else.`;
 
           const heroMechanismsResponse = await invokeLLM({
             messages: [
@@ -542,7 +583,7 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
           });
 
           // --- Headline Ideas (5 variations) ---
-          const headlineIdeasPrompt = `${bgContextPrefix ? `${bgContextPrefix}\n\n` : ''}You are an expert direct response copywriter creating compelling headlines for Hero Mechanisms.\n\nProduct: ${capturedService.name}\nTarget Market: ${capturedInput.targetMarket}\nPressing Problem: ${bgResolvedPressingProblem}\nDesired Outcome: ${capturedInput.desiredOutcome}\n${bgIcpContext ? `\n${bgIcpContext}\n` : ''}\nCreate 5 HEADLINE IDEAS. Each should have a creative NAME (the headline) and a DESCRIPTION (50-100 words explaining why it works).\n\nReturn ONLY a JSON array of 5 objects with "name" and "description" fields, nothing else.`;
+          const headlineIdeasPrompt = `${bgSotContext ? `${bgSotContext}\n\n` : ''}You are an expert direct response copywriter creating compelling headlines for Hero Mechanisms.\n\nProduct: ${capturedService.name}\nTarget Market: ${capturedInput.targetMarket}\nPressing Problem: ${bgResolvedPressingProblem}\nDesired Outcome: ${capturedInput.desiredOutcome}\n${bgIcpContext ? `\n${bgIcpContext}\n` : ''}\nCreate 5 HEADLINE IDEAS. Each should have a creative NAME (the headline) and a DESCRIPTION (50-100 words explaining why it works).\n\nReturn ONLY a JSON array of 5 objects with "name" and "description" fields, nothing else.`;
 
           const headlineIdeasResponse = await invokeLLM({
             messages: [
@@ -559,7 +600,7 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
           });
 
           // --- Power Mode (5 extra powerful variations) ---
-          const powerModePrompt = `${bgContextPrefix ? `${bgContextPrefix}\n\n` : ''}You are an expert direct response copywriter creating BEAST MODE Hero Mechanisms.\n\nProduct: ${capturedService.name}\nTarget Market: ${capturedInput.targetMarket}\nPressing Problem: ${bgResolvedPressingProblem}\nWhy Problem Exists: ${bgResolvedWhyProblem}\nWhat They've Tried: ${bgResolvedWhatTried}\nWhy Existing Solutions Fail: ${bgResolvedWhyExistingNotWork}\nDescriptor: ${capturedInput.descriptor || "System"}\nDesired Outcome: ${capturedInput.desiredOutcome}\nCredibility: ${bgResolvedCredibility}\nSocial Proof: ${capturedInput.socialProof}\n${bgIcpContext ? `\n${bgIcpContext}\n` : ''}\nCreate 5 BEAST MODE mechanisms with ultra-creative names and comprehensive descriptions (200-250 words) that include specific numbers, timeframes, results, and address objections.\n\nReturn ONLY a JSON array of 5 objects with "name" and "description" fields, nothing else.`;
+          const powerModePrompt = `${bgSotContext ? `${bgSotContext}\n\n` : ''}You are an expert direct response copywriter creating BEAST MODE Hero Mechanisms.\n\nProduct: ${capturedService.name}\nTarget Market: ${capturedInput.targetMarket}\nPressing Problem: ${bgResolvedPressingProblem}\nWhy Problem Exists: ${bgResolvedWhyProblem}\nWhat They've Tried: ${bgResolvedWhatTried}\nWhy Existing Solutions Fail: ${bgResolvedWhyExistingNotWork}\nDescriptor: ${capturedInput.descriptor || "System"}\nDesired Outcome: ${capturedInput.desiredOutcome}\nCredibility: ${bgResolvedCredibility}\nSocial Proof: ${capturedInput.socialProof}\n${bgIcpContext ? `\n${bgIcpContext}\n` : ''}\nCreate 5 BEAST MODE mechanisms with ultra-creative names and comprehensive descriptions (200-250 words) that include specific numbers, timeframes, results, and address objections.\n\nReturn ONLY a JSON array of 5 objects with "name" and "description" fields, nothing else.`;
 
           const powerModeResponse = await invokeLLM({
             messages: [
@@ -600,22 +641,5 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
 
       // Return immediately — HTTP connection closes in <1s
       return { jobId };
-    }),
-
-  // Get most recent mechanism set for a given serviceId (generation history)
-  getLatestByServiceId: protectedProcedure
-    .input(z.object({ serviceId: z.number() }))
-    .query(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
-      const { heroMechanisms: heroMechanismsTable } = await import("../../drizzle/schema");
-      const [latest] = await db
-        .select({ mechanismSetId: heroMechanismsTable.mechanismSetId })
-        .from(heroMechanismsTable)
-        .where(and(eq(heroMechanismsTable.userId, ctx.user.id), eq(heroMechanismsTable.serviceId, input.serviceId)))
-        .orderBy(desc(heroMechanismsTable.createdAt))
-        .limit(1);
-      if (!latest) return null;
-      return { mechanismSetId: latest.mechanismSetId };
     }),
 });

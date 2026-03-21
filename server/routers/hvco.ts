@@ -12,8 +12,8 @@ import {
   incrementHvcoCount
 } from "../db";
 import { getDb } from "../db";
-import { services, idealCustomerProfiles, sourceOfTruth, campaigns, jobs } from "../../drizzle/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { services, idealCustomerProfiles, sourceOfTruth, campaigns, jobs, hvcoTitles } from "../../drizzle/schema";
+import { eq, and } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
@@ -131,10 +131,6 @@ export const hvcoRouter = router({
       const sotContext = sotLines.length > 0
         ? ['BRAND CONTEXT — this is the approved brand voice. All copy must be consistent with this:', ...sotLines].join('\n')
         : '';
-      const coachContext = user.coachName
-        ? `COACH IDENTITY — ABSOLUTE PRIORITY — THIS OVERRIDES ALL OTHER CONTEXT:\n- The coach writing this content is: ${user.coachName}\n- Coach gender: ${user.coachGender ?? 'not specified'} — write ALL first-person content from this gender perspective without exception\n- Coach background: ${user.coachBackground ?? 'not specified'}\n\nCRITICAL RULES:\n1. Always sign off as ${user.coachName} — never write [Name] or any placeholder\n2. Write entirely in ${user.coachName}'s voice and gender perspective\n3. The ICP (ideal customer) may be a different gender — do not confuse ICP gender with coach gender\n4. Never invent fictional experts or third-party personas`
-        : '';
-      const contextPrefix = [coachContext, sotContext].filter(Boolean).join('\n\n');
 
       // Item 1.3 — Rule 4: server-side fallbacks so empty form fields fall back to service record
       const resolvedTargetMarket = input.targetMarket?.trim() || service.targetCustomer || "";
@@ -144,7 +140,7 @@ export const hvcoRouter = router({
       const allTitles: any[] = [];
 
       // Generate Long Titles (20 variations)
-      const longTitlesPrompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert copywriter creating compelling HVCO (High-Value Content Offer) titles.
+      const longTitlesPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert copywriter creating compelling HVCO (High-Value Content Offer) titles.
 
 Product: ${service.name}
 Target Market: ${resolvedTargetMarket}
@@ -198,7 +194,7 @@ Return ONLY a JSON array of ${20 * countMultiplier} title strings, nothing else.
       });
 
       // Generate Short Titles (20 variations)
-      const shortTitlesPrompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert copywriter creating compelling HVCO titles.
+      const shortTitlesPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert copywriter creating compelling HVCO titles.
 
 Product: ${service.name}
 Target Market: ${resolvedTargetMarket}
@@ -248,7 +244,7 @@ Return ONLY a JSON array of ${20 * countMultiplier} title strings, nothing else.
       });
 
       // Generate Power Mode Titles (30 extra variations)
-      const powerModeTitlesPrompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert copywriter creating compelling HVCO titles.
+      const powerModeTitlesPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert copywriter creating compelling HVCO titles.
 
 Product: ${service.name}
 Target Market: ${resolvedTargetMarket}
@@ -295,7 +291,7 @@ Return ONLY a JSON array of 30 title strings, nothing else.`;
       });
 
       // Generate Subheadlines (20 variations)
-      const subheadlinesPrompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert copywriter creating compelling subheadlines for HVCOs.
+      const subheadlinesPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert copywriter creating compelling subheadlines for HVCOs.
 
 Product: ${service.name}
 Target Market: ${resolvedTargetMarket}
@@ -391,9 +387,6 @@ Return ONLY a JSON array of 20 subheadline strings, nothing else.`;
       const capturedService = { ...service };
       const capturedIcp = icp ? { ...icp } : undefined;
       const capturedSot = sot ? { ...sot } : undefined;
-      const capturedCoachContext = user.coachName
-        ? `COACH IDENTITY — ABSOLUTE PRIORITY — THIS OVERRIDES ALL OTHER CONTEXT:\n- The coach writing this content is: ${user.coachName}\n- Coach gender: ${user.coachGender ?? 'not specified'} — write ALL first-person content from this gender perspective without exception\n- Coach background: ${user.coachBackground ?? 'not specified'}\n\nCRITICAL RULES:\n1. Always sign off as ${user.coachName} — never write [Name] or any placeholder\n2. Write entirely in ${user.coachName}'s voice and gender perspective\n3. The ICP (ideal customer) may be a different gender — do not confuse ICP gender with coach gender\n4. Never invent fictional experts or third-party personas`
-        : '';
 
       const jobId = randomUUID();
       await db.insert(jobs).values({ id: jobId, userId: String(capturedUserId), status: "pending" });
@@ -420,29 +413,28 @@ Return ONLY a JSON array of 20 subheadline strings, nothing else.`;
             capturedSot.idealCustomerAvatar ? `Ideal customer: ${capturedSot.idealCustomerAvatar}` : '',
           ].filter(Boolean) : [];
           const sotContext = sotLines.length > 0 ? ['BRAND CONTEXT — this is the approved brand voice. All copy must be consistent with this:', ...sotLines].join('\n') : '';
-          const contextPrefix = [capturedCoachContext, sotContext].filter(Boolean).join('\n\n');
 
           const resolvedTargetMarket = capturedInput.targetMarket?.trim() || capturedService.targetCustomer || "";
           const resolvedHvcoTopic = capturedInput.hvcoTopic?.trim() || capturedService.hvcoTopic || "";
           const hvcoSetId = nanoid();
           const allTitles: any[] = [];
 
-          const longTitlesPrompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert copywriter creating compelling HVCO (High-Value Content Offer) titles.\n\nProduct: ${capturedService.name}\nTarget Market: ${resolvedTargetMarket}\nHVCO Topic: ${resolvedHvcoTopic}\n${icpContext ? `\n${icpContext}\n` : ''}\nCreate 20 LONG, benefit-first titles (3-5 words each) following this pattern:\n[Specific Number/Timeframe] [Action/Benefit] [to/for] [Concrete Outcome]\n\nReturn ONLY a JSON array of ${20 * countMultiplier} title strings, nothing else.`;
+          const longTitlesPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert copywriter creating compelling HVCO (High-Value Content Offer) titles.\n\nProduct: ${capturedService.name}\nTarget Market: ${resolvedTargetMarket}\nHVCO Topic: ${resolvedHvcoTopic}\n${icpContext ? `\n${icpContext}\n` : ''}\nCreate 20 LONG, benefit-first titles (3-5 words each) following this pattern:\n[Specific Number/Timeframe] [Action/Benefit] [to/for] [Concrete Outcome]\n\nReturn ONLY a JSON array of ${20 * countMultiplier} title strings, nothing else.`;
           const longR = await invokeLLM({ messages: [{ role: "system", content: "You are a direct response copywriting expert. Return ONLY valid JSON arrays." }, { role: "user", content: longTitlesPrompt }] });
           const longContent = typeof longR.choices[0].message.content === 'string' ? longR.choices[0].message.content : JSON.stringify(longR.choices[0].message.content);
           JSON.parse(stripMarkdownJson(longContent)).forEach((title: string) => allTitles.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId, hvcoSetId, tabType: "long" as const, title, targetMarket: capturedInput.targetMarket, hvcoTopic: capturedInput.hvcoTopic }));
 
-          const shortTitlesPrompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert copywriter creating compelling HVCO titles.\n\nProduct: ${capturedService.name}\nTarget Market: ${resolvedTargetMarket}\nHVCO Topic: ${resolvedHvcoTopic}\n${icpContext ? `\n${icpContext}\n` : ''}\nCreate 20 SHORT, benefit-focused titles (2-4 words each).\n\nReturn ONLY a JSON array of ${20 * countMultiplier} title strings, nothing else.`;
+          const shortTitlesPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert copywriter creating compelling HVCO titles.\n\nProduct: ${capturedService.name}\nTarget Market: ${resolvedTargetMarket}\nHVCO Topic: ${resolvedHvcoTopic}\n${icpContext ? `\n${icpContext}\n` : ''}\nCreate 20 SHORT, benefit-focused titles (2-4 words each).\n\nReturn ONLY a JSON array of ${20 * countMultiplier} title strings, nothing else.`;
           const shortR = await invokeLLM({ messages: [{ role: "system", content: "You are a direct response copywriting expert. Return ONLY valid JSON arrays." }, { role: "user", content: shortTitlesPrompt }] });
           const shortContent = typeof shortR.choices[0].message.content === 'string' ? shortR.choices[0].message.content : JSON.stringify(shortR.choices[0].message.content);
           JSON.parse(stripMarkdownJson(shortContent)).forEach((title: string) => allTitles.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId, hvcoSetId, tabType: "short" as const, title, targetMarket: capturedInput.targetMarket, hvcoTopic: capturedInput.hvcoTopic }));
 
-          const powerPrompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert copywriter creating compelling HVCO titles.\n\nProduct: ${capturedService.name}\nTarget Market: ${resolvedTargetMarket}\nHVCO Topic: ${resolvedHvcoTopic}\n${icpContext ? `\n${icpContext}\n` : ''}\nCreate 30 BEAST MODE titles - a mix of long and short, all highly creative and attention-grabbing.\n\nReturn ONLY a JSON array of 30 title strings, nothing else.`;
+          const powerPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert copywriter creating compelling HVCO titles.\n\nProduct: ${capturedService.name}\nTarget Market: ${resolvedTargetMarket}\nHVCO Topic: ${resolvedHvcoTopic}\n${icpContext ? `\n${icpContext}\n` : ''}\nCreate 30 BEAST MODE titles - a mix of long and short, all highly creative and attention-grabbing.\n\nReturn ONLY a JSON array of 30 title strings, nothing else.`;
           const powerR = await invokeLLM({ messages: [{ role: "system", content: "You are a direct response copywriting expert. Return ONLY valid JSON arrays." }, { role: "user", content: powerPrompt }] });
           const powerContent = typeof powerR.choices[0].message.content === 'string' ? powerR.choices[0].message.content : JSON.stringify(powerR.choices[0].message.content);
           JSON.parse(stripMarkdownJson(powerContent)).forEach((title: string) => allTitles.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId, hvcoSetId, tabType: "beast_mode" as const, title, targetMarket: capturedInput.targetMarket, hvcoTopic: capturedInput.hvcoTopic }));
 
-          const subPrompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert copywriter creating compelling subheadlines for HVCOs.\n\nProduct: ${capturedService.name}\nTarget Market: ${resolvedTargetMarket}\nHVCO Topic: ${resolvedHvcoTopic}\n${icpContext ? `\n${icpContext}\n` : ''}\nCreate 20 SUBHEADLINES that support and expand on the main title.\n\nReturn ONLY a JSON array of 20 subheadline strings, nothing else.`;
+          const subPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert copywriter creating compelling subheadlines for HVCOs.\n\nProduct: ${capturedService.name}\nTarget Market: ${resolvedTargetMarket}\nHVCO Topic: ${resolvedHvcoTopic}\n${icpContext ? `\n${icpContext}\n` : ''}\nCreate 20 SUBHEADLINES that support and expand on the main title.\n\nReturn ONLY a JSON array of 20 subheadline strings, nothing else.`;
           const subR = await invokeLLM({ messages: [{ role: "system", content: "You are a direct response copywriting expert. Return ONLY valid JSON arrays." }, { role: "user", content: subPrompt }] });
           const subContent = typeof subR.choices[0].message.content === 'string' ? subR.choices[0].message.content : JSON.stringify(subR.choices[0].message.content);
           JSON.parse(stripMarkdownJson(subContent)).forEach((title: string) => allTitles.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId, hvcoSetId, tabType: "subheadlines" as const, title, targetMarket: capturedInput.targetMarket, hvcoTopic: capturedInput.hvcoTopic }));
@@ -515,6 +507,55 @@ Return ONLY a JSON array of 20 subheadline strings, nothing else.`;
       return { success: true };
     }),
 
+  regenerateSingle: protectedProcedure
+    .input(z.object({ id: z.number(), promptOverride: z.string().optional() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const [existing] = await db
+        .select()
+        .from(hvcoTitles)
+        .where(and(eq(hvcoTitles.id, input.id), eq(hvcoTitles.userId, ctx.user.id)))
+        .limit(1);
+
+      if (!existing) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "HVCO title not found" });
+      }
+
+      const overrideInstruction = input.promptOverride?.trim()
+        ? ` Additional instruction: ${input.promptOverride.trim()}.`
+        : "";
+
+      const prompt = `Rewrite this high-value content offer title. Current title: ${existing.title}.${overrideInstruction} Return a JSON object with exactly one key: title (string). No explanation, no markdown.`;
+
+      const response = await invokeLLM({
+        messages: [
+          { role: "system", content: "You are an expert content title copywriter. Respond with only valid JSON." },
+          { role: "user", content: prompt },
+        ],
+      });
+
+      const content = response.choices[0].message.content;
+      if (typeof content !== "string") throw new Error("Invalid response from AI");
+
+      const parsed = JSON.parse(stripMarkdownJson(content));
+      if (!parsed.title) throw new Error("AI response missing title field");
+
+      await db
+        .update(hvcoTitles)
+        .set({ title: parsed.title, updatedAt: new Date() })
+        .where(eq(hvcoTitles.id, input.id));
+
+      const [updated] = await db
+        .select()
+        .from(hvcoTitles)
+        .where(eq(hvcoTitles.id, input.id))
+        .limit(1);
+
+      return updated;
+    }),
+
   /**
    * Delete entire HVCO set
    */
@@ -523,22 +564,5 @@ Return ONLY a JSON array of 20 subheadline strings, nothing else.`;
     .mutation(async ({ ctx, input }) => {
       await deleteHvcoSet(input.hvcoSetId, ctx.user.id);
       return { success: true };
-    }),
-
-  // Get most recent HVCO set for a given serviceId (generation history)
-  getLatestByServiceId: protectedProcedure
-    .input(z.object({ serviceId: z.number() }))
-    .query(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
-      const { hvcoTitles: hvcoTable } = await import("../../drizzle/schema");
-      const [latest] = await db
-        .select({ hvcoSetId: hvcoTable.hvcoSetId })
-        .from(hvcoTable)
-        .where(and(eq(hvcoTable.userId, ctx.user.id), eq(hvcoTable.serviceId, input.serviceId)))
-        .orderBy(desc(hvcoTable.createdAt))
-        .limit(1);
-      if (!latest) return null;
-      return { hvcoSetId: latest.hvcoSetId };
     }),
 });
