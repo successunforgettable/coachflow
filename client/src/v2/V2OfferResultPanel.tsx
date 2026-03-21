@@ -15,13 +15,14 @@ import ZappyMascot from "./ZappyMascot";
 type AngleKey = "godfather" | "free" | "dollar";
 
 interface AngleContent {
+  headline?: string;
+  subheadline?: string;
   offerName?: string;
-  valueProposition?: string;
-  pricing?: string;
+  price?: string;
+  whatYouGet?: string;
   bonuses?: string;
   guarantee?: string;
   urgency?: string;
-  cta?: string;
   [key: string]: string | undefined;
 }
 
@@ -32,13 +33,14 @@ const ANGLE_TABS: { key: AngleKey; label: string }[] = [
 ];
 
 const SECTION_DEFS: { key: keyof AngleContent; label: string }[] = [
-  { key: "offerName",        label: "Offer Name" },
-  { key: "valueProposition", label: "Value Proposition" },
-  { key: "pricing",          label: "Pricing" },
-  { key: "bonuses",          label: "Bonuses" },
-  { key: "guarantee",        label: "Guarantee" },
-  { key: "urgency",          label: "Urgency" },
-  { key: "cta",              label: "Call to Action" },
+  { key: "headline",    label: "Headline" },
+  { key: "subheadline", label: "Subheadline" },
+  { key: "offerName",   label: "Offer Name" },
+  { key: "price",       label: "Price" },
+  { key: "whatYouGet",  label: "What You Get" },
+  { key: "bonuses",     label: "Bonuses" },
+  { key: "guarantee",   label: "Guarantee" },
+  { key: "urgency",     label: "Urgency" },
 ];
 
 // ─── Shared icon-button style ─────────────────────────────────────────────────
@@ -292,7 +294,7 @@ export default function V2OfferResultPanel({
       </div>
 
       {/* ── Active angle content ── */}
-      <AngleTabContent key={resolvedTab} content={angles[resolvedTab]} />
+      <AngleTabContent content={angles[resolvedTab]} />
 
       {/* ── Download TXT button ── */}
       <div style={{ marginTop: "20px", textAlign: "center" }}>

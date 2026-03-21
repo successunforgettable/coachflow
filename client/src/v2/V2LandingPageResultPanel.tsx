@@ -152,10 +152,7 @@ function serializeValue(val: unknown): string {
     const obj = val as Record<string, unknown>;
     // Quiz section
     if (obj.question) return `Q: ${obj.question}\nOptions: ${Array.isArray(obj.options) ? obj.options.join(", ") : ""}\nAnswer: ${obj.answer ?? ""}`;
-    return Object.entries(obj)
-      .map(([, v]) => typeof v === "string" ? v : String(v ?? ""))
-      .filter(Boolean)
-      .join("\n\n");
+    return JSON.stringify(val, null, 2);
   }
   return String(val);
 }

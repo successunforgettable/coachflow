@@ -34,7 +34,6 @@ import V2FreeOptInResultPanel from "./V2FreeOptInResultPanel";
 import V2LandingPageResultPanel from "./V2LandingPageResultPanel";
 import V2EmailSequenceResultPanel from "./V2EmailSequenceResultPanel";
 import V2WhatsAppResultPanel from "./V2WhatsAppResultPanel";
-import CoachIdentityModal from "./components/CoachIdentityModal";
 
 export type { WizardStep };
 
@@ -133,7 +132,9 @@ const ADVANCED_FIELDS: Record<WizardStep, AdvancedField[]> = {
   icp: [
     { key: "name", label: "ICP Name / Label", type: "text", placeholder: "e.g. Mid-Career Professional", sourceNote: "Auto-generated from your service avatar" },
   ],
-  offer: [],
+  offer: [
+    { key: "offerType", label: "Offer Type", type: "select", options: ["standard", "premium", "vip"], sourceNote: "Defaults to 'premium'" },
+  ],
   uniqueMethod: [
     { key: "mechanismName", label: "Mechanism Name Override", type: "text", placeholder: "Leave blank to use AI suggestion", sourceNote: "AI generates this from your service description" },
     { key: "applicationMethod", label: "Application Method", type: "text", placeholder: "e.g. 6-week group coaching", sourceNote: "Pulled from your service profile" },
@@ -153,12 +154,12 @@ const ADVANCED_FIELDS: Record<WizardStep, AdvancedField[]> = {
     { key: "pageStyle", label: "Page Style", type: "select", options: ["VSL", "long-form", "short-form", "webinar-registration"], sourceNote: "Defaults to long-form" },
   ],
   emailSequence: [
-    { key: "sequenceType", label: "Sequence Type", type: "select", options: ["welcome", "engagement", "sales"], sourceNote: "Defaults to welcome" },
-    { key: "emailCount", label: "Number of Emails", type: "select", options: ["3", "5", "7", "10", "14"], sourceNote: "Defaults to 3" },
+    { key: "sequenceType", label: "Sequence Type", type: "select", options: ["welcome", "nurture", "launch", "re-engagement"], sourceNote: "Defaults to nurture" },
+    { key: "emailCount", label: "Number of Emails", type: "select", options: ["3", "5", "7", "10"], sourceNote: "Defaults to 5" },
   ],
   whatsappSequence: [
-    { key: "sequenceType", label: "Sequence Type", type: "select", options: ["engagement", "sales"], sourceNote: "Defaults to engagement" },
-    { key: "sequenceLength", label: "Number of Messages", type: "select", options: ["3", "5", "7", "10", "14"], sourceNote: "Defaults to 3" },
+    { key: "sequenceLength", label: "Sequence Length", type: "select", options: ["3", "5", "7"], sourceNote: "Defaults to 5" },
+    { key: "tone", label: "Tone", type: "select", options: ["conversational", "professional", "urgent"], sourceNote: "Pulled from your brand voice" },
   ],
   pushToMeta: [
     { key: "platform", label: "Platform", type: "select", options: ["Meta Ads Manager", "GoHighLevel"], sourceNote: "Defaults to Meta Ads Manager" },
@@ -1226,11 +1227,6 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
   const { user: authUser } = useAuth();
   const isFreeTier = !authUser || (authUser.role !== "superuser" && authUser.role !== "admin" && authUser.subscriptionTier !== "pro" && authUser.subscriptionTier !== "agency");
 
-  // ── Coach identity modal gate ──
-  const coachProfileQuery = trpc.user.getCoachProfile.useQuery(undefined, { staleTime: 300_000 });
-  const [coachModalDismissed, setCoachModalDismissed] = useState(false);
-  const showCoachModal = coachProfileQuery.isFetched && !coachProfileQuery.data?.coachName && !coachModalDismissed;
-
   // NOTE: All hooks MUST be called unconditionally before any early returns
   // to comply with React's Rules of Hooks.
 
@@ -1335,105 +1331,6 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
   // ── Resolve the active ICP ──
   const activeIcp = isDemoMissing ? undefined : icpData?.[0];
 
-  // ── Generation history: load previous results on mount ──
-  const resolvedServiceId = activeService?.id;
-  const historyEnabled = !!resolvedServiceId && step !== "service" && !demoMode;
-
-  const historyIcp = trpc.icps.getLatestByServiceId.useQuery(
-    { serviceId: resolvedServiceId! },
-    { enabled: historyEnabled && step === "icp", staleTime: 60_000 }
-  );
-  const historyOffer = trpc.offers.getLatestByServiceId.useQuery(
-    { serviceId: resolvedServiceId! },
-    { enabled: historyEnabled && step === "offer", staleTime: 60_000 }
-  );
-  const historyMechanism = trpc.heroMechanisms.getLatestByServiceId.useQuery(
-    { serviceId: resolvedServiceId! },
-    { enabled: historyEnabled && step === "uniqueMethod", staleTime: 60_000 }
-  );
-  const historyHvco = trpc.hvco.getLatestByServiceId.useQuery(
-    { serviceId: resolvedServiceId! },
-    { enabled: historyEnabled && step === "freeOptIn", staleTime: 60_000 }
-  );
-  const historyHeadlines = trpc.headlines.getLatestByServiceId.useQuery(
-    { serviceId: resolvedServiceId! },
-    { enabled: historyEnabled && step === "headlines", staleTime: 60_000 }
-  );
-  const historyAdCopy = trpc.adCopy.getLatestByServiceId.useQuery(
-    { serviceId: resolvedServiceId! },
-    { enabled: historyEnabled && step === "adCopy", staleTime: 60_000 }
-  );
-  const historyLandingPage = trpc.landingPages.getLatestByServiceId.useQuery(
-    { serviceId: resolvedServiceId! },
-    { enabled: historyEnabled && step === "landingPage", staleTime: 60_000 }
-  );
-  const historyEmail = trpc.emailSequences.getLatestByServiceId.useQuery(
-    { serviceId: resolvedServiceId! },
-    { enabled: historyEnabled && step === "emailSequence", staleTime: 60_000 }
-  );
-  const historyWhatsapp = trpc.whatsappSequences.getLatestByServiceId.useQuery(
-    { serviceId: resolvedServiceId! },
-    { enabled: historyEnabled && step === "whatsappSequence", staleTime: 60_000 }
-  );
-
-  // Derive loading/fetched state for current step's history query
-  const historyLoading = (
-    (step === "icp" && historyIcp.isLoading) ||
-    (step === "offer" && historyOffer.isLoading) ||
-    (step === "uniqueMethod" && historyMechanism.isLoading) ||
-    (step === "freeOptIn" && historyHvco.isLoading) ||
-    (step === "headlines" && historyHeadlines.isLoading) ||
-    (step === "adCopy" && historyAdCopy.isLoading) ||
-    (step === "landingPage" && historyLandingPage.isLoading) ||
-    (step === "emailSequence" && historyEmail.isLoading) ||
-    (step === "whatsappSequence" && historyWhatsapp.isLoading)
-  );
-  const historyFetched = (
-    (step === "icp" && historyIcp.isFetched) ||
-    (step === "offer" && historyOffer.isFetched) ||
-    (step === "uniqueMethod" && historyMechanism.isFetched) ||
-    (step === "freeOptIn" && historyHvco.isFetched) ||
-    (step === "headlines" && historyHeadlines.isFetched) ||
-    (step === "adCopy" && historyAdCopy.isFetched) ||
-    (step === "landingPage" && historyLandingPage.isFetched) ||
-    (step === "emailSequence" && historyEmail.isFetched) ||
-    (step === "whatsappSequence" && historyWhatsapp.isFetched)
-  );
-
-  // Show loading state while history query is in flight
-  useEffect(() => {
-    if (!historyEnabled) return;
-    if (historyLoading && status === "idle") {
-      setStatus("loading");
-      setProgressLabel("Loading previous results…");
-    }
-  }, [historyEnabled, historyLoading, status]);
-
-  // When history query resolves, populate result IDs or revert to idle
-  useEffect(() => {
-    if (!historyEnabled || !historyFetched || historyLoading) return;
-    if (status !== "loading" && status !== "idle") return;
-
-    let found = false;
-    if (step === "icp" && historyIcp.data?.id) { setLatestIcpId(historyIcp.data.id); found = true; }
-    else if (step === "offer" && historyOffer.data?.id) { setLatestOfferId(historyOffer.data.id); found = true; }
-    else if (step === "uniqueMethod" && historyMechanism.data?.mechanismSetId) { setLatestMechanismSetId(historyMechanism.data.mechanismSetId); found = true; }
-    else if (step === "freeOptIn" && historyHvco.data?.hvcoSetId) { setLatestHvcoSetId(historyHvco.data.hvcoSetId); found = true; }
-    else if (step === "headlines" && historyHeadlines.data?.headlineSetId) { setLatestHeadlineSetId(historyHeadlines.data.headlineSetId); found = true; }
-    else if (step === "adCopy" && historyAdCopy.data?.adSetId) { setLatestAdSetId(historyAdCopy.data.adSetId); found = true; }
-    else if (step === "landingPage" && historyLandingPage.data?.id) { setLatestLandingPageId(historyLandingPage.data.id); found = true; }
-    else if (step === "emailSequence" && historyEmail.data?.id) { setLatestEmailSequenceId(historyEmail.data.id); found = true; }
-    else if (step === "whatsappSequence" && historyWhatsapp.data?.id) { setLatestWhatsappSequenceId(historyWhatsapp.data.id); found = true; }
-
-    if (found) {
-      setComplianceScore(100);
-      setStatus("success");
-    } else {
-      setStatus("idle");
-    }
-    setProgressLabel(null);
-  }, [historyEnabled, historyFetched, historyLoading, step]);
-
   // ── Demo state triggers (for screenshots) ──
   useEffect(() => {
     if (isDemoLoading) {
@@ -1485,6 +1382,100 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
       if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
     };
   }, []);
+
+  // ── History load: fetch latest result for this step on mount ──
+  // Uses list queries (all routers support serviceId filter, ordered by createdAt desc)
+  // If a result exists, set the ID state and switch to "success" status
+  const historyLoadedRef = useRef(false);
+  const resolvedServiceId = activeService?.id;
+
+  // Fetch latest for each node type (only the one matching current step)
+  const { data: historyIcps } = trpc.icps.list.useQuery(
+    { serviceId: resolvedServiceId! },
+    { enabled: step === "icp" && !!resolvedServiceId && status === "idle" && !historyLoadedRef.current }
+  );
+  const { data: historyOffers } = trpc.offers.list.useQuery(
+    { serviceId: resolvedServiceId! },
+    { enabled: step === "offer" && !!resolvedServiceId && status === "idle" && !historyLoadedRef.current }
+  );
+  const { data: historyMechanisms } = trpc.heroMechanisms.list.useQuery(
+    { serviceId: resolvedServiceId! },
+    { enabled: step === "uniqueMethod" && !!resolvedServiceId && status === "idle" && !historyLoadedRef.current }
+  );
+  const { data: historyHvco } = trpc.hvco.list.useQuery(
+    { serviceId: resolvedServiceId! },
+    { enabled: step === "freeOptIn" && !!resolvedServiceId && status === "idle" && !historyLoadedRef.current }
+  );
+  const { data: historyHeadlines } = trpc.headlines.getLatestByServiceId.useQuery(
+    { serviceId: resolvedServiceId! },
+    { enabled: step === "headlines" && !!resolvedServiceId && status === "idle" && !historyLoadedRef.current }
+  );
+  const { data: historyAdCopy } = trpc.adCopy.getLatestByServiceId.useQuery(
+    { serviceId: resolvedServiceId! },
+    { enabled: step === "adCopy" && !!resolvedServiceId && status === "idle" && !historyLoadedRef.current }
+  );
+  const { data: historyLandingPages } = trpc.landingPages.list.useQuery(
+    { serviceId: resolvedServiceId! },
+    { enabled: step === "landingPage" && !!resolvedServiceId && status === "idle" && !historyLoadedRef.current }
+  );
+  const { data: historyEmails } = trpc.emailSequences.list.useQuery(
+    { serviceId: resolvedServiceId! },
+    { enabled: step === "emailSequence" && !!resolvedServiceId && status === "idle" && !historyLoadedRef.current }
+  );
+  const { data: historyWhatsapp } = trpc.whatsappSequences.list.useQuery(
+    { serviceId: resolvedServiceId! },
+    { enabled: step === "whatsappSequence" && !!resolvedServiceId && status === "idle" && !historyLoadedRef.current }
+  );
+
+  useEffect(() => {
+    if (historyLoadedRef.current || status !== "idle" || demoMode) return;
+
+    if (step === "icp" && historyIcps && historyIcps.length > 0) {
+      setLatestIcpId(historyIcps[0].id);
+      setStatus("success");
+      historyLoadedRef.current = true;
+    } else if (step === "offer" && historyOffers && historyOffers.length > 0) {
+      setLatestOfferId(historyOffers[0].id);
+      setStatus("success");
+      historyLoadedRef.current = true;
+    } else if (step === "uniqueMethod" && historyMechanisms && historyMechanisms.length > 0) {
+      const m = historyMechanisms[0] as any;
+      setLatestMechanismSetId(m.mechanismSetId ?? m.id?.toString());
+      setStatus("success");
+      historyLoadedRef.current = true;
+    } else if (step === "freeOptIn" && historyHvco && historyHvco.length > 0) {
+      const h = historyHvco[0] as any;
+      setLatestHvcoSetId(h.hvcoSetId ?? h.id?.toString());
+      setStatus("success");
+      historyLoadedRef.current = true;
+    } else if (step === "headlines" && historyHeadlines) {
+      const h = historyHeadlines as any;
+      if (h?.headlineSetId || h?.adSetId) {
+        setLatestHeadlineSetId(h.headlineSetId ?? h.adSetId);
+        setStatus("success");
+        historyLoadedRef.current = true;
+      }
+    } else if (step === "adCopy" && historyAdCopy) {
+      const a = historyAdCopy as any;
+      if (a?.adSetId) {
+        setLatestAdSetId(a.adSetId);
+        setStatus("success");
+        historyLoadedRef.current = true;
+      }
+    } else if (step === "landingPage" && historyLandingPages && historyLandingPages.length > 0) {
+      setLatestLandingPageId(historyLandingPages[0].id);
+      setStatus("success");
+      historyLoadedRef.current = true;
+    } else if (step === "emailSequence" && historyEmails && historyEmails.length > 0) {
+      setLatestEmailSequenceId(historyEmails[0].id);
+      setStatus("success");
+      historyLoadedRef.current = true;
+    } else if (step === "whatsappSequence" && historyWhatsapp && historyWhatsapp.length > 0) {
+      setLatestWhatsappSequenceId(historyWhatsapp[0].id);
+      setStatus("success");
+      historyLoadedRef.current = true;
+    }
+  }, [step, status, demoMode, historyIcps, historyOffers, historyMechanisms, historyHvco, historyHeadlines, historyAdCopy, historyLandingPages, historyEmails, historyWhatsapp]);
 
   // ── Core generation logic — real tRPC mutations for all 11 steps ──
   const runGeneration = useCallback(async (payload: Record<string, unknown>) => {
@@ -1611,24 +1602,18 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
         const lpResult = await pollJob(jobId, (label) => setProgressLabel(label));
         if (typeof lpResult.id === 'number') setLatestLandingPageId(lpResult.id);
       } else if (step === "emailSequence") {
-        const emailSeqType = (fieldValues.sequenceType as "welcome" | "engagement" | "sales") || "welcome";
-        const emailSeqLength = Number(fieldValues.emailCount) || 3;
         const { jobId } = await generateEmailSequenceAsync.mutateAsync({
           serviceId: svcId,
-          sequenceType: emailSeqType,
-          sequenceLength: emailSeqLength,
-          name: `${svc?.name || "My Service"} — ${emailSeqType} Sequence — ${emailSeqLength} emails`,
+          sequenceType: "welcome",
+          name: `${svc?.name || "My Service"} — Welcome Sequence`,
         });
         const emailResult = await pollJob(jobId);
         if (typeof emailResult.id === 'number') setLatestEmailSequenceId(emailResult.id);
       } else if (step === "whatsappSequence") {
-        const waSeqType = (fieldValues.sequenceType as "engagement" | "sales") || "engagement";
-        const waSeqLength = Number(fieldValues.sequenceLength) || 3;
         const { jobId } = await generateWhatsappSequenceAsync.mutateAsync({
           serviceId: svcId,
-          sequenceType: waSeqType,
-          sequenceLength: waSeqLength,
-          name: `${svc?.name || "My Service"} — WhatsApp Sequence — ${waSeqLength} messages`,
+          sequenceType: "engagement",
+          name: `${svc?.name || "My Service"} — Engagement Sequence`,
         });
         const waResult = await pollJob(jobId);
         if (typeof waResult.id === 'number') setLatestWhatsappSequenceId(waResult.id);
@@ -1719,18 +1704,6 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
     } else {
       setStatus("idle");
     }
-  }
-
-  // ── Coach identity modal — blocks entire wizard until completed ──
-  if (showCoachModal) {
-    return (
-      <V2Layout>
-        <CoachIdentityModal onComplete={() => {
-          setCoachModalDismissed(true);
-          coachProfileQuery.refetch();
-        }} />
-      </V2Layout>
-    );
   }
 
   // ── Service step: render dedicated V2ServiceStep component ──
@@ -1830,45 +1803,31 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
           )}
           {/* ── R1b: NODE 2 ICP RESULT PANEL ── */}
           {status === "success" && step === "icp" && latestIcpId && (
-            <V2ICPResultPanel
-              icpId={latestIcpId}
-            />
+            <V2ICPResultPanel icpId={latestIcpId} />
           )}
           {/* ── R1b: NODE 3 OFFER RESULT PANEL ── */}
           {status === "success" && step === "offer" && latestOfferId && (
-            <V2OfferResultPanel
-              offerId={latestOfferId}
-            />
+            <V2OfferResultPanel offerId={latestOfferId} />
           )}
           {/* ── R1b: NODE 4 UNIQUE METHOD RESULT PANEL ── */}
           {status === "success" && step === "uniqueMethod" && latestMechanismSetId && (
-            <V2UniqueMethodResultPanel
-              mechanismSetId={latestMechanismSetId}
-            />
+            <V2UniqueMethodResultPanel mechanismSetId={latestMechanismSetId} />
           )}
           {/* ── R1b: NODE 5 FREE OPT-IN RESULT PANEL ── */}
           {status === "success" && step === "freeOptIn" && latestHvcoSetId && (
-            <V2FreeOptInResultPanel
-              hvcoSetId={latestHvcoSetId}
-            />
+            <V2FreeOptInResultPanel hvcoSetId={latestHvcoSetId} />
           )}
           {/* ── R1b: NODE 8 LANDING PAGE RESULT PANEL ── */}
           {status === "success" && step === "landingPage" && latestLandingPageId && (
-            <V2LandingPageResultPanel
-              landingPageId={latestLandingPageId}
-            />
+            <V2LandingPageResultPanel landingPageId={latestLandingPageId} />
           )}
           {/* ── R1b: NODE 9 EMAIL SEQUENCE RESULT PANEL ── */}
           {status === "success" && step === "emailSequence" && latestEmailSequenceId && (
-            <V2EmailSequenceResultPanel
-              emailSequenceId={latestEmailSequenceId}
-            />
+            <V2EmailSequenceResultPanel emailSequenceId={latestEmailSequenceId} />
           )}
           {/* ── R1b: NODE 10 WHATSAPP RESULT PANEL ── */}
           {status === "success" && step === "whatsappSequence" && latestWhatsappSequenceId && (
-            <V2WhatsAppResultPanel
-              whatsappSequenceId={latestWhatsappSequenceId}
-            />
+            <V2WhatsAppResultPanel whatsappSequenceId={latestWhatsappSequenceId} />
           )}
 
           {/* ── CONCERNED STATE (compliance violations) ── */}
