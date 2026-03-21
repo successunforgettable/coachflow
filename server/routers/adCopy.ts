@@ -285,10 +285,6 @@ ${icp.communicationStyle ? `How they communicate: ${icp.communicationStyle}` : '
       const sotContext = sotLines.length > 0
         ? ['BRAND CONTEXT — this is the approved brand voice. All copy must be consistent with this:', ...sotLines].join('\n')
         : '';
-      const coachContext = ctx.user.coachName
-        ? `COACH IDENTITY — ABSOLUTE PRIORITY — THIS OVERRIDES ALL OTHER CONTEXT:\n- The coach writing this content is: ${ctx.user.coachName}\n- Coach gender: ${ctx.user.coachGender ?? 'not specified'} — write ALL first-person content from this gender perspective without exception\n- Coach background: ${ctx.user.coachBackground ?? 'not specified'}\n\nCRITICAL RULES:\n1. Always sign off as ${ctx.user.coachName} — never write [Name] or any placeholder\n2. Write entirely in ${ctx.user.coachName}'s voice and gender perspective\n3. The ICP (ideal customer) may be a different gender — do not confuse ICP gender with coach gender\n4. Never invent fictional experts or third-party personas`
-        : '';
-      const contextPrefix = [coachContext, sotContext].filter(Boolean).join('\n\n');
 
       // Item 1.3 — Rule 4: server-side fallbacks (use input if provided, else fall back to service record)
       const resolvedPressingProblem = input.pressingProblem?.trim() || service.painPoints || "";
@@ -337,7 +333,7 @@ You MUST use these exact numbers when incorporating social proof. Do not fabrica
 - DO NOT mention customer counts, ratings, or reviews
 - DO NOT fabricate testimonials or statistics`;
       
-      const headlinePrompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ${count} high-converting ad HEADLINES for this service:
+      const headlinePrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ${count} high-converting ad HEADLINES for this service:
 
 Service: ${service.name}
 Category: ${service.category}
@@ -417,7 +413,7 @@ Format as JSON array:
       const bodyPromises = selectedAngles.map(async (angle) => {
         const anglePrompt = BODY_ANGLE_PROMPTS[angle];
         
-        const bodyPrompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ONE high-converting ad BODY COPY using the ${angle.replace('_', ' ')} angle:
+        const bodyPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ONE high-converting ad BODY COPY using the ${angle.replace('_', ' ')} angle:
 
 Service: ${service.name}
 Category: ${service.category}
@@ -469,7 +465,7 @@ Return ONLY the body text as a single string, no JSON wrapper.`;
       const bodyData = { bodies: bodyResults.map(r => r.body) };
 
       // Generate Link Descriptions
-      const linkPrompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ${count} high-converting LINK DESCRIPTIONS for this service:
+      const linkPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ${count} high-converting LINK DESCRIPTIONS for this service:
 
 Service: ${service.name}
 Category: ${service.category}
@@ -694,9 +690,6 @@ Format as JSON array:
       const capturedService = { ...service };
       const capturedIcp = icp ? { ...icp } : undefined;
       const capturedSot = sot ? { ...sot } : undefined;
-      const capturedCoachContext = user.coachName
-        ? `COACH IDENTITY — ABSOLUTE PRIORITY — THIS OVERRIDES ALL OTHER CONTEXT:\n- The coach writing this content is: ${user.coachName}\n- Coach gender: ${user.coachGender ?? 'not specified'} — write ALL first-person content from this gender perspective without exception\n- Coach background: ${user.coachBackground ?? 'not specified'}\n\nCRITICAL RULES:\n1. Always sign off as ${user.coachName} — never write [Name] or any placeholder\n2. Write entirely in ${user.coachName}'s voice and gender perspective\n3. The ICP (ideal customer) may be a different gender — do not confuse ICP gender with coach gender\n4. Never invent fictional experts or third-party personas`
-        : '';
 
       const jobId = randomUUID();
       await db.insert(jobs).values({ id: jobId, userId: String(capturedUserId), status: "pending" });
@@ -709,7 +702,6 @@ Format as JSON array:
           const icpContext = capturedIcp ? `\nIDEAL CUSTOMER PROFILE — use this to make every line of copy specific and targeted:\n${capturedIcp.pains ? `Their daily pains: ${capturedIcp.pains}` : ''}\n${capturedIcp.fears ? `Their deep fears: ${capturedIcp.fears}` : ''}\n${capturedIcp.objections ? `Their objections to buying: ${capturedIcp.objections}` : ''}\n${capturedIcp.buyingTriggers ? `What makes them buy: ${capturedIcp.buyingTriggers}` : ''}\n${capturedIcp.communicationStyle ? `How they communicate: ${capturedIcp.communicationStyle}` : ''}`.trim() : '';
           const sotLines = capturedSot ? [capturedSot.coreOffer ? `Core offer: ${capturedSot.coreOffer}` : '', capturedSot.targetAudience ? `Target audience: ${capturedSot.targetAudience}` : '', capturedSot.mainPainPoint ? `Main pain point: ${capturedSot.mainPainPoint}` : '', capturedSot.mainBenefits ? `Main benefits: ${capturedSot.mainBenefits}` : '', capturedSot.uniqueValue ? `Unique value: ${capturedSot.uniqueValue}` : '', capturedSot.idealCustomerAvatar ? `Ideal customer: ${capturedSot.idealCustomerAvatar}` : ''].filter(Boolean) : [];
           const sotContext = sotLines.length > 0 ? ['BRAND CONTEXT — this is the approved brand voice. All copy must be consistent with this:', ...sotLines].join('\n') : '';
-          const contextPrefix = [capturedCoachContext, sotContext].filter(Boolean).join('\n\n');
 
           const resolvedPressingProblem = capturedInput.pressingProblem?.trim() || capturedService.painPoints || "";
           const resolvedDesiredOutcome = capturedInput.desiredOutcome?.trim() || capturedService.mainBenefit || "";
@@ -727,7 +719,7 @@ Format as JSON array:
           const adTypeContext = capturedInput.adType === "lead_gen" ? "Lead Generation (free webinar, consultation, download)" : "E-commerce (direct product sale)";
           const socialProofGuidance = socialProof.hasCustomers || socialProof.hasRating || socialProof.hasReviews ? `REAL SOCIAL PROOF AVAILABLE - Use these verified numbers:\n- ${socialProof.customerCount} total customers\n- ${socialProof.rating} average rating\n- ${socialProof.reviewCount} reviews\nYou MUST use these exact numbers when incorporating social proof. Do not fabricate or inflate.` : `NO SOCIAL PROOF DATA PROVIDED - Use launch-safe alternatives:\n- Focus on benefit claims and outcomes ("Get X result")\n- Use curiosity hooks ("The method that...")\n- Use contrast ("Before vs After")\n- DO NOT mention customer counts, ratings, or reviews\n- DO NOT fabricate testimonials or statistics`;
 
-          const headlinePrompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ${count} high-converting ad HEADLINES for this service:\n\nService: ${capturedService.name}\nCategory: ${capturedService.category}\nTarget Market: ${capturedInput.targetMarket}\nProduct Category: ${capturedInput.productCategory}\nSpecific Product Name: ${capturedInput.specificProductName}\nPressing Problem: ${resolvedPressingProblem}\nDesired Outcome: ${resolvedDesiredOutcome}\nUnique Mechanism: ${resolvedUniqueMechanism || 'N/A'}\nKey Benefits: ${capturedInput.listBenefits || 'N/A'}\n\n${socialProofGuidance}\n\n${icpContext}\n\nAd Type: ${adTypeContext}\nAd Style: ${capturedInput.adStyle}\nCall To Action: ${capturedInput.adCallToAction}\n\nCreate ${count} attention-grabbing headlines (max 40 characters each).\n\nFormat as JSON array: { "headlines": ["headline 1", ...] }`;
+          const headlinePrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ${count} high-converting ad HEADLINES for this service:\n\nService: ${capturedService.name}\nCategory: ${capturedService.category}\nTarget Market: ${capturedInput.targetMarket}\nProduct Category: ${capturedInput.productCategory}\nSpecific Product Name: ${capturedInput.specificProductName}\nPressing Problem: ${resolvedPressingProblem}\nDesired Outcome: ${resolvedDesiredOutcome}\nUnique Mechanism: ${resolvedUniqueMechanism || 'N/A'}\nKey Benefits: ${capturedInput.listBenefits || 'N/A'}\n\n${socialProofGuidance}\n\n${icpContext}\n\nAd Type: ${adTypeContext}\nAd Style: ${capturedInput.adStyle}\nCall To Action: ${capturedInput.adCallToAction}\n\nCreate ${count} attention-grabbing headlines (max 40 characters each).\n\nFormat as JSON array: { "headlines": ["headline 1", ...] }`;
           const headlineResponse = await invokeLLM({ messages: [{ role: "system", content: `${META_COMPLIANCE_RULES}\n\nYou are an expert ad copywriter who specializes in Meta-compliant advertising for coaches, speakers and consultants. Always respond with valid JSON.` }, { role: "user", content: headlinePrompt }], response_format: { type: "json_schema", json_schema: { name: "ad_headlines", strict: true, schema: { type: "object", properties: { headlines: { type: "array", items: { type: "string" } } }, required: ["headlines"], additionalProperties: false } } } });
           const headlineContent = headlineResponse.choices[0].message.content;
           if (typeof headlineContent !== "string") throw new Error("Invalid headline response");
@@ -737,7 +729,7 @@ Format as JSON array:
           const selectedAngles = ALL_BODY_ANGLES.slice(0, Math.min(count, 15));
           const bodyPromises = selectedAngles.map(async (angle: string) => {
             const anglePrompt = (BODY_ANGLE_PROMPTS as any)[angle];
-            const bodyPrompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ONE high-converting ad BODY COPY using the ${angle.replace('_', ' ')} angle:\n\nService: ${capturedService.name}\nTarget Market: ${capturedInput.targetMarket}\nPressing Problem: ${resolvedPressingProblem}\nDesired Outcome: ${resolvedDesiredOutcome}\nUnique Mechanism: ${resolvedUniqueMechanism || 'N/A'}\n\n${socialProofGuidance}\n\n${icpContext}\n\nAd Type: ${adTypeContext}\nAd Style: ${capturedInput.adStyle}\nCall To Action: ${capturedInput.adCallToAction}\n\n${anglePrompt}\n\nCreate ONE body copy (125-150 words). End with clear call-to-action: ${capturedInput.adCallToAction}\n\nReturn ONLY the body text as a single string, no JSON wrapper.`;
+            const bodyPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ONE high-converting ad BODY COPY using the ${angle.replace('_', ' ')} angle:\n\nService: ${capturedService.name}\nTarget Market: ${capturedInput.targetMarket}\nPressing Problem: ${resolvedPressingProblem}\nDesired Outcome: ${resolvedDesiredOutcome}\nUnique Mechanism: ${resolvedUniqueMechanism || 'N/A'}\n\n${socialProofGuidance}\n\n${icpContext}\n\nAd Type: ${adTypeContext}\nAd Style: ${capturedInput.adStyle}\nCall To Action: ${capturedInput.adCallToAction}\n\n${anglePrompt}\n\nCreate ONE body copy (125-150 words). End with clear call-to-action: ${capturedInput.adCallToAction}\n\nReturn ONLY the body text as a single string, no JSON wrapper.`;
             const r = await invokeLLM({ messages: [{ role: "system", content: `${META_COMPLIANCE_RULES}\n\nYou are an expert ad copywriter who specializes in Meta-compliant advertising for coaches, speakers and consultants.` }, { role: "user", content: bodyPrompt }] });
             const rawContent = r.choices[0]?.message?.content;
             if (!rawContent) throw new Error(`Empty response for ${angle} angle`);
@@ -747,7 +739,7 @@ Format as JSON array:
           const bodyResults = await Promise.all(bodyPromises);
           const bodyData = { bodies: bodyResults.map((r: any) => r.body) };
 
-          const linkPrompt = `${contextPrefix ? `${contextPrefix}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ${count} high-converting LINK DESCRIPTIONS for this service:\n\nService: ${capturedService.name}\nTarget Market: ${capturedInput.targetMarket}\nDesired Outcome: ${resolvedDesiredOutcome}\nCall To Action: ${capturedInput.adCallToAction}\n\n${icpContext}\n\nAd Type: ${adTypeContext}\nAd Style: ${capturedInput.adStyle}\n\nCreate ${count} clear, action-oriented link descriptions (max 30 characters each).\n\nFormat as JSON array: { "links": ["link 1", ...] }`;
+          const linkPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ${count} high-converting LINK DESCRIPTIONS for this service:\n\nService: ${capturedService.name}\nTarget Market: ${capturedInput.targetMarket}\nDesired Outcome: ${resolvedDesiredOutcome}\nCall To Action: ${capturedInput.adCallToAction}\n\n${icpContext}\n\nAd Type: ${adTypeContext}\nAd Style: ${capturedInput.adStyle}\n\nCreate ${count} clear, action-oriented link descriptions (max 30 characters each).\n\nFormat as JSON array: { "links": ["link 1", ...] }`;
           const linkResponse = await invokeLLM({ messages: [{ role: "system", content: `${META_COMPLIANCE_RULES}\n\nYou are an expert ad copywriter who specializes in Meta-compliant advertising for coaches, speakers and consultants. Always respond with valid JSON.` }, { role: "user", content: linkPrompt }], response_format: { type: "json_schema", json_schema: { name: "ad_links", strict: true, schema: { type: "object", properties: { links: { type: "array", items: { type: "string" } } }, required: ["links"], additionalProperties: false } } } });
           const linkContent = linkResponse.choices[0].message.content;
           if (typeof linkContent !== "string") throw new Error("Invalid link response");
@@ -795,7 +787,6 @@ Format as JSON array:
                     const retryIcpContext = capturedIcp ? `\nIDEAL CUSTOMER PROFILE:\n${capturedIcp.pains ? `Their daily pains: ${capturedIcp.pains}` : ''}\n${capturedIcp.fears ? `Their deep fears: ${capturedIcp.fears}` : ''}\n${capturedIcp.objections ? `Their objections to buying: ${capturedIcp.objections}` : ''}\n${capturedIcp.buyingTriggers ? `What makes them buy: ${capturedIcp.buyingTriggers}` : ''}\n${capturedIcp.communicationStyle ? `How they communicate: ${capturedIcp.communicationStyle}` : ''}`.trim() : '';
                     const retrySotLines = capturedSot ? [capturedSot.coreOffer ? `Core offer: ${capturedSot.coreOffer}` : '', capturedSot.targetAudience ? `Target audience: ${capturedSot.targetAudience}` : '', capturedSot.mainPainPoint ? `Main pain point: ${capturedSot.mainPainPoint}` : ''].filter(Boolean) : [];
                     const retrySotContext = retrySotLines.length > 0 ? ['BRAND CONTEXT:', ...retrySotLines].join('\n') : '';
-                    const retryContextPrefix = [capturedCoachContext, retrySotContext].filter(Boolean).join('\n\n');
                     const retryResolvedPressingProblem = capturedInput.pressingProblem?.trim() || capturedService.painPoints || '';
                     const retryResolvedDesiredOutcome = capturedInput.desiredOutcome?.trim() || capturedService.mainBenefit || '';
                     const retryResolvedUniqueMechanism = capturedInput.uniqueMechanism?.trim() || capturedService.uniqueMechanismSuggestion || '';
@@ -804,7 +795,7 @@ Format as JSON array:
                     const retryAdSetId = nanoid();
                     const retryCount = capturedInput.powerMode ? 30 : 15;
                     const retryAdTypeContext = capturedInput.adType === 'lead_gen' ? 'Lead Generation' : 'E-commerce';
-                    const retryHeadlinePrompt = `${retryContextPrefix ? `${retryContextPrefix}\n\n` : ''}Create ${retryCount} ad headlines for: ${capturedService.name}. Target: ${capturedInput.targetMarket}. Problem: ${retryResolvedPressingProblem}. Outcome: ${retryResolvedDesiredOutcome}. ${retrySocialProofGuidance}\n\nFormat: { "headlines": ["headline 1", ...] }`;
+                    const retryHeadlinePrompt = `${retrySotContext ? `${retrySotContext}\n\n` : ''}Create ${retryCount} ad headlines for: ${capturedService.name}. Target: ${capturedInput.targetMarket}. Problem: ${retryResolvedPressingProblem}. Outcome: ${retryResolvedDesiredOutcome}. ${retrySocialProofGuidance}\n\nFormat: { "headlines": ["headline 1", ...] }`;
                     const retryHeadlineResp = await invokeLLM({ messages: [{ role: 'system', content: `${META_COMPLIANCE_RULES}\n\nAlways respond with valid JSON.` }, { role: 'user', content: retryHeadlinePrompt }], response_format: { type: 'json_schema', json_schema: { name: 'ad_headlines', strict: true, schema: { type: 'object', properties: { headlines: { type: 'array', items: { type: 'string' } } }, required: ['headlines'], additionalProperties: false } } } });
                     const retryHeadlineContent = retryHeadlineResp.choices[0].message.content;
                     if (typeof retryHeadlineContent !== 'string') throw new Error('Invalid retry headline response');
@@ -894,6 +885,56 @@ Format as JSON array:
         .select()
         .from(adCopy)
         .where(eq(adCopy.id, id))
+        .limit(1);
+
+      return updated;
+    }),
+
+  // Regenerate a single ad copy item via AI
+  regenerateSingle: protectedProcedure
+    .input(z.object({ id: z.number(), promptOverride: z.string().optional() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      // Fetch existing row + verify ownership
+      const [existing] = await db
+        .select()
+        .from(adCopy)
+        .where(and(eq(adCopy.id, input.id), eq(adCopy.userId, ctx.user.id)))
+        .limit(1);
+
+      if (!existing) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Ad copy not found" });
+      }
+
+      const overrideInstruction = input.promptOverride?.trim()
+        ? ` Additional instruction: ${input.promptOverride.trim()}.`
+        : "";
+
+      const prompt = `Rewrite this ${existing.contentType} ad copy. Original text: ${existing.content}.${overrideInstruction} Return only the rewritten text with no explanation, no labels, no quotes.`;
+
+      const response = await invokeLLM({
+        messages: [
+          { role: "system", content: "You are an expert ad copywriter. Respond with only the rewritten text." },
+          { role: "user", content: prompt },
+        ],
+      });
+
+      const newContent = response.choices[0].message.content;
+      if (typeof newContent !== "string" || !newContent.trim()) {
+        throw new Error("Invalid response from AI");
+      }
+
+      await db
+        .update(adCopy)
+        .set({ content: newContent.trim(), updatedAt: new Date() })
+        .where(eq(adCopy.id, input.id));
+
+      const [updated] = await db
+        .select()
+        .from(adCopy)
+        .where(eq(adCopy.id, input.id))
         .limit(1);
 
       return updated;
