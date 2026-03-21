@@ -339,7 +339,7 @@ function SectionCard({
   );
 }
 
-// ─── Visual preview renderer (ported from V1 LandingPageDetail) ──────────────
+// ─── Visual preview helpers ──────────────────────────────────────────────────
 function isValid(val: unknown): boolean {
   if (val === null || val === undefined) return false;
   if (typeof val === "string") return val.trim().length > 0 && !val.includes("[Generation incomplete");
@@ -364,8 +364,33 @@ function splitHeadingBody(val: unknown): { heading: string; body: string[] } {
   return { heading: lines[0] ?? "", body: lines.slice(1) };
 }
 
-function LandingPageVisualRenderer({ angleData }: { angleData: AngleContent }) {
+// ─── Theme tokens ────────────────────────────────────────────────────────────
+const THEMES = {
+  dark: {
+    bg: "#0B1120", surface: "#131B2E", surfaceAlt: "#1A2540", border: "#1E3050",
+    text: "#F1F5F9", textMuted: "#94A3B8", textSecondary: "#CBD5E1",
+    accent: "#F97316", accentHover: "#FB923C", trust: "#0EA5E9",
+    danger: "#EF4444", gradient1: "rgba(14,165,233,0.08)", gradient2: "rgba(249,115,22,0.06)",
+  },
+  light: {
+    bg: "#FAFAF8", surface: "#FFFFFF", surfaceAlt: "#F5F3EF", border: "#E8E4DC",
+    text: "#1A1A1A", textMuted: "#6B7280", textSecondary: "#4B5563",
+    accent: "#F97316", accentHover: "#EA580C", trust: "#0369A1",
+    danger: "#DC2626", gradient1: "rgba(14,165,233,0.05)", gradient2: "rgba(249,115,22,0.04)",
+  },
+} as const;
+
+type ThemeKey = "dark" | "light";
+
+const GOOGLE_FONTS_CSS = `@import url('https://fonts.googleapis.com/css2?family=Cormorant:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&family=Montserrat:wght@300;400;500;600;700&display=swap');`;
+
+// ─── Visual renderer ────────────────────────────────────────────────────────
+function LandingPageVisualRenderer({ angleData, theme }: { angleData: AngleContent; theme: ThemeKey }) {
   const c = angleData;
+  const t = THEMES[theme];
+  const hd = "'Cormorant', Georgia, serif"; // display heading
+  const bd = "'Montserrat', system-ui, sans-serif"; // body
+
   const quiz = (() => {
     if (!c.quizSection) return null;
     if (typeof c.quizSection === "string") { try { return JSON.parse(c.quizSection); } catch { return null; } }
@@ -382,163 +407,187 @@ function LandingPageVisualRenderer({ angleData }: { angleData: AngleContent }) {
     return Array.isArray(c.consultationOutline) ? c.consultationOutline : [];
   })();
 
-  const s: React.CSSProperties = { fontFamily: "Inter, system-ui, sans-serif" };
+  // Reusable section heading
+  const H2 = ({ children, center, color }: { children: React.ReactNode; center?: boolean; color?: string }) => (
+    <h2 style={{ fontFamily: hd, fontSize: "clamp(28px, 4vw, 40px)", fontWeight: 700, lineHeight: 1.15, letterSpacing: "-0.02em", color: color ?? t.text, textAlign: center ? "center" : "left", margin: "0 0 24px" }}>{children}</h2>
+  );
+  // Reusable body paragraph
+  const P = ({ children }: { children: React.ReactNode }) => (
+    <p style={{ fontFamily: bd, fontSize: "16px", lineHeight: 1.75, color: t.textSecondary, margin: "0 0 16px", textAlign: "left" }}>{children}</p>
+  );
+  // Card wrapper
+  const Card = ({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) => (
+    <div style={{ background: t.surface, border: `1px solid ${t.border}`, borderRadius: "16px", padding: "36px 32px", ...style }}>{children}</div>
+  );
 
   return (
-    <div style={{ ...s, background: "#1a1a1a", color: "#fff", borderRadius: "16px", overflow: "hidden" }}>
-      <div style={{ maxWidth: "56rem", margin: "0 auto", padding: "48px 24px", display: "flex", flexDirection: "column", gap: "64px" }}>
+    <>
+      <style>{GOOGLE_FONTS_CSS}</style>
+      <div style={{ background: t.bg, color: t.text, borderRadius: "16px", overflow: "hidden" }}>
+        <div style={{ maxWidth: "52rem", margin: "0 auto", padding: "64px 28px", display: "flex", flexDirection: "column", gap: "72px" }}>
 
-        {/* 1. Hero */}
-        {(isValid(c.eyebrowHeadline) || isValid(c.mainHeadline)) && (
-          <section style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: "16px", alignItems: "center" }}>
-            {isValid(c.eyebrowHeadline) && <p style={{ color: "#ff3366", fontSize: "14px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", margin: 0 }}>{c.eyebrowHeadline}</p>}
-            {isValid(c.mainHeadline) && <h1 style={{ fontSize: "clamp(28px, 5vw, 48px)", fontWeight: 700, lineHeight: 1.15, margin: 0 }}>{c.mainHeadline}</h1>}
-            {isValid(c.subheadline) && <p style={{ fontSize: "18px", color: "#d1d5db", maxWidth: "48rem", margin: 0 }}>{c.subheadline}</p>}
-            {isValid(c.primaryCta) && <button style={{ background: "#8B5CF6", color: "#fff", border: "none", borderRadius: "8px", padding: "14px 32px", fontSize: "18px", fontWeight: 600, cursor: "pointer", marginTop: "8px" }}>{c.primaryCta}</button>}
-          </section>
-        )}
-
-        {/* 2. As Seen In */}
-        {isValid(c.asSeenIn) && Array.isArray(c.asSeenIn) && (
-          <section style={{ borderTop: "1px solid #374151", borderBottom: "1px solid #374151", padding: "32px 0" }}>
-            <p style={{ textAlign: "center", color: "#6b7280", fontSize: "12px", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "24px" }}>As Seen In</p>
-            <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "32px" }}>
-              {c.asSeenIn.map((logo, i) => <span key={i} style={{ color: "#9ca3af", fontWeight: 600, fontSize: "16px" }}>{String(logo)}</span>)}
-            </div>
-          </section>
-        )}
-
-        {/* 3. Quiz */}
-        {quiz && isValid(quiz.question) && (
-          <section style={{ background: "#222222", borderRadius: "16px", padding: "32px" }}>
-            <h2 style={{ fontSize: "24px", fontWeight: 700, marginBottom: "20px" }}>{quiz.question}</h2>
-            <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "20px" }}>
-              {(quiz.options ?? []).map((opt: string, i: number) => (
-                <div key={i} style={{ background: "#2a2a2a", border: "1px solid #374151", borderRadius: "8px", padding: "14px 16px" }}>
-                  <span style={{ fontWeight: 600, marginRight: "10px" }}>{String.fromCharCode(65 + i)}.</span>{opt}
-                </div>
-              ))}
-            </div>
-            {isValid(quiz.answer) && (
-              <div style={{ background: "rgba(139,92,246,0.1)", border: "1px solid #8B5CF6", borderRadius: "8px", padding: "14px 16px" }}>
-                <p style={{ color: "#8B5CF6", fontWeight: 600, margin: 0 }}>Answer: {quiz.answer}</p>
-              </div>
-            )}
-          </section>
-        )}
-
-        {/* 4. Problem Agitation */}
-        {isValid(c.problemAgitation) && (() => { const { heading, body } = splitHeadingBody(c.problemAgitation); return (
-          <section>
-            <h2 style={{ fontSize: "32px", fontWeight: 700, textAlign: "center", marginBottom: "24px" }}>{heading}</h2>
-            {body.map((p, i) => <p key={i} style={{ color: "#d1d5db", fontSize: "18px", lineHeight: 1.7, margin: "0 0 16px" }}>{p}</p>)}
-          </section>
-        ); })()}
-
-        {/* 5. Solution Introduction */}
-        {isValid(c.solutionIntro) && (() => { const { heading, body } = splitHeadingBody(c.solutionIntro); return (
-          <section style={{ background: "linear-gradient(135deg, rgba(88,28,135,0.2), rgba(131,24,67,0.2))", borderRadius: "16px", padding: "32px" }}>
-            <h2 style={{ fontSize: "32px", fontWeight: 700, marginBottom: "20px" }}>{heading}</h2>
-            {body.map((p, i) => <p key={i} style={{ color: "#d1d5db", fontSize: "18px", lineHeight: 1.7, margin: "0 0 16px" }}>{p}</p>)}
-          </section>
-        ); })()}
-
-        {/* 6. Why Old Methods Fail */}
-        {isValid(c.whyOldFail) && (() => { const { heading, body } = splitHeadingBody(c.whyOldFail); return (
-          <section>
-            <h2 style={{ fontSize: "32px", fontWeight: 700, textAlign: "center", color: "#ff3366", marginBottom: "24px" }}>{heading}</h2>
-            {body.map((p, i) => <p key={i} style={{ color: "#d1d5db", fontSize: "18px", lineHeight: 1.7, margin: "0 0 16px" }}>{p}</p>)}
-          </section>
-        ); })()}
-
-        {/* 7. Unique Mechanism */}
-        {isValid(c.uniqueMechanism) && (() => { const { heading, body } = splitHeadingBody(c.uniqueMechanism); return (
-          <section style={{ background: "#222222", borderRadius: "16px", padding: "32px" }}>
-            <h2 style={{ fontSize: "32px", fontWeight: 700, color: "#8B5CF6", marginBottom: "20px" }}>{heading}</h2>
-            {body.map((p, i) => <p key={i} style={{ color: "#d1d5db", fontSize: "18px", lineHeight: 1.7, margin: "0 0 16px" }}>{p}</p>)}
-          </section>
-        ); })()}
-
-        {/* 8. Testimonials */}
-        {testimonials.length > 0 && (
-          <section>
-            <h2 style={{ fontSize: "32px", fontWeight: 700, textAlign: "center", marginBottom: "32px" }}>What Our Clients Say</h2>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "20px" }}>
-              {testimonials.map((t: TestimonialItem, i: number) => (
-                <div key={i} style={{ background: "#222222", border: "1px solid #374151", borderRadius: "12px", padding: "24px" }}>
-                  {t.headline && <h3 style={{ color: "#8B5CF6", fontSize: "18px", fontWeight: 700, marginBottom: "12px" }}>{t.headline}</h3>}
-                  {t.quote && <p style={{ color: "#d1d5db", fontStyle: "italic", marginBottom: "12px", lineHeight: 1.6 }}>"{t.quote}"</p>}
-                  <p style={{ fontWeight: 600, margin: "0 0 2px", fontSize: "14px" }}>{t.name ?? ""}</p>
-                  <p style={{ color: "#9ca3af", fontSize: "13px", margin: 0 }}>{t.location ?? ""}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* 9. Insider Advantages */}
-        {isValid(c.insiderAdvantages) && (() => { const { heading, body } = splitHeadingBody(c.insiderAdvantages); return (
-          <section style={{ background: "linear-gradient(135deg, rgba(6,78,59,0.2), rgba(30,58,138,0.2))", borderRadius: "16px", padding: "32px" }}>
-            <h2 style={{ fontSize: "32px", fontWeight: 700, marginBottom: "20px" }}>{heading}</h2>
-            {body.map((p, i) => <p key={i} style={{ color: "#d1d5db", fontSize: "18px", lineHeight: 1.7, margin: "0 0 16px" }}>{p}</p>)}
-          </section>
-        ); })()}
-
-        {/* 10. Scarcity / Urgency */}
-        {isValid(c.scarcityUrgency) && (() => { const { heading, body } = splitHeadingBody(c.scarcityUrgency); return (
-          <section style={{ border: "2px solid #ff3366", borderRadius: "16px", padding: "32px" }}>
-            <h2 style={{ fontSize: "32px", fontWeight: 700, color: "#ff3366", marginBottom: "20px" }}>{heading}</h2>
-            {body.map((p, i) => <p key={i} style={{ color: "#d1d5db", fontSize: "18px", lineHeight: 1.7, margin: "0 0 16px" }}>{p}</p>)}
-          </section>
-        ); })()}
-
-        {/* 11. Shocking Stat */}
-        {isValid(c.shockingStat) && (() => {
-          const statText = extractText(c.shockingStat);
-          const bigNumber = statText.match(/\d+%/)?.[0] || "";
-          return (
-            <section style={{ textAlign: "center", padding: "32px 0" }}>
-              {bigNumber && <div style={{ fontSize: "clamp(36px, 6vw, 60px)", fontWeight: 700, color: "#ff3366", marginBottom: "12px" }}>{bigNumber}</div>}
-              <p style={{ fontSize: "20px", color: "#d1d5db", maxWidth: "40rem", margin: "0 auto" }}>{statText}</p>
+          {/* 1. Hero */}
+          {(isValid(c.eyebrowHeadline) || isValid(c.mainHeadline)) && (
+            <section style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: "20px", alignItems: "center" }}>
+              {isValid(c.eyebrowHeadline) && (
+                <p style={{ fontFamily: bd, color: t.accent, fontSize: "13px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.15em", margin: 0 }}>{c.eyebrowHeadline}</p>
+              )}
+              {isValid(c.mainHeadline) && (
+                <h1 style={{ fontFamily: hd, fontSize: "clamp(32px, 5.5vw, 56px)", fontWeight: 700, lineHeight: 1.1, letterSpacing: "-0.03em", color: t.text, margin: 0, maxWidth: "48rem" }}>{c.mainHeadline}</h1>
+              )}
+              {isValid(c.subheadline) && (
+                <p style={{ fontFamily: bd, fontSize: "18px", lineHeight: 1.65, color: t.textMuted, maxWidth: "40rem", margin: 0, fontWeight: 300 }}>{c.subheadline}</p>
+              )}
+              {isValid(c.primaryCta) && (
+                <button style={{ fontFamily: bd, background: t.accent, color: "#fff", border: "none", borderRadius: "8px", padding: "16px 40px", fontSize: "16px", fontWeight: 600, cursor: "pointer", marginTop: "12px", letterSpacing: "0.02em", transition: "background 200ms" }}>{c.primaryCta}</button>
+              )}
             </section>
-          );
-        })()}
+          )}
 
-        {/* 12. Time-Saving Benefit */}
-        {isValid(c.timeSavingBenefit) && (() => { const { heading, body } = splitHeadingBody(c.timeSavingBenefit); return (
-          <section style={{ background: "#222222", borderRadius: "16px", padding: "32px" }}>
-            <h2 style={{ fontSize: "32px", fontWeight: 700, marginBottom: "20px" }}>{heading}</h2>
-            {body.map((p, i) => <p key={i} style={{ color: "#d1d5db", fontSize: "18px", lineHeight: 1.7, margin: "0 0 16px" }}>{p}</p>)}
-          </section>
-        ); })()}
+          {/* 2. As Seen In */}
+          {isValid(c.asSeenIn) && Array.isArray(c.asSeenIn) && (
+            <section style={{ borderTop: `1px solid ${t.border}`, borderBottom: `1px solid ${t.border}`, padding: "28px 0" }}>
+              <p style={{ fontFamily: bd, textAlign: "center", color: t.textMuted, fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.18em", marginBottom: "20px", fontWeight: 500 }}>As Seen In</p>
+              <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "36px" }}>
+                {c.asSeenIn.map((logo, i) => <span key={i} style={{ fontFamily: hd, color: t.textMuted, fontWeight: 600, fontSize: "18px", fontStyle: "italic" }}>{String(logo)}</span>)}
+              </div>
+            </section>
+          )}
 
-        {/* 13. Consultation Outline */}
-        {outline.length > 0 && (
-          <section>
-            <h2 style={{ fontSize: "32px", fontWeight: 700, textAlign: "center", marginBottom: "32px" }}>What You'll Get in Your FREE Consultation</h2>
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-              {outline.map((item: ConsultationItem, i: number) => (
-                <div key={i} style={{ background: "#222222", border: "1px solid #374151", borderRadius: "12px", padding: "20px", display: "flex", gap: "16px", alignItems: "flex-start" }}>
-                  <div style={{ flexShrink: 0, width: "32px", height: "32px", background: "#8B5CF6", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "14px" }}>{i + 1}</div>
-                  <div>
-                    <h3 style={{ fontSize: "18px", fontWeight: 700, marginBottom: "6px" }}>{item.title ?? ""}</h3>
-                    <p style={{ color: "#d1d5db", margin: 0, lineHeight: 1.6 }}>{item.description ?? ""}</p>
+          {/* 3. Quiz */}
+          {quiz && isValid(quiz.question) && (
+            <Card>
+              <H2>{quiz.question}</H2>
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "24px" }}>
+                {(quiz.options ?? []).map((opt: string, i: number) => (
+                  <div key={i} style={{ background: t.surfaceAlt, border: `1px solid ${t.border}`, borderRadius: "10px", padding: "14px 18px", fontFamily: bd, fontSize: "15px", color: t.textSecondary, cursor: "pointer", transition: "border-color 200ms" }}>
+                    <span style={{ fontWeight: 600, marginRight: "10px", color: t.trust }}>{String.fromCharCode(65 + i)}.</span>{opt}
                   </div>
+                ))}
+              </div>
+              {isValid(quiz.answer) && (
+                <div style={{ background: `${t.trust}11`, border: `1px solid ${t.trust}`, borderRadius: "10px", padding: "16px 18px" }}>
+                  <p style={{ fontFamily: bd, color: t.trust, fontWeight: 600, fontSize: "15px", margin: 0, lineHeight: 1.6 }}>Answer: {quiz.answer}</p>
                 </div>
-              ))}
-            </div>
-          </section>
-        )}
+              )}
+            </Card>
+          )}
 
-        {/* Final CTA */}
-        {isValid(c.primaryCta) && (
-          <section style={{ textAlign: "center", padding: "32px 0" }}>
-            <h2 style={{ fontSize: "32px", fontWeight: 700, marginBottom: "20px" }}>Ready to Get Started?</h2>
-            <button style={{ background: "#8B5CF6", color: "#fff", border: "none", borderRadius: "8px", padding: "16px 48px", fontSize: "20px", fontWeight: 600, cursor: "pointer" }}>{c.primaryCta}</button>
-          </section>
-        )}
+          {/* 4. Problem Agitation */}
+          {isValid(c.problemAgitation) && (() => { const { heading, body } = splitHeadingBody(c.problemAgitation); return (
+            <section>
+              <H2 center>{heading}</H2>
+              {body.map((p, i) => <P key={i}>{p}</P>)}
+            </section>
+          ); })()}
+
+          {/* 5. Solution Introduction */}
+          {isValid(c.solutionIntro) && (() => { const { heading, body } = splitHeadingBody(c.solutionIntro); return (
+            <Card style={{ background: `linear-gradient(135deg, ${t.gradient1}, ${t.gradient2})`, border: `1px solid ${t.trust}22` }}>
+              <H2 color={t.trust}>{heading}</H2>
+              {body.map((p, i) => <P key={i}>{p}</P>)}
+            </Card>
+          ); })()}
+
+          {/* 6. Why Old Methods Fail */}
+          {isValid(c.whyOldFail) && (() => { const { heading, body } = splitHeadingBody(c.whyOldFail); return (
+            <section>
+              <H2 center color={t.danger}>{heading}</H2>
+              {body.map((p, i) => <P key={i}>{p}</P>)}
+            </section>
+          ); })()}
+
+          {/* 7. Unique Mechanism */}
+          {isValid(c.uniqueMechanism) && (() => { const { heading, body } = splitHeadingBody(c.uniqueMechanism); return (
+            <Card>
+              <H2 color={t.trust}>{heading}</H2>
+              {body.map((p, i) => <P key={i}>{p}</P>)}
+            </Card>
+          ); })()}
+
+          {/* 8. Testimonials */}
+          {testimonials.length > 0 && (
+            <section>
+              <H2 center>What Our Clients Say</H2>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "20px" }}>
+                {testimonials.map((tm: TestimonialItem, i: number) => (
+                  <div key={i} style={{ background: t.surface, border: `1px solid ${t.border}`, borderRadius: "14px", padding: "28px 24px", display: "flex", flexDirection: "column", gap: "12px" }}>
+                    {tm.headline && <p style={{ fontFamily: hd, color: t.trust, fontSize: "20px", fontWeight: 700, margin: 0 }}>{tm.headline}</p>}
+                    {tm.quote && <p style={{ fontFamily: bd, color: t.textSecondary, fontStyle: "italic", fontSize: "15px", lineHeight: 1.65, margin: 0 }}>"{tm.quote}"</p>}
+                    <div style={{ marginTop: "auto" }}>
+                      <p style={{ fontFamily: bd, fontWeight: 600, fontSize: "14px", margin: "0 0 2px", color: t.text }}>{tm.name ?? ""}</p>
+                      <p style={{ fontFamily: bd, fontSize: "13px", color: t.textMuted, margin: 0 }}>{tm.location ?? ""}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* 9. Insider Advantages */}
+          {isValid(c.insiderAdvantages) && (() => { const { heading, body } = splitHeadingBody(c.insiderAdvantages); return (
+            <Card style={{ background: `linear-gradient(135deg, ${t.gradient2}, ${t.gradient1})`, border: `1px solid ${t.trust}22` }}>
+              <H2>{heading}</H2>
+              {body.map((p, i) => <P key={i}>{p}</P>)}
+            </Card>
+          ); })()}
+
+          {/* 10. Scarcity / Urgency */}
+          {isValid(c.scarcityUrgency) && (() => { const { heading, body } = splitHeadingBody(c.scarcityUrgency); return (
+            <section style={{ border: `2px solid ${t.accent}`, borderRadius: "16px", padding: "36px 32px" }}>
+              <H2 color={t.accent}>{heading}</H2>
+              {body.map((p, i) => <P key={i}>{p}</P>)}
+            </section>
+          ); })()}
+
+          {/* 11. Shocking Stat */}
+          {isValid(c.shockingStat) && (() => {
+            const statText = extractText(c.shockingStat);
+            const bigNumber = statText.match(/\d+%/)?.[0] || "";
+            return (
+              <section style={{ textAlign: "center", padding: "40px 0" }}>
+                {bigNumber && <div style={{ fontFamily: hd, fontSize: "clamp(48px, 8vw, 80px)", fontWeight: 700, color: t.accent, lineHeight: 1, marginBottom: "16px", letterSpacing: "-0.04em" }}>{bigNumber}</div>}
+                <p style={{ fontFamily: bd, fontSize: "17px", color: t.textMuted, maxWidth: "36rem", margin: "0 auto", lineHeight: 1.7, fontWeight: 300 }}>{statText}</p>
+              </section>
+            );
+          })()}
+
+          {/* 12. Time-Saving Benefit */}
+          {isValid(c.timeSavingBenefit) && (() => { const { heading, body } = splitHeadingBody(c.timeSavingBenefit); return (
+            <Card>
+              <H2>{heading}</H2>
+              {body.map((p, i) => <P key={i}>{p}</P>)}
+            </Card>
+          ); })()}
+
+          {/* 13. Consultation Outline */}
+          {outline.length > 0 && (
+            <section>
+              <H2 center>What You'll Get</H2>
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                {outline.map((item: ConsultationItem, i: number) => (
+                  <div key={i} style={{ background: t.surface, border: `1px solid ${t.border}`, borderRadius: "14px", padding: "22px 24px", display: "flex", gap: "18px", alignItems: "flex-start" }}>
+                    <div style={{ flexShrink: 0, width: "36px", height: "36px", background: t.accent, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: bd, fontWeight: 700, fontSize: "14px", color: "#fff" }}>{i + 1}</div>
+                    <div>
+                      <h3 style={{ fontFamily: hd, fontSize: "20px", fontWeight: 700, marginBottom: "6px", color: t.text }}>{item.title ?? ""}</h3>
+                      <p style={{ fontFamily: bd, color: t.textSecondary, margin: 0, lineHeight: 1.65, fontSize: "15px" }}>{item.description ?? ""}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Final CTA */}
+          {isValid(c.primaryCta) && (
+            <section style={{ textAlign: "center", padding: "48px 0 16px" }}>
+              <h2 style={{ fontFamily: hd, fontSize: "clamp(28px, 4vw, 40px)", fontWeight: 700, letterSpacing: "-0.02em", color: t.text, marginBottom: "24px" }}>Ready to Transform Your Results?</h2>
+              <button style={{ fontFamily: bd, background: t.accent, color: "#fff", border: "none", borderRadius: "8px", padding: "18px 56px", fontSize: "17px", fontWeight: 600, cursor: "pointer", letterSpacing: "0.02em", transition: "background 200ms" }}>{c.primaryCta}</button>
+            </section>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -611,6 +660,7 @@ export default function V2LandingPageResultPanel({
   const [activeTab, setActiveTab] = useState<AngleKey | null>(null);
   const resolvedTab: AngleKey = activeTab ?? defaultAngle;
   const [viewMode, setViewMode] = useState<"edit" | "preview">("edit");
+  const [previewTheme, setPreviewTheme] = useState<ThemeKey>("dark");
 
   function parseAngle(raw: AngleContent | string | undefined): AngleContent {
     if (!raw) return {};
@@ -697,10 +747,17 @@ export default function V2LandingPageResultPanel({
         </div>
       </div>
 
-      {/* ── Edit / Preview toggle ── */}
-      <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
+      {/* ── Edit / Preview toggle + theme switcher ── */}
+      <div style={{ display: "flex", gap: "8px", marginBottom: "12px", alignItems: "center", flexWrap: "wrap" }}>
         <TabPill label="Edit" active={viewMode === "edit"} onClick={() => setViewMode("edit")} />
         <TabPill label="Preview" active={viewMode === "preview"} onClick={() => setViewMode("preview")} />
+        {viewMode === "preview" && (
+          <>
+            <span style={{ fontFamily: "var(--v2-font-body)", fontSize: "12px", color: "#999", marginLeft: "8px" }}>Theme:</span>
+            <TabPill label="Dark" active={previewTheme === "dark"} onClick={() => setPreviewTheme("dark")} />
+            <TabPill label="Light" active={previewTheme === "light"} onClick={() => setPreviewTheme("light")} />
+          </>
+        )}
       </div>
 
       {/* ── Angle tabs ── */}
@@ -725,7 +782,7 @@ export default function V2LandingPageResultPanel({
           onAngleUpdate={(newAngle) => handleAngleUpdate(resolvedTab, newAngle)}
         />
       ) : (
-        <LandingPageVisualRenderer angleData={angles[resolvedTab]} />
+        <LandingPageVisualRenderer angleData={angles[resolvedTab]} theme={previewTheme} />
       )}
 
       {/* ── Download TXT button ── */}
