@@ -382,14 +382,14 @@ const THEMES = {
 
 type ThemeKey = "dark" | "light";
 
-const GOOGLE_FONTS_CSS = `@import url('https://fonts.googleapis.com/css2?family=Cormorant:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&family=Montserrat:wght@300;400;500;600;700&display=swap');`;
+const GOOGLE_FONTS_CSS = `@import url('https://fonts.googleapis.com/css2?family=Cormorant:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&family=Inter:wght@300;400;500;600;700&display=swap');`;
 
 // ─── Visual renderer ────────────────────────────────────────────────────────
 function LandingPageVisualRenderer({ angleData, theme }: { angleData: AngleContent; theme: ThemeKey }) {
   const c = angleData;
   const t = THEMES[theme];
-  const hd = "'Cormorant', Georgia, serif"; // display heading
-  const bd = "'Montserrat', system-ui, sans-serif"; // body
+  const hd = "'Cormorant', Georgia, serif"; // display headings ONLY
+  const bd = "'Inter', system-ui, sans-serif"; // body text, labels, descriptions, buttons — everything else
 
   const quiz = (() => {
     if (!c.quizSection) return null;
@@ -411,9 +411,9 @@ function LandingPageVisualRenderer({ angleData, theme }: { angleData: AngleConte
   const H2 = ({ children, center, color }: { children: React.ReactNode; center?: boolean; color?: string }) => (
     <h2 style={{ fontFamily: hd, fontSize: "clamp(28px, 4vw, 40px)", fontWeight: 700, lineHeight: 1.15, letterSpacing: "-0.02em", color: color ?? t.text, textAlign: center ? "center" : "left", margin: "0 0 24px" }}>{children}</h2>
   );
-  // Reusable body paragraph
+  // Reusable body paragraph — Inter 17px, weight 400, line-height 1.8, left-aligned, never italic
   const P = ({ children }: { children: React.ReactNode }) => (
-    <p style={{ fontFamily: bd, fontSize: "16px", lineHeight: 1.75, color: t.textSecondary, margin: "0 0 16px", textAlign: "left" }}>{children}</p>
+    <p style={{ fontFamily: bd, fontSize: "17px", fontWeight: 400, fontStyle: "normal", lineHeight: 1.8, color: t.textSecondary, margin: "0 0 16px", textAlign: "left" }}>{children}</p>
   );
   // Card wrapper
   const Card = ({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) => (
@@ -449,7 +449,7 @@ function LandingPageVisualRenderer({ angleData, theme }: { angleData: AngleConte
             <section style={{ borderTop: `1px solid ${t.border}`, borderBottom: `1px solid ${t.border}`, padding: "28px 0" }}>
               <p style={{ fontFamily: bd, textAlign: "center", color: t.textMuted, fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.18em", marginBottom: "20px", fontWeight: 500 }}>As Seen In</p>
               <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "36px" }}>
-                {c.asSeenIn.map((logo, i) => <span key={i} style={{ fontFamily: hd, color: t.textMuted, fontWeight: 600, fontSize: "18px", fontStyle: "italic" }}>{String(logo)}</span>)}
+                {c.asSeenIn.map((logo, i) => <span key={i} style={{ fontFamily: bd, color: t.textMuted, fontWeight: 600, fontSize: "15px", fontStyle: "normal", letterSpacing: "0.02em" }}>{String(logo)}</span>)}
               </div>
             </section>
           )}
@@ -513,7 +513,7 @@ function LandingPageVisualRenderer({ angleData, theme }: { angleData: AngleConte
                 {testimonials.map((tm: TestimonialItem, i: number) => (
                   <div key={i} style={{ background: t.surface, border: `1px solid ${t.border}`, borderRadius: "14px", padding: "28px 24px", display: "flex", flexDirection: "column", gap: "12px" }}>
                     {tm.headline && <p style={{ fontFamily: hd, color: t.trust, fontSize: "20px", fontWeight: 700, margin: 0 }}>{tm.headline}</p>}
-                    {tm.quote && <p style={{ fontFamily: bd, color: t.textSecondary, fontStyle: "italic", fontSize: "15px", lineHeight: 1.65, margin: 0 }}>"{tm.quote}"</p>}
+                    {tm.quote && <p style={{ fontFamily: bd, color: t.textSecondary, fontStyle: "normal", fontSize: "15px", fontWeight: 400, lineHeight: 1.7, margin: 0 }}>"{tm.quote}"</p>}
                     <div style={{ marginTop: "auto" }}>
                       <p style={{ fontFamily: bd, fontWeight: 600, fontSize: "14px", margin: "0 0 2px", color: t.text }}>{tm.name ?? ""}</p>
                       <p style={{ fontFamily: bd, fontSize: "13px", color: t.textMuted, margin: 0 }}>{tm.location ?? ""}</p>
@@ -747,17 +747,28 @@ export default function V2LandingPageResultPanel({
         </div>
       </div>
 
-      {/* ── Edit / Preview toggle + theme switcher ── */}
-      <div style={{ display: "flex", gap: "8px", marginBottom: "12px", alignItems: "center", flexWrap: "wrap" }}>
-        <TabPill label="Edit" active={viewMode === "edit"} onClick={() => setViewMode("edit")} />
-        <TabPill label="Preview" active={viewMode === "preview"} onClick={() => setViewMode("preview")} />
-        {viewMode === "preview" && (
-          <>
-            <span style={{ fontFamily: "var(--v2-font-body)", fontSize: "12px", color: "#999", marginLeft: "8px" }}>Theme:</span>
-            <TabPill label="Dark" active={previewTheme === "dark"} onClick={() => setPreviewTheme("dark")} />
-            <TabPill label="Light" active={previewTheme === "light"} onClick={() => setPreviewTheme("light")} />
-          </>
-        )}
+      {/* ── Open Preview button ── */}
+      <div style={{ display: "flex", gap: "8px", marginBottom: "12px", alignItems: "center" }}>
+        <button
+          onClick={() => setViewMode("preview")}
+          style={{
+            background: "#1A1624",
+            color: "#F5F1EA",
+            border: "none",
+            borderRadius: "9999px",
+            padding: "9px 22px",
+            fontFamily: "var(--v2-font-body)",
+            fontWeight: 700,
+            fontSize: "13px",
+            cursor: "pointer",
+            letterSpacing: "0.01em",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+          }}
+        >
+          Open Preview
+        </button>
       </div>
 
       {/* ── Angle tabs ── */}
@@ -772,17 +783,107 @@ export default function V2LandingPageResultPanel({
         ))}
       </div>
 
-      {/* ── Active angle content ── */}
-      {viewMode === "edit" ? (
-        <AngleTabContent
-          key={resolvedTab}
-          content={angles[resolvedTab]}
-          landingPageId={landingPageId}
-          angle={resolvedTab}
-          onAngleUpdate={(newAngle) => handleAngleUpdate(resolvedTab, newAngle)}
-        />
-      ) : (
-        <LandingPageVisualRenderer angleData={angles[resolvedTab]} theme={previewTheme} />
+      {/* ── Edit content ── */}
+      <AngleTabContent
+        key={resolvedTab}
+        content={angles[resolvedTab]}
+        landingPageId={landingPageId}
+        angle={resolvedTab}
+        onAngleUpdate={(newAngle) => handleAngleUpdate(resolvedTab, newAngle)}
+      />
+
+      {/* ── Full-screen preview modal ── */}
+      {viewMode === "preview" && (
+        <div style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: "100vw",
+          height: "100vh",
+          zIndex: 9999,
+          overflowY: "auto",
+          background: THEMES[previewTheme].bg,
+        }}>
+          {/* Modal top bar — angle tabs + theme + close */}
+          <div style={{
+            position: "sticky",
+            top: 0,
+            zIndex: 10000,
+            background: previewTheme === "dark" ? "rgba(11,17,32,0.92)" : "rgba(250,250,248,0.92)",
+            backdropFilter: "blur(12px)",
+            borderBottom: `1px solid ${THEMES[previewTheme].border}`,
+            padding: "12px 24px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: "8px",
+          }}>
+            {/* Angle tabs */}
+            <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+              {ANGLE_TABS.map(tab => (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  style={{
+                    background: resolvedTab === tab.key ? (previewTheme === "dark" ? "#F1F5F9" : "#1A1624") : "transparent",
+                    color: resolvedTab === tab.key ? (previewTheme === "dark" ? "#0B1120" : "#F5F1EA") : THEMES[previewTheme].textMuted,
+                    border: `1px solid ${resolvedTab === tab.key ? "transparent" : THEMES[previewTheme].border}`,
+                    borderRadius: "9999px",
+                    padding: "6px 16px",
+                    fontFamily: "'Inter', system-ui, sans-serif",
+                    fontWeight: 600,
+                    fontSize: "13px",
+                    cursor: "pointer",
+                    transition: "all 150ms",
+                  }}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+            {/* Theme + close */}
+            <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+              <button
+                onClick={() => setPreviewTheme(previewTheme === "dark" ? "light" : "dark")}
+                style={{
+                  background: "rgba(128,128,128,0.15)",
+                  color: THEMES[previewTheme].textMuted,
+                  border: "none",
+                  borderRadius: "9999px",
+                  padding: "6px 14px",
+                  fontFamily: "'Inter', system-ui, sans-serif",
+                  fontWeight: 500,
+                  fontSize: "12px",
+                  cursor: "pointer",
+                }}
+              >
+                {previewTheme === "dark" ? "Light Mode" : "Dark Mode"}
+              </button>
+              <button
+                onClick={() => setViewMode("edit")}
+                style={{
+                  background: "rgba(128,128,128,0.2)",
+                  color: THEMES[previewTheme].text,
+                  border: "none",
+                  borderRadius: "9999px",
+                  padding: "6px 16px",
+                  fontFamily: "'Inter', system-ui, sans-serif",
+                  fontWeight: 600,
+                  fontSize: "14px",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                }}
+              >
+                ✕ Close Preview
+              </button>
+            </div>
+          </div>
+          {/* Renderer content */}
+          <LandingPageVisualRenderer angleData={angles[resolvedTab]} theme={previewTheme} />
+        </div>
       )}
 
       {/* ── Download TXT button ── */}
