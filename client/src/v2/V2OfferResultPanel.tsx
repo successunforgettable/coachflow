@@ -59,17 +59,78 @@ const iconBtn: React.CSSProperties = {
   transition: "background 0.15s",
 };
 
+// ─── Inline regen panel ──────────────────────────────────────────────────────
+function OfferRegenPanel({
+  offerId,
+  angle,
+  sectionKey,
+  onSuccess,
+  onClose,
+}: {
+  offerId: number;
+  angle: AngleKey;
+  sectionKey: string;
+  onSuccess: (value: string) => void;
+  onClose: () => void;
+}) {
+  const [prompt, setPrompt] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const regenMutation = trpc.offers.regenerateSection.useMutation();
+
+  async function handleRegen() {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await regenMutation.mutateAsync({
+        id: offerId,
+        angle,
+        sectionKey: sectionKey as any,
+        promptOverride: prompt.trim() || undefined,
+      });
+      onSuccess(result.value);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Regeneration failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div style={{ marginTop: "10px", padding: "12px", background: "rgba(139,92,246,0.04)", borderRadius: "12px", border: "1px solid rgba(139,92,246,0.15)" }}>
+      <textarea value={prompt} onChange={e => setPrompt(e.target.value)} placeholder="Optional: describe what to change..."
+        style={{ width: "100%", minHeight: "56px", fontFamily: "var(--v2-font-body)", fontSize: "13px", color: "#1A1624", lineHeight: 1.5, border: "1px solid rgba(139,92,246,0.30)", borderRadius: "8px", padding: "8px 10px", resize: "vertical", outline: "none", background: "#FFFFFF", boxSizing: "border-box" }} />
+      <div style={{ display: "flex", gap: "8px", marginTop: "8px", alignItems: "center" }}>
+        <button onClick={handleRegen} disabled={loading}
+          style={{ background: loading ? "#ccc" : "#FF5B1D", color: "#fff", border: "none", borderRadius: "9999px", padding: "7px 18px", fontFamily: "var(--v2-font-body)", fontWeight: 700, fontSize: "12px", cursor: loading ? "not-allowed" : "pointer", letterSpacing: "0.01em", display: "flex", alignItems: "center", gap: "6px" }}>
+          {loading ? (<><span style={{ display: "inline-block", width: "12px", height: "12px", border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.6s linear infinite" }} /> Regenerating...</>) : "Regenerate"}
+        </button>
+        <button onClick={onClose} style={{ background: "none", border: "none", fontFamily: "var(--v2-font-body)", fontSize: "12px", color: "#888", cursor: "pointer", padding: "7px 10px" }}>Cancel</button>
+      </div>
+      {error && <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "12px", color: "#DC2626", margin: "6px 0 0" }}>{error}</p>}
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+}
+
 // ─── Editable section card ────────────────────────────────────────────────────
 function SectionCard({
   label,
+  sectionKey,
   initialValue,
+  offerId,
+  angle,
 }: {
   label: string;
+  sectionKey: string;
   initialValue: string;
+  offerId: number;
+  angle: AngleKey;
 }) {
   const [value, setValue] = useState(initialValue);
   const [editing, setEditing] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [regenOpen, setRegenOpen] = useState(false);
 
   function handleCopy() {
     navigator.clipboard.writeText(value).catch(() => {});
@@ -135,17 +196,31 @@ function SectionCard({
           {value || <span style={{ color: "#aaa" }}>—</span>}
         </p>
       )}
-      <button
-        onClick={handleCopy}
-        style={{
-          ...iconBtn,
-          background: copied ? "rgba(88,204,2,0.12)" : undefined,
-          borderColor: copied ? "rgba(88,204,2,0.40)" : undefined,
-        }}
-        title="Copy to clipboard"
-      >
-        {copied ? "✓" : "⎘"}
-      </button>
+      <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+        <button
+          onClick={handleCopy}
+          style={{ ...iconBtn, background: copied ? "rgba(88,204,2,0.12)" : undefined, borderColor: copied ? "rgba(88,204,2,0.40)" : undefined }}
+          title="Copy to clipboard"
+        >
+          {copied ? "✓" : "⎘"}
+        </button>
+        <button
+          onClick={() => setRegenOpen(p => !p)}
+          style={{ ...iconBtn, background: regenOpen ? "rgba(255,91,29,0.10)" : undefined, borderColor: regenOpen ? "rgba(255,91,29,0.40)" : undefined }}
+          title="Regenerate"
+        >
+          ↺
+        </button>
+      </div>
+      {regenOpen && (
+        <OfferRegenPanel
+          offerId={offerId}
+          angle={angle}
+          sectionKey={sectionKey}
+          onSuccess={(v) => { setValue(v); setRegenOpen(false); }}
+          onClose={() => setRegenOpen(false)}
+        />
+      )}
     </div>
   );
 }
@@ -176,14 +251,17 @@ function TabPill({ label, active, onClick }: { label: string; active: boolean; o
 }
 
 // ─── Angle tab content ────────────────────────────────────────────────────────
-function AngleTabContent({ content }: { content: AngleContent }) {
+function AngleTabContent({ content, offerId, angle }: { content: AngleContent; offerId: number; angle: AngleKey }) {
   return (
     <div>
       {SECTION_DEFS.map(s => (
         <SectionCard
           key={s.key}
           label={s.label}
+          sectionKey={s.key as string}
           initialValue={content[s.key] ?? ""}
+          offerId={offerId}
+          angle={angle}
         />
       ))}
     </div>
@@ -294,7 +372,7 @@ export default function V2OfferResultPanel({
       </div>
 
       {/* ── Active angle content ── */}
-      <AngleTabContent content={angles[resolvedTab]} />
+      <AngleTabContent key={resolvedTab} content={angles[resolvedTab]} offerId={offerId} angle={resolvedTab} />
 
       {/* ── Download TXT button ── */}
       <div style={{ marginTop: "20px", textAlign: "center" }}>

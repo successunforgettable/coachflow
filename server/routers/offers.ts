@@ -5,7 +5,12 @@ import { getDb } from "../db";
 import { offers, services, idealCustomerProfiles, sourceOfTruth, campaigns, jobs } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { generateAllOfferAngles } from "../offersGenerator";
+import { invokeLLM } from "../_core/llm";
 import { getQuotaLimit } from "../quotaLimits";
+
+function stripMarkdownJson(content: string): string {
+  return content.replace(/^```json\s*|^```\s*|\s*```$/gm, '').trim();
+}
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 
@@ -395,6 +400,63 @@ export const offersRouter = router({
       return updated;
     }),
 
+  // Regenerate a single section within an offer angle via AI
+  regenerateSection: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      angle: z.enum(["godfather", "free", "dollar"]),
+      sectionKey: z.enum(["headline", "subheadline", "offerName", "price", "whatYouGet", "bonuses", "guarantee", "urgency"]),
+      promptOverride: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const [row] = await db
+        .select()
+        .from(offers)
+        .where(and(eq(offers.id, input.id), eq(offers.userId, ctx.user.id)))
+        .limit(1);
+
+      if (!row) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Offer not found" });
+      }
+
+      const angleColMap = { godfather: "godfatherAngle", free: "freeAngle", dollar: "dollarAngle" } as const;
+      const angleCol = angleColMap[input.angle];
+      const rawAngle = row[angleCol];
+      const angleData: Record<string, string> = typeof rawAngle === "string" ? JSON.parse(rawAngle) : (rawAngle as Record<string, string>) ?? {};
+
+      const currentValue = angleData[input.sectionKey] ?? "";
+      const overrideInstruction = input.promptOverride?.trim()
+        ? ` Additional instruction: ${input.promptOverride.trim()}.`
+        : "";
+
+      const prompt = `Rewrite this section of a coaching offer. Section: ${input.sectionKey}. Current content: ${currentValue}.${overrideInstruction} Return a JSON object with exactly one key: value (string). No explanation, no markdown, just the JSON object.`;
+
+      const response = await invokeLLM({
+        messages: [
+          { role: "system", content: "You are an expert offer copywriter for coaches and consultants. Respond with only valid JSON." },
+          { role: "user", content: prompt },
+        ],
+      });
+
+      const content = response.choices[0].message.content;
+      if (typeof content !== "string") throw new Error("Invalid response from AI");
+
+      const parsed = JSON.parse(stripMarkdownJson(content));
+      if (!parsed.value) throw new Error("AI response missing value field");
+
+      angleData[input.sectionKey] = parsed.value;
+
+      await db
+        .update(offers)
+        .set({ [angleCol]: JSON.stringify(angleData), updatedAt: new Date() })
+        .where(eq(offers.id, input.id));
+
+      return { sectionKey: input.sectionKey, value: parsed.value };
+    }),
+
   // Delete offer
   delete: protectedProcedure
     .input(z.object({ id: z.number() }))
@@ -418,20 +480,5 @@ export const offersRouter = router({
       await db.delete(offers).where(eq(offers.id, input.id));
 
       return { success: true };
-    }),
-
-  // Get most recent offer for a given serviceId (generation history)
-  getLatestByServiceId: protectedProcedure
-    .input(z.object({ serviceId: z.number() }))
-    .query(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
-      const [latest] = await db
-        .select()
-        .from(offers)
-        .where(and(eq(offers.userId, ctx.user.id), eq(offers.serviceId, input.serviceId)))
-        .orderBy(desc(offers.createdAt))
-        .limit(1);
-      return latest ?? null;
     }),
 });
