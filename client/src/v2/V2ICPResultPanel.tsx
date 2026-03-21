@@ -59,12 +59,13 @@ function DemographicsContent({ raw }: { raw: unknown }) {
     return <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#555" }}>{String(raw)}</p>;
   }
   const DEMO_LABELS: Record<string, string> = {
-    ageRange: "Age Range",
-    occupation: "Occupation",
-    incomeLevel: "Income Level",
-    location: "Location",
+    age_range: "Age Range",
+    gender: "Gender",
+    income_level: "Income Level",
     education: "Education",
-    familyStatus: "Family Status",
+    occupation: "Occupation",
+    location: "Location",
+    family_status: "Family Status",
   };
   const entries = Object.entries(obj).filter(([, v]) => v);
   if (!entries.length) return <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#555" }}>Not specified</p>;
@@ -98,8 +99,9 @@ function AccordionSection({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const [copied, setCopied] = useState(false);
+  const [editing, setEditing] = useState(false);
 
-  const textContent =
+  const initialText =
     sectionKey === "demographics"
       ? (() => {
           try {
@@ -114,8 +116,10 @@ function AccordionSection({
         })()
       : String(content ?? "");
 
+  const [value, setValue] = useState(initialText);
+
   function handleCopy() {
-    navigator.clipboard.writeText(textContent).catch(() => {});
+    navigator.clipboard.writeText(value).catch(() => {});
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
@@ -159,16 +163,44 @@ function AccordionSection({
         <div style={{ padding: "0 18px 16px" }}>
           {sectionKey === "demographics" ? (
             <DemographicsContent raw={content} />
+          ) : editing ? (
+            <textarea
+              autoFocus
+              value={value}
+              onChange={e => setValue(e.target.value)}
+              onBlur={() => setEditing(false)}
+              style={{
+                width: "100%",
+                minHeight: "120px",
+                fontFamily: "var(--v2-font-body)",
+                fontSize: "14px",
+                color: "#1A1624",
+                lineHeight: 1.65,
+                border: "1px solid rgba(139,92,246,0.40)",
+                borderRadius: "8px",
+                padding: "8px 10px",
+                resize: "vertical",
+                outline: "none",
+                background: "#FAFAFA",
+                boxSizing: "border-box",
+                margin: "0 0 12px",
+              }}
+            />
           ) : (
-            <p style={{
-              fontFamily: "var(--v2-font-body)",
-              fontSize: "14px",
-              color: "#333",
-              lineHeight: 1.65,
-              margin: "0 0 12px",
-              whiteSpace: "pre-wrap",
-            }}>
-              {textContent || "Not specified"}
+            <p
+              onClick={() => setEditing(true)}
+              style={{
+                fontFamily: "var(--v2-font-body)",
+                fontSize: "14px",
+                color: "#333",
+                lineHeight: 1.65,
+                margin: "0 0 12px",
+                whiteSpace: "pre-wrap",
+                cursor: "text",
+              }}
+              title="Click to edit"
+            >
+              {value || <span style={{ color: "#aaa" }}>—</span>}
             </p>
           )}
           {/* Copy button */}
