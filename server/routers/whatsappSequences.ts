@@ -13,6 +13,19 @@ import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 import { enforceQuota, incrementQuotaCount } from "../lib/quotaEnforcement";
+import { complianceFilter } from "../lib/complianceFilter";
+import { checkCompliance } from "../lib/complianceChecker";
+
+// Apply compliance filter to a WhatsApp message's text field
+async function filterWhatsapp(msg: { text: string; [k: string]: any }): Promise<typeof msg> {
+  const result = complianceFilter(msg.text);
+  const text = result.wasModified ? result.cleanedText : msg.text;
+  const score = await checkCompliance(text);
+  if (score.score < 100) {
+    console.log(`[whatsappSequences] Compliance score ${score.score}/100 for "${text.substring(0, 50)}": ${score.issues.map(i => i.phrase).join(", ")}`);
+  }
+  return { ...msg, text };
+}
 
 const generateWhatsAppSequenceSchema = z.object({
   serviceId: z.number(),
@@ -349,6 +362,8 @@ Return as a JSON object with a 'messages' key containing the array.`;
         mediaUrl: msg.mediaUrl || null,
         mediaType: msg.mediaType || null,
       }));
+      // Apply compliance filter to all messages
+      sequenceData.messages = await Promise.all(sequenceData.messages.map((m: any) => filterWhatsapp(m)));
       // Save to database
       const insertResult: any = await db.insert(whatsappSequences).values({
         userId: ctx.user.id,
@@ -439,6 +454,7 @@ Return as a JSON object with a 'messages' key containing the array.`;
           if (Array.isArray(sequenceData)) sequenceData = { messages: sequenceData };
           if (!sequenceData.messages || !Array.isArray(sequenceData.messages)) throw new Error("LLM did not return a valid messages array");
           sequenceData.messages = sequenceData.messages.map((msg: any, idx: number) => ({ text: msg.message || msg.text || `Message ${idx + 1}: Check this out`, delay: msg.delay || (idx * 24), delayUnit: msg.delayUnit || 'hours', mediaUrl: msg.mediaUrl || null, mediaType: msg.mediaType || null }));
+          sequenceData.messages = await Promise.all(sequenceData.messages.map((m: any) => filterWhatsapp(m)));
 
           const insertResult: any = await bgDb.insert(whatsappSequences).values({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, sequenceType: capturedInput.sequenceType, name: capturedInput.name, messages: sequenceData.messages });
           await incrementQuotaCount(capturedUserId, "whatsapp");
@@ -554,7 +570,9 @@ Return as a JSON object with a 'messages' key containing the array.`;
         throw new Error("AI response missing text field");
       }
 
-      messages[input.index] = { ...messages[input.index], text: parsed.text };
+      // Apply compliance filter to regenerated message
+      const filtered = await filterWhatsapp({ text: parsed.text });
+      messages[input.index] = { ...messages[input.index], text: filtered.text };
 
       await db
         .update(whatsappSequences)
