@@ -1146,6 +1146,19 @@ export type SystemHealthMetric = typeof systemHealthMetrics.$inferSelect;
 export type InsertSystemHealthMetric = typeof systemHealthMetrics.$inferInsert;
 
 // ---------------------------------------------------------------------------
+// Coach Assets — uploaded images (headshot, logo, social proof)
+// ---------------------------------------------------------------------------
+export const coachAssets = mysqlTable("coachAssets", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  assetType: varchar("assetType", { length: 50 }).notNull(), // 'headshot', 'logo', 'social_proof'
+  url: text("url").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type CoachAsset = typeof coachAssets.$inferSelect;
+export type InsertCoachAsset = typeof coachAssets.$inferInsert;
+
+// ---------------------------------------------------------------------------
 // Background job queue table for async AI generation polling
 // ---------------------------------------------------------------------------
 export const jobs = mysqlTable("jobs", {

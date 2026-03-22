@@ -85,6 +85,40 @@ async function startServer() {
     }
   }, 24 * 60 * 60 * 1000); // runs every 24 hours
 
+  // ── Asset upload endpoint (Cloudinary) ──────────────────────────────────────
+  {
+    const multer = (await import("multer")).default;
+    const upload = multer({
+      storage: multer.memoryStorage(),
+      limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
+      fileFilter: (_req, file, cb) => {
+        const allowed = ["image/jpeg", "image/png", "image/webp"];
+        if (allowed.includes(file.mimetype)) cb(null, true);
+        else cb(new Error("Only JPEG, PNG, and WebP images are allowed"));
+      },
+    });
+
+    app.post("/api/upload-asset", upload.single("file"), async (req, res) => {
+      try {
+        let user: { id: number | string } | null = null;
+        try { user = await sdk.authenticateRequest(req); } catch { /* */ }
+        if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+        const file = (req as any).file;
+        if (!file) { res.status(400).json({ error: "No file provided" }); return; }
+
+        const { storagePut } = await import("../storage");
+        const key = `coach-assets/${user.id}/${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+        const { url } = await storagePut(key, file.buffer, file.mimetype);
+        res.json({ url });
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error("[upload-asset] Error:", msg);
+        res.status(400).json({ error: msg });
+      }
+    });
+  }
+
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));

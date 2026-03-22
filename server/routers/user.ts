@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { router, protectedProcedure } from "../_core/trpc.js";
 import { getDb } from "../db.js";
-import { users } from "../../drizzle/schema.js";
-import { eq } from "drizzle-orm";
+import { users, coachAssets } from "../../drizzle/schema.js";
+import { eq, and } from "drizzle-orm";
 
 export const userRouter = router({
   /**
@@ -70,5 +70,56 @@ export const userRouter = router({
       }).where(eq(users.id, ctx.user.id));
       const [updated] = await db.select().from(users).where(eq(users.id, ctx.user.id)).limit(1);
       return updated;
+    }),
+
+  /**
+   * Get all coach assets for the current user
+   */
+  getCoachAssets: protectedProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) throw new Error("Database not available");
+    const rows = await db.select().from(coachAssets).where(eq(coachAssets.userId, ctx.user.id));
+    return rows;
+  }),
+
+  /**
+   * Save a coach asset (headshot, logo, social_proof)
+   */
+  saveCoachAsset: protectedProcedure
+    .input(z.object({
+      assetType: z.enum(["headshot", "logo", "social_proof"]),
+      url: z.string().url(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      // For headshot and logo, replace existing (only one allowed)
+      if (input.assetType === "headshot" || input.assetType === "logo") {
+        await db.delete(coachAssets).where(
+          and(eq(coachAssets.userId, ctx.user.id), eq(coachAssets.assetType, input.assetType))
+        );
+      }
+
+      const result: any = await db.insert(coachAssets).values({
+        userId: ctx.user.id,
+        assetType: input.assetType,
+        url: input.url,
+      });
+      return { id: result[0].insertId, url: input.url, assetType: input.assetType };
+    }),
+
+  /**
+   * Delete a coach asset by id
+   */
+  deleteCoachAsset: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      await db.delete(coachAssets).where(
+        and(eq(coachAssets.id, input.id), eq(coachAssets.userId, ctx.user.id))
+      );
+      return { success: true };
     }),
 });

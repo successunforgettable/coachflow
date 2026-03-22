@@ -8,7 +8,7 @@
  * Regenerate Section button shows Phase L toast.
  * Download TXT button shows Phase L toast.
  */
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { trpc } from "../lib/trpc";
 import { toast } from "sonner";
 import ZappyMascot from "./ZappyMascot";
@@ -372,7 +372,7 @@ const THEMES = {
 } as const;
 
 // ─── Visual renderer (extracted from V1 LandingPageDetail.tsx) ───────────────
-function LandingPageVisualRenderer({ angleData, theme }: { angleData: AngleContent; theme: ThemeKey }) {
+function LandingPageVisualRenderer({ angleData, theme, assets }: { angleData: AngleContent; theme: ThemeKey; assets?: CoachAssets }) {
   const c = angleData;
   const t = THEMES[theme];
   const font = "Inter, system-ui, sans-serif";
@@ -411,13 +411,31 @@ function LandingPageVisualRenderer({ angleData, theme }: { angleData: AngleConte
     <div style={{ fontFamily: font, background: t.bg, color: t.text, minHeight: "100vh" }}>
       <div style={{ maxWidth: "56rem", margin: "0 auto", padding: "48px 24px", display: "flex", flexDirection: "column", gap: "64px" }}>
 
-        {/* 1. Hero — eyebrow + headline + subheadline + CTA */}
+        {/* 1. Hero — eyebrow + headline + subheadline + CTA (2-column if headshot) */}
         {(isValid(c.eyebrowHeadline) || isValid(c.mainHeadline)) && (
-          <section style={{ textAlign: "center", ...sectionGap, alignItems: "center" }}>
-            {isValid(c.eyebrowHeadline) && <p style={{ fontFamily: font, color: t.red, fontSize: "14px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", margin: 0 }}>{c.eyebrowHeadline}</p>}
-            {isValid(c.mainHeadline) && <h1 style={{ fontFamily: font, fontSize: "clamp(32px, 5vw, 56px)", fontWeight: 700, lineHeight: 1.1, margin: 0 }}>{c.mainHeadline}</h1>}
-            {isValid(c.subheadline) && <p style={{ fontFamily: font, fontSize: "20px", color: t.body, maxWidth: "48rem", margin: 0, fontWeight: 400 }}>{c.subheadline}</p>}
-            {isValid(c.primaryCta) && <button style={{ fontFamily: font, background: t.purple, color: "#fff", border: "none", borderRadius: "8px", padding: "14px 32px", fontSize: "18px", fontWeight: 600, cursor: "pointer" }}>{c.primaryCta}</button>}
+          <section style={{ display: "flex", alignItems: "center", gap: "48px", flexWrap: "wrap", ...sectionGap }}>
+            <div style={{ flex: 1, minWidth: "280px", textAlign: assets?.headshot ? "left" : "center", display: "flex", flexDirection: "column", gap: "16px", alignItems: assets?.headshot ? "flex-start" : "center" }}>
+              {isValid(c.eyebrowHeadline) && <p style={{ fontFamily: font, color: t.red, fontSize: "14px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", margin: 0 }}>{c.eyebrowHeadline}</p>}
+              {isValid(c.mainHeadline) && <h1 style={{ fontFamily: font, fontSize: "clamp(32px, 5vw, 56px)", fontWeight: 700, lineHeight: 1.1, margin: 0 }}>{c.mainHeadline}</h1>}
+              {isValid(c.subheadline) && <p style={{ fontFamily: font, fontSize: "20px", color: t.body, maxWidth: "48rem", margin: 0, fontWeight: 400 }}>{c.subheadline}</p>}
+              {isValid(c.primaryCta) && <button style={{ fontFamily: font, background: t.purple, color: "#fff", border: "none", borderRadius: "8px", padding: "14px 32px", fontSize: "18px", fontWeight: 600, cursor: "pointer" }}>{c.primaryCta}</button>}
+            </div>
+            {assets?.headshot && (
+              <div style={{ flexShrink: 0, maxWidth: "320px", width: "100%" }}>
+                <img src={assets.headshot} alt="Coach" style={{ width: "100%", borderRadius: "16px", objectFit: "cover", maxHeight: "400px" }} />
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* Social proof photos carousel */}
+        {assets?.socialProof && assets.socialProof.length > 0 && (
+          <section style={{ overflowX: "auto", padding: "8px 0" }}>
+            <div style={{ display: "flex", gap: "12px" }}>
+              {assets.socialProof.map((url, i) => (
+                <img key={i} src={url} alt="" style={{ height: "120px", borderRadius: "12px", objectFit: "cover", flexShrink: 0 }} />
+              ))}
+            </div>
           </section>
         )}
 
@@ -616,6 +634,136 @@ function AngleTabContent({ content, landingPageId, angle, onAngleUpdate }: {
   );
 }
 
+// ─── Asset upload helpers ────────────────────────────────────────────────────
+interface CoachAssets {
+  headshot: string | null;
+  logo: string | null;
+  socialProof: string[];
+}
+
+function UploadSlot({
+  label,
+  imageUrl,
+  onUpload,
+  placeholder,
+  size = 100,
+}: {
+  label: string;
+  imageUrl: string | null;
+  onUpload: (url: string) => void;
+  placeholder: string;
+  size?: number;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleFile = useCallback(async (file: File) => {
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const resp = await fetch("/api/upload-asset", { method: "POST", body: fd, credentials: "include" });
+      if (!resp.ok) throw new Error((await resp.json()).error || "Upload failed");
+      const { url } = await resp.json();
+      onUpload(url);
+    } catch (err: any) {
+      toast.error(err.message || "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  }, [onUpload]);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "6px" }}>
+      <div
+        onClick={() => !uploading && inputRef.current?.click()}
+        style={{
+          width: size,
+          height: size,
+          borderRadius: "12px",
+          border: "2px dashed rgba(26,22,36,0.20)",
+          background: imageUrl ? "none" : "rgba(26,22,36,0.04)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          cursor: uploading ? "wait" : "pointer",
+          overflow: "hidden",
+          transition: "border-color 0.15s",
+          position: "relative",
+        }}
+      >
+        {uploading && <span style={{ fontSize: "12px", color: "#888" }}>…</span>}
+        {!uploading && imageUrl && (
+          <img src={imageUrl} alt={label} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        )}
+        {!uploading && !imageUrl && (
+          <span style={{ fontSize: "24px", color: "rgba(26,22,36,0.25)" }}>{placeholder}</span>
+        )}
+      </div>
+      <span style={{ fontFamily: "var(--v2-font-body)", fontSize: "11px", fontWeight: 600, color: "#777", textAlign: "center" }}>{label}</span>
+      <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" style={{ display: "none" }} onChange={e => { if (e.target.files?.[0]) handleFile(e.target.files[0]); e.target.value = ""; }} />
+    </div>
+  );
+}
+
+function AssetUploadPanel({
+  assets,
+  onUpdate,
+}: {
+  assets: CoachAssets;
+  onUpdate: (assets: CoachAssets) => void;
+}) {
+  const saveAsset = trpc.user.saveCoachAsset.useMutation();
+
+  function handleHeadshot(url: string) {
+    saveAsset.mutate({ assetType: "headshot", url });
+    onUpdate({ ...assets, headshot: url });
+  }
+  function handleLogo(url: string) {
+    saveAsset.mutate({ assetType: "logo", url });
+    onUpdate({ ...assets, logo: url });
+  }
+  function handleSocialProof(url: string) {
+    if (assets.socialProof.length >= 6) { toast.error("Max 6 social proof photos"); return; }
+    saveAsset.mutate({ assetType: "social_proof", url });
+    onUpdate({ ...assets, socialProof: [...assets.socialProof, url] });
+  }
+
+  return (
+    <div style={{
+      background: "#fff",
+      borderRadius: "16px",
+      border: "1px solid rgba(26,22,36,0.10)",
+      padding: "20px 24px",
+      marginBottom: "16px",
+    }}>
+      <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "13px", fontWeight: 700, color: "#1A1624", margin: "0 0 4px" }}>
+        Upload Your Assets for Visual Preview
+      </p>
+      <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "12px", color: "#888", margin: "0 0 16px" }}>
+        These appear in the visual landing page preview. Coach photo is required.
+      </p>
+      <div style={{ display: "flex", gap: "20px", flexWrap: "wrap", alignItems: "flex-start" }}>
+        <UploadSlot label="Coach Photo *" imageUrl={assets.headshot} onUpload={handleHeadshot} placeholder="👤" size={110} />
+        <UploadSlot label="Logo (optional)" imageUrl={assets.logo} onUpload={handleLogo} placeholder="🏷" size={90} />
+        <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+          <span style={{ fontFamily: "var(--v2-font-body)", fontSize: "11px", fontWeight: 600, color: "#777" }}>Social Proof (up to 6)</span>
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+            {assets.socialProof.map((url, i) => (
+              <div key={i} style={{ width: "60px", height: "60px", borderRadius: "8px", overflow: "hidden" }}>
+                <img src={url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              </div>
+            ))}
+            {assets.socialProof.length < 6 && (
+              <UploadSlot label="" imageUrl={null} onUpload={handleSocialProof} placeholder="+" size={60} />
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function V2LandingPageResultPanel({
   landingPageId,
@@ -637,6 +785,18 @@ export default function V2LandingPageResultPanel({
   const resolvedTab: AngleKey = activeTab ?? defaultAngle;
   const [viewMode, setViewMode] = useState<"edit" | "preview">("edit");
   const [previewTheme, setPreviewTheme] = useState<ThemeKey>("dark");
+  const [styleMode, setStyleMode] = useState<"text" | "visual">("text");
+  const [coachAssets, setCoachAssets] = useState<CoachAssets>({ headshot: null, logo: null, socialProof: [] });
+
+  // Load saved assets on mount
+  const { data: savedAssets } = trpc.user.getCoachAssets.useQuery();
+  useEffect(() => {
+    if (!savedAssets) return;
+    const headshot = savedAssets.find(a => a.assetType === "headshot")?.url ?? null;
+    const logo = savedAssets.find(a => a.assetType === "logo")?.url ?? null;
+    const socialProof = savedAssets.filter(a => a.assetType === "social_proof").map(a => a.url);
+    setCoachAssets({ headshot, logo, socialProof });
+  }, [savedAssets]);
 
   function parseAngle(raw: AngleContent | string | undefined): AngleContent {
     if (!raw) return {};
@@ -723,29 +883,80 @@ export default function V2LandingPageResultPanel({
         </div>
       </div>
 
-      {/* ── Open Preview button ── */}
-      <div style={{ display: "flex", gap: "8px", marginBottom: "12px", alignItems: "center" }}>
+      {/* ── Style toggle ── */}
+      <div style={{ display: "flex", gap: "4px", marginBottom: "16px", background: "rgba(26,22,36,0.07)", borderRadius: "9999px", padding: "4px", width: "fit-content" }}>
         <button
-          onClick={() => setViewMode("preview")}
+          onClick={() => setStyleMode("text")}
           style={{
-            background: "#1A1624",
-            color: "#F5F1EA",
-            border: "none",
-            borderRadius: "9999px",
-            padding: "9px 22px",
-            fontFamily: "var(--v2-font-body)",
-            fontWeight: 700,
-            fontSize: "13px",
-            cursor: "pointer",
-            letterSpacing: "0.01em",
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
+            borderRadius: "9999px", padding: "8px 18px", fontFamily: "var(--v2-font-body)", fontWeight: 600, fontSize: "13px", border: "none", cursor: "pointer",
+            background: styleMode === "text" ? "#fff" : "transparent",
+            color: styleMode === "text" ? "#1A1624" : "rgba(26,22,36,0.50)",
+            boxShadow: styleMode === "text" ? "0 1px 6px rgba(26,22,36,0.10)" : "none",
+            transition: "all 0.18s",
           }}
         >
-          Open Preview
+          📝 Text Style
+        </button>
+        <button
+          onClick={() => setStyleMode("visual")}
+          style={{
+            borderRadius: "9999px", padding: "8px 18px", fontFamily: "var(--v2-font-body)", fontWeight: 600, fontSize: "13px", border: "none", cursor: "pointer",
+            background: styleMode === "visual" ? "#fff" : "transparent",
+            color: styleMode === "visual" ? "#1A1624" : "rgba(26,22,36,0.50)",
+            boxShadow: styleMode === "visual" ? "0 1px 6px rgba(26,22,36,0.10)" : "none",
+            transition: "all 0.18s",
+          }}
+        >
+          🖼 Visual Style
         </button>
       </div>
+
+      {/* ── Asset upload panel (Visual Style) ── */}
+      {styleMode === "visual" && (
+        <>
+          <AssetUploadPanel assets={coachAssets} onUpdate={setCoachAssets} />
+          <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
+            <button
+              onClick={() => {
+                if (!coachAssets.headshot) { toast.error("Upload a coach photo first"); return; }
+                setViewMode("preview");
+              }}
+              style={{
+                background: coachAssets.headshot ? "#FF5B1D" : "rgba(26,22,36,0.15)",
+                color: coachAssets.headshot ? "#fff" : "#999",
+                border: "none",
+                borderRadius: "9999px",
+                padding: "10px 24px",
+                fontFamily: "var(--v2-font-body)",
+                fontWeight: 700,
+                fontSize: "14px",
+                cursor: coachAssets.headshot ? "pointer" : "not-allowed",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+              }}
+            >
+              🖼 Preview Visual Page
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* ── Open Preview (Text Style) ── */}
+      {styleMode === "text" && (
+        <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
+          <button
+            onClick={() => setViewMode("preview")}
+            style={{
+              background: "#1A1624", color: "#F5F1EA", border: "none", borderRadius: "9999px",
+              padding: "9px 22px", fontFamily: "var(--v2-font-body)", fontWeight: 700, fontSize: "13px",
+              cursor: "pointer", letterSpacing: "0.01em", display: "flex", alignItems: "center", gap: "6px",
+            }}
+          >
+            Open Preview
+          </button>
+        </div>
+      )}
 
       {/* ── Angle tabs ── */}
       <div style={{ display: "flex", gap: "8px", marginBottom: "20px", flexWrap: "wrap" }}>
@@ -795,8 +1006,9 @@ export default function V2LandingPageResultPanel({
             flexWrap: "wrap",
             gap: "8px",
           }}>
-            {/* Angle tabs */}
-            <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+            {/* Logo + Angle tabs */}
+            <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", alignItems: "center" }}>
+              {coachAssets.logo && <img src={coachAssets.logo} alt="Logo" style={{ height: "40px", objectFit: "contain", flexShrink: 0 }} />}
               {ANGLE_TABS.map(tab => (
                 <button
                   key={tab.key}
@@ -858,7 +1070,7 @@ export default function V2LandingPageResultPanel({
             </div>
           </div>
           {/* Renderer content */}
-          <LandingPageVisualRenderer angleData={angles[resolvedTab]} theme={previewTheme} />
+          <LandingPageVisualRenderer angleData={angles[resolvedTab]} theme={previewTheme} assets={coachAssets} />
         </div>
       )}
 
