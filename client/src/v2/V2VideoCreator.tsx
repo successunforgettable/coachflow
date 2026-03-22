@@ -11,6 +11,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
 import ZappyMascot from "./ZappyMascot";
+import UpgradePrompt from "./components/UpgradePrompt";
 import { Link } from "wouter";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
@@ -187,7 +188,7 @@ function SceneCard({ scene, index }: { scene: any; index: number }) {
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export default function V2VideoCreator() {
+export default function V2VideoCreator({ isFreeTier }: { isFreeTier?: boolean } = {}) {
   // Form state
   const [videoType, setVideoType]     = useState(VIDEO_TYPES[0].value);
   const [visualStyle, setVisualStyle] = useState(VISUAL_STYLES[0].value);
@@ -736,6 +737,8 @@ export default function V2VideoCreator() {
                       Upgrade to Pro Plus for more
                     </a>
                   </div>
+                ) : isFreeTier ? (
+                  <UpgradePrompt variant="inline" featureName="Video Creator" />
                 ) : (
                   <button
                     onClick={handleRenderConfirm}

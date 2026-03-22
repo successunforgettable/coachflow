@@ -9,6 +9,7 @@ import { useState, useMemo } from "react";
 import { useLocation } from "wouter";
 import ZappyMascot from "./ZappyMascot";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
 import V2AdImageCreator from "./V2AdImageCreator";
 import V2VideoCreator from "./V2VideoCreator";
 
@@ -173,6 +174,8 @@ function GeneratorCard({
 // ─── Main V2ToolLibrary ───────────────────────────────────────────────────────
 export default function V2ToolLibrary() {
   const [, navigate] = useLocation();
+  const { user: authUser } = useAuth();
+  const isFreeTier = !authUser || (authUser.role !== "superuser" && authUser.role !== "admin" && authUser.subscriptionTier !== "pro" && authUser.subscriptionTier !== "agency");
   const [selectedIcpId, setSelectedIcpId] = useState<number | null>(null);
   const [openPanel, setOpenPanel] = useState<string | null>(null);
 
@@ -493,7 +496,7 @@ export default function V2ToolLibrary() {
       {/* ── Video Creator inline panel ── */}
       {openPanel === "videoCreator" && (
         <div style={{ marginBottom: "32px" }}>
-          <V2VideoCreator />
+          <V2VideoCreator isFreeTier={isFreeTier} />
         </div>
       )}
 
