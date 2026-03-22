@@ -12,7 +12,6 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
 import ZappyMascot from "./ZappyMascot";
 import UpgradePrompt from "./components/UpgradePrompt";
-import { Link } from "wouter";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const T = {
@@ -447,23 +446,7 @@ export default function V2VideoCreator({ isFreeTier }: { isFreeTier?: boolean } 
         fontFamily: T.fontBody,
       }}
     >
-      {/* Back link — always visible regardless of tier */}
-      <Link
-        href="/v2-dashboard?tab=tools"
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: "6px",
-          fontFamily: T.fontBody,
-          fontSize: "13px",
-          fontWeight: 600,
-          color: "#888",
-          textDecoration: "none",
-          marginBottom: "28px",
-        }}
-      >
-        ← Back to Tool Library
-      </Link>
+      {/* Back navigation handled by parent V2ToolLibrary — matches V2AdImageCreator pattern */}
 
       {/* Heading */}
       <h1
