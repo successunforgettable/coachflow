@@ -364,33 +364,20 @@ function splitHeadingBody(val: unknown): { heading: string; body: string[] } {
   return { heading: lines[0] ?? "", body: lines.slice(1) };
 }
 
-// ─── Theme tokens ────────────────────────────────────────────────────────────
+// ─── Theme tokens (V1 colours exactly) ───────────────────────────────────────
+type ThemeKey = "dark" | "light";
 const THEMES = {
-  dark: {
-    bg: "#0B1120", surface: "#131B2E", surfaceAlt: "#1A2540", border: "#1E3050",
-    text: "#F1F5F9", textMuted: "#94A3B8", textSecondary: "#CBD5E1",
-    accent: "#F97316", accentHover: "#FB923C", trust: "#0EA5E9",
-    danger: "#EF4444", gradient1: "rgba(14,165,233,0.08)", gradient2: "rgba(249,115,22,0.06)",
-  },
-  light: {
-    bg: "#FAFAF8", surface: "#FFFFFF", surfaceAlt: "#F5F3EF", border: "#E8E4DC",
-    text: "#1A1A1A", textMuted: "#6B7280", textSecondary: "#4B5563",
-    accent: "#F97316", accentHover: "#EA580C", trust: "#0369A1",
-    danger: "#DC2626", gradient1: "rgba(14,165,233,0.05)", gradient2: "rgba(249,115,22,0.04)",
-  },
+  dark: { bg: "#1a1a1a", surface: "#222222", surfaceAlt: "#2a2a2a", border: "#374151", text: "#ffffff", body: "#d1d5db", muted: "#9ca3af", purple: "#8B5CF6", red: "#ff3366", purpleGradFrom: "rgba(88,28,135,0.2)", purpleGradTo: "rgba(131,24,67,0.2)", greenGradFrom: "rgba(6,78,59,0.2)", blueGradTo: "rgba(30,58,138,0.2)" },
+  light: { bg: "#FFFFFF", surface: "#F9FAFB", surfaceAlt: "#F3F4F6", border: "#E5E7EB", text: "#111827", body: "#4B5563", muted: "#6B7280", purple: "#7C3AED", red: "#DC2626", purpleGradFrom: "rgba(139,92,246,0.06)", purpleGradTo: "rgba(236,72,153,0.04)", greenGradFrom: "rgba(16,185,129,0.06)", blueGradTo: "rgba(59,130,246,0.04)" },
 } as const;
 
-type ThemeKey = "dark" | "light";
-
-const GOOGLE_FONTS_CSS = `@import url('https://fonts.googleapis.com/css2?family=Cormorant:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&family=Inter:wght@300;400;500;600;700&display=swap');`;
-
-// ─── Visual renderer ────────────────────────────────────────────────────────
+// ─── Visual renderer (extracted from V1 LandingPageDetail.tsx) ───────────────
 function LandingPageVisualRenderer({ angleData, theme }: { angleData: AngleContent; theme: ThemeKey }) {
   const c = angleData;
   const t = THEMES[theme];
-  const hd = "'Cormorant', Georgia, serif"; // display headings ONLY
-  const bd = "'Inter', system-ui, sans-serif"; // body text, labels, descriptions, buttons — everything else
+  const font = "Inter, system-ui, sans-serif";
 
+  // Parse complex fields safely
   const quiz = (() => {
     if (!c.quizSection) return null;
     if (typeof c.quizSection === "string") { try { return JSON.parse(c.quizSection); } catch { return null; } }
@@ -407,187 +394,176 @@ function LandingPageVisualRenderer({ angleData, theme }: { angleData: AngleConte
     return Array.isArray(c.consultationOutline) ? c.consultationOutline : [];
   })();
 
-  // Reusable section heading
-  const H2 = ({ children, center, color }: { children: React.ReactNode; center?: boolean; color?: string }) => (
-    <h2 style={{ fontFamily: hd, fontSize: "clamp(28px, 4vw, 40px)", fontWeight: 700, lineHeight: 1.15, letterSpacing: "-0.02em", color: color ?? t.text, textAlign: center ? "center" : "left", margin: "0 0 24px" }}>{children}</h2>
-  );
-  // Reusable body paragraph — Inter 17px, weight 400, line-height 1.8, left-aligned, never italic
-  const P = ({ children }: { children: React.ReactNode }) => (
-    <p style={{ fontFamily: bd, fontSize: "17px", fontWeight: 400, fontStyle: "normal", lineHeight: 1.8, color: t.textSecondary, margin: "0 0 16px", textAlign: "left" }}>{children}</p>
-  );
-  // Card wrapper
-  const Card = ({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) => (
-    <div style={{ background: t.surface, border: `1px solid ${t.border}`, borderRadius: "16px", padding: "36px 32px", ...style }}>{children}</div>
-  );
+  // V1-style heading/body split — handles both string and {headline, content} objects
+  function getHeadingBody(val: unknown): { heading: string; body: string[] } | null {
+    if (!isValid(val)) return null;
+    const text = extractText(val);
+    const lines = text.split("\n").filter((l: string) => l.trim());
+    if (!lines.length) return null;
+    return { heading: lines[0], body: lines.slice(1) };
+  }
+
+  // Styles matching V1 exactly
+  const bodyTextStyle: React.CSSProperties = { fontFamily: font, fontSize: "18px", lineHeight: 1.7, color: t.body, fontWeight: 400, fontStyle: "normal", textAlign: "left" };
+  const sectionGap: React.CSSProperties = { display: "flex", flexDirection: "column", gap: "16px" };
 
   return (
-    <>
-      <style>{GOOGLE_FONTS_CSS}</style>
-      <div style={{ background: t.bg, color: t.text, borderRadius: "16px", overflow: "hidden" }}>
-        <div style={{ maxWidth: "52rem", margin: "0 auto", padding: "64px 28px", display: "flex", flexDirection: "column", gap: "72px" }}>
+    <div style={{ fontFamily: font, background: t.bg, color: t.text, minHeight: "100vh" }}>
+      <div style={{ maxWidth: "56rem", margin: "0 auto", padding: "48px 24px", display: "flex", flexDirection: "column", gap: "64px" }}>
 
-          {/* 1. Hero */}
-          {(isValid(c.eyebrowHeadline) || isValid(c.mainHeadline)) && (
-            <section style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: "20px", alignItems: "center" }}>
-              {isValid(c.eyebrowHeadline) && (
-                <p style={{ fontFamily: bd, color: t.accent, fontSize: "13px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.15em", margin: 0 }}>{c.eyebrowHeadline}</p>
-              )}
-              {isValid(c.mainHeadline) && (
-                <h1 style={{ fontFamily: hd, fontSize: "clamp(32px, 5.5vw, 56px)", fontWeight: 700, lineHeight: 1.1, letterSpacing: "-0.03em", color: t.text, margin: 0, maxWidth: "48rem" }}>{c.mainHeadline}</h1>
-              )}
-              {isValid(c.subheadline) && (
-                <p style={{ fontFamily: bd, fontSize: "18px", lineHeight: 1.65, color: t.textMuted, maxWidth: "40rem", margin: 0, fontWeight: 300 }}>{c.subheadline}</p>
-              )}
-              {isValid(c.primaryCta) && (
-                <button style={{ fontFamily: bd, background: t.accent, color: "#fff", border: "none", borderRadius: "8px", padding: "16px 40px", fontSize: "16px", fontWeight: 600, cursor: "pointer", marginTop: "12px", letterSpacing: "0.02em", transition: "background 200ms" }}>{c.primaryCta}</button>
-              )}
-            </section>
-          )}
+        {/* 1. Hero — eyebrow + headline + subheadline + CTA */}
+        {(isValid(c.eyebrowHeadline) || isValid(c.mainHeadline)) && (
+          <section style={{ textAlign: "center", ...sectionGap, alignItems: "center" }}>
+            {isValid(c.eyebrowHeadline) && <p style={{ fontFamily: font, color: t.red, fontSize: "14px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", margin: 0 }}>{c.eyebrowHeadline}</p>}
+            {isValid(c.mainHeadline) && <h1 style={{ fontFamily: font, fontSize: "clamp(32px, 5vw, 56px)", fontWeight: 700, lineHeight: 1.1, margin: 0 }}>{c.mainHeadline}</h1>}
+            {isValid(c.subheadline) && <p style={{ fontFamily: font, fontSize: "20px", color: t.body, maxWidth: "48rem", margin: 0, fontWeight: 400 }}>{c.subheadline}</p>}
+            {isValid(c.primaryCta) && <button style={{ fontFamily: font, background: t.purple, color: "#fff", border: "none", borderRadius: "8px", padding: "14px 32px", fontSize: "18px", fontWeight: 600, cursor: "pointer" }}>{c.primaryCta}</button>}
+          </section>
+        )}
 
-          {/* 2. As Seen In */}
-          {isValid(c.asSeenIn) && Array.isArray(c.asSeenIn) && (
-            <section style={{ borderTop: `1px solid ${t.border}`, borderBottom: `1px solid ${t.border}`, padding: "28px 0" }}>
-              <p style={{ fontFamily: bd, textAlign: "center", color: t.textMuted, fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.18em", marginBottom: "20px", fontWeight: 500 }}>As Seen In</p>
-              <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "36px" }}>
-                {c.asSeenIn.map((logo, i) => <span key={i} style={{ fontFamily: bd, color: t.textMuted, fontWeight: 600, fontSize: "15px", fontStyle: "normal", letterSpacing: "0.02em" }}>{String(logo)}</span>)}
-              </div>
-            </section>
-          )}
+        {/* 2. As Seen In */}
+        {isValid(c.asSeenIn) && Array.isArray(c.asSeenIn) && (
+          <section style={{ borderTop: `1px solid ${t.border}`, borderBottom: `1px solid ${t.border}`, padding: "32px 0" }}>
+            <p style={{ fontFamily: font, textAlign: "center", color: t.muted, fontSize: "14px", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "24px" }}>As Seen In</p>
+            <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "32px" }}>
+              {c.asSeenIn.map((logo, i) => <span key={i} style={{ fontFamily: font, color: t.muted, fontWeight: 600, fontSize: "18px" }}>{String(logo)}</span>)}
+            </div>
+          </section>
+        )}
 
-          {/* 3. Quiz */}
-          {quiz && isValid(quiz.question) && (
-            <Card>
-              <H2>{quiz.question}</H2>
-              <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "24px" }}>
-                {(quiz.options ?? []).map((opt: string, i: number) => (
-                  <div key={i} style={{ background: t.surfaceAlt, border: `1px solid ${t.border}`, borderRadius: "10px", padding: "14px 18px", fontFamily: bd, fontSize: "15px", color: t.textSecondary, cursor: "pointer", transition: "border-color 200ms" }}>
-                    <span style={{ fontWeight: 600, marginRight: "10px", color: t.trust }}>{String.fromCharCode(65 + i)}.</span>{opt}
-                  </div>
-                ))}
-              </div>
-              {isValid(quiz.answer) && (
-                <div style={{ background: `${t.trust}11`, border: `1px solid ${t.trust}`, borderRadius: "10px", padding: "16px 18px" }}>
-                  <p style={{ fontFamily: bd, color: t.trust, fontWeight: 600, fontSize: "15px", margin: 0, lineHeight: 1.6 }}>Answer: {quiz.answer}</p>
+        {/* 3. Quiz Section */}
+        {quiz && isValid(quiz.question) && (
+          <section style={{ background: t.surface, borderRadius: "16px", padding: "32px 48px" }}>
+            <h2 style={{ fontFamily: font, fontSize: "28px", fontWeight: 700, marginBottom: "20px" }}>{quiz.question}</h2>
+            <div style={{ ...sectionGap, gap: "12px", marginBottom: "20px" }}>
+              {(quiz.options ?? []).map((opt: string, i: number) => (
+                <div key={i} style={{ background: t.surfaceAlt, border: `1px solid ${t.border}`, borderRadius: "8px", padding: "14px 16px", fontFamily: font, fontSize: "16px", color: t.body, cursor: "pointer" }}>
+                  <span style={{ fontWeight: 600, marginRight: "12px" }}>{String.fromCharCode(65 + i)}.</span>{opt}
                 </div>
-              )}
-            </Card>
-          )}
-
-          {/* 4. Problem Agitation */}
-          {isValid(c.problemAgitation) && (() => { const { heading, body } = splitHeadingBody(c.problemAgitation); return (
-            <section>
-              <H2 center>{heading}</H2>
-              {body.map((p, i) => <P key={i}>{p}</P>)}
-            </section>
-          ); })()}
-
-          {/* 5. Solution Introduction */}
-          {isValid(c.solutionIntro) && (() => { const { heading, body } = splitHeadingBody(c.solutionIntro); return (
-            <Card style={{ background: `linear-gradient(135deg, ${t.gradient1}, ${t.gradient2})`, border: `1px solid ${t.trust}22` }}>
-              <H2 color={t.trust}>{heading}</H2>
-              {body.map((p, i) => <P key={i}>{p}</P>)}
-            </Card>
-          ); })()}
-
-          {/* 6. Why Old Methods Fail */}
-          {isValid(c.whyOldFail) && (() => { const { heading, body } = splitHeadingBody(c.whyOldFail); return (
-            <section>
-              <H2 center color={t.danger}>{heading}</H2>
-              {body.map((p, i) => <P key={i}>{p}</P>)}
-            </section>
-          ); })()}
-
-          {/* 7. Unique Mechanism */}
-          {isValid(c.uniqueMechanism) && (() => { const { heading, body } = splitHeadingBody(c.uniqueMechanism); return (
-            <Card>
-              <H2 color={t.trust}>{heading}</H2>
-              {body.map((p, i) => <P key={i}>{p}</P>)}
-            </Card>
-          ); })()}
-
-          {/* 8. Testimonials */}
-          {testimonials.length > 0 && (
-            <section>
-              <H2 center>What Our Clients Say</H2>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "20px" }}>
-                {testimonials.map((tm: TestimonialItem, i: number) => (
-                  <div key={i} style={{ background: t.surface, border: `1px solid ${t.border}`, borderRadius: "14px", padding: "28px 24px", display: "flex", flexDirection: "column", gap: "12px" }}>
-                    {tm.headline && <p style={{ fontFamily: hd, color: t.trust, fontSize: "20px", fontWeight: 700, margin: 0 }}>{tm.headline}</p>}
-                    {tm.quote && <p style={{ fontFamily: bd, color: t.textSecondary, fontStyle: "normal", fontSize: "15px", fontWeight: 400, lineHeight: 1.7, margin: 0 }}>"{tm.quote}"</p>}
-                    <div style={{ marginTop: "auto" }}>
-                      <p style={{ fontFamily: bd, fontWeight: 600, fontSize: "14px", margin: "0 0 2px", color: t.text }}>{tm.name ?? ""}</p>
-                      <p style={{ fontFamily: bd, fontSize: "13px", color: t.textMuted, margin: 0 }}>{tm.location ?? ""}</p>
-                    </div>
-                  </div>
-                ))}
+              ))}
+            </div>
+            {isValid(quiz.answer) && (
+              <div style={{ background: theme === "dark" ? "rgba(139,92,246,0.1)" : "rgba(124,58,237,0.06)", border: `1px solid ${t.purple}`, borderRadius: "8px", padding: "14px 16px" }}>
+                <p style={{ fontFamily: font, color: t.purple, fontWeight: 600, margin: 0 }}>Answer: {quiz.answer}</p>
               </div>
-            </section>
-          )}
+            )}
+          </section>
+        )}
 
-          {/* 9. Insider Advantages */}
-          {isValid(c.insiderAdvantages) && (() => { const { heading, body } = splitHeadingBody(c.insiderAdvantages); return (
-            <Card style={{ background: `linear-gradient(135deg, ${t.gradient2}, ${t.gradient1})`, border: `1px solid ${t.trust}22` }}>
-              <H2>{heading}</H2>
-              {body.map((p, i) => <P key={i}>{p}</P>)}
-            </Card>
-          ); })()}
+        {/* 4. Problem Agitation */}
+        {(() => { const hb = getHeadingBody(c.problemAgitation); return hb && (
+          <section style={sectionGap}>
+            <h2 style={{ fontFamily: font, fontSize: "36px", fontWeight: 700, textAlign: "center", marginBottom: "8px" }}>{hb.heading}</h2>
+            {hb.body.map((p, i) => <p key={i} style={bodyTextStyle}>{p}</p>)}
+          </section>
+        ); })()}
 
-          {/* 10. Scarcity / Urgency */}
-          {isValid(c.scarcityUrgency) && (() => { const { heading, body } = splitHeadingBody(c.scarcityUrgency); return (
-            <section style={{ border: `2px solid ${t.accent}`, borderRadius: "16px", padding: "36px 32px" }}>
-              <H2 color={t.accent}>{heading}</H2>
-              {body.map((p, i) => <P key={i}>{p}</P>)}
-            </section>
-          ); })()}
+        {/* 5. Solution Introduction */}
+        {(() => { const hb = getHeadingBody(c.solutionIntro); return hb && (
+          <section style={{ background: `linear-gradient(135deg, ${t.purpleGradFrom}, ${t.purpleGradTo})`, borderRadius: "16px", padding: "32px 48px", ...sectionGap }}>
+            <h2 style={{ fontFamily: font, fontSize: "36px", fontWeight: 700 }}>{hb.heading}</h2>
+            {hb.body.map((p, i) => <p key={i} style={bodyTextStyle}>{p}</p>)}
+          </section>
+        ); })()}
 
-          {/* 11. Shocking Stat */}
-          {isValid(c.shockingStat) && (() => {
-            const statText = extractText(c.shockingStat);
-            const bigNumber = statText.match(/\d+%/)?.[0] || "";
-            return (
-              <section style={{ textAlign: "center", padding: "40px 0" }}>
-                {bigNumber && <div style={{ fontFamily: hd, fontSize: "clamp(48px, 8vw, 80px)", fontWeight: 700, color: t.accent, lineHeight: 1, marginBottom: "16px", letterSpacing: "-0.04em" }}>{bigNumber}</div>}
-                <p style={{ fontFamily: bd, fontSize: "17px", color: t.textMuted, maxWidth: "36rem", margin: "0 auto", lineHeight: 1.7, fontWeight: 300 }}>{statText}</p>
-              </section>
-            );
-          })()}
+        {/* 6. Why Old Methods Fail */}
+        {(() => { const hb = getHeadingBody(c.whyOldFail); return hb && (
+          <section style={sectionGap}>
+            <h2 style={{ fontFamily: font, fontSize: "36px", fontWeight: 700, textAlign: "center", color: t.red, marginBottom: "8px" }}>{hb.heading}</h2>
+            {hb.body.map((p, i) => <p key={i} style={bodyTextStyle}>{p}</p>)}
+          </section>
+        ); })()}
 
-          {/* 12. Time-Saving Benefit */}
-          {isValid(c.timeSavingBenefit) && (() => { const { heading, body } = splitHeadingBody(c.timeSavingBenefit); return (
-            <Card>
-              <H2>{heading}</H2>
-              {body.map((p, i) => <P key={i}>{p}</P>)}
-            </Card>
-          ); })()}
+        {/* 7. Unique Mechanism */}
+        {(() => { const hb = getHeadingBody(c.uniqueMechanism); return hb && (
+          <section style={{ background: t.surface, borderRadius: "16px", padding: "32px 48px", ...sectionGap }}>
+            <h2 style={{ fontFamily: font, fontSize: "36px", fontWeight: 700, color: t.purple }}>{hb.heading}</h2>
+            {hb.body.map((p, i) => <p key={i} style={bodyTextStyle}>{p}</p>)}
+          </section>
+        ); })()}
 
-          {/* 13. Consultation Outline */}
-          {outline.length > 0 && (
-            <section>
-              <H2 center>What You'll Get</H2>
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                {outline.map((item: ConsultationItem, i: number) => (
-                  <div key={i} style={{ background: t.surface, border: `1px solid ${t.border}`, borderRadius: "14px", padding: "22px 24px", display: "flex", gap: "18px", alignItems: "flex-start" }}>
-                    <div style={{ flexShrink: 0, width: "36px", height: "36px", background: t.accent, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: bd, fontWeight: 700, fontSize: "14px", color: "#fff" }}>{i + 1}</div>
-                    <div>
-                      <h3 style={{ fontFamily: hd, fontSize: "20px", fontWeight: 700, marginBottom: "6px", color: t.text }}>{item.title ?? ""}</h3>
-                      <p style={{ fontFamily: bd, color: t.textSecondary, margin: 0, lineHeight: 1.65, fontSize: "15px" }}>{item.description ?? ""}</p>
-                    </div>
+        {/* 8. Testimonials */}
+        {testimonials.length > 0 && (
+          <section>
+            <h2 style={{ fontFamily: font, fontSize: "36px", fontWeight: 700, textAlign: "center", marginBottom: "32px" }}>What Our Clients Say</h2>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "20px" }}>
+              {testimonials.map((tm: TestimonialItem, i: number) => (
+                <div key={i} style={{ background: t.surface, border: `1px solid ${t.border}`, borderRadius: "12px", padding: "24px", display: "flex", flexDirection: "column", gap: "12px" }}>
+                  {tm.headline && <h3 style={{ fontFamily: font, color: t.purple, fontSize: "20px", fontWeight: 700, margin: 0 }}>{tm.headline}</h3>}
+                  {tm.quote && <p style={{ fontFamily: font, color: t.body, fontStyle: "italic", fontSize: "16px", lineHeight: 1.65, margin: 0 }}>"{tm.quote}"</p>}
+                  <div style={{ marginTop: "auto" }}>
+                    <p style={{ fontFamily: font, fontWeight: 600, fontSize: "14px", margin: "0 0 2px", color: t.text }}>{tm.name ?? ""}</p>
+                    <p style={{ fontFamily: font, fontSize: "14px", color: t.muted, margin: 0 }}>{tm.location ?? ""}</p>
                   </div>
-                ))}
-              </div>
-            </section>
-          )}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
-          {/* Final CTA */}
-          {isValid(c.primaryCta) && (
-            <section style={{ textAlign: "center", padding: "48px 0 16px" }}>
-              <h2 style={{ fontFamily: hd, fontSize: "clamp(28px, 4vw, 40px)", fontWeight: 700, letterSpacing: "-0.02em", color: t.text, marginBottom: "24px" }}>Ready to Transform Your Results?</h2>
-              <button style={{ fontFamily: bd, background: t.accent, color: "#fff", border: "none", borderRadius: "8px", padding: "18px 56px", fontSize: "17px", fontWeight: 600, cursor: "pointer", letterSpacing: "0.02em", transition: "background 200ms" }}>{c.primaryCta}</button>
+        {/* 9. Insider Advantages */}
+        {(() => { const hb = getHeadingBody(c.insiderAdvantages); return hb && (
+          <section style={{ background: `linear-gradient(135deg, ${t.greenGradFrom}, ${t.blueGradTo})`, borderRadius: "16px", padding: "32px 48px", ...sectionGap }}>
+            <h2 style={{ fontFamily: font, fontSize: "36px", fontWeight: 700 }}>{hb.heading}</h2>
+            {hb.body.map((p, i) => <p key={i} style={bodyTextStyle}>{p}</p>)}
+          </section>
+        ); })()}
+
+        {/* 10. Scarcity / Urgency */}
+        {(() => { const hb = getHeadingBody(c.scarcityUrgency); return hb && (
+          <section style={{ border: `2px solid ${t.red}`, borderRadius: "16px", padding: "32px 48px", ...sectionGap }}>
+            <h2 style={{ fontFamily: font, fontSize: "36px", fontWeight: 700, color: t.red }}>{hb.heading}</h2>
+            {hb.body.map((p, i) => <p key={i} style={bodyTextStyle}>{p}</p>)}
+          </section>
+        ); })()}
+
+        {/* 11. Shocking Statistic */}
+        {isValid(c.shockingStat) && (() => {
+          const statText = extractText(c.shockingStat);
+          const bigNumber = statText.match(/\d+%/)?.[0] || "";
+          return (
+            <section style={{ textAlign: "center", padding: "32px 0" }}>
+              {bigNumber && <div style={{ fontFamily: font, fontSize: "clamp(48px, 8vw, 72px)", fontWeight: 700, color: t.red, marginBottom: "12px" }}>{bigNumber}</div>}
+              <p style={{ fontFamily: font, fontSize: "20px", color: t.body, maxWidth: "40rem", margin: "0 auto", lineHeight: 1.7, fontWeight: 400 }}>{statText}</p>
             </section>
-          )}
-        </div>
+          );
+        })()}
+
+        {/* 12. Time-Saving Benefit */}
+        {(() => { const hb = getHeadingBody(c.timeSavingBenefit); return hb && (
+          <section style={{ background: t.surface, borderRadius: "16px", padding: "32px 48px", ...sectionGap }}>
+            <h2 style={{ fontFamily: font, fontSize: "36px", fontWeight: 700 }}>{hb.heading}</h2>
+            {hb.body.map((p, i) => <p key={i} style={bodyTextStyle}>{p}</p>)}
+          </section>
+        ); })()}
+
+        {/* 13. Consultation Outline */}
+        {outline.length > 0 && (
+          <section>
+            <h2 style={{ fontFamily: font, fontSize: "36px", fontWeight: 700, textAlign: "center", marginBottom: "32px" }}>What You'll Get in Your FREE Consultation</h2>
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              {outline.map((item: ConsultationItem, i: number) => (
+                <div key={i} style={{ background: t.surface, border: `1px solid ${t.border}`, borderRadius: "10px", padding: "20px 24px", display: "flex", gap: "16px", alignItems: "flex-start" }}>
+                  <div style={{ flexShrink: 0, width: "32px", height: "32px", background: t.purple, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: font, fontWeight: 700, fontSize: "14px", color: "#fff" }}>{i + 1}</div>
+                  <div>
+                    <h3 style={{ fontFamily: font, fontSize: "20px", fontWeight: 700, marginBottom: "6px", color: t.text }}>{item.title ?? ""}</h3>
+                    <p style={{ fontFamily: font, color: t.body, margin: 0, lineHeight: 1.65, fontSize: "16px", fontWeight: 400 }}>{item.description ?? ""}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Final CTA */}
+        {isValid(c.primaryCta) && (
+          <section style={{ textAlign: "center", padding: "32px 0" }}>
+            <h2 style={{ fontFamily: font, fontSize: "36px", fontWeight: 700, marginBottom: "24px" }}>Ready to Get Started?</h2>
+            <button style={{ fontFamily: font, background: t.purple, color: "#fff", border: "none", borderRadius: "8px", padding: "16px 48px", fontSize: "20px", fontWeight: 600, cursor: "pointer" }}>{c.primaryCta}</button>
+          </section>
+        )}
       </div>
-    </>
+    </div>
   );
 }
 
