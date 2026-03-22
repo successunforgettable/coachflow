@@ -1967,12 +1967,16 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
 
           {/* ── Try Again / Generate Again button after concerned/success ── */}
           {(status === "success" || status === "concerned") && (
-            <button
-              onClick={() => { setStatus("idle"); }}
-              style={secondaryBtnStyle}
-            >
-              ↺ Generate Again
-            </button>
+            isFreeTier && status === "success" ? (
+              <UpgradePrompt variant="inline" featureName="Generate Again" />
+            ) : (
+              <button
+                onClick={() => { setStatus("idle"); }}
+                style={secondaryBtnStyle}
+              >
+                ↺ Generate Again
+              </button>
+            )
           )}
 
           {/* ── Back to idle after error states (secondary option) ── */}
