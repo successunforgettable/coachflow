@@ -447,7 +447,7 @@ export default function V2VideoCreator({ isFreeTier }: { isFreeTier?: boolean } 
         fontFamily: T.fontBody,
       }}
     >
-      {/* Back link */}
+      {/* Back link — always visible regardless of tier */}
       <Link
         href="/v2-dashboard?tab=tools"
         style={{
