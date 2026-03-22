@@ -376,7 +376,7 @@ export default function V2Dashboard() {
     setShowModal(false);
     setForkDismissed(true);
     localStorage.setItem("v2_fork_dismissed", "true");
-    navigate("/dashboard");
+    setActiveTab("tools");
   }
 
   function handleTabTools() {
@@ -702,8 +702,9 @@ export default function V2Dashboard() {
               border: "none",
               cursor: "pointer",
               transition: "all 0.18s ease",
-              background: "transparent",
-              color: "rgba(26,22,36,0.50)",
+              background: activeTab === "tools" ? "#fff" : "transparent",
+              color: activeTab === "tools" ? "var(--v2-text-color)" : "rgba(26,22,36,0.50)",
+              boxShadow: activeTab === "tools" ? "0 1px 6px rgba(26,22,36,0.10)" : "none",
             }}
           >
             Tool Library
@@ -763,7 +764,7 @@ export default function V2Dashboard() {
             </button>
             <button
               className="v2-btn v2-btn-secondary"
-              onClick={() => navigate("/dashboard")}
+              onClick={() => setActiveTab("tools")}
             >
               Use a Generator
             </button>
