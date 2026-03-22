@@ -903,79 +903,151 @@ export default function V2LandingPageResultPanel({
         </div>
       </div>
 
-      {/* ── Style toggle ── */}
-      <div style={{ display: "flex", gap: "4px", marginBottom: "16px", background: "rgba(26,22,36,0.07)", borderRadius: "9999px", padding: "4px", width: "fit-content" }}>
-        <button
-          onClick={() => setStyleMode("text")}
-          style={{
-            borderRadius: "9999px", padding: "8px 18px", fontFamily: "var(--v2-font-body)", fontWeight: 600, fontSize: "13px", border: "none", cursor: "pointer",
-            background: styleMode === "text" ? "#fff" : "transparent",
-            color: styleMode === "text" ? "#1A1624" : "rgba(26,22,36,0.50)",
-            boxShadow: styleMode === "text" ? "0 1px 6px rgba(26,22,36,0.10)" : "none",
-            transition: "all 0.18s",
-          }}
-        >
-          📝 Text Style
-        </button>
-        <button
-          onClick={() => setStyleMode("visual")}
-          style={{
-            borderRadius: "9999px", padding: "8px 18px", fontFamily: "var(--v2-font-body)", fontWeight: 600, fontSize: "13px", border: "none", cursor: "pointer",
-            background: styleMode === "visual" ? "#fff" : "transparent",
-            color: styleMode === "visual" ? "#1A1624" : "rgba(26,22,36,0.50)",
-            boxShadow: styleMode === "visual" ? "0 1px 6px rgba(26,22,36,0.10)" : "none",
-            transition: "all 0.18s",
-          }}
-        >
-          🖼 Visual Style
-        </button>
-      </div>
-
-      {/* ── Asset upload panel (Visual Style) ── */}
-      {styleMode === "visual" && (
+      {/* ── Style toggle / Visual Style lock ── */}
+      {isFreeTier ? (
         <>
-          <AssetUploadPanel assets={coachAssets} onUpdate={setCoachAssets} />
-          <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
-            <button
-              onClick={() => {
-                if (!coachAssets.headshot) { toast.error("Upload a coach photo first"); return; }
-                setViewMode("preview");
-              }}
+          {/* Locked Visual Style card for trial users */}
+          <div style={{
+            background: "#fff",
+            borderRadius: "var(--v2-border-radius-card)",
+            padding: "24px",
+            marginBottom: "16px",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            textAlign: "center",
+            gap: "12px",
+          }}>
+            <span style={{ fontSize: "28px" }}>🔒</span>
+            <h4 style={{
+              fontFamily: "var(--v2-font-heading)",
+              fontStyle: "italic",
+              fontWeight: 900,
+              fontSize: "18px",
+              color: "var(--v2-text-color)",
+              margin: 0,
+            }}>
+              Visual Styles (Pro)
+            </h4>
+            <p style={{
+              fontFamily: "var(--v2-font-body)",
+              fontSize: "14px",
+              color: "var(--v2-text-color)",
+              opacity: 0.6,
+              margin: 0,
+            }}>
+              Upgrade to Pro to unlock visual styles.
+            </p>
+            <a
+              href="/pricing?utm_source=app&utm_medium=quota_gate&utm_campaign=visual-styles"
               style={{
-                background: coachAssets.headshot ? "#FF5B1D" : "rgba(26,22,36,0.15)",
-                color: coachAssets.headshot ? "#fff" : "#999",
+                display: "inline-block",
+                background: "var(--v2-primary-btn)",
+                color: "#fff",
                 border: "none",
-                borderRadius: "9999px",
-                padding: "10px 24px",
+                borderRadius: "var(--v2-border-radius-pill)",
+                padding: "10px 28px",
                 fontFamily: "var(--v2-font-body)",
                 fontWeight: 700,
                 fontSize: "14px",
-                cursor: coachAssets.headshot ? "pointer" : "not-allowed",
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
+                textDecoration: "none",
+                cursor: "pointer",
               }}
             >
-              🖼 Preview Visual Page
+              Upgrade to Pro
+            </a>
+          </div>
+          {/* Text preview button for trial */}
+          <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
+            <button
+              onClick={() => setViewMode("preview")}
+              style={{
+                background: "#1A1624", color: "#F5F1EA", border: "none", borderRadius: "9999px",
+                padding: "9px 22px", fontFamily: "var(--v2-font-body)", fontWeight: 700, fontSize: "13px",
+                cursor: "pointer", letterSpacing: "0.01em", display: "flex", alignItems: "center", gap: "6px",
+              }}
+            >
+              Open Preview
             </button>
           </div>
         </>
-      )}
+      ) : (
+        <>
+          {/* Style toggle for Pro/Agency */}
+          <div style={{ display: "flex", gap: "4px", marginBottom: "16px", background: "rgba(26,22,36,0.07)", borderRadius: "9999px", padding: "4px", width: "fit-content" }}>
+            <button
+              onClick={() => setStyleMode("text")}
+              style={{
+                borderRadius: "9999px", padding: "8px 18px", fontFamily: "var(--v2-font-body)", fontWeight: 600, fontSize: "13px", border: "none", cursor: "pointer",
+                background: styleMode === "text" ? "#fff" : "transparent",
+                color: styleMode === "text" ? "#1A1624" : "rgba(26,22,36,0.50)",
+                boxShadow: styleMode === "text" ? "0 1px 6px rgba(26,22,36,0.10)" : "none",
+                transition: "all 0.18s",
+              }}
+            >
+              📝 Text Style
+            </button>
+            <button
+              onClick={() => setStyleMode("visual")}
+              style={{
+                borderRadius: "9999px", padding: "8px 18px", fontFamily: "var(--v2-font-body)", fontWeight: 600, fontSize: "13px", border: "none", cursor: "pointer",
+                background: styleMode === "visual" ? "#fff" : "transparent",
+                color: styleMode === "visual" ? "#1A1624" : "rgba(26,22,36,0.50)",
+                boxShadow: styleMode === "visual" ? "0 1px 6px rgba(26,22,36,0.10)" : "none",
+                transition: "all 0.18s",
+              }}
+            >
+              🖼 Visual Style
+            </button>
+          </div>
 
-      {/* ── Open Preview (Text Style) ── */}
-      {styleMode === "text" && (
-        <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
-          <button
-            onClick={() => setViewMode("preview")}
-            style={{
-              background: "#1A1624", color: "#F5F1EA", border: "none", borderRadius: "9999px",
-              padding: "9px 22px", fontFamily: "var(--v2-font-body)", fontWeight: 700, fontSize: "13px",
-              cursor: "pointer", letterSpacing: "0.01em", display: "flex", alignItems: "center", gap: "6px",
-            }}
-          >
-            Open Preview
-          </button>
-        </div>
+          {/* Asset upload panel (Visual Style) */}
+          {styleMode === "visual" && (
+            <>
+              <AssetUploadPanel assets={coachAssets} onUpdate={setCoachAssets} />
+              <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
+                <button
+                  onClick={() => {
+                    if (!coachAssets.headshot) { toast.error("Upload a coach photo first"); return; }
+                    setViewMode("preview");
+                  }}
+                  style={{
+                    background: coachAssets.headshot ? "#FF5B1D" : "rgba(26,22,36,0.15)",
+                    color: coachAssets.headshot ? "#fff" : "#999",
+                    border: "none",
+                    borderRadius: "9999px",
+                    padding: "10px 24px",
+                    fontFamily: "var(--v2-font-body)",
+                    fontWeight: 700,
+                    fontSize: "14px",
+                    cursor: coachAssets.headshot ? "pointer" : "not-allowed",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                  }}
+                >
+                  🖼 Preview Visual Page
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* Open Preview (Text Style) */}
+          {styleMode === "text" && (
+            <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
+              <button
+                onClick={() => setViewMode("preview")}
+                style={{
+                  background: "#1A1624", color: "#F5F1EA", border: "none", borderRadius: "9999px",
+                  padding: "9px 22px", fontFamily: "var(--v2-font-body)", fontWeight: 700, fontSize: "13px",
+                  cursor: "pointer", letterSpacing: "0.01em", display: "flex", alignItems: "center", gap: "6px",
+                }}
+              >
+                Open Preview
+              </button>
+            </div>
+          )}
+        </>
       )}
 
       {/* ── Angle tabs ── */}
