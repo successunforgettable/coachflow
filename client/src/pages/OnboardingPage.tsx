@@ -24,17 +24,17 @@ export default function OnboardingPage() {
   // Redirect already-completed users
   useEffect(() => {
     if (onboardingStatus?.completed) {
-      setLocation("/dashboard");
+      setLocation("/v2-dashboard");
     }
   }, [onboardingStatus, setLocation]);
 
   function handleFlowComplete() {
-    setLocation("/dashboard");
+    setLocation("/v2-dashboard");
   }
 
   function handleLegacyClose() {
     setIsLegacyOpen(false);
-    setLocation("/dashboard");
+    setLocation("/v2-dashboard");
   }
 
   // Show loading spinner until status is known
