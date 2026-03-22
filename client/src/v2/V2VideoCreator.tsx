@@ -355,6 +355,7 @@ export default function V2VideoCreator({ isFreeTier }: { isFreeTier?: boolean } 
 
   // ── Step 2 handler: confirm ───────────────────────────────────────────────────
   function handleRenderConfirm() {
+    if (isFreeTier) return; // Hard guard — trial users cannot enter render pipeline
     setStep2Status("confirming");
   }
 
@@ -364,6 +365,7 @@ export default function V2VideoCreator({ isFreeTier }: { isFreeTier?: boolean } 
 
   // ── Step 2 handler: render ────────────────────────────────────────────────────
   async function handleRender() {
+    if (isFreeTier) return; // Hard guard — trial users cannot render
     if (!scriptResult?.scriptId) return;
     setStep2Status("rendering");
     setStep2Elapsed(0);
@@ -446,7 +448,23 @@ export default function V2VideoCreator({ isFreeTier }: { isFreeTier?: boolean } 
         fontFamily: T.fontBody,
       }}
     >
-      {/* Back navigation handled by parent V2ToolLibrary — matches V2AdImageCreator pattern */}
+      {/* Back link */}
+      <a
+        href="/v2-dashboard?tab=tools"
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: "6px",
+          fontFamily: T.fontBody,
+          fontSize: "13px",
+          fontWeight: 700,
+          color: "#888",
+          textDecoration: "none",
+          marginBottom: "16px",
+        }}
+      >
+        ← Back to Tool Library
+      </a>
 
       {/* Heading */}
       <h1
