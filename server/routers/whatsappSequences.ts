@@ -12,6 +12,7 @@ import { invokeLLM } from "../_core/llm";
 import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
+import { enforceQuota, incrementQuotaCount } from "../lib/quotaEnforcement";
 
 const generateWhatsAppSequenceSchema = z.object({
   serviceId: z.number(),
@@ -96,6 +97,8 @@ export const whatsappSequencesRouter = router({
   generate: protectedProcedure
     .input(generateWhatsAppSequenceSchema)
     .mutation(async ({ ctx, input }) => {
+      await enforceQuota(ctx.user.id, "whatsapp");
+
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -356,6 +359,8 @@ Return as a JSON object with a 'messages' key containing the array.`;
         messages: sequenceData.messages,
       });
 
+      await incrementQuotaCount(ctx.user.id, "whatsapp");
+
       // Fetch the created sequence
       const [newSequence] = await db
         .select()
@@ -374,6 +379,7 @@ Return as a JSON object with a 'messages' key containing the array.`;
     .input(generateWhatsAppSequenceSchema)
     .mutation(async ({ ctx, input }) => {
       const { user } = ctx;
+      await enforceQuota(user.id, "whatsapp");
       await checkAndResetQuotaIfNeeded(user.id);
       if (user.role !== "superuser") {
         const limit = getQuotaLimit(user.subscriptionTier, "whatsapp");
@@ -435,6 +441,7 @@ Return as a JSON object with a 'messages' key containing the array.`;
           sequenceData.messages = sequenceData.messages.map((msg: any, idx: number) => ({ text: msg.message || msg.text || `Message ${idx + 1}: Check this out`, delay: msg.delay || (idx * 24), delayUnit: msg.delayUnit || 'hours', mediaUrl: msg.mediaUrl || null, mediaType: msg.mediaType || null }));
 
           const insertResult: any = await bgDb.insert(whatsappSequences).values({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, sequenceType: capturedInput.sequenceType, name: capturedInput.name, messages: sequenceData.messages });
+          await incrementQuotaCount(capturedUserId, "whatsapp");
           const [newSequence] = await bgDb.select().from(whatsappSequences).where(eq(whatsappSequences.id, insertResult[0].insertId)).limit(1);
 
           await bgDb.update(jobs)
@@ -501,6 +508,8 @@ Return as a JSON object with a 'messages' key containing the array.`;
   regenerateSingle: protectedProcedure
     .input(z.object({ id: z.number(), index: z.number(), promptOverride: z.string().optional() }))
     .mutation(async ({ ctx, input }) => {
+      await enforceQuota(ctx.user.id, "whatsapp");
+
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 

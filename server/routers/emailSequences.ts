@@ -12,6 +12,7 @@ import { invokeLLM } from "../_core/llm";
 import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
+import { enforceQuota, incrementQuotaCount } from "../lib/quotaEnforcement";
 
 const generateEmailSequenceSchema = z.object({
   serviceId: z.number(),
@@ -97,6 +98,8 @@ export const emailSequencesRouter = router({
   generate: protectedProcedure
     .input(generateEmailSequenceSchema)
     .mutation(async ({ ctx, input }) => {
+      await enforceQuota(ctx.user.id, "email");
+
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -393,6 +396,8 @@ Return as a JSON object with an 'emails' key containing the array.`;
         emails: sequenceData.emails,
       });
 
+      await incrementQuotaCount(ctx.user.id, "email");
+
       // Fetch the created sequence
       const [newSequence] = await db
         .select()
@@ -411,6 +416,7 @@ Return as a JSON object with an 'emails' key containing the array.`;
     .input(generateEmailSequenceSchema)
     .mutation(async ({ ctx, input }) => {
       const { user } = ctx;
+      await enforceQuota(user.id, "email");
       await checkAndResetQuotaIfNeeded(user.id);
       if (user.role !== "superuser") {
         const limit = getQuotaLimit(user.subscriptionTier, "email");
@@ -474,6 +480,7 @@ Return as a JSON object with an 'emails' key containing the array.`;
           sequenceData.emails = sequenceData.emails.map((email: any, idx: number) => ({ subject: email.subject || `Email ${idx + 1}: Check this out`, body: email.body || `This is email ${idx + 1}. Click the link to learn more.`, delay: email.delay || (idx * 24), delayUnit: email.delayUnit || 'hours', cta: email.cta || 'Learn More', ctaLink: email.ctaLink || '#' }));
 
           const insertResult: any = await bgDb.insert(emailSequences).values({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, sequenceType: capturedInput.sequenceType, name: capturedInput.name, emails: sequenceData.emails });
+          await incrementQuotaCount(capturedUserId, "email");
           const [newSequence] = await bgDb.select().from(emailSequences).where(eq(emailSequences.id, insertResult[0].insertId)).limit(1);
 
           await bgDb.update(jobs)
@@ -540,6 +547,8 @@ Return as a JSON object with an 'emails' key containing the array.`;
   regenerateSingle: protectedProcedure
     .input(z.object({ id: z.number(), index: z.number(), promptOverride: z.string().optional() }))
     .mutation(async ({ ctx, input }) => {
+      await enforceQuota(ctx.user.id, "email");
+
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 

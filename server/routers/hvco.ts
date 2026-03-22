@@ -18,6 +18,7 @@ import { nanoid } from "nanoid";
 import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
+import { enforceQuota, incrementQuotaCount } from "../lib/quotaEnforcement";
 
 /**
  * Strip markdown code blocks from LLM JSON responses
@@ -56,8 +57,9 @@ export const hvcoRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const { user } = ctx;
+      await enforceQuota(ctx.user.id, "hvco");
       const countMultiplier = input.powerMode ? 3 : 1; // Power Mode generates 3x more
-      
+
       // Check and reset quota if user's anniversary date has passed
       await checkAndResetQuotaIfNeeded(user.id);
       
@@ -338,6 +340,7 @@ Return ONLY a JSON array of 20 subheadline strings, nothing else.`;
       // Save all titles to database
       await createHvcoTitles(allTitles);
       await incrementHvcoCount(user.id);
+      await incrementQuotaCount(ctx.user.id, "hvco");
 
       return { hvcoSetId };
     }),
@@ -356,6 +359,7 @@ Return ONLY a JSON array of 20 subheadline strings, nothing else.`;
     }))
     .mutation(async ({ ctx, input }) => {
       const { user } = ctx;
+      await enforceQuota(ctx.user.id, "hvco");
       await checkAndResetQuotaIfNeeded(user.id);
       if (user.role !== "superuser") {
         const limit = getQuotaLimit(user.subscriptionTier, "hvco");
@@ -441,6 +445,7 @@ Return ONLY a JSON array of 20 subheadline strings, nothing else.`;
 
           await createHvcoTitles(allTitles);
           await incrementHvcoCount(capturedUserId);
+          await incrementQuotaCount(capturedUserId, "hvco");
 
           await bgDb.update(jobs)
             .set({ status: "complete", result: JSON.stringify({ hvcoSetId }) })
@@ -510,6 +515,8 @@ Return ONLY a JSON array of 20 subheadline strings, nothing else.`;
   regenerateSingle: protectedProcedure
     .input(z.object({ id: z.number(), promptOverride: z.string().optional() }))
     .mutation(async ({ ctx, input }) => {
+      await enforceQuota(ctx.user.id, "hvco");
+
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 

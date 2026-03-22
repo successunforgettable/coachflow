@@ -10,6 +10,7 @@ function stripMarkdownJson(content: string): string {
 import { eq, and, desc } from "drizzle-orm";
 import { invokeLLM } from "../_core/llm";
 import { filterRecord, getGlobalNegativePrompts } from "../lib/complianceFilter";
+import { enforceQuota, incrementQuotaCount } from "../lib/quotaEnforcement";
 import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
@@ -99,6 +100,8 @@ export const icpsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
+
+      await enforceQuota(ctx.user.id, "icp");
 
       // Check and reset quota if user's anniversary date has passed
       await checkAndResetQuotaIfNeeded(ctx.user.id);
@@ -315,6 +318,8 @@ Format as JSON with these exact keys (use bullet points • for lists):
         .where(eq(idealCustomerProfiles.id, insertResult[0].insertId))
         .limit(1);
 
+      await incrementQuotaCount(ctx.user.id, "icp");
+
       return newICP;
     }),
 
@@ -327,6 +332,7 @@ Format as JSON with these exact keys (use bullet points • for lists):
     .input(generateICPSchema)
     .mutation(async ({ ctx, input }) => {
       const { user } = ctx;
+      await enforceQuota(ctx.user.id, "icp");
       await checkAndResetQuotaIfNeeded(user.id);
       if (user.role !== "superuser") {
         const limit = getQuotaLimit(user.subscriptionTier, "icp");
@@ -404,6 +410,8 @@ Format as JSON with these exact keys (use bullet points • for lists):
           const [newICP] = await bgDb.select().from(idealCustomerProfiles)
             .where(eq(idealCustomerProfiles.id, insertResult[0].insertId)).limit(1);
 
+          await incrementQuotaCount(capturedUserId, "icp");
+
           await bgDb.update(jobs)
             .set({ status: "complete", result: JSON.stringify({ icpId: newICP?.id }) })
             .where(eq(jobs.id, jobId));
@@ -474,6 +482,8 @@ Format as JSON with these exact keys (use bullet points • for lists):
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
+
+      await enforceQuota(ctx.user.id, "icp");
 
       const [row] = await db
         .select()

@@ -18,6 +18,7 @@ import { randomUUID } from "crypto";
 import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
+import { enforceQuota, incrementQuotaCount } from "../lib/quotaEnforcement";
 
 // Helper to strip markdown code blocks from JSON responses
 function stripMarkdownJson(content: string): string {
@@ -68,7 +69,8 @@ export const heroMechanismsRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const { user } = ctx;
-      
+      await enforceQuota(ctx.user.id, "heroMechanisms");
+
       // Check and reset quota if user's anniversary date has passed
       await checkAndResetQuotaIfNeeded(ctx.user.id);
 
@@ -343,6 +345,7 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
       // Save all mechanisms to database
       await createHeroMechanisms(allMechanisms);
       await incrementHeroMechanismCount(user.id);
+      await incrementQuotaCount(ctx.user.id, "heroMechanisms");
 
       return { mechanismSetId };
     }),
@@ -398,6 +401,8 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
   regenerateSingle: protectedProcedure
     .input(z.object({ id: z.number(), promptOverride: z.string().optional() }))
     .mutation(async ({ ctx, input }) => {
+      await enforceQuota(ctx.user.id, "heroMechanisms");
+
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -479,6 +484,7 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
     )
     .mutation(async ({ ctx, input }) => {
       const { user } = ctx;
+      await enforceQuota(ctx.user.id, "heroMechanisms");
 
       // Quota check (same as generate)
       await checkAndResetQuotaIfNeeded(ctx.user.id);
@@ -619,6 +625,7 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
           // Save all mechanisms and increment quota
           await createHeroMechanisms(allMechanisms);
           await incrementHeroMechanismCount(capturedUserId);
+          await incrementQuotaCount(capturedUserId, "heroMechanisms");
 
           // Mark job complete
           await bgDb.update(jobs)

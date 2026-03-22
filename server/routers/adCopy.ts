@@ -6,6 +6,7 @@ import { adCopy, services, campaigns, idealCustomerProfiles, sourceOfTruth, jobs
 import { eq, and, desc } from "drizzle-orm";
 import { invokeLLM } from "../_core/llm";
 import { nanoid } from "nanoid";
+import { enforceQuota, incrementQuotaCount } from "../lib/quotaEnforcement";
 import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
@@ -204,6 +205,8 @@ export const adCopyRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
+
+      await enforceQuota(ctx.user.id, "adCopy");
 
       // Check and reset quota if user's anniversary date has passed
       await checkAndResetQuotaIfNeeded(ctx.user.id);
@@ -645,6 +648,8 @@ Format as JSON array:
 
       await db.insert(adCopy).values(allInserts);
 
+      await incrementQuotaCount(ctx.user.id, "adCopy");
+
       return {
         adSetId,
         count: allInserts.length,
@@ -662,6 +667,7 @@ Format as JSON array:
     .input(generateAdCopySchema)
     .mutation(async ({ ctx, input }) => {
       const { user } = ctx;
+      await enforceQuota(ctx.user.id, "adCopy");
       await checkAndResetQuotaIfNeeded(user.id);
       if (user.role !== "superuser") {
         const limit = getQuotaLimit(user.subscriptionTier, "adCopy");
@@ -760,6 +766,8 @@ Format as JSON array:
           }
 
           await bgDb.insert(adCopy).values(allInserts);
+
+          await incrementQuotaCount(capturedUserId, "adCopy");
 
           await bgDb.update(jobs)
             .set({ status: "complete", result: JSON.stringify({ adSetId, count: allInserts.length, headlineCount: headlineData.headlines.length, bodyCount: bodyData.bodies.length, linkCount: linkData.links.length }) })
@@ -896,6 +904,8 @@ Format as JSON array:
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
+
+      await enforceQuota(ctx.user.id, "adCopy");
 
       // Fetch existing row + verify ownership
       const [existing] = await db

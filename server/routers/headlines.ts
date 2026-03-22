@@ -16,6 +16,7 @@ import { headlines, jobs } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
+import { enforceQuota, incrementQuotaCount } from "../lib/quotaEnforcement";
 import { checkCompliance } from "../lib/complianceChecker";
 
 // Helper to strip markdown code blocks from LLM responses
@@ -203,6 +204,8 @@ export const headlinesRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      await enforceQuota(ctx.user.id, "headlines");
+
       // Fetch service data for AutoPop if serviceId provided
       // NOTE: pre-existing issue — this fetch does not check userId (flagged for future security pass, not fixed in 1.2)
       let autoPopData: any = {};
@@ -418,6 +421,7 @@ export const headlinesRouter = router({
       // Save all headlines with compliance data
       await createHeadlines(headlinesWithCompliance);
       await incrementHeadlineCount(ctx.user.id);
+      await incrementQuotaCount(ctx.user.id, "headlines");
 
       return {
         headlineSetId,
@@ -441,6 +445,7 @@ export const headlinesRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       const { user } = ctx;
+      await enforceQuota(ctx.user.id, "headlines");
       await checkAndResetQuotaIfNeeded(user.id);
       if (user.role !== "superuser") {
         const maxHeadlines = user.subscriptionTier === "agency" ? 20 : 6;
@@ -534,6 +539,7 @@ export const headlinesRouter = router({
 
           await createHeadlines(headlinesWithCompliance);
           await incrementHeadlineCount(capturedUserId);
+          await incrementQuotaCount(capturedUserId, "headlines");
 
           await bgDb.update(jobs)
             .set({ status: "complete", result: JSON.stringify({ headlineSetId, count: allHeadlines.length }) })
@@ -568,6 +574,8 @@ export const headlinesRouter = router({
   regenerateSingle: protectedProcedure
     .input(z.object({ id: z.number(), promptOverride: z.string().optional() }))
     .mutation(async ({ ctx, input }) => {
+      await enforceQuota(ctx.user.id, "headlines");
+
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 

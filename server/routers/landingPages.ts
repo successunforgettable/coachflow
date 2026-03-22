@@ -9,6 +9,7 @@ import { landingPages, services, users, campaigns, idealCustomerProfiles, source
 import { eq, and, desc } from "drizzle-orm";
 import { generateAllAngles } from "../landingPageGenerator";
 import { invokeLLM } from "../_core/llm";
+import { enforceQuota, incrementQuotaCount } from "../lib/quotaEnforcement";
 
 function stripMarkdownJson(content: string): string {
   return content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
@@ -98,6 +99,8 @@ export const landingPagesRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
+
+      await enforceQuota(ctx.user.id, "landingPages");
 
       // Check and reset quota if user's anniversary date has passed
       await checkAndResetQuotaIfNeeded(ctx.user.id);
@@ -303,6 +306,8 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
         })
         .where(eq(users.id, ctx.user.id));
 
+      await incrementQuotaCount(ctx.user.id, "landingPages");
+
       // Fetch the created landing page
       const [newPage] = await db
         .select()
@@ -322,6 +327,7 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
+      await enforceQuota(ctx.user.id, "landingPages");
       await checkAndResetQuotaIfNeeded(ctx.user.id);
       const [user] = await db.select().from(users).where(eq(users.id, ctx.user.id)).limit(1);
       if (!user) throw new Error("User not found");
@@ -395,6 +401,7 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
 
           const insertResult: any = await bgDb.insert(landingPages).values({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, productName: capturedService.name, productDescription: capturedService.description || "", avatarName, avatarDescription, originalAngle: allAngles.original, godfatherAngle: allAngles.godfather, freeAngle: allAngles.free, dollarAngle: allAngles.dollar, activeAngle: "original", rating: 0 });
           await bgDb.update(users).set({ landingPageGeneratedCount: capturedUser.landingPageGeneratedCount + 1 }).where(eq(users.id, capturedUserId));
+          await incrementQuotaCount(capturedUserId, "landingPages");
           const [newPage] = await bgDb.select().from(landingPages).where(eq(landingPages.id, insertResult[0].insertId)).limit(1);
 
           await bgDb.update(jobs)
@@ -545,6 +552,8 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
+
+      await enforceQuota(ctx.user.id, "landingPages");
 
       const [row] = await db
         .select()

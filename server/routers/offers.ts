@@ -7,6 +7,7 @@ import { eq, and, desc } from "drizzle-orm";
 import { generateAllOfferAngles } from "../offersGenerator";
 import { invokeLLM } from "../_core/llm";
 import { getQuotaLimit } from "../quotaLimits";
+import { enforceQuota, incrementQuotaCount } from "../lib/quotaEnforcement";
 
 function stripMarkdownJson(content: string): string {
   return content.replace(/^```json\s*|^```\s*|\s*```$/gm, '').trim();
@@ -86,6 +87,7 @@ export const offersRouter = router({
   generate: protectedProcedure
     .input(generateOfferSchema)
     .mutation(async ({ ctx, input }) => {
+      await enforceQuota(ctx.user.id, "offers");
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -198,6 +200,8 @@ export const offersRouter = router({
         rating: 0,
       });
 
+      await incrementQuotaCount(ctx.user.id, "offers");
+
       // Fetch the created offer
       const [newOffer] = await db
         .select()
@@ -216,6 +220,7 @@ export const offersRouter = router({
     .input(generateOfferSchema)
     .mutation(async ({ ctx, input }) => {
       const { user } = ctx;
+      await enforceQuota(ctx.user.id, "offers");
       await checkAndResetQuotaIfNeeded(user.id);
       if (user.role !== "superuser") {
         const limit = getQuotaLimit(user.subscriptionTier, "offers");
@@ -306,6 +311,8 @@ export const offersRouter = router({
             activeAngle: "godfather",
             rating: 0,
           });
+
+          await incrementQuotaCount(capturedUserId, "offers");
 
           await bgDb.update(jobs)
             .set({ status: "complete", result: JSON.stringify({ offerId: insertResult[0].insertId }) })
@@ -409,6 +416,7 @@ export const offersRouter = router({
       promptOverride: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
+      await enforceQuota(ctx.user.id, "offers");
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
