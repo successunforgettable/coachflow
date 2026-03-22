@@ -16,6 +16,8 @@ import { useState } from "react";
 import { trpc } from "../lib/trpc";
 import ZappyMascot from "./ZappyMascot";
 import UpgradePrompt from "./components/UpgradePrompt";
+import V2AdImageCreator from "./V2AdImageCreator";
+import V2VideoCreator from "./V2VideoCreator";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type AdTab = "headlines" | "body" | "links";
@@ -547,6 +549,8 @@ export default function V2AdCopyResultPanel({
   serviceId: number;
   isFreeTier?: boolean;
 }) {
+  type TopTab = "copy" | "images" | "video";
+  const [topTab, setTopTab] = useState<TopTab>("copy");
   const [activeTab, setActiveTab] = useState<AdTab>("headlines");
   const [upgradeFeature, setUpgradeFeature] = useState<string | null>(null);
 
@@ -615,37 +619,98 @@ export default function V2AdCopyResultPanel({
         </div>
       </div>
 
-      {/* ── Tabs ── */}
-      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "20px" }}>
-        {TABS.map(t => (
-          <TabPill
+      {/* ── Top-level tabs: Copy / Images / Video ── */}
+      <div style={{ display: "flex", gap: "6px", marginBottom: "20px", background: "rgba(26,22,36,0.07)", borderRadius: "var(--v2-border-radius-pill)", padding: "4px", width: "fit-content" }}>
+        {([
+          { key: "copy" as TopTab, label: "📝 Copy" },
+          { key: "images" as TopTab, label: "🖼 Images" },
+          { key: "video" as TopTab, label: "🎬 Video" },
+        ]).map(t => (
+          <button
             key={t.key}
-            label={t.label}
-            count={t.count}
-            active={activeTab === t.key}
-            onClick={() => setActiveTab(t.key)}
-          />
+            onClick={() => setTopTab(t.key)}
+            style={{
+              borderRadius: "var(--v2-border-radius-pill)",
+              padding: "8px 18px",
+              fontFamily: "var(--v2-font-body)",
+              fontWeight: 600,
+              fontSize: "13px",
+              border: "none",
+              cursor: "pointer",
+              background: topTab === t.key ? "#fff" : "transparent",
+              color: topTab === t.key ? "var(--v2-text-color)" : "rgba(26,22,36,0.50)",
+              boxShadow: topTab === t.key ? "0 1px 6px rgba(26,22,36,0.10)" : "none",
+              transition: "all 0.18s",
+            }}
+          >
+            {t.label}
+          </button>
         ))}
       </div>
 
-      {/* ── Tab content ── */}
-      <div>
-        {activeTab === "headlines" && (
-          headlines.length === 0
-            ? <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#888", textAlign: "center", padding: "24px 0" }}>No headlines found.</p>
-            : headlines.map((h, i) => <HeadlineItem key={h.id} item={h} index={i} isFreeTier={isFreeTier} onUpgradeClick={(f) => setUpgradeFeature(f || "Per-Item Regeneration")} />)
-        )}
-        {activeTab === "body" && (
-          bodies.length === 0
-            ? <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#888", textAlign: "center", padding: "24px 0" }}>No body copy found.</p>
-            : bodies.map((b, i) => <BodyItem key={b.id} item={b} index={i} isFreeTier={isFreeTier} onUpgradeClick={(f) => setUpgradeFeature(f || "Per-Item Regeneration")} />)
-        )}
-        {activeTab === "links" && (
-          links.length === 0
-            ? <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#888", textAlign: "center", padding: "24px 0" }}>No links found.</p>
-            : links.map((l, i) => <LinkItem key={l.id} item={l} index={i} isFreeTier={isFreeTier} onUpgradeClick={(f) => setUpgradeFeature(f || "Per-Item Regeneration")} />)
-        )}
-      </div>
+      {/* ── Credit / info labels below top tabs ── */}
+      {topTab === "video" && (
+        <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "11px", color: "#999", margin: "-12px 0 16px 4px" }}>
+          Script: Free · Render: Credits
+        </p>
+      )}
+
+      {/* ── COPY TAB — existing ad copy content ── */}
+      {topTab === "copy" && (
+        <>
+          {/* Sub-tabs: Headlines / Body Copy / Links */}
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "20px" }}>
+            {TABS.map(t => (
+              <TabPill
+                key={t.key}
+                label={t.label}
+                count={t.count}
+                active={activeTab === t.key}
+                onClick={() => setActiveTab(t.key)}
+              />
+            ))}
+          </div>
+
+          <div>
+            {activeTab === "headlines" && (
+              headlines.length === 0
+                ? <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#888", textAlign: "center", padding: "24px 0" }}>No headlines found.</p>
+                : headlines.map((h, i) => <HeadlineItem key={h.id} item={h} index={i} isFreeTier={isFreeTier} onUpgradeClick={(f) => setUpgradeFeature(f || "Per-Item Regeneration")} />)
+            )}
+            {activeTab === "body" && (
+              bodies.length === 0
+                ? <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#888", textAlign: "center", padding: "24px 0" }}>No body copy found.</p>
+                : bodies.map((b, i) => <BodyItem key={b.id} item={b} index={i} isFreeTier={isFreeTier} onUpgradeClick={(f) => setUpgradeFeature(f || "Per-Item Regeneration")} />)
+            )}
+            {activeTab === "links" && (
+              links.length === 0
+                ? <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#888", textAlign: "center", padding: "24px 0" }}>No links found.</p>
+                : links.map((l, i) => <LinkItem key={l.id} item={l} index={i} isFreeTier={isFreeTier} onUpgradeClick={(f) => setUpgradeFeature(f || "Per-Item Regeneration")} />)
+            )}
+          </div>
+        </>
+      )}
+
+      {/* ── IMAGES TAB — Ad Image Creator inline ── */}
+      {topTab === "images" && (
+        <div style={{ marginTop: "8px" }}>
+          <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "12px", color: "#888", marginBottom: "16px", fontStyle: "italic" }}>
+            Optional — generate scroll-stopping ad images using your copy as context.
+          </p>
+          <V2AdImageCreator />
+        </div>
+      )}
+
+      {/* ── VIDEO TAB — Video Creator inline ── */}
+      {topTab === "video" && (
+        <div style={{ marginTop: "8px" }}>
+          <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "12px", color: "#888", marginBottom: "16px", fontStyle: "italic" }}>
+            Optional — generate video ads with voiceover and motion graphics.
+          </p>
+          <V2VideoCreator isFreeTier={isFreeTier} />
+        </div>
+      )}
+
       {upgradeFeature && <UpgradePrompt variant="modal" featureName={upgradeFeature} onClose={() => setUpgradeFeature(null)} />}
     </div>
   );
