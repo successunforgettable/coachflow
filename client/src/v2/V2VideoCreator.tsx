@@ -233,29 +233,8 @@ export default function V2VideoCreator({ isFreeTier }: { isFreeTier?: boolean } 
   const creditCost    = getCreditCost(duration);
 
   // ── Load last completed video on mount ───────────────────────────────────────
-  const { data: latestVideo } = trpc.videos.getLatestByServiceId.useQuery(
-    { serviceId: activeService?.id ?? 0 },
-    { enabled: !!activeService, staleTime: 30_000 }
-  );
-
-  useEffect(() => {
-    if (latestVideo && step1Status === "idle" && step2Status === "idle") {
-      setVideoUrl(latestVideo.videoUrl ?? null);
-      setVideoId(latestVideo.id);
-      if (latestVideo.videoUrl) {
-        setStep2Status("done");
-        setStep1Status("done");
-        if (latestVideo.script?.scenes) {
-          setScriptResult({
-            scriptId: latestVideo.scriptId!,
-            scenes: latestVideo.script.scenes as any[],
-            voiceoverText: latestVideo.script.voiceoverText ?? "",
-            creditCost: getCreditCost(latestVideo.script.duration ?? "30"),
-          });
-        }
-      }
-    }
-  }, [latestVideo]);
+  // Video Creator always starts fresh — no history loading on mount.
+  // Unlike campaign path generators, each video session is independent.
 
   // ── Mutations ────────────────────────────────────────────────────────────────
   const generateScriptAsync = trpc.videoScripts.generateAsync.useMutation();
@@ -448,23 +427,7 @@ export default function V2VideoCreator({ isFreeTier }: { isFreeTier?: boolean } 
         fontFamily: T.fontBody,
       }}
     >
-      {/* Back link */}
-      <a
-        href="/v2-dashboard?tab=tools"
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: "6px",
-          fontFamily: T.fontBody,
-          fontSize: "13px",
-          fontWeight: 700,
-          color: "#888",
-          textDecoration: "none",
-          marginBottom: "16px",
-        }}
-      >
-        ← Back to Tool Library
-      </a>
+      {/* Back navigation provided by parent V2ToolLibrary */}
 
       {/* Heading */}
       <h1

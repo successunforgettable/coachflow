@@ -741,7 +741,10 @@ export default function V2Dashboard() {
           <div className="v2-fork-persistent" style={{ marginBottom: "32px" }}>
             <button
               className="v2-btn v2-btn-primary"
-              onClick={() => {}}
+              onClick={() => {
+                const nextNode = nodes.find(n => n.state === "active" && NODE_STEP_MAP[n.id]);
+                if (nextNode) navigate(`/v2-dashboard/wizard/${NODE_STEP_MAP[nextNode.id]}`);
+              }}
             >
               Continue Campaign
             </button>
