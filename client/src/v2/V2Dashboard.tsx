@@ -264,6 +264,9 @@ export default function V2Dashboard() {
   // ── Real progress data from backend ──
   const { data: progressData, isLoading: progressLoading } = trpc.progress.getProgress.useQuery();
 
+  // ── ICP data for stats ──
+  const { data: icpList } = trpc.icps.list.useQuery(undefined, { staleTime: 30_000 });
+
   // ── Service quality score for Node 1 pill ──
   const { data: servicesData } = trpc.services.list.useQuery();
   const serviceQualityScore = useMemo(() => {
@@ -280,6 +283,37 @@ export default function V2Dashboard() {
     ];
     return fields.filter(f => f && String(f).trim().length > 0).length;
   }, [servicesData]);
+
+  // ── Stats computations ──
+  const totalAssetsGenerated = useMemo(() => {
+    if (!user) return 0;
+    const u = user as any;
+    return (u.headlineGeneratedCount || 0) + (u.hvcoGeneratedCount || 0) +
+      (u.heroMechanismGeneratedCount || 0) + (u.icpGeneratedCount || 0) +
+      (u.adCopyGeneratedCount || 0) + (u.emailSeqGeneratedCount || 0) +
+      (u.whatsappSeqGeneratedCount || 0) + (u.landingPageGeneratedCount || 0) +
+      (u.offerGeneratedCount || 0);
+  }, [user]);
+
+  const activeIcpName = useMemo(() => {
+    if (!icpList || icpList.length === 0) return "None yet";
+    return icpList[0].name || "Unnamed ICP";
+  }, [icpList]);
+
+  // ── Recent activity from completed milestones ──
+  const MILESTONE_LABELS: Record<string, { emoji: string; label: string }> = {
+    service: { emoji: "🏷", label: "Service Profile" },
+    icp: { emoji: "🎯", label: "Ideal Customer Profile" },
+    offer: { emoji: "💎", label: "Premium Offer" },
+    heroMechanism: { emoji: "⚡", label: "Unique Method" },
+    hvco: { emoji: "🎁", label: "Free Opt-In Titles" },
+    headlines: { emoji: "✍️", label: "Headlines" },
+    adCopy: { emoji: "📣", label: "Ad Copy" },
+    landingPage: { emoji: "🖥️", label: "Landing Page" },
+    emailSequence: { emoji: "✉️", label: "Email Sequence" },
+    whatsappSequence: { emoji: "💬", label: "WhatsApp Sequence" },
+    campaign: { emoji: "🚀", label: "Campaign Published" },
+  };
 
   // ── First-time gate: no service saved yet ──
   // While loading we show nothing to avoid flicker.
@@ -646,6 +680,61 @@ export default function V2Dashboard() {
             <span style={{ background: "rgba(255,91,29,0.10)", color: "#FF5B1D", border: "1px solid rgba(255,91,29,0.25)", borderRadius: "9999px", padding: "3px 12px", fontFamily: "var(--v2-font-body)", fontSize: "11px", fontWeight: 600 }}>Set Up Now</span>
           )}
         </div>
+
+        {/* ── Stats row ── */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px", marginBottom: "24px" }}>
+          {/* Assets Generated */}
+          <div style={{ background: "#fff", borderRadius: "16px", padding: "18px 20px", textAlign: "center" }}>
+            <p style={{ fontFamily: "var(--v2-font-heading)", fontStyle: "italic", fontWeight: 900, fontSize: "32px", color: "var(--v2-text-color)", margin: 0, lineHeight: 1 }}>
+              {totalAssetsGenerated}
+            </p>
+            <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "12px", fontWeight: 600, color: "rgba(26,22,36,0.50)", margin: "6px 0 0", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+              Assets Generated
+            </p>
+          </div>
+          {/* Campaign Progress */}
+          <div style={{ background: "#fff", borderRadius: "16px", padding: "18px 20px", textAlign: "center" }}>
+            <p style={{ fontFamily: "var(--v2-font-heading)", fontStyle: "italic", fontWeight: 900, fontSize: "32px", color: "#58CC02", margin: 0, lineHeight: 1 }}>
+              {progressPct}%
+            </p>
+            <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "12px", fontWeight: 600, color: "rgba(26,22,36,0.50)", margin: "6px 0 0", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+              Campaign Progress
+            </p>
+          </div>
+          {/* Active ICP */}
+          <div style={{ background: "#fff", borderRadius: "16px", padding: "18px 20px", textAlign: "center", overflow: "hidden" }}>
+            <p style={{ fontFamily: "var(--v2-font-heading)", fontStyle: "italic", fontWeight: 900, fontSize: "16px", color: "var(--v2-text-color)", margin: 0, lineHeight: 1.3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {activeIcpName}
+            </p>
+            <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "12px", fontWeight: 600, color: "rgba(26,22,36,0.50)", margin: "6px 0 0", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+              Active ICP
+            </p>
+          </div>
+        </div>
+
+        {/* ── Recent Activity ── */}
+        {progressData?.milestones?.some((m: { completed: boolean }) => m.completed) && (
+          <div style={{ marginBottom: "24px" }}>
+            <p style={{ fontFamily: "var(--v2-font-body)", fontWeight: 700, fontSize: "13px", color: "var(--v2-text-color)", marginBottom: "10px" }}>
+              Recent Activity
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+              {progressData.milestones
+                .filter((m: { completed: boolean }) => m.completed)
+                .slice(0, 5)
+                .map((m: { id: string; completed: boolean }) => {
+                  const info = MILESTONE_LABELS[m.id] || { emoji: "✅", label: m.id };
+                  return (
+                    <div key={m.id} style={{ display: "flex", alignItems: "center", gap: "10px", background: "#fff", borderRadius: "10px", padding: "10px 14px" }}>
+                      <span style={{ fontSize: "16px" }}>{info.emoji}</span>
+                      <span style={{ fontFamily: "var(--v2-font-body)", fontSize: "13px", color: "var(--v2-text-color)", fontWeight: 500, flex: 1 }}>{info.label}</span>
+                      <span style={{ fontFamily: "var(--v2-font-body)", fontSize: "11px", color: "#999", fontWeight: 500 }}>Completed</span>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+        )}
 
         {/* ── COMPONENT 1: Nav Tabs ── */}
         <div style={{
