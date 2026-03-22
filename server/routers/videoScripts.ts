@@ -1058,8 +1058,8 @@ export const videoScriptsRouter = router({
           } catch {
             throw new Error("Script generation failed — LLM did not return valid JSON");
           }
-          if (!parsed.scenes || parsed.scenes.length !== 5) {
-            throw new Error(`Invalid script structure — expected 5 scenes, got ${parsed.scenes?.length ?? 0}`);
+          if (!parsed.scenes || parsed.scenes.length < 3 || parsed.scenes.length > 10) {
+            throw new Error(`Invalid script structure — expected 3-10 scenes, got ${parsed.scenes?.length ?? 0}`);
           }
           const totalWords = parsed.scenes.reduce(
             (sum: number, s: any) => sum + (s.voiceoverText?.trim().split(/\s+/).length || 0),
@@ -1153,8 +1153,8 @@ export async function generateVideoScriptForService(params: {
   } catch {
     throw new Error("Script generation failed — LLM did not return valid JSON");
   }
-  if (!parsed.scenes || parsed.scenes.length !== 5) {
-    throw new Error(`Invalid script structure — expected 5 scenes, got: ${JSON.stringify(parsed)}`);
+  if (!parsed.scenes || parsed.scenes.length < 3 || parsed.scenes.length > 10) {
+    throw new Error(`Invalid script structure — expected 3-10 scenes, got ${parsed.scenes?.length ?? 0}`);
   }
 
   // Word count validation — max 150 words

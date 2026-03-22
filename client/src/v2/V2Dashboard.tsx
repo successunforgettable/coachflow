@@ -736,8 +736,8 @@ export default function V2Dashboard() {
           </div>
         </div>
 
-        {/* ── COMPONENT 4 (persistent): Fork Buttons — shown after modal dismissed ── */}
-        {forkDismissed && (
+        {/* ── COMPONENT 4 (persistent): Fork Buttons — shown after modal dismissed, guided tab only ── */}
+        {forkDismissed && activeTab === "guided" && (
           <div className="v2-fork-persistent" style={{ marginBottom: "32px" }}>
             <button
               className="v2-btn v2-btn-primary"
