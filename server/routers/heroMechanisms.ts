@@ -19,6 +19,8 @@ import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 import { enforceQuota, incrementQuotaCount } from "../lib/quotaEnforcement";
+import { complianceFilter } from "../lib/complianceFilter";
+import { checkCompliance } from "../lib/complianceChecker";
 
 // Helper to strip markdown code blocks from JSON responses
 function stripMarkdownJson(content: string): string {
@@ -30,6 +32,21 @@ function stripMarkdownJson(content: string): string {
     return trimmed.slice(3, -3).trim();
   }
   return trimmed;
+}
+
+// Apply compliance filter + check to mechanism name and description
+async function filterMechanism(m: { name: string; description: string }): Promise<{ name: string; description: string }> {
+  const nameResult = complianceFilter(m.name);
+  const descResult = complianceFilter(m.description);
+  // Use cleaned text for both PIVOT_REQUIRED and REJECTED
+  const name = nameResult.wasModified ? nameResult.cleanedText : m.name;
+  const desc = descResult.wasModified ? descResult.cleanedText : m.description;
+  // Log compliance score (no DB column to store it)
+  const score = await checkCompliance(`${name} ${desc}`);
+  if (score.score < 100) {
+    console.log(`[heroMechanisms] Compliance score ${score.score}/100 for "${name.substring(0, 40)}...": ${score.issues.map(i => i.phrase).join(", ")}`);
+  }
+  return { name, description: desc };
 }
 
 /**
@@ -258,8 +275,13 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
         ? headlineIdeasResponse.choices[0].message.content 
         : JSON.stringify(headlineIdeasResponse.choices[0].message.content);
       const headlineIdeas = JSON.parse(stripMarkdownJson(headlineIdeasContent));
-      
-      headlineIdeas.forEach((mechanism: { name: string; description: string }) => {
+
+      // Apply compliance filter to each mechanism
+      const filteredHeadlineIdeas = await Promise.all(
+        headlineIdeas.map((m: { name: string; description: string }) => filterMechanism(m))
+      );
+
+      filteredHeadlineIdeas.forEach((mechanism: { name: string; description: string }) => {
         allMechanisms.push({
           userId: user.id,
           serviceId: input.serviceId,
@@ -319,8 +341,13 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
         ? powerModeResponse.choices[0].message.content 
         : JSON.stringify(powerModeResponse.choices[0].message.content);
       const powerMode = JSON.parse(stripMarkdownJson(powerModeContent));
-      
-      powerMode.forEach((mechanism: { name: string; description: string }) => {
+
+      // Apply compliance filter to beast mode mechanisms
+      const filteredPowerMode = await Promise.all(
+        powerMode.map((m: { name: string; description: string }) => filterMechanism(m))
+      );
+
+      filteredPowerMode.forEach((mechanism: { name: string; description: string }) => {
         allMechanisms.push({
           userId: user.id,
           serviceId: input.serviceId,
@@ -435,9 +462,12 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
       const parsed = JSON.parse(stripMarkdownJson(content));
       if (!parsed.mechanismName || !parsed.mechanismDescription) throw new Error("AI response missing required fields");
 
+      // Apply compliance filter to regenerated mechanism
+      const filtered = await filterMechanism({ name: parsed.mechanismName, description: parsed.mechanismDescription });
+
       await db
         .update(heroMechanisms)
-        .set({ mechanismName: parsed.mechanismName, mechanismDescription: parsed.mechanismDescription, updatedAt: new Date() })
+        .set({ mechanismName: filtered.name, mechanismDescription: filtered.description, updatedAt: new Date() })
         .where(eq(heroMechanisms.id, input.id));
 
       const [updated] = await db
@@ -601,7 +631,8 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
             ? headlineIdeasResponse.choices[0].message.content
             : JSON.stringify(headlineIdeasResponse.choices[0].message.content);
           const headlineIdeas = JSON.parse(stripMarkdownJson(headlineIdeasContent));
-          headlineIdeas.forEach((m: { name: string; description: string }) => {
+          const filteredHeadlineIdeas = await Promise.all(headlineIdeas.map((m: { name: string; description: string }) => filterMechanism(m)));
+          filteredHeadlineIdeas.forEach((m: { name: string; description: string }) => {
             allMechanisms.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId, mechanismSetId, tabType: "headline_ideas" as const, mechanismName: m.name, mechanismDescription: m.description, targetMarket: capturedInput.targetMarket, pressingProblem: capturedInput.pressingProblem, whyProblem: capturedInput.whyProblem, whatTried: capturedInput.whatTried, whyExistingNotWork: capturedInput.whyExistingNotWork, descriptor: capturedInput.descriptor, application: capturedInput.application, desiredOutcome: capturedInput.desiredOutcome, credibility: capturedInput.credibility, socialProof: capturedInput.socialProof });
           });
 
@@ -618,7 +649,8 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
             ? powerModeResponse.choices[0].message.content
             : JSON.stringify(powerModeResponse.choices[0].message.content);
           const powerMode = JSON.parse(stripMarkdownJson(powerModeContent));
-          powerMode.forEach((m: { name: string; description: string }) => {
+          const filteredPowerMode = await Promise.all(powerMode.map((m: { name: string; description: string }) => filterMechanism(m)));
+          filteredPowerMode.forEach((m: { name: string; description: string }) => {
             allMechanisms.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId, mechanismSetId, tabType: "beast_mode" as const, mechanismName: m.name, mechanismDescription: m.description, targetMarket: capturedInput.targetMarket, pressingProblem: capturedInput.pressingProblem, whyProblem: capturedInput.whyProblem, whatTried: capturedInput.whatTried, whyExistingNotWork: capturedInput.whyExistingNotWork, descriptor: capturedInput.descriptor, application: capturedInput.application, desiredOutcome: capturedInput.desiredOutcome, credibility: capturedInput.credibility, socialProof: capturedInput.socialProof });
           });
 
