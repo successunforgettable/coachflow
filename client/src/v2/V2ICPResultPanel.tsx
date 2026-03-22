@@ -314,6 +314,7 @@ export default function V2ICPResultPanel({
     { id: icpId },
     { enabled: !!icpId, staleTime: 60_000 }
   );
+  const [exportUpgradeOpen, setExportUpgradeOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -381,24 +382,45 @@ export default function V2ICPResultPanel({
 
       {/* ── Download PDF button ── */}
       <div style={{ marginTop: "20px", textAlign: "center" }}>
-        <button
-          onClick={() => toast.info("PDF export coming in Phase L")}
-          style={{
-            background: "#1A1624",
-            color: "#F5F1EA",
-            border: "none",
-            borderRadius: "9999px",
-            padding: "11px 28px",
-            fontFamily: "var(--v2-font-body)",
-            fontWeight: 700,
-            fontSize: "13px",
-            cursor: "pointer",
-            letterSpacing: "0.01em",
-          }}
-        >
-          ↓ Download PDF
-        </button>
+        {isFreeTier ? (
+          <button
+            onClick={() => setExportUpgradeOpen(true)}
+            style={{
+              background: "var(--v2-primary-btn)",
+              color: "#fff",
+              border: "none",
+              borderRadius: "var(--v2-border-radius-pill)",
+              padding: "11px 28px",
+              fontFamily: "var(--v2-font-body)",
+              fontWeight: 700,
+              fontSize: "13px",
+              cursor: "pointer",
+              letterSpacing: "0.01em",
+            }}
+          >
+            Export (Pro)
+          </button>
+        ) : (
+          <button
+            onClick={() => toast.info("PDF export coming in Phase L")}
+            style={{
+              background: "#1A1624",
+              color: "#F5F1EA",
+              border: "none",
+              borderRadius: "9999px",
+              padding: "11px 28px",
+              fontFamily: "var(--v2-font-body)",
+              fontWeight: 700,
+              fontSize: "13px",
+              cursor: "pointer",
+              letterSpacing: "0.01em",
+            }}
+          >
+            ↓ Download PDF
+          </button>
+        )}
       </div>
+      {exportUpgradeOpen && <UpgradePrompt variant="modal" featureName="Export & Download" onClose={() => setExportUpgradeOpen(false)} />}
     </div>
   );
 }

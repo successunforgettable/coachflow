@@ -805,6 +805,7 @@ export default function V2LandingPageResultPanel({
   const [viewMode, setViewMode] = useState<"edit" | "preview">("edit");
   const [previewTheme, setPreviewTheme] = useState<ThemeKey>("dark");
   const [styleMode, setStyleMode] = useState<"text" | "visual">("text");
+  const [exportUpgradeOpen, setExportUpgradeOpen] = useState(false);
   const [coachAssets, setCoachAssets] = useState<CoachAssets>({ headshot: null, logo: null, socialProof: [] });
 
   // Load saved assets on mount
@@ -1096,24 +1097,45 @@ export default function V2LandingPageResultPanel({
 
       {/* ── Download TXT button ── */}
       <div style={{ marginTop: "20px", textAlign: "center" }}>
-        <button
-          onClick={() => toast.info("TXT export coming in Phase L")}
-          style={{
-            background: "#1A1624",
-            color: "#F5F1EA",
-            border: "none",
-            borderRadius: "9999px",
-            padding: "11px 28px",
-            fontFamily: "var(--v2-font-body)",
-            fontWeight: 700,
-            fontSize: "13px",
-            cursor: "pointer",
-            letterSpacing: "0.01em",
-          }}
-        >
-          ↓ Download TXT
-        </button>
+        {isFreeTier ? (
+          <button
+            onClick={() => setExportUpgradeOpen(true)}
+            style={{
+              background: "var(--v2-primary-btn)",
+              color: "#fff",
+              border: "none",
+              borderRadius: "var(--v2-border-radius-pill)",
+              padding: "11px 28px",
+              fontFamily: "var(--v2-font-body)",
+              fontWeight: 700,
+              fontSize: "13px",
+              cursor: "pointer",
+              letterSpacing: "0.01em",
+            }}
+          >
+            Export (Pro)
+          </button>
+        ) : (
+          <button
+            onClick={() => toast.info("TXT export coming in Phase L")}
+            style={{
+              background: "#1A1624",
+              color: "#F5F1EA",
+              border: "none",
+              borderRadius: "9999px",
+              padding: "11px 28px",
+              fontFamily: "var(--v2-font-body)",
+              fontWeight: 700,
+              fontSize: "13px",
+              cursor: "pointer",
+              letterSpacing: "0.01em",
+            }}
+          >
+            ↓ Download TXT
+          </button>
+        )}
       </div>
+      {exportUpgradeOpen && <UpgradePrompt variant="modal" featureName="Export & Download" onClose={() => setExportUpgradeOpen(false)} />}
     </div>
   );
 }
