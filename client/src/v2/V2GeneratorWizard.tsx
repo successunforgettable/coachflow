@@ -34,6 +34,8 @@ import V2FreeOptInResultPanel from "./V2FreeOptInResultPanel";
 import V2LandingPageResultPanel from "./V2LandingPageResultPanel";
 import V2EmailSequenceResultPanel from "./V2EmailSequenceResultPanel";
 import V2WhatsAppResultPanel from "./V2WhatsAppResultPanel";
+import QuotaIndicator, { getLimit } from "./components/QuotaIndicator";
+import UpgradePrompt from "./components/UpgradePrompt";
 
 export type { WizardStep };
 
@@ -1227,6 +1229,22 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
   const { user: authUser } = useAuth();
   const isFreeTier = !authUser || (authUser.role !== "superuser" && authUser.role !== "admin" && authUser.subscriptionTier !== "pro" && authUser.subscriptionTier !== "agency");
 
+  // ── Quota tracking per step ──
+  const STEP_QUOTA_MAP: Partial<Record<WizardStep, { key: "icp" | "offers" | "adCopy" | "email" | "whatsapp" | "landingPages" | "headlines" | "hvco" | "heroMechanisms"; countField: string; featureName: string }>> = {
+    icp:              { key: "icp",          countField: "icpGeneratedCount",          featureName: "ICP Generation" },
+    offer:            { key: "offers",       countField: "offerGeneratedCount",        featureName: "Offer Generation" },
+    uniqueMethod:     { key: "heroMechanisms", countField: "heroMechanismGeneratedCount", featureName: "Unique Method" },
+    freeOptIn:        { key: "hvco",         countField: "hvcoGeneratedCount",         featureName: "Free Opt-In Titles" },
+    adCopy:           { key: "adCopy",       countField: "adCopyGeneratedCount",       featureName: "Ad Copy" },
+    landingPage:      { key: "landingPages", countField: "landingPageGeneratedCount",  featureName: "Landing Page" },
+    emailSequence:    { key: "email",        countField: "emailSeqGeneratedCount",     featureName: "Email Sequence" },
+    whatsappSequence: { key: "whatsapp",     countField: "whatsappSeqGeneratedCount",  featureName: "WhatsApp Sequence" },
+  };
+  const quotaInfo = STEP_QUOTA_MAP[step];
+  const quotaUsed = quotaInfo ? ((authUser as any)?.[quotaInfo.countField] ?? 0) : 0;
+  const quotaLimit = quotaInfo ? getLimit(authUser?.subscriptionTier, quotaInfo.key) : Infinity;
+  const isQuotaExceeded = quotaInfo && quotaLimit !== Infinity && quotaLimit < 999 && quotaUsed >= quotaLimit;
+
   // NOTE: All hooks MUST be called unconditionally before any early returns
   // to comply with React's Rules of Hooks.
 
@@ -1924,16 +1942,26 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
                 </div>
               )}
               {/* ── GENERATE NOW button (only shown in idle / missing_data states) ── */}
-              {showGenerateButton && (
-                <button
-                  onClick={handleGenerateNow}
-                  style={primaryBtnStyle}
-                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.88"; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; }}
-                >
-                  Generate Now
-                </button>
-              )}
+              {showGenerateButton && isQuotaExceeded && quotaInfo ? (
+                <>
+                  <QuotaIndicator generatorKey={quotaInfo.key} usedCount={quotaUsed} tier={authUser?.subscriptionTier} />
+                  <UpgradePrompt variant="inline" featureName={quotaInfo.featureName} />
+                </>
+              ) : showGenerateButton ? (
+                <>
+                  <button
+                    onClick={handleGenerateNow}
+                    style={primaryBtnStyle}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.88"; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; }}
+                  >
+                    Generate Now
+                  </button>
+                  {quotaInfo && (
+                    <QuotaIndicator generatorKey={quotaInfo.key} usedCount={quotaUsed} tier={authUser?.subscriptionTier} />
+                  )}
+                </>
+              ) : null}
             </>
           )}
 
