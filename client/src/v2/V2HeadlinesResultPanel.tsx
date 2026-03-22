@@ -121,7 +121,8 @@ function HeadlineRegenPanel({
 }
 
 // ─── Per-headline card ────────────────────────────────────────────────────────
-function HeadlineCard({ headline, isFreeTier }: { headline: HeadlineRow; isFreeTier?: boolean }) {
+function HeadlineCard({ headline, isFreeTier, index }: { headline: HeadlineRow; isFreeTier?: boolean; index: number }) {
+  const copyLocked = isFreeTier && index >= 10;
   const [headlineText, setHeadlineText] = useState(headline.headline);
   const [subheadlineText, setSubheadlineText] = useState(headline.subheadline);
   const [copied, setCopied]     = useState(false);
@@ -129,7 +130,7 @@ function HeadlineCard({ headline, isFreeTier }: { headline: HeadlineRow; isFreeT
   const [thumbDown, setThumbDown] = useState(false);
   const [starred, setStarred]   = useState(false);
   const [regenOpen, setRegenOpen] = useState(false);
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [upgradeFeature, setUpgradeFeature] = useState<string | null>(null);
 
   function handleCopy() {
     const text = [headline.eyebrow, headlineText, subheadlineText]
@@ -189,12 +190,16 @@ function HeadlineCard({ headline, isFreeTier }: { headline: HeadlineRow; isFreeT
       <ComplianceBadge score={headline.complianceScore} />
       {/* Controls row */}
       <div style={{ display: "flex", gap: "8px", marginTop: "12px", alignItems: "center" }}>
-        <button onClick={handleCopy} style={{ ...iconBtn, background: copied ? "rgba(88,204,2,0.12)" : undefined, borderColor: copied ? "rgba(88,204,2,0.40)" : undefined }} title="Copy to clipboard">{copied ? "✓" : "⎘"}</button>
+        {copyLocked ? (
+          <button onClick={() => setUpgradeFeature("Full Copy Access")} style={{ ...iconBtn, opacity: 0.4, cursor: "not-allowed" }} title="Upgrade to Pro for full copy access">🔒</button>
+        ) : (
+          <button onClick={handleCopy} style={{ ...iconBtn, background: copied ? "rgba(88,204,2,0.12)" : undefined, borderColor: copied ? "rgba(88,204,2,0.40)" : undefined }} title="Copy to clipboard">{copied ? "✓" : "⎘"}</button>
+        )}
         <button onClick={() => { setThumbUp(p => !p); if (!thumbUp) setThumbDown(false); }} style={{ ...iconBtn, background: thumbUp ? "rgba(88,204,2,0.12)" : undefined, borderColor: thumbUp ? "rgba(88,204,2,0.40)" : undefined }} title="Thumbs up">👍</button>
         <button onClick={() => { setThumbDown(p => !p); if (!thumbDown) setThumbUp(false); }} style={{ ...iconBtn, background: thumbDown ? "rgba(220,38,38,0.10)" : undefined, borderColor: thumbDown ? "rgba(220,38,38,0.35)" : undefined }} title="Thumbs down">👎</button>
         <button onClick={() => setStarred(p => !p)} style={{ ...iconBtn, background: starred ? "rgba(255,165,0,0.12)" : undefined, borderColor: starred ? "rgba(255,165,0,0.45)" : undefined, color: starred ? "#D97706" : undefined }} title="Star">{starred ? "★" : "☆"}</button>
         {isFreeTier ? (
-          <button onClick={() => setShowUpgradeModal(true)} style={{ ...iconBtn, opacity: 0.4, cursor: "not-allowed" }} title="Upgrade to Pro to regenerate">↺</button>
+          <button onClick={() => setUpgradeFeature("Per-Item Regeneration")} style={{ ...iconBtn, opacity: 0.4, cursor: "not-allowed" }} title="Upgrade to Pro to regenerate">↺</button>
         ) : (
           <button onClick={() => setRegenOpen(p => !p)} style={{ ...iconBtn, background: regenOpen ? "rgba(255,91,29,0.10)" : undefined, borderColor: regenOpen ? "rgba(255,91,29,0.40)" : undefined }} title="Regenerate">↺</button>
         )}
@@ -206,7 +211,7 @@ function HeadlineCard({ headline, isFreeTier }: { headline: HeadlineRow; isFreeT
           onClose={() => setRegenOpen(false)}
         />
       )}
-      {showUpgradeModal && <UpgradePrompt variant="modal" featureName="Per-Item Regeneration" onClose={() => setShowUpgradeModal(false)} />}
+      {upgradeFeature && <UpgradePrompt variant="modal" featureName={upgradeFeature} onClose={() => setUpgradeFeature(null)} />}
     </div>
   );
 }
@@ -344,7 +349,7 @@ export default function V2HeadlinesResultPanel({
             No {activeTab} headlines in this set.
           </p>
         ) : (
-          activeHeadlines.map((h) => <HeadlineCard key={h.id} headline={h} isFreeTier={isFreeTier} />)
+          activeHeadlines.map((h, i) => <HeadlineCard key={h.id} headline={h} isFreeTier={isFreeTier} index={i} />)
         )}
       </div>
     </div>

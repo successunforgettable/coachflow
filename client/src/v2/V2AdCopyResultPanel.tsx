@@ -207,7 +207,8 @@ function RegenPanel({
 }
 
 // ─── Headline item card ───────────────────────────────────────────────────────
-function HeadlineItem({ item, index, isFreeTier, onUpgradeClick }: { item: AdRow; index: number; isFreeTier?: boolean; onUpgradeClick?: () => void }) {
+function HeadlineItem({ item, index, isFreeTier, onUpgradeClick }: { item: AdRow; index: number; isFreeTier?: boolean; onUpgradeClick?: (feature?: string) => void }) {
+  const copyLocked = isFreeTier && index >= 3;
   const [content, setContent]   = useState(item.content);
   const [copied, setCopied]     = useState(false);
   const [thumbUp, setThumbUp]   = useState(false);
@@ -251,11 +252,11 @@ function HeadlineItem({ item, index, isFreeTier, onUpgradeClick }: { item: AdRow
         {content}
       </p>
       <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-        <button
-          onClick={handleCopy}
-          style={{ ...iconBtn, background: copied ? "rgba(88,204,2,0.12)" : undefined, borderColor: copied ? "rgba(88,204,2,0.40)" : undefined }}
-          title="Copy"
-        >{copied ? "✓" : "⎘"}</button>
+        {copyLocked ? (
+          <button onClick={() => onUpgradeClick?.("Full Copy Access")} style={{ ...iconBtn, opacity: 0.4, cursor: "not-allowed" }} title="Upgrade to Pro for full copy access">🔒</button>
+        ) : (
+          <button onClick={handleCopy} style={{ ...iconBtn, background: copied ? "rgba(88,204,2,0.12)" : undefined, borderColor: copied ? "rgba(88,204,2,0.40)" : undefined }} title="Copy">{copied ? "✓" : "⎘"}</button>
+        )}
         <button
           onClick={() => { setThumbUp(p => !p); if (!thumbUp) setThumbDown(false); }}
           style={{ ...iconBtn, background: thumbUp ? "rgba(88,204,2,0.12)" : undefined, borderColor: thumbUp ? "rgba(88,204,2,0.40)" : undefined }}
@@ -268,7 +269,7 @@ function HeadlineItem({ item, index, isFreeTier, onUpgradeClick }: { item: AdRow
         >👎</button>
         {isFreeTier ? (
           <button
-            onClick={() => onUpgradeClick?.()}
+            onClick={() => onUpgradeClick?.("Per-Item Regeneration")}
             style={{ ...iconBtn, opacity: 0.4, cursor: "not-allowed" }}
             title="Upgrade to Pro to regenerate"
           >↺</button>
@@ -292,7 +293,8 @@ function HeadlineItem({ item, index, isFreeTier, onUpgradeClick }: { item: AdRow
 }
 
 // ─── Body copy item card ──────────────────────────────────────────────────────
-function BodyItem({ item, index, isFreeTier, onUpgradeClick }: { item: AdRow; index: number; isFreeTier?: boolean; onUpgradeClick?: () => void }) {
+function BodyItem({ item, index, isFreeTier, onUpgradeClick }: { item: AdRow; index: number; isFreeTier?: boolean; onUpgradeClick?: (feature?: string) => void }) {
+  const copyLocked = isFreeTier && index >= 3;
   const [content, setContent]   = useState(item.content);
   const [copied, setCopied]     = useState(false);
   const [thumbUp, setThumbUp]   = useState(false);
@@ -365,11 +367,11 @@ function BodyItem({ item, index, isFreeTier, onUpgradeClick }: { item: AdRow; in
       <ComplianceBadge score={item.complianceScore} />
       {/* Controls row */}
       <div style={{ display: "flex", gap: "8px", marginTop: "12px", alignItems: "center", flexWrap: "wrap" }}>
-        <button
-          onClick={handleCopy}
-          style={{ ...iconBtn, background: copied ? "rgba(88,204,2,0.12)" : undefined, borderColor: copied ? "rgba(88,204,2,0.40)" : undefined }}
-          title="Copy"
-        >{copied ? "✓" : "⎘"}</button>
+        {copyLocked ? (
+          <button onClick={() => onUpgradeClick?.("Full Copy Access")} style={{ ...iconBtn, opacity: 0.4, cursor: "not-allowed" }} title="Upgrade to Pro for full copy access">🔒</button>
+        ) : (
+          <button onClick={handleCopy} style={{ ...iconBtn, background: copied ? "rgba(88,204,2,0.12)" : undefined, borderColor: copied ? "rgba(88,204,2,0.40)" : undefined }} title="Copy">{copied ? "✓" : "⎘"}</button>
+        )}
         <button
           onClick={() => { setThumbUp(p => !p); if (!thumbUp) setThumbDown(false); }}
           style={{ ...iconBtn, background: thumbUp ? "rgba(88,204,2,0.12)" : undefined, borderColor: thumbUp ? "rgba(88,204,2,0.40)" : undefined }}
@@ -382,7 +384,7 @@ function BodyItem({ item, index, isFreeTier, onUpgradeClick }: { item: AdRow; in
         >👎</button>
         {isFreeTier ? (
           <button
-            onClick={() => onUpgradeClick?.()}
+            onClick={() => onUpgradeClick?.("Per-Item Regeneration")}
             style={{ ...iconBtn, opacity: 0.4, cursor: "not-allowed" }}
             title="Upgrade to Pro to regenerate"
           >↺</button>
@@ -425,7 +427,8 @@ function BodyItem({ item, index, isFreeTier, onUpgradeClick }: { item: AdRow; in
 }
 
 // ─── Link item card ───────────────────────────────────────────────────────────
-function LinkItem({ item, index, isFreeTier, onUpgradeClick }: { item: AdRow; index: number; isFreeTier?: boolean; onUpgradeClick?: () => void }) {
+function LinkItem({ item, index, isFreeTier, onUpgradeClick }: { item: AdRow; index: number; isFreeTier?: boolean; onUpgradeClick?: (feature?: string) => void }) {
+  const copyLocked = isFreeTier && index >= 3;
   const [content, setContent]   = useState(item.content);
   const [copied, setCopied]     = useState(false);
   const [thumbUp, setThumbUp]   = useState(false);
@@ -467,11 +470,11 @@ function LinkItem({ item, index, isFreeTier, onUpgradeClick }: { item: AdRow; in
         {content}
       </p>
       <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-        <button
-          onClick={handleCopy}
-          style={{ ...iconBtn, background: copied ? "rgba(88,204,2,0.12)" : undefined, borderColor: copied ? "rgba(88,204,2,0.40)" : undefined }}
-          title="Copy"
-        >{copied ? "✓" : "⎘"}</button>
+        {copyLocked ? (
+          <button onClick={() => onUpgradeClick?.("Full Copy Access")} style={{ ...iconBtn, opacity: 0.4, cursor: "not-allowed" }} title="Upgrade to Pro for full copy access">🔒</button>
+        ) : (
+          <button onClick={handleCopy} style={{ ...iconBtn, background: copied ? "rgba(88,204,2,0.12)" : undefined, borderColor: copied ? "rgba(88,204,2,0.40)" : undefined }} title="Copy">{copied ? "✓" : "⎘"}</button>
+        )}
         <button
           onClick={() => { setThumbUp(p => !p); if (!thumbUp) setThumbDown(false); }}
           style={{ ...iconBtn, background: thumbUp ? "rgba(88,204,2,0.12)" : undefined, borderColor: thumbUp ? "rgba(88,204,2,0.40)" : undefined }}
@@ -484,7 +487,7 @@ function LinkItem({ item, index, isFreeTier, onUpgradeClick }: { item: AdRow; in
         >👎</button>
         {isFreeTier ? (
           <button
-            onClick={() => onUpgradeClick?.()}
+            onClick={() => onUpgradeClick?.("Per-Item Regeneration")}
             style={{ ...iconBtn, opacity: 0.4, cursor: "not-allowed" }}
             title="Upgrade to Pro to regenerate"
           >↺</button>
@@ -545,7 +548,7 @@ export default function V2AdCopyResultPanel({
   isFreeTier?: boolean;
 }) {
   const [activeTab, setActiveTab] = useState<AdTab>("headlines");
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [upgradeFeature, setUpgradeFeature] = useState<string | null>(null);
 
   const { data, isLoading, isError } = trpc.adCopy.getByAdSetId.useQuery(
     { adSetId },
@@ -630,20 +633,20 @@ export default function V2AdCopyResultPanel({
         {activeTab === "headlines" && (
           headlines.length === 0
             ? <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#888", textAlign: "center", padding: "24px 0" }}>No headlines found.</p>
-            : headlines.map((h, i) => <HeadlineItem key={h.id} item={h} index={i} isFreeTier={isFreeTier} onUpgradeClick={() => setShowUpgradeModal(true)} />)
+            : headlines.map((h, i) => <HeadlineItem key={h.id} item={h} index={i} isFreeTier={isFreeTier} onUpgradeClick={(f) => setUpgradeFeature(f || "Per-Item Regeneration")} />)
         )}
         {activeTab === "body" && (
           bodies.length === 0
             ? <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#888", textAlign: "center", padding: "24px 0" }}>No body copy found.</p>
-            : bodies.map((b, i) => <BodyItem key={b.id} item={b} index={i} isFreeTier={isFreeTier} onUpgradeClick={() => setShowUpgradeModal(true)} />)
+            : bodies.map((b, i) => <BodyItem key={b.id} item={b} index={i} isFreeTier={isFreeTier} onUpgradeClick={(f) => setUpgradeFeature(f || "Per-Item Regeneration")} />)
         )}
         {activeTab === "links" && (
           links.length === 0
             ? <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#888", textAlign: "center", padding: "24px 0" }}>No links found.</p>
-            : links.map((l, i) => <LinkItem key={l.id} item={l} index={i} isFreeTier={isFreeTier} onUpgradeClick={() => setShowUpgradeModal(true)} />)
+            : links.map((l, i) => <LinkItem key={l.id} item={l} index={i} isFreeTier={isFreeTier} onUpgradeClick={(f) => setUpgradeFeature(f || "Per-Item Regeneration")} />)
         )}
       </div>
-      {showUpgradeModal && <UpgradePrompt variant="modal" featureName="Per-Item Regeneration" onClose={() => setShowUpgradeModal(false)} />}
+      {upgradeFeature && <UpgradePrompt variant="modal" featureName={upgradeFeature} onClose={() => setUpgradeFeature(null)} />}
     </div>
   );
 }
