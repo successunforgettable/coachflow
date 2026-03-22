@@ -19,6 +19,8 @@ import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 import { enforceQuota, incrementQuotaCount } from "../lib/quotaEnforcement";
+import { complianceFilter } from "../lib/complianceFilter";
+import { checkCompliance } from "../lib/complianceChecker";
 
 /**
  * Strip markdown code blocks from LLM JSON responses
@@ -26,6 +28,17 @@ import { enforceQuota, incrementQuotaCount } from "../lib/quotaEnforcement";
 function stripMarkdownJson(content: string): string {
   // Remove ```json and ``` wrappers if present
   return content.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim();
+}
+
+// Apply compliance filter + check to a title string
+async function filterHvcoTitle(title: string): Promise<string> {
+  const result = complianceFilter(title);
+  const cleaned = result.wasModified ? result.cleanedText : title;
+  const score = await checkCompliance(cleaned);
+  if (score.score < 100) {
+    console.log(`[hvco] Compliance score ${score.score}/100 for "${cleaned.substring(0, 50)}": ${score.issues.map(i => i.phrase).join(", ")}`);
+  }
+  return cleaned;
 }
 
 /**
@@ -181,7 +194,8 @@ Return ONLY a JSON array of ${20 * countMultiplier} title strings, nothing else.
       const longTitlesContent = typeof longTitlesResponse.choices[0].message.content === 'string' 
         ? longTitlesResponse.choices[0].message.content 
         : JSON.stringify(longTitlesResponse.choices[0].message.content);
-      const longTitles = JSON.parse(stripMarkdownJson(longTitlesContent));
+      const longTitlesRaw = JSON.parse(stripMarkdownJson(longTitlesContent));
+      const longTitles = await Promise.all(longTitlesRaw.map((t: string) => filterHvcoTitle(t)));
       longTitles.forEach((title: string) => {
         allTitles.push({
           userId: user.id,
@@ -231,7 +245,8 @@ Return ONLY a JSON array of ${20 * countMultiplier} title strings, nothing else.
       const shortTitlesContent = typeof shortTitlesResponse.choices[0].message.content === 'string' 
         ? shortTitlesResponse.choices[0].message.content 
         : JSON.stringify(shortTitlesResponse.choices[0].message.content);
-      const shortTitles = JSON.parse(stripMarkdownJson(shortTitlesContent));
+      const shortTitlesRaw = JSON.parse(stripMarkdownJson(shortTitlesContent));
+      const shortTitles = await Promise.all(shortTitlesRaw.map((t: string) => filterHvcoTitle(t)));
       shortTitles.forEach((title: string) => {
         allTitles.push({
           userId: user.id,
@@ -278,7 +293,8 @@ Return ONLY a JSON array of 30 title strings, nothing else.`;
       const powerModeTitlesContent = typeof powerModeTitlesResponse.choices[0].message.content === 'string' 
         ? powerModeTitlesResponse.choices[0].message.content 
         : JSON.stringify(powerModeTitlesResponse.choices[0].message.content);
-      const powerModeTitles = JSON.parse(stripMarkdownJson(powerModeTitlesContent));
+      const powerModeTitlesRaw = JSON.parse(stripMarkdownJson(powerModeTitlesContent));
+      const powerModeTitles = await Promise.all(powerModeTitlesRaw.map((t: string) => filterHvcoTitle(t)));
       powerModeTitles.forEach((title: string) => {
         allTitles.push({
           userId: user.id,
@@ -323,7 +339,8 @@ Return ONLY a JSON array of 20 subheadline strings, nothing else.`;
       const subheadlinesContent = typeof subheadlinesResponse.choices[0].message.content === 'string' 
         ? subheadlinesResponse.choices[0].message.content 
         : JSON.stringify(subheadlinesResponse.choices[0].message.content);
-      const subheadlines = JSON.parse(stripMarkdownJson(subheadlinesContent));
+      const subheadlinesRaw = JSON.parse(stripMarkdownJson(subheadlinesContent));
+      const subheadlines = await Promise.all(subheadlinesRaw.map((t: string) => filterHvcoTitle(t)));
       subheadlines.forEach((title: string) => {
         allTitles.push({
           userId: user.id,
@@ -426,22 +443,26 @@ Return ONLY a JSON array of 20 subheadline strings, nothing else.`;
           const longTitlesPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert copywriter creating compelling HVCO (High-Value Content Offer) titles.\n\nProduct: ${capturedService.name}\nTarget Market: ${resolvedTargetMarket}\nHVCO Topic: ${resolvedHvcoTopic}\n${icpContext ? `\n${icpContext}\n` : ''}\nCreate 20 LONG, benefit-first titles (3-5 words each) following this pattern:\n[Specific Number/Timeframe] [Action/Benefit] [to/for] [Concrete Outcome]\n\nReturn ONLY a JSON array of ${20 * countMultiplier} title strings, nothing else.`;
           const longR = await invokeLLM({ messages: [{ role: "system", content: "You are a direct response copywriting expert. Return ONLY valid JSON arrays." }, { role: "user", content: longTitlesPrompt }] });
           const longContent = typeof longR.choices[0].message.content === 'string' ? longR.choices[0].message.content : JSON.stringify(longR.choices[0].message.content);
-          JSON.parse(stripMarkdownJson(longContent)).forEach((title: string) => allTitles.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId, hvcoSetId, tabType: "long" as const, title, targetMarket: capturedInput.targetMarket, hvcoTopic: capturedInput.hvcoTopic }));
+          const longTitlesFiltered = await Promise.all(JSON.parse(stripMarkdownJson(longContent)).map((t: string) => filterHvcoTitle(t)));
+          longTitlesFiltered.forEach((title: string) => allTitles.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId, hvcoSetId, tabType: "long" as const, title, targetMarket: capturedInput.targetMarket, hvcoTopic: capturedInput.hvcoTopic }));
 
           const shortTitlesPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert copywriter creating compelling HVCO titles.\n\nProduct: ${capturedService.name}\nTarget Market: ${resolvedTargetMarket}\nHVCO Topic: ${resolvedHvcoTopic}\n${icpContext ? `\n${icpContext}\n` : ''}\nCreate 20 SHORT, benefit-focused titles (2-4 words each).\n\nReturn ONLY a JSON array of ${20 * countMultiplier} title strings, nothing else.`;
           const shortR = await invokeLLM({ messages: [{ role: "system", content: "You are a direct response copywriting expert. Return ONLY valid JSON arrays." }, { role: "user", content: shortTitlesPrompt }] });
           const shortContent = typeof shortR.choices[0].message.content === 'string' ? shortR.choices[0].message.content : JSON.stringify(shortR.choices[0].message.content);
-          JSON.parse(stripMarkdownJson(shortContent)).forEach((title: string) => allTitles.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId, hvcoSetId, tabType: "short" as const, title, targetMarket: capturedInput.targetMarket, hvcoTopic: capturedInput.hvcoTopic }));
+          const shortTitlesFiltered = await Promise.all(JSON.parse(stripMarkdownJson(shortContent)).map((t: string) => filterHvcoTitle(t)));
+          shortTitlesFiltered.forEach((title: string) => allTitles.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId, hvcoSetId, tabType: "short" as const, title, targetMarket: capturedInput.targetMarket, hvcoTopic: capturedInput.hvcoTopic }));
 
           const powerPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert copywriter creating compelling HVCO titles.\n\nProduct: ${capturedService.name}\nTarget Market: ${resolvedTargetMarket}\nHVCO Topic: ${resolvedHvcoTopic}\n${icpContext ? `\n${icpContext}\n` : ''}\nCreate 30 BEAST MODE titles - a mix of long and short, all highly creative and attention-grabbing.\n\nReturn ONLY a JSON array of 30 title strings, nothing else.`;
           const powerR = await invokeLLM({ messages: [{ role: "system", content: "You are a direct response copywriting expert. Return ONLY valid JSON arrays." }, { role: "user", content: powerPrompt }] });
           const powerContent = typeof powerR.choices[0].message.content === 'string' ? powerR.choices[0].message.content : JSON.stringify(powerR.choices[0].message.content);
-          JSON.parse(stripMarkdownJson(powerContent)).forEach((title: string) => allTitles.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId, hvcoSetId, tabType: "beast_mode" as const, title, targetMarket: capturedInput.targetMarket, hvcoTopic: capturedInput.hvcoTopic }));
+          const powerTitlesFiltered = await Promise.all(JSON.parse(stripMarkdownJson(powerContent)).map((t: string) => filterHvcoTitle(t)));
+          powerTitlesFiltered.forEach((title: string) => allTitles.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId, hvcoSetId, tabType: "beast_mode" as const, title, targetMarket: capturedInput.targetMarket, hvcoTopic: capturedInput.hvcoTopic }));
 
           const subPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert copywriter creating compelling subheadlines for HVCOs.\n\nProduct: ${capturedService.name}\nTarget Market: ${resolvedTargetMarket}\nHVCO Topic: ${resolvedHvcoTopic}\n${icpContext ? `\n${icpContext}\n` : ''}\nCreate 20 SUBHEADLINES that support and expand on the main title.\n\nReturn ONLY a JSON array of 20 subheadline strings, nothing else.`;
           const subR = await invokeLLM({ messages: [{ role: "system", content: "You are a direct response copywriting expert. Return ONLY valid JSON arrays." }, { role: "user", content: subPrompt }] });
           const subContent = typeof subR.choices[0].message.content === 'string' ? subR.choices[0].message.content : JSON.stringify(subR.choices[0].message.content);
-          JSON.parse(stripMarkdownJson(subContent)).forEach((title: string) => allTitles.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId, hvcoSetId, tabType: "subheadlines" as const, title, targetMarket: capturedInput.targetMarket, hvcoTopic: capturedInput.hvcoTopic }));
+          const subTitlesFiltered = await Promise.all(JSON.parse(stripMarkdownJson(subContent)).map((t: string) => filterHvcoTitle(t)));
+          subTitlesFiltered.forEach((title: string) => allTitles.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId, hvcoSetId, tabType: "subheadlines" as const, title, targetMarket: capturedInput.targetMarket, hvcoTopic: capturedInput.hvcoTopic }));
 
           await createHvcoTitles(allTitles);
           await incrementHvcoCount(capturedUserId);
@@ -549,9 +570,12 @@ Return ONLY a JSON array of 20 subheadline strings, nothing else.`;
       const parsed = JSON.parse(stripMarkdownJson(content));
       if (!parsed.title) throw new Error("AI response missing title field");
 
+      // Apply compliance filter to regenerated title
+      const filteredTitle = await filterHvcoTitle(parsed.title);
+
       await db
         .update(hvcoTitles)
-        .set({ title: parsed.title, updatedAt: new Date() })
+        .set({ title: filteredTitle, updatedAt: new Date() })
         .where(eq(hvcoTitles.id, input.id));
 
       const [updated] = await db
