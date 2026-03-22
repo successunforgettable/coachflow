@@ -254,6 +254,7 @@ export default function V2HeadlinesResultPanel({
   isFreeTier?: boolean;
 }) {
   const [activeTab, setActiveTab] = useState<FormulaTab>("story");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const { data, isLoading, isError } = trpc.headlines.getBySetId.useQuery(
     { headlineSetId },
@@ -287,6 +288,16 @@ export default function V2HeadlinesResultPanel({
   ];
 
   const activeHeadlines: HeadlineRow[] = (data.headlines[activeTab] ?? []) as HeadlineRow[];
+  const filteredHeadlines = searchQuery
+    ? activeHeadlines.filter(h => {
+        const q = searchQuery.toLowerCase();
+        return (
+          h.headline.toLowerCase().includes(q) ||
+          (h.subheadline && h.subheadline.toLowerCase().includes(q)) ||
+          (h.eyebrow && h.eyebrow.toLowerCase().includes(q))
+        );
+      })
+    : activeHeadlines;
 
   return (
     <div style={{
@@ -342,14 +353,35 @@ export default function V2HeadlinesResultPanel({
         ))}
       </div>
 
+      {/* ── Search ── */}
+      <input
+        type="text"
+        placeholder="Search headlines..."
+        value={searchQuery}
+        onChange={e => setSearchQuery(e.target.value)}
+        style={{
+          width: "100%",
+          fontFamily: "var(--v2-font-body)",
+          fontSize: "14px",
+          color: "var(--v2-text-color)",
+          background: "#fff",
+          border: "1px solid rgba(26,22,36,0.12)",
+          borderRadius: "12px",
+          padding: "10px 14px",
+          outline: "none",
+          marginBottom: "16px",
+          boxSizing: "border-box" as const,
+        }}
+      />
+
       {/* ── Tab content ── */}
       <div>
-        {activeHeadlines.length === 0 ? (
+        {filteredHeadlines.length === 0 ? (
           <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#888", textAlign: "center", padding: "24px 0" }}>
             No {activeTab} headlines in this set.
           </p>
         ) : (
-          activeHeadlines.map((h, i) => <HeadlineCard key={h.id} headline={h} isFreeTier={isFreeTier} index={i} />)
+          filteredHeadlines.map((h, i) => <HeadlineCard key={h.id} headline={h} isFreeTier={isFreeTier} index={i} />)
         )}
       </div>
     </div>

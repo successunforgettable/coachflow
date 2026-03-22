@@ -553,6 +553,7 @@ export default function V2AdCopyResultPanel({
   const [topTab, setTopTab] = useState<TopTab>("copy");
   const [activeTab, setActiveTab] = useState<AdTab>("headlines");
   const [upgradeFeature, setUpgradeFeature] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const { data, isLoading, isError } = trpc.adCopy.getByAdSetId.useQuery(
     { adSetId },
@@ -671,22 +672,46 @@ export default function V2AdCopyResultPanel({
             ))}
           </div>
 
+          {/* ── Search ── */}
+          <input
+            type="text"
+            placeholder="Search ad copy..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            style={{
+              width: "100%",
+              fontFamily: "var(--v2-font-body)",
+              fontSize: "14px",
+              color: "var(--v2-text-color)",
+              background: "#fff",
+              border: "1px solid rgba(26,22,36,0.12)",
+              borderRadius: "12px",
+              padding: "10px 14px",
+              outline: "none",
+              marginBottom: "16px",
+              boxSizing: "border-box" as const,
+            }}
+          />
+
           <div>
-            {activeTab === "headlines" && (
-              headlines.length === 0
+            {activeTab === "headlines" && (() => {
+              const filtered = searchQuery ? headlines.filter(h => h.content.toLowerCase().includes(searchQuery.toLowerCase())) : headlines;
+              return filtered.length === 0
                 ? <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#888", textAlign: "center", padding: "24px 0" }}>No headlines found.</p>
-                : headlines.map((h, i) => <HeadlineItem key={h.id} item={h} index={i} isFreeTier={isFreeTier} onUpgradeClick={(f) => setUpgradeFeature(f || "Per-Item Regeneration")} />)
-            )}
-            {activeTab === "body" && (
-              bodies.length === 0
+                : filtered.map((h, i) => <HeadlineItem key={h.id} item={h} index={i} isFreeTier={isFreeTier} onUpgradeClick={(f) => setUpgradeFeature(f || "Per-Item Regeneration")} />);
+            })()}
+            {activeTab === "body" && (() => {
+              const filtered = searchQuery ? bodies.filter(b => b.content.toLowerCase().includes(searchQuery.toLowerCase())) : bodies;
+              return filtered.length === 0
                 ? <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#888", textAlign: "center", padding: "24px 0" }}>No body copy found.</p>
-                : bodies.map((b, i) => <BodyItem key={b.id} item={b} index={i} isFreeTier={isFreeTier} onUpgradeClick={(f) => setUpgradeFeature(f || "Per-Item Regeneration")} />)
-            )}
-            {activeTab === "links" && (
-              links.length === 0
+                : filtered.map((b, i) => <BodyItem key={b.id} item={b} index={i} isFreeTier={isFreeTier} onUpgradeClick={(f) => setUpgradeFeature(f || "Per-Item Regeneration")} />);
+            })()}
+            {activeTab === "links" && (() => {
+              const filtered = searchQuery ? links.filter(l => l.content.toLowerCase().includes(searchQuery.toLowerCase())) : links;
+              return filtered.length === 0
                 ? <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#888", textAlign: "center", padding: "24px 0" }}>No links found.</p>
-                : links.map((l, i) => <LinkItem key={l.id} item={l} index={i} isFreeTier={isFreeTier} onUpgradeClick={(f) => setUpgradeFeature(f || "Per-Item Regeneration")} />)
-            )}
+                : filtered.map((l, i) => <LinkItem key={l.id} item={l} index={i} isFreeTier={isFreeTier} onUpgradeClick={(f) => setUpgradeFeature(f || "Per-Item Regeneration")} />);
+            })()}
           </div>
         </>
       )}

@@ -179,6 +179,7 @@ export default function V2FreeOptInResultPanel({
 }) {
   const [activeTab, setActiveTab] = useState<TabType>("long");
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const { data, isLoading, isError } = trpc.hvco.getBySetId.useQuery(
     { hvcoSetId },
@@ -255,11 +256,34 @@ export default function V2FreeOptInResultPanel({
         ))}
       </div>
 
+      {/* ── Search ── */}
+      <input
+        type="text"
+        placeholder="Search titles..."
+        value={searchQuery}
+        onChange={e => setSearchQuery(e.target.value)}
+        style={{
+          width: "100%",
+          fontFamily: "var(--v2-font-body)",
+          fontSize: "14px",
+          color: "var(--v2-text-color)",
+          background: "#fff",
+          border: "1px solid rgba(26,22,36,0.12)",
+          borderRadius: "12px",
+          padding: "10px 14px",
+          outline: "none",
+          marginBottom: "16px",
+          boxSizing: "border-box" as const,
+        }}
+      />
+
       {/* ── Cards ── */}
-      {byTab[activeTab].map(t => (
+      {byTab[activeTab]
+        .filter(t => t.title.toLowerCase().includes(searchQuery.toLowerCase()))
+        .map(t => (
         <TitleCard key={t.id} hvco={t} isFreeTier={isFreeTier} onUpgradeClick={() => setShowUpgradeModal(true)} />
       ))}
-      {byTab[activeTab].length === 0 && (
+      {byTab[activeTab].filter(t => t.title.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && (
         <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#999", textAlign: "center", padding: "24px 0" }}>
           No titles in this category.
         </p>

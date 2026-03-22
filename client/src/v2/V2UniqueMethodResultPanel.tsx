@@ -192,6 +192,7 @@ export default function V2UniqueMethodResultPanel({
 }) {
   const [activeTab, setActiveTab] = useState<TabType>("hero_mechanisms");
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const { data, isLoading, isError } = trpc.heroMechanisms.getBySetId.useQuery(
     { mechanismSetId },
@@ -267,11 +268,34 @@ export default function V2UniqueMethodResultPanel({
         ))}
       </div>
 
+      {/* ── Search ── */}
+      <input
+        type="text"
+        placeholder="Search methods..."
+        value={searchQuery}
+        onChange={e => setSearchQuery(e.target.value)}
+        style={{
+          width: "100%",
+          fontFamily: "var(--v2-font-body)",
+          fontSize: "14px",
+          color: "var(--v2-text-color)",
+          background: "#fff",
+          border: "1px solid rgba(26,22,36,0.12)",
+          borderRadius: "12px",
+          padding: "10px 14px",
+          outline: "none",
+          marginBottom: "16px",
+          boxSizing: "border-box" as const,
+        }}
+      />
+
       {/* ── Cards ── */}
-      {byTab[activeTab].map(m => (
+      {byTab[activeTab]
+        .filter(m => m.mechanismName.toLowerCase().includes(searchQuery.toLowerCase()) || m.mechanismDescription.toLowerCase().includes(searchQuery.toLowerCase()))
+        .map(m => (
         <MechanismCard key={m.id} mechanism={m} isFreeTier={isFreeTier} onUpgradeClick={() => setShowUpgradeModal(true)} />
       ))}
-      {byTab[activeTab].length === 0 && (
+      {byTab[activeTab].filter(m => m.mechanismName.toLowerCase().includes(searchQuery.toLowerCase()) || m.mechanismDescription.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && (
         <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#999", textAlign: "center", padding: "24px 0" }}>
           No items in this category.
         </p>
