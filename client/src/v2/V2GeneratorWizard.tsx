@@ -1969,7 +1969,7 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
 
           {/* ── Try Again / Generate Again button after concerned/success ── */}
           {(status === "success" || status === "concerned") && (
-            isFreeTier && status === "success" ? (
+            isFreeTier && status === "success" && !isQuotaExceeded ? (
               <UpgradePrompt variant="inline" featureName="Generate Again" />
             ) : (
               <button
