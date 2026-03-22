@@ -351,6 +351,28 @@ export default function V2ToolLibrary() {
   return (
     <div style={{ paddingBottom: "64px" }}>
 
+      {/* ── Back to Tool Library (shown when a panel is open) ── */}
+      {openPanel && (
+        <button
+          onClick={() => setOpenPanel(null)}
+          style={{
+            background: "transparent",
+            border: "none",
+            fontFamily: "var(--v2-font-body)",
+            fontSize: "13px",
+            fontWeight: 700,
+            color: "#888",
+            cursor: "pointer",
+            padding: "0 0 16px 0",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+          }}
+        >
+          ← Back to Tool Library
+        </button>
+      )}
+
       {/* ── ICP Selector ── */}
       <div
         style={{
@@ -464,24 +486,6 @@ export default function V2ToolLibrary() {
       {/* ── Ad Images inline panel ── */}
       {openPanel === "adImages" && (
         <div style={{ marginBottom: "32px" }}>
-          <button
-            onClick={() => setOpenPanel(null)}
-            style={{
-              background: "transparent",
-              border: "none",
-              fontFamily: "var(--v2-font-body)",
-              fontSize: "13px",
-              fontWeight: 700,
-              color: "#888",
-              cursor: "pointer",
-              padding: "0 0 16px 0",
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-            }}
-          >
-            ← Back to Tool Library
-          </button>
           <V2AdImageCreator />
         </div>
       )}
@@ -489,24 +493,6 @@ export default function V2ToolLibrary() {
       {/* ── Video Creator inline panel ── */}
       {openPanel === "videoCreator" && (
         <div style={{ marginBottom: "32px" }}>
-          <button
-            onClick={() => setOpenPanel(null)}
-            style={{
-              background: "transparent",
-              border: "none",
-              fontFamily: "var(--v2-font-body)",
-              fontSize: "13px",
-              fontWeight: 700,
-              color: "#888",
-              cursor: "pointer",
-              padding: "0 0 16px 0",
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-            }}
-          >
-            ← Back to Tool Library
-          </button>
           <V2VideoCreator />
         </div>
       )}
