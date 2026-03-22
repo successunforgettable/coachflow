@@ -10,6 +10,7 @@ import { useState } from "react";
 import { trpc } from "../lib/trpc";
 import { toast } from "sonner";
 import ZappyMascot from "./ZappyMascot";
+import UpgradePrompt from "./components/UpgradePrompt";
 
 // ─── Shared icon-button style ─────────────────────────────────────────────────
 const iconBtn: React.CSSProperties = {
@@ -144,17 +145,20 @@ function AccordionSection({
   content,
   defaultOpen,
   icpId,
+  isFreeTier,
 }: {
   label: string;
   sectionKey: SectionKey;
   content: unknown;
   defaultOpen: boolean;
   icpId: number;
+  isFreeTier?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const [copied, setCopied] = useState(false);
   const [editing, setEditing] = useState(false);
   const [regenOpen, setRegenOpen] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const isDemographics = sectionKey === "demographics";
 
@@ -264,16 +268,26 @@ function AccordionSection({
               {copied ? "✓" : "⎘"}
             </button>
             {!isDemographics && (
-              <button
-                onClick={() => setRegenOpen(p => !p)}
-                style={{ ...iconBtn, background: regenOpen ? "rgba(255,91,29,0.10)" : undefined, borderColor: regenOpen ? "rgba(255,91,29,0.40)" : undefined }}
-                title="Regenerate"
-              >
-                ↺
-              </button>
+              isFreeTier ? (
+                <button
+                  onClick={() => setShowUpgradeModal(true)}
+                  style={{ ...iconBtn, opacity: 0.4, cursor: "not-allowed" }}
+                  title="Upgrade to Pro to regenerate"
+                >
+                  ↺
+                </button>
+              ) : (
+                <button
+                  onClick={() => setRegenOpen(p => !p)}
+                  style={{ ...iconBtn, background: regenOpen ? "rgba(255,91,29,0.10)" : undefined, borderColor: regenOpen ? "rgba(255,91,29,0.40)" : undefined }}
+                  title="Regenerate"
+                >
+                  ↺
+                </button>
+              )
             )}
           </div>
-          {regenOpen && !isDemographics && (
+          {regenOpen && !isDemographics && !isFreeTier && (
             <IcpRegenPanel
               icpId={icpId}
               sectionKey={sectionKey}
@@ -281,6 +295,7 @@ function AccordionSection({
               onClose={() => setRegenOpen(false)}
             />
           )}
+          {showUpgradeModal && <UpgradePrompt variant="modal" featureName="Per-Item Regeneration" onClose={() => setShowUpgradeModal(false)} />}
         </div>
       )}
     </div>
@@ -290,8 +305,10 @@ function AccordionSection({
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function V2ICPResultPanel({
   icpId,
+  isFreeTier,
 }: {
   icpId: number;
+  isFreeTier?: boolean;
 }) {
   const { data, isLoading, isError } = trpc.icps.get.useQuery(
     { id: icpId },
@@ -358,6 +375,7 @@ export default function V2ICPResultPanel({
           content={icp[s.key]}
           defaultOpen={i < 3}
           icpId={icpId}
+          isFreeTier={isFreeTier}
         />
       ))}
 

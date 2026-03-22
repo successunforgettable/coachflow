@@ -1810,6 +1810,7 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
             <V2HeadlinesResultPanel
               headlineSetId={latestHeadlineSetId}
               serviceId={activeService.id}
+              isFreeTier={isFreeTier}
             />
           )}
           {/* ── R1a: NODE 7 AD COPY RESULT PANEL ── */}
@@ -1817,35 +1818,36 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
             <V2AdCopyResultPanel
               adSetId={latestAdSetId}
               serviceId={activeService.id}
+              isFreeTier={isFreeTier}
             />
           )}
           {/* ── R1b: NODE 2 ICP RESULT PANEL ── */}
           {status === "success" && step === "icp" && latestIcpId && (
-            <V2ICPResultPanel icpId={latestIcpId} />
+            <V2ICPResultPanel icpId={latestIcpId} isFreeTier={isFreeTier} />
           )}
           {/* ── R1b: NODE 3 OFFER RESULT PANEL ── */}
           {status === "success" && step === "offer" && latestOfferId && (
-            <V2OfferResultPanel offerId={latestOfferId} />
+            <V2OfferResultPanel offerId={latestOfferId} isFreeTier={isFreeTier} />
           )}
           {/* ── R1b: NODE 4 UNIQUE METHOD RESULT PANEL ── */}
           {status === "success" && step === "uniqueMethod" && latestMechanismSetId && (
-            <V2UniqueMethodResultPanel mechanismSetId={latestMechanismSetId} />
+            <V2UniqueMethodResultPanel mechanismSetId={latestMechanismSetId} isFreeTier={isFreeTier} />
           )}
           {/* ── R1b: NODE 5 FREE OPT-IN RESULT PANEL ── */}
           {status === "success" && step === "freeOptIn" && latestHvcoSetId && (
-            <V2FreeOptInResultPanel hvcoSetId={latestHvcoSetId} />
+            <V2FreeOptInResultPanel hvcoSetId={latestHvcoSetId} isFreeTier={isFreeTier} />
           )}
           {/* ── R1b: NODE 8 LANDING PAGE RESULT PANEL ── */}
           {status === "success" && step === "landingPage" && latestLandingPageId && (
-            <V2LandingPageResultPanel landingPageId={latestLandingPageId} />
+            <V2LandingPageResultPanel landingPageId={latestLandingPageId} isFreeTier={isFreeTier} />
           )}
           {/* ── R1b: NODE 9 EMAIL SEQUENCE RESULT PANEL ── */}
           {status === "success" && step === "emailSequence" && latestEmailSequenceId && (
-            <V2EmailSequenceResultPanel emailSequenceId={latestEmailSequenceId} />
+            <V2EmailSequenceResultPanel emailSequenceId={latestEmailSequenceId} isFreeTier={isFreeTier} />
           )}
           {/* ── R1b: NODE 10 WHATSAPP RESULT PANEL ── */}
           {status === "success" && step === "whatsappSequence" && latestWhatsappSequenceId && (
-            <V2WhatsAppResultPanel whatsappSequenceId={latestWhatsappSequenceId} />
+            <V2WhatsAppResultPanel whatsappSequenceId={latestWhatsappSequenceId} isFreeTier={isFreeTier} />
           )}
 
           {/* ── CONCERNED STATE (compliance violations) ── */}

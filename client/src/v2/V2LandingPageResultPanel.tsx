@@ -12,6 +12,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { trpc } from "../lib/trpc";
 import { toast } from "sonner";
 import ZappyMascot from "./ZappyMascot";
+import UpgradePrompt from "./components/UpgradePrompt";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type AngleKey = "original" | "godfather" | "free" | "dollar";
@@ -225,6 +226,7 @@ function SectionCard({
   landingPageId,
   angle,
   onAngleUpdate,
+  isFreeTier,
 }: {
   label: string;
   sectionKey: keyof AngleContent;
@@ -232,12 +234,14 @@ function SectionCard({
   landingPageId: number;
   angle: AngleKey;
   onAngleUpdate: (newAngle: AngleContent) => void;
+  isFreeTier?: boolean;
 }) {
   const textValue = serializeValue(initialValue);
   const [value, setValue] = useState(textValue);
   const [editing, setEditing] = useState(false);
   const [copied, setCopied] = useState(false);
   const [regenOpen, setRegenOpen] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   function handleCopy() {
     navigator.clipboard.writeText(value).catch(() => {});
@@ -314,15 +318,25 @@ function SectionCard({
         >
           {copied ? "✓" : "⎘"}
         </button>
-        <button
-          onClick={() => setRegenOpen(p => !p)}
-          style={{ ...iconBtn, background: regenOpen ? "rgba(255,91,29,0.10)" : undefined, borderColor: regenOpen ? "rgba(255,91,29,0.40)" : undefined }}
-          title="Regenerate"
-        >
-          ↺
-        </button>
+        {isFreeTier ? (
+          <button
+            onClick={() => setShowUpgradeModal(true)}
+            style={{ ...iconBtn, opacity: 0.4, cursor: "not-allowed" }}
+            title="Upgrade to Pro to regenerate"
+          >
+            ↺
+          </button>
+        ) : (
+          <button
+            onClick={() => setRegenOpen(p => !p)}
+            style={{ ...iconBtn, background: regenOpen ? "rgba(255,91,29,0.10)" : undefined, borderColor: regenOpen ? "rgba(255,91,29,0.40)" : undefined }}
+            title="Regenerate"
+          >
+            ↺
+          </button>
+        )}
       </div>
-      {regenOpen && (
+      {regenOpen && !isFreeTier && (
         <LpRegenPanel
           landingPageId={landingPageId}
           angle={angle}
@@ -335,6 +349,7 @@ function SectionCard({
           onClose={() => setRegenOpen(false)}
         />
       )}
+      {showUpgradeModal && <UpgradePrompt variant="modal" featureName="Per-Item Regeneration" onClose={() => setShowUpgradeModal(false)} />}
     </div>
   );
 }
@@ -611,11 +626,12 @@ function TabPill({ label, active, onClick }: { label: string; active: boolean; o
 }
 
 // ─── Angle tab content ────────────────────────────────────────────────────────
-function AngleTabContent({ content, landingPageId, angle, onAngleUpdate }: {
+function AngleTabContent({ content, landingPageId, angle, onAngleUpdate, isFreeTier }: {
   content: AngleContent;
   landingPageId: number;
   angle: AngleKey;
   onAngleUpdate: (newAngle: AngleContent) => void;
+  isFreeTier?: boolean;
 }) {
   return (
     <div>
@@ -628,6 +644,7 @@ function AngleTabContent({ content, landingPageId, angle, onAngleUpdate }: {
           landingPageId={landingPageId}
           angle={angle}
           onAngleUpdate={onAngleUpdate}
+          isFreeTier={isFreeTier}
         />
       ))}
     </div>
@@ -767,8 +784,10 @@ function AssetUploadPanel({
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function V2LandingPageResultPanel({
   landingPageId,
+  isFreeTier,
 }: {
   landingPageId: number;
+  isFreeTier?: boolean;
 }) {
   const { data, isLoading, isError } = trpc.landingPages.get.useQuery(
     { id: landingPageId },
@@ -977,6 +996,7 @@ export default function V2LandingPageResultPanel({
         landingPageId={landingPageId}
         angle={resolvedTab}
         onAngleUpdate={(newAngle) => handleAngleUpdate(resolvedTab, newAngle)}
+        isFreeTier={isFreeTier}
       />
 
       {/* ── Full-screen preview modal ── */}

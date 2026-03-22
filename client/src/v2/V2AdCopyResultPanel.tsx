@@ -15,6 +15,7 @@
 import { useState } from "react";
 import { trpc } from "../lib/trpc";
 import ZappyMascot from "./ZappyMascot";
+import UpgradePrompt from "./components/UpgradePrompt";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type AdTab = "headlines" | "body" | "links";
@@ -206,7 +207,7 @@ function RegenPanel({
 }
 
 // ─── Headline item card ───────────────────────────────────────────────────────
-function HeadlineItem({ item, index }: { item: AdRow; index: number }) {
+function HeadlineItem({ item, index, isFreeTier, onUpgradeClick }: { item: AdRow; index: number; isFreeTier?: boolean; onUpgradeClick?: () => void }) {
   const [content, setContent]   = useState(item.content);
   const [copied, setCopied]     = useState(false);
   const [thumbUp, setThumbUp]   = useState(false);
@@ -265,13 +266,21 @@ function HeadlineItem({ item, index }: { item: AdRow; index: number }) {
           style={{ ...iconBtn, background: thumbDown ? "rgba(220,38,38,0.10)" : undefined, borderColor: thumbDown ? "rgba(220,38,38,0.35)" : undefined }}
           title="Thumbs down"
         >👎</button>
-        <button
-          onClick={() => setRegenOpen(p => !p)}
-          style={{ ...iconBtn, background: regenOpen ? "rgba(255,91,29,0.10)" : undefined, borderColor: regenOpen ? "rgba(255,91,29,0.40)" : undefined }}
-          title="Regenerate"
-        >↺</button>
+        {isFreeTier ? (
+          <button
+            onClick={() => onUpgradeClick?.()}
+            style={{ ...iconBtn, opacity: 0.4, cursor: "not-allowed" }}
+            title="Upgrade to Pro to regenerate"
+          >↺</button>
+        ) : (
+          <button
+            onClick={() => setRegenOpen(p => !p)}
+            style={{ ...iconBtn, background: regenOpen ? "rgba(255,91,29,0.10)" : undefined, borderColor: regenOpen ? "rgba(255,91,29,0.40)" : undefined }}
+            title="Regenerate"
+          >↺</button>
+        )}
       </div>
-      {regenOpen && (
+      {regenOpen && !isFreeTier && (
         <RegenPanel
           itemId={item.id}
           onSuccess={(newContent) => { setContent(newContent); setRegenOpen(false); }}
@@ -283,7 +292,7 @@ function HeadlineItem({ item, index }: { item: AdRow; index: number }) {
 }
 
 // ─── Body copy item card ──────────────────────────────────────────────────────
-function BodyItem({ item, index }: { item: AdRow; index: number }) {
+function BodyItem({ item, index, isFreeTier, onUpgradeClick }: { item: AdRow; index: number; isFreeTier?: boolean; onUpgradeClick?: () => void }) {
   const [content, setContent]   = useState(item.content);
   const [copied, setCopied]     = useState(false);
   const [thumbUp, setThumbUp]   = useState(false);
@@ -371,11 +380,19 @@ function BodyItem({ item, index }: { item: AdRow; index: number }) {
           style={{ ...iconBtn, background: thumbDown ? "rgba(220,38,38,0.10)" : undefined, borderColor: thumbDown ? "rgba(220,38,38,0.35)" : undefined }}
           title="Thumbs down"
         >👎</button>
-        <button
-          onClick={() => setRegenOpen(p => !p)}
-          style={{ ...iconBtn, background: regenOpen ? "rgba(255,91,29,0.10)" : undefined, borderColor: regenOpen ? "rgba(255,91,29,0.40)" : undefined }}
-          title="Regenerate"
-        >↺</button>
+        {isFreeTier ? (
+          <button
+            onClick={() => onUpgradeClick?.()}
+            style={{ ...iconBtn, opacity: 0.4, cursor: "not-allowed" }}
+            title="Upgrade to Pro to regenerate"
+          >↺</button>
+        ) : (
+          <button
+            onClick={() => setRegenOpen(p => !p)}
+            style={{ ...iconBtn, background: regenOpen ? "rgba(255,91,29,0.10)" : undefined, borderColor: regenOpen ? "rgba(255,91,29,0.40)" : undefined }}
+            title="Regenerate"
+          >↺</button>
+        )}
         {/* Publish to Meta */}
         <button
           onClick={handlePublishToMeta}
@@ -396,7 +413,7 @@ function BodyItem({ item, index }: { item: AdRow; index: number }) {
           Publish to Meta
         </button>
       </div>
-      {regenOpen && (
+      {regenOpen && !isFreeTier && (
         <RegenPanel
           itemId={item.id}
           onSuccess={(newContent) => { setContent(newContent); setRegenOpen(false); }}
@@ -408,7 +425,7 @@ function BodyItem({ item, index }: { item: AdRow; index: number }) {
 }
 
 // ─── Link item card ───────────────────────────────────────────────────────────
-function LinkItem({ item, index }: { item: AdRow; index: number }) {
+function LinkItem({ item, index, isFreeTier, onUpgradeClick }: { item: AdRow; index: number; isFreeTier?: boolean; onUpgradeClick?: () => void }) {
   const [content, setContent]   = useState(item.content);
   const [copied, setCopied]     = useState(false);
   const [thumbUp, setThumbUp]   = useState(false);
@@ -465,13 +482,21 @@ function LinkItem({ item, index }: { item: AdRow; index: number }) {
           style={{ ...iconBtn, background: thumbDown ? "rgba(220,38,38,0.10)" : undefined, borderColor: thumbDown ? "rgba(220,38,38,0.35)" : undefined }}
           title="Thumbs down"
         >👎</button>
-        <button
-          onClick={() => setRegenOpen(p => !p)}
-          style={{ ...iconBtn, background: regenOpen ? "rgba(255,91,29,0.10)" : undefined, borderColor: regenOpen ? "rgba(255,91,29,0.40)" : undefined }}
-          title="Regenerate"
-        >↺</button>
+        {isFreeTier ? (
+          <button
+            onClick={() => onUpgradeClick?.()}
+            style={{ ...iconBtn, opacity: 0.4, cursor: "not-allowed" }}
+            title="Upgrade to Pro to regenerate"
+          >↺</button>
+        ) : (
+          <button
+            onClick={() => setRegenOpen(p => !p)}
+            style={{ ...iconBtn, background: regenOpen ? "rgba(255,91,29,0.10)" : undefined, borderColor: regenOpen ? "rgba(255,91,29,0.40)" : undefined }}
+            title="Regenerate"
+          >↺</button>
+        )}
       </div>
-      {regenOpen && (
+      {regenOpen && !isFreeTier && (
         <RegenPanel
           itemId={item.id}
           onSuccess={(newContent) => { setContent(newContent); setRegenOpen(false); }}
@@ -513,11 +538,14 @@ function TabPill({ label, count, active, onClick }: {
 export default function V2AdCopyResultPanel({
   adSetId,
   serviceId: _serviceId,
+  isFreeTier,
 }: {
   adSetId: string;
   serviceId: number;
+  isFreeTier?: boolean;
 }) {
   const [activeTab, setActiveTab] = useState<AdTab>("headlines");
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const { data, isLoading, isError } = trpc.adCopy.getByAdSetId.useQuery(
     { adSetId },
@@ -602,19 +630,20 @@ export default function V2AdCopyResultPanel({
         {activeTab === "headlines" && (
           headlines.length === 0
             ? <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#888", textAlign: "center", padding: "24px 0" }}>No headlines found.</p>
-            : headlines.map((h, i) => <HeadlineItem key={h.id} item={h} index={i} />)
+            : headlines.map((h, i) => <HeadlineItem key={h.id} item={h} index={i} isFreeTier={isFreeTier} onUpgradeClick={() => setShowUpgradeModal(true)} />)
         )}
         {activeTab === "body" && (
           bodies.length === 0
             ? <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#888", textAlign: "center", padding: "24px 0" }}>No body copy found.</p>
-            : bodies.map((b, i) => <BodyItem key={b.id} item={b} index={i} />)
+            : bodies.map((b, i) => <BodyItem key={b.id} item={b} index={i} isFreeTier={isFreeTier} onUpgradeClick={() => setShowUpgradeModal(true)} />)
         )}
         {activeTab === "links" && (
           links.length === 0
             ? <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#888", textAlign: "center", padding: "24px 0" }}>No links found.</p>
-            : links.map((l, i) => <LinkItem key={l.id} item={l} index={i} />)
+            : links.map((l, i) => <LinkItem key={l.id} item={l} index={i} isFreeTier={isFreeTier} onUpgradeClick={() => setShowUpgradeModal(true)} />)
         )}
       </div>
+      {showUpgradeModal && <UpgradePrompt variant="modal" featureName="Per-Item Regeneration" onClose={() => setShowUpgradeModal(false)} />}
     </div>
   );
 }

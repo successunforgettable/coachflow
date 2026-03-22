@@ -13,6 +13,7 @@
 import { useState } from "react";
 import { trpc } from "../lib/trpc";
 import ZappyMascot from "./ZappyMascot";
+import UpgradePrompt from "./components/UpgradePrompt";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type FormulaTab = "story" | "eyebrow" | "question" | "authority" | "urgency";
@@ -120,7 +121,7 @@ function HeadlineRegenPanel({
 }
 
 // ─── Per-headline card ────────────────────────────────────────────────────────
-function HeadlineCard({ headline }: { headline: HeadlineRow }) {
+function HeadlineCard({ headline, isFreeTier }: { headline: HeadlineRow; isFreeTier?: boolean }) {
   const [headlineText, setHeadlineText] = useState(headline.headline);
   const [subheadlineText, setSubheadlineText] = useState(headline.subheadline);
   const [copied, setCopied]     = useState(false);
@@ -128,6 +129,7 @@ function HeadlineCard({ headline }: { headline: HeadlineRow }) {
   const [thumbDown, setThumbDown] = useState(false);
   const [starred, setStarred]   = useState(false);
   const [regenOpen, setRegenOpen] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   function handleCopy() {
     const text = [headline.eyebrow, headlineText, subheadlineText]
@@ -191,15 +193,20 @@ function HeadlineCard({ headline }: { headline: HeadlineRow }) {
         <button onClick={() => { setThumbUp(p => !p); if (!thumbUp) setThumbDown(false); }} style={{ ...iconBtn, background: thumbUp ? "rgba(88,204,2,0.12)" : undefined, borderColor: thumbUp ? "rgba(88,204,2,0.40)" : undefined }} title="Thumbs up">👍</button>
         <button onClick={() => { setThumbDown(p => !p); if (!thumbDown) setThumbUp(false); }} style={{ ...iconBtn, background: thumbDown ? "rgba(220,38,38,0.10)" : undefined, borderColor: thumbDown ? "rgba(220,38,38,0.35)" : undefined }} title="Thumbs down">👎</button>
         <button onClick={() => setStarred(p => !p)} style={{ ...iconBtn, background: starred ? "rgba(255,165,0,0.12)" : undefined, borderColor: starred ? "rgba(255,165,0,0.45)" : undefined, color: starred ? "#D97706" : undefined }} title="Star">{starred ? "★" : "☆"}</button>
-        <button onClick={() => setRegenOpen(p => !p)} style={{ ...iconBtn, background: regenOpen ? "rgba(255,91,29,0.10)" : undefined, borderColor: regenOpen ? "rgba(255,91,29,0.40)" : undefined }} title="Regenerate">↺</button>
+        {isFreeTier ? (
+          <button onClick={() => setShowUpgradeModal(true)} style={{ ...iconBtn, opacity: 0.4, cursor: "not-allowed" }} title="Upgrade to Pro to regenerate">↺</button>
+        ) : (
+          <button onClick={() => setRegenOpen(p => !p)} style={{ ...iconBtn, background: regenOpen ? "rgba(255,91,29,0.10)" : undefined, borderColor: regenOpen ? "rgba(255,91,29,0.40)" : undefined }} title="Regenerate">↺</button>
+        )}
       </div>
-      {regenOpen && (
+      {regenOpen && !isFreeTier && (
         <HeadlineRegenPanel
           itemId={headline.id}
           onSuccess={(h, s) => { setHeadlineText(h); setSubheadlineText(s); setRegenOpen(false); }}
           onClose={() => setRegenOpen(false)}
         />
       )}
+      {showUpgradeModal && <UpgradePrompt variant="modal" featureName="Per-Item Regeneration" onClose={() => setShowUpgradeModal(false)} />}
     </div>
   );
 }
@@ -235,9 +242,11 @@ function TabPill({ label, count, active, onClick }: {
 export default function V2HeadlinesResultPanel({
   headlineSetId,
   serviceId: _serviceId,
+  isFreeTier,
 }: {
   headlineSetId: string;
   serviceId: number;
+  isFreeTier?: boolean;
 }) {
   const [activeTab, setActiveTab] = useState<FormulaTab>("story");
 
@@ -335,7 +344,7 @@ export default function V2HeadlinesResultPanel({
             No {activeTab} headlines in this set.
           </p>
         ) : (
-          activeHeadlines.map((h) => <HeadlineCard key={h.id} headline={h} />)
+          activeHeadlines.map((h) => <HeadlineCard key={h.id} headline={h} isFreeTier={isFreeTier} />)
         )}
       </div>
     </div>

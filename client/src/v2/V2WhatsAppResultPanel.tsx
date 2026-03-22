@@ -9,6 +9,7 @@
 import { useState } from "react";
 import { trpc } from "../lib/trpc";
 import ZappyMascot from "./ZappyMascot";
+import UpgradePrompt from "./components/UpgradePrompt";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface WhatsAppMessage {
@@ -145,7 +146,7 @@ function WhatsAppRegenPanel({
 }
 
 // ─── Message card ─────────────────────────────────────────────────────────────
-function MessageCard({ msg, index, sequenceId }: { msg: WhatsAppMessage; index: number; sequenceId: number }) {
+function MessageCard({ msg, index, sequenceId, isFreeTier }: { msg: WhatsAppMessage; index: number; sequenceId: number; isFreeTier?: boolean }) {
   const emojis = Array.isArray(msg.emojis) ? msg.emojis : [];
   const [messageText, setMessageText] = useState(msg.text ?? msg.message ?? "");
   const [copied, setCopied]       = useState(false);
@@ -153,6 +154,7 @@ function MessageCard({ msg, index, sequenceId }: { msg: WhatsAppMessage; index: 
   const [thumbDown, setThumbDown] = useState(false);
   const [starred, setStarred]     = useState(false);
   const [regenOpen, setRegenOpen] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const fullText = `${messageText}${emojis.length ? " " + emojis.join(" ") : ""}`;
 
@@ -245,15 +247,25 @@ function MessageCard({ msg, index, sequenceId }: { msg: WhatsAppMessage; index: 
         >
           {starred ? "★" : "☆"}
         </button>
-        <button
-          onClick={() => setRegenOpen(p => !p)}
-          style={{ ...iconBtn, background: regenOpen ? "rgba(255,91,29,0.10)" : undefined, borderColor: regenOpen ? "rgba(255,91,29,0.40)" : undefined }}
-          title="Regenerate"
-        >
-          ↺
-        </button>
+        {isFreeTier ? (
+          <button
+            onClick={() => setShowUpgradeModal(true)}
+            style={{ ...iconBtn, opacity: 0.4, cursor: "not-allowed" }}
+            title="Upgrade to Pro to regenerate"
+          >
+            ↺
+          </button>
+        ) : (
+          <button
+            onClick={() => setRegenOpen(p => !p)}
+            style={{ ...iconBtn, background: regenOpen ? "rgba(255,91,29,0.10)" : undefined, borderColor: regenOpen ? "rgba(255,91,29,0.40)" : undefined }}
+            title="Regenerate"
+          >
+            ↺
+          </button>
+        )}
       </div>
-      {regenOpen && (
+      {regenOpen && !isFreeTier && (
         <WhatsAppRegenPanel
           sequenceId={sequenceId}
           index={index}
@@ -261,6 +273,7 @@ function MessageCard({ msg, index, sequenceId }: { msg: WhatsAppMessage; index: 
           onClose={() => setRegenOpen(false)}
         />
       )}
+      {showUpgradeModal && <UpgradePrompt variant="modal" featureName="Per-Item Regeneration" onClose={() => setShowUpgradeModal(false)} />}
     </div>
   );
 }
@@ -268,8 +281,10 @@ function MessageCard({ msg, index, sequenceId }: { msg: WhatsAppMessage; index: 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function V2WhatsAppResultPanel({
   whatsappSequenceId,
+  isFreeTier,
 }: {
   whatsappSequenceId: number;
+  isFreeTier?: boolean;
 }) {
   const { data, isLoading, isError } = trpc.whatsappSequences.get.useQuery(
     { id: whatsappSequenceId },
@@ -335,7 +350,7 @@ export default function V2WhatsAppResultPanel({
 
       {/* ── Message cards ── */}
       {messages.map((msg, i) => (
-        <MessageCard key={i} msg={msg} index={i} sequenceId={whatsappSequenceId} />
+        <MessageCard key={i} msg={msg} index={i} sequenceId={whatsappSequenceId} isFreeTier={isFreeTier} />
       ))}
       {messages.length === 0 && (
         <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#999", textAlign: "center", padding: "24px 0" }}>

@@ -10,6 +10,7 @@ import { useState } from "react";
 import { trpc } from "../lib/trpc";
 import { toast } from "sonner";
 import ZappyMascot from "./ZappyMascot";
+import UpgradePrompt from "./components/UpgradePrompt";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type AngleKey = "godfather" | "free" | "dollar";
@@ -120,17 +121,20 @@ function SectionCard({
   initialValue,
   offerId,
   angle,
+  isFreeTier,
 }: {
   label: string;
   sectionKey: string;
   initialValue: string;
   offerId: number;
   angle: AngleKey;
+  isFreeTier?: boolean;
 }) {
   const [value, setValue] = useState(initialValue);
   const [editing, setEditing] = useState(false);
   const [copied, setCopied] = useState(false);
   const [regenOpen, setRegenOpen] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   function handleCopy() {
     navigator.clipboard.writeText(value).catch(() => {});
@@ -205,14 +209,19 @@ function SectionCard({
           {copied ? "✓" : "⎘"}
         </button>
         <button
-          onClick={() => setRegenOpen(p => !p)}
-          style={{ ...iconBtn, background: regenOpen ? "rgba(255,91,29,0.10)" : undefined, borderColor: regenOpen ? "rgba(255,91,29,0.40)" : undefined }}
-          title="Regenerate"
+          onClick={isFreeTier ? () => setShowUpgradeModal(true) : () => setRegenOpen(p => !p)}
+          style={{
+            ...iconBtn,
+            ...(isFreeTier
+              ? { opacity: 0.4, cursor: "not-allowed" }
+              : { background: regenOpen ? "rgba(255,91,29,0.10)" : undefined, borderColor: regenOpen ? "rgba(255,91,29,0.40)" : undefined }),
+          }}
+          title={isFreeTier ? "Upgrade to Pro to regenerate" : "Regenerate"}
         >
           ↺
         </button>
       </div>
-      {regenOpen && (
+      {regenOpen && !isFreeTier && (
         <OfferRegenPanel
           offerId={offerId}
           angle={angle}
@@ -221,6 +230,7 @@ function SectionCard({
           onClose={() => setRegenOpen(false)}
         />
       )}
+      {showUpgradeModal && <UpgradePrompt variant="modal" featureName="Per-Item Regeneration" onClose={() => setShowUpgradeModal(false)} />}
     </div>
   );
 }
@@ -251,7 +261,7 @@ function TabPill({ label, active, onClick }: { label: string; active: boolean; o
 }
 
 // ─── Angle tab content ────────────────────────────────────────────────────────
-function AngleTabContent({ content, offerId, angle }: { content: AngleContent; offerId: number; angle: AngleKey }) {
+function AngleTabContent({ content, offerId, angle, isFreeTier }: { content: AngleContent; offerId: number; angle: AngleKey; isFreeTier?: boolean }) {
   return (
     <div>
       {SECTION_DEFS.map(s => (
@@ -262,6 +272,7 @@ function AngleTabContent({ content, offerId, angle }: { content: AngleContent; o
           initialValue={content[s.key] ?? ""}
           offerId={offerId}
           angle={angle}
+          isFreeTier={isFreeTier}
         />
       ))}
     </div>
@@ -271,8 +282,10 @@ function AngleTabContent({ content, offerId, angle }: { content: AngleContent; o
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function V2OfferResultPanel({
   offerId,
+  isFreeTier,
 }: {
   offerId: number;
+  isFreeTier?: boolean;
 }) {
   const { data, isLoading, isError } = trpc.offers.get.useQuery(
     { id: offerId },
@@ -372,7 +385,7 @@ export default function V2OfferResultPanel({
       </div>
 
       {/* ── Active angle content ── */}
-      <AngleTabContent key={resolvedTab} content={angles[resolvedTab]} offerId={offerId} angle={resolvedTab} />
+      <AngleTabContent key={resolvedTab} content={angles[resolvedTab]} offerId={offerId} angle={resolvedTab} isFreeTier={isFreeTier} />
 
       {/* ── Download TXT button ── */}
       <div style={{ marginTop: "20px", textAlign: "center" }}>
