@@ -258,6 +258,9 @@ export default function V2Dashboard() {
     () => new URLSearchParams(window.location.search).get("tab") === "tools" ? "tools" : "guided"
   );
 
+  // Source of Truth check
+  const { data: sotData, isLoading: sotLoading } = trpc.sourceOfTruth.get.useQuery();
+
   // ── Real progress data from backend ──
   const { data: progressData, isLoading: progressLoading } = trpc.progress.getProgress.useQuery();
 
@@ -630,6 +633,37 @@ export default function V2Dashboard() {
 
         {!isFirstTime && (
         <>
+        {/* ── Source of Truth card ── */}
+        <div
+          onClick={() => navigate("/v2-dashboard/source-of-truth")}
+          style={{
+            background: "#fff",
+            borderRadius: "16px",
+            border: "1px solid rgba(26,22,36,0.08)",
+            padding: "14px 20px",
+            marginBottom: "24px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            cursor: "pointer",
+            transition: "box-shadow 0.15s",
+          }}
+          onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 2px 12px rgba(26,22,36,0.08)")}
+          onMouseLeave={e => (e.currentTarget.style.boxShadow = "none")}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <img src="/zappy-waiting.svg" alt="" style={{ width: "28px", height: "28px" }} />
+            <span style={{ fontFamily: "var(--v2-font-body)", fontWeight: 700, fontSize: "14px", color: "#1A1624" }}>Source of Truth</span>
+          </div>
+          {sotLoading ? (
+            <span style={{ fontFamily: "var(--v2-font-body)", fontSize: "11px", color: "#999", fontWeight: 500 }}>Checking...</span>
+          ) : sotData ? (
+            <span style={{ background: "rgba(88,204,2,0.12)", color: "#2E7D00", border: "1px solid rgba(88,204,2,0.30)", borderRadius: "9999px", padding: "3px 12px", fontFamily: "var(--v2-font-body)", fontSize: "11px", fontWeight: 600 }}>Active</span>
+          ) : (
+            <span style={{ background: "rgba(255,91,29,0.10)", color: "#FF5B1D", border: "1px solid rgba(255,91,29,0.25)", borderRadius: "9999px", padding: "3px 12px", fontFamily: "var(--v2-font-body)", fontSize: "11px", fontWeight: 600 }}>Set Up Now</span>
+          )}
+        </div>
+
         {/* ── COMPONENT 1: Nav Tabs ── */}
         <div style={{
           display: "inline-flex",
