@@ -871,13 +871,13 @@ export const videoScriptsRouter = router({
         throw new Error("No scenes returned — please try again");
       }
 
-      // Word count validation — max 150 words
+      // Word count validation — max 300 words
       const totalWords = scriptData.scenes.reduce((sum: number, s: any) =>
         sum + (s.voiceoverText?.trim().split(/\s+/).length || 0), 0
       );
       console.log(`[Script] Total word count: ${totalWords}`);
-      if (totalWords > 150) {
-        throw new Error(`Script too long: ${totalWords} words. Maximum 150. Regenerate.`);
+      if (totalWords > 300) {
+        throw new Error(`Script too long: ${totalWords} words. Maximum 300. Regenerate.`);
       }
 
       console.log(`✅ ZAP-generated script for: ${service.name}`);
@@ -1065,8 +1065,8 @@ export const videoScriptsRouter = router({
             (sum: number, s: any) => sum + (s.voiceoverText?.trim().split(/\s+/).length || 0),
             0
           );
-          if (totalWords > 150) {
-            throw new Error(`Script too long: ${totalWords} words. Maximum 150.`);
+          if (totalWords > 300) {
+            throw new Error(`Script too long: ${totalWords} words. Maximum 300.`);
           }
           const voiceoverText = parsed.scenes.map((s: any) => s.voiceoverText).join(" ");
           const enrichedScenes = parsed.scenes.map((s: any, i: number) =>
@@ -1157,13 +1157,13 @@ export async function generateVideoScriptForService(params: {
     throw new Error(`Invalid script structure — expected 3-10 scenes, got ${parsed.scenes?.length ?? 0}`);
   }
 
-  // Word count validation — max 150 words
+  // Word count validation — max 300 words
   const totalWords = parsed.scenes.reduce((sum: number, s: any) =>
     sum + (s.voiceoverText?.trim().split(/\s+/).length || 0), 0
   );
   console.log(`[Script] Total word count: ${totalWords}`);
-  if (totalWords > 150) {
-    throw new Error(`Script too long: ${totalWords} words. Maximum 150. Regenerate.`);
+  if (totalWords > 300) {
+    throw new Error(`Script too long: ${totalWords} words. Maximum 300. Regenerate.`);
   }
 
   console.log(`✅ ZAP-generated script for: ${service.name}`);
