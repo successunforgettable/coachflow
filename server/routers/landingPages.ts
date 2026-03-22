@@ -10,6 +10,30 @@ import { eq, and, desc } from "drizzle-orm";
 import { generateAllAngles } from "../landingPageGenerator";
 import { invokeLLM } from "../_core/llm";
 import { enforceQuota, incrementQuotaCount } from "../lib/quotaEnforcement";
+import { complianceFilter } from "../lib/complianceFilter";
+import { checkCompliance } from "../lib/complianceChecker";
+
+// Apply compliance filter to a text string, return cleaned version
+async function filterSection(text: string): Promise<string> {
+  const result = complianceFilter(text);
+  const cleaned = result.wasModified ? result.cleanedText : text;
+  const score = await checkCompliance(cleaned);
+  if (score.score < 100) {
+    console.log(`[landingPages] Compliance score ${score.score}/100 for "${cleaned.substring(0, 50)}": ${score.issues.map(i => i.phrase).join(", ")}`);
+  }
+  return cleaned;
+}
+
+// Apply compliance filter to all string fields in a landing page angle object
+async function filterAngleObject(angle: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const filtered = { ...angle };
+  for (const key of Object.keys(filtered)) {
+    if (typeof filtered[key] === "string" && filtered[key]) {
+      filtered[key] = await filterSection(filtered[key] as string);
+    }
+  }
+  return filtered;
+}
 
 function stripMarkdownJson(content: string): string {
   return content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
@@ -273,13 +297,21 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
       ].filter(Boolean).join('\n\n');
 
       // Generate all 4 angles in parallel with social proof (Issue 2 fix)
-      const allAngles = await generateAllAngles(
+      const allAnglesRaw = await generateAllAngles(
         service.name,
         service.description || "",
         avatarName,
         enrichedAvatarDescription,
         socialProof
       );
+
+      // Apply compliance filter to all string fields in each angle
+      const allAngles = {
+        original: await filterAngleObject(allAnglesRaw.original as Record<string, unknown>),
+        godfather: await filterAngleObject(allAnglesRaw.godfather as Record<string, unknown>),
+        free: await filterAngleObject(allAnglesRaw.free as Record<string, unknown>),
+        dollar: await filterAngleObject(allAnglesRaw.dollar as Record<string, unknown>),
+      };
 
       // Save to database
       const insertResult: any = await db.insert(landingPages).values({
@@ -397,7 +429,13 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
             } catch { /* non-fatal */ }
           };
 
-          const allAngles = await generateAllAngles(capturedService.name, capturedService.description || "", avatarName, enrichedAvatarDescription, socialProof, writeProgress);
+          const allAnglesRaw2 = await generateAllAngles(capturedService.name, capturedService.description || "", avatarName, enrichedAvatarDescription, socialProof, writeProgress);
+          const allAngles = {
+            original: await filterAngleObject(allAnglesRaw2.original as Record<string, unknown>),
+            godfather: await filterAngleObject(allAnglesRaw2.godfather as Record<string, unknown>),
+            free: await filterAngleObject(allAnglesRaw2.free as Record<string, unknown>),
+            dollar: await filterAngleObject(allAnglesRaw2.dollar as Record<string, unknown>),
+          };
 
           const insertResult: any = await bgDb.insert(landingPages).values({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, productName: capturedService.name, productDescription: capturedService.description || "", avatarName, avatarDescription, originalAngle: allAngles.original, godfatherAngle: allAngles.godfather, freeAngle: allAngles.free, dollarAngle: allAngles.dollar, activeAngle: "original", rating: 0 });
           await bgDb.update(users).set({ landingPageGeneratedCount: capturedUser.landingPageGeneratedCount + 1 }).where(eq(users.id, capturedUserId));
@@ -595,7 +633,7 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
 
       let newValue: unknown;
       if (isStringSection) {
-        newValue = cleaned;
+        newValue = await filterSection(cleaned);
       } else {
         try {
           newValue = JSON.parse(cleaned);
