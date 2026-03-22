@@ -718,7 +718,11 @@ export default function V2VideoCreator({ isFreeTier }: { isFreeTier?: boolean } 
             </p>
 
             {/* ── RENDER BUTTON (Step 2 idle) ─────────────────────────────────── */}
-            {step2Status === "idle" && (
+            {/* Trial users always see upgrade prompt — before credit or confirmation checks */}
+            {step2Status === "idle" && isFreeTier && (
+              <UpgradePrompt variant="inline" featureName="Video Creator" />
+            )}
+            {step2Status === "idle" && !isFreeTier && (
               <>
                 {credits === 0 ? (
                   <div
@@ -737,8 +741,6 @@ export default function V2VideoCreator({ isFreeTier }: { isFreeTier?: boolean } 
                       Upgrade to Pro Plus for more
                     </a>
                   </div>
-                ) : isFreeTier ? (
-                  <UpgradePrompt variant="inline" featureName="Video Creator" />
                 ) : (
                   <button
                     onClick={handleRenderConfirm}
@@ -762,7 +764,7 @@ export default function V2VideoCreator({ isFreeTier }: { isFreeTier?: boolean } 
             )}
 
             {/* ── CONFIRMATION INLINE ─────────────────────────────────────────── */}
-            {step2Status === "confirming" && (
+            {step2Status === "confirming" && !isFreeTier && (
               <div
                 style={{
                   padding: "20px 24px",
@@ -841,7 +843,7 @@ export default function V2VideoCreator({ isFreeTier }: { isFreeTier?: boolean } 
         )}
 
         {/* ── STEP 2 RENDERING STATE ──────────────────────────────────────────── */}
-        {step2Status === "rendering" && (
+        {step2Status === "rendering" && !isFreeTier && (
           <div
             style={{
               background: T.card,
