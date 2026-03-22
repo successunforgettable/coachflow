@@ -409,23 +409,6 @@ export default function V2Dashboard() {
             color: "var(--v2-text-color)",
           }}>ZAP</span>
           <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-            <a
-              href="/dashboard"
-              style={{
-                fontFamily: "var(--v2-font-body)",
-                fontSize: "12px",
-                color: "#777",
-                textDecoration: "none",
-                borderBottom: "1px solid #ccc",
-                paddingBottom: "1px",
-                transition: "color 0.15s ease",
-              }}
-              onMouseEnter={e => (e.currentTarget.style.color = "#444")}
-              onMouseLeave={e => (e.currentTarget.style.color = "#777")}
-            >
-              Switch to Classic View
-            </a>
-
             {/* User menu */}
             <div ref={menuRef} style={{ position: "relative" }}>
               <button
