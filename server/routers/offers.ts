@@ -8,6 +8,30 @@ import { generateAllOfferAngles } from "../offersGenerator";
 import { invokeLLM } from "../_core/llm";
 import { getQuotaLimit } from "../quotaLimits";
 import { enforceQuota, incrementQuotaCount } from "../lib/quotaEnforcement";
+import { complianceFilter } from "../lib/complianceFilter";
+import { checkCompliance } from "../lib/complianceChecker";
+
+// Apply compliance filter to a text string
+async function filterOfferSection(text: string): Promise<string> {
+  const result = complianceFilter(text);
+  const cleaned = result.wasModified ? result.cleanedText : text;
+  const score = await checkCompliance(cleaned);
+  if (score.score < 100) {
+    console.log(`[offers] Compliance score ${score.score}/100 for "${cleaned.substring(0, 50)}": ${score.issues.map(i => i.phrase).join(", ")}`);
+  }
+  return cleaned;
+}
+
+// Apply compliance filter to all string fields in an offer angle object
+async function filterOfferAngle(angle: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const filtered = { ...angle };
+  for (const key of Object.keys(filtered)) {
+    if (typeof filtered[key] === "string" && filtered[key]) {
+      filtered[key] = await filterOfferSection(filtered[key] as string);
+    }
+  }
+  return filtered;
+}
 
 function stripMarkdownJson(content: string): string {
   return content.replace(/^```json\s*|^```\s*|\s*```$/gm, '').trim();
@@ -177,7 +201,7 @@ export const offersRouter = router({
         : service.targetCustomer || 'Target Customer';
 
       // Generate all 3 angles in parallel with social proof
-      const allAngles = await generateAllOfferAngles(
+      const allAnglesRaw = await generateAllOfferAngles(
         service.name,
         service.description || "",
         enrichedTargetCustomer,
@@ -185,6 +209,13 @@ export const offersRouter = router({
         input.offerType,
         socialProof
       );
+
+      // Apply compliance filter to all string fields in each angle
+      const allAngles = {
+        godfather: await filterOfferAngle(allAnglesRaw.godfather as Record<string, unknown>),
+        free: await filterOfferAngle(allAnglesRaw.free as Record<string, unknown>),
+        dollar: await filterOfferAngle(allAnglesRaw.dollar as Record<string, unknown>),
+      };
 
       // Save to database
       const insertResult: any = await db.insert(offers).values({
@@ -290,7 +321,7 @@ export const offersRouter = router({
             ? `${sotContext ? `${sotContext}\n\n` : ''}${capturedService.targetCustomer || 'Target Customer'}${icpContext ? `\n\n${icpContext}` : ''}`
             : capturedService.targetCustomer || 'Target Customer';
 
-          const allAngles = await generateAllOfferAngles(
+          const allAnglesRaw2 = await generateAllOfferAngles(
             capturedService.name,
             capturedService.description || "",
             enrichedTargetCustomer,
@@ -298,6 +329,11 @@ export const offersRouter = router({
             capturedInput.offerType,
             socialProof
           );
+          const allAngles = {
+            godfather: await filterOfferAngle(allAnglesRaw2.godfather as Record<string, unknown>),
+            free: await filterOfferAngle(allAnglesRaw2.free as Record<string, unknown>),
+            dollar: await filterOfferAngle(allAnglesRaw2.dollar as Record<string, unknown>),
+          };
 
           const insertResult: any = await bgDb.insert(offers).values({
             userId: capturedUserId,
@@ -455,7 +491,9 @@ export const offersRouter = router({
       const parsed = JSON.parse(stripMarkdownJson(content));
       if (!parsed.value) throw new Error("AI response missing value field");
 
-      angleData[input.sectionKey] = parsed.value;
+      // Apply compliance filter to regenerated section
+      const filteredValue = typeof parsed.value === "string" ? await filterOfferSection(parsed.value) : parsed.value;
+      angleData[input.sectionKey] = filteredValue;
 
       await db
         .update(offers)
