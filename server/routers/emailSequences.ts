@@ -13,6 +13,21 @@ import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 import { enforceQuota, incrementQuotaCount } from "../lib/quotaEnforcement";
+import { complianceFilter } from "../lib/complianceFilter";
+import { checkCompliance } from "../lib/complianceChecker";
+
+// Apply compliance filter to an email's subject and body
+async function filterEmail(email: { subject: string; body: string; [k: string]: any }): Promise<typeof email> {
+  const subResult = complianceFilter(email.subject);
+  const bodyResult = complianceFilter(email.body);
+  const subject = subResult.wasModified ? subResult.cleanedText : email.subject;
+  const body = bodyResult.wasModified ? bodyResult.cleanedText : email.body;
+  const score = await checkCompliance(body);
+  if (score.score < 100) {
+    console.log(`[emailSequences] Compliance score ${score.score}/100 for subject "${subject.substring(0, 40)}": ${score.issues.map(i => i.phrase).join(", ")}`);
+  }
+  return { ...email, subject, body };
+}
 
 const generateEmailSequenceSchema = z.object({
   serviceId: z.number(),
@@ -386,7 +401,9 @@ Return as a JSON object with an 'emails' key containing the array.`;
         cta: email.cta || 'Learn More',
         ctaLink: email.ctaLink || '#',
       }));
-      // Save to databasee
+      // Apply compliance filter to all emails
+      sequenceData.emails = await Promise.all(sequenceData.emails.map((e: any) => filterEmail(e)));
+      // Save to database
       const insertResult: any = await db.insert(emailSequences).values({
         userId: ctx.user.id,
         serviceId: input.serviceId,
@@ -478,6 +495,7 @@ Return as a JSON object with an 'emails' key containing the array.`;
           if (Array.isArray(sequenceData)) sequenceData = { emails: sequenceData };
           if (!sequenceData.emails || !Array.isArray(sequenceData.emails)) throw new Error("LLM did not return a valid emails array");
           sequenceData.emails = sequenceData.emails.map((email: any, idx: number) => ({ subject: email.subject || `Email ${idx + 1}: Check this out`, body: email.body || `This is email ${idx + 1}. Click the link to learn more.`, delay: email.delay || (idx * 24), delayUnit: email.delayUnit || 'hours', cta: email.cta || 'Learn More', ctaLink: email.ctaLink || '#' }));
+          sequenceData.emails = await Promise.all(sequenceData.emails.map((e: any) => filterEmail(e)));
 
           const insertResult: any = await bgDb.insert(emailSequences).values({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, sequenceType: capturedInput.sequenceType, name: capturedInput.name, emails: sequenceData.emails });
           await incrementQuotaCount(capturedUserId, "email");
@@ -592,7 +610,9 @@ Return as a JSON object with an 'emails' key containing the array.`;
         throw new Error("AI response missing subject or body");
       }
 
-      emails[input.index] = { ...emails[input.index], subject: parsed.subject, body: parsed.body };
+      // Apply compliance filter to regenerated email
+      const filtered = await filterEmail({ subject: parsed.subject, body: parsed.body });
+      emails[input.index] = { ...emails[input.index], subject: filtered.subject, body: filtered.body };
 
       await db
         .update(emailSequences)
