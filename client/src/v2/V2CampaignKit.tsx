@@ -4,7 +4,7 @@
  * Shows all selected assets in one scrollable page with export actions.
  */
 import { useState } from "react";
-import { useRoute, useLocation } from "wouter";
+import { useParams, useLocation } from "wouter";
 import V2Layout from "./V2Layout";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
@@ -240,7 +240,7 @@ function AssetSection({ sectionKey, label, step, selectedId, angle, navigate }: 
 // ─── Main page component ───────────────────────────────────────────────────────
 export default function V2CampaignKit() {
   const [, navigate] = useLocation();
-  const [, params] = useRoute("/v2-dashboard/campaign-kit/:kitId");
+  const params = useParams();
   const kitId = params?.kitId ? Number(params.kitId) : null;
 
   const { data: kit, isLoading } = trpc.campaignKits.getById.useQuery(
