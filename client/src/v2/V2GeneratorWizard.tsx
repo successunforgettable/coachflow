@@ -1551,8 +1551,9 @@ interface V2GeneratorWizardProps {
 
 export default function V2GeneratorWizard({ step, serviceId, onBack }: V2GeneratorWizardProps) {
   const [, navigate] = useLocation();
-  // ── Subscription tier check (reuses existing auth — no new logic) ──
-  const { user: authUser } = useAuth();
+  // ── Subscription tier check (reuses existing auth — refresh on mount to catch tier changes) ──
+  const { user: authUser, refresh: refreshAuth } = useAuth();
+  useEffect(() => { refreshAuth(); }, []);
   const isFreeTier = !authUser || (authUser.role !== "superuser" && authUser.role !== "admin" && authUser.subscriptionTier !== "pro" && authUser.subscriptionTier !== "agency");
 
   // ── Quota tracking per step ──
