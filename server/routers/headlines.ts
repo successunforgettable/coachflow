@@ -40,11 +40,11 @@ Requirements:
 - Make the person relatable to target market
 - Highlight the unique mechanism as the discovery
 - Promise the desired outcome as the result
-- Each headline should be 15-25 words
+- HARD LIMIT: Every headline MUST be 40 characters or fewer. This is a Meta ad platform requirement — no exceptions. If a headline would exceed 40 characters, rewrite it shorter while preserving the hook and meaning. Never truncate mid-word.
 - Return ONLY a JSON array of 5 headline strings, nothing else
 
 Example output format:
-["How a Weekend Vegas Bender Led an Aspiring Crypto Newbie to Discover a Revolutionary 9-Step Blueprint that Generates $10k Monthly!", "How an Embarrassing Margin Call Pushed a Skeptical 30-Something Day-Trader to Unearth a Breakthrough System that Multiplies Crypto Earnings!", ...]`,
+["How a Crisis Led Her to $10k/Month", "One Bad Trade Led to a Breakthrough", "A Weekend Mistake Changed Everything", "How She Found the 9-Step Blueprint", "One Discovery Turned Losses to Wins"]`,
 
   eyebrow: `Generate 5 three-part headlines with eyebrow, main headline, and subheadline:
 
