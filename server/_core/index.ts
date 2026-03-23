@@ -85,6 +85,70 @@ async function startServer() {
     }
   }, 24 * 60 * 60 * 1000); // runs every 24 hours
 
+  // Meta Daily Read-Only Job — 100 API calls/day for App Review compliance
+  const runMetaDailyJob = async () => {
+    const MAX_CALLS = 100;
+    let callCount = 0;
+    const now = new Date();
+    console.log(`[Meta Daily Job] Starting at ${now.toISOString()} — target: ${MAX_CALLS} read-only calls`);
+
+    try {
+      const { getDb } = await import("../db");
+      const { metaAccessTokens } = await import("../../drizzle/schema");
+      const { getCampaigns } = await import("../lib/metaAPI");
+      const db = await getDb();
+      if (!db) { console.log("[Meta Daily Job] DB not available, skipping"); return; }
+
+      // Fetch all users with Meta tokens
+      const tokenRows = await db.select({ userId: metaAccessTokens.userId }).from(metaAccessTokens);
+      if (tokenRows.length === 0) { console.log("[Meta Daily Job] No users with Meta tokens, skipping"); return; }
+
+      // Build date ranges for multiple calls per user
+      const dateRanges: Array<{ since: string; until: string }> = [];
+      for (let daysBack = 0; daysBack < 30; daysBack++) {
+        const d = new Date();
+        d.setDate(d.getDate() - daysBack);
+        const since = d.toISOString().split("T")[0];
+        const until = since;
+        dateRanges.push({ since, until });
+      }
+
+      // Round-robin through users × date ranges until 100 calls
+      let rangeIdx = 0;
+      while (callCount < MAX_CALLS) {
+        for (const row of tokenRows) {
+          if (callCount >= MAX_CALLS) break;
+          const range = dateRanges[rangeIdx % dateRanges.length];
+          try {
+            const campaigns = await getCampaigns(row.userId, {
+              limit: 10,
+              includeInsights: true,
+              dateRange: range,
+            });
+            callCount++;
+            console.log(`[Meta Daily Job] ${now.toISOString()} call ${callCount} of ${MAX_CALLS} — user ${row.userId} range ${range.since} — ${campaigns.length} campaigns`);
+          } catch (err: unknown) {
+            callCount++;
+            const msg = err instanceof Error ? err.message : String(err);
+            console.error(`[Meta Daily Job] call ${callCount} of ${MAX_CALLS} — user ${row.userId} FAILED: ${msg}`);
+          }
+        }
+        rangeIdx++;
+        // Safety: if we've exhausted all date ranges × users and still not at 100, break
+        if (rangeIdx >= dateRanges.length * 2) break;
+      }
+
+      console.log(`[Meta Daily Job] Completed — ${callCount} total calls`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[Meta Daily Job] Fatal error: ${msg}`);
+    }
+  };
+
+  // Fire immediately on server start, then every 24 hours
+  runMetaDailyJob();
+  setInterval(runMetaDailyJob, 24 * 60 * 60 * 1000);
+
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
