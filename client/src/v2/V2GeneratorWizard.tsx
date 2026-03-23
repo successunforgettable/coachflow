@@ -316,9 +316,9 @@ const LOADING_MESSAGES_BY_STEP: Record<string, string[]> = {
     "Picking your best headline…",
   ],
   offer: [
-    "Building 3 offer angles — Godfather, Free, and Dollar…",
-    "Crafting irresistible value propositions…",
-    "Scoring each angle for your niche…",
+    "Generating 3 offer angles for your service...",
+    "Scoring each angle for persuasion and compliance...",
+    "Selecting the strongest offer for your audience...",
   ],
   icp: [
     "Researching your ideal customer's world…",
@@ -326,34 +326,34 @@ const LOADING_MESSAGES_BY_STEP: Record<string, string[]> = {
     "Building a 17-section customer intelligence profile…",
   ],
   uniqueMethod: [
-    "Analysing your coaching approach…",
-    "Naming your proprietary methodology…",
-    "Crafting a mechanism that positions you as the expert…",
+    "Generating your unique mechanism names...",
+    "Scoring for clarity and memorability...",
+    "Picking your strongest mechanism...",
   ],
   freeOptIn: [
-    "Designing your lead magnet concept…",
-    "Matching the offer to your ICP's biggest quick win…",
+    "Generating lead magnet title options...",
+    "Scoring for curiosity and click-through potential...",
+    "Selecting your most compelling opt-in title...",
   ],
   adCopy: [
-    "Writing scroll-stopping ad headlines…",
-    "Crafting body copy that converts browsers to buyers…",
-    "Generating link descriptions for each ad set…",
+    "Generating ad copy variations...",
+    "Scoring for Meta compliance and hook strength...",
+    "Selecting your highest-performing ad copy...",
   ],
   landingPage: [
-    "Building 4 landing page variations…",
-    "Writing hero sections, testimonials, and CTAs…",
-    "Applying compliance filters to every section…",
-    "Assembling your highest-converting page…",
+    "Generating 4 landing page angles...",
+    "Scoring each angle for conversion potential...",
+    "Selecting your strongest landing page...",
   ],
   emailSequence: [
-    "Writing your welcome email sequence…",
-    "Crafting subject lines that get opened…",
-    "Building the nurture flow from subscriber to buyer…",
+    "Generating your email sequence...",
+    "Scoring for deliverability and engagement...",
+    "Finalising your email sequence...",
   ],
   whatsappSequence: [
-    "Writing your WhatsApp engagement messages…",
-    "Optimising for conversational tone and emoji…",
-    "Finalising your message sequence…",
+    "Generating your WhatsApp sequence...",
+    "Scoring for conversational tone and response rate...",
+    "Finalising your WhatsApp sequence...",
   ],
 };
 
@@ -738,6 +738,392 @@ function HeadlineRecommendation({ headlineSetId, serviceId, service, campaignKit
       }))}
       allAssets={allAssets}
       nodeLabel="headline"
+      isFirstCampaign={!hasCompleted}
+      onSelect={onSelect}
+      onRegenerate={onRegenerate}
+    />
+  );
+}
+
+// ─── OfferRecommendation: Node 3 recommended asset wrapper ──────────────────
+function OfferRecommendation({ offerId, campaignKit, onSelect, onRegenerate }: {
+  offerId: number;
+  campaignKit: any;
+  onSelect: (id: number) => void;
+  onRegenerate: () => void;
+}) {
+  const { data: offer } = trpc.offers.get.useQuery({ id: offerId }, { enabled: !!offerId });
+  const { data: hasCompleted } = trpc.campaignKits.hasCompletedCampaign.useQuery();
+
+  if (!offer) {
+    return <p style={{ textAlign: "center", color: "#999", fontFamily: "var(--v2-font-body)" }}>Loading offer...</p>;
+  }
+
+  // Parse the 3 angle columns into virtual items
+  const parseAngle = (raw: any): Record<string, any> | null => {
+    if (!raw) return null;
+    if (typeof raw === "string") try { return JSON.parse(raw); } catch { return null; }
+    return raw as Record<string, any>;
+  };
+
+  const godfather = parseAngle(offer.godfatherAngle);
+  const free = parseAngle(offer.freeAngle);
+  const dollar = parseAngle(offer.dollarAngle);
+
+  const angleItems = [
+    { key: "godfather", angle: godfather },
+    { key: "free", angle: free },
+    { key: "dollar", angle: dollar },
+  ].filter(a => a.angle);
+
+  if (angleItems.length === 0) return null;
+
+  const toContent = (angle: Record<string, any> | null): string => {
+    if (!angle) return "";
+    const name = angle.offerName || angle.name || "";
+    const vp = angle.valueProposition || angle.headline || "";
+    return name && vp ? `${name} — ${vp}` : name || vp || JSON.stringify(angle).slice(0, 120);
+  };
+
+  const primary = {
+    id: offerId,
+    content: toContent(angleItems[0].angle),
+    score: offer.selectionScore ? Number(offer.selectionScore) : null,
+    formulaLabel: angleItems[0].key,
+  };
+
+  const alternatives = angleItems.slice(1).map(a => ({
+    id: offerId,
+    content: toContent(a.angle),
+    score: offer.selectionScore ? Number(offer.selectionScore) : null,
+    formulaLabel: a.key,
+  }));
+
+  const allAssets = [primary, ...alternatives];
+
+  return (
+    <RecommendedAssetPanel
+      primaryAsset={primary}
+      alternativeAssets={alternatives}
+      allAssets={allAssets}
+      nodeLabel="offer"
+      isFirstCampaign={!hasCompleted}
+      onSelect={onSelect}
+      onRegenerate={onRegenerate}
+    />
+  );
+}
+
+// ─── MechanismRecommendation: Node 4 recommended asset wrapper ──────────────
+function MechanismRecommendation({ mechanismSetId, campaignKit, onSelect, onRegenerate }: {
+  mechanismSetId: string;
+  campaignKit: any;
+  onSelect: (id: number) => void;
+  onRegenerate: () => void;
+}) {
+  const { data: mechanisms } = trpc.heroMechanisms.getBySetId.useQuery(
+    { mechanismSetId },
+    { enabled: !!mechanismSetId }
+  );
+  const { data: hasCompleted } = trpc.campaignKits.hasCompletedCampaign.useQuery();
+
+  if (!mechanisms || mechanisms.length === 0) {
+    return <p style={{ textAlign: "center", color: "#999", fontFamily: "var(--v2-font-body)" }}>Loading mechanisms...</p>;
+  }
+
+  const sorted = [...mechanisms].sort((a: any, b: any) => (Number(b.selectionScore) || 0) - (Number(a.selectionScore) || 0));
+  const top3 = sorted.slice(0, 3);
+  const primary = top3[0];
+  const alts = top3.slice(1);
+
+  const toContent = (m: any) => {
+    const desc = (m.mechanismDescription || "").slice(0, 100);
+    return `${m.mechanismName || ""}${desc ? " — " + desc : ""}`;
+  };
+
+  const allAssets = sorted.map((m: any) => ({
+    id: m.id,
+    content: toContent(m),
+    score: m.selectionScore ? Number(m.selectionScore) : null,
+  }));
+
+  return (
+    <RecommendedAssetPanel
+      primaryAsset={{
+        id: primary.id,
+        content: toContent(primary),
+        score: primary.selectionScore ? Number(primary.selectionScore) : null,
+      }}
+      alternativeAssets={alts.map((m: any) => ({
+        id: m.id,
+        content: toContent(m),
+        score: m.selectionScore ? Number(m.selectionScore) : null,
+      }))}
+      allAssets={allAssets}
+      nodeLabel="mechanism"
+      isFirstCampaign={!hasCompleted}
+      onSelect={onSelect}
+      onRegenerate={onRegenerate}
+    />
+  );
+}
+
+// ─── HvcoRecommendation: Node 5 recommended asset wrapper ───────────────────
+function HvcoRecommendation({ hvcoSetId, campaignKit, onSelect, onRegenerate }: {
+  hvcoSetId: string;
+  campaignKit: any;
+  onSelect: (id: number) => void;
+  onRegenerate: () => void;
+}) {
+  const { data: titles } = trpc.hvco.getBySetId.useQuery(
+    { hvcoSetId },
+    { enabled: !!hvcoSetId }
+  );
+  const { data: hasCompleted } = trpc.campaignKits.hasCompletedCampaign.useQuery();
+
+  if (!titles || titles.length === 0) {
+    return <p style={{ textAlign: "center", color: "#999", fontFamily: "var(--v2-font-body)" }}>Loading opt-in titles...</p>;
+  }
+
+  const sorted = [...titles].sort((a: any, b: any) => (Number(b.selectionScore) || 0) - (Number(a.selectionScore) || 0));
+  const top3 = sorted.slice(0, 3);
+  const primary = top3[0];
+  const alts = top3.slice(1);
+
+  const allAssets = sorted.map((t: any) => ({
+    id: t.id,
+    content: t.title || "",
+    score: t.selectionScore ? Number(t.selectionScore) : null,
+  }));
+
+  return (
+    <RecommendedAssetPanel
+      primaryAsset={{
+        id: primary.id,
+        content: primary.title || "",
+        score: primary.selectionScore ? Number(primary.selectionScore) : null,
+      }}
+      alternativeAssets={alts.map((t: any) => ({
+        id: t.id,
+        content: t.title || "",
+        score: t.selectionScore ? Number(t.selectionScore) : null,
+      }))}
+      allAssets={allAssets}
+      nodeLabel="opt-in title"
+      isFirstCampaign={!hasCompleted}
+      onSelect={onSelect}
+      onRegenerate={onRegenerate}
+    />
+  );
+}
+
+// ─── AdCopyRecommendation: Node 7 recommended asset wrapper ─────────────────
+function AdCopyRecommendation({ adSetId, campaignKit, onSelect, onRegenerate }: {
+  adSetId: string;
+  campaignKit: any;
+  onSelect: (id: number) => void;
+  onRegenerate: () => void;
+}) {
+  const { data: ads } = trpc.adCopy.getByAdSetId.useQuery(
+    { adSetId },
+    { enabled: !!adSetId }
+  );
+  const { data: hasCompleted } = trpc.campaignKits.hasCompletedCampaign.useQuery();
+
+  if (!ads || ads.length === 0) {
+    return <p style={{ textAlign: "center", color: "#999", fontFamily: "var(--v2-font-body)" }}>Loading ad copy...</p>;
+  }
+
+  const sorted = [...ads].sort((a: any, b: any) => (Number(b.selectionScore) || 0) - (Number(a.selectionScore) || 0));
+  const top3 = sorted.slice(0, 3);
+  const primary = top3[0];
+  const alts = top3.slice(1);
+
+  const allAssets = sorted.map((a: any) => ({
+    id: a.id,
+    content: (a.content || "").slice(0, 120),
+    score: a.selectionScore ? Number(a.selectionScore) : null,
+    formulaLabel: a.contentType || undefined,
+  }));
+
+  return (
+    <RecommendedAssetPanel
+      primaryAsset={{
+        id: primary.id,
+        content: (primary.content || "").slice(0, 120),
+        score: primary.selectionScore ? Number(primary.selectionScore) : null,
+        formulaLabel: primary.contentType || undefined,
+      }}
+      alternativeAssets={alts.map((a: any) => ({
+        id: a.id,
+        content: (a.content || "").slice(0, 120),
+        score: a.selectionScore ? Number(a.selectionScore) : null,
+        formulaLabel: a.contentType || undefined,
+      }))}
+      allAssets={allAssets}
+      nodeLabel="ad copy"
+      isFirstCampaign={!hasCompleted}
+      onSelect={onSelect}
+      onRegenerate={onRegenerate}
+    />
+  );
+}
+
+// ─── LandingPageRecommendation: Node 8 recommended asset wrapper ────────────
+function LandingPageRecommendation({ landingPageId, campaignKit, onSelect, onRegenerate }: {
+  landingPageId: number;
+  campaignKit: any;
+  onSelect: (id: number, angle: string) => void;
+  onRegenerate: () => void;
+}) {
+  const { data: page } = trpc.landingPages.get.useQuery({ id: landingPageId }, { enabled: !!landingPageId });
+  const { data: hasCompleted } = trpc.campaignKits.hasCompletedCampaign.useQuery();
+
+  if (!page) {
+    return <p style={{ textAlign: "center", color: "#999", fontFamily: "var(--v2-font-body)" }}>Loading landing page...</p>;
+  }
+
+  const parseAngle = (raw: any): Record<string, any> | null => {
+    if (!raw) return null;
+    if (typeof raw === "string") try { return JSON.parse(raw); } catch { return null; }
+    return raw as Record<string, any>;
+  };
+
+  const angles = [
+    { key: "original", angle: parseAngle(page.originalAngle) },
+    { key: "godfather", angle: parseAngle(page.godfatherAngle) },
+    { key: "free", angle: parseAngle(page.freeAngle) },
+    { key: "dollar", angle: parseAngle(page.dollarAngle) },
+  ].filter(a => a.angle);
+
+  if (angles.length === 0) return null;
+
+  const toContent = (angle: Record<string, any> | null): string => {
+    if (!angle) return "";
+    return angle.mainHeadline || angle.headline || JSON.stringify(angle).slice(0, 120);
+  };
+
+  // Use a unique pseudo-id for each angle (encode angle index into id for selection)
+  const primary = {
+    id: landingPageId,
+    content: toContent(angles[0].angle),
+    score: page.selectionScore ? Number(page.selectionScore) : null,
+    formulaLabel: angles[0].key,
+  };
+
+  const alternatives = angles.slice(1).map(a => ({
+    id: landingPageId,
+    content: toContent(a.angle),
+    score: page.selectionScore ? Number(page.selectionScore) : null,
+    formulaLabel: a.key,
+  }));
+
+  const allAssets = [primary, ...alternatives];
+
+  // Wrap onSelect to pass angle name alongside the id
+  const handleSelect = (_id: number) => {
+    // Determine which angle was clicked based on the caller — default to first angle
+    // Since all items share the same id, we select the primary angle
+    onSelect(landingPageId, angles[0].key);
+  };
+
+  return (
+    <RecommendedAssetPanel
+      primaryAsset={primary}
+      alternativeAssets={alternatives.map((a, i) => ({
+        ...a,
+        // Override id to encode angle index so we can differentiate on click
+        id: landingPageId * 100 + (i + 1),
+      }))}
+      allAssets={allAssets}
+      nodeLabel="landing page"
+      isFirstCampaign={!hasCompleted}
+      onSelect={(selectedId: number) => {
+        // Decode: if selectedId > landingPageId * 10 it's an alternative
+        if (selectedId === landingPageId) {
+          onSelect(landingPageId, angles[0].key);
+        } else {
+          const altIndex = selectedId - landingPageId * 100;
+          const angleKey = angles[altIndex]?.key || angles[0].key;
+          onSelect(landingPageId, angleKey);
+        }
+      }}
+      onRegenerate={onRegenerate}
+    />
+  );
+}
+
+// ─── EmailRecommendation: Node 9 recommended asset wrapper ──────────────────
+function EmailRecommendation({ emailSequenceId, campaignKit, onSelect, onRegenerate }: {
+  emailSequenceId: number;
+  campaignKit: any;
+  onSelect: (id: number) => void;
+  onRegenerate: () => void;
+}) {
+  const { data: sequence } = trpc.emailSequences.get.useQuery({ id: emailSequenceId }, { enabled: !!emailSequenceId });
+  const { data: hasCompleted } = trpc.campaignKits.hasCompletedCampaign.useQuery();
+
+  if (!sequence) {
+    return <p style={{ textAlign: "center", color: "#999", fontFamily: "var(--v2-font-body)" }}>Loading email sequence...</p>;
+  }
+
+  const emails = typeof sequence.emails === "string" ? JSON.parse(sequence.emails) : (sequence.emails || []);
+  const emailCount = Array.isArray(emails) ? emails.length : 0;
+  const content = `${sequence.name || "Email Sequence"} — ${emailCount} email${emailCount !== 1 ? "s" : ""}`;
+
+  return (
+    <RecommendedAssetPanel
+      primaryAsset={{
+        id: sequence.id,
+        content,
+        score: sequence.selectionScore ? Number(sequence.selectionScore) : null,
+      }}
+      alternativeAssets={[]}
+      allAssets={[{
+        id: sequence.id,
+        content,
+        score: sequence.selectionScore ? Number(sequence.selectionScore) : null,
+      }]}
+      nodeLabel="email sequence"
+      isFirstCampaign={!hasCompleted}
+      onSelect={onSelect}
+      onRegenerate={onRegenerate}
+    />
+  );
+}
+
+// ─── WhatsAppRecommendation: Node 10 recommended asset wrapper ──────────────
+function WhatsAppRecommendation({ whatsappSequenceId, campaignKit, onSelect, onRegenerate }: {
+  whatsappSequenceId: number;
+  campaignKit: any;
+  onSelect: (id: number) => void;
+  onRegenerate: () => void;
+}) {
+  const { data: sequence } = trpc.whatsappSequences.get.useQuery({ id: whatsappSequenceId }, { enabled: !!whatsappSequenceId });
+  const { data: hasCompleted } = trpc.campaignKits.hasCompletedCampaign.useQuery();
+
+  if (!sequence) {
+    return <p style={{ textAlign: "center", color: "#999", fontFamily: "var(--v2-font-body)" }}>Loading WhatsApp sequence...</p>;
+  }
+
+  const messages = typeof sequence.messages === "string" ? JSON.parse(sequence.messages) : (sequence.messages || []);
+  const msgCount = Array.isArray(messages) ? messages.length : 0;
+  const content = `${sequence.name || "WhatsApp Sequence"} — ${msgCount} message${msgCount !== 1 ? "s" : ""}`;
+
+  return (
+    <RecommendedAssetPanel
+      primaryAsset={{
+        id: sequence.id,
+        content,
+        score: sequence.selectionScore ? Number(sequence.selectionScore) : null,
+      }}
+      alternativeAssets={[]}
+      allAssets={[{
+        id: sequence.id,
+        content,
+        score: sequence.selectionScore ? Number(sequence.selectionScore) : null,
+      }]}
+      nodeLabel="WhatsApp sequence"
       isFirstCampaign={!hasCompleted}
       onSelect={onSelect}
       onRegenerate={onRegenerate}
@@ -2184,8 +2570,8 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
           {/* ── LOADING STATE ── */}
           {status === "loading" && <LoadingState step={step} progressLabel={progressLabel} />}
 
-          {/* ── SUCCESS STATE (hidden on Node 6 where RecommendedAssetPanel provides its own CTA) ── */}
-          {status === "success" && step !== "headlines" && (
+          {/* ── SUCCESS STATE (hidden on nodes using RecommendedAssetPanel) ── */}
+          {status === "success" && step !== "headlines" && step !== "offer" && step !== "uniqueMethod" && step !== "freeOptIn" && step !== "adCopy" && step !== "landingPage" && step !== "emailSequence" && step !== "whatsappSequence" && (
             <SuccessState
               score={complianceScore}
               nextStepUrl={(() => { const next = getNextStep(step); return next ? `/v2-dashboard/wizard/${next}` : null; })()}
@@ -2206,120 +2592,103 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
               onRegenerate={handleRetry}
             />
           )}
-          {/* ── R1a: NODE 7 AD COPY RESULT PANEL ── */}
-          {status === "success" && step === "adCopy" && latestAdSetId && activeService && (
-            <>
-              <V2AdCopyResultPanel
-                adSetId={latestAdSetId}
-                serviceId={activeService.id}
-                isFreeTier={isFreeTier}
-              />
-              {campaignKit && latestAdSetId && (
-                <UseThisButton
-                  isSelected={String(campaignKit.selectedAdCopyId) === latestAdSetId}
-                  loading={updateKitSelection.isPending}
-                  onClick={() => selectForKit("selectedAdCopyId", Number(latestAdSetId))}
-                />
-              )}
-            </>
+          {/* ── NODE 7 AD COPY — RECOMMENDED ASSET PANEL ── */}
+          {status === "success" && step === "adCopy" && latestAdSetId && (
+            <AdCopyRecommendation
+              adSetId={latestAdSetId}
+              campaignKit={campaignKit}
+              onSelect={async (itemId: number) => {
+                await selectForKit("selectedAdCopyId", itemId);
+                navigate("/v2-dashboard/wizard/landingPage");
+              }}
+              onRegenerate={handleRetry}
+            />
           )}
           {/* ── R1b: NODE 2 ICP RESULT PANEL ── */}
           {status === "success" && step === "icp" && latestIcpId && (
             <V2ICPResultPanel icpId={latestIcpId} isFreeTier={isFreeTier} />
           )}
-          {/* ── R1b: NODE 3 OFFER RESULT PANEL ── */}
+          {/* ── NODE 3 OFFER — RECOMMENDED ASSET PANEL ── */}
           {status === "success" && step === "offer" && latestOfferId && (
-            <>
-              <V2OfferResultPanel offerId={latestOfferId} isFreeTier={isFreeTier} />
-              {campaignKit && latestOfferId && (
-                <UseThisButton
-                  isSelected={campaignKit.selectedOfferId === latestOfferId}
-                  loading={updateKitSelection.isPending}
-                  onClick={() => selectForKit("selectedOfferId", latestOfferId)}
-                />
-              )}
-            </>
+            <OfferRecommendation
+              offerId={latestOfferId}
+              campaignKit={campaignKit}
+              onSelect={async (itemId: number) => {
+                await selectForKit("selectedOfferId", itemId);
+                navigate("/v2-dashboard/wizard/uniqueMethod");
+              }}
+              onRegenerate={handleRetry}
+            />
           )}
-          {/* ── R1b: NODE 4 UNIQUE METHOD RESULT PANEL ── */}
+          {/* ── NODE 4 UNIQUE METHOD — RECOMMENDED ASSET PANEL ── */}
           {status === "success" && step === "uniqueMethod" && latestMechanismSetId && (
-            <>
-              <V2UniqueMethodResultPanel mechanismSetId={latestMechanismSetId} isFreeTier={isFreeTier} />
-              {campaignKit && latestMechanismSetId && (
-                <UseThisButton
-                  isSelected={String(campaignKit.selectedMechanismId) === latestMechanismSetId}
-                  loading={updateKitSelection.isPending}
-                  onClick={() => selectForKit("selectedMechanismId", Number(latestMechanismSetId))}
-                />
-              )}
-            </>
+            <MechanismRecommendation
+              mechanismSetId={latestMechanismSetId}
+              campaignKit={campaignKit}
+              onSelect={async (itemId: number) => {
+                await selectForKit("selectedMechanismId", itemId);
+                navigate("/v2-dashboard/wizard/freeOptIn");
+              }}
+              onRegenerate={handleRetry}
+            />
           )}
-          {/* ── R1b: NODE 5 FREE OPT-IN RESULT PANEL ── */}
+          {/* ── NODE 5 FREE OPT-IN — RECOMMENDED ASSET PANEL ── */}
           {status === "success" && step === "freeOptIn" && latestHvcoSetId && (
-            <>
-              <V2FreeOptInResultPanel hvcoSetId={latestHvcoSetId} isFreeTier={isFreeTier} />
-              {campaignKit && latestHvcoSetId && (
-                <UseThisButton
-                  isSelected={String(campaignKit.selectedHvcoId) === latestHvcoSetId}
-                  loading={updateKitSelection.isPending}
-                  onClick={() => selectForKit("selectedHvcoId", Number(latestHvcoSetId))}
-                />
-              )}
-            </>
+            <HvcoRecommendation
+              hvcoSetId={latestHvcoSetId}
+              campaignKit={campaignKit}
+              onSelect={async (itemId: number) => {
+                await selectForKit("selectedHvcoId", itemId);
+                navigate("/v2-dashboard/wizard/headlines");
+              }}
+              onRegenerate={handleRetry}
+            />
           )}
-          {/* ── R1b: NODE 8 LANDING PAGE RESULT PANEL ── */}
+          {/* ── NODE 8 LANDING PAGE — RECOMMENDED ASSET PANEL ── */}
           {status === "success" && step === "landingPage" && latestLandingPageId && (
-            <>
-              <V2LandingPageResultPanel
-                landingPageId={latestLandingPageId}
-                isFreeTier={isFreeTier}
-                onAngleChange={setActiveLandingPageAngle}
-              />
-              {campaignKit && latestLandingPageId && (
-                <UseThisButton
-                  isSelected={campaignKit.selectedLandingPageId === latestLandingPageId}
-                  loading={updateKitSelection.isPending}
-                  onClick={async () => {
-                    if (!campaignKit?.id) return;
-                    try {
-                      const updated = await updateKitSelection.mutateAsync({
-                        kitId: campaignKit.id,
-                        selectedLandingPageId: latestLandingPageId,
-                        selectedLandingPageAngle: activeLandingPageAngle,
-                      });
-                      setCampaignKit(updated);
-                    } catch (err) {
-                      console.error("[CampaignKit] LP selection failed:", err);
-                    }
-                  }}
-                />
-              )}
-            </>
+            <LandingPageRecommendation
+              landingPageId={latestLandingPageId}
+              campaignKit={campaignKit}
+              onSelect={async (pageId: number, angle: string) => {
+                if (!campaignKit?.id) return;
+                try {
+                  const updated = await updateKitSelection.mutateAsync({
+                    kitId: campaignKit.id,
+                    selectedLandingPageId: pageId,
+                    selectedLandingPageAngle: angle,
+                  });
+                  setCampaignKit(updated);
+                } catch (err) {
+                  console.error("[CampaignKit] LP selection failed:", err);
+                }
+                navigate("/v2-dashboard/wizard/emailSequence");
+              }}
+              onRegenerate={handleRetry}
+            />
           )}
-          {/* ── R1b: NODE 9 EMAIL SEQUENCE RESULT PANEL ── */}
+          {/* ── NODE 9 EMAIL SEQUENCE — RECOMMENDED ASSET PANEL ── */}
           {status === "success" && step === "emailSequence" && latestEmailSequenceId && (
-            <>
-              <V2EmailSequenceResultPanel emailSequenceId={latestEmailSequenceId} isFreeTier={isFreeTier} />
-              {campaignKit && latestEmailSequenceId && (
-                <UseThisButton
-                  isSelected={campaignKit.selectedEmailSequenceId === latestEmailSequenceId}
-                  loading={updateKitSelection.isPending}
-                  onClick={() => selectForKit("selectedEmailSequenceId", latestEmailSequenceId)}
-                />
-              )}
-            </>
+            <EmailRecommendation
+              emailSequenceId={latestEmailSequenceId}
+              campaignKit={campaignKit}
+              onSelect={async (itemId: number) => {
+                await selectForKit("selectedEmailSequenceId", itemId);
+                navigate("/v2-dashboard/wizard/whatsappSequence");
+              }}
+              onRegenerate={handleRetry}
+            />
           )}
-          {/* ── R1b: NODE 10 WHATSAPP RESULT PANEL ── */}
+          {/* ── NODE 10 WHATSAPP SEQUENCE — RECOMMENDED ASSET PANEL ── */}
           {status === "success" && step === "whatsappSequence" && latestWhatsappSequenceId && (
-            <>
-              <V2WhatsAppResultPanel whatsappSequenceId={latestWhatsappSequenceId} isFreeTier={isFreeTier} />
-              {campaignKit && latestWhatsappSequenceId && (
-                <UseThisButton
-                  isSelected={campaignKit.selectedWhatsAppSequenceId === latestWhatsappSequenceId}
-                  loading={updateKitSelection.isPending}
-                  onClick={() => selectForKit("selectedWhatsAppSequenceId", latestWhatsappSequenceId)}
-                />
-              )}
-            </>
+            <WhatsAppRecommendation
+              whatsappSequenceId={latestWhatsappSequenceId}
+              campaignKit={campaignKit}
+              onSelect={async (itemId: number) => {
+                await selectForKit("selectedWhatsAppSequenceId", itemId);
+                navigate("/v2-dashboard/wizard/pushToMeta");
+              }}
+              onRegenerate={handleRetry}
+            />
           )}
 
           {/* ── CONCERNED STATE (compliance violations) ── */}
