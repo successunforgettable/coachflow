@@ -428,6 +428,164 @@ function LoadingState({ step: _step, progressLabel }: { step?: string; progressL
   );
 }
 
+// ─── CampaignKitSidebar: persistent sidebar showing selection state ─────────────
+const KIT_SLOTS: Array<{ label: string; field: string; step: string }> = [
+  { label: "Offer", field: "selectedOfferId", step: "offer" },
+  { label: "Method", field: "selectedMechanismId", step: "uniqueMethod" },
+  { label: "Lead Magnet", field: "selectedHvcoId", step: "freeOptIn" },
+  { label: "Headline", field: "selectedHeadlineId", step: "headlines" },
+  { label: "Ad Copy", field: "selectedAdCopyId", step: "adCopy" },
+  { label: "Landing Page", field: "selectedLandingPageId", step: "landingPage" },
+  { label: "Email Sequence", field: "selectedEmailSequenceId", step: "emailSequence" },
+  { label: "WhatsApp", field: "selectedWhatsAppSequenceId", step: "whatsappSequence" },
+];
+
+function CampaignKitSidebar({ kit, onNavigate }: { kit: any; onNavigate: (step: string) => void }) {
+  if (!kit) return null;
+
+  const filledCount = KIT_SLOTS.filter(s => kit[s.field] != null).length;
+  const totalSlots = KIT_SLOTS.length;
+  const isComplete = filledCount === totalSlots;
+  const pct = Math.round((filledCount / totalSlots) * 100);
+
+  return (
+    <aside style={{
+      width: 260,
+      minWidth: 260,
+      maxWidth: 260,
+      background: "#fff",
+      borderLeft: "1px solid #e5e0d8",
+      padding: "20px",
+      position: "sticky",
+      top: 0,
+      maxHeight: "100vh",
+      overflowY: "auto",
+      display: "flex",
+      flexDirection: "column",
+      gap: "16px",
+    }}>
+      {/* Header */}
+      <div>
+        <h3 style={{
+          fontFamily: "var(--v2-font-heading, 'Fraunces', serif)",
+          fontStyle: "italic",
+          fontWeight: 900,
+          fontSize: "18px",
+          color: "var(--v2-text-dark, #1A1624)",
+          margin: 0,
+        }}>
+          🎯 Campaign Kit
+        </h3>
+        <p style={{
+          fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)",
+          fontSize: "12px",
+          color: "#999",
+          margin: "4px 0 0",
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        }}>
+          {kit.name || "Loading..."}
+        </p>
+      </div>
+
+      {/* Slot rows */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+        {KIT_SLOTS.map(slot => {
+          const isFilled = kit[slot.field] != null;
+          return (
+            <button
+              key={slot.field}
+              onClick={() => onNavigate(slot.step)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                padding: "8px 10px",
+                borderRadius: "10px",
+                border: "none",
+                background: isFilled ? "rgba(88,204,2,0.06)" : "transparent",
+                cursor: "pointer",
+                width: "100%",
+                textAlign: "left",
+                transition: "background 0.15s",
+              }}
+              onMouseEnter={e => { if (!isFilled) (e.currentTarget as HTMLElement).style.background = "rgba(0,0,0,0.03)"; }}
+              onMouseLeave={e => { if (!isFilled) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+            >
+              {isFilled ? (
+                <span style={{ color: "#58CC02", fontSize: "16px", lineHeight: 1 }}>✓</span>
+              ) : (
+                <span style={{ color: "#ccc", fontSize: "16px", lineHeight: 1 }}>○</span>
+              )}
+              <span style={{
+                fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)",
+                fontSize: "13px",
+                fontWeight: isFilled ? 600 : 400,
+                color: isFilled ? "var(--v2-text-dark, #1A1624)" : "#999",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}>
+                {slot.label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Progress bar */}
+      <div>
+        <p style={{
+          fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)",
+          fontSize: "12px",
+          fontWeight: 600,
+          color: "var(--v2-text-dark, #1A1624)",
+          margin: "0 0 6px",
+        }}>
+          {filledCount} of {totalSlots} selected
+        </p>
+        <div style={{
+          height: 6,
+          borderRadius: 3,
+          background: "#e5e0d8",
+          overflow: "hidden",
+        }}>
+          <div style={{
+            height: "100%",
+            width: `${pct}%`,
+            borderRadius: 3,
+            background: isComplete ? "#58CC02" : "var(--v2-primary-btn, #FF5B1D)",
+            transition: "width 0.3s ease",
+          }} />
+        </div>
+      </div>
+
+      {/* View Campaign Kit button */}
+      <a
+        href={isComplete ? `/v2-dashboard/campaign-kit/${kit.id}` : undefined}
+        onClick={e => { if (!isComplete) e.preventDefault(); }}
+        style={{
+          display: "block",
+          textAlign: "center",
+          padding: "10px 16px",
+          borderRadius: "var(--v2-border-radius-pill, 9999px)",
+          background: isComplete ? "var(--v2-primary-btn, #FF5B1D)" : "#e5e0d8",
+          color: isComplete ? "#fff" : "#999",
+          fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)",
+          fontWeight: 700,
+          fontSize: "13px",
+          textDecoration: "none",
+          cursor: isComplete ? "pointer" : "default",
+          transition: "all 0.2s ease",
+        }}
+      >
+        {isComplete ? "View Campaign Kit" : `${totalSlots - filledCount} remaining`}
+      </a>
+    </aside>
+  );
+}
+
 // ─── UseThisButton: campaign kit selection button ──────────────────────────────
 function UseThisButton({ isSelected, onClick, loading }: { isSelected: boolean; onClick: () => void; loading?: boolean }) {
   return (
@@ -1812,8 +1970,11 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
 
   return (
     <V2Layout>
+      <div style={{ display: "flex", minHeight: "100vh" }}>
+      {/* ── Main wizard column ── */}
       <div style={{
-        minHeight: "100vh",
+        flex: 1,
+        minWidth: 0,
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -2218,6 +2379,12 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
           Your AI Profile (Service + ICP) is automatically bundled into every generation. No re-entry needed.
         </p>
 
+      </div>
+      {/* ── Campaign Kit Sidebar (desktop only) ── */}
+      <div className="campaign-kit-sidebar-wrapper" style={{ display: "none" }}>
+        <CampaignKitSidebar kit={campaignKit} onNavigate={(s) => navigate(`/v2-dashboard/wizard/${s}`)} />
+      </div>
+      <style>{`@media (min-width: 1024px) { .campaign-kit-sidebar-wrapper { display: block !important; } }`}</style>
       </div>
     </V2Layout>
   );
