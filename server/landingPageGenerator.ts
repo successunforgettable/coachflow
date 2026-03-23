@@ -62,7 +62,8 @@ export async function generateLandingPageAngle(
   avatarName: string,
   avatarDescription: string,
   angle: 'original' | 'godfather' | 'free' | 'dollar',
-  socialProof: any
+  socialProof: any,
+  fallbackTestimonials?: Array<{headline: string, quote: string, name: string, location: string}>
 ): Promise<LandingPageContent> {
   // Social proof guidance (Issue 2 fix)
   const socialProofGuidance = socialProof.hasTestimonials || socialProof.hasCustomers || socialProof.hasPress
@@ -296,7 +297,7 @@ CRITICAL CONTENT: Every single one of the 16 sections MUST contain substantial c
     solutionIntro: (cleanParsed.solutionIntro as string) || '[Generation incomplete — please regenerate this section]',
     whyOldFail: (cleanParsed.whyOldFail as string) || '[Generation incomplete — please regenerate this section]',
     uniqueMechanism: (cleanParsed.uniqueMechanism as string) || '[Generation incomplete — please regenerate this section]',
-    testimonials: Array.isArray(cleanParsed.testimonials) && cleanParsed.testimonials.length > 0 ? cleanParsed.testimonials as any : [
+    testimonials: Array.isArray(cleanParsed.testimonials) && cleanParsed.testimonials.length > 0 ? cleanParsed.testimonials as any : fallbackTestimonials ?? [
       {
         headline: 'Life-Changing Results',
         quote: 'This completely transformed how I approach my goals.',
@@ -335,10 +336,11 @@ async function generateWithTimeout(
   avatarDescription: string,
   angle: 'original' | 'godfather' | 'free' | 'dollar',
   socialProof: any,
-  timeoutMs = 300_000
+  timeoutMs = 300_000,
+  fallbackTestimonials?: Array<{headline: string, quote: string, name: string, location: string}>
 ): Promise<LandingPageContent> {
   return Promise.race([
-    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, angle, socialProof),
+    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, angle, socialProof, fallbackTestimonials),
     new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error(`Landing page ${angle} angle timed out after ${timeoutMs / 1000}s`)), timeoutMs)
     ),
@@ -354,7 +356,8 @@ export async function generateAllAngles(
   avatarName: string,
   avatarDescription: string,
   socialProof: any,
-  onAngleComplete?: (completed: number, total: number) => Promise<void>
+  onAngleComplete?: (completed: number, total: number) => Promise<void>,
+  fallbackTestimonials?: Array<{headline: string, quote: string, name: string, location: string}>
 ): Promise<{
   original: LandingPageContent;
   godfather: LandingPageContent;
@@ -372,10 +375,10 @@ export async function generateAllAngles(
 
   // All 4 angles in parallel — cuts total time by ~75% vs sequential
   const [original, godfather, free, dollar] = await Promise.all([
-    generateWithTimeout(productName, productDescription, avatarName, avatarDescription, 'original', socialProof).then(async r => { await notify(); return r; }),
-    generateWithTimeout(productName, productDescription, avatarName, avatarDescription, 'godfather', socialProof).then(async r => { await notify(); return r; }),
-    generateWithTimeout(productName, productDescription, avatarName, avatarDescription, 'free', socialProof).then(async r => { await notify(); return r; }),
-    generateWithTimeout(productName, productDescription, avatarName, avatarDescription, 'dollar', socialProof).then(async r => { await notify(); return r; }),
+    generateWithTimeout(productName, productDescription, avatarName, avatarDescription, 'original', socialProof, 300_000, fallbackTestimonials).then(async r => { await notify(); return r; }),
+    generateWithTimeout(productName, productDescription, avatarName, avatarDescription, 'godfather', socialProof, 300_000, fallbackTestimonials).then(async r => { await notify(); return r; }),
+    generateWithTimeout(productName, productDescription, avatarName, avatarDescription, 'free', socialProof, 300_000, fallbackTestimonials).then(async r => { await notify(); return r; }),
+    generateWithTimeout(productName, productDescription, avatarName, avatarDescription, 'dollar', socialProof, 300_000, fallbackTestimonials).then(async r => { await notify(); return r; }),
   ]);
   return { original, godfather, free, dollar };
 }

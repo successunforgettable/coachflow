@@ -296,13 +296,31 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
         icpContext || null,
       ].filter(Boolean).join('\n\n');
 
+      // Build service-aware testimonial fallbacks
+      const fallbackTestimonials = [
+        {
+          headline: `Finally Achieving ${service.mainBenefit ?? 'Real Results'}`,
+          quote: `I was skeptical at first, but the results speak for themselves. If you are ${service.targetCustomer ?? 'looking for a change'}, this is exactly what you need.`,
+          name: service.avatarName ?? 'A Client',
+          location: service.avatarTitle ?? 'Satisfied Client'
+        },
+        {
+          headline: 'This Changed Everything For Me',
+          quote: `The approach is unlike anything else I have tried. Within weeks I could see real progress toward ${service.mainBenefit ?? 'my goals'}.`,
+          name: 'A Recent Client',
+          location: service.targetCustomer ?? 'Worldwide'
+        }
+      ];
+
       // Generate all 4 angles in parallel with social proof (Issue 2 fix)
       const allAnglesRaw = await generateAllAngles(
         service.name,
         service.description || "",
         avatarName,
         enrichedAvatarDescription,
-        socialProof
+        socialProof,
+        undefined,
+        fallbackTestimonials
       );
 
       // Apply compliance filter to all string fields in each angle
@@ -429,7 +447,21 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
             } catch { /* non-fatal */ }
           };
 
-          const allAnglesRaw2 = await generateAllAngles(capturedService.name, capturedService.description || "", avatarName, enrichedAvatarDescription, socialProof, writeProgress);
+          const asyncFallbackTestimonials = [
+            {
+              headline: `Finally Achieving ${capturedService.mainBenefit ?? 'Real Results'}`,
+              quote: `I was skeptical at first, but the results speak for themselves. If you are ${capturedService.targetCustomer ?? 'looking for a change'}, this is exactly what you need.`,
+              name: capturedService.avatarName ?? 'A Client',
+              location: capturedService.avatarTitle ?? 'Satisfied Client'
+            },
+            {
+              headline: 'This Changed Everything For Me',
+              quote: `The approach is unlike anything else I have tried. Within weeks I could see real progress toward ${capturedService.mainBenefit ?? 'my goals'}.`,
+              name: 'A Recent Client',
+              location: capturedService.targetCustomer ?? 'Worldwide'
+            }
+          ];
+          const allAnglesRaw2 = await generateAllAngles(capturedService.name, capturedService.description || "", avatarName, enrichedAvatarDescription, socialProof, writeProgress, asyncFallbackTestimonials);
           const allAngles = {
             original: await filterAngleObject(allAnglesRaw2.original as Record<string, unknown>),
             godfather: await filterAngleObject(allAnglesRaw2.godfather as Record<string, unknown>),
@@ -470,7 +502,7 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
                     };
                     const retryAvatarName = capturedInput.avatarName || `${capturedService.targetCustomer}`;
                     const retryAvatarDescription = capturedInput.avatarDescription || capturedService.description || 'Target Customer';
-                    const retryAngles = await generateAllAngles(capturedService.name, capturedService.description || '', retryAvatarName, retryAvatarDescription, bgSocialProof, writeProgressRetry);
+                    const retryAngles = await generateAllAngles(capturedService.name, capturedService.description || '', retryAvatarName, retryAvatarDescription, bgSocialProof, writeProgressRetry, asyncFallbackTestimonials);
                     const retryInsert: any = await retryDb.insert(landingPages).values({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, productName: capturedService.name, productDescription: capturedService.description || '', avatarName: retryAvatarName, avatarDescription: retryAvatarDescription, originalAngle: retryAngles.original, godfatherAngle: retryAngles.godfather, freeAngle: retryAngles.free, dollarAngle: retryAngles.dollar, activeAngle: 'original', rating: 0 });
                     await retryDb.update(users).set({ landingPageGeneratedCount: capturedUser.landingPageGeneratedCount + 1 }).where(eq(users.id, capturedUserId));
                     const [retryPage] = await retryDb.select().from(landingPages).where(eq(landingPages.id, retryInsert[0].insertId)).limit(1);
