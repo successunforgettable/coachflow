@@ -2184,8 +2184,8 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
           {/* ── LOADING STATE ── */}
           {status === "loading" && <LoadingState step={step} progressLabel={progressLabel} />}
 
-          {/* ── SUCCESS STATE ── */}
-          {status === "success" && (
+          {/* ── SUCCESS STATE (hidden on Node 6 where RecommendedAssetPanel provides its own CTA) ── */}
+          {status === "success" && step !== "headlines" && (
             <SuccessState
               score={complianceScore}
               nextStepUrl={(() => { const next = getNextStep(step); return next ? `/v2-dashboard/wizard/${next}` : null; })()}
