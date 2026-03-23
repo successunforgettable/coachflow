@@ -2000,7 +2000,21 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
       clearTimeout(timeoutRef.current ?? undefined);
       const msg = err instanceof Error ? err.message : "";
       if (msg.includes("limit") || msg.includes("quota") || msg.includes("FORBIDDEN")) {
-        setErrorMsg(msg);
+        // Parse quota_exceeded JSON if present, show friendly message
+        let friendlyMsg = msg;
+        try {
+          const parsed = JSON.parse(msg);
+          if (parsed.message === "quota_exceeded") {
+            const generatorNames: Record<string, string> = {
+              headlines: "headline", hvco: "lead magnet", heroMechanisms: "unique method",
+              icp: "ICP", adCopy: "ad copy", email: "email sequence",
+              whatsapp: "WhatsApp sequence", landingPages: "landing page", offers: "offer",
+            };
+            const name = generatorNames[parsed.generator] || parsed.generator || "asset";
+            friendlyMsg = `QUOTA_EXCEEDED:${parsed.generator}:You've used your free ${name} generations. Upgrade to ZAP Pro to generate more.`;
+          }
+        } catch { /* not JSON — use raw msg */ }
+        setErrorMsg(friendlyMsg);
         setStatus("missing_data");
       } else if (msg.includes("529") || msg.toLowerCase().includes("overloaded") || msg.toLowerCase().includes("busy")) {
         setErrorMsg("The AI is temporarily busy — please try again in a minute.");
@@ -2330,7 +2344,7 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
           )}
 
           {/* ── MISSING DATA MESSAGE ── */}
-          {status === "missing_data" && (
+          {status === "missing_data" && errorMsg && (
             <div style={{
               background: "rgba(255,91,29,0.08)",
               border: "1px solid rgba(255,91,29,0.25)",
@@ -2342,7 +2356,31 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
               color: "#C0390A",
               textAlign: "center",
             }}>
-              {errorMsg}
+              {errorMsg.startsWith("QUOTA_EXCEEDED:") ? (() => {
+                const parts = errorMsg.split(":");
+                const generator = parts[1] || "headlines";
+                const message = parts.slice(2).join(":");
+                return (
+                  <>
+                    <p style={{ margin: "0 0 12px" }}>{message}</p>
+                    <a
+                      href={`/pricing?utm_source=app&utm_medium=quota&utm_campaign=${generator}`}
+                      style={{
+                        display: "inline-block",
+                        padding: "10px 24px",
+                        borderRadius: "var(--v2-border-radius-pill, 9999px)",
+                        background: "var(--v2-primary-btn, #FF5B1D)",
+                        color: "#fff",
+                        fontWeight: 700,
+                        fontSize: "14px",
+                        textDecoration: "none",
+                      }}
+                    >
+                      Upgrade to Pro
+                    </a>
+                  </>
+                );
+              })() : errorMsg}
             </div>
           )}
 
