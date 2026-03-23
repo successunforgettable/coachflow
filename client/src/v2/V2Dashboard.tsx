@@ -266,6 +266,8 @@ export default function V2Dashboard() {
 
   // ── ICP data for stats ──
   const { data: icpList } = trpc.icps.list.useQuery(undefined, { staleTime: 30_000 });
+  // ── Campaign kits for "View Campaign Kit" link ──
+  const { data: campaignKitsList } = trpc.campaignKits.getByUser.useQuery(undefined, { staleTime: 30_000 });
 
   // ── Service quality score for Node 1 pill ──
   const { data: servicesData } = trpc.services.list.useQuery();
@@ -701,7 +703,7 @@ export default function V2Dashboard() {
               Campaign Progress
             </p>
           </div>
-          {/* Active ICP */}
+          {/* Active ICP + Campaign Kit link */}
           <div style={{ background: "#fff", borderRadius: "16px", padding: "18px 20px", textAlign: "center", overflow: "hidden" }}>
             <p style={{ fontFamily: "var(--v2-font-heading)", fontStyle: "italic", fontWeight: 900, fontSize: "16px", color: "var(--v2-text-color)", margin: 0, lineHeight: 1.3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
               {activeIcpName}
@@ -709,6 +711,27 @@ export default function V2Dashboard() {
             <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "12px", fontWeight: 600, color: "rgba(26,22,36,0.50)", margin: "6px 0 0", textTransform: "uppercase", letterSpacing: "0.04em" }}>
               Active ICP
             </p>
+            {(() => {
+              const activeIcpId = icpList?.[0]?.id;
+              const matchedKit = activeIcpId ? campaignKitsList?.find((k: any) => k.icpId === activeIcpId) : null;
+              if (!matchedKit) return null;
+              return (
+                <a
+                  href={`/v2-dashboard/campaign-kit/${matchedKit.id}`}
+                  style={{
+                    display: "inline-block",
+                    marginTop: "8px",
+                    fontFamily: "var(--v2-font-body)",
+                    fontSize: "12px",
+                    fontWeight: 700,
+                    color: "var(--v2-primary-btn, #FF5B1D)",
+                    textDecoration: "none",
+                  }}
+                >
+                  View Campaign Kit →
+                </a>
+              );
+            })()}
           </div>
         </div>
 
