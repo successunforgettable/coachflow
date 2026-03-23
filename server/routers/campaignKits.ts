@@ -152,6 +152,7 @@ export const campaignKitsRouter = router({
   getById: protectedProcedure
     .input(z.object({ kitId: z.number() }))
     .query(async ({ ctx, input }) => {
+      console.log(`[campaignKits.getById] kitId=${input.kitId} userId=${ctx.user.id}`);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
@@ -161,7 +162,7 @@ export const campaignKitsRouter = router({
         .where(and(eq(campaignKits.id, input.kitId), eq(campaignKits.userId, ctx.user.id)))
         .limit(1);
 
-      if (!kit) throw new TRPCError({ code: "NOT_FOUND", message: "Campaign kit not found" });
+      if (!kit) throw new TRPCError({ code: "NOT_FOUND", message: `Campaign kit ${input.kitId} not found for user ${ctx.user.id}` });
 
       return kit;
     }),

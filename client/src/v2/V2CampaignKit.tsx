@@ -3,7 +3,7 @@
  * Route: /v2-dashboard/campaign-kit/:kitId
  * Shows all selected assets in one scrollable page with export actions.
  */
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
 import V2Layout from "./V2Layout";
 import { trpc } from "@/lib/trpc";
@@ -240,12 +240,24 @@ function AssetSection({ sectionKey, label, step, selectedId, angle, navigate }: 
 // ─── Main page component ───────────────────────────────────────────────────────
 export default function V2CampaignKit() {
   const [, navigate] = useLocation();
-  const params = useParams();
-  const kitId = params?.kitId ? Number(params.kitId) : null;
+  const params = useParams<{ kitId: string }>();
+  const kitId = params.kitId ? Number(params.kitId) : null;
+  const [timedOut, setTimedOut] = useState(false);
 
-  const { data: kit, isLoading } = trpc.campaignKits.getById.useQuery(
+  // Debug log
+  useEffect(() => {
+    console.log("[CampaignKit] params:", params, "kitId:", kitId);
+  }, [kitId]);
+
+  // Timeout fallback
+  useEffect(() => {
+    const t = setTimeout(() => setTimedOut(true), 10_000);
+    return () => clearTimeout(t);
+  }, []);
+
+  const { data: kit, isLoading, isError, error } = trpc.campaignKits.getById.useQuery(
     { kitId: kitId! },
-    { enabled: !!kitId }
+    { enabled: !!kitId && !isNaN(kitId) }
   );
 
   // Fetch ICP name
@@ -254,11 +266,44 @@ export default function V2CampaignKit() {
     { enabled: !!kit?.icpId }
   );
 
+  // Error state
+  if (isError) {
+    return (
+      <V2Layout>
+        <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "12px" }}>
+          <p style={{ fontFamily: "var(--v2-font-body)", color: "#C0390A", fontWeight: 700 }}>Failed to load Campaign Kit</p>
+          <p style={{ fontFamily: "var(--v2-font-body)", color: "#999", fontSize: "13px" }}>{error?.message || "Unknown error"}</p>
+          <p style={{ fontFamily: "var(--v2-font-body)", color: "#999", fontSize: "12px" }}>kitId from URL: {String(kitId)}</p>
+          <a href="/v2-dashboard" style={{ fontFamily: "var(--v2-font-body)", color: "var(--v2-primary-btn, #FF5B1D)", fontSize: "13px" }}>← Back to Dashboard</a>
+        </div>
+      </V2Layout>
+    );
+  }
+
+  // Invalid param
+  if (!kitId || isNaN(kitId)) {
+    return (
+      <V2Layout>
+        <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "12px" }}>
+          <p style={{ fontFamily: "var(--v2-font-body)", color: "#C0390A", fontWeight: 700 }}>Invalid Campaign Kit ID</p>
+          <p style={{ fontFamily: "var(--v2-font-body)", color: "#999", fontSize: "12px" }}>Raw param: "{params.kitId}"</p>
+          <a href="/v2-dashboard" style={{ fontFamily: "var(--v2-font-body)", color: "var(--v2-primary-btn, #FF5B1D)", fontSize: "13px" }}>← Back to Dashboard</a>
+        </div>
+      </V2Layout>
+    );
+  }
+
   if (isLoading || !kit) {
     return (
       <V2Layout>
-        <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "8px" }}>
           <p style={{ fontFamily: "var(--v2-font-body)", color: "#999" }}>Loading Campaign Kit...</p>
+          {timedOut && (
+            <>
+              <p style={{ fontFamily: "var(--v2-font-body)", color: "#C0390A", fontSize: "12px" }}>Still loading after 10s — kitId: {kitId}</p>
+              <a href="/v2-dashboard" style={{ fontFamily: "var(--v2-font-body)", color: "var(--v2-primary-btn, #FF5B1D)", fontSize: "13px" }}>← Back to Dashboard</a>
+            </>
+          )}
         </div>
       </V2Layout>
     );
