@@ -85,8 +85,8 @@ export function getQuotaCountField(generatorType: GeneratorType): string {
     heroMechanisms: "heroMechanismGeneratedCount",
     icp: "icpGeneratedCount",
     adCopy: "adCopyGeneratedCount",
-    email: "emailSequenceGeneratedCount",
-    whatsapp: "whatsappSequenceGeneratedCount",
+    email: "emailSeqGeneratedCount",
+    whatsapp: "whatsappSeqGeneratedCount",
     landingPages: "landingPageGeneratedCount",
     offers: "offerGeneratedCount",
   };
