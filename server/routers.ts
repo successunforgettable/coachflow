@@ -34,6 +34,7 @@ import { demoVideosRouter } from "./routers/demoVideos";
 import { icpAngleSuggestionsRouter } from "./routers/icpAngleSuggestions";
 import { nativeAuthRouter } from "./routers/nativeAuth";
 import { landingRouter } from "./routers/landing";
+import { campaignKitsRouter } from "./routers/campaignKits";
 import { getQuotaLimit } from "./quotaLimits";
 
 export const appRouter = router({
@@ -148,6 +149,7 @@ export const appRouter = router({
   demoVideos: demoVideosRouter,
   nativeAuth: nativeAuthRouter,
   landing: landingRouter,
+  campaignKits: campaignKitsRouter,
 });
 
 export type AppRouter = typeof appRouter;

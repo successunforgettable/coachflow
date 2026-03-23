@@ -1173,3 +1173,27 @@ export const jobs = mysqlTable("jobs", {
 });
 export type Job = typeof jobs.$inferSelect;
 export type InsertJob = typeof jobs.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// Campaign Kits — assembled campaigns linking selected items from each node
+// ---------------------------------------------------------------------------
+export const campaignKits = mysqlTable("campaignKits", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  icpId: int("icpId").notNull(),
+  name: varchar("name", { length: 255 }),
+  status: mysqlEnum("status", ["draft", "complete", "exported"]).default("draft").notNull(),
+  selectedOfferId: int("selectedOfferId"),
+  selectedMechanismId: int("selectedMechanismId"),
+  selectedHvcoId: int("selectedHvcoId"),
+  selectedHeadlineId: int("selectedHeadlineId"),
+  selectedAdCopyId: int("selectedAdCopyId"),
+  selectedLandingPageId: int("selectedLandingPageId"),
+  selectedLandingPageAngle: varchar("selectedLandingPageAngle", { length: 50 }),
+  selectedEmailSequenceId: int("selectedEmailSequenceId"),
+  selectedWhatsAppSequenceId: int("selectedWhatsAppSequenceId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type CampaignKit = typeof campaignKits.$inferSelect;
+export type InsertCampaignKit = typeof campaignKits.$inferInsert;
