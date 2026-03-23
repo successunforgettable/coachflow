@@ -435,6 +435,7 @@ function SuccessState({ score, nextStepUrl, isLastStep }: {
   isLastStep?: boolean;
 }) {
   const [windowSize, setWindowSize] = useState({ width: window.innerWidth, height: window.innerHeight });
+  const [showConfetti, setShowConfetti] = useState(false);
 
   useEffect(() => {
     const handleResize = () => setWindowSize({ width: window.innerWidth, height: window.innerHeight });
@@ -442,9 +443,17 @@ function SuccessState({ score, nextStepUrl, isLastStep }: {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  // Delay confetti by 800ms so result panel renders first
+  useEffect(() => {
+    if (score === 100) {
+      const timer = setTimeout(() => setShowConfetti(true), 800);
+      return () => clearTimeout(timer);
+    }
+  }, [score]);
+
   return (
     <>
-      {score === 100 && (
+      {showConfetti && (
         <Confetti
           width={windowSize.width}
           height={windowSize.height}
