@@ -300,14 +300,65 @@ function WaitingState() {
 }
 
 // ─── Loading State: Zappy + progress ring ────────────────────────────────────
-const LOADING_MESSAGES = [
+const LOADING_MESSAGES_DEFAULT = [
   "Zappy is analysing your inputs…",
   "Building your assets from your AI Profile…",
   "Applying Meta compliance checks…",
   "Almost there — finalising your content now…",
 ];
 
+const LOADING_MESSAGES_BY_STEP: Record<string, string[]> = {
+  headlines: [
+    "Generating 25 headlines across 5 proven formulas…",
+    "Scoring each headline for Meta compliance…",
+    "Calculating which formula type fits your audience…",
+    "Ranking by persuasion strength and character count…",
+    "Picking your best headline…",
+  ],
+  offer: [
+    "Building 3 offer angles — Godfather, Free, and Dollar…",
+    "Crafting irresistible value propositions…",
+    "Scoring each angle for your niche…",
+  ],
+  icp: [
+    "Researching your ideal customer's world…",
+    "Mapping pain points, desires, and buying triggers…",
+    "Building a 17-section customer intelligence profile…",
+  ],
+  uniqueMethod: [
+    "Analysing your coaching approach…",
+    "Naming your proprietary methodology…",
+    "Crafting a mechanism that positions you as the expert…",
+  ],
+  freeOptIn: [
+    "Designing your lead magnet concept…",
+    "Matching the offer to your ICP's biggest quick win…",
+  ],
+  adCopy: [
+    "Writing scroll-stopping ad headlines…",
+    "Crafting body copy that converts browsers to buyers…",
+    "Generating link descriptions for each ad set…",
+  ],
+  landingPage: [
+    "Building 4 landing page variations…",
+    "Writing hero sections, testimonials, and CTAs…",
+    "Applying compliance filters to every section…",
+    "Assembling your highest-converting page…",
+  ],
+  emailSequence: [
+    "Writing your welcome email sequence…",
+    "Crafting subject lines that get opened…",
+    "Building the nurture flow from subscriber to buyer…",
+  ],
+  whatsappSequence: [
+    "Writing your WhatsApp engagement messages…",
+    "Optimising for conversational tone and emoji…",
+    "Finalising your message sequence…",
+  ],
+};
+
 function LoadingState({ step: _step, progressLabel }: { step?: string; progressLabel?: string | null }) {
+  const messages = (_step && LOADING_MESSAGES_BY_STEP[_step]) || LOADING_MESSAGES_DEFAULT;
   const [msgIndex, setMsgIndex] = useState(0);
   const [visible, setVisible] = useState(true);
   const [elapsed, setElapsed] = useState(0);
@@ -315,18 +366,18 @@ function LoadingState({ step: _step, progressLabel }: { step?: string; progressL
   const [labelVisible, setLabelVisible] = useState(true);
   const prevLabelRef = useRef(progressLabel);
 
-  // Cycle messages every 20 seconds with fade (only when no real progress label)
+  // Cycle messages every 2 seconds with fade (only when no real progress label)
   useEffect(() => {
     if (progressLabel) return; // real progress takes over
     const interval = setInterval(() => {
       setVisible(false);
       setTimeout(() => {
-        setMsgIndex(prev => Math.min(prev + 1, LOADING_MESSAGES.length - 1));
+        setMsgIndex(prev => (prev + 1) % messages.length);
         setVisible(true);
       }, 400);
-    }, 20_000);
+    }, 2_000);
     return () => clearInterval(interval);
-  }, [progressLabel]);
+  }, [progressLabel, messages.length]);
 
   // Fade animation when progressLabel changes
   useEffect(() => {
@@ -346,7 +397,7 @@ function LoadingState({ step: _step, progressLabel }: { step?: string; progressL
     return () => clearInterval(timer);
   }, []);
 
-  const displayMessage = progressLabel ?? LOADING_MESSAGES[msgIndex];
+  const displayMessage = progressLabel ?? messages[msgIndex];
 
   return (
     <>
