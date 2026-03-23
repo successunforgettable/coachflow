@@ -11,6 +11,8 @@ import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 import { checkCompliance } from "../lib/complianceChecker";
+import { scoreItem } from "../lib/selectionScorer";
+import { autoSelectBest } from "./campaignKits";
 
 function stripMarkdownJson(content: string): string {
   return content.replace(/^```json\s*|^```\s*|\s*```$/gm, '').trim();
@@ -650,6 +652,21 @@ Format as JSON array:
 
       await incrementQuotaCount(ctx.user.id, "adCopy");
 
+      // Auto-score and auto-select into campaign kit (non-blocking)
+      try {
+        const savedAds = await db.select().from(adCopy).where(and(eq(adCopy.adSetId, adSetId), eq(adCopy.userId, ctx.user.id)));
+        let bestId = 0; let bestScore = -1;
+        for (const a of savedAds) {
+          const s = await scoreItem({ content: a.content, nodeType: "adCopy" });
+          await db.update(adCopy).set({ selectionScore: String(s) } as any).where(eq(adCopy.id, a.id));
+          if (s > bestScore) { bestScore = s; bestId = a.id; }
+        }
+        if (bestId) {
+          const [relatedIcp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
+          if (relatedIcp) await autoSelectBest(ctx.user.id, relatedIcp.id, "selectedAdCopyId", bestId);
+        }
+      } catch (e) { console.warn("[auto-select] adCopy failed:", e); }
+
       return {
         adSetId,
         count: allInserts.length,
@@ -768,6 +785,21 @@ Format as JSON array:
           await bgDb.insert(adCopy).values(allInserts);
 
           await incrementQuotaCount(capturedUserId, "adCopy");
+
+          // Auto-score and auto-select into campaign kit (non-blocking)
+          try {
+            const savedAds = await bgDb.select().from(adCopy).where(and(eq(adCopy.adSetId, adSetId), eq(adCopy.userId, capturedUserId)));
+            let bestId = 0; let bestScore = -1;
+            for (const a of savedAds) {
+              const s = await scoreItem({ content: a.content, nodeType: "adCopy" });
+              await bgDb.update(adCopy).set({ selectionScore: String(s) } as any).where(eq(adCopy.id, a.id));
+              if (s > bestScore) { bestScore = s; bestId = a.id; }
+            }
+            if (bestId) {
+              const [relatedIcp] = await bgDb.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, capturedInput.serviceId)).limit(1);
+              if (relatedIcp) await autoSelectBest(capturedUserId, relatedIcp.id, "selectedAdCopyId", bestId);
+            }
+          } catch (e) { console.warn("[auto-select] adCopy async failed:", e); }
 
           await bgDb.update(jobs)
             .set({ status: "complete", result: JSON.stringify({ adSetId, count: allInserts.length, headlineCount: headlineData.headlines.length, bodyCount: bodyData.bodies.length, linkCount: linkData.links.length }) })

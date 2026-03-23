@@ -21,6 +21,8 @@ import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 import { enforceQuota, incrementQuotaCount } from "../lib/quotaEnforcement";
 import { complianceFilter } from "../lib/complianceFilter";
 import { checkCompliance } from "../lib/complianceChecker";
+import { scoreItem } from "../lib/selectionScorer";
+import { autoSelectBest } from "./campaignKits";
 
 /**
  * Strip markdown code blocks from LLM JSON responses
@@ -359,6 +361,21 @@ Return ONLY a JSON array of 20 subheadline strings, nothing else.`;
       await incrementHvcoCount(user.id);
       await incrementQuotaCount(ctx.user.id, "hvco");
 
+      // Auto-score and auto-select into campaign kit (non-blocking)
+      try {
+        const savedTitles = await db.select().from(hvcoTitles).where(and(eq(hvcoTitles.hvcoSetId, hvcoSetId), eq(hvcoTitles.userId, user.id)));
+        let bestId = 0; let bestScore = -1;
+        for (const t of savedTitles) {
+          const s = await scoreItem({ content: t.title, nodeType: "hvco" });
+          await db.update(hvcoTitles).set({ selectionScore: String(s) } as any).where(eq(hvcoTitles.id, t.id));
+          if (s > bestScore) { bestScore = s; bestId = t.id; }
+        }
+        if (bestId) {
+          const [relatedIcp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
+          if (relatedIcp) await autoSelectBest(user.id, relatedIcp.id, "selectedHvcoId", bestId);
+        }
+      } catch (e) { console.warn("[auto-select] hvco failed:", e); }
+
       return { hvcoSetId };
     }),
 
@@ -467,6 +484,21 @@ Return ONLY a JSON array of 20 subheadline strings, nothing else.`;
           await createHvcoTitles(allTitles);
           await incrementHvcoCount(capturedUserId);
           await incrementQuotaCount(capturedUserId, "hvco");
+
+          // Auto-score and auto-select into campaign kit (non-blocking)
+          try {
+            const savedTitles = await bgDb.select().from(hvcoTitles).where(and(eq(hvcoTitles.hvcoSetId, hvcoSetId), eq(hvcoTitles.userId, capturedUserId)));
+            let bestId = 0; let bestScore = -1;
+            for (const t of savedTitles) {
+              const s = await scoreItem({ content: t.title, nodeType: "hvco" });
+              await bgDb.update(hvcoTitles).set({ selectionScore: String(s) } as any).where(eq(hvcoTitles.id, t.id));
+              if (s > bestScore) { bestScore = s; bestId = t.id; }
+            }
+            if (bestId) {
+              const [relatedIcp] = await bgDb.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, capturedInput.serviceId)).limit(1);
+              if (relatedIcp) await autoSelectBest(capturedUserId, relatedIcp.id, "selectedHvcoId", bestId);
+            }
+          } catch (e) { console.warn("[auto-select] hvco async failed:", e); }
 
           await bgDb.update(jobs)
             .set({ status: "complete", result: JSON.stringify({ hvcoSetId }) })

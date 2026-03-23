@@ -15,6 +15,8 @@ import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 import { enforceQuota, incrementQuotaCount } from "../lib/quotaEnforcement";
 import { complianceFilter } from "../lib/complianceFilter";
 import { checkCompliance } from "../lib/complianceChecker";
+import { scoreItem } from "../lib/selectionScorer";
+import { autoSelectBest } from "./campaignKits";
 
 // Apply compliance filter to an email's subject and body
 async function filterEmail(email: { subject: string; body: string; [k: string]: any }): Promise<typeof email> {
@@ -422,6 +424,15 @@ Return as a JSON object with an 'emails' key containing the array.`;
         .where(eq(emailSequences.id, insertResult[0].insertId))
         .limit(1);
 
+      // Auto-score and auto-select into campaign kit (non-blocking)
+      try {
+        const emailContent = sequenceData.emails.map((e: any) => `${e.subject} ${e.body}`).join(" ");
+        const s = await scoreItem({ content: emailContent, nodeType: "emailSequences" });
+        await db.update(emailSequences).set({ selectionScore: String(s) } as any).where(eq(emailSequences.id, insertResult[0].insertId));
+        const [relatedIcp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
+        if (relatedIcp) await autoSelectBest(ctx.user.id, relatedIcp.id, "selectedEmailSequenceId", insertResult[0].insertId);
+      } catch (e) { console.warn("[auto-select] emailSequences failed:", e); }
+
       return newSequence;
     }),
 
@@ -500,6 +511,15 @@ Return as a JSON object with an 'emails' key containing the array.`;
           const insertResult: any = await bgDb.insert(emailSequences).values({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, sequenceType: capturedInput.sequenceType, name: capturedInput.name, emails: sequenceData.emails });
           await incrementQuotaCount(capturedUserId, "email");
           const [newSequence] = await bgDb.select().from(emailSequences).where(eq(emailSequences.id, insertResult[0].insertId)).limit(1);
+
+          // Auto-score and auto-select into campaign kit (non-blocking)
+          try {
+            const emailContent = sequenceData.emails.map((e: any) => `${e.subject} ${e.body}`).join(" ");
+            const s = await scoreItem({ content: emailContent, nodeType: "emailSequences" });
+            await bgDb.update(emailSequences).set({ selectionScore: String(s) } as any).where(eq(emailSequences.id, insertResult[0].insertId));
+            const [relatedIcp] = await bgDb.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, capturedInput.serviceId)).limit(1);
+            if (relatedIcp) await autoSelectBest(capturedUserId, relatedIcp.id, "selectedEmailSequenceId", insertResult[0].insertId);
+          } catch (e) { console.warn("[auto-select] emailSequences async failed:", e); }
 
           await bgDb.update(jobs)
             .set({ status: "complete", result: JSON.stringify({ id: newSequence?.id }) })

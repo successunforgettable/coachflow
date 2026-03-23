@@ -5,6 +5,65 @@ import { campaignKits, idealCustomerProfiles, services } from "../../drizzle/sch
 import { eq, and } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
+export async function autoSelectBest(
+  userId: number,
+  icpId: number,
+  field: string,
+  itemId: number
+): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+
+  // Find or create kit
+  const [existing] = await db
+    .select()
+    .from(campaignKits)
+    .where(and(eq(campaignKits.userId, userId), eq(campaignKits.icpId, icpId)))
+    .limit(1);
+
+  let kitId: number;
+  if (existing) {
+    kitId = existing.id;
+  } else {
+    // Auto-create with generic name
+    const result: any = await db.insert(campaignKits).values({
+      userId,
+      icpId,
+      name: "Auto Campaign Kit",
+    });
+    kitId = result[0].insertId;
+  }
+
+  // Update the specific selection field
+  await db
+    .update(campaignKits)
+    .set({ [field]: itemId, updatedAt: new Date() } as any)
+    .where(eq(campaignKits.id, kitId));
+
+  // Check completeness
+  const [updated] = await db
+    .select()
+    .from(campaignKits)
+    .where(eq(campaignKits.id, kitId))
+    .limit(1);
+
+  if (updated) {
+    const isComplete =
+      updated.selectedOfferId != null &&
+      updated.selectedMechanismId != null &&
+      updated.selectedHvcoId != null &&
+      updated.selectedHeadlineId != null &&
+      updated.selectedAdCopyId != null &&
+      updated.selectedLandingPageId != null &&
+      updated.selectedEmailSequenceId != null &&
+      updated.selectedWhatsAppSequenceId != null;
+
+    if (isComplete && updated.status === "draft") {
+      await db.update(campaignKits).set({ status: "complete", updatedAt: new Date() } as any).where(eq(campaignKits.id, kitId));
+    }
+  }
+}
+
 export const campaignKitsRouter = router({
   /**
    * getOrCreate — finds or creates a campaign kit for a given ICP.

@@ -21,6 +21,8 @@ import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 import { enforceQuota, incrementQuotaCount } from "../lib/quotaEnforcement";
 import { complianceFilter } from "../lib/complianceFilter";
 import { checkCompliance } from "../lib/complianceChecker";
+import { scoreItem } from "../lib/selectionScorer";
+import { autoSelectBest } from "./campaignKits";
 
 // Helper to strip markdown code blocks from JSON responses
 function stripMarkdownJson(content: string): string {
@@ -374,6 +376,21 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
       await incrementHeroMechanismCount(user.id);
       await incrementQuotaCount(ctx.user.id, "heroMechanisms");
 
+      // Auto-score and auto-select into campaign kit (non-blocking)
+      try {
+        const savedMechanisms = await db.select().from(heroMechanisms).where(and(eq(heroMechanisms.mechanismSetId, mechanismSetId), eq(heroMechanisms.userId, user.id)));
+        let bestId = 0; let bestScore = -1;
+        for (const m of savedMechanisms) {
+          const s = await scoreItem({ content: `${m.mechanismName} ${m.mechanismDescription}`, nodeType: "heroMechanisms" });
+          await db.update(heroMechanisms).set({ selectionScore: String(s) } as any).where(eq(heroMechanisms.id, m.id));
+          if (s > bestScore) { bestScore = s; bestId = m.id; }
+        }
+        if (bestId) {
+          const [relatedIcp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
+          if (relatedIcp) await autoSelectBest(user.id, relatedIcp.id, "selectedMechanismId", bestId);
+        }
+      } catch (e) { console.warn("[auto-select] heroMechanisms failed:", e); }
+
       return { mechanismSetId };
     }),
 
@@ -658,6 +675,21 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
           await createHeroMechanisms(allMechanisms);
           await incrementHeroMechanismCount(capturedUserId);
           await incrementQuotaCount(capturedUserId, "heroMechanisms");
+
+          // Auto-score and auto-select into campaign kit (non-blocking)
+          try {
+            const savedMechanisms = await bgDb.select().from(heroMechanisms).where(and(eq(heroMechanisms.mechanismSetId, mechanismSetId), eq(heroMechanisms.userId, capturedUserId)));
+            let bestId = 0; let bestScore = -1;
+            for (const m of savedMechanisms) {
+              const s = await scoreItem({ content: `${m.mechanismName} ${m.mechanismDescription}`, nodeType: "heroMechanisms" });
+              await bgDb.update(heroMechanisms).set({ selectionScore: String(s) } as any).where(eq(heroMechanisms.id, m.id));
+              if (s > bestScore) { bestScore = s; bestId = m.id; }
+            }
+            if (bestId) {
+              const [relatedIcp] = await bgDb.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, capturedInput.serviceId)).limit(1);
+              if (relatedIcp) await autoSelectBest(capturedUserId, relatedIcp.id, "selectedMechanismId", bestId);
+            }
+          } catch (e) { console.warn("[auto-select] heroMechanisms async failed:", e); }
 
           // Mark job complete
           await bgDb.update(jobs)

@@ -318,6 +318,7 @@ export const adCopy = mysqlTable("adCopy", {
   complianceScore: int("complianceScore"),
   complianceVersion: varchar("complianceVersion", { length: 20 }),
   complianceCheckedAt: timestamp("complianceCheckedAt"),
+  selectionScore: decimal("selectionScore", { precision: 5, scale: 2 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({
@@ -342,6 +343,7 @@ export const emailSequences = mysqlTable("emailSequences", {
   emails: json("emails").$type<Array<{ day: number; subject: string; body: string; timing: string }>>().notNull(),
   automationEnabled: boolean("automationEnabled").default(false),
   rating: int("rating").default(0),
+  selectionScore: decimal("selectionScore", { precision: 5, scale: 2 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({
@@ -365,6 +367,7 @@ export const whatsappSequences = mysqlTable("whatsappSequences", {
   messages: json("messages").$type<Array<{ day: number; message: string; timing: string; emojis: string[] }>>().notNull(),
   automationEnabled: boolean("automationEnabled").default(false),
   rating: int("rating").default(0),
+  selectionScore: decimal("selectionScore", { precision: 5, scale: 2 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({
@@ -432,6 +435,7 @@ export const landingPages = mysqlTable("landingPages", {
   activeAngle: mysqlEnum("activeAngle", ["original", "godfather", "free", "dollar"]).default("original"),
   
   rating: int("rating").default(0),
+  selectionScore: decimal("selectionScore", { precision: 5, scale: 2 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({
@@ -475,6 +479,7 @@ export const offers = mysqlTable("offers", {
   activeAngle: mysqlEnum("activeAngle", ["godfather", "free", "dollar"]).default("godfather"),
   
   rating: int("rating").default(0),
+  selectionScore: decimal("selectionScore", { precision: 5, scale: 2 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({
@@ -515,6 +520,7 @@ export const headlines = mysqlTable("headlines", {
   complianceScore: int("complianceScore").default(100),
   complianceVersion: varchar("complianceVersion", { length: 20 }),
   complianceCheckedAt: timestamp("complianceCheckedAt"),
+  selectionScore: decimal("selectionScore", { precision: 5, scale: 2 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({
@@ -549,6 +555,7 @@ export const hvcoTitles = mysqlTable("hvcoTitles", {
   // Metadata
   rating: int("rating").default(0), // -1 = thumbs down, 0 = no rating, 1 = thumbs up
   isFavorite: boolean("isFavorite").default(false),
+  selectionScore: decimal("selectionScore", { precision: 5, scale: 2 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({
@@ -592,6 +599,7 @@ export const heroMechanisms = mysqlTable("heroMechanisms", {
   // Metadata
   rating: int("rating").default(0), // -1 = thumbs down, 0 = no rating, 1 = thumbs up
   isFavorite: boolean("isFavorite").default(false),
+  selectionScore: decimal("selectionScore", { precision: 5, scale: 2 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({

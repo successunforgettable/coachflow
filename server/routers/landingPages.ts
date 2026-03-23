@@ -12,6 +12,8 @@ import { invokeLLM } from "../_core/llm";
 import { enforceQuota, incrementQuotaCount } from "../lib/quotaEnforcement";
 import { complianceFilter } from "../lib/complianceFilter";
 import { checkCompliance } from "../lib/complianceChecker";
+import { scoreItem } from "../lib/selectionScorer";
+import { autoSelectBest } from "./campaignKits";
 
 // Apply compliance filter to a text string, return cleaned version
 async function filterSection(text: string): Promise<string> {
@@ -365,6 +367,15 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
         .where(eq(landingPages.id, insertResult[0].insertId))
         .limit(1);
 
+      // Auto-score and auto-select into campaign kit (non-blocking)
+      try {
+        const originalContent = JSON.stringify(allAngles.original);
+        const s = await scoreItem({ content: originalContent, nodeType: "landingPages", formulaType: "original" });
+        await db.update(landingPages).set({ selectionScore: String(s) } as any).where(eq(landingPages.id, insertResult[0].insertId));
+        const [relatedIcp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
+        if (relatedIcp) await autoSelectBest(ctx.user.id, relatedIcp.id, "selectedLandingPageId", insertResult[0].insertId);
+      } catch (e) { console.warn("[auto-select] landingPages failed:", e); }
+
       return newPage;
     }),
 
@@ -473,6 +484,15 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
           await bgDb.update(users).set({ landingPageGeneratedCount: capturedUser.landingPageGeneratedCount + 1 }).where(eq(users.id, capturedUserId));
           await incrementQuotaCount(capturedUserId, "landingPages");
           const [newPage] = await bgDb.select().from(landingPages).where(eq(landingPages.id, insertResult[0].insertId)).limit(1);
+
+          // Auto-score and auto-select into campaign kit (non-blocking)
+          try {
+            const originalContent = JSON.stringify(allAngles.original);
+            const s = await scoreItem({ content: originalContent, nodeType: "landingPages", formulaType: "original" });
+            await bgDb.update(landingPages).set({ selectionScore: String(s) } as any).where(eq(landingPages.id, insertResult[0].insertId));
+            const [relatedIcp] = await bgDb.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, capturedInput.serviceId)).limit(1);
+            if (relatedIcp) await autoSelectBest(capturedUserId, relatedIcp.id, "selectedLandingPageId", insertResult[0].insertId);
+          } catch (e) { console.warn("[auto-select] landingPages async failed:", e); }
 
           await bgDb.update(jobs)
             .set({ status: "complete", result: JSON.stringify({ id: newPage?.id }) })

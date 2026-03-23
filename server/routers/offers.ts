@@ -10,6 +10,8 @@ import { getQuotaLimit } from "../quotaLimits";
 import { enforceQuota, incrementQuotaCount } from "../lib/quotaEnforcement";
 import { complianceFilter } from "../lib/complianceFilter";
 import { checkCompliance } from "../lib/complianceChecker";
+import { scoreItem } from "../lib/selectionScorer";
+import { autoSelectBest } from "./campaignKits";
 
 // Apply compliance filter to a text string
 async function filterOfferSection(text: string): Promise<string> {
@@ -240,6 +242,24 @@ export const offersRouter = router({
         .where(eq(offers.id, insertResult[0].insertId))
         .limit(1);
 
+      // Auto-score and auto-select into campaign kit (non-blocking)
+      try {
+        const godfatherContent = JSON.stringify(allAngles.godfather);
+        const freeContent = JSON.stringify(allAngles.free);
+        const dollarContent = JSON.stringify(allAngles.dollar);
+        const scores = await Promise.all([
+          scoreItem({ content: godfatherContent, nodeType: "offers", formulaType: "godfather" }),
+          scoreItem({ content: freeContent, nodeType: "offers", formulaType: "free" }),
+          scoreItem({ content: dollarContent, nodeType: "offers", formulaType: "dollar" }),
+        ]);
+        const bestScore = Math.max(...scores);
+        await db.update(offers).set({ selectionScore: String(bestScore) } as any).where(eq(offers.id, insertResult[0].insertId));
+        const [relatedIcp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
+        if (relatedIcp) {
+          await autoSelectBest(ctx.user.id, relatedIcp.id, "selectedOfferId", insertResult[0].insertId);
+        }
+      } catch (e) { console.warn("[auto-select] offers failed:", e); }
+
       return newOffer;
     }),
 
@@ -349,6 +369,24 @@ export const offersRouter = router({
           });
 
           await incrementQuotaCount(capturedUserId, "offers");
+
+          // Auto-score and auto-select into campaign kit (non-blocking)
+          try {
+            const godfatherContent = JSON.stringify(allAngles.godfather);
+            const freeContent = JSON.stringify(allAngles.free);
+            const dollarContent = JSON.stringify(allAngles.dollar);
+            const scores = await Promise.all([
+              scoreItem({ content: godfatherContent, nodeType: "offers", formulaType: "godfather" }),
+              scoreItem({ content: freeContent, nodeType: "offers", formulaType: "free" }),
+              scoreItem({ content: dollarContent, nodeType: "offers", formulaType: "dollar" }),
+            ]);
+            const bestScore = Math.max(...scores);
+            await bgDb.update(offers).set({ selectionScore: String(bestScore) } as any).where(eq(offers.id, insertResult[0].insertId));
+            const [relatedIcp] = await bgDb.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, capturedInput.serviceId)).limit(1);
+            if (relatedIcp) {
+              await autoSelectBest(capturedUserId, relatedIcp.id, "selectedOfferId", insertResult[0].insertId);
+            }
+          } catch (e) { console.warn("[auto-select] offers async failed:", e); }
 
           await bgDb.update(jobs)
             .set({ status: "complete", result: JSON.stringify({ offerId: insertResult[0].insertId }) })

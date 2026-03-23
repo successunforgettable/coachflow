@@ -15,6 +15,8 @@ import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 import { enforceQuota, incrementQuotaCount } from "../lib/quotaEnforcement";
 import { complianceFilter } from "../lib/complianceFilter";
 import { checkCompliance } from "../lib/complianceChecker";
+import { scoreItem } from "../lib/selectionScorer";
+import { autoSelectBest } from "./campaignKits";
 
 // Apply compliance filter to a WhatsApp message's text field
 async function filterWhatsapp(msg: { text: string; [k: string]: any }): Promise<typeof msg> {
@@ -383,6 +385,15 @@ Return as a JSON object with a 'messages' key containing the array.`;
         .where(eq(whatsappSequences.id, insertResult[0].insertId))
         .limit(1);
 
+      // Auto-score and auto-select into campaign kit (non-blocking)
+      try {
+        const msgContent = sequenceData.messages.map((m: any) => m.text).join(" ");
+        const s = await scoreItem({ content: msgContent, nodeType: "whatsappSequences" });
+        await db.update(whatsappSequences).set({ selectionScore: String(s) } as any).where(eq(whatsappSequences.id, insertResult[0].insertId));
+        const [relatedIcp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
+        if (relatedIcp) await autoSelectBest(ctx.user.id, relatedIcp.id, "selectedWhatsAppSequenceId", insertResult[0].insertId);
+      } catch (e) { console.warn("[auto-select] whatsappSequences failed:", e); }
+
       return newSequence;
     }),
 
@@ -459,6 +470,15 @@ Return as a JSON object with a 'messages' key containing the array.`;
           const insertResult: any = await bgDb.insert(whatsappSequences).values({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, sequenceType: capturedInput.sequenceType, name: capturedInput.name, messages: sequenceData.messages });
           await incrementQuotaCount(capturedUserId, "whatsapp");
           const [newSequence] = await bgDb.select().from(whatsappSequences).where(eq(whatsappSequences.id, insertResult[0].insertId)).limit(1);
+
+          // Auto-score and auto-select into campaign kit (non-blocking)
+          try {
+            const msgContent = sequenceData.messages.map((m: any) => m.text).join(" ");
+            const s = await scoreItem({ content: msgContent, nodeType: "whatsappSequences" });
+            await bgDb.update(whatsappSequences).set({ selectionScore: String(s) } as any).where(eq(whatsappSequences.id, insertResult[0].insertId));
+            const [relatedIcp] = await bgDb.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, capturedInput.serviceId)).limit(1);
+            if (relatedIcp) await autoSelectBest(capturedUserId, relatedIcp.id, "selectedWhatsAppSequenceId", insertResult[0].insertId);
+          } catch (e) { console.warn("[auto-select] whatsappSequences async failed:", e); }
 
           await bgDb.update(jobs)
             .set({ status: "complete", result: JSON.stringify({ id: newSequence?.id }) })

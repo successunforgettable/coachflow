@@ -18,6 +18,9 @@ import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 import { enforceQuota, incrementQuotaCount } from "../lib/quotaEnforcement";
 import { checkCompliance } from "../lib/complianceChecker";
+import { scoreItem } from "../lib/selectionScorer";
+import { autoSelectBest } from "./campaignKits";
+import { idealCustomerProfiles } from "../../drizzle/schema";
 
 // Helper to strip markdown code blocks from LLM responses
 function stripMarkdownJson(content: string): string {
@@ -423,6 +426,24 @@ export const headlinesRouter = router({
       await incrementHeadlineCount(ctx.user.id);
       await incrementQuotaCount(ctx.user.id, "headlines");
 
+      // Auto-score and auto-select into campaign kit (non-blocking)
+      try {
+        const db2 = await getDb();
+        if (db2) {
+          const savedHeadlines = await db2.select().from(headlines).where(and(eq(headlines.headlineSetId, headlineSetId), eq(headlines.userId, ctx.user.id)));
+          let bestId = 0; let bestScore = -1;
+          for (const h of savedHeadlines) {
+            const s = await scoreItem({ content: h.headline, nodeType: "headlines", formulaType: h.formulaType });
+            await db2.update(headlines).set({ selectionScore: String(s) } as any).where(eq(headlines.id, h.id));
+            if (s > bestScore) { bestScore = s; bestId = h.id; }
+          }
+          if (bestId && input.serviceId) {
+            const [relatedIcp] = await db2.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
+            if (relatedIcp) await autoSelectBest(ctx.user.id, relatedIcp.id, "selectedHeadlineId", bestId);
+          }
+        }
+      } catch (e) { console.warn("[auto-select] headlines failed:", e); }
+
       return {
         headlineSetId,
         count: allHeadlines.length,
@@ -540,6 +561,21 @@ export const headlinesRouter = router({
           await createHeadlines(headlinesWithCompliance);
           await incrementHeadlineCount(capturedUserId);
           await incrementQuotaCount(capturedUserId, "headlines");
+
+          // Auto-score and auto-select into campaign kit (non-blocking)
+          try {
+            const savedHeadlines = await bgDb.select().from(headlines).where(and(eqBg(headlines.headlineSetId, headlineSetId), eqBg(headlines.userId, capturedUserId)));
+            let bestId = 0; let bestScore = -1;
+            for (const h of savedHeadlines) {
+              const s = await scoreItem({ content: h.headline, nodeType: "headlines", formulaType: h.formulaType });
+              await bgDb.update(headlines).set({ selectionScore: String(s) } as any).where(eqBg(headlines.id, h.id));
+              if (s > bestScore) { bestScore = s; bestId = h.id; }
+            }
+            if (bestId && capturedInput.serviceId) {
+              const [relatedIcp] = await bgDb.select().from(idealCustomerProfiles).where(eqBg(idealCustomerProfiles.serviceId, capturedInput.serviceId)).limit(1);
+              if (relatedIcp) await autoSelectBest(capturedUserId, relatedIcp.id, "selectedHeadlineId", bestId);
+            }
+          } catch (e) { console.warn("[auto-select] headlines async failed:", e); }
 
           await bgDb.update(jobs)
             .set({ status: "complete", result: JSON.stringify({ headlineSetId, count: allHeadlines.length }) })
