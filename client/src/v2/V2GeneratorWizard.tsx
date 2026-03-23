@@ -1658,7 +1658,11 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
       if (msg.includes("limit") || msg.includes("quota") || msg.includes("FORBIDDEN")) {
         setErrorMsg(msg);
         setStatus("missing_data");
+      } else if (msg.includes("529") || msg.toLowerCase().includes("overloaded") || msg.toLowerCase().includes("busy")) {
+        setErrorMsg("The AI is temporarily busy — please try again in a minute.");
+        setStatus("error");
       } else {
+        setErrorMsg("");
         setStatus("error");
       }
     }
@@ -1876,7 +1880,7 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
           {/* ── SCENARIO 2: MID-GENERATION FAILURE ── */}
           {status === "error" && (
             <ErrorBanner
-              message="Something went wrong halfway through. Your inputs are saved — just hit Generate Again."
+              message={errorMsg || "Something went wrong halfway through. Your inputs are saved — just hit Generate Again."}
               retryLabel="Generate Again"
               onRetry={handleRetry}
             />
