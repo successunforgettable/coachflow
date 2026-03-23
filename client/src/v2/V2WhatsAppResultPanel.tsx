@@ -343,7 +343,7 @@ export default function V2WhatsAppResultPanel({
             color: "#777",
             margin: "3px 0 0",
           }}>
-            {seq.name || "WhatsApp Sequence"} — {messages.length} messages
+            {seq.name || "WhatsApp Sequence"} {!(seq.name || "").toLowerCase().includes("message") && <>— {messages.length} messages</>}
           </p>
         </div>
       </div>
