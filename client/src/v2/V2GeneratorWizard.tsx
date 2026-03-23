@@ -2026,7 +2026,9 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
     if (lastPayloadRef.current) {
       runGeneration(lastPayloadRef.current);
     } else {
+      // No stored payload (loaded from history) — reset to idle so user can trigger fresh generation
       setStatus("idle");
+      setErrorMsg("");
     }
   }
 
