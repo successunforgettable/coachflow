@@ -143,6 +143,7 @@ Generate a complete landing page with 16 sections following this structure:
 
 14. **Shocking Statistic** (data-driven fear, 150-200 words)
     CRITICAL: Generate a SPECIFIC, believable statistic relevant to this avatar's niche. Use a concrete percentage or number (e.g. "87% of...", "Only 3 in 100..."). The stat must feel real and credible for this industry — not a generic placeholder. Format as one punchy opening sentence with the stat, followed by 2-3 sentences explaining what it means for the avatar.
+    FORMATTING RULE: All statistics and percentages MUST be written as digits and symbols — e.g. "73%", "4x", "3 out of 10". NEVER spell out numbers as words (never "Seventy-three percent", never "four times"). This applies to every number, percentage, and multiplier in this section.
     Example: "92% of UAE Crypto Beginners Will Never Build Real Wealth Without a Proven System"
 
 15. **Time-Saving Benefit** (shortcut positioning, 150-200 words)
