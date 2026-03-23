@@ -26,6 +26,7 @@ import V2Layout from "./V2Layout";
 import ZappyMascot from "./ZappyMascot";
 import { type WizardStep, STEP_LABELS, getNextStep } from "./v2-constants";
 import V2HeadlinesResultPanel from "./V2HeadlinesResultPanel";
+import RecommendedAssetPanel from "./RecommendedAssetPanel";
 import V2AdCopyResultPanel from "./V2AdCopyResultPanel";
 import V2ICPResultPanel from "./V2ICPResultPanel";
 import V2OfferResultPanel from "./V2OfferResultPanel";
@@ -614,6 +615,82 @@ function UseThisButton({ isSelected, onClick, loading }: { isSelected: boolean; 
     >
       {loading ? "Saving..." : isSelected ? "✓ In Campaign" : "Use This"}
     </button>
+  );
+}
+
+// ─── HeadlineRecommendation: Node 6 recommended asset wrapper ──────────────────
+function HeadlineRecommendation({ headlineSetId, serviceId, service, campaignKit, onSelect, onRegenerate }: {
+  headlineSetId: string;
+  serviceId: number;
+  service: any;
+  campaignKit: any;
+  onSelect: (id: number) => void;
+  onRegenerate: () => void;
+}) {
+  // Fetch all headlines for this set (returns { headlineSetId, headlines: { story, eyebrow, ... }, metadata })
+  const { data: headlineData } = trpc.headlines.getBySetId.useQuery(
+    { headlineSetId },
+    { enabled: !!headlineSetId }
+  );
+
+  // Check if first campaign
+  const { data: hasCompleted } = trpc.campaignKits.hasCompletedCampaign.useQuery();
+
+  if (!headlineData || !headlineData.headlines) {
+    return <p style={{ textAlign: "center", color: "#999", fontFamily: "var(--v2-font-body)" }}>Loading headlines...</p>;
+  }
+
+  // Flatten all formula groups into a single array
+  const allHeadlines: any[] = [];
+  for (const formulaType of ["story", "eyebrow", "question", "authority", "urgency"] as const) {
+    const group = headlineData.headlines[formulaType];
+    if (group) allHeadlines.push(...group);
+  }
+
+  if (allHeadlines.length === 0) return null;
+
+  // Sort by selectionScore descending
+  const sorted = [...allHeadlines].sort((a: any, b: any) => (Number(b.selectionScore) || 0) - (Number(a.selectionScore) || 0));
+
+  // Primary: highest scored
+  const primary = sorted[0];
+  if (!primary) return null;
+
+  // Alternatives: next 2 from DIFFERENT formula types
+  const primaryFormula = primary.formulaType || "";
+  const alts = sorted
+    .filter((h: any) => (h.formulaType || "") !== primaryFormula)
+    .slice(0, 2);
+
+  // All assets for the drawer
+  const allAssets = sorted.map((h: any) => ({
+    id: h.id,
+    content: h.headline || "",
+    score: h.selectionScore ? Number(h.selectionScore) : null,
+    formulaLabel: h.formulaType || undefined,
+  }));
+
+  return (
+    <RecommendedAssetPanel
+      primaryAsset={{
+        id: primary.id,
+        content: primary.headline || "",
+        score: primary.selectionScore ? Number(primary.selectionScore) : null,
+        formulaLabel: primary.formulaType || undefined,
+        characterCount: (primary.headline || "").length,
+      }}
+      alternativeAssets={alts.map((h: any) => ({
+        id: h.id,
+        content: h.headline || "",
+        score: h.selectionScore ? Number(h.selectionScore) : null,
+        formulaLabel: h.formulaType || undefined,
+      }))}
+      allAssets={allAssets}
+      nodeLabel="headline"
+      isFirstCampaign={!hasCompleted}
+      onSelect={onSelect}
+      onRegenerate={onRegenerate}
+    />
   );
 }
 
@@ -2037,22 +2114,19 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
               isLastStep={step === "pushToMeta"}
             />
           )}
-          {/* ── R1a: NODE 6 HEADLINES RESULT PANEL ── */}
+          {/* ── R1a: NODE 6 HEADLINES — RECOMMENDED ASSET PANEL ── */}
           {status === "success" && step === "headlines" && latestHeadlineSetId && activeService && (
-            <>
-              <V2HeadlinesResultPanel
-                headlineSetId={latestHeadlineSetId}
-                serviceId={activeService.id}
-                isFreeTier={isFreeTier}
-              />
-              {campaignKit && latestHeadlineSetId && (
-                <UseThisButton
-                  isSelected={String(campaignKit.selectedHeadlineId) === latestHeadlineSetId}
-                  loading={updateKitSelection.isPending}
-                  onClick={() => selectForKit("selectedHeadlineId", Number(latestHeadlineSetId))}
-                />
-              )}
-            </>
+            <HeadlineRecommendation
+              headlineSetId={latestHeadlineSetId}
+              serviceId={activeService.id}
+              service={activeService}
+              campaignKit={campaignKit}
+              onSelect={async (headlineId: number) => {
+                await selectForKit("selectedHeadlineId", headlineId);
+                navigate("/v2-dashboard/wizard/adCopy");
+              }}
+              onRegenerate={handleRetry}
+            />
           )}
           {/* ── R1a: NODE 7 AD COPY RESULT PANEL ── */}
           {status === "success" && step === "adCopy" && latestAdSetId && activeService && (

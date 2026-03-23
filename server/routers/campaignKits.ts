@@ -258,4 +258,16 @@ export const campaignKitsRouter = router({
         icpName: icpMap[kit.icpId] || "Unknown ICP",
       }));
     }),
+
+  hasCompletedCampaign: protectedProcedure
+    .query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) return false;
+      const [kit] = await db
+        .select()
+        .from(campaignKits)
+        .where(and(eq(campaignKits.userId, ctx.user.id), eq(campaignKits.status, "complete")))
+        .limit(1);
+      return !!kit;
+    }),
 });
