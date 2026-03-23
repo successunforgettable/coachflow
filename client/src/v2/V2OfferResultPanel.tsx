@@ -16,14 +16,13 @@ import UpgradePrompt from "./components/UpgradePrompt";
 type AngleKey = "godfather" | "free" | "dollar";
 
 interface AngleContent {
-  headline?: string;
-  subheadline?: string;
   offerName?: string;
-  price?: string;
-  whatYouGet?: string;
+  valueProposition?: string;
+  pricing?: string;
   bonuses?: string;
   guarantee?: string;
   urgency?: string;
+  cta?: string;
   [key: string]: string | undefined;
 }
 
@@ -34,14 +33,13 @@ const ANGLE_TABS: { key: AngleKey; label: string }[] = [
 ];
 
 const SECTION_DEFS: { key: keyof AngleContent; label: string }[] = [
-  { key: "headline",    label: "Headline" },
-  { key: "subheadline", label: "Subheadline" },
-  { key: "offerName",   label: "Offer Name" },
-  { key: "price",       label: "Price" },
-  { key: "whatYouGet",  label: "What You Get" },
-  { key: "bonuses",     label: "Bonuses" },
-  { key: "guarantee",   label: "Guarantee" },
-  { key: "urgency",     label: "Urgency" },
+  { key: "offerName",        label: "Offer Name" },
+  { key: "valueProposition", label: "Value Proposition" },
+  { key: "pricing",          label: "Pricing" },
+  { key: "bonuses",          label: "Bonuses" },
+  { key: "guarantee",        label: "Guarantee" },
+  { key: "urgency",          label: "Urgency" },
+  { key: "cta",              label: "Call to Action" },
 ];
 
 // ─── Shared icon-button style ─────────────────────────────────────────────────
