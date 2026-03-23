@@ -335,7 +335,7 @@ async function generateWithTimeout(
   avatarDescription: string,
   angle: 'original' | 'godfather' | 'free' | 'dollar',
   socialProof: any,
-  timeoutMs = 120_000
+  timeoutMs = 300_000
 ): Promise<LandingPageContent> {
   return Promise.race([
     generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, angle, socialProof),
