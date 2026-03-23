@@ -34,6 +34,7 @@ import HeroMechanisms from "./pages/HeroMechanisms";
 import HeroMechanismsNew from "./pages/HeroMechanismsNew";
 import HeroMechanismsDetail from "./pages/HeroMechanismsDetail";
 import AdminDashboard from "./pages/AdminDashboard";
+import AdminLayout from "./pages/admin/AdminLayout";
 import AnalyticsDashboard from "./pages/AnalyticsDashboard";
 import ComplianceAdmin from "./pages/admin/ComplianceAdmin";
 import ComplianceAnalytics from "./pages/admin/ComplianceAnalytics";
@@ -101,14 +102,14 @@ function Router() {
       <Route path={"/hero-mechanisms"} component={HeroMechanisms} />
       <Route path={"/hero-mechanisms/new"} component={HeroMechanismsNew} />
       <Route path={"/hero-mechanisms/:mechanismSetId"} component={HeroMechanismsDetail} />
-      <Route path={"/admin"} component={AdminDashboard} />
-      <Route path="/admin/users/:userId" component={AdminUserDetail} />
-      <Route path="/admin/audit-log" component={AdminAuditLog} />
-      <Route path="/admin/content-moderation" component={AdminContentModeration} />
-      <Route path="/admin/system-health" component={AdminSystemHealth} />
-      <Route path="/admin/compliance" component={ComplianceAdmin} />
-      <Route path="/admin/compliance/analytics" component={ComplianceAnalytics} />
-      <Route path="/admin/test-campaigns" component={AdminTestCampaigns} />
+      <Route path={"/admin"} component={() => <AdminLayout><AdminDashboard /></AdminLayout>} />
+      <Route path="/admin/users/:userId" component={() => <AdminLayout><AdminUserDetail /></AdminLayout>} />
+      <Route path="/admin/audit-log" component={() => <AdminLayout><AdminAuditLog /></AdminLayout>} />
+      <Route path="/admin/content-moderation" component={() => <AdminLayout><AdminContentModeration /></AdminLayout>} />
+      <Route path="/admin/system-health" component={() => <AdminLayout><AdminSystemHealth /></AdminLayout>} />
+      <Route path="/admin/compliance" component={() => <AdminLayout><ComplianceAdmin /></AdminLayout>} />
+      <Route path="/admin/compliance/analytics" component={() => <AdminLayout><ComplianceAnalytics /></AdminLayout>} />
+      <Route path="/admin/test-campaigns" component={() => <AdminLayout><AdminTestCampaigns /></AdminLayout>} />
       <Route path={"/analytics"} component={AnalyticsDashboard} />
       <Route path={"/onboarding"} component={OnboardingPage} />
       <Route path={"/settings"} component={Settings} />      <Route path={"/settings/integrations"} component={Integrations} />
