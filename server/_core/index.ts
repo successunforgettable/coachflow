@@ -85,9 +85,9 @@ async function startServer() {
     }
   }, 24 * 60 * 60 * 1000); // runs every 24 hours
 
-  // Meta Daily Read-Only Job — 100 API calls/day for App Review compliance
+  // Meta Daily Read-Only Job — 150 API calls/day for App Review compliance
   const runMetaDailyJob = async () => {
-    const MAX_CALLS = 100;
+    const MAX_CALLS = 150;
     let callCount = 0;
     const now = new Date();
     console.log(`[Meta Daily Job] Starting at ${now.toISOString()} — target: ${MAX_CALLS} read-only calls`);
@@ -113,7 +113,7 @@ async function startServer() {
         dateRanges.push({ since, until });
       }
 
-      // Round-robin through users × date ranges until 100 calls
+      // Round-robin through users × date ranges until 150 calls
       let rangeIdx = 0;
       while (callCount < MAX_CALLS) {
         for (const row of tokenRows) {
@@ -134,7 +134,7 @@ async function startServer() {
           }
         }
         rangeIdx++;
-        // Safety: if we've exhausted all date ranges × users and still not at 100, break
+        // Safety: if we've exhausted all date ranges × users and still not at 150, break
         if (rangeIdx >= dateRanges.length * 2) break;
       }
 
