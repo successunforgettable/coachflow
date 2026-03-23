@@ -1760,6 +1760,16 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
   const historyLoadedRef = useRef(false);
   const resolvedServiceId = activeService?.id;
 
+  // Reset state when step changes (prevents stale errors persisting across nodes)
+  useEffect(() => {
+    setStatus("idle");
+    setErrorMsg("");
+    setComplianceScore(100);
+    setComplianceViolations([]);
+    setProgressLabel(null);
+    historyLoadedRef.current = false;
+  }, [step]);
+
   // Fetch latest for each node type (only the one matching current step)
   const { data: historyIcps } = trpc.icps.list.useQuery(
     { serviceId: resolvedServiceId! },
