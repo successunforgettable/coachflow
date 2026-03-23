@@ -785,9 +785,11 @@ function AssetUploadPanel({
 export default function V2LandingPageResultPanel({
   landingPageId,
   isFreeTier,
+  onAngleChange,
 }: {
   landingPageId: number;
   isFreeTier?: boolean;
+  onAngleChange?: (angle: string) => void;
 }) {
   const { data, isLoading, isError } = trpc.landingPages.get.useQuery(
     { id: landingPageId },
@@ -802,6 +804,8 @@ export default function V2LandingPageResultPanel({
 
   const [activeTab, setActiveTab] = useState<AngleKey | null>(null);
   const resolvedTab: AngleKey = activeTab ?? defaultAngle;
+  // Notify parent of angle changes for campaign kit selection
+  useEffect(() => { onAngleChange?.(resolvedTab); }, [resolvedTab, onAngleChange]);
   const [viewMode, setViewMode] = useState<"edit" | "preview">("edit");
   const [previewTheme, setPreviewTheme] = useState<ThemeKey>("dark");
   const [styleMode, setStyleMode] = useState<"text" | "visual">("text");

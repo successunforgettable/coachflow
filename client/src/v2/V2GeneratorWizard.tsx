@@ -428,6 +428,37 @@ function LoadingState({ step: _step, progressLabel }: { step?: string; progressL
   );
 }
 
+// ─── UseThisButton: campaign kit selection button ──────────────────────────────
+function UseThisButton({ isSelected, onClick, loading }: { isSelected: boolean; onClick: () => void; loading?: boolean }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={loading}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "6px",
+        width: "100%",
+        padding: "10px 16px",
+        marginTop: "12px",
+        borderRadius: "var(--v2-border-radius-pill, 9999px)",
+        border: isSelected ? "2px solid #58CC02" : "2px solid var(--v2-primary-btn, #FF5B1D)",
+        background: isSelected ? "#58CC02" : "transparent",
+        color: isSelected ? "#fff" : "var(--v2-primary-btn, #FF5B1D)",
+        fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)",
+        fontWeight: 700,
+        fontSize: "14px",
+        cursor: loading ? "wait" : "pointer",
+        opacity: loading ? 0.6 : 1,
+        transition: "all 0.2s ease",
+      }}
+    >
+      {loading ? "Saving..." : isSelected ? "✓ In Campaign" : "Use This"}
+    </button>
+  );
+}
+
 // ─── Success State: Zappy cheering + confetti ─────────────────────────────────
 function SuccessState({ score, nextStepUrl, isLastStep }: {
   score: number;
@@ -1302,6 +1333,11 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
   const [latestWhatsappSequenceId, setLatestWhatsappSequenceId] = useState<number | null>(null);
   // ── ICP name input (only for ICP step) ──
   const [icpName, setIcpName] = useState("");
+  // ── Campaign Kit state ──
+  const [campaignKit, setCampaignKit] = useState<any>(null);
+  const [activeLandingPageAngle, setActiveLandingPageAngle] = useState<string>("original");
+  const getOrCreateKit = trpc.campaignKits.getOrCreate.useMutation();
+  const updateKitSelection = trpc.campaignKits.updateSelection.useMutation();
   // ── tRPC utils for cache invalidation ──
   const utils = trpc.useUtils();
   // ── Real mutations (all use generateAsync + polling pattern) ──
@@ -1357,6 +1393,28 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
 
   // ── Resolve the active ICP ──
   const activeIcp = isDemoMissing ? undefined : icpData?.[0];
+
+  // ── Load or create campaign kit when ICP is available ──
+  const kitLoadedRef = useRef(false);
+  useEffect(() => {
+    if (activeIcp?.id && !kitLoadedRef.current) {
+      kitLoadedRef.current = true;
+      getOrCreateKit.mutateAsync({ icpId: activeIcp.id })
+        .then(kit => setCampaignKit(kit))
+        .catch(err => console.warn("[CampaignKit] Failed to load:", err));
+    }
+  }, [activeIcp?.id]);
+
+  // ── Helper: select an item for the campaign kit ──
+  const selectForKit = async (field: string, value: number | string | null) => {
+    if (!campaignKit?.id) return;
+    try {
+      const updated = await updateKitSelection.mutateAsync({ kitId: campaignKit.id, [field]: value });
+      setCampaignKit(updated);
+    } catch (err) {
+      console.error("[CampaignKit] Selection failed:", err);
+    }
+  };
 
   // ── Demo state triggers (for screenshots) ──
   useEffect(() => {
@@ -1820,19 +1878,37 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
           )}
           {/* ── R1a: NODE 6 HEADLINES RESULT PANEL ── */}
           {status === "success" && step === "headlines" && latestHeadlineSetId && activeService && (
-            <V2HeadlinesResultPanel
-              headlineSetId={latestHeadlineSetId}
-              serviceId={activeService.id}
-              isFreeTier={isFreeTier}
-            />
+            <>
+              <V2HeadlinesResultPanel
+                headlineSetId={latestHeadlineSetId}
+                serviceId={activeService.id}
+                isFreeTier={isFreeTier}
+              />
+              {campaignKit && latestHeadlineSetId && (
+                <UseThisButton
+                  isSelected={String(campaignKit.selectedHeadlineId) === latestHeadlineSetId}
+                  loading={updateKitSelection.isPending}
+                  onClick={() => selectForKit("selectedHeadlineId", Number(latestHeadlineSetId))}
+                />
+              )}
+            </>
           )}
           {/* ── R1a: NODE 7 AD COPY RESULT PANEL ── */}
           {status === "success" && step === "adCopy" && latestAdSetId && activeService && (
-            <V2AdCopyResultPanel
-              adSetId={latestAdSetId}
-              serviceId={activeService.id}
-              isFreeTier={isFreeTier}
-            />
+            <>
+              <V2AdCopyResultPanel
+                adSetId={latestAdSetId}
+                serviceId={activeService.id}
+                isFreeTier={isFreeTier}
+              />
+              {campaignKit && latestAdSetId && (
+                <UseThisButton
+                  isSelected={String(campaignKit.selectedAdCopyId) === latestAdSetId}
+                  loading={updateKitSelection.isPending}
+                  onClick={() => selectForKit("selectedAdCopyId", Number(latestAdSetId))}
+                />
+              )}
+            </>
           )}
           {/* ── R1b: NODE 2 ICP RESULT PANEL ── */}
           {status === "success" && step === "icp" && latestIcpId && (
@@ -1840,27 +1916,97 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
           )}
           {/* ── R1b: NODE 3 OFFER RESULT PANEL ── */}
           {status === "success" && step === "offer" && latestOfferId && (
-            <V2OfferResultPanel offerId={latestOfferId} isFreeTier={isFreeTier} />
+            <>
+              <V2OfferResultPanel offerId={latestOfferId} isFreeTier={isFreeTier} />
+              {campaignKit && latestOfferId && (
+                <UseThisButton
+                  isSelected={campaignKit.selectedOfferId === latestOfferId}
+                  loading={updateKitSelection.isPending}
+                  onClick={() => selectForKit("selectedOfferId", latestOfferId)}
+                />
+              )}
+            </>
           )}
           {/* ── R1b: NODE 4 UNIQUE METHOD RESULT PANEL ── */}
           {status === "success" && step === "uniqueMethod" && latestMechanismSetId && (
-            <V2UniqueMethodResultPanel mechanismSetId={latestMechanismSetId} isFreeTier={isFreeTier} />
+            <>
+              <V2UniqueMethodResultPanel mechanismSetId={latestMechanismSetId} isFreeTier={isFreeTier} />
+              {campaignKit && latestMechanismSetId && (
+                <UseThisButton
+                  isSelected={String(campaignKit.selectedMechanismId) === latestMechanismSetId}
+                  loading={updateKitSelection.isPending}
+                  onClick={() => selectForKit("selectedMechanismId", Number(latestMechanismSetId))}
+                />
+              )}
+            </>
           )}
           {/* ── R1b: NODE 5 FREE OPT-IN RESULT PANEL ── */}
           {status === "success" && step === "freeOptIn" && latestHvcoSetId && (
-            <V2FreeOptInResultPanel hvcoSetId={latestHvcoSetId} isFreeTier={isFreeTier} />
+            <>
+              <V2FreeOptInResultPanel hvcoSetId={latestHvcoSetId} isFreeTier={isFreeTier} />
+              {campaignKit && latestHvcoSetId && (
+                <UseThisButton
+                  isSelected={String(campaignKit.selectedHvcoId) === latestHvcoSetId}
+                  loading={updateKitSelection.isPending}
+                  onClick={() => selectForKit("selectedHvcoId", Number(latestHvcoSetId))}
+                />
+              )}
+            </>
           )}
           {/* ── R1b: NODE 8 LANDING PAGE RESULT PANEL ── */}
           {status === "success" && step === "landingPage" && latestLandingPageId && (
-            <V2LandingPageResultPanel landingPageId={latestLandingPageId} isFreeTier={isFreeTier} />
+            <>
+              <V2LandingPageResultPanel
+                landingPageId={latestLandingPageId}
+                isFreeTier={isFreeTier}
+                onAngleChange={setActiveLandingPageAngle}
+              />
+              {campaignKit && latestLandingPageId && (
+                <UseThisButton
+                  isSelected={campaignKit.selectedLandingPageId === latestLandingPageId}
+                  loading={updateKitSelection.isPending}
+                  onClick={async () => {
+                    if (!campaignKit?.id) return;
+                    try {
+                      const updated = await updateKitSelection.mutateAsync({
+                        kitId: campaignKit.id,
+                        selectedLandingPageId: latestLandingPageId,
+                        selectedLandingPageAngle: activeLandingPageAngle,
+                      });
+                      setCampaignKit(updated);
+                    } catch (err) {
+                      console.error("[CampaignKit] LP selection failed:", err);
+                    }
+                  }}
+                />
+              )}
+            </>
           )}
           {/* ── R1b: NODE 9 EMAIL SEQUENCE RESULT PANEL ── */}
           {status === "success" && step === "emailSequence" && latestEmailSequenceId && (
-            <V2EmailSequenceResultPanel emailSequenceId={latestEmailSequenceId} isFreeTier={isFreeTier} />
+            <>
+              <V2EmailSequenceResultPanel emailSequenceId={latestEmailSequenceId} isFreeTier={isFreeTier} />
+              {campaignKit && latestEmailSequenceId && (
+                <UseThisButton
+                  isSelected={campaignKit.selectedEmailSequenceId === latestEmailSequenceId}
+                  loading={updateKitSelection.isPending}
+                  onClick={() => selectForKit("selectedEmailSequenceId", latestEmailSequenceId)}
+                />
+              )}
+            </>
           )}
           {/* ── R1b: NODE 10 WHATSAPP RESULT PANEL ── */}
           {status === "success" && step === "whatsappSequence" && latestWhatsappSequenceId && (
-            <V2WhatsAppResultPanel whatsappSequenceId={latestWhatsappSequenceId} isFreeTier={isFreeTier} />
+            <>
+              <V2WhatsAppResultPanel whatsappSequenceId={latestWhatsappSequenceId} isFreeTier={isFreeTier} />
+              {campaignKit && latestWhatsappSequenceId && (
+                <UseThisButton
+                  isSelected={campaignKit.selectedWhatsAppSequenceId === latestWhatsappSequenceId}
+                  loading={updateKitSelection.isPending}
+                  onClick={() => selectForKit("selectedWhatsAppSequenceId", latestWhatsappSequenceId)}
+                />
+              )}
+            </>
           )}
 
           {/* ── CONCERNED STATE (compliance violations) ── */}
