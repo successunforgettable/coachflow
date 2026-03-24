@@ -64,6 +64,18 @@ export default function AdminDashboard() {
   const { data: activityMetrics } = trpc.admin.getUserActivityMetrics.useQuery();
   const { data: financialMetrics } = trpc.admin.getFinancialMetrics.useQuery();
   const { data: churnRiskUsers } = trpc.admin.getChurnRiskUsers.useQuery();
+  const { data: engagementMetrics } = trpc.admin.getEngagementMetrics.useQuery();
+  const { data: systemHealth } = trpc.admin.getSystemHealth.useQuery();
+
+  // New mutations
+  const extendTrialMutation = trpc.admin.extendTrial.useMutation({ onSuccess: () => { toast.success("Trial extended by 7 days"); refetchUsers(); }, onError: () => toast.error("Failed to extend trial") });
+  const sendMagicLinkMutation = trpc.admin.sendMagicLink.useMutation({ onSuccess: () => toast.success("Magic link sent"), onError: () => toast.error("Failed to send magic link") });
+  const impersonateMutation = trpc.admin.impersonateUser.useMutation({ onSuccess: (data: any) => { localStorage.setItem("admin_original_token", document.cookie); document.cookie = `session=${data.token}; path=/; max-age=3600`; localStorage.setItem("impersonating", data.email); window.location.href = "/v2-dashboard"; }, onError: () => toast.error("Impersonation failed") });
+  const updateNotesMutation = trpc.admin.updateUserNotes.useMutation({ onSuccess: () => { toast.success("Notes saved"); refetchUsers(); }, onError: () => toast.error("Failed to save notes") });
+
+  const [activityFilter, setActivityFilter] = useState("all");
+  const [editNotesUser, setEditNotesUser] = useState<any>(null);
+  const [notesText, setNotesText] = useState("");
 
   // Mutations
   const resetQuotaMutation = trpc.admin.resetUserQuota.useMutation({
@@ -173,7 +185,14 @@ export default function AdminDashboard() {
       u.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       u.email?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesTier = tierFilter === "all" || u.subscriptionTier === tierFilter;
-    return matchesSearch && matchesTier;
+    let matchesActivity = true;
+    if (activityFilter !== "all" && u.lastSignedIn) {
+      const daysSince = Math.floor((Date.now() - new Date(u.lastSignedIn).getTime()) / (1000*60*60*24));
+      if (activityFilter === "active7") matchesActivity = daysSince <= 7;
+      else if (activityFilter === "inactive7_14") matchesActivity = daysSince > 7 && daysSince <= 14;
+      else if (activityFilter === "inactive14") matchesActivity = daysSince > 14;
+    }
+    return matchesSearch && matchesTier && matchesActivity;
   });
 
   const getTierBadgeColor = (tier: string | null) => {
@@ -314,6 +333,31 @@ export default function AdminDashboard() {
         {statCard(String(newUsersWeek), "New (7 days)")}
       </div>
 
+      {/* Revenue Row 2 */}
+      {financialMetrics && (
+        <div style={{ display: "flex", gap: 16, marginBottom: 28, flexWrap: "wrap" }}>
+          {statCard(`$${(financialMetrics.arr || 0).toLocaleString()}`, "ARR")}
+          {statCard(`$${(financialMetrics.arpu || 0).toFixed(0)}`, "ARPU")}
+          {statCard(`${(financialMetrics.trialToProRate || 0).toFixed(1)}%`, "Trial → Pro")}
+          <div style={{ background: "#fff", borderRadius: 24, padding: "24px", boxShadow: "0 1px 3px rgba(0,0,0,0.04)", flex: 1, minWidth: 140 }}>
+            <p style={{ fontFamily: "'Fraunces', serif", fontStyle: "italic", fontWeight: 900, fontSize: 32, color: financialMetrics.churnedThisMonth > 0 ? "#C0390A" : "#22C55E", margin: 0, lineHeight: 1.1 }}>{financialMetrics.churnedThisMonth}</p>
+            <p style={{ fontFamily: "'Instrument Sans', sans-serif", fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "#999", margin: "8px 0 0" }}>Churned (30d)</p>
+          </div>
+          {statCard(`$${(financialMetrics.newMrrThisMonth || 0).toLocaleString()}`, "New MRR (30d)")}
+        </div>
+      )}
+
+      {/* Engagement Row */}
+      {engagementMetrics && (
+        <div style={{ display: "flex", gap: 16, marginBottom: 28, flexWrap: "wrap" }}>
+          {statCard(String(engagementMetrics.dau), "DAU")}
+          {statCard(String(engagementMetrics.wau), "WAU")}
+          {statCard(String(engagementMetrics.avgNodes), "Avg Nodes/Kit")}
+          {statCard(`${engagementMetrics.completionRate}%`, "Kit Completion")}
+          {statCard(`${engagementMetrics.activationRate}%`, "Activation Rate")}
+        </div>
+      )}
+
       {/* Search + Filter bar */}
       <div style={{ display: "flex", gap: 12, marginBottom: 20, alignItems: "center", flexWrap: "wrap" }}>
         <input
@@ -350,6 +394,16 @@ export default function AdminDashboard() {
           <option value="trial">Trial</option>
           <option value="pro">Pro</option>
           <option value="agency">Agency</option>
+        </select>
+        <select
+          value={activityFilter}
+          onChange={(e) => setActivityFilter(e.target.value)}
+          style={{ padding: "10px 14px", borderRadius: 12, border: "1px solid #e5e0d8", fontFamily: "'Instrument Sans', sans-serif", fontSize: 13, background: "#fff", cursor: "pointer" }}
+        >
+          <option value="all">All Activity</option>
+          <option value="active7">Active (7d)</option>
+          <option value="inactive7_14">Inactive (7-14d)</option>
+          <option value="inactive14">Inactive (14d+)</option>
         </select>
         <button
           onClick={exportCSV}
@@ -435,14 +489,28 @@ export default function AdminDashboard() {
                     {relativeTime(u.lastSignedIn)}
                   </td>
                   <td style={{ padding: "14px 16px" }}>
-                    <div style={{ display: "flex", gap: 6 }}>
+                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                       <button onClick={() => { setSelectedUser(u); setNewTier(u.subscriptionTier || "trial"); setShowTierDialog(true); }}
-                        style={{ padding: "4px 10px", borderRadius: 9999, border: "1px solid #e5e0d8", background: "#fff", fontFamily: "'Instrument Sans', sans-serif", fontSize: 11, fontWeight: 600, cursor: "pointer", color: "#1A1624" }}>
+                        style={{ padding: "4px 8px", borderRadius: 9999, border: "1px solid #e5e0d8", background: "#fff", fontFamily: "'Instrument Sans', sans-serif", fontSize: 10, fontWeight: 600, cursor: "pointer", color: "#1A1624" }}>
                         Edit
                       </button>
-                      <button onClick={() => { setSelectedUser(u); setShowResetDialog(true); }}
-                        style={{ padding: "4px 10px", borderRadius: 9999, border: "1px solid #e5e0d8", background: "#fff", fontFamily: "'Instrument Sans', sans-serif", fontSize: 11, fontWeight: 600, cursor: "pointer", color: "#999" }}>
-                        Reset
+                      {u.subscriptionTier === "trial" && (
+                        <button onClick={() => extendTrialMutation.mutate({ userId: u.id })}
+                          style={{ padding: "4px 8px", borderRadius: 9999, border: "1px solid #e5e0d8", background: "#fff", fontFamily: "'Instrument Sans', sans-serif", fontSize: 10, fontWeight: 600, cursor: "pointer", color: "#FF5B1D" }}>
+                          +7d Trial
+                        </button>
+                      )}
+                      <button onClick={() => sendMagicLinkMutation.mutate({ email: u.email })}
+                        style={{ padding: "4px 8px", borderRadius: 9999, border: "1px solid #e5e0d8", background: "#fff", fontFamily: "'Instrument Sans', sans-serif", fontSize: 10, fontWeight: 600, cursor: "pointer", color: "#8B5CF6" }}>
+                        Link
+                      </button>
+                      <button onClick={() => { setEditNotesUser(u); setNotesText(u.notes || ""); }}
+                        style={{ padding: "4px 8px", borderRadius: 9999, border: "1px solid #e5e0d8", background: "#fff", fontFamily: "'Instrument Sans', sans-serif", fontSize: 10, fontWeight: 600, cursor: "pointer", color: "#999" }}>
+                        Notes
+                      </button>
+                      <button onClick={() => impersonateMutation.mutate({ userId: u.id })}
+                        style={{ padding: "4px 8px", borderRadius: 9999, border: "1px solid #C0390A", background: "#fff", fontFamily: "'Instrument Sans', sans-serif", fontSize: 10, fontWeight: 600, cursor: "pointer", color: "#C0390A" }}>
+                        View As
                       </button>
                     </div>
                   </td>
@@ -457,6 +525,52 @@ export default function AdminDashboard() {
           </p>
         )}
       </div>
+
+      {/* System Health */}
+      <div style={{ background: "#fff", borderRadius: 24, padding: 24, marginTop: 28, boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+        <h3 style={{ fontFamily: "'Fraunces', serif", fontStyle: "italic", fontWeight: 900, fontSize: 18, color: "#1A1624", margin: "0 0 16px" }}>System Health</h3>
+        <div style={{ display: "flex", gap: 24, flexWrap: "wrap", marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ width: 10, height: 10, borderRadius: "50%", background: systemHealth?.serverStatus === "online" ? "#22C55E" : "#EF4444", display: "inline-block" }} />
+            <span style={{ fontFamily: "'Instrument Sans', sans-serif", fontSize: 13 }}>{systemHealth?.serverStatus === "online" ? "Server Online" : "Server Offline"}</span>
+          </div>
+          <span style={{ fontFamily: "'Instrument Sans', sans-serif", fontSize: 13, color: "#999" }}>Jobs completed: {systemHealth?.totalCompletedJobs ?? "—"}</span>
+        </div>
+        {systemHealth?.recentErrors && systemHealth.recentErrors.length > 0 && (
+          <>
+            <p style={{ fontFamily: "'Instrument Sans', sans-serif", fontSize: 12, fontWeight: 600, color: "#C0390A", marginBottom: 8 }}>Recent Errors ({systemHealth.recentErrors.length})</p>
+            <div style={{ maxHeight: 200, overflowY: "auto" }}>
+              {systemHealth.recentErrors.map((e: any) => (
+                <div key={e.id} style={{ padding: "8px 0", borderBottom: "1px solid rgba(0,0,0,0.04)", fontFamily: "'Instrument Sans', sans-serif", fontSize: 12 }}>
+                  <span style={{ color: "#999" }}>{new Date(e.createdAt).toLocaleString()}</span>
+                  <span style={{ marginLeft: 8, color: "#C0390A" }}>{e.error?.slice(0, 100)}</span>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Notes Modal */}
+      {editNotesUser && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(26,22,36,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999 }}
+          onClick={() => setEditNotesUser(null)}>
+          <div style={{ background: "#fff", borderRadius: 24, padding: 32, maxWidth: 440, width: "90%" }} onClick={e => e.stopPropagation()}>
+            <h3 style={{ fontFamily: "'Fraunces', serif", fontStyle: "italic", fontWeight: 900, fontSize: 18, margin: "0 0 8px" }}>Notes — {editNotesUser.email}</h3>
+            <textarea
+              value={notesText}
+              onChange={e => setNotesText(e.target.value)}
+              placeholder="Internal notes about this user..."
+              style={{ width: "100%", minHeight: 120, padding: 12, borderRadius: 12, border: "1px solid #e5e0d8", fontFamily: "'Instrument Sans', sans-serif", fontSize: 14, resize: "vertical", outline: "none", boxSizing: "border-box" }}
+            />
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 12 }}>
+              <button onClick={() => setEditNotesUser(null)} style={{ padding: "8px 16px", borderRadius: 9999, border: "1px solid #e5e0d8", background: "#fff", fontFamily: "'Instrument Sans', sans-serif", fontSize: 13, cursor: "pointer" }}>Cancel</button>
+              <button onClick={() => { updateNotesMutation.mutate({ userId: editNotesUser.id, notes: notesText }); setEditNotesUser(null); }}
+                style={{ padding: "8px 16px", borderRadius: 9999, border: "none", background: "#FF5B1D", color: "#fff", fontFamily: "'Instrument Sans', sans-serif", fontWeight: 600, fontSize: 13, cursor: "pointer" }}>Save</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Keep all existing shadcn dialogs */}
       <Dialog open={showBulkTierDialog} onOpenChange={setShowBulkTierDialog}>

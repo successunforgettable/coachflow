@@ -2,8 +2,8 @@ import { z } from "zod";
 import { router, protectedProcedure } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "../db";
-import { users, services, idealCustomerProfiles, offers, heroMechanisms, hvcoTitles, headlines, adCopy, landingPages, emailSequences, whatsappSequences, metaPublishedAds } from "../../drizzle/schema";
-import { eq, and, gte, lte, sql } from "drizzle-orm";
+import { users, services, idealCustomerProfiles, offers, heroMechanisms, hvcoTitles, headlines, adCopy, landingPages, emailSequences, whatsappSequences, metaPublishedAds, campaignKits, jobs } from "../../drizzle/schema";
+import { eq, and, gte, lte, sql, desc } from "drizzle-orm";
 import Stripe from "stripe";
 import { auditedAdminProcedure } from "../_core/auditedAdminProcedure";
 
@@ -230,12 +230,37 @@ export const adminRouter = router({
     // For now, return 0 (will be calculated from historical data later)
     const mrrGrowth = 0;
 
+    // ARPU = MRR / pro+agency user count
+    const proUserCount = allUsers.filter(u => u.subscriptionTier === "pro" || u.subscriptionTier === "agency").length;
+    const arpu = proUserCount > 0 ? Number((mrr / proUserCount).toFixed(2)) : 0;
+
+    // Trial to Pro conversion rate
+    const trialToProRate = allUsers.length > 0
+      ? Number(((proUserCount / allUsers.length) * 100).toFixed(1))
+      : 0;
+
+    // Churned this month
+    const churnedThisMonth = churnedUsers.length;
+
+    // New MRR this month (new pro/agency subs in last 30 days)
+    const newProThisMonth = allUsers.filter(u => {
+      const created = new Date(u.createdAt);
+      return created >= thirtyDaysAgo && (u.subscriptionTier === "pro" || u.subscriptionTier === "agency");
+    });
+    const newMrrThisMonth = newProThisMonth.reduce((sum, u) => {
+      return sum + TIER_PRICES[u.subscriptionTier || "trial"];
+    }, 0);
+
     return {
       mrr,
       arr,
       churnRate: Number(churnRate.toFixed(2)),
       activeSubscriptions: activeUsers.length,
       mrrGrowth,
+      arpu,
+      trialToProRate,
+      churnedThisMonth,
+      newMrrThisMonth,
     };
   }),
 
@@ -1256,4 +1281,183 @@ export const adminRouter = router({
 
       return { success: true, count: input.userIds.length };
     }),
+
+  // ── Part 2: Engagement Metrics ──
+  getEngagementMetrics: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+    const allUsers = await db.select().from(users);
+    let allKits: any[] = [];
+    try {
+      allKits = await db.select().from(campaignKits);
+    } catch { /* campaignKits table may not exist yet */ }
+
+    const now = new Date();
+    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    const dau = allUsers.filter(u => u.lastSignedIn && new Date(u.lastSignedIn) > oneDayAgo).length;
+    const wau = allUsers.filter(u => u.lastSignedIn && new Date(u.lastSignedIn) > sevenDaysAgo).length;
+
+    const SLOT_FIELDS = ["selectedOfferId", "selectedMechanismId", "selectedHvcoId", "selectedHeadlineId", "selectedAdCopyId", "selectedLandingPageId", "selectedEmailSequenceId", "selectedWhatsAppSequenceId"];
+    const avgNodes = allKits.length > 0
+      ? allKits.reduce((sum: number, kit: any) => sum + SLOT_FIELDS.filter(f => kit[f] != null).length, 0) / allKits.length
+      : 0;
+
+    const completedKits = allKits.filter((k: any) => k.status === "complete").length;
+    const completionRate = allKits.length > 0 ? (completedKits / allKits.length) * 100 : 0;
+
+    const activatedUsers = allUsers.filter((u: any) => (u.icpGeneratedCount || 0) > 0).length;
+    const activationRate = allUsers.length > 0 ? (activatedUsers / allUsers.length) * 100 : 0;
+
+    return {
+      dau,
+      wau,
+      avgNodes: Number(avgNodes.toFixed(1)),
+      completionRate: Number(completionRate.toFixed(1)),
+      activationRate: Number(activationRate.toFixed(1)),
+    };
+  }),
+
+  // ── Part 3: Node Drop-Off ──
+  getNodeDropOff: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+    let allKits: any[] = [];
+    try {
+      allKits = await db.select().from(campaignKits);
+    } catch { /* campaignKits table may not exist yet */ }
+    const total = allKits.length || 1;
+
+    const nodes = [
+      { name: "Offer", field: "selectedOfferId" },
+      { name: "Method", field: "selectedMechanismId" },
+      { name: "Lead Magnet", field: "selectedHvcoId" },
+      { name: "Headline", field: "selectedHeadlineId" },
+      { name: "Ad Copy", field: "selectedAdCopyId" },
+      { name: "Landing Page", field: "selectedLandingPageId" },
+      { name: "Email", field: "selectedEmailSequenceId" },
+      { name: "WhatsApp", field: "selectedWhatsAppSequenceId" },
+    ];
+
+    return nodes.map((n, i) => {
+      const completed = allKits.filter((k: any) => k[n.field] != null).length;
+      const prevCompleted = i === 0 ? total : allKits.filter((k: any) => k[nodes[i - 1].field] != null).length;
+      const dropOff = prevCompleted > 0 ? ((prevCompleted - completed) / prevCompleted) * 100 : 0;
+      return {
+        name: n.name,
+        completed,
+        total,
+        percentage: Number(((completed / total) * 100).toFixed(1)),
+        dropOff: Number(dropOff.toFixed(1)),
+      };
+    });
+  }),
+
+  // ── Part 4: Extend Trial ──
+  extendTrial: adminProcedure.input(z.object({ userId: z.number() })).mutation(async ({ input }) => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+    const [user] = await db.select().from(users).where(eq(users.id, input.userId)).limit(1);
+    if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+    const currentExpiry = user.trialEndsAt ? new Date(user.trialEndsAt) : new Date();
+    const newExpiry = new Date(currentExpiry.getTime() + 7 * 24 * 60 * 60 * 1000);
+    await db.update(users).set({ trialEndsAt: newExpiry }).where(eq(users.id, input.userId));
+    return { success: true, newTrialEndsAt: newExpiry };
+  }),
+
+  // ── Part 4: Send Magic Link ──
+  sendMagicLink: adminProcedure.input(z.object({ email: z.string() })).mutation(async ({ input }) => {
+    // Trigger the magic link request flow via internal HTTP call
+    const { Resend } = await import("resend");
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    const { getDb: getDatabase } = await import("../db");
+    const { emailVerificationTokens } = await import("../../drizzle/schema");
+    const crypto = await import("crypto");
+
+    const database = await getDatabase();
+    if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+    const [userRow] = await database.select().from(users).where(eq(users.email, input.email)).limit(1);
+    if (!userRow) throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+
+    // Delete old tokens
+    await database.delete(emailVerificationTokens).where(eq(emailVerificationTokens.userId, userRow.id));
+
+    // Create new token
+    const token = crypto.randomBytes(32).toString("hex");
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+    await database.insert(emailVerificationTokens).values({
+      userId: userRow.id,
+      token,
+      expiresAt,
+    });
+
+    const baseUrl = (process.env.APP_URL || "https://zapcampaigns.com").replace(/\/$/, "");
+    const magicUrl = `${baseUrl}/api/auth/magic?token=${token}`;
+
+    await resend.emails.send({
+      from: "ZAP <noreply@zapcampaigns.com>",
+      to: input.email,
+      subject: "Your ZAP sign-in link",
+      html: `<p>Click <a href="${magicUrl}">here</a> to sign in to ZAP. This link expires in 15 minutes.</p>`,
+    });
+
+    return { success: true };
+  }),
+
+  // ── Part 4: Update User Notes ──
+  updateUserNotes: adminProcedure.input(z.object({ userId: z.number(), notes: z.string() })).mutation(async ({ input }) => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+    await db.update(users).set({ notes: input.notes } as any).where(eq(users.id, input.userId));
+    return { success: true };
+  }),
+
+  // ── Part 5: Impersonate User ──
+  impersonateUser: adminProcedure.input(z.object({ userId: z.number() })).mutation(async ({ ctx, input }) => {
+    if (ctx.user.email !== "arfeen@arfeenkhan.com") throw new TRPCError({ code: "FORBIDDEN" });
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+    const [target] = await db.select().from(users).where(eq(users.id, input.userId)).limit(1);
+    if (!target) throw new TRPCError({ code: "NOT_FOUND" });
+    const { sdk } = await import("../_core/sdk");
+    const token = await sdk.createSessionToken(target.openId, { name: target.name || "" });
+    return { token, email: target.email, name: target.name };
+  }),
+
+  // ── Part 6: System Health v2 ──
+  getSystemHealthV2: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return { serverStatus: "offline" as const, recentErrors: [], totalCompletedJobs: 0 };
+
+    let recentErrors: any[] = [];
+    let completedJobCount = 0;
+    try {
+      recentErrors = await db.select().from(jobs)
+        .where(eq(jobs.status, "failed"))
+        .orderBy(desc(jobs.created_at))
+        .limit(10);
+      const completedJobs = await db.select().from(jobs)
+        .where(eq(jobs.status, "complete"))
+        .orderBy(desc(jobs.created_at))
+        .limit(100);
+      completedJobCount = completedJobs.length;
+    } catch {
+      // jobs table may not exist
+    }
+
+    return {
+      serverStatus: "online" as const,
+      recentErrors: recentErrors.map((e: any) => ({
+        id: e.id,
+        userId: e.userId,
+        error: e.error,
+        createdAt: e.created_at,
+      })),
+      totalCompletedJobs: completedJobCount,
+    };
+  }),
 });

@@ -43,6 +43,7 @@ import AdminAuditLog from "./pages/admin/AdminAuditLog";
 import AdminContentModeration from "./pages/admin/AdminContentModeration";
 import AdminSystemHealth from "./pages/admin/AdminSystemHealth";
 import AdminTestCampaigns from "./pages/admin/AdminTestCampaigns";
+import AdminAnalytics from "./pages/admin/AdminAnalytics";
 import OnboardingPage from "./pages/OnboardingPage";
 import Settings from "./pages/Settings";
 import { Terms } from "./pages/Terms";
@@ -108,6 +109,7 @@ function Router() {
       <Route path="/admin/users/:userId" component={() => <AdminLayout><AdminUserDetail /></AdminLayout>} />
       <Route path="/admin/audit-log" component={() => <AdminLayout><AdminAuditLog /></AdminLayout>} />
       <Route path="/admin/content-moderation" component={() => <AdminLayout><AdminContentModeration /></AdminLayout>} />
+      <Route path="/admin/analytics" component={() => <AdminLayout><AdminAnalytics /></AdminLayout>} />
       <Route path="/admin/system-health" component={() => <AdminLayout><AdminSystemHealth /></AdminLayout>} />
       <Route path="/admin/compliance" component={() => <AdminLayout><ComplianceAdmin /></AdminLayout>} />
       <Route path="/admin/compliance/analytics" component={() => <AdminLayout><ComplianceAnalytics /></AdminLayout>} />

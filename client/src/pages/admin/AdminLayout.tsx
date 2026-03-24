@@ -6,6 +6,7 @@ const navLinks = [
   { label: "Users", href: "/admin", exact: true },
   { label: "Subscriptions", href: "/admin/compliance" },
   { label: "Content", href: "/admin/content-moderation" },
+  { label: "Analytics", href: "/admin/analytics" },
   { label: "Settings", href: "/admin/system-health" },
 ];
 
