@@ -62,6 +62,7 @@ export default function AdminDashboard() {
   const { data: allUsers, refetch: refetchUsers } = trpc.admin.getAllUsers.useQuery();
   const { data: analytics } = trpc.admin.getAnalytics.useQuery();
   const { data: activityMetrics } = trpc.admin.getUserActivityMetrics.useQuery();
+  const { data: financialMetrics } = trpc.admin.getFinancialMetrics.useQuery();
   const { data: churnRiskUsers } = trpc.admin.getChurnRiskUsers.useQuery();
 
   // Mutations
@@ -212,7 +213,7 @@ export default function AdminDashboard() {
   const totalUsers = allUsers?.length || 0;
   const proUsers = allUsers?.filter((u: any) => u.subscriptionTier === "pro").length || 0;
   const agencyUsers = allUsers?.filter((u: any) => u.subscriptionTier === "agency").length || 0;
-  const mrr = proUsers * 90 + agencyUsers * 297;
+  const mrr = financialMetrics?.mrr ?? (proUsers * 90 + agencyUsers * 297);
   const sevenDaysAgo = new Date(); sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
   const newUsersWeek = allUsers?.filter((u: any) => new Date(u.createdAt) > sevenDaysAgo).length || 0;
 

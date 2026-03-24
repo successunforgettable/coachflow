@@ -186,11 +186,35 @@ export const adminRouter = router({
       (u) => u.subscriptionStatus === "active" || u.subscriptionStatus === "trialing"
     );
 
-    // Calculate MRR from active subscriptions
-    const mrr = activeUsers.reduce((sum, u) => {
-      const tierPrice = TIER_PRICES[u.subscriptionTier || "trial"];
-      return sum + tierPrice;
-    }, 0);
+    // Calculate MRR from Stripe active subscriptions
+    let mrr = 0;
+    try {
+      const { stripe } = await import("../stripe/client");
+      const subscriptions = await stripe.subscriptions.list({
+        status: "active",
+        limit: 100,
+        expand: ["data.items.data.price"],
+      });
+      mrr = subscriptions.data.reduce((sum, sub) => {
+        const itemTotal = sub.items.data.reduce((s, item) => {
+          const price = item.price;
+          if (!price || !price.unit_amount) return s;
+          // Convert to monthly: if yearly, divide by 12
+          const monthly = price.recurring?.interval === "year"
+            ? price.unit_amount / 12
+            : price.unit_amount;
+          return s + monthly * (item.quantity || 1);
+        }, 0);
+        return sum + itemTotal;
+      }, 0) / 100; // cents to dollars
+    } catch (e) {
+      console.warn("[admin] Stripe MRR query failed, falling back to DB estimate:", e);
+      // Fallback to DB-based estimate if Stripe fails
+      mrr = activeUsers.reduce((sum, u) => {
+        const tierPrice = TIER_PRICES[u.subscriptionTier || "trial"];
+        return sum + tierPrice;
+      }, 0);
+    }
 
     // Calculate ARR
     const arr = mrr * 12;
