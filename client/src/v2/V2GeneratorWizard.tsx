@@ -2406,7 +2406,7 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
         const hvcoResult = await pollJob(jobId);
         if (typeof hvcoResult.hvcoSetId === 'string') setLatestHvcoSetId(hvcoResult.hvcoSetId);
       } else if (step === "headlines") {
-        const selectedFormula = formState.formulaType && formState.formulaType !== "all" ? formState.formulaType : undefined;
+        const selectedFormula = fieldValues.formulaType && fieldValues.formulaType !== "all" ? fieldValues.formulaType : undefined;
         const { jobId } = await generateHeadlinesAsync.mutateAsync({
           serviceId: svcId,
           targetMarket: svc?.targetCustomer || "",
