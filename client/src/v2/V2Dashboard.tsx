@@ -120,8 +120,18 @@ function PathNode({ node, isMobile, onNodeClick }: { node: PathNode; isMobile: b
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
       <div style={nodeStyle} onClick={() => node.state !== "locked" && onNodeClick(node)}>
         {node.state === "completed" && (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", lineHeight: 1 }}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", lineHeight: 1, position: "relative" }}>
             <Checkmark />
+            <span style={{
+              position: "absolute",
+              bottom: isMobile ? -8 : -10,
+              color: "rgba(255,255,255,0.7)",
+              fontFamily: "var(--v2-font-body)",
+              fontWeight: 700,
+              fontSize: isMobile ? "9px" : "10px",
+            }}>
+              {node.id}
+            </span>
           </div>
         )}
         {node.state === "active" && (
@@ -881,16 +891,145 @@ export default function V2Dashboard() {
 
         {/* ── COMPONENT 2: 11-Step Winding Path (Guided) OR Tool Library ── */}
         {activeTab === "guided" ? (
-          <div className="v2-path-wrapper">
-            {nodes.map((node, idx) => (
-              <div key={node.id} className="v2-path-column">
-                {/* Connector above (except first node) */}
-                {idx > 0 && (
-                  <Connector fromCompleted={nodes[idx - 1].state === "completed"} />
-                )}
-                <PathNode node={node} isMobile={isMobile} onNodeClick={handleNodeClick} />
-              </div>
-            ))}
+          <div style={{ display: "flex", gap: "24px", alignItems: "flex-start" }}>
+            <div className="v2-path-wrapper" style={{ flex: 1 }}>
+              {nodes.map((node, idx) => (
+                <div key={node.id} className="v2-path-column">
+                  {/* Connector above (except first node) */}
+                  {idx > 0 && (
+                    <Connector fromCompleted={nodes[idx - 1].state === "completed"} />
+                  )}
+                  <PathNode node={node} isMobile={isMobile} onNodeClick={handleNodeClick} />
+                </div>
+              ))}
+            </div>
+            {/* Campaign Kit sidebar on dashboard */}
+            {(() => {
+              const activeIcp = icpList?.[0];
+              const kit = activeIcp ? campaignKitsList?.find((k: any) => k.icpId === activeIcp.id) : null;
+              if (!kit) return null;
+              const KIT_FIELDS = [
+                { label: "Offer", field: "selectedOfferId", num: 3 },
+                { label: "Method", field: "selectedMechanismId", num: 4 },
+                { label: "Lead Magnet", field: "selectedHvcoId", num: 5 },
+                { label: "Headline", field: "selectedHeadlineId", num: 6 },
+                { label: "Ad Copy", field: "selectedAdCopyId", num: 7 },
+                { label: "Landing Page", field: "selectedLandingPageId", num: 8 },
+                { label: "Email Sequence", field: "selectedEmailSequenceId", num: 9 },
+                { label: "WhatsApp", field: "selectedWhatsAppSequenceId", num: 10 },
+              ];
+              const filled = KIT_FIELDS.filter(f => (kit as any)[f.field] != null).length;
+              const total = KIT_FIELDS.length;
+              const pct = Math.round((filled / total) * 100);
+              const isComplete = filled === total;
+              return (
+                <aside style={{
+                  width: 240,
+                  minWidth: 240,
+                  background: "#fff",
+                  borderRadius: "20px",
+                  padding: "20px",
+                  border: "1px solid rgba(0,0,0,0.06)",
+                  position: "sticky",
+                  top: 16,
+                  display: isMobile ? "none" : "flex",
+                  flexDirection: "column",
+                  gap: "14px",
+                }}>
+                  <h3 style={{
+                    fontFamily: "var(--v2-font-heading, 'Fraunces', serif)",
+                    fontStyle: "italic",
+                    fontWeight: 900,
+                    fontSize: "16px",
+                    color: "var(--v2-text-dark, #1A1624)",
+                    margin: 0,
+                  }}>
+                    🎯 Campaign Kit
+                  </h3>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                    {KIT_FIELDS.map(f => {
+                      const isFilled = (kit as any)[f.field] != null;
+                      return (
+                        <div key={f.field} style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                          padding: "5px 8px",
+                          borderRadius: "8px",
+                          background: isFilled ? "rgba(88,204,2,0.06)" : "transparent",
+                        }}>
+                          <span style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            width: 22,
+                            height: 22,
+                            borderRadius: "50%",
+                            fontSize: "10px",
+                            fontWeight: 700,
+                            fontFamily: "var(--v2-font-body)",
+                            background: isFilled ? "#58CC02" : "#e5e0d8",
+                            color: isFilled ? "#fff" : "#999",
+                            flexShrink: 0,
+                          }}>
+                            {isFilled ? "✓" : f.num}
+                          </span>
+                          <span style={{
+                            fontFamily: "var(--v2-font-body)",
+                            fontSize: "12px",
+                            fontWeight: isFilled ? 600 : 400,
+                            color: isFilled ? "var(--v2-text-dark, #1A1624)" : "#999",
+                          }}>
+                            {f.label}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {/* Progress */}
+                  <div>
+                    <p style={{
+                      fontFamily: "var(--v2-font-body)",
+                      fontSize: "11px",
+                      fontWeight: 600,
+                      color: "var(--v2-text-dark, #1A1624)",
+                      margin: "0 0 4px",
+                    }}>
+                      {filled} of {total} selected
+                    </p>
+                    <div style={{ height: 5, borderRadius: 3, background: "#e5e0d8", overflow: "hidden" }}>
+                      <div style={{
+                        height: "100%",
+                        width: `${pct}%`,
+                        borderRadius: 3,
+                        background: isComplete ? "#58CC02" : "var(--v2-primary-btn, #FF5B1D)",
+                        transition: "width 0.3s ease",
+                      }} />
+                    </div>
+                  </div>
+                  {/* View kit button */}
+                  <a
+                    href={isComplete ? `/v2-dashboard/campaign-kit/${kit.id}` : undefined}
+                    onClick={e => { if (!isComplete) e.preventDefault(); }}
+                    style={{
+                      display: "block",
+                      textAlign: "center",
+                      padding: "8px 14px",
+                      borderRadius: "9999px",
+                      background: isComplete ? "var(--v2-primary-btn, #FF5B1D)" : "#e5e0d8",
+                      color: isComplete ? "#fff" : "#999",
+                      fontFamily: "var(--v2-font-body)",
+                      fontWeight: 700,
+                      fontSize: "12px",
+                      textDecoration: "none",
+                      cursor: isComplete ? "pointer" : "default",
+                    }}
+                  >
+                    {isComplete ? "View Campaign Kit" : `${total - filled} remaining`}
+                  </a>
+                </aside>
+              );
+            })()}
           </div>
         ) : (
           <V2ToolLibrary />
