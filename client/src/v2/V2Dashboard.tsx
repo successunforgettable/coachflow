@@ -120,15 +120,16 @@ function PathNode({ node, isMobile, onNodeClick }: { node: PathNode; isMobile: b
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
       <div style={nodeStyle} onClick={() => node.state !== "locked" && onNodeClick(node)}>
         {node.state === "completed" && (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", lineHeight: 1, position: "relative" }}>
-            <Checkmark />
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0, lineHeight: 1 }}>
+            <svg width={isMobile ? "18" : "22"} height={isMobile ? "18" : "22"} viewBox="0 0 28 28" fill="none">
+              <path d="M6 14.5l5.5 5.5L22 9" stroke="#fff" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
             <span style={{
-              position: "absolute",
-              bottom: isMobile ? -8 : -10,
-              color: "rgba(255,255,255,0.7)",
+              color: "#fff",
               fontFamily: "var(--v2-font-body)",
               fontWeight: 700,
-              fontSize: isMobile ? "9px" : "10px",
+              fontSize: isMobile ? "13px" : "16px",
+              marginTop: "-2px",
             }}>
               {node.id}
             </span>
