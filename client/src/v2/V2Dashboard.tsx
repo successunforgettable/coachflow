@@ -440,11 +440,40 @@ export default function V2Dashboard() {
 
   const progressPct = Math.round((completedCount / totalCount) * 100);
 
+  // Gate map: which Campaign Kit selection must exist before entering each step
+  const DASHBOARD_GATES: Record<string, string> = {
+    uniqueMethod: "selectedOfferId",
+    freeOptIn: "selectedMechanismId",
+    headlines: "selectedHvcoId",
+    adCopy: "selectedHeadlineId",
+    landingPage: "selectedAdCopyId",
+    emailSequence: "selectedLandingPageId",
+    whatsappSequence: "selectedEmailSequenceId",
+  };
+
   function handleNodeClick(node: PathNode) {
     const step = NODE_STEP_MAP[node.id];
-    if (step) {
-      navigate(`/v2-dashboard/wizard/${step}`);
+    if (!step) return;
+
+    // Check Campaign Kit gate — block navigation if upstream selection is missing
+    const gateField = DASHBOARD_GATES[step];
+    if (gateField) {
+      const currentIcpId = icpList?.[0]?.id;
+      const activeKit = currentIcpId
+        ? campaignKitsList?.find((k: any) => k.icpId === currentIcpId)
+        : null;
+      if (activeKit && activeKit[gateField] == null) {
+        // Find which step is actually needed
+        const gateEntries = Object.entries(DASHBOARD_GATES);
+        for (const [gatedStep, field] of gateEntries) {
+          if (activeKit[field] == null) {
+            navigate(`/v2-dashboard/wizard/${gatedStep}`);
+            return;
+          }
+        }
+      }
     }
+    navigate(`/v2-dashboard/wizard/${step}`);
   }
 
   return (
