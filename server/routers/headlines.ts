@@ -211,6 +211,7 @@ export const headlinesRouter = router({
         desiredOutcome: z.string(),
         uniqueMechanism: z.string(),
         powerMode: z.boolean().optional(),
+        formulaType: z.enum(["all", "story", "eyebrow", "question", "authority", "urgency"]).optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -331,12 +332,16 @@ export const headlinesRouter = router({
 
       const headlineSetId = nanoid();
       const allHeadlines: Array<typeof headlines.$inferInsert> = [];
-      const countMultiplier = input.powerMode ? 3 : 1; // Power Mode generates 3x more
+      const selectedFormula = input.formulaType && input.formulaType !== "all" ? input.formulaType : null;
+      const countPerFormula = selectedFormula ? 25 : (input.powerMode ? 15 : 5);
 
-      // Generate headlines for each formula type
-      for (const [formulaType, promptTemplate] of Object.entries(FORMULA_PROMPTS)) {
-        // Modify prompt to generate 3x more if Power Mode is enabled
-        const modifiedTemplate = promptTemplate.replace(/Generate 5/g, `Generate ${5 * countMultiplier}`);
+      const formulasToGenerate = selectedFormula
+        ? { [selectedFormula]: (FORMULA_PROMPTS as any)[selectedFormula] }
+        : FORMULA_PROMPTS;
+
+      // Generate headlines for selected formula type(s)
+      for (const [formulaType, promptTemplate] of Object.entries(formulasToGenerate)) {
+        const modifiedTemplate = (promptTemplate as string).replace(/Generate 5/g, `Generate ${countPerFormula}`);
         // Item 1.3 — use resolved values (server fallback from service record)
         const resolvedPressingProblem = autoPopData.resolvedPressingProblem ?? input.pressingProblem;
         const resolvedDesiredOutcome = autoPopData.resolvedDesiredOutcome ?? input.desiredOutcome;
@@ -494,6 +499,7 @@ export const headlinesRouter = router({
       desiredOutcome: z.string(),
       uniqueMechanism: z.string(),
       powerMode: z.boolean().optional(),
+      formulaType: z.enum(["all", "story", "eyebrow", "question", "authority", "urgency"]).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const { user } = ctx;
@@ -553,12 +559,18 @@ export const headlinesRouter = router({
         try {
           const bgDb = await getDbBg();
           if (!bgDb) throw new Error("Database not available in background job");
-          const countMultiplier = capturedInput.powerMode ? 3 : 1;
+          const selectedFormula = capturedInput.formulaType && capturedInput.formulaType !== "all" ? capturedInput.formulaType : null;
+          // If a specific formula is selected, generate 25 of that type. Otherwise 5 per type.
+          const countPerFormula = selectedFormula ? 25 : (capturedInput.powerMode ? 15 : 5);
           const headlineSetId = nanoid();
           const allHeadlines: Array<typeof headlines.$inferInsert> = [];
 
-          for (const [formulaType, promptTemplate] of Object.entries(FORMULA_PROMPTS)) {
-            const modifiedTemplate = (promptTemplate as string).replace(/Generate 5/g, `Generate ${5 * countMultiplier}`);
+          const formulasToGenerate = selectedFormula
+            ? { [selectedFormula]: (FORMULA_PROMPTS as any)[selectedFormula] }
+            : FORMULA_PROMPTS;
+
+          for (const [formulaType, promptTemplate] of Object.entries(formulasToGenerate)) {
+            const modifiedTemplate = (promptTemplate as string).replace(/Generate 5/g, `Generate ${countPerFormula}`);
             const resolvedPressingProblem = capturedAutoPopData.resolvedPressingProblem ?? capturedInput.pressingProblem;
             const resolvedDesiredOutcome = capturedAutoPopData.resolvedDesiredOutcome ?? capturedInput.desiredOutcome;
             const resolvedUniqueMechanism = capturedAutoPopData.resolvedUniqueMechanism ?? capturedInput.uniqueMechanism;

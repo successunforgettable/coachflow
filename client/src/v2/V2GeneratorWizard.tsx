@@ -146,8 +146,7 @@ const ADVANCED_FIELDS: Record<WizardStep, AdvancedField[]> = {
     { key: "hvcoTopic", label: "Lead Magnet Topic Override", type: "text", placeholder: "Leave blank to use AI suggestion", sourceNote: "AI generates this from your service profile" },
   ],
   headlines: [
-    { key: "headlineStyle", label: "Headline Style", type: "select", options: ["curiosity", "benefit", "how-to", "question", "bold-claim"], sourceNote: "Defaults to 'benefit'" },
-    { key: "quantity", label: "Number of Headlines", type: "select", options: ["5", "10", "15", "20"], sourceNote: "Defaults to 10" },
+    { key: "formulaType", label: "Headline Style", type: "select", options: ["all", "story", "eyebrow", "question", "authority", "urgency"], optionLabels: { all: "All Styles", story: "Tell Your Story", eyebrow: "Make a Bold Claim", question: "Ask Their Question", authority: "Lead with Credentials", urgency: "Create Urgency" }, sourceNote: "All Styles generates 5 per type. Selecting one generates 25 of that type." },
   ],
   adCopy: [
     { key: "platform", label: "Ad Platform", type: "select", options: ["Facebook", "Instagram", "LinkedIn", "YouTube"], sourceNote: "Defaults to Facebook" },
@@ -262,8 +261,17 @@ function AdvancedFieldInput({
       )}
       {field.type === "select" ? (
         <select value={value} onChange={e => onChange(e.target.value)} style={inputBase}>
-          {field.options?.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+          {field.options?.map(opt => <option key={opt} value={opt}>{(field as any).optionLabels?.[opt] || opt}</option>)}
         </select>
+        {field.key === "formulaType" && value && value !== "all" && (
+          <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "12px", color: "#999", margin: "6px 0 0", lineHeight: 1.5 }}>
+            {value === "story" && "Generates narrative headlines that open with a triggering event and end with a specific measurable result. Best for emotional niches."}
+            {value === "eyebrow" && "Generates three-part headlines with an authority eyebrow, a mechanism-focused main line, and a pain-point subheadline."}
+            {value === "question" && "Generates question headlines that mirror what your ideal client is already thinking. Best for curiosity-driven campaigns."}
+            {value === "authority" && "Generates headlines that lead with credentials and proven results. Best when the coach has strong qualifications."}
+            {value === "urgency" && "Generates headlines with specific timeframes and action verbs. Best for time-limited offers and launches."}
+          </p>
+        )}
       ) : field.type === "textarea" ? (
         <textarea value={value} onChange={e => onChange(e.target.value)} placeholder={field.placeholder} rows={3} style={{ ...inputBase, resize: "vertical" }} />
       ) : (
@@ -2398,12 +2406,14 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
         const hvcoResult = await pollJob(jobId);
         if (typeof hvcoResult.hvcoSetId === 'string') setLatestHvcoSetId(hvcoResult.hvcoSetId);
       } else if (step === "headlines") {
+        const selectedFormula = formState.formulaType && formState.formulaType !== "all" ? formState.formulaType : undefined;
         const { jobId } = await generateHeadlinesAsync.mutateAsync({
           serviceId: svcId,
           targetMarket: svc?.targetCustomer || "",
           pressingProblem: svc?.painPoints || "",
           desiredOutcome: svc?.mainBenefit || "",
           uniqueMechanism: svc?.uniqueMechanismSuggestion || "",
+          formulaType: selectedFormula as any,
         });
         const headlineResult = await pollJob(jobId);
         if (headlineResult.headlineSetId) {
