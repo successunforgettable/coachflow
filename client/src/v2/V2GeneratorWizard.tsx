@@ -870,7 +870,7 @@ function MechanismRecommendation({ mechanismSetId, campaignKit, onSelect, onRege
   );
   const { data: hasCompleted } = trpc.campaignKits.hasCompletedCampaign.useQuery();
 
-  if (!mechanisms || mechanisms.length === 0) {
+  if (!mechanisms || !Array.isArray(mechanisms) || mechanisms.length === 0) {
     return <p style={{ textAlign: "center", color: "#999", fontFamily: "var(--v2-font-body)" }}>Loading mechanisms...</p>;
   }
 
@@ -924,7 +924,7 @@ function HvcoRecommendation({ hvcoSetId, campaignKit, onSelect, onRegenerate }: 
   );
   const { data: hasCompleted } = trpc.campaignKits.hasCompletedCampaign.useQuery();
 
-  if (!titles || titles.length === 0) {
+  if (!titles || !Array.isArray(titles) || titles.length === 0) {
     return <p style={{ textAlign: "center", color: "#999", fontFamily: "var(--v2-font-body)" }}>Loading opt-in titles...</p>;
   }
 
@@ -973,11 +973,21 @@ function AdCopyRecommendation({ adSetId, campaignKit, onSelect, onRegenerate }: 
   );
   const { data: hasCompleted } = trpc.campaignKits.hasCompletedCampaign.useQuery();
 
-  if (!ads || ads.length === 0) {
+  if (!ads) {
     return <p style={{ textAlign: "center", color: "#999", fontFamily: "var(--v2-font-body)" }}>Loading ad copy...</p>;
   }
 
-  const sorted = [...ads].sort((a: any, b: any) => (Number(b.selectionScore) || 0) - (Number(a.selectionScore) || 0));
+  // getByAdSetId returns { headlines: [], bodies: [], links: [], ... } — flatten into a single array
+  const allItems: any[] = [
+    ...((ads as any).headlines || []),
+    ...((ads as any).bodies || []),
+    ...((ads as any).links || []),
+  ];
+  if (allItems.length === 0) {
+    return <p style={{ textAlign: "center", color: "#999", fontFamily: "var(--v2-font-body)" }}>No ad copy found.</p>;
+  }
+
+  const sorted = [...allItems].sort((a: any, b: any) => (Number(b.selectionScore) || 0) - (Number(a.selectionScore) || 0));
   const top3 = sorted.slice(0, 3);
   const primary = top3[0];
   const alts = top3.slice(1);
