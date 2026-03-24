@@ -186,20 +186,12 @@ export const adminRouter = router({
       (u) => u.subscriptionStatus === "active" || u.subscriptionStatus === "trialing"
     );
 
-    // Calculate MRR from Stripe active subscriptions
-    let mrr = 0;
-    try {
-      const { stripe } = await import("../stripe/client");
-      const subscriptions = await stripe.subscriptions.list({
-        status: "active",
-        limit: 100,
-        expand: ["data.items.data.price"],
-      });
-      mrr = subscriptions.data.reduce((sum, sub) => {
-        const itemTotal = sub.items.data.reduce((s, item) => {
+    // Helper: sum monthly revenue from a list of Stripe subscriptions
+    const sumSubscriptionMrr = (subs: any[]) => {
+      return subs.reduce((sum: number, sub: any) => {
+        const itemTotal = sub.items.data.reduce((s: number, item: any) => {
           const price = item.price;
           if (!price || !price.unit_amount) return s;
-          // Convert to monthly: if yearly, divide by 12
           const monthly = price.recurring?.interval === "year"
             ? price.unit_amount / 12
             : price.unit_amount;
@@ -207,13 +199,34 @@ export const adminRouter = router({
         }, 0);
         return sum + itemTotal;
       }, 0) / 100; // cents to dollars
+    };
+
+    // Calculate MRR from Stripe — no fallback to hardcoded prices
+    let mrr = 0;
+    let newMrrThisMonth = 0;
+    try {
+      const { stripe } = await import("../stripe/client");
+
+      // All active subscriptions → MRR
+      const activeSubs = await stripe.subscriptions.list({
+        status: "active",
+        limit: 100,
+        expand: ["data.items.data.price"],
+      });
+      mrr = sumSubscriptionMrr(activeSubs.data);
+
+      // New subscriptions created in last 30 days → New MRR
+      const thirtyDaysAgoUnix = Math.floor((Date.now() - 30 * 24 * 60 * 60 * 1000) / 1000);
+      const newSubs = await stripe.subscriptions.list({
+        status: "active",
+        created: { gte: thirtyDaysAgoUnix },
+        limit: 100,
+        expand: ["data.items.data.price"],
+      });
+      newMrrThisMonth = sumSubscriptionMrr(newSubs.data);
     } catch (e) {
-      console.warn("[admin] Stripe MRR query failed, falling back to DB estimate:", e);
-      // Fallback to DB-based estimate if Stripe fails
-      mrr = activeUsers.reduce((sum, u) => {
-        const tierPrice = TIER_PRICES[u.subscriptionTier || "trial"];
-        return sum + tierPrice;
-      }, 0);
+      console.warn("[admin] Stripe revenue query failed — returning $0:", e);
+      // No fallback. If Stripe fails, revenue is 0.
     }
 
     // Calculate ARR
@@ -225,10 +238,6 @@ export const adminRouter = router({
       (u) => u.subscriptionStatus === "canceled" && u.updatedAt >= thirtyDaysAgo
     );
     const churnRate = activeUsers.length > 0 ? (churnedUsers.length / activeUsers.length) * 100 : 0;
-
-    // Calculate month-over-month growth
-    // For now, return 0 (will be calculated from historical data later)
-    const mrrGrowth = 0;
 
     // ARPU = MRR / pro+agency user count
     const proUserCount = allUsers.filter(u => u.subscriptionTier === "pro" || u.subscriptionTier === "agency").length;
@@ -242,21 +251,12 @@ export const adminRouter = router({
     // Churned this month
     const churnedThisMonth = churnedUsers.length;
 
-    // New MRR this month (new pro/agency subs in last 30 days)
-    const newProThisMonth = allUsers.filter(u => {
-      const created = new Date(u.createdAt);
-      return created >= thirtyDaysAgo && (u.subscriptionTier === "pro" || u.subscriptionTier === "agency");
-    });
-    const newMrrThisMonth = newProThisMonth.reduce((sum, u) => {
-      return sum + TIER_PRICES[u.subscriptionTier || "trial"];
-    }, 0);
-
     return {
       mrr,
       arr,
       churnRate: Number(churnRate.toFixed(2)),
       activeSubscriptions: activeUsers.length,
-      mrrGrowth,
+      mrrGrowth: 0,
       arpu,
       trialToProRate,
       churnedThisMonth,
