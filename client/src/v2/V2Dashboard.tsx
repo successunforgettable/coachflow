@@ -119,13 +119,21 @@ function PathNode({ node, isMobile, onNodeClick }: { node: PathNode; isMobile: b
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
       <div style={nodeStyle} onClick={() => node.state !== "locked" && onNodeClick(node)}>
-        {node.state === "completed" && <Checkmark />}
+        {node.state === "completed" && (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", lineHeight: 1 }}>
+            <Checkmark />
+          </div>
+        )}
         {node.state === "active" && (
-          <span style={{ color: "#fff", fontFamily: "var(--v2-font-body)", fontWeight: 700, fontSize: isMobile ? "13px" : "15px" }}>
+          <span style={{ color: "#fff", fontFamily: "var(--v2-font-body)", fontWeight: 700, fontSize: isMobile ? "18px" : "22px" }}>
             {node.id}
           </span>
         )}
-        {node.state === "locked" && <LockIcon />}
+        {node.state === "locked" && (
+          <span style={{ color: "#999", fontFamily: "var(--v2-font-body)", fontWeight: 700, fontSize: isMobile ? "16px" : "20px" }}>
+            {node.id}
+          </span>
+        )}
       </div>
       <span style={{
         fontFamily: "var(--v2-font-body)",
