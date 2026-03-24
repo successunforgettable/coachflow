@@ -891,7 +891,7 @@ export default function V2Dashboard() {
 
         {/* ── COMPONENT 2: 11-Step Winding Path (Guided) OR Tool Library ── */}
         {activeTab === "guided" ? (
-          <div style={{ display: "flex", gap: "24px", alignItems: "flex-start" }}>
+          <div style={{ display: "flex", gap: "0", alignItems: "flex-start", position: "relative" }}>
             <div className="v2-path-wrapper" style={{ flex: 1 }}>
               {nodes.map((node, idx) => (
                 <div key={node.id} className="v2-path-column">
@@ -924,14 +924,16 @@ export default function V2Dashboard() {
               const isComplete = filled === total;
               return (
                 <aside style={{
-                  width: 240,
-                  minWidth: 240,
+                  width: 220,
                   background: "#fff",
-                  borderRadius: "20px",
+                  borderLeft: "1px solid #e5e0d8",
                   padding: "20px",
-                  border: "1px solid rgba(0,0,0,0.06)",
-                  position: "sticky",
-                  top: 16,
+                  position: "fixed",
+                  right: 0,
+                  top: 60,
+                  bottom: 0,
+                  overflowY: "auto",
+                  zIndex: 50,
                   display: isMobile ? "none" : "flex",
                   flexDirection: "column",
                   gap: "14px",
