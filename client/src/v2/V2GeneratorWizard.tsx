@@ -2667,6 +2667,14 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
               onRegenerate={handleRetry}
             />
           )}
+          {/* ── NODE 7 AD COPY — FULL RESULT PANEL ── */}
+          {status === "success" && step === "adCopy" && latestAdSetId && activeService && (
+            <V2AdCopyResultPanel
+              adSetId={latestAdSetId}
+              serviceId={activeService.id}
+              isFreeTier={isFreeTier}
+            />
+          )}
           {/* ── R1b: NODE 2 ICP RESULT PANEL ── */}
           {status === "success" && step === "icp" && latestIcpId && (
             <V2ICPResultPanel icpId={latestIcpId} isFreeTier={isFreeTier} />
@@ -2729,6 +2737,14 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
               onRegenerate={handleRetry}
             />
           )}
+          {/* ── NODE 8 LANDING PAGE — FULL RESULT PANEL ── */}
+          {status === "success" && step === "landingPage" && latestLandingPageId && (
+            <V2LandingPageResultPanel
+              landingPageId={latestLandingPageId}
+              isFreeTier={isFreeTier}
+              onAngleChange={setActiveLandingPageAngle}
+            />
+          )}
           {/* ── NODE 9 EMAIL SEQUENCE — RECOMMENDED ASSET PANEL ── */}
           {status === "success" && step === "emailSequence" && latestEmailSequenceId && (
             <EmailRecommendation
@@ -2741,6 +2757,10 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
               onRegenerate={handleRetry}
             />
           )}
+          {/* ── NODE 9 EMAIL SEQUENCE — FULL RESULT PANEL ── */}
+          {status === "success" && step === "emailSequence" && latestEmailSequenceId && (
+            <V2EmailSequenceResultPanel emailSequenceId={latestEmailSequenceId} isFreeTier={isFreeTier} />
+          )}
           {/* ── NODE 10 WHATSAPP SEQUENCE — RECOMMENDED ASSET PANEL ── */}
           {status === "success" && step === "whatsappSequence" && latestWhatsappSequenceId && (
             <WhatsAppRecommendation
@@ -2752,6 +2772,10 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
               }}
               onRegenerate={handleRetry}
             />
+          )}
+          {/* ── NODE 10 WHATSAPP SEQUENCE — FULL RESULT PANEL ── */}
+          {status === "success" && step === "whatsappSequence" && latestWhatsappSequenceId && (
+            <V2WhatsAppResultPanel whatsappSequenceId={latestWhatsappSequenceId} isFreeTier={isFreeTier} />
           )}
 
           {/* ── CONCERNED STATE (compliance violations) ── */}
