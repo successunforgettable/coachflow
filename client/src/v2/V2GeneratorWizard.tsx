@@ -263,19 +263,19 @@ function AdvancedFieldInput({
         <select value={value} onChange={e => onChange(e.target.value)} style={inputBase}>
           {field.options?.map(opt => <option key={opt} value={opt}>{(field as any).optionLabels?.[opt] || opt}</option>)}
         </select>
-        {field.key === "formulaType" && value && value !== "all" && (
-          <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "12px", color: "#999", margin: "6px 0 0", lineHeight: 1.5 }}>
-            {value === "story" && "Generates narrative headlines that open with a triggering event and end with a specific measurable result. Best for emotional niches."}
-            {value === "eyebrow" && "Generates three-part headlines with an authority eyebrow, a mechanism-focused main line, and a pain-point subheadline."}
-            {value === "question" && "Generates question headlines that mirror what your ideal client is already thinking. Best for curiosity-driven campaigns."}
-            {value === "authority" && "Generates headlines that lead with credentials and proven results. Best when the coach has strong qualifications."}
-            {value === "urgency" && "Generates headlines with specific timeframes and action verbs. Best for time-limited offers and launches."}
-          </p>
-        )}
       ) : field.type === "textarea" ? (
         <textarea value={value} onChange={e => onChange(e.target.value)} placeholder={field.placeholder} rows={3} style={{ ...inputBase, resize: "vertical" }} />
       ) : (
         <input type="text" value={value} onChange={e => onChange(e.target.value)} placeholder={field.placeholder} style={inputBase} />
+      )}
+      {field.key === "formulaType" && value && value !== "all" && (
+        <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "12px", color: "#999", margin: "6px 0 0", lineHeight: 1.5 }}>
+          {value === "story" && "Generates narrative headlines that open with a triggering event and end with a specific measurable result. Best for emotional niches."}
+          {value === "eyebrow" && "Generates three-part headlines with an authority eyebrow, a mechanism-focused main line, and a pain-point subheadline."}
+          {value === "question" && "Generates question headlines that mirror what your ideal client is already thinking. Best for curiosity-driven campaigns."}
+          {value === "authority" && "Generates headlines that lead with credentials and proven results. Best when the coach has strong qualifications."}
+          {value === "urgency" && "Generates headlines with specific timeframes and action verbs. Best for time-limited offers and launches."}
+        </p>
       )}
     </div>
   );
