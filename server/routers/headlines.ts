@@ -27,10 +27,10 @@ function stripMarkdownJson(content: string): string {
   return content.replace(/^```json\s*|^```\s*|\s*```$/gm, '').trim();
 }
 
-// Industry standard
+// Headline formula prompts — specificity over vagueness, clarity over cleverness
 const FORMULA_PROMPTS = {
-  story: `Generate 5 story-based headlines using this EXACT format:
-"How a [Triggering Event] Led/Pushed/Triggered a [Person] to [Discovery] that [Result]!"
+  story: `Generate 5 story-formula headlines that follow this arc:
+"How a [Specific Triggering Event] Led [Specific Person] to [Specific Discovery] that [Specific Measurable Result]"
 
 Context:
 - Target Market: {targetMarket}
@@ -39,21 +39,22 @@ Context:
 - Unique Mechanism: {uniqueMechanism}
 
 Requirements:
-- Use varied triggering events (embarrassing moment, unexpected discovery, crisis, weekend event, etc.)
-- Make the person relatable to target market
-- Highlight the unique mechanism as the discovery
-- Promise the desired outcome as the result
-- HARD LIMIT: Every headline MUST be 40 characters or fewer. This is a Meta ad platform requirement — no exceptions. If a headline would exceed 40 characters, rewrite it shorter while preserving the hook and meaning. Never truncate mid-word.
+- Be concrete and specific — name the triggering event, name the transformation, name the result with a number or timeframe where possible
+- Maximum 80 characters per headline. Story headlines need room for a narrative arc — triggering event, person, discovery, result. Do not truncate mid-word.
+- Must feel like the opening line of a true story, not a marketing claim
+- Use the exact language from the target market and pressing problem — mirror the words real people use, not marketing jargon
+- Never use vague phrases like "transform your life", "unlock your potential", "achieve your dreams" — name the specific outcome
+- Each triggering event should be different and relatable to the target market (a bad day at work, a conversation with a friend, a health scare, a financial wake-up call)
 - Return ONLY a JSON array of 5 headline strings, nothing else
 
 Example output format:
-["How a Crisis Led Her to $10k/Month", "One Bad Trade Led to a Breakthrough", "A Weekend Mistake Changed Everything", "How She Found the 9-Step Blueprint", "One Discovery Turned Losses to Wins"]`,
+["How a 3am Panic Attack Led a Burned-Out Lawyer to $12k/Month Coaching", "One Failed Launch Pushed Her to a System That Books 8 Clients a Week", "A Tearful School Run Made Her Build a Business That Runs Without Her", "How Losing His Biggest Client Led to a Method That Doubles Revenue", "One Honest Conversation Turned a Side Hustle Into a 6-Figure Practice"]`,
 
   eyebrow: `Generate 5 three-part headlines with eyebrow, main headline, and subheadline:
 
-Eyebrow format: "[Authority] Unveils/Reveals"
-Main format: "[Unique Mechanism] Turns [Audience] into [Result]"
-Subheadline format: "Without [Pain Point 1], [Pain Point 2] or [Pain Point 3]"
+Eyebrow format: "[Specific Authority] Reveals"
+Main format: "[Named Mechanism] Turns [Specific Audience] into [Measurable Result]"
+Subheadline format: "Without [Specific Pain 1], [Specific Pain 2] or [Specific Pain 3]"
 
 Context:
 - Target Market: {targetMarket}
@@ -62,17 +63,19 @@ Context:
 - Unique Mechanism: {uniqueMechanism}
 
 Requirements:
-- Eyebrow should establish authority/credibility
-- Main headline should feature the unique mechanism prominently
-- Subheadline should address 3 pain points from pressing problem
+- HARD LIMIT: Main headline MUST be 40 characters or fewer. This is a Meta ad field limit — no exceptions.
+- Eyebrow establishes authority using real credentials or experience — not generic "expert"
+- Main headline names the mechanism and the specific result with a number or timeframe
+- Subheadline uses the exact pain points from the pressing problem — use the customer's own words, not marketing language
+- Never use vague phrases like "achieve success" or "reach your goals" — name the specific outcome the target market wants
 - Return ONLY a JSON array of 5 objects with this structure: {"eyebrow": "...", "main": "...", "sub": "..."}
 
 Example output format:
-[{"eyebrow": "Award-winning Mind Coach Unveils", "main": "9-Step Crypto Wealth System Turns Beginners into $10k/Month Moneymakers", "sub": "Without Endless Hours Learning or Losing Money on Bad Trades"}, ...]`,
+[{"eyebrow": "Former Burnt-Out CFO Reveals", "main": "The 90-Day Identity Reset Method", "sub": "Without Therapy That Goes Nowhere, Self-Help Books That Collect Dust, or Retreats That Fade by Monday"}, ...]`,
 
-  question: `Generate 5 question-based headlines that highlight obstacles or mistakes:
+  question: `Generate 5 question-based headlines that name specific obstacles or mistakes:
 
-Format: "[Question about obstacle/mistake]?"
+Format: "[Question about a specific obstacle the target market faces]?"
 
 Context:
 - Target Market: {targetMarket}
@@ -80,19 +83,20 @@ Context:
 - Desired Outcome: {desiredOutcome}
 
 Requirements:
-- Frame as a question that makes reader think "yes, that's me"
-- Focus on hidden obstacles, sneaky pitfalls, or overlooked mistakes
-- Use words like "preventing", "stopping", "sabotaging", "devouring", "sapping"
-- Each question should be 10-20 words
+- HARD LIMIT: Every question MUST be 40 characters or fewer. This is a Meta ad field limit — no exceptions.
+- Frame as a question that makes the reader think "yes, that's exactly me"
+- Name the specific obstacle, not a generic one — use language directly from the pressing problem and target market description
+- Focus on hidden obstacles, overlooked mistakes, or counterintuitive truths the audience hasn't considered
+- Never use vague questions like "Are you struggling?" or "Want to succeed?" — name what they're struggling with specifically
 - Return ONLY a JSON array of 5 question strings, nothing else
 
 Example output format:
-["One Sneaky Crypto Pitfall Preventing You from Generating a $10k Monthly Income?", "Could this Commonly Overlooked Crypto Risk be Sapping Your Potential Earnings?", ...]`,
+["Is Your Calendar the Reason You Can't Scale?", "Still Posting Content Nobody Engages With?", "Charging Too Little to Attract Premium Clients?", "Is Perfectionism Killing Your Launch Date?", "Trading Hours for Dollars at 50?"]`,
 
   authority: `Generate 5 authority-based headlines with main headline and subheadline:
 
-Main format: "[Authority Figure] [Action] [Unique Mechanism] [Result]"
-Subheadline format: "This is why [Old Way 1], [Old Way 2], and [Old Way 3] have failed to produce [Desired Outcome]"
+Main format: "[Credible Authority] [Action Verb] [Named Mechanism] [Specific Result]"
+Subheadline format: "This is why [Named Failed Method 1], [Named Failed Method 2], and [Named Failed Method 3] have not delivered [Specific Desired Outcome]"
 
 Context:
 - Target Market: {targetMarket}
@@ -101,17 +105,19 @@ Context:
 - Unique Mechanism: {uniqueMechanism}
 
 Requirements:
-- Authority figure should be credible (award-winning, published, certified, etc.)
-- Action verbs: unearthed, discovered, revealed, disclosed, unveiled
-- Subheadline should debunk 3 old/failed methods
+- HARD LIMIT: Main headline MUST be 40 characters or fewer. This is a Meta ad field limit — no exceptions.
+- Authority must be specific and believable — "10-year veteran" or "former [industry] professional" not just "award-winning expert"
+- Action verbs: discovered, built, tested, proven, documented — not grandiose verbs like "unearthed" or "unveiled"
+- Subheadline must name 3 specific methods the target market has already tried and failed with — use their exact language from the pressing problem
+- Never use generic authority claims or vague results — name what was built and what it produces
 - Return ONLY a JSON array of 5 objects with this structure: {"main": "...", "sub": "..."}
 
 Example output format:
-[{"main": "Award-Winning Mind Coach Unearthed Hidden 'Crypto Code' Transforming Newbies into Fortunate Investors", "sub": "This is why day trading, HODLing, and technical analysis have failed to produce consistent crypto income"}, ...]`,
+[{"main": "The System Behind 200+ Booked Calendars", "sub": "This is why posting daily on Instagram, running webinars to empty rooms, and cold DMing strangers have not filled your coaching practice"}, ...]`,
 
-  urgency: `Generate 5 urgency-based headlines with specific timeframes:
+  urgency: `Generate 5 urgency-based headlines with specific timeframes and named outcomes:
 
-Format: "[Action] [Unique Mechanism], and [Result] in [Timeframe]!"
+Format: "[Action Verb] [Named Mechanism], and [Specific Measurable Result] in [Exact Timeframe]"
 
 Context:
 - Target Market: {targetMarket}
@@ -119,14 +125,15 @@ Context:
 - Unique Mechanism: {uniqueMechanism}
 
 Requirements:
-- Start with action verbs: Discover, Unearth, Leverage, Unlock, Access
-- Include specific timeframe: "in 30 days", "in 6 months", "in just one month", "under 30 days"
-- Promise the desired outcome
-- Use exciting result language: "skyrocket", "rains", "pull in", "multiply"
+- HARD LIMIT: Every headline MUST be 40 characters or fewer. This is a Meta ad field limit — no exceptions.
+- Start with concrete action verbs: Try, Test, Start, Join, Get — not grandiose verbs like "Unearth" or "Leverage"
+- Include a specific, believable timeframe tied to the actual programme length — "in 90 days", "in 6 weeks", "this month"
+- Name the specific result the target market wants using their language — revenue figures, client numbers, lifestyle changes
+- Never use hyperbolic language like "skyrocket" or "explode" — state the result plainly and let the timeframe create the urgency
 - Return ONLY a JSON array of 5 headline strings, nothing else
 
 Example output format:
-["Unearth Crypto Millionaire Blueprint, and Pull in $10k in Under 30 Days!", "Discover 9-Step Program That Rains Passive-Income in 6 Months!", ...]`,
+["Get 5 New Clients in 30 Days — Guaranteed", "Fill Your Calendar This Month for $47", "Book 10 Calls in 2 Weeks With This System", "Start Earning $5k/Month in 90 Days Flat", "Land 3 Premium Clients Before Friday"]`,
 };
 
 export const headlinesRouter = router({
