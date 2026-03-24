@@ -130,43 +130,53 @@ interface AdvancedField {
   sourceNote?: string;
 }
 
+// Advanced fields — only genuine overrides that change output. Dead fields removed.
 const ADVANCED_FIELDS: Record<WizardStep, AdvancedField[]> = {
   service: [],
   icp: [
-    { key: "name", label: "ICP Name / Label", type: "text", placeholder: "e.g. Mid-Career Professional", sourceNote: "Auto-generated from your service avatar" },
+    { key: "name", label: "Profile name", type: "text", placeholder: "e.g. Mid-Career Professional", sourceNote: "Auto-generated from your service — override only if needed" },
   ],
-  offer: [
-    { key: "offerType", label: "Offer Type", type: "select", options: ["standard", "premium", "vip"], sourceNote: "Defaults to 'premium'" },
-  ],
+  offer: [],  // offerType removed — server generates all 3 angles always
   uniqueMethod: [
-    { key: "mechanismName", label: "Mechanism Name Override", type: "text", placeholder: "Leave blank to use AI suggestion", sourceNote: "AI generates this from your service description" },
-    { key: "applicationMethod", label: "Application Method", type: "text", placeholder: "e.g. 6-week group coaching", sourceNote: "Pulled from your service profile" },
+    { key: "mechanismName", label: "Method name override", type: "text", placeholder: "Leave blank for AI suggestion", sourceNote: "Override the AI-generated method name" },
   ],
   freeOptIn: [
-    { key: "hvcoTopic", label: "Lead Magnet Topic Override", type: "text", placeholder: "Leave blank to use AI suggestion", sourceNote: "AI generates this from your service profile" },
+    { key: "hvcoTopic", label: "Lead magnet topic override", type: "text", placeholder: "Leave blank for AI suggestion", sourceNote: "Override the AI-generated topic" },
   ],
   headlines: [
-    { key: "formulaType", label: "Headline Style", type: "select", options: ["all", "story", "eyebrow", "question", "authority", "urgency"], optionLabels: { all: "All Styles", story: "Tell Your Story", eyebrow: "Make a Bold Claim", question: "Ask Their Question", authority: "Lead with Credentials", urgency: "Create Urgency" }, sourceNote: "All Styles generates 5 per type. Selecting one generates 25 of that type." },
+    { key: "formulaType", label: "What style of headline?", type: "select", options: ["all", "story", "eyebrow", "question", "authority", "urgency"], optionLabels: { all: "All Styles (5 of each)", story: "Tell Your Story", eyebrow: "Make a Bold Claim", question: "Ask Their Question", authority: "Lead with Credentials", urgency: "Create Urgency" }, sourceNote: "ZAP auto-selects the best style for your audience. Override here if you prefer a specific approach." },
   ],
-  adCopy: [
-    { key: "platform", label: "Ad Platform", type: "select", options: ["Facebook", "Instagram", "LinkedIn", "YouTube"], sourceNote: "Defaults to Facebook" },
-    { key: "adFormat", label: "Ad Format", type: "select", options: ["single-image", "carousel", "video-script", "story"], sourceNote: "Defaults to single-image" },
-  ],
-  landingPage: [
-    { key: "pageStyle", label: "Page Style", type: "select", options: ["VSL", "long-form", "short-form", "webinar-registration"], sourceNote: "Defaults to long-form" },
-  ],
+  adCopy: [],  // platform + adFormat removed — server never reads them
+  landingPage: [],  // pageStyle removed — server never reads it
   emailSequence: [
-    { key: "sequenceType", label: "Sequence Type", type: "select", options: ["welcome", "nurture", "launch", "re-engagement"], sourceNote: "Defaults to nurture" },
-    { key: "emailCount", label: "Number of Emails", type: "select", options: ["3", "5", "7", "10"], sourceNote: "Defaults to 5" },
+    { key: "emailCount", label: "How many emails?", type: "select", options: ["3", "5", "7", "10"], sourceNote: "Defaults to 3. More emails = longer nurture sequence." },
   ],
   whatsappSequence: [
-    { key: "sequenceLength", label: "Sequence Length", type: "select", options: ["3", "5", "7"], sourceNote: "Defaults to 5" },
-    { key: "tone", label: "Tone", type: "select", options: ["conversational", "professional", "urgent"], sourceNote: "Pulled from your brand voice" },
+    { key: "sequenceLength", label: "How many messages?", type: "select", options: ["3", "5", "7"], sourceNote: "Defaults to 3. Shorter sequences tend to get more replies." },
   ],
-  pushToMeta: [
-    { key: "platform", label: "Platform", type: "select", options: ["Meta Ads Manager", "GoHighLevel"], sourceNote: "Defaults to Meta Ads Manager" },
-  ],
+  pushToMeta: [],  // platform removed — not yet functional
 };
+
+// Dynamic Zappy context lines — reference real data from service + Campaign Kit
+function getZappyContextLine(step: string, service: any): string {
+  const name = service?.name || "your service";
+  const pain = service?.painPoints ? service.painPoints.slice(0, 60) + "..." : "your audience's pain points";
+  const mech = service?.uniqueMechanismSuggestion || "your unique method";
+  const benefit = service?.mainBenefit || "your core benefit";
+
+  switch (step) {
+    case "icp": return `I'm building a detailed profile of your ideal client based on ${name} — so every piece of content speaks directly to them.`;
+    case "offer": return `I'm generating 3 offer angles (premium, free, and low-ticket) tailored to ${name} — you'll pick the strongest one.`;
+    case "uniqueMethod": return `I'm creating a named method that positions ${name} as the only solution — based on ${pain}.`;
+    case "freeOptIn": return `I'm generating lead magnet ideas that naturally lead into ${mech} — designed to attract the right people.`;
+    case "headlines": return `I'm generating 25 headlines using ${pain} and ${mech} — then showing you the strongest one.`;
+    case "adCopy": return `I'm writing 15 ad copy variations using your selected headline as the hook and ${mech} as the proof.`;
+    case "landingPage": return `I'm building your landing page around ${mech} and ${benefit} — 4 angle variations to choose from.`;
+    case "emailSequence": return `I'm writing a welcome sequence that delivers your lead magnet and builds toward your offer for ${name}.`;
+    case "whatsappSequence": return `I'm writing WhatsApp messages that complement your emails — conversational and designed to get replies.`;
+    default: return "";
+  }
+}
 
 // ─── Shared card style ────────────────────────────────────────────────────────
 const cardStyle: React.CSSProperties = {
@@ -2637,6 +2647,22 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
             Generate {stepLabel} using your AI Profile
           </h1>
 
+          {/* ── Zappy context line ── */}
+          {status === "idle" && activeService && getZappyContextLine(step, activeService) && (
+            <p style={{
+              fontFamily: "var(--v2-font-body)",
+              fontSize: "14px",
+              fontStyle: "italic",
+              color: "#999",
+              textAlign: "center",
+              maxWidth: "480px",
+              margin: "-16px auto 24px",
+              lineHeight: 1.6,
+            }}>
+              {getZappyContextLine(step, activeService)}
+            </p>
+          )}
+
           {/* ── WAITING STATE ── */}
           {status === "waiting" && <WaitingState />}
 
@@ -2970,7 +2996,7 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
                 textDecorationColor: "rgba(119,119,119,0.4)",
               }}
             >
-              {accordionOpen ? "▲ Hide Advanced Inputs" : "Advanced: Edit AI Inputs"}
+              {accordionOpen ? "▲ Hide options" : "Want to customise? Advanced options ↓"}
             </button>
           </div>
 
