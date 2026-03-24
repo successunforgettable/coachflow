@@ -6,7 +6,7 @@ function stripMarkdownJson(content: string): string {
   return content.replace(/^```json\s*|^```\s*|\s*```$/gm, "").trim();
 }
 import { getDb } from "../db";
-import { emailSequences, services, campaigns, idealCustomerProfiles, sourceOfTruth, jobs } from "../../drizzle/schema";
+import { emailSequences, services, campaigns, idealCustomerProfiles, sourceOfTruth, jobs, campaignKits, offers, heroMechanisms, hvcoTitles, headlines as headlinesTable } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { invokeLLM } from "../_core/llm";
 import { getQuotaLimit } from "../quotaLimits";
@@ -260,10 +260,41 @@ You MUST use these exact numbers and real names. Do not fabricate.`
 - Use outcome-based stories WITHOUT specific names ("One client" instead of "John Smith")`;
 
 
+      // ── Cascade context from Campaign Kit ──
+      let cascadeContext = "";
+      try {
+        const [relIcp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
+        if (relIcp) {
+          const [kit] = await db.select().from(campaignKits).where(and(eq(campaignKits.userId, ctx.user.id), eq(campaignKits.icpId, relIcp.id))).limit(1);
+          if (kit) {
+            const parts: string[] = [];
+            if (kit.selectedHvcoId) {
+              const [hvco] = await db.select().from(hvcoTitles).where(eq(hvcoTitles.id, kit.selectedHvcoId)).limit(1);
+              if (hvco) parts.push(`Lead magnet: ${hvco.title}`);
+            }
+            if (kit.selectedMechanismId) {
+              const [mech] = await db.select().from(heroMechanisms).where(eq(heroMechanisms.id, kit.selectedMechanismId)).limit(1);
+              if (mech) parts.push(`Hero mechanism: ${mech.mechanismName}`);
+            }
+            if (kit.selectedHeadlineId) {
+              const [hl] = await db.select().from(headlinesTable).where(eq(headlinesTable.id, kit.selectedHeadlineId)).limit(1);
+              if (hl) parts.push(`Selected headline: ${hl.headline}`);
+            }
+            if (kit.selectedOfferId) {
+              const [offer] = await db.select().from(offers).where(eq(offers.id, kit.selectedOfferId)).limit(1);
+              if (offer) parts.push(`Offer angle: ${offer.activeAngle || "godfather"}`);
+            }
+            if (parts.length > 0) {
+              cascadeContext = `UPSTREAM CONTEXT — SELECTED ASSETS:\n${parts.join(". ")}. Early emails must reference the lead magnet. The sequence must build toward the offer.\n\n`;
+            }
+          }
+        }
+      } catch (e) { console.warn("[cascade] emailSequences context fetch failed:", e); }
+
       let prompt = "";
 
       if (input.sequenceType === "welcome") {
-        prompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert email marketer. Create a 3-email welcome sequence for new subscribers using Russell Brunson's Soap Opera Sequence framework.
+        prompt = `${cascadeContext}${sotContext ? `${sotContext}\n\n` : ''}You are an expert email marketer. Create a 3-email welcome sequence for new subscribers using Russell Brunson's Soap Opera Sequence framework.
 
 Service: ${service.name}
 Category: ${service.category}
@@ -288,7 +319,7 @@ Each email should have:
 
 Return as a JSON object with an 'emails' key containing the array.`;
       } else if (input.sequenceType === "engagement") {
-        prompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert email marketer. Create a 5-email engagement sequence for event attendees using Russell Brunson's Soap Opera Sequence.
+        prompt = `${cascadeContext}${sotContext ? `${sotContext}\n\n` : ''}You are an expert email marketer. Create a 5-email engagement sequence for event attendees using Russell Brunson's Soap Opera Sequence.
 
 Service: ${service.name}
 Event: ${input.eventDetails?.eventName || "Event"}
@@ -314,7 +345,7 @@ Each email should have:
 Return as a JSON object with an 'emails' key containing the array.`;
       } else {
         // sales sequence
-        prompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert email marketer. Create a 7-email sales sequence for event attendees who didn't buy.
+        prompt = `${cascadeContext}${sotContext ? `${sotContext}\n\n` : ''}You are an expert email marketer. Create a 7-email sales sequence for event attendees who didn't buy.
 
 Service: ${service.name}
 Event: ${input.eventDetails?.eventName || "Event"}
@@ -491,11 +522,11 @@ Return as a JSON object with an 'emails' key containing the array.`;
 
           let prompt = "";
           if (capturedInput.sequenceType === "welcome") {
-            prompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert email marketer. Create a 3-email welcome sequence for new subscribers using Russell Brunson's Soap Opera Sequence framework.\n\nService: ${capturedService.name}\nCategory: ${capturedService.category}\nDescription: ${capturedService.description}\nTarget Customer: ${capturedService.targetCustomer}\nMain Benefit: ${capturedService.mainBenefit}\n\n${socialProofGuidance}\n\n${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}\n\nCreate 3 emails (Day 1, 3, 5). Each email: subject line, preview text, body (200-300 words), CTA.\n\nReturn as a JSON object with an 'emails' key containing the array.`;
+            prompt = `${cascadeContext}${sotContext ? `${sotContext}\n\n` : ''}You are an expert email marketer. Create a 3-email welcome sequence for new subscribers using Russell Brunson's Soap Opera Sequence framework.\n\nService: ${capturedService.name}\nCategory: ${capturedService.category}\nDescription: ${capturedService.description}\nTarget Customer: ${capturedService.targetCustomer}\nMain Benefit: ${capturedService.mainBenefit}\n\n${socialProofGuidance}\n\n${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}\n\nCreate 3 emails (Day 1, 3, 5). Each email: subject line, preview text, body (200-300 words), CTA.\n\nReturn as a JSON object with an 'emails' key containing the array.`;
           } else if (capturedInput.sequenceType === "engagement") {
-            prompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert email marketer. Create a 5-email engagement sequence for event attendees using Russell Brunson's Soap Opera Sequence.\n\nService: ${capturedService.name}\nEvent: ${capturedInput.eventDetails?.eventName || "Event"}\nHost: ${capturedInput.eventDetails?.hostName || "Host"}\n\n${socialProofGuidance}\n\n${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}\n\nCreate 5 emails (Monday to Friday before event). Each email: subject line, preview text, body (200-300 words), CTA.\n\nReturn as a JSON object with an 'emails' key containing the array.`;
+            prompt = `${cascadeContext}${sotContext ? `${sotContext}\n\n` : ''}You are an expert email marketer. Create a 5-email engagement sequence for event attendees using Russell Brunson's Soap Opera Sequence.\n\nService: ${capturedService.name}\nEvent: ${capturedInput.eventDetails?.eventName || "Event"}\nHost: ${capturedInput.eventDetails?.hostName || "Host"}\n\n${socialProofGuidance}\n\n${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}\n\nCreate 5 emails (Monday to Friday before event). Each email: subject line, preview text, body (200-300 words), CTA.\n\nReturn as a JSON object with an 'emails' key containing the array.`;
           } else {
-            prompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert email marketer. Create a 7-email sales sequence for event attendees who didn't buy.\n\nService: ${capturedService.name}\nEvent: ${capturedInput.eventDetails?.eventName || "Event"}\nOffer: ${capturedInput.eventDetails?.offerName || "Offer"}\nPrice: ${capturedInput.eventDetails?.price || "Price"}\nDeadline: ${capturedInput.eventDetails?.deadline || "Deadline"}\n\n${socialProofGuidance}\n\n${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}\n\nCreate 7 emails (Day 1-7 after event). Each email: subject line, preview text, body (250-350 words), CTA.\n\nReturn as a JSON object with an 'emails' key containing the array.`;
+            prompt = `${cascadeContext}${sotContext ? `${sotContext}\n\n` : ''}You are an expert email marketer. Create a 7-email sales sequence for event attendees who didn't buy.\n\nService: ${capturedService.name}\nEvent: ${capturedInput.eventDetails?.eventName || "Event"}\nOffer: ${capturedInput.eventDetails?.offerName || "Offer"}\nPrice: ${capturedInput.eventDetails?.price || "Price"}\nDeadline: ${capturedInput.eventDetails?.deadline || "Deadline"}\n\n${socialProofGuidance}\n\n${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}\n\nCreate 7 emails (Day 1-7 after event). Each email: subject line, preview text, body (250-350 words), CTA.\n\nReturn as a JSON object with an 'emails' key containing the array.`;
           }
 
           const response = await invokeLLM({ messages: [{ role: "system", content: "You are an expert email marketer specializing in high-converting email sequences for coaches, speakers, and consultants. Use Russell Brunson's Soap Opera Sequence framework. Always respond with valid JSON." }, { role: "user", content: prompt }], response_format: { type: "json_schema", json_schema: { name: "email_sequence", strict: true, schema: { type: "object", properties: { emails: { type: "array", items: { type: "object", properties: { day: { type: "integer" }, subject: { type: "string" }, previewText: { type: "string" }, body: { type: "string" }, cta: { type: "string" } }, required: ["day", "subject", "previewText", "body", "cta"], additionalProperties: false } } }, required: ["emails"], additionalProperties: false } } } });

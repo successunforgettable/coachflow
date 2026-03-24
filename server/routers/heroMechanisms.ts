@@ -11,7 +11,7 @@ import {
   incrementHeroMechanismCount
 } from "../db";
 import { getDb } from "../db";
-import { services, idealCustomerProfiles, sourceOfTruth, campaigns, jobs, heroMechanisms } from "../../drizzle/schema";
+import { services, idealCustomerProfiles, sourceOfTruth, campaigns, jobs, heroMechanisms, campaignKits, offers } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { randomUUID } from "crypto";
@@ -171,11 +171,29 @@ export const heroMechanismsRouter = router({
       const resolvedWhyExistingNotWork = input.whyExistingNotWork?.trim() || service.failedSolutions || "";
       const resolvedCredibility = input.credibility?.trim() || service.pressFeatures || "";
 
+      // ── Cascade context from Campaign Kit ──
+      let cascadeContext = "";
+      try {
+        const [icp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
+        if (icp) {
+          const [kit] = await db.select().from(campaignKits).where(and(eq(campaignKits.userId, user.id), eq(campaignKits.icpId, icp.id))).limit(1);
+          if (kit?.selectedOfferId) {
+            const [offer] = await db.select().from(offers).where(eq(offers.id, kit.selectedOfferId)).limit(1);
+            if (offer) {
+              const angle = offer.activeAngle || "godfather";
+              const angleData = (offer as any)[`${angle}Angle`];
+              const offerText = typeof angleData === "string" ? angleData : JSON.stringify(angleData);
+              cascadeContext = `\n\nUPSTREAM CONTEXT — SELECTED OFFER:\nThe user's selected offer is: ${offerText.substring(0, 500)}. Angle: ${angle}. The mechanism name and positioning must complement this offer.\n\n`;
+            }
+          }
+        }
+      } catch (e) { console.warn("[cascade] heroMechanisms context fetch failed:", e); }
+
       const mechanismSetId = nanoid();
       const allMechanisms: any[] = [];
 
       // Generate Hero Mechanisms (5 variations)
-      const heroMechanismsPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert direct response copywriter creating compelling Hero Mechanisms.
+      const heroMechanismsPrompt = `${cascadeContext}${sotContext ? `${sotContext}\n\n` : ''}You are an expert direct response copywriter creating compelling Hero Mechanisms.
 
 Product: ${service.name}
 Target Market: ${input.targetMarket}

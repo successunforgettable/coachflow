@@ -2,7 +2,7 @@ import { z } from "zod";
 import { randomUUID } from "crypto";
 import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
-import { adCopy, services, campaigns, idealCustomerProfiles, sourceOfTruth, jobs } from "../../drizzle/schema";
+import { adCopy, services, campaigns, idealCustomerProfiles, sourceOfTruth, jobs, campaignKits, offers, heroMechanisms, headlines as headlinesTable } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { invokeLLM } from "../_core/llm";
 import { nanoid } from "nanoid";
@@ -317,6 +317,33 @@ ${icp.communicationStyle ? `How they communicate: ${icp.communicationStyle}` : '
         press: service.pressFeatures || '',
       };
 
+      // ── Cascade context from Campaign Kit ──
+      let cascadeContext = "";
+      try {
+        const [relIcp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
+        if (relIcp) {
+          const [kit] = await db.select().from(campaignKits).where(and(eq(campaignKits.userId, ctx.user.id), eq(campaignKits.icpId, relIcp.id))).limit(1);
+          if (kit) {
+            const parts: string[] = [];
+            if (kit.selectedHeadlineId) {
+              const [hl] = await db.select().from(headlinesTable).where(eq(headlinesTable.id, kit.selectedHeadlineId)).limit(1);
+              if (hl) parts.push(`The selected headline is: ${hl.headline}`);
+            }
+            if (kit.selectedOfferId) {
+              const [offer] = await db.select().from(offers).where(eq(offers.id, kit.selectedOfferId)).limit(1);
+              if (offer) parts.push(`Offer angle: ${offer.activeAngle || "godfather"}`);
+            }
+            if (kit.selectedMechanismId) {
+              const [mech] = await db.select().from(heroMechanisms).where(eq(heroMechanisms.id, kit.selectedMechanismId)).limit(1);
+              if (mech) parts.push(`Hero mechanism: ${mech.mechanismName}`);
+            }
+            if (parts.length > 0) {
+              cascadeContext = `\n\nUPSTREAM CONTEXT — SELECTED ASSETS:\n${parts.join(". ")}. The ad body must reference the headline hook and reflect the offer positioning.\n\n`;
+            }
+          }
+        }
+      } catch (e) { console.warn("[cascade] adCopy context fetch failed:", e); }
+
       const adSetId = nanoid();
       const count = input.powerMode ? 30 : 15; // Power Mode generates 2x
 
@@ -337,8 +364,8 @@ You MUST use these exact numbers when incorporating social proof. Do not fabrica
 - Use contrast ("Before vs After")
 - DO NOT mention customer counts, ratings, or reviews
 - DO NOT fabricate testimonials or statistics`;
-      
-      const headlinePrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ${count} high-converting ad HEADLINES for this service:
+
+      const headlinePrompt = `${cascadeContext}${sotContext ? `${sotContext}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ${count} high-converting ad HEADLINES for this service:
 
 Service: ${service.name}
 Category: ${service.category}

@@ -6,7 +6,7 @@ import { getDb } from "../db";
 function stripMarkdownJson(content: string): string {
   return content.replace(/^```json\s*|^```\s*|\s*```$/gm, '').trim();
 }
-import { whatsappSequences, services, campaigns, idealCustomerProfiles, sourceOfTruth, jobs } from "../../drizzle/schema";
+import { whatsappSequences, services, campaigns, idealCustomerProfiles, sourceOfTruth, jobs, campaignKits, offers, heroMechanisms } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { invokeLLM } from "../_core/llm";
 import { getQuotaLimit } from "../quotaLimits";
@@ -242,10 +242,33 @@ You MUST use these exact numbers. Do not fabricate.`
 - Focus on benefit claims and value propositions
 - Use outcome-based language WITHOUT specific names`;
 
+      // ── Cascade context from Campaign Kit ──
+      let cascadeContext = "";
+      try {
+        const [relIcp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
+        if (relIcp) {
+          const [kit] = await db.select().from(campaignKits).where(and(eq(campaignKits.userId, ctx.user.id), eq(campaignKits.icpId, relIcp.id))).limit(1);
+          if (kit) {
+            const parts: string[] = [];
+            if (kit.selectedOfferId) {
+              const [offer] = await db.select().from(offers).where(eq(offers.id, kit.selectedOfferId)).limit(1);
+              if (offer) parts.push(`Offer angle: ${offer.activeAngle || "godfather"}`);
+            }
+            if (kit.selectedMechanismId) {
+              const [mech] = await db.select().from(heroMechanisms).where(eq(heroMechanisms.id, kit.selectedMechanismId)).limit(1);
+              if (mech) parts.push(`Hero mechanism: ${mech.mechanismName}`);
+            }
+            if (parts.length > 0) {
+              cascadeContext = `UPSTREAM CONTEXT — SELECTED ASSETS:\n${parts.join(". ")}. The WhatsApp sequence must complement the email sequence in tone and progression — do not duplicate it.\n\n`;
+            }
+          }
+        }
+      } catch (e) { console.warn("[cascade] whatsappSequences context fetch failed:", e); }
+
       let prompt = "";
 
       if (input.sequenceType === "engagement") {
-        prompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert WhatsApp marketer. Create a 3-message WhatsApp engagement sequence for event attendees.
+        prompt = `${cascadeContext}${sotContext ? `${sotContext}\n\n` : ''}You are an expert WhatsApp marketer. Create a 3-message WhatsApp engagement sequence for event attendees.
 
 Service: ${service.name}
 Event: ${input.eventDetails?.eventName || "Event"}

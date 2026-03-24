@@ -480,19 +480,40 @@ function LoadingState({ step: _step, progressLabel }: { step?: string; progressL
   );
 }
 
+// ─── Route guard: gate map for sequential progression ─────────────────────────
+const STEP_GATES: Record<string, string> = {
+  uniqueMethod: "selectedOfferId",
+  freeOptIn: "selectedMechanismId",
+  headlines: "selectedHvcoId",
+  adCopy: "selectedHeadlineId",
+  landingPage: "selectedAdCopyId",
+  emailSequence: "selectedLandingPageId",
+  whatsappSequence: "selectedEmailSequenceId",
+};
+
+const GATE_ORDER: string[] = ["offer", "uniqueMethod", "freeOptIn", "headlines", "adCopy", "landingPage", "emailSequence", "whatsappSequence"];
+
+function findFirstIncompleteStep(kit: any): string {
+  for (const s of GATE_ORDER) {
+    const gate = STEP_GATES[s];
+    if (gate && kit[gate] == null) return s;
+  }
+  return "offer"; // fallback
+}
+
 // ─── CampaignKitSidebar: persistent sidebar showing selection state ─────────────
-const KIT_SLOTS: Array<{ label: string; field: string; step: string }> = [
-  { label: "Offer", field: "selectedOfferId", step: "offer" },
-  { label: "Method", field: "selectedMechanismId", step: "uniqueMethod" },
-  { label: "Lead Magnet", field: "selectedHvcoId", step: "freeOptIn" },
-  { label: "Headline", field: "selectedHeadlineId", step: "headlines" },
-  { label: "Ad Copy", field: "selectedAdCopyId", step: "adCopy" },
-  { label: "Landing Page", field: "selectedLandingPageId", step: "landingPage" },
-  { label: "Email Sequence", field: "selectedEmailSequenceId", step: "emailSequence" },
-  { label: "WhatsApp", field: "selectedWhatsAppSequenceId", step: "whatsappSequence" },
+const KIT_SLOTS: Array<{ label: string; field: string; step: string; num: number }> = [
+  { label: "Offer", field: "selectedOfferId", step: "offer", num: 3 },
+  { label: "Method", field: "selectedMechanismId", step: "uniqueMethod", num: 4 },
+  { label: "Lead Magnet", field: "selectedHvcoId", step: "freeOptIn", num: 5 },
+  { label: "Headline", field: "selectedHeadlineId", step: "headlines", num: 6 },
+  { label: "Ad Copy", field: "selectedAdCopyId", step: "adCopy", num: 7 },
+  { label: "Landing Page", field: "selectedLandingPageId", step: "landingPage", num: 8 },
+  { label: "Email Sequence", field: "selectedEmailSequenceId", step: "emailSequence", num: 9 },
+  { label: "WhatsApp", field: "selectedWhatsAppSequenceId", step: "whatsappSequence", num: 10 },
 ];
 
-function CampaignKitSidebar({ kit, onNavigate }: { kit: any; onNavigate: (step: string) => void }) {
+function CampaignKitSidebar({ kit, currentStep, onNavigate }: { kit: any; currentStep: string; onNavigate: (step: string) => void }) {
   if (!kit) return null;
 
   const filledCount = KIT_SLOTS.filter(s => kit[s.field] != null).length;
@@ -545,10 +566,15 @@ function CampaignKitSidebar({ kit, onNavigate }: { kit: any; onNavigate: (step: 
       <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
         {KIT_SLOTS.map(slot => {
           const isFilled = kit[slot.field] != null;
+          const isCurrent = slot.step === currentStep;
+          // A slot is locked if its gate field is defined and the PREVIOUS gate is not met
+          const gateField = STEP_GATES[slot.step];
+          const isLocked = !isFilled && gateField && kit[gateField] == null;
+
           return (
             <button
               key={slot.field}
-              onClick={() => onNavigate(slot.step)}
+              onClick={() => { if (!isLocked) onNavigate(slot.step); }}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -556,31 +582,48 @@ function CampaignKitSidebar({ kit, onNavigate }: { kit: any; onNavigate: (step: 
                 padding: "8px 10px",
                 borderRadius: "10px",
                 border: "none",
-                background: isFilled ? "rgba(88,204,2,0.06)" : "transparent",
-                cursor: "pointer",
+                background: isCurrent ? "rgba(255,91,29,0.08)" : isFilled ? "rgba(88,204,2,0.06)" : "transparent",
+                cursor: isLocked ? "default" : "pointer",
                 width: "100%",
                 textAlign: "left",
                 transition: "background 0.15s",
+                opacity: isLocked ? 0.5 : 1,
               }}
-              onMouseEnter={e => { if (!isFilled) (e.currentTarget as HTMLElement).style.background = "rgba(0,0,0,0.03)"; }}
-              onMouseLeave={e => { if (!isFilled) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+              onMouseEnter={e => { if (!isFilled && !isLocked) (e.currentTarget as HTMLElement).style.background = "rgba(0,0,0,0.03)"; }}
+              onMouseLeave={e => { if (!isFilled && !isLocked && !isCurrent) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
             >
-              {isFilled ? (
-                <span style={{ color: "#58CC02", fontSize: "16px", lineHeight: 1 }}>✓</span>
-              ) : (
-                <span style={{ color: "#ccc", fontSize: "16px", lineHeight: 1 }}>○</span>
-              )}
+              {/* Step number indicator */}
+              <span style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 24,
+                height: 24,
+                borderRadius: "50%",
+                fontSize: "11px",
+                fontWeight: 700,
+                fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)",
+                background: isFilled ? "#58CC02" : isCurrent ? "var(--v2-primary-btn, #FF5B1D)" : isLocked ? "#e5e0d8" : "#ddd",
+                color: (isFilled || isCurrent) ? "#fff" : isLocked ? "#bbb" : "#888",
+                flexShrink: 0,
+              }}>
+                {isFilled ? "✓" : slot.num}
+              </span>
               <span style={{
                 fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)",
                 fontSize: "13px",
-                fontWeight: isFilled ? 600 : 400,
-                color: isFilled ? "var(--v2-text-dark, #1A1624)" : "#999",
+                fontWeight: isFilled || isCurrent ? 600 : 400,
+                color: isFilled ? "var(--v2-text-dark, #1A1624)" : isCurrent ? "var(--v2-primary-btn, #FF5B1D)" : isLocked ? "#ccc" : "#999",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
                 whiteSpace: "nowrap",
+                flex: 1,
               }}>
                 {slot.label}
               </span>
+              {isLocked && (
+                <span style={{ fontSize: "12px", color: "#ccc" }}>🔒</span>
+              )}
             </button>
           );
         })}
@@ -2078,6 +2121,16 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
     }
   }, [activeIcp?.id]);
 
+  // ── Route guard: redirect if upstream selection not met ──
+  useEffect(() => {
+    if (!campaignKit) return;
+    const gateField = STEP_GATES[step];
+    if (gateField && campaignKit[gateField] == null) {
+      const target = findFirstIncompleteStep(campaignKit);
+      navigate(`/v2-dashboard/wizard/${target}`);
+    }
+  }, [campaignKit, step]);
+
   // ── Helper: select an item for the campaign kit ──
   const selectForKit = async (field: string, value: number | string | null) => {
     if (!campaignKit?.id) return;
@@ -2927,7 +2980,7 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
       </div>
       {/* ── Campaign Kit Sidebar (desktop only) ── */}
       <div className="campaign-kit-sidebar-wrapper" style={{ display: "none" }}>
-        <CampaignKitSidebar kit={campaignKit} onNavigate={(s) => navigate(`/v2-dashboard/wizard/${s}`)} />
+        <CampaignKitSidebar kit={campaignKit} currentStep={step} onNavigate={(s) => navigate(`/v2-dashboard/wizard/${s}`)} />
       </div>
       <style>{`@media (min-width: 1024px) { .campaign-kit-sidebar-wrapper { display: block !important; } }`}</style>
       </div>

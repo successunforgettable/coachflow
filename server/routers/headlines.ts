@@ -12,7 +12,7 @@ import {
   incrementHeadlineCount,
   getDb,
 } from "../db";
-import { headlines, jobs } from "../../drizzle/schema";
+import { headlines, jobs, campaignKits, offers, hvcoTitles } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
@@ -299,6 +299,29 @@ export const headlinesRouter = router({
         }
       }
 
+      // ── Cascade context from Campaign Kit ──
+      let cascadeContext = "";
+      try {
+        const [relIcp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
+        if (relIcp) {
+          const [kit] = await db.select().from(campaignKits).where(and(eq(campaignKits.userId, ctx.user.id), eq(campaignKits.icpId, relIcp.id))).limit(1);
+          if (kit) {
+            const parts: string[] = [];
+            if (kit.selectedOfferId) {
+              const [offer] = await db.select().from(offers).where(eq(offers.id, kit.selectedOfferId)).limit(1);
+              if (offer) parts.push(`The selected offer angle is: ${offer.activeAngle || "godfather"}`);
+            }
+            if (kit.selectedHvcoId) {
+              const [hvco] = await db.select().from(hvcoTitles).where(eq(hvcoTitles.id, kit.selectedHvcoId)).limit(1);
+              if (hvco) parts.push(`The lead magnet is: ${hvco.title}`);
+            }
+            if (parts.length > 0) {
+              cascadeContext = `\n\nUPSTREAM CONTEXT — SELECTED ASSETS:\n${parts.join(". ")}. Headline tone must match whether it is promoting the free lead magnet or the high-ticket offer.\n\n`;
+            }
+          }
+        }
+      } catch (e) { console.warn("[cascade] headlines context fetch failed:", e); }
+
       const headlineSetId = nanoid();
       const allHeadlines: Array<typeof headlines.$inferInsert> = [];
       const countMultiplier = input.powerMode ? 3 : 1; // Power Mode generates 3x more
@@ -320,6 +343,7 @@ export const headlinesRouter = router({
         // Inject SOT as outermost layer, then ICP — Item 1.2 + 1.4
         const promptWithIcp = icpContext ? prompt.replace(/\n\nGenerate /, `\n\n${icpContext}\n\nGenerate `) : prompt;
         const promptWithSot = sotContext ? `${sotContext}\n\n${promptWithIcp}` : promptWithIcp;
+        const promptWithCascade = cascadeContext ? `${cascadeContext}${promptWithSot}` : promptWithSot;
 
         try {
           const response = await invokeLLM({
@@ -328,7 +352,7 @@ export const headlinesRouter = router({
                 role: "system",
                 content: "You are an expert direct response copywriter. Return ONLY valid JSON, no markdown, no explanations.",
               },
-              { role: "user", content: promptWithSot },
+              { role: "user", content: promptWithCascade },
             ],
           });
 

@@ -12,7 +12,7 @@ import {
   incrementHvcoCount
 } from "../db";
 import { getDb } from "../db";
-import { services, idealCustomerProfiles, sourceOfTruth, campaigns, jobs, hvcoTitles } from "../../drizzle/schema";
+import { services, idealCustomerProfiles, sourceOfTruth, campaigns, jobs, hvcoTitles, campaignKits, heroMechanisms } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { getQuotaLimit } from "../quotaLimits";
@@ -153,11 +153,26 @@ export const hvcoRouter = router({
       const resolvedTargetMarket = input.targetMarket?.trim() || service.targetCustomer || "";
       const resolvedHvcoTopic = input.hvcoTopic?.trim() || service.hvcoTopic || "";
 
+      // ── Cascade context from Campaign Kit ──
+      let cascadeContext = "";
+      try {
+        const [icp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
+        if (icp) {
+          const [kit] = await db.select().from(campaignKits).where(and(eq(campaignKits.userId, user.id), eq(campaignKits.icpId, icp.id))).limit(1);
+          if (kit?.selectedMechanismId) {
+            const [mech] = await db.select().from(heroMechanisms).where(eq(heroMechanisms.id, kit.selectedMechanismId)).limit(1);
+            if (mech) {
+              cascadeContext = `\n\nUPSTREAM CONTEXT — HERO MECHANISM:\nThe user's hero mechanism is: ${mech.mechanismName}. The lead magnet title should reference or naturally lead into this mechanism.\n\n`;
+            }
+          }
+        }
+      } catch (e) { console.warn("[cascade] hvco context fetch failed:", e); }
+
       const hvcoSetId = nanoid();
       const allTitles: any[] = [];
 
       // Generate Long Titles (20 variations)
-      const longTitlesPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert copywriter creating compelling HVCO (High-Value Content Offer) titles.
+      const longTitlesPrompt = `${cascadeContext}${sotContext ? `${sotContext}\n\n` : ''}You are an expert copywriter creating compelling HVCO (High-Value Content Offer) titles.
 
 Product: ${service.name}
 Target Market: ${resolvedTargetMarket}
