@@ -807,7 +807,7 @@ export default function V2LandingPageResultPanel({
   // Notify parent of angle changes for campaign kit selection
   useEffect(() => { onAngleChange?.(resolvedTab); }, [resolvedTab, onAngleChange]);
   const [viewMode, setViewMode] = useState<"edit" | "preview">("edit");
-  const [previewTheme, setPreviewTheme] = useState<ThemeKey>("dark");
+  const [previewTheme, setPreviewTheme] = useState<ThemeKey>("light");
   const [styleMode, setStyleMode] = useState<"text" | "visual">("text");
   const [exportUpgradeOpen, setExportUpgradeOpen] = useState(false);
   const [coachAssets, setCoachAssets] = useState<CoachAssets>({ headshot: null, logo: null, socialProof: [] });
