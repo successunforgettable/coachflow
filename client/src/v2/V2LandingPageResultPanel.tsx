@@ -13,6 +13,7 @@ import { trpc } from "../lib/trpc";
 import { toast } from "sonner";
 import ZappyMascot from "./ZappyMascot";
 import UpgradePrompt from "./components/UpgradePrompt";
+import LandingPageVisualTemplate from "./components/LandingPageVisualTemplate";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type AngleKey = "original" | "godfather" | "free" | "dollar";
@@ -1173,8 +1174,17 @@ export default function V2LandingPageResultPanel({
               </button>
             </div>
           </div>
-          {/* Renderer content */}
-          <LandingPageVisualRenderer angleData={angles[resolvedTab]} theme={previewTheme} assets={coachAssets} />
+          {/* Renderer content — visual template when assets uploaded, standard renderer otherwise */}
+          {styleMode === "visual" && coachAssets.headshot ? (
+            <LandingPageVisualTemplate
+              angleData={angles[resolvedTab]}
+              headshot={coachAssets.headshot}
+              logo={coachAssets.logo}
+              socialProof={coachAssets.socialProof}
+            />
+          ) : (
+            <LandingPageVisualRenderer angleData={angles[resolvedTab]} theme={previewTheme} assets={coachAssets} />
+          )}
         </div>
       )}
 
