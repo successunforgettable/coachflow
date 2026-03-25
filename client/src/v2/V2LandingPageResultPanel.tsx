@@ -1179,6 +1179,7 @@ export default function V2LandingPageResultPanel({
             </div>
           </div>
           {/* Renderer content — strictly separated by styleMode */}
+          {console.log("MODAL OPENING - styleMode:", styleMode, "previewTheme:", previewTheme)}
           {styleMode === "text" && (
             <LandingPageVisualRenderer angleData={angles[resolvedTab]} theme={previewTheme} assets={coachAssets} />
           )}
