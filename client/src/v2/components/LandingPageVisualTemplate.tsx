@@ -183,7 +183,7 @@ export default function LandingPageVisualTemplate(props: VisualTemplateProps) {
                   <p style={{ fontFamily: B_FONT, color: A, fontSize: "14px", fontWeight: 600, fontStyle: "normal", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 12px" }}>{c.eyebrowHeadline}</p>
                 )}
                 {ok(c.mainHeadline) && (
-                  <h1 style={{ fontFamily: H_FONT, fontSize: "clamp(28px, 4vw, 45px)", fontWeight: 700, fontStyle: "normal", lineHeight: 1.15, color: TEXT_DARK, margin: "0 0 20px" }}>{c.mainHeadline}</h1>
+                  <h1 style={{ fontFamily: H_FONT, fontSize: "clamp(24px, 3.5vw, 36px)", fontWeight: 700, fontStyle: "normal", lineHeight: 1.2, color: TEXT_DARK, margin: "0 0 20px" }}>{c.mainHeadline}</h1>
                 )}
                 {ok(c.subheadline) && (
                   <p style={{ fontFamily: B_FONT, fontSize: "18px", fontWeight: 400, fontStyle: "normal", color: BODY_DARK, margin: "0 0 28px", lineHeight: 1.6 }}>{c.subheadline}</p>

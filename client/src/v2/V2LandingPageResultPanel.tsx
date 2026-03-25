@@ -820,6 +820,9 @@ export default function V2LandingPageResultPanel({
   const [exportUpgradeOpen, setExportUpgradeOpen] = useState(false);
   const [coachAssets, setCoachAssets] = useState<CoachAssets>({ headshot: null, logo: null, socialProof: [] });
 
+  // Load coach profile for authority section
+  const { data: coachProfile } = trpc.user.getCoachProfile.useQuery();
+
   // Load saved assets on mount
   const { data: savedAssets } = trpc.user.getCoachAssets.useQuery();
   useEffect(() => {
@@ -1181,6 +1184,8 @@ export default function V2LandingPageResultPanel({
               headshot={coachAssets.headshot}
               logo={coachAssets.logo}
               socialProof={coachAssets.socialProof}
+              coachName={coachProfile?.coachName || undefined}
+              coachBackground={coachProfile?.coachBackground || undefined}
               primaryColor="#FE4500"
               offerAngle={resolvedTab === "original" ? undefined : resolvedTab}
             />
