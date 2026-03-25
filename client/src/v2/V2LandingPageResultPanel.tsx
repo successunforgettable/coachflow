@@ -1077,15 +1077,15 @@ export default function V2LandingPageResultPanel({
         ))}
       </div>
 
-      {/* ── Edit content ── */}
-      <AngleTabContent
+      {/* ── Edit content (Text Style only) ── */}
+      {styleMode === "text" && <AngleTabContent
         key={resolvedTab}
         content={angles[resolvedTab]}
         landingPageId={landingPageId}
         angle={resolvedTab}
         onAngleUpdate={(newAngle) => handleAngleUpdate(resolvedTab, newAngle)}
         isFreeTier={isFreeTier}
-      />
+      />}
 
       {/* ── Full-screen preview modal ── */}
       {viewMode === "preview" && (
