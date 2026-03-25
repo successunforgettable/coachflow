@@ -1024,6 +1024,7 @@ export default function V2LandingPageResultPanel({
                 <button
                   onClick={() => {
                     if (!coachAssets.headshot) { toast.error("Upload a coach photo first"); return; }
+                    setStyleMode("visual");
                     setViewMode("preview");
                   }}
                   style={{
@@ -1051,7 +1052,7 @@ export default function V2LandingPageResultPanel({
           {styleMode === "text" && (
             <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
               <button
-                onClick={() => setViewMode("preview")}
+                onClick={() => { setStyleMode("text"); setViewMode("preview"); }}
                 style={{
                   background: "#1A1624", color: "#F5F1EA", border: "none", borderRadius: "9999px",
                   padding: "9px 22px", fontFamily: "var(--v2-font-body)", fontWeight: 700, fontSize: "13px",
