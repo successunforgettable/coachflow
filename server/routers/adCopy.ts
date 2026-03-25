@@ -2,7 +2,7 @@ import { z } from "zod";
 import { randomUUID } from "crypto";
 import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
-import { adCopy, services, campaigns, idealCustomerProfiles, sourceOfTruth, jobs, campaignKits, offers, heroMechanisms, headlines as headlinesTable } from "../../drizzle/schema";
+import { adCopy, services, campaigns, idealCustomerProfiles, sourceOfTruth, jobs, campaignKits, offers, heroMechanisms, headlines as headlinesTable, landingPages as landingPagesTable } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { invokeLLM } from "../_core/llm";
 import { nanoid } from "nanoid";
@@ -46,6 +46,11 @@ REFRAME THESE COMMON VIOLATIONS:
 - "Secret method" → "A counterintuitive approach that most coaches overlook"
 - "Quit your 9-5" → "Create a coaching business that fits your life"
 - "Only 3 spots left" → "Applications now open" (unless truly limited)
+
+CHARACTER LIMITS (Meta Ads Manager requirements):
+- Headlines: maximum 40 characters
+- Primary text (body copy): maximum 125 characters for optimal display — text beyond 125 chars gets truncated with "...See More" on mobile
+- Link descriptions: maximum 30 characters
 
 Your output must be ad copy that could be submitted directly to Meta without triggering a policy violation review.
 `;
@@ -343,6 +348,46 @@ ${icp.communicationStyle ? `How they communicate: ${icp.communicationStyle}` : '
           }
         }
       } catch (e) { console.warn("[cascade] adCopy context fetch failed:", e); }
+
+      // ── Special Ad Category detection ──
+      let specialAdCategoryRules = "";
+      try {
+        const nicheText = `${service.name} ${service.description || ""} ${service.category || ""} ${input.targetMarket || ""} ${input.pressingProblem || ""}`.toLowerCase();
+        const HEALTH_KEYWORDS = ["health", "wellness", "fitness", "weight loss", "diet", "nutrition", "medical", "therapy", "mental health", "anxiety", "depression", "healing"];
+        const FINANCE_KEYWORDS = ["finance", "investment", "wealth", "income", "money", "profit", "revenue", "trading", "crypto", "real estate investing", "financial"];
+        const EMPLOYMENT_KEYWORDS = ["job", "career", "employment", "hiring", "certification", "resume", "salary", "recruit"];
+
+        if (HEALTH_KEYWORDS.some(kw => nicheText.includes(kw))) {
+          specialAdCategoryRules = `\n\nSPECIAL AD CATEGORY — HEALTH:\nThis niche triggers Meta's health-related ad restrictions.\n- NO before/after transformation claims (visual or textual)\n- NO implying the viewer has a health condition ("Are you struggling with anxiety?")\n- NO specific weight/body measurement claims\n- DO frame as lifestyle improvement, not medical treatment\n- DO use first-person coaching language, not clinical language\n`;
+        } else if (FINANCE_KEYWORDS.some(kw => nicheText.includes(kw))) {
+          specialAdCategoryRules = `\n\nSPECIAL AD CATEGORY — FINANCE:\nThis niche triggers Meta's financial services ad restrictions.\n- NO income guarantees or specific earnings claims\n- NO implying the viewer is in financial hardship ("Tired of being broke?")\n- NO cryptocurrency or investment return promises\n- DO frame as education and skill-building\n- DO use qualified language ("learn strategies for building income")\n`;
+        } else if (EMPLOYMENT_KEYWORDS.some(kw => nicheText.includes(kw))) {
+          specialAdCategoryRules = `\n\nSPECIAL AD CATEGORY — EMPLOYMENT:\nThis niche triggers Meta's employment ad restrictions.\n- NO age-specific targeting language\n- NO gender-specific job descriptions\n- NO location-restricted opportunity claims\n- DO use inclusive language accessible to all demographics\n`;
+        }
+      } catch (e) { console.warn("[niche-detect] failed:", e); }
+
+      // ── Message match enforcement ──
+      let messageMatchRule = "";
+      try {
+        const [relIcp2] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
+        if (relIcp2) {
+          const [kit2] = await db.select().from(campaignKits).where(and(eq(campaignKits.userId, ctx.user.id), eq(campaignKits.icpId, relIcp2.id))).limit(1);
+          if (kit2?.selectedLandingPageId) {
+            const [lp] = await db.select().from(landingPagesTable).where(eq(landingPagesTable.id, kit2.selectedLandingPageId)).limit(1);
+            if (lp) {
+              const angle = kit2.selectedLandingPageAngle || "original";
+              const angleCol = angle === "godfather" ? lp.godfatherAngle : angle === "free" ? lp.freeAngle : angle === "dollar" ? lp.dollarAngle : lp.originalAngle;
+              const parsed = typeof angleCol === "string" ? JSON.parse(angleCol) : angleCol;
+              if (parsed?.mainHeadline) {
+                messageMatchRule = `\n\nMESSAGE MATCH RULE: Your ad headlines must thematically echo the selected landing page headline which is: "${parsed.mainHeadline}". A user who clicks the ad must feel they landed in the right place. Headline themes must be consistent — do not create jarring mismatches between ad and landing page.\n`;
+              }
+            }
+          }
+        }
+      } catch (e) { console.warn("[message-match] failed:", e); }
+
+      // Prepend special rules to cascade context
+      cascadeContext = `${specialAdCategoryRules}${messageMatchRule}${cascadeContext}`;
 
       const adSetId = nanoid();
       const count = input.powerMode ? 30 : 15; // Power Mode generates 2x
@@ -764,12 +809,39 @@ Format as JSON array:
           const resolvedTestimonials = capturedInput.testimonials?.trim() || [capturedService.testimonial1Quote, capturedService.testimonial2Quote, capturedService.testimonial3Quote].filter(Boolean).join(" | ") || "";
 
           const socialProof = { hasCustomers: !!capturedService.totalCustomers && capturedService.totalCustomers > 0, hasRating: !!capturedService.averageRating && parseFloat(capturedService.averageRating) > 0, hasReviews: !!capturedService.totalReviews && capturedService.totalReviews > 0, hasTestimonials: !!capturedService.testimonial1Name || !!capturedService.testimonial2Name || !!capturedService.testimonial3Name, hasPress: !!capturedService.pressFeatures && capturedService.pressFeatures.trim().length > 0, customerCount: capturedService.totalCustomers || 0, rating: capturedService.averageRating || '', reviewCount: capturedService.totalReviews || 0, press: capturedService.pressFeatures || '' };
+          // ── Special Ad Category detection (async path) ──
+          let asyncSpecialRules = "";
+          let asyncMessageMatch = "";
+          try {
+            const nicheText = `${capturedService.name} ${capturedService.description || ""} ${capturedService.category || ""} ${capturedInput.targetMarket || ""} ${capturedInput.pressingProblem || ""}`.toLowerCase();
+            const HL = ["health", "wellness", "fitness", "weight loss", "diet", "nutrition", "medical", "therapy", "mental health", "anxiety", "depression"];
+            const FL = ["finance", "investment", "wealth", "income", "money", "profit", "revenue", "trading", "crypto"];
+            const EL = ["job", "career", "employment", "hiring", "certification", "resume", "salary"];
+            if (HL.some(k => nicheText.includes(k))) asyncSpecialRules = `\nSPECIAL AD CATEGORY — HEALTH: No before/after claims. No implying viewer has a health condition. Frame as lifestyle improvement.\n`;
+            else if (FL.some(k => nicheText.includes(k))) asyncSpecialRules = `\nSPECIAL AD CATEGORY — FINANCE: No income guarantees. No implying financial hardship. Frame as education.\n`;
+            else if (EL.some(k => nicheText.includes(k))) asyncSpecialRules = `\nSPECIAL AD CATEGORY — EMPLOYMENT: No age/gender-specific language. Use inclusive language.\n`;
+
+            const [relIcpAsync] = await bgDb.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, capturedInput.serviceId)).limit(1);
+            if (relIcpAsync) {
+              const [kitAsync] = await bgDb.select().from(campaignKits).where(and(eq(campaignKits.userId, capturedUserId), eq(campaignKits.icpId, relIcpAsync.id))).limit(1);
+              if (kitAsync?.selectedLandingPageId) {
+                const [lpAsync] = await bgDb.select().from(landingPagesTable).where(eq(landingPagesTable.id, kitAsync.selectedLandingPageId)).limit(1);
+                if (lpAsync) {
+                  const ang = kitAsync.selectedLandingPageAngle || "original";
+                  const col = ang === "godfather" ? lpAsync.godfatherAngle : ang === "free" ? lpAsync.freeAngle : ang === "dollar" ? lpAsync.dollarAngle : lpAsync.originalAngle;
+                  const p = typeof col === "string" ? JSON.parse(col) : col;
+                  if (p?.mainHeadline) asyncMessageMatch = `\nMESSAGE MATCH RULE: Ad headlines must thematically echo the landing page headline: "${p.mainHeadline}". Consistency between ad and page is critical.\n`;
+                }
+              }
+            }
+          } catch (e) { console.warn("[async niche/match] failed:", e); }
+
           const adSetId = nanoid();
           const count = capturedInput.powerMode ? 30 : 15;
           const adTypeContext = capturedInput.adType === "lead_gen" ? "Lead Generation (free webinar, consultation, download)" : "E-commerce (direct product sale)";
           const socialProofGuidance = socialProof.hasCustomers || socialProof.hasRating || socialProof.hasReviews ? `REAL SOCIAL PROOF AVAILABLE - Use these verified numbers:\n- ${socialProof.customerCount} total customers\n- ${socialProof.rating} average rating\n- ${socialProof.reviewCount} reviews\nYou MUST use these exact numbers when incorporating social proof. Do not fabricate or inflate.` : `NO SOCIAL PROOF DATA PROVIDED - Use launch-safe alternatives:\n- Focus on benefit claims and outcomes ("Get X result")\n- Use curiosity hooks ("The method that...")\n- Use contrast ("Before vs After")\n- DO NOT mention customer counts, ratings, or reviews\n- DO NOT fabricate testimonials or statistics`;
 
-          const headlinePrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ${count} high-converting ad HEADLINES for this service:\n\nService: ${capturedService.name}\nCategory: ${capturedService.category}\nTarget Market: ${capturedInput.targetMarket}\nProduct Category: ${capturedInput.productCategory}\nSpecific Product Name: ${capturedInput.specificProductName}\nPressing Problem: ${resolvedPressingProblem}\nDesired Outcome: ${resolvedDesiredOutcome}\nUnique Mechanism: ${resolvedUniqueMechanism || 'N/A'}\nKey Benefits: ${capturedInput.listBenefits || 'N/A'}\n\n${socialProofGuidance}\n\n${icpContext}\n\nAd Type: ${adTypeContext}\nAd Style: ${capturedInput.adStyle}\nCall To Action: ${capturedInput.adCallToAction}\n\nCreate ${count} attention-grabbing headlines (max 40 characters each).\n\nFormat as JSON array: { "headlines": ["headline 1", ...] }`;
+          const headlinePrompt = `${asyncSpecialRules}${asyncMessageMatch}${sotContext ? `${sotContext}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ${count} high-converting ad HEADLINES for this service:\n\nService: ${capturedService.name}\nCategory: ${capturedService.category}\nTarget Market: ${capturedInput.targetMarket}\nProduct Category: ${capturedInput.productCategory}\nSpecific Product Name: ${capturedInput.specificProductName}\nPressing Problem: ${resolvedPressingProblem}\nDesired Outcome: ${resolvedDesiredOutcome}\nUnique Mechanism: ${resolvedUniqueMechanism || 'N/A'}\nKey Benefits: ${capturedInput.listBenefits || 'N/A'}\n\n${socialProofGuidance}\n\n${icpContext}\n\nAd Type: ${adTypeContext}\nAd Style: ${capturedInput.adStyle}\nCall To Action: ${capturedInput.adCallToAction}\n\nCreate ${count} attention-grabbing headlines (max 40 characters each).\n\nFormat as JSON array: { "headlines": ["headline 1", ...] }`;
           const headlineResponse = await invokeLLM({ messages: [{ role: "system", content: `${META_COMPLIANCE_RULES}\n\nYou are an expert ad copywriter who specializes in Meta-compliant advertising for coaches, speakers and consultants. Always respond with valid JSON.` }, { role: "user", content: headlinePrompt }], response_format: { type: "json_schema", json_schema: { name: "ad_headlines", strict: true, schema: { type: "object", properties: { headlines: { type: "array", items: { type: "string" } } }, required: ["headlines"], additionalProperties: false } } } });
           const headlineContent = headlineResponse.choices[0].message.content;
           if (typeof headlineContent !== "string") throw new Error("Invalid headline response");
