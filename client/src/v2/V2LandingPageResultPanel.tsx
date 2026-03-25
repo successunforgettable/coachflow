@@ -1177,8 +1177,11 @@ export default function V2LandingPageResultPanel({
               </button>
             </div>
           </div>
-          {/* Renderer content — visual template when assets uploaded, standard renderer otherwise */}
-          {styleMode === "visual" && coachAssets.headshot ? (
+          {/* Renderer content — strictly separated by styleMode */}
+          {styleMode === "text" && (
+            <LandingPageVisualRenderer angleData={angles[resolvedTab]} theme={previewTheme} assets={coachAssets} />
+          )}
+          {styleMode === "visual" && (
             <LandingPageVisualTemplate
               angleData={angles[resolvedTab]}
               headshot={coachAssets.headshot}
@@ -1190,8 +1193,6 @@ export default function V2LandingPageResultPanel({
               primaryColor="#FE4500"
               offerAngle={resolvedTab === "original" ? undefined : resolvedTab}
             />
-          ) : (
-            <LandingPageVisualRenderer angleData={angles[resolvedTab]} theme={previewTheme} assets={coachAssets} />
           )}
         </div>
       )}
