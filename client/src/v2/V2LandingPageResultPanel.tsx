@@ -1186,6 +1186,7 @@ export default function V2LandingPageResultPanel({
               socialProof={coachAssets.socialProof}
               coachName={coachProfile?.coachName || undefined}
               coachBackground={coachProfile?.coachBackground || undefined}
+              serviceDescription={(data as any)?.productDescription || undefined}
               primaryColor="#FE4500"
               offerAngle={resolvedTab === "original" ? undefined : resolvedTab}
             />

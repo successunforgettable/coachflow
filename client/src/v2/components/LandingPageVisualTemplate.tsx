@@ -21,6 +21,7 @@ interface VisualTemplateProps {
   socialProof: string[];
   coachName?: string;
   coachBackground?: string;
+  serviceDescription?: string;
   primaryColor?: string;
   hvcoType?: string;
   campaignType?: string;
@@ -120,7 +121,9 @@ function FaqAccordion({ items, accent }: { items: Array<{ q: string; a: string }
 
 // ─── Main Template ──────────────────────────────────────────────────────────
 export default function LandingPageVisualTemplate(props: VisualTemplateProps) {
-  const { angleData: c, headshot, logo, socialProof, coachName, coachBackground, primaryColor = "#FE4500" } = props;
+  const { angleData: c, headshot, logo, socialProof, coachName, coachBackground, serviceDescription, primaryColor = "#FE4500" } = props;
+  // Use serviceDescription as fallback if coachBackground is too short
+  const bioText = coachBackground && coachBackground.length > 50 ? coachBackground : serviceDescription || coachBackground || "";
   const A = primaryColor;
   const gradient = `linear-gradient(90deg, ${A} 35%, #000 100%)`;
   let ctaIdx = 0;
@@ -243,7 +246,7 @@ export default function LandingPageVisualTemplate(props: VisualTemplateProps) {
               )}
               <div style={{ flex: "1 1 50%", minWidth: "300px" }}>
                 {coachName && <h2 style={{ fontFamily: H_FONT, fontWeight: 700, fontStyle: "normal", fontSize: "42px", color: TEXT_DARK, margin: "0 0 16px", textTransform: "uppercase" }}>{coachName}</h2>}
-                {coachBackground && <p style={{ fontFamily: B_FONT, fontWeight: 400, fontStyle: "normal", fontSize: "18px", lineHeight: 1.6, color: BODY_DARK, margin: "0 0 24px" }}>{coachBackground}</p>}
+                {bioText && <p style={{ fontFamily: B_FONT, fontWeight: 400, fontStyle: "normal", fontSize: "18px", lineHeight: 1.6, color: BODY_DARK, margin: "0 0 24px" }}>{bioText}</p>}
                 <CtaButton />
               </div>
             </div>
@@ -293,7 +296,7 @@ export default function LandingPageVisualTemplate(props: VisualTemplateProps) {
               <div style={inner}>
                 {whyFail && (
                   <>
-                    <h2 style={{ fontFamily: H_FONT, fontWeight: 700, fontStyle: "normal", fontSize: "clamp(28px, 3.5vw, 42px)", color: TEXT_LIGHT, margin: "0 0 24px" }}>{whyFail.heading}</h2>
+                    <h2 style={{ fontFamily: H_FONT, fontWeight: 700, fontStyle: "normal", fontSize: "clamp(24px, 3vw, 32px)", color: TEXT_LIGHT, margin: "0 0 24px" }}>{whyFail.heading}</h2>
                     {whyFail.body.map((p, i) => (
                       <div key={i} style={{ display: "flex", gap: "12px", alignItems: "flex-start", marginBottom: "14px" }}>
                         <span style={{ fontFamily: H_FONT, color: "#dc2626", fontSize: "18px", fontWeight: 700, fontStyle: "normal", flexShrink: 0, lineHeight: 1.5 }}>✕</span>
@@ -396,21 +399,21 @@ export default function LandingPageVisualTemplate(props: VisualTemplateProps) {
         {(() => { try { const d = hb(c.scarcityUrgency); if (!d) return null; return (
           <section style={{ background: LIGHT, padding: `${sectionPad} 0` }}>
             <div style={inner}>
-              <div style={{ border: `3px solid ${A}`, borderRadius: "12px", padding: "40px 32px", textAlign: "center" }}>
-                <h2 style={{ fontFamily: H_FONT, fontWeight: 700, fontStyle: "normal", fontSize: "clamp(24px, 3vw, 36px)", color: A, margin: "0 0 16px" }}>{d.heading}</h2>
-                {d.body.map((p, i) => <p key={i} style={{ fontFamily: B_FONT, fontWeight: 400, fontStyle: "normal", fontSize: "18px", lineHeight: 1.6, color: BODY_LIGHT, margin: "0 0 12px" }}>{p}</p>)}
+              <div style={{ border: `3px solid ${A}`, borderRadius: "12px", padding: "40px 32px", textAlign: "left" }}>
+                <h2 style={{ fontFamily: H_FONT, fontWeight: 700, fontStyle: "normal", fontSize: "clamp(24px, 3vw, 32px)", color: A, margin: "0 0 16px", textAlign: "center" }}>{d.heading}</h2>
+                {d.body.map((p, i) => <p key={i} style={{ fontFamily: B_FONT, fontWeight: 400, fontStyle: "normal", fontSize: "17px", lineHeight: 1.7, color: BODY_LIGHT, margin: "0 0 14px" }}>{p}</p>)}
               </div>
             </div>
           </section>
         ); } catch { return null; } })()}
 
         {/* ═══ SECTION 13: FINAL CTA (DARK) ═══ */}
-        <section style={{ background: DARK, padding: "80px 0", textAlign: "center" }}>
-          <div style={inner}>
-            <h2 style={{ fontFamily: H_FONT, fontWeight: 700, fontStyle: "normal", fontSize: "clamp(28px, 4vw, 45px)", color: TEXT_DARK, margin: "0 0 16px" }}>
+        <section style={{ background: DARK, padding: "80px 0" }}>
+          <div style={{ ...inner, textAlign: "center" }}>
+            <h2 style={{ fontFamily: H_FONT, fontWeight: 700, fontStyle: "normal", fontSize: "clamp(24px, 3.5vw, 36px)", color: TEXT_DARK, margin: "0 0 20px" }}>
               {ok(c.mainHeadline) ? c.mainHeadline : "Ready to Get Started?"}
             </h2>
-            <p style={{ fontFamily: B_FONT, fontWeight: 400, fontStyle: "normal", fontSize: "18px", color: BODY_DARK, margin: "0 0 32px", maxWidth: "600px", marginLeft: "auto", marginRight: "auto", lineHeight: 1.6 }}>
+            <p style={{ fontFamily: B_FONT, fontWeight: 400, fontStyle: "normal", fontSize: "17px", color: BODY_DARK, margin: "0 auto 32px", maxWidth: "650px", lineHeight: 1.7, textAlign: "left" }}>
               {ok(c.subheadline) ? c.subheadline : "Take the first step today."}
             </p>
             <CtaButton />
