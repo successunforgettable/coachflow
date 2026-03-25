@@ -1181,7 +1181,7 @@ export default function V2LandingPageResultPanel({
               headshot={coachAssets.headshot}
               logo={coachAssets.logo}
               socialProof={coachAssets.socialProof}
-              primaryColor="#FF5B1D"
+              primaryColor="#FE4500"
               offerAngle={resolvedTab === "original" ? undefined : resolvedTab}
             />
           ) : (
