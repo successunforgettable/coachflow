@@ -395,19 +395,20 @@ function LandingPageVisualRenderer({ angleData }: { angleData: AngleContent; the
   const testimonials = (() => { if (!c.testimonials) return []; if (typeof c.testimonials === "string") { try { return JSON.parse(c.testimonials as string); } catch { return []; } } return Array.isArray(c.testimonials) ? c.testimonials : []; })();
   const outline = (() => { if (!c.consultationOutline) return []; if (typeof c.consultationOutline === "string") { try { return JSON.parse(c.consultationOutline as string); } catch { return []; } } return Array.isArray(c.consultationOutline) ? c.consultationOutline : []; })();
 
-  const s: React.CSSProperties = { fontFamily: "Inter, system-ui, sans-serif" };
+  // Font constant — applied to EVERY text element to override global Fraunces/serif CSS rules
+  const F = "Inter, system-ui, sans-serif";
 
   return (
-    <div style={{ ...s, background: "#1a1a1a", color: "#fff", borderRadius: "16px", overflow: "hidden" }}>
+    <div style={{ fontFamily: F, background: "#1a1a1a", color: "#fff", borderRadius: "16px", overflow: "hidden" }}>
       <div style={{ maxWidth: "56rem", margin: "0 auto", padding: "48px 24px", display: "flex", flexDirection: "column", gap: "64px" }}>
 
         {/* 1. Hero */}
         {(isValid(c.eyebrowHeadline) || isValid(c.mainHeadline)) && (
           <section style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: "16px", alignItems: "center" }}>
-            {isValid(c.eyebrowHeadline) && <p style={{ color: "#ff3366", fontSize: "14px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", margin: 0 }}>{c.eyebrowHeadline}</p>}
-            {isValid(c.mainHeadline) && <h1 style={{ fontSize: "clamp(28px, 5vw, 48px)", fontWeight: 700, lineHeight: 1.15, margin: 0 }}>{c.mainHeadline}</h1>}
-            {isValid(c.subheadline) && <p style={{ fontSize: "18px", color: "#d1d5db", maxWidth: "48rem", margin: 0 }}>{c.subheadline}</p>}
-            {isValid(c.primaryCta) && <button style={{ background: "#8B5CF6", color: "#fff", border: "none", borderRadius: "8px", padding: "14px 32px", fontSize: "18px", fontWeight: 600, cursor: "pointer", marginTop: "8px" }}>{c.primaryCta}</button>}
+            {isValid(c.eyebrowHeadline) && <p style={{ fontFamily: F, color: "#ff3366", fontSize: "14px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", margin: 0 }}>{c.eyebrowHeadline}</p>}
+            {isValid(c.mainHeadline) && <h1 style={{ fontFamily: F, fontSize: "clamp(28px, 5vw, 48px)", fontWeight: 700, lineHeight: 1.15, margin: 0, fontStyle: "normal" }}>{c.mainHeadline}</h1>}
+            {isValid(c.subheadline) && <p style={{ fontFamily: F, fontSize: "18px", color: "#d1d5db", maxWidth: "48rem", margin: 0 }}>{c.subheadline}</p>}
+            {isValid(c.primaryCta) && <button style={{ fontFamily: F, background: "#8B5CF6", color: "#fff", border: "none", borderRadius: "8px", padding: "14px 32px", fontSize: "18px", fontWeight: 600, cursor: "pointer", marginTop: "8px" }}>{c.primaryCta}</button>}
           </section>
         )}
 
@@ -416,7 +417,7 @@ function LandingPageVisualRenderer({ angleData }: { angleData: AngleContent; the
           <section style={{ borderTop: "1px solid #374151", borderBottom: "1px solid #374151", padding: "32px 0" }}>
             <p style={{ textAlign: "center", color: "#6b7280", fontSize: "12px", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "24px" }}>As Seen In</p>
             <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "32px" }}>
-              {c.asSeenIn.map((logo, i) => <span key={i} style={{ color: "#9ca3af", fontWeight: 600, fontSize: "16px" }}>{String(logo)}</span>)}
+              {c.asSeenIn.map((logo, i) => <span key={i} style={{ fontFamily: F, color: "#9ca3af", fontWeight: 600, fontSize: "16px", fontStyle: "normal" }}>{String(logo)}</span>)}
             </div>
           </section>
         )}
@@ -424,7 +425,7 @@ function LandingPageVisualRenderer({ angleData }: { angleData: AngleContent; the
         {/* 3. Quiz */}
         {quiz && isValid(quiz.question) && (
           <section style={{ background: "#222222", borderRadius: "16px", padding: "32px" }}>
-            <h2 style={{ fontSize: "24px", fontWeight: 700, marginBottom: "20px" }}>{quiz.question}</h2>
+            <h2 style={{ fontFamily: F, fontSize: "24px", fontWeight: 700, fontStyle: "normal", marginBottom: "20px" }}>{quiz.question}</h2>
             <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "20px" }}>
               {(quiz.options ?? []).map((opt: string, i: number) => (
                 <div key={i} style={{ background: "#2a2a2a", border: "1px solid #374151", borderRadius: "8px", padding: "14px 16px" }}>
@@ -434,7 +435,7 @@ function LandingPageVisualRenderer({ angleData }: { angleData: AngleContent; the
             </div>
             {isValid(quiz.answer) && (
               <div style={{ background: "rgba(139,92,246,0.1)", border: "1px solid #8B5CF6", borderRadius: "8px", padding: "14px 16px" }}>
-                <p style={{ color: "#8B5CF6", fontWeight: 600, margin: 0 }}>Answer: {quiz.answer}</p>
+                <p style={{ fontFamily: F, color: "#8B5CF6", fontWeight: 600, margin: 0, fontStyle: "normal" }}>Answer: {quiz.answer}</p>
               </div>
             )}
           </section>
@@ -443,46 +444,46 @@ function LandingPageVisualRenderer({ angleData }: { angleData: AngleContent; the
         {/* 4. Problem Agitation */}
         {isValid(c.problemAgitation) && (() => { try { const { heading, body } = splitHeadingBody(c.problemAgitation); return (
           <section>
-            <h2 style={{ fontSize: "32px", fontWeight: 700, textAlign: "center", marginBottom: "24px" }}>{heading}</h2>
-            {body.map((p, i) => <p key={i} style={{ color: "#d1d5db", fontSize: "18px", lineHeight: 1.7, margin: "0 0 16px" }}>{p}</p>)}
+            <h2 style={{ fontFamily: F, fontSize: "32px", fontWeight: 700, fontStyle: "normal", textAlign: "center", marginBottom: "24px" }}>{heading}</h2>
+            {body.map((p, i) => <p key={i} style={{ fontFamily: F, color: "#d1d5db", fontSize: "18px", lineHeight: 1.7, margin: "0 0 16px", fontStyle: "normal" }}>{p}</p>)}
           </section>
         ); } catch { return null; } })()}
 
         {/* 5. Solution Introduction */}
         {isValid(c.solutionIntro) && (() => { try { const { heading, body } = splitHeadingBody(c.solutionIntro); return (
           <section style={{ background: "linear-gradient(135deg, rgba(88,28,135,0.2), rgba(131,24,67,0.2))", borderRadius: "16px", padding: "32px" }}>
-            <h2 style={{ fontSize: "32px", fontWeight: 700, marginBottom: "20px" }}>{heading}</h2>
-            {body.map((p, i) => <p key={i} style={{ color: "#d1d5db", fontSize: "18px", lineHeight: 1.7, margin: "0 0 16px" }}>{p}</p>)}
+            <h2 style={{ fontFamily: F, fontSize: "32px", fontWeight: 700, fontStyle: "normal", marginBottom: "20px" }}>{heading}</h2>
+            {body.map((p, i) => <p key={i} style={{ fontFamily: F, color: "#d1d5db", fontSize: "18px", lineHeight: 1.7, margin: "0 0 16px", fontStyle: "normal" }}>{p}</p>)}
           </section>
         ); } catch { return null; } })()}
 
         {/* 6. Why Old Methods Fail */}
         {isValid(c.whyOldFail) && (() => { try { const { heading, body } = splitHeadingBody(c.whyOldFail); return (
           <section>
-            <h2 style={{ fontSize: "32px", fontWeight: 700, textAlign: "center", color: "#ff3366", marginBottom: "24px" }}>{heading}</h2>
-            {body.map((p, i) => <p key={i} style={{ color: "#d1d5db", fontSize: "18px", lineHeight: 1.7, margin: "0 0 16px" }}>{p}</p>)}
+            <h2 style={{ fontFamily: F, fontSize: "32px", fontWeight: 700, fontStyle: "normal", textAlign: "center", color: "#ff3366", marginBottom: "24px" }}>{heading}</h2>
+            {body.map((p, i) => <p key={i} style={{ fontFamily: F, color: "#d1d5db", fontSize: "18px", lineHeight: 1.7, margin: "0 0 16px", fontStyle: "normal" }}>{p}</p>)}
           </section>
         ); } catch { return null; } })()}
 
         {/* 7. Unique Mechanism */}
         {isValid(c.uniqueMechanism) && (() => { try { const { heading, body } = splitHeadingBody(c.uniqueMechanism); return (
           <section style={{ background: "#222222", borderRadius: "16px", padding: "32px" }}>
-            <h2 style={{ fontSize: "32px", fontWeight: 700, color: "#8B5CF6", marginBottom: "20px" }}>{heading}</h2>
-            {body.map((p, i) => <p key={i} style={{ color: "#d1d5db", fontSize: "18px", lineHeight: 1.7, margin: "0 0 16px" }}>{p}</p>)}
+            <h2 style={{ fontFamily: F, fontSize: "32px", fontWeight: 700, fontStyle: "normal", color: "#8B5CF6", marginBottom: "20px" }}>{heading}</h2>
+            {body.map((p, i) => <p key={i} style={{ fontFamily: F, color: "#d1d5db", fontSize: "18px", lineHeight: 1.7, margin: "0 0 16px", fontStyle: "normal" }}>{p}</p>)}
           </section>
         ); } catch { return null; } })()}
 
         {/* 8. Testimonials */}
         {testimonials.length > 0 && (
           <section>
-            <h2 style={{ fontSize: "32px", fontWeight: 700, textAlign: "center", marginBottom: "32px" }}>What Our Clients Say</h2>
+            <h2 style={{ fontFamily: F, fontSize: "32px", fontWeight: 700, fontStyle: "normal", textAlign: "center", marginBottom: "32px" }}>What Our Clients Say</h2>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "20px" }}>
               {testimonials.map((t: TestimonialItem, i: number) => (
                 <div key={i} style={{ background: "#222222", border: "1px solid #374151", borderRadius: "12px", padding: "24px" }}>
-                  {t.headline && <h3 style={{ color: "#8B5CF6", fontSize: "18px", fontWeight: 700, marginBottom: "12px" }}>{t.headline}</h3>}
-                  {t.quote && <p style={{ color: "#d1d5db", fontStyle: "italic", marginBottom: "12px", lineHeight: 1.6 }}>"{t.quote}"</p>}
-                  <p style={{ fontWeight: 600, margin: "0 0 2px", fontSize: "14px" }}>{t.name ?? ""}</p>
-                  <p style={{ color: "#9ca3af", fontSize: "13px", margin: 0 }}>{t.location ?? ""}</p>
+                  {t.headline && <h3 style={{ fontFamily: F, color: "#8B5CF6", fontSize: "18px", fontWeight: 700, fontStyle: "normal", marginBottom: "12px" }}>{t.headline}</h3>}
+                  {t.quote && <p style={{ fontFamily: F, color: "#d1d5db", fontStyle: "italic", marginBottom: "12px", lineHeight: 1.6 }}>"{t.quote}"</p>}
+                  <p style={{ fontFamily: F, fontWeight: 600, margin: "0 0 2px", fontSize: "14px", fontStyle: "normal" }}>{t.name ?? ""}</p>
+                  <p style={{ fontFamily: F, color: "#9ca3af", fontSize: "13px", margin: 0, fontStyle: "normal" }}>{t.location ?? ""}</p>
                 </div>
               ))}
             </div>
@@ -492,16 +493,16 @@ function LandingPageVisualRenderer({ angleData }: { angleData: AngleContent; the
         {/* 9. Insider Advantages */}
         {isValid(c.insiderAdvantages) && (() => { try { const { heading, body } = splitHeadingBody(c.insiderAdvantages); return (
           <section style={{ background: "linear-gradient(135deg, rgba(6,78,59,0.2), rgba(30,58,138,0.2))", borderRadius: "16px", padding: "32px" }}>
-            <h2 style={{ fontSize: "32px", fontWeight: 700, marginBottom: "20px" }}>{heading}</h2>
-            {body.map((p, i) => <p key={i} style={{ color: "#d1d5db", fontSize: "18px", lineHeight: 1.7, margin: "0 0 16px" }}>{p}</p>)}
+            <h2 style={{ fontFamily: F, fontSize: "32px", fontWeight: 700, fontStyle: "normal", marginBottom: "20px" }}>{heading}</h2>
+            {body.map((p, i) => <p key={i} style={{ fontFamily: F, color: "#d1d5db", fontSize: "18px", lineHeight: 1.7, margin: "0 0 16px", fontStyle: "normal" }}>{p}</p>)}
           </section>
         ); } catch { return null; } })()}
 
         {/* 10. Scarcity / Urgency */}
         {isValid(c.scarcityUrgency) && (() => { try { const { heading, body } = splitHeadingBody(c.scarcityUrgency); return (
           <section style={{ border: "2px solid #ff3366", borderRadius: "16px", padding: "32px" }}>
-            <h2 style={{ fontSize: "32px", fontWeight: 700, color: "#ff3366", marginBottom: "20px" }}>{heading}</h2>
-            {body.map((p, i) => <p key={i} style={{ color: "#d1d5db", fontSize: "18px", lineHeight: 1.7, margin: "0 0 16px" }}>{p}</p>)}
+            <h2 style={{ fontFamily: F, fontSize: "32px", fontWeight: 700, fontStyle: "normal", color: "#ff3366", marginBottom: "20px" }}>{heading}</h2>
+            {body.map((p, i) => <p key={i} style={{ fontFamily: F, color: "#d1d5db", fontSize: "18px", lineHeight: 1.7, margin: "0 0 16px", fontStyle: "normal" }}>{p}</p>)}
           </section>
         ); } catch { return null; } })()}
 
@@ -511,8 +512,8 @@ function LandingPageVisualRenderer({ angleData }: { angleData: AngleContent; the
           const bigNumber = statText.match(/\d+%/)?.[0] || "";
           return (
             <section style={{ textAlign: "center", padding: "32px 0" }}>
-              {bigNumber && <div style={{ fontSize: "clamp(36px, 6vw, 60px)", fontWeight: 700, color: "#ff3366", marginBottom: "12px" }}>{bigNumber}</div>}
-              <p style={{ fontSize: "20px", color: "#d1d5db", maxWidth: "40rem", margin: "0 auto" }}>{statText}</p>
+              {bigNumber && <div style={{ fontFamily: F, fontSize: "clamp(36px, 6vw, 60px)", fontWeight: 700, color: "#ff3366", marginBottom: "12px", fontStyle: "normal" }}>{bigNumber}</div>}
+              <p style={{ fontFamily: F, fontSize: "20px", color: "#d1d5db", maxWidth: "40rem", margin: "0 auto", fontStyle: "normal" }}>{statText}</p>
             </section>
           );
         } catch { return null; } })()}
@@ -520,22 +521,22 @@ function LandingPageVisualRenderer({ angleData }: { angleData: AngleContent; the
         {/* 12. Time-Saving Benefit */}
         {isValid(c.timeSavingBenefit) && (() => { try { const { heading, body } = splitHeadingBody(c.timeSavingBenefit); return (
           <section style={{ background: "#222222", borderRadius: "16px", padding: "32px" }}>
-            <h2 style={{ fontSize: "32px", fontWeight: 700, marginBottom: "20px" }}>{heading}</h2>
-            {body.map((p, i) => <p key={i} style={{ color: "#d1d5db", fontSize: "18px", lineHeight: 1.7, margin: "0 0 16px" }}>{p}</p>)}
+            <h2 style={{ fontFamily: F, fontSize: "32px", fontWeight: 700, fontStyle: "normal", marginBottom: "20px" }}>{heading}</h2>
+            {body.map((p, i) => <p key={i} style={{ fontFamily: F, color: "#d1d5db", fontSize: "18px", lineHeight: 1.7, margin: "0 0 16px", fontStyle: "normal" }}>{p}</p>)}
           </section>
         ); } catch { return null; } })()}
 
         {/* 13. Consultation Outline */}
         {outline.length > 0 && (
           <section>
-            <h2 style={{ fontSize: "32px", fontWeight: 700, textAlign: "center", marginBottom: "32px" }}>What You'll Get in Your FREE Consultation</h2>
+            <h2 style={{ fontFamily: F, fontSize: "32px", fontWeight: 700, fontStyle: "normal", textAlign: "center", marginBottom: "32px" }}>What You'll Get in Your FREE Consultation</h2>
             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
               {outline.map((item: ConsultationItem, i: number) => (
                 <div key={i} style={{ background: "#222222", border: "1px solid #374151", borderRadius: "12px", padding: "20px", display: "flex", gap: "16px", alignItems: "flex-start" }}>
                   <div style={{ flexShrink: 0, width: "32px", height: "32px", background: "#8B5CF6", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "14px" }}>{i + 1}</div>
                   <div>
-                    <h3 style={{ fontSize: "18px", fontWeight: 700, marginBottom: "6px" }}>{item.title ?? ""}</h3>
-                    <p style={{ color: "#d1d5db", margin: 0, lineHeight: 1.6 }}>{item.description ?? ""}</p>
+                    <h3 style={{ fontFamily: F, fontSize: "18px", fontWeight: 700, fontStyle: "normal", marginBottom: "6px" }}>{item.title ?? ""}</h3>
+                    <p style={{ fontFamily: F, color: "#d1d5db", margin: 0, lineHeight: 1.6, fontStyle: "normal" }}>{item.description ?? ""}</p>
                   </div>
                 </div>
               ))}
@@ -546,8 +547,8 @@ function LandingPageVisualRenderer({ angleData }: { angleData: AngleContent; the
         {/* Final CTA */}
         {isValid(c.primaryCta) && (
           <section style={{ textAlign: "center", padding: "32px 0" }}>
-            <h2 style={{ fontSize: "32px", fontWeight: 700, marginBottom: "20px" }}>Ready to Get Started?</h2>
-            <button style={{ background: "#8B5CF6", color: "#fff", border: "none", borderRadius: "8px", padding: "16px 48px", fontSize: "20px", fontWeight: 600, cursor: "pointer" }}>{c.primaryCta}</button>
+            <h2 style={{ fontFamily: F, fontSize: "32px", fontWeight: 700, fontStyle: "normal", marginBottom: "20px" }}>Ready to Get Started?</h2>
+            <button style={{ fontFamily: F, background: "#8B5CF6", color: "#fff", border: "none", borderRadius: "8px", padding: "16px 48px", fontSize: "20px", fontWeight: 600, cursor: "pointer", fontStyle: "normal" }}>{c.primaryCta}</button>
           </section>
         )}
       </div>
