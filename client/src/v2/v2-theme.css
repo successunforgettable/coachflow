@@ -59,6 +59,28 @@
   margin: 0;
 }
 
+/* Reset heading styles inside preview modals so inline styles take precedence */
+[data-v2] .lp-preview-reset h1,
+[data-v2] .lp-preview-reset h2,
+[data-v2] .lp-preview-reset h3,
+[data-v2] .lp-preview-reset h4,
+[data-v2] .lp-preview-reset h5,
+[data-v2] .lp-preview-reset h6 {
+  font-family: inherit;
+  font-style: inherit;
+  font-weight: inherit;
+  color: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+}
+
+[data-v2] .lp-preview-reset p,
+[data-v2] .lp-preview-reset span,
+[data-v2] .lp-preview-reset li,
+[data-v2] .lp-preview-reset label {
+  font-family: inherit;
+}
+
 [data-v2] p,
 [data-v2] span,
 [data-v2] li,

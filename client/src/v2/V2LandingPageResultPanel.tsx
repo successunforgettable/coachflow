@@ -1038,7 +1038,7 @@ export default function V2LandingPageResultPanel({
 
       {/* ── Full-screen preview modal ── */}
       {viewMode === "preview" && (
-        <div style={{
+        <div className="lp-preview-reset" style={{
           position: "fixed",
           top: 0,
           left: 0,
