@@ -340,6 +340,37 @@ export default function LandingPageVisualTemplate(props: VisualTemplateProps) {
           </section>
         ); } catch { return null; } })()}
 
+        {/* ═══ SECTION 8b: QUIZ SECTION (LIGHT) ═══ */}
+        {(() => { try {
+          const q = c.quizSection;
+          if (!q) return null;
+          const quiz = typeof q === "string" ? JSON.parse(q) : q;
+          if (!quiz?.question || !quiz?.options?.length) return null;
+          return (
+            <section style={{ background: LIGHT, padding: "80px 0" }}>
+              <div style={inner}>
+                <h2 style={{ fontFamily: H_FONT, fontWeight: 700, fontStyle: "normal", fontSize: "clamp(24px, 3vw, 32px)", color: TEXT_LIGHT, margin: "0 0 32px", textAlign: "center" }}>
+                  {quiz.question}
+                </h2>
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px", maxWidth: "700px", margin: "0 auto" }}>
+                  {quiz.options.map((opt: string, i: number) => (
+                    <div key={i} style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: "10px", padding: "16px 20px", cursor: "pointer", display: "flex", alignItems: "center", gap: "12px" }}>
+                      <span style={{ fontFamily: H_FONT, fontWeight: 700, fontStyle: "normal", fontSize: "18px", color: A, flexShrink: 0 }}>{String.fromCharCode(65 + i)}.</span>
+                      <span style={{ fontFamily: B_FONT, fontWeight: 400, fontStyle: "normal", fontSize: "16px", color: BODY_LIGHT }}>{opt}</span>
+                    </div>
+                  ))}
+                </div>
+                {quiz.answer && (
+                  <div style={{ marginTop: "24px", maxWidth: "700px", margin: "24px auto 0", background: "rgba(254,69,0,0.06)", border: `1px solid ${A}`, borderRadius: "10px", padding: "20px" }}>
+                    <p style={{ fontFamily: B_FONT, fontWeight: 600, fontStyle: "normal", fontSize: "15px", color: A, margin: "0 0 8px" }}>The Answer:</p>
+                    <p style={{ fontFamily: B_FONT, fontWeight: 400, fontStyle: "normal", fontSize: "15px", lineHeight: 1.7, color: TEXT_LIGHT, margin: 0 }}>{quiz.answer}</p>
+                  </div>
+                )}
+              </div>
+            </section>
+          );
+        } catch { return null; } })()}
+
         {/* ═══ SECTION 9: SHOCKING STAT (WHITE) ═══ */}
         {(() => { try { if (!ok(c.shockingStat)) return null;
           const statText = txt(c.shockingStat);
