@@ -972,7 +972,19 @@ export default function V2LandingPageResultPanel({
               Upgrade to Pro
             </a>
           </div>
-          {/* Trial users see section cards inline — no preview button needed */}
+          {/* Text preview button for trial */}
+          <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
+            <button
+              onClick={() => { setStyleMode("text"); setViewMode("preview"); }}
+              style={{
+                background: "#1A1624", color: "#F5F1EA", border: "none", borderRadius: "9999px",
+                padding: "9px 22px", fontFamily: "var(--v2-font-body)", fontWeight: 700, fontSize: "13px",
+                cursor: "pointer", letterSpacing: "0.01em", display: "flex", alignItems: "center", gap: "6px",
+              }}
+            >
+              Open Preview
+            </button>
+          </div>
         </>
       ) : (
         <>
@@ -1036,7 +1048,21 @@ export default function V2LandingPageResultPanel({
             </>
           )}
 
-          {/* Text Style — no preview button needed, section cards are visible inline */}
+          {/* Open Preview (Text Style) */}
+          {styleMode === "text" && (
+            <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
+              <button
+                onClick={() => { setStyleMode("text"); setViewMode("preview"); }}
+                style={{
+                  background: "#1A1624", color: "#F5F1EA", border: "none", borderRadius: "9999px",
+                  padding: "9px 22px", fontFamily: "var(--v2-font-body)", fontWeight: 700, fontSize: "13px",
+                  cursor: "pointer", letterSpacing: "0.01em", display: "flex", alignItems: "center", gap: "6px",
+                }}
+              >
+                Open Preview
+              </button>
+            </div>
+          )}
         </>
       )}
 
@@ -1152,8 +1178,12 @@ export default function V2LandingPageResultPanel({
               </button>
             </div>
           </div>
-          {/* Renderer content — modal is only used for Visual Style preview */}
-          <LandingPageVisualTemplate
+          {/* Renderer content — strictly separated by styleMode */}
+          {styleMode === "text" && (
+            <LandingPageVisualRenderer angleData={angles[resolvedTab]} theme={previewTheme} assets={coachAssets} />
+          )}
+          {styleMode === "visual" && (
+            <LandingPageVisualTemplate
               angleData={angles[resolvedTab]}
               headshot={coachAssets.headshot}
               logo={coachAssets.logo}
@@ -1164,6 +1194,7 @@ export default function V2LandingPageResultPanel({
               primaryColor="#FE4500"
               offerAngle={resolvedTab === "original" ? undefined : resolvedTab}
             />
+          )}
         </div>
       )}
 
