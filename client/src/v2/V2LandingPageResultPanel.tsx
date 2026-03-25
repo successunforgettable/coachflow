@@ -388,223 +388,170 @@ const THEMES = {
 } as const;
 
 // ─── Visual renderer — complete rebuild with inline styles on every text element ───
-function LandingPageVisualRenderer({ angleData, theme, assets }: { angleData: AngleContent; theme: ThemeKey; assets?: CoachAssets }) {
+function LandingPageVisualRenderer({ angleData }: { angleData: AngleContent; theme?: ThemeKey; assets?: CoachAssets }) {
   const c = angleData;
-  const t = THEMES[theme];
-  const heading = "'Playfair Display', Georgia, serif";
-  const body = "'Inter', system-ui, sans-serif";
 
-  // Parse complex fields safely
-  const quiz = (() => { try { if (!c.quizSection) return null; if (typeof c.quizSection === "string") return JSON.parse(c.quizSection); return c.quizSection as QuizSection; } catch { return null; } })();
-  const testimonials = (() => { try { if (!c.testimonials) return []; if (typeof c.testimonials === "string") return JSON.parse(c.testimonials as string); return Array.isArray(c.testimonials) ? c.testimonials : []; } catch { return []; } })();
-  const outline = (() => { try { if (!c.consultationOutline) return []; if (typeof c.consultationOutline === "string") return JSON.parse(c.consultationOutline as string); return Array.isArray(c.consultationOutline) ? c.consultationOutline : []; } catch { return []; } })();
+  const quiz = (() => { if (!c.quizSection) return null; if (typeof c.quizSection === "string") { try { return JSON.parse(c.quizSection); } catch { return null; } } return c.quizSection as QuizSection; })();
+  const testimonials = (() => { if (!c.testimonials) return []; if (typeof c.testimonials === "string") { try { return JSON.parse(c.testimonials as string); } catch { return []; } } return Array.isArray(c.testimonials) ? c.testimonials : []; })();
+  const outline = (() => { if (!c.consultationOutline) return []; if (typeof c.consultationOutline === "string") { try { return JSON.parse(c.consultationOutline as string); } catch { return []; } } return Array.isArray(c.consultationOutline) ? c.consultationOutline : []; })();
 
-  function getHB(val: unknown): { heading: string; body: string[] } | null {
-    if (!isValid(val)) return null;
-    const text = extractText(val);
-    const lines = text.split("\n").filter((l: string) => l.trim());
-    if (!lines.length) return null;
-    return { heading: lines[0], body: lines.slice(1) };
-  }
-
-  // Shared inline style builders — NEVER rely on inheritance
-  const h2Style: React.CSSProperties = { fontFamily: heading, fontWeight: 700, fontStyle: "normal", fontSize: "32px", lineHeight: 1.2, color: t.text, margin: "0 0 16px" };
-  const bodyStyle: React.CSSProperties = { fontFamily: body, fontWeight: 400, fontStyle: "normal", fontSize: "17px", lineHeight: 1.75, color: t.body, margin: "0 0 12px" };
-  const sectionStyle: React.CSSProperties = { padding: "64px 0", borderBottom: `1px solid ${t.border}` };
-  const ctaBtnStyle: React.CSSProperties = { fontFamily: body, background: t.cta, color: "#fff", border: "none", borderRadius: "9999px", padding: "16px 40px", fontSize: "18px", fontWeight: 600, cursor: "pointer", display: "block", margin: "32px auto 0" };
+  const s: React.CSSProperties = { fontFamily: "Inter, system-ui, sans-serif" };
 
   return (
-    <>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Inter:wght@300;400;500;600;700&display=swap');`}</style>
-      <div style={{ background: t.bg, minHeight: "100vh" }}>
-        <div style={{ maxWidth: "720px", margin: "0 auto", padding: "0 24px" }}>
+    <div style={{ ...s, background: "#1a1a1a", color: "#fff", borderRadius: "16px", overflow: "hidden" }}>
+      <div style={{ maxWidth: "56rem", margin: "0 auto", padding: "48px 24px", display: "flex", flexDirection: "column", gap: "64px" }}>
 
-          {/* 1. HERO */}
-          {(() => { try { return (isValid(c.eyebrowHeadline) || isValid(c.mainHeadline)) ? (
-            <section style={{ padding: "80px 0 64px", borderBottom: `1px solid ${t.border}`, textAlign: "center" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "40px", flexWrap: "wrap", justifyContent: "center" }}>
-                <div style={{ flex: 1, minWidth: "280px" }}>
-                  {isValid(c.eyebrowHeadline) && <p style={{ fontFamily: body, color: t.cta, fontSize: "13px", fontWeight: 700, fontStyle: "normal", textTransform: "uppercase", letterSpacing: "0.1em", margin: "0 0 12px" }}>{c.eyebrowHeadline}</p>}
-                  {isValid(c.mainHeadline) && <h1 style={{ fontFamily: heading, fontSize: "clamp(2rem, 5vw, 3.5rem)", fontWeight: 900, fontStyle: "normal", lineHeight: 1.1, color: t.text, margin: "0 0 16px" }}>{c.mainHeadline}</h1>}
-                  {isValid(c.subheadline) && <p style={{ fontFamily: body, fontSize: "18px", fontWeight: 400, fontStyle: "normal", color: t.body, margin: "0 0 24px", lineHeight: 1.6, maxWidth: "560px", marginLeft: "auto", marginRight: "auto" }}>{c.subheadline}</p>}
-                  {isValid(c.primaryCta) && <button style={ctaBtnStyle}>{c.primaryCta}</button>}
-                </div>
-                {assets?.headshot && (
-                  <div style={{ flexShrink: 0, maxWidth: "280px", width: "100%" }}>
-                    <img src={assets.headshot} alt="Coach" style={{ width: "100%", borderRadius: "16px", objectFit: "cover", maxHeight: "360px" }} />
-                  </div>
-                )}
-              </div>
-            </section>
-          ) : null; } catch { return null; } })()}
+        {/* 1. Hero */}
+        {(isValid(c.eyebrowHeadline) || isValid(c.mainHeadline)) && (
+          <section style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: "16px", alignItems: "center" }}>
+            {isValid(c.eyebrowHeadline) && <p style={{ color: "#ff3366", fontSize: "14px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", margin: 0 }}>{c.eyebrowHeadline}</p>}
+            {isValid(c.mainHeadline) && <h1 style={{ fontSize: "clamp(28px, 5vw, 48px)", fontWeight: 700, lineHeight: 1.15, margin: 0 }}>{c.mainHeadline}</h1>}
+            {isValid(c.subheadline) && <p style={{ fontSize: "18px", color: "#d1d5db", maxWidth: "48rem", margin: 0 }}>{c.subheadline}</p>}
+            {isValid(c.primaryCta) && <button style={{ background: "#8B5CF6", color: "#fff", border: "none", borderRadius: "8px", padding: "14px 32px", fontSize: "18px", fontWeight: 600, cursor: "pointer", marginTop: "8px" }}>{c.primaryCta}</button>}
+          </section>
+        )}
 
-          {/* Social proof photos */}
-          {assets?.socialProof && assets.socialProof.length > 0 && (
-            <section style={{ padding: "24px 0", overflowX: "auto" }}>
-              <div style={{ display: "flex", gap: "12px" }}>
-                {assets.socialProof.map((url, i) => <img key={i} src={url} alt="" style={{ height: "100px", borderRadius: "12px", objectFit: "cover", flexShrink: 0 }} />)}
-              </div>
-            </section>
-          )}
+        {/* 2. As Seen In */}
+        {isValid(c.asSeenIn) && Array.isArray(c.asSeenIn) && (
+          <section style={{ borderTop: "1px solid #374151", borderBottom: "1px solid #374151", padding: "32px 0" }}>
+            <p style={{ textAlign: "center", color: "#6b7280", fontSize: "12px", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "24px" }}>As Seen In</p>
+            <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "32px" }}>
+              {c.asSeenIn.map((logo, i) => <span key={i} style={{ color: "#9ca3af", fontWeight: 600, fontSize: "16px" }}>{String(logo)}</span>)}
+            </div>
+          </section>
+        )}
 
-          {/* 2. AS SEEN IN */}
-          {(() => { try { return isValid(c.asSeenIn) && Array.isArray(c.asSeenIn) ? (
-            <section style={{ ...sectionStyle, padding: "32px 0", textAlign: "center" }}>
-              <p style={{ fontFamily: body, color: t.muted, fontSize: "12px", fontWeight: 600, fontStyle: "normal", textTransform: "uppercase", letterSpacing: "0.1em", margin: "0 0 20px" }}>As Seen In</p>
-              <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "24px" }}>
-                {c.asSeenIn.map((logo, i) => <span key={i} style={{ fontFamily: body, color: t.muted, fontWeight: 600, fontStyle: "normal", fontSize: "16px" }}>{String(logo)}</span>)}
-              </div>
-            </section>
-          ) : null; } catch { return null; } })()}
-
-          {/* 3. PROBLEM AGITATION */}
-          {(() => { try { const hb = getHB(c.problemAgitation); if (!hb) return null; return (
-            <section style={sectionStyle}>
-              <h2 style={h2Style}>{hb.heading}</h2>
-              {hb.body.map((p, i) => <p key={i} style={bodyStyle}>{p}</p>)}
-            </section>
-          ); } catch { return null; } })()}
-
-          {/* 4. SOLUTION INTRO */}
-          {(() => { try { const hb = getHB(c.solutionIntro); if (!hb) return null; return (
-            <section style={{ ...sectionStyle, background: theme === "dark" ? "rgba(59,130,246,0.06)" : "rgba(29,78,216,0.04)", borderRadius: "12px", padding: "48px 32px", margin: "0 -8px" }}>
-              <h2 style={h2Style}>{hb.heading}</h2>
-              {hb.body.map((p, i) => <p key={i} style={bodyStyle}>{p}</p>)}
-            </section>
-          ); } catch { return null; } })()}
-
-          {/* 5. WHY OLD METHODS FAIL */}
-          {(() => { try { const hb = getHB(c.whyOldFail); if (!hb) return null; return (
-            <section style={sectionStyle}>
-              <h2 style={{ ...h2Style, color: t.red }}>{hb.heading}</h2>
-              {hb.body.map((p, i) => (
-                <div key={i} style={{ display: "flex", gap: "12px", alignItems: "flex-start", marginBottom: "12px" }}>
-                  <span style={{ fontFamily: body, color: t.red, fontSize: "18px", fontWeight: 700, fontStyle: "normal", flexShrink: 0, lineHeight: 1.75 }}>✕</span>
-                  <p style={bodyStyle}>{p}</p>
+        {/* 3. Quiz */}
+        {quiz && isValid(quiz.question) && (
+          <section style={{ background: "#222222", borderRadius: "16px", padding: "32px" }}>
+            <h2 style={{ fontSize: "24px", fontWeight: 700, marginBottom: "20px" }}>{quiz.question}</h2>
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "20px" }}>
+              {(quiz.options ?? []).map((opt: string, i: number) => (
+                <div key={i} style={{ background: "#2a2a2a", border: "1px solid #374151", borderRadius: "8px", padding: "14px 16px" }}>
+                  <span style={{ fontWeight: 600, marginRight: "10px" }}>{String.fromCharCode(65 + i)}.</span>{opt}
                 </div>
               ))}
-            </section>
-          ); } catch { return null; } })()}
-
-          {/* 6. UNIQUE MECHANISM */}
-          {(() => { try { const hb = getHB(c.uniqueMechanism); if (!hb) return null; return (
-            <section style={{ ...sectionStyle, background: t.surface, borderRadius: "12px", padding: "48px 32px", margin: "0 -8px" }}>
-              <h2 style={{ ...h2Style, color: t.accent }}>{hb.heading}</h2>
-              {hb.body.map((p, i) => <p key={i} style={bodyStyle}>{p}</p>)}
-            </section>
-          ); } catch { return null; } })()}
-
-          {/* 7. TESTIMONIALS */}
-          {testimonials.length > 0 && (() => { try { return (
-            <section style={sectionStyle}>
-              <h2 style={{ ...h2Style, textAlign: "center" }}>What Our Clients Say</h2>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "16px", marginTop: "24px" }}>
-                {testimonials.map((tm: TestimonialItem, i: number) => (
-                  <div key={i} style={{ background: t.surface, border: `1px solid ${t.border}`, borderRadius: "12px", padding: "24px", display: "flex", flexDirection: "column", gap: "12px" }}>
-                    {tm.headline && <h3 style={{ fontFamily: heading, color: t.accent, fontSize: "18px", fontWeight: 700, fontStyle: "normal", margin: 0 }}>{tm.headline}</h3>}
-                    {tm.quote && <p style={{ fontFamily: body, color: t.body, fontStyle: "italic", fontSize: "16px", fontWeight: 400, lineHeight: 1.65, margin: 0 }}>"{tm.quote}"</p>}
-                    <div style={{ marginTop: "auto" }}>
-                      <p style={{ fontFamily: body, fontWeight: 600, fontStyle: "normal", fontSize: "14px", margin: "0 0 2px", color: t.text }}>{tm.name ?? ""}</p>
-                      <p style={{ fontFamily: body, fontSize: "13px", fontWeight: 400, fontStyle: "normal", color: t.muted, margin: 0 }}>{tm.location ?? ""}</p>
-                    </div>
-                  </div>
-                ))}
+            </div>
+            {isValid(quiz.answer) && (
+              <div style={{ background: "rgba(139,92,246,0.1)", border: "1px solid #8B5CF6", borderRadius: "8px", padding: "14px 16px" }}>
+                <p style={{ color: "#8B5CF6", fontWeight: 600, margin: 0 }}>Answer: {quiz.answer}</p>
               </div>
-            </section>
-          ); } catch { return null; } })()}
+            )}
+          </section>
+        )}
 
-          {/* 8. INSIDER ADVANTAGES */}
-          {(() => { try { const hb = getHB(c.insiderAdvantages); if (!hb) return null; return (
-            <section style={sectionStyle}>
-              <h2 style={h2Style}>{hb.heading}</h2>
-              {hb.body.map((p, i) => (
-                <div key={i} style={{ display: "flex", gap: "12px", alignItems: "flex-start", marginBottom: "10px" }}>
-                  <span style={{ fontFamily: body, color: t.accent, fontSize: "17px", fontWeight: 700, fontStyle: "normal", flexShrink: 0 }}>{i + 1}.</span>
-                  <p style={bodyStyle}>{p}</p>
+        {/* 4. Problem Agitation */}
+        {isValid(c.problemAgitation) && (() => { try { const { heading, body } = splitHeadingBody(c.problemAgitation); return (
+          <section>
+            <h2 style={{ fontSize: "32px", fontWeight: 700, textAlign: "center", marginBottom: "24px" }}>{heading}</h2>
+            {body.map((p, i) => <p key={i} style={{ color: "#d1d5db", fontSize: "18px", lineHeight: 1.7, margin: "0 0 16px" }}>{p}</p>)}
+          </section>
+        ); } catch { return null; } })()}
+
+        {/* 5. Solution Introduction */}
+        {isValid(c.solutionIntro) && (() => { try { const { heading, body } = splitHeadingBody(c.solutionIntro); return (
+          <section style={{ background: "linear-gradient(135deg, rgba(88,28,135,0.2), rgba(131,24,67,0.2))", borderRadius: "16px", padding: "32px" }}>
+            <h2 style={{ fontSize: "32px", fontWeight: 700, marginBottom: "20px" }}>{heading}</h2>
+            {body.map((p, i) => <p key={i} style={{ color: "#d1d5db", fontSize: "18px", lineHeight: 1.7, margin: "0 0 16px" }}>{p}</p>)}
+          </section>
+        ); } catch { return null; } })()}
+
+        {/* 6. Why Old Methods Fail */}
+        {isValid(c.whyOldFail) && (() => { try { const { heading, body } = splitHeadingBody(c.whyOldFail); return (
+          <section>
+            <h2 style={{ fontSize: "32px", fontWeight: 700, textAlign: "center", color: "#ff3366", marginBottom: "24px" }}>{heading}</h2>
+            {body.map((p, i) => <p key={i} style={{ color: "#d1d5db", fontSize: "18px", lineHeight: 1.7, margin: "0 0 16px" }}>{p}</p>)}
+          </section>
+        ); } catch { return null; } })()}
+
+        {/* 7. Unique Mechanism */}
+        {isValid(c.uniqueMechanism) && (() => { try { const { heading, body } = splitHeadingBody(c.uniqueMechanism); return (
+          <section style={{ background: "#222222", borderRadius: "16px", padding: "32px" }}>
+            <h2 style={{ fontSize: "32px", fontWeight: 700, color: "#8B5CF6", marginBottom: "20px" }}>{heading}</h2>
+            {body.map((p, i) => <p key={i} style={{ color: "#d1d5db", fontSize: "18px", lineHeight: 1.7, margin: "0 0 16px" }}>{p}</p>)}
+          </section>
+        ); } catch { return null; } })()}
+
+        {/* 8. Testimonials */}
+        {testimonials.length > 0 && (
+          <section>
+            <h2 style={{ fontSize: "32px", fontWeight: 700, textAlign: "center", marginBottom: "32px" }}>What Our Clients Say</h2>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "20px" }}>
+              {testimonials.map((t: TestimonialItem, i: number) => (
+                <div key={i} style={{ background: "#222222", border: "1px solid #374151", borderRadius: "12px", padding: "24px" }}>
+                  {t.headline && <h3 style={{ color: "#8B5CF6", fontSize: "18px", fontWeight: 700, marginBottom: "12px" }}>{t.headline}</h3>}
+                  {t.quote && <p style={{ color: "#d1d5db", fontStyle: "italic", marginBottom: "12px", lineHeight: 1.6 }}>"{t.quote}"</p>}
+                  <p style={{ fontWeight: 600, margin: "0 0 2px", fontSize: "14px" }}>{t.name ?? ""}</p>
+                  <p style={{ color: "#9ca3af", fontSize: "13px", margin: 0 }}>{t.location ?? ""}</p>
                 </div>
               ))}
+            </div>
+          </section>
+        )}
+
+        {/* 9. Insider Advantages */}
+        {isValid(c.insiderAdvantages) && (() => { try { const { heading, body } = splitHeadingBody(c.insiderAdvantages); return (
+          <section style={{ background: "linear-gradient(135deg, rgba(6,78,59,0.2), rgba(30,58,138,0.2))", borderRadius: "16px", padding: "32px" }}>
+            <h2 style={{ fontSize: "32px", fontWeight: 700, marginBottom: "20px" }}>{heading}</h2>
+            {body.map((p, i) => <p key={i} style={{ color: "#d1d5db", fontSize: "18px", lineHeight: 1.7, margin: "0 0 16px" }}>{p}</p>)}
+          </section>
+        ); } catch { return null; } })()}
+
+        {/* 10. Scarcity / Urgency */}
+        {isValid(c.scarcityUrgency) && (() => { try { const { heading, body } = splitHeadingBody(c.scarcityUrgency); return (
+          <section style={{ border: "2px solid #ff3366", borderRadius: "16px", padding: "32px" }}>
+            <h2 style={{ fontSize: "32px", fontWeight: 700, color: "#ff3366", marginBottom: "20px" }}>{heading}</h2>
+            {body.map((p, i) => <p key={i} style={{ color: "#d1d5db", fontSize: "18px", lineHeight: 1.7, margin: "0 0 16px" }}>{p}</p>)}
+          </section>
+        ); } catch { return null; } })()}
+
+        {/* 11. Shocking Stat */}
+        {isValid(c.shockingStat) && (() => { try {
+          const statText = extractText(c.shockingStat);
+          const bigNumber = statText.match(/\d+%/)?.[0] || "";
+          return (
+            <section style={{ textAlign: "center", padding: "32px 0" }}>
+              {bigNumber && <div style={{ fontSize: "clamp(36px, 6vw, 60px)", fontWeight: 700, color: "#ff3366", marginBottom: "12px" }}>{bigNumber}</div>}
+              <p style={{ fontSize: "20px", color: "#d1d5db", maxWidth: "40rem", margin: "0 auto" }}>{statText}</p>
             </section>
-          ); } catch { return null; } })()}
+          );
+        } catch { return null; } })()}
 
-          {/* 9. SHOCKING STAT */}
-          {(() => { try { if (!isValid(c.shockingStat)) return null;
-            const statText = extractText(c.shockingStat);
-            const bigNumber = statText.match(/\d+[%x]/)?.[0] || statText.match(/\d+/)?.[0] || "";
-            return (
-              <section style={{ ...sectionStyle, textAlign: "center", padding: "80px 0" }}>
-                {bigNumber && <div style={{ fontFamily: heading, fontSize: "clamp(3rem, 8vw, 6rem)", fontWeight: 900, fontStyle: "normal", color: t.stat, margin: "0 0 16px", lineHeight: 1 }}>{bigNumber}</div>}
-                <p style={{ fontFamily: body, fontSize: "17px", fontWeight: 400, fontStyle: "normal", color: t.body, maxWidth: "560px", margin: "0 auto", lineHeight: 1.75 }}>{statText}</p>
-              </section>
-            );
-          } catch { return null; } })()}
+        {/* 12. Time-Saving Benefit */}
+        {isValid(c.timeSavingBenefit) && (() => { try { const { heading, body } = splitHeadingBody(c.timeSavingBenefit); return (
+          <section style={{ background: "#222222", borderRadius: "16px", padding: "32px" }}>
+            <h2 style={{ fontSize: "32px", fontWeight: 700, marginBottom: "20px" }}>{heading}</h2>
+            {body.map((p, i) => <p key={i} style={{ color: "#d1d5db", fontSize: "18px", lineHeight: 1.7, margin: "0 0 16px" }}>{p}</p>)}
+          </section>
+        ); } catch { return null; } })()}
 
-          {/* 10. QUIZ */}
-          {quiz && isValid(quiz.question) && (() => { try { return (
-            <section style={{ ...sectionStyle, background: t.surface, borderRadius: "12px", padding: "48px 32px", margin: "0 -8px" }}>
-              <h2 style={h2Style}>{quiz.question}</h2>
-              <div style={{ display: "flex", flexDirection: "column", gap: "10px", margin: "20px 0" }}>
-                {(quiz.options ?? []).map((opt: string, i: number) => (
-                  <div key={i} style={{ background: t.bg, border: `1px solid ${t.border}`, borderRadius: "8px", padding: "14px 16px", cursor: "pointer" }}>
-                    <span style={{ fontFamily: body, fontWeight: 600, fontStyle: "normal", fontSize: "16px", color: t.text, marginRight: "12px" }}>{String.fromCharCode(65 + i)}.</span>
-                    <span style={{ fontFamily: body, fontWeight: 400, fontStyle: "normal", fontSize: "16px", color: t.body }}>{opt}</span>
+        {/* 13. Consultation Outline */}
+        {outline.length > 0 && (
+          <section>
+            <h2 style={{ fontSize: "32px", fontWeight: 700, textAlign: "center", marginBottom: "32px" }}>What You'll Get in Your FREE Consultation</h2>
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              {outline.map((item: ConsultationItem, i: number) => (
+                <div key={i} style={{ background: "#222222", border: "1px solid #374151", borderRadius: "12px", padding: "20px", display: "flex", gap: "16px", alignItems: "flex-start" }}>
+                  <div style={{ flexShrink: 0, width: "32px", height: "32px", background: "#8B5CF6", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "14px" }}>{i + 1}</div>
+                  <div>
+                    <h3 style={{ fontSize: "18px", fontWeight: 700, marginBottom: "6px" }}>{item.title ?? ""}</h3>
+                    <p style={{ color: "#d1d5db", margin: 0, lineHeight: 1.6 }}>{item.description ?? ""}</p>
                   </div>
-                ))}
-              </div>
-              {isValid(quiz.answer) && (
-                <div style={{ background: theme === "dark" ? "rgba(59,130,246,0.1)" : "rgba(29,78,216,0.06)", border: `1px solid ${t.accent}`, borderRadius: "8px", padding: "14px 16px" }}>
-                  <p style={{ fontFamily: body, color: t.accent, fontWeight: 600, fontStyle: "normal", fontSize: "15px", margin: 0 }}>Answer: {quiz.answer}</p>
                 </div>
-              )}
-            </section>
-          ); } catch { return null; } })()}
+              ))}
+            </div>
+          </section>
+        )}
 
-          {/* 11. SCARCITY / URGENCY */}
-          {(() => { try { const hb = getHB(c.scarcityUrgency); if (!hb) return null; return (
-            <section style={{ ...sectionStyle, border: `2px solid ${t.red}`, borderRadius: "12px", padding: "32px", margin: "64px -8px 0" }}>
-              <h2 style={{ fontFamily: heading, fontWeight: 700, fontStyle: "normal", fontSize: "24px", color: t.red, margin: "0 0 12px" }}>{hb.heading}</h2>
-              {hb.body.map((p, i) => <p key={i} style={bodyStyle}>{p}</p>)}
-            </section>
-          ); } catch { return null; } })()}
-
-          {/* 12. CONSULTATION OUTLINE */}
-          {outline.length > 0 && (() => { try { return (
-            <section style={sectionStyle}>
-              <h2 style={{ ...h2Style, textAlign: "center" }}>What You'll Get</h2>
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "24px" }}>
-                {outline.map((item: ConsultationItem, i: number) => (
-                  <div key={i} style={{ background: t.surface, border: `1px solid ${t.border}`, borderRadius: "10px", padding: "20px 24px", display: "flex", gap: "16px", alignItems: "flex-start" }}>
-                    <div style={{ flexShrink: 0, width: "32px", height: "32px", background: t.accent, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <span style={{ fontFamily: body, fontWeight: 700, fontStyle: "normal", fontSize: "14px", color: "#fff" }}>{i + 1}</span>
-                    </div>
-                    <div>
-                      <h3 style={{ fontFamily: heading, fontSize: "18px", fontWeight: 700, fontStyle: "normal", marginBottom: "4px", color: t.text, margin: "0 0 4px" }}>{item.title ?? ""}</h3>
-                      <p style={{ fontFamily: body, color: t.body, margin: 0, lineHeight: 1.65, fontSize: "15px", fontWeight: 400, fontStyle: "normal" }}>{item.description ?? ""}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          ); } catch { return null; } })()}
-
-          {/* 13. FINAL CTA */}
-          {isValid(c.primaryCta) && (
-            <section style={{ textAlign: "center", padding: "80px 0 64px" }}>
-              <h2 style={{ fontFamily: heading, fontWeight: 900, fontStyle: "normal", fontSize: "36px", color: t.text, margin: "0 0 24px" }}>Ready to Get Started?</h2>
-              <button style={ctaBtnStyle}>{c.primaryCta}</button>
-            </section>
-          )}
-
-          {/* Time-saving benefit — rendered if exists */}
-          {(() => { try { const hb = getHB(c.timeSavingBenefit); if (!hb) return null; return (
-            <section style={{ ...sectionStyle, background: t.surface, borderRadius: "12px", padding: "48px 32px", margin: "0 -8px" }}>
-              <h2 style={h2Style}>{hb.heading}</h2>
-              {hb.body.map((p, i) => <p key={i} style={bodyStyle}>{p}</p>)}
-            </section>
-          ); } catch { return null; } })()}
-
-        </div>
+        {/* Final CTA */}
+        {isValid(c.primaryCta) && (
+          <section style={{ textAlign: "center", padding: "32px 0" }}>
+            <h2 style={{ fontSize: "32px", fontWeight: 700, marginBottom: "20px" }}>Ready to Get Started?</h2>
+            <button style={{ background: "#8B5CF6", color: "#fff", border: "none", borderRadius: "8px", padding: "16px 48px", fontSize: "20px", fontWeight: 600, cursor: "pointer" }}>{c.primaryCta}</button>
+          </section>
+        )}
       </div>
-    </>
+    </div>
   );
 }
 
