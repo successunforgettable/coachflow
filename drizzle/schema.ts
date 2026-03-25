@@ -411,6 +411,10 @@ export type LandingPageContent = {
     title: string;
     description: string;
   }>;
+  faq?: Array<{
+    question: string;
+    answer: string;
+  }>;
 };
 
 export const landingPages = mysqlTable("landingPages", {

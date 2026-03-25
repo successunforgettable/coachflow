@@ -155,6 +155,12 @@ Generate a complete landing page with 16 sections following this structure:
     2. "Done-For-You Templates" - "Plug-and-play scripts, checklists, and spreadsheets for every transaction, from your first crypto buy to safe cashing out."
     ... (8 more items)
 
+17. **FAQ** (5 questions and answers addressing common objections)
+    Generate 5 frequently asked questions that address the target customer's most likely objections, fears, and hesitations about this specific offer. Each answer should be 2-3 sentences, reassuring and specific. Base the questions on the ICP pain points and the offer positioning.
+    Example:
+    - Question: "Do I need coaching experience?" Answer: "No. This programme is designed for complete beginners. We give you everything you need to get started."
+    - Question: "What if I've tried other programmes and failed?" Answer: "Most programmes fail because they use a one-size-fits-all approach. Our method is personalised to your specific situation."
+
 Return as JSON matching the LandingPageContent type.
 Use the avatar's name, location, and description throughout the copy to personalize it.
 Make it compelling, benefit-driven, and conversion-focused.
@@ -232,13 +238,26 @@ CRITICAL CONTENT: Every single one of the 16 sections MUST contain substantial c
                 required: ["title", "description"],
                 additionalProperties: false
               }
+            },
+            faq: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  question: { type: "string" },
+                  answer: { type: "string" }
+                },
+                required: ["question", "answer"],
+                additionalProperties: false
+              }
             }
           },
           required: [
             "eyebrowHeadline", "mainHeadline", "subheadline", "primaryCta",
             "asSeenIn", "quizSection", "problemAgitation", "solutionIntro",
             "whyOldFail", "uniqueMechanism", "testimonials", "insiderAdvantages",
-            "scarcityUrgency", "shockingStat", "timeSavingBenefit", "consultationOutline"
+            "scarcityUrgency", "shockingStat", "timeSavingBenefit", "consultationOutline",
+            "faq"
           ],
           additionalProperties: false
         }
@@ -323,9 +342,10 @@ CRITICAL CONTENT: Every single one of the 16 sections MUST contain substantial c
         title: 'Implementation',
         description: 'We help you execute and succeed'
       }
-    ]
+    ],
+    faq: Array.isArray(cleanParsed.faq) && cleanParsed.faq.length > 0 ? cleanParsed.faq as any : []
   };
-  
+
   return validated;
 }
 
