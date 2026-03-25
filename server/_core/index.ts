@@ -162,6 +162,19 @@ async function startServer() {
       },
     });
 
+    // GHL OAuth callback
+    app.get("/api/oauth/gohighlevel/callback", async (req, res) => {
+      try {
+        const { code, state } = req.query as { code?: string; state?: string };
+        if (!code) { res.status(400).send("Missing authorization code"); return; }
+        // state contains the userId — redirect to dashboard with code param for client to exchange
+        res.redirect(`/v2-dashboard/wizard/pushToMeta?ghl_code=${encodeURIComponent(code)}&ghl_state=${encodeURIComponent(state || "")}`);
+      } catch (err) {
+        console.error("[GHL callback] Error:", err);
+        res.status(500).send("GHL OAuth callback failed");
+      }
+    });
+
     app.post("/api/upload-asset", upload.single("file"), async (req, res) => {
       try {
         let user: { id: number | string } | null = null;

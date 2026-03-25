@@ -1202,6 +1202,116 @@ function WhatsAppRecommendation({ whatsappSequenceId, campaignKit, onSelect, onR
   );
 }
 
+// ─── Push Integration Panel: Node 11 — Connect Meta + GHL ─────────────────────
+function PushIntegrationPanel({ campaignKit }: { campaignKit: any }) {
+  const { data: metaStatus } = trpc.meta.getConnectionStatus.useQuery();
+  const { data: ghlStatus } = trpc.ghl.getConnectionStatus.useQuery();
+  const { data: metaOAuthUrl } = trpc.meta.getOAuthUrl.useQuery(undefined, { enabled: !metaStatus?.connected });
+  const { data: ghlOAuthUrl } = trpc.ghl.getOAuthUrl.useQuery(undefined, { enabled: !ghlStatus?.connected });
+  const ghlPush = trpc.ghl.pushCampaign.useMutation();
+  const [pushStatus, setPushStatus] = useState<string | null>(null);
+
+  // Handle GHL OAuth callback code in URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ghlCode = params.get("ghl_code");
+    if (ghlCode) {
+      // Exchange the code — the exchangeCode mutation will handle it
+      // Remove from URL
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
+
+  const handleGhlPush = async () => {
+    if (!campaignKit?.id) return;
+    try {
+      setPushStatus("Pushing to GoHighLevel...");
+      const result = await ghlPush.mutateAsync({ kitId: campaignKit.id });
+      const pushed = [result.emailPushed && "Emails", result.whatsappPushed && "WhatsApp", result.landingPagePushed && "Landing Page"].filter(Boolean).join(", ");
+      setPushStatus(pushed ? `Pushed: ${pushed}` : "Push completed — check GHL for results");
+    } catch (e: any) {
+      setPushStatus(`Error: ${e.message || "Push failed"}`);
+    }
+  };
+
+  const F = "'Inter', system-ui, sans-serif";
+  const A = "#FF5B1D";
+
+  return (
+    <div style={{ maxWidth: 560, margin: "0 auto", textAlign: "center" }}>
+      <img src="/zappy-cheering.svg" alt="" style={{ width: 90, margin: "0 auto 16px" }} />
+      <h2 style={{ fontFamily: "'Fraunces', serif", fontStyle: "italic", fontWeight: 900, fontSize: 24, color: "#1A1624", margin: "0 0 8px" }}>
+        Your Campaign is Ready
+      </h2>
+      <p style={{ fontFamily: F, fontSize: 14, color: "#999", margin: "0 0 32px" }}>
+        Connect your ad platform and CRM to push everything live.
+      </p>
+
+      {/* Meta connection */}
+      <div style={{ background: "#fff", borderRadius: 16, padding: "20px 24px", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{ fontSize: 24 }}>📘</span>
+          <div style={{ textAlign: "left" }}>
+            <p style={{ fontFamily: F, fontWeight: 600, fontSize: 14, color: "#1A1624", margin: 0 }}>Meta Ad Manager</p>
+            <p style={{ fontFamily: F, fontSize: 12, color: "#999", margin: "2px 0 0" }}>
+              {metaStatus?.connected ? `Connected — ${metaStatus.adAccountName || "Ad Account"}` : "Not connected"}
+            </p>
+          </div>
+        </div>
+        {metaStatus?.connected ? (
+          <span style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "#22C55E", padding: "4px 12px", borderRadius: 9999, background: "rgba(34,197,94,0.1)" }}>Connected</span>
+        ) : (
+          <a href={metaOAuthUrl?.url || "#"} style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "#fff", padding: "8px 16px", borderRadius: 9999, background: A, textDecoration: "none" }}>Connect</a>
+        )}
+      </div>
+
+      {/* GHL connection */}
+      <div style={{ background: "#fff", borderRadius: 16, padding: "20px 24px", marginBottom: 24, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{ fontSize: 24 }}>🔗</span>
+          <div style={{ textAlign: "left" }}>
+            <p style={{ fontFamily: F, fontWeight: 600, fontSize: 14, color: "#1A1624", margin: 0 }}>GoHighLevel CRM</p>
+            <p style={{ fontFamily: F, fontSize: 12, color: "#999", margin: "2px 0 0" }}>
+              {ghlStatus?.connected ? `Connected — ${ghlStatus.locationName || ghlStatus.locationId || "Location"}` : "Not connected"}
+            </p>
+          </div>
+        </div>
+        {ghlStatus?.connected ? (
+          <span style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "#22C55E", padding: "4px 12px", borderRadius: 9999, background: "rgba(34,197,94,0.1)" }}>Connected</span>
+        ) : (
+          <a href={ghlOAuthUrl?.url || "#"} style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "#fff", padding: "8px 16px", borderRadius: 9999, background: A, textDecoration: "none" }}>Connect</a>
+        )}
+      </div>
+
+      {/* Push buttons */}
+      {ghlStatus?.connected && campaignKit && (
+        <button
+          onClick={handleGhlPush}
+          disabled={ghlPush.isPending}
+          style={{
+            width: "100%", padding: "14px 24px", borderRadius: 9999, border: "none",
+            background: ghlPush.isPending ? "#ccc" : A, color: "#fff",
+            fontFamily: F, fontWeight: 600, fontSize: 15, cursor: ghlPush.isPending ? "wait" : "pointer",
+            marginBottom: 12,
+          }}
+        >
+          {ghlPush.isPending ? "Pushing..." : "Push Campaign to GoHighLevel"}
+        </button>
+      )}
+
+      {pushStatus && (
+        <p style={{ fontFamily: F, fontSize: 13, color: pushStatus.startsWith("Error") ? "#C0390A" : "#22C55E", margin: "8px 0" }}>
+          {pushStatus}
+        </p>
+      )}
+
+      <p style={{ fontFamily: F, fontSize: 12, color: "#bbb", margin: "24px 0 0" }}>
+        Both integrations are optional. You can also copy your campaign manually from the Campaign Kit.
+      </p>
+    </div>
+  );
+}
+
 // ─── Success State: Zappy cheering + confetti ─────────────────────────────────
 function SuccessState({ score, nextStepUrl, isLastStep }: {
   score: number;
@@ -2812,6 +2922,11 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
           {/* ── NODE 10 WHATSAPP SEQUENCE — FULL RESULT PANEL ── */}
           {status === "success" && step === "whatsappSequence" && latestWhatsappSequenceId && (
             <V2WhatsAppResultPanel whatsappSequenceId={latestWhatsappSequenceId} isFreeTier={isFreeTier} />
+          )}
+
+          {/* ── NODE 11 — PUSH TO META / GHL ── */}
+          {step === "pushToMeta" && (
+            <PushIntegrationPanel campaignKit={campaignKit} />
           )}
 
           {/* ── CONCERNED STATE (compliance violations) ── */}

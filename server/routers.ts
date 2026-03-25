@@ -26,6 +26,7 @@ import { progressRouter } from "./routers/progress";
 import { userRouter } from "./routers/user";
 import { complianceRouter } from "./routers/compliance";
 import { metaRouter } from "./routers/meta";
+import { ghlRouter } from "./routers/ghl";
 import { adCreativesRouter } from "./routers/adCreatives";
 import { videoCreditsRouter } from "./routers/videoCreditsRouter";
 import { videoScriptsRouter } from "./routers/videoScripts";
@@ -143,6 +144,7 @@ export const appRouter = router({
   user: userRouter,
   compliance: complianceRouter,
   meta: metaRouter,
+  ghl: ghlRouter,
   videoCredits: videoCreditsRouter,
   videoScripts: videoScriptsRouter,
   videos: videosRouter,

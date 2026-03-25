@@ -786,6 +786,26 @@ export type MetaAccessToken = typeof metaAccessTokens.$inferSelect;
 export type InsertMetaAccessToken = typeof metaAccessTokens.$inferInsert;
 
 /**
+ * GoHighLevel Access Tokens — mirrors Meta pattern
+ */
+export const ghlAccessTokens = mysqlTable("ghl_access_tokens", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  accessToken: text("accessToken").notNull(),
+  refreshToken: text("refreshToken"),
+  tokenExpiresAt: timestamp("tokenExpiresAt").notNull(),
+  locationId: varchar("locationId", { length: 255 }),
+  locationName: varchar("locationName", { length: 255 }),
+  companyId: varchar("companyId", { length: 255 }),
+  connectedAt: timestamp("connectedAt").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type GhlAccessToken = typeof ghlAccessTokens.$inferSelect;
+export type InsertGhlAccessToken = typeof ghlAccessTokens.$inferInsert;
+
+/**
  * Meta Published Ads - Links CoachFlow ad sets to Meta campaigns
  * Tracks which ads have been published to Meta and their current status
  */
