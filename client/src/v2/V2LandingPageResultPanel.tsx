@@ -1181,6 +1181,8 @@ export default function V2LandingPageResultPanel({
               headshot={coachAssets.headshot}
               logo={coachAssets.logo}
               socialProof={coachAssets.socialProof}
+              primaryColor="#FF5B1D"
+              offerAngle={resolvedTab === "original" ? undefined : resolvedTab}
             />
           ) : (
             <LandingPageVisualRenderer angleData={angles[resolvedTab]} theme={previewTheme} assets={coachAssets} />
