@@ -55,7 +55,7 @@ export const ghlRouter = router({
     const scopes = "contacts.write contacts.readonly campaigns.readonly opportunities.write businesses.readonly businesses.write";
     const state = String(ctx.user.id);
 
-    const url = `${GHL_BASE}/oauth/chooselocation?response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&client_id=${clientId}&scope=${encodeURIComponent(scopes)}&state=${state}`;
+    const url = `https://marketplace.gohighlevel.com/oauth/chooselocation?response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&client_id=${clientId}&scope=${encodeURIComponent(scopes)}&state=${state}`;
 
     return { url };
   }),
