@@ -166,6 +166,7 @@ async function startServer() {
     app.get("/api/oauth/gohighlevel/callback", async (req, res) => {
       try {
         const { code, state } = req.query as { code?: string; state?: string };
+        console.log("[GHL callback] Hit — code:", code ? "present" : "missing", "state:", state);
         if (!code) { res.status(400).send("Missing authorization code"); return; }
         // state contains the userId — redirect to dashboard with code param for client to exchange
         res.redirect(`/v2-dashboard/wizard/pushToMeta?ghl_code=${encodeURIComponent(code)}&ghl_state=${encodeURIComponent(state || "")}`);

@@ -1205,19 +1205,23 @@ function WhatsAppRecommendation({ whatsappSequenceId, campaignKit, onSelect, onR
 // ─── Push Integration Panel: Node 11 — Connect Meta + GHL ─────────────────────
 function PushIntegrationPanel({ campaignKit }: { campaignKit: any }) {
   const { data: metaStatus } = trpc.meta.getConnectionStatus.useQuery();
-  const { data: ghlStatus } = trpc.ghl.getConnectionStatus.useQuery();
+  const { data: ghlStatus, refetch: refetchGhlStatus } = trpc.ghl.getConnectionStatus.useQuery();
+  const ghlExchangeCode = trpc.ghl.exchangeCode.useMutation({
+    onSuccess: () => { refetchGhlStatus(); },
+    onError: (err: any) => { console.error("[GHL] Token exchange failed:", err.message); },
+  });
   const { data: metaOAuthUrl } = trpc.meta.getOAuthUrl.useQuery(undefined, { enabled: !metaStatus?.connected });
   const { data: ghlOAuthUrl } = trpc.ghl.getOAuthUrl.useQuery(undefined, { enabled: !ghlStatus?.connected });
   const ghlPush = trpc.ghl.pushCampaign.useMutation();
   const [pushStatus, setPushStatus] = useState<string | null>(null);
 
-  // Handle GHL OAuth callback code in URL
+  // Handle GHL OAuth callback code in URL — exchange on mount
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const ghlCode = params.get("ghl_code");
-    if (ghlCode) {
-      // Exchange the code — the exchangeCode mutation will handle it
-      // Remove from URL
+    if (ghlCode && !ghlExchangeCode.isPending && !ghlStatus?.connected) {
+      console.log("[GHL] Auto-exchanging auth code from callback redirect");
+      ghlExchangeCode.mutate({ code: ghlCode });
       window.history.replaceState({}, "", window.location.pathname);
     }
   }, []);
