@@ -924,7 +924,7 @@ function MechanismRecommendation({ mechanismSetId, campaignKit, onSelect, onRege
       }))}
       allAssets={allAssets}
       nodeLabel="mechanism"
-      nodeId="mechanisms"
+      nodeId="uniqueMethod"
       isFirstCampaign={!hasCompleted}
       onSelect={onSelect}
       onRegenerate={onRegenerate}
@@ -1162,7 +1162,7 @@ function EmailRecommendation({ emailSequenceId, campaignKit, onSelect, onRegener
         score: sequence.selectionScore ? Number(sequence.selectionScore) : null,
       }]}
       nodeLabel="email sequence"
-      nodeId="emailSequences"
+      nodeId="emailSequence"
       isFirstCampaign={!hasCompleted}
       onSelect={onSelect}
       onRegenerate={onRegenerate}
@@ -1202,7 +1202,7 @@ function WhatsAppRecommendation({ whatsappSequenceId, campaignKit, onSelect, onR
         score: sequence.selectionScore ? Number(sequence.selectionScore) : null,
       }]}
       nodeLabel="WhatsApp sequence"
-      nodeId="whatsappSequences"
+      nodeId="whatsapp"
       isFirstCampaign={!hasCompleted}
       onSelect={onSelect}
       onRegenerate={onRegenerate}
