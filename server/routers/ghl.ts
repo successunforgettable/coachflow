@@ -55,7 +55,8 @@ export const ghlRouter = router({
     const scopes = "contacts.write contacts.readonly campaigns.readonly opportunities.write businesses.readonly businesses.write";
     const state = String(ctx.user.id);
 
-    const url = `https://marketplace.gohighlevel.com/oauth/chooselocation?response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&client_id=${clientId}&scope=${encodeURIComponent(scopes)}&state=${state}`;
+    const versionId = process.env.GHL_APP_VERSION_ID || "69af3395095745d484bc1b18";
+    const url = `https://marketplace.gohighlevel.com/oauth/chooselocation?response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&client_id=${clientId}&scope=${encodeURIComponent(scopes)}&state=${state}&version_id=${versionId}`;
 
     return { url };
   }),
