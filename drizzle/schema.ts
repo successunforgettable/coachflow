@@ -1229,3 +1229,17 @@ export const campaignKits = mysqlTable("campaignKits", {
 });
 export type CampaignKit = typeof campaignKits.$inferSelect;
 export type InsertCampaignKit = typeof campaignKits.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// Favourites — persisted thumbs-up state per user per node item
+// ---------------------------------------------------------------------------
+export const favourites = mysqlTable("favourites", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  nodeId: varchar("nodeId", { length: 50 }).notNull(), // e.g. "headlines", "adCopy", "emailSequence"
+  itemIndex: int("itemIndex").notNull(), // index of the item within the node's result list
+  itemText: text("itemText"), // snapshot of the item text at time of favourite
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type Favourite = typeof favourites.$inferSelect;
+export type InsertFavourite = typeof favourites.$inferInsert;

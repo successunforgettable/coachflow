@@ -27,6 +27,7 @@ import { userRouter } from "./routers/user";
 import { complianceRouter } from "./routers/compliance";
 import { metaRouter } from "./routers/meta";
 import { ghlRouter } from "./routers/ghl";
+import { favouritesRouter } from "./routers/favourites";
 import { adCreativesRouter } from "./routers/adCreatives";
 import { videoCreditsRouter } from "./routers/videoCreditsRouter";
 import { videoScriptsRouter } from "./routers/videoScripts";
@@ -145,6 +146,7 @@ export const appRouter = router({
   compliance: complianceRouter,
   meta: metaRouter,
   ghl: ghlRouter,
+  favourites: favouritesRouter,
   videoCredits: videoCreditsRouter,
   videoScripts: videoScriptsRouter,
   videos: videosRouter,

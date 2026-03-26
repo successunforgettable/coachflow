@@ -14,6 +14,7 @@ import { useState } from "react";
 import { trpc } from "../lib/trpc";
 import ZappyMascot from "./ZappyMascot";
 import UpgradePrompt from "./components/UpgradePrompt";
+import { useFavourites } from "./hooks/useFavourites";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type FormulaTab = "story" | "eyebrow" | "question" | "authority" | "urgency";
@@ -121,12 +122,12 @@ function HeadlineRegenPanel({
 }
 
 // ─── Per-headline card ────────────────────────────────────────────────────────
-function HeadlineCard({ headline, isFreeTier, index }: { headline: HeadlineRow; isFreeTier?: boolean; index: number }) {
+function HeadlineCard({ headline, isFreeTier, index, isFav, onToggleFav }: { headline: HeadlineRow; isFreeTier?: boolean; index: number; isFav: boolean; onToggleFav: () => void }) {
   const copyLocked = isFreeTier && index >= 10;
   const [headlineText, setHeadlineText] = useState(headline.headline);
   const [subheadlineText, setSubheadlineText] = useState(headline.subheadline);
   const [copied, setCopied]     = useState(false);
-  const [thumbUp, setThumbUp]   = useState(false);
+  const thumbUp = isFav;
   const [thumbDown, setThumbDown] = useState(false);
   const [starred, setStarred]   = useState(false);
   const [regenOpen, setRegenOpen] = useState(false);
@@ -195,7 +196,7 @@ function HeadlineCard({ headline, isFreeTier, index }: { headline: HeadlineRow; 
         ) : (
           <button onClick={handleCopy} style={{ ...iconBtn, background: copied ? "rgba(88,204,2,0.12)" : undefined, borderColor: copied ? "rgba(88,204,2,0.40)" : undefined }} title="Copy to clipboard">{copied ? "✓" : "⎘"}</button>
         )}
-        <button onClick={() => { setThumbUp(p => !p); if (!thumbUp) setThumbDown(false); }} style={{ ...iconBtn, background: thumbUp ? "rgba(88,204,2,0.12)" : undefined, borderColor: thumbUp ? "rgba(88,204,2,0.40)" : undefined }} title="Thumbs up">👍</button>
+        <button onClick={() => { onToggleFav(); if (!thumbUp) setThumbDown(false); }} style={{ ...iconBtn, background: thumbUp ? "rgba(88,204,2,0.12)" : undefined, borderColor: thumbUp ? "rgba(88,204,2,0.40)" : undefined }} title="Thumbs up">👍</button>
         <button onClick={() => { setThumbDown(p => !p); if (!thumbDown) setThumbUp(false); }} style={{ ...iconBtn, background: thumbDown ? "rgba(220,38,38,0.10)" : undefined, borderColor: thumbDown ? "rgba(220,38,38,0.35)" : undefined }} title="Thumbs down">👎</button>
         <button onClick={() => setStarred(p => !p)} style={{ ...iconBtn, background: starred ? "rgba(255,165,0,0.12)" : undefined, borderColor: starred ? "rgba(255,165,0,0.45)" : undefined, color: starred ? "#D97706" : undefined }} title="Star">{starred ? "★" : "☆"}</button>
         {isFreeTier ? (
@@ -255,6 +256,7 @@ export default function V2HeadlinesResultPanel({
 }) {
   const [activeTab, setActiveTab] = useState<FormulaTab>("story");
   const [searchQuery, setSearchQuery] = useState("");
+  const { isFavourited, toggle: toggleFav } = useFavourites("headlines");
 
   const { data, isLoading, isError } = trpc.headlines.getBySetId.useQuery(
     { headlineSetId },
@@ -381,7 +383,7 @@ export default function V2HeadlinesResultPanel({
             No {activeTab} headlines in this set.
           </p>
         ) : (
-          filteredHeadlines.map((h, i) => <HeadlineCard key={h.id} headline={h} isFreeTier={isFreeTier} index={i} />)
+          filteredHeadlines.map((h, i) => <HeadlineCard key={h.id} headline={h} isFreeTier={isFreeTier} index={i} isFav={isFavourited(h.id)} onToggleFav={() => toggleFav(h.id, h.headline)} />)
         )}
       </div>
     </div>
