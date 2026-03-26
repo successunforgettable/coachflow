@@ -799,6 +799,7 @@ function HeadlineRecommendation({ headlineSetId, serviceId, service, campaignKit
       }))}
       allAssets={allAssets}
       nodeLabel="headline"
+      nodeId="headlines"
       isFirstCampaign={!hasCompleted}
       onSelect={onSelect}
       onRegenerate={onRegenerate}
@@ -868,6 +869,7 @@ function OfferRecommendation({ offerId, campaignKit, onSelect, onRegenerate }: {
       alternativeAssets={alternatives}
       allAssets={allAssets}
       nodeLabel="offer"
+      nodeId="offers"
       isFirstCampaign={!hasCompleted}
       onSelect={onSelect}
       onRegenerate={onRegenerate}
@@ -922,6 +924,7 @@ function MechanismRecommendation({ mechanismSetId, campaignKit, onSelect, onRege
       }))}
       allAssets={allAssets}
       nodeLabel="mechanism"
+      nodeId="mechanisms"
       isFirstCampaign={!hasCompleted}
       onSelect={onSelect}
       onRegenerate={onRegenerate}
@@ -971,6 +974,7 @@ function HvcoRecommendation({ hvcoSetId, campaignKit, onSelect, onRegenerate }: 
       }))}
       allAssets={allAssets}
       nodeLabel="opt-in title"
+      nodeId="hvco"
       isFirstCampaign={!hasCompleted}
       onSelect={onSelect}
       onRegenerate={onRegenerate}
@@ -1033,6 +1037,7 @@ function AdCopyRecommendation({ adSetId, campaignKit, onSelect, onRegenerate }: 
       }))}
       allAssets={allAssets}
       nodeLabel="ad copy"
+      nodeId="adCopy"
       isFirstCampaign={!hasCompleted}
       onSelect={onSelect}
       onRegenerate={onRegenerate}
@@ -1108,6 +1113,7 @@ function LandingPageRecommendation({ landingPageId, campaignKit, onSelect, onReg
       }))}
       allAssets={allAssets}
       nodeLabel="landing page"
+      nodeId="landingPages"
       isFirstCampaign={!hasCompleted}
       onSelect={(selectedId: number) => {
         // Decode: if selectedId > landingPageId * 10 it's an alternative
@@ -1156,6 +1162,7 @@ function EmailRecommendation({ emailSequenceId, campaignKit, onSelect, onRegener
         score: sequence.selectionScore ? Number(sequence.selectionScore) : null,
       }]}
       nodeLabel="email sequence"
+      nodeId="emailSequences"
       isFirstCampaign={!hasCompleted}
       onSelect={onSelect}
       onRegenerate={onRegenerate}
@@ -1195,6 +1202,7 @@ function WhatsAppRecommendation({ whatsappSequenceId, campaignKit, onSelect, onR
         score: sequence.selectionScore ? Number(sequence.selectionScore) : null,
       }]}
       nodeLabel="WhatsApp sequence"
+      nodeId="whatsappSequences"
       isFirstCampaign={!hasCompleted}
       onSelect={onSelect}
       onRegenerate={onRegenerate}

@@ -5,6 +5,7 @@
  */
 import { useState } from "react";
 import ZappyMascot from "./ZappyMascot";
+import { useFavourites } from "./hooks/useFavourites";
 
 interface AssetItem {
   id: number;
@@ -19,6 +20,7 @@ interface RecommendedAssetPanelProps {
   alternativeAssets: AssetItem[];
   allAssets: AssetItem[];
   nodeLabel: string;
+  nodeId: string;
   isFirstCampaign: boolean;
   onSelect: (assetId: number) => void;
   onRegenerate: () => void;
@@ -38,11 +40,13 @@ export default function RecommendedAssetPanel({
   alternativeAssets,
   allAssets,
   nodeLabel,
+  nodeId,
   isFirstCampaign,
   onSelect,
   onRegenerate,
 }: RecommendedAssetPanelProps) {
   const [showAlternatives, setShowAlternatives] = useState(false);
+  const { isFavourited, toggle: toggleFav } = useFavourites(nodeId);
   const [showAll, setShowAll] = useState(false);
 
   const formatLabel = (label?: string) => {
@@ -109,6 +113,24 @@ export default function RecommendedAssetPanel({
           {primaryAsset.characterCount != null ? ` · ${primaryAsset.characterCount} characters` : ""}
           {primaryAsset.score != null && primaryAsset.score >= 80 ? " · Meta Ready" : ""}
         </p>
+        <button
+          onClick={() => toggleFav(primaryAsset.id, primaryAsset.content)}
+          style={{
+            marginTop: "12px",
+            padding: "6px 16px",
+            borderRadius: "9999px",
+            border: isFavourited(primaryAsset.id) ? "2px solid #FF5B1D" : "1px solid rgba(0,0,0,0.12)",
+            background: isFavourited(primaryAsset.id) ? "rgba(255,91,29,0.08)" : "transparent",
+            cursor: "pointer",
+            fontSize: "14px",
+            fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "6px",
+          }}
+        >
+          👍 {isFavourited(primaryAsset.id) ? "Favourited" : "Favourite"}
+        </button>
       </div>
 
       {/* Primary CTA */}
@@ -179,22 +201,37 @@ export default function RecommendedAssetPanel({
               }}>
                 {formatLabel(alt.formulaLabel)} · {alt.score != null ? `${alt.score}/100` : ""}
               </p>
-              <button
-                onClick={() => onSelect(alt.id)}
-                style={{
-                  padding: "8px 20px",
-                  borderRadius: "var(--v2-border-radius-pill, 9999px)",
-                  border: "1px solid #ddd",
-                  background: "transparent",
-                  color: "#666",
-                  fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)",
-                  fontWeight: 600,
-                  fontSize: "12px",
-                  cursor: "pointer",
-                }}
-              >
-                Use This Instead
-              </button>
+              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                <button
+                  onClick={() => toggleFav(alt.id, alt.content)}
+                  style={{
+                    padding: "5px 12px",
+                    borderRadius: "9999px",
+                    border: isFavourited(alt.id) ? "2px solid #FF5B1D" : "1px solid rgba(0,0,0,0.12)",
+                    background: isFavourited(alt.id) ? "rgba(255,91,29,0.08)" : "transparent",
+                    cursor: "pointer",
+                    fontSize: "13px",
+                  }}
+                >
+                  👍
+                </button>
+                <button
+                  onClick={() => onSelect(alt.id)}
+                  style={{
+                    padding: "8px 20px",
+                    borderRadius: "var(--v2-border-radius-pill, 9999px)",
+                    border: "1px solid #ddd",
+                    background: "transparent",
+                    color: "#666",
+                    fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)",
+                    fontWeight: 600,
+                    fontSize: "12px",
+                    cursor: "pointer",
+                  }}
+                >
+                  Use This Instead
+                </button>
+              </div>
             </div>
           ))}
           <p style={{
