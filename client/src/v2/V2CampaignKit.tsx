@@ -460,18 +460,18 @@ export default function V2CampaignKit() {
         zIndex: 100,
       }}>
         <button
-          disabled={!isComplete}
+          disabled={filledCount < 2}
           onClick={handleDownloadBrief}
           style={{
             padding: "10px 24px",
             borderRadius: "var(--v2-border-radius-pill, 9999px)",
             border: "none",
-            background: isComplete ? "var(--v2-primary-btn, #FF5B1D)" : "#e5e0d8",
-            color: isComplete ? "#fff" : "#999",
+            background: filledCount >= 2 ? "var(--v2-primary-btn, #FF5B1D)" : "#e5e0d8",
+            color: filledCount >= 2 ? "#fff" : "#999",
             fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)",
             fontWeight: 700,
             fontSize: "14px",
-            cursor: isComplete ? "pointer" : "default",
+            cursor: filledCount >= 2 ? "pointer" : "default",
           }}
         >
           📑 Download Campaign Brief
