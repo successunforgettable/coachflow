@@ -68,7 +68,7 @@ function getCreditCost(duration: string): number {
 }
 
 // ─── Scene card ───────────────────────────────────────────────────────────────
-function SceneCard({ scene, index }: { scene: any; index: number }) {
+function SceneCard({ scene, index, onUpdate }: { scene: any; index: number; onUpdate?: (field: string, value: string) => void }) {
   return (
     <div
       style={{
@@ -110,17 +110,24 @@ function SceneCard({ scene, index }: { scene: any; index: number }) {
         >
           Voiceover
         </span>
-        <p
+        <textarea
+          value={scene.voiceoverText || ""}
+          onChange={e => onUpdate?.("voiceoverText", e.target.value)}
           style={{
             fontFamily: T.fontBody,
             fontSize: "14px",
             color: T.dark,
             margin: 0,
             lineHeight: 1.55,
+            width: "100%",
+            border: "1px solid #e5e0d8",
+            borderRadius: "8px",
+            padding: "8px",
+            resize: "vertical",
+            minHeight: "60px",
+            background: "#faf8f5",
           }}
-        >
-          {scene.voiceoverText}
-        </p>
+        />
       </div>
 
       {/* Visual direction */}
@@ -139,17 +146,24 @@ function SceneCard({ scene, index }: { scene: any; index: number }) {
         >
           Visual Direction
         </span>
-        <p
+        <textarea
+          value={scene.visualDirection || ""}
+          onChange={e => onUpdate?.("visualDirection", e.target.value)}
           style={{
             fontFamily: T.fontBody,
             fontSize: "13px",
             color: "#666",
             margin: 0,
             lineHeight: 1.5,
+            width: "100%",
+            border: "1px solid #e5e0d8",
+            borderRadius: "8px",
+            padding: "8px",
+            resize: "vertical",
+            minHeight: "40px",
+            background: "#faf8f5",
           }}
-        >
-          {scene.visualDirection}
-        </p>
+        />
       </div>
 
       {/* On-screen text */}
@@ -169,17 +183,24 @@ function SceneCard({ scene, index }: { scene: any; index: number }) {
           >
             On-Screen Text
           </span>
-          <p
+          <textarea
+            value={scene.onScreenText || ""}
+            onChange={e => onUpdate?.("onScreenText", e.target.value)}
             style={{
               fontFamily: T.fontBody,
               fontSize: "13px",
               color: T.purple,
               margin: 0,
               fontWeight: 600,
+              width: "100%",
+              border: "1px solid rgba(139,92,246,0.3)",
+              borderRadius: "8px",
+              padding: "8px",
+              resize: "vertical",
+              minHeight: "36px",
+              background: "rgba(139,92,246,0.04)",
             }}
-          >
-            {scene.onScreenText}
-          </p>
+          />
         </div>
       )}
     </div>
@@ -633,7 +654,14 @@ export default function V2VideoCreator({ isFreeTier }: { isFreeTier?: boolean } 
             </h2>
 
             {scriptResult.scenes.map((scene: any, i: number) => (
-              <SceneCard key={i} scene={scene} index={i} />
+              <SceneCard key={i} scene={scene} index={i} onUpdate={(field, value) => {
+                setScriptResult(prev => {
+                  if (!prev) return prev;
+                  const newScenes = [...prev.scenes];
+                  newScenes[i] = { ...newScenes[i], [field]: value };
+                  return { ...prev, scenes: newScenes };
+                });
+              }} />
             ))}
 
             {/* Word count + credit cost */}

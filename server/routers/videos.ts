@@ -626,25 +626,39 @@ export async function renderVideo(params: {
   const fullVoiceoverText = scenes.map((s: any) => s.voiceoverText ?? "").join(" ");
   
   // STEP 3: Call ElevenLabs to generate voiceover audio
-  console.log(`[Video ${videoId}] Generating voiceover with ElevenLabs...`);
-  const voiceoverBuffer = await generateVoiceover({
-    text: fullVoiceoverText,
-    voiceId: VOICE_IDS.charlie, // Deep, Confident, Energetic
-  });
+  console.log(`[Video ${videoId}] Generating voiceover with ElevenLabs... (${fullVoiceoverText.length} chars)`);
+  let voiceoverBuffer: Buffer;
+  try {
+    voiceoverBuffer = await generateVoiceover({
+      text: fullVoiceoverText,
+      voiceId: VOICE_IDS.charlie,
+    });
+    console.log(`[Video ${videoId}] ElevenLabs SUCCESS — ${voiceoverBuffer.length} bytes`);
+  } catch (e: any) {
+    console.error(`[Video ${videoId}] ElevenLabs FAILED:`, e.message || e);
+    throw new Error(`ElevenLabs voiceover failed: ${e.message}`);
+  }
   
   // STEP 4: Measure audio duration
   console.log(`[Video ${videoId}] Measuring audio duration...`);
   const totalAudioDuration = await getAudioDurationSeconds(voiceoverBuffer);
   console.log(`[Video ${videoId}] Measured audio duration: ${totalAudioDuration}s`);
   
-  // STEP 5: Upload audio to S3
-  console.log(`[Video ${videoId}] Uploading voiceover to S3...`);
-  const { url: voiceoverUrl } = await storagePut(
-    `voiceovers/video-${videoId}.mp3`,
-    voiceoverBuffer,
-    'audio/mpeg'
-  );
-  console.log(`[Video ${videoId}] Voiceover URL: ${voiceoverUrl}`);
+  // STEP 5: Upload audio to Cloudinary
+  console.log(`[Video ${videoId}] Uploading voiceover to Cloudinary... (${voiceoverBuffer.length} bytes)`);
+  let voiceoverUrl: string;
+  try {
+    const result = await storagePut(
+      `voiceovers/video-${videoId}.mp3`,
+      voiceoverBuffer,
+      'audio/mpeg'
+    );
+    voiceoverUrl = result.url;
+    console.log(`[Video ${videoId}] Cloudinary upload SUCCESS: ${voiceoverUrl}`);
+  } catch (e: any) {
+    console.error(`[Video ${videoId}] Cloudinary upload FAILED:`, e.message || e);
+    throw new Error(`Audio upload failed: ${e.message}`);
+  }
   
   // STEP 6: Calculate scene durations from audio duration + word counts
   console.log(`[Video ${videoId}] Calculating scene durations proportionally...`);
