@@ -73,6 +73,8 @@ export const videosRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      console.log(`[Video Render] Received — visualStyle: ${input.visualStyle}, duration: ${input.duration ?? "not sent"}, brandColor: ${input.brandColor}, scriptId: ${input.scriptId}`);
+
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
 
