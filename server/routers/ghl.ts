@@ -52,7 +52,7 @@ export const ghlRouter = router({
     }
 
     const redirectUri = `${process.env.APP_URL || "https://zapcampaigns.com"}/api/oauth/gohighlevel/callback`;
-    const scopes = "contacts.write contacts.readonly campaigns.readonly opportunities.write businesses.readonly businesses.write locations.write locations.readonly locations/customValues.write locations/customValues.readonly locations/customFields.write locations/customFields.readonly";
+    const scopes = "contacts.write contacts.readonly campaigns.readonly opportunities.write businesses.readonly businesses.write locations.readonly locations/customValues.write locations/customValues.readonly";
     const state = String(ctx.user.id);
 
     const versionId = process.env.GHL_APP_VERSION_ID || "69af3395095745d484bc1b18";
