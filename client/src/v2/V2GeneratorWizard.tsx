@@ -1221,6 +1221,7 @@ function PushIntegrationPanel({ campaignKit }: { campaignKit: any }) {
   const { data: metaOAuthUrl } = trpc.meta.getOAuthUrl.useQuery(undefined, { enabled: !metaStatus?.connected });
   const { data: ghlOAuthUrl } = trpc.ghl.getOAuthUrl.useQuery(undefined, { enabled: !ghlStatus?.connected });
   const ghlPush = trpc.ghl.pushCampaign.useMutation();
+  const ghlDisconnect = trpc.ghl.disconnect.useMutation({ onSuccess: () => { refetchGhlStatus(); } });
   const [pushStatus, setPushStatus] = useState<string | null>(null);
 
   // Handle GHL OAuth callback code in URL — exchange on mount
@@ -1295,7 +1296,10 @@ function PushIntegrationPanel({ campaignKit }: { campaignKit: any }) {
           </div>
         </div>
         {ghlStatus?.connected ? (
-          <span style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "#22C55E", padding: "4px 12px", borderRadius: 9999, background: "rgba(34,197,94,0.1)" }}>Connected</span>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <span style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "#22C55E", padding: "4px 12px", borderRadius: 9999, background: "rgba(34,197,94,0.1)" }}>Connected</span>
+            <button onClick={() => ghlDisconnect.mutate()} style={{ fontFamily: F, fontSize: 11, color: "#999", background: "none", border: "1px solid #ddd", borderRadius: 9999, padding: "4px 10px", cursor: "pointer" }}>{ghlDisconnect.isPending ? "..." : "Disconnect"}</button>
+          </div>
         ) : (
           <a href={ghlOAuthUrl?.url || "#"} style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "#fff", padding: "8px 16px", borderRadius: 9999, background: A, textDecoration: "none" }}>Connect</a>
         )}
