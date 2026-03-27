@@ -575,6 +575,14 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
+    // Video renderer configuration check
+    const remotionFn = process.env.REMOTION_FUNCTION_NAME;
+    const remotionUrl = process.env.REMOTION_SERVE_URL;
+    if (remotionFn && remotionUrl) {
+      console.log(`[Video Renderer] Remotion Lambda CONFIGURED — function: ${remotionFn}, site: ${remotionUrl}`);
+    } else {
+      console.log(`[Video Renderer] Remotion NOT configured — falling back to Creatomate. Missing: ${!remotionFn ? "REMOTION_FUNCTION_NAME " : ""}${!remotionUrl ? "REMOTION_SERVE_URL" : ""}`);
+    }
   });
 }
 

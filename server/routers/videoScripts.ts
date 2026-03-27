@@ -829,6 +829,8 @@ export const videoScriptsRouter = router({
       })
     )
     .mutation(async ({ ctx, input }: { ctx: any; input: any }) => {
+      console.log(`[Video Script] Generate — videoType: ${input.videoType}, duration: ${input.duration}, visualStyle: ${input.visualStyle}, serviceId: ${input.serviceId}`);
+
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -1013,6 +1015,8 @@ export const videoScriptsRouter = router({
       })
     )
     .mutation(async ({ ctx, input }: { ctx: any; input: any }) => {
+      console.log(`[Video Script Async] Generate — videoType: ${input.videoType}, duration: ${input.duration}, visualStyle: ${input.visualStyle}, serviceId: ${input.serviceId}`);
+
       const db = await getDb();
       if (!db) throw new Error("Database not available");
       // Pre-fetch service data synchronously before setImmediate
