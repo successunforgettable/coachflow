@@ -9,6 +9,7 @@ import { useState } from "react";
 import { trpc } from "../lib/trpc";
 import ZappyMascot from "./ZappyMascot";
 import UpgradePrompt from "./components/UpgradePrompt";
+import { useFavourites } from "./hooks/useFavourites";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface EmailItem {
@@ -140,13 +141,13 @@ function EmailRegenPanel({
 }
 
 // ─── Email card ───────────────────────────────────────────────────────────────
-function EmailCard({ email, index, sequenceId, isFreeTier, onUpgradeClick }: { email: EmailItem; index: number; sequenceId: number; isFreeTier?: boolean; onUpgradeClick?: () => void }) {
+function EmailCard({ email, index, sequenceId, isFreeTier, onUpgradeClick, isFav, onToggleFav }: { email: EmailItem; index: number; sequenceId: number; isFreeTier?: boolean; onUpgradeClick?: () => void; isFav?: boolean; onToggleFav?: () => void }) {
   const [subject, setSubject]   = useState(email.subject);
   const [body, setBody]         = useState(email.body);
   const [expanded, setExpanded]   = useState(false);
   const [copiedSubj, setCopiedSubj] = useState(false);
   const [copiedBody, setCopiedBody] = useState(false);
-  const [thumbUp, setThumbUp]     = useState(false);
+  const thumbUp = !!isFav;
   const [thumbDown, setThumbDown] = useState(false);
   const [starred, setStarred]     = useState(false);
   const [regenOpen, setRegenOpen] = useState(false);
@@ -286,8 +287,8 @@ function EmailCard({ email, index, sequenceId, isFreeTier, onUpgradeClick }: { e
         </button>
         {/* Thumbs Up */}
         <button
-          onClick={() => { setThumbUp(p => !p); if (!thumbUp) setThumbDown(false); }}
-          style={{ ...iconBtn, background: thumbUp ? "rgba(88,204,2,0.12)" : undefined, borderColor: thumbUp ? "rgba(88,204,2,0.40)" : undefined }}
+          onClick={() => { onToggleFav?.(); if (!thumbUp) setThumbDown(false); }}
+          style={{ ...iconBtn, background: thumbUp ? "rgba(255,91,29,0.12)" : undefined, borderColor: thumbUp ? "rgba(255,91,29,0.40)" : undefined }}
           title="Thumbs up"
         >
           👍
@@ -348,6 +349,7 @@ export default function V2EmailSequenceResultPanel({
   isFreeTier?: boolean;
 }) {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const { isFavourited, toggle: toggleFav } = useFavourites("emailSequence");
   const { data, isLoading, isError } = trpc.emailSequences.get.useQuery(
     { id: emailSequenceId },
     { enabled: !!emailSequenceId, staleTime: 60_000 }
@@ -412,7 +414,7 @@ export default function V2EmailSequenceResultPanel({
 
       {/* ── Email cards ── */}
       {emails.map((email, i) => (
-        <EmailCard key={i} email={email} index={i} sequenceId={emailSequenceId} isFreeTier={isFreeTier} onUpgradeClick={() => setShowUpgradeModal(true)} />
+        <EmailCard key={i} email={email} index={i} sequenceId={emailSequenceId} isFreeTier={isFreeTier} onUpgradeClick={() => setShowUpgradeModal(true)} isFav={isFavourited(i)} onToggleFav={() => toggleFav(i, email.subject)} />
       ))}
       {emails.length === 0 && (
         <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#999", textAlign: "center", padding: "24px 0" }}>

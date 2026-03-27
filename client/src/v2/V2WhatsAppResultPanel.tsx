@@ -10,6 +10,7 @@ import { useState } from "react";
 import { trpc } from "../lib/trpc";
 import ZappyMascot from "./ZappyMascot";
 import UpgradePrompt from "./components/UpgradePrompt";
+import { useFavourites } from "./hooks/useFavourites";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface WhatsAppMessage {
@@ -146,11 +147,11 @@ function WhatsAppRegenPanel({
 }
 
 // ─── Message card ─────────────────────────────────────────────────────────────
-function MessageCard({ msg, index, sequenceId, isFreeTier }: { msg: WhatsAppMessage; index: number; sequenceId: number; isFreeTier?: boolean }) {
+function MessageCard({ msg, index, sequenceId, isFreeTier, isFav, onToggleFav }: { msg: WhatsAppMessage; index: number; sequenceId: number; isFreeTier?: boolean; isFav?: boolean; onToggleFav?: () => void }) {
   const emojis = Array.isArray(msg.emojis) ? msg.emojis : [];
   const [messageText, setMessageText] = useState(msg.text ?? msg.message ?? "");
   const [copied, setCopied]       = useState(false);
-  const [thumbUp, setThumbUp]     = useState(false);
+  const thumbUp = !!isFav;
   const [thumbDown, setThumbDown] = useState(false);
   const [starred, setStarred]     = useState(false);
   const [regenOpen, setRegenOpen] = useState(false);
@@ -227,7 +228,7 @@ function MessageCard({ msg, index, sequenceId, isFreeTier }: { msg: WhatsAppMess
           {copied ? "✓" : "⎘"}
         </button>
         <button
-          onClick={() => { setThumbUp(p => !p); if (!thumbUp) setThumbDown(false); }}
+          onClick={() => { onToggleFav?.(); if (!thumbUp) setThumbDown(false); }}
           style={{ ...iconBtn, background: thumbUp ? "rgba(88,204,2,0.12)" : undefined, borderColor: thumbUp ? "rgba(88,204,2,0.40)" : undefined }}
           title="Thumbs up"
         >
@@ -286,6 +287,7 @@ export default function V2WhatsAppResultPanel({
   whatsappSequenceId: number;
   isFreeTier?: boolean;
 }) {
+  const { isFavourited, toggle: toggleFav } = useFavourites("whatsapp");
   const { data, isLoading, isError } = trpc.whatsappSequences.get.useQuery(
     { id: whatsappSequenceId },
     { enabled: !!whatsappSequenceId, staleTime: 60_000 }
@@ -350,7 +352,7 @@ export default function V2WhatsAppResultPanel({
 
       {/* ── Message cards ── */}
       {messages.map((msg, i) => (
-        <MessageCard key={i} msg={msg} index={i} sequenceId={whatsappSequenceId} isFreeTier={isFreeTier} />
+        <MessageCard key={i} msg={msg} index={i} sequenceId={whatsappSequenceId} isFreeTier={isFreeTier} isFav={isFavourited(i)} onToggleFav={() => toggleFav(i, (msg as any).text || (msg as any).message || "")} />
       ))}
       {messages.length === 0 && (
         <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#999", textAlign: "center", padding: "24px 0" }}>

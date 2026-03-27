@@ -16,6 +16,7 @@ import { useState } from "react";
 import { trpc } from "../lib/trpc";
 import ZappyMascot from "./ZappyMascot";
 import UpgradePrompt from "./components/UpgradePrompt";
+import { useFavourites } from "./hooks/useFavourites";
 import V2AdImageCreator from "./V2AdImageCreator";
 import V2VideoCreator from "./V2VideoCreator";
 
@@ -553,6 +554,7 @@ export default function V2AdCopyResultPanel({
   const [topTab, setTopTab] = useState<TopTab>("copy");
   const [activeTab, setActiveTab] = useState<AdTab>("headlines");
   const [upgradeFeature, setUpgradeFeature] = useState<string | null>(null);
+  const { isFavourited: isAdFav, toggle: toggleAdFav } = useFavourites("adCopy");
   const [searchQuery, setSearchQuery] = useState("");
 
   const { data, isLoading, isError } = trpc.adCopy.getByAdSetId.useQuery(
