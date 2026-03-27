@@ -126,7 +126,7 @@ importers:
         version: 4.0.441(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
       '@remotion/zod-types':
         specifier: ^4.0.441
-        version: 4.0.441(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(zod@4.1.12)
+        version: 4.0.441(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(zod@4.3.6)
       '@stripe/react-stripe-js':
         specifier: ^5.6.0
         version: 5.6.0(@stripe/stripe-js@8.8.0)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
@@ -314,8 +314,8 @@ importers:
         specifier: ^3.3.5
         version: 3.7.1(patch_hash=4e16e6ff3fde7d6c1024d3e0c8605dc9eb6afb690d0d49958c2f449091813072)(react@19.2.1)
       zod:
-        specifier: ^4.1.12
-        version: 4.1.12
+        specifier: ^4.3.6
+        version: 4.3.6
     devDependencies:
       '@builder.io/vite-plugin-jsx-loc':
         specifier: ^0.1.1
@@ -6352,9 +6352,6 @@ packages:
     resolution: {integrity: sha512-zK7YHHz4ZXpW89AHXUPbQVGKI7uvkd3hzusTdotCg1UxyaVtg0zFJSTfW/Dq5f7OBBVnq6cZIaC8Ti4hb6dtCA==}
     engines: {node: '>= 14'}
 
-  zod@4.1.12:
-    resolution: {integrity: sha512-JInaHOamG8pt5+Ey8kGmdcAcg3OL9reK8ltczgHTAwNhMys/6ThXHityHxVV2p3fkw/c+MAvBHFVYHFZDmjMCQ==}
-
   zod@4.3.6:
     resolution: {integrity: sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg==}
 
@@ -9044,14 +9041,6 @@ snapshots:
       react: 19.2.1
       react-dom: 19.2.1(react@19.2.1)
       remotion: 4.0.441(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
-
-  '@remotion/zod-types@4.0.441(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(zod@4.1.12)':
-    dependencies:
-      remotion: 4.0.441(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
-      zod: 4.1.12
-    transitivePeerDependencies:
-      - react
-      - react-dom
 
   '@remotion/zod-types@4.0.441(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(zod@4.3.6)':
     dependencies:
@@ -13812,8 +13801,6 @@ snapshots:
       archiver-utils: 5.0.2
       compress-commons: 6.0.2
       readable-stream: 4.7.0
-
-  zod@4.1.12: {}
 
   zod@4.3.6: {}
 
