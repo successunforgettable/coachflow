@@ -9,6 +9,7 @@ import { useState } from "react";
 import { trpc } from "../lib/trpc";
 import ZappyMascot from "./ZappyMascot";
 import UpgradePrompt from "./components/UpgradePrompt";
+import { useFavourites } from "./hooks/useFavourites";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type TabType = "hero_mechanisms" | "headline_ideas" | "beast_mode";
@@ -90,11 +91,11 @@ function MechanismRegenPanel({
 }
 
 // ─── Mechanism card ───────────────────────────────────────────────────────────
-function MechanismCard({ mechanism, isFreeTier, onUpgradeClick }: { mechanism: MechanismRow; isFreeTier?: boolean; onUpgradeClick?: () => void }) {
+function MechanismCard({ mechanism, isFreeTier, onUpgradeClick, isFav, onToggleFav }: { mechanism: MechanismRow; isFreeTier?: boolean; onUpgradeClick?: () => void; isFav?: boolean; onToggleFav?: () => void }) {
   const [name, setName]             = useState(mechanism.mechanismName);
   const [description, setDescription] = useState(mechanism.mechanismDescription);
   const [copied, setCopied]         = useState(false);
-  const [thumbUp, setThumbUp]       = useState(false);
+  const thumbUp = !!isFav;
   const [thumbDown, setThumbDown]   = useState(false);
   const [starred, setStarred]       = useState(false);
   const [regenOpen, setRegenOpen]   = useState(false);
@@ -137,7 +138,7 @@ function MechanismCard({ mechanism, isFreeTier, onUpgradeClick }: { mechanism: M
       </p>
       <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
         <button onClick={handleCopy} style={{ ...iconBtn, background: copied ? "rgba(88,204,2,0.12)" : undefined, borderColor: copied ? "rgba(88,204,2,0.40)" : undefined }} title="Copy">{copied ? "✓" : "⎘"}</button>
-        <button onClick={() => { setThumbUp(p => !p); if (!thumbUp) setThumbDown(false); }} style={{ ...iconBtn, background: thumbUp ? "rgba(88,204,2,0.12)" : undefined, borderColor: thumbUp ? "rgba(88,204,2,0.40)" : undefined }} title="Thumbs up">👍</button>
+        <button onClick={() => { onToggleFav?.(); if (!thumbUp) setThumbDown(false); }} style={{ ...iconBtn, background: thumbUp ? "rgba(88,204,2,0.12)" : undefined, borderColor: thumbUp ? "rgba(88,204,2,0.40)" : undefined }} title="Thumbs up">👍</button>
         <button onClick={() => { setThumbDown(p => !p); if (!thumbDown) setThumbUp(false); }} style={{ ...iconBtn, background: thumbDown ? "rgba(220,38,38,0.10)" : undefined, borderColor: thumbDown ? "rgba(220,38,38,0.35)" : undefined }} title="Thumbs down">👎</button>
         <button onClick={() => setStarred(p => !p)} style={{ ...iconBtn, background: starred ? "rgba(255,165,0,0.12)" : undefined, borderColor: starred ? "rgba(255,165,0,0.45)" : undefined, color: starred ? "#D97706" : undefined }} title="Star">{starred ? "★" : "☆"}</button>
         {isFreeTier ? (
@@ -193,6 +194,7 @@ export default function V2UniqueMethodResultPanel({
   const [activeTab, setActiveTab] = useState<TabType>("hero_mechanisms");
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const { isFavourited, toggle: toggleFav } = useFavourites("uniqueMethod");
 
   const { data, isLoading, isError } = trpc.heroMechanisms.getBySetId.useQuery(
     { mechanismSetId },
@@ -293,7 +295,7 @@ export default function V2UniqueMethodResultPanel({
       {byTab[activeTab]
         .filter(m => m.mechanismName.toLowerCase().includes(searchQuery.toLowerCase()) || m.mechanismDescription.toLowerCase().includes(searchQuery.toLowerCase()))
         .map(m => (
-        <MechanismCard key={m.id} mechanism={m} isFreeTier={isFreeTier} onUpgradeClick={() => setShowUpgradeModal(true)} />
+        <MechanismCard key={m.id} mechanism={m} isFreeTier={isFreeTier} onUpgradeClick={() => setShowUpgradeModal(true)} isFav={isFavourited(m.id)} onToggleFav={() => toggleFav(m.id, m.mechanismName)} />
       ))}
       {byTab[activeTab].filter(m => m.mechanismName.toLowerCase().includes(searchQuery.toLowerCase()) || m.mechanismDescription.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && (
         <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#999", textAlign: "center", padding: "24px 0" }}>

@@ -8,6 +8,7 @@ import { useState } from "react";
 import { trpc } from "../lib/trpc";
 import ZappyMascot from "./ZappyMascot";
 import UpgradePrompt from "./components/UpgradePrompt";
+import { useFavourites } from "./hooks/useFavourites";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type TabType = "long" | "short" | "beast_mode" | "subheadlines";
@@ -89,10 +90,10 @@ function HvcoRegenPanel({
 }
 
 // ─── Title card ───────────────────────────────────────────────────────────────
-function TitleCard({ hvco, isFreeTier, onUpgradeClick }: { hvco: HvcoRow; isFreeTier?: boolean; onUpgradeClick?: () => void }) {
+function TitleCard({ hvco, isFreeTier, onUpgradeClick, isFav, onToggleFav }: { hvco: HvcoRow; isFreeTier?: boolean; onUpgradeClick?: () => void; isFav?: boolean; onToggleFav?: () => void }) {
   const [title, setTitle]           = useState(hvco.title);
   const [copied, setCopied]         = useState(false);
-  const [thumbUp, setThumbUp]       = useState(false);
+  const thumbUp = !!isFav;
   const [thumbDown, setThumbDown]   = useState(false);
   const [starred, setStarred]       = useState(false);
   const [regenOpen, setRegenOpen]   = useState(false);
@@ -124,7 +125,7 @@ function TitleCard({ hvco, isFreeTier, onUpgradeClick }: { hvco: HvcoRow; isFree
       </p>
       <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
         <button onClick={handleCopy} style={{ ...iconBtn, background: copied ? "rgba(88,204,2,0.12)" : undefined, borderColor: copied ? "rgba(88,204,2,0.40)" : undefined }} title="Copy">{copied ? "✓" : "⎘"}</button>
-        <button onClick={() => { setThumbUp(p => !p); if (!thumbUp) setThumbDown(false); }} style={{ ...iconBtn, background: thumbUp ? "rgba(88,204,2,0.12)" : undefined, borderColor: thumbUp ? "rgba(88,204,2,0.40)" : undefined }} title="Thumbs up">👍</button>
+        <button onClick={() => { onToggleFav?.(); if (!thumbUp) setThumbDown(false); }} style={{ ...iconBtn, background: thumbUp ? "rgba(88,204,2,0.12)" : undefined, borderColor: thumbUp ? "rgba(88,204,2,0.40)" : undefined }} title="Thumbs up">👍</button>
         <button onClick={() => { setThumbDown(p => !p); if (!thumbDown) setThumbUp(false); }} style={{ ...iconBtn, background: thumbDown ? "rgba(220,38,38,0.10)" : undefined, borderColor: thumbDown ? "rgba(220,38,38,0.35)" : undefined }} title="Thumbs down">👎</button>
         <button onClick={() => setStarred(p => !p)} style={{ ...iconBtn, background: starred ? "rgba(255,165,0,0.12)" : undefined, borderColor: starred ? "rgba(255,165,0,0.45)" : undefined, color: starred ? "#D97706" : undefined }} title="Star">{starred ? "★" : "☆"}</button>
         {isFreeTier ? (
@@ -180,6 +181,7 @@ export default function V2FreeOptInResultPanel({
   const [activeTab, setActiveTab] = useState<TabType>("long");
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const { isFavourited, toggle: toggleFav } = useFavourites("hvco");
 
   const { data, isLoading, isError } = trpc.hvco.getBySetId.useQuery(
     { hvcoSetId },
@@ -281,7 +283,7 @@ export default function V2FreeOptInResultPanel({
       {byTab[activeTab]
         .filter(t => t.title.toLowerCase().includes(searchQuery.toLowerCase()))
         .map(t => (
-        <TitleCard key={t.id} hvco={t} isFreeTier={isFreeTier} onUpgradeClick={() => setShowUpgradeModal(true)} />
+        <TitleCard key={t.id} hvco={t} isFreeTier={isFreeTier} onUpgradeClick={() => setShowUpgradeModal(true)} isFav={isFavourited(t.id)} onToggleFav={() => toggleFav(t.id, t.title)} />
       ))}
       {byTab[activeTab].filter(t => t.title.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && (
         <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#999", textAlign: "center", padding: "24px 0" }}>

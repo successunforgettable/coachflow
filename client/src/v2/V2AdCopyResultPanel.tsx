@@ -210,11 +210,11 @@ function RegenPanel({
 }
 
 // ─── Headline item card ───────────────────────────────────────────────────────
-function HeadlineItem({ item, index, isFreeTier, onUpgradeClick }: { item: AdRow; index: number; isFreeTier?: boolean; onUpgradeClick?: (feature?: string) => void }) {
+function HeadlineItem({ item, index, isFreeTier, onUpgradeClick, isFav, onToggleFav }: { item: AdRow; index: number; isFreeTier?: boolean; onUpgradeClick?: (feature?: string) => void; isFav?: boolean; onToggleFav?: () => void }) {
   const copyLocked = isFreeTier && index >= 3;
   const [content, setContent]   = useState(item.content);
   const [copied, setCopied]     = useState(false);
-  const [thumbUp, setThumbUp]   = useState(false);
+  const thumbUp = !!isFav;
   const [thumbDown, setThumbDown] = useState(false);
   const [regenOpen, setRegenOpen] = useState(false);
 
@@ -261,7 +261,7 @@ function HeadlineItem({ item, index, isFreeTier, onUpgradeClick }: { item: AdRow
           <button onClick={handleCopy} style={{ ...iconBtn, background: copied ? "rgba(88,204,2,0.12)" : undefined, borderColor: copied ? "rgba(88,204,2,0.40)" : undefined }} title="Copy">{copied ? "✓" : "⎘"}</button>
         )}
         <button
-          onClick={() => { setThumbUp(p => !p); if (!thumbUp) setThumbDown(false); }}
+          onClick={() => { onToggleFav?.(); if (!thumbUp) setThumbDown(false); }}
           style={{ ...iconBtn, background: thumbUp ? "rgba(88,204,2,0.12)" : undefined, borderColor: thumbUp ? "rgba(88,204,2,0.40)" : undefined }}
           title="Thumbs up"
         >👍</button>
@@ -296,11 +296,11 @@ function HeadlineItem({ item, index, isFreeTier, onUpgradeClick }: { item: AdRow
 }
 
 // ─── Body copy item card ──────────────────────────────────────────────────────
-function BodyItem({ item, index, isFreeTier, onUpgradeClick }: { item: AdRow; index: number; isFreeTier?: boolean; onUpgradeClick?: (feature?: string) => void }) {
+function BodyItem({ item, index, isFreeTier, onUpgradeClick, isFav, onToggleFav }: { item: AdRow; index: number; isFreeTier?: boolean; onUpgradeClick?: (feature?: string) => void; isFav?: boolean; onToggleFav?: () => void }) {
   const copyLocked = isFreeTier && index >= 3;
   const [content, setContent]   = useState(item.content);
   const [copied, setCopied]     = useState(false);
-  const [thumbUp, setThumbUp]   = useState(false);
+  const thumbUp = !!isFav;
   const [thumbDown, setThumbDown] = useState(false);
   const [regenOpen, setRegenOpen] = useState(false);
 
@@ -376,7 +376,7 @@ function BodyItem({ item, index, isFreeTier, onUpgradeClick }: { item: AdRow; in
           <button onClick={handleCopy} style={{ ...iconBtn, background: copied ? "rgba(88,204,2,0.12)" : undefined, borderColor: copied ? "rgba(88,204,2,0.40)" : undefined }} title="Copy">{copied ? "✓" : "⎘"}</button>
         )}
         <button
-          onClick={() => { setThumbUp(p => !p); if (!thumbUp) setThumbDown(false); }}
+          onClick={() => { onToggleFav?.(); if (!thumbUp) setThumbDown(false); }}
           style={{ ...iconBtn, background: thumbUp ? "rgba(88,204,2,0.12)" : undefined, borderColor: thumbUp ? "rgba(88,204,2,0.40)" : undefined }}
           title="Thumbs up"
         >👍</button>
@@ -430,11 +430,11 @@ function BodyItem({ item, index, isFreeTier, onUpgradeClick }: { item: AdRow; in
 }
 
 // ─── Link item card ───────────────────────────────────────────────────────────
-function LinkItem({ item, index, isFreeTier, onUpgradeClick }: { item: AdRow; index: number; isFreeTier?: boolean; onUpgradeClick?: (feature?: string) => void }) {
+function LinkItem({ item, index, isFreeTier, onUpgradeClick, isFav, onToggleFav }: { item: AdRow; index: number; isFreeTier?: boolean; onUpgradeClick?: (feature?: string) => void; isFav?: boolean; onToggleFav?: () => void }) {
   const copyLocked = isFreeTier && index >= 3;
   const [content, setContent]   = useState(item.content);
   const [copied, setCopied]     = useState(false);
-  const [thumbUp, setThumbUp]   = useState(false);
+  const thumbUp = !!isFav;
   const [thumbDown, setThumbDown] = useState(false);
   const [regenOpen, setRegenOpen] = useState(false);
 
@@ -479,7 +479,7 @@ function LinkItem({ item, index, isFreeTier, onUpgradeClick }: { item: AdRow; in
           <button onClick={handleCopy} style={{ ...iconBtn, background: copied ? "rgba(88,204,2,0.12)" : undefined, borderColor: copied ? "rgba(88,204,2,0.40)" : undefined }} title="Copy">{copied ? "✓" : "⎘"}</button>
         )}
         <button
-          onClick={() => { setThumbUp(p => !p); if (!thumbUp) setThumbDown(false); }}
+          onClick={() => { onToggleFav?.(); if (!thumbUp) setThumbDown(false); }}
           style={{ ...iconBtn, background: thumbUp ? "rgba(88,204,2,0.12)" : undefined, borderColor: thumbUp ? "rgba(88,204,2,0.40)" : undefined }}
           title="Thumbs up"
         >👍</button>
@@ -700,19 +700,19 @@ export default function V2AdCopyResultPanel({
               const filtered = searchQuery ? headlines.filter(h => h.content.toLowerCase().includes(searchQuery.toLowerCase())) : headlines;
               return filtered.length === 0
                 ? <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#888", textAlign: "center", padding: "24px 0" }}>No headlines found.</p>
-                : filtered.map((h, i) => <HeadlineItem key={h.id} item={h} index={i} isFreeTier={isFreeTier} onUpgradeClick={(f) => setUpgradeFeature(f || "Per-Item Regeneration")} />);
+                : filtered.map((h, i) => <HeadlineItem key={h.id} item={h} index={i} isFreeTier={isFreeTier} onUpgradeClick={(f) => setUpgradeFeature(f || "Per-Item Regeneration")} isFav={isAdFav(h.id)} onToggleFav={() => toggleAdFav(h.id, h.content)} />);
             })()}
             {activeTab === "body" && (() => {
               const filtered = searchQuery ? bodies.filter(b => b.content.toLowerCase().includes(searchQuery.toLowerCase())) : bodies;
               return filtered.length === 0
                 ? <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#888", textAlign: "center", padding: "24px 0" }}>No body copy found.</p>
-                : filtered.map((b, i) => <BodyItem key={b.id} item={b} index={i} isFreeTier={isFreeTier} onUpgradeClick={(f) => setUpgradeFeature(f || "Per-Item Regeneration")} />);
+                : filtered.map((b, i) => <BodyItem key={b.id} item={b} index={i} isFreeTier={isFreeTier} onUpgradeClick={(f) => setUpgradeFeature(f || "Per-Item Regeneration")} isFav={isAdFav(b.id)} onToggleFav={() => toggleAdFav(b.id, b.content)} />);
             })()}
             {activeTab === "links" && (() => {
               const filtered = searchQuery ? links.filter(l => l.content.toLowerCase().includes(searchQuery.toLowerCase())) : links;
               return filtered.length === 0
                 ? <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#888", textAlign: "center", padding: "24px 0" }}>No links found.</p>
-                : filtered.map((l, i) => <LinkItem key={l.id} item={l} index={i} isFreeTier={isFreeTier} onUpgradeClick={(f) => setUpgradeFeature(f || "Per-Item Regeneration")} />);
+                : filtered.map((l, i) => <LinkItem key={l.id} item={l} index={i} isFreeTier={isFreeTier} onUpgradeClick={(f) => setUpgradeFeature(f || "Per-Item Regeneration")} isFav={isAdFav(l.id)} onToggleFav={() => toggleAdFav(l.id, l.content)} />);
             })()}
           </div>
         </>
