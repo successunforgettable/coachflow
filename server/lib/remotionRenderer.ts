@@ -30,6 +30,7 @@ interface RemotionRenderInput {
   logoUrl?: string | null;
   voiceoverUrl?: string | null;
   totalDurationInSeconds?: number;
+  visualStyle?: string;
 }
 
 interface RemotionRenderResult {
@@ -76,6 +77,7 @@ export async function triggerRemotionRender(
       logoUrl: input.logoUrl || null,
       voiceoverUrl: input.voiceoverUrl || null,
       totalDurationInSeconds: input.totalDurationInSeconds || 30,
+      visualStyle: input.visualStyle || "kinetic_typography",
     },
     codec: "h264",
     imageFormat: "jpeg",

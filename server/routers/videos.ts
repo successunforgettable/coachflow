@@ -637,29 +637,36 @@ export async function renderVideo(params: {
         console.warn(`[Video ${videoId}] Voiceover generation failed, rendering without audio:`, e.message);
       }
 
-      // Fetch stock footage URLs from Pexels for scenes that need them
-      for (let i = 0; i < scenes.length; i++) {
-        if (scenes[i].pexelsQuery && !scenes[i].footageUrl) {
-          try {
-            const { fetchStockFootageWithFallback } = await import("../pixabay.js");
-            const footageUrl = await fetchStockFootageWithFallback(scenes[i].pexelsQuery, "portrait", i);
-            if (footageUrl) scenes[i].footageUrl = footageUrl;
-          } catch (e: any) {
-            console.warn(`[Video ${videoId}] Scene ${i + 1} footage fetch failed:`, e.message);
+      // Fetch stock footage URLs from Pexels — SKIP for text_only
+      if (visualStyle !== "text_only") {
+        for (let i = 0; i < scenes.length; i++) {
+          if (scenes[i].pexelsQuery && !scenes[i].footageUrl) {
+            try {
+              const { fetchStockFootageWithFallback } = await import("../pixabay.js");
+              const footageUrl = await fetchStockFootageWithFallback(scenes[i].pexelsQuery, "portrait", i);
+              if (footageUrl) scenes[i].footageUrl = footageUrl;
+            } catch (e: any) {
+              console.warn(`[Video ${videoId}] Scene ${i + 1} footage fetch failed:`, e.message);
+            }
           }
         }
+      } else {
+        console.log(`[Video ${videoId}] text_only mode — skipping Pexels footage fetch`);
+        scenes.forEach((s: any) => { s.footageUrl = undefined; });
       }
 
-      // Calculate total duration from scene count
-      const totalDurationInSeconds = scenes.length * 5; // ~5 seconds per scene
+      // Use actual script duration, not hardcoded
+      const totalDurationInSeconds = parseInt(script.duration) || (scenes.length * 5);
+      console.log(`[Video ${videoId}] Remotion render — ${scenes.length} scenes, ${totalDurationInSeconds}s total, style: ${visualStyle}`);
 
       const { videoUrl } = await renderVideoWithRemotion({
         scenes,
         primaryColor: brandColor || "#FF5B1D",
-        coachName: "", // TODO: pass from user profile
+        coachName: "",
         logoUrl: logoUrl || null,
         voiceoverUrl,
         totalDurationInSeconds,
+        visualStyle: visualStyle || "kinetic_typography",
       });
 
       await db.update(videos).set({
@@ -753,11 +760,15 @@ export async function renderVideo(params: {
   validateVideoDurations(scenes, sceneDurations, totalAudioDuration, totalVideoDuration);
   
   // STEP 10: Fetch stock footage for each scene from Pexels (parallel fetch)
-  console.log(`[Video ${videoId}] Fetching stock footage for ${scenes.length} scenes...`);
-  
+  // SKIP entirely for text_only visual style
+  if (visualStyle === "text_only") {
+    console.log(`[Video ${videoId}] text_only mode — skipping ALL Pexels footage fetch`);
+  }
+  console.log(`[Video ${videoId}] Fetching stock footage for ${scenes.length} scenes... (style: ${visualStyle})`);
+
   // Fetch MULTIPLE clips per scene for b-roll variety (2-3 clips per scene)
   // NOTE: Stagger requests by 300ms each to avoid Pexels concurrent connection throttling
-  const sceneFootage = await Promise.all(
+  const sceneFootage = visualStyle === "text_only" ? scenes.map(() => []) : await Promise.all(
     scenes.map(async (scene: any, index: number) => {
       // Stagger requests to avoid hitting Pexels rate limits with concurrent connections
       if (index > 0) {
