@@ -601,6 +601,78 @@ export async function renderVideo(params: {
   const db = await getDb();
   if (!db) throw new Error("Database connection failed");
 
+  // ─── REMOTION LAMBDA PATH ────────────────────────────────────────────────
+  // If Remotion Lambda is configured, use it instead of Creatomate
+  try {
+    const { isRemotionConfigured, renderVideoWithRemotion } = await import("../lib/remotionRenderer");
+    if (isRemotionConfigured()) {
+      console.log(`[Video ${videoId}] Using Remotion Lambda renderer`);
+
+      await db.update(videos).set({ creatomateStatus: "rendering", updatedAt: new Date() }).where(eq(videos.id, videoId));
+
+      const scenes = (script.scenes || []).map((s: any) => ({
+        voiceoverText: s.voiceoverText ?? "",
+        visualDirection: s.visualDirection ?? "",
+        onScreenText: s.onScreenText ?? "",
+        pexelsQuery: s.pexelsQuery ?? "",
+        footageUrl: s.footageUrl ?? undefined,
+      }));
+
+      // Generate voiceover via ElevenLabs (reuse existing pipeline)
+      let voiceoverUrl: string | null = null;
+      try {
+        const fullVoiceoverText = scenes.map((s: any) => s.voiceoverText).join(" ");
+        if (fullVoiceoverText.trim()) {
+          const { generateVoiceover, VOICE_IDS } = await import("../elevenlabs");
+          const voiceoverBuffer = await generateVoiceover({ text: fullVoiceoverText, voiceId: VOICE_IDS.charlie });
+          const { storagePut } = await import("../storage");
+          const { url } = await storagePut(`voiceovers/video-${videoId}.mp3`, voiceoverBuffer, "audio/mpeg");
+          voiceoverUrl = url;
+          console.log(`[Video ${videoId}] Voiceover uploaded: ${voiceoverUrl}`);
+        }
+      } catch (e: any) {
+        console.warn(`[Video ${videoId}] Voiceover generation failed, rendering without audio:`, e.message);
+      }
+
+      // Fetch stock footage URLs from Pexels for scenes that need them
+      for (let i = 0; i < scenes.length; i++) {
+        if (scenes[i].pexelsQuery && !scenes[i].footageUrl) {
+          try {
+            const { fetchStockFootageWithFallback } = await import("../pixabay.js");
+            const footageUrl = await fetchStockFootageWithFallback(scenes[i].pexelsQuery, "portrait", i);
+            if (footageUrl) scenes[i].footageUrl = footageUrl;
+          } catch (e: any) {
+            console.warn(`[Video ${videoId}] Scene ${i + 1} footage fetch failed:`, e.message);
+          }
+        }
+      }
+
+      // Calculate total duration from scene count
+      const totalDurationInSeconds = scenes.length * 5; // ~5 seconds per scene
+
+      const { videoUrl } = await renderVideoWithRemotion({
+        scenes,
+        primaryColor: brandColor || "#FF5B1D",
+        coachName: "", // TODO: pass from user profile
+        logoUrl: logoUrl || null,
+        voiceoverUrl,
+        totalDurationInSeconds,
+      });
+
+      await db.update(videos).set({
+        videoUrl,
+        creatomateStatus: "succeeded",
+        updatedAt: new Date(),
+      }).where(eq(videos.id, videoId));
+
+      console.log(`[Video ${videoId}] Remotion render COMPLETE: ${videoUrl}`);
+      return;
+    }
+  } catch (remotionError: any) {
+    console.warn(`[Video ${videoId}] Remotion Lambda not available, falling back to Creatomate:`, remotionError.message);
+  }
+  // ─── END REMOTION PATH ───────────────────────────────────────────────────
+
   // Update status to rendering
   await db
     .update(videos)
