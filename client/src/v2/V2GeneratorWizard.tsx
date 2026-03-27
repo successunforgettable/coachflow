@@ -1239,8 +1239,10 @@ function PushIntegrationPanel({ campaignKit }: { campaignKit: any }) {
     try {
       setPushStatus("Pushing to GoHighLevel...");
       const result = await ghlPush.mutateAsync({ kitId: campaignKit.id });
-      const pushed = [result.emailPushed && "Emails", result.whatsappPushed && "WhatsApp", result.landingPagePushed && "Landing Page"].filter(Boolean).join(", ");
-      setPushStatus(pushed ? `Pushed: ${pushed}` : "Push completed — check GHL for results");
+      const pushed = [result.emailPushed && "✅ Email Sequence", result.whatsappPushed && "✅ WhatsApp Sequence", result.landingPagePushed && "✅ Landing Page"].filter(Boolean);
+      const failed = [!result.emailPushed && campaignKit?.selectedEmailSequenceId && "❌ Email Sequence", !result.whatsappPushed && campaignKit?.selectedWhatsAppSequenceId && "❌ WhatsApp Sequence", !result.landingPagePushed && campaignKit?.selectedLandingPageId && "❌ Landing Page"].filter(Boolean);
+      const allPushed = pushed.length > 0 && failed.length === 0;
+      setPushStatus(allPushed ? `🎉 Campaign pushed to GoHighLevel!\n${pushed.join("\n")}` : pushed.length > 0 ? `Partial push:\n${[...pushed, ...failed].join("\n")}` : "Push completed — check GHL for results");
     } catch (e: any) {
       setPushStatus(`Error: ${e.message || "Push failed"}`);
     }
@@ -1312,7 +1314,7 @@ function PushIntegrationPanel({ campaignKit }: { campaignKit: any }) {
       )}
 
       {pushStatus && (
-        <p style={{ fontFamily: F, fontSize: 13, color: pushStatus.startsWith("Error") ? "#C0390A" : "#22C55E", margin: "8px 0" }}>
+        <p style={{ fontFamily: F, fontSize: 13, color: pushStatus.startsWith("Error") ? "#C0390A" : "#22C55E", margin: "8px 0", whiteSpace: "pre-line", lineHeight: 1.6 }}>
           {pushStatus}
         </p>
       )}
