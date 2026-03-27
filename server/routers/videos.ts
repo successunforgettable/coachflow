@@ -66,7 +66,8 @@ export const videosRouter = router({
       z.object({
         scriptId: z.number(),
         visualStyle: z.enum(["text_only", "kinetic_typography", "motion_graphics", "stats_card"]),
-        brandColor: z.string().optional().default("#3B82F6"),
+        duration: z.enum(["15", "30", "60", "90"]).optional(),
+        brandColor: z.string().optional().default("#FF5B1D"),
         logoUrl: z.string().optional(),
         isZapDemo: z.boolean().optional().default(false),
       })

@@ -18,6 +18,7 @@ export const RemotionRoot: React.FC = () => {
         logoUrl: null,
         voiceoverUrl: null,
         totalDurationInSeconds: 30,
+        visualStyle: "kinetic_typography",
       }}
     />
   );

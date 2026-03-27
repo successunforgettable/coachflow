@@ -28,9 +28,10 @@ const T = {
 
 // ─── Video type options (V2 simplified set) ───────────────────────────────────
 const VIDEO_TYPES = [
-  { value: "explainer",         label: "Explainer"   },
-  { value: "testimonial",       label: "Testimonial" },
-  { value: "proof_results",     label: "VSL"         },
+  { value: "explainer",         label: "Explainer"        },
+  { value: "testimonial",       label: "Testimonial"      },
+  { value: "proof_results",     label: "VSL"              },
+  { value: "mechanism_reveal",  label: "Mechanism Reveal"  },
 ];
 
 // ─── Visual style options ─────────────────────────────────────────────────────
@@ -377,7 +378,8 @@ export default function V2VideoCreator({ isFreeTier }: { isFreeTier?: boolean } 
       const { videoId: vId } = await generateVideo.mutateAsync({
         scriptId:    scriptResult.scriptId,
         visualStyle: visualStyle as any,
-        brandColor:  "#3B82F6",
+        duration:    duration as any,
+        brandColor:  "#FF5B1D",
       });
       setVideoId(vId);
       startVideoPolling(vId);

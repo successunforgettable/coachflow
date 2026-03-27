@@ -37,6 +37,7 @@ export const ZapAdVideoSchema = z.object({
   logoUrl: z.string().nullable().optional(),
   voiceoverUrl: z.string().nullable().optional(),
   totalDurationInSeconds: z.number().default(30),
+  visualStyle: z.string().default("kinetic_typography"), // text_only | kinetic_typography | motion_graphics
 });
 
 export type ZapAdVideoProps = z.infer<typeof ZapAdVideoSchema>;
@@ -48,11 +49,13 @@ function SceneCard({
   index,
   primaryColor,
   totalScenes,
+  visualStyle = "kinetic_typography",
 }: {
   scene: z.infer<typeof SceneSchema>;
   index: number;
   primaryColor: string;
   totalScenes: number;
+  visualStyle?: string;
 }) {
   const frame = useCurrentFrame();
   const { fps, width, height } = useVideoConfig();
@@ -83,8 +86,18 @@ function SceneCard({
 
   return (
     <AbsoluteFill>
-      {/* Background: stock footage or gradient */}
-      {scene.footageUrl ? (
+      {/* Background: text_only = dark gradient always, otherwise stock footage or gradient */}
+      {visualStyle === "text_only" || !scene.footageUrl ? (
+        <AbsoluteFill
+          style={{
+            background: isIntro
+              ? `linear-gradient(135deg, ${primaryColor} 0%, #1A1624 100%)`
+              : isOutro
+              ? `linear-gradient(135deg, #1A1624 0%, ${primaryColor} 100%)`
+              : `linear-gradient(180deg, #1A1624 0%, #0D0A14 100%)`,
+          }}
+        />
+      ) : (
         <Video
           src={scene.footageUrl}
           style={{
@@ -93,16 +106,6 @@ function SceneCard({
             objectFit: "cover",
           }}
           volume={0}
-        />
-      ) : (
-        <AbsoluteFill
-          style={{
-            background: isIntro
-              ? `linear-gradient(135deg, ${primaryColor} 0%, #1a1a2e 100%)`
-              : isOutro
-              ? `linear-gradient(135deg, #1a1a2e 0%, ${primaryColor} 100%)`
-              : `linear-gradient(180deg, #0f0f23 0%, #1a1a2e 100%)`,
-          }}
         />
       )}
 
@@ -314,11 +317,11 @@ function CtaScene({
         </div>
       )}
 
-      {/* Fade to black at the end */}
+      {/* Fade to black — last 1 second only */}
       <AbsoluteFill
         style={{
           background: "#000",
-          opacity: interpolate(frame, [3.0 * fps, 4.5 * fps], [0, 1], {
+          opacity: interpolate(frame, [4.0 * fps, 5.0 * fps], [0, 1], {
             extrapolateLeft: "clamp",
             extrapolateRight: "clamp",
           }),
@@ -337,6 +340,7 @@ export const ZapAdVideo: React.FC<ZapAdVideoProps> = ({
   logoUrl,
   voiceoverUrl,
   totalDurationInSeconds,
+  visualStyle = "kinetic_typography",
 }) => {
   const { fps } = useVideoConfig();
 
@@ -394,6 +398,7 @@ export const ZapAdVideo: React.FC<ZapAdVideoProps> = ({
                     index={i}
                     primaryColor={primaryColor}
                     totalScenes={scenes.length}
+                    visualStyle={visualStyle}
                   />
                 )}
               </TransitionSeries.Sequence>
