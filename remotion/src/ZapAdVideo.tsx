@@ -115,14 +115,14 @@ function SceneCard({
         />
       )}
 
-      {/* Content container */}
+      {/* Content container — lower third positioning */}
       <AbsoluteFill
         style={{
           display: "flex",
           flexDirection: "column",
-          justifyContent: "center",
+          justifyContent: "flex-end",
           alignItems: "center",
-          padding: "80px 60px",
+          padding: "0 60px 160px",
         }}
       >
         {/* On-screen text (big headline) */}
@@ -171,17 +171,15 @@ function SceneCard({
                 extrapolateRight: "clamp",
               }),
               fontFamily: "Arial, Helvetica, sans-serif",
-              fontSize: "28px",
+              fontSize: scene.voiceoverText.length > 150 ? "22px" : scene.voiceoverText.length > 100 ? "24px" : "28px",
               fontWeight: 400,
               color: "rgba(255,255,255,0.85)",
               textAlign: "center",
               lineHeight: 1.5,
-              maxWidth: "85%",
+              maxWidth: "90%",
             }}
           >
-            {scene.voiceoverText.length > 120
-              ? scene.voiceoverText.slice(0, 120) + "..."
-              : scene.voiceoverText}
+            {scene.voiceoverText}
           </div>
         )}
       </AbsoluteFill>
@@ -315,6 +313,17 @@ function CtaScene({
           {coachName}
         </div>
       )}
+
+      {/* Fade to black at the end */}
+      <AbsoluteFill
+        style={{
+          background: "#000",
+          opacity: interpolate(frame, [3.0 * fps, 4.5 * fps], [0, 1], {
+            extrapolateLeft: "clamp",
+            extrapolateRight: "clamp",
+          }),
+        }}
+      />
     </AbsoluteFill>
   );
 }

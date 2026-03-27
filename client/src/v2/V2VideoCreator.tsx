@@ -505,46 +505,52 @@ export default function V2VideoCreator({ isFreeTier }: { isFreeTier?: boolean } 
                 </div>
               </div>
 
-              {/* Video Type */}
+              {/* Video Type — pill toggles */}
               <div>
                 <span style={labelStyle}>Video Type</span>
-                <select
-                  style={selectStyle}
-                  value={videoType}
-                  onChange={(e) => setVideoType(e.target.value)}
-                >
+                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
                   {VIDEO_TYPES.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
+                    <button key={o.value} onClick={() => setVideoType(o.value)} style={{
+                      padding: "8px 16px", borderRadius: "9999px",
+                      border: videoType === o.value ? "2px solid #FF5B1D" : "1.5px solid rgba(26,22,36,0.15)",
+                      background: videoType === o.value ? "#FF5B1D" : "#fff",
+                      color: videoType === o.value ? "#fff" : "#1A1624",
+                      fontFamily: "'Instrument Sans', sans-serif", fontWeight: 600, fontSize: "13px", cursor: "pointer",
+                    }}>{o.label}</button>
                   ))}
-                </select>
+                </div>
               </div>
 
               {/* Visual Style */}
               <div>
                 <span style={labelStyle}>Visual Style</span>
-                <select
-                  style={selectStyle}
-                  value={visualStyle}
-                  onChange={(e) => setVisualStyle(e.target.value)}
-                >
+                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
                   {VISUAL_STYLES.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
+                    <button key={o.value} onClick={() => setVisualStyle(o.value)} style={{
+                      padding: "8px 16px", borderRadius: "9999px",
+                      border: visualStyle === o.value ? "2px solid #FF5B1D" : "1.5px solid rgba(26,22,36,0.15)",
+                      background: visualStyle === o.value ? "#FF5B1D" : "#fff",
+                      color: visualStyle === o.value ? "#fff" : "#1A1624",
+                      fontFamily: "'Instrument Sans', sans-serif", fontWeight: 600, fontSize: "13px", cursor: "pointer",
+                    }}>{o.label}</button>
                   ))}
-                </select>
+                </div>
               </div>
 
-              {/* Duration */}
+              {/* Duration — pill toggles */}
               <div style={{ gridColumn: "1 / -1" }}>
                 <span style={labelStyle}>Duration</span>
-                <select
-                  style={selectStyle}
-                  value={duration}
-                  onChange={(e) => setDuration(e.target.value)}
-                >
+                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
                   {DURATIONS.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
+                    <button key={o.value} onClick={() => setDuration(o.value)} style={{
+                      padding: "8px 16px", borderRadius: "9999px",
+                      border: duration === o.value ? "2px solid #FF5B1D" : "1.5px solid rgba(26,22,36,0.15)",
+                      background: duration === o.value ? "#FF5B1D" : "#fff",
+                      color: duration === o.value ? "#fff" : "#1A1624",
+                      fontFamily: "'Instrument Sans', sans-serif", fontWeight: 600, fontSize: "13px", cursor: "pointer",
+                    }}>{o.label}</button>
                   ))}
-                </select>
+                </div>
               </div>
             </div>
 
