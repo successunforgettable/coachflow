@@ -507,51 +507,64 @@ export default function V2VideoCreator({ isFreeTier }: { isFreeTier?: boolean } 
                 </div>
               </div>
 
-              {/* Video Type — pill toggles */}
+              {/* Video Type — pill toggles, equal width */}
               <div>
                 <span style={labelStyle}>Video Type</span>
-                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                  {VIDEO_TYPES.map((o) => (
-                    <button key={o.value} onClick={() => setVideoType(o.value)} style={{
-                      padding: "8px 16px", borderRadius: "9999px",
-                      border: videoType === o.value ? "2px solid #FF5B1D" : "1.5px solid rgba(26,22,36,0.15)",
-                      background: videoType === o.value ? "#FF5B1D" : "#fff",
-                      color: videoType === o.value ? "#fff" : "#1A1624",
-                      fontFamily: "'Instrument Sans', sans-serif", fontWeight: 600, fontSize: "13px", cursor: "pointer",
-                    }}>{o.label}</button>
-                  ))}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "8px" }}>
+                  {VIDEO_TYPES.map((o) => {
+                    const active = videoType === o.value;
+                    return (
+                      <button key={o.value} onClick={() => setVideoType(o.value)} style={{
+                        padding: "8px 6px", borderRadius: "9999px",
+                        border: active ? "2px solid #FF5B1D" : "1.5px solid rgba(26,22,36,0.15)",
+                        background: active ? "#FF5B1D" : "#fff",
+                        color: active ? "#fff" : "#1A1624",
+                        fontFamily: "'Instrument Sans', sans-serif", fontWeight: 600, fontSize: "12px", cursor: "pointer",
+                        display: "flex", alignItems: "center", justifyContent: "center", gap: "4px",
+                        transition: "all 150ms",
+                      }}>{active && <span style={{ fontSize: "11px" }}>✓</span>}{o.label}</button>
+                    );
+                  })}
                 </div>
               </div>
 
-              {/* Visual Style */}
+              {/* Visual Style — pill toggles with checkmark */}
               <div>
                 <span style={labelStyle}>Visual Style</span>
                 <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                  {VISUAL_STYLES.map((o) => (
-                    <button key={o.value} onClick={() => setVisualStyle(o.value)} style={{
-                      padding: "8px 16px", borderRadius: "9999px",
-                      border: visualStyle === o.value ? "2px solid #FF5B1D" : "1.5px solid rgba(26,22,36,0.15)",
-                      background: visualStyle === o.value ? "#FF5B1D" : "#fff",
-                      color: visualStyle === o.value ? "#fff" : "#1A1624",
-                      fontFamily: "'Instrument Sans', sans-serif", fontWeight: 600, fontSize: "13px", cursor: "pointer",
-                    }}>{o.label}</button>
-                  ))}
+                  {VISUAL_STYLES.map((o) => {
+                    const active = visualStyle === o.value;
+                    return (
+                      <button key={o.value} onClick={() => setVisualStyle(o.value)} style={{
+                        padding: "8px 16px", borderRadius: "9999px",
+                        border: active ? "2px solid #FF5B1D" : "1.5px solid rgba(26,22,36,0.15)",
+                        background: active ? "#FF5B1D" : "#fff",
+                        color: active ? "#fff" : "#1A1624",
+                        fontFamily: "'Instrument Sans', sans-serif", fontWeight: 600, fontSize: "13px", cursor: "pointer",
+                        display: "flex", alignItems: "center", gap: "4px", transition: "all 150ms",
+                      }}>{active && <span style={{ fontSize: "11px" }}>✓</span>}{o.label}</button>
+                    );
+                  })}
                 </div>
               </div>
 
-              {/* Duration — pill toggles */}
+              {/* Duration — pill toggles with checkmark */}
               <div style={{ gridColumn: "1 / -1" }}>
                 <span style={labelStyle}>Duration</span>
                 <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                  {DURATIONS.map((o) => (
-                    <button key={o.value} onClick={() => setDuration(o.value)} style={{
-                      padding: "8px 16px", borderRadius: "9999px",
-                      border: duration === o.value ? "2px solid #FF5B1D" : "1.5px solid rgba(26,22,36,0.15)",
-                      background: duration === o.value ? "#FF5B1D" : "#fff",
-                      color: duration === o.value ? "#fff" : "#1A1624",
-                      fontFamily: "'Instrument Sans', sans-serif", fontWeight: 600, fontSize: "13px", cursor: "pointer",
-                    }}>{o.label}</button>
-                  ))}
+                  {DURATIONS.map((o) => {
+                    const active = duration === o.value;
+                    return (
+                      <button key={o.value} onClick={() => setDuration(o.value)} style={{
+                        padding: "8px 16px", borderRadius: "9999px",
+                        border: active ? "2px solid #FF5B1D" : "1.5px solid rgba(26,22,36,0.15)",
+                        background: active ? "#FF5B1D" : "#fff",
+                        color: active ? "#fff" : "#1A1624",
+                        fontFamily: "'Instrument Sans', sans-serif", fontWeight: 600, fontSize: "13px", cursor: "pointer",
+                        display: "flex", alignItems: "center", gap: "4px", transition: "all 150ms",
+                      }}>{active && <span style={{ fontSize: "11px" }}>✓</span>}{o.label}</button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
