@@ -1238,11 +1238,15 @@ function PushIntegrationPanel({ campaignKit }: { campaignKit: any }) {
     if (!campaignKit?.id) return;
     try {
       setPushStatus("Pushing to GoHighLevel...");
+      console.log("[GHL Push] Starting push for kit:", campaignKit.id);
       const result = await ghlPush.mutateAsync({ kitId: campaignKit.id });
+      console.log("[GHL Push] Result:", JSON.stringify(result));
       const pushed = [result.emailPushed && "✅ Email Sequence", result.whatsappPushed && "✅ WhatsApp Sequence", result.landingPagePushed && "✅ Landing Page"].filter(Boolean);
       const failed = [!result.emailPushed && campaignKit?.selectedEmailSequenceId && "❌ Email Sequence", !result.whatsappPushed && campaignKit?.selectedWhatsAppSequenceId && "❌ WhatsApp Sequence", !result.landingPagePushed && campaignKit?.selectedLandingPageId && "❌ Landing Page"].filter(Boolean);
       const allPushed = pushed.length > 0 && failed.length === 0;
-      setPushStatus(allPushed ? `🎉 Campaign pushed to GoHighLevel!\n${pushed.join("\n")}` : pushed.length > 0 ? `Partial push:\n${[...pushed, ...failed].join("\n")}` : "Push completed — check GHL for results");
+      const msg = allPushed ? `🎉 Campaign pushed to GoHighLevel!\n${pushed.join("\n")}` : pushed.length > 0 ? `Partial push:\n${[...pushed, ...failed].join("\n")}` : "Push completed — check GHL for results";
+      console.log("[GHL Push] Setting pushStatus to:", msg);
+      setPushStatus(msg);
     } catch (e: any) {
       setPushStatus(`Error: ${e.message || "Push failed"}`);
     }
@@ -2593,7 +2597,10 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
         const waResult = await pollJob(jobId);
         if (typeof waResult.id === 'number') setLatestWhatsappSequenceId(waResult.id);
       } else if (step === "pushToMeta") {
-        // No generation needed — just show instructions
+        // No generation needed — just show the integration panel
+        clearTimeout(timeoutRef.current ?? undefined);
+        setStatus("success");
+        return; // Skip progress invalidation — no generation happened
       }
       clearTimeout(timeoutRef.current ?? undefined);
       setComplianceScore(100);
