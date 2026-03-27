@@ -423,6 +423,7 @@ export default function V2ICPResultPanel({
         )}
       </div>
       {exportUpgradeOpen && <UpgradePrompt variant="modal" featureName="Export & Download" onClose={() => setExportUpgradeOpen(false)} />}
+      <ExportButtons content={formatIcpTxt(data)} serviceName="ICP" nodeName="ICP" showPdf={false} />
     </div>
   );
 }

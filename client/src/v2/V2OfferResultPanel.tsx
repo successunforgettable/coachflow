@@ -429,6 +429,7 @@ export default function V2OfferResultPanel({
         )}
       </div>
       {exportUpgradeOpen && <UpgradePrompt variant="modal" featureName="Export & Download" onClose={() => setExportUpgradeOpen(false)} />}
+      <ExportButtons content={formatOfferTxt(data)} serviceName="Offer" nodeName="Offer" showPdf={true} isFreeTier={false} />
     </div>
   );
 }

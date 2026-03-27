@@ -388,6 +388,7 @@ export default function V2HeadlinesResultPanel({
           filteredHeadlines.map((h, i) => <HeadlineCard key={h.id} headline={h} isFreeTier={isFreeTier} index={i} isFav={isFavourited(h.id)} onToggleFav={() => toggleFav(h.id, h.headline)} />)
         )}
       </div>
+      <ExportButtons content={formatHeadlinesTxt(data)} serviceName="Headlines" nodeName="Headlines" showPdf={true} isFreeTier={isFreeTier} />
     </div>
   );
 }

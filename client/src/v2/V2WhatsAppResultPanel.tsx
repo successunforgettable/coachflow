@@ -361,6 +361,7 @@ export default function V2WhatsAppResultPanel({
           No messages found.
         </p>
       )}
+      <ExportButtons content={formatWhatsAppTxt(data)} serviceName={(data as any)?.name || "WhatsApp"} nodeName="WhatsApp_Sequence" showPdf={true} isFreeTier={isFreeTier} />
     </div>
   );
 }

@@ -741,6 +741,7 @@ export default function V2AdCopyResultPanel({
       )}
 
       {upgradeFeature && <UpgradePrompt variant="modal" featureName={upgradeFeature} onClose={() => setUpgradeFeature(null)} />}
+      <ExportButtons content={formatAdCopyTxt(Array.isArray(data) ? data : [])} serviceName="Ad_Copy" nodeName="Ad_Copy" showPdf={true} isFreeTier={isFreeTier} />
     </div>
   );
 }

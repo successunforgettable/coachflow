@@ -293,6 +293,7 @@ export default function V2FreeOptInResultPanel({
         </p>
       )}
       {showUpgradeModal && <UpgradePrompt variant="modal" featureName="Per-Item Regeneration" onClose={() => setShowUpgradeModal(false)} />}
+      <ExportButtons content={formatHvcoTxt(Array.isArray(data) ? data : [])} serviceName="Free_OptIn" nodeName="Free_OptIn" showPdf={false} />
     </div>
   );
 }

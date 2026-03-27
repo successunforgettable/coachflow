@@ -8,6 +8,7 @@ import { useParams, useLocation } from "wouter";
 import V2Layout from "./V2Layout";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
+import { downloadCampaignBrief } from "./lib/exportUtils";
 
 // ─── Asset section config ──────────────────────────────────────────────────────
 const SECTIONS = [
@@ -266,6 +267,65 @@ export default function V2CampaignKit() {
     { enabled: !!kit?.icpId }
   );
 
+  // Brief data queries
+  const { data: briefOffer } = trpc.offers.get.useQuery({ id: kit?.selectedOfferId! }, { enabled: !!kit?.selectedOfferId });
+  const { data: briefMech } = trpc.heroMechanisms.get.useQuery({ id: kit?.selectedMechanismId! }, { enabled: !!kit?.selectedMechanismId });
+  const { data: briefHvco } = trpc.hvco.get.useQuery({ id: kit?.selectedHvcoId! }, { enabled: !!kit?.selectedHvcoId });
+  const { data: briefHeadline } = trpc.headlines.get.useQuery({ id: kit?.selectedHeadlineId! }, { enabled: !!kit?.selectedHeadlineId });
+  const { data: briefAdCopy } = trpc.adCopy.get.useQuery({ id: kit?.selectedAdCopyId! }, { enabled: !!kit?.selectedAdCopyId });
+  const { data: briefLP } = trpc.landingPages.get.useQuery({ id: kit?.selectedLandingPageId! }, { enabled: !!kit?.selectedLandingPageId });
+  const { data: briefEmail } = trpc.emailSequences.get.useQuery({ id: kit?.selectedEmailSequenceId! }, { enabled: !!kit?.selectedEmailSequenceId });
+
+  const handleDownloadBrief = () => {
+    const icp = icpData as any;
+    const offer = briefOffer as any;
+    const mech = briefMech as any;
+    const hvco = briefHvco as any;
+    const headline = briefHeadline as any;
+    const adCopy = briefAdCopy as any;
+    const lp = briefLP as any;
+    const email = briefEmail as any;
+
+    // Extract ICP summary (top 3 pain points)
+    const icpSummary = [icp?.pains, icp?.frustrations, icp?.goals].filter(Boolean).map((s: string) => s.split("\n")[0]).join("\n• ");
+
+    // Extract offer name from active angle
+    const offerAngle = offer?.godfatherAngle ? (typeof offer.godfatherAngle === "string" ? JSON.parse(offer.godfatherAngle) : offer.godfatherAngle) : null;
+    const offerName = offerAngle?.offerName || offer?.productName || "";
+
+    // Mechanism name
+    const mechanismName = mech?.mechanismName || "";
+
+    // HVCO title
+    const hvcoTitle = hvco?.title || "";
+
+    // Headline text
+    const headlineText = headline?.headline || "";
+
+    // Ad hook (first line of first body)
+    const adHook = adCopy?.content ? adCopy.content.split("\n")[0] : "";
+
+    // Landing page headline
+    const lpAngle = lp?.originalAngle ? (typeof lp.originalAngle === "string" ? JSON.parse(lp.originalAngle) : lp.originalAngle) : null;
+    const lpHeadline = lpAngle?.mainHeadline || "";
+
+    // Email 1 subject
+    const emails = email?.emails ? (typeof email.emails === "string" ? JSON.parse(email.emails) : email.emails) : [];
+    const email1Subject = Array.isArray(emails) && emails.length > 0 ? emails[0].subject || "" : "";
+
+    downloadCampaignBrief({
+      serviceName: kit?.name || "Campaign",
+      icpSummary: icpSummary ? `• ${icpSummary}` : "",
+      offerName,
+      mechanismName,
+      hvcoTitle,
+      headline: headlineText,
+      adHook,
+      landingPageHeadline: lpHeadline,
+      email1Subject,
+    });
+  };
+
   // Error state
   if (isError) {
     return (
@@ -401,7 +461,7 @@ export default function V2CampaignKit() {
       }}>
         <button
           disabled={!isComplete}
-          onClick={() => toast("Export coming soon")}
+          onClick={handleDownloadBrief}
           style={{
             padding: "10px 24px",
             borderRadius: "var(--v2-border-radius-pill, 9999px)",
@@ -414,7 +474,7 @@ export default function V2CampaignKit() {
             cursor: isComplete ? "pointer" : "default",
           }}
         >
-          Export PDF
+          📑 Download Campaign Brief
         </button>
         <button
           disabled={!isComplete}

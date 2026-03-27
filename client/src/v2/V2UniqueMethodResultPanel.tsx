@@ -305,6 +305,7 @@ export default function V2UniqueMethodResultPanel({
         </p>
       )}
       {showUpgradeModal && <UpgradePrompt variant="modal" featureName="Per-Item Regeneration" onClose={() => setShowUpgradeModal(false)} />}
+      <ExportButtons content={formatMechanismsTxt(Array.isArray(data) ? data : [])} serviceName="Unique_Method" nodeName="Unique_Method" showPdf={false} />
     </div>
   );
 }

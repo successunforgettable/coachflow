@@ -1189,6 +1189,7 @@ export default function V2LandingPageResultPanel({
         )}
       </div>
       {exportUpgradeOpen && <UpgradePrompt variant="modal" featureName="Export & Download" onClose={() => setExportUpgradeOpen(false)} />}
+      <ExportButtons content={formatLandingPageTxt(data, "original")} serviceName="Landing_Page" nodeName="Landing_Page" showPdf={true} isFreeTier={false} />
     </div>
   );
 }
