@@ -13,6 +13,8 @@ import { trpc } from "../lib/trpc";
 import { toast } from "sonner";
 import ZappyMascot from "./ZappyMascot";
 import UpgradePrompt from "./components/UpgradePrompt";
+import ExportButtons from "./components/ExportButtons";
+import { formatWhatsAppTxt, formatHeadlinesTxt, formatAdCopyTxt, formatOfferTxt, formatMechanismsTxt, formatHvcoTxt, formatIcpTxt, formatLandingPageTxt } from "./lib/exportUtils";
 import LandingPageVisualTemplate from "./components/LandingPageVisualTemplate";
 
 // ─── Types ────────────────────────────────────────────────────────────────────

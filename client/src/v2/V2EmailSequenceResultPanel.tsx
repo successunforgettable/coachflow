@@ -10,6 +10,8 @@ import { trpc } from "../lib/trpc";
 import ZappyMascot from "./ZappyMascot";
 import UpgradePrompt from "./components/UpgradePrompt";
 import { useFavourites } from "./hooks/useFavourites";
+import ExportButtons from "./components/ExportButtons";
+import { formatEmailsTxt } from "./lib/exportUtils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface EmailItem {
@@ -422,6 +424,7 @@ export default function V2EmailSequenceResultPanel({
         </p>
       )}
       {showUpgradeModal && <UpgradePrompt variant="modal" featureName="Per-Item Regeneration" onClose={() => setShowUpgradeModal(false)} />}
+      <ExportButtons content={formatEmailsTxt(data)} serviceName={(data as any)?.name || "Email Sequence"} nodeName="Email_Sequence" showPdf={true} isFreeTier={isFreeTier} />
     </div>
   );
 }
