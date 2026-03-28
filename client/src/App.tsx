@@ -65,6 +65,7 @@ import V2Dashboard from "./v2/V2Dashboard";
 import V2GeneratorWizardPage from "./v2/V2GeneratorWizardPage";
 import V2CampaignKit from "./v2/V2CampaignKit";
 import V2SourceOfTruth from "./v2/V2SourceOfTruth";
+import V2AssetLibrary from "./v2/V2AssetLibrary";
 import Login from "./pages/Login";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
@@ -138,6 +139,7 @@ function Router() {
       <Route path={"/forgot-password"} component={ForgotPassword} />
       <Route path={"/reset-password"} component={ResetPassword} />
       {/* V2 Sandbox — specific routes first, base route last (wouter Switch matches first hit) */}
+      <Route path={"/v2-dashboard/asset-library"} component={V2AssetLibrary} />
       <Route path={"/v2-dashboard/source-of-truth"} component={V2SourceOfTruth} />
       <Route path={"/v2-dashboard/wizard/:step"} component={V2GeneratorWizardPage} />
       <Route path={"/v2-dashboard/campaign-kit/:kitId"} component={V2CampaignKit} />
