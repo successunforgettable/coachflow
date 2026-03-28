@@ -69,6 +69,52 @@ async function startServer() {
     }
   });
 
+  // Image proxy — fetches private S3/Cloudinary image URLs server-side and streams to client
+  // Avoids 403 errors when the browser tries to load private URLs directly
+  app.get("/api/image-proxy", async (req, res) => {
+    try {
+      let user: { id: number | string } | null = null;
+      try {
+        user = await sdk.authenticateRequest(req);
+      } catch {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+      if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+      const rawUrl = req.query.url as string;
+      if (!rawUrl) { res.status(400).json({ error: "Missing url parameter" }); return; }
+
+      let decoded: string;
+      try {
+        decoded = decodeURIComponent(rawUrl);
+        const parsed = new URL(decoded);
+        if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+          res.status(400).json({ error: "Invalid URL scheme" }); return;
+        }
+      } catch {
+        res.status(400).json({ error: "Invalid URL" }); return;
+      }
+
+      const imageRes = await fetch(decoded);
+      if (!imageRes.ok) {
+        console.error(`[image-proxy] Upstream ${imageRes.status} for ${decoded}`);
+        res.status(imageRes.status).end();
+        return;
+      }
+
+      const contentType = imageRes.headers.get("content-type") || "image/png";
+      res.setHeader("Content-Type", contentType);
+      res.setHeader("Cache-Control", "public, max-age=86400");
+      const buffer = Buffer.from(await imageRes.arrayBuffer());
+      res.send(buffer);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[image-proxy] Error:", msg);
+      res.status(500).json({ error: msg });
+    }
+  });
+
   // Daily cleanup cron — delete jobs older than 24 hours to prevent table bloat
   setInterval(async () => {
     try {
@@ -84,6 +130,70 @@ async function startServer() {
       console.error("[jobs-cleanup] Error:", err);
     }
   }, 24 * 60 * 60 * 1000); // runs every 24 hours
+
+  // Meta Daily Read-Only Job — 100 API calls/day for App Review compliance
+  const runMetaDailyJob = async () => {
+    const MAX_CALLS = 100;
+    let callCount = 0;
+    const now = new Date();
+    console.log(`[Meta Daily Job] Starting at ${now.toISOString()} — target: ${MAX_CALLS} read-only calls`);
+
+    try {
+      const { getDb } = await import("../db");
+      const { metaAccessTokens } = await import("../../drizzle/schema");
+      const { getCampaigns } = await import("../lib/metaAPI");
+      const db = await getDb();
+      if (!db) { console.log("[Meta Daily Job] DB not available, skipping"); return; }
+
+      // Fetch all users with Meta tokens
+      const tokenRows = await db.select({ userId: metaAccessTokens.userId }).from(metaAccessTokens);
+      if (tokenRows.length === 0) { console.log("[Meta Daily Job] No users with Meta tokens, skipping"); return; }
+
+      // Build date ranges for multiple calls per user
+      const dateRanges: Array<{ since: string; until: string }> = [];
+      for (let daysBack = 0; daysBack < 30; daysBack++) {
+        const d = new Date();
+        d.setDate(d.getDate() - daysBack);
+        const since = d.toISOString().split("T")[0];
+        const until = since;
+        dateRanges.push({ since, until });
+      }
+
+      // Round-robin through users × date ranges until 100 calls
+      let rangeIdx = 0;
+      while (callCount < MAX_CALLS) {
+        for (const row of tokenRows) {
+          if (callCount >= MAX_CALLS) break;
+          const range = dateRanges[rangeIdx % dateRanges.length];
+          try {
+            const campaigns = await getCampaigns(row.userId, {
+              limit: 10,
+              includeInsights: true,
+              dateRange: range,
+            });
+            callCount++;
+            console.log(`[Meta Daily Job] ${now.toISOString()} call ${callCount} of ${MAX_CALLS} — user ${row.userId} range ${range.since} — ${campaigns.length} campaigns`);
+          } catch (err: unknown) {
+            callCount++;
+            const msg = err instanceof Error ? err.message : String(err);
+            console.error(`[Meta Daily Job] call ${callCount} of ${MAX_CALLS} — user ${row.userId} FAILED: ${msg}`);
+          }
+        }
+        rangeIdx++;
+        // Safety: if we've exhausted all date ranges × users and still not at 100, break
+        if (rangeIdx >= dateRanges.length * 2) break;
+      }
+
+      console.log(`[Meta Daily Job] Completed — ${callCount} total calls`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[Meta Daily Job] Fatal error: ${msg}`);
+    }
+  };
+
+  // Fire immediately on server start, then every 24 hours
+  runMetaDailyJob();
+  setInterval(runMetaDailyJob, 24 * 60 * 60 * 1000);
 
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
