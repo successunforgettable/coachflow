@@ -328,6 +328,37 @@ function HeroSection({ onCampaignSelect: _onCampaignSelect }: { onCampaignSelect
   const inputRef1 = useRef<HTMLInputElement>(null);
   const inputRef2 = useRef<HTMLInputElement>(null);
   const inputRef3 = useRef<HTMLInputElement>(null);
+  const heroContentRef = useRef<HTMLDivElement>(null);
+  const heroSectionRef = useRef<HTMLElement>(null);
+
+  // Dynamic hero height on mobile — measure content and set section height
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const isMobile = () => window.innerWidth <= 768;
+    const content = heroContentRef.current;
+    const section = heroSectionRef.current;
+    if (!content || !section) return;
+
+    const updateHeight = () => {
+      if (isMobile()) {
+        const contentH = content.getBoundingClientRect().height;
+        // content height + top padding (16px) + bottom padding (16px) + buffer (24px)
+        section.style.minHeight = `${contentH + 56}px`;
+      } else {
+        section.style.minHeight = "700px";
+      }
+    };
+
+    const ro = new ResizeObserver(updateHeight);
+    ro.observe(content);
+    window.addEventListener("resize", updateHeight);
+    updateHeight();
+
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", updateHeight);
+    };
+  }, [step]);
 
   const generateAssets = trpc.landing.generatePreviewAssets.useMutation();
 
@@ -480,7 +511,7 @@ function HeroSection({ onCampaignSelect: _onCampaignSelect }: { onCampaignSelect
   const zappySize = "clamp(80px, 12vw, 120px)";
 
   return (
-    <section className="lp-hero-section" style={{ background: CREAM, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "clamp(48px,8vw,100px) clamp(16px,4vw,24px) clamp(32px,4vw,48px)", position: "relative", overflow: "hidden" }}>
+    <section ref={heroSectionRef} className="lp-hero-section" style={{ background: CREAM, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "clamp(48px,8vw,100px) clamp(16px,4vw,24px) clamp(32px,4vw,48px)", position: "relative", overflow: "hidden" }}>
       {/* Confetti */}
       {confetti.run && (
         <Confetti
@@ -497,7 +528,7 @@ function HeroSection({ onCampaignSelect: _onCampaignSelect }: { onCampaignSelect
       <div style={{ position: "absolute", top: "8%", right: "-8%", width: 500, height: 500, borderRadius: "50%", background: `radial-gradient(circle, rgba(255,91,29,0.07) 0%, transparent 70%)`, pointerEvents: "none" }} />
       <div style={{ position: "absolute", bottom: "5%", left: "-5%", width: 400, height: 400, borderRadius: "50%", background: `radial-gradient(circle, rgba(139,92,246,0.05) 0%, transparent 70%)`, pointerEvents: "none" }} />
 
-      <div style={{ maxWidth: 640, width: "100%", textAlign: "center", position: "relative", zIndex: 1 }}>
+      <div ref={heroContentRef} style={{ maxWidth: 640, width: "100%", textAlign: "center", position: "relative", zIndex: 1 }}>
         {/* Zappy */}
         <div style={{ position: "relative", display: "inline-block", marginBottom: 24 }}>
           <img
@@ -950,7 +981,6 @@ function ProblemSolutionSection({ onCTA }: { onCTA: () => void }) {
         .lp-hero-section { min-height: 700px; }
         @media (max-width: 768px) {
           .lp-hero-section {
-            min-height: auto !important;
             justify-content: flex-start !important;
             padding-top: 16px !important;
             padding-bottom: 16px !important;
