@@ -914,6 +914,13 @@ export default function V2Dashboard() {
             >
               Use a Generator
             </button>
+            <button
+              className="v2-btn v2-btn-secondary"
+              onClick={() => navigate("/v2-dashboard/asset-library")}
+              style={{ display: "flex", alignItems: "center", gap: 6 }}
+            >
+              📚 Asset Library
+            </button>
           </div>
         )}
 

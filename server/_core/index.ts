@@ -214,6 +214,52 @@ async function startServer() {
   registerMetaOAuthRoutes(app);
   // Custom auth: Google OAuth + magic links (no Manus dependency)
   registerCustomAuthRoutes(app);
+
+  // Asset search via Anthropic API (Zappy retrieval)
+  app.post("/api/asset-search", async (req, res) => {
+    try {
+      const user = await sdk.authenticateRequest(req);
+      if (!user) return res.status(401).json({ error: "Unauthorized" });
+
+      const { query, assets } = req.body;
+      if (!query || !assets) return res.status(400).json({ error: "Missing query or assets" });
+
+      const apiKey = process.env.ANTHROPIC_API_KEY;
+      if (!apiKey) return res.status(500).json({ error: "Anthropic API not configured" });
+
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 500,
+          messages: [{
+            role: "user",
+            content: `You are an asset retrieval assistant. The user is searching their marketing asset library.\n\nUser query: "${query}"\n\nAvailable assets:\n${JSON.stringify(assets.slice(0, 100))}\n\nReturn ONLY a JSON array of asset IDs that best match the user's intent. Example: [1, 5, 12]. If nothing matches, return []. No explanation, no markdown, just the JSON array.`,
+          }],
+        }),
+      });
+
+      if (!response.ok) {
+        console.error("[Asset Search] Anthropic error:", response.status);
+        return res.status(500).json({ error: "AI search failed" });
+      }
+
+      const data = await response.json();
+      const text = data.content?.[0]?.text || "[]";
+      const stripped = text.replace(/```json?\s*/gi, "").replace(/```/g, "").trim();
+      const matchingIds = JSON.parse(stripped);
+
+      res.json({ matchingIds });
+    } catch (err: any) {
+      console.error("[Asset Search] Error:", err.message);
+      res.status(500).json({ error: "Search failed" });
+    }
+  });
   // Server-side ZIP download for campaign creatives (avoids CORS issues with CDN images)
   app.get("/api/campaigns/:campaignId/download-zip", async (req, res) => {
     try {
