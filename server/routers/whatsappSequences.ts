@@ -6,12 +6,28 @@ import { getDb } from "../db";
 function stripMarkdownJson(content: string): string {
   return content.replace(/^```json\s*|^```\s*|\s*```$/gm, '').trim();
 }
-import { whatsappSequences, services, campaigns, idealCustomerProfiles, sourceOfTruth, jobs } from "../../drizzle/schema";
+import { whatsappSequences, services, campaigns, idealCustomerProfiles, sourceOfTruth, jobs, campaignKits, offers, heroMechanisms } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { invokeLLM } from "../_core/llm";
 import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
+import { enforceQuota, incrementQuotaCount } from "../lib/quotaEnforcement";
+import { complianceFilter } from "../lib/complianceFilter";
+import { checkCompliance } from "../lib/complianceChecker";
+import { scoreItem } from "../lib/selectionScorer";
+import { autoSelectBest } from "./campaignKits";
+
+// Apply compliance filter to a WhatsApp message's text field
+async function filterWhatsapp(msg: { text: string; [k: string]: any }): Promise<typeof msg> {
+  const result = complianceFilter(msg.text);
+  const text = result.wasModified ? result.cleanedText : msg.text;
+  const score = await checkCompliance(text);
+  if (score.score < 100) {
+    console.log(`[whatsappSequences] Compliance score ${score.score}/100 for "${text.substring(0, 50)}": ${score.issues.map(i => i.phrase).join(", ")}`);
+  }
+  return { ...msg, text };
+}
 
 const generateWhatsAppSequenceSchema = z.object({
   serviceId: z.number(),
@@ -96,6 +112,8 @@ export const whatsappSequencesRouter = router({
   generate: protectedProcedure
     .input(generateWhatsAppSequenceSchema)
     .mutation(async ({ ctx, input }) => {
+      await enforceQuota(ctx.user.id, "whatsapp");
+
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -224,10 +242,33 @@ You MUST use these exact numbers. Do not fabricate.`
 - Focus on benefit claims and value propositions
 - Use outcome-based language WITHOUT specific names`;
 
+      // ── Cascade context from Campaign Kit ──
+      let cascadeContext = "";
+      try {
+        const [relIcp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
+        if (relIcp) {
+          const [kit] = await db.select().from(campaignKits).where(and(eq(campaignKits.userId, ctx.user.id), eq(campaignKits.icpId, relIcp.id))).limit(1);
+          if (kit) {
+            const parts: string[] = [];
+            if (kit.selectedOfferId) {
+              const [offer] = await db.select().from(offers).where(eq(offers.id, kit.selectedOfferId)).limit(1);
+              if (offer) parts.push(`Offer angle: ${offer.activeAngle || "godfather"}`);
+            }
+            if (kit.selectedMechanismId) {
+              const [mech] = await db.select().from(heroMechanisms).where(eq(heroMechanisms.id, kit.selectedMechanismId)).limit(1);
+              if (mech) parts.push(`Hero mechanism: ${mech.mechanismName}`);
+            }
+            if (parts.length > 0) {
+              cascadeContext = `UPSTREAM CONTEXT — SELECTED ASSETS:\n${parts.join(". ")}. The WhatsApp sequence must complement the email sequence in tone and progression — do not duplicate it.\n\n`;
+            }
+          }
+        }
+      } catch (e) { console.warn("[cascade] whatsappSequences context fetch failed:", e); }
+
       let prompt = "";
 
       if (input.sequenceType === "engagement") {
-        prompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert WhatsApp marketer. Create a 3-message WhatsApp engagement sequence for event attendees.
+        prompt = `${cascadeContext}${sotContext ? `${sotContext}\n\n` : ''}You are an expert WhatsApp marketer. Create a 3-message WhatsApp engagement sequence for event attendees.
 
 Service: ${service.name}
 Event: ${input.eventDetails?.eventName || "Event"}
@@ -346,6 +387,8 @@ Return as a JSON object with a 'messages' key containing the array.`;
         mediaUrl: msg.mediaUrl || null,
         mediaType: msg.mediaType || null,
       }));
+      // Apply compliance filter to all messages
+      sequenceData.messages = await Promise.all(sequenceData.messages.map((m: any) => filterWhatsapp(m)));
       // Save to database
       const insertResult: any = await db.insert(whatsappSequences).values({
         userId: ctx.user.id,
@@ -356,12 +399,23 @@ Return as a JSON object with a 'messages' key containing the array.`;
         messages: sequenceData.messages,
       });
 
+      await incrementQuotaCount(ctx.user.id, "whatsapp");
+
       // Fetch the created sequence
       const [newSequence] = await db
         .select()
         .from(whatsappSequences)
         .where(eq(whatsappSequences.id, insertResult[0].insertId))
         .limit(1);
+
+      // Auto-score and auto-select into campaign kit (non-blocking)
+      try {
+        const msgContent = sequenceData.messages.map((m: any) => m.text).join(" ");
+        const s = await scoreItem({ content: msgContent, nodeType: "whatsappSequences" });
+        await db.update(whatsappSequences).set({ selectionScore: String(s) } as any).where(eq(whatsappSequences.id, insertResult[0].insertId));
+        const [relatedIcp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
+        if (relatedIcp) await autoSelectBest(ctx.user.id, relatedIcp.id, "selectedWhatsAppSequenceId", insertResult[0].insertId);
+      } catch (e) { console.warn("[auto-select] whatsappSequences failed:", e); }
 
       return newSequence;
     }),
@@ -374,6 +428,7 @@ Return as a JSON object with a 'messages' key containing the array.`;
     .input(generateWhatsAppSequenceSchema)
     .mutation(async ({ ctx, input }) => {
       const { user } = ctx;
+      await enforceQuota(user.id, "whatsapp");
       await checkAndResetQuotaIfNeeded(user.id);
       if (user.role !== "superuser") {
         const limit = getQuotaLimit(user.subscriptionTier, "whatsapp");
@@ -433,9 +488,20 @@ Return as a JSON object with a 'messages' key containing the array.`;
           if (Array.isArray(sequenceData)) sequenceData = { messages: sequenceData };
           if (!sequenceData.messages || !Array.isArray(sequenceData.messages)) throw new Error("LLM did not return a valid messages array");
           sequenceData.messages = sequenceData.messages.map((msg: any, idx: number) => ({ text: msg.message || msg.text || `Message ${idx + 1}: Check this out`, delay: msg.delay || (idx * 24), delayUnit: msg.delayUnit || 'hours', mediaUrl: msg.mediaUrl || null, mediaType: msg.mediaType || null }));
+          sequenceData.messages = await Promise.all(sequenceData.messages.map((m: any) => filterWhatsapp(m)));
 
           const insertResult: any = await bgDb.insert(whatsappSequences).values({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, sequenceType: capturedInput.sequenceType, name: capturedInput.name, messages: sequenceData.messages });
+          await incrementQuotaCount(capturedUserId, "whatsapp");
           const [newSequence] = await bgDb.select().from(whatsappSequences).where(eq(whatsappSequences.id, insertResult[0].insertId)).limit(1);
+
+          // Auto-score and auto-select into campaign kit (non-blocking)
+          try {
+            const msgContent = sequenceData.messages.map((m: any) => m.text).join(" ");
+            const s = await scoreItem({ content: msgContent, nodeType: "whatsappSequences" });
+            await bgDb.update(whatsappSequences).set({ selectionScore: String(s) } as any).where(eq(whatsappSequences.id, insertResult[0].insertId));
+            const [relatedIcp] = await bgDb.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, capturedInput.serviceId)).limit(1);
+            if (relatedIcp) await autoSelectBest(capturedUserId, relatedIcp.id, "selectedWhatsAppSequenceId", insertResult[0].insertId);
+          } catch (e) { console.warn("[auto-select] whatsappSequences async failed:", e); }
 
           await bgDb.update(jobs)
             .set({ status: "complete", result: JSON.stringify({ id: newSequence?.id }) })
@@ -495,6 +561,68 @@ Return as a JSON object with a 'messages' key containing the array.`;
         .limit(1);
 
       return updated;
+    }),
+
+  // Regenerate a single WhatsApp message within a sequence via AI
+  regenerateSingle: protectedProcedure
+    .input(z.object({ id: z.number(), index: z.number(), promptOverride: z.string().optional() }))
+    .mutation(async ({ ctx, input }) => {
+      await enforceQuota(ctx.user.id, "whatsapp");
+
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const [row] = await db
+        .select()
+        .from(whatsappSequences)
+        .where(and(eq(whatsappSequences.id, input.id), eq(whatsappSequences.userId, ctx.user.id)))
+        .limit(1);
+
+      if (!row) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "WhatsApp sequence not found" });
+      }
+
+      const messages: any[] = typeof row.messages === "string" ? JSON.parse(row.messages) : (row.messages ?? []);
+
+      if (input.index < 0 || input.index >= messages.length) {
+        throw new TRPCError({ code: "NOT_FOUND", message: `Message index ${input.index} out of range (0-${messages.length - 1})` });
+      }
+
+      const target = messages[input.index];
+      const originalText = target.text ?? target.message ?? "";
+      const overrideInstruction = input.promptOverride?.trim()
+        ? ` Additional instruction: ${input.promptOverride.trim()}.`
+        : "";
+
+      const prompt = `Rewrite this WhatsApp message for a coaching offer sequence. Original message: ${originalText}.${overrideInstruction} Return a JSON object with exactly one key: text (string). No explanation, no markdown, just the JSON object.`;
+
+      const response = await invokeLLM({
+        messages: [
+          { role: "system", content: "You are an expert WhatsApp copywriter for coaches and consultants. Respond with only valid JSON." },
+          { role: "user", content: prompt },
+        ],
+      });
+
+      const content = response.choices[0].message.content;
+      if (typeof content !== "string") {
+        throw new Error("Invalid response from AI");
+      }
+
+      const parsed = JSON.parse(stripMarkdownJson(content));
+      if (!parsed.text) {
+        throw new Error("AI response missing text field");
+      }
+
+      // Apply compliance filter to regenerated message
+      const filtered = await filterWhatsapp({ text: parsed.text });
+      messages[input.index] = { ...messages[input.index], text: filtered.text };
+
+      await db
+        .update(whatsappSequences)
+        .set({ messages: JSON.stringify(messages), updatedAt: new Date() })
+        .where(eq(whatsappSequences.id, input.id));
+
+      return messages[input.index];
     }),
 
   // Delete WhatsApp sequence

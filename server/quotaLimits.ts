@@ -20,9 +20,9 @@ export type SubscriptionTier = "trial" | "pro" | "agency";
 
 export const QUOTA_LIMITS: Record<SubscriptionTier, Record<GeneratorType, number>> = {
   trial: {
-    headlines: 0,
-    hvco: 0,
-    heroMechanisms: 0,
+    headlines: Infinity,
+    hvco: Infinity,
+    heroMechanisms: Infinity,
     icp: 2,
     adCopy: 5,
     email: 2,
@@ -31,15 +31,15 @@ export const QUOTA_LIMITS: Record<SubscriptionTier, Record<GeneratorType, number
     offers: 2,
   },
   pro: {
-    headlines: 6,
-    hvco: 3,
-    heroMechanisms: 4,
+    headlines: 50,
+    hvco: 50,
+    heroMechanisms: 50,
     icp: 50,
     adCopy: 100,
-    email: 20,
-    whatsapp: 20,
-    landingPages: 10,
-    offers: 10,
+    email: 50,
+    whatsapp: 50,
+    landingPages: 50,
+    offers: 50,
   },
   agency: {
     headlines: 999,
@@ -85,8 +85,8 @@ export function getQuotaCountField(generatorType: GeneratorType): string {
     heroMechanisms: "heroMechanismGeneratedCount",
     icp: "icpGeneratedCount",
     adCopy: "adCopyGeneratedCount",
-    email: "emailSequenceGeneratedCount",
-    whatsapp: "whatsappSequenceGeneratedCount",
+    email: "emailSeqGeneratedCount",
+    whatsapp: "whatsappSeqGeneratedCount",
     landingPages: "landingPageGeneratedCount",
     offers: "offerGeneratedCount",
   };

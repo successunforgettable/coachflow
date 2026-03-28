@@ -119,13 +119,32 @@ function PathNode({ node, isMobile, onNodeClick }: { node: PathNode; isMobile: b
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
       <div style={nodeStyle} onClick={() => node.state !== "locked" && onNodeClick(node)}>
-        {node.state === "completed" && <Checkmark />}
+        {node.state === "completed" && (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0, lineHeight: 1 }}>
+            <svg width={isMobile ? "18" : "22"} height={isMobile ? "18" : "22"} viewBox="0 0 28 28" fill="none">
+              <path d="M6 14.5l5.5 5.5L22 9" stroke="#fff" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <span style={{
+              color: "#fff",
+              fontFamily: "var(--v2-font-body)",
+              fontWeight: 700,
+              fontSize: isMobile ? "13px" : "16px",
+              marginTop: "-2px",
+            }}>
+              {node.id}
+            </span>
+          </div>
+        )}
         {node.state === "active" && (
-          <span style={{ color: "#fff", fontFamily: "var(--v2-font-body)", fontWeight: 700, fontSize: isMobile ? "13px" : "15px" }}>
+          <span style={{ color: "#fff", fontFamily: "var(--v2-font-body)", fontWeight: 700, fontSize: isMobile ? "18px" : "22px" }}>
             {node.id}
           </span>
         )}
-        {node.state === "locked" && <LockIcon />}
+        {node.state === "locked" && (
+          <span style={{ color: "#999", fontFamily: "var(--v2-font-body)", fontWeight: 700, fontSize: isMobile ? "16px" : "20px" }}>
+            {node.id}
+          </span>
+        )}
       </div>
       <span style={{
         fontFamily: "var(--v2-font-body)",
@@ -258,8 +277,16 @@ export default function V2Dashboard() {
     () => new URLSearchParams(window.location.search).get("tab") === "tools" ? "tools" : "guided"
   );
 
+  // Source of Truth check
+  const { data: sotData, isLoading: sotLoading } = trpc.sourceOfTruth.get.useQuery();
+
   // ── Real progress data from backend ──
   const { data: progressData, isLoading: progressLoading } = trpc.progress.getProgress.useQuery();
+
+  // ── ICP data for stats ──
+  const { data: icpList } = trpc.icps.list.useQuery(undefined, { staleTime: 30_000 });
+  // ── Campaign kits for "View Campaign Kit" link ──
+  const { data: campaignKitsList } = trpc.campaignKits.getByUser.useQuery(undefined, { staleTime: 30_000 });
 
   // ── Service quality score for Node 1 pill ──
   const { data: servicesData } = trpc.services.list.useQuery();
@@ -277,6 +304,37 @@ export default function V2Dashboard() {
     ];
     return fields.filter(f => f && String(f).trim().length > 0).length;
   }, [servicesData]);
+
+  // ── Stats computations ──
+  const totalAssetsGenerated = useMemo(() => {
+    if (!user) return 0;
+    const u = user as any;
+    return (u.headlineGeneratedCount || 0) + (u.hvcoGeneratedCount || 0) +
+      (u.heroMechanismGeneratedCount || 0) + (u.icpGeneratedCount || 0) +
+      (u.adCopyGeneratedCount || 0) + (u.emailSeqGeneratedCount || 0) +
+      (u.whatsappSeqGeneratedCount || 0) + (u.landingPageGeneratedCount || 0) +
+      (u.offerGeneratedCount || 0);
+  }, [user]);
+
+  const activeIcpName = useMemo(() => {
+    if (!icpList || icpList.length === 0) return "None yet";
+    return icpList[0].name || "Unnamed ICP";
+  }, [icpList]);
+
+  // ── Recent activity from completed milestones ──
+  const MILESTONE_LABELS: Record<string, { emoji: string; label: string }> = {
+    service: { emoji: "🏷", label: "Service Profile" },
+    icp: { emoji: "🎯", label: "Ideal Customer Profile" },
+    offer: { emoji: "💎", label: "Premium Offer" },
+    heroMechanism: { emoji: "⚡", label: "Unique Method" },
+    hvco: { emoji: "🎁", label: "Free Opt-In Titles" },
+    headlines: { emoji: "✍️", label: "Headlines" },
+    adCopy: { emoji: "📣", label: "Ad Copy" },
+    landingPage: { emoji: "🖥️", label: "Landing Page" },
+    emailSequence: { emoji: "✉️", label: "Email Sequence" },
+    whatsappSequence: { emoji: "💬", label: "WhatsApp Sequence" },
+    campaign: { emoji: "🚀", label: "Campaign Published" },
+  };
 
   // ── First-time gate: no service saved yet ──
   // While loading we show nothing to avoid flicker.
@@ -373,7 +431,7 @@ export default function V2Dashboard() {
     setShowModal(false);
     setForkDismissed(true);
     localStorage.setItem("v2_fork_dismissed", "true");
-    navigate("/dashboard");
+    setActiveTab("tools");
   }
 
   function handleTabTools() {
@@ -382,11 +440,40 @@ export default function V2Dashboard() {
 
   const progressPct = Math.round((completedCount / totalCount) * 100);
 
+  // Gate map: which Campaign Kit selection must exist before entering each step
+  const DASHBOARD_GATES: Record<string, string> = {
+    uniqueMethod: "selectedOfferId",
+    freeOptIn: "selectedMechanismId",
+    headlines: "selectedHvcoId",
+    adCopy: "selectedHeadlineId",
+    landingPage: "selectedAdCopyId",
+    emailSequence: "selectedLandingPageId",
+    whatsappSequence: "selectedEmailSequenceId",
+  };
+
   function handleNodeClick(node: PathNode) {
     const step = NODE_STEP_MAP[node.id];
-    if (step) {
-      navigate(`/v2-dashboard/wizard/${step}`);
+    if (!step) return;
+
+    // Check Campaign Kit gate — block navigation if upstream selection is missing
+    const gateField = DASHBOARD_GATES[step];
+    if (gateField) {
+      const currentIcpId = icpList?.[0]?.id;
+      const activeKit = currentIcpId
+        ? campaignKitsList?.find((k: any) => k.icpId === currentIcpId)
+        : null;
+      if (activeKit && activeKit[gateField] == null) {
+        // Find which step is actually needed
+        const gateEntries = Object.entries(DASHBOARD_GATES);
+        for (const [gatedStep, field] of gateEntries) {
+          if (activeKit[field] == null) {
+            navigate(`/v2-dashboard/wizard/${gatedStep}`);
+            return;
+          }
+        }
+      }
     }
+    navigate(`/v2-dashboard/wizard/${step}`);
   }
 
   return (
@@ -406,23 +493,6 @@ export default function V2Dashboard() {
             color: "var(--v2-text-color)",
           }}>ZAP</span>
           <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-            <a
-              href="/dashboard"
-              style={{
-                fontFamily: "var(--v2-font-body)",
-                fontSize: "12px",
-                color: "#777",
-                textDecoration: "none",
-                borderBottom: "1px solid #ccc",
-                paddingBottom: "1px",
-                transition: "color 0.15s ease",
-              }}
-              onMouseEnter={e => (e.currentTarget.style.color = "#444")}
-              onMouseLeave={e => (e.currentTarget.style.color = "#777")}
-            >
-              Switch to Classic View
-            </a>
-
             {/* User menu */}
             <div ref={menuRef} style={{ position: "relative" }}>
               <button
@@ -630,6 +700,113 @@ export default function V2Dashboard() {
 
         {!isFirstTime && (
         <>
+        {/* ── Source of Truth card ── */}
+        <div
+          onClick={() => navigate("/v2-dashboard/source-of-truth")}
+          style={{
+            background: "#fff",
+            borderRadius: "16px",
+            border: "1px solid rgba(26,22,36,0.08)",
+            padding: "14px 20px",
+            marginBottom: "24px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            cursor: "pointer",
+            transition: "box-shadow 0.15s",
+          }}
+          onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 2px 12px rgba(26,22,36,0.08)")}
+          onMouseLeave={e => (e.currentTarget.style.boxShadow = "none")}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <img src="/zappy-waiting.svg" alt="" style={{ width: "28px", height: "28px" }} />
+            <span style={{ fontFamily: "var(--v2-font-body)", fontWeight: 700, fontSize: "14px", color: "#1A1624" }}>Source of Truth</span>
+          </div>
+          {sotLoading ? (
+            <span style={{ fontFamily: "var(--v2-font-body)", fontSize: "11px", color: "#999", fontWeight: 500 }}>Checking...</span>
+          ) : sotData ? (
+            <span style={{ background: "rgba(88,204,2,0.12)", color: "#2E7D00", border: "1px solid rgba(88,204,2,0.30)", borderRadius: "9999px", padding: "3px 12px", fontFamily: "var(--v2-font-body)", fontSize: "11px", fontWeight: 600 }}>Active</span>
+          ) : (
+            <span style={{ background: "rgba(255,91,29,0.10)", color: "#FF5B1D", border: "1px solid rgba(255,91,29,0.25)", borderRadius: "9999px", padding: "3px 12px", fontFamily: "var(--v2-font-body)", fontSize: "11px", fontWeight: 600 }}>Set Up Now</span>
+          )}
+        </div>
+
+        {/* ── Stats row ── */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px", marginBottom: "24px" }}>
+          {/* Assets Generated */}
+          <div style={{ background: "#fff", borderRadius: "16px", padding: "18px 20px", textAlign: "center" }}>
+            <p style={{ fontFamily: "var(--v2-font-heading)", fontStyle: "italic", fontWeight: 900, fontSize: "32px", color: "var(--v2-text-color)", margin: 0, lineHeight: 1 }}>
+              {totalAssetsGenerated}
+            </p>
+            <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "12px", fontWeight: 600, color: "rgba(26,22,36,0.50)", margin: "6px 0 0", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+              Assets Generated
+            </p>
+          </div>
+          {/* Campaign Progress */}
+          <div style={{ background: "#fff", borderRadius: "16px", padding: "18px 20px", textAlign: "center" }}>
+            <p style={{ fontFamily: "var(--v2-font-heading)", fontStyle: "italic", fontWeight: 900, fontSize: "32px", color: "#58CC02", margin: 0, lineHeight: 1 }}>
+              {progressPct}%
+            </p>
+            <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "12px", fontWeight: 600, color: "rgba(26,22,36,0.50)", margin: "6px 0 0", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+              Campaign Progress
+            </p>
+          </div>
+          {/* Active ICP + Campaign Kit link */}
+          <div style={{ background: "#fff", borderRadius: "16px", padding: "18px 20px", textAlign: "center", overflow: "hidden" }}>
+            <p style={{ fontFamily: "var(--v2-font-heading)", fontStyle: "italic", fontWeight: 900, fontSize: "16px", color: "var(--v2-text-color)", margin: 0, lineHeight: 1.3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {activeIcpName}
+            </p>
+            <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "12px", fontWeight: 600, color: "rgba(26,22,36,0.50)", margin: "6px 0 0", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+              Active ICP
+            </p>
+            {(() => {
+              const activeIcpId = icpList?.[0]?.id;
+              const matchedKit = activeIcpId ? campaignKitsList?.find((k: any) => k.icpId === activeIcpId) : null;
+              if (!matchedKit) return null;
+              return (
+                <a
+                  href={`/v2-dashboard/campaign-kit/${matchedKit.id}`}
+                  style={{
+                    display: "inline-block",
+                    marginTop: "8px",
+                    fontFamily: "var(--v2-font-body)",
+                    fontSize: "12px",
+                    fontWeight: 700,
+                    color: "var(--v2-primary-btn, #FF5B1D)",
+                    textDecoration: "none",
+                  }}
+                >
+                  View Campaign Kit →
+                </a>
+              );
+            })()}
+          </div>
+        </div>
+
+        {/* ── Recent Activity ── */}
+        {progressData?.milestones?.some((m: { completed: boolean }) => m.completed) && (
+          <div style={{ marginBottom: "24px" }}>
+            <p style={{ fontFamily: "var(--v2-font-body)", fontWeight: 700, fontSize: "13px", color: "var(--v2-text-color)", marginBottom: "10px" }}>
+              Recent Activity
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+              {progressData.milestones
+                .filter((m: { completed: boolean }) => m.completed)
+                .slice(0, 5)
+                .map((m: { id: string; completed: boolean }) => {
+                  const info = MILESTONE_LABELS[m.id] || { emoji: "✅", label: m.id };
+                  return (
+                    <div key={m.id} style={{ display: "flex", alignItems: "center", gap: "10px", background: "#fff", borderRadius: "10px", padding: "10px 14px" }}>
+                      <span style={{ fontSize: "16px" }}>{info.emoji}</span>
+                      <span style={{ fontFamily: "var(--v2-font-body)", fontSize: "13px", color: "var(--v2-text-color)", fontWeight: 500, flex: 1 }}>{info.label}</span>
+                      <span style={{ fontFamily: "var(--v2-font-body)", fontSize: "11px", color: "#999", fontWeight: 500 }}>Completed</span>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+        )}
+
         {/* ── COMPONENT 1: Nav Tabs ── */}
         <div style={{
           display: "inline-flex",
@@ -668,8 +845,9 @@ export default function V2Dashboard() {
               border: "none",
               cursor: "pointer",
               transition: "all 0.18s ease",
-              background: "transparent",
-              color: "rgba(26,22,36,0.50)",
+              background: activeTab === "tools" ? "#fff" : "transparent",
+              color: activeTab === "tools" ? "var(--v2-text-color)" : "rgba(26,22,36,0.50)",
+              boxShadow: activeTab === "tools" ? "0 1px 6px rgba(26,22,36,0.10)" : "none",
             }}
           >
             Tool Library
@@ -718,20 +896,30 @@ export default function V2Dashboard() {
           </div>
         </div>
 
-        {/* ── COMPONENT 4 (persistent): Fork Buttons — shown after modal dismissed ── */}
-        {forkDismissed && (
+        {/* ── COMPONENT 4 (persistent): Fork Buttons — shown after modal dismissed, guided tab only ── */}
+        {forkDismissed && activeTab === "guided" && (
           <div className="v2-fork-persistent" style={{ marginBottom: "32px" }}>
             <button
               className="v2-btn v2-btn-primary"
-              onClick={() => {}}
+              onClick={() => {
+                const nextNode = nodes.find(n => n.state === "active" && NODE_STEP_MAP[n.id]);
+                if (nextNode) navigate(`/v2-dashboard/wizard/${NODE_STEP_MAP[nextNode.id]}`);
+              }}
             >
               Continue Campaign
             </button>
             <button
               className="v2-btn v2-btn-secondary"
-              onClick={() => navigate("/dashboard")}
+              onClick={() => setActiveTab("tools")}
             >
               Use a Generator
+            </button>
+            <button
+              className="v2-btn v2-btn-secondary"
+              onClick={() => navigate("/v2-dashboard/asset-library")}
+              style={{ display: "flex", alignItems: "center", gap: 6 }}
+            >
+              📚 Asset Library
             </button>
           </div>
         )}
@@ -740,16 +928,147 @@ export default function V2Dashboard() {
 
         {/* ── COMPONENT 2: 11-Step Winding Path (Guided) OR Tool Library ── */}
         {activeTab === "guided" ? (
-          <div className="v2-path-wrapper">
-            {nodes.map((node, idx) => (
-              <div key={node.id} className="v2-path-column">
-                {/* Connector above (except first node) */}
-                {idx > 0 && (
-                  <Connector fromCompleted={nodes[idx - 1].state === "completed"} />
-                )}
-                <PathNode node={node} isMobile={isMobile} onNodeClick={handleNodeClick} />
-              </div>
-            ))}
+          <div style={{ display: "flex", gap: "0", alignItems: "flex-start", position: "relative" }}>
+            <div className="v2-path-wrapper" style={{ flex: 1 }}>
+              {nodes.map((node, idx) => (
+                <div key={node.id} className="v2-path-column">
+                  {/* Connector above (except first node) */}
+                  {idx > 0 && (
+                    <Connector fromCompleted={nodes[idx - 1].state === "completed"} />
+                  )}
+                  <PathNode node={node} isMobile={isMobile} onNodeClick={handleNodeClick} />
+                </div>
+              ))}
+            </div>
+            {/* Campaign Kit sidebar on dashboard */}
+            {(() => {
+              const activeIcp = icpList?.[0];
+              const kit = activeIcp ? campaignKitsList?.find((k: any) => k.icpId === activeIcp.id) : null;
+              if (!kit) return null;
+              const KIT_FIELDS = [
+                { label: "Offer", field: "selectedOfferId", num: 3 },
+                { label: "Method", field: "selectedMechanismId", num: 4 },
+                { label: "Lead Magnet", field: "selectedHvcoId", num: 5 },
+                { label: "Headline", field: "selectedHeadlineId", num: 6 },
+                { label: "Ad Copy", field: "selectedAdCopyId", num: 7 },
+                { label: "Landing Page", field: "selectedLandingPageId", num: 8 },
+                { label: "Email Sequence", field: "selectedEmailSequenceId", num: 9 },
+                { label: "WhatsApp", field: "selectedWhatsAppSequenceId", num: 10 },
+              ];
+              const filled = KIT_FIELDS.filter(f => (kit as any)[f.field] != null).length;
+              const total = KIT_FIELDS.length;
+              const pct = Math.round((filled / total) * 100);
+              const isComplete = filled === total;
+              return (
+                <aside style={{
+                  width: 220,
+                  background: "#fff",
+                  borderLeft: "1px solid #e5e0d8",
+                  padding: "20px",
+                  position: "fixed",
+                  right: 0,
+                  top: 60,
+                  bottom: 0,
+                  overflowY: "auto",
+                  zIndex: 50,
+                  display: isMobile ? "none" : "flex",
+                  flexDirection: "column",
+                  gap: "14px",
+                }}>
+                  <h3 style={{
+                    fontFamily: "var(--v2-font-heading, 'Fraunces', serif)",
+                    fontStyle: "italic",
+                    fontWeight: 900,
+                    fontSize: "16px",
+                    color: "var(--v2-text-dark, #1A1624)",
+                    margin: 0,
+                  }}>
+                    🎯 Campaign Kit
+                  </h3>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                    {KIT_FIELDS.map(f => {
+                      const isFilled = (kit as any)[f.field] != null;
+                      return (
+                        <div key={f.field} style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                          padding: "5px 8px",
+                          borderRadius: "8px",
+                          background: isFilled ? "rgba(88,204,2,0.06)" : "transparent",
+                        }}>
+                          <span style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            width: 22,
+                            height: 22,
+                            borderRadius: "50%",
+                            fontSize: "10px",
+                            fontWeight: 700,
+                            fontFamily: "var(--v2-font-body)",
+                            background: isFilled ? "#58CC02" : "#e5e0d8",
+                            color: isFilled ? "#fff" : "#999",
+                            flexShrink: 0,
+                          }}>
+                            {isFilled ? "✓" : f.num}
+                          </span>
+                          <span style={{
+                            fontFamily: "var(--v2-font-body)",
+                            fontSize: "12px",
+                            fontWeight: isFilled ? 600 : 400,
+                            color: isFilled ? "var(--v2-text-dark, #1A1624)" : "#999",
+                          }}>
+                            {f.label}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {/* Progress */}
+                  <div>
+                    <p style={{
+                      fontFamily: "var(--v2-font-body)",
+                      fontSize: "11px",
+                      fontWeight: 600,
+                      color: "var(--v2-text-dark, #1A1624)",
+                      margin: "0 0 4px",
+                    }}>
+                      {filled} of {total} selected
+                    </p>
+                    <div style={{ height: 5, borderRadius: 3, background: "#e5e0d8", overflow: "hidden" }}>
+                      <div style={{
+                        height: "100%",
+                        width: `${pct}%`,
+                        borderRadius: 3,
+                        background: isComplete ? "#58CC02" : "var(--v2-primary-btn, #FF5B1D)",
+                        transition: "width 0.3s ease",
+                      }} />
+                    </div>
+                  </div>
+                  {/* View kit button */}
+                  <a
+                    href={isComplete ? `/v2-dashboard/campaign-kit/${kit.id}` : undefined}
+                    onClick={e => { if (!isComplete) e.preventDefault(); }}
+                    style={{
+                      display: "block",
+                      textAlign: "center",
+                      padding: "8px 14px",
+                      borderRadius: "9999px",
+                      background: isComplete ? "var(--v2-primary-btn, #FF5B1D)" : "#e5e0d8",
+                      color: isComplete ? "#fff" : "#999",
+                      fontFamily: "var(--v2-font-body)",
+                      fontWeight: 700,
+                      fontSize: "12px",
+                      textDecoration: "none",
+                      cursor: isComplete ? "pointer" : "default",
+                    }}
+                  >
+                    {isComplete ? "View Campaign Kit" : `${total - filled} remaining`}
+                  </a>
+                </aside>
+              );
+            })()}
           </div>
         ) : (
           <V2ToolLibrary />

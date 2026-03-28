@@ -49,6 +49,10 @@ export const users = mysqlTable("users", {
   activityStreak: int("activityStreak").default(0).notNull(),
   lastActivityDate: date("lastActivityDate"),
   streakUpdatedAt: timestamp("streakUpdatedAt"),
+  // Coach profile fields
+  coachName: varchar("coach_name", { length: 255 }),
+  coachGender: varchar("coach_gender", { length: 50 }),
+  coachBackground: text("coach_background"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
@@ -314,6 +318,7 @@ export const adCopy = mysqlTable("adCopy", {
   complianceScore: int("complianceScore"),
   complianceVersion: varchar("complianceVersion", { length: 20 }),
   complianceCheckedAt: timestamp("complianceCheckedAt"),
+  selectionScore: decimal("selectionScore", { precision: 5, scale: 2 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({
@@ -338,6 +343,7 @@ export const emailSequences = mysqlTable("emailSequences", {
   emails: json("emails").$type<Array<{ day: number; subject: string; body: string; timing: string }>>().notNull(),
   automationEnabled: boolean("automationEnabled").default(false),
   rating: int("rating").default(0),
+  selectionScore: decimal("selectionScore", { precision: 5, scale: 2 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({
@@ -361,6 +367,7 @@ export const whatsappSequences = mysqlTable("whatsappSequences", {
   messages: json("messages").$type<Array<{ day: number; message: string; timing: string; emojis: string[] }>>().notNull(),
   automationEnabled: boolean("automationEnabled").default(false),
   rating: int("rating").default(0),
+  selectionScore: decimal("selectionScore", { precision: 5, scale: 2 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({
@@ -404,6 +411,10 @@ export type LandingPageContent = {
     title: string;
     description: string;
   }>;
+  faq?: Array<{
+    question: string;
+    answer: string;
+  }>;
 };
 
 export const landingPages = mysqlTable("landingPages", {
@@ -428,6 +439,7 @@ export const landingPages = mysqlTable("landingPages", {
   activeAngle: mysqlEnum("activeAngle", ["original", "godfather", "free", "dollar"]).default("original"),
   
   rating: int("rating").default(0),
+  selectionScore: decimal("selectionScore", { precision: 5, scale: 2 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({
@@ -471,6 +483,7 @@ export const offers = mysqlTable("offers", {
   activeAngle: mysqlEnum("activeAngle", ["godfather", "free", "dollar"]).default("godfather"),
   
   rating: int("rating").default(0),
+  selectionScore: decimal("selectionScore", { precision: 5, scale: 2 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({
@@ -511,6 +524,7 @@ export const headlines = mysqlTable("headlines", {
   complianceScore: int("complianceScore").default(100),
   complianceVersion: varchar("complianceVersion", { length: 20 }),
   complianceCheckedAt: timestamp("complianceCheckedAt"),
+  selectionScore: decimal("selectionScore", { precision: 5, scale: 2 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({
@@ -545,6 +559,7 @@ export const hvcoTitles = mysqlTable("hvcoTitles", {
   // Metadata
   rating: int("rating").default(0), // -1 = thumbs down, 0 = no rating, 1 = thumbs up
   isFavorite: boolean("isFavorite").default(false),
+  selectionScore: decimal("selectionScore", { precision: 5, scale: 2 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({
@@ -588,6 +603,7 @@ export const heroMechanisms = mysqlTable("heroMechanisms", {
   // Metadata
   rating: int("rating").default(0), // -1 = thumbs down, 0 = no rating, 1 = thumbs up
   isFavorite: boolean("isFavorite").default(false),
+  selectionScore: decimal("selectionScore", { precision: 5, scale: 2 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({
@@ -768,6 +784,26 @@ export const metaAccessTokens = mysqlTable("meta_access_tokens", {
 
 export type MetaAccessToken = typeof metaAccessTokens.$inferSelect;
 export type InsertMetaAccessToken = typeof metaAccessTokens.$inferInsert;
+
+/**
+ * GoHighLevel Access Tokens — mirrors Meta pattern
+ */
+export const ghlAccessTokens = mysqlTable("ghl_access_tokens", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  accessToken: text("accessToken").notNull(),
+  refreshToken: text("refreshToken"),
+  tokenExpiresAt: timestamp("tokenExpiresAt").notNull(),
+  locationId: varchar("locationId", { length: 255 }),
+  locationName: varchar("locationName", { length: 255 }),
+  companyId: varchar("companyId", { length: 255 }),
+  connectedAt: timestamp("connectedAt").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type GhlAccessToken = typeof ghlAccessTokens.$inferSelect;
+export type InsertGhlAccessToken = typeof ghlAccessTokens.$inferInsert;
 
 /**
  * Meta Published Ads - Links CoachFlow ad sets to Meta campaigns
@@ -1142,6 +1178,19 @@ export type SystemHealthMetric = typeof systemHealthMetrics.$inferSelect;
 export type InsertSystemHealthMetric = typeof systemHealthMetrics.$inferInsert;
 
 // ---------------------------------------------------------------------------
+// Coach Assets — uploaded images (headshot, logo, social proof)
+// ---------------------------------------------------------------------------
+export const coachAssets = mysqlTable("coachAssets", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  assetType: varchar("assetType", { length: 50 }).notNull(), // 'headshot', 'logo', 'social_proof'
+  url: text("url").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type CoachAsset = typeof coachAssets.$inferSelect;
+export type InsertCoachAsset = typeof coachAssets.$inferInsert;
+
+// ---------------------------------------------------------------------------
 // Background job queue table for async AI generation polling
 // ---------------------------------------------------------------------------
 export const jobs = mysqlTable("jobs", {
@@ -1156,3 +1205,58 @@ export const jobs = mysqlTable("jobs", {
 });
 export type Job = typeof jobs.$inferSelect;
 export type InsertJob = typeof jobs.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// Campaign Kits — assembled campaigns linking selected items from each node
+// ---------------------------------------------------------------------------
+export const campaignKits = mysqlTable("campaignKits", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  icpId: int("icpId").notNull(),
+  name: varchar("name", { length: 255 }),
+  status: mysqlEnum("status", ["draft", "complete", "exported"]).default("draft").notNull(),
+  selectedOfferId: int("selectedOfferId"),
+  selectedMechanismId: int("selectedMechanismId"),
+  selectedHvcoId: int("selectedHvcoId"),
+  selectedHeadlineId: int("selectedHeadlineId"),
+  selectedAdCopyId: int("selectedAdCopyId"),
+  selectedLandingPageId: int("selectedLandingPageId"),
+  selectedLandingPageAngle: varchar("selectedLandingPageAngle", { length: 50 }),
+  selectedEmailSequenceId: int("selectedEmailSequenceId"),
+  selectedWhatsAppSequenceId: int("selectedWhatsAppSequenceId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type CampaignKit = typeof campaignKits.$inferSelect;
+export type InsertCampaignKit = typeof campaignKits.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// Favourites — persisted thumbs-up state per user per node item
+// ---------------------------------------------------------------------------
+export const favourites = mysqlTable("favourites", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  nodeId: varchar("nodeId", { length: 50 }).notNull(), // e.g. "headlines", "adCopy", "emailSequence"
+  itemIndex: int("itemIndex").notNull(), // index of the item within the node's result list
+  itemText: text("itemText"), // snapshot of the item text at time of favourite
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type Favourite = typeof favourites.$inferSelect;
+export type InsertFavourite = typeof favourites.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// Product usage events — tracks user_generated, user_upgraded, node_completed
+// ---------------------------------------------------------------------------
+export const productEvents = mysqlTable("product_events", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  eventType: varchar("eventType", { length: 50 }).notNull(), // user_generated, user_upgraded, node_completed
+  metadata: json("metadata"), // { nodeType, serviceId, tier, etc. }
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  userIdIdx: index("idx_product_events_userId").on(table.userId),
+  eventTypeIdx: index("idx_product_events_eventType").on(table.eventType),
+  createdAtIdx: index("idx_product_events_createdAt").on(table.createdAt),
+}));
+export type ProductEvent = typeof productEvents.$inferSelect;
+export type InsertProductEvent = typeof productEvents.$inferInsert;

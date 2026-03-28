@@ -43,6 +43,8 @@ import AdminAuditLog from "./pages/admin/AdminAuditLog";
 import AdminContentModeration from "./pages/admin/AdminContentModeration";
 import AdminSystemHealth from "./pages/admin/AdminSystemHealth";
 import AdminTestCampaigns from "./pages/admin/AdminTestCampaigns";
+import AdminAnalytics from "./pages/admin/AdminAnalytics";
+import AdminRevenueReports from "./pages/admin/AdminRevenueReports";
 import OnboardingPage from "./pages/OnboardingPage";
 import Settings from "./pages/Settings";
 import { Terms } from "./pages/Terms";
@@ -61,6 +63,8 @@ import CampaignICPSelection from "./pages/CampaignICPSelection";
 import Signup from "./pages/Signup";
 import V2Dashboard from "./v2/V2Dashboard";
 import V2GeneratorWizardPage from "./v2/V2GeneratorWizardPage";
+import V2CampaignKit from "./v2/V2CampaignKit";
+import V2SourceOfTruth from "./v2/V2SourceOfTruth";
 import V2AssetLibrary from "./v2/V2AssetLibrary";
 import Login from "./pages/Login";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -107,6 +111,8 @@ function Router() {
       <Route path="/admin/users/:userId" component={() => <AdminLayout><AdminUserDetail /></AdminLayout>} />
       <Route path="/admin/audit-log" component={() => <AdminLayout><AdminAuditLog /></AdminLayout>} />
       <Route path="/admin/content-moderation" component={() => <AdminLayout><AdminContentModeration /></AdminLayout>} />
+      <Route path="/admin/analytics" component={() => <AdminLayout><AdminAnalytics /></AdminLayout>} />
+      <Route path="/admin/revenue" component={() => <AdminLayout><AdminRevenueReports /></AdminLayout>} />
       <Route path="/admin/system-health" component={() => <AdminLayout><AdminSystemHealth /></AdminLayout>} />
       <Route path="/admin/compliance" component={() => <AdminLayout><ComplianceAdmin /></AdminLayout>} />
       <Route path="/admin/compliance/analytics" component={() => <AdminLayout><ComplianceAnalytics /></AdminLayout>} />
@@ -132,9 +138,11 @@ function Router() {
       <Route path={"/manus-oauth/callback"} component={OAuthCallback} />
       <Route path={"/forgot-password"} component={ForgotPassword} />
       <Route path={"/reset-password"} component={ResetPassword} />
-      {/* V2 Sandbox — isolated, does not affect any existing route */}
+      {/* V2 Sandbox — specific routes first, base route last (wouter Switch matches first hit) */}
       <Route path={"/v2-dashboard/asset-library"} component={V2AssetLibrary} />
+      <Route path={"/v2-dashboard/source-of-truth"} component={V2SourceOfTruth} />
       <Route path={"/v2-dashboard/wizard/:step"} component={V2GeneratorWizardPage} />
+      <Route path={"/v2-dashboard/campaign-kit/:kitId"} component={V2CampaignKit} />
       <Route path={"/v2-dashboard"} component={V2Dashboard} />
       <Route path={"/404"} component={NotFound} />
       {/* Fallback route for 404 */}

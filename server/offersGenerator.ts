@@ -1,46 +1,47 @@
 import { invokeLLM } from "./_core/llm";
 import type { OfferContent } from "../drizzle/schema";
 
-// Angle-specific prompt modifiers for Offers (Industry standard)
+// Angle-specific prompt modifiers for Offers
 const ANGLE_PROMPTS = {
   godfather: `
-Generate an IRRESISTIBLE GODFATHER OFFER using risk reversal.
+You are writing a GODFATHER OFFER — the most irresistible, risk-reversed, premium offer possible.
 
-Focus on:
-- Money-back guarantee
-- "Or you don't pay" - removes all risk
-- Making it impossible to say no
-- Stack value so high it's a no-brainer
-
-Offer Name pattern: "[Result] - Or You Don't Pay!"
-CTA: "Claim Your Risk-Free Spot"
-Key phrase: Emphasize "Or you don't pay" and risk reversal
+ANGLE RULES (these override everything):
+* This is the FULL PRICE premium offer. Price must reflect full programme value ($2,000–$25,000 range typical for high-ticket coaching).
+* The entire offer is built around ONE guarantee: "If you don't get [result], you don't pay. Period."
+* Bonuses must be premium and specific — name each bonus, give it a dollar value, make the total bonus stack worth MORE than the programme price.
+* Urgency is scarcity-based: limited spots, cohort closes, waitlist opens.
+* Tone: bold, confident, zero apology for the price.
+* The offer name must include the core result AND a risk-reversal phrase.
+* CTA: "Claim Your Risk-Free Spot"
   `,
   free: `
-Generate a FREE OFFER emphasizing zero-cost entry.
+You are writing a FREE LEAD MAGNET OFFER — a zero-cost, zero-friction entry point designed to attract qualified leads.
 
-Focus on:
-- Free consultation/training/audit
-- No credit card required
-- Risk-free start
-- Immediate access to value
-
-Offer Name pattern: "FREE [Service/Training/Audit]"
-CTA: "Claim Your FREE [Offer]!"
-Key phrase: Emphasize "FREE" and "no strings attached"
+ANGLE RULES (these override everything):
+* Price is always FREE. No credit card. No strings. No trial period.
+* This is NOT the main programme — it is a taster, a training, an audit, a PDF, a challenge, or a free session.
+* The offer name must start with the word FREE or include "at no cost."
+* Value Proposition must explain what they will LEARN or EXPERIENCE for free, not what they will buy later.
+* Bonuses should be delivery bonuses (instant access, replay, cheat sheet) — not premium upsells.
+* Guarantee should focus on their time: "If you don't find this valuable, you've lost nothing."
+* Urgency is availability-based: limited free spots, doors close Friday, only 20 seats.
+* Tone: generous, warm, low-pressure, "I just want to help."
+* CTA: "Claim Your FREE [Offer Type]"
   `,
   dollar: `
-Generate a DOLLAR OFFER with specific price positioning.
+You are writing a DOLLAR OFFER — a specific low-price entry point designed to convert browsers into buyers by making the decision financially trivial.
 
-Focus on:
-- Exact pricing ($1, $7, $27, $97)
-- Incredible value at low price
-- Limited-time pricing
-- Value stack showing savings
-
-Offer Name pattern: "Get [Result] for Just $[Price]!"
-CTA: "Get Started for $[Price]"
-Key phrase: Emphasize specific price and massive value
+ANGLE RULES (these override everything):
+* Price must be a specific, real dollar amount: $1, $7, $17, $27, $47, or $97. Never a range. Never "low cost." A real number.
+* The offer name must include the price: "Get [Result] for Just $[Price]"
+* This is a real paid product — a workshop, a mini-course, a 30-minute session, a toolkit — NOT the full programme.
+* Value Proposition must make the price feel absurd: "Normally $[10x price], yours today for $[price]."
+* Bonuses should amplify the value-to-price gap — show the total value is worth 10–20x the asking price.
+* Guarantee should be a full money-back: "If you're not satisfied after [timeframe], email us and we'll refund every cent."
+* Urgency is time-limited: price increases, offer expires, founding member rate.
+* Tone: direct, energetic, "this is a no-brainer."
+* CTA: "Get Started for $[Price]"
   `
 };
 

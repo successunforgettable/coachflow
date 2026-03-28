@@ -8,6 +8,10 @@
 import { useState } from "react";
 import { trpc } from "../lib/trpc";
 import ZappyMascot from "./ZappyMascot";
+import UpgradePrompt from "./components/UpgradePrompt";
+import { useFavourites } from "./hooks/useFavourites";
+import ExportButtons from "./components/ExportButtons";
+import { formatWhatsAppTxt, formatHeadlinesTxt, formatAdCopyTxt, formatOfferTxt, formatMechanismsTxt, formatHvcoTxt, formatIcpTxt, formatLandingPageTxt } from "./lib/exportUtils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type TabType = "hero_mechanisms" | "headline_ideas" | "beast_mode";
@@ -43,15 +47,63 @@ const iconBtn: React.CSSProperties = {
   transition: "background 0.15s",
 };
 
+// ─── Inline regen panel ──────────────────────────────────────────────────────
+function MechanismRegenPanel({
+  itemId,
+  onSuccess,
+  onClose,
+}: {
+  itemId: number;
+  onSuccess: (name: string, description: string) => void;
+  onClose: () => void;
+}) {
+  const [prompt, setPrompt] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const regenMutation = trpc.heroMechanisms.regenerateSingle.useMutation();
+
+  async function handleRegen() {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await regenMutation.mutateAsync({ id: itemId, promptOverride: prompt.trim() || undefined });
+      onSuccess(result.mechanismName, result.mechanismDescription);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Regeneration failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div style={{ marginTop: "10px", padding: "12px", background: "rgba(139,92,246,0.04)", borderRadius: "12px", border: "1px solid rgba(139,92,246,0.15)" }}>
+      <textarea value={prompt} onChange={e => setPrompt(e.target.value)} placeholder="Optional: describe what to change..."
+        style={{ width: "100%", minHeight: "56px", fontFamily: "var(--v2-font-body)", fontSize: "13px", color: "#1A1624", lineHeight: 1.5, border: "1px solid rgba(139,92,246,0.30)", borderRadius: "8px", padding: "8px 10px", resize: "vertical", outline: "none", background: "#FFFFFF", boxSizing: "border-box" }} />
+      <div style={{ display: "flex", gap: "8px", marginTop: "8px", alignItems: "center" }}>
+        <button onClick={handleRegen} disabled={loading}
+          style={{ background: loading ? "#ccc" : "#FF5B1D", color: "#fff", border: "none", borderRadius: "9999px", padding: "7px 18px", fontFamily: "var(--v2-font-body)", fontWeight: 700, fontSize: "12px", cursor: loading ? "not-allowed" : "pointer", letterSpacing: "0.01em", display: "flex", alignItems: "center", gap: "6px" }}>
+          {loading ? (<><span style={{ display: "inline-block", width: "12px", height: "12px", border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.6s linear infinite" }} /> Regenerating...</>) : "Regenerate"}
+        </button>
+        <button onClick={onClose} style={{ background: "none", border: "none", fontFamily: "var(--v2-font-body)", fontSize: "12px", color: "#888", cursor: "pointer", padding: "7px 10px" }}>Cancel</button>
+      </div>
+      {error && <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "12px", color: "#DC2626", margin: "6px 0 0" }}>{error}</p>}
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+}
+
 // ─── Mechanism card ───────────────────────────────────────────────────────────
-function MechanismCard({ mechanism }: { mechanism: MechanismRow }) {
-  const [copied, setCopied]       = useState(false);
-  const [thumbUp, setThumbUp]     = useState(false);
-  const [thumbDown, setThumbDown] = useState(false);
-  const [starred, setStarred]     = useState(false);
+function MechanismCard({ mechanism, isFreeTier, onUpgradeClick, isFav, onToggleFav }: { mechanism: MechanismRow; isFreeTier?: boolean; onUpgradeClick?: () => void; isFav?: boolean; onToggleFav?: () => void }) {
+  const [name, setName]             = useState(mechanism.mechanismName);
+  const [description, setDescription] = useState(mechanism.mechanismDescription);
+  const [copied, setCopied]         = useState(false);
+  const thumbUp = !!isFav;
+  const [thumbDown, setThumbDown]   = useState(false);
+  const [starred, setStarred]       = useState(false);
+  const [regenOpen, setRegenOpen]   = useState(false);
 
   function handleCopy() {
-    const text = `${mechanism.mechanismName}\n\n${mechanism.mechanismDescription}`;
+    const text = `${name}\n\n${description}`;
     navigator.clipboard.writeText(text).catch(() => {});
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -74,7 +126,7 @@ function MechanismCard({ mechanism }: { mechanism: MechanismRow }) {
         margin: "0 0 8px",
         lineHeight: 1.3,
       }}>
-        {mechanism.mechanismName}
+        {name}
       </p>
       <p style={{
         fontFamily: "var(--v2-font-body)",
@@ -84,38 +136,26 @@ function MechanismCard({ mechanism }: { mechanism: MechanismRow }) {
         margin: "0 0 12px",
         whiteSpace: "pre-wrap",
       }}>
-        {mechanism.mechanismDescription}
+        {description}
       </p>
       <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-        <button
-          onClick={handleCopy}
-          style={{ ...iconBtn, background: copied ? "rgba(88,204,2,0.12)" : undefined, borderColor: copied ? "rgba(88,204,2,0.40)" : undefined }}
-          title="Copy"
-        >
-          {copied ? "✓" : "⎘"}
-        </button>
-        <button
-          onClick={() => { setThumbUp(p => !p); if (!thumbUp) setThumbDown(false); }}
-          style={{ ...iconBtn, background: thumbUp ? "rgba(88,204,2,0.12)" : undefined, borderColor: thumbUp ? "rgba(88,204,2,0.40)" : undefined }}
-          title="Thumbs up"
-        >
-          👍
-        </button>
-        <button
-          onClick={() => { setThumbDown(p => !p); if (!thumbDown) setThumbUp(false); }}
-          style={{ ...iconBtn, background: thumbDown ? "rgba(220,38,38,0.10)" : undefined, borderColor: thumbDown ? "rgba(220,38,38,0.35)" : undefined }}
-          title="Thumbs down"
-        >
-          👎
-        </button>
-        <button
-          onClick={() => setStarred(p => !p)}
-          style={{ ...iconBtn, background: starred ? "rgba(255,165,0,0.12)" : undefined, borderColor: starred ? "rgba(255,165,0,0.45)" : undefined, color: starred ? "#D97706" : undefined }}
-          title="Star"
-        >
-          {starred ? "★" : "☆"}
-        </button>
+        <button onClick={handleCopy} style={{ ...iconBtn, background: copied ? "rgba(88,204,2,0.12)" : undefined, borderColor: copied ? "rgba(88,204,2,0.40)" : undefined }} title="Copy">{copied ? "✓" : "⎘"}</button>
+        <button onClick={() => { onToggleFav?.(); if (!thumbUp) setThumbDown(false); }} style={{ ...iconBtn, background: thumbUp ? "rgba(88,204,2,0.12)" : undefined, borderColor: thumbUp ? "rgba(88,204,2,0.40)" : undefined }} title="Thumbs up">👍</button>
+        <button onClick={() => { setThumbDown(p => !p); if (!thumbDown) setThumbUp(false); }} style={{ ...iconBtn, background: thumbDown ? "rgba(220,38,38,0.10)" : undefined, borderColor: thumbDown ? "rgba(220,38,38,0.35)" : undefined }} title="Thumbs down">👎</button>
+        <button onClick={() => setStarred(p => !p)} style={{ ...iconBtn, background: starred ? "rgba(255,165,0,0.12)" : undefined, borderColor: starred ? "rgba(255,165,0,0.45)" : undefined, color: starred ? "#D97706" : undefined }} title="Star">{starred ? "★" : "☆"}</button>
+        {isFreeTier ? (
+          <button onClick={() => onUpgradeClick?.()} style={{ ...iconBtn, opacity: 0.4, cursor: "not-allowed" }} title="Upgrade to Pro to regenerate">↺</button>
+        ) : (
+          <button onClick={() => setRegenOpen(p => !p)} style={{ ...iconBtn, background: regenOpen ? "rgba(255,91,29,0.10)" : undefined, borderColor: regenOpen ? "rgba(255,91,29,0.40)" : undefined }} title="Regenerate">↺</button>
+        )}
       </div>
+      {regenOpen && !isFreeTier && (
+        <MechanismRegenPanel
+          itemId={mechanism.id}
+          onSuccess={(n, d) => { setName(n); setDescription(d); setRegenOpen(false); }}
+          onClose={() => setRegenOpen(false)}
+        />
+      )}
     </div>
   );
 }
@@ -148,12 +188,15 @@ function TabPill({ label, count, active, onClick }: { label: string; count: numb
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function V2UniqueMethodResultPanel({
   mechanismSetId,
-  onContinue,
+  isFreeTier,
 }: {
   mechanismSetId: string;
-  onContinue: () => void;
+  isFreeTier?: boolean;
 }) {
   const [activeTab, setActiveTab] = useState<TabType>("hero_mechanisms");
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const { isFavourited, toggle: toggleFav } = useFavourites("uniqueMethod");
 
   const { data, isLoading, isError } = trpc.heroMechanisms.getBySetId.useQuery(
     { mechanismSetId },
@@ -191,31 +234,8 @@ export default function V2UniqueMethodResultPanel({
       marginTop: "24px",
       position: "relative",
     }}>
-      {/* ── Fixed top-right Continue button ── */}
-      <div style={{ position: "absolute", top: "20px", right: "20px", zIndex: 10 }}>
-        <button
-          onClick={onContinue}
-          style={{
-            background: "#8B5CF6",
-            color: "#fff",
-            border: "none",
-            borderRadius: "9999px",
-            padding: "10px 22px",
-            fontFamily: "var(--v2-font-body)",
-            fontWeight: 700,
-            fontSize: "13px",
-            cursor: "pointer",
-            letterSpacing: "0.01em",
-            whiteSpace: "nowrap",
-            boxShadow: "0 2px 8px rgba(139,92,246,0.30)",
-          }}
-        >
-          Continue to Next Step →
-        </button>
-      </div>
-
       {/* ── Header ── */}
-      <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "20px", paddingRight: "180px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "20px" }}>
         <ZappyMascot state="cheering" size={56} />
         <div>
           <h2 style={{
@@ -252,15 +272,40 @@ export default function V2UniqueMethodResultPanel({
         ))}
       </div>
 
+      {/* ── Search ── */}
+      <input
+        type="text"
+        placeholder="Search methods..."
+        value={searchQuery}
+        onChange={e => setSearchQuery(e.target.value)}
+        style={{
+          width: "100%",
+          fontFamily: "var(--v2-font-body)",
+          fontSize: "14px",
+          color: "var(--v2-text-color)",
+          background: "#fff",
+          border: "1px solid rgba(26,22,36,0.12)",
+          borderRadius: "12px",
+          padding: "10px 14px",
+          outline: "none",
+          marginBottom: "16px",
+          boxSizing: "border-box" as const,
+        }}
+      />
+
       {/* ── Cards ── */}
-      {byTab[activeTab].map(m => (
-        <MechanismCard key={m.id} mechanism={m} />
+      {byTab[activeTab]
+        .filter(m => m.mechanismName.toLowerCase().includes(searchQuery.toLowerCase()) || m.mechanismDescription.toLowerCase().includes(searchQuery.toLowerCase()))
+        .map(m => (
+        <MechanismCard key={m.id} mechanism={m} isFreeTier={isFreeTier} onUpgradeClick={() => setShowUpgradeModal(true)} isFav={isFavourited(m.id)} onToggleFav={() => toggleFav(m.id, m.mechanismName)} />
       ))}
-      {byTab[activeTab].length === 0 && (
+      {byTab[activeTab].filter(m => m.mechanismName.toLowerCase().includes(searchQuery.toLowerCase()) || m.mechanismDescription.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && (
         <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#999", textAlign: "center", padding: "24px 0" }}>
           No items in this category.
         </p>
       )}
+      {showUpgradeModal && <UpgradePrompt variant="modal" featureName="Per-Item Regeneration" onClose={() => setShowUpgradeModal(false)} />}
+      <ExportButtons content={formatMechanismsTxt(Array.isArray(data) ? data : [])} serviceName="Unique_Method" nodeName="Unique_Method" showPdf={false} />
     </div>
   );
 }

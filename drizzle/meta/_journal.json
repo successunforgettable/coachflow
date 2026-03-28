@@ -386,6 +386,41 @@
       "when": 1773061745086,
       "tag": "0054_clumsy_rafael_vega",
       "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "5",
+      "when": 1774018858556,
+      "tag": "0055_round_nightmare",
+      "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "5",
+      "when": 1774202608918,
+      "tag": "0056_simple_morbius",
+      "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "5",
+      "when": 1774296063261,
+      "tag": "0057_mighty_masked_marvel",
+      "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "5",
+      "when": 1774301876659,
+      "tag": "0058_jazzy_violations",
+      "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "5",
+      "when": 1774701283229,
+      "tag": "0059_new_colossus",
+      "breakpoints": true
     }
   ]
 }

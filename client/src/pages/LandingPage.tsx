@@ -328,6 +328,37 @@ function HeroSection({ onCampaignSelect: _onCampaignSelect }: { onCampaignSelect
   const inputRef1 = useRef<HTMLInputElement>(null);
   const inputRef2 = useRef<HTMLInputElement>(null);
   const inputRef3 = useRef<HTMLInputElement>(null);
+  const heroContentRef = useRef<HTMLDivElement>(null);
+  const heroSectionRef = useRef<HTMLElement>(null);
+
+  // Dynamic hero height on mobile — measure content and set section height
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const isMobile = () => window.innerWidth <= 768;
+    const content = heroContentRef.current;
+    const section = heroSectionRef.current;
+    if (!content || !section) return;
+
+    const updateHeight = () => {
+      if (isMobile()) {
+        const contentH = content.getBoundingClientRect().height;
+        // content height + top padding (16px) + bottom padding (16px) + buffer (24px)
+        section.style.minHeight = `${contentH + 56}px`;
+      } else {
+        section.style.minHeight = "700px";
+      }
+    };
+
+    const ro = new ResizeObserver(updateHeight);
+    ro.observe(content);
+    window.addEventListener("resize", updateHeight);
+    updateHeight();
+
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", updateHeight);
+    };
+  }, [step]);
 
   const generateAssets = trpc.landing.generatePreviewAssets.useMutation();
 
@@ -479,8 +510,42 @@ function HeroSection({ onCampaignSelect: _onCampaignSelect }: { onCampaignSelect
 
   const zappySize = "clamp(80px, 12vw, 120px)";
 
+  // Mobile detection for static hero
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth <= 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
+  // Both mobile and desktop heroes render — CSS controls visibility
   return (
-    <section style={{ background: CREAM, minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "clamp(80px,10vw,120px) clamp(16px,4vw,24px) clamp(48px,6vw,80px)", position: "relative", overflow: "hidden" }}>
+    <>
+    {/* ─── MOBILE: static hero (CSS hidden on desktop) ─── */}
+    <section className="lp-hero-mobile" style={{ background: CREAM, padding: "24px 20px 20px", textAlign: "center" }}>
+      <img src={ZAPPY_WAITING} alt="Zappy" style={{ width: 80, height: 80, display: "block", margin: "0 auto 16px" }} />
+      <h1 style={{ fontFamily: "'Fraunces', serif", fontStyle: "italic", fontWeight: 900, fontSize: "28px", color: INK, margin: "0 0 20px", lineHeight: 1.2 }}>
+        Who do you help?
+      </h1>
+      <input
+        type="text"
+        value={ans1}
+        onChange={e => setAns1(e.target.value)}
+        onKeyDown={e => e.key === "Enter" && handleStep1()}
+        placeholder="e.g. coaches, executives, mums, dentists"
+        style={{ width: "100%", border: "2px solid rgba(26,22,36,0.12)", outline: "none", padding: "14px 20px", fontSize: 15, fontFamily: "'Instrument Sans', sans-serif", background: "#fff", color: INK, borderRadius: 9999, boxShadow: "0 2px 12px rgba(0,0,0,0.06)", marginBottom: 12 }}
+      />
+      <button
+        onClick={() => { if (ans1.trim().length >= 3) navigate("/signup"); else handleStep1(); }}
+        style={{ width: "100%", background: ORANGE, color: "#fff", border: "none", borderRadius: 9999, padding: "14px 28px", fontSize: 15, fontWeight: 600, fontFamily: "'Instrument Sans', sans-serif", cursor: "pointer" }}
+      >
+        Start Building Free →
+      </button>
+    </section>
+
+    {/* ─── DESKTOP: full carousel (CSS hidden on mobile) ─── */}
+    <section ref={heroSectionRef} className="lp-hero-section" style={{ background: CREAM, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "clamp(48px,8vw,100px) clamp(16px,4vw,24px) clamp(32px,4vw,48px)", position: "relative", overflow: "hidden" }}>
       {/* Confetti */}
       {confetti.run && (
         <Confetti
@@ -497,7 +562,7 @@ function HeroSection({ onCampaignSelect: _onCampaignSelect }: { onCampaignSelect
       <div style={{ position: "absolute", top: "8%", right: "-8%", width: 500, height: 500, borderRadius: "50%", background: `radial-gradient(circle, rgba(255,91,29,0.07) 0%, transparent 70%)`, pointerEvents: "none" }} />
       <div style={{ position: "absolute", bottom: "5%", left: "-5%", width: 400, height: 400, borderRadius: "50%", background: `radial-gradient(circle, rgba(139,92,246,0.05) 0%, transparent 70%)`, pointerEvents: "none" }} />
 
-      <div style={{ maxWidth: 640, width: "100%", textAlign: "center", position: "relative", zIndex: 1 }}>
+      <div ref={heroContentRef} style={{ maxWidth: 640, width: "100%", textAlign: "center", position: "relative", zIndex: 1 }}>
         {/* Zappy */}
         <div style={{ position: "relative", display: "inline-block", marginBottom: 24 }}>
           <img
@@ -748,7 +813,7 @@ function HeroSection({ onCampaignSelect: _onCampaignSelect }: { onCampaignSelect
 
         {/* Step dots */}
         {(step === "step1" || step === "step2" || step === "step3") && (
-          <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 32 }}>
+          <div className="lp-hero-dots" style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 32 }}>
             {(["step1", "step2", "step3"] as HeroStep[]).map((s, i) => (
               <div key={s} style={{ width: 8, height: 8, borderRadius: "50%", background: step === s ? ORANGE : "rgba(26,22,36,0.15)", transition: "background 0.3s" }} />
             ))}
@@ -761,7 +826,15 @@ function HeroSection({ onCampaignSelect: _onCampaignSelect }: { onCampaignSelect
           .hero-input-row { flex-direction: row !important; }
         }
       `}</style>
+      <style>{`
+        .lp-hero-mobile { display: none; }
+        @media (max-width: 768px) {
+          .lp-hero-mobile { display: block !important; }
+          .lp-hero-section { display: none !important; }
+        }
+      `}</style>
     </section>
+    </>
   );
 }
 
@@ -787,7 +860,7 @@ function PathSection({ onCTA }: { onCTA: () => void }) {
   }, [started, litCount]);
 
   return (
-    <section id="path" ref={sectionRef} style={{ background: CREAM, padding: "clamp(56px,8vw,100px) clamp(16px,4vw,24px)" }}>
+    <section id="path" ref={sectionRef} className="lp-path-section" style={{ background: CREAM, padding: "clamp(56px,8vw,100px) clamp(16px,4vw,24px)" }}>
       <div style={{ maxWidth: 900, margin: "0 auto", textAlign: "center" }}>
         <h2 style={{ fontFamily: "'Fraunces', serif", fontStyle: "italic", fontWeight: 900, fontSize: "clamp(28px, 5vw, 48px)", color: INK, margin: "0 0 12px", letterSpacing: "-0.5px" }}>
           One path. Every asset you need to launch.
@@ -799,9 +872,9 @@ function PathSection({ onCTA }: { onCTA: () => void }) {
         {/* Winding path — alternating left/right */}
         <div style={{ maxWidth: 680, margin: "0 auto 56px", position: "relative" }}>
           {/* Vertical connector line */}
-          <div style={{ position: "absolute", left: "50%", top: 22, bottom: 22, width: 2, background: `linear-gradient(to bottom, #22C55E 40%, ${ORANGE} 100%)`, opacity: 0.18, transform: "translateX(-50%)" }} />
+          <div className="lp-node-connector" style={{ position: "absolute", left: "50%", top: 22, bottom: 22, width: 2, background: `linear-gradient(to bottom, #22C55E 40%, ${ORANGE} 100%)`, opacity: 0.18, transform: "translateX(-50%)" }} />
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 40px" }}>
+          <div className="lp-node-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 40px" }}>
             {PATH_NODES.map((node, i) => {
               const isLit = i < litCount;
               const isLeft = i % 2 === 0;
@@ -904,8 +977,8 @@ function ProblemSolutionSection({ onCTA }: { onCTA: () => void }) {
                 </div>
               ))}
             </div>
-            {/* Messy arrows */}
-            <div style={{ fontSize: 20, color: "rgba(255,255,255,0.18)", marginBottom: 20, letterSpacing: 6 }}>↔ ↕ ↗ ↙ ↔</div>
+            {/* Divider */}
+            <div style={{ width: 48, height: 3, background: "rgba(239,68,68,0.4)", borderRadius: 2, marginBottom: 20 }} />
             <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 16, lineHeight: 1.7, margin: 0 }}>
               Hours of prompting. Copy-pasting between tools. Re-explaining your offer every time. And still getting generic output.
             </p>
@@ -947,8 +1020,27 @@ function ProblemSolutionSection({ onCTA }: { onCTA: () => void }) {
       </div>
 
       <style>{`
+        .lp-hero-section { min-height: 700px; }
         @media (max-width: 768px) {
+          .lp-hero-section {
+            justify-content: flex-start !important;
+            padding-top: 16px !important;
+            padding-bottom: 16px !important;
+          }
+          .lp-hero-dots { margin-top: 16px !important; }
           .lp-split-grid { grid-template-columns: 1fr !important; }
+          .lp-node-grid {
+            grid-template-columns: 1fr !important;
+            gap: 8px 0 !important;
+          }
+          .lp-node-grid > div {
+            grid-column: 1 !important;
+            flex-direction: row !important;
+            justify-content: flex-start !important;
+          }
+          .lp-node-connector { display: none !important; }
+          .lp-path-section { padding-top: 32px !important; padding-bottom: 32px !important; }
+          .lp-path-section p { margin-bottom: 32px !important; }
         }
       `}</style>
     </section>

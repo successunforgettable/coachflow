@@ -4,16 +4,19 @@
  * Displays the generated headline set in a 5-tab layout (Story, Eyebrow,
  * Question, Authority, Urgency). Each card has copy, thumbs-up, thumbs-down,
  * and star controls (all UI-state only). Compliance badge reads complianceScore
- * from the DB row. Fixed "Continue to Next Step" button always visible top-right.
+ * from the DB row.
  *
  * Props:
  *   headlineSetId — nanoid from the job result
  *   serviceId     — numeric service ID (for getLatestByServiceId fallback)
- *   onContinue    — called when the user clicks "Continue to Next Step"
  */
 import { useState } from "react";
 import { trpc } from "../lib/trpc";
 import ZappyMascot from "./ZappyMascot";
+import UpgradePrompt from "./components/UpgradePrompt";
+import { useFavourites } from "./hooks/useFavourites";
+import ExportButtons from "./components/ExportButtons";
+import { formatWhatsAppTxt, formatHeadlinesTxt, formatAdCopyTxt, formatOfferTxt, formatMechanismsTxt, formatHvcoTxt, formatIcpTxt, formatLandingPageTxt } from "./lib/exportUtils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type FormulaTab = "story" | "eyebrow" | "question" | "authority" | "urgency";
@@ -59,35 +62,86 @@ function ComplianceBadge({ score }: { score: number | null }) {
   );
 }
 
+// ─── Shared icon-button style ─────────────────────────────────────────────────
+const iconBtn: React.CSSProperties = {
+  background: "none",
+  border: "1px solid rgba(26,22,36,0.12)",
+  borderRadius: "9999px",
+  width: "34px",
+  height: "34px",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  cursor: "pointer",
+  fontSize: "15px",
+  flexShrink: 0,
+  transition: "background 0.15s",
+};
+
+// ─── Inline regen panel ──────────────────────────────────────────────────────
+function HeadlineRegenPanel({
+  itemId,
+  onSuccess,
+  onClose,
+}: {
+  itemId: number;
+  onSuccess: (headline: string, subheadline: string | null) => void;
+  onClose: () => void;
+}) {
+  const [prompt, setPrompt] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const regenMutation = trpc.headlines.regenerateSingle.useMutation();
+
+  async function handleRegen() {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await regenMutation.mutateAsync({ id: itemId, promptOverride: prompt.trim() || undefined });
+      onSuccess(result.headline, result.subheadline ?? null);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Regeneration failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div style={{ marginTop: "10px", padding: "12px", background: "rgba(139,92,246,0.04)", borderRadius: "12px", border: "1px solid rgba(139,92,246,0.15)" }}>
+      <textarea value={prompt} onChange={e => setPrompt(e.target.value)} placeholder="Optional: describe what to change..."
+        style={{ width: "100%", minHeight: "56px", fontFamily: "var(--v2-font-body)", fontSize: "13px", color: "#1A1624", lineHeight: 1.5, border: "1px solid rgba(139,92,246,0.30)", borderRadius: "8px", padding: "8px 10px", resize: "vertical", outline: "none", background: "#FFFFFF", boxSizing: "border-box" }} />
+      <div style={{ display: "flex", gap: "8px", marginTop: "8px", alignItems: "center" }}>
+        <button onClick={handleRegen} disabled={loading}
+          style={{ background: loading ? "#ccc" : "#FF5B1D", color: "#fff", border: "none", borderRadius: "9999px", padding: "7px 18px", fontFamily: "var(--v2-font-body)", fontWeight: 700, fontSize: "12px", cursor: loading ? "not-allowed" : "pointer", letterSpacing: "0.01em", display: "flex", alignItems: "center", gap: "6px" }}>
+          {loading ? (<><span style={{ display: "inline-block", width: "12px", height: "12px", border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.6s linear infinite" }} /> Regenerating...</>) : "Regenerate"}
+        </button>
+        <button onClick={onClose} style={{ background: "none", border: "none", fontFamily: "var(--v2-font-body)", fontSize: "12px", color: "#888", cursor: "pointer", padding: "7px 10px" }}>Cancel</button>
+      </div>
+      {error && <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "12px", color: "#DC2626", margin: "6px 0 0" }}>{error}</p>}
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+}
+
 // ─── Per-headline card ────────────────────────────────────────────────────────
-function HeadlineCard({ headline }: { headline: HeadlineRow }) {
+function HeadlineCard({ headline, isFreeTier, index, isFav, onToggleFav }: { headline: HeadlineRow; isFreeTier?: boolean; index: number; isFav: boolean; onToggleFav: () => void }) {
+  const copyLocked = isFreeTier && index >= 10;
+  const [headlineText, setHeadlineText] = useState(headline.headline);
+  const [subheadlineText, setSubheadlineText] = useState(headline.subheadline);
   const [copied, setCopied]     = useState(false);
-  const [thumbUp, setThumbUp]   = useState(false);
+  const thumbUp = isFav;
   const [thumbDown, setThumbDown] = useState(false);
   const [starred, setStarred]   = useState(false);
+  const [regenOpen, setRegenOpen] = useState(false);
+  const [upgradeFeature, setUpgradeFeature] = useState<string | null>(null);
 
   function handleCopy() {
-    const text = [headline.eyebrow, headline.headline, headline.subheadline]
+    const text = [headline.eyebrow, headlineText, subheadlineText]
       .filter(Boolean).join("\n");
     navigator.clipboard.writeText(text).catch(() => {});
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
-
-  const iconBtn: React.CSSProperties = {
-    background: "none",
-    border: "1px solid rgba(26,22,36,0.12)",
-    borderRadius: "9999px",
-    width: "34px",
-    height: "34px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    cursor: "pointer",
-    fontSize: "15px",
-    flexShrink: 0,
-    transition: "background 0.15s",
-  };
 
   return (
     <div style={{
@@ -121,10 +175,10 @@ function HeadlineCard({ headline }: { headline: HeadlineRow }) {
         margin: "0 0 4px",
         lineHeight: 1.35,
       }}>
-        {headline.headline}
+        {headlineText}
       </p>
       {/* Subheadline */}
-      {headline.subheadline && (
+      {subheadlineText && (
         <p style={{
           fontFamily: "var(--v2-font-body)",
           fontSize: "13px",
@@ -132,46 +186,35 @@ function HeadlineCard({ headline }: { headline: HeadlineRow }) {
           margin: "0 0 8px",
           lineHeight: 1.5,
         }}>
-          {headline.subheadline}
+          {subheadlineText}
         </p>
       )}
       {/* Compliance badge */}
       <ComplianceBadge score={headline.complianceScore} />
       {/* Controls row */}
       <div style={{ display: "flex", gap: "8px", marginTop: "12px", alignItems: "center" }}>
-        {/* Copy */}
-        <button
-          onClick={handleCopy}
-          style={{ ...iconBtn, background: copied ? "rgba(88,204,2,0.12)" : undefined, borderColor: copied ? "rgba(88,204,2,0.40)" : undefined }}
-          title="Copy to clipboard"
-        >
-          {copied ? "✓" : "⎘"}
-        </button>
-        {/* Thumbs Up */}
-        <button
-          onClick={() => { setThumbUp(p => !p); if (!thumbUp) setThumbDown(false); }}
-          style={{ ...iconBtn, background: thumbUp ? "rgba(88,204,2,0.12)" : undefined, borderColor: thumbUp ? "rgba(88,204,2,0.40)" : undefined }}
-          title="Thumbs up"
-        >
-          👍
-        </button>
-        {/* Thumbs Down */}
-        <button
-          onClick={() => { setThumbDown(p => !p); if (!thumbDown) setThumbUp(false); }}
-          style={{ ...iconBtn, background: thumbDown ? "rgba(220,38,38,0.10)" : undefined, borderColor: thumbDown ? "rgba(220,38,38,0.35)" : undefined }}
-          title="Thumbs down"
-        >
-          👎
-        </button>
-        {/* Star */}
-        <button
-          onClick={() => setStarred(p => !p)}
-          style={{ ...iconBtn, background: starred ? "rgba(255,165,0,0.12)" : undefined, borderColor: starred ? "rgba(255,165,0,0.45)" : undefined, color: starred ? "#D97706" : undefined }}
-          title="Star"
-        >
-          {starred ? "★" : "☆"}
-        </button>
+        {copyLocked ? (
+          <button onClick={() => setUpgradeFeature("Full Copy Access")} style={{ ...iconBtn, opacity: 0.4, cursor: "not-allowed" }} title="Upgrade to Pro for full copy access">🔒</button>
+        ) : (
+          <button onClick={handleCopy} style={{ ...iconBtn, background: copied ? "rgba(88,204,2,0.12)" : undefined, borderColor: copied ? "rgba(88,204,2,0.40)" : undefined }} title="Copy to clipboard">{copied ? "✓" : "⎘"}</button>
+        )}
+        <button onClick={() => { onToggleFav(); if (!thumbUp) setThumbDown(false); }} style={{ ...iconBtn, background: thumbUp ? "rgba(88,204,2,0.12)" : undefined, borderColor: thumbUp ? "rgba(88,204,2,0.40)" : undefined }} title="Thumbs up">👍</button>
+        <button onClick={() => { setThumbDown(p => !p); if (!thumbDown) setThumbUp(false); }} style={{ ...iconBtn, background: thumbDown ? "rgba(220,38,38,0.10)" : undefined, borderColor: thumbDown ? "rgba(220,38,38,0.35)" : undefined }} title="Thumbs down">👎</button>
+        <button onClick={() => setStarred(p => !p)} style={{ ...iconBtn, background: starred ? "rgba(255,165,0,0.12)" : undefined, borderColor: starred ? "rgba(255,165,0,0.45)" : undefined, color: starred ? "#D97706" : undefined }} title="Star">{starred ? "★" : "☆"}</button>
+        {isFreeTier ? (
+          <button onClick={() => setUpgradeFeature("Per-Item Regeneration")} style={{ ...iconBtn, opacity: 0.4, cursor: "not-allowed" }} title="Upgrade to Pro to regenerate">↺</button>
+        ) : (
+          <button onClick={() => setRegenOpen(p => !p)} style={{ ...iconBtn, background: regenOpen ? "rgba(255,91,29,0.10)" : undefined, borderColor: regenOpen ? "rgba(255,91,29,0.40)" : undefined }} title="Regenerate">↺</button>
+        )}
       </div>
+      {regenOpen && !isFreeTier && (
+        <HeadlineRegenPanel
+          itemId={headline.id}
+          onSuccess={(h, s) => { setHeadlineText(h); setSubheadlineText(s); setRegenOpen(false); }}
+          onClose={() => setRegenOpen(false)}
+        />
+      )}
+      {upgradeFeature && <UpgradePrompt variant="modal" featureName={upgradeFeature} onClose={() => setUpgradeFeature(null)} />}
     </div>
   );
 }
@@ -207,13 +250,15 @@ function TabPill({ label, count, active, onClick }: {
 export default function V2HeadlinesResultPanel({
   headlineSetId,
   serviceId: _serviceId,
-  onContinue,
+  isFreeTier,
 }: {
   headlineSetId: string;
   serviceId: number;
-  onContinue: () => void;
+  isFreeTier?: boolean;
 }) {
   const [activeTab, setActiveTab] = useState<FormulaTab>("story");
+  const [searchQuery, setSearchQuery] = useState("");
+  const { isFavourited, toggle: toggleFav } = useFavourites("headlines");
 
   const { data, isLoading, isError } = trpc.headlines.getBySetId.useQuery(
     { headlineSetId },
@@ -247,6 +292,16 @@ export default function V2HeadlinesResultPanel({
   ];
 
   const activeHeadlines: HeadlineRow[] = (data.headlines[activeTab] ?? []) as HeadlineRow[];
+  const filteredHeadlines = searchQuery
+    ? activeHeadlines.filter(h => {
+        const q = searchQuery.toLowerCase();
+        return (
+          h.headline.toLowerCase().includes(q) ||
+          (h.subheadline && h.subheadline.toLowerCase().includes(q)) ||
+          (h.eyebrow && h.eyebrow.toLowerCase().includes(q))
+        );
+      })
+    : activeHeadlines;
 
   return (
     <div style={{
@@ -257,31 +312,8 @@ export default function V2HeadlinesResultPanel({
       marginTop: "24px",
       position: "relative",
     }}>
-      {/* ── Fixed top-right Continue button ── */}
-      <div style={{ position: "absolute", top: "20px", right: "20px", zIndex: 10 }}>
-        <button
-          onClick={onContinue}
-          style={{
-            background: "#8B5CF6",
-            color: "#fff",
-            border: "none",
-            borderRadius: "9999px",
-            padding: "10px 22px",
-            fontFamily: "var(--v2-font-body)",
-            fontWeight: 700,
-            fontSize: "13px",
-            cursor: "pointer",
-            letterSpacing: "0.01em",
-            whiteSpace: "nowrap",
-            boxShadow: "0 2px 8px rgba(139,92,246,0.30)",
-          }}
-        >
-          Continue to Next Step →
-        </button>
-      </div>
-
       {/* ── Header ── */}
-      <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "20px", paddingRight: "180px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "20px" }}>
         <ZappyMascot state="cheering" size={56} />
         <div>
           <h2 style={{
@@ -325,16 +357,38 @@ export default function V2HeadlinesResultPanel({
         ))}
       </div>
 
+      {/* ── Search ── */}
+      <input
+        type="text"
+        placeholder="Search headlines..."
+        value={searchQuery}
+        onChange={e => setSearchQuery(e.target.value)}
+        style={{
+          width: "100%",
+          fontFamily: "var(--v2-font-body)",
+          fontSize: "14px",
+          color: "var(--v2-text-color)",
+          background: "#fff",
+          border: "1px solid rgba(26,22,36,0.12)",
+          borderRadius: "12px",
+          padding: "10px 14px",
+          outline: "none",
+          marginBottom: "16px",
+          boxSizing: "border-box" as const,
+        }}
+      />
+
       {/* ── Tab content ── */}
       <div>
-        {activeHeadlines.length === 0 ? (
+        {filteredHeadlines.length === 0 ? (
           <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#888", textAlign: "center", padding: "24px 0" }}>
             No {activeTab} headlines in this set.
           </p>
         ) : (
-          activeHeadlines.map((h) => <HeadlineCard key={h.id} headline={h} />)
+          filteredHeadlines.map((h, i) => <HeadlineCard key={h.id} headline={h} isFreeTier={isFreeTier} index={i} isFav={isFavourited(h.id)} onToggleFav={() => toggleFav(h.id, h.headline)} />)
         )}
       </div>
+      <ExportButtons content={formatHeadlinesTxt(data)} serviceName="Headlines" nodeName="Headlines" showPdf={true} isFreeTier={isFreeTier} />
     </div>
   );
 }

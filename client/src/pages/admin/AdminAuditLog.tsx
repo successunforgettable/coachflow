@@ -32,14 +32,14 @@ const ACTION_COLORS: Record<string, string> = {
 
 export default function AdminAuditLog() {
   const [page, setPage] = useState(1);
-  const [actionFilter, setActionFilter] = useState<string>("");
+  const [actionFilter, setActionFilter] = useState<string>("all");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
   const { data, isLoading } = trpc.admin.getAuditLog.useQuery({
     page,
     limit: 50,
-    actionType: actionFilter || undefined,
+    actionType: actionFilter === "all" ? undefined : actionFilter || undefined,
     startDate: startDate || undefined,
     endDate: endDate || undefined,
   });
@@ -66,7 +66,7 @@ export default function AdminAuditLog() {
                 <SelectValue placeholder="Filter by action…" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All actions</SelectItem>
+                <SelectItem value="all">All actions</SelectItem>
                 {ACTION_TYPES.map((a) => (
                   <SelectItem key={a} value={a}>{a}</SelectItem>
                 ))}

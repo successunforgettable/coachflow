@@ -11,13 +11,18 @@ import {
   incrementHeroMechanismCount
 } from "../db";
 import { getDb } from "../db";
-import { services, idealCustomerProfiles, sourceOfTruth, campaigns, jobs } from "../../drizzle/schema";
+import { services, idealCustomerProfiles, sourceOfTruth, campaigns, jobs, heroMechanisms, campaignKits, offers } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { randomUUID } from "crypto";
 import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
+import { enforceQuota, incrementQuotaCount } from "../lib/quotaEnforcement";
+import { complianceFilter } from "../lib/complianceFilter";
+import { checkCompliance } from "../lib/complianceChecker";
+import { scoreItem } from "../lib/selectionScorer";
+import { autoSelectBest } from "./campaignKits";
 
 // Helper to strip markdown code blocks from JSON responses
 function stripMarkdownJson(content: string): string {
@@ -29,6 +34,21 @@ function stripMarkdownJson(content: string): string {
     return trimmed.slice(3, -3).trim();
   }
   return trimmed;
+}
+
+// Apply compliance filter + check to mechanism name and description
+async function filterMechanism(m: { name: string; description: string }): Promise<{ name: string; description: string }> {
+  const nameResult = complianceFilter(m.name);
+  const descResult = complianceFilter(m.description);
+  // Use cleaned text for both PIVOT_REQUIRED and REJECTED
+  const name = nameResult.wasModified ? nameResult.cleanedText : m.name;
+  const desc = descResult.wasModified ? descResult.cleanedText : m.description;
+  // Log compliance score (no DB column to store it)
+  const score = await checkCompliance(`${name} ${desc}`);
+  if (score.score < 100) {
+    console.log(`[heroMechanisms] Compliance score ${score.score}/100 for "${name.substring(0, 40)}...": ${score.issues.map(i => i.phrase).join(", ")}`);
+  }
+  return { name, description: desc };
 }
 
 /**
@@ -68,7 +88,8 @@ export const heroMechanismsRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const { user } = ctx;
-      
+      await enforceQuota(ctx.user.id, "heroMechanisms");
+
       // Check and reset quota if user's anniversary date has passed
       await checkAndResetQuotaIfNeeded(ctx.user.id);
 
@@ -150,11 +171,29 @@ export const heroMechanismsRouter = router({
       const resolvedWhyExistingNotWork = input.whyExistingNotWork?.trim() || service.failedSolutions || "";
       const resolvedCredibility = input.credibility?.trim() || service.pressFeatures || "";
 
+      // ── Cascade context from Campaign Kit ──
+      let cascadeContext = "";
+      try {
+        const [icp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
+        if (icp) {
+          const [kit] = await db.select().from(campaignKits).where(and(eq(campaignKits.userId, user.id), eq(campaignKits.icpId, icp.id))).limit(1);
+          if (kit?.selectedOfferId) {
+            const [offer] = await db.select().from(offers).where(eq(offers.id, kit.selectedOfferId)).limit(1);
+            if (offer) {
+              const angle = offer.activeAngle || "godfather";
+              const angleData = (offer as any)[`${angle}Angle`];
+              const offerText = typeof angleData === "string" ? angleData : JSON.stringify(angleData);
+              cascadeContext = `\n\nUPSTREAM CONTEXT — SELECTED OFFER:\nThe user's selected offer is: ${offerText.substring(0, 500)}. Angle: ${angle}. The mechanism name and positioning must complement this offer.\n\n`;
+            }
+          }
+        }
+      } catch (e) { console.warn("[cascade] heroMechanisms context fetch failed:", e); }
+
       const mechanismSetId = nanoid();
       const allMechanisms: any[] = [];
 
       // Generate Hero Mechanisms (5 variations)
-      const heroMechanismsPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert direct response copywriter creating compelling Hero Mechanisms.
+      const heroMechanismsPrompt = `${cascadeContext}${sotContext ? `${sotContext}\n\n` : ''}You are an expert direct response copywriter creating compelling Hero Mechanisms.
 
 Product: ${service.name}
 Target Market: ${input.targetMarket}
@@ -256,8 +295,13 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
         ? headlineIdeasResponse.choices[0].message.content 
         : JSON.stringify(headlineIdeasResponse.choices[0].message.content);
       const headlineIdeas = JSON.parse(stripMarkdownJson(headlineIdeasContent));
-      
-      headlineIdeas.forEach((mechanism: { name: string; description: string }) => {
+
+      // Apply compliance filter to each mechanism
+      const filteredHeadlineIdeas = await Promise.all(
+        headlineIdeas.map((m: { name: string; description: string }) => filterMechanism(m))
+      );
+
+      filteredHeadlineIdeas.forEach((mechanism: { name: string; description: string }) => {
         allMechanisms.push({
           userId: user.id,
           serviceId: input.serviceId,
@@ -317,8 +361,13 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
         ? powerModeResponse.choices[0].message.content 
         : JSON.stringify(powerModeResponse.choices[0].message.content);
       const powerMode = JSON.parse(stripMarkdownJson(powerModeContent));
-      
-      powerMode.forEach((mechanism: { name: string; description: string }) => {
+
+      // Apply compliance filter to beast mode mechanisms
+      const filteredPowerMode = await Promise.all(
+        powerMode.map((m: { name: string; description: string }) => filterMechanism(m))
+      );
+
+      filteredPowerMode.forEach((mechanism: { name: string; description: string }) => {
         allMechanisms.push({
           userId: user.id,
           serviceId: input.serviceId,
@@ -343,6 +392,22 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
       // Save all mechanisms to database
       await createHeroMechanisms(allMechanisms);
       await incrementHeroMechanismCount(user.id);
+      await incrementQuotaCount(ctx.user.id, "heroMechanisms");
+
+      // Auto-score and auto-select into campaign kit (non-blocking)
+      try {
+        const savedMechanisms = await db.select().from(heroMechanisms).where(and(eq(heroMechanisms.mechanismSetId, mechanismSetId), eq(heroMechanisms.userId, user.id)));
+        let bestId = 0; let bestScore = -1;
+        for (const m of savedMechanisms) {
+          const s = await scoreItem({ content: `${m.mechanismName} ${m.mechanismDescription}`, nodeType: "heroMechanisms" });
+          await db.update(heroMechanisms).set({ selectionScore: String(s) } as any).where(eq(heroMechanisms.id, m.id));
+          if (s > bestScore) { bestScore = s; bestId = m.id; }
+        }
+        if (bestId) {
+          const [relatedIcp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
+          if (relatedIcp) await autoSelectBest(user.id, relatedIcp.id, "selectedMechanismId", bestId);
+        }
+      } catch (e) { console.warn("[auto-select] heroMechanisms failed:", e); }
 
       return { mechanismSetId };
     }),
@@ -395,6 +460,60 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
       return { success: true };
     }),
 
+  regenerateSingle: protectedProcedure
+    .input(z.object({ id: z.number(), promptOverride: z.string().optional() }))
+    .mutation(async ({ ctx, input }) => {
+      await enforceQuota(ctx.user.id, "heroMechanisms");
+
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const [existing] = await db
+        .select()
+        .from(heroMechanisms)
+        .where(and(eq(heroMechanisms.id, input.id), eq(heroMechanisms.userId, ctx.user.id)))
+        .limit(1);
+
+      if (!existing) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Hero mechanism not found" });
+      }
+
+      const overrideInstruction = input.promptOverride?.trim()
+        ? ` Additional instruction: ${input.promptOverride.trim()}.`
+        : "";
+
+      const prompt = `Rewrite this coaching mechanism. Current name: ${existing.mechanismName}. Current description: ${existing.mechanismDescription}.${overrideInstruction} Return a JSON object with keys: mechanismName (string), mechanismDescription (string). No explanation, no markdown.`;
+
+      const response = await invokeLLM({
+        messages: [
+          { role: "system", content: "You are an expert coaching mechanism copywriter. Respond with only valid JSON." },
+          { role: "user", content: prompt },
+        ],
+      });
+
+      const content = response.choices[0].message.content;
+      if (typeof content !== "string") throw new Error("Invalid response from AI");
+
+      const parsed = JSON.parse(stripMarkdownJson(content));
+      if (!parsed.mechanismName || !parsed.mechanismDescription) throw new Error("AI response missing required fields");
+
+      // Apply compliance filter to regenerated mechanism
+      const filtered = await filterMechanism({ name: parsed.mechanismName, description: parsed.mechanismDescription });
+
+      await db
+        .update(heroMechanisms)
+        .set({ mechanismName: filtered.name, mechanismDescription: filtered.description, updatedAt: new Date() })
+        .where(eq(heroMechanisms.id, input.id));
+
+      const [updated] = await db
+        .select()
+        .from(heroMechanisms)
+        .where(eq(heroMechanisms.id, input.id))
+        .limit(1);
+
+      return updated;
+    }),
+
   /**
    * Delete entire mechanism set
    */
@@ -430,6 +549,7 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
     )
     .mutation(async ({ ctx, input }) => {
       const { user } = ctx;
+      await enforceQuota(ctx.user.id, "heroMechanisms");
 
       // Quota check (same as generate)
       await checkAndResetQuotaIfNeeded(ctx.user.id);
@@ -546,7 +666,8 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
             ? headlineIdeasResponse.choices[0].message.content
             : JSON.stringify(headlineIdeasResponse.choices[0].message.content);
           const headlineIdeas = JSON.parse(stripMarkdownJson(headlineIdeasContent));
-          headlineIdeas.forEach((m: { name: string; description: string }) => {
+          const filteredHeadlineIdeas = await Promise.all(headlineIdeas.map((m: { name: string; description: string }) => filterMechanism(m)));
+          filteredHeadlineIdeas.forEach((m: { name: string; description: string }) => {
             allMechanisms.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId, mechanismSetId, tabType: "headline_ideas" as const, mechanismName: m.name, mechanismDescription: m.description, targetMarket: capturedInput.targetMarket, pressingProblem: capturedInput.pressingProblem, whyProblem: capturedInput.whyProblem, whatTried: capturedInput.whatTried, whyExistingNotWork: capturedInput.whyExistingNotWork, descriptor: capturedInput.descriptor, application: capturedInput.application, desiredOutcome: capturedInput.desiredOutcome, credibility: capturedInput.credibility, socialProof: capturedInput.socialProof });
           });
 
@@ -563,13 +684,30 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
             ? powerModeResponse.choices[0].message.content
             : JSON.stringify(powerModeResponse.choices[0].message.content);
           const powerMode = JSON.parse(stripMarkdownJson(powerModeContent));
-          powerMode.forEach((m: { name: string; description: string }) => {
+          const filteredPowerMode = await Promise.all(powerMode.map((m: { name: string; description: string }) => filterMechanism(m)));
+          filteredPowerMode.forEach((m: { name: string; description: string }) => {
             allMechanisms.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId, mechanismSetId, tabType: "beast_mode" as const, mechanismName: m.name, mechanismDescription: m.description, targetMarket: capturedInput.targetMarket, pressingProblem: capturedInput.pressingProblem, whyProblem: capturedInput.whyProblem, whatTried: capturedInput.whatTried, whyExistingNotWork: capturedInput.whyExistingNotWork, descriptor: capturedInput.descriptor, application: capturedInput.application, desiredOutcome: capturedInput.desiredOutcome, credibility: capturedInput.credibility, socialProof: capturedInput.socialProof });
           });
 
           // Save all mechanisms and increment quota
           await createHeroMechanisms(allMechanisms);
           await incrementHeroMechanismCount(capturedUserId);
+          await incrementQuotaCount(capturedUserId, "heroMechanisms");
+
+          // Auto-score and auto-select into campaign kit (non-blocking)
+          try {
+            const savedMechanisms = await bgDb.select().from(heroMechanisms).where(and(eq(heroMechanisms.mechanismSetId, mechanismSetId), eq(heroMechanisms.userId, capturedUserId)));
+            let bestId = 0; let bestScore = -1;
+            for (const m of savedMechanisms) {
+              const s = await scoreItem({ content: `${m.mechanismName} ${m.mechanismDescription}`, nodeType: "heroMechanisms" });
+              await bgDb.update(heroMechanisms).set({ selectionScore: String(s) } as any).where(eq(heroMechanisms.id, m.id));
+              if (s > bestScore) { bestScore = s; bestId = m.id; }
+            }
+            if (bestId) {
+              const [relatedIcp] = await bgDb.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, capturedInput.serviceId)).limit(1);
+              if (relatedIcp) await autoSelectBest(capturedUserId, relatedIcp.id, "selectedMechanismId", bestId);
+            }
+          } catch (e) { console.warn("[auto-select] heroMechanisms async failed:", e); }
 
           // Mark job complete
           await bgDb.update(jobs)

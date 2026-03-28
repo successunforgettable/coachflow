@@ -62,7 +62,8 @@ export async function generateLandingPageAngle(
   avatarName: string,
   avatarDescription: string,
   angle: 'original' | 'godfather' | 'free' | 'dollar',
-  socialProof: any
+  socialProof: any,
+  fallbackTestimonials?: Array<{headline: string, quote: string, name: string, location: string}>
 ): Promise<LandingPageContent> {
   // Social proof guidance (Issue 2 fix)
   const socialProofGuidance = socialProof.hasTestimonials || socialProof.hasCustomers || socialProof.hasPress
@@ -110,6 +111,7 @@ Generate a complete landing page with 16 sections following this structure:
    NOTE: DO NOT include "Meta", "Facebook", or "Instagram" as these imply platform endorsement which violates Meta advertising policy
 
 6. **Quiz/Question Section** (engaging question with 5 options and reveal answer, 200-300 words total)
+   CRITICAL: The "answer" field MUST be a full 2-3 sentence explanation of why the correct option is right. NEVER leave answer empty, null, or just the option text. The answer must educate and surprise the reader.
    Example: "Can You Guess Which One of These 'Safe' Crypto Moves… Actually Gets Your Bank Account Flagged?"
 
 7. **Problem Agitation** (emotional pain points, 200-300 words)
@@ -119,9 +121,11 @@ Generate a complete landing page with 16 sections following this structure:
    Example: "If You've Tried P2P Groups, Chased Hot Signals, or Risked Your Bank Cards - and Still Aren't Seeing Real Crypto Profits..."
 
 9. **Why Old Methods Fail** (contrarian angle, 200-300 words)
+   CRITICAL: Name 2-3 SPECIFIC reasons why conventional approaches fail for this exact avatar. Tie each reason to the avatar's niche, pain points, and situation. Never use generic filler like "traditional methods don't work." Pull from the avatar's frustrations and prior failed attempts.
    Example: "Why Playing It 'Safe' With Mainstream Crypto Advice Actually Keeps You Stuck (and Broke)"
 
 10. **Unique Mechanism Introduction** (names the proprietary system, 200-300 words)
+    CRITICAL: Name a SPECIFIC proprietary methodology or system — give it a branded name derived from the product and avatar context. Describe what it does in 2-3 concrete sentences. If the product description mentions a named method, USE that name. Never write generic copy like "our unique system" — it must have a real name and specific steps.
     Example: "Introducing the 'Steady Wealth Protocol': Your Step-by-Step Safe Haven in Middle East Crypto"
 
 11. **Social Proof / Testimonials** (4 testimonials with headline, quote, name, location)
@@ -138,6 +142,8 @@ Generate a complete landing page with 16 sections following this structure:
     Example: "The Steady Wealth Protocol Doors Are Only Open For a Short Window (Secure Your Spot Now)"
 
 14. **Shocking Statistic** (data-driven fear, 150-200 words)
+    CRITICAL: Generate a SPECIFIC, believable statistic relevant to this avatar's niche. Use a concrete percentage or number (e.g. "87% of...", "Only 3 in 100..."). The stat must feel real and credible for this industry — not a generic placeholder. Format as one punchy opening sentence with the stat, followed by 2-3 sentences explaining what it means for the avatar.
+    FORMATTING RULE: All statistics and percentages MUST be written as digits and symbols — e.g. "73%", "4x", "3 out of 10". NEVER spell out numbers as words (never "Seventy-three percent", never "four times"). This applies to every number, percentage, and multiplier in this section.
     Example: "92% of UAE Crypto Beginners Will Never Build Real Wealth Without a Proven System"
 
 15. **Time-Saving Benefit** (shortcut positioning, 150-200 words)
@@ -149,15 +155,25 @@ Generate a complete landing page with 16 sections following this structure:
     2. "Done-For-You Templates" - "Plug-and-play scripts, checklists, and spreadsheets for every transaction, from your first crypto buy to safe cashing out."
     ... (8 more items)
 
+17. **FAQ** (5 questions and answers addressing common objections)
+    Generate 5 frequently asked questions that address the target customer's most likely objections, fears, and hesitations about this specific offer. Each answer should be 2-3 sentences, reassuring and specific. Base the questions on the ICP pain points and the offer positioning.
+    Example:
+    - Question: "Do I need coaching experience?" Answer: "No. This programme is designed for complete beginners. We give you everything you need to get started."
+    - Question: "What if I've tried other programmes and failed?" Answer: "Most programmes fail because they use a one-size-fits-all approach. Our method is personalised to your specific situation."
+
 Return as JSON matching the LandingPageContent type.
 Use the avatar's name, location, and description throughout the copy to personalize it.
 Make it compelling, benefit-driven, and conversion-focused.
 Use direct response copywriting principles: pain agitation, unique mechanism, social proof, scarcity, and strong CTAs.
+
+CRITICAL FORMATTING: All string values must be plain text. NO markdown syntax anywhere — no asterisks (*), no hash symbols (#), no bold (**text**), no italic (*text*), no bullet markers. Just clean sentences and paragraphs separated by line breaks.
+
+CRITICAL CONTENT: Every single one of the 16 sections MUST contain substantial content. Never return an empty string for any section. shockingStat must contain a specific statistic. whyOldFail must contain 2-3 named reasons. Every section must be 50+ words minimum.
 `;
 
   const response = await invokeLLM({
     messages: [
-      { role: "system", content: "You are a world-class direct response copywriter specializing in high-converting landing pages. You write compelling, benefit-driven copy that converts visitors into customers." },
+      { role: "system", content: "You are a world-class direct response copywriter specializing in high-converting landing pages. You write compelling, benefit-driven copy that converts visitors into customers. FORMATTING RULE: Return plain text only inside all JSON string values. No markdown. No asterisks (*). No hash symbols (#). No bold or italic formatting of any kind. No bullet markers. Just clean readable sentences and paragraphs." },
       { role: "user", content: prompt }
     ],
     response_format: {
@@ -222,13 +238,26 @@ Use direct response copywriting principles: pain agitation, unique mechanism, so
                 required: ["title", "description"],
                 additionalProperties: false
               }
+            },
+            faq: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  question: { type: "string" },
+                  answer: { type: "string" }
+                },
+                required: ["question", "answer"],
+                additionalProperties: false
+              }
             }
           },
           required: [
             "eyebrowHeadline", "mainHeadline", "subheadline", "primaryCta",
             "asSeenIn", "quizSection", "problemAgitation", "solutionIntro",
             "whyOldFail", "uniqueMechanism", "testimonials", "insiderAdvantages",
-            "scarcityUrgency", "shockingStat", "timeSavingBenefit", "consultationOutline"
+            "scarcityUrgency", "shockingStat", "timeSavingBenefit", "consultationOutline",
+            "faq"
           ],
           additionalProperties: false
         }
@@ -249,24 +278,46 @@ Use direct response copywriting principles: pain agitation, unique mechanism, so
   // Strip markdown code fences if LLM wraps response in ```json ... ```
   const cleaned = content.replace(/^```json\s*|^```\s*|\s*```$/gm, '').trim();
   const parsed = JSON.parse(cleaned);
-  
+
+  // Strip any markdown formatting from all string values
+  function stripMarkdown(val: unknown): unknown {
+    if (typeof val === "string") {
+      return val
+        .replace(/\*\*(.*?)\*\*/g, '$1')  // **bold** → bold
+        .replace(/\*(.*?)\*/g, '$1')       // *italic* → italic
+        .replace(/^#{1,6}\s+/gm, '')       // # heading → heading
+        .replace(/^[-*]\s+/gm, '')         // - bullet → bullet
+        .trim();
+    }
+    if (Array.isArray(val)) return val.map(stripMarkdown);
+    if (val && typeof val === "object") {
+      const out: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(val as Record<string, unknown>)) {
+        out[k] = stripMarkdown(v);
+      }
+      return out;
+    }
+    return val;
+  }
+  const cleanParsed = stripMarkdown(parsed) as Record<string, unknown>;
+
   // Validate and add fallbacks for all required fields
   const validated: LandingPageContent = {
-    eyebrowHeadline: parsed.eyebrowHeadline || 'SPECIAL OFFER',
-    mainHeadline: parsed.mainHeadline || 'Transform Your Results Today',
-    subheadline: parsed.subheadline || 'Discover how to achieve your goals faster than ever before',
-    primaryCta: parsed.primaryCta || 'Get Started Now',
-    asSeenIn: Array.isArray(parsed.asSeenIn) && parsed.asSeenIn.length > 0 ? parsed.asSeenIn : ['Featured'],
-    quizSection: parsed.quizSection || {
+    eyebrowHeadline: (cleanParsed.eyebrowHeadline as string) || 'SPECIAL OFFER',
+    mainHeadline: (cleanParsed.mainHeadline as string) || 'Transform Your Results Today',
+    subheadline: (cleanParsed.subheadline as string) || 'Discover how to achieve your goals faster than ever before',
+    primaryCta: (cleanParsed.primaryCta as string) || 'Get Started Now',
+    asSeenIn: Array.isArray(cleanParsed.asSeenIn) && cleanParsed.asSeenIn.length > 0 ? cleanParsed.asSeenIn as string[] : ['Featured'],
+    quizSection: (cleanParsed.quizSection as any) || {
       question: 'What is your biggest challenge?',
       options: ['Option A', 'Option B', 'Option C', 'Option D'],
       answer: 'Option A'
     },
-    problemAgitation: parsed.problemAgitation || 'Many people struggle with this challenge every day.',
-    solutionIntro: parsed.solutionIntro || 'There is a proven solution that works.',
-    whyOldFail: parsed.whyOldFail || 'Traditional methods don\'t work because they miss the core issue.',
-    uniqueMechanism: parsed.uniqueMechanism || 'Our unique system addresses the root cause.',
-    testimonials: Array.isArray(parsed.testimonials) && parsed.testimonials.length > 0 ? parsed.testimonials : [
+    problemAgitation: (cleanParsed.problemAgitation as string) || '[Generation incomplete — please regenerate this section]',
+    solutionIntro: (cleanParsed.solutionIntro as string) || '[Generation incomplete — please regenerate this section]',
+    whyOldFail: (cleanParsed.whyOldFail as string) || '[Generation incomplete — please regenerate this section]',
+    uniqueMechanism: (cleanParsed.uniqueMechanism as string) || '[Generation incomplete — please regenerate this section]',
+    testimonials: Array.isArray(cleanParsed.testimonials) && cleanParsed.testimonials.length > 0 ? cleanParsed.testimonials as any : fallbackTestimonials ?? [
       {
         headline: 'Life-Changing Results',
         quote: 'This completely transformed how I approach my goals.',
@@ -274,11 +325,11 @@ Use direct response copywriting principles: pain agitation, unique mechanism, so
         location: 'Worldwide'
       }
     ],
-    insiderAdvantages: parsed.insiderAdvantages || 'Get exclusive access to proven strategies.',
-    scarcityUrgency: parsed.scarcityUrgency || 'Limited spots available this month.',
-    shockingStat: parsed.shockingStat || 'Studies show this approach works 10x better.',
-    timeSavingBenefit: parsed.timeSavingBenefit || 'Save hours every week with this system.',
-    consultationOutline: Array.isArray(parsed.consultationOutline) && parsed.consultationOutline.length > 0 ? parsed.consultationOutline : [
+    insiderAdvantages: (cleanParsed.insiderAdvantages as string) || '[Generation incomplete — please regenerate this section]',
+    scarcityUrgency: (cleanParsed.scarcityUrgency as string) || '[Generation incomplete — please regenerate this section]',
+    shockingStat: (cleanParsed.shockingStat as string) || '[Generation incomplete — please regenerate this section]',
+    timeSavingBenefit: (cleanParsed.timeSavingBenefit as string) || '[Generation incomplete — please regenerate this section]',
+    consultationOutline: Array.isArray(cleanParsed.consultationOutline) && cleanParsed.consultationOutline.length > 0 ? cleanParsed.consultationOutline as any : [
       {
         title: 'Assessment',
         description: 'We evaluate your current situation'
@@ -291,13 +342,33 @@ Use direct response copywriting principles: pain agitation, unique mechanism, so
         title: 'Implementation',
         description: 'We help you execute and succeed'
       }
-    ]
+    ],
+    faq: Array.isArray(cleanParsed.faq) && cleanParsed.faq.length > 0 ? cleanParsed.faq as any : []
   };
-  
+
   return validated;
 }
 
-// Generate all 4 angles at once.
+// Per-angle timeout wrapper — prevents one slow AI response from blocking the entire job
+async function generateWithTimeout(
+  productName: string,
+  productDescription: string,
+  avatarName: string,
+  avatarDescription: string,
+  angle: 'original' | 'godfather' | 'free' | 'dollar',
+  socialProof: any,
+  timeoutMs = 300_000,
+  fallbackTestimonials?: Array<{headline: string, quote: string, name: string, location: string}>
+): Promise<LandingPageContent> {
+  return Promise.race([
+    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, angle, socialProof, fallbackTestimonials),
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`Landing page ${angle} angle timed out after ${timeoutMs / 1000}s`)), timeoutMs)
+    ),
+  ]);
+}
+
+// Generate all 4 angles in parallel.
 // onAngleComplete(completed, total) is called after each angle finishes so callers
 // can write real progress updates to the job record during generation.
 export async function generateAllAngles(
@@ -306,15 +377,14 @@ export async function generateAllAngles(
   avatarName: string,
   avatarDescription: string,
   socialProof: any,
-  onAngleComplete?: (completed: number, total: number) => Promise<void>
+  onAngleComplete?: (completed: number, total: number) => Promise<void>,
+  fallbackTestimonials?: Array<{headline: string, quote: string, name: string, location: string}>
 ): Promise<{
   original: LandingPageContent;
   godfather: LandingPageContent;
   free: LandingPageContent;
   dollar: LandingPageContent;
 }> {
-  // Generate in 2 batches of 2 to avoid overwhelming the LLM API with 4 concurrent
-  // large JSON-structured requests (each ~8k tokens), which can cause "fetch failed" timeouts.
   const TOTAL = 4;
   let completed = 0;
   const notify = async () => {
@@ -324,13 +394,12 @@ export async function generateAllAngles(
     }
   };
 
-  const [original, godfather] = await Promise.all([
-    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'original', socialProof).then(async r => { await notify(); return r; }),
-    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'godfather', socialProof).then(async r => { await notify(); return r; }),
-  ]);
-  const [free, dollar] = await Promise.all([
-    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'free', socialProof).then(async r => { await notify(); return r; }),
-    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'dollar', socialProof).then(async r => { await notify(); return r; }),
+  // All 4 angles in parallel — cuts total time by ~75% vs sequential
+  const [original, godfather, free, dollar] = await Promise.all([
+    generateWithTimeout(productName, productDescription, avatarName, avatarDescription, 'original', socialProof, 300_000, fallbackTestimonials).then(async r => { await notify(); return r; }),
+    generateWithTimeout(productName, productDescription, avatarName, avatarDescription, 'godfather', socialProof, 300_000, fallbackTestimonials).then(async r => { await notify(); return r; }),
+    generateWithTimeout(productName, productDescription, avatarName, avatarDescription, 'free', socialProof, 300_000, fallbackTestimonials).then(async r => { await notify(); return r; }),
+    generateWithTimeout(productName, productDescription, avatarName, avatarDescription, 'dollar', socialProof, 300_000, fallbackTestimonials).then(async r => { await notify(); return r; }),
   ]);
   return { original, godfather, free, dollar };
 }

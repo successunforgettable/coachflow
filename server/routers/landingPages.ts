@@ -5,9 +5,47 @@ import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 import { getQuotaLimit } from "../quotaLimits";
 import { getDb } from "../db";
-import { landingPages, services, users, campaigns, idealCustomerProfiles, sourceOfTruth, jobs } from "../../drizzle/schema";
+import { landingPages, services, users, campaigns, idealCustomerProfiles, sourceOfTruth, jobs, campaignKits, offers, heroMechanisms, hvcoTitles } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { generateAllAngles } from "../landingPageGenerator";
+import { invokeLLM } from "../_core/llm";
+import { enforceQuota, incrementQuotaCount } from "../lib/quotaEnforcement";
+import { complianceFilter } from "../lib/complianceFilter";
+import { checkCompliance } from "../lib/complianceChecker";
+import { scoreItem } from "../lib/selectionScorer";
+import { autoSelectBest } from "./campaignKits";
+
+// Apply compliance filter to a text string, return cleaned version
+async function filterSection(text: string): Promise<string> {
+  const result = complianceFilter(text);
+  const cleaned = result.wasModified ? result.cleanedText : text;
+  const score = await checkCompliance(cleaned);
+  if (score.score < 100) {
+    console.log(`[landingPages] Compliance score ${score.score}/100 for "${cleaned.substring(0, 50)}": ${score.issues.map(i => i.phrase).join(", ")}`);
+  }
+  return cleaned;
+}
+
+// Apply compliance filter to all string fields in a landing page angle object
+async function filterAngleObject(angle: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const filtered = { ...angle };
+  for (const key of Object.keys(filtered)) {
+    if (typeof filtered[key] === "string" && filtered[key]) {
+      filtered[key] = await filterSection(filtered[key] as string);
+    }
+  }
+  return filtered;
+}
+
+function stripMarkdownJson(content: string): string {
+  return content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
+}
+
+const LP_STRING_SECTIONS = new Set([
+  "eyebrowHeadline", "mainHeadline", "subheadline", "primaryCta",
+  "problemAgitation", "solutionIntro", "whyOldFail", "uniqueMechanism",
+  "insiderAdvantages", "scarcityUrgency", "shockingStat", "timeSavingBenefit",
+]);
 
 const generateLandingPageSchema = z.object({
   serviceId: z.number(),
@@ -87,6 +125,8 @@ export const landingPagesRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
+
+      await enforceQuota(ctx.user.id, "landingPages");
 
       // Check and reset quota if user's anniversary date has passed
       await checkAndResetQuotaIfNeeded(ctx.user.id);
@@ -252,20 +292,74 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
       // Append SOT + campaignType + ICP context to avatarDescription — Item 1.2 + 1.4 + 1.5
       // Layer order: SOT → avatarDescription → campaignType → ICP
       const enrichedAvatarDescription = [
+        cascadeContext || null,
         sotContext || null,
         avatarDescription || null,
         campaignTypeContext || null,
         icpContext || null,
       ].filter(Boolean).join('\n\n');
 
+      // ── Cascade context from Campaign Kit ──
+      let cascadeContext = "";
+      try {
+        const [relIcp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
+        if (relIcp) {
+          const [kit] = await db.select().from(campaignKits).where(and(eq(campaignKits.userId, ctx.user.id), eq(campaignKits.icpId, relIcp.id))).limit(1);
+          if (kit) {
+            const parts: string[] = [];
+            if (kit.selectedMechanismId) {
+              const [mech] = await db.select().from(heroMechanisms).where(eq(heroMechanisms.id, kit.selectedMechanismId)).limit(1);
+              if (mech) parts.push(`The hero mechanism name is: ${mech.mechanismName} — use this in the Unique Mechanism Introduction section`);
+            }
+            if (kit.selectedOfferId) {
+              const [offer] = await db.select().from(offers).where(eq(offers.id, kit.selectedOfferId)).limit(1);
+              if (offer) parts.push(`Offer angle: ${offer.activeAngle || "godfather"}`);
+            }
+            if (kit.selectedHvcoId) {
+              const [hvco] = await db.select().from(hvcoTitles).where(eq(hvcoTitles.id, kit.selectedHvcoId)).limit(1);
+              if (hvco) parts.push(`Lead magnet: ${hvco.title} — reference this in the problem and quiz sections`);
+            }
+            if (parts.length > 0) {
+              cascadeContext = `UPSTREAM CONTEXT — SELECTED ASSETS:\n${parts.join(". ")}.\n\n`;
+            }
+          }
+        }
+      } catch (e) { console.warn("[cascade] landingPages context fetch failed:", e); }
+
+      // Build service-aware testimonial fallbacks
+      const fallbackTestimonials = [
+        {
+          headline: `Finally Achieving ${service.mainBenefit ?? 'Real Results'}`,
+          quote: `I was skeptical at first, but the results speak for themselves. If you are ${service.targetCustomer ?? 'looking for a change'}, this is exactly what you need.`,
+          name: service.avatarName ?? 'A Client',
+          location: service.avatarTitle ?? 'Satisfied Client'
+        },
+        {
+          headline: 'This Changed Everything For Me',
+          quote: `The approach is unlike anything else I have tried. Within weeks I could see real progress toward ${service.mainBenefit ?? 'my goals'}.`,
+          name: 'A Recent Client',
+          location: service.targetCustomer ?? 'Worldwide'
+        }
+      ];
+
       // Generate all 4 angles in parallel with social proof (Issue 2 fix)
-      const allAngles = await generateAllAngles(
+      const allAnglesRaw = await generateAllAngles(
         service.name,
         service.description || "",
         avatarName,
         enrichedAvatarDescription,
-        socialProof
+        socialProof,
+        undefined,
+        fallbackTestimonials
       );
+
+      // Apply compliance filter to all string fields in each angle
+      const allAngles = {
+        original: await filterAngleObject(allAnglesRaw.original as Record<string, unknown>),
+        godfather: await filterAngleObject(allAnglesRaw.godfather as Record<string, unknown>),
+        free: await filterAngleObject(allAnglesRaw.free as Record<string, unknown>),
+        dollar: await filterAngleObject(allAnglesRaw.dollar as Record<string, unknown>),
+      };
 
       // Save to database
       const insertResult: any = await db.insert(landingPages).values({
@@ -292,12 +386,23 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
         })
         .where(eq(users.id, ctx.user.id));
 
+      await incrementQuotaCount(ctx.user.id, "landingPages");
+
       // Fetch the created landing page
       const [newPage] = await db
         .select()
         .from(landingPages)
         .where(eq(landingPages.id, insertResult[0].insertId))
         .limit(1);
+
+      // Auto-score and auto-select into campaign kit (non-blocking)
+      try {
+        const originalContent = JSON.stringify(allAngles.original);
+        const s = await scoreItem({ content: originalContent, nodeType: "landingPages", formulaType: "original" });
+        await db.update(landingPages).set({ selectionScore: String(s) } as any).where(eq(landingPages.id, insertResult[0].insertId));
+        const [relatedIcp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
+        if (relatedIcp) await autoSelectBest(ctx.user.id, relatedIcp.id, "selectedLandingPageId", insertResult[0].insertId);
+      } catch (e) { console.warn("[auto-select] landingPages failed:", e); }
 
       return newPage;
     }),
@@ -311,6 +416,7 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
+      await enforceQuota(ctx.user.id, "landingPages");
       await checkAndResetQuotaIfNeeded(ctx.user.id);
       const [user] = await db.select().from(users).where(eq(users.id, ctx.user.id)).limit(1);
       if (!user) throw new Error("User not found");
@@ -380,11 +486,41 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
             } catch { /* non-fatal */ }
           };
 
-          const allAngles = await generateAllAngles(capturedService.name, capturedService.description || "", avatarName, enrichedAvatarDescription, socialProof, writeProgress);
+          const asyncFallbackTestimonials = [
+            {
+              headline: `Finally Achieving ${capturedService.mainBenefit ?? 'Real Results'}`,
+              quote: `I was skeptical at first, but the results speak for themselves. If you are ${capturedService.targetCustomer ?? 'looking for a change'}, this is exactly what you need.`,
+              name: capturedService.avatarName ?? 'A Client',
+              location: capturedService.avatarTitle ?? 'Satisfied Client'
+            },
+            {
+              headline: 'This Changed Everything For Me',
+              quote: `The approach is unlike anything else I have tried. Within weeks I could see real progress toward ${capturedService.mainBenefit ?? 'my goals'}.`,
+              name: 'A Recent Client',
+              location: capturedService.targetCustomer ?? 'Worldwide'
+            }
+          ];
+          const allAnglesRaw2 = await generateAllAngles(capturedService.name, capturedService.description || "", avatarName, enrichedAvatarDescription, socialProof, writeProgress, asyncFallbackTestimonials);
+          const allAngles = {
+            original: await filterAngleObject(allAnglesRaw2.original as Record<string, unknown>),
+            godfather: await filterAngleObject(allAnglesRaw2.godfather as Record<string, unknown>),
+            free: await filterAngleObject(allAnglesRaw2.free as Record<string, unknown>),
+            dollar: await filterAngleObject(allAnglesRaw2.dollar as Record<string, unknown>),
+          };
 
           const insertResult: any = await bgDb.insert(landingPages).values({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, productName: capturedService.name, productDescription: capturedService.description || "", avatarName, avatarDescription, originalAngle: allAngles.original, godfatherAngle: allAngles.godfather, freeAngle: allAngles.free, dollarAngle: allAngles.dollar, activeAngle: "original", rating: 0 });
           await bgDb.update(users).set({ landingPageGeneratedCount: capturedUser.landingPageGeneratedCount + 1 }).where(eq(users.id, capturedUserId));
+          await incrementQuotaCount(capturedUserId, "landingPages");
           const [newPage] = await bgDb.select().from(landingPages).where(eq(landingPages.id, insertResult[0].insertId)).limit(1);
+
+          // Auto-score and auto-select into campaign kit (non-blocking)
+          try {
+            const originalContent = JSON.stringify(allAngles.original);
+            const s = await scoreItem({ content: originalContent, nodeType: "landingPages", formulaType: "original" });
+            await bgDb.update(landingPages).set({ selectionScore: String(s) } as any).where(eq(landingPages.id, insertResult[0].insertId));
+            const [relatedIcp] = await bgDb.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, capturedInput.serviceId)).limit(1);
+            if (relatedIcp) await autoSelectBest(capturedUserId, relatedIcp.id, "selectedLandingPageId", insertResult[0].insertId);
+          } catch (e) { console.warn("[auto-select] landingPages async failed:", e); }
 
           await bgDb.update(jobs)
             .set({ status: "complete", result: JSON.stringify({ id: newPage?.id }) })
@@ -414,7 +550,7 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
                     };
                     const retryAvatarName = capturedInput.avatarName || `${capturedService.targetCustomer}`;
                     const retryAvatarDescription = capturedInput.avatarDescription || capturedService.description || 'Target Customer';
-                    const retryAngles = await generateAllAngles(capturedService.name, capturedService.description || '', retryAvatarName, retryAvatarDescription, bgSocialProof, writeProgressRetry);
+                    const retryAngles = await generateAllAngles(capturedService.name, capturedService.description || '', retryAvatarName, retryAvatarDescription, bgSocialProof, writeProgressRetry, asyncFallbackTestimonials);
                     const retryInsert: any = await retryDb.insert(landingPages).values({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, productName: capturedService.name, productDescription: capturedService.description || '', avatarName: retryAvatarName, avatarDescription: retryAvatarDescription, originalAngle: retryAngles.original, godfatherAngle: retryAngles.godfather, freeAngle: retryAngles.free, dollarAngle: retryAngles.dollar, activeAngle: 'original', rating: 0 });
                     await retryDb.update(users).set({ landingPageGeneratedCount: capturedUser.landingPageGeneratedCount + 1 }).where(eq(users.id, capturedUserId));
                     const [retryPage] = await retryDb.select().from(landingPages).where(eq(landingPages.id, retryInsert[0].insertId)).limit(1);
@@ -521,6 +657,79 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
         .limit(1);
 
       return updated;
+    }),
+
+  // Regenerate a single section within a landing page angle via AI
+  regenerateSection: protectedProcedure
+    .input(z.object({
+      landingPageId: z.number(),
+      angle: z.enum(["original", "godfather", "free", "dollar"]),
+      sectionKey: z.string(),
+      userPrompt: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      await enforceQuota(ctx.user.id, "landingPages");
+
+      const [row] = await db
+        .select()
+        .from(landingPages)
+        .where(and(eq(landingPages.id, input.landingPageId), eq(landingPages.userId, ctx.user.id)))
+        .limit(1);
+
+      if (!row) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Landing page not found" });
+      }
+
+      const angleColMap = { original: "originalAngle", godfather: "godfatherAngle", free: "freeAngle", dollar: "dollarAngle" } as const;
+      const angleCol = angleColMap[input.angle];
+      const rawAngle = row[angleCol];
+      const angleData: Record<string, unknown> = typeof rawAngle === "string" ? JSON.parse(rawAngle) : (rawAngle as Record<string, unknown>) ?? {};
+
+      const currentValue = angleData[input.sectionKey];
+      const serialized = typeof currentValue === "string" ? currentValue : JSON.stringify(currentValue);
+
+      const isStringSection = LP_STRING_SECTIONS.has(input.sectionKey);
+      const userInstruction = input.userPrompt?.trim() ? ` User instruction: ${input.userPrompt.trim()}.` : "";
+      const formatInstruction = isStringSection
+        ? "Return ONLY the rewritten text. No JSON, no markdown, no explanation."
+        : "Return ONLY valid JSON — no markdown, no explanation, no wrapping text.";
+
+      const prompt = `Rewrite the ${input.sectionKey} section for this landing page. Current value: ${serialized}.${userInstruction} ${formatInstruction}`;
+
+      const response = await invokeLLM({
+        messages: [
+          { role: "system", content: "You are a direct-response copywriter for high-ticket coaching offers." },
+          { role: "user", content: prompt },
+        ],
+      });
+
+      const content = response.choices[0].message.content;
+      if (typeof content !== "string") throw new Error("Invalid response from AI");
+
+      const cleaned = stripMarkdownJson(content);
+
+      let newValue: unknown;
+      if (isStringSection) {
+        newValue = await filterSection(cleaned);
+      } else {
+        try {
+          newValue = JSON.parse(cleaned);
+        } catch {
+          newValue = cleaned; // graceful fallback — store raw string
+        }
+      }
+
+      angleData[input.sectionKey] = newValue;
+
+      await db
+        .update(landingPages)
+        .set({ [angleCol]: JSON.stringify(angleData), updatedAt: new Date() })
+        .where(eq(landingPages.id, input.landingPageId));
+
+      return angleData;
     }),
 
   // Delete landing page

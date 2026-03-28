@@ -1,15 +1,18 @@
 /**
  * V2WhatsAppResultPanel — Node 10 Results Panel
  *
- * Flat list of 7 WhatsApp message cards.
- * Each card: timing badge, message text, emojis inline, copy, thumbs-up,
- * thumbs-down, star (UI state only), Regenerate Message (Phase L toast).
+ * Flat list of WhatsApp message cards. Each card: timing badge, message text,
+ * emojis inline, copy, thumbs-up, thumbs-down, star (UI state only),
+ * per-item Regenerate via AI.
  * Uses msg.text per confirmed live DB field name (not msg.message).
  */
 import { useState } from "react";
 import { trpc } from "../lib/trpc";
-import { toast } from "sonner";
 import ZappyMascot from "./ZappyMascot";
+import UpgradePrompt from "./components/UpgradePrompt";
+import { useFavourites } from "./hooks/useFavourites";
+import ExportButtons from "./components/ExportButtons";
+import { formatWhatsAppTxt, formatHeadlinesTxt, formatAdCopyTxt, formatOfferTxt, formatMechanismsTxt, formatHvcoTxt, formatIcpTxt, formatLandingPageTxt } from "./lib/exportUtils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface WhatsAppMessage {
@@ -40,16 +43,122 @@ const iconBtn: React.CSSProperties = {
   transition: "background 0.15s",
 };
 
+// ─── Inline regen panel ──────────────────────────────────────────────────────
+function WhatsAppRegenPanel({
+  sequenceId,
+  index,
+  onSuccess,
+  onClose,
+}: {
+  sequenceId: number;
+  index: number;
+  onSuccess: (newText: string) => void;
+  onClose: () => void;
+}) {
+  const [prompt, setPrompt] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const regenMutation = trpc.whatsappSequences.regenerateSingle.useMutation();
+
+  async function handleRegen() {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await regenMutation.mutateAsync({
+        id: sequenceId,
+        index,
+        promptOverride: prompt.trim() || undefined,
+      });
+      onSuccess(result.text ?? "");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Regeneration failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div style={{ marginTop: "10px", padding: "12px", background: "rgba(139,92,246,0.04)", borderRadius: "12px", border: "1px solid rgba(139,92,246,0.15)" }}>
+      <textarea
+        value={prompt}
+        onChange={e => setPrompt(e.target.value)}
+        placeholder="Optional: describe what to change..."
+        style={{
+          width: "100%",
+          minHeight: "56px",
+          fontFamily: "var(--v2-font-body)",
+          fontSize: "13px",
+          color: "#1A1624",
+          lineHeight: 1.5,
+          border: "1px solid rgba(139,92,246,0.30)",
+          borderRadius: "8px",
+          padding: "8px 10px",
+          resize: "vertical",
+          outline: "none",
+          background: "#FFFFFF",
+          boxSizing: "border-box",
+        }}
+      />
+      <div style={{ display: "flex", gap: "8px", marginTop: "8px", alignItems: "center" }}>
+        <button
+          onClick={handleRegen}
+          disabled={loading}
+          style={{
+            background: loading ? "#ccc" : "#FF5B1D",
+            color: "#fff",
+            border: "none",
+            borderRadius: "9999px",
+            padding: "7px 18px",
+            fontFamily: "var(--v2-font-body)",
+            fontWeight: 700,
+            fontSize: "12px",
+            cursor: loading ? "not-allowed" : "pointer",
+            letterSpacing: "0.01em",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+          }}
+        >
+          {loading ? (
+            <><span style={{ display: "inline-block", width: "12px", height: "12px", border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.6s linear infinite" }} /> Regenerating...</>
+          ) : (
+            "Regenerate"
+          )}
+        </button>
+        <button
+          onClick={onClose}
+          style={{
+            background: "none",
+            border: "none",
+            fontFamily: "var(--v2-font-body)",
+            fontSize: "12px",
+            color: "#888",
+            cursor: "pointer",
+            padding: "7px 10px",
+          }}
+        >
+          Cancel
+        </button>
+      </div>
+      {error && (
+        <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "12px", color: "#DC2626", margin: "6px 0 0" }}>{error}</p>
+      )}
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+}
+
 // ─── Message card ─────────────────────────────────────────────────────────────
-function MessageCard({ msg, index }: { msg: WhatsAppMessage; index: number }) {
+function MessageCard({ msg, index, sequenceId, isFreeTier, isFav, onToggleFav }: { msg: WhatsAppMessage; index: number; sequenceId: number; isFreeTier?: boolean; isFav?: boolean; onToggleFav?: () => void }) {
+  const emojis = Array.isArray(msg.emojis) ? msg.emojis : [];
+  const [messageText, setMessageText] = useState(msg.text ?? msg.message ?? "");
   const [copied, setCopied]       = useState(false);
-  const [thumbUp, setThumbUp]     = useState(false);
+  const thumbUp = !!isFav;
   const [thumbDown, setThumbDown] = useState(false);
   const [starred, setStarred]     = useState(false);
+  const [regenOpen, setRegenOpen] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
-  const emojis = Array.isArray(msg.emojis) ? msg.emojis : [];
-  // DB stores field as 'text'; older records may use 'message'
-  const messageText = msg.text ?? msg.message ?? "";
   const fullText = `${messageText}${emojis.length ? " " + emojis.join(" ") : ""}`;
 
   function handleCopy() {
@@ -121,7 +230,7 @@ function MessageCard({ msg, index }: { msg: WhatsAppMessage; index: number }) {
           {copied ? "✓" : "⎘"}
         </button>
         <button
-          onClick={() => { setThumbUp(p => !p); if (!thumbUp) setThumbDown(false); }}
+          onClick={() => { onToggleFav?.(); if (!thumbUp) setThumbDown(false); }}
           style={{ ...iconBtn, background: thumbUp ? "rgba(88,204,2,0.12)" : undefined, borderColor: thumbUp ? "rgba(88,204,2,0.40)" : undefined }}
           title="Thumbs up"
         >
@@ -141,24 +250,33 @@ function MessageCard({ msg, index }: { msg: WhatsAppMessage; index: number }) {
         >
           {starred ? "★" : "☆"}
         </button>
-        <button
-          onClick={() => toast.info("Individual message regeneration coming in Phase L")}
-          style={{
-            background: "rgba(26,22,36,0.06)",
-            border: "none",
-            borderRadius: "9999px",
-            padding: "6px 14px",
-            fontFamily: "var(--v2-font-body)",
-            fontWeight: 600,
-            fontSize: "12px",
-            color: "#555",
-            cursor: "pointer",
-            whiteSpace: "nowrap",
-          }}
-        >
-          ↻ Regenerate
-        </button>
+        {isFreeTier ? (
+          <button
+            onClick={() => setShowUpgradeModal(true)}
+            style={{ ...iconBtn, opacity: 0.4, cursor: "not-allowed" }}
+            title="Upgrade to Pro to regenerate"
+          >
+            ↺
+          </button>
+        ) : (
+          <button
+            onClick={() => setRegenOpen(p => !p)}
+            style={{ ...iconBtn, background: regenOpen ? "rgba(255,91,29,0.10)" : undefined, borderColor: regenOpen ? "rgba(255,91,29,0.40)" : undefined }}
+            title="Regenerate"
+          >
+            ↺
+          </button>
+        )}
       </div>
+      {regenOpen && !isFreeTier && (
+        <WhatsAppRegenPanel
+          sequenceId={sequenceId}
+          index={index}
+          onSuccess={(newText) => { setMessageText(newText); setRegenOpen(false); }}
+          onClose={() => setRegenOpen(false)}
+        />
+      )}
+      {showUpgradeModal && <UpgradePrompt variant="modal" featureName="Per-Item Regeneration" onClose={() => setShowUpgradeModal(false)} />}
     </div>
   );
 }
@@ -166,11 +284,12 @@ function MessageCard({ msg, index }: { msg: WhatsAppMessage; index: number }) {
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function V2WhatsAppResultPanel({
   whatsappSequenceId,
-  onContinue,
+  isFreeTier,
 }: {
   whatsappSequenceId: number;
-  onContinue: () => void;
+  isFreeTier?: boolean;
 }) {
+  const { isFavourited, toggle: toggleFav } = useFavourites("whatsapp");
   const { data, isLoading, isError } = trpc.whatsappSequences.get.useQuery(
     { id: whatsappSequenceId },
     { enabled: !!whatsappSequenceId, staleTime: 60_000 }
@@ -208,31 +327,8 @@ export default function V2WhatsAppResultPanel({
       marginTop: "24px",
       position: "relative",
     }}>
-      {/* ── Fixed top-right Continue button ── */}
-      <div style={{ position: "absolute", top: "20px", right: "20px", zIndex: 10 }}>
-        <button
-          onClick={onContinue}
-          style={{
-            background: "#8B5CF6",
-            color: "#fff",
-            border: "none",
-            borderRadius: "9999px",
-            padding: "10px 22px",
-            fontFamily: "var(--v2-font-body)",
-            fontWeight: 700,
-            fontSize: "13px",
-            cursor: "pointer",
-            letterSpacing: "0.01em",
-            whiteSpace: "nowrap",
-            boxShadow: "0 2px 8px rgba(139,92,246,0.30)",
-          }}
-        >
-          Continue to Next Step →
-        </button>
-      </div>
-
       {/* ── Header ── */}
-      <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "24px", paddingRight: "180px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "24px" }}>
         <ZappyMascot state="cheering" size={56} />
         <div>
           <h2 style={{
@@ -251,20 +347,21 @@ export default function V2WhatsAppResultPanel({
             color: "#777",
             margin: "3px 0 0",
           }}>
-            {seq.name || "WhatsApp Sequence"} — {messages.length} messages
+            {seq.name || "WhatsApp Sequence"} {!(seq.name || "").toLowerCase().includes("message") && <>— {messages.length} messages</>}
           </p>
         </div>
       </div>
 
       {/* ── Message cards ── */}
       {messages.map((msg, i) => (
-        <MessageCard key={i} msg={msg} index={i} />
+        <MessageCard key={i} msg={msg} index={i} sequenceId={whatsappSequenceId} isFreeTier={isFreeTier} isFav={isFavourited(i)} onToggleFav={() => toggleFav(i, (msg as any).text || (msg as any).message || "")} />
       ))}
       {messages.length === 0 && (
         <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#999", textAlign: "center", padding: "24px 0" }}>
           No messages found.
         </p>
       )}
+      <ExportButtons content={formatWhatsAppTxt(data)} serviceName={(data as any)?.name || "WhatsApp"} nodeName="WhatsApp_Sequence" showPdf={true} isFreeTier={isFreeTier} />
     </div>
   );
 }

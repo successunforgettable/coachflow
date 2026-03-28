@@ -10,19 +10,21 @@ import { useState } from "react";
 import { trpc } from "../lib/trpc";
 import { toast } from "sonner";
 import ZappyMascot from "./ZappyMascot";
+import UpgradePrompt from "./components/UpgradePrompt";
+import ExportButtons from "./components/ExportButtons";
+import { formatWhatsAppTxt, formatHeadlinesTxt, formatAdCopyTxt, formatOfferTxt, formatMechanismsTxt, formatHvcoTxt, formatIcpTxt, formatLandingPageTxt } from "./lib/exportUtils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type AngleKey = "godfather" | "free" | "dollar";
 
 interface AngleContent {
-  headline?: string;
-  subheadline?: string;
   offerName?: string;
-  price?: string;
-  whatYouGet?: string;
+  valueProposition?: string;
+  pricing?: string;
   bonuses?: string;
   guarantee?: string;
   urgency?: string;
+  cta?: string;
   [key: string]: string | undefined;
 }
 
@@ -33,14 +35,13 @@ const ANGLE_TABS: { key: AngleKey; label: string }[] = [
 ];
 
 const SECTION_DEFS: { key: keyof AngleContent; label: string }[] = [
-  { key: "headline",    label: "Headline" },
-  { key: "subheadline", label: "Subheadline" },
-  { key: "offerName",   label: "Offer Name" },
-  { key: "price",       label: "Price" },
-  { key: "whatYouGet",  label: "What You Get" },
-  { key: "bonuses",     label: "Bonuses" },
-  { key: "guarantee",   label: "Guarantee" },
-  { key: "urgency",     label: "Urgency" },
+  { key: "offerName",        label: "Offer Name" },
+  { key: "valueProposition", label: "Value Proposition" },
+  { key: "pricing",          label: "Pricing" },
+  { key: "bonuses",          label: "Bonuses" },
+  { key: "guarantee",        label: "Guarantee" },
+  { key: "urgency",          label: "Urgency" },
+  { key: "cta",              label: "Call to Action" },
 ];
 
 // ─── Shared icon-button style ─────────────────────────────────────────────────
@@ -59,17 +60,81 @@ const iconBtn: React.CSSProperties = {
   transition: "background 0.15s",
 };
 
+// ─── Inline regen panel ──────────────────────────────────────────────────────
+function OfferRegenPanel({
+  offerId,
+  angle,
+  sectionKey,
+  onSuccess,
+  onClose,
+}: {
+  offerId: number;
+  angle: AngleKey;
+  sectionKey: string;
+  onSuccess: (value: string) => void;
+  onClose: () => void;
+}) {
+  const [prompt, setPrompt] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const regenMutation = trpc.offers.regenerateSection.useMutation();
+
+  async function handleRegen() {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await regenMutation.mutateAsync({
+        id: offerId,
+        angle,
+        sectionKey: sectionKey as any,
+        promptOverride: prompt.trim() || undefined,
+      });
+      onSuccess(result.value);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Regeneration failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div style={{ marginTop: "10px", padding: "12px", background: "rgba(139,92,246,0.04)", borderRadius: "12px", border: "1px solid rgba(139,92,246,0.15)" }}>
+      <textarea value={prompt} onChange={e => setPrompt(e.target.value)} placeholder="Optional: describe what to change..."
+        style={{ width: "100%", minHeight: "56px", fontFamily: "var(--v2-font-body)", fontSize: "13px", color: "#1A1624", lineHeight: 1.5, border: "1px solid rgba(139,92,246,0.30)", borderRadius: "8px", padding: "8px 10px", resize: "vertical", outline: "none", background: "#FFFFFF", boxSizing: "border-box" }} />
+      <div style={{ display: "flex", gap: "8px", marginTop: "8px", alignItems: "center" }}>
+        <button onClick={handleRegen} disabled={loading}
+          style={{ background: loading ? "#ccc" : "#FF5B1D", color: "#fff", border: "none", borderRadius: "9999px", padding: "7px 18px", fontFamily: "var(--v2-font-body)", fontWeight: 700, fontSize: "12px", cursor: loading ? "not-allowed" : "pointer", letterSpacing: "0.01em", display: "flex", alignItems: "center", gap: "6px" }}>
+          {loading ? (<><span style={{ display: "inline-block", width: "12px", height: "12px", border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.6s linear infinite" }} /> Regenerating...</>) : "Regenerate"}
+        </button>
+        <button onClick={onClose} style={{ background: "none", border: "none", fontFamily: "var(--v2-font-body)", fontSize: "12px", color: "#888", cursor: "pointer", padding: "7px 10px" }}>Cancel</button>
+      </div>
+      {error && <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "12px", color: "#DC2626", margin: "6px 0 0" }}>{error}</p>}
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+}
+
 // ─── Editable section card ────────────────────────────────────────────────────
 function SectionCard({
   label,
+  sectionKey,
   initialValue,
+  offerId,
+  angle,
+  isFreeTier,
 }: {
   label: string;
+  sectionKey: string;
   initialValue: string;
+  offerId: number;
+  angle: AngleKey;
+  isFreeTier?: boolean;
 }) {
   const [value, setValue] = useState(initialValue);
   const [editing, setEditing] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [regenOpen, setRegenOpen] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   function handleCopy() {
     navigator.clipboard.writeText(value).catch(() => {});
@@ -135,17 +200,37 @@ function SectionCard({
           {value || <span style={{ color: "#aaa" }}>—</span>}
         </p>
       )}
-      <button
-        onClick={handleCopy}
-        style={{
-          ...iconBtn,
-          background: copied ? "rgba(88,204,2,0.12)" : undefined,
-          borderColor: copied ? "rgba(88,204,2,0.40)" : undefined,
-        }}
-        title="Copy to clipboard"
-      >
-        {copied ? "✓" : "⎘"}
-      </button>
+      <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+        <button
+          onClick={handleCopy}
+          style={{ ...iconBtn, background: copied ? "rgba(88,204,2,0.12)" : undefined, borderColor: copied ? "rgba(88,204,2,0.40)" : undefined }}
+          title="Copy to clipboard"
+        >
+          {copied ? "✓" : "⎘"}
+        </button>
+        <button
+          onClick={isFreeTier ? () => setShowUpgradeModal(true) : () => setRegenOpen(p => !p)}
+          style={{
+            ...iconBtn,
+            ...(isFreeTier
+              ? { opacity: 0.4, cursor: "not-allowed" }
+              : { background: regenOpen ? "rgba(255,91,29,0.10)" : undefined, borderColor: regenOpen ? "rgba(255,91,29,0.40)" : undefined }),
+          }}
+          title={isFreeTier ? "Upgrade to Pro to regenerate" : "Regenerate"}
+        >
+          ↺
+        </button>
+      </div>
+      {regenOpen && !isFreeTier && (
+        <OfferRegenPanel
+          offerId={offerId}
+          angle={angle}
+          sectionKey={sectionKey}
+          onSuccess={(v) => { setValue(v); setRegenOpen(false); }}
+          onClose={() => setRegenOpen(false)}
+        />
+      )}
+      {showUpgradeModal && <UpgradePrompt variant="modal" featureName="Per-Item Regeneration" onClose={() => setShowUpgradeModal(false)} />}
     </div>
   );
 }
@@ -176,14 +261,18 @@ function TabPill({ label, active, onClick }: { label: string; active: boolean; o
 }
 
 // ─── Angle tab content ────────────────────────────────────────────────────────
-function AngleTabContent({ content }: { content: AngleContent }) {
+function AngleTabContent({ content, offerId, angle, isFreeTier }: { content: AngleContent; offerId: number; angle: AngleKey; isFreeTier?: boolean }) {
   return (
     <div>
       {SECTION_DEFS.map(s => (
         <SectionCard
           key={s.key}
           label={s.label}
+          sectionKey={s.key as string}
           initialValue={content[s.key] ?? ""}
+          offerId={offerId}
+          angle={angle}
+          isFreeTier={isFreeTier}
         />
       ))}
     </div>
@@ -193,10 +282,10 @@ function AngleTabContent({ content }: { content: AngleContent }) {
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function V2OfferResultPanel({
   offerId,
-  onContinue,
+  isFreeTier,
 }: {
   offerId: number;
-  onContinue: () => void;
+  isFreeTier?: boolean;
 }) {
   const { data, isLoading, isError } = trpc.offers.get.useQuery(
     { id: offerId },
@@ -211,6 +300,7 @@ export default function V2OfferResultPanel({
       : "godfather";
 
   const [activeTab, setActiveTab] = useState<AngleKey | null>(null);
+  const [exportUpgradeOpen, setExportUpgradeOpen] = useState(false);
   const resolvedTab: AngleKey = activeTab ?? defaultAngle;
 
   if (isLoading) {
@@ -258,31 +348,8 @@ export default function V2OfferResultPanel({
       marginTop: "24px",
       position: "relative",
     }}>
-      {/* ── Fixed top-right Continue button ── */}
-      <div style={{ position: "absolute", top: "20px", right: "20px", zIndex: 10 }}>
-        <button
-          onClick={onContinue}
-          style={{
-            background: "#8B5CF6",
-            color: "#fff",
-            border: "none",
-            borderRadius: "9999px",
-            padding: "10px 22px",
-            fontFamily: "var(--v2-font-body)",
-            fontWeight: 700,
-            fontSize: "13px",
-            cursor: "pointer",
-            letterSpacing: "0.01em",
-            whiteSpace: "nowrap",
-            boxShadow: "0 2px 8px rgba(139,92,246,0.30)",
-          }}
-        >
-          Continue to Next Step →
-        </button>
-      </div>
-
       {/* ── Header ── */}
-      <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "20px", paddingRight: "180px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "20px" }}>
         <ZappyMascot state="cheering" size={56} />
         <div>
           <h2 style={{
@@ -319,28 +386,50 @@ export default function V2OfferResultPanel({
       </div>
 
       {/* ── Active angle content ── */}
-      <AngleTabContent content={angles[resolvedTab]} />
+      <AngleTabContent key={resolvedTab} content={angles[resolvedTab]} offerId={offerId} angle={resolvedTab} isFreeTier={isFreeTier} />
 
       {/* ── Download TXT button ── */}
       <div style={{ marginTop: "20px", textAlign: "center" }}>
-        <button
-          onClick={() => toast.info("TXT export coming in Phase L")}
-          style={{
-            background: "#1A1624",
-            color: "#F5F1EA",
-            border: "none",
-            borderRadius: "9999px",
-            padding: "11px 28px",
-            fontFamily: "var(--v2-font-body)",
-            fontWeight: 700,
-            fontSize: "13px",
-            cursor: "pointer",
-            letterSpacing: "0.01em",
-          }}
-        >
-          ↓ Download TXT
-        </button>
+        {isFreeTier ? (
+          <button
+            onClick={() => setExportUpgradeOpen(true)}
+            style={{
+              background: "var(--v2-primary-btn)",
+              color: "#fff",
+              border: "none",
+              borderRadius: "var(--v2-border-radius-pill)",
+              padding: "11px 28px",
+              fontFamily: "var(--v2-font-body)",
+              fontWeight: 700,
+              fontSize: "13px",
+              cursor: "pointer",
+              letterSpacing: "0.01em",
+            }}
+          >
+            Export (Pro)
+          </button>
+        ) : (
+          <button
+            onClick={() => toast.info("TXT export coming in Phase L")}
+            style={{
+              background: "#1A1624",
+              color: "#F5F1EA",
+              border: "none",
+              borderRadius: "9999px",
+              padding: "11px 28px",
+              fontFamily: "var(--v2-font-body)",
+              fontWeight: 700,
+              fontSize: "13px",
+              cursor: "pointer",
+              letterSpacing: "0.01em",
+            }}
+          >
+            ↓ Download TXT
+          </button>
+        )}
       </div>
+      {exportUpgradeOpen && <UpgradePrompt variant="modal" featureName="Export & Download" onClose={() => setExportUpgradeOpen(false)} />}
+      <ExportButtons content={formatOfferTxt(data)} serviceName="Offer" nodeName="Offer" showPdf={true} isFreeTier={false} />
     </div>
   );
 }

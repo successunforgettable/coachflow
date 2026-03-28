@@ -17,7 +17,7 @@ export default function Signup() {
     onSuccess: () => {
       toast.success("Account created! Welcome to ZAP.");
       // Reload to pick up the new session cookie
-      window.location.href = "/dashboard";
+      window.location.href = "/v2-dashboard";
     },
     onError: (err) => {
       toast.error(err.message);

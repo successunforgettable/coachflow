@@ -26,6 +26,8 @@ import { progressRouter } from "./routers/progress";
 import { userRouter } from "./routers/user";
 import { complianceRouter } from "./routers/compliance";
 import { metaRouter } from "./routers/meta";
+import { ghlRouter } from "./routers/ghl";
+import { favouritesRouter } from "./routers/favourites";
 import { adCreativesRouter } from "./routers/adCreatives";
 import { videoCreditsRouter } from "./routers/videoCreditsRouter";
 import { videoScriptsRouter } from "./routers/videoScripts";
@@ -34,6 +36,7 @@ import { demoVideosRouter } from "./routers/demoVideos";
 import { icpAngleSuggestionsRouter } from "./routers/icpAngleSuggestions";
 import { nativeAuthRouter } from "./routers/nativeAuth";
 import { landingRouter } from "./routers/landing";
+import { campaignKitsRouter } from "./routers/campaignKits";
 import { getQuotaLimit } from "./quotaLimits";
 
 export const appRouter = router({
@@ -142,12 +145,15 @@ export const appRouter = router({
   user: userRouter,
   compliance: complianceRouter,
   meta: metaRouter,
+  ghl: ghlRouter,
+  favourites: favouritesRouter,
   videoCredits: videoCreditsRouter,
   videoScripts: videoScriptsRouter,
   videos: videosRouter,
   demoVideos: demoVideosRouter,
   nativeAuth: nativeAuthRouter,
   landing: landingRouter,
+  campaignKits: campaignKitsRouter,
 });
 
 export type AppRouter = typeof appRouter;

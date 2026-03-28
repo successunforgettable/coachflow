@@ -11,7 +11,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
 import ZappyMascot from "./ZappyMascot";
-import { Link } from "wouter";
+import UpgradePrompt from "./components/UpgradePrompt";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const T = {
@@ -28,9 +28,10 @@ const T = {
 
 // ─── Video type options (V2 simplified set) ───────────────────────────────────
 const VIDEO_TYPES = [
-  { value: "explainer",         label: "Explainer"   },
-  { value: "testimonial",       label: "Testimonial" },
-  { value: "proof_results",     label: "VSL"         },
+  { value: "explainer",         label: "Explainer"        },
+  { value: "testimonial",       label: "Testimonial"      },
+  { value: "proof_results",     label: "VSL"              },
+  { value: "mechanism_reveal",  label: "Mechanism Reveal"  },
 ];
 
 // ─── Visual style options ─────────────────────────────────────────────────────
@@ -68,7 +69,7 @@ function getCreditCost(duration: string): number {
 }
 
 // ─── Scene card ───────────────────────────────────────────────────────────────
-function SceneCard({ scene, index }: { scene: any; index: number }) {
+function SceneCard({ scene, index, onUpdate }: { scene: any; index: number; onUpdate?: (field: string, value: string) => void }) {
   return (
     <div
       style={{
@@ -110,17 +111,24 @@ function SceneCard({ scene, index }: { scene: any; index: number }) {
         >
           Voiceover
         </span>
-        <p
+        <textarea
+          value={scene.voiceoverText || ""}
+          onChange={e => onUpdate?.("voiceoverText", e.target.value)}
           style={{
             fontFamily: T.fontBody,
             fontSize: "14px",
             color: T.dark,
             margin: 0,
             lineHeight: 1.55,
+            width: "100%",
+            border: "1px solid #e5e0d8",
+            borderRadius: "8px",
+            padding: "8px",
+            resize: "vertical",
+            minHeight: "60px",
+            background: "#faf8f5",
           }}
-        >
-          {scene.voiceoverText}
-        </p>
+        />
       </div>
 
       {/* Visual direction */}
@@ -139,17 +147,24 @@ function SceneCard({ scene, index }: { scene: any; index: number }) {
         >
           Visual Direction
         </span>
-        <p
+        <textarea
+          value={scene.visualDirection || ""}
+          onChange={e => onUpdate?.("visualDirection", e.target.value)}
           style={{
             fontFamily: T.fontBody,
             fontSize: "13px",
             color: "#666",
             margin: 0,
             lineHeight: 1.5,
+            width: "100%",
+            border: "1px solid #e5e0d8",
+            borderRadius: "8px",
+            padding: "8px",
+            resize: "vertical",
+            minHeight: "40px",
+            background: "#faf8f5",
           }}
-        >
-          {scene.visualDirection}
-        </p>
+        />
       </div>
 
       {/* On-screen text */}
@@ -169,17 +184,24 @@ function SceneCard({ scene, index }: { scene: any; index: number }) {
           >
             On-Screen Text
           </span>
-          <p
+          <textarea
+            value={scene.onScreenText || ""}
+            onChange={e => onUpdate?.("onScreenText", e.target.value)}
             style={{
               fontFamily: T.fontBody,
               fontSize: "13px",
               color: T.purple,
               margin: 0,
               fontWeight: 600,
+              width: "100%",
+              border: "1px solid rgba(139,92,246,0.3)",
+              borderRadius: "8px",
+              padding: "8px",
+              resize: "vertical",
+              minHeight: "36px",
+              background: "rgba(139,92,246,0.04)",
             }}
-          >
-            {scene.onScreenText}
-          </p>
+          />
         </div>
       )}
     </div>
@@ -187,7 +209,7 @@ function SceneCard({ scene, index }: { scene: any; index: number }) {
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export default function V2VideoCreator() {
+export default function V2VideoCreator({ isFreeTier }: { isFreeTier?: boolean } = {}) {
   // Form state
   const [videoType, setVideoType]     = useState(VIDEO_TYPES[0].value);
   const [visualStyle, setVisualStyle] = useState(VISUAL_STYLES[0].value);
@@ -233,29 +255,8 @@ export default function V2VideoCreator() {
   const creditCost    = getCreditCost(duration);
 
   // ── Load last completed video on mount ───────────────────────────────────────
-  const { data: latestVideo } = trpc.videos.getLatestByServiceId.useQuery(
-    { serviceId: activeService?.id ?? 0 },
-    { enabled: !!activeService, staleTime: 30_000 }
-  );
-
-  useEffect(() => {
-    if (latestVideo && step1Status === "idle" && step2Status === "idle") {
-      setVideoUrl(latestVideo.videoUrl ?? null);
-      setVideoId(latestVideo.id);
-      if (latestVideo.videoUrl) {
-        setStep2Status("done");
-        setStep1Status("done");
-        if (latestVideo.script?.scenes) {
-          setScriptResult({
-            scriptId: latestVideo.scriptId!,
-            scenes: latestVideo.script.scenes as any[],
-            voiceoverText: latestVideo.script.voiceoverText ?? "",
-            creditCost: getCreditCost(latestVideo.script.duration ?? "30"),
-          });
-        }
-      }
-    }
-  }, [latestVideo]);
+  // Video Creator always starts fresh — no history loading on mount.
+  // Unlike campaign path generators, each video session is independent.
 
   // ── Mutations ────────────────────────────────────────────────────────────────
   const generateScriptAsync = trpc.videoScripts.generateAsync.useMutation();
@@ -355,6 +356,7 @@ export default function V2VideoCreator() {
 
   // ── Step 2 handler: confirm ───────────────────────────────────────────────────
   function handleRenderConfirm() {
+    if (isFreeTier) return; // Hard guard — trial users cannot enter render pipeline
     setStep2Status("confirming");
   }
 
@@ -364,6 +366,7 @@ export default function V2VideoCreator() {
 
   // ── Step 2 handler: render ────────────────────────────────────────────────────
   async function handleRender() {
+    if (isFreeTier) return; // Hard guard — trial users cannot render
     if (!scriptResult?.scriptId) return;
     setStep2Status("rendering");
     setStep2Elapsed(0);
@@ -375,7 +378,8 @@ export default function V2VideoCreator() {
       const { videoId: vId } = await generateVideo.mutateAsync({
         scriptId:    scriptResult.scriptId,
         visualStyle: visualStyle as any,
-        brandColor:  "#3B82F6",
+        duration:    duration as any,
+        brandColor:  "#FF5B1D",
       });
       setVideoId(vId);
       startVideoPolling(vId);
@@ -446,23 +450,7 @@ export default function V2VideoCreator() {
         fontFamily: T.fontBody,
       }}
     >
-      {/* Back link */}
-      <Link
-        href="/v2-dashboard?tab=tools"
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: "6px",
-          fontFamily: T.fontBody,
-          fontSize: "13px",
-          fontWeight: 600,
-          color: "#888",
-          textDecoration: "none",
-          marginBottom: "28px",
-        }}
-      >
-        ← Back to Tool Library
-      </Link>
+      {/* Back navigation provided by parent V2ToolLibrary */}
 
       {/* Heading */}
       <h1
@@ -519,46 +507,67 @@ export default function V2VideoCreator() {
                 </div>
               </div>
 
-              {/* Video Type */}
+              {/* Video Type — vertical stack */}
               <div>
                 <span style={labelStyle}>Video Type</span>
-                <select
-                  style={selectStyle}
-                  value={videoType}
-                  onChange={(e) => setVideoType(e.target.value)}
-                >
-                  {VIDEO_TYPES.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  {VIDEO_TYPES.map((o) => {
+                    const active = videoType === o.value;
+                    return (
+                      <button key={o.value} onClick={() => setVideoType(o.value)} style={{
+                        padding: "10px 16px", borderRadius: "12px", width: "100%",
+                        border: active ? "2px solid #FF5B1D" : "1.5px solid rgba(26,22,36,0.10)",
+                        background: active ? "#FF5B1D" : "#fff",
+                        color: active ? "#fff" : "#1A1624",
+                        fontFamily: "'Instrument Sans', sans-serif", fontWeight: 600, fontSize: "13px", cursor: "pointer",
+                        display: "flex", alignItems: "center", gap: "8px",
+                        transition: "all 150ms", textAlign: "left",
+                      }}>{active ? "✓" : "○"} {o.label}</button>
+                    );
+                  })}
+                </div>
               </div>
 
-              {/* Visual Style */}
+              {/* Visual Style — vertical stack */}
               <div>
                 <span style={labelStyle}>Visual Style</span>
-                <select
-                  style={selectStyle}
-                  value={visualStyle}
-                  onChange={(e) => setVisualStyle(e.target.value)}
-                >
-                  {VISUAL_STYLES.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  {VISUAL_STYLES.map((o) => {
+                    const active = visualStyle === o.value;
+                    return (
+                      <button key={o.value} onClick={() => setVisualStyle(o.value)} style={{
+                        padding: "10px 16px", borderRadius: "12px", width: "100%",
+                        border: active ? "2px solid #FF5B1D" : "1.5px solid rgba(26,22,36,0.10)",
+                        background: active ? "#FF5B1D" : "#fff",
+                        color: active ? "#fff" : "#1A1624",
+                        fontFamily: "'Instrument Sans', sans-serif", fontWeight: 600, fontSize: "13px", cursor: "pointer",
+                        display: "flex", alignItems: "center", gap: "8px",
+                        transition: "all 150ms", textAlign: "left",
+                      }}>{active ? "✓" : "○"} {o.label}</button>
+                    );
+                  })}
+                </div>
               </div>
 
-              {/* Duration */}
+              {/* Duration — horizontal row, fits on one line */}
               <div style={{ gridColumn: "1 / -1" }}>
                 <span style={labelStyle}>Duration</span>
-                <select
-                  style={selectStyle}
-                  value={duration}
-                  onChange={(e) => setDuration(e.target.value)}
-                >
-                  {DURATIONS.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
+                <div style={{ display: "flex", gap: "8px" }}>
+                  {DURATIONS.map((o) => {
+                    const active = duration === o.value;
+                    return (
+                      <button key={o.value} onClick={() => setDuration(o.value)} style={{
+                        padding: "10px 20px", borderRadius: "12px", flex: 1,
+                        border: active ? "2px solid #FF5B1D" : "1.5px solid rgba(26,22,36,0.10)",
+                        background: active ? "#FF5B1D" : "#fff",
+                        color: active ? "#fff" : "#1A1624",
+                        fontFamily: "'Instrument Sans', sans-serif", fontWeight: 600, fontSize: "13px", cursor: "pointer",
+                        display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
+                        transition: "all 150ms",
+                      }}>{active ? "✓" : "○"} {o.label}</button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
@@ -668,7 +677,14 @@ export default function V2VideoCreator() {
             </h2>
 
             {scriptResult.scenes.map((scene: any, i: number) => (
-              <SceneCard key={i} scene={scene} index={i} />
+              <SceneCard key={i} scene={scene} index={i} onUpdate={(field, value) => {
+                setScriptResult(prev => {
+                  if (!prev) return prev;
+                  const newScenes = [...prev.scenes];
+                  newScenes[i] = { ...newScenes[i], [field]: value };
+                  return { ...prev, scenes: newScenes };
+                });
+              }} />
             ))}
 
             {/* Word count + credit cost */}
@@ -717,7 +733,11 @@ export default function V2VideoCreator() {
             </p>
 
             {/* ── RENDER BUTTON (Step 2 idle) ─────────────────────────────────── */}
-            {step2Status === "idle" && (
+            {/* Trial users always see upgrade prompt — before credit or confirmation checks */}
+            {step2Status === "idle" && isFreeTier && (
+              <UpgradePrompt variant="inline" featureName="Video Creator" />
+            )}
+            {step2Status === "idle" && !isFreeTier && (
               <>
                 {credits === 0 ? (
                   <div
@@ -759,7 +779,7 @@ export default function V2VideoCreator() {
             )}
 
             {/* ── CONFIRMATION INLINE ─────────────────────────────────────────── */}
-            {step2Status === "confirming" && (
+            {step2Status === "confirming" && !isFreeTier && (
               <div
                 style={{
                   padding: "20px 24px",
@@ -838,7 +858,7 @@ export default function V2VideoCreator() {
         )}
 
         {/* ── STEP 2 RENDERING STATE ──────────────────────────────────────────── */}
-        {step2Status === "rendering" && (
+        {step2Status === "rendering" && !isFreeTier && (
           <div
             style={{
               background: T.card,

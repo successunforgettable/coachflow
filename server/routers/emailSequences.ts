@@ -6,12 +6,30 @@ function stripMarkdownJson(content: string): string {
   return content.replace(/^```json\s*|^```\s*|\s*```$/gm, "").trim();
 }
 import { getDb } from "../db";
-import { emailSequences, services, campaigns, idealCustomerProfiles, sourceOfTruth, jobs } from "../../drizzle/schema";
+import { emailSequences, services, campaigns, idealCustomerProfiles, sourceOfTruth, jobs, campaignKits, offers, heroMechanisms, hvcoTitles, headlines as headlinesTable } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { invokeLLM } from "../_core/llm";
 import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
+import { enforceQuota, incrementQuotaCount } from "../lib/quotaEnforcement";
+import { complianceFilter } from "../lib/complianceFilter";
+import { checkCompliance } from "../lib/complianceChecker";
+import { scoreItem } from "../lib/selectionScorer";
+import { autoSelectBest } from "./campaignKits";
+
+// Apply compliance filter to an email's subject and body
+async function filterEmail(email: { subject: string; body: string; [k: string]: any }): Promise<typeof email> {
+  const subResult = complianceFilter(email.subject);
+  const bodyResult = complianceFilter(email.body);
+  const subject = subResult.wasModified ? subResult.cleanedText : email.subject;
+  const body = bodyResult.wasModified ? bodyResult.cleanedText : email.body;
+  const score = await checkCompliance(body);
+  if (score.score < 100) {
+    console.log(`[emailSequences] Compliance score ${score.score}/100 for subject "${subject.substring(0, 40)}": ${score.issues.map(i => i.phrase).join(", ")}`);
+  }
+  return { ...email, subject, body };
+}
 
 const generateEmailSequenceSchema = z.object({
   serviceId: z.number(),
@@ -97,6 +115,8 @@ export const emailSequencesRouter = router({
   generate: protectedProcedure
     .input(generateEmailSequenceSchema)
     .mutation(async ({ ctx, input }) => {
+      await enforceQuota(ctx.user.id, "email");
+
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -240,10 +260,41 @@ You MUST use these exact numbers and real names. Do not fabricate.`
 - Use outcome-based stories WITHOUT specific names ("One client" instead of "John Smith")`;
 
 
+      // ── Cascade context from Campaign Kit ──
+      let cascadeContext = "";
+      try {
+        const [relIcp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
+        if (relIcp) {
+          const [kit] = await db.select().from(campaignKits).where(and(eq(campaignKits.userId, ctx.user.id), eq(campaignKits.icpId, relIcp.id))).limit(1);
+          if (kit) {
+            const parts: string[] = [];
+            if (kit.selectedHvcoId) {
+              const [hvco] = await db.select().from(hvcoTitles).where(eq(hvcoTitles.id, kit.selectedHvcoId)).limit(1);
+              if (hvco) parts.push(`Lead magnet: ${hvco.title}`);
+            }
+            if (kit.selectedMechanismId) {
+              const [mech] = await db.select().from(heroMechanisms).where(eq(heroMechanisms.id, kit.selectedMechanismId)).limit(1);
+              if (mech) parts.push(`Hero mechanism: ${mech.mechanismName}`);
+            }
+            if (kit.selectedHeadlineId) {
+              const [hl] = await db.select().from(headlinesTable).where(eq(headlinesTable.id, kit.selectedHeadlineId)).limit(1);
+              if (hl) parts.push(`Selected headline: ${hl.headline}`);
+            }
+            if (kit.selectedOfferId) {
+              const [offer] = await db.select().from(offers).where(eq(offers.id, kit.selectedOfferId)).limit(1);
+              if (offer) parts.push(`Offer angle: ${offer.activeAngle || "godfather"}`);
+            }
+            if (parts.length > 0) {
+              cascadeContext = `UPSTREAM CONTEXT — SELECTED ASSETS:\n${parts.join(". ")}. Early emails must reference the lead magnet. The sequence must build toward the offer.\n\n`;
+            }
+          }
+        }
+      } catch (e) { console.warn("[cascade] emailSequences context fetch failed:", e); }
+
       let prompt = "";
 
       if (input.sequenceType === "welcome") {
-        prompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert email marketer. Create a 3-email welcome sequence for new subscribers using Russell Brunson's Soap Opera Sequence framework.
+        prompt = `${cascadeContext}${sotContext ? `${sotContext}\n\n` : ''}You are an expert email marketer. Create a 3-email welcome sequence for new subscribers using Russell Brunson's Soap Opera Sequence framework.
 
 Service: ${service.name}
 Category: ${service.category}
@@ -268,7 +319,7 @@ Each email should have:
 
 Return as a JSON object with an 'emails' key containing the array.`;
       } else if (input.sequenceType === "engagement") {
-        prompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert email marketer. Create a 5-email engagement sequence for event attendees using Russell Brunson's Soap Opera Sequence.
+        prompt = `${cascadeContext}${sotContext ? `${sotContext}\n\n` : ''}You are an expert email marketer. Create a 5-email engagement sequence for event attendees using Russell Brunson's Soap Opera Sequence.
 
 Service: ${service.name}
 Event: ${input.eventDetails?.eventName || "Event"}
@@ -294,7 +345,7 @@ Each email should have:
 Return as a JSON object with an 'emails' key containing the array.`;
       } else {
         // sales sequence
-        prompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert email marketer. Create a 7-email sales sequence for event attendees who didn't buy.
+        prompt = `${cascadeContext}${sotContext ? `${sotContext}\n\n` : ''}You are an expert email marketer. Create a 7-email sales sequence for event attendees who didn't buy.
 
 Service: ${service.name}
 Event: ${input.eventDetails?.eventName || "Event"}
@@ -383,7 +434,9 @@ Return as a JSON object with an 'emails' key containing the array.`;
         cta: email.cta || 'Learn More',
         ctaLink: email.ctaLink || '#',
       }));
-      // Save to databasee
+      // Apply compliance filter to all emails
+      sequenceData.emails = await Promise.all(sequenceData.emails.map((e: any) => filterEmail(e)));
+      // Save to database
       const insertResult: any = await db.insert(emailSequences).values({
         userId: ctx.user.id,
         serviceId: input.serviceId,
@@ -393,12 +446,23 @@ Return as a JSON object with an 'emails' key containing the array.`;
         emails: sequenceData.emails,
       });
 
+      await incrementQuotaCount(ctx.user.id, "email");
+
       // Fetch the created sequence
       const [newSequence] = await db
         .select()
         .from(emailSequences)
         .where(eq(emailSequences.id, insertResult[0].insertId))
         .limit(1);
+
+      // Auto-score and auto-select into campaign kit (non-blocking)
+      try {
+        const emailContent = sequenceData.emails.map((e: any) => `${e.subject} ${e.body}`).join(" ");
+        const s = await scoreItem({ content: emailContent, nodeType: "emailSequences" });
+        await db.update(emailSequences).set({ selectionScore: String(s) } as any).where(eq(emailSequences.id, insertResult[0].insertId));
+        const [relatedIcp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
+        if (relatedIcp) await autoSelectBest(ctx.user.id, relatedIcp.id, "selectedEmailSequenceId", insertResult[0].insertId);
+      } catch (e) { console.warn("[auto-select] emailSequences failed:", e); }
 
       return newSequence;
     }),
@@ -411,6 +475,7 @@ Return as a JSON object with an 'emails' key containing the array.`;
     .input(generateEmailSequenceSchema)
     .mutation(async ({ ctx, input }) => {
       const { user } = ctx;
+      await enforceQuota(user.id, "email");
       await checkAndResetQuotaIfNeeded(user.id);
       if (user.role !== "superuser") {
         const limit = getQuotaLimit(user.subscriptionTier, "email");
@@ -457,11 +522,11 @@ Return as a JSON object with an 'emails' key containing the array.`;
 
           let prompt = "";
           if (capturedInput.sequenceType === "welcome") {
-            prompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert email marketer. Create a 3-email welcome sequence for new subscribers using Russell Brunson's Soap Opera Sequence framework.\n\nService: ${capturedService.name}\nCategory: ${capturedService.category}\nDescription: ${capturedService.description}\nTarget Customer: ${capturedService.targetCustomer}\nMain Benefit: ${capturedService.mainBenefit}\n\n${socialProofGuidance}\n\n${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}\n\nCreate 3 emails (Day 1, 3, 5). Each email: subject line, preview text, body (200-300 words), CTA.\n\nReturn as a JSON object with an 'emails' key containing the array.`;
+            prompt = `${cascadeContext}${sotContext ? `${sotContext}\n\n` : ''}You are an expert email marketer. Create a 3-email welcome sequence for new subscribers using Russell Brunson's Soap Opera Sequence framework.\n\nService: ${capturedService.name}\nCategory: ${capturedService.category}\nDescription: ${capturedService.description}\nTarget Customer: ${capturedService.targetCustomer}\nMain Benefit: ${capturedService.mainBenefit}\n\n${socialProofGuidance}\n\n${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}\n\nCreate 3 emails (Day 1, 3, 5). Each email: subject line, preview text, body (200-300 words), CTA.\n\nReturn as a JSON object with an 'emails' key containing the array.`;
           } else if (capturedInput.sequenceType === "engagement") {
-            prompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert email marketer. Create a 5-email engagement sequence for event attendees using Russell Brunson's Soap Opera Sequence.\n\nService: ${capturedService.name}\nEvent: ${capturedInput.eventDetails?.eventName || "Event"}\nHost: ${capturedInput.eventDetails?.hostName || "Host"}\n\n${socialProofGuidance}\n\n${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}\n\nCreate 5 emails (Monday to Friday before event). Each email: subject line, preview text, body (200-300 words), CTA.\n\nReturn as a JSON object with an 'emails' key containing the array.`;
+            prompt = `${cascadeContext}${sotContext ? `${sotContext}\n\n` : ''}You are an expert email marketer. Create a 5-email engagement sequence for event attendees using Russell Brunson's Soap Opera Sequence.\n\nService: ${capturedService.name}\nEvent: ${capturedInput.eventDetails?.eventName || "Event"}\nHost: ${capturedInput.eventDetails?.hostName || "Host"}\n\n${socialProofGuidance}\n\n${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}\n\nCreate 5 emails (Monday to Friday before event). Each email: subject line, preview text, body (200-300 words), CTA.\n\nReturn as a JSON object with an 'emails' key containing the array.`;
           } else {
-            prompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert email marketer. Create a 7-email sales sequence for event attendees who didn't buy.\n\nService: ${capturedService.name}\nEvent: ${capturedInput.eventDetails?.eventName || "Event"}\nOffer: ${capturedInput.eventDetails?.offerName || "Offer"}\nPrice: ${capturedInput.eventDetails?.price || "Price"}\nDeadline: ${capturedInput.eventDetails?.deadline || "Deadline"}\n\n${socialProofGuidance}\n\n${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}\n\nCreate 7 emails (Day 1-7 after event). Each email: subject line, preview text, body (250-350 words), CTA.\n\nReturn as a JSON object with an 'emails' key containing the array.`;
+            prompt = `${cascadeContext}${sotContext ? `${sotContext}\n\n` : ''}You are an expert email marketer. Create a 7-email sales sequence for event attendees who didn't buy.\n\nService: ${capturedService.name}\nEvent: ${capturedInput.eventDetails?.eventName || "Event"}\nOffer: ${capturedInput.eventDetails?.offerName || "Offer"}\nPrice: ${capturedInput.eventDetails?.price || "Price"}\nDeadline: ${capturedInput.eventDetails?.deadline || "Deadline"}\n\n${socialProofGuidance}\n\n${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}\n\nCreate 7 emails (Day 1-7 after event). Each email: subject line, preview text, body (250-350 words), CTA.\n\nReturn as a JSON object with an 'emails' key containing the array.`;
           }
 
           const response = await invokeLLM({ messages: [{ role: "system", content: "You are an expert email marketer specializing in high-converting email sequences for coaches, speakers, and consultants. Use Russell Brunson's Soap Opera Sequence framework. Always respond with valid JSON." }, { role: "user", content: prompt }], response_format: { type: "json_schema", json_schema: { name: "email_sequence", strict: true, schema: { type: "object", properties: { emails: { type: "array", items: { type: "object", properties: { day: { type: "integer" }, subject: { type: "string" }, previewText: { type: "string" }, body: { type: "string" }, cta: { type: "string" } }, required: ["day", "subject", "previewText", "body", "cta"], additionalProperties: false } } }, required: ["emails"], additionalProperties: false } } } });
@@ -472,9 +537,20 @@ Return as a JSON object with an 'emails' key containing the array.`;
           if (Array.isArray(sequenceData)) sequenceData = { emails: sequenceData };
           if (!sequenceData.emails || !Array.isArray(sequenceData.emails)) throw new Error("LLM did not return a valid emails array");
           sequenceData.emails = sequenceData.emails.map((email: any, idx: number) => ({ subject: email.subject || `Email ${idx + 1}: Check this out`, body: email.body || `This is email ${idx + 1}. Click the link to learn more.`, delay: email.delay || (idx * 24), delayUnit: email.delayUnit || 'hours', cta: email.cta || 'Learn More', ctaLink: email.ctaLink || '#' }));
+          sequenceData.emails = await Promise.all(sequenceData.emails.map((e: any) => filterEmail(e)));
 
           const insertResult: any = await bgDb.insert(emailSequences).values({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, sequenceType: capturedInput.sequenceType, name: capturedInput.name, emails: sequenceData.emails });
+          await incrementQuotaCount(capturedUserId, "email");
           const [newSequence] = await bgDb.select().from(emailSequences).where(eq(emailSequences.id, insertResult[0].insertId)).limit(1);
+
+          // Auto-score and auto-select into campaign kit (non-blocking)
+          try {
+            const emailContent = sequenceData.emails.map((e: any) => `${e.subject} ${e.body}`).join(" ");
+            const s = await scoreItem({ content: emailContent, nodeType: "emailSequences" });
+            await bgDb.update(emailSequences).set({ selectionScore: String(s) } as any).where(eq(emailSequences.id, insertResult[0].insertId));
+            const [relatedIcp] = await bgDb.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, capturedInput.serviceId)).limit(1);
+            if (relatedIcp) await autoSelectBest(capturedUserId, relatedIcp.id, "selectedEmailSequenceId", insertResult[0].insertId);
+          } catch (e) { console.warn("[auto-select] emailSequences async failed:", e); }
 
           await bgDb.update(jobs)
             .set({ status: "complete", result: JSON.stringify({ id: newSequence?.id }) })
@@ -534,6 +610,67 @@ Return as a JSON object with an 'emails' key containing the array.`;
         .limit(1);
 
       return updated;
+    }),
+
+  // Regenerate a single email within a sequence via AI
+  regenerateSingle: protectedProcedure
+    .input(z.object({ id: z.number(), index: z.number(), promptOverride: z.string().optional() }))
+    .mutation(async ({ ctx, input }) => {
+      await enforceQuota(ctx.user.id, "email");
+
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const [row] = await db
+        .select()
+        .from(emailSequences)
+        .where(and(eq(emailSequences.id, input.id), eq(emailSequences.userId, ctx.user.id)))
+        .limit(1);
+
+      if (!row) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Email sequence not found" });
+      }
+
+      const emails: any[] = typeof row.emails === "string" ? JSON.parse(row.emails) : (row.emails ?? []);
+
+      if (input.index < 0 || input.index >= emails.length) {
+        throw new TRPCError({ code: "NOT_FOUND", message: `Email index ${input.index} out of range (0-${emails.length - 1})` });
+      }
+
+      const target = emails[input.index];
+      const overrideInstruction = input.promptOverride?.trim()
+        ? ` Additional instruction: ${input.promptOverride.trim()}.`
+        : "";
+
+      const prompt = `Rewrite this email in a sequence for a coaching offer. Current subject: ${target.subject}. Current body: ${target.body}.${overrideInstruction} Return a JSON object with exactly two keys: subject (string) and body (string). No explanation, no markdown, just the JSON object.`;
+
+      const response = await invokeLLM({
+        messages: [
+          { role: "system", content: "You are an expert email copywriter for coaches and consultants. Respond with only valid JSON." },
+          { role: "user", content: prompt },
+        ],
+      });
+
+      const content = response.choices[0].message.content;
+      if (typeof content !== "string") {
+        throw new Error("Invalid response from AI");
+      }
+
+      const parsed = JSON.parse(stripMarkdownJson(content));
+      if (!parsed.subject || !parsed.body) {
+        throw new Error("AI response missing subject or body");
+      }
+
+      // Apply compliance filter to regenerated email
+      const filtered = await filterEmail({ subject: parsed.subject, body: parsed.body });
+      emails[input.index] = { ...emails[input.index], subject: filtered.subject, body: filtered.body };
+
+      await db
+        .update(emailSequences)
+        .set({ emails: JSON.stringify(emails), updatedAt: new Date() })
+        .where(eq(emailSequences.id, input.id));
+
+      return emails[input.index];
     }),
 
   // Delete email sequence

@@ -26,6 +26,7 @@ import V2Layout from "./V2Layout";
 import ZappyMascot from "./ZappyMascot";
 import { type WizardStep, STEP_LABELS, getNextStep } from "./v2-constants";
 import V2HeadlinesResultPanel from "./V2HeadlinesResultPanel";
+import RecommendedAssetPanel from "./RecommendedAssetPanel";
 import V2AdCopyResultPanel from "./V2AdCopyResultPanel";
 import V2ICPResultPanel from "./V2ICPResultPanel";
 import V2OfferResultPanel from "./V2OfferResultPanel";
@@ -34,6 +35,8 @@ import V2FreeOptInResultPanel from "./V2FreeOptInResultPanel";
 import V2LandingPageResultPanel from "./V2LandingPageResultPanel";
 import V2EmailSequenceResultPanel from "./V2EmailSequenceResultPanel";
 import V2WhatsAppResultPanel from "./V2WhatsAppResultPanel";
+import QuotaIndicator, { getLimit } from "./components/QuotaIndicator";
+import UpgradePrompt from "./components/UpgradePrompt";
 
 export type { WizardStep };
 
@@ -127,44 +130,53 @@ interface AdvancedField {
   sourceNote?: string;
 }
 
+// Advanced fields — only genuine overrides that change output. Dead fields removed.
 const ADVANCED_FIELDS: Record<WizardStep, AdvancedField[]> = {
   service: [],
   icp: [
-    { key: "name", label: "ICP Name / Label", type: "text", placeholder: "e.g. Mid-Career Professional", sourceNote: "Auto-generated from your service avatar" },
+    { key: "name", label: "Profile name", type: "text", placeholder: "e.g. Mid-Career Professional", sourceNote: "Auto-generated from your service — override only if needed" },
   ],
-  offer: [
-    { key: "offerType", label: "Offer Type", type: "select", options: ["standard", "premium", "vip"], sourceNote: "Defaults to 'premium'" },
-  ],
+  offer: [],  // offerType removed — server generates all 3 angles always
   uniqueMethod: [
-    { key: "mechanismName", label: "Mechanism Name Override", type: "text", placeholder: "Leave blank to use AI suggestion", sourceNote: "AI generates this from your service description" },
-    { key: "applicationMethod", label: "Application Method", type: "text", placeholder: "e.g. 6-week group coaching", sourceNote: "Pulled from your service profile" },
+    { key: "mechanismName", label: "Method name override", type: "text", placeholder: "Leave blank for AI suggestion", sourceNote: "Override the AI-generated method name" },
   ],
   freeOptIn: [
-    { key: "hvcoTopic", label: "Lead Magnet Topic Override", type: "text", placeholder: "Leave blank to use AI suggestion", sourceNote: "AI generates this from your service profile" },
+    { key: "hvcoTopic", label: "Lead magnet topic override", type: "text", placeholder: "Leave blank for AI suggestion", sourceNote: "Override the AI-generated topic" },
   ],
   headlines: [
-    { key: "headlineStyle", label: "Headline Style", type: "select", options: ["curiosity", "benefit", "how-to", "question", "bold-claim"], sourceNote: "Defaults to 'benefit'" },
-    { key: "quantity", label: "Number of Headlines", type: "select", options: ["5", "10", "15", "20"], sourceNote: "Defaults to 10" },
+    { key: "formulaType", label: "What style of headline?", type: "select", options: ["all", "story", "eyebrow", "question", "authority", "urgency"], optionLabels: { all: "All Styles (5 of each)", story: "Tell Your Story", eyebrow: "Make a Bold Claim", question: "Ask Their Question", authority: "Lead with Credentials", urgency: "Create Urgency" }, sourceNote: "ZAP auto-selects the best style for your audience. Override here if you prefer a specific approach." },
   ],
-  adCopy: [
-    { key: "platform", label: "Ad Platform", type: "select", options: ["Facebook", "Instagram", "LinkedIn", "YouTube"], sourceNote: "Defaults to Facebook" },
-    { key: "adFormat", label: "Ad Format", type: "select", options: ["single-image", "carousel", "video-script", "story"], sourceNote: "Defaults to single-image" },
-  ],
-  landingPage: [
-    { key: "pageStyle", label: "Page Style", type: "select", options: ["VSL", "long-form", "short-form", "webinar-registration"], sourceNote: "Defaults to long-form" },
-  ],
+  adCopy: [],  // platform + adFormat removed — server never reads them
+  landingPage: [],  // pageStyle removed — server never reads it
   emailSequence: [
-    { key: "sequenceType", label: "Sequence Type", type: "select", options: ["welcome", "nurture", "launch", "re-engagement"], sourceNote: "Defaults to nurture" },
-    { key: "emailCount", label: "Number of Emails", type: "select", options: ["3", "5", "7", "10"], sourceNote: "Defaults to 5" },
+    { key: "emailCount", label: "How many emails?", type: "select", options: ["3", "5", "7", "10"], sourceNote: "Defaults to 3. More emails = longer nurture sequence." },
   ],
   whatsappSequence: [
-    { key: "sequenceLength", label: "Sequence Length", type: "select", options: ["3", "5", "7"], sourceNote: "Defaults to 5" },
-    { key: "tone", label: "Tone", type: "select", options: ["conversational", "professional", "urgent"], sourceNote: "Pulled from your brand voice" },
+    { key: "sequenceLength", label: "How many messages?", type: "select", options: ["3", "5", "7"], sourceNote: "Defaults to 3. Shorter sequences tend to get more replies." },
   ],
-  pushToMeta: [
-    { key: "platform", label: "Platform", type: "select", options: ["Meta Ads Manager", "GoHighLevel"], sourceNote: "Defaults to Meta Ads Manager" },
-  ],
+  pushToMeta: [],  // platform removed — not yet functional
 };
+
+// Dynamic Zappy context lines — reference real data from service + Campaign Kit
+function getZappyContextLine(step: string, service: any): string {
+  const name = service?.name || "your service";
+  const pain = service?.painPoints ? service.painPoints.slice(0, 60) + "..." : "your audience's pain points";
+  const mech = service?.uniqueMechanismSuggestion || "your unique method";
+  const benefit = service?.mainBenefit || "your core benefit";
+
+  switch (step) {
+    case "icp": return `I'm building a detailed profile of your ideal client based on ${name} — so every piece of content speaks directly to them.`;
+    case "offer": return `I'm generating 3 offer angles (premium, free, and low-ticket) tailored to ${name} — you'll pick the strongest one.`;
+    case "uniqueMethod": return `I'm creating a named method that positions ${name} as the only solution — based on ${pain}.`;
+    case "freeOptIn": return `I'm generating lead magnet ideas that naturally lead into ${mech} — designed to attract the right people.`;
+    case "headlines": return `I'm generating 25 headlines using ${pain} and ${mech} — then showing you the strongest one.`;
+    case "adCopy": return `I'm writing 15 ad copy variations using your selected headline as the hook and ${mech} as the proof.`;
+    case "landingPage": return `I'm building your landing page around ${mech} and ${benefit} — 4 angle variations to choose from.`;
+    case "emailSequence": return `I'm writing a welcome sequence that delivers your lead magnet and builds toward your offer for ${name}.`;
+    case "whatsappSequence": return `I'm writing WhatsApp messages that complement your emails — conversational and designed to get replies.`;
+    default: return "";
+  }
+}
 
 // ─── Shared card style ────────────────────────────────────────────────────────
 const cardStyle: React.CSSProperties = {
@@ -259,12 +271,21 @@ function AdvancedFieldInput({
       )}
       {field.type === "select" ? (
         <select value={value} onChange={e => onChange(e.target.value)} style={inputBase}>
-          {field.options?.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+          {field.options?.map(opt => <option key={opt} value={opt}>{(field as any).optionLabels?.[opt] || opt}</option>)}
         </select>
       ) : field.type === "textarea" ? (
         <textarea value={value} onChange={e => onChange(e.target.value)} placeholder={field.placeholder} rows={3} style={{ ...inputBase, resize: "vertical" }} />
       ) : (
         <input type="text" value={value} onChange={e => onChange(e.target.value)} placeholder={field.placeholder} style={inputBase} />
+      )}
+      {field.key === "formulaType" && value && value !== "all" && (
+        <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "12px", color: "#999", margin: "6px 0 0", lineHeight: 1.5 }}>
+          {value === "story" && "Generates narrative headlines that open with a triggering event and end with a specific measurable result. Best for emotional niches."}
+          {value === "eyebrow" && "Generates three-part headlines with an authority eyebrow, a mechanism-focused main line, and a pain-point subheadline."}
+          {value === "question" && "Generates question headlines that mirror what your ideal client is already thinking. Best for curiosity-driven campaigns."}
+          {value === "authority" && "Generates headlines that lead with credentials and proven results. Best when the coach has strong qualifications."}
+          {value === "urgency" && "Generates headlines with specific timeframes and action verbs. Best for time-limited offers and launches."}
+        </p>
       )}
     </div>
   );
@@ -297,14 +318,65 @@ function WaitingState() {
 }
 
 // ─── Loading State: Zappy + progress ring ────────────────────────────────────
-const LOADING_MESSAGES = [
+const LOADING_MESSAGES_DEFAULT = [
   "Zappy is analysing your inputs…",
   "Building your assets from your AI Profile…",
   "Applying Meta compliance checks…",
   "Almost there — finalising your content now…",
 ];
 
+const LOADING_MESSAGES_BY_STEP: Record<string, string[]> = {
+  headlines: [
+    "Generating 25 headlines across 5 proven formulas…",
+    "Scoring each headline for Meta compliance…",
+    "Calculating which formula type fits your audience…",
+    "Ranking by persuasion strength and character count…",
+    "Picking your best headline…",
+  ],
+  offer: [
+    "Generating 3 offer angles for your service...",
+    "Scoring each angle for persuasion and compliance...",
+    "Selecting the strongest offer for your audience...",
+  ],
+  icp: [
+    "Researching your ideal customer's world…",
+    "Mapping pain points, desires, and buying triggers…",
+    "Building a 17-section customer intelligence profile…",
+  ],
+  uniqueMethod: [
+    "Generating your unique mechanism names...",
+    "Scoring for clarity and memorability...",
+    "Picking your strongest mechanism...",
+  ],
+  freeOptIn: [
+    "Generating lead magnet title options...",
+    "Scoring for curiosity and click-through potential...",
+    "Selecting your most compelling opt-in title...",
+  ],
+  adCopy: [
+    "Generating ad copy variations...",
+    "Scoring for Meta compliance and hook strength...",
+    "Selecting your highest-performing ad copy...",
+  ],
+  landingPage: [
+    "Generating 4 landing page angles...",
+    "Scoring each angle for conversion potential...",
+    "Selecting your strongest landing page...",
+  ],
+  emailSequence: [
+    "Generating your email sequence...",
+    "Scoring for deliverability and engagement...",
+    "Finalising your email sequence...",
+  ],
+  whatsappSequence: [
+    "Generating your WhatsApp sequence...",
+    "Scoring for conversational tone and response rate...",
+    "Finalising your WhatsApp sequence...",
+  ],
+};
+
 function LoadingState({ step: _step, progressLabel }: { step?: string; progressLabel?: string | null }) {
+  const messages = (_step && LOADING_MESSAGES_BY_STEP[_step]) || LOADING_MESSAGES_DEFAULT;
   const [msgIndex, setMsgIndex] = useState(0);
   const [visible, setVisible] = useState(true);
   const [elapsed, setElapsed] = useState(0);
@@ -312,18 +384,18 @@ function LoadingState({ step: _step, progressLabel }: { step?: string; progressL
   const [labelVisible, setLabelVisible] = useState(true);
   const prevLabelRef = useRef(progressLabel);
 
-  // Cycle messages every 20 seconds with fade (only when no real progress label)
+  // Cycle messages every 2 seconds with fade (only when no real progress label)
   useEffect(() => {
     if (progressLabel) return; // real progress takes over
     const interval = setInterval(() => {
       setVisible(false);
       setTimeout(() => {
-        setMsgIndex(prev => Math.min(prev + 1, LOADING_MESSAGES.length - 1));
+        setMsgIndex(prev => (prev + 1) % messages.length);
         setVisible(true);
       }, 400);
-    }, 20_000);
+    }, 2_000);
     return () => clearInterval(interval);
-  }, [progressLabel]);
+  }, [progressLabel, messages.length]);
 
   // Fade animation when progressLabel changes
   useEffect(() => {
@@ -343,7 +415,7 @@ function LoadingState({ step: _step, progressLabel }: { step?: string; progressL
     return () => clearInterval(timer);
   }, []);
 
-  const displayMessage = progressLabel ?? LOADING_MESSAGES[msgIndex];
+  const displayMessage = progressLabel ?? messages[msgIndex];
 
   return (
     <>
@@ -426,6 +498,842 @@ function LoadingState({ step: _step, progressLabel }: { step?: string; progressL
   );
 }
 
+// ─── Route guard: gate map for sequential progression ─────────────────────────
+const STEP_GATES: Record<string, string> = {
+  uniqueMethod: "selectedOfferId",
+  freeOptIn: "selectedMechanismId",
+  headlines: "selectedHvcoId",
+  adCopy: "selectedHeadlineId",
+  landingPage: "selectedAdCopyId",
+  emailSequence: "selectedLandingPageId",
+  whatsappSequence: "selectedEmailSequenceId",
+};
+
+const GATE_ORDER: string[] = ["offer", "uniqueMethod", "freeOptIn", "headlines", "adCopy", "landingPage", "emailSequence", "whatsappSequence"];
+
+function findFirstIncompleteStep(kit: any): string {
+  for (const s of GATE_ORDER) {
+    const gate = STEP_GATES[s];
+    if (gate && kit[gate] == null) return s;
+  }
+  return "offer"; // fallback
+}
+
+// ─── CampaignKitSidebar: persistent sidebar showing selection state ─────────────
+const KIT_SLOTS: Array<{ label: string; field: string; step: string; num: number }> = [
+  { label: "Offer", field: "selectedOfferId", step: "offer", num: 3 },
+  { label: "Method", field: "selectedMechanismId", step: "uniqueMethod", num: 4 },
+  { label: "Lead Magnet", field: "selectedHvcoId", step: "freeOptIn", num: 5 },
+  { label: "Headline", field: "selectedHeadlineId", step: "headlines", num: 6 },
+  { label: "Ad Copy", field: "selectedAdCopyId", step: "adCopy", num: 7 },
+  { label: "Landing Page", field: "selectedLandingPageId", step: "landingPage", num: 8 },
+  { label: "Email Sequence", field: "selectedEmailSequenceId", step: "emailSequence", num: 9 },
+  { label: "WhatsApp", field: "selectedWhatsAppSequenceId", step: "whatsappSequence", num: 10 },
+];
+
+function CampaignKitSidebar({ kit, currentStep, onNavigate }: { kit: any; currentStep: string; onNavigate: (step: string) => void }) {
+  if (!kit) return null;
+
+  const filledCount = KIT_SLOTS.filter(s => kit[s.field] != null).length;
+  const totalSlots = KIT_SLOTS.length;
+  const isComplete = filledCount === totalSlots;
+  const pct = Math.round((filledCount / totalSlots) * 100);
+
+  return (
+    <aside style={{
+      width: 260,
+      minWidth: 260,
+      maxWidth: 260,
+      background: "#fff",
+      borderLeft: "1px solid #e5e0d8",
+      padding: "20px",
+      position: "sticky",
+      top: 0,
+      maxHeight: "100vh",
+      overflowY: "auto",
+      display: "flex",
+      flexDirection: "column",
+      gap: "16px",
+    }}>
+      {/* Header */}
+      <div>
+        <h3 style={{
+          fontFamily: "var(--v2-font-heading, 'Fraunces', serif)",
+          fontStyle: "italic",
+          fontWeight: 900,
+          fontSize: "18px",
+          color: "var(--v2-text-dark, #1A1624)",
+          margin: 0,
+        }}>
+          🎯 Campaign Kit
+        </h3>
+        <p style={{
+          fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)",
+          fontSize: "12px",
+          color: "#999",
+          margin: "4px 0 0",
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        }}>
+          {kit.name || "Loading..."}
+        </p>
+      </div>
+
+      {/* Slot rows */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+        {KIT_SLOTS.map(slot => {
+          const isFilled = kit[slot.field] != null;
+          const isCurrent = slot.step === currentStep;
+          // A slot is locked if its gate field is defined and the PREVIOUS gate is not met
+          const gateField = STEP_GATES[slot.step];
+          const isLocked = !isFilled && gateField && kit[gateField] == null;
+
+          return (
+            <button
+              key={slot.field}
+              onClick={() => { if (!isLocked) onNavigate(slot.step); }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                padding: "8px 10px",
+                borderRadius: "10px",
+                border: "none",
+                background: isCurrent ? "rgba(255,91,29,0.08)" : isFilled ? "rgba(88,204,2,0.06)" : "transparent",
+                cursor: isLocked ? "default" : "pointer",
+                width: "100%",
+                textAlign: "left",
+                transition: "background 0.15s",
+                opacity: isLocked ? 0.5 : 1,
+              }}
+              onMouseEnter={e => { if (!isFilled && !isLocked) (e.currentTarget as HTMLElement).style.background = "rgba(0,0,0,0.03)"; }}
+              onMouseLeave={e => { if (!isFilled && !isLocked && !isCurrent) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+            >
+              {/* Step number indicator */}
+              <span style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 24,
+                height: 24,
+                borderRadius: "50%",
+                fontSize: "11px",
+                fontWeight: 700,
+                fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)",
+                background: isFilled ? "#58CC02" : isCurrent ? "var(--v2-primary-btn, #FF5B1D)" : isLocked ? "#e5e0d8" : "#ddd",
+                color: (isFilled || isCurrent) ? "#fff" : isLocked ? "#bbb" : "#888",
+                flexShrink: 0,
+              }}>
+                {isFilled ? "✓" : slot.num}
+              </span>
+              <span style={{
+                fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)",
+                fontSize: "13px",
+                fontWeight: isFilled || isCurrent ? 600 : 400,
+                color: isFilled ? "var(--v2-text-dark, #1A1624)" : isCurrent ? "var(--v2-primary-btn, #FF5B1D)" : isLocked ? "#ccc" : "#999",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                flex: 1,
+              }}>
+                {slot.label}
+              </span>
+              {isLocked && (
+                <span style={{ fontSize: "12px", color: "#ccc" }}>🔒</span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Progress bar */}
+      <div>
+        <p style={{
+          fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)",
+          fontSize: "12px",
+          fontWeight: 600,
+          color: "var(--v2-text-dark, #1A1624)",
+          margin: "0 0 6px",
+        }}>
+          {filledCount} of {totalSlots} selected
+        </p>
+        <div style={{
+          height: 6,
+          borderRadius: 3,
+          background: "#e5e0d8",
+          overflow: "hidden",
+        }}>
+          <div style={{
+            height: "100%",
+            width: `${pct}%`,
+            borderRadius: 3,
+            background: isComplete ? "#58CC02" : "var(--v2-primary-btn, #FF5B1D)",
+            transition: "width 0.3s ease",
+          }} />
+        </div>
+      </div>
+
+      {/* View Campaign Kit button */}
+      <a
+        href={isComplete ? `/v2-dashboard/campaign-kit/${kit.id}` : undefined}
+        onClick={e => { if (!isComplete) e.preventDefault(); }}
+        style={{
+          display: "block",
+          textAlign: "center",
+          padding: "10px 16px",
+          borderRadius: "var(--v2-border-radius-pill, 9999px)",
+          background: isComplete ? "var(--v2-primary-btn, #FF5B1D)" : "#e5e0d8",
+          color: isComplete ? "#fff" : "#999",
+          fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)",
+          fontWeight: 700,
+          fontSize: "13px",
+          textDecoration: "none",
+          cursor: isComplete ? "pointer" : "default",
+          transition: "all 0.2s ease",
+        }}
+      >
+        {isComplete ? "View Campaign Kit" : `${totalSlots - filledCount} remaining`}
+      </a>
+    </aside>
+  );
+}
+
+// ─── UseThisButton: campaign kit selection button ──────────────────────────────
+function UseThisButton({ isSelected, onClick, loading }: { isSelected: boolean; onClick: () => void; loading?: boolean }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={loading}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "6px",
+        width: "100%",
+        padding: "10px 16px",
+        marginTop: "12px",
+        borderRadius: "var(--v2-border-radius-pill, 9999px)",
+        border: isSelected ? "2px solid #58CC02" : "2px solid var(--v2-primary-btn, #FF5B1D)",
+        background: isSelected ? "#58CC02" : "transparent",
+        color: isSelected ? "#fff" : "var(--v2-primary-btn, #FF5B1D)",
+        fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)",
+        fontWeight: 700,
+        fontSize: "14px",
+        cursor: loading ? "wait" : "pointer",
+        opacity: loading ? 0.6 : 1,
+        transition: "all 0.2s ease",
+      }}
+    >
+      {loading ? "Saving..." : isSelected ? "✓ In Campaign" : "Use This"}
+    </button>
+  );
+}
+
+// ─── HeadlineRecommendation: Node 6 recommended asset wrapper ──────────────────
+function HeadlineRecommendation({ headlineSetId, serviceId, service, campaignKit, onSelect, onRegenerate }: {
+  headlineSetId: string;
+  serviceId: number;
+  service: any;
+  campaignKit: any;
+  onSelect: (id: number) => void;
+  onRegenerate: () => void;
+}) {
+  // Fetch all headlines for this set (returns { headlineSetId, headlines: { story, eyebrow, ... }, metadata })
+  const { data: headlineData } = trpc.headlines.getBySetId.useQuery(
+    { headlineSetId },
+    { enabled: !!headlineSetId }
+  );
+
+  // Check if first campaign
+  const { data: hasCompleted } = trpc.campaignKits.hasCompletedCampaign.useQuery();
+
+  if (!headlineData || !headlineData.headlines) {
+    return <p style={{ textAlign: "center", color: "#999", fontFamily: "var(--v2-font-body)" }}>Loading headlines...</p>;
+  }
+
+  // Flatten all formula groups into a single array
+  const allHeadlines: any[] = [];
+  for (const formulaType of ["story", "eyebrow", "question", "authority", "urgency"] as const) {
+    const group = headlineData.headlines[formulaType];
+    if (group) allHeadlines.push(...group);
+  }
+
+  if (allHeadlines.length === 0) return null;
+
+  // Sort by selectionScore descending
+  const sorted = [...allHeadlines].sort((a: any, b: any) => (Number(b.selectionScore) || 0) - (Number(a.selectionScore) || 0));
+
+  // Primary: highest scored
+  const primary = sorted[0];
+  if (!primary) return null;
+
+  // Alternatives: next 2 from DIFFERENT formula types
+  const primaryFormula = primary.formulaType || "";
+  const alts = sorted
+    .filter((h: any) => (h.formulaType || "") !== primaryFormula)
+    .slice(0, 2);
+
+  // All assets for the drawer
+  const allAssets = sorted.map((h: any) => ({
+    id: h.id,
+    content: h.headline || "",
+    score: h.selectionScore ? Number(h.selectionScore) : null,
+    formulaLabel: h.formulaType || undefined,
+  }));
+
+  return (
+    <RecommendedAssetPanel
+      primaryAsset={{
+        id: primary.id,
+        content: primary.headline || "",
+        score: primary.selectionScore ? Number(primary.selectionScore) : null,
+        formulaLabel: primary.formulaType || undefined,
+        characterCount: (primary.headline || "").length,
+      }}
+      alternativeAssets={alts.map((h: any) => ({
+        id: h.id,
+        content: h.headline || "",
+        score: h.selectionScore ? Number(h.selectionScore) : null,
+        formulaLabel: h.formulaType || undefined,
+      }))}
+      allAssets={allAssets}
+      nodeLabel="headline"
+      nodeId="headlines"
+      isFirstCampaign={!hasCompleted}
+      onSelect={onSelect}
+      onRegenerate={onRegenerate}
+    />
+  );
+}
+
+// ─── OfferRecommendation: Node 3 recommended asset wrapper ──────────────────
+function OfferRecommendation({ offerId, campaignKit, onSelect, onRegenerate }: {
+  offerId: number;
+  campaignKit: any;
+  onSelect: (id: number) => void;
+  onRegenerate: () => void;
+}) {
+  const { data: offer } = trpc.offers.get.useQuery({ id: offerId }, { enabled: !!offerId });
+  const { data: hasCompleted } = trpc.campaignKits.hasCompletedCampaign.useQuery();
+
+  if (!offer) {
+    return <p style={{ textAlign: "center", color: "#999", fontFamily: "var(--v2-font-body)" }}>Loading offer...</p>;
+  }
+
+  // Parse the 3 angle columns into virtual items
+  const parseAngle = (raw: any): Record<string, any> | null => {
+    if (!raw) return null;
+    if (typeof raw === "string") try { return JSON.parse(raw); } catch { return null; }
+    return raw as Record<string, any>;
+  };
+
+  const godfather = parseAngle(offer.godfatherAngle);
+  const free = parseAngle(offer.freeAngle);
+  const dollar = parseAngle(offer.dollarAngle);
+
+  const angleItems = [
+    { key: "godfather", angle: godfather },
+    { key: "free", angle: free },
+    { key: "dollar", angle: dollar },
+  ].filter(a => a.angle);
+
+  if (angleItems.length === 0) return null;
+
+  const toContent = (angle: Record<string, any> | null): string => {
+    if (!angle) return "";
+    const name = angle.offerName || angle.name || "";
+    const vp = angle.valueProposition || angle.headline || "";
+    return name && vp ? `${name} — ${vp}` : name || vp || JSON.stringify(angle).slice(0, 120);
+  };
+
+  const primary = {
+    id: offerId,
+    content: toContent(angleItems[0].angle),
+    score: offer.selectionScore ? Number(offer.selectionScore) : null,
+    formulaLabel: angleItems[0].key,
+  };
+
+  const alternatives = angleItems.slice(1).map(a => ({
+    id: offerId,
+    content: toContent(a.angle),
+    score: offer.selectionScore ? Number(offer.selectionScore) : null,
+    formulaLabel: a.key,
+  }));
+
+  const allAssets = [primary, ...alternatives];
+
+  return (
+    <RecommendedAssetPanel
+      primaryAsset={primary}
+      alternativeAssets={alternatives}
+      allAssets={allAssets}
+      nodeLabel="offer"
+      nodeId="offers"
+      isFirstCampaign={!hasCompleted}
+      onSelect={onSelect}
+      onRegenerate={onRegenerate}
+    />
+  );
+}
+
+// ─── MechanismRecommendation: Node 4 recommended asset wrapper ──────────────
+function MechanismRecommendation({ mechanismSetId, campaignKit, onSelect, onRegenerate }: {
+  mechanismSetId: string;
+  campaignKit: any;
+  onSelect: (id: number) => void;
+  onRegenerate: () => void;
+}) {
+  const { data: mechanisms } = trpc.heroMechanisms.getBySetId.useQuery(
+    { mechanismSetId },
+    { enabled: !!mechanismSetId }
+  );
+  const { data: hasCompleted } = trpc.campaignKits.hasCompletedCampaign.useQuery();
+
+  if (!mechanisms || !Array.isArray(mechanisms) || mechanisms.length === 0) {
+    return <p style={{ textAlign: "center", color: "#999", fontFamily: "var(--v2-font-body)" }}>Loading mechanisms...</p>;
+  }
+
+  const sorted = [...mechanisms].sort((a: any, b: any) => (Number(b.selectionScore) || 0) - (Number(a.selectionScore) || 0));
+  const top3 = sorted.slice(0, 3);
+  const primary = top3[0];
+  const alts = top3.slice(1);
+
+  const toContent = (m: any) => {
+    const desc = (m.mechanismDescription || "").slice(0, 100);
+    return `${m.mechanismName || ""}${desc ? " — " + desc : ""}`;
+  };
+
+  const allAssets = sorted.map((m: any) => ({
+    id: m.id,
+    content: toContent(m),
+    score: m.selectionScore ? Number(m.selectionScore) : null,
+  }));
+
+  return (
+    <RecommendedAssetPanel
+      primaryAsset={{
+        id: primary.id,
+        content: toContent(primary),
+        score: primary.selectionScore ? Number(primary.selectionScore) : null,
+      }}
+      alternativeAssets={alts.map((m: any) => ({
+        id: m.id,
+        content: toContent(m),
+        score: m.selectionScore ? Number(m.selectionScore) : null,
+      }))}
+      allAssets={allAssets}
+      nodeLabel="mechanism"
+      nodeId="uniqueMethod"
+      isFirstCampaign={!hasCompleted}
+      onSelect={onSelect}
+      onRegenerate={onRegenerate}
+    />
+  );
+}
+
+// ─── HvcoRecommendation: Node 5 recommended asset wrapper ───────────────────
+function HvcoRecommendation({ hvcoSetId, campaignKit, onSelect, onRegenerate }: {
+  hvcoSetId: string;
+  campaignKit: any;
+  onSelect: (id: number) => void;
+  onRegenerate: () => void;
+}) {
+  const { data: titles } = trpc.hvco.getBySetId.useQuery(
+    { hvcoSetId },
+    { enabled: !!hvcoSetId }
+  );
+  const { data: hasCompleted } = trpc.campaignKits.hasCompletedCampaign.useQuery();
+
+  if (!titles || !Array.isArray(titles) || titles.length === 0) {
+    return <p style={{ textAlign: "center", color: "#999", fontFamily: "var(--v2-font-body)" }}>Loading opt-in titles...</p>;
+  }
+
+  const sorted = [...titles].sort((a: any, b: any) => (Number(b.selectionScore) || 0) - (Number(a.selectionScore) || 0));
+  const top3 = sorted.slice(0, 3);
+  const primary = top3[0];
+  const alts = top3.slice(1);
+
+  const allAssets = sorted.map((t: any) => ({
+    id: t.id,
+    content: t.title || "",
+    score: t.selectionScore ? Number(t.selectionScore) : null,
+  }));
+
+  return (
+    <RecommendedAssetPanel
+      primaryAsset={{
+        id: primary.id,
+        content: primary.title || "",
+        score: primary.selectionScore ? Number(primary.selectionScore) : null,
+      }}
+      alternativeAssets={alts.map((t: any) => ({
+        id: t.id,
+        content: t.title || "",
+        score: t.selectionScore ? Number(t.selectionScore) : null,
+      }))}
+      allAssets={allAssets}
+      nodeLabel="opt-in title"
+      nodeId="hvco"
+      isFirstCampaign={!hasCompleted}
+      onSelect={onSelect}
+      onRegenerate={onRegenerate}
+    />
+  );
+}
+
+// ─── AdCopyRecommendation: Node 7 recommended asset wrapper ─────────────────
+function AdCopyRecommendation({ adSetId, campaignKit, onSelect, onRegenerate }: {
+  adSetId: string;
+  campaignKit: any;
+  onSelect: (id: number) => void;
+  onRegenerate: () => void;
+}) {
+  const { data: ads } = trpc.adCopy.getByAdSetId.useQuery(
+    { adSetId },
+    { enabled: !!adSetId }
+  );
+  const { data: hasCompleted } = trpc.campaignKits.hasCompletedCampaign.useQuery();
+
+  if (!ads) {
+    return <p style={{ textAlign: "center", color: "#999", fontFamily: "var(--v2-font-body)" }}>Loading ad copy...</p>;
+  }
+
+  // getByAdSetId returns { headlines: [], bodies: [], links: [], ... } — flatten into a single array
+  const allItems: any[] = [
+    ...((ads as any).headlines || []),
+    ...((ads as any).bodies || []),
+    ...((ads as any).links || []),
+  ];
+  if (allItems.length === 0) {
+    return <p style={{ textAlign: "center", color: "#999", fontFamily: "var(--v2-font-body)" }}>No ad copy found.</p>;
+  }
+
+  const sorted = [...allItems].sort((a: any, b: any) => (Number(b.selectionScore) || 0) - (Number(a.selectionScore) || 0));
+  const top3 = sorted.slice(0, 3);
+  const primary = top3[0];
+  const alts = top3.slice(1);
+
+  const allAssets = sorted.map((a: any) => ({
+    id: a.id,
+    content: (a.content || "").slice(0, 120),
+    score: a.selectionScore ? Number(a.selectionScore) : null,
+    formulaLabel: a.contentType || undefined,
+  }));
+
+  return (
+    <RecommendedAssetPanel
+      primaryAsset={{
+        id: primary.id,
+        content: (primary.content || "").slice(0, 120),
+        score: primary.selectionScore ? Number(primary.selectionScore) : null,
+        formulaLabel: primary.contentType || undefined,
+      }}
+      alternativeAssets={alts.map((a: any) => ({
+        id: a.id,
+        content: (a.content || "").slice(0, 120),
+        score: a.selectionScore ? Number(a.selectionScore) : null,
+        formulaLabel: a.contentType || undefined,
+      }))}
+      allAssets={allAssets}
+      nodeLabel="ad copy"
+      nodeId="adCopy"
+      isFirstCampaign={!hasCompleted}
+      onSelect={onSelect}
+      onRegenerate={onRegenerate}
+    />
+  );
+}
+
+// ─── LandingPageRecommendation: Node 8 recommended asset wrapper ────────────
+function LandingPageRecommendation({ landingPageId, campaignKit, onSelect, onRegenerate }: {
+  landingPageId: number;
+  campaignKit: any;
+  onSelect: (id: number, angle: string) => void;
+  onRegenerate: () => void;
+}) {
+  const { data: page } = trpc.landingPages.get.useQuery({ id: landingPageId }, { enabled: !!landingPageId });
+  const { data: hasCompleted } = trpc.campaignKits.hasCompletedCampaign.useQuery();
+
+  if (!page) {
+    return <p style={{ textAlign: "center", color: "#999", fontFamily: "var(--v2-font-body)" }}>Loading landing page...</p>;
+  }
+
+  const parseAngle = (raw: any): Record<string, any> | null => {
+    if (!raw) return null;
+    if (typeof raw === "string") try { return JSON.parse(raw); } catch { return null; }
+    return raw as Record<string, any>;
+  };
+
+  const angles = [
+    { key: "original", angle: parseAngle(page.originalAngle) },
+    { key: "godfather", angle: parseAngle(page.godfatherAngle) },
+    { key: "free", angle: parseAngle(page.freeAngle) },
+    { key: "dollar", angle: parseAngle(page.dollarAngle) },
+  ].filter(a => a.angle);
+
+  if (angles.length === 0) return null;
+
+  const toContent = (angle: Record<string, any> | null): string => {
+    if (!angle) return "";
+    return angle.mainHeadline || angle.headline || JSON.stringify(angle).slice(0, 120);
+  };
+
+  // Use a unique pseudo-id for each angle (encode angle index into id for selection)
+  const primary = {
+    id: landingPageId,
+    content: toContent(angles[0].angle),
+    score: page.selectionScore ? Number(page.selectionScore) : null,
+    formulaLabel: angles[0].key,
+  };
+
+  const alternatives = angles.slice(1).map(a => ({
+    id: landingPageId,
+    content: toContent(a.angle),
+    score: page.selectionScore ? Number(page.selectionScore) : null,
+    formulaLabel: a.key,
+  }));
+
+  const allAssets = [primary, ...alternatives];
+
+  // Wrap onSelect to pass angle name alongside the id
+  const handleSelect = (_id: number) => {
+    // Determine which angle was clicked based on the caller — default to first angle
+    // Since all items share the same id, we select the primary angle
+    onSelect(landingPageId, angles[0].key);
+  };
+
+  return (
+    <RecommendedAssetPanel
+      primaryAsset={primary}
+      alternativeAssets={alternatives.map((a, i) => ({
+        ...a,
+        // Override id to encode angle index so we can differentiate on click
+        id: landingPageId * 100 + (i + 1),
+      }))}
+      allAssets={allAssets}
+      nodeLabel="landing page"
+      nodeId="landingPages"
+      isFirstCampaign={!hasCompleted}
+      onSelect={(selectedId: number) => {
+        // Decode: if selectedId > landingPageId * 10 it's an alternative
+        if (selectedId === landingPageId) {
+          onSelect(landingPageId, angles[0].key);
+        } else {
+          const altIndex = selectedId - landingPageId * 100;
+          const angleKey = angles[altIndex]?.key || angles[0].key;
+          onSelect(landingPageId, angleKey);
+        }
+      }}
+      onRegenerate={onRegenerate}
+    />
+  );
+}
+
+// ─── EmailRecommendation: Node 9 recommended asset wrapper ──────────────────
+function EmailRecommendation({ emailSequenceId, campaignKit, onSelect, onRegenerate }: {
+  emailSequenceId: number;
+  campaignKit: any;
+  onSelect: (id: number) => void;
+  onRegenerate: () => void;
+}) {
+  const { data: sequence } = trpc.emailSequences.get.useQuery({ id: emailSequenceId }, { enabled: !!emailSequenceId });
+  const { data: hasCompleted } = trpc.campaignKits.hasCompletedCampaign.useQuery();
+
+  if (!sequence) {
+    return <p style={{ textAlign: "center", color: "#999", fontFamily: "var(--v2-font-body)" }}>Loading email sequence...</p>;
+  }
+
+  const emails = typeof sequence.emails === "string" ? JSON.parse(sequence.emails) : (sequence.emails || []);
+  const emailCount = Array.isArray(emails) ? emails.length : 0;
+  const content = `${sequence.name || "Email Sequence"} — ${emailCount} email${emailCount !== 1 ? "s" : ""}`;
+
+  return (
+    <RecommendedAssetPanel
+      primaryAsset={{
+        id: sequence.id,
+        content,
+        score: sequence.selectionScore ? Number(sequence.selectionScore) : null,
+      }}
+      alternativeAssets={[]}
+      allAssets={[{
+        id: sequence.id,
+        content,
+        score: sequence.selectionScore ? Number(sequence.selectionScore) : null,
+      }]}
+      nodeLabel="email sequence"
+      nodeId="emailSequence"
+      isFirstCampaign={!hasCompleted}
+      onSelect={onSelect}
+      onRegenerate={onRegenerate}
+    />
+  );
+}
+
+// ─── WhatsAppRecommendation: Node 10 recommended asset wrapper ──────────────
+function WhatsAppRecommendation({ whatsappSequenceId, campaignKit, onSelect, onRegenerate }: {
+  whatsappSequenceId: number;
+  campaignKit: any;
+  onSelect: (id: number) => void;
+  onRegenerate: () => void;
+}) {
+  const { data: sequence } = trpc.whatsappSequences.get.useQuery({ id: whatsappSequenceId }, { enabled: !!whatsappSequenceId });
+  const { data: hasCompleted } = trpc.campaignKits.hasCompletedCampaign.useQuery();
+
+  if (!sequence) {
+    return <p style={{ textAlign: "center", color: "#999", fontFamily: "var(--v2-font-body)" }}>Loading WhatsApp sequence...</p>;
+  }
+
+  const messages = typeof sequence.messages === "string" ? JSON.parse(sequence.messages) : (sequence.messages || []);
+  const msgCount = Array.isArray(messages) ? messages.length : 0;
+  const content = `${sequence.name || "WhatsApp Sequence"} — ${msgCount} message${msgCount !== 1 ? "s" : ""}`;
+
+  return (
+    <RecommendedAssetPanel
+      primaryAsset={{
+        id: sequence.id,
+        content,
+        score: sequence.selectionScore ? Number(sequence.selectionScore) : null,
+      }}
+      alternativeAssets={[]}
+      allAssets={[{
+        id: sequence.id,
+        content,
+        score: sequence.selectionScore ? Number(sequence.selectionScore) : null,
+      }]}
+      nodeLabel="WhatsApp sequence"
+      nodeId="whatsapp"
+      isFirstCampaign={!hasCompleted}
+      onSelect={onSelect}
+      onRegenerate={onRegenerate}
+    />
+  );
+}
+
+// ─── Push Integration Panel: Node 11 — Connect Meta + GHL ─────────────────────
+function PushIntegrationPanel({ campaignKit }: { campaignKit: any }) {
+  const { data: metaStatus } = trpc.meta.getConnectionStatus.useQuery();
+  const { data: ghlStatus, refetch: refetchGhlStatus } = trpc.ghl.getConnectionStatus.useQuery();
+  const ghlExchangeCode = trpc.ghl.exchangeCode.useMutation({
+    onSuccess: () => { refetchGhlStatus(); },
+    onError: (err: any) => { console.error("[GHL] Token exchange failed:", err.message); },
+  });
+  const { data: metaOAuthUrl } = trpc.meta.getOAuthUrl.useQuery(undefined, { enabled: !metaStatus?.connected });
+  const { data: ghlOAuthUrl } = trpc.ghl.getOAuthUrl.useQuery(undefined, { enabled: !ghlStatus?.connected });
+  const ghlPush = trpc.ghl.pushCampaign.useMutation();
+  const ghlDisconnect = trpc.ghl.disconnect.useMutation({ onSuccess: () => { refetchGhlStatus(); } });
+  const [pushStatus, setPushStatus] = useState<string | null>(null);
+
+  // Handle GHL OAuth callback code in URL — exchange on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ghlCode = params.get("ghl_code");
+    if (ghlCode && !ghlExchangeCode.isPending && !ghlStatus?.connected) {
+      console.log("[GHL] Auto-exchanging auth code from callback redirect");
+      ghlExchangeCode.mutate({ code: ghlCode });
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
+
+  const handleGhlPush = async () => {
+    if (!campaignKit?.id) return;
+    try {
+      setPushStatus("Pushing to GoHighLevel...");
+      console.log("[GHL Push] Starting push for kit:", campaignKit.id);
+      const result = await ghlPush.mutateAsync({ kitId: campaignKit.id });
+      console.log("[GHL Push] Result:", JSON.stringify(result));
+      const pushed = [result.emailPushed && "✅ Email Sequence", result.whatsappPushed && "✅ WhatsApp Sequence", result.landingPagePushed && "✅ Landing Page"].filter(Boolean);
+      const failed = [!result.emailPushed && campaignKit?.selectedEmailSequenceId && "❌ Email Sequence", !result.whatsappPushed && campaignKit?.selectedWhatsAppSequenceId && "❌ WhatsApp Sequence", !result.landingPagePushed && campaignKit?.selectedLandingPageId && "❌ Landing Page"].filter(Boolean);
+      const allPushed = pushed.length > 0 && failed.length === 0;
+      const msg = allPushed ? `🎉 Campaign pushed to GoHighLevel!\n${pushed.join("\n")}` : pushed.length > 0 ? `Partial push:\n${[...pushed, ...failed].join("\n")}` : "Push completed — check GHL for results";
+      console.log("[GHL Push] Setting pushStatus to:", msg);
+      setPushStatus(msg);
+    } catch (e: any) {
+      setPushStatus(`Error: ${e.message || "Push failed"}`);
+    }
+  };
+
+  const F = "'Inter', system-ui, sans-serif";
+  const A = "#FF5B1D";
+
+  return (
+    <div style={{ maxWidth: 560, margin: "0 auto", textAlign: "center" }}>
+      <img src="/zappy-cheering.svg" alt="" style={{ width: 90, margin: "0 auto 16px" }} />
+      <h2 style={{ fontFamily: "'Fraunces', serif", fontStyle: "italic", fontWeight: 900, fontSize: 24, color: "#1A1624", margin: "0 0 8px" }}>
+        Your Campaign is Ready
+      </h2>
+      <p style={{ fontFamily: F, fontSize: 14, color: "#999", margin: "0 0 32px" }}>
+        Connect your ad platform and CRM to push everything live.
+      </p>
+
+      {/* Meta connection */}
+      <div style={{ background: "#fff", borderRadius: 16, padding: "20px 24px", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{ fontSize: 24 }}>📘</span>
+          <div style={{ textAlign: "left" }}>
+            <p style={{ fontFamily: F, fontWeight: 600, fontSize: 14, color: "#1A1624", margin: 0 }}>Meta Ad Manager</p>
+            <p style={{ fontFamily: F, fontSize: 12, color: "#999", margin: "2px 0 0" }}>
+              {metaStatus?.connected ? `Connected — ${metaStatus.adAccountName || "Ad Account"}` : "Not connected"}
+            </p>
+          </div>
+        </div>
+        {metaStatus?.connected ? (
+          <span style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "#22C55E", padding: "4px 12px", borderRadius: 9999, background: "rgba(34,197,94,0.1)" }}>Connected</span>
+        ) : (
+          <a href={metaOAuthUrl?.url || "#"} style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "#fff", padding: "8px 16px", borderRadius: 9999, background: A, textDecoration: "none" }}>Connect</a>
+        )}
+      </div>
+
+      {/* GHL connection */}
+      <div style={{ background: "#fff", borderRadius: 16, padding: "20px 24px", marginBottom: 24, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{ fontSize: 24 }}>🔗</span>
+          <div style={{ textAlign: "left" }}>
+            <p style={{ fontFamily: F, fontWeight: 600, fontSize: 14, color: "#1A1624", margin: 0 }}>GoHighLevel CRM</p>
+            <p style={{ fontFamily: F, fontSize: 12, color: "#999", margin: "2px 0 0" }}>
+              {ghlStatus?.connected ? `Connected — ${ghlStatus.locationName || ghlStatus.locationId || "Location"}` : "Not connected"}
+            </p>
+          </div>
+        </div>
+        {ghlStatus?.connected ? (
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <span style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "#22C55E", padding: "4px 12px", borderRadius: 9999, background: "rgba(34,197,94,0.1)" }}>Connected</span>
+            <button onClick={() => ghlDisconnect.mutate()} style={{ fontFamily: F, fontSize: 11, color: "#999", background: "none", border: "1px solid #ddd", borderRadius: 9999, padding: "4px 10px", cursor: "pointer" }}>{ghlDisconnect.isPending ? "..." : "Disconnect"}</button>
+          </div>
+        ) : (
+          <a href={ghlOAuthUrl?.url || "#"} style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "#fff", padding: "8px 16px", borderRadius: 9999, background: A, textDecoration: "none" }}>Connect</a>
+        )}
+      </div>
+
+      {/* Push buttons */}
+      {ghlStatus?.connected && campaignKit && (
+        <button
+          onClick={handleGhlPush}
+          disabled={ghlPush.isPending}
+          style={{
+            width: "100%", padding: "14px 24px", borderRadius: 9999, border: "none",
+            background: ghlPush.isPending ? "#ccc" : A, color: "#fff",
+            fontFamily: F, fontWeight: 600, fontSize: 15, cursor: ghlPush.isPending ? "wait" : "pointer",
+            marginBottom: 12,
+          }}
+        >
+          {ghlPush.isPending ? "Pushing..." : "Push Campaign to GoHighLevel"}
+        </button>
+      )}
+
+      {pushStatus && (
+        <p style={{ fontFamily: F, fontSize: 13, color: pushStatus.startsWith("Error") ? "#C0390A" : "#22C55E", margin: "8px 0", whiteSpace: "pre-line", lineHeight: 1.6 }}>
+          {pushStatus}
+        </p>
+      )}
+
+      <p style={{ fontFamily: F, fontSize: 12, color: "#bbb", margin: "24px 0 0" }}>
+        Both integrations are optional. You can also copy your campaign manually from the Campaign Kit.
+      </p>
+    </div>
+  );
+}
+
 // ─── Success State: Zappy cheering + confetti ─────────────────────────────────
 function SuccessState({ score, nextStepUrl, isLastStep }: {
   score: number;
@@ -433,6 +1341,7 @@ function SuccessState({ score, nextStepUrl, isLastStep }: {
   isLastStep?: boolean;
 }) {
   const [windowSize, setWindowSize] = useState({ width: window.innerWidth, height: window.innerHeight });
+  const [showConfetti, setShowConfetti] = useState(false);
 
   useEffect(() => {
     const handleResize = () => setWindowSize({ width: window.innerWidth, height: window.innerHeight });
@@ -440,9 +1349,17 @@ function SuccessState({ score, nextStepUrl, isLastStep }: {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  // Delay confetti by 800ms so result panel renders first
+  useEffect(() => {
+    if (score === 100) {
+      const timer = setTimeout(() => setShowConfetti(true), 800);
+      return () => clearTimeout(timer);
+    }
+  }, [score]);
+
   return (
     <>
-      {score === 100 && (
+      {showConfetti && (
         <Confetti
           width={windowSize.width}
           height={windowSize.height}
@@ -1223,9 +2140,26 @@ interface V2GeneratorWizardProps {
 
 export default function V2GeneratorWizard({ step, serviceId, onBack }: V2GeneratorWizardProps) {
   const [, navigate] = useLocation();
-  // ── Subscription tier check (reuses existing auth — no new logic) ──
-  const { user: authUser } = useAuth();
+  // ── Subscription tier check (reuses existing auth — refresh on mount to catch tier changes) ──
+  const { user: authUser, refresh: refreshAuth } = useAuth();
+  useEffect(() => { refreshAuth(); }, []);
   const isFreeTier = !authUser || (authUser.role !== "superuser" && authUser.role !== "admin" && authUser.subscriptionTier !== "pro" && authUser.subscriptionTier !== "agency");
+
+  // ── Quota tracking per step ──
+  const STEP_QUOTA_MAP: Partial<Record<WizardStep, { key: "icp" | "offers" | "adCopy" | "email" | "whatsapp" | "landingPages" | "headlines" | "hvco" | "heroMechanisms"; countField: string; featureName: string }>> = {
+    icp:              { key: "icp",          countField: "icpGeneratedCount",          featureName: "ICP Generation" },
+    offer:            { key: "offers",       countField: "offerGeneratedCount",        featureName: "Offer Generation" },
+    uniqueMethod:     { key: "heroMechanisms", countField: "heroMechanismGeneratedCount", featureName: "Unique Method" },
+    freeOptIn:        { key: "hvco",         countField: "hvcoGeneratedCount",         featureName: "Free Opt-In Titles" },
+    adCopy:           { key: "adCopy",       countField: "adCopyGeneratedCount",       featureName: "Ad Copy" },
+    landingPage:      { key: "landingPages", countField: "landingPageGeneratedCount",  featureName: "Landing Page" },
+    emailSequence:    { key: "email",        countField: "emailSeqGeneratedCount",     featureName: "Email Sequence" },
+    whatsappSequence: { key: "whatsapp",     countField: "whatsappSeqGeneratedCount",  featureName: "WhatsApp Sequence" },
+  };
+  const quotaInfo = STEP_QUOTA_MAP[step];
+  const quotaUsed = quotaInfo ? ((authUser as any)?.[quotaInfo.countField] ?? 0) : 0;
+  const quotaLimit = quotaInfo ? getLimit(authUser?.subscriptionTier, quotaInfo.key) : Infinity;
+  const isQuotaExceeded = quotaInfo && quotaLimit !== Infinity && quotaLimit < 999 && quotaUsed >= quotaLimit;
 
   // NOTE: All hooks MUST be called unconditionally before any early returns
   // to comply with React's Rules of Hooks.
@@ -1275,6 +2209,11 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
   const [latestWhatsappSequenceId, setLatestWhatsappSequenceId] = useState<number | null>(null);
   // ── ICP name input (only for ICP step) ──
   const [icpName, setIcpName] = useState("");
+  // ── Campaign Kit state ──
+  const [campaignKit, setCampaignKit] = useState<any>(null);
+  const [activeLandingPageAngle, setActiveLandingPageAngle] = useState<string>("original");
+  const getOrCreateKit = trpc.campaignKits.getOrCreate.useMutation();
+  const updateKitSelection = trpc.campaignKits.updateSelection.useMutation();
   // ── tRPC utils for cache invalidation ──
   const utils = trpc.useUtils();
   // ── Real mutations (all use generateAsync + polling pattern) ──
@@ -1331,6 +2270,38 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
   // ── Resolve the active ICP ──
   const activeIcp = isDemoMissing ? undefined : icpData?.[0];
 
+  // ── Load or create campaign kit when ICP is available ──
+  const kitLoadedRef = useRef(false);
+  useEffect(() => {
+    if (activeIcp?.id && !kitLoadedRef.current) {
+      kitLoadedRef.current = true;
+      getOrCreateKit.mutateAsync({ icpId: activeIcp.id })
+        .then(kit => setCampaignKit(kit))
+        .catch(err => console.warn("[CampaignKit] Failed to load:", err));
+    }
+  }, [activeIcp?.id]);
+
+  // ── Route guard: redirect if upstream selection not met ──
+  useEffect(() => {
+    if (!campaignKit) return;
+    const gateField = STEP_GATES[step];
+    if (gateField && campaignKit[gateField] == null) {
+      const target = findFirstIncompleteStep(campaignKit);
+      navigate(`/v2-dashboard/wizard/${target}`);
+    }
+  }, [campaignKit, step]);
+
+  // ── Helper: select an item for the campaign kit ──
+  const selectForKit = async (field: string, value: number | string | null) => {
+    if (!campaignKit?.id) return;
+    try {
+      const updated = await updateKitSelection.mutateAsync({ kitId: campaignKit.id, [field]: value });
+      setCampaignKit(updated);
+    } catch (err) {
+      console.error("[CampaignKit] Selection failed:", err);
+    }
+  };
+
   // ── Demo state triggers (for screenshots) ──
   useEffect(() => {
     if (isDemoLoading) {
@@ -1382,6 +2353,110 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
       if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
     };
   }, []);
+
+  // ── History load: fetch latest result for this step on mount ──
+  // Uses list queries (all routers support serviceId filter, ordered by createdAt desc)
+  // If a result exists, set the ID state and switch to "success" status
+  const historyLoadedRef = useRef(false);
+  const resolvedServiceId = activeService?.id;
+
+  // Reset state when step changes (prevents stale errors persisting across nodes)
+  useEffect(() => {
+    setStatus("idle");
+    setErrorMsg("");
+    setComplianceScore(100);
+    setComplianceViolations([]);
+    setProgressLabel(null);
+    historyLoadedRef.current = false;
+  }, [step]);
+
+  // Fetch latest for each node type (only the one matching current step)
+  const { data: historyIcps } = trpc.icps.list.useQuery(
+    { serviceId: resolvedServiceId! },
+    { enabled: step === "icp" && !!resolvedServiceId && status === "idle" && !historyLoadedRef.current }
+  );
+  const { data: historyOffers } = trpc.offers.list.useQuery(
+    { serviceId: resolvedServiceId! },
+    { enabled: step === "offer" && !!resolvedServiceId && status === "idle" && !historyLoadedRef.current }
+  );
+  const { data: historyMechanisms } = trpc.heroMechanisms.list.useQuery(
+    { serviceId: resolvedServiceId! },
+    { enabled: step === "uniqueMethod" && !!resolvedServiceId && status === "idle" && !historyLoadedRef.current }
+  );
+  const { data: historyHvco } = trpc.hvco.list.useQuery(
+    { serviceId: resolvedServiceId! },
+    { enabled: step === "freeOptIn" && !!resolvedServiceId && status === "idle" && !historyLoadedRef.current }
+  );
+  const { data: historyHeadlines } = trpc.headlines.getLatestByServiceId.useQuery(
+    { serviceId: resolvedServiceId! },
+    { enabled: step === "headlines" && !!resolvedServiceId && status === "idle" && !historyLoadedRef.current }
+  );
+  const { data: historyAdCopy } = trpc.adCopy.getLatestByServiceId.useQuery(
+    { serviceId: resolvedServiceId! },
+    { enabled: step === "adCopy" && !!resolvedServiceId && status === "idle" && !historyLoadedRef.current }
+  );
+  const { data: historyLandingPages } = trpc.landingPages.list.useQuery(
+    { serviceId: resolvedServiceId! },
+    { enabled: step === "landingPage" && !!resolvedServiceId && status === "idle" && !historyLoadedRef.current }
+  );
+  const { data: historyEmails } = trpc.emailSequences.list.useQuery(
+    { serviceId: resolvedServiceId! },
+    { enabled: step === "emailSequence" && !!resolvedServiceId && status === "idle" && !historyLoadedRef.current }
+  );
+  const { data: historyWhatsapp } = trpc.whatsappSequences.list.useQuery(
+    { serviceId: resolvedServiceId! },
+    { enabled: step === "whatsappSequence" && !!resolvedServiceId && status === "idle" && !historyLoadedRef.current }
+  );
+
+  useEffect(() => {
+    if (historyLoadedRef.current || status !== "idle" || demoMode) return;
+
+    if (step === "icp" && historyIcps && historyIcps.length > 0) {
+      setLatestIcpId(historyIcps[0].id);
+      setStatus("success");
+      historyLoadedRef.current = true;
+    } else if (step === "offer" && historyOffers && historyOffers.length > 0) {
+      setLatestOfferId(historyOffers[0].id);
+      setStatus("success");
+      historyLoadedRef.current = true;
+    } else if (step === "uniqueMethod" && historyMechanisms && historyMechanisms.length > 0) {
+      const m = historyMechanisms[0] as any;
+      setLatestMechanismSetId(m.mechanismSetId ?? m.id?.toString());
+      setStatus("success");
+      historyLoadedRef.current = true;
+    } else if (step === "freeOptIn" && historyHvco && historyHvco.length > 0) {
+      const h = historyHvco[0] as any;
+      setLatestHvcoSetId(h.hvcoSetId ?? h.id?.toString());
+      setStatus("success");
+      historyLoadedRef.current = true;
+    } else if (step === "headlines" && historyHeadlines) {
+      const h = historyHeadlines as any;
+      if (h?.headlineSetId || h?.adSetId) {
+        setLatestHeadlineSetId(h.headlineSetId ?? h.adSetId);
+        setStatus("success");
+        historyLoadedRef.current = true;
+      }
+    } else if (step === "adCopy" && historyAdCopy) {
+      const a = historyAdCopy as any;
+      if (a?.adSetId) {
+        setLatestAdSetId(a.adSetId);
+        setStatus("success");
+        historyLoadedRef.current = true;
+      }
+    } else if (step === "landingPage" && historyLandingPages && historyLandingPages.length > 0) {
+      setLatestLandingPageId(historyLandingPages[0].id);
+      setStatus("success");
+      historyLoadedRef.current = true;
+    } else if (step === "emailSequence" && historyEmails && historyEmails.length > 0) {
+      setLatestEmailSequenceId(historyEmails[0].id);
+      setStatus("success");
+      historyLoadedRef.current = true;
+    } else if (step === "whatsappSequence" && historyWhatsapp && historyWhatsapp.length > 0) {
+      setLatestWhatsappSequenceId(historyWhatsapp[0].id);
+      setStatus("success");
+      historyLoadedRef.current = true;
+    }
+  }, [step, status, demoMode, historyIcps, historyOffers, historyMechanisms, historyHvco, historyHeadlines, historyAdCopy, historyLandingPages, historyEmails, historyWhatsapp]);
 
   // ── Core generation logic — real tRPC mutations for all 11 steps ──
   const runGeneration = useCallback(async (payload: Record<string, unknown>) => {
@@ -1473,12 +2548,14 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
         const hvcoResult = await pollJob(jobId);
         if (typeof hvcoResult.hvcoSetId === 'string') setLatestHvcoSetId(hvcoResult.hvcoSetId);
       } else if (step === "headlines") {
+        const selectedFormula = fieldValues.formulaType && fieldValues.formulaType !== "all" ? fieldValues.formulaType : undefined;
         const { jobId } = await generateHeadlinesAsync.mutateAsync({
           serviceId: svcId,
           targetMarket: svc?.targetCustomer || "",
           pressingProblem: svc?.painPoints || "",
           desiredOutcome: svc?.mainBenefit || "",
           uniqueMechanism: svc?.uniqueMechanismSuggestion || "",
+          formulaType: selectedFormula as any,
         });
         const headlineResult = await pollJob(jobId);
         if (headlineResult.headlineSetId) {
@@ -1524,7 +2601,10 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
         const waResult = await pollJob(jobId);
         if (typeof waResult.id === 'number') setLatestWhatsappSequenceId(waResult.id);
       } else if (step === "pushToMeta") {
-        // No generation needed — just show instructions
+        // No generation needed — just show the integration panel
+        clearTimeout(timeoutRef.current ?? undefined);
+        setStatus("success");
+        return; // Skip progress invalidation — no generation happened
       }
       clearTimeout(timeoutRef.current ?? undefined);
       setComplianceScore(100);
@@ -1535,9 +2615,27 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
       clearTimeout(timeoutRef.current ?? undefined);
       const msg = err instanceof Error ? err.message : "";
       if (msg.includes("limit") || msg.includes("quota") || msg.includes("FORBIDDEN")) {
-        setErrorMsg(msg);
+        // Parse quota_exceeded JSON if present, show friendly message
+        let friendlyMsg = msg;
+        try {
+          const parsed = JSON.parse(msg);
+          if (parsed.message === "quota_exceeded") {
+            const generatorNames: Record<string, string> = {
+              headlines: "headline", hvco: "lead magnet", heroMechanisms: "unique method",
+              icp: "ICP", adCopy: "ad copy", email: "email sequence",
+              whatsapp: "WhatsApp sequence", landingPages: "landing page", offers: "offer",
+            };
+            const name = generatorNames[parsed.generator] || parsed.generator || "asset";
+            friendlyMsg = `QUOTA_EXCEEDED:${parsed.generator}:You've used your free ${name} generations. Upgrade to ZAP Pro to generate more.`;
+          }
+        } catch { /* not JSON — use raw msg */ }
+        setErrorMsg(friendlyMsg);
         setStatus("missing_data");
+      } else if (msg.includes("529") || msg.toLowerCase().includes("overloaded") || msg.toLowerCase().includes("busy")) {
+        setErrorMsg("The AI is temporarily busy — please try again in a minute.");
+        setStatus("error");
       } else {
+        setErrorMsg("");
         setStatus("error");
       }
     }
@@ -1608,7 +2706,9 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
     if (lastPayloadRef.current) {
       runGeneration(lastPayloadRef.current);
     } else {
+      // No stored payload (loaded from history) — reset to idle so user can trigger fresh generation
       setStatus("idle");
+      setErrorMsg("");
     }
   }
 
@@ -1629,8 +2729,11 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
 
   return (
     <V2Layout>
+      <div style={{ display: "flex", minHeight: "100vh" }}>
+      {/* ── Main wizard column ── */}
       <div style={{
-        minHeight: "100vh",
+        flex: 1,
+        minWidth: 0,
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -1679,111 +2782,176 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
             Generate {stepLabel} using your AI Profile
           </h1>
 
+          {/* ── Zappy context line ── */}
+          {status === "idle" && activeService && getZappyContextLine(step, activeService) && (
+            <p style={{
+              fontFamily: "var(--v2-font-body)",
+              fontSize: "14px",
+              fontStyle: "italic",
+              color: "#999",
+              textAlign: "center",
+              maxWidth: "480px",
+              margin: "-16px auto 24px",
+              lineHeight: 1.6,
+            }}>
+              {getZappyContextLine(step, activeService)}
+            </p>
+          )}
+
           {/* ── WAITING STATE ── */}
           {status === "waiting" && <WaitingState />}
 
           {/* ── LOADING STATE ── */}
           {status === "loading" && <LoadingState step={step} progressLabel={progressLabel} />}
 
-          {/* ── SUCCESS STATE ── */}
-          {status === "success" && (
+          {/* ── SUCCESS STATE (hidden on nodes using RecommendedAssetPanel) ── */}
+          {status === "success" && step !== "headlines" && step !== "offer" && step !== "uniqueMethod" && step !== "freeOptIn" && step !== "adCopy" && step !== "landingPage" && step !== "emailSequence" && step !== "whatsappSequence" && (
             <SuccessState
               score={complianceScore}
               nextStepUrl={(() => { const next = getNextStep(step); return next ? `/v2-dashboard/wizard/${next}` : null; })()}
               isLastStep={step === "pushToMeta"}
             />
           )}
-          {/* ── R1a: NODE 6 HEADLINES RESULT PANEL ── */}
+          {/* ── R1a: NODE 6 HEADLINES — RECOMMENDED ASSET PANEL ── */}
           {status === "success" && step === "headlines" && latestHeadlineSetId && activeService && (
-            <V2HeadlinesResultPanel
+            <HeadlineRecommendation
               headlineSetId={latestHeadlineSetId}
               serviceId={activeService.id}
-              onContinue={() => {
-                const next = getNextStep(step);
-                if (next) navigate(`/v2-dashboard/wizard/${next}`);
+              service={activeService}
+              campaignKit={campaignKit}
+              onSelect={async (headlineId: number) => {
+                await selectForKit("selectedHeadlineId", headlineId);
+                navigate("/v2-dashboard/wizard/adCopy");
               }}
+              onRegenerate={handleRetry}
             />
           )}
-          {/* ── R1a: NODE 7 AD COPY RESULT PANEL ── */}
+          {/* ── NODE 7 AD COPY — RECOMMENDED ASSET PANEL ── */}
+          {status === "success" && step === "adCopy" && latestAdSetId && (
+            <AdCopyRecommendation
+              adSetId={latestAdSetId}
+              campaignKit={campaignKit}
+              onSelect={async (itemId: number) => {
+                await selectForKit("selectedAdCopyId", itemId);
+                navigate("/v2-dashboard/wizard/landingPage");
+              }}
+              onRegenerate={handleRetry}
+            />
+          )}
+          {/* ── NODE 7 AD COPY — FULL RESULT PANEL ── */}
           {status === "success" && step === "adCopy" && latestAdSetId && activeService && (
             <V2AdCopyResultPanel
               adSetId={latestAdSetId}
               serviceId={activeService.id}
-              onContinue={() => {
-                const next = getNextStep(step);
-                if (next) navigate(`/v2-dashboard/wizard/${next}`);
-              }}
+              isFreeTier={isFreeTier}
             />
           )}
           {/* ── R1b: NODE 2 ICP RESULT PANEL ── */}
           {status === "success" && step === "icp" && latestIcpId && (
-            <V2ICPResultPanel
-              icpId={latestIcpId}
-              onContinue={() => {
-                const next = getNextStep(step);
-                if (next) navigate(`/v2-dashboard/wizard/${next}`);
-              }}
-            />
+            <V2ICPResultPanel icpId={latestIcpId} isFreeTier={isFreeTier} />
           )}
-          {/* ── R1b: NODE 3 OFFER RESULT PANEL ── */}
+          {/* ── NODE 3 OFFER — RECOMMENDED ASSET PANEL ── */}
           {status === "success" && step === "offer" && latestOfferId && (
-            <V2OfferResultPanel
+            <OfferRecommendation
               offerId={latestOfferId}
-              onContinue={() => {
-                const next = getNextStep(step);
-                if (next) navigate(`/v2-dashboard/wizard/${next}`);
+              campaignKit={campaignKit}
+              onSelect={async (itemId: number) => {
+                await selectForKit("selectedOfferId", itemId);
+                navigate("/v2-dashboard/wizard/uniqueMethod");
               }}
+              onRegenerate={handleRetry}
             />
           )}
-          {/* ── R1b: NODE 4 UNIQUE METHOD RESULT PANEL ── */}
+          {/* ── NODE 4 UNIQUE METHOD — RECOMMENDED ASSET PANEL ── */}
           {status === "success" && step === "uniqueMethod" && latestMechanismSetId && (
-            <V2UniqueMethodResultPanel
+            <MechanismRecommendation
               mechanismSetId={latestMechanismSetId}
-              onContinue={() => {
-                const next = getNextStep(step);
-                if (next) navigate(`/v2-dashboard/wizard/${next}`);
+              campaignKit={campaignKit}
+              onSelect={async (itemId: number) => {
+                await selectForKit("selectedMechanismId", itemId);
+                navigate("/v2-dashboard/wizard/freeOptIn");
               }}
+              onRegenerate={handleRetry}
             />
           )}
-          {/* ── R1b: NODE 5 FREE OPT-IN RESULT PANEL ── */}
+          {/* ── NODE 5 FREE OPT-IN — RECOMMENDED ASSET PANEL ── */}
           {status === "success" && step === "freeOptIn" && latestHvcoSetId && (
-            <V2FreeOptInResultPanel
+            <HvcoRecommendation
               hvcoSetId={latestHvcoSetId}
-              onContinue={() => {
-                const next = getNextStep(step);
-                if (next) navigate(`/v2-dashboard/wizard/${next}`);
+              campaignKit={campaignKit}
+              onSelect={async (itemId: number) => {
+                await selectForKit("selectedHvcoId", itemId);
+                navigate("/v2-dashboard/wizard/headlines");
               }}
+              onRegenerate={handleRetry}
             />
           )}
-          {/* ── R1b: NODE 8 LANDING PAGE RESULT PANEL ── */}
+          {/* ── NODE 8 LANDING PAGE — RECOMMENDED ASSET PANEL ── */}
+          {status === "success" && step === "landingPage" && latestLandingPageId && (
+            <LandingPageRecommendation
+              landingPageId={latestLandingPageId}
+              campaignKit={campaignKit}
+              onSelect={async (pageId: number, angle: string) => {
+                if (!campaignKit?.id) return;
+                try {
+                  const updated = await updateKitSelection.mutateAsync({
+                    kitId: campaignKit.id,
+                    selectedLandingPageId: pageId,
+                    selectedLandingPageAngle: angle,
+                  });
+                  setCampaignKit(updated);
+                } catch (err) {
+                  console.error("[CampaignKit] LP selection failed:", err);
+                }
+                navigate("/v2-dashboard/wizard/emailSequence");
+              }}
+              onRegenerate={handleRetry}
+            />
+          )}
+          {/* ── NODE 8 LANDING PAGE — FULL RESULT PANEL ── */}
           {status === "success" && step === "landingPage" && latestLandingPageId && (
             <V2LandingPageResultPanel
               landingPageId={latestLandingPageId}
-              onContinue={() => {
-                const next = getNextStep(step);
-                if (next) navigate(`/v2-dashboard/wizard/${next}`);
-              }}
+              isFreeTier={isFreeTier}
+              onAngleChange={setActiveLandingPageAngle}
             />
           )}
-          {/* ── R1b: NODE 9 EMAIL SEQUENCE RESULT PANEL ── */}
+          {/* ── NODE 9 EMAIL SEQUENCE — RECOMMENDED ASSET PANEL ── */}
           {status === "success" && step === "emailSequence" && latestEmailSequenceId && (
-            <V2EmailSequenceResultPanel
+            <EmailRecommendation
               emailSequenceId={latestEmailSequenceId}
-              onContinue={() => {
-                const next = getNextStep(step);
-                if (next) navigate(`/v2-dashboard/wizard/${next}`);
+              campaignKit={campaignKit}
+              onSelect={async (itemId: number) => {
+                await selectForKit("selectedEmailSequenceId", itemId);
+                navigate("/v2-dashboard/wizard/whatsappSequence");
               }}
+              onRegenerate={handleRetry}
             />
           )}
-          {/* ── R1b: NODE 10 WHATSAPP RESULT PANEL ── */}
+          {/* ── NODE 9 EMAIL SEQUENCE — FULL RESULT PANEL ── */}
+          {status === "success" && step === "emailSequence" && latestEmailSequenceId && (
+            <V2EmailSequenceResultPanel emailSequenceId={latestEmailSequenceId} isFreeTier={isFreeTier} />
+          )}
+          {/* ── NODE 10 WHATSAPP SEQUENCE — RECOMMENDED ASSET PANEL ── */}
           {status === "success" && step === "whatsappSequence" && latestWhatsappSequenceId && (
-            <V2WhatsAppResultPanel
+            <WhatsAppRecommendation
               whatsappSequenceId={latestWhatsappSequenceId}
-              onContinue={() => {
-                const next = getNextStep(step);
-                if (next) navigate(`/v2-dashboard/wizard/${next}`);
+              campaignKit={campaignKit}
+              onSelect={async (itemId: number) => {
+                await selectForKit("selectedWhatsAppSequenceId", itemId);
+                navigate("/v2-dashboard/wizard/pushToMeta");
               }}
+              onRegenerate={handleRetry}
             />
+          )}
+          {/* ── NODE 10 WHATSAPP SEQUENCE — FULL RESULT PANEL ── */}
+          {status === "success" && step === "whatsappSequence" && latestWhatsappSequenceId && (
+            <V2WhatsAppResultPanel whatsappSequenceId={latestWhatsappSequenceId} isFreeTier={isFreeTier} />
+          )}
+
+          {/* ── NODE 11 — PUSH TO META / GHL ── */}
+          {step === "pushToMeta" && (
+            <PushIntegrationPanel campaignKit={campaignKit} />
           )}
 
           {/* ── CONCERNED STATE (compliance violations) ── */}
@@ -1803,7 +2971,7 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
           {/* ── SCENARIO 2: MID-GENERATION FAILURE ── */}
           {status === "error" && (
             <ErrorBanner
-              message="Something went wrong halfway through. Your inputs are saved — just hit Generate Again."
+              message={errorMsg || "Something went wrong halfway through. Your inputs are saved — just hit Generate Again."}
               retryLabel="Generate Again"
               onRetry={handleRetry}
             />
@@ -1819,7 +2987,7 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
           )}
 
           {/* ── MISSING DATA MESSAGE ── */}
-          {status === "missing_data" && (
+          {status === "missing_data" && errorMsg && (
             <div style={{
               background: "rgba(255,91,29,0.08)",
               border: "1px solid rgba(255,91,29,0.25)",
@@ -1831,7 +2999,31 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
               color: "#C0390A",
               textAlign: "center",
             }}>
-              {errorMsg}
+              {errorMsg.startsWith("QUOTA_EXCEEDED:") ? (() => {
+                const parts = errorMsg.split(":");
+                const generator = parts[1] || "headlines";
+                const message = parts.slice(2).join(":");
+                return (
+                  <>
+                    <p style={{ margin: "0 0 12px" }}>{message}</p>
+                    <a
+                      href={`/pricing?utm_source=app&utm_medium=quota&utm_campaign=${generator}`}
+                      style={{
+                        display: "inline-block",
+                        padding: "10px 24px",
+                        borderRadius: "var(--v2-border-radius-pill, 9999px)",
+                        background: "var(--v2-primary-btn, #FF5B1D)",
+                        color: "#fff",
+                        fontWeight: 700,
+                        fontSize: "14px",
+                        textDecoration: "none",
+                      }}
+                    >
+                      Upgrade to Pro
+                    </a>
+                  </>
+                );
+              })() : errorMsg}
             </div>
           )}
 
@@ -1880,27 +3072,41 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
                 </div>
               )}
               {/* ── GENERATE NOW button (only shown in idle / missing_data states) ── */}
-              {showGenerateButton && (
-                <button
-                  onClick={handleGenerateNow}
-                  style={primaryBtnStyle}
-                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.88"; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; }}
-                >
-                  Generate Now
-                </button>
-              )}
+              {showGenerateButton && isQuotaExceeded && quotaInfo ? (
+                <>
+                  <QuotaIndicator generatorKey={quotaInfo.key} usedCount={quotaUsed} tier={authUser?.subscriptionTier} />
+                  <UpgradePrompt variant="inline" featureName={quotaInfo.featureName} />
+                </>
+              ) : showGenerateButton ? (
+                <>
+                  <button
+                    onClick={handleGenerateNow}
+                    style={primaryBtnStyle}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.88"; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; }}
+                  >
+                    Generate Now
+                  </button>
+                  {quotaInfo && (
+                    <QuotaIndicator generatorKey={quotaInfo.key} usedCount={quotaUsed} tier={authUser?.subscriptionTier} />
+                  )}
+                </>
+              ) : null}
             </>
           )}
 
           {/* ── Try Again / Generate Again button after concerned/success ── */}
           {(status === "success" || status === "concerned") && (
-            <button
-              onClick={() => { setStatus("idle"); }}
-              style={secondaryBtnStyle}
-            >
-              ↺ Generate Again
-            </button>
+            isFreeTier && status === "success" && !isQuotaExceeded && !PRO_GATED_STEPS.includes(step) ? (
+              <UpgradePrompt variant="inline" featureName="Generate Again" />
+            ) : (
+              <button
+                onClick={() => { setStatus("idle"); }}
+                style={secondaryBtnStyle}
+              >
+                ↺ Generate Again
+              </button>
+            )
           )}
 
           {/* ── Back to idle after error states (secondary option) ── */}
@@ -1930,7 +3136,7 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
                 textDecorationColor: "rgba(119,119,119,0.4)",
               }}
             >
-              {accordionOpen ? "▲ Hide Advanced Inputs" : "Advanced: Edit AI Inputs"}
+              {accordionOpen ? "▲ Hide options" : "Want to customise? Advanced options ↓"}
             </button>
           </div>
 
@@ -1981,6 +3187,12 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
           Your AI Profile (Service + ICP) is automatically bundled into every generation. No re-entry needed.
         </p>
 
+      </div>
+      {/* ── Campaign Kit Sidebar (desktop only) ── */}
+      <div className="campaign-kit-sidebar-wrapper" style={{ display: "none" }}>
+        <CampaignKitSidebar kit={campaignKit} currentStep={step} onNavigate={(s) => navigate(`/v2-dashboard/wizard/${s}`)} />
+      </div>
+      <style>{`@media (min-width: 1024px) { .campaign-kit-sidebar-wrapper { display: block !important; } }`}</style>
       </div>
     </V2Layout>
   );

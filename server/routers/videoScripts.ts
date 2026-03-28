@@ -829,6 +829,8 @@ export const videoScriptsRouter = router({
       })
     )
     .mutation(async ({ ctx, input }: { ctx: any; input: any }) => {
+      console.log(`[Video Script] Generate — videoType: ${input.videoType}, duration: ${input.duration}, visualStyle: ${input.visualStyle}, serviceId: ${input.serviceId}`);
+
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -871,13 +873,13 @@ export const videoScriptsRouter = router({
         throw new Error("No scenes returned — please try again");
       }
 
-      // Word count validation — max 150 words
+      // Word count validation — max 300 words
       const totalWords = scriptData.scenes.reduce((sum: number, s: any) =>
         sum + (s.voiceoverText?.trim().split(/\s+/).length || 0), 0
       );
       console.log(`[Script] Total word count: ${totalWords}`);
-      if (totalWords > 150) {
-        throw new Error(`Script too long: ${totalWords} words. Maximum 150. Regenerate.`);
+      if (totalWords > 300) {
+        throw new Error(`Script too long: ${totalWords} words. Maximum 300. Regenerate.`);
       }
 
       console.log(`✅ ZAP-generated script for: ${service.name}`);
@@ -1013,6 +1015,8 @@ export const videoScriptsRouter = router({
       })
     )
     .mutation(async ({ ctx, input }: { ctx: any; input: any }) => {
+      console.log(`[Video Script Async] Generate — videoType: ${input.videoType}, duration: ${input.duration}, visualStyle: ${input.visualStyle}, serviceId: ${input.serviceId}`);
+
       const db = await getDb();
       if (!db) throw new Error("Database not available");
       // Pre-fetch service data synchronously before setImmediate
@@ -1058,15 +1062,15 @@ export const videoScriptsRouter = router({
           } catch {
             throw new Error("Script generation failed — LLM did not return valid JSON");
           }
-          if (!parsed.scenes || parsed.scenes.length !== 5) {
-            throw new Error(`Invalid script structure — expected 5 scenes, got ${parsed.scenes?.length ?? 0}`);
+          if (!parsed.scenes || parsed.scenes.length < 3 || parsed.scenes.length > 10) {
+            throw new Error(`Invalid script structure — expected 3-10 scenes, got ${parsed.scenes?.length ?? 0}`);
           }
           const totalWords = parsed.scenes.reduce(
             (sum: number, s: any) => sum + (s.voiceoverText?.trim().split(/\s+/).length || 0),
             0
           );
-          if (totalWords > 150) {
-            throw new Error(`Script too long: ${totalWords} words. Maximum 150.`);
+          if (totalWords > 300) {
+            throw new Error(`Script too long: ${totalWords} words. Maximum 300.`);
           }
           const voiceoverText = parsed.scenes.map((s: any) => s.voiceoverText).join(" ");
           const enrichedScenes = parsed.scenes.map((s: any, i: number) =>
@@ -1153,17 +1157,17 @@ export async function generateVideoScriptForService(params: {
   } catch {
     throw new Error("Script generation failed — LLM did not return valid JSON");
   }
-  if (!parsed.scenes || parsed.scenes.length !== 5) {
-    throw new Error(`Invalid script structure — expected 5 scenes, got: ${JSON.stringify(parsed)}`);
+  if (!parsed.scenes || parsed.scenes.length < 3 || parsed.scenes.length > 10) {
+    throw new Error(`Invalid script structure — expected 3-10 scenes, got ${parsed.scenes?.length ?? 0}`);
   }
 
-  // Word count validation — max 150 words
+  // Word count validation — max 300 words
   const totalWords = parsed.scenes.reduce((sum: number, s: any) =>
     sum + (s.voiceoverText?.trim().split(/\s+/).length || 0), 0
   );
   console.log(`[Script] Total word count: ${totalWords}`);
-  if (totalWords > 150) {
-    throw new Error(`Script too long: ${totalWords} words. Maximum 150. Regenerate.`);
+  if (totalWords > 300) {
+    throw new Error(`Script too long: ${totalWords} words. Maximum 300. Regenerate.`);
   }
 
   console.log(`✅ ZAP-generated script for: ${service.name}`);

@@ -146,8 +146,8 @@ export default function AdminSystemHealth() {
           ) : metrics.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Activity className="h-8 w-8 mx-auto mb-2 opacity-30" />
-              <p className="text-sm">No metric snapshots recorded in the last 24 hours.</p>
-              <p className="text-xs mt-1">Metrics are written by background jobs. If this is empty, the health tracking job may not be running.</p>
+              <p className="text-sm">System health monitoring is initializing. Data will appear within 24 hours.</p>
+              <p className="text-xs mt-1">Metrics are collected by background jobs and will populate automatically once the health tracking job completes its first cycle.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">

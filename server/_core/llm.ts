@@ -290,6 +290,30 @@ async function invokeClaudeAPI(params: InvokeParams): Promise<InvokeResult> {
     const errData = await response.json() as any;
     lastError = errData?.error?.message ?? response.statusText;
 
+    // Auto-retry once on 529 (overloaded) with 10s delay
+    if (response.status === 529) {
+      console.warn(`[LLM] Claude API 529 overloaded on model ${model} — retrying in 10s...`);
+      await new Promise(resolve => setTimeout(resolve, 10_000));
+      const retryController = new AbortController();
+      const retryTimeoutId = setTimeout(() => retryController.abort(), 5 * 60 * 1000);
+      try {
+        response = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "x-api-key": ENV.anthropicApiKey,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json",
+          },
+          body: JSON.stringify(body),
+          signal: retryController.signal,
+        });
+      } finally {
+        clearTimeout(retryTimeoutId);
+      }
+      if (response.ok) break; // retry succeeded
+      throw new Error("Claude API overloaded — please try again in a minute");
+    }
+
     // Only retry on model-not-found (404); propagate other errors immediately
     if (response.status !== 404) {
       throw new Error(`Claude API failed: ${response.status} – ${lastError}`);

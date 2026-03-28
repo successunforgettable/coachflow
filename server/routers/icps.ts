@@ -10,6 +10,7 @@ function stripMarkdownJson(content: string): string {
 import { eq, and, desc } from "drizzle-orm";
 import { invokeLLM } from "../_core/llm";
 import { filterRecord, getGlobalNegativePrompts } from "../lib/complianceFilter";
+import { enforceQuota, incrementQuotaCount } from "../lib/quotaEnforcement";
 import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
@@ -99,6 +100,8 @@ export const icpsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
+
+      await enforceQuota(ctx.user.id, "icp");
 
       // Check and reset quota if user's anniversary date has passed
       await checkAndResetQuotaIfNeeded(ctx.user.id);
@@ -315,6 +318,8 @@ Format as JSON with these exact keys (use bullet points • for lists):
         .where(eq(idealCustomerProfiles.id, insertResult[0].insertId))
         .limit(1);
 
+      await incrementQuotaCount(ctx.user.id, "icp");
+
       return newICP;
     }),
 
@@ -327,6 +332,7 @@ Format as JSON with these exact keys (use bullet points • for lists):
     .input(generateICPSchema)
     .mutation(async ({ ctx, input }) => {
       const { user } = ctx;
+      await enforceQuota(ctx.user.id, "icp");
       await checkAndResetQuotaIfNeeded(user.id);
       if (user.role !== "superuser") {
         const limit = getQuotaLimit(user.subscriptionTier, "icp");
@@ -404,6 +410,8 @@ Format as JSON with these exact keys (use bullet points • for lists):
           const [newICP] = await bgDb.select().from(idealCustomerProfiles)
             .where(eq(idealCustomerProfiles.id, insertResult[0].insertId)).limit(1);
 
+          await incrementQuotaCount(capturedUserId, "icp");
+
           await bgDb.update(jobs)
             .set({ status: "complete", result: JSON.stringify({ icpId: newICP?.id }) })
             .where(eq(jobs.id, jobId));
@@ -462,6 +470,57 @@ Format as JSON with these exact keys (use bullet points • for lists):
         .limit(1);
 
       return updated;
+    }),
+
+  // Regenerate a single section of an ICP via AI
+  regenerateSection: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      sectionKey: z.enum(["introduction", "fears", "hopesDreams", "psychographics", "pains", "frustrations", "goals", "values", "objections", "buyingTriggers", "mediaConsumption", "influencers", "communicationStyle", "decisionMaking", "successMetrics", "implementationBarriers"]),
+      promptOverride: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      await enforceQuota(ctx.user.id, "icp");
+
+      const [row] = await db
+        .select()
+        .from(idealCustomerProfiles)
+        .where(and(eq(idealCustomerProfiles.id, input.id), eq(idealCustomerProfiles.userId, ctx.user.id)))
+        .limit(1);
+
+      if (!row) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "ICP not found" });
+      }
+
+      const currentValue = (row as Record<string, unknown>)[input.sectionKey] as string ?? "";
+      const overrideInstruction = input.promptOverride?.trim()
+        ? ` Additional instruction: ${input.promptOverride.trim()}.`
+        : "";
+
+      const prompt = `Rewrite this section of an ideal customer profile. Section: ${input.sectionKey}. Current content: ${currentValue}.${overrideInstruction} Return a JSON object with exactly one key: value (string). No explanation, no markdown, just the JSON object.`;
+
+      const response = await invokeLLM({
+        messages: [
+          { role: "system", content: "You are an expert marketing strategist specializing in customer profiles for coaches and consultants. Respond with only valid JSON." },
+          { role: "user", content: prompt },
+        ],
+      });
+
+      const content = response.choices[0].message.content;
+      if (typeof content !== "string") throw new Error("Invalid response from AI");
+
+      const parsed = JSON.parse(stripMarkdownJson(content));
+      if (!parsed.value) throw new Error("AI response missing value field");
+
+      await db
+        .update(idealCustomerProfiles)
+        .set({ [input.sectionKey]: parsed.value, updatedAt: new Date() } as any)
+        .where(eq(idealCustomerProfiles.id, input.id));
+
+      return { sectionKey: input.sectionKey, value: parsed.value };
     }),
 
   // Delete ICP

@@ -5,7 +5,39 @@ import { getDb } from "../db";
 import { offers, services, idealCustomerProfiles, sourceOfTruth, campaigns, jobs } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { generateAllOfferAngles } from "../offersGenerator";
+import { invokeLLM } from "../_core/llm";
 import { getQuotaLimit } from "../quotaLimits";
+import { enforceQuota, incrementQuotaCount } from "../lib/quotaEnforcement";
+import { complianceFilter } from "../lib/complianceFilter";
+import { checkCompliance } from "../lib/complianceChecker";
+import { scoreItem } from "../lib/selectionScorer";
+import { autoSelectBest } from "./campaignKits";
+
+// Apply compliance filter to a text string
+async function filterOfferSection(text: string): Promise<string> {
+  const result = complianceFilter(text);
+  const cleaned = result.wasModified ? result.cleanedText : text;
+  const score = await checkCompliance(cleaned);
+  if (score.score < 100) {
+    console.log(`[offers] Compliance score ${score.score}/100 for "${cleaned.substring(0, 50)}": ${score.issues.map(i => i.phrase).join(", ")}`);
+  }
+  return cleaned;
+}
+
+// Apply compliance filter to all string fields in an offer angle object
+async function filterOfferAngle(angle: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const filtered = { ...angle };
+  for (const key of Object.keys(filtered)) {
+    if (typeof filtered[key] === "string" && filtered[key]) {
+      filtered[key] = await filterOfferSection(filtered[key] as string);
+    }
+  }
+  return filtered;
+}
+
+function stripMarkdownJson(content: string): string {
+  return content.replace(/^```json\s*|^```\s*|\s*```$/gm, '').trim();
+}
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 
@@ -81,6 +113,7 @@ export const offersRouter = router({
   generate: protectedProcedure
     .input(generateOfferSchema)
     .mutation(async ({ ctx, input }) => {
+      await enforceQuota(ctx.user.id, "offers");
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -170,7 +203,7 @@ export const offersRouter = router({
         : service.targetCustomer || 'Target Customer';
 
       // Generate all 3 angles in parallel with social proof
-      const allAngles = await generateAllOfferAngles(
+      const allAnglesRaw = await generateAllOfferAngles(
         service.name,
         service.description || "",
         enrichedTargetCustomer,
@@ -178,6 +211,13 @@ export const offersRouter = router({
         input.offerType,
         socialProof
       );
+
+      // Apply compliance filter to all string fields in each angle
+      const allAngles = {
+        godfather: await filterOfferAngle(allAnglesRaw.godfather as Record<string, unknown>),
+        free: await filterOfferAngle(allAnglesRaw.free as Record<string, unknown>),
+        dollar: await filterOfferAngle(allAnglesRaw.dollar as Record<string, unknown>),
+      };
 
       // Save to database
       const insertResult: any = await db.insert(offers).values({
@@ -193,12 +233,32 @@ export const offersRouter = router({
         rating: 0,
       });
 
+      await incrementQuotaCount(ctx.user.id, "offers");
+
       // Fetch the created offer
       const [newOffer] = await db
         .select()
         .from(offers)
         .where(eq(offers.id, insertResult[0].insertId))
         .limit(1);
+
+      // Auto-score and auto-select into campaign kit (non-blocking)
+      try {
+        const godfatherContent = JSON.stringify(allAngles.godfather);
+        const freeContent = JSON.stringify(allAngles.free);
+        const dollarContent = JSON.stringify(allAngles.dollar);
+        const scores = await Promise.all([
+          scoreItem({ content: godfatherContent, nodeType: "offers", formulaType: "godfather" }),
+          scoreItem({ content: freeContent, nodeType: "offers", formulaType: "free" }),
+          scoreItem({ content: dollarContent, nodeType: "offers", formulaType: "dollar" }),
+        ]);
+        const bestScore = Math.max(...scores);
+        await db.update(offers).set({ selectionScore: String(bestScore) } as any).where(eq(offers.id, insertResult[0].insertId));
+        const [relatedIcp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
+        if (relatedIcp) {
+          await autoSelectBest(ctx.user.id, relatedIcp.id, "selectedOfferId", insertResult[0].insertId);
+        }
+      } catch (e) { console.warn("[auto-select] offers failed:", e); }
 
       return newOffer;
     }),
@@ -211,6 +271,7 @@ export const offersRouter = router({
     .input(generateOfferSchema)
     .mutation(async ({ ctx, input }) => {
       const { user } = ctx;
+      await enforceQuota(ctx.user.id, "offers");
       await checkAndResetQuotaIfNeeded(user.id);
       if (user.role !== "superuser") {
         const limit = getQuotaLimit(user.subscriptionTier, "offers");
@@ -280,7 +341,7 @@ export const offersRouter = router({
             ? `${sotContext ? `${sotContext}\n\n` : ''}${capturedService.targetCustomer || 'Target Customer'}${icpContext ? `\n\n${icpContext}` : ''}`
             : capturedService.targetCustomer || 'Target Customer';
 
-          const allAngles = await generateAllOfferAngles(
+          const allAnglesRaw2 = await generateAllOfferAngles(
             capturedService.name,
             capturedService.description || "",
             enrichedTargetCustomer,
@@ -288,6 +349,11 @@ export const offersRouter = router({
             capturedInput.offerType,
             socialProof
           );
+          const allAngles = {
+            godfather: await filterOfferAngle(allAnglesRaw2.godfather as Record<string, unknown>),
+            free: await filterOfferAngle(allAnglesRaw2.free as Record<string, unknown>),
+            dollar: await filterOfferAngle(allAnglesRaw2.dollar as Record<string, unknown>),
+          };
 
           const insertResult: any = await bgDb.insert(offers).values({
             userId: capturedUserId,
@@ -301,6 +367,26 @@ export const offersRouter = router({
             activeAngle: "godfather",
             rating: 0,
           });
+
+          await incrementQuotaCount(capturedUserId, "offers");
+
+          // Auto-score and auto-select into campaign kit (non-blocking)
+          try {
+            const godfatherContent = JSON.stringify(allAngles.godfather);
+            const freeContent = JSON.stringify(allAngles.free);
+            const dollarContent = JSON.stringify(allAngles.dollar);
+            const scores = await Promise.all([
+              scoreItem({ content: godfatherContent, nodeType: "offers", formulaType: "godfather" }),
+              scoreItem({ content: freeContent, nodeType: "offers", formulaType: "free" }),
+              scoreItem({ content: dollarContent, nodeType: "offers", formulaType: "dollar" }),
+            ]);
+            const bestScore = Math.max(...scores);
+            await bgDb.update(offers).set({ selectionScore: String(bestScore) } as any).where(eq(offers.id, insertResult[0].insertId));
+            const [relatedIcp] = await bgDb.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, capturedInput.serviceId)).limit(1);
+            if (relatedIcp) {
+              await autoSelectBest(capturedUserId, relatedIcp.id, "selectedOfferId", insertResult[0].insertId);
+            }
+          } catch (e) { console.warn("[auto-select] offers async failed:", e); }
 
           await bgDb.update(jobs)
             .set({ status: "complete", result: JSON.stringify({ offerId: insertResult[0].insertId }) })
@@ -393,6 +479,66 @@ export const offersRouter = router({
         .limit(1);
 
       return updated;
+    }),
+
+  // Regenerate a single section within an offer angle via AI
+  regenerateSection: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      angle: z.enum(["godfather", "free", "dollar"]),
+      sectionKey: z.enum(["headline", "subheadline", "offerName", "price", "whatYouGet", "bonuses", "guarantee", "urgency"]),
+      promptOverride: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      await enforceQuota(ctx.user.id, "offers");
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const [row] = await db
+        .select()
+        .from(offers)
+        .where(and(eq(offers.id, input.id), eq(offers.userId, ctx.user.id)))
+        .limit(1);
+
+      if (!row) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Offer not found" });
+      }
+
+      const angleColMap = { godfather: "godfatherAngle", free: "freeAngle", dollar: "dollarAngle" } as const;
+      const angleCol = angleColMap[input.angle];
+      const rawAngle = row[angleCol];
+      const angleData: Record<string, string> = typeof rawAngle === "string" ? JSON.parse(rawAngle) : (rawAngle as Record<string, string>) ?? {};
+
+      const currentValue = angleData[input.sectionKey] ?? "";
+      const overrideInstruction = input.promptOverride?.trim()
+        ? ` Additional instruction: ${input.promptOverride.trim()}.`
+        : "";
+
+      const prompt = `Rewrite this section of a coaching offer. Section: ${input.sectionKey}. Current content: ${currentValue}.${overrideInstruction} Return a JSON object with exactly one key: value (string). No explanation, no markdown, just the JSON object.`;
+
+      const response = await invokeLLM({
+        messages: [
+          { role: "system", content: "You are an expert offer copywriter for coaches and consultants. Respond with only valid JSON." },
+          { role: "user", content: prompt },
+        ],
+      });
+
+      const content = response.choices[0].message.content;
+      if (typeof content !== "string") throw new Error("Invalid response from AI");
+
+      const parsed = JSON.parse(stripMarkdownJson(content));
+      if (!parsed.value) throw new Error("AI response missing value field");
+
+      // Apply compliance filter to regenerated section
+      const filteredValue = typeof parsed.value === "string" ? await filterOfferSection(parsed.value) : parsed.value;
+      angleData[input.sectionKey] = filteredValue;
+
+      await db
+        .update(offers)
+        .set({ [angleCol]: JSON.stringify(angleData), updatedAt: new Date() })
+        .where(eq(offers.id, input.id));
+
+      return { sectionKey: input.sectionKey, value: parsed.value };
     }),
 
   // Delete offer

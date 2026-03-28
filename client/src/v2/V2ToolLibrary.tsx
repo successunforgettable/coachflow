@@ -9,6 +9,7 @@ import { useState, useMemo } from "react";
 import { useLocation } from "wouter";
 import ZappyMascot from "./ZappyMascot";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
 import V2AdImageCreator from "./V2AdImageCreator";
 import V2VideoCreator from "./V2VideoCreator";
 
@@ -173,6 +174,8 @@ function GeneratorCard({
 // ─── Main V2ToolLibrary ───────────────────────────────────────────────────────
 export default function V2ToolLibrary() {
   const [, navigate] = useLocation();
+  const { user: authUser } = useAuth();
+  const isFreeTier = !authUser || (authUser.role !== "superuser" && authUser.role !== "admin" && authUser.subscriptionTier !== "pro" && authUser.subscriptionTier !== "agency");
   const [selectedIcpId, setSelectedIcpId] = useState<number | null>(null);
   const [openPanel, setOpenPanel] = useState<string | null>(null);
 
@@ -351,8 +354,8 @@ export default function V2ToolLibrary() {
   return (
     <div style={{ paddingBottom: "64px" }}>
 
-      {/* ── ICP Selector ── */}
-      <div
+      {/* ── ICP Selector (hidden when a panel is open) ── */}
+      {!openPanel && <div
         style={{
           background: "#fff",
           borderRadius: "var(--v2-border-radius-card)",
@@ -419,66 +422,56 @@ export default function V2ToolLibrary() {
         >
           {icpList?.length} profile{(icpList?.length ?? 0) > 1 ? "s" : ""} available
         </p>
-      </div>
+      </div>}
 
-      {/* ── Zappy intro banner ── */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "16px",
-          background: "rgba(139,92,246,0.06)",
-          borderRadius: "var(--v2-border-radius-card)",
-          padding: "16px 24px",
-          marginBottom: "28px",
-          border: "1px solid rgba(139,92,246,0.12)",
-        }}
-      >
-        <div>
-          <p
-            style={{
-              fontFamily: "var(--v2-font-heading)",
-              fontStyle: "italic",
-              fontWeight: 900,
-              fontSize: "15px",
-              color: "var(--v2-text-color)",
-              margin: "0 0 2px 0",
-            }}
-          >
-            Pick any tool and generate in one click.
-          </p>
-          <p
-            style={{
-              fontFamily: "var(--v2-font-body)",
-              fontSize: "12px",
-              color: "#666",
-              margin: 0,
-            }}
-          >
-            All generators are powered by{" "}
-            <strong>{selectedIcp?.name ?? "your AI Profile"}</strong>.
-          </p>
+      {/* ── Zappy intro banner (hidden when a panel is open) ── */}
+      {!openPanel && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "16px",
+            background: "rgba(139,92,246,0.06)",
+            borderRadius: "var(--v2-border-radius-card)",
+            padding: "16px 24px",
+            marginBottom: "28px",
+            border: "1px solid rgba(139,92,246,0.12)",
+          }}
+        >
+          <div>
+            <p
+              style={{
+                fontFamily: "var(--v2-font-heading)",
+                fontStyle: "italic",
+                fontWeight: 900,
+                fontSize: "15px",
+                color: "var(--v2-text-color)",
+                margin: "0 0 2px 0",
+              }}
+            >
+              Pick any tool and generate in one click.
+            </p>
+            <p
+              style={{
+                fontFamily: "var(--v2-font-body)",
+                fontSize: "12px",
+                color: "#666",
+                margin: 0,
+              }}
+            >
+              All generators are powered by{" "}
+              <strong>{selectedIcp?.name ?? "your AI Profile"}</strong>.
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ── Ad Images inline panel ── */}
       {openPanel === "adImages" && (
         <div style={{ marginBottom: "32px" }}>
           <button
             onClick={() => setOpenPanel(null)}
-            style={{
-              background: "transparent",
-              border: "none",
-              fontFamily: "var(--v2-font-body)",
-              fontSize: "13px",
-              fontWeight: 700,
-              color: "#888",
-              cursor: "pointer",
-              padding: "0 0 16px 0",
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-            }}
+            style={{ background: "transparent", border: "none", fontFamily: "var(--v2-font-body)", fontSize: "13px", fontWeight: 700, color: "#888", cursor: "pointer", padding: "0 0 16px 0", display: "flex", alignItems: "center", gap: "6px" }}
           >
             ← Back to Tool Library
           </button>
@@ -491,23 +484,11 @@ export default function V2ToolLibrary() {
         <div style={{ marginBottom: "32px" }}>
           <button
             onClick={() => setOpenPanel(null)}
-            style={{
-              background: "transparent",
-              border: "none",
-              fontFamily: "var(--v2-font-body)",
-              fontSize: "13px",
-              fontWeight: 700,
-              color: "#888",
-              cursor: "pointer",
-              padding: "0 0 16px 0",
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-            }}
+            style={{ background: "transparent", border: "none", fontFamily: "var(--v2-font-body)", fontSize: "13px", fontWeight: 700, color: "#888", cursor: "pointer", padding: "0 0 16px 0", display: "flex", alignItems: "center", gap: "6px" }}
           >
             ← Back to Tool Library
           </button>
-          <V2VideoCreator />
+          <V2VideoCreator isFreeTier={isFreeTier} />
         </div>
       )}
 

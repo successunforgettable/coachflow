@@ -23,6 +23,8 @@
   --v2-space-xl:  40px;
   --v2-space-2xl: 64px;
 
+  --v2-error:       #C0390A;
+
   --v2-shadow-card: 0 2px 16px 0 rgba(26, 22, 36, 0.08);
   --v2-shadow-btn:  0 4px 14px 0 rgba(255, 91, 29, 0.30);
 }
@@ -55,6 +57,28 @@
   line-height: 1.15;
   letter-spacing: -0.02em;
   margin: 0;
+}
+
+/* Reset heading styles inside preview modals so inline styles take precedence */
+[data-v2] .lp-preview-reset h1,
+[data-v2] .lp-preview-reset h2,
+[data-v2] .lp-preview-reset h3,
+[data-v2] .lp-preview-reset h4,
+[data-v2] .lp-preview-reset h5,
+[data-v2] .lp-preview-reset h6 {
+  font-family: inherit;
+  font-style: inherit;
+  font-weight: inherit;
+  color: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+}
+
+[data-v2] .lp-preview-reset p,
+[data-v2] .lp-preview-reset span,
+[data-v2] .lp-preview-reset li,
+[data-v2] .lp-preview-reset label {
+  font-family: inherit;
 }
 
 [data-v2] p,
