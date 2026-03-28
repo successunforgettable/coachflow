@@ -27,12 +27,12 @@ const CONTENT_TYPE_LABELS: Record<string, string> = {
 };
 
 export default function AdminContentModeration() {
-  const [statusFilter, setStatusFilter] = useState<"pending" | "resolved" | "dismissed" | "">("");
+  const [statusFilter, setStatusFilter] = useState<"pending" | "resolved" | "dismissed" | "all">("all");
   const [resolveDialogFlag, setResolveDialogFlag] = useState<any>(null);
   const utils = trpc.useUtils();
 
   const { data: flags, isLoading } = trpc.admin.getFlaggedContent.useQuery({
-    status: statusFilter || undefined,
+    status: statusFilter === "all" ? undefined : statusFilter || undefined,
   });
 
   const resolveFlag = trpc.admin.resolveFlaggedContent.useMutation({
@@ -79,13 +79,13 @@ export default function AdminContentModeration() {
             <SelectValue placeholder="All statuses" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All statuses</SelectItem>
+            <SelectItem value="all">All statuses</SelectItem>
             <SelectItem value="pending">Pending</SelectItem>
             <SelectItem value="resolved">Resolved</SelectItem>
             <SelectItem value="dismissed">Dismissed</SelectItem>
           </SelectContent>
         </Select>
-        {statusFilter && (
+        {statusFilter && statusFilter !== "all" && (
           <Button variant="ghost" size="sm" onClick={() => setStatusFilter("")}>Clear</Button>
         )}
       </div>

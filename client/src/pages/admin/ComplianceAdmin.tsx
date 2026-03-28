@@ -290,7 +290,7 @@ export default function ComplianceAdmin() {
   const inactiveCount = phrases?.filter((p) => !p.active).length || 0;
 
   return (
-    <div className="min-h-screen bg-[#0A0A0F] text-white p-8">
+    <div style={{ minHeight: "100vh", background: "#F5F1EA", color: "#1A1624", padding: "32px" }}>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">

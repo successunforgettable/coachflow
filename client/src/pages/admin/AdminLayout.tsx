@@ -3,11 +3,11 @@ import { Link, useLocation } from "wouter";
 
 const navLinks = [
   { label: "Dashboard", href: "/admin", exact: true },
-  { label: "Users", href: "/admin", exact: true },
-  { label: "Subscriptions", href: "/admin/compliance" },
-  { label: "Content", href: "/admin/content-moderation" },
   { label: "Analytics", href: "/admin/analytics" },
-  { label: "Settings", href: "/admin/system-health" },
+  { label: "Content", href: "/admin/content-moderation" },
+  { label: "Compliance", href: "/admin/compliance" },
+  { label: "Audit Log", href: "/admin/audit-log" },
+  { label: "System Health", href: "/admin/system-health" },
 ];
 
 interface AdminLayoutProps {
