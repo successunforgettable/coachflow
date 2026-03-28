@@ -480,7 +480,7 @@ function HeroSection({ onCampaignSelect: _onCampaignSelect }: { onCampaignSelect
   const zappySize = "clamp(80px, 12vw, 120px)";
 
   return (
-    <section style={{ background: CREAM, minHeight: "min(100vh, 700px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "clamp(48px,8vw,100px) clamp(16px,4vw,24px) clamp(32px,4vw,48px)", position: "relative", overflow: "hidden" }}>
+    <section className="lp-hero-section" style={{ background: CREAM, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "clamp(48px,8vw,100px) clamp(16px,4vw,24px) clamp(32px,4vw,48px)", position: "relative", overflow: "hidden" }}>
       {/* Confetti */}
       {confetti.run && (
         <Confetti
@@ -947,7 +947,9 @@ function ProblemSolutionSection({ onCTA }: { onCTA: () => void }) {
       </div>
 
       <style>{`
+        .lp-hero-section { min-height: 700px; }
         @media (max-width: 768px) {
+          .lp-hero-section { min-height: auto !important; padding-top: 32px !important; padding-bottom: 24px !important; }
           .lp-split-grid { grid-template-columns: 1fr !important; }
         }
       `}</style>
