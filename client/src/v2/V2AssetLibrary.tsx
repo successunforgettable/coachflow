@@ -15,12 +15,13 @@ const T = {
 
 type AssetType = "all" | "images" | "videos" | "copy";
 
-// ─── Favourite hook (inline to avoid import issues) ─────────────────────────
+// ─── Favourite hook (inline — matches server procedure names) ────────────────
 function useFavs(nodeId: string) {
-  const { data: favs, refetch } = trpc.favourites.getFavourites.useQuery({ nodeId });
-  const addFav = trpc.favourites.addFavourite.useMutation({ onSuccess: () => refetch() });
-  const removeFav = trpc.favourites.removeFavourite.useMutation({ onSuccess: () => refetch() });
-  const isFav = (idx: number) => (favs || []).includes(idx);
+  const { data: favs, refetch } = trpc.favourites.getByNode.useQuery({ nodeId });
+  const addFav = trpc.favourites.add.useMutation({ onSuccess: () => refetch() });
+  const removeFav = trpc.favourites.remove.useMutation({ onSuccess: () => refetch() });
+  const favIndices = (favs || []).map((f: any) => f.itemIndex);
+  const isFav = (idx: number) => favIndices.includes(idx);
   const toggle = (idx: number, text?: string) => {
     if (isFav(idx)) removeFav.mutate({ nodeId, itemIndex: idx });
     else addFav.mutate({ nodeId, itemIndex: idx, itemText: text || "" });
@@ -78,20 +79,25 @@ export default function V2AssetLibrary() {
     );
   }, [videos, search, campaignFilter]);
 
-  // Copy assets — use headlines from images' headlines + ad copy text
+  // Copy assets — extract unique headlines from ad creatives
   const copyAssets = useMemo(() => {
     const items: { id: number; text: string; type: string; serviceId: number | null; date: string }[] = [];
-    // Extract headlines from images
-    if (images) {
+    if (images && Array.isArray(images)) {
       const seen = new Set<string>();
       (images as any[]).forEach((img: any) => {
-        if (img.headline && !seen.has(img.headline)) {
-          seen.add(img.headline);
-          items.push({ id: img.id, text: img.headline, type: "Headline", serviceId: img.serviceId, date: img.createdAt });
+        const text = img.headline || img.productName;
+        if (text && !seen.has(text)) {
+          seen.add(text);
+          items.push({ id: img.id, text, type: "Ad Headline", serviceId: img.serviceId, date: img.createdAt });
         }
       });
     }
-    return items.filter(i => matchSearch(i.text) && matchCampaign(i.serviceId));
+    // Apply filters inline (not via closure)
+    return items.filter(i => {
+      if (search && !i.text.toLowerCase().includes(search.toLowerCase())) return false;
+      if (campaignFilter !== "all" && String(i.serviceId) !== campaignFilter) return false;
+      return true;
+    });
   }, [images, search, campaignFilter]);
 
   const tabs: { key: AssetType; label: string; count: number }[] = [
@@ -150,7 +156,7 @@ export default function V2AssetLibrary() {
   }, [zappyQuery, filteredImages, filteredVideos, copyAssets]);
 
   return (
-    <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px" }}>
+    <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 24px 80px", background: T.bg, minHeight: "100vh" }}>
       {/* Back link */}
       <a href="/v2-dashboard" onClick={e => { e.preventDefault(); navigate("/v2-dashboard"); }}
         style={{ fontFamily: T.fontB, fontSize: 13, color: T.muted, textDecoration: "none", display: "block", marginBottom: 12 }}>
@@ -200,7 +206,7 @@ export default function V2AssetLibrary() {
             </div>
             <div style={{ padding: "12px 14px" }}>
               <p style={{ fontFamily: T.fontB, fontWeight: 600, fontSize: 14, color: T.dark, margin: "0 0 4px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {img.headline || `Ad Image ${img.id}`}
+                {img.headline || img.productName || `Ad Image #${img.id}`}
               </p>
               <p style={{ fontFamily: T.fontB, fontSize: 12, color: T.muted, margin: "0 0 10px" }}>
                 {img.productName || "Campaign"} · {new Date(img.createdAt).toLocaleDateString()}
@@ -337,7 +343,7 @@ export default function V2AssetLibrary() {
             <input type="text" placeholder="Find my webinar ads..." value={zappyQuery}
               onChange={e => setZappyQuery(e.target.value)}
               onKeyDown={e => e.key === "Enter" && handleZappySearch()}
-              style={{ flex: 1, padding: "10px 14px", borderRadius: 12, border: "1px solid #e5e0d8", fontFamily: T.fontB, fontSize: 13, outline: "none" }} />
+              style={{ flex: 1, padding: "10px 14px", borderRadius: 12, border: "1px solid #e5e0d8", fontFamily: T.fontB, fontSize: 13, outline: "none", color: T.dark, background: "#fff" }} />
             <button onClick={handleZappySearch} disabled={zappyLoading} style={{ ...btnS(true), padding: "10px 16px" }}>Search</button>
           </div>
         </div>
