@@ -3,7 +3,6 @@ import express from "express";
 import { createServer } from "http";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { registerOAuthRoutes } from "./oauth";
 import { registerMetaOAuthRoutes } from "./metaOAuth";
 import { registerCustomAuthRoutes } from "./customAuth";
 import { appRouter } from "../routers";
@@ -32,8 +31,19 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 
 async function startServer() {
   const app = express();
+  app.set("trust proxy", 1);
+
+  // Redirect www to non-www (fixes mobile Safari 404)
+  app.use((req, res, next) => {
+    if (req.hostname?.startsWith("www.")) {
+      const newUrl = `https://${req.hostname.slice(4)}${req.originalUrl}`;
+      return res.redirect(301, newUrl);
+    }
+    next();
+  });
+
   const server = createServer(app);
-  
+
   // Stripe webhook MUST be registered BEFORE express.json() for signature verification
   const { handleStripeWebhook } = await import("../stripe/webhook");
   app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), handleStripeWebhook);
@@ -115,6 +125,7 @@ async function startServer() {
     }
   });
 
+
   // Daily cleanup cron — delete jobs older than 24 hours to prevent table bloat
   setInterval(async () => {
     try {
@@ -131,9 +142,9 @@ async function startServer() {
     }
   }, 24 * 60 * 60 * 1000); // runs every 24 hours
 
-  // Meta Daily Read-Only Job — 100 API calls/day for App Review compliance
+  // Meta Daily Read-Only Job — 150 API calls/day for App Review compliance
   const runMetaDailyJob = async () => {
-    const MAX_CALLS = 100;
+    const MAX_CALLS = 150;
     let callCount = 0;
     const now = new Date();
     console.log(`[Meta Daily Job] Starting at ${now.toISOString()} — target: ${MAX_CALLS} read-only calls`);
@@ -159,7 +170,7 @@ async function startServer() {
         dateRanges.push({ since, until });
       }
 
-      // Round-robin through users × date ranges until 100 calls
+      // Round-robin through users × date ranges until 150 calls
       let rangeIdx = 0;
       while (callCount < MAX_CALLS) {
         for (const row of tokenRows) {
@@ -180,7 +191,7 @@ async function startServer() {
           }
         }
         rangeIdx++;
-        // Safety: if we've exhausted all date ranges × users and still not at 100, break
+        // Safety: if we've exhausted all date ranges × users and still not at 150, break
         if (rangeIdx >= dateRanges.length * 2) break;
       }
 
@@ -195,15 +206,107 @@ async function startServer() {
   runMetaDailyJob();
   setInterval(runMetaDailyJob, 24 * 60 * 60 * 1000);
 
+  // ── Asset upload endpoint (Cloudinary) ──────────────────────────────────────
+  {
+    const multer = (await import("multer")).default;
+    const upload = multer({
+      storage: multer.memoryStorage(),
+      limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
+      fileFilter: (_req, file, cb) => {
+        const allowed = ["image/jpeg", "image/png", "image/webp"];
+        if (allowed.includes(file.mimetype)) cb(null, true);
+        else cb(new Error("Only JPEG, PNG, and WebP images are allowed"));
+      },
+    });
+
+    // GHL OAuth callback
+    app.get("/api/oauth/gohighlevel/callback", async (req, res) => {
+      try {
+        const { code, state } = req.query as { code?: string; state?: string };
+        console.log("[GHL callback] Hit — code:", code ? "present" : "missing", "state:", state);
+        if (!code) { res.status(400).send("Missing authorization code"); return; }
+        // state contains the userId — redirect to dashboard with code param for client to exchange
+        res.redirect(`/v2-dashboard/wizard/pushToMeta?ghl_code=${encodeURIComponent(code)}&ghl_state=${encodeURIComponent(state || "")}`);
+      } catch (err) {
+        console.error("[GHL callback] Error:", err);
+        res.status(500).send("GHL OAuth callback failed");
+      }
+    });
+
+    app.post("/api/upload-asset", upload.single("file"), async (req, res) => {
+      try {
+        let user: { id: number | string } | null = null;
+        try { user = await sdk.authenticateRequest(req); } catch { /* */ }
+        if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+        const file = (req as any).file;
+        if (!file) { res.status(400).json({ error: "No file provided" }); return; }
+
+        const { storagePut } = await import("../storage");
+        const key = `coach-assets/${user.id}/${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+        const { url } = await storagePut(key, file.buffer, file.mimetype);
+        res.json({ url });
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error("[upload-asset] Error:", msg);
+        res.status(400).json({ error: msg });
+      }
+    });
+  }
+
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
-  // OAuth callback under /api/oauth/callback (Manus OAuth — kept for existing users)
-  registerOAuthRoutes(app);
   // Meta OAuth callback under /api/meta/callback
   registerMetaOAuthRoutes(app);
   // Custom auth: Google OAuth + magic links (no Manus dependency)
   registerCustomAuthRoutes(app);
+
+  // Asset search via Anthropic API (Zappy retrieval)
+  app.post("/api/asset-search", async (req, res) => {
+    try {
+      const user = await sdk.authenticateRequest(req);
+      if (!user) return res.status(401).json({ error: "Unauthorized" });
+
+      const { query, assets } = req.body;
+      if (!query || !assets) return res.status(400).json({ error: "Missing query or assets" });
+
+      const apiKey = process.env.ANTHROPIC_API_KEY;
+      if (!apiKey) return res.status(500).json({ error: "Anthropic API not configured" });
+
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 500,
+          messages: [{
+            role: "user",
+            content: `You are an asset retrieval assistant. The user is searching their marketing asset library.\n\nUser query: "${query}"\n\nAvailable assets:\n${JSON.stringify(assets.slice(0, 100))}\n\nReturn ONLY a JSON array of asset IDs that best match the user's intent. Example: [1, 5, 12]. If nothing matches, return []. No explanation, no markdown, just the JSON array.`,
+          }],
+        }),
+      });
+
+      if (!response.ok) {
+        console.error("[Asset Search] Anthropic error:", response.status);
+        return res.status(500).json({ error: "AI search failed" });
+      }
+
+      const data = await response.json();
+      const text = data.content?.[0]?.text || "[]";
+      const stripped = text.replace(/```json?\s*/gi, "").replace(/```/g, "").trim();
+      const matchingIds = JSON.parse(stripped);
+
+      res.json({ matchingIds });
+    } catch (err: any) {
+      console.error("[Asset Search] Error:", err.message);
+      res.status(500).json({ error: "Search failed" });
+    }
+  });
   // Server-side ZIP download for campaign creatives (avoids CORS issues with CDN images)
   app.get("/api/campaigns/:campaignId/download-zip", async (req, res) => {
     try {
@@ -575,6 +678,14 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
+    // Video renderer configuration check
+    const remotionFn = process.env.REMOTION_FUNCTION_NAME;
+    const remotionUrl = process.env.REMOTION_SERVE_URL;
+    if (remotionFn && remotionUrl) {
+      console.log(`[Video Renderer] Remotion Lambda CONFIGURED — function: ${remotionFn}, site: ${remotionUrl}`);
+    } else {
+      console.log(`[Video Renderer] Remotion NOT configured — falling back to Creatomate. Missing: ${!remotionFn ? "REMOTION_FUNCTION_NAME " : ""}${!remotionUrl ? "REMOTION_SERVE_URL" : ""}`);
+    }
   });
 }
 
