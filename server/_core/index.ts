@@ -32,8 +32,18 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   const app = express();
   app.set("trust proxy", 1);
+
+  // Redirect www to non-www (fixes mobile Safari 404)
+  app.use((req, res, next) => {
+    if (req.hostname?.startsWith("www.")) {
+      const newUrl = `https://${req.hostname.slice(4)}${req.originalUrl}`;
+      return res.redirect(301, newUrl);
+    }
+    next();
+  });
+
   const server = createServer(app);
-  
+
   // Stripe webhook MUST be registered BEFORE express.json() for signature verification
   const { handleStripeWebhook } = await import("../stripe/webhook");
   app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), handleStripeWebhook);
