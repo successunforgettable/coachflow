@@ -546,7 +546,6 @@ function HeroSection({ onCampaignSelect: _onCampaignSelect }: { onCampaignSelect
 
     {/* ─── DESKTOP: full carousel (CSS hidden on mobile) ─── */}
     <section ref={heroSectionRef} className="lp-hero-section" style={{ background: CREAM, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "clamp(48px,8vw,100px) clamp(16px,4vw,24px) clamp(32px,4vw,48px)", position: "relative", overflow: "hidden" }}>
-    <section ref={heroSectionRef} className="lp-hero-section" style={{ background: CREAM, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "clamp(48px,8vw,100px) clamp(16px,4vw,24px) clamp(32px,4vw,48px)", position: "relative", overflow: "hidden" }}>
       {/* Confetti */}
       {confetti.run && (
         <Confetti
@@ -826,7 +825,8 @@ function HeroSection({ onCampaignSelect: _onCampaignSelect }: { onCampaignSelect
         @media (min-width: 480px) {
           .hero-input-row { flex-direction: row !important; }
         }
-        /* Mobile: show static hero, hide carousel */
+      `}</style>
+      <style>{`
         .lp-hero-mobile { display: none; }
         @media (max-width: 768px) {
           .lp-hero-mobile { display: block !important; }
