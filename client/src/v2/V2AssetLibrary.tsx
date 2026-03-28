@@ -18,11 +18,18 @@ type AssetType = "all" | "images" | "videos" | "copy";
 // ─── Favourite hook (inline — matches server procedure names) ────────────────
 function useFavs(nodeId: string) {
   const { data: favs, refetch } = trpc.favourites.getByNode.useQuery({ nodeId });
-  const addFav = trpc.favourites.add.useMutation({ onSuccess: () => refetch() });
-  const removeFav = trpc.favourites.remove.useMutation({ onSuccess: () => refetch() });
-  const favIndices = (favs || []).map((f: any) => f.itemIndex);
+  const addFav = trpc.favourites.add.useMutation({
+    onSuccess: () => { console.log(`[Favs] Added to ${nodeId}, refetching...`); refetch(); },
+    onError: (e: any) => { console.error(`[Favs] Add failed:`, e.message); },
+  });
+  const removeFav = trpc.favourites.remove.useMutation({
+    onSuccess: () => { console.log(`[Favs] Removed from ${nodeId}, refetching...`); refetch(); },
+    onError: (e: any) => { console.error(`[Favs] Remove failed:`, e.message); },
+  });
+  const favIndices = useMemo(() => (favs || []).map((f: any) => f.itemIndex), [favs]);
   const isFav = (idx: number) => favIndices.includes(idx);
   const toggle = (idx: number, text?: string) => {
+    console.log(`[Favs] Toggle ${nodeId} item ${idx}, currently fav: ${isFav(idx)}`);
     if (isFav(idx)) removeFav.mutate({ nodeId, itemIndex: idx });
     else addFav.mutate({ nodeId, itemIndex: idx, itemText: text || "" });
   };
@@ -156,7 +163,8 @@ export default function V2AssetLibrary() {
   }, [zappyQuery, filteredImages, filteredVideos, copyAssets]);
 
   return (
-    <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 24px 80px", background: T.bg, minHeight: "100vh" }}>
+    <div style={{ position: "fixed", inset: 0, background: T.bg, overflowY: "auto", zIndex: 1 }}>
+    <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 24px 80px" }}>
       {/* Back link */}
       <a href="/v2-dashboard" onClick={e => { e.preventDefault(); navigate("/v2-dashboard"); }}
         style={{ fontFamily: T.fontB, fontSize: 13, color: T.muted, textDecoration: "none", display: "block", marginBottom: 12 }}>
@@ -201,8 +209,13 @@ export default function V2AssetLibrary() {
         {(tab === "all" || tab === "images") && filteredImages.map((img: any, idx: number) => (
           <div key={`img-${img.id}`} style={cardStyle}>
             <Heart active={imgFavs.isFav(img.id)} onClick={() => imgFavs.toggle(img.id, img.headline)} />
-            <div style={{ aspectRatio: "1/1", overflow: "hidden" }}>
-              <img src={img.imageUrl} alt={img.headline || "Ad image"} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            <div style={{ aspectRatio: "1/1", overflow: "hidden", background: "#f0ede6", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              {img.imageUrl ? (
+                <img src={img.imageUrl} alt={img.headline || "Ad image"} style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+              ) : (
+                <span style={{ fontSize: 32, color: T.muted }}>🖼</span>
+              )}
             </div>
             <div style={{ padding: "12px 14px" }}>
               <p style={{ fontFamily: T.fontB, fontWeight: 600, fontSize: 14, color: T.dark, margin: "0 0 4px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -220,12 +233,15 @@ export default function V2AssetLibrary() {
         ))}
 
         {/* ── VIDEO CARDS ── */}
-        {(tab === "all" || tab === "videos") && filteredVideos.map((v: any) => (
+        {(tab === "all" || tab === "videos") && filteredVideos.map((v: any) => {
+          // Derive thumbnail: use stored thumbnailUrl, or convert Cloudinary video URL to poster
+          const posterUrl = v.thumbnailUrl || (v.videoUrl ? v.videoUrl.replace(/\.mp4$/i, ".jpg").replace(/\/video\/upload\//, "/video/upload/so_0/") : null);
+          return (
           <div key={`vid-${v.id}`} style={cardStyle}>
             <Heart active={vidFavs.isFav(v.id)} onClick={() => vidFavs.toggle(v.id, v.title)} />
             <div style={{ aspectRatio: "9/16", maxHeight: 300, overflow: "hidden", position: "relative", background: "#111" }}>
-              {v.thumbnailUrl ? (
-                <img src={v.thumbnailUrl} alt={v.title || "Video"} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              {posterUrl ? (
+                <img src={posterUrl} alt={v.title || "Video"} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               ) : (
                 <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <span style={{ fontSize: 48, color: "rgba(255,255,255,0.3)" }}>▶</span>
@@ -251,7 +267,7 @@ export default function V2AssetLibrary() {
               </div>
             </div>
           </div>
-        ))}
+        ); })}
 
         {/* ── COPY CARDS ── */}
         {(tab === "all" || tab === "copy") && copyAssets.map((c, idx) => (
@@ -348,6 +364,7 @@ export default function V2AssetLibrary() {
           </div>
         </div>
       )}
+    </div>
     </div>
   );
 }
