@@ -248,19 +248,11 @@ export default function V2AssetLibrary() {
 
         {/* ── VIDEO CARDS ── */}
         {(tab === "all" || tab === "videos") && filteredVideos.map((v: any) => {
-          // Derive thumbnail: use stored thumbnailUrl, or convert Cloudinary video URL to poster
-          const posterUrl = v.thumbnailUrl || (v.videoUrl ? v.videoUrl.replace(/\.mp4$/i, ".jpg").replace(/\/video\/upload\//, "/video/upload/so_0/") : null);
           return (
           <div key={`vid-${v.id}`} style={cardStyle}>
             <Heart active={vidFavs.isFav(v.id)} onClick={() => vidFavs.toggle(v.id, v.title)} />
-            <div style={{ aspectRatio: "9/16", maxHeight: 300, overflow: "hidden", position: "relative", background: "#111" }}>
-              {posterUrl ? (
-                <img src={posterUrl} alt={v.title || "Video"} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-              ) : (
-                <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <span style={{ fontSize: 48, color: "rgba(255,255,255,0.3)" }}>▶</span>
-                </div>
-              )}
+            <div style={{ aspectRatio: "1/1", overflow: "hidden", position: "relative", background: "#1A1624" }}>
+              <img src={`/api/video-thumbnail/${v.id}`} alt={v.title || "Video"} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 48, height: 48, borderRadius: "50%", background: "rgba(255,91,29,0.85)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
                 onClick={() => v.videoUrl && window.open(v.videoUrl, "_blank")}>
                 <span style={{ color: "#fff", fontSize: 20, marginLeft: 3 }}>▶</span>

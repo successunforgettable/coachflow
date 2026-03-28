@@ -126,6 +126,124 @@ async function startServer() {
   });
 
 
+  // Video thumbnail generator — generates a 1080×1080 PNG thumbnail for a video
+  // Uses stored thumbnailUrl if available, otherwise generates via sharp and caches to Cloudinary
+  app.get("/api/video-thumbnail/:videoId", async (req, res) => {
+    try {
+      let user: { id: number | string } | null = null;
+      try {
+        user = await sdk.authenticateRequest(req);
+      } catch {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+      if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+      const videoId = parseInt(req.params.videoId);
+      if (isNaN(videoId)) { res.status(400).json({ error: "Invalid video ID" }); return; }
+
+      const { getDb } = await import("../db");
+      const { videos } = await import("../../drizzle/schema");
+      const { eq, and } = await import("drizzle-orm");
+      const db = await getDb();
+      if (!db) { res.status(503).json({ error: "Database not available" }); return; }
+
+      const [video] = await db.select().from(videos)
+        .where(and(eq(videos.id, videoId), eq(videos.userId, Number(user.id))))
+        .limit(1);
+
+      if (!video) { res.status(404).json({ error: "Video not found" }); return; }
+
+      // If thumbnailUrl already set, redirect to image proxy
+      if (video.thumbnailUrl) {
+        res.redirect(`/api/image-proxy?url=${encodeURIComponent(video.thumbnailUrl)}`);
+        return;
+      }
+
+      // Generate thumbnail via sharp
+      const sharp = (await import("sharp")).default;
+      const W = 1080, H = 1080;
+      const title = video.title || "Untitled Video";
+      const videoType = video.videoType || "ad";
+      const duration = video.duration || "30";
+
+      // Wrap title at 30 chars/line, max 5 lines
+      const wrapText = (text: string, maxLen: number): string[] => {
+        const words = text.split(" ");
+        const lines: string[] = [];
+        let current = "";
+        for (const word of words) {
+          const candidate = current ? `${current} ${word}` : word;
+          if (candidate.length > maxLen) {
+            if (current) lines.push(current);
+            current = word;
+          } else {
+            current = candidate;
+          }
+        }
+        if (current) lines.push(current);
+        return lines.slice(0, 5);
+      };
+
+      const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+      const titleLines = wrapText(title, 30);
+      const lineH = 70;
+      const titleBlockH = titleLines.length * lineH;
+      const titleStartY = Math.floor((H - titleBlockH) / 2) - 30;
+
+      const titleSvg = titleLines.map((line, i) =>
+        `<text x="540" y="${titleStartY + i * lineH + 52}" text-anchor="middle"
+          font-family="Arial Black, Arial, sans-serif" font-size="54" font-weight="900" fill="white">${esc(line)}</text>`
+      ).join("\n");
+
+      const badgeText = esc(videoType.toUpperCase());
+      const badgeCharW = 13;
+      const badgePad = 32;
+      const badgeW = badgeText.length * badgeCharW + badgePad;
+      const badgeX = Math.floor(540 - badgeW / 2);
+      const badgeY = titleStartY + titleBlockH + 48;
+
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
+        <rect x="120" y="180" width="840" height="720" rx="28" fill="white" opacity="0.06"/>
+        ${titleSvg}
+        <rect x="${badgeX}" y="${badgeY}" width="${badgeW}" height="44" rx="22" fill="#FF5B1D"/>
+        <text x="540" y="${badgeY + 30}" text-anchor="middle"
+          font-family="Arial, sans-serif" font-size="19" font-weight="700" fill="white">${badgeText}</text>
+        <text x="1042" y="1050" text-anchor="end"
+          font-family="Arial, sans-serif" font-size="30" font-weight="600" fill="#888888">${esc(String(duration))}s</text>
+      </svg>`;
+
+      const base = await sharp({
+        create: { width: W, height: H, channels: 3, background: { r: 26, g: 22, b: 36 } }
+      }).png().toBuffer();
+
+      const thumbnail = await sharp(base)
+        .composite([{ input: Buffer.from(svg), top: 0, left: 0 }])
+        .png()
+        .toBuffer();
+
+      // Upload to Cloudinary and cache URL in DB
+      try {
+        const { storagePut } = await import("../storage");
+        const key = `video-thumbnails/${user.id}/${videoId}.png`;
+        const { url } = await storagePut(key, thumbnail, "image/png");
+        await db.update(videos).set({ thumbnailUrl: url }).where(eq(videos.id, videoId));
+      } catch (uploadErr) {
+        // Non-fatal: still return the generated image even if upload fails
+        console.error("[video-thumbnail] Upload failed, serving without caching:", uploadErr);
+      }
+
+      res.setHeader("Content-Type", "image/png");
+      res.setHeader("Cache-Control", "public, max-age=86400");
+      res.send(thumbnail);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[video-thumbnail] Error:", msg);
+      res.status(500).json({ error: msg });
+    }
+  });
+
   // Daily cleanup cron — delete jobs older than 24 hours to prevent table bloat
   setInterval(async () => {
     try {
