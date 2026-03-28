@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +36,94 @@ import { FinancialMetricsCard } from "@/components/admin/FinancialMetricsCard";
 import { RevenueByTierChart } from "@/components/admin/RevenueByTierChart";
 import { RevenueChart } from "@/components/admin/RevenueChart";
 import { FailedPaymentsAlert } from "@/components/admin/FailedPaymentsAlert";
+
+function SignupChart({ allUsers }: { allUsers: any[] }) {
+  const [range, setRange] = useState<"7d" | "30d" | "90d">("30d");
+
+  const chartData = useMemo(() => {
+    const days = range === "7d" ? 7 : range === "30d" ? 30 : 90;
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - days);
+
+    const counts: Record<string, number> = {};
+    for (let i = 0; i < days; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() - (days - 1 - i));
+      counts[d.toISOString().slice(0, 10)] = 0;
+    }
+
+    allUsers.forEach((u: any) => {
+      if (!u.createdAt) return;
+      const key = new Date(u.createdAt).toISOString().slice(0, 10);
+      if (key in counts) counts[key]++;
+    });
+
+    return Object.entries(counts).map(([date, signups]) => ({
+      date: date.slice(5),
+      signups,
+    }));
+  }, [allUsers, range]);
+
+  const pills: Array<"7d" | "30d" | "90d"> = ["7d", "30d", "90d"];
+
+  return (
+    <div style={{ background: "#fff", borderRadius: 24, padding: 24, marginBottom: 28, boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+        <h3 style={{ fontFamily: "'Fraunces', serif", fontStyle: "italic", fontWeight: 900, fontSize: 18, color: "#1A1624", margin: 0 }}>
+          Signups
+        </h3>
+        <div style={{ display: "flex", gap: 6 }}>
+          {pills.map((p) => (
+            <button
+              key={p}
+              onClick={() => setRange(p)}
+              style={{
+                padding: "5px 14px",
+                borderRadius: 9999,
+                border: range === p ? "none" : "1px solid #e5e0d8",
+                background: range === p ? "#FF5B1D" : "#fff",
+                color: range === p ? "#fff" : "#999",
+                fontFamily: "'Instrument Sans', sans-serif",
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              {p}
+            </button>
+          ))}
+        </div>
+      </div>
+      <ResponsiveContainer width="100%" height={220}>
+        <LineChart data={chartData}>
+          <XAxis
+            dataKey="date"
+            tick={{ fontSize: 11, fill: "#999", fontFamily: "'Instrument Sans', sans-serif" }}
+            axisLine={false}
+            tickLine={false}
+          />
+          <YAxis
+            allowDecimals={false}
+            tick={{ fontSize: 11, fill: "#999", fontFamily: "'Instrument Sans', sans-serif" }}
+            axisLine={false}
+            tickLine={false}
+            width={30}
+          />
+          <Tooltip
+            contentStyle={{
+              background: "#fff",
+              border: "1px solid #e5e0d8",
+              borderRadius: 12,
+              fontFamily: "'Instrument Sans', sans-serif",
+              fontSize: 13,
+            }}
+          />
+          <Line type="monotone" dataKey="signups" stroke="#FF5B1D" strokeWidth={2} dot={false} />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
 
 export default function AdminDashboard() {
   const { user, loading: authLoading } = useAuth();
@@ -357,6 +446,9 @@ export default function AdminDashboard() {
           {statCard(`${engagementMetrics.activationRate}%`, "Activation Rate")}
         </div>
       )}
+
+      {/* Signup Chart */}
+      <SignupChart allUsers={allUsers || []} />
 
       {/* Search + Filter bar */}
       <div style={{ display: "flex", gap: 12, marginBottom: 20, alignItems: "center", flexWrap: "wrap" }}>

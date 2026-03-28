@@ -305,14 +305,14 @@ export default function ComplianceAdmin() {
               <Button
                 onClick={() => navigate("/admin/compliance/analytics")}
                 variant="outline"
-                className="bg-transparent border-[#27273A] text-white hover:bg-[#16161F] hover:border-[#8B5CF6]"
+                className="bg-transparent border-gray-200 text-[#1A1624] hover:bg-gray-100 hover:border-[#8B5CF6]"
               >
                 View Analytics
               </Button>
               <Button
                 onClick={() => navigate("/")}
                 variant="outline"
-                className="bg-transparent border-[#27273A] text-white hover:bg-[#16161F] hover:border-[#8B5CF6]"
+                className="bg-transparent border-gray-200 text-[#1A1624] hover:bg-gray-100 hover:border-[#8B5CF6]"
               >
                 Back to Dashboard
               </Button>
@@ -322,7 +322,7 @@ export default function ComplianceAdmin() {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <Card className="bg-[#14141F] border-[#27273A]">
+          <Card className="bg-white border-gray-200">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-gray-400">Critical Phrases</CardTitle>
             </CardHeader>
@@ -331,7 +331,7 @@ export default function ComplianceAdmin() {
             </CardContent>
           </Card>
 
-          <Card className="bg-[#14141F] border-[#27273A]">
+          <Card className="bg-white border-gray-200">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-gray-400">Warning Phrases</CardTitle>
             </CardHeader>
@@ -340,7 +340,7 @@ export default function ComplianceAdmin() {
             </CardContent>
           </Card>
 
-          <Card className="bg-[#14141F] border-[#27273A]">
+          <Card className="bg-white border-gray-200">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-gray-400">Inactive Phrases</CardTitle>
             </CardHeader>
@@ -349,7 +349,7 @@ export default function ComplianceAdmin() {
             </CardContent>
           </Card>
 
-          <Card className="bg-[#14141F] border-[#27273A]">
+          <Card className="bg-white border-gray-200">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-gray-400">Current Version</CardTitle>
             </CardHeader>
@@ -361,7 +361,7 @@ export default function ComplianceAdmin() {
 
         {/* Version Info */}
         {version && (
-          <Card className="bg-[#14141F] border-[#27273A] mb-8">
+          <Card className="bg-white border-gray-200 mb-8">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
@@ -412,7 +412,7 @@ export default function ComplianceAdmin() {
         )}
 
         {/* Phrases Table */}
-        <Card className="bg-[#14141F] border-[#27273A]">
+        <Card className="bg-white border-gray-200">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
@@ -425,7 +425,7 @@ export default function ComplianceAdmin() {
                 <Button
                   onClick={handleExportCSV}
                   variant="outline"
-                  className="bg-transparent border-[#27273A] text-white hover:bg-[#16161F] hover:border-[#8B5CF6]"
+                  className="bg-transparent border-gray-200 text-[#1A1624] hover:bg-gray-100 hover:border-[#8B5CF6]"
                 >
                   <Download className="w-4 h-4 mr-2" />
                   Export CSV
@@ -433,7 +433,7 @@ export default function ComplianceAdmin() {
                 <Button
                   onClick={() => setIsImportDialogOpen(true)}
                   variant="outline"
-                  className="bg-transparent border-[#27273A] text-white hover:bg-[#16161F] hover:border-[#8B5CF6]"
+                  className="bg-transparent border-gray-200 text-[#1A1624] hover:bg-gray-100 hover:border-[#8B5CF6]"
                 >
                   <Upload className="w-4 h-4 mr-2" />
                   Import CSV
@@ -456,7 +456,7 @@ export default function ComplianceAdmin() {
             ) : (
               <Table>
                 <TableHeader>
-                  <TableRow className="border-[#27273A] hover:bg-[#16161F]">
+                  <TableRow className="border-gray-200 hover:bg-gray-100">
                     <TableHead className="text-gray-400">Phrase</TableHead>
                     <TableHead className="text-gray-400">Category</TableHead>
                     <TableHead className="text-gray-400">Description</TableHead>
@@ -466,7 +466,7 @@ export default function ComplianceAdmin() {
                 </TableHeader>
                 <TableBody>
                   {phrases.map((phrase) => (
-                    <TableRow key={phrase.id} className="border-[#27273A] hover:bg-[#16161F]">
+                    <TableRow key={phrase.id} className="border-gray-200 hover:bg-gray-100">
                       <TableCell className="font-mono text-sm">{phrase.phrase}</TableCell>
                       <TableCell>
                         <Badge
@@ -524,7 +524,7 @@ export default function ComplianceAdmin() {
         </Card>
 
         {/* Compliance History */}
-        <Card className="bg-[#14141F] border-[#27273A] mt-8">
+        <Card className="bg-white border-gray-200 mt-8">
           <CardHeader>
             <div className="flex items-center gap-2">
               <History className="w-5 h-5 text-[#8B5CF6]" />
@@ -544,7 +544,7 @@ export default function ComplianceAdmin() {
                 {history.slice().reverse().map((record) => (
                   <div
                     key={record.id}
-                    className="bg-[#0A0A0F] border border-[#27273A] rounded-lg p-4 hover:border-[#8B5CF6]/30 transition-colors"
+                    className="bg-gray-50 border border-gray-200 rounded-lg p-4 hover:border-[#8B5CF6]/30 transition-colors"
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -566,10 +566,10 @@ export default function ComplianceAdmin() {
                             {record.action.toUpperCase()}
                           </Badge>
                           <span className="text-sm text-gray-400">
-                            by <span className="text-white font-medium">{record.adminUserName}</span>
+                            by <span className="text-[#1A1624] font-medium">{record.adminUserName}</span>
                           </span>
                         </div>
-                        <p className="text-sm text-gray-300 mb-1">{record.details}</p>
+                        <p className="text-sm text-gray-600 mb-1">{record.details}</p>
                         <div className="flex items-center gap-2 text-xs text-gray-500">
                           <Clock className="w-3 h-3" />
                           {new Date(record.createdAt).toLocaleString()}
@@ -586,7 +586,7 @@ export default function ComplianceAdmin() {
 
       {/* Add Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent className="bg-[#14141F] border-[#27273A] text-white">
+        <DialogContent className="bg-white border-gray-200 text-[#1A1624]">
           <DialogHeader>
             <DialogTitle>Add Banned Phrase</DialogTitle>
             <DialogDescription className="text-gray-400">
@@ -601,7 +601,7 @@ export default function ComplianceAdmin() {
                 value={formData.phrase}
                 onChange={(e) => setFormData({ ...formData, phrase: e.target.value })}
                 placeholder="e.g., guaranteed results"
-                className="bg-[#0A0A0F] border-[#27273A] text-white"
+                className="bg-gray-50 border-gray-200 text-[#1A1624]"
               />
             </div>
             <div>
@@ -612,10 +612,10 @@ export default function ComplianceAdmin() {
                   setFormData({ ...formData, category: value })
                 }
               >
-                <SelectTrigger className="bg-[#0A0A0F] border-[#27273A] text-white">
+                <SelectTrigger className="bg-gray-50 border-gray-200 text-[#1A1624]">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-[#14141F] border-[#27273A]">
+                <SelectContent className="bg-white border-gray-200">
                   <SelectItem value="critical">Critical</SelectItem>
                   <SelectItem value="warning">Warning</SelectItem>
                 </SelectContent>
@@ -628,7 +628,7 @@ export default function ComplianceAdmin() {
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Why this phrase is banned..."
-                className="bg-[#0A0A0F] border-[#27273A] text-white"
+                className="bg-gray-50 border-gray-200 text-[#1A1624]"
               />
             </div>
             <div>
@@ -638,7 +638,7 @@ export default function ComplianceAdmin() {
                 value={formData.suggestion}
                 onChange={(e) => setFormData({ ...formData, suggestion: e.target.value })}
                 placeholder="Alternative phrasing to use instead..."
-                className="bg-[#0A0A0F] border-[#27273A] text-white"
+                className="bg-gray-50 border-gray-200 text-[#1A1624]"
               />
             </div>
           </div>
@@ -646,7 +646,7 @@ export default function ComplianceAdmin() {
             <Button
               onClick={() => setIsAddDialogOpen(false)}
               variant="outline"
-              className="bg-transparent border-[#27273A] text-white hover:bg-[#16161F]"
+              className="bg-transparent border-gray-200 text-[#1A1624] hover:bg-gray-100"
             >
               Cancel
             </Button>
@@ -663,7 +663,7 @@ export default function ComplianceAdmin() {
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="bg-[#14141F] border-[#27273A] text-white">
+        <DialogContent className="bg-white border-gray-200 text-[#1A1624]">
           <DialogHeader>
             <DialogTitle>Edit Banned Phrase</DialogTitle>
             <DialogDescription className="text-gray-400">
@@ -677,7 +677,7 @@ export default function ComplianceAdmin() {
                 id="edit-phrase"
                 value={formData.phrase}
                 onChange={(e) => setFormData({ ...formData, phrase: e.target.value })}
-                className="bg-[#0A0A0F] border-[#27273A] text-white"
+                className="bg-gray-50 border-gray-200 text-[#1A1624]"
               />
             </div>
             <div>
@@ -688,10 +688,10 @@ export default function ComplianceAdmin() {
                   setFormData({ ...formData, category: value })
                 }
               >
-                <SelectTrigger className="bg-[#0A0A0F] border-[#27273A] text-white">
+                <SelectTrigger className="bg-gray-50 border-gray-200 text-[#1A1624]">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-[#14141F] border-[#27273A]">
+                <SelectContent className="bg-white border-gray-200">
                   <SelectItem value="critical">Critical</SelectItem>
                   <SelectItem value="warning">Warning</SelectItem>
                 </SelectContent>
@@ -703,7 +703,7 @@ export default function ComplianceAdmin() {
                 id="edit-description"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="bg-[#0A0A0F] border-[#27273A] text-white"
+                className="bg-gray-50 border-gray-200 text-[#1A1624]"
               />
             </div>
             <div>
@@ -712,7 +712,7 @@ export default function ComplianceAdmin() {
                 id="edit-suggestion"
                 value={formData.suggestion}
                 onChange={(e) => setFormData({ ...formData, suggestion: e.target.value })}
-                className="bg-[#0A0A0F] border-[#27273A] text-white"
+                className="bg-gray-50 border-gray-200 text-[#1A1624]"
               />
             </div>
             <div className="flex items-center space-x-2">
@@ -721,7 +721,7 @@ export default function ComplianceAdmin() {
                 id="edit-active"
                 checked={formData.active}
                 onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
-                className="w-4 h-4 rounded border-[#27273A] bg-[#0A0A0F]"
+                className="w-4 h-4 rounded border-gray-200 bg-gray-50"
               />
               <Label htmlFor="edit-active" className="cursor-pointer">
                 Active
@@ -732,7 +732,7 @@ export default function ComplianceAdmin() {
             <Button
               onClick={() => setIsEditDialogOpen(false)}
               variant="outline"
-              className="bg-transparent border-[#27273A] text-white hover:bg-[#16161F]"
+              className="bg-transparent border-gray-200 text-[#1A1624] hover:bg-gray-100"
             >
               Cancel
             </Button>
@@ -749,7 +749,7 @@ export default function ComplianceAdmin() {
 
       {/* Delete Dialog */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent className="bg-[#14141F] border-[#27273A] text-white">
+        <DialogContent className="bg-white border-gray-200 text-[#1A1624]">
           <DialogHeader>
             <DialogTitle>Delete Banned Phrase</DialogTitle>
             <DialogDescription className="text-gray-400">
@@ -757,7 +757,7 @@ export default function ComplianceAdmin() {
             </DialogDescription>
           </DialogHeader>
           {selectedPhrase && (
-            <div className="bg-[#0A0A0F] border border-[#27273A] rounded-lg p-4">
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
               <p className="font-mono text-sm mb-2">{selectedPhrase.phrase}</p>
               <Badge
                 variant={selectedPhrase.category === "critical" ? "destructive" : "default"}
@@ -775,7 +775,7 @@ export default function ComplianceAdmin() {
             <Button
               onClick={() => setIsDeleteDialogOpen(false)}
               variant="outline"
-              className="bg-transparent border-[#27273A] text-white hover:bg-[#16161F]"
+              className="bg-transparent border-gray-200 text-[#1A1624] hover:bg-gray-100"
             >
               Cancel
             </Button>
@@ -792,7 +792,7 @@ export default function ComplianceAdmin() {
 
       {/* Import CSV Dialog */}
       <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
-        <DialogContent className="bg-[#14141F] border-[#27273A] text-white max-w-2xl">
+        <DialogContent className="bg-white border-gray-200 text-[#1A1624] max-w-2xl">
           <DialogHeader>
             <DialogTitle>Import Banned Phrases from CSV</DialogTitle>
             <DialogDescription className="text-gray-400">
@@ -806,10 +806,10 @@ export default function ComplianceAdmin() {
                 value={importMode}
                 onValueChange={(value: "replace" | "append") => setImportMode(value)}
               >
-                <SelectTrigger className="bg-[#0A0A0F] border-[#27273A] text-white">
+                <SelectTrigger className="bg-gray-50 border-gray-200 text-[#1A1624]">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-[#14141F] border-[#27273A]">
+                <SelectContent className="bg-white border-gray-200">
                   <SelectItem value="append">Append (add to existing phrases)</SelectItem>
                   <SelectItem value="replace">Replace (delete all existing phrases)</SelectItem>
                 </SelectContent>
@@ -827,7 +827,7 @@ export default function ComplianceAdmin() {
                 type="file"
                 accept=".csv"
                 onChange={handleFileUpload}
-                className="bg-[#0A0A0F] border-[#27273A] text-white"
+                className="bg-gray-50 border-gray-200 text-[#1A1624]"
               />
             </div>
             <div>
@@ -838,7 +838,7 @@ export default function ComplianceAdmin() {
                 onChange={(e) => setCsvContent(e.target.value)}
                 placeholder="phrase,category,description,suggestion,active\n&quot;guaranteed results&quot;,critical,&quot;Meta policy violation&quot;,&quot;Use 'proven framework' instead&quot;,true"
                 rows={10}
-                className="bg-[#0A0A0F] border-[#27273A] text-white font-mono text-sm"
+                className="bg-gray-50 border-gray-200 text-[#1A1624] font-mono text-sm"
               />
               <p className="text-xs text-gray-400 mt-2">
                 CSV format: phrase, category (critical/warning), description, suggestion, active (true/false)
@@ -852,7 +852,7 @@ export default function ComplianceAdmin() {
                 setCsvContent("");
               }}
               variant="outline"
-              className="bg-transparent border-[#27273A] text-white hover:bg-[#16161F]"
+              className="bg-transparent border-gray-200 text-[#1A1624] hover:bg-gray-100"
             >
               Cancel
             </Button>

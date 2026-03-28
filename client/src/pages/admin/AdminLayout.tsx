@@ -4,6 +4,7 @@ import { Link, useLocation } from "wouter";
 const navLinks = [
   { label: "Dashboard", href: "/admin", exact: true },
   { label: "Analytics", href: "/admin/analytics" },
+  { label: "Revenue", href: "/admin/revenue" },
   { label: "Content", href: "/admin/content-moderation" },
   { label: "Compliance", href: "/admin/compliance" },
   { label: "Audit Log", href: "/admin/audit-log" },
