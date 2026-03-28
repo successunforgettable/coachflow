@@ -860,7 +860,7 @@ function PathSection({ onCTA }: { onCTA: () => void }) {
   }, [started, litCount]);
 
   return (
-    <section id="path" ref={sectionRef} style={{ background: CREAM, padding: "clamp(56px,8vw,100px) clamp(16px,4vw,24px)" }}>
+    <section id="path" ref={sectionRef} className="lp-path-section" style={{ background: CREAM, padding: "clamp(56px,8vw,100px) clamp(16px,4vw,24px)" }}>
       <div style={{ maxWidth: 900, margin: "0 auto", textAlign: "center" }}>
         <h2 style={{ fontFamily: "'Fraunces', serif", fontStyle: "italic", fontWeight: 900, fontSize: "clamp(28px, 5vw, 48px)", color: INK, margin: "0 0 12px", letterSpacing: "-0.5px" }}>
           One path. Every asset you need to launch.
@@ -1039,6 +1039,8 @@ function ProblemSolutionSection({ onCTA }: { onCTA: () => void }) {
             justify-content: flex-start !important;
           }
           .lp-node-connector { display: none !important; }
+          .lp-path-section { padding-top: 32px !important; padding-bottom: 32px !important; }
+          .lp-path-section p { margin-bottom: 32px !important; }
         }
       `}</style>
     </section>
