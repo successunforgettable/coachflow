@@ -510,6 +510,43 @@ function HeroSection({ onCampaignSelect: _onCampaignSelect }: { onCampaignSelect
 
   const zappySize = "clamp(80px, 12vw, 120px)";
 
+  // Mobile detection for static hero
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth <= 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
+  // ─── MOBILE: static hero (no carousel) ───────────────────────────────────
+  if (isMobile) {
+    return (
+      <section style={{ background: CREAM, padding: "24px 20px 20px", textAlign: "center" }}>
+        <img src={ZAPPY_WAITING} alt="Zappy" style={{ width: 80, height: 80, display: "block", margin: "0 auto 16px" }} />
+        <h1 style={{ fontFamily: "'Fraunces', serif", fontStyle: "italic", fontWeight: 900, fontSize: "28px", color: INK, margin: "0 0 20px", lineHeight: 1.2 }}>
+          Who do you help?
+        </h1>
+        <input
+          type="text"
+          value={ans1}
+          onChange={e => setAns1(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && handleStep1()}
+          placeholder="e.g. coaches, executives, mums, dentists"
+          autoFocus
+          style={{ width: "100%", border: "2px solid rgba(26,22,36,0.12)", outline: "none", padding: "14px 20px", fontSize: 15, fontFamily: "'Instrument Sans', sans-serif", background: "#fff", color: INK, borderRadius: 9999, boxShadow: "0 2px 12px rgba(0,0,0,0.06)", marginBottom: 12 }}
+        />
+        <button
+          onClick={() => { if (ans1.trim().length >= 3) navigate("/signup"); else handleStep1(); }}
+          style={{ width: "100%", background: ORANGE, color: "#fff", border: "none", borderRadius: 9999, padding: "14px 28px", fontSize: 15, fontWeight: 600, fontFamily: "'Instrument Sans', sans-serif", cursor: "pointer" }}
+        >
+          Start Building Free →
+        </button>
+      </section>
+    );
+  }
+
+  // ─── DESKTOP: full carousel ───────────────────────────────────────────────
   return (
     <section ref={heroSectionRef} className="lp-hero-section" style={{ background: CREAM, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "clamp(48px,8vw,100px) clamp(16px,4vw,24px) clamp(32px,4vw,48px)", position: "relative", overflow: "hidden" }}>
       {/* Confetti */}
