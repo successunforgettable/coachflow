@@ -748,7 +748,7 @@ function HeroSection({ onCampaignSelect: _onCampaignSelect }: { onCampaignSelect
 
         {/* Step dots */}
         {(step === "step1" || step === "step2" || step === "step3") && (
-          <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 32 }}>
+          <div className="lp-hero-dots" style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 32 }}>
             {(["step1", "step2", "step3"] as HeroStep[]).map((s, i) => (
               <div key={s} style={{ width: 8, height: 8, borderRadius: "50%", background: step === s ? ORANGE : "rgba(26,22,36,0.15)", transition: "background 0.3s" }} />
             ))}
@@ -949,7 +949,13 @@ function ProblemSolutionSection({ onCTA }: { onCTA: () => void }) {
       <style>{`
         .lp-hero-section { min-height: 700px; }
         @media (max-width: 768px) {
-          .lp-hero-section { min-height: auto !important; padding-top: 32px !important; padding-bottom: 24px !important; }
+          .lp-hero-section {
+            min-height: auto !important;
+            justify-content: flex-start !important;
+            padding-top: 16px !important;
+            padding-bottom: 16px !important;
+          }
+          .lp-hero-dots { margin-top: 16px !important; }
           .lp-split-grid { grid-template-columns: 1fr !important; }
         }
       `}</style>
