@@ -519,35 +519,33 @@ function HeroSection({ onCampaignSelect: _onCampaignSelect }: { onCampaignSelect
     return () => window.removeEventListener("resize", check);
   }, []);
 
-  // ─── MOBILE: static hero (no carousel) ───────────────────────────────────
-  if (isMobile) {
-    return (
-      <section style={{ background: CREAM, padding: "24px 20px 20px", textAlign: "center" }}>
-        <img src={ZAPPY_WAITING} alt="Zappy" style={{ width: 80, height: 80, display: "block", margin: "0 auto 16px" }} />
-        <h1 style={{ fontFamily: "'Fraunces', serif", fontStyle: "italic", fontWeight: 900, fontSize: "28px", color: INK, margin: "0 0 20px", lineHeight: 1.2 }}>
-          Who do you help?
-        </h1>
-        <input
-          type="text"
-          value={ans1}
-          onChange={e => setAns1(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && handleStep1()}
-          placeholder="e.g. coaches, executives, mums, dentists"
-          autoFocus
-          style={{ width: "100%", border: "2px solid rgba(26,22,36,0.12)", outline: "none", padding: "14px 20px", fontSize: 15, fontFamily: "'Instrument Sans', sans-serif", background: "#fff", color: INK, borderRadius: 9999, boxShadow: "0 2px 12px rgba(0,0,0,0.06)", marginBottom: 12 }}
-        />
-        <button
-          onClick={() => { if (ans1.trim().length >= 3) navigate("/signup"); else handleStep1(); }}
-          style={{ width: "100%", background: ORANGE, color: "#fff", border: "none", borderRadius: 9999, padding: "14px 28px", fontSize: 15, fontWeight: 600, fontFamily: "'Instrument Sans', sans-serif", cursor: "pointer" }}
-        >
-          Start Building Free →
-        </button>
-      </section>
-    );
-  }
-
-  // ─── DESKTOP: full carousel ───────────────────────────────────────────────
+  // Both mobile and desktop heroes render — CSS controls visibility
   return (
+    <>
+    {/* ─── MOBILE: static hero (CSS hidden on desktop) ─── */}
+    <section className="lp-hero-mobile" style={{ background: CREAM, padding: "24px 20px 20px", textAlign: "center" }}>
+      <img src={ZAPPY_WAITING} alt="Zappy" style={{ width: 80, height: 80, display: "block", margin: "0 auto 16px" }} />
+      <h1 style={{ fontFamily: "'Fraunces', serif", fontStyle: "italic", fontWeight: 900, fontSize: "28px", color: INK, margin: "0 0 20px", lineHeight: 1.2 }}>
+        Who do you help?
+      </h1>
+      <input
+        type="text"
+        value={ans1}
+        onChange={e => setAns1(e.target.value)}
+        onKeyDown={e => e.key === "Enter" && handleStep1()}
+        placeholder="e.g. coaches, executives, mums, dentists"
+        style={{ width: "100%", border: "2px solid rgba(26,22,36,0.12)", outline: "none", padding: "14px 20px", fontSize: 15, fontFamily: "'Instrument Sans', sans-serif", background: "#fff", color: INK, borderRadius: 9999, boxShadow: "0 2px 12px rgba(0,0,0,0.06)", marginBottom: 12 }}
+      />
+      <button
+        onClick={() => { if (ans1.trim().length >= 3) navigate("/signup"); else handleStep1(); }}
+        style={{ width: "100%", background: ORANGE, color: "#fff", border: "none", borderRadius: 9999, padding: "14px 28px", fontSize: 15, fontWeight: 600, fontFamily: "'Instrument Sans', sans-serif", cursor: "pointer" }}
+      >
+        Start Building Free →
+      </button>
+    </section>
+
+    {/* ─── DESKTOP: full carousel (CSS hidden on mobile) ─── */}
+    <section ref={heroSectionRef} className="lp-hero-section" style={{ background: CREAM, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "clamp(48px,8vw,100px) clamp(16px,4vw,24px) clamp(32px,4vw,48px)", position: "relative", overflow: "hidden" }}>
     <section ref={heroSectionRef} className="lp-hero-section" style={{ background: CREAM, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "clamp(48px,8vw,100px) clamp(16px,4vw,24px) clamp(32px,4vw,48px)", position: "relative", overflow: "hidden" }}>
       {/* Confetti */}
       {confetti.run && (
@@ -828,8 +826,15 @@ function HeroSection({ onCampaignSelect: _onCampaignSelect }: { onCampaignSelect
         @media (min-width: 480px) {
           .hero-input-row { flex-direction: row !important; }
         }
+        /* Mobile: show static hero, hide carousel */
+        .lp-hero-mobile { display: none; }
+        @media (max-width: 768px) {
+          .lp-hero-mobile { display: block !important; }
+          .lp-hero-section { display: none !important; }
+        }
       `}</style>
     </section>
+    </>
   );
 }
 
@@ -867,9 +872,9 @@ function PathSection({ onCTA }: { onCTA: () => void }) {
         {/* Winding path — alternating left/right */}
         <div style={{ maxWidth: 680, margin: "0 auto 56px", position: "relative" }}>
           {/* Vertical connector line */}
-          <div style={{ position: "absolute", left: "50%", top: 22, bottom: 22, width: 2, background: `linear-gradient(to bottom, #22C55E 40%, ${ORANGE} 100%)`, opacity: 0.18, transform: "translateX(-50%)" }} />
+          <div className="lp-node-connector" style={{ position: "absolute", left: "50%", top: 22, bottom: 22, width: 2, background: `linear-gradient(to bottom, #22C55E 40%, ${ORANGE} 100%)`, opacity: 0.18, transform: "translateX(-50%)" }} />
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 40px" }}>
+          <div className="lp-node-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 40px" }}>
             {PATH_NODES.map((node, i) => {
               const isLit = i < litCount;
               const isLeft = i % 2 === 0;
@@ -1024,6 +1029,16 @@ function ProblemSolutionSection({ onCTA }: { onCTA: () => void }) {
           }
           .lp-hero-dots { margin-top: 16px !important; }
           .lp-split-grid { grid-template-columns: 1fr !important; }
+          .lp-node-grid {
+            grid-template-columns: 1fr !important;
+            gap: 8px 0 !important;
+          }
+          .lp-node-grid > div {
+            grid-column: 1 !important;
+            flex-direction: row !important;
+            justify-content: flex-start !important;
+          }
+          .lp-node-connector { display: none !important; }
         }
       `}</style>
     </section>
