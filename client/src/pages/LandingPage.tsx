@@ -480,7 +480,7 @@ function HeroSection({ onCampaignSelect: _onCampaignSelect }: { onCampaignSelect
   const zappySize = "clamp(80px, 12vw, 120px)";
 
   return (
-    <section style={{ background: CREAM, minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "clamp(80px,10vw,120px) clamp(16px,4vw,24px) clamp(48px,6vw,80px)", position: "relative", overflow: "hidden" }}>
+    <section style={{ background: CREAM, minHeight: "min(100vh, 700px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "clamp(48px,8vw,100px) clamp(16px,4vw,24px) clamp(32px,4vw,48px)", position: "relative", overflow: "hidden" }}>
       {/* Confetti */}
       {confetti.run && (
         <Confetti
@@ -904,8 +904,8 @@ function ProblemSolutionSection({ onCTA }: { onCTA: () => void }) {
                 </div>
               ))}
             </div>
-            {/* Messy arrows */}
-            <div style={{ fontSize: 20, color: "rgba(255,255,255,0.18)", marginBottom: 20, letterSpacing: 6 }}>↔ ↕ ↗ ↙ ↔</div>
+            {/* Divider */}
+            <div style={{ width: 48, height: 3, background: "rgba(239,68,68,0.4)", borderRadius: 2, marginBottom: 20 }} />
             <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 16, lineHeight: 1.7, margin: 0 }}>
               Hours of prompting. Copy-pasting between tools. Re-explaining your offer every time. And still getting generic output.
             </p>
