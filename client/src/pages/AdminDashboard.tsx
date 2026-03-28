@@ -479,7 +479,10 @@ export default function AdminDashboard() {
             fontFamily: "'Instrument Sans', sans-serif",
             fontSize: 13,
             background: "#fff",
+            color: "#1A1624",
             cursor: "pointer",
+            minWidth: 120,
+            WebkitAppearance: "menulist" as any,
           }}
         >
           <option value="all">All Tiers</option>
@@ -490,7 +493,18 @@ export default function AdminDashboard() {
         <select
           value={activityFilter}
           onChange={(e) => setActivityFilter(e.target.value)}
-          style={{ padding: "10px 14px", borderRadius: 12, border: "1px solid #e5e0d8", fontFamily: "'Instrument Sans', sans-serif", fontSize: 13, background: "#fff", cursor: "pointer" }}
+          style={{
+            padding: "10px 14px",
+            borderRadius: 12,
+            border: "1px solid #e5e0d8",
+            fontFamily: "'Instrument Sans', sans-serif",
+            fontSize: 13,
+            background: "#fff",
+            color: "#1A1624",
+            cursor: "pointer",
+            minWidth: 140,
+            WebkitAppearance: "menulist" as any,
+          }}
         >
           <option value="all">All Activity</option>
           <option value="active7">Active (7d)</option>

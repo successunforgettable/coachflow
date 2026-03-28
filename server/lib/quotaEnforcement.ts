@@ -57,4 +57,10 @@ export async function incrementQuotaCount(
 
   const currentCount = (user as any)[countField] ?? 0;
   await db.update(users).set({ [countField]: currentCount + 1 } as any).where(eq(users.id, userId));
+
+  // Track product event (non-blocking)
+  try {
+    const { trackEvent } = await import("./productEvents");
+    await trackEvent(userId, "user_generated", { generator: generatorType });
+  } catch (_) { /* ignore tracking failures */ }
 }

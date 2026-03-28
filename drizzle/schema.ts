@@ -1243,3 +1243,20 @@ export const favourites = mysqlTable("favourites", {
 });
 export type Favourite = typeof favourites.$inferSelect;
 export type InsertFavourite = typeof favourites.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// Product usage events — tracks user_generated, user_upgraded, node_completed
+// ---------------------------------------------------------------------------
+export const productEvents = mysqlTable("product_events", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  eventType: varchar("eventType", { length: 50 }).notNull(), // user_generated, user_upgraded, node_completed
+  metadata: json("metadata"), // { nodeType, serviceId, tier, etc. }
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  userIdIdx: index("idx_product_events_userId").on(table.userId),
+  eventTypeIdx: index("idx_product_events_eventType").on(table.eventType),
+  createdAtIdx: index("idx_product_events_createdAt").on(table.createdAt),
+}));
+export type ProductEvent = typeof productEvents.$inferSelect;
+export type InsertProductEvent = typeof productEvents.$inferInsert;

@@ -164,6 +164,13 @@ export const campaignKitsRouter = router({
         .set(updateData as any)
         .where(eq(campaignKits.id, input.kitId));
 
+      // Track node_completed event (non-blocking)
+      try {
+        const { trackEvent } = await import("../lib/productEvents");
+        const nodeField = Object.keys(fields).find(k => k.startsWith("selected") && (fields as any)[k] != null);
+        if (nodeField) await trackEvent(ctx.user.id, "node_completed", { node: nodeField, kitId: input.kitId });
+      } catch (_) { /* ignore */ }
+
       // Fetch updated row and check completeness
       const [updated] = await db
         .select()

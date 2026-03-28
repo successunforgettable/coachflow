@@ -414,6 +414,13 @@
       "when": 1774301876659,
       "tag": "0058_jazzy_violations",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "5",
+      "when": 1774701283229,
+      "tag": "0059_new_colossus",
+      "breakpoints": true
     }
   ]
 }
