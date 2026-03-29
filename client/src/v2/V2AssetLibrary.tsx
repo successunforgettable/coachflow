@@ -3,7 +3,7 @@
  * Shows all generated images, videos, and copy assets across campaigns.
  * Includes Zappy AI retrieval — character + speech bubble, inline at top.
  */
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, Fragment } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
@@ -103,6 +103,9 @@ export default function V2AssetLibrary() {
   const [search, setSearch] = useState("");
   const [campaignFilter, setCampaignFilter] = useState("all");
   const [viewMode, setViewMode] = useState<"campaign" | "all">("campaign");
+  const [selectedAsset, setSelectedAsset] = useState<{ id: number; serviceId: number | null; type: "image" | "video" | "copy" } | null>(null);
+  const toggleAsset = (id: number, serviceId: number | null, type: "image" | "video" | "copy") =>
+    setSelectedAsset(prev => (prev?.id === id ? null : { id, serviceId, type }));
 
   // Zappy state
   const [zappyOpen, setZappyOpen] = useState(false);
@@ -247,6 +250,75 @@ export default function V2AssetLibrary() {
   }, [zappyQuery, filteredImages, filteredVideos, copyAssets]);
 
   const clearZappy = () => { setZappyResults(null); setZappyQuery(""); };
+
+  const renderSiblingShelf = (serviceId: number | null) => {
+    if (!selectedAsset || selectedAsset.serviceId !== serviceId) return null;
+    const campaignName = serviceId !== null ? (serviceNameMap[serviceId] || "this campaign") : "this campaign";
+    const accent = getCampaignColour(serviceId ?? 0);
+    const sibImages = images.filter((img: any) => img.serviceId === serviceId && img.id !== selectedAsset.id);
+    const sibVideos = videos.filter((v: any) => v.serviceId === serviceId && v.id !== selectedAsset.id);
+    const sibCopy = copyAssets.filter(c => c.serviceId === serviceId && c.id !== selectedAsset.id);
+    if (sibImages.length + sibVideos.length + sibCopy.length === 0) return null;
+    return (
+      <div style={{ width: "100%", background: "#F0EBE1", borderRadius: 16, padding: 24, display: "flex", flexDirection: "column", gap: 16, marginTop: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <h4 style={{ fontFamily: T.fontH, fontStyle: "italic", fontWeight: 900, fontSize: 16, color: accent, margin: 0 }}>
+            More from {campaignName}
+          </h4>
+          <button onClick={() => setSelectedAsset(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: T.muted, lineHeight: 1, padding: "4px 8px" }}>✕</button>
+        </div>
+        <div style={{ display: "flex", gap: 16, overflowX: "auto", paddingBottom: 8, scrollbarWidth: "thin" as const }}>
+          {sibImages.map((img: any) => (
+            <div key={`sib-img-${img.id}`} style={{ flexShrink: 0, width: 260, cursor: "pointer" }} onClick={() => toggleAsset(img.id, img.serviceId, "image")}>
+              <div style={cardBase(img.serviceId)}>
+                <div style={{ aspectRatio: "1/1", overflow: "hidden", background: "#F5F1EA", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {img.imageUrl ? (
+                    <img src={`/api/image-proxy?url=${encodeURIComponent(img.imageUrl)}`} alt={img.headline || "Ad image"} style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                  ) : (
+                    <span style={{ fontSize: 32, color: T.muted }}>🖼</span>
+                  )}
+                </div>
+                <div style={{ padding: "12px 14px" }}>
+                  <p style={{ fontFamily: T.fontB, fontWeight: 600, fontSize: 14, color: T.dark, margin: "0 0 2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{img.headline || img.productName || `Ad Image #${img.id}`}</p>
+                  <p style={{ fontFamily: T.fontB, fontSize: 12, color: T.muted, margin: 0 }}>{new Date(img.createdAt).toLocaleDateString()}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+          {sibVideos.map((v: any) => {
+            const vtLabel = videoTypeLabel(v.videoType);
+            const angleVal = (v.angle || "").toUpperCase();
+            return (
+              <div key={`sib-vid-${v.id}`} style={{ flexShrink: 0, width: 260, cursor: "pointer" }} onClick={() => toggleAsset(v.id, v.serviceId, "video")}>
+                <div style={cardBase(v.serviceId)}>
+                  <div style={{ aspectRatio: "1/1", overflow: "hidden", position: "relative", background: "linear-gradient(135deg, #1A1624 0%, #2D1F3D 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "20px 18px" }}>
+                    <p style={{ fontFamily: T.fontB, fontSize: 17, fontWeight: 800, color: "#fff", textAlign: "center", margin: "0 0 8px", lineHeight: 1.3 }}>{vtLabel}</p>
+                    {angleVal && <span style={{ fontFamily: T.fontB, fontSize: 11, fontWeight: 800, color: "#FF5B1D", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 8, background: "rgba(255,91,29,0.15)", padding: "3px 10px", borderRadius: 9999 }}>{angleVal}</span>}
+                    <div onClick={e => { e.stopPropagation(); v.videoUrl && window.open(v.videoUrl, "_blank"); }} style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 44, height: 44, borderRadius: "50%", background: "rgba(255,91,29,0.75)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", marginTop: -10, boxShadow: "0 2px 12px rgba(255,91,29,0.4)" }}>
+                      <span style={{ color: "#fff", fontSize: 18, marginLeft: 3 }}>▶</span>
+                    </div>
+                  </div>
+                  <div style={{ padding: "12px 14px" }}>
+                    <p style={{ fontFamily: T.fontB, fontWeight: 600, fontSize: 14, color: T.dark, margin: "0 0 2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{vtLabel}{angleVal ? ` · ${angleVal}` : ""}</p>
+                    <p style={{ fontFamily: T.fontB, fontSize: 12, color: T.muted, margin: 0 }}>{new Date(v.createdAt).toLocaleDateString()}</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          {sibCopy.map((c, idx) => (
+            <div key={`sib-copy-${c.id}-${idx}`} style={{ flexShrink: 0, width: 260, cursor: "pointer" }} onClick={() => toggleAsset(c.id, c.serviceId, "copy")}>
+              <div style={{ ...cardBase(c.serviceId), padding: "16px 18px" }}>
+                <span style={{ fontFamily: T.fontB, fontSize: 10, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.06em", color: T.orange, display: "block", marginBottom: 8, marginTop: 4 }}>{c.type}</span>
+                <p style={{ fontFamily: T.fontB, fontSize: 14, color: T.dark, margin: "0 0 10px", lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical" as const, overflow: "hidden" }}>{c.text}</p>
+                <p style={{ fontFamily: T.fontB, fontSize: 12, color: T.muted, margin: 0 }}>{new Date(c.date).toLocaleDateString()}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
 
   // Speech bubble content
   const renderSpeechBubbleContent = () => {
@@ -472,7 +544,8 @@ export default function V2AssetLibrary() {
             if (camImages.length + camVideos.length + camCopy.length === 0) return null;
             const accent = getCampaignColour(campaign.id);
             return (
-              <div key={campaign.id}>
+              <Fragment key={campaign.id}>
+              <div>
                 {/* Row label */}
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
                   <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: "50%", background: accent, flexShrink: 0 }} />
@@ -489,7 +562,7 @@ export default function V2AssetLibrary() {
                   {camImages.map((img: any) => {
                     const serviceName = serviceNameMap[img.serviceId] || null;
                     return (
-                      <div key={`img-${img.id}`} style={{ flexShrink: 0, width: 260 }}>
+                      <div key={`img-${img.id}`} style={{ flexShrink: 0, width: 260, cursor: "pointer" }} onClick={() => toggleAsset(img.id, img.serviceId, "image")}>
                         <div style={{ ...cardBase(img.serviceId), ...zappyOverlay(img.id) }}>
                           <Heart active={imgFavs.isFav(img.id)} onClick={() => imgFavs.toggle(img.id, img.headline)} />
                           <div style={{ aspectRatio: "1/1", overflow: "hidden", background: "#F5F1EA", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -517,7 +590,7 @@ export default function V2AssetLibrary() {
                     const vsLabel = visualStyleLabel(v.visualStyle);
                     const angleVal = (v.angle || "").toUpperCase();
                     return (
-                      <div key={`vid-${v.id}`} style={{ flexShrink: 0, width: 260 }}>
+                      <div key={`vid-${v.id}`} style={{ flexShrink: 0, width: 260, cursor: "pointer" }} onClick={() => toggleAsset(v.id, v.serviceId, "video")}>
                         <div style={{ ...cardBase(v.serviceId), ...zappyOverlay(v.id) }}>
                           <Heart active={vidFavs.isFav(v.id)} onClick={() => vidFavs.toggle(v.id, v.title)} />
                           <div style={{ aspectRatio: "1/1", overflow: "hidden", position: "relative", background: "linear-gradient(135deg, #1A1624 0%, #2D1F3D 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "20px 18px" }}>
@@ -547,7 +620,7 @@ export default function V2AssetLibrary() {
                   })}
 
                   {camCopy.map((c, idx) => (
-                    <div key={`copy-${c.id}-${idx}`} style={{ flexShrink: 0, width: 260 }}>
+                    <div key={`copy-${c.id}-${idx}`} style={{ flexShrink: 0, width: 260, cursor: "pointer" }} onClick={() => toggleAsset(c.id, c.serviceId, "copy")}>
                       <div style={{ ...cardBase(c.serviceId), padding: "16px 18px", ...zappyOverlay(c.id) }}>
                         <Heart active={copyFavs.isFav(c.id)} onClick={() => copyFavs.toggle(c.id, c.text)} />
                         <span style={{ fontFamily: T.fontB, fontSize: 10, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.06em", color: T.orange, display: "block", marginBottom: 8, marginTop: 4 }}>{c.type}</span>
@@ -560,6 +633,8 @@ export default function V2AssetLibrary() {
 
                 </div>
               </div>
+              {renderSiblingShelf(campaign.id)}
+              </Fragment>
             );
           })}
         </div>
@@ -574,7 +649,7 @@ export default function V2AssetLibrary() {
           const accentColour = getCampaignColour(img.serviceId ?? 0);
           const serviceName = serviceNameMap[img.serviceId] || null;
           return (
-            <div key={`img-${img.id}`} style={{ ...cardBase(img.serviceId), ...zappyOverlay(img.id) }}>
+            <div key={`img-${img.id}`} style={{ ...cardBase(img.serviceId), ...zappyOverlay(img.id), cursor: "pointer" }} onClick={() => toggleAsset(img.id, img.serviceId, "image")}>
               <Heart active={imgFavs.isFav(img.id)} onClick={() => imgFavs.toggle(img.id, img.headline)} />
               <div style={{ aspectRatio: "1/1", overflow: "hidden", background: "#F5F1EA", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 {img.imageUrl ? (
@@ -617,7 +692,7 @@ export default function V2AssetLibrary() {
           const vsLabel = visualStyleLabel(v.visualStyle); // "Kinetic"
           const angleVal = (v.angle || "").toUpperCase();  // "IDENTITY"
           return (
-            <div key={`vid-${v.id}`} style={{ ...cardBase(v.serviceId), ...zappyOverlay(v.id) }}>
+            <div key={`vid-${v.id}`} style={{ ...cardBase(v.serviceId), ...zappyOverlay(v.id), cursor: "pointer" }} onClick={() => toggleAsset(v.id, v.serviceId, "video")}>
               <Heart active={vidFavs.isFav(v.id)} onClick={() => vidFavs.toggle(v.id, v.title)} />
               {/* Dark gradient — video cards are always dark */}
               <div style={{
@@ -671,7 +746,7 @@ export default function V2AssetLibrary() {
                 </div>
                 {/* Centred play button */}
                 <div
-                  onClick={() => v.videoUrl && window.open(v.videoUrl, "_blank")}
+                  onClick={e => { e.stopPropagation(); v.videoUrl && window.open(v.videoUrl, "_blank"); }}
                   style={{
                     position: "absolute", top: "50%", left: "50%",
                     transform: "translate(-50%,-50%)",
@@ -720,7 +795,7 @@ export default function V2AssetLibrary() {
           const accentColour = getCampaignColour(c.serviceId ?? 0);
           const serviceName = serviceNameMap[c.serviceId ?? -1] || null;
           return (
-            <div key={`copy-${c.id}-${idx}`} style={{ ...cardBase(c.serviceId), padding: "16px 18px", ...zappyOverlay(c.id) }}>
+            <div key={`copy-${c.id}-${idx}`} style={{ ...cardBase(c.serviceId), padding: "16px 18px", ...zappyOverlay(c.id), cursor: "pointer" }} onClick={() => toggleAsset(c.id, c.serviceId, "copy")}>
               <Heart active={copyFavs.isFav(c.id)} onClick={() => copyFavs.toggle(c.id, c.text)} />
               <span style={{ fontFamily: T.fontB, fontSize: 10, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.06em", color: T.orange, display: "block", marginBottom: 8, marginTop: 4 }}>
                 {c.type}
@@ -741,6 +816,8 @@ export default function V2AssetLibrary() {
           );
         })}
       </div>
+
+      {selectedAsset !== null && renderSiblingShelf(selectedAsset.serviceId)}
 
       {/* Empty states — only in All Assets mode */}
       {viewMode === "all" && tab === "images" && filteredImages.length === 0 && (
