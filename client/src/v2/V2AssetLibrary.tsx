@@ -330,17 +330,35 @@ export default function V2AssetLibrary() {
       );
     }
 
-    // Closed: prompt text
+    // Closed: prompt text + chips always visible
     return (
-      <span
-        onClick={() => setZappyOpen(true)}
-        style={{
-          fontFamily: T.fontB, fontSize: 14, color: T.muted, fontStyle: "italic",
-          cursor: "pointer", display: "block",
-        }}
-      >
-        Ask me to find anything in your library...
-      </span>
+      <div>
+        <span
+          onClick={() => setZappyOpen(true)}
+          style={{
+            fontFamily: T.fontB, fontSize: 14, color: T.muted, fontStyle: "italic",
+            cursor: "pointer", display: "block", marginBottom: 10,
+          }}
+        >
+          Ask me to find anything in your library...
+        </span>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {SUGGESTION_CHIPS.map(chip => (
+            <button
+              key={chip}
+              onClick={() => { setZappyOpen(true); handleZappySearch(chip); }}
+              style={{
+                padding: "4px 12px", borderRadius: 9999,
+                border: "1px solid #FF5B1D", background: "#FFF5F2",
+                color: "#FF5B1D", fontFamily: T.fontB, fontSize: 12,
+                cursor: "pointer", whiteSpace: "nowrap",
+              }}
+            >
+              {chip}
+            </button>
+          ))}
+        </div>
+      </div>
     );
   };
 
