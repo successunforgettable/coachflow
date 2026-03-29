@@ -66,6 +66,7 @@ import V2GeneratorWizardPage from "./v2/V2GeneratorWizardPage";
 import V2CampaignKit from "./v2/V2CampaignKit";
 import V2SourceOfTruth from "./v2/V2SourceOfTruth";
 import V2AssetLibrary from "./v2/V2AssetLibrary";
+import V2Settings from "./v2/V2Settings";
 import Login from "./pages/Login";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
@@ -143,6 +144,7 @@ function Router() {
       <Route path={"/v2-dashboard/source-of-truth"} component={V2SourceOfTruth} />
       <Route path={"/v2-dashboard/wizard/:step"} component={V2GeneratorWizardPage} />
       <Route path={"/v2-dashboard/campaign-kit/:kitId"} component={V2CampaignKit} />
+      <Route path={"/v2-dashboard/settings"} component={V2Settings} />
       <Route path={"/v2-dashboard"} component={V2Dashboard} />
       <Route path={"/404"} component={NotFound} />
       {/* Fallback route for 404 */}

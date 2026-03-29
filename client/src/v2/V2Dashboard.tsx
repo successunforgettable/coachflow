@@ -561,7 +561,7 @@ export default function V2Dashboard() {
                   </div>
                   {/* Settings */}
                   <a
-                    href="/settings"
+                    href="/v2-dashboard/settings"
                     onClick={() => setMenuOpen(false)}
                     style={{
                       display: "flex",
