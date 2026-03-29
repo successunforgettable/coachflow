@@ -1211,7 +1211,7 @@ function WhatsAppRecommendation({ whatsappSequenceId, campaignKit, onSelect, onR
 }
 
 // ─── Push Integration Panel: Node 11 — Connect Meta + GHL ─────────────────────
-function PushIntegrationPanel({ campaignKit }: { campaignKit: any }) {
+function PushIntegrationPanel({ campaignKit, serviceId, serviceName }: { campaignKit: any; serviceId: number | null; serviceName: string }) {
   const { data: metaStatus } = trpc.meta.getConnectionStatus.useQuery();
   const { data: ghlStatus, refetch: refetchGhlStatus } = trpc.ghl.getConnectionStatus.useQuery();
   const ghlExchangeCode = trpc.ghl.exchangeCode.useMutation({
@@ -1223,6 +1223,45 @@ function PushIntegrationPanel({ campaignKit }: { campaignKit: any }) {
   const ghlPush = trpc.ghl.pushCampaign.useMutation();
   const ghlDisconnect = trpc.ghl.disconnect.useMutation({ onSuccess: () => { refetchGhlStatus(); } });
   const [pushStatus, setPushStatus] = useState<string | null>(null);
+
+  // Meta push state
+  const [metaPushState, setMetaPushState] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [metaPushResult, setMetaPushResult] = useState<{ campaignId?: string; adSetId?: string; adId?: string; message?: string } | null>(null);
+  const [metaPushError, setMetaPushError] = useState<string | null>(null);
+  const [linkUrl, setLinkUrl] = useState("");
+
+  const { data: publishedAds } = trpc.meta.getPublishedAds.useQuery(undefined, { enabled: !!metaStatus?.connected });
+  const { data: latestAdCopy } = trpc.adCopy.getLatestByServiceId.useQuery(
+    { serviceId: serviceId! },
+    { enabled: !!metaStatus?.connected && !!serviceId }
+  );
+  const metaPushMutation = trpc.meta.publishToMeta.useMutation();
+
+  // Check if already pushed for this campaign
+  const alreadyPushed = publishedAds?.find((ad: any) => ad.campaignName === (serviceName || campaignKit?.name));
+
+  const handleMetaPush = async () => {
+    const headlineText = latestAdCopy?.bodies?.[0]?.content || latestAdCopy?.headlines?.[0]?.content || serviceName || "Campaign";
+    const bodyText = latestAdCopy?.bodies?.[0]?.content || serviceName || "Campaign";
+    if (!linkUrl) { setMetaPushError("Please enter a destination URL first."); return; }
+    setMetaPushState("loading");
+    setMetaPushError(null);
+    try {
+      const result = await metaPushMutation.mutateAsync({
+        headline: headlineText,
+        body: bodyText,
+        linkUrl,
+        campaignName: serviceName || campaignKit?.name || "Campaign",
+        objective: "OUTCOME_LEADS",
+        status: "PAUSED",
+      });
+      setMetaPushResult(result as any);
+      setMetaPushState("success");
+    } catch (e: any) {
+      setMetaPushError(e.message || "Push failed. Please try again.");
+      setMetaPushState("error");
+    }
+  };
 
   // Handle GHL OAuth callback code in URL — exchange on mount
   useEffect(() => {
@@ -1283,6 +1322,82 @@ function PushIntegrationPanel({ campaignKit }: { campaignKit: any }) {
           <a href={metaOAuthUrl?.url || "#"} style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "#fff", padding: "8px 16px", borderRadius: 9999, background: A, textDecoration: "none" }}>Connect</a>
         )}
       </div>
+
+      {/* Meta Push section */}
+      {metaStatus?.connected && (
+        <div style={{ background: "#fff", borderRadius: 16, padding: "20px 24px", marginBottom: 12, textAlign: "left" }}>
+          <p style={{ fontFamily: F, fontWeight: 600, fontSize: 14, color: "#1A1624", margin: "0 0 12px" }}>🚀 Push to Meta Ads</p>
+
+          {alreadyPushed ? (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div>
+                <p style={{ fontFamily: F, fontSize: 13, fontWeight: 600, color: "#22C55E", margin: "0 0 2px" }}>✅ Already published</p>
+                <p style={{ fontFamily: F, fontSize: 12, color: "#999", margin: 0 }}>{alreadyPushed.campaignName}</p>
+              </div>
+              {alreadyPushed.metaCampaignId && (
+                <a
+                  href={`https://www.facebook.com/adsmanager/manage/campaigns?act=${alreadyPushed.metaAdAccountId || ""}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: A, textDecoration: "none", padding: "6px 14px", borderRadius: 9999, border: `1.5px solid ${A}` }}
+                >
+                  View in Meta →
+                </a>
+              )}
+            </div>
+          ) : metaPushState === "success" ? (
+            <div style={{ textAlign: "center", padding: "8px 0" }}>
+              <ZappyMascot state="cheering" size={80} />
+              <p style={{ fontFamily: F, fontWeight: 700, fontSize: 14, color: "#22C55E", margin: "10px 0 4px" }}>Campaign pushed to Meta!</p>
+              {metaPushResult?.message && <p style={{ fontFamily: F, fontSize: 12, color: "#666", margin: "0 0 4px" }}>{metaPushResult.message}</p>}
+              {metaPushResult?.adId && <p style={{ fontFamily: F, fontSize: 11, color: "#999", margin: 0 }}>Ad ID: {metaPushResult.adId}</p>}
+            </div>
+          ) : metaPushState === "loading" ? (
+            <div style={{ textAlign: "center", padding: "8px 0" }}>
+              <ZappyMascot state="loading" size={80} />
+              <p style={{ fontFamily: F, fontSize: 13, color: "#666", margin: "10px 0 0" }}>Pushing to Meta Ads Manager...</p>
+            </div>
+          ) : (
+            <div>
+              {metaPushState === "error" && (
+                <div style={{ textAlign: "center", padding: "8px 0 12px" }}>
+                  <ZappyMascot state="concerned" size={70} />
+                  <p style={{ fontFamily: F, fontSize: 13, color: "#C0390A", margin: "8px 0 12px" }}>{metaPushError}</p>
+                </div>
+              )}
+              <input
+                type="url"
+                placeholder="Destination URL (e.g. https://yoursite.com/offer)"
+                value={linkUrl}
+                onChange={(e) => setLinkUrl(e.target.value)}
+                style={{
+                  width: "100%", boxSizing: "border-box", padding: "10px 14px", borderRadius: 10,
+                  border: "1.5px solid #E5E7EB", fontFamily: F, fontSize: 13, color: "#1A1624",
+                  marginBottom: 10, outline: "none",
+                }}
+              />
+              <button
+                onClick={handleMetaPush}
+                style={{
+                  width: "100%", padding: "12px 24px", borderRadius: 9999, border: "none",
+                  background: A, color: "#fff", fontFamily: F, fontWeight: 700, fontSize: 14,
+                  cursor: "pointer", letterSpacing: 0.3,
+                }}
+              >
+                🚀 Push to Meta Ads Manager
+              </button>
+              {metaPushState === "error" && (
+                <button
+                  onClick={() => { setMetaPushState("idle"); setMetaPushError(null); }}
+                  style={{ width: "100%", marginTop: 8, padding: "10px 24px", borderRadius: 9999, border: `1.5px solid ${A}`, background: "transparent", color: A, fontFamily: F, fontWeight: 600, fontSize: 13, cursor: "pointer" }}
+                >
+                  Try Again
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* GHL connection */}
       <div style={{ background: "#fff", borderRadius: 16, padding: "20px 24px", marginBottom: 24, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -2951,7 +3066,7 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
 
           {/* ── NODE 11 — PUSH TO META / GHL ── */}
           {step === "pushToMeta" && (
-            <PushIntegrationPanel campaignKit={campaignKit} />
+            <PushIntegrationPanel campaignKit={campaignKit} serviceId={resolvedServiceId ?? null} serviceName={activeService?.name ?? ""} />
           )}
 
           {/* ── CONCERNED STATE (compliance violations) ── */}
