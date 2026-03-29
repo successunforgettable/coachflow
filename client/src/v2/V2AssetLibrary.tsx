@@ -22,28 +22,23 @@ function getCampaignColour(id: number): string {
 
 // ─── Video title parser ───────────────────────────────────────────────────────
 // Input:  "incredible you — IDENTITY Ad (5 scenes, 110 words)"
-// Output: { campaignName: "incredible you", angle: "IDENTITY", scenes: "5", words: "110" }
+// Output: { cleanTitle: "incredible you — IDENTITY Ad", angle: "IDENTITY", scenes: "5", words: "110" }
 function parseVideoTitle(title: string) {
   const raw = (title || "Untitled").trim();
+  // Strip trailing parenthetical: " (5 scenes, 110 words)"
+  const cleanTitle = raw.replace(/\s*\([^)]*\)\s*$/, "").trim();
   const sepIdx = raw.indexOf(" — ");
-  if (sepIdx === -1) return { campaignName: raw, angle: "", scenes: null as string | null, words: null as string | null };
-  const campaignName = raw.slice(0, sepIdx).trim();
+  if (sepIdx === -1) return { cleanTitle, angle: "", scenes: null as string | null, words: null as string | null };
   const rest = raw.slice(sepIdx + 3).trim();
   const angleMatch = rest.match(/^(\w+)\s+Ad\b/i);
   const angle = angleMatch ? angleMatch[1].toUpperCase() : "";
   const metaMatch = rest.match(/\((\d+)\s+scenes?,\s*(\d+)\s+words?\)/i);
   return {
-    campaignName,
+    cleanTitle,
     angle,
     scenes: metaMatch ? metaMatch[1] : null as string | null,
     words: metaMatch ? metaMatch[2] : null as string | null,
   };
-}
-
-// Convert "IDENTITY" → "Identity Ad", fallback "Video Ad"
-function angleLabel(angle: string): string {
-  if (!angle) return "Video Ad";
-  return angle.charAt(0).toUpperCase() + angle.slice(1).toLowerCase() + " Ad";
 }
 
 type AssetType = "all" | "images" | "videos" | "copy";
@@ -458,8 +453,7 @@ export default function V2AssetLibrary() {
         {(tab === "all" || tab === "videos") && filteredVideos.map((v: any) => {
           const accentColour = getCampaignColour(v.serviceId ?? 0);
           const serviceName = serviceNameMap[v.serviceId] || null;
-          const { campaignName, angle, scenes, words } = parseVideoTitle(v.title);
-          const label = angleLabel(angle); // e.g. "Identity Ad"
+          const { cleanTitle, angle, scenes, words } = parseVideoTitle(v.title);
           return (
             <div key={`vid-${v.id}`} style={{ ...cardBase(v.serviceId), ...zappyOverlay(v.id) }}>
               <Heart active={vidFavs.isFav(v.id)} onClick={() => vidFavs.toggle(v.id, v.title)} />
@@ -470,22 +464,25 @@ export default function V2AssetLibrary() {
                 display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
                 padding: "20px 18px",
               }}>
-                {/* Line 1: "Identity Ad" — large, orange, bold */}
-                <span style={{
-                  fontFamily: T.fontB, fontSize: 26, fontWeight: 900, color: "#FF5B1D",
-                  letterSpacing: "0.02em", textAlign: "center", lineHeight: 1.1, marginBottom: 8,
-                }}>
-                  {label}
-                </span>
-                {/* Line 2: campaign name — white, italic */}
+                {/* Line 1: clean title (parenthetical stripped) — white, bold */}
                 <p style={{
-                  fontFamily: T.fontH, fontStyle: "italic", fontSize: 14, fontWeight: 700,
-                  color: "#fff", textAlign: "center", margin: "0 0 14px",
-                  display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const,
-                  overflow: "hidden", lineHeight: 1.35,
+                  fontFamily: T.fontB, fontSize: 15, fontWeight: 700,
+                  color: "#fff", textAlign: "center", margin: "0 0 10px",
+                  display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical" as const,
+                  overflow: "hidden", lineHeight: 1.4,
                 }}>
-                  {campaignName || v.title}
+                  {cleanTitle}
                 </p>
+                {/* Line 2: angle badge — orange, uppercase */}
+                {angle && (
+                  <span style={{
+                    fontFamily: T.fontB, fontSize: 11, fontWeight: 800, color: "#FF5B1D",
+                    letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12,
+                    background: "rgba(255,91,29,0.15)", padding: "3px 10px", borderRadius: 9999,
+                  }}>
+                    {angle}
+                  </span>
+                )}
                 {/* Line 3: metadata chips */}
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center" }}>
                   {scenes && (
@@ -528,7 +525,7 @@ export default function V2AssetLibrary() {
               </div>
               <div style={{ padding: "12px 14px" }}>
                 <p style={{ fontFamily: T.fontB, fontWeight: 600, fontSize: 14, color: T.dark, margin: "0 0 2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {label}{campaignName ? ` — ${campaignName}` : ""}
+                  {cleanTitle}
                 </p>
                 <p style={{ fontFamily: T.fontB, fontSize: 12, color: T.muted, margin: "0 0 8px" }}>
                   {new Date(v.createdAt).toLocaleDateString()}
