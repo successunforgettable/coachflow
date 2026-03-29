@@ -1,27 +1,28 @@
 /**
  * V2AssetLibrary — Asset Library page.
  * Shows all generated images, videos, and copy assets across campaigns.
- * Includes Zappy AI retrieval (inline, top of page).
+ * Includes Zappy AI retrieval — character + speech bubble, inline at top.
  */
 import { useState, useMemo, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
+import ZappyMascot, { ZappyState } from "./ZappyMascot";
 
 const T = {
   bg: "#F5F1EA", dark: "#1A1624", orange: "#FF5B1D", purple: "#8B5CF6", muted: "#999",
   fontH: "'Fraunces', serif", fontB: "'Instrument Sans', sans-serif",
 };
 
-// ─── CHANGE 1: Campaign colour system ───────────────────────────────────────
+// ─── Campaign colour system ───────────────────────────────────────────────────
 const CAMPAIGN_COLOURS = ["#FF5B1D", "#8B5CF6", "#0EA5E9", "#10B981", "#F59E0B", "#EF4444"];
 function getCampaignColour(id: number): string {
   return CAMPAIGN_COLOURS[Math.abs(id) % CAMPAIGN_COLOURS.length];
 }
 
-// ─── CHANGE 2: Video title parser ────────────────────────────────────────────
-// Input: "incredible you — IDENTITY Ad (5 scenes, 110 words)"
-// Output: { campaignName, angle, scenes, words }
+// ─── Video title parser ───────────────────────────────────────────────────────
+// Input:  "incredible you — IDENTITY Ad (5 scenes, 110 words)"
+// Output: { campaignName: "incredible you", angle: "IDENTITY", scenes: "5", words: "110" }
 function parseVideoTitle(title: string) {
   const raw = (title || "Untitled").trim();
   const sepIdx = raw.indexOf(" — ");
@@ -39,6 +40,12 @@ function parseVideoTitle(title: string) {
   };
 }
 
+// Convert "IDENTITY" → "Identity Ad", fallback "Video Ad"
+function angleLabel(angle: string): string {
+  if (!angle) return "Video Ad";
+  return angle.charAt(0).toUpperCase() + angle.slice(1).toLowerCase() + " Ad";
+}
+
 type AssetType = "all" | "images" | "videos" | "copy";
 
 const SUGGESTION_CHIPS = [
@@ -48,7 +55,7 @@ const SUGGESTION_CHIPS = [
   "best performing images",
 ];
 
-// ─── Favourite hook ──────────────────────────────────────────────────────────
+// ─── Favourite hook ───────────────────────────────────────────────────────────
 function useFavs(nodeId: string) {
   const { data: favs, refetch } = trpc.favourites.getByNode.useQuery({ nodeId });
   const addFav = trpc.favourites.add.useMutation({
@@ -85,7 +92,7 @@ export default function V2AssetLibrary() {
   const [search, setSearch] = useState("");
   const [campaignFilter, setCampaignFilter] = useState("all");
 
-  // CHANGE 3: Zappy state — inline panel, no FAB
+  // Zappy state
   const [zappyOpen, setZappyOpen] = useState(false);
   const [zappyQuery, setZappyQuery] = useState("");
   const [zappyResults, setZappyResults] = useState<number[] | null>(null);
@@ -111,7 +118,6 @@ export default function V2AssetLibrary() {
     return (services as any[]).map((s: any) => ({ id: s.id, name: s.name }));
   }, [services]);
 
-  // CHANGE 1: service name lookup map for card footers
   const serviceNameMap = useMemo(() => {
     const map: Record<number, string> = {};
     for (const c of campaignList) map[c.id] = c.name;
@@ -148,6 +154,15 @@ export default function V2AssetLibrary() {
     });
   }, [images, search, campaignFilter]);
 
+  // Derive ZappyMascot state from search context
+  const zappyState: ZappyState = useMemo(() => {
+    if (zappyLoading) return "loading";
+    if (zappyResults !== null && zappyResults.length > 0) return "cheering";
+    if (zappyResults !== null && zappyResults.length === 0) return "concerned";
+    if (zappyOpen && zappyQuery.length > 0) return "waiting";
+    return "idle";
+  }, [zappyLoading, zappyResults, zappyOpen, zappyQuery]);
+
   const tabs: { key: AssetType; label: string; count: number }[] = [
     { key: "all", label: "All", count: filteredImages.length + filteredVideos.length + copyAssets.length },
     { key: "images", label: "Images", count: filteredImages.length },
@@ -160,7 +175,6 @@ export default function V2AssetLibrary() {
     const a = document.createElement("a"); a.href = url; a.download = filename; a.target = "_blank"; a.click();
   };
 
-  // CHANGE 1: card base style with left border derived from serviceId
   const cardBase = (serviceId: number | null): React.CSSProperties => ({
     background: "#fff",
     borderRadius: 16,
@@ -170,7 +184,6 @@ export default function V2AssetLibrary() {
     borderLeft: `4px solid ${getCampaignColour(serviceId ?? 0)}`,
   });
 
-  // CHANGE 3: Zappy card overlay — grey out non-matches, orange border on matches
   const zappyOverlay = (id: number): React.CSSProperties => {
     if (zappyResults === null) return {};
     if (zappyResults.includes(id)) return { outline: "2px solid #FF5B1D", outlineOffset: "0px" };
@@ -194,7 +207,7 @@ export default function V2AssetLibrary() {
     </button>
   );
 
-  // CHANGE 3: Zappy search — accepts optional query override for chip clicks
+  // Zappy search — accepts optional query override for chip clicks
   const handleZappySearch = useCallback(async (queryOverride?: string) => {
     const q = (queryOverride !== undefined ? queryOverride : zappyQuery).trim();
     if (!q) return;
@@ -223,6 +236,103 @@ export default function V2AssetLibrary() {
 
   const clearZappy = () => { setZappyResults(null); setZappyQuery(""); };
 
+  // Speech bubble content
+  const renderSpeechBubbleContent = () => {
+    // Cheering: results found
+    if (zappyResults !== null && zappyResults.length > 0 && !zappyLoading) {
+      return (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <span style={{ fontFamily: T.fontB, fontWeight: 700, fontSize: 14, color: T.orange }}>
+            Found {zappyResults.length} asset{zappyResults.length !== 1 ? "s" : ""}! Here they are 🎉
+          </span>
+          <button onClick={clearZappy} style={{ ...btnS(), fontSize: 12, padding: "4px 12px", whiteSpace: "nowrap" }}>
+            Clear
+          </button>
+        </div>
+      );
+    }
+
+    // Concerned: no results
+    if (zappyResults !== null && zappyResults.length === 0 && !zappyLoading) {
+      return (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <span style={{ fontFamily: T.fontB, fontSize: 14, color: T.muted }}>
+            Hmm, nothing matched. Try different words?
+          </span>
+          <button onClick={clearZappy} style={{ ...btnS(), fontSize: 12, padding: "4px 12px", whiteSpace: "nowrap" }}>
+            Clear
+          </button>
+        </div>
+      );
+    }
+
+    // Panel open: show input + chips
+    if (zappyOpen) {
+      return (
+        <div>
+          <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+            <input
+              autoFocus
+              type="text"
+              placeholder="e.g. find my identity videos"
+              value={zappyQuery}
+              onChange={e => setZappyQuery(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && handleZappySearch()}
+              style={{
+                flex: 1, padding: "9px 13px", borderRadius: 10,
+                border: "1.5px solid #e5e0d8", fontFamily: T.fontB, fontSize: 13,
+                outline: "none", color: T.dark, background: "#f9f8f5",
+              }}
+            />
+            <button
+              onClick={() => handleZappySearch()}
+              disabled={zappyLoading}
+              style={{ ...btnS(true), padding: "9px 18px", fontSize: 13, opacity: zappyLoading ? 0.7 : 1, whiteSpace: "nowrap" }}
+            >
+              {zappyLoading ? "Searching…" : "Search"}
+            </button>
+            <button
+              onClick={() => { setZappyOpen(false); setZappyQuery(""); }}
+              style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: T.muted, padding: "0 4px", lineHeight: 1 }}
+            >
+              ✕
+            </button>
+          </div>
+          {/* Suggestion chips */}
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {SUGGESTION_CHIPS.map(chip => (
+              <button
+                key={chip}
+                onClick={() => handleZappySearch(chip)}
+                style={{
+                  padding: "4px 12px", borderRadius: 9999,
+                  border: "1px solid #e5e0d8", background: "#fff",
+                  color: T.dark, fontFamily: T.fontB, fontSize: 11,
+                  cursor: "pointer", whiteSpace: "nowrap",
+                }}
+              >
+                {chip}
+              </button>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // Closed: prompt text
+    return (
+      <span
+        onClick={() => setZappyOpen(true)}
+        style={{
+          fontFamily: T.fontB, fontSize: 14, color: T.muted, fontStyle: "italic",
+          cursor: "pointer", display: "block",
+        }}
+      >
+        Ask me to find anything in your library...
+      </span>
+    );
+  };
+
   return (
     <div style={{ position: "fixed", inset: 0, background: T.bg, overflowY: "auto", zIndex: 1 }}>
     <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 24px 80px" }}>
@@ -239,80 +349,42 @@ export default function V2AssetLibrary() {
         <p style={{ fontFamily: T.fontB, fontSize: 14, color: T.muted, margin: "4px 0 0" }}>Browse and reuse everything you've generated</p>
       </div>
 
-      {/* ── CHANGE 3: Two-section search bar ── */}
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ display: "flex", gap: 10, alignItems: "stretch" }}>
-          {/* Left 70%: keyword search */}
-          <input
-            type="text"
-            placeholder="Search assets..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            style={{ flex: "0 0 68%", padding: "10px 14px", borderRadius: 12, border: "1px solid #e5e0d8", fontFamily: T.fontB, fontSize: 14, outline: "none", background: "#fff", color: T.dark }}
-          />
-          {/* Right 30%: Ask Zappy toggle */}
-          <button
-            onClick={() => setZappyOpen(o => !o)}
-            style={{
-              flex: "0 0 30%", padding: "10px 16px", borderRadius: 12,
-              border: zappyOpen ? "none" : "1.5px solid #FF5B1D",
-              background: zappyOpen ? T.orange : "#fff",
-              color: zappyOpen ? "#fff" : T.orange,
-              fontFamily: T.fontB, fontWeight: 700, fontSize: 14, cursor: "pointer",
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-            }}
-          >
-            ✨ Ask Zappy
-          </button>
+      {/* ── Keyword search (standalone, full width, no Zappy branding) ── */}
+      <input
+        type="text"
+        placeholder="Search assets..."
+        value={search}
+        onChange={e => setSearch(e.target.value)}
+        style={{
+          width: "100%", boxSizing: "border-box",
+          padding: "10px 16px", borderRadius: 12,
+          border: "1px solid #e5e0d8", fontFamily: T.fontB, fontSize: 14,
+          outline: "none", background: "#fff", color: T.dark,
+          marginBottom: 14,
+        }}
+      />
+
+      {/* ── Zappy section: mascot + speech bubble ── */}
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 14, marginBottom: 20 }}>
+        {/* Zappy mascot — 100px, state-driven */}
+        <div style={{ flexShrink: 0 }}>
+          <ZappyMascot state={zappyState} size={100} />
         </div>
 
-        {/* Suggestion chips */}
-        <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-          {SUGGESTION_CHIPS.map(chip => (
-            <button
-              key={chip}
-              onClick={() => { setZappyOpen(true); handleZappySearch(chip); }}
-              style={{
-                padding: "5px 14px", borderRadius: 9999, border: "1px solid #e5e0d8",
-                background: "#fff", color: T.dark, fontFamily: T.fontB, fontSize: 12,
-                cursor: "pointer", whiteSpace: "nowrap",
-              }}
-            >
-              {chip}
-            </button>
-          ))}
+        {/* Speech bubble pointing left toward Zappy */}
+        <div
+          style={{
+            flex: 1, background: "#fff",
+            border: "2px solid #FF5B1D",
+            borderRadius: "18px 18px 18px 4px",
+            padding: "14px 16px",
+            boxShadow: "0 2px 12px rgba(255,91,29,0.1)",
+            minHeight: 56,
+            display: "flex", flexDirection: "column", justifyContent: "center",
+          }}
+        >
+          {renderSpeechBubbleContent()}
         </div>
-
-        {/* Inline Zappy panel */}
-        {zappyOpen && (
-          <div style={{
-            marginTop: 10, background: "#fff", borderRadius: 16,
-            border: "1.5px solid #FF5B1D", padding: "16px 18px",
-            boxShadow: "0 4px 20px rgba(255,91,29,0.12)",
-          }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <span style={{ fontFamily: T.fontB, fontWeight: 700, fontSize: 14, color: T.dark }}>🦊 Ask Zappy to find anything in your library</span>
-              <button onClick={() => setZappyOpen(false)} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: T.muted, lineHeight: 1 }}>✕</button>
-            </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <input
-                type="text"
-                placeholder='e.g. "my best fitness videos" or "identity headlines"'
-                value={zappyQuery}
-                onChange={e => setZappyQuery(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && handleZappySearch()}
-                style={{ flex: 1, padding: "10px 14px", borderRadius: 12, border: "1px solid #e5e0d8", fontFamily: T.fontB, fontSize: 13, outline: "none", color: T.dark, background: "#f9f8f5" }}
-              />
-              <button
-                onClick={() => handleZappySearch()}
-                disabled={zappyLoading}
-                style={{ ...btnS(true), padding: "10px 20px", fontSize: 13, opacity: zappyLoading ? 0.7 : 1 }}
-              >
-                {zappyLoading ? "Searching…" : "Search"}
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Campaign filter + Type tabs row */}
@@ -339,23 +411,6 @@ export default function V2AssetLibrary() {
         </div>
       </div>
 
-      {/* CHANGE 3: Zappy results banner */}
-      {zappyResults !== null && (
-        <div style={{
-          marginBottom: 16, padding: "10px 16px", borderRadius: 12,
-          background: zappyResults.length > 0 ? "rgba(255,91,29,0.08)" : "rgba(0,0,0,0.04)",
-          border: `1px solid ${zappyResults.length > 0 ? "rgba(255,91,29,0.25)" : "#e5e0d8"}`,
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-        }}>
-          <span style={{ fontFamily: T.fontB, fontSize: 13, color: T.dark }}>
-            {zappyResults.length > 0
-              ? `✨ Zappy found ${zappyResults.length} asset${zappyResults.length !== 1 ? "s" : ""} matching your search`
-              : "🦊 No matching assets found — try a different search"}
-          </span>
-          <button onClick={clearZappy} style={{ ...btnS(), fontSize: 12, padding: "4px 12px" }}>Clear</button>
-        </div>
-      )}
-
       {/* Asset Grid */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 16 }}>
 
@@ -366,7 +421,6 @@ export default function V2AssetLibrary() {
           return (
             <div key={`img-${img.id}`} style={{ ...cardBase(img.serviceId), ...zappyOverlay(img.id) }}>
               <Heart active={imgFavs.isFav(img.id)} onClick={() => imgFavs.toggle(img.id, img.headline)} />
-              {/* Light cream background — image cards are always light */}
               <div style={{ aspectRatio: "1/1", overflow: "hidden", background: "#F5F1EA", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 {img.imageUrl ? (
                   <img
@@ -386,7 +440,6 @@ export default function V2AssetLibrary() {
                 <p style={{ fontFamily: T.fontB, fontSize: 12, color: T.muted, margin: "0 0 8px" }}>
                   {new Date(img.createdAt).toLocaleDateString()}
                 </p>
-                {/* CHANGE 1: campaign name in accent colour */}
                 {serviceName && (
                   <p style={{ fontFamily: T.fontB, fontSize: 11, fontWeight: 700, color: accentColour, margin: "0 0 10px", textTransform: "uppercase", letterSpacing: "0.04em" }}>
                     {serviceName}
@@ -401,11 +454,12 @@ export default function V2AssetLibrary() {
           );
         })}
 
-        {/* ── VIDEO CARDS — CHANGE 2: rich text, dark gradient, no thumbnail img ── */}
+        {/* ── VIDEO CARDS — dark gradient, rich text, no thumbnail img ── */}
         {(tab === "all" || tab === "videos") && filteredVideos.map((v: any) => {
           const accentColour = getCampaignColour(v.serviceId ?? 0);
           const serviceName = serviceNameMap[v.serviceId] || null;
           const { campaignName, angle, scenes, words } = parseVideoTitle(v.title);
+          const label = angleLabel(angle); // e.g. "Identity Ad"
           return (
             <div key={`vid-${v.id}`} style={{ ...cardBase(v.serviceId), ...zappyOverlay(v.id) }}>
               <Heart active={vidFavs.isFav(v.id)} onClick={() => vidFavs.toggle(v.id, v.title)} />
@@ -416,28 +470,23 @@ export default function V2AssetLibrary() {
                 display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
                 padding: "20px 18px",
               }}>
-                {/* Angle keyword — primary identifier */}
-                {angle ? (
-                  <span style={{
-                    fontFamily: T.fontB, fontSize: 28, fontWeight: 900, color: "#FF5B1D",
-                    letterSpacing: "0.06em", textTransform: "uppercase", textAlign: "center",
-                    lineHeight: 1.1, marginBottom: 10,
-                  }}>
-                    {angle}
-                  </span>
-                ) : (
-                  <span style={{ fontFamily: T.fontB, fontSize: 22, fontWeight: 900, color: "#FF5B1D", marginBottom: 10 }}>VIDEO</span>
-                )}
-                {/* Campaign name */}
+                {/* Line 1: "Identity Ad" — large, orange, bold */}
+                <span style={{
+                  fontFamily: T.fontB, fontSize: 26, fontWeight: 900, color: "#FF5B1D",
+                  letterSpacing: "0.02em", textAlign: "center", lineHeight: 1.1, marginBottom: 8,
+                }}>
+                  {label}
+                </span>
+                {/* Line 2: campaign name — white, italic */}
                 <p style={{
-                  fontFamily: T.fontH, fontStyle: "italic", fontSize: 15, fontWeight: 700,
+                  fontFamily: T.fontH, fontStyle: "italic", fontSize: 14, fontWeight: 700,
                   color: "#fff", textAlign: "center", margin: "0 0 14px",
-                  display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const, overflow: "hidden",
-                  lineHeight: 1.35,
+                  display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const,
+                  overflow: "hidden", lineHeight: 1.35,
                 }}>
                   {campaignName || v.title}
                 </p>
-                {/* Metadata chips */}
+                {/* Line 3: metadata chips */}
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center" }}>
                   {scenes && (
                     <span style={{ background: "rgba(255,255,255,0.1)", color: "#bbb", padding: "3px 10px", borderRadius: 9999, fontSize: 11, fontFamily: T.fontB }}>
@@ -457,10 +506,12 @@ export default function V2AssetLibrary() {
                 <div
                   onClick={() => v.videoUrl && window.open(v.videoUrl, "_blank")}
                   style={{
-                    position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)",
+                    position: "absolute", top: "50%", left: "50%",
+                    transform: "translate(-50%,-50%)",
                     width: 44, height: 44, borderRadius: "50%",
-                    background: "rgba(255,91,29,0.75)", display: "flex", alignItems: "center",
-                    justifyContent: "center", cursor: "pointer", marginTop: -10,
+                    background: "rgba(255,91,29,0.75)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    cursor: "pointer", marginTop: -10,
                     boxShadow: "0 2px 12px rgba(255,91,29,0.4)",
                   }}
                 >
@@ -477,12 +528,11 @@ export default function V2AssetLibrary() {
               </div>
               <div style={{ padding: "12px 14px" }}>
                 <p style={{ fontFamily: T.fontB, fontWeight: 600, fontSize: 14, color: T.dark, margin: "0 0 2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {angle ? `${angle} — ${campaignName}` : (v.title || `Video ${v.id}`)}
+                  {label}{campaignName ? ` — ${campaignName}` : ""}
                 </p>
                 <p style={{ fontFamily: T.fontB, fontSize: 12, color: T.muted, margin: "0 0 8px" }}>
                   {new Date(v.createdAt).toLocaleDateString()}
                 </p>
-                {/* CHANGE 1: campaign name in accent colour */}
                 {serviceName && (
                   <p style={{ fontFamily: T.fontB, fontSize: 11, fontWeight: 700, color: accentColour, margin: "0 0 10px", textTransform: "uppercase", letterSpacing: "0.04em" }}>
                     {serviceName}
@@ -514,7 +564,6 @@ export default function V2AssetLibrary() {
               <p style={{ fontFamily: T.fontB, fontSize: 12, color: T.muted, margin: "0 0 8px" }}>
                 {new Date(c.date).toLocaleDateString()}
               </p>
-              {/* CHANGE 1: campaign name in accent colour */}
               {serviceName && (
                 <p style={{ fontFamily: T.fontB, fontSize: 11, fontWeight: 700, color: accentColour, margin: "0 0 10px", textTransform: "uppercase", letterSpacing: "0.04em" }}>
                   {serviceName}
