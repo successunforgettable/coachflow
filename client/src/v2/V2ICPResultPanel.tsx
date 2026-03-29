@@ -308,15 +308,20 @@ function AccordionSection({
 export default function V2ICPResultPanel({
   icpId,
   isFreeTier,
+  onDeleted,
 }: {
   icpId: number;
   isFreeTier?: boolean;
+  onDeleted?: () => void;
 }) {
   const { data, isLoading, isError } = trpc.icps.get.useQuery(
     { id: icpId },
     { enabled: !!icpId, staleTime: 60_000 }
   );
   const [exportUpgradeOpen, setExportUpgradeOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const deleteMutation = trpc.icps.delete.useMutation();
 
   if (isLoading) {
     return (
@@ -347,7 +352,7 @@ export default function V2ICPResultPanel({
       {/* ── Header ── */}
       <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "24px" }}>
         <ZappyMascot state="cheering" size={56} />
-        <div>
+        <div style={{ flex: 1 }}>
           <h2 style={{
             fontFamily: "var(--v2-font-heading)",
             fontStyle: "italic",
@@ -367,7 +372,85 @@ export default function V2ICPResultPanel({
             {(icp.name as string) || "Ideal Customer Profile"} — 17 sections
           </p>
         </div>
+        <button
+          onClick={() => setDeleteConfirmOpen(p => !p)}
+          title="Delete this ICP"
+          style={{
+            background: "none",
+            border: "1px solid rgba(239,68,68,0.35)",
+            borderRadius: "9999px",
+            padding: "5px 12px",
+            fontFamily: "var(--v2-font-body)",
+            fontSize: "13px",
+            color: "#EF4444",
+            cursor: "pointer",
+            flexShrink: 0,
+          }}
+        >
+          × Delete
+        </button>
       </div>
+
+      {/* ── Inline delete confirmation ── */}
+      {deleteConfirmOpen && (
+        <div style={{
+          background: "#FFF5F5",
+          border: "1px solid rgba(239,68,68,0.30)",
+          borderRadius: "12px",
+          padding: "14px 18px",
+          marginBottom: "20px",
+          display: "flex",
+          alignItems: "center",
+          gap: "12px",
+          flexWrap: "wrap",
+        }}>
+          <span style={{ fontFamily: "var(--v2-font-body)", fontSize: "13px", color: "#1A1624", flex: 1 }}>
+            Delete this ICP? This cannot be undone.
+          </span>
+          <button
+            onClick={() => setDeleteConfirmOpen(false)}
+            style={{
+              background: "#F3F4F6",
+              color: "#555",
+              border: "none",
+              borderRadius: "9999px",
+              padding: "6px 16px",
+              fontFamily: "var(--v2-font-body)",
+              fontSize: "13px",
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={async () => {
+              setDeleteLoading(true);
+              try {
+                await deleteMutation.mutateAsync({ id: icpId });
+                setDeleteConfirmOpen(false);
+                onDeleted?.();
+              } catch { /* ignore */ } finally {
+                setDeleteLoading(false);
+              }
+            }}
+            disabled={deleteLoading}
+            style={{
+              background: deleteLoading ? "#ccc" : "#EF4444",
+              color: "#fff",
+              border: "none",
+              borderRadius: "9999px",
+              padding: "6px 16px",
+              fontFamily: "var(--v2-font-body)",
+              fontSize: "13px",
+              fontWeight: 700,
+              cursor: deleteLoading ? "not-allowed" : "pointer",
+            }}
+          >
+            {deleteLoading ? "Deleting…" : "Delete"}
+          </button>
+        </div>
+      )}
 
       {/* ── Accordion sections ── */}
       {SECTIONS.map((s, i) => (

@@ -289,6 +289,9 @@ export default function V2WhatsAppResultPanel({
   whatsappSequenceId: number;
   isFreeTier?: boolean;
 }) {
+  const [tone, setTone] = useState("Conversational");
+  const [toneRegenLoading, setToneRegenLoading] = useState(false);
+  const toneRegenMutation = trpc.whatsappSequences.regenerateSingle.useMutation();
   const { isFavourited, toggle: toggleFav } = useFavourites("whatsapp");
   const { data, isLoading, isError } = trpc.whatsappSequences.get.useQuery(
     { id: whatsappSequenceId },
@@ -350,6 +353,53 @@ export default function V2WhatsAppResultPanel({
             {seq.name || "WhatsApp Sequence"} {!(seq.name || "").toLowerCase().includes("message") && <>— {messages.length} messages</>}
           </p>
         </div>
+      </div>
+
+      {/* ── Tone selector ── */}
+      <div style={{ marginBottom: "20px" }}>
+        <label style={{ display: "block", fontFamily: "Inter, system-ui, sans-serif", fontSize: 12, fontWeight: 600, color: "#666", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+          Tone
+        </label>
+        <select
+          value={tone}
+          onChange={e => setTone(e.target.value)}
+          style={{ fontFamily: "Inter, system-ui, sans-serif", fontSize: 13, padding: "6px 12px", borderRadius: 8, border: "1.5px solid #E5E7EB", background: "#fff", color: "#1A1624", outline: "none" }}
+        >
+          {["Professional", "Conversational", "Urgent", "Friendly", "Authoritative"].map(t => (
+            <option key={t} value={t}>{t}</option>
+          ))}
+        </select>
+        <button
+          onClick={async () => {
+            if (toneRegenLoading) return;
+            setToneRegenLoading(true);
+            try {
+              await toneRegenMutation.mutateAsync({
+                id: whatsappSequenceId,
+                index: 0,
+                promptOverride: `[${tone} tone] Please rewrite this message with a ${tone} tone.`,
+              });
+            } catch { /* ignore */ } finally {
+              setToneRegenLoading(false);
+            }
+          }}
+          disabled={toneRegenLoading}
+          style={{
+            marginLeft: 10,
+            background: toneRegenLoading ? "#ccc" : "#FF5B1D",
+            color: "#fff",
+            border: "none",
+            borderRadius: 9999,
+            padding: "7px 18px",
+            fontFamily: "Inter, system-ui, sans-serif",
+            fontWeight: 700,
+            fontSize: 13,
+            cursor: toneRegenLoading ? "not-allowed" : "pointer",
+            letterSpacing: "0.01em",
+          }}
+        >
+          {toneRegenLoading ? "Regenerating…" : "🔄 Regenerate with this tone"}
+        </button>
       </div>
 
       {/* ── Message cards ── */}

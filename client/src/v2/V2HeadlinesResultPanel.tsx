@@ -177,6 +177,9 @@ function HeadlineCard({ headline, isFreeTier, index, isFav, onToggleFav }: { hea
       }}>
         {headlineText}
       </p>
+      <p style={{ fontFamily: "'Instrument Sans', 'Inter', system-ui, sans-serif", fontSize: 11, color: "#bbb", margin: "4px 0 0" }}>
+        {headlineText?.length ?? 0} chars
+      </p>
       {/* Subheadline */}
       {subheadlineText && (
         <p style={{

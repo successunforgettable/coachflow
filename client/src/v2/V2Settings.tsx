@@ -274,9 +274,11 @@ export default function V2Settings() {
                 style={{
                   display: "inline-block",
                   padding: "10px 22px",
-                  background: T.dark,
-                  color: "#fff",
+                  background: '#FF5B1D',
+                  color: '#fff',
                   borderRadius: 9999,
+                  border: 'none',
+                  cursor: 'pointer',
                   fontSize: 14,
                   fontWeight: 600,
                   fontFamily: T.fontB,
