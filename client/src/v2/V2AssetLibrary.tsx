@@ -41,6 +41,22 @@ function parseVideoTitle(title: string) {
   };
 }
 
+// Plain-English labels for video type and visual style
+const VIDEO_TYPE_LABELS: Record<string, string> = {
+  explainer:        "Explainer Ad",
+  proof_results:    "Proof & Results",
+  testimonial:      "Testimonial",
+  mechanism_reveal: "Mechanism Reveal",
+};
+const VISUAL_STYLE_LABELS: Record<string, string> = {
+  text_only:          "Text",
+  kinetic_typography: "Kinetic",
+  motion_graphics:    "Motion",
+  stats_card:         "Stats",
+};
+function videoTypeLabel(vt: string): string { return VIDEO_TYPE_LABELS[vt] || vt; }
+function visualStyleLabel(vs: string): string { return VISUAL_STYLE_LABELS[vs] || vs; }
+
 type AssetType = "all" | "images" | "videos" | "copy";
 
 const SUGGESTION_CHIPS = [
@@ -453,7 +469,9 @@ export default function V2AssetLibrary() {
         {(tab === "all" || tab === "videos") && filteredVideos.map((v: any) => {
           const accentColour = getCampaignColour(v.serviceId ?? 0);
           const serviceName = serviceNameMap[v.serviceId] || null;
-          const { cleanTitle, angle, scenes, words } = parseVideoTitle(v.title);
+          const vtLabel = videoTypeLabel(v.videoType);   // "Explainer Ad"
+          const vsLabel = visualStyleLabel(v.visualStyle); // "Kinetic"
+          const angleVal = (v.angle || "").toUpperCase();  // "IDENTITY"
           return (
             <div key={`vid-${v.id}`} style={{ ...cardBase(v.serviceId), ...zappyOverlay(v.id) }}>
               <Heart active={vidFavs.isFav(v.id)} onClick={() => vidFavs.toggle(v.id, v.title)} />
@@ -464,35 +482,43 @@ export default function V2AssetLibrary() {
                 display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
                 padding: "20px 18px",
               }}>
-                {/* Line 1: clean title (parenthetical stripped) — white, bold */}
+                {/* Line 1: video type in plain English — white, bold */}
                 <p style={{
-                  fontFamily: T.fontB, fontSize: 15, fontWeight: 700,
-                  color: "#fff", textAlign: "center", margin: "0 0 10px",
-                  display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical" as const,
-                  overflow: "hidden", lineHeight: 1.4,
+                  fontFamily: T.fontB, fontSize: 17, fontWeight: 800,
+                  color: "#fff", textAlign: "center", margin: "0 0 8px", lineHeight: 1.3,
                 }}>
-                  {cleanTitle}
+                  {vtLabel}
                 </p>
                 {/* Line 2: angle badge — orange, uppercase */}
-                {angle && (
+                {angleVal && (
                   <span style={{
                     fontFamily: T.fontB, fontSize: 11, fontWeight: 800, color: "#FF5B1D",
-                    letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12,
+                    letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 8,
                     background: "rgba(255,91,29,0.15)", padding: "3px 10px", borderRadius: 9999,
                   }}>
-                    {angle}
+                    {angleVal}
                   </span>
                 )}
-                {/* Line 3: metadata chips */}
+                {/* Line 3: nicheWorld — white, smaller */}
+                {v.nicheWorld && (
+                  <p style={{
+                    fontFamily: T.fontB, fontSize: 12, color: "rgba(255,255,255,0.7)",
+                    textAlign: "center", margin: "0 0 12px", lineHeight: 1.3,
+                    display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const, overflow: "hidden",
+                  }}>
+                    {v.nicheWorld}
+                  </p>
+                )}
+                {/* Line 4: visualStyle + wordCount + duration chips */}
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center" }}>
-                  {scenes && (
+                  {vsLabel && (
                     <span style={{ background: "rgba(255,255,255,0.1)", color: "#bbb", padding: "3px 10px", borderRadius: 9999, fontSize: 11, fontFamily: T.fontB }}>
-                      {scenes} scenes
+                      {vsLabel}
                     </span>
                   )}
-                  {words && (
+                  {v.wordCount && (
                     <span style={{ background: "rgba(255,255,255,0.1)", color: "#bbb", padding: "3px 10px", borderRadius: 9999, fontSize: 11, fontFamily: T.fontB }}>
-                      {words} words
+                      {v.wordCount} words
                     </span>
                   )}
                   <span style={{ background: "rgba(255,255,255,0.1)", color: "#bbb", padding: "3px 10px", borderRadius: 9999, fontSize: 11, fontFamily: T.fontB }}>
@@ -525,7 +551,7 @@ export default function V2AssetLibrary() {
               </div>
               <div style={{ padding: "12px 14px" }}>
                 <p style={{ fontFamily: T.fontB, fontWeight: 600, fontSize: 14, color: T.dark, margin: "0 0 2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {cleanTitle}
+                  {vtLabel}{angleVal ? ` · ${angleVal}` : ""}{v.nicheWorld ? ` · ${v.nicheWorld}` : ""}
                 </p>
                 <p style={{ fontFamily: T.fontB, fontSize: 12, color: T.muted, margin: "0 0 8px" }}>
                   {new Date(v.createdAt).toLocaleDateString()}
