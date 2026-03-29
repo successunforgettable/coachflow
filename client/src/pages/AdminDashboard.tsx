@@ -581,12 +581,12 @@ export default function AdminDashboard() {
                           style={{ position: "absolute", right: 0, top: "100%", zIndex: 50, background: "#fff", borderRadius: 12, boxShadow: "0 4px 20px rgba(0,0,0,0.12)", minWidth: 160, overflow: "hidden" }}
                         >
                           {[
-                            { label: "Edit Tier", color: "#1A1624", action: () => { setSelectedUser(u); setNewTier(u.subscriptionTier || "trial"); setShowTierDialog(true); setOpenDropdownId(null); } },
-                            ...(u.subscriptionTier === "trial" ? [{ label: "+7 Days Trial", color: "#FF5B1D", action: () => { extendTrialMutation.mutate({ userId: u.id }); setOpenDropdownId(null); } }] : []),
-                            { label: "Send Magic Link", color: "#8B5CF6", action: () => { sendMagicLinkMutation.mutate({ email: u.email }); setOpenDropdownId(null); } },
-                            { label: "Edit Notes", color: "#999", action: () => { setEditNotesUser(u); setNotesText(u.notes || ""); setOpenDropdownId(null); } },
-                            { label: "View As User", color: "#C0390A", action: () => { impersonateMutation.mutate({ userId: u.id }); setOpenDropdownId(null); } },
-                            { label: "Superuser", color: "#1A1624", action: () => { setSuperuserTarget(u); setSuperuserAction(u.role === "superuser" ? "revoke" : "grant"); setShowSuperuserDialog(true); setOpenDropdownId(null); } },
+                            { label: "Edit Tier", color: "#1A1624", action: (e: React.MouseEvent) => { e.stopPropagation(); setSelectedUser(u); setNewTier((u.subscriptionTier as "trial" | "pro" | "agency") || "trial"); setShowTierDialog(true); setOpenDropdownId(null); } },
+                            ...(u.subscriptionTier === "trial" ? [{ label: "+7 Days Trial", color: "#FF5B1D", action: (e: React.MouseEvent) => { e.stopPropagation(); extendTrialMutation.mutate({ userId: u.id }); setOpenDropdownId(null); } }] : []),
+                            { label: "Send Magic Link", color: "#8B5CF6", action: (e: React.MouseEvent) => { e.stopPropagation(); sendMagicLinkMutation.mutate({ email: u.email }); setOpenDropdownId(null); } },
+                            { label: "Edit Notes", color: "#999", action: (e: React.MouseEvent) => { e.stopPropagation(); setEditNotesUser(u); setNotesText(u.notes || ""); setOpenDropdownId(null); } },
+                            { label: "View As User", color: "#C0390A", action: (e: React.MouseEvent) => { e.stopPropagation(); impersonateMutation.mutate({ userId: u.id }); setOpenDropdownId(null); } },
+                            { label: "Superuser", color: "#1A1624", action: (e: React.MouseEvent) => { e.stopPropagation(); setSuperuserTarget(u); setSuperuserAction(u.role === "superuser" ? "revoke" : "grant"); setShowSuperuserDialog(true); setOpenDropdownId(null); } },
                           ].map((item) => (
                             <div
                               key={item.label}
