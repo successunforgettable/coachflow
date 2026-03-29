@@ -102,6 +102,7 @@ export default function V2AssetLibrary() {
   const [tab, setTab] = useState<AssetType>("all");
   const [search, setSearch] = useState("");
   const [campaignFilter, setCampaignFilter] = useState("all");
+  const [viewMode, setViewMode] = useState<"campaign" | "all">("campaign");
 
   // Zappy state
   const [zappyOpen, setZappyOpen] = useState(false);
@@ -416,15 +417,17 @@ export default function V2AssetLibrary() {
         </div>
       </div>
 
-      {/* Campaign filter + Type tabs row */}
+      {/* Campaign filter + Type tabs row + View toggle */}
       <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 20, flexWrap: "wrap" }}>
-        <select value={campaignFilter} onChange={e => setCampaignFilter(e.target.value)}
-          style={{ padding: "8px 14px", borderRadius: 12, border: "1px solid #e5e0d8", fontFamily: T.fontB, fontSize: 13, background: "#fff", color: T.dark, cursor: "pointer", minWidth: 160 }}>
-          <option value="all">All Campaigns</option>
-          {campaignList.map(c => (
-            <option key={c.id} value={String(c.id)}>{c.name}</option>
-          ))}
-        </select>
+        {viewMode === "all" && (
+          <select value={campaignFilter} onChange={e => setCampaignFilter(e.target.value)}
+            style={{ padding: "8px 14px", borderRadius: 12, border: "1px solid #e5e0d8", fontFamily: T.fontB, fontSize: 13, background: "#fff", color: T.dark, cursor: "pointer", minWidth: 160 }}>
+            <option value="all">All Campaigns</option>
+            {campaignList.map(c => (
+              <option key={c.id} value={String(c.id)}>{c.name}</option>
+            ))}
+          </select>
+        )}
 
         <div style={{ display: "flex", gap: 4, background: "#fff", borderRadius: 12, padding: 3, border: "1px solid #e5e0d8" }}>
           {tabs.map(t => (
@@ -438,9 +441,132 @@ export default function V2AssetLibrary() {
             </button>
           ))}
         </div>
+
+        {/* View mode toggle — right-aligned */}
+        <div style={{ marginLeft: "auto", display: "flex", gap: 4, background: T.bg, borderRadius: 9999, padding: 3, border: "1px solid #e5e0d8" }}>
+          {(["campaign", "all"] as const).map(mode => (
+            <button
+              key={mode}
+              onClick={() => setViewMode(mode)}
+              style={{
+                padding: "7px 16px", borderRadius: 9999, border: "none",
+                background: viewMode === mode ? T.orange : "transparent",
+                color: viewMode === mode ? "#fff" : T.dark,
+                fontFamily: T.fontB, fontWeight: 600, fontSize: 13, cursor: "pointer",
+                whiteSpace: "nowrap" as const,
+              }}
+            >
+              {mode === "campaign" ? "By Campaign" : "All Assets"}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Asset Grid */}
+      {/* ── BY CAMPAIGN swimlane view ── */}
+      {viewMode === "campaign" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+          {campaignList.map(campaign => {
+            const camImages  = (tab === "all" || tab === "images")  ? images.filter((img: any) => img.serviceId === campaign.id && matchSearch(`${img.headline || ""} ${img.productName || ""} ${img.niche || ""}`)) : [];
+            const camVideos  = (tab === "all" || tab === "videos")  ? videos.filter((v: any)   => v.serviceId === campaign.id && matchSearch(`${v.title || ""} ${v.angle || ""}`)) : [];
+            const camCopy    = (tab === "all" || tab === "copy")    ? copyAssets.filter(c => c.serviceId === campaign.id && (!search || c.text.toLowerCase().includes(search.toLowerCase()))) : [];
+            if (camImages.length + camVideos.length + camCopy.length === 0) return null;
+            const accent = getCampaignColour(campaign.id);
+            return (
+              <div key={campaign.id}>
+                {/* Row label */}
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                  <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: "50%", background: accent, flexShrink: 0 }} />
+                  <h3 style={{ fontFamily: T.fontH, fontStyle: "italic", fontWeight: 900, fontSize: 18, color: accent, margin: 0 }}>
+                    {campaign.name}
+                  </h3>
+                  <span style={{ fontFamily: T.fontB, fontSize: 12, color: T.muted }}>
+                    {camImages.length + camVideos.length + camCopy.length} assets
+                  </span>
+                </div>
+                {/* Horizontal scroll strip */}
+                <div style={{ display: "flex", gap: 16, overflowX: "auto", paddingBottom: 8, scrollbarWidth: "thin" as const }}>
+
+                  {camImages.map((img: any) => {
+                    const serviceName = serviceNameMap[img.serviceId] || null;
+                    return (
+                      <div key={`img-${img.id}`} style={{ flexShrink: 0, width: 260 }}>
+                        <div style={{ ...cardBase(img.serviceId), ...zappyOverlay(img.id) }}>
+                          <Heart active={imgFavs.isFav(img.id)} onClick={() => imgFavs.toggle(img.id, img.headline)} />
+                          <div style={{ aspectRatio: "1/1", overflow: "hidden", background: "#F5F1EA", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            {img.imageUrl ? (
+                              <img src={`/api/image-proxy?url=${encodeURIComponent(img.imageUrl)}`} alt={img.headline || "Ad image"} style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                            ) : (
+                              <span style={{ fontSize: 32, color: T.muted }}>🖼</span>
+                            )}
+                          </div>
+                          <div style={{ padding: "12px 14px" }}>
+                            <p style={{ fontFamily: T.fontB, fontWeight: 600, fontSize: 14, color: T.dark, margin: "0 0 2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{img.headline || img.productName || `Ad Image #${img.id}`}</p>
+                            <p style={{ fontFamily: T.fontB, fontSize: 12, color: T.muted, margin: "0 0 8px" }}>{new Date(img.createdAt).toLocaleDateString()}</p>
+                            <div style={{ display: "flex", gap: 6 }}>
+                              <button onClick={() => downloadFile(img.imageUrl, `zap-image-${img.id}.png`)} style={btnS(true)}>Download</button>
+                              <button onClick={() => copyToClipboard(img.imageUrl)} style={btnS()}>Copy URL</button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {camVideos.map((v: any) => {
+                    const vtLabel = videoTypeLabel(v.videoType);
+                    const vsLabel = visualStyleLabel(v.visualStyle);
+                    const angleVal = (v.angle || "").toUpperCase();
+                    return (
+                      <div key={`vid-${v.id}`} style={{ flexShrink: 0, width: 260 }}>
+                        <div style={{ ...cardBase(v.serviceId), ...zappyOverlay(v.id) }}>
+                          <Heart active={vidFavs.isFav(v.id)} onClick={() => vidFavs.toggle(v.id, v.title)} />
+                          <div style={{ aspectRatio: "1/1", overflow: "hidden", position: "relative", background: "linear-gradient(135deg, #1A1624 0%, #2D1F3D 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "20px 18px" }}>
+                            <p style={{ fontFamily: T.fontB, fontSize: 17, fontWeight: 800, color: "#fff", textAlign: "center", margin: "0 0 8px", lineHeight: 1.3 }}>{vtLabel}</p>
+                            {angleVal && <span style={{ fontFamily: T.fontB, fontSize: 11, fontWeight: 800, color: "#FF5B1D", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 8, background: "rgba(255,91,29,0.15)", padding: "3px 10px", borderRadius: 9999 }}>{angleVal}</span>}
+                            {v.nicheWorld && <p style={{ fontFamily: T.fontB, fontSize: 12, color: "rgba(255,255,255,0.7)", textAlign: "center", margin: "0 0 12px", lineHeight: 1.3, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const, overflow: "hidden" }}>{v.nicheWorld}</p>}
+                            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center" }}>
+                              {vsLabel && <span style={{ background: "rgba(255,255,255,0.1)", color: "#bbb", padding: "3px 10px", borderRadius: 9999, fontSize: 11, fontFamily: T.fontB }}>{vsLabel}</span>}
+                              {v.wordCount && <span style={{ background: "rgba(255,255,255,0.1)", color: "#bbb", padding: "3px 10px", borderRadius: 9999, fontSize: 11, fontFamily: T.fontB }}>{v.wordCount} words</span>}
+                              <span style={{ background: "rgba(255,255,255,0.1)", color: "#bbb", padding: "3px 10px", borderRadius: 9999, fontSize: 11, fontFamily: T.fontB }}>{v.duration || "30"}s</span>
+                            </div>
+                            <div onClick={() => v.videoUrl && window.open(v.videoUrl, "_blank")} style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 44, height: 44, borderRadius: "50%", background: "rgba(255,91,29,0.75)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", marginTop: -10, boxShadow: "0 2px 12px rgba(255,91,29,0.4)" }}>
+                              <span style={{ color: "#fff", fontSize: 18, marginLeft: 3 }}>▶</span>
+                            </div>
+                            <span style={{ position: "absolute", bottom: 8, right: 8, background: "rgba(0,0,0,0.6)", color: "#fff", padding: "2px 8px", borderRadius: 6, fontSize: 11, fontFamily: T.fontB, fontWeight: 600 }}>{v.duration || "30"}s</span>
+                          </div>
+                          <div style={{ padding: "12px 14px" }}>
+                            <p style={{ fontFamily: T.fontB, fontWeight: 600, fontSize: 14, color: T.dark, margin: "0 0 2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{vtLabel}{angleVal ? ` · ${angleVal}` : ""}{v.nicheWorld ? ` · ${v.nicheWorld}` : ""}</p>
+                            <p style={{ fontFamily: T.fontB, fontSize: 12, color: T.muted, margin: "0 0 8px" }}>{new Date(v.createdAt).toLocaleDateString()}</p>
+                            <div style={{ display: "flex", gap: 6 }}>
+                              {v.videoUrl && <button onClick={() => downloadFile(v.videoUrl, `zap-video-${v.id}.mp4`)} style={btnS(true)}>Download MP4</button>}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {camCopy.map((c, idx) => (
+                    <div key={`copy-${c.id}-${idx}`} style={{ flexShrink: 0, width: 260 }}>
+                      <div style={{ ...cardBase(c.serviceId), padding: "16px 18px", ...zappyOverlay(c.id) }}>
+                        <Heart active={copyFavs.isFav(c.id)} onClick={() => copyFavs.toggle(c.id, c.text)} />
+                        <span style={{ fontFamily: T.fontB, fontSize: 10, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.06em", color: T.orange, display: "block", marginBottom: 8, marginTop: 4 }}>{c.type}</span>
+                        <p style={{ fontFamily: T.fontB, fontSize: 14, color: T.dark, margin: "0 0 10px", lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical" as const, overflow: "hidden" }}>{c.text}</p>
+                        <p style={{ fontFamily: T.fontB, fontSize: 12, color: T.muted, margin: "0 0 8px" }}>{new Date(c.date).toLocaleDateString()}</p>
+                        <button onClick={() => copyToClipboard(c.text)} style={btnS(true)}>Copy to Clipboard</button>
+                      </div>
+                    </div>
+                  ))}
+
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── ALL ASSETS flat grid view (unchanged) ── */}
+      {viewMode === "all" && (<>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 16 }}>
 
         {/* ── IMAGE CARDS ── */}
@@ -616,22 +742,23 @@ export default function V2AssetLibrary() {
         })}
       </div>
 
-      {/* Empty states */}
-      {tab === "images" && filteredImages.length === 0 && (
+      {/* Empty states — only in All Assets mode */}
+      {viewMode === "all" && tab === "images" && filteredImages.length === 0 && (
         <div style={{ textAlign: "center", padding: "64px 20px" }}>
           <p style={{ fontFamily: T.fontB, fontSize: 16, color: T.muted }}>No images yet. Generate ad images in the campaign wizard.</p>
         </div>
       )}
-      {tab === "videos" && filteredVideos.length === 0 && (
+      {viewMode === "all" && tab === "videos" && filteredVideos.length === 0 && (
         <div style={{ textAlign: "center", padding: "64px 20px" }}>
           <p style={{ fontFamily: T.fontB, fontSize: 16, color: T.muted }}>No videos yet. Create a video in the Ad Copy node.</p>
         </div>
       )}
-      {tab === "copy" && copyAssets.length === 0 && (
+      {viewMode === "all" && tab === "copy" && copyAssets.length === 0 && (
         <div style={{ textAlign: "center", padding: "64px 20px" }}>
           <p style={{ fontFamily: T.fontB, fontSize: 16, color: T.muted }}>No copy assets yet. Generate headlines or ad copy to see them here.</p>
         </div>
       )}
+      </>)}
 
     </div>
     </div>
