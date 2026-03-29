@@ -317,8 +317,8 @@ export default function V2AssetLibrary() {
                 onClick={() => handleZappySearch(chip)}
                 style={{
                   padding: "4px 12px", borderRadius: 9999,
-                  border: "1px solid #e5e0d8", background: "#fff",
-                  color: T.dark, fontFamily: T.fontB, fontSize: 11,
+                  border: "1px solid #FF5B1D", background: "#FFF5F2",
+                  color: "#FF5B1D", fontFamily: T.fontB, fontSize: 12,
                   cursor: "pointer", whiteSpace: "nowrap",
                 }}
               >
