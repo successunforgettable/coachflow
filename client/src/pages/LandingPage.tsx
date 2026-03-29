@@ -525,9 +525,7 @@ function HeroSection({ onCampaignSelect: _onCampaignSelect }: { onCampaignSelect
     {/* ─── MOBILE: static hero (CSS hidden on desktop) ─── */}
     <section className="lp-hero-mobile" style={{ background: CREAM, padding: "24px 20px 20px", textAlign: "center" }}>
       <img src={ZAPPY_WAITING} alt="Zappy" style={{ width: 80, height: 80, display: "block", margin: "0 auto 16px" }} />
-      <h1 style={{ fontFamily: "'Fraunces', serif", fontStyle: "italic", fontWeight: 900, fontSize: "28px", color: INK, margin: "0 0 20px", lineHeight: 1.4 }}>
-        Who do <span style={{ display: "inline", background: "#fff", borderRadius: "9999px", padding: "2px 10px", color: INK }}>you</span> <span style={{ display: "inline", background: "#fff", borderRadius: "9999px", padding: "2px 10px", color: INK }}>help?</span>
-      </h1>
+      <h1 style={{ fontFamily: "'Fraunces', serif", fontStyle: "italic", fontWeight: 900, fontSize: "28px", color: INK, margin: "0 0 20px", lineHeight: 1.4 }}>{"Who do"}<span style={{ display: "inline", background: "#fff", borderRadius: "9999px", padding: "0 12px", marginLeft: 6, marginRight: 0, verticalAlign: "baseline", color: INK }}>{"you"}</span><span style={{ display: "inline", background: "#fff", borderRadius: "9999px", padding: "0 12px", marginLeft: 6, marginRight: 0, verticalAlign: "baseline", color: INK }}>{"help?"}</span></h1>
       <input
         type="text"
         value={ans1}
@@ -591,9 +589,7 @@ function HeroSection({ onCampaignSelect: _onCampaignSelect }: { onCampaignSelect
           {/* ── STEP 1 ── */}
           {step === "step1" && (
             <>
-              <h1 style={{ fontFamily: "'Fraunces', serif", fontStyle: "italic", fontWeight: 900, fontSize: "clamp(28px, 5vw, 36px)", color: INK, margin: "0 0 28px", lineHeight: 1.4, animation: "fadeUp 0.5s ease" }}>
-                Who do <span style={{ display: "inline", background: "#fff", borderRadius: "9999px", padding: "2px 10px", color: INK }}>you</span> <span style={{ display: "inline", background: "#fff", borderRadius: "9999px", padding: "2px 10px", color: INK }}>help?</span>
-              </h1>
+              <h1 style={{ fontFamily: "'Fraunces', serif", fontStyle: "italic", fontWeight: 900, fontSize: "clamp(28px, 5vw, 36px)", color: INK, margin: "0 0 28px", lineHeight: 1.4, animation: "fadeUp 0.5s ease" }}>{"Who do"}<span style={{ display: "inline", background: "#fff", borderRadius: "9999px", padding: "0 12px", marginLeft: 6, marginRight: 0, verticalAlign: "baseline", color: INK }}>{"you"}</span><span style={{ display: "inline", background: "#fff", borderRadius: "9999px", padding: "0 12px", marginLeft: 6, marginRight: 0, verticalAlign: "baseline", color: INK }}>{"help?"}</span></h1>
               <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 520, margin: "0 auto" }} className="hero-input-row">
                 <input
                   ref={inputRef1}
