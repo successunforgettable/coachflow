@@ -21,7 +21,6 @@ import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { MoreHorizontal } from "lucide-react";
 import { useLocation } from "wouter";
-import AdminLayout from "./admin/AdminLayout";
 
 function SignupChart({ allUsers }: { allUsers: any[] }) {
   const [range, setRange] = useState<"7d" | "30d" | "90d">("30d");
@@ -374,7 +373,6 @@ export default function AdminDashboard() {
   };
 
   return (
-    <AdminLayout>
       <div style={{ maxWidth: 1100 }}>
         {/* Header */}
         <div style={{ marginBottom: 28 }}>
@@ -725,6 +723,5 @@ export default function AdminDashboard() {
           </DialogContent>
         </Dialog>
       </div>
-    </AdminLayout>
   );
 }
