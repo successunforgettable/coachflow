@@ -19,11 +19,7 @@ import { eq, and } from "drizzle-orm";
 
 const GHL_BASE = "https://services.leadconnectorhq.com";
 
-/**
- * Upsert a GHL Custom Value by name.
- * Checks if a custom value with the given name already exists for the location;
- * if so, updates it with PUT, otherwise creates it with POST.
- */
+// ─── D1 Helper: Upsert Custom Value ───────────────────────────────────────────
 async function upsertCustomValue(
   locationId: string,
   headers: Record<string, string>,
@@ -31,7 +27,6 @@ async function upsertCustomValue(
   value: string
 ): Promise<boolean> {
   try {
-    // GET existing custom values for this location
     const listRes = await fetch(`${GHL_BASE}/locations/${locationId}/customValues`, {
       method: "GET",
       headers,
@@ -40,7 +35,6 @@ async function upsertCustomValue(
       const listData = await listRes.json() as { customValues?: Array<{ id: string; name: string }> };
       const existing = (listData.customValues || []).find((cv) => cv.name === name);
       if (existing) {
-        // PUT — update existing
         const putRes = await fetch(`${GHL_BASE}/locations/${locationId}/customValues/${existing.id}`, {
           method: "PUT",
           headers,
@@ -50,7 +44,6 @@ async function upsertCustomValue(
         return putRes.ok;
       }
     }
-    // POST — create new
     const postRes = await fetch(`${GHL_BASE}/locations/${locationId}/customValues`, {
       method: "POST",
       headers,
@@ -64,9 +57,228 @@ async function upsertCustomValue(
   }
 }
 
+// ─── D2 Helper: Upsert Email Template ─────────────────────────────────────────
+async function upsertEmailTemplate(
+  locationId: string,
+  headers: Record<string, string>,
+  name: string,
+  subject: string,
+  body: string
+): Promise<boolean> {
+  try {
+    // List existing email templates to check for duplicates by name
+    const listRes = await fetch(
+      `${GHL_BASE}/locations/${locationId}/templates?type=email&limit=100`,
+      { method: "GET", headers }
+    );
+    if (listRes.ok) {
+      const listData = await listRes.json() as {
+        templates?: Array<{ id: string; name: string }>;
+        data?: Array<{ id: string; name: string }>;
+      };
+      const templates = listData.templates || listData.data || [];
+      const existing = templates.find((t) => t.name === name);
+      if (existing) {
+        const putRes = await fetch(`${GHL_BASE}/locations/${locationId}/templates/${existing.id}`, {
+          method: "PUT",
+          headers,
+          body: JSON.stringify({ name, subject, body, type: "email" }),
+        });
+        if (!putRes.ok) console.warn(`[GHL] PUT template failed for "${name}":`, await putRes.text());
+        return putRes.ok;
+      }
+    }
+    const postRes = await fetch(`${GHL_BASE}/locations/${locationId}/templates`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ name, subject, body, type: "email" }),
+    });
+    if (!postRes.ok) console.warn(`[GHL] POST template failed for "${name}":`, await postRes.text());
+    return postRes.ok;
+  } catch (e) {
+    console.warn(`[GHL] upsertEmailTemplate error for "${name}":`, e);
+    return false;
+  }
+}
+
+// ─── D2 Helper: Build landing page HTML from angle data ───────────────────────
+function buildLandingPageHtml(angleData: Record<string, any>): string {
+  const esc = (s: string) =>
+    String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/\n/g, "<br>");
+
+  const section = (title: string, content: string) =>
+    `<div style="margin-bottom:36px"><h2 style="font-size:26px;font-weight:800;margin:0 0 12px">${title}</h2><p style="font-size:16px;line-height:1.75;margin:0">${content}</p></div>`;
+
+  const ctaBtn = (label: string) =>
+    `<div style="text-align:center;margin:40px 0"><a href="#" style="display:inline-block;background:#FF5B1D;color:#fff;font-size:18px;font-weight:700;padding:18px 48px;border-radius:8px;text-decoration:none">${esc(label)}</a></div>`;
+
+  const parts: string[] = [
+    `<!DOCTYPE html><html><body style="font-family:system-ui,-apple-system,sans-serif;max-width:800px;margin:0 auto;padding:48px 24px;background:#fff;color:#111">`,
+  ];
+
+  if (angleData.eyebrowHeadline)
+    parts.push(`<p style="font-size:13px;text-transform:uppercase;letter-spacing:2px;color:#888;margin:0 0 8px">${esc(angleData.eyebrowHeadline)}</p>`);
+
+  if (angleData.mainHeadline)
+    parts.push(`<h1 style="font-size:44px;font-weight:900;line-height:1.1;margin:0 0 16px">${esc(angleData.mainHeadline)}</h1>`);
+
+  if (angleData.subheadline)
+    parts.push(`<p style="font-size:20px;color:#555;margin:0 0 32px">${esc(angleData.subheadline)}</p>`);
+
+  const ctaLabel = angleData.primaryCta || "Book Your Call";
+  parts.push(ctaBtn(ctaLabel));
+
+  if (angleData.problemAgitation)
+    parts.push(section("The Problem", esc(angleData.problemAgitation)));
+
+  if (angleData.solutionIntro)
+    parts.push(section("The Solution", esc(angleData.solutionIntro)));
+
+  if (angleData.whyOldFail)
+    parts.push(section("Why Other Approaches Fail", esc(angleData.whyOldFail)));
+
+  if (angleData.uniqueMechanism)
+    parts.push(section("How It Works", esc(angleData.uniqueMechanism)));
+
+  if (angleData.insiderAdvantages)
+    parts.push(section("Why This Works", esc(angleData.insiderAdvantages)));
+
+  if (Array.isArray(angleData.testimonials) && angleData.testimonials.length) {
+    const tHtml = angleData.testimonials
+      .map(
+        (t: any) =>
+          `<blockquote style="border-left:4px solid #FF5B1D;margin:0 0 20px;padding:16px 20px;background:#fafafa">"${esc(t.quote || "")}" <footer style="margin-top:8px;font-size:14px;color:#666">— ${esc(t.name || "")}, ${esc(t.location || "")}</footer></blockquote>`
+      )
+      .join("\n");
+    parts.push(`<div style="margin-bottom:36px"><h2 style="font-size:26px;font-weight:800;margin:0 0 20px">What Others Say</h2>${tHtml}</div>`);
+  }
+
+  if (angleData.shockingStat)
+    parts.push(
+      `<div style="margin-bottom:36px;background:#fff8f0;border-left:4px solid #FF5B1D;padding:24px"><p style="font-size:20px;font-weight:700;margin:0">${esc(angleData.shockingStat)}</p></div>`
+    );
+
+  if (angleData.scarcityUrgency)
+    parts.push(
+      `<div style="margin-bottom:36px;background:#fff8f0;border:1px solid #FF5B1D;padding:20px;border-radius:8px"><p style="font-size:16px;margin:0">${esc(angleData.scarcityUrgency)}</p></div>`
+    );
+
+  if (angleData.timeSavingBenefit)
+    parts.push(section("Save Time", esc(angleData.timeSavingBenefit)));
+
+  if (Array.isArray(angleData.consultationOutline) && angleData.consultationOutline.length) {
+    const steps = angleData.consultationOutline
+      .map(
+        (o: any, i: number) =>
+          `<div style="display:flex;gap:16px;margin-bottom:16px"><span style="font-size:24px;font-weight:900;color:#FF5B1D;min-width:32px">${i + 1}</span><div><strong>${esc(o.title || "")}</strong><p style="margin:4px 0 0;color:#555">${esc(o.description || "")}</p></div></div>`
+      )
+      .join("\n");
+    parts.push(`<div style="margin-bottom:36px"><h2 style="font-size:26px;font-weight:800;margin:0 0 20px">What Happens Next</h2>${steps}</div>`);
+  }
+
+  if (Array.isArray(angleData.faq) && angleData.faq.length) {
+    const faqHtml = angleData.faq
+      .map(
+        (f: any) =>
+          `<details style="margin-bottom:12px;border:1px solid #e5e5e5;border-radius:6px;padding:16px"><summary style="font-weight:700;cursor:pointer">${esc(f.question || "")}</summary><p style="margin:12px 0 0;color:#555">${esc(f.answer || "")}</p></details>`
+      )
+      .join("\n");
+    parts.push(`<div style="margin-bottom:36px"><h2 style="font-size:26px;font-weight:800;margin:0 0 20px">FAQ</h2>${faqHtml}</div>`);
+  }
+
+  parts.push(ctaBtn(ctaLabel));
+  parts.push(`</body></html>`);
+  return parts.join("\n");
+}
+
+// ─── D2 Helper: Create GHL Funnel with a single landing page ──────────────────
+async function createGhlFunnel(
+  locationId: string,
+  headers: Record<string, string>,
+  funnelName: string,
+  htmlBody: string
+): Promise<boolean> {
+  try {
+    const funnelRes = await fetch(`${GHL_BASE}/locations/${locationId}/funnels`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ name: funnelName }),
+    });
+    if (!funnelRes.ok) {
+      console.warn("[GHL] Funnel creation failed:", await funnelRes.text());
+      return false;
+    }
+    const funnelData = await funnelRes.json() as any;
+    const funnelId: string | undefined =
+      funnelData?.id || funnelData?.funnel?.id || funnelData?.data?.id;
+    if (!funnelId) {
+      console.warn("[GHL] Funnel creation returned no id:", JSON.stringify(funnelData));
+      return false;
+    }
+
+    // Create a page inside the funnel
+    const pageRes = await fetch(`${GHL_BASE}/locations/${locationId}/funnels/${funnelId}/pages`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ name: "Main Page", body: htmlBody }),
+    });
+    if (!pageRes.ok) {
+      console.warn("[GHL] Funnel page creation failed:", await pageRes.text());
+      // Funnel was created but page failed — still partial success
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.warn("[GHL] createGhlFunnel error:", e);
+    return false;
+  }
+}
+
+// ─── D2 Helper: Create GHL WhatsApp Workflow ──────────────────────────────────
+async function createWhatsAppWorkflow(
+  locationId: string,
+  headers: Record<string, string>,
+  workflowName: string,
+  messages: Array<{ text?: string; message?: string }>
+): Promise<boolean> {
+  try {
+    // Build sequential actions: whatsapp send → 1-day wait → whatsapp send → …
+    const actions: any[] = [];
+    messages.forEach((msg, i) => {
+      actions.push({
+        type: "whatsapp",
+        body: msg.text || msg.message || "",
+      });
+      if (i < messages.length - 1) {
+        actions.push({
+          type: "wait",
+          delay: { unit: "days", value: 1 },
+        });
+      }
+    });
+
+    const res = await fetch(`${GHL_BASE}/locations/${locationId}/workflows`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ name: workflowName, status: "draft", actions }),
+    });
+    if (!res.ok) {
+      console.warn("[GHL] Workflow creation failed:", await res.text());
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.warn("[GHL] createWhatsAppWorkflow error:", e);
+    return false;
+  }
+}
+
 /**
  * GoHighLevel Integration Router
- * Handles OAuth connection, token storage, and GHL API push
  */
 export const ghlRouter = router({
   /**
@@ -100,7 +312,7 @@ export const ghlRouter = router({
   }),
 
   /**
-   * Get GHL OAuth URL for user to initiate connection
+   * Get GHL OAuth URL (includes scopes for D1 + D2 features)
    */
   getOAuthUrl: protectedProcedure.query(async ({ ctx }) => {
     const clientId = process.env.GHL_CLIENT_ID;
@@ -109,7 +321,23 @@ export const ghlRouter = router({
     }
 
     const redirectUri = `${process.env.APP_URL || "https://zapcampaigns.com"}/api/oauth/gohighlevel/callback`;
-    const scopes = "contacts.write contacts.readonly campaigns.readonly opportunities.write businesses.readonly businesses.write locations.readonly locations/customValues.write locations/customValues.readonly";
+    const scopes = [
+      "contacts.write",
+      "contacts.readonly",
+      "campaigns.readonly",
+      "opportunities.write",
+      "businesses.readonly",
+      "businesses.write",
+      "locations.readonly",
+      "locations/customValues.write",
+      "locations/customValues.readonly",
+      "templates.write",
+      "templates.readonly",
+      "funnels.write",
+      "funnels.readonly",
+      "workflows.write",
+      "workflows.readonly",
+    ].join(" ");
     const state = String(ctx.user.id);
 
     const versionId = process.env.GHL_APP_VERSION_ID || "69af3395095745d484bc1b18";
@@ -119,7 +347,7 @@ export const ghlRouter = router({
   }),
 
   /**
-   * Exchange auth code for access token (called from callback handler)
+   * Exchange auth code for access token
    */
   exchangeCode: protectedProcedure
     .input(z.object({ code: z.string() }))
@@ -135,7 +363,6 @@ export const ghlRouter = router({
 
       const redirectUri = `${process.env.APP_URL || "https://zapcampaigns.com"}/api/oauth/gohighlevel/callback`;
 
-      // Exchange code for token
       const tokenRes = await fetch(`${GHL_BASE}/oauth/token`, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -157,7 +384,6 @@ export const ghlRouter = router({
       const tokenData = await tokenRes.json();
       const expiresAt = new Date(Date.now() + (tokenData.expires_in || 86400) * 1000);
 
-      // Upsert the token
       await db.delete(ghlAccessTokens).where(eq(ghlAccessTokens.userId, ctx.user.id));
       await db.insert(ghlAccessTokens).values({
         userId: ctx.user.id,
@@ -184,10 +410,9 @@ export const ghlRouter = router({
   }),
 
   /**
-   * Push campaign kit to GHL as Custom Values.
-   * Pushes all 7 asset types: email sequence, WhatsApp sequence, landing page (all 16 sections),
-   * headlines, ad copy, offer copy (3 angles), HVCO title, and hero mechanism.
-   * Uses upsert: checks existing custom values by name, updates if found, creates if not.
+   * Push campaign kit to GHL.
+   * D1: All 7 asset types as Custom Values (upsert).
+   * D2: Email Templates per email, GHL Funnel for landing page, WhatsApp Workflow.
    */
   pushCampaign: protectedProcedure
     .input(z.object({ kitId: z.number() }))
@@ -195,16 +420,13 @@ export const ghlRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
-      // Get GHL connection
       const [ghl] = await db.select().from(ghlAccessTokens).where(eq(ghlAccessTokens.userId, ctx.user.id)).limit(1);
       if (!ghl) throw new TRPCError({ code: "FORBIDDEN", message: "GHL not connected" });
 
-      // Check token expiry
       if (new Date(ghl.tokenExpiresAt) < new Date()) {
         throw new TRPCError({ code: "FORBIDDEN", message: "GHL token expired — please reconnect" });
       }
 
-      // Get campaign kit
       const [kit] = await db
         .select()
         .from(campaignKits)
@@ -216,6 +438,7 @@ export const ghlRouter = router({
       const locationId = ghl.locationId!;
 
       const results: Record<string, boolean> = {
+        // D1
         emailPushed: false,
         whatsappPushed: false,
         landingPagePushed: false,
@@ -224,6 +447,10 @@ export const ghlRouter = router({
         offerPushed: false,
         hvcoTitlePushed: false,
         heroMechanismPushed: false,
+        // D2
+        emailTemplatesPushed: false,
+        funnelCreated: false,
+        whatsappWorkflowCreated: false,
       };
 
       const headers: Record<string, string> = {
@@ -232,7 +459,7 @@ export const ghlRouter = router({
         Version: "2021-07-28",
       };
 
-      // ─── 1. Email Sequence (Node 9) ────────────────────────────────────────────
+      // ─── 1. Email Sequence ─────────────────────────────────────────────────────
       if (kit.selectedEmailSequenceId) {
         try {
           const [emailSeq] = await db
@@ -241,24 +468,42 @@ export const ghlRouter = router({
             .where(eq(emailSequences.id, kit.selectedEmailSequenceId))
             .limit(1);
           if (emailSeq) {
-            const emails = typeof emailSeq.emails === "string"
+            const emails: any[] = Array.isArray(emailSeq.emails)
+              ? emailSeq.emails
+              : typeof emailSeq.emails === "string"
               ? JSON.parse(emailSeq.emails)
-              : emailSeq.emails;
-            const emailText = Array.isArray(emails)
-              ? emails.map((e: any, i: number) =>
-                  `Email ${i + 1}: ${e.subject || ""}\n${e.body || ""}`
-                ).join("\n\n---\n\n")
+              : [];
+
+            // D1 — Custom Value (full dump)
+            const emailText = emails.length
+              ? emails.map((e: any, i: number) => `Email ${i + 1}: ${e.subject || ""}\n${e.body || ""}`).join("\n\n---\n\n")
               : "No emails";
             results.emailPushed = await upsertCustomValue(
               locationId, headers,
               `ZAP Email Sequence - ${kitName}`,
               emailText
             );
+
+            // D2 — Individual Email Templates (one per email)
+            try {
+              let allOk = true;
+              for (let i = 0; i < emails.length; i++) {
+                const em = emails[i];
+                const subject = em.subject || `Email ${i + 1}`;
+                const body = em.body || "";
+                const templateName = `ZAP - ${kitName} - Email ${i + 1}: ${subject}`.substring(0, 100);
+                const ok = await upsertEmailTemplate(locationId, headers, templateName, subject, body);
+                if (!ok) allOk = false;
+              }
+              results.emailTemplatesPushed = allOk && emails.length > 0;
+            } catch (e2) {
+              console.warn("[GHL] D2 email templates error:", e2);
+            }
           }
         } catch (e) { console.warn("[GHL] Email push error:", e); }
       }
 
-      // ─── 2. WhatsApp Sequence (Node 10) ───────────────────────────────────────
+      // ─── 2. WhatsApp Sequence ──────────────────────────────────────────────────
       if (kit.selectedWhatsAppSequenceId) {
         try {
           const [waSeq] = await db
@@ -267,24 +512,39 @@ export const ghlRouter = router({
             .where(eq(whatsappSequences.id, kit.selectedWhatsAppSequenceId))
             .limit(1);
           if (waSeq) {
-            const messages = typeof waSeq.messages === "string"
+            const messages: any[] = Array.isArray(waSeq.messages)
+              ? waSeq.messages
+              : typeof waSeq.messages === "string"
               ? JSON.parse(waSeq.messages)
-              : waSeq.messages;
-            const waText = Array.isArray(messages)
-              ? messages.map((m: any, i: number) =>
-                  `Message ${i + 1}: ${m.text || m.message || ""}`
-                ).join("\n\n---\n\n")
+              : [];
+
+            // D1 — Custom Value
+            const waText = messages.length
+              ? messages.map((m: any, i: number) => `Message ${i + 1}: ${m.text || m.message || ""}`).join("\n\n---\n\n")
               : "No messages";
             results.whatsappPushed = await upsertCustomValue(
               locationId, headers,
               `ZAP WhatsApp Sequence - ${kitName}`,
               waText
             );
+
+            // D2 — WhatsApp Workflow
+            try {
+              if (messages.length > 0) {
+                results.whatsappWorkflowCreated = await createWhatsAppWorkflow(
+                  locationId, headers,
+                  `ZAP - ${kitName} - WhatsApp Sequence`,
+                  messages
+                );
+              }
+            } catch (e2) {
+              console.warn("[GHL] D2 WhatsApp workflow error:", e2);
+            }
           }
         } catch (e) { console.warn("[GHL] WhatsApp push error:", e); }
       }
 
-      // ─── 3. Landing Page — all 16 sections from selected angle (Node 8) ───────
+      // ─── 3. Landing Page ───────────────────────────────────────────────────────
       if (kit.selectedLandingPageId) {
         try {
           const [lp] = await db
@@ -300,6 +560,7 @@ export const ghlRouter = router({
               ? (typeof raw === "string" ? JSON.parse(raw as string) : raw)
               : null;
 
+            // D1 — Custom Value (text dump)
             let lpText = "No landing page data";
             if (angleData) {
               const sections: string[] = [];
@@ -341,27 +602,38 @@ export const ghlRouter = router({
               }
               lpText = sections.join("\n\n");
             }
-
             results.landingPagePushed = await upsertCustomValue(
               locationId, headers,
               `ZAP Landing Page - ${kitName}`,
               lpText
             );
+
+            // D2 — GHL Funnel with HTML page
+            try {
+              if (angleData) {
+                const htmlBody = buildLandingPageHtml(angleData);
+                results.funnelCreated = await createGhlFunnel(
+                  locationId, headers,
+                  `ZAP - ${kitName} - Landing Page`,
+                  htmlBody
+                );
+              }
+            } catch (e2) {
+              console.warn("[GHL] D2 funnel error:", e2);
+            }
           }
         } catch (e) { console.warn("[GHL] Landing page push error:", e); }
       }
 
-      // ─── 4. Headlines — all variants from the selected headline's set (Node 6) ─
+      // ─── 4. Headlines ──────────────────────────────────────────────────────────
       if (kit.selectedHeadlineId) {
         try {
-          // Fetch the selected headline to get its headlineSetId
           const [selectedHL] = await db
             .select()
             .from(headlines)
             .where(eq(headlines.id, kit.selectedHeadlineId))
             .limit(1);
           if (selectedHL) {
-            // Fetch all headlines in the same set
             const allHL = await db
               .select()
               .from(headlines)
@@ -383,17 +655,15 @@ export const ghlRouter = router({
         } catch (e) { console.warn("[GHL] Headlines push error:", e); }
       }
 
-      // ─── 5. Ad Copy — all headline/body/link rows from selected ad set (Node 7) ─
+      // ─── 5. Ad Copy ────────────────────────────────────────────────────────────
       if (kit.selectedAdCopyId) {
         try {
-          // Fetch the selected row to get its adSetId
           const [selectedAd] = await db
             .select()
             .from(adCopy)
             .where(eq(adCopy.id, kit.selectedAdCopyId))
             .limit(1);
           if (selectedAd) {
-            // Fetch all rows in the same ad set
             const allAds = await db
               .select()
               .from(adCopy)
@@ -403,26 +673,23 @@ export const ghlRouter = router({
             const adLinks     = allAds.filter(a => a.contentType === "link");
 
             const sections: string[] = [];
-            if (adHeadlines.length) {
+            if (adHeadlines.length)
               sections.push("AD HEADLINES\n" + adHeadlines.map((a, i) => `${i + 1}. ${a.content}`).join("\n"));
-            }
-            if (adBodies.length) {
+            if (adBodies.length)
               sections.push("AD BODY COPY\n" + adBodies.map((a, i) => `--- Body ${i + 1} ---\n${a.content}`).join("\n\n"));
-            }
-            if (adLinks.length) {
+            if (adLinks.length)
               sections.push("LINK DESCRIPTIONS\n" + adLinks.map((a, i) => `${i + 1}. ${a.content}`).join("\n"));
-            }
-            const adText = sections.join("\n\n");
+
             results.adCopyPushed = await upsertCustomValue(
               locationId, headers,
               `ZAP Ad Copy - ${kitName}`,
-              adText || "No ad copy"
+              sections.join("\n\n") || "No ad copy"
             );
           }
         } catch (e) { console.warn("[GHL] Ad copy push error:", e); }
       }
 
-      // ─── 6. Offer Copy — all 3 angles (Node 3) ────────────────────────────────
+      // ─── 6. Offer Copy ─────────────────────────────────────────────────────────
       if (kit.selectedOfferId) {
         try {
           const [offer] = await db
@@ -434,7 +701,7 @@ export const ghlRouter = router({
             const formatAngle = (label: string, data: any): string => {
               if (!data) return `${label}\n(not generated)`;
               return [
-                `${label}`,
+                label,
                 `Offer Name: ${data.offerName || ""}`,
                 `Value Proposition: ${data.valueProposition || ""}`,
                 `Pricing: ${data.pricing || ""}`,
@@ -444,7 +711,6 @@ export const ghlRouter = router({
                 `CTA: ${data.cta || ""}`,
               ].join("\n");
             };
-
             const parse = (raw: any) =>
               raw ? (typeof raw === "string" ? JSON.parse(raw) : raw) : null;
 
@@ -463,7 +729,7 @@ export const ghlRouter = router({
         } catch (e) { console.warn("[GHL] Offer push error:", e); }
       }
 
-      // ─── 7. HVCO / Lead Magnet Title (Node 5) ─────────────────────────────────
+      // ─── 7. HVCO / Lead Magnet Title ───────────────────────────────────────────
       if (kit.selectedHvcoId) {
         try {
           const [hvco] = await db
@@ -486,7 +752,7 @@ export const ghlRouter = router({
         } catch (e) { console.warn("[GHL] HVCO push error:", e); }
       }
 
-      // ─── 8. Hero Mechanism (Node 4) ───────────────────────────────────────────
+      // ─── 8. Hero Mechanism ─────────────────────────────────────────────────────
       if (kit.selectedMechanismId) {
         try {
           const [mech] = await db
