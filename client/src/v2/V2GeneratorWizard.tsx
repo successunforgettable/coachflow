@@ -1689,6 +1689,34 @@ function V2ServiceStep({ onBack, onComplete }: { onBack?: () => void; onComplete
   const [zapExpanding, setZapExpanding] = useState(false);
   const [zapWrote, setZapWrote] = useState(false);
   const expandProfile = trpc.services.expandProfile.useMutation();
+  const parseVaultFile = trpc.services.parseVaultFile.useMutation();
+  const extractProgramVault = trpc.services.extractProgramVault.useMutation();
+
+  // ─── Program Vault state ──────────────────────────────────────────────────
+  const [vaultDismissed, setVaultDismissed] = useState<boolean>(() => {
+    try { return !!localStorage.getItem("zap_vault_seen"); } catch { return false; }
+  });
+  const [vaultState, setVaultState] = useState<"prompt" | "tabs" | "extracting" | "confirm">("prompt");
+  const [vaultTab, setVaultTab] = useState<"upload" | "fill">("upload");
+  const [extractedData, setExtractedData] = useState<Record<string, any> | null>(null);
+  const [extractError, setExtractError] = useState("");
+  // Vault form fields
+  const [vPrice, setVPrice] = useState("");
+  const [vPaymentPlan, setVPaymentPlan] = useState("");
+  const [vEarlyBirdPrice, setVEarlyBirdPrice] = useState("");
+  const [vDeliveryFormat, setVDeliveryFormat] = useState<"live" | "online" | "hybrid" | "">("");
+  const [vDeliveryDuration, setVDeliveryDuration] = useState("");
+  const [vGuaranteeDuration, setVGuaranteeDuration] = useState("");
+  const [vGuaranteeType, setVGuaranteeType] = useState("");
+  const [vSocialProofStat, setVSocialProofStat] = useState("");
+  const [bonusItems, setBonusItems] = useState([{ name: "", value: "", description: "" }]);
+
+  // Vault is shown unless user already has vault data OR dismissed it
+  const shouldShowVault = !vaultDismissed && (() => {
+    if (!existingServices || existingServices.length === 0) return true;
+    const svc = existingServices[0] as any;
+    return !(svc.bonuses || svc.guaranteeDuration);
+  })();
 
   // sessionStorage pre-fill (runs once on mount)
   useEffect(() => {
@@ -1859,6 +1887,652 @@ function V2ServiceStep({ onBack, onComplete }: { onBack?: () => void; onComplete
       setSaving(false);
     }
   }
+
+  // ─── Vault: handle file upload → parse → extract ───────────────────────────
+  async function handleFileUpload(file: File) {
+    setVaultState("extracting");
+    setExtractError("");
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuffer);
+      let binary = "";
+      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+      const base64 = btoa(binary);
+
+      const { text } = await parseVaultFile.mutateAsync({ base64, mimeType: file.type });
+
+      // Ensure a service record exists before extracting
+      let serviceId: number;
+      const existingSvc = existingServices?.[0];
+      if (existingSvc) {
+        serviceId = existingSvc.id;
+      } else {
+        const created = await createService.mutateAsync({
+          name: serviceName.trim() || "My Program",
+          description: "To be defined",
+          category: "coaching",
+          targetCustomer: "To be defined",
+          mainBenefit: "To be defined",
+        });
+        serviceId = (created as any).id;
+        await utils.services.list.invalidate();
+      }
+
+      const result = await extractProgramVault.mutateAsync({ serviceId, rawText: text });
+      const ext = result.extracted;
+      setExtractedData(ext);
+
+      // Pre-fill form state from extracted data (only empty fields)
+      if (ext.programName && !serviceName.trim()) setServiceName(ext.programName);
+      if (ext.description && !serviceDescription.trim()) setServiceDescription(ext.description);
+      if (ext.targetCustomer && !targetCustomer.trim()) setTargetCustomer(ext.targetCustomer);
+      if (ext.mainBenefit && !mainBenefit.trim()) setMainBenefit(ext.mainBenefit);
+      if (ext.price) setVPrice(ext.price);
+      if (ext.paymentPlan) setVPaymentPlan(ext.paymentPlan);
+      if (ext.earlyBirdPrice) setVEarlyBirdPrice(ext.earlyBirdPrice);
+      if (ext.deliveryFormat) setVDeliveryFormat(ext.deliveryFormat);
+      if (ext.deliveryDuration) setVDeliveryDuration(ext.deliveryDuration);
+      if (ext.guaranteeDuration) setVGuaranteeDuration(ext.guaranteeDuration);
+      if (ext.guaranteeType) setVGuaranteeType(ext.guaranteeType);
+      if (ext.socialProofStat) setVSocialProofStat(ext.socialProofStat);
+      if (Array.isArray(ext.bonuses) && ext.bonuses.length > 0) setBonusItems(ext.bonuses);
+
+      setVaultState("confirm");
+    } catch (e: unknown) {
+      setExtractError(e instanceof Error ? e.message : "Extraction failed. Please try again.");
+      setVaultState("tabs");
+    }
+  }
+
+  // ─── Vault: save vault form and proceed ────────────────────────────────────
+  async function handleVaultFormSave() {
+    setSaving(true);
+    setSaveError("");
+    try {
+      const existingSvc = existingServices?.[0];
+      const svcName = serviceName.trim() || "My Program";
+      let serviceId: number;
+      if (existingSvc) {
+        serviceId = existingSvc.id;
+      } else {
+        const created = await createService.mutateAsync({
+          name: svcName,
+          description: serviceDescription.trim() || svcName,
+          category: "coaching",
+          targetCustomer: targetCustomer.trim() || "To be defined",
+          mainBenefit: mainBenefit.trim() || "To be defined",
+        });
+        serviceId = (created as any).id;
+      }
+
+      const vaultPayload: Record<string, any> = { id: serviceId };
+      if (vPrice.trim()) {
+        const n = parseFloat(vPrice.replace(/[£$€,\s]/g, ""));
+        if (!isNaN(n)) vaultPayload.price = n;
+      }
+      if (vPaymentPlan.trim()) vaultPayload.paymentPlan = vPaymentPlan.trim();
+      if (vEarlyBirdPrice.trim()) {
+        const n = parseFloat(vEarlyBirdPrice.replace(/[£$€,\s]/g, ""));
+        if (!isNaN(n)) vaultPayload.earlyBirdPrice = n;
+      }
+      if (vDeliveryFormat) vaultPayload.deliveryFormat = vDeliveryFormat;
+      if (vDeliveryDuration.trim()) vaultPayload.deliveryDuration = vDeliveryDuration.trim();
+      if (vGuaranteeDuration.trim()) vaultPayload.guaranteeDuration = vGuaranteeDuration.trim();
+      if (vGuaranteeType.trim()) vaultPayload.guaranteeType = vGuaranteeType.trim();
+      if (vSocialProofStat.trim()) vaultPayload.socialProofStat = vSocialProofStat.trim();
+      const filledBonuses = bonusItems.filter(b => b.name.trim());
+      if (filledBonuses.length > 0) vaultPayload.bonuses = JSON.stringify(filledBonuses);
+
+      if (Object.keys(vaultPayload).length > 1) {
+        await updateService.mutateAsync(vaultPayload as any);
+      }
+      await utils.services.list.invalidate();
+      setVaultDismissed(true);
+      onComplete();
+    } catch (e: unknown) {
+      setSaveError(e instanceof Error ? e.message : "Something went wrong. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // ─── Program Vault early return ────────────────────────────────────────────
+  const vaultInputStyle: React.CSSProperties = {
+    width: "100%",
+    fontFamily: "var(--v2-font-body)",
+    fontSize: "14px",
+    color: "var(--v2-text-color)",
+    background: "#F9F7F4",
+    border: "1px solid rgba(26,22,36,0.15)",
+    borderRadius: "12px",
+    padding: "12px 14px",
+    outline: "none",
+    boxSizing: "border-box" as const,
+    transition: "border-color 0.15s ease",
+  };
+  const vaultLabelStyle: React.CSSProperties = {
+    display: "block",
+    fontFamily: "var(--v2-font-body)",
+    fontWeight: 700,
+    fontSize: "13px",
+    color: "var(--v2-text-color)",
+    marginBottom: "6px",
+  };
+
+  if (shouldShowVault) {
+    // ── Inline vault content by state ──────────────────────────────────────
+    let vaultContent: React.ReactNode = null;
+
+    // ── PROMPT ─────────────────────────────────────────────────────────────
+    if (vaultState === "prompt") {
+      vaultContent = (
+        <div style={{ textAlign: "center", padding: "8px 0" }}>
+          <ZappyMascot state="waiting" size={90} />
+          {/* Speech bubble */}
+          <div style={{
+            background: "#FFF8F3",
+            border: "2px solid rgba(255,91,29,0.25)",
+            borderRadius: "18px",
+            padding: "18px 22px",
+            margin: "20px 0 32px",
+            fontFamily: "var(--v2-font-body)",
+            fontSize: "16px",
+            lineHeight: 1.55,
+            color: "var(--v2-text-color)",
+            position: "relative",
+          }}>
+            <span style={{ fontSize: "20px", marginRight: "8px" }}>💬</span>
+            Do you already have a <strong>program</strong> with <strong>pricing, bonuses</strong> and a <strong>guarantee</strong> set up?
+          </div>
+          <div style={{ display: "flex", gap: "12px" }}>
+            <button
+              onClick={() => {
+                try { localStorage.setItem("zap_vault_seen", "1"); } catch {}
+                setVaultDismissed(true);
+              }}
+              style={{
+                flex: 1,
+                padding: "14px 20px",
+                borderRadius: "9999px",
+                border: "2px solid rgba(26,22,36,0.15)",
+                background: "#fff",
+                fontFamily: "var(--v2-font-body)",
+                fontSize: "15px",
+                fontWeight: 600,
+                color: "var(--v2-text-color)",
+                cursor: "pointer",
+                transition: "border-color 0.15s ease",
+              }}
+              onMouseEnter={e => (e.currentTarget.style.borderColor = "rgba(26,22,36,0.35)")}
+              onMouseLeave={e => (e.currentTarget.style.borderColor = "rgba(26,22,36,0.15)")}
+            >
+              No, start fresh
+            </button>
+            <button
+              onClick={() => setVaultState("tabs")}
+              style={{
+                flex: 1,
+                padding: "14px 20px",
+                borderRadius: "9999px",
+                border: "none",
+                background: "#FF5B1D",
+                fontFamily: "var(--v2-font-body)",
+                fontSize: "15px",
+                fontWeight: 700,
+                color: "#fff",
+                cursor: "pointer",
+                transition: "opacity 0.15s ease",
+              }}
+              onMouseEnter={e => (e.currentTarget.style.opacity = "0.88")}
+              onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
+            >
+              Yes, I have it ready ✓
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // ── EXTRACTING ──────────────────────────────────────────────────────────
+    else if (vaultState === "extracting") {
+      vaultContent = (
+        <div style={{ textAlign: "center", padding: "24px 0" }}>
+          <ZappyMascot state="loading" size={90} />
+          <div style={{
+            background: "#FFF8F3",
+            border: "2px solid rgba(255,91,29,0.25)",
+            borderRadius: "18px",
+            padding: "16px 22px",
+            margin: "20px 0",
+            fontFamily: "var(--v2-font-body)",
+            fontSize: "15px",
+            color: "var(--v2-text-color)",
+          }}>
+            <span style={{ fontSize: "18px", marginRight: "8px" }}>📖</span>
+            Reading your program details...
+          </div>
+          <div style={{
+            width: "40px", height: "40px", borderRadius: "50%",
+            border: "4px solid rgba(255,91,29,0.2)",
+            borderTopColor: "#FF5B1D",
+            animation: "v2-spin 1s linear infinite",
+            margin: "0 auto",
+          }} />
+        </div>
+      );
+    }
+
+    // ── CONFIRM ─────────────────────────────────────────────────────────────
+    else if (vaultState === "confirm" && extractedData) {
+      const fieldLabels: Record<string, string> = {
+        programName: "Program Name", description: "Description", targetCustomer: "Target Customer",
+        mainBenefit: "Main Benefit", price: "Full Price", paymentPlan: "Payment Plan",
+        earlyBirdPrice: "Early Bird Price", guaranteeDuration: "Guarantee Duration",
+        guaranteeType: "Guarantee Type", deliveryFormat: "Delivery Format",
+        deliveryDuration: "Program Duration", socialProofStat: "Social Proof Stat",
+        pressFeatures: "Press Features", bonuses: "Bonuses",
+        testimonial1Name: "Testimonial 1 Name", testimonial1Quote: "Testimonial 1 Quote",
+        testimonial2Name: "Testimonial 2 Name", testimonial2Quote: "Testimonial 2 Quote",
+        testimonial3Name: "Testimonial 3 Name", testimonial3Quote: "Testimonial 3 Quote",
+      };
+      const extractedRows = Object.entries(fieldLabels)
+        .filter(([key]) => {
+          const v = extractedData[key];
+          return v != null && v !== "" && v !== null && !(Array.isArray(v) && v.length === 0);
+        });
+
+      vaultContent = (
+        <div>
+          <div style={{ textAlign: "center", marginBottom: "20px" }}>
+            <ZappyMascot state="cheering" size={80} />
+            <h2 style={{
+              fontFamily: "var(--v2-font-heading)",
+              fontStyle: "italic",
+              fontWeight: 900,
+              fontSize: "22px",
+              color: "var(--v2-text-color)",
+              margin: "12px 0 6px",
+            }}>
+              Here's what Zappy found!
+            </h2>
+            <p style={{
+              fontFamily: "var(--v2-font-body)",
+              fontSize: "13px",
+              color: "rgba(26,22,36,0.55)",
+              margin: 0,
+            }}>
+              {extractedRows.length} field{extractedRows.length !== 1 ? "s" : ""} extracted from your document
+            </p>
+          </div>
+
+          {/* Extracted fields list */}
+          <div style={{
+            background: "#F9F7F4",
+            borderRadius: "16px",
+            padding: "16px",
+            marginBottom: "24px",
+            maxHeight: "320px",
+            overflowY: "auto",
+          }}>
+            {extractedRows.length === 0 ? (
+              <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#888", textAlign: "center", margin: 0 }}>
+                No fields could be extracted. Try editing manually.
+              </p>
+            ) : extractedRows.map(([key, label]) => {
+              let displayVal = extractedData[key];
+              if (Array.isArray(displayVal)) displayVal = `${displayVal.length} bonus(es)`;
+              else if (typeof displayVal === "object") displayVal = JSON.stringify(displayVal);
+              else displayVal = String(displayVal).slice(0, 120) + (String(extractedData[key]).length > 120 ? "…" : "");
+              return (
+                <div key={key} style={{
+                  display: "flex",
+                  gap: "12px",
+                  padding: "8px 0",
+                  borderBottom: "1px solid rgba(26,22,36,0.07)",
+                }}>
+                  <span style={{
+                    fontFamily: "var(--v2-font-body)",
+                    fontSize: "12px",
+                    fontWeight: 700,
+                    color: "#FF5B1D",
+                    minWidth: "130px",
+                    flexShrink: 0,
+                  }}>{label}</span>
+                  <span style={{
+                    fontFamily: "var(--v2-font-body)",
+                    fontSize: "13px",
+                    color: "var(--v2-text-color)",
+                    lineHeight: 1.4,
+                  }}>{displayVal}</span>
+                </div>
+              );
+            })}
+          </div>
+
+          <div style={{ display: "flex", gap: "10px" }}>
+            <button
+              onClick={() => { setVaultState("tabs"); setVaultTab("fill"); }}
+              style={{
+                flex: 1,
+                padding: "13px 16px",
+                borderRadius: "9999px",
+                border: "2px solid rgba(26,22,36,0.15)",
+                background: "#fff",
+                fontFamily: "var(--v2-font-body)",
+                fontSize: "14px",
+                fontWeight: 600,
+                color: "var(--v2-text-color)",
+                cursor: "pointer",
+              }}
+            >
+              Edit details
+            </button>
+            <button
+              onClick={() => { setVaultDismissed(true); onComplete(); }}
+              style={{
+                flex: 2,
+                padding: "13px 16px",
+                borderRadius: "9999px",
+                border: "none",
+                background: "#FF5B1D",
+                fontFamily: "var(--v2-font-body)",
+                fontSize: "14px",
+                fontWeight: 700,
+                color: "#fff",
+                cursor: "pointer",
+                transition: "opacity 0.15s ease",
+              }}
+              onMouseEnter={e => (e.currentTarget.style.opacity = "0.88")}
+              onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
+            >
+              Looks good, continue →
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // ── TABS: upload / fill ─────────────────────────────────────────────────
+    else if (vaultState === "tabs") {
+      const tabBtn = (label: string, tab: "upload" | "fill") => (
+        <button
+          key={tab}
+          onClick={() => setVaultTab(tab)}
+          style={{
+            flex: 1,
+            padding: "10px 14px",
+            borderRadius: "9999px",
+            border: vaultTab === tab ? "none" : "2px solid rgba(26,22,36,0.12)",
+            background: vaultTab === tab ? "#FF5B1D" : "transparent",
+            fontFamily: "var(--v2-font-body)",
+            fontSize: "14px",
+            fontWeight: 700,
+            color: vaultTab === tab ? "#fff" : "rgba(26,22,36,0.55)",
+            cursor: "pointer",
+            transition: "all 0.15s ease",
+          }}
+        >{label}</button>
+      );
+
+      const uploadContent = (
+        <div>
+          <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "rgba(26,22,36,0.55)", marginTop: 0, marginBottom: "20px", textAlign: "center" }}>
+            Upload your program document, sales page, or proposal — ZAP will extract everything automatically.
+          </p>
+          {extractError && (
+            <div style={{
+              background: "rgba(255,91,29,0.08)",
+              border: "1px solid rgba(255,91,29,0.3)",
+              borderRadius: "12px",
+              padding: "12px 16px",
+              marginBottom: "16px",
+              fontFamily: "var(--v2-font-body)",
+              fontSize: "13px",
+              color: "#C0390A",
+            }}>{extractError}</div>
+          )}
+          <label style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "12px",
+            border: "2px dashed rgba(255,91,29,0.35)",
+            borderRadius: "18px",
+            padding: "36px 24px",
+            background: "rgba(255,91,29,0.03)",
+            cursor: "pointer",
+            transition: "background 0.15s ease",
+          }}
+          onDragOver={e => { e.preventDefault(); (e.currentTarget as HTMLElement).style.background = "rgba(255,91,29,0.07)"; }}
+          onDragLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,91,29,0.03)"; }}
+          onDrop={e => {
+            e.preventDefault();
+            (e.currentTarget as HTMLElement).style.background = "rgba(255,91,29,0.03)";
+            const f = e.dataTransfer.files?.[0];
+            if (f) handleFileUpload(f);
+          }}
+          >
+            <span style={{ fontSize: "36px" }}>📄</span>
+            <div style={{ textAlign: "center" }}>
+              <p style={{ fontFamily: "var(--v2-font-body)", fontWeight: 700, fontSize: "15px", color: "var(--v2-text-color)", margin: "0 0 4px" }}>
+                Drop your file here or click to browse
+              </p>
+              <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "12px", color: "rgba(26,22,36,0.45)", margin: 0 }}>
+                PDF, Word, or .txt — up to 10 MB
+              </p>
+            </div>
+            <input
+              type="file"
+              accept=".pdf,.doc,.docx,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+              style={{ display: "none" }}
+              onChange={e => { const f = e.target.files?.[0]; if (f) handleFileUpload(f); }}
+            />
+          </label>
+        </div>
+      );
+
+      const fillContent = (
+        <div>
+          {/* Price row */}
+          <div style={{ marginBottom: "16px" }}>
+            <label style={vaultLabelStyle}>Program price (full price)</label>
+            <input type="text" value={vPrice} onChange={e => setVPrice(e.target.value)}
+              placeholder="e.g. £3,000" style={vaultInputStyle}
+              onFocus={e => (e.target.style.borderColor = "#FF5B1D")}
+              onBlur={e => (e.target.style.borderColor = "rgba(26,22,36,0.15)")} />
+          </div>
+          <div style={{ marginBottom: "16px" }}>
+            <label style={vaultLabelStyle}>Payment plan <span style={{ fontWeight: 400, color: "rgba(26,22,36,0.4)" }}>(optional)</span></label>
+            <input type="text" value={vPaymentPlan} onChange={e => setVPaymentPlan(e.target.value)}
+              placeholder="e.g. 3 x £1,000 or leave blank" style={vaultInputStyle}
+              onFocus={e => (e.target.style.borderColor = "#FF5B1D")}
+              onBlur={e => (e.target.style.borderColor = "rgba(26,22,36,0.15)")} />
+          </div>
+          <div style={{ marginBottom: "16px" }}>
+            <label style={vaultLabelStyle}>Early bird price <span style={{ fontWeight: 400, color: "rgba(26,22,36,0.4)" }}>(optional)</span></label>
+            <input type="text" value={vEarlyBirdPrice} onChange={e => setVEarlyBirdPrice(e.target.value)}
+              placeholder="e.g. £2,500 or leave blank" style={vaultInputStyle}
+              onFocus={e => (e.target.style.borderColor = "#FF5B1D")}
+              onBlur={e => (e.target.style.borderColor = "rgba(26,22,36,0.15)")} />
+          </div>
+          {/* Delivery row */}
+          <div style={{ marginBottom: "16px" }}>
+            <label style={vaultLabelStyle}>Program format & duration</label>
+            <div style={{ display: "flex", gap: "10px" }}>
+              <select value={vDeliveryFormat} onChange={e => setVDeliveryFormat(e.target.value as any)}
+                style={{ ...vaultInputStyle, flex: "0 0 130px" }}>
+                <option value="">Format…</option>
+                <option value="live">Live</option>
+                <option value="online">Online</option>
+                <option value="hybrid">Hybrid</option>
+              </select>
+              <input type="text" value={vDeliveryDuration} onChange={e => setVDeliveryDuration(e.target.value)}
+                placeholder="e.g. 12 weeks" style={{ ...vaultInputStyle, flex: 1 }}
+                onFocus={e => (e.target.style.borderColor = "#FF5B1D")}
+                onBlur={e => (e.target.style.borderColor = "rgba(26,22,36,0.15)")} />
+            </div>
+          </div>
+          {/* Guarantee row */}
+          <div style={{ marginBottom: "16px" }}>
+            <label style={vaultLabelStyle}>Guarantee</label>
+            <div style={{ display: "flex", gap: "10px" }}>
+              <input type="text" value={vGuaranteeDuration} onChange={e => setVGuaranteeDuration(e.target.value)}
+                placeholder="e.g. 90 days" style={{ ...vaultInputStyle, flex: "0 0 130px" }}
+                onFocus={e => (e.target.style.borderColor = "#FF5B1D")}
+                onBlur={e => (e.target.style.borderColor = "rgba(26,22,36,0.15)")} />
+              <input type="text" value={vGuaranteeType} onChange={e => setVGuaranteeType(e.target.value)}
+                placeholder="e.g. Full refund" style={{ ...vaultInputStyle, flex: 1 }}
+                onFocus={e => (e.target.style.borderColor = "#FF5B1D")}
+                onBlur={e => (e.target.style.borderColor = "rgba(26,22,36,0.15)")} />
+            </div>
+          </div>
+          {/* Bonuses */}
+          <div style={{ marginBottom: "16px" }}>
+            <label style={vaultLabelStyle}>Bonuses <span style={{ fontWeight: 400, color: "rgba(26,22,36,0.4)" }}>(optional)</span></label>
+            {bonusItems.map((bonus, idx) => (
+              <div key={idx} style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
+                <input type="text" placeholder="Name" value={bonus.name}
+                  onChange={e => { const b = [...bonusItems]; b[idx] = { ...b[idx], name: e.target.value }; setBonusItems(b); }}
+                  style={{ ...vaultInputStyle, flex: "0 0 140px" }}
+                  onFocus={e => (e.target.style.borderColor = "#FF5B1D")}
+                  onBlur={e => (e.target.style.borderColor = "rgba(26,22,36,0.15)")} />
+                <input type="text" placeholder="Value £" value={bonus.value}
+                  onChange={e => { const b = [...bonusItems]; b[idx] = { ...b[idx], value: e.target.value }; setBonusItems(b); }}
+                  style={{ ...vaultInputStyle, flex: "0 0 90px" }}
+                  onFocus={e => (e.target.style.borderColor = "#FF5B1D")}
+                  onBlur={e => (e.target.style.borderColor = "rgba(26,22,36,0.15)")} />
+                <input type="text" placeholder="Description" value={bonus.description}
+                  onChange={e => { const b = [...bonusItems]; b[idx] = { ...b[idx], description: e.target.value }; setBonusItems(b); }}
+                  style={{ ...vaultInputStyle, flex: 1 }}
+                  onFocus={e => (e.target.style.borderColor = "#FF5B1D")}
+                  onBlur={e => (e.target.style.borderColor = "rgba(26,22,36,0.15)")} />
+                {bonusItems.length > 1 && (
+                  <button onClick={() => setBonusItems(bonusItems.filter((_, i) => i !== idx))}
+                    style={{ background: "none", border: "none", color: "rgba(26,22,36,0.35)", cursor: "pointer", fontSize: "18px", padding: "0 4px" }}>×</button>
+                )}
+              </div>
+            ))}
+            {bonusItems.length < 5 && (
+              <button onClick={() => setBonusItems([...bonusItems, { name: "", value: "", description: "" }])}
+                style={{
+                  background: "none", border: "2px dashed rgba(255,91,29,0.3)", borderRadius: "10px",
+                  padding: "8px 16px", fontFamily: "var(--v2-font-body)", fontSize: "13px", fontWeight: 600,
+                  color: "#FF5B1D", cursor: "pointer", width: "100%", marginTop: "4px",
+                }}>+ Add Bonus</button>
+            )}
+          </div>
+          {/* Social proof stat */}
+          <div style={{ marginBottom: "20px" }}>
+            <label style={vaultLabelStyle}>Social proof stat <span style={{ fontWeight: 400, color: "rgba(26,22,36,0.4)" }}>(optional)</span></label>
+            <input type="text" value={vSocialProofStat} onChange={e => setVSocialProofStat(e.target.value)}
+              placeholder="e.g. 900,000 students trained" style={vaultInputStyle}
+              onFocus={e => (e.target.style.borderColor = "#FF5B1D")}
+              onBlur={e => (e.target.style.borderColor = "rgba(26,22,36,0.15)")} />
+          </div>
+          {saveError && (
+            <div style={{
+              background: "rgba(255,91,29,0.08)", border: "1px solid rgba(255,91,29,0.25)",
+              borderRadius: "12px", padding: "10px 14px", marginBottom: "12px",
+              fontFamily: "var(--v2-font-body)", fontSize: "13px", color: "#C0390A",
+            }}>{saveError}</div>
+          )}
+          <button onClick={handleVaultFormSave} disabled={saving}
+            style={{
+              ...primaryBtnStyle,
+              opacity: saving ? 0.6 : 1,
+              cursor: saving ? "not-allowed" : "pointer",
+            }}
+            onMouseEnter={e => { if (!saving) (e.currentTarget as HTMLButtonElement).style.opacity = "0.88"; }}
+            onMouseLeave={e => { if (!saving) (e.currentTarget as HTMLButtonElement).style.opacity = "1"; }}
+          >{saving ? "Saving…" : "Save Program Details →"}</button>
+        </div>
+      );
+
+      vaultContent = (
+        <div>
+          <div style={{ textAlign: "center", marginBottom: "24px" }}>
+            <h1 style={{
+              fontFamily: "var(--v2-font-heading)",
+              fontStyle: "italic",
+              fontWeight: 900,
+              fontSize: "clamp(20px, 5vw, 28px)",
+              color: "var(--v2-text-color)",
+              margin: "0 0 6px",
+              lineHeight: 1.2,
+            }}>Your Program Vault</h1>
+            <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "rgba(26,22,36,0.55)", margin: 0 }}>
+              ZAP uses this to write more compelling copy, pricing copy, and proof.
+            </p>
+          </div>
+          {/* Tab bar */}
+          <div style={{ display: "flex", gap: "8px", background: "#F5F1EA", borderRadius: "9999px", padding: "5px", marginBottom: "24px" }}>
+            {tabBtn("📄 Upload File", "upload")}
+            {tabBtn("✏️ Fill It In", "fill")}
+          </div>
+          {vaultTab === "upload" ? uploadContent : fillContent}
+          <button
+            onClick={() => {
+              try { localStorage.setItem("zap_vault_seen", "1"); } catch {}
+              setVaultDismissed(true);
+            }}
+            style={{
+              background: "none", border: "none", fontFamily: "var(--v2-font-body)",
+              fontSize: "12px", color: "rgba(26,22,36,0.38)", cursor: "pointer",
+              padding: "12px 0 0", width: "100%", textAlign: "center", textDecoration: "underline",
+            }}
+          >Skip for now</button>
+        </div>
+      );
+    }
+
+    return (
+      <V2Layout>
+        <div style={{
+          minHeight: "100vh",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "flex-start",
+          padding: "48px 16px 64px",
+        }}>
+          {onBack && (
+            <button onClick={onBack} style={{
+              alignSelf: "flex-start",
+              marginBottom: "24px",
+              fontFamily: "var(--v2-font-body)",
+              fontSize: "14px",
+              color: "#777",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: "0",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+            }}>← Back to Campaign Path</button>
+          )}
+          <div style={cardStyle}>
+            {vaultContent}
+          </div>
+          <a href="/v2-dashboard" style={{
+            fontFamily: "var(--v2-font-body)",
+            fontSize: "12px",
+            color: "rgba(26,22,36,0.38)",
+            textDecoration: "none",
+            marginTop: "18px",
+            display: "inline-block",
+            borderBottom: "1px solid rgba(26,22,36,0.15)",
+            paddingBottom: "1px",
+          }}
+          onMouseEnter={e => (e.currentTarget.style.color = "rgba(26,22,36,0.65)")}
+          onMouseLeave={e => (e.currentTarget.style.color = "rgba(26,22,36,0.38)")}
+          >← Back to Campaign Path</a>
+        </div>
+      </V2Layout>
+    );
+  }
+  // ─── End Program Vault early return ────────────────────────────────────────
 
   return (
     <V2Layout>

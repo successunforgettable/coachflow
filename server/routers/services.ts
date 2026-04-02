@@ -53,6 +53,14 @@ const updateServiceSchema = z.object({
   riskReversal: z.string().optional(),
   uniqueMechanismSuggestion: z.string().optional(),
   painPoints: z.string().optional(),
+  // Program Vault fields (W0 sprint)
+  bonuses: z.string().optional(), // JSON array string
+  guaranteeDuration: z.string().max(100).optional(),
+  guaranteeType: z.string().max(255).optional(),
+  deliveryFormat: z.enum(["live", "online", "hybrid"]).optional(),
+  deliveryDuration: z.string().max(100).optional(),
+  paymentPlan: z.string().max(255).optional(),
+  earlyBirdPrice: z.number().optional(),
 });
 
 export const servicesRouter = router({
@@ -383,6 +391,170 @@ Return JSON with these exact fields:
         .limit(1);
       
       return updated;
+    }),
+
+  /**
+   * W0 Program Vault — Extract structured program data from a document via LLM.
+   * Saves all extracted non-null fields to the service record before returning.
+   */
+  extractProgramVault: protectedProcedure
+    .input(z.object({
+      serviceId: z.number(),
+      rawText: z.string().min(1, "Document text is required"),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const [service] = await db
+        .select()
+        .from(services)
+        .where(and(eq(services.id, input.serviceId), eq(services.userId, ctx.user.id)))
+        .limit(1);
+
+      if (!service) throw new Error("Service not found");
+
+      const prompt = `You are extracting structured program details from a document.
+Extract exactly these fields if present in the text below. Return ONLY valid JSON.
+If a field is not found in the document, return null for that field.
+
+Fields to extract:
+- programName: string or null
+- description: string or null (1-2 sentences about what the program does)
+- targetCustomer: string or null (who it's for)
+- mainBenefit: string or null (the main result/transformation)
+- price: string or null (full program price, e.g. "£3,000")
+- paymentPlan: string or null (e.g. "3 x £1,000")
+- earlyBirdPrice: string or null (e.g. "£2,500")
+- bonuses: array or null (each item: {name: string, value: string, description: string})
+- guaranteeDuration: string or null (e.g. "90 days")
+- guaranteeType: string or null (e.g. "Full refund", "Results or money back")
+- deliveryFormat: "live" | "online" | "hybrid" | null
+- deliveryDuration: string or null (e.g. "12 weeks", "6 months")
+- testimonial1Name: string or null
+- testimonial1Title: string or null
+- testimonial1Quote: string or null
+- testimonial2Name: string or null
+- testimonial2Title: string or null
+- testimonial2Quote: string or null
+- testimonial3Name: string or null
+- testimonial3Title: string or null
+- testimonial3Quote: string or null
+- socialProofStat: string or null (e.g. "900,000 students trained")
+- pressFeatures: string or null (comma-separated press mentions)
+
+Document text:
+${input.rawText.slice(0, 12000)}`;
+
+      const response = await invokeLLM({
+        messages: [
+          { role: "system", content: "You are a structured data extractor. Return only valid JSON with no markdown, no explanation." },
+          { role: "user", content: prompt },
+        ],
+        response_format: { type: "json_object" },
+      });
+
+      const raw = response.choices[0].message.content;
+      let extracted: Record<string, any>;
+      try {
+        const cleaned = typeof raw === "string"
+          ? raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim()
+          : JSON.stringify(raw);
+        extracted = JSON.parse(cleaned);
+      } catch {
+        throw new Error("AI returned invalid JSON during vault extraction");
+      }
+
+      // Build update payload — only save non-null, non-empty values
+      const updates: Record<string, any> = { updatedAt: new Date() };
+      const str = (v: any, max = 65535) => (typeof v === "string" && v.trim()) ? v.trim().slice(0, max) : null;
+
+      if (str(extracted.programName) && !service.name.trim()) updates.name = str(extracted.programName, 255)!;
+      if (str(extracted.description) && !service.description?.trim()) updates.description = str(extracted.description)!;
+      if (str(extracted.targetCustomer)) updates.targetCustomer = str(extracted.targetCustomer, 500)!;
+      if (str(extracted.mainBenefit)) updates.mainBenefit = str(extracted.mainBenefit, 500)!;
+      if (str(extracted.price)) {
+        const priceNum = parseFloat(String(extracted.price).replace(/[£$€,\s]/g, ""));
+        if (!isNaN(priceNum)) updates.price = priceNum.toFixed(2);
+      }
+      if (str(extracted.paymentPlan)) updates.paymentPlan = str(extracted.paymentPlan, 255)!;
+      if (str(extracted.earlyBirdPrice)) {
+        const ebNum = parseFloat(String(extracted.earlyBirdPrice).replace(/[£$€,\s]/g, ""));
+        if (!isNaN(ebNum)) updates.earlyBirdPrice = ebNum.toFixed(2);
+      }
+      if (Array.isArray(extracted.bonuses) && extracted.bonuses.length > 0) {
+        updates.bonuses = JSON.stringify(extracted.bonuses.slice(0, 5));
+      }
+      if (str(extracted.guaranteeDuration)) updates.guaranteeDuration = str(extracted.guaranteeDuration, 100)!;
+      if (str(extracted.guaranteeType)) updates.guaranteeType = str(extracted.guaranteeType, 255)!;
+      if (["live", "online", "hybrid"].includes(extracted.deliveryFormat)) updates.deliveryFormat = extracted.deliveryFormat;
+      if (str(extracted.deliveryDuration)) updates.deliveryDuration = str(extracted.deliveryDuration, 100)!;
+      if (str(extracted.testimonial1Name)) updates.testimonial1Name = str(extracted.testimonial1Name, 255)!;
+      if (str(extracted.testimonial1Title)) updates.testimonial1Title = str(extracted.testimonial1Title, 255)!;
+      if (str(extracted.testimonial1Quote)) updates.testimonial1Quote = str(extracted.testimonial1Quote)!;
+      if (str(extracted.testimonial2Name)) updates.testimonial2Name = str(extracted.testimonial2Name, 255)!;
+      if (str(extracted.testimonial2Title)) updates.testimonial2Title = str(extracted.testimonial2Title, 255)!;
+      if (str(extracted.testimonial2Quote)) updates.testimonial2Quote = str(extracted.testimonial2Quote)!;
+      if (str(extracted.testimonial3Name)) updates.testimonial3Name = str(extracted.testimonial3Name, 255)!;
+      if (str(extracted.testimonial3Title)) updates.testimonial3Title = str(extracted.testimonial3Title, 255)!;
+      if (str(extracted.testimonial3Quote)) updates.testimonial3Quote = str(extracted.testimonial3Quote)!;
+      if (str(extracted.socialProofStat)) updates.socialProofStat = str(extracted.socialProofStat, 255)!;
+      if (str(extracted.pressFeatures)) updates.pressFeatures = str(extracted.pressFeatures)!;
+
+      if (Object.keys(updates).length > 1) {
+        await db.update(services).set(updates).where(eq(services.id, input.serviceId));
+      }
+
+      // Return the raw extracted object so client can display confirmation screen
+      return { serviceId: input.serviceId, extracted };
+    }),
+
+  /**
+   * W0 Program Vault — Parse a file (PDF or plain text) from base64 and return extracted text.
+   * Client passes base64-encoded file content and mimeType.
+   */
+  parseVaultFile: protectedProcedure
+    .input(z.object({
+      base64: z.string().min(1),
+      mimeType: z.string(),
+    }))
+    .mutation(async ({ input }) => {
+      const buffer = Buffer.from(input.base64, "base64");
+
+      // Plain text
+      if (input.mimeType === "text/plain") {
+        return { text: buffer.toString("utf-8").slice(0, 50000) };
+      }
+
+      // PDF
+      if (input.mimeType === "application/pdf") {
+        try {
+          // Dynamic import to avoid bundling issues
+          const pdfParse = (await import("pdf-parse")).default;
+          const result = await pdfParse(buffer);
+          return { text: result.text.slice(0, 50000) };
+        } catch (e: unknown) {
+          const msg = e instanceof Error ? e.message : String(e);
+          throw new Error(`PDF parsing failed: ${msg}`);
+        }
+      }
+
+      // Word documents — extract as plain text (strip XML tags)
+      if (
+        input.mimeType === "application/msword" ||
+        input.mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      ) {
+        try {
+          const mammoth = (await import("mammoth")).default;
+          const result = await mammoth.extractRawText({ buffer });
+          return { text: result.value.slice(0, 50000) };
+        } catch {
+          // Fall back to raw buffer as text
+          return { text: buffer.toString("utf-8").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 50000) };
+        }
+      }
+
+      throw new Error(`Unsupported file type: ${input.mimeType}. Please upload a PDF, Word document, or plain text file.`);
     }),
 
   // Delete service

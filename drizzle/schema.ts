@@ -157,6 +157,14 @@ export const services = mysqlTable("services", {
   hiddenReasons: text("hiddenReasons"), // Real reasons behind their problem they would never admit
   riskReversal: text("riskReversal"), // Guarantee suggestion
   uniqueMechanismSuggestion: text("uniqueMechanismSuggestion"), // Proprietary method name suggestion
+  // Program Vault fields (W0 sprint)
+  bonuses: text("bonuses"), // JSON array: [{name, value, description}]
+  guaranteeDuration: varchar("guaranteeDuration", { length: 100 }), // e.g. "90 days"
+  guaranteeType: varchar("guaranteeType", { length: 255 }), // e.g. "Full refund"
+  deliveryFormat: mysqlEnum("deliveryFormat", ["live", "online", "hybrid"]), // nullable
+  deliveryDuration: varchar("deliveryDuration", { length: 100 }), // e.g. "12 weeks"
+  paymentPlan: varchar("paymentPlan", { length: 255 }), // e.g. "3 x £1,000"
+  earlyBirdPrice: decimal("earlyBirdPrice", { precision: 10, scale: 2 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({
