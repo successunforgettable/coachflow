@@ -231,7 +231,20 @@ export function buildTextStyleHtml(content: LandingPageContent, serviceName: str
 // ─── VISUAL STYLE HTML ───────────────────────────────────────────────────────
 // Matches LandingPageVisualTemplate.tsx: alternating dark/light/white sections,
 // Montserrat + Arial, orange #FE4500 gradient CTAs, 1170px max-width, coach page layout
-export function buildVisualStyleHtml(content: LandingPageContent, serviceName: string): string {
+interface CoachAssetOptions {
+  headshotUrl?: string | null;
+  logoUrl?: string | null;
+  socialProofUrls?: string[];
+  coachName?: string | null;
+  coachBackground?: string | null;
+}
+
+export function buildVisualStyleHtml(
+  content: LandingPageContent,
+  serviceName: string,
+  coach: CoachAssetOptions = {}
+): string {
+  const { headshotUrl = null, logoUrl = null, socialProofUrls = [], coachName = null, coachBackground = null } = coach;
   const DARK = "#000000";
   const LIGHT = "#f6f6f6";
   const WHITE = "#ffffff";
@@ -279,21 +292,30 @@ export function buildVisualStyleHtml(content: LandingPageContent, serviceName: s
   // NAV
   sections.push(`
   <nav style="background:${DARK};padding:16px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;border-bottom:1px solid #222;">
-    <span style="font-family:${H};font-weight:700;font-style:normal;font-size:20px;color:${TEXT_DARK};">${esc(serviceName)}</span>
+    ${logoUrl
+      ? `<img src="${esc(logoUrl)}" alt="${esc(serviceName)}" style="height:40px;object-fit:contain;vertical-align:middle;">`
+      : `<span style="font-family:${H};font-weight:700;font-style:normal;font-size:20px;color:${TEXT_DARK};">${esc(serviceName)}</span>`}
     ${ok(content.primaryCta) ? `<a href="#" style="font-family:${H};font-size:13px;font-weight:700;font-style:normal;color:#fff;background:${A};padding:10px 22px;border-radius:8px;text-decoration:none;">${esc(content.primaryCta)}</a>` : ""}
   </nav>`);
 
-  // S1: HERO (DARK)
+  // S1: HERO (DARK) — 2-col with headshot if available, else single-col centred
   if (ok(content.eyebrowHeadline) || ok(content.mainHeadline)) {
-    sections.push(`
-  <section style="background:${DARK};padding:${PAD};">
-    <div ${inner} style="max-width:${MAX_W};margin:0 auto;padding:0 24px;width:100%;display:flex;gap:40px;flex-wrap:wrap;align-items:center;">
-      <div style="flex:1 1 55%;min-width:300px;">
+    const heroText = `
+      <div style="flex:1 1 ${headshotUrl ? "55%" : "100%"};min-width:300px;${!headshotUrl ? "text-align:center;" : ""}">
         ${ok(content.eyebrowHeadline) ? `<p style="font-family:${B};color:${A};font-size:14px;font-weight:600;font-style:normal;text-transform:uppercase;letter-spacing:0.05em;margin:0 0 12px;">${esc(content.eyebrowHeadline)}</p>` : ""}
         ${ok(content.mainHeadline) ? `<h1 style="font-family:${H};font-size:clamp(24px,3.5vw,36px);font-weight:700;font-style:normal;line-height:1.2;color:${TEXT_DARK};margin:0 0 20px;">${esc(content.mainHeadline)}</h1>` : ""}
         ${ok(content.subheadline) ? `<p style="font-family:${B};font-size:18px;font-weight:400;font-style:normal;color:${BODY_DARK};margin:0 0 28px;line-height:1.6;">${esc(content.subheadline)}</p>` : ""}
         ${ctaBtn(true)}
-      </div>
+      </div>`;
+    const heroPhoto = headshotUrl
+      ? `<div style="flex:0 1 40%;min-width:260px;display:flex;justify-content:center;align-items:center;">
+           <img src="${esc(headshotUrl)}" alt="${esc(coachName || "Coach")}" style="width:100%;max-width:420px;max-height:500px;border-radius:12px;object-fit:cover;border:6px solid #c9d1d9;">
+         </div>`
+      : "";
+    sections.push(`
+  <section style="background:${DARK};padding:${PAD};">
+    <div style="max-width:${MAX_W};margin:0 auto;padding:0 24px;width:100%;display:flex;gap:40px;flex-wrap:wrap;align-items:center;">
+      ${heroText}${heroPhoto}
     </div>
   </section>`);
   }
@@ -332,6 +354,40 @@ export function buildVisualStyleHtml(content: LandingPageContent, serviceName: s
     <div ${inner}>
       <h2 style="font-family:${H};font-weight:700;font-style:normal;font-size:clamp(28px,3.5vw,42px);color:${TEXT_LIGHT};margin:0 0 24px;">${esc(sol.heading)}</h2>
       ${sol.body.map(p => bulletCheck(p, false)).join("")}
+    </div>
+  </section>`);
+  }
+
+  // S4b: COACH AUTHORITY (DARK) — after solution intro, only if headshot or coachName present
+  if (headshotUrl || coachName) {
+    const bioText = coachBackground && coachBackground.length > 10 ? coachBackground : "";
+    const photoCol = headshotUrl
+      ? `<div style="flex:0 1 40%;min-width:260px;">
+           <img src="${esc(headshotUrl)}" alt="${esc(coachName || "Coach")}" style="width:100%;max-width:400px;border-radius:12px;object-fit:cover;">
+         </div>`
+      : "";
+    sections.push(`
+  <section style="background:${DARK};padding:${PAD};">
+    <div style="max-width:${MAX_W};margin:0 auto;padding:0 24px;width:100%;display:flex;gap:48px;flex-wrap:wrap;align-items:center;">
+      ${photoCol}
+      <div style="flex:1 1 50%;min-width:280px;">
+        ${coachName ? `<h2 style="font-family:${H};font-weight:700;font-style:normal;font-size:42px;color:${TEXT_DARK};margin:0 0 16px;text-transform:uppercase;">${esc(coachName)}</h2>` : ""}
+        ${bioText ? `<p style="font-family:${B};font-weight:400;font-style:normal;font-size:18px;line-height:1.6;color:${BODY_DARK};margin:0 0 24px;">${esc(bioText)}</p>` : ""}
+        ${ctaBtn(true)}
+      </div>
+    </div>
+  </section>`);
+  }
+
+  // S4c: SOCIAL PROOF GALLERY (DARK) — only if socialProofUrls has entries
+  if (socialProofUrls.length > 0) {
+    sections.push(`
+  <section style="background:${DARK};padding:${PAD};">
+    <div style="max-width:${MAX_W};margin:0 auto;padding:0 24px;">
+      <h2 style="font-family:${H};font-weight:700;font-style:normal;font-size:32px;color:${TEXT_DARK};margin:0 0 32px;text-align:center;">Results Our Clients Get</h2>
+      <div style="display:flex;gap:16px;overflow-x:auto;padding:24px 0;-webkit-overflow-scrolling:touch;">
+        ${socialProofUrls.map(url => `<img src="${esc(url)}" alt="" style="height:300px;width:auto;border-radius:8px;flex-shrink:0;object-fit:cover;">`).join("")}
+      </div>
     </div>
   </section>`);
   }

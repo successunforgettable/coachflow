@@ -5,7 +5,7 @@ import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 import { getQuotaLimit } from "../quotaLimits";
 import { getDb } from "../db";
-import { landingPages, services, users, campaigns, idealCustomerProfiles, sourceOfTruth, jobs, campaignKits, offers, heroMechanisms, hvcoTitles } from "../../drizzle/schema";
+import { landingPages, services, users, campaigns, idealCustomerProfiles, sourceOfTruth, jobs, campaignKits, offers, heroMechanisms, hvcoTitles, coachAssets } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { generateAllAngles } from "../landingPageGenerator";
 import { invokeLLM } from "../_core/llm";
@@ -793,6 +793,24 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
         : lp.originalAngle;
       if (!content) throw new TRPCError({ code: "BAD_REQUEST", message: "No content for selected angle — please generate a landing page first." });
 
+      // Fetch coach profile (name + bio) from users table
+      const [coachProfileRow] = await db
+        .select({ coachName: users.coachName, coachBackground: users.coachBackground })
+        .from(users)
+        .where(eq(users.id, ctx.user.id))
+        .limit(1);
+      const coachName = coachProfileRow?.coachName ?? null;
+      const coachBackground = coachProfileRow?.coachBackground ?? null;
+
+      // Fetch coach assets (headshot, logo, social_proof) from coachAssets table
+      const assetRows = await db
+        .select({ assetType: coachAssets.assetType, url: coachAssets.url })
+        .from(coachAssets)
+        .where(eq(coachAssets.userId, ctx.user.id));
+      const headshotUrl = assetRows.find(a => a.assetType === "headshot")?.url ?? null;
+      const logoUrl = assetRows.find(a => a.assetType === "logo")?.url ?? null;
+      const socialProofUrls = assetRows.filter(a => a.assetType === "social_proof").map(a => a.url);
+
       // Re-use existing slug or generate a stable one
       const slug =
         lp.publicSlug ||
@@ -802,7 +820,7 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
       const { ensureKvNamespace, writeKvPage, deployWorker } = await import("../lib/cloudflare");
 
       const html = input.styleMode === "visual"
-        ? buildVisualStyleHtml(content, serviceName)
+        ? buildVisualStyleHtml(content, serviceName, { headshotUrl, logoUrl, socialProofUrls, coachName, coachBackground })
         : buildTextStyleHtml(content, serviceName);
       const namespaceId = await ensureKvNamespace();
       await writeKvPage(namespaceId, slug, html);
