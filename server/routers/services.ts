@@ -5,6 +5,7 @@ import { services } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { invokeLLM } from "../_core/llm";
 import { filterRecord, getGlobalNegativePrompts } from "../lib/complianceFilter";
+import { BANNED_COPYWRITING_WORDS, BANNED_MECHANISM_NAMES } from "../_core/copywritingRules";
 
 const createServiceSchema = z.object({
   name: z.string().min(1, "Name is required").max(255),
@@ -159,7 +160,7 @@ SPECIFICITY RULES — every field must pass this test:
 - If the answer could apply to any coach in any niche, it is too generic — rewrite it
 - Use the language the customer uses when talking to a friend, not polished marketing language
 
-BANNED PHRASES — never use in any field: mindset shift, limiting beliefs, step into your power, show up, do the work, level up, transform your life, unlock your potential, embrace your journey, take your business to the next level, achieve your dreams
+BANNED PHRASES — never use in any field: ${BANNED_COPYWRITING_WORDS.join(', ')}
 
 JTBD FRAMEWORK — for each field, answer the question: what is this person really hiring this service to do? What is the functional job (the task they're trying to complete)? What is the emotional job (how they want to feel)? What is the social job (how they want to be perceived)?
 
@@ -173,7 +174,7 @@ Return JSON with these exact fields:
   "failedSolutions": "3-5 things this specific audience has tried. Name the actual product, approach, or platform (e.g. 'cold outreach on LinkedIn', 'hiring a VA', 'buying a $2k course on Instagram ads'). Explain exactly why each failed for THIS audience specifically.",
   "hiddenReasons": "3-5 real reasons behind their problem that they would never admit out loud or have never considered. These must be uncomfortable truths specific to this niche — not generic psychology.",
   "whyProblemExists": "The systemic or structural root cause of this problem. Not the symptom. Not 'lack of mindset'. The actual mechanism that keeps people stuck in this niche.",
-  "uniqueMechanismSuggestion": "A proprietary-sounding name for how this service solves the problem. Must contain a specific process word or metaphor from this niche. NOT: The Success Blueprint, The Growth System, The Transformation Framework, The Mindset Method. Good names contain a word from the niche itself.",
+  "uniqueMechanismSuggestion": "A proprietary-sounding name for how this service solves the problem. Must contain a specific process word or metaphor from this niche. BANNED names: ${BANNED_MECHANISM_NAMES.join(', ')}. Good names contain a word from the niche itself.",
   "hvcoTopicSuggestion": "A lead magnet title that would make someone in this niche stop scrolling. Must contain a specific number or timeframe, a named enemy or obstacle, and a concrete promised insight.",
   "riskReversalSuggestion": "A guarantee that makes the risk of not buying feel greater than the risk of buying. Must include: specific duration, specific result guaranteed, and exact refund process.",
   "avatarName": "A realistic first name for the ideal customer (match cultural context of the niche).",

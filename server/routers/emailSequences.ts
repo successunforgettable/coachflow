@@ -281,9 +281,9 @@ ${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}
 ${emailRules}
 
 Create 3 emails. State the ONE JOB of each email before writing it.
-1. SET THE STAGE (Day 1) — Job: Make the subscriber feel they made the right decision by joining. Welcome them into a story that has them as the protagonist.
-2. EPIPHANY (Day 3) — Job: Share the single insight that changes everything. Introduce the solution without selling it yet.
-3. HIDDEN BENEFITS (Day 5) — Job: Show one secondary benefit they weren't expecting that makes staying on the list feel valuable. Soft CTA.
+1. DELIVER THE LEAD MAGNET + OPEN A LOOP (Day 1) — Job: Give them exactly what was promised — the lead magnet, the resource, or the access. Then open one unanswered question they need to come back for. The question must be real and specific to their situation. Do not answer it in this email. The loop must make them want to read Email 2.
+2. ORIGIN STORY (Day 3) — Job: Why you do this work. One vulnerable moment (what it looked like when things were not working), one turning point (the specific thing that changed), one result (what became possible after). No selling. No pitch. The story must make them feel they are not alone in their situation.
+3. PROOF (Day 5) — Job: One client story with a specific before/after. Name the situation they were in before, the specific change they made, and the specific outcome they got — a number, a named situation, or a measurable result. No generic testimonials. The story must be specific enough that the reader thinks "that could be me."
 
 Each email must include:
 - subject: (curiosity or pattern-interrupt, max 50 chars, never descriptive)
@@ -338,13 +338,13 @@ ${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}
 ${emailRules}
 
 Create 7 emails (Day 1-7 after event). State the ONE JOB of each email before writing it.
-1. THANK YOU (Day 1) — Job: Re-open the door. Thank them and remind them of the one insight from the event that felt most true to them.
-2. CASE STUDY (Day 2) — Job: Remove the "will it work for me?" objection. Show a specific result from a specific type of person who is like them.
-3. OBJECTION HANDLING (Day 3) — Job: Name the real objection they have (not the polite one) and dismantle it with a specific answer.
-4. BONUS REVEAL (Day 4) — Job: Make the offer feel even more irresistible by revealing one bonus they weren't expecting. Use anchoring — state the bonus dollar value.
-5. GUARANTEE (Day 5) — Job: Remove the risk. Make keeping their money feel riskier than spending it.
-6. SCARCITY (Day 6) — Job: Make inaction feel costly. Name the specific thing that closes or disappears.
-7. FINAL CALL (Day 7) — Job: Create the last-chance moment. One clear choice. Make it easy to say yes, make inaction feel like a choice with consequences.
+1. THANK YOU (Day 1) — Job: Re-open the door. Thank them and name the one specific insight from the event that would have felt most personally true to someone in their situation. One clear next step at the end. Nothing else.
+2. CASE STUDY (Day 2) — Job: Remove the "will it work for me?" objection. Name the specific situation the case study person was in before — it must mirror the reader's situation. Name the specific change they made. Name the specific result with a number or named outcome. The reader must think "that person was exactly like me."
+3. OBJECTION HANDLING (Day 3) — Job: Name the real objection — not the polite version they'd say out loud, but the actual thought in their head. Then answer it with specifics: a number, a story, or a mechanism. Do not be defensive. Do not sell. Just dismantle the objection with evidence.
+4. BONUS REVEAL (Day 4) — Job: Make the offer feel more irresistible by revealing one bonus that solves a specific problem they didn't think was included. State the specific dollar value of the bonus. Use anchoring — state total value before revealing the ask. The bonus must feel directly useful, not like padding.
+5. GUARANTEE (Day 5) — Job: Remove all risk from the decision. State the exact duration, the exact result guaranteed, and the exact refund process. Make keeping their money feel riskier than spending it — name the ongoing cost of not solving this problem for one more month.
+6. SCARCITY (Day 6) — Job: Make inaction feel costly and concrete. Name the specific thing that closes or changes — a cohort deadline, a price increase, or a genuine limit. Never fabricate scarcity. Name what specifically happens after the deadline.
+7. FINAL CALL (Day 7) — Job: Create the last-chance moment with one clear choice. Do not introduce new information. Remind them of the one thing that matters most. Make saying yes easy. Make inaction feel like a deliberate choice with a named consequence.
 
 Each email must include:
 - subject: (curiosity or pattern-interrupt, max 50 chars, never descriptive)

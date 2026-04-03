@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import { nanoid } from "nanoid";
 import { protectedProcedure, router } from "../_core/trpc";
 import { invokeLLM } from "../_core/llm";
+import { BANNED_HEADLINE_PATTERNS, META_COMPLIANCE_NOTES } from "../_core/copywritingRules";
 import {
   createHeadlines,
   getHeadlinesByUserId,
@@ -324,13 +325,12 @@ export const headlinesRouter = router({
 3. Could this headline ONLY be written for THIS service? (If it works equally well for any coach, rewrite it)
 
 BANNED OPENERS AND PHRASES — never generate headlines using these patterns:
-- "Are you ready to...", "Do you want to...", "The secret to...", "How to finally...", "Everything you need to..."
-- "Transform your...", "Unlock your...", "Discover how to...", "The ultimate..."
+- ${BANNED_HEADLINE_PATTERNS.map(p => `"${p}..."`).join(', ')}, "Everything you need to..."
 - Generic power words used without specific context: skyrocket, explode, dominate, crush it, master
 
 MANDATORY: Every headline must contain at least ONE word that comes directly from the ICP's pain language, desire language, or niche-specific vocabulary — a word that signals to the ideal customer "this was written for me specifically."
 
-Return ONLY valid JSON, no markdown, no explanations.`,
+Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES}`,
               },
               { role: "user", content: promptWithSot },
             ],
@@ -523,7 +523,7 @@ Return ONLY valid JSON, no markdown, no explanations.`,
             const promptWithIcp = capturedIcpContext ? prompt.replace(/\n\nGenerate /, `\n\n${capturedIcpContext}\n\nGenerate `) : prompt;
             const promptWithSot = capturedSotContext ? `${capturedSotContext}\n\n${promptWithIcp}` : promptWithIcp;
 
-            const response = await invokeLLM({ messages: [{ role: "system", content: "You are an expert direct response copywriter. Return ONLY valid JSON, no markdown, no explanations." }, { role: "user", content: promptWithSot }] });
+            const response = await invokeLLM({ messages: [{ role: "system", content: `You are an expert direct response copywriter specialising in Meta ad headlines for coaches, consultants and speakers. Every headline must pass the THREE-QUESTION TEST: specific person in specific situation, specific outcome, only writeable for this service. Banned openers: ${BANNED_HEADLINE_PATTERNS.join(', ')}. Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES}` }, { role: "user", content: promptWithSot }] });
             const content = response.choices[0].message.content;
             if (typeof content !== "string") throw new Error("Invalid LLM response");
             const parsed = JSON.parse(stripMarkdownJson(content));

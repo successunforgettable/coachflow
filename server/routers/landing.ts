@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { publicProcedure, router } from "../_core/trpc";
 import { invokeLLM } from "../_core/llm";
+import { BANNED_COPYWRITING_WORDS, META_COMPLIANCE_NOTES } from "../_core/copywritingRules";
 
 export const landingRouter = router({
   generatePreviewAssets: publicProcedure
@@ -13,7 +14,7 @@ export const landingRouter = router({
           {
             role: "system",
             content:
-              "You are a world-class direct-response copywriter specialising in Meta ads for coaches, consultants and speakers. You write in the language the customer uses to describe their problem to a friend — not in marketing language. Every word must be niche-specific and grounded in the real situation of the person reading it. Return ONLY valid JSON — no markdown, no explanation.",
+              `You are a world-class direct-response copywriter specialising in Meta ads for coaches, consultants and speakers. You write in the language the customer uses to describe their problem to a friend — not in marketing language. Every word must be niche-specific and grounded in the real situation of the person reading it. Return ONLY valid JSON — no markdown, no explanation.\n\n${META_COMPLIANCE_NOTES}`,
           },
           {
             role: "user",
@@ -21,7 +22,7 @@ export const landingRouter = router({
 
 Generate three short, punchy marketing assets using the customer's own language — the words they use when describing their situation to a friend, not polished marketing copy.
 
-BANNED WORDS — never use: transformation, journey, potential, unlock, empower, breakthrough, passion, purpose, impact, fulfilment, abundance, mindset, shift, thrive, elevate, accelerate, amplify
+BANNED WORDS — never use: ${BANNED_COPYWRITING_WORDS.join(', ')}
 
 1. headline — A single Meta ad headline (max 10 words).
    - Must contain ONE concrete, niche-specific detail (a number, a timeframe, a named problem, or an industry term)

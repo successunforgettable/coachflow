@@ -259,10 +259,16 @@ ${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}
 
 ${whatsappRules}
 
-Create 3 WhatsApp messages (Monday, Wednesday, Friday before event):
-1. WELCOME & EXPECTATION SETTING (Monday) — Reference the specific thing they signed up for. Set one expectation. End with a yes/no question.
-2. EDUCATIONAL CONTENT (Wednesday) — Share one specific, actionable insight they can use before the event. Make it feel like insider knowledge. End with a question about their situation.
-3. URGENCY & REMINDER (Friday) — Name the event specifically. Create one concrete reason to show up live. End with the specific link or action.
+Create 3 WhatsApp messages (Monday, Wednesday, Friday before event). Each message has ONE job — the entire message serves that job only:
+
+Message 1 job = PATTERN INTERRUPT + OPEN LOOP (Monday)
+Reference the specific thing they signed up for. Open a loop — ask one question they don't yet know the answer to, that makes them want to come to the event to find out. End with a question that makes them think. Do not answer the question in this message.
+
+Message 2 job = SPECIFIC PROOF MOMENT (Wednesday)
+Share one real result from one specific type of person (anonymised if needed — "a [job title] in [niche]"). One sentence on what changed for them and how. Make it feel like evidence, not marketing. End with a direct question asking if that sounds familiar to them.
+
+Message 3 job = SOFT CTA (Friday)
+Name the event specifically. Give one clear next step and the link or action. No selling. No urgency. Just the obvious, easy thing to do next. End with the action.
 
 Return as a JSON object with a 'messages' key containing the array.`;
       } else {
@@ -280,10 +286,16 @@ ${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}
 
 ${whatsappRules}
 
-Create 3 WhatsApp messages (Day 1, 3, 5 after event):
-1. EXCLUSIVE OFFER (Day 1) — Reference what they just attended. Name the specific offer and one concrete reason it's relevant to their situation. End with the direct link or action.
-2. SUCCESS STORY (Day 3) — Name one specific result from a specific type of person (anonymised if needed). End with: "Does that sound like where you are?"
-3. FINAL CALL (Day 5) — Name the specific thing that closes. Give the exact deadline. One sentence on what happens after the deadline. End with the link.
+Create 3 WhatsApp messages (Day 1, 3, 5 after event). Each message has ONE job — the entire message serves that job only:
+
+Message 1 job = NAME THE COST OF INACTION (Day 1)
+Reference what they just attended. Name the specific cost of staying where they are — the thing that keeps happening if they don't act. One concrete, niche-specific consequence. End with the direct link or action.
+
+Message 2 job = PROOF + MECHANISM (Day 3)
+Name one specific result from one specific type of person (anonymised if needed). Name the method or mechanism that produced that result — one sentence. End with: "Does that sound like where you are?"
+
+Message 3 job = DIRECT OFFER + URGENCY + SINGLE ACTION (Day 5)
+Name the specific offer and the exact closing mechanism (deadline, price change, or spots remaining — only if true). One sentence on what they lose after the deadline. End with the single action and link only — no question.
 
 Return as a JSON object with a 'messages' key containing the array.`;
       }

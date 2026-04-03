@@ -10,6 +10,7 @@ import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 import { checkCompliance } from "../lib/complianceChecker";
+import { BANNED_HEADLINE_PATTERNS, META_COMPLIANCE_NOTES } from "../_core/copywritingRules";
 
 function stripMarkdownJson(content: string): string {
   return content.replace(/^```json\s*|^```\s*|\s*```$/gm, '').trim();
@@ -45,6 +46,8 @@ REFRAME THESE COMMON VIOLATIONS:
 - "Only 3 spots left" → "Applications now open" (unless truly limited)
 
 Your output must be ad copy that could be submitted directly to Meta without triggering a policy violation review.
+
+${META_COMPLIANCE_NOTES}
 `;
 
 const generateAdCopySchema = z.object({
@@ -364,7 +367,7 @@ THREE-QUESTION TEST — every headline must pass all three:
 3. Could this headline ONLY be written for this service? If it works for any coach's service, rewrite it.
 
 BANNED PATTERNS — never generate:
-- "Are you ready to...", "Do you want to...", "The secret to...", "How to finally...", "Discover how to..."
+- ${BANNED_HEADLINE_PATTERNS.map(p => `"${p}..."`).join(', ')}
 - Generic power words without context: skyrocket, explode, dominate, crush, master, unlock, transform
 
 MANDATORY: Include at least one word from the pressing problem field — the actual vocabulary the target market uses to describe their situation.

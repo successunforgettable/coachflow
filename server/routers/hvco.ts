@@ -2,6 +2,7 @@ import { z } from "zod";
 import { randomUUID } from "crypto";
 import { publicProcedure, protectedProcedure, router } from "../_core/trpc";
 import { invokeLLM } from "../_core/llm";
+import { BANNED_COPYWRITING_WORDS } from "../_core/copywritingRules";
 import { 
   createHvcoTitles, 
   getHvcoSetsByUser, 
@@ -154,6 +155,8 @@ MANDATORY TITLE RULE — every title must contain at least ONE of these:
 
 WHY-THIS-SPECIFICALLY TEST: Before including any title, ask: why would this specific audience download THIS over any other lead magnet? If the title doesn't answer that question, it fails.
 
+BANNED COPYWRITING WORDS — never use in any title: ${BANNED_COPYWRITING_WORDS.join(', ')}
+
 BANNED TITLE PATTERNS — never generate:
 - "The Ultimate Guide to [X]" — too generic, no specificity
 - "Everything You Need to Know About [X]" — sounds like homework, not a gift
@@ -213,6 +216,8 @@ MANDATORY TITLE RULE — every short title must contain at least ONE of:
 2. A named obstacle or enemy this audience specifically faces (the exact frustration, not a category of frustrations)
 3. An insider word from this niche — a term only someone in this niche would use
 
+BANNED COPYWRITING WORDS — never use in any title: ${BANNED_COPYWRITING_WORDS.join(', ')}
+
 BANNED TITLE PATTERNS — never generate these:
 - "[X] Formula/Blueprint/Playbook" without a specific outcome attached
 - "[X] Unlocked/Mastered/Hacked" — too vague
@@ -267,6 +272,8 @@ MANDATORY RULE — every title must contain at least ONE of:
 4. A counterintuitive or contrarian insight (why the obvious approach doesn't work)
 
 WHY-THIS-SPECIFICALLY TEST: Would someone in this exact niche stop scrolling for THIS title, or would any coach's lead magnet do? If they'd stop for any lead magnet, the title fails.
+
+BANNED COPYWRITING WORDS — never use in any title: ${BANNED_COPYWRITING_WORDS.join(', ')}
 
 BANNED — never generate:
 - "The Ultimate Guide to [X]" — too generic

@@ -1,5 +1,6 @@
 import { invokeLLM } from "./_core/llm";
 import type { OfferContent } from "../drizzle/schema";
+import { BANNED_COPYWRITING_WORDS, META_COMPLIANCE_NOTES } from "./_core/copywritingRules";
 
 // Angle-specific prompt modifiers for Offers (Industry standard)
 const ANGLE_PROMPTS = {
@@ -59,15 +60,20 @@ export async function generateOfferAngle(
     vip: "High-ticket offer with maximum value, exclusive access, premium bonuses",
   };
 
-  // Social proof guidance (Issue 2 fix)
-  const socialProofGuidance = socialProof.hasCustomers
+  // Social proof guidance — full guard matching landingPageGenerator.ts
+  const socialProofGuidance = socialProof.hasTestimonials || socialProof.hasCustomers || socialProof.hasPress
     ? `REAL SOCIAL PROOF AVAILABLE:
-- ${socialProof.customerCount} verified customers
+${socialProof.hasCustomers ? `- ${socialProof.customerCount} verified customers` : ''}
+${socialProof.hasRating ? `- ${socialProof.rating} average rating from ${socialProof.reviewCount} reviews` : ''}
+${socialProof.hasTestimonials ? `- Real testimonials: ${socialProof.testimonials.map((t: any) => `${t.name} (${t.title})`).join(', ')}` : ''}
+${socialProof.hasPress ? `- Press features: ${socialProof.press}` : ''}
 
-You MAY use this number in the offer copy if relevant. Do not fabricate.`
+You MUST use these exact numbers and real testimonials. Do not fabricate or inflate.`
     : `NO SOCIAL PROOF DATA PROVIDED:
-- DO NOT mention customer counts or specific testimonials in the offer
-- Focus on benefit claims and value propositions`;
+- DO NOT mention customer counts, ratings, or specific testimonials in the offer
+- Focus on outcome-based language and benefit claims only
+- Use transformation language WITHOUT specific names ("A client in this niche" instead of "John Smith")
+- DO NOT fabricate social proof of any kind`;
   
   const prompt = `
 You are an expert offer creator specializing in irresistible offers for coaches, speakers, and consultants.
@@ -127,7 +133,7 @@ Return ONLY valid JSON with these exact keys: offerName, valueProposition, prici
       {
         role: "system",
         content:
-          "You are an expert offer creator specializing in irresistible, loss-aversion-driven offers for coaches, speakers, and consultants. You apply anchoring to make the price feel like a fraction of the value, and you make saying no feel more expensive than saying yes. You write specific outcomes and specific dollar values — never vague promises or unquantified benefits. Always respond with valid JSON.",
+          `You are an expert offer creator specializing in irresistible, loss-aversion-driven offers for coaches, speakers, and consultants. You apply anchoring to make the price feel like a fraction of the value, and you make saying no feel more expensive than saying yes. You write specific outcomes and specific dollar values — never vague promises or unquantified benefits. Always respond with valid JSON.\n\n${META_COMPLIANCE_NOTES}`,
       },
       { role: "user", content: prompt },
     ],

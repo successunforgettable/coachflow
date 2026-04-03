@@ -326,10 +326,21 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
         ],
       });
 
-      const powerModeContent = typeof powerModeResponse.choices[0].message.content === 'string' 
-        ? powerModeResponse.choices[0].message.content 
+      const powerModeContent = typeof powerModeResponse.choices[0].message.content === 'string'
+        ? powerModeResponse.choices[0].message.content
         : JSON.stringify(powerModeResponse.choices[0].message.content);
-      const powerMode = JSON.parse(stripMarkdownJson(powerModeContent));
+      // Power mode returns { name, description }[] — if LLM returns explanatory text this guard prevents a crash.
+      let powerMode: { name: string; description: string }[] = [];
+      try {
+        const parsed = JSON.parse(stripMarkdownJson(powerModeContent));
+        if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'object' && parsed[0] !== null) {
+          powerMode = parsed;
+        } else {
+          console.error('[heroMechanisms] power mode: unexpected JSON shape, falling back to empty array. Content:', powerModeContent.slice(0, 300));
+        }
+      } catch (e) {
+        console.error('[heroMechanisms] power mode: JSON.parse failed, falling back to empty array. Content:', powerModeContent.slice(0, 300));
+      }
       
       powerMode.forEach((mechanism: { name: string; description: string }) => {
         allMechanisms.push({
