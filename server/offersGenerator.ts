@@ -60,9 +60,11 @@ export async function generateOfferAngle(
     vip: "High-ticket offer with maximum value, exclusive access, premium bonuses",
   };
 
+  // Truncated to 100 chars to prevent model spending token budget on quote reproduction rather than offer copy.
+  const truncateQuote = (q: string) => q.length > 100 ? q.slice(0, 97) + '...' : q;
   // Social proof guidance — full guard matching landingPageGenerator.ts
   const testimonialLines = socialProof.hasTestimonials
-    ? socialProof.testimonials.map((t: any) => `  • ${t.name}${t.title ? ` (${t.title})` : ''}: "${t.quote}"`).join('\n')
+    ? socialProof.testimonials.map((t: any) => `  • ${t.name}${t.title ? ` (${t.title})` : ''}: "${truncateQuote(t.quote || '')}"`).join('\n')
     : '';
   const socialProofGuidance = socialProof.hasTestimonials || socialProof.hasCustomers || socialProof.hasPress
     ? `REAL SOCIAL PROOF AVAILABLE — you MUST reference these in the offer copy, do not fabricate or inflate:

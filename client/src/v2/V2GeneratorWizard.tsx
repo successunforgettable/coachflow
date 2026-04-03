@@ -1283,6 +1283,7 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
   const [latestIcpId, setLatestIcpId] = useState<number | null>(null);
   const [latestOfferId, setLatestOfferId] = useState<number | null>(null);
   const [latestMechanismSetId, setLatestMechanismSetId] = useState<string | null>(null);
+  const [latestMechWarning, setLatestMechWarning] = useState<string | undefined>(undefined);
   const [latestHvcoSetId, setLatestHvcoSetId] = useState<string | null>(null);
   const [latestLandingPageId, setLatestLandingPageId] = useState<number | null>(null);
   const [latestEmailSequenceId, setLatestEmailSequenceId] = useState<number | null>(null);
@@ -1416,7 +1417,7 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
       setProgressLabel(null);
       // ── Shared polling helper ──
       // onProgress: optional callback fired whenever the job's progress label changes
-      type JobResult = { headlineSetId?: string; adSetId?: string; icpId?: number; offerId?: number; mechanismSetId?: string; hvcoSetId?: string; id?: number; [key: string]: unknown };
+      type JobResult = { headlineSetId?: string; adSetId?: string; icpId?: number; offerId?: number; mechanismSetId?: string; hvcoSetId?: string; id?: number; generationWarning?: string; [key: string]: unknown };
       const pollJob = (jobId: string, onProgress?: (label: string) => void) => new Promise<JobResult>((resolve, reject) => {
         const pollStart = Date.now();
         const MAX_POLL_MS = 300_000;
@@ -1481,6 +1482,8 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
         });
         const mechResult = await pollJob(jobId);
         if (typeof mechResult.mechanismSetId === 'string') setLatestMechanismSetId(mechResult.mechanismSetId);
+        if (typeof mechResult.generationWarning === 'string' && mechResult.generationWarning) setLatestMechWarning(mechResult.generationWarning);
+        else setLatestMechWarning(undefined);
       } else if (step === "freeOptIn") {
         const { jobId } = await generateHvcoAsync.mutateAsync({
           serviceId: svcId,
@@ -1833,6 +1836,12 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
               onContinue={() => {
                 const next = getNextStep(step);
                 if (next) navigate(`/v2-dashboard/wizard/${next}`);
+              }}
+              generationWarning={latestMechWarning}
+              onRetry={() => {
+                setLatestMechanismSetId(null);
+                setLatestMechWarning(undefined);
+                setStatus("idle");
               }}
             />
           )}

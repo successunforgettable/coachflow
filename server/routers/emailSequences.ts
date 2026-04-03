@@ -460,7 +460,12 @@ You MUST use these exact numbers and real names. Do not fabricate.`
       }
       // Note: email sequences generated before commit 4d04611 may have null ps fields — the LLM
       // was returning ps but it was dropped before DB save. To find affected records run:
-      // SELECT COUNT(*) FROM email_sequences WHERE JSON_SEARCH(emails, 'one', NULL) IS NOT NULL;
+      // DB is MySQL/TiDB — do not use Postgres jsonb syntax.
+      // SELECT id, JSON_LENGTH(emails) AS total,
+      //   JSON_LENGTH(JSON_EXTRACT(emails, '$[*].ps')) AS with_ps
+      // FROM email_sequences
+      // WHERE JSON_LENGTH(emails) != JSON_LENGTH(JSON_EXTRACT(emails, '$[*].ps'))
+      //    OR JSON_SEARCH(emails, 'one', NULL, NULL, '$[*].ps') IS NOT NULL;
       // Do not attempt to backfill — downstream display code should treat null/missing ps as empty string.
       sequenceData.emails = sequenceData.emails.map((email: any, idx: number) => ({
         subject: email.subject || `Email ${idx + 1}: Check this out`,

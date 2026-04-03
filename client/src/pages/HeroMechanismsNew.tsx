@@ -104,6 +104,9 @@ export default function HeroMechanismsNew() {
   const generateMutation = trpc.heroMechanisms.generate.useMutation({
     onSuccess: (data) => {
       toast.success("Your Unique Method generated successfully!");
+      if (data.generationWarning) {
+        toast.warning("Some mechanism names couldn't be generated — try generating again for better results.");
+      }
       setLocation(`/hero-mechanisms/${data.mechanismSetId}`);
     },
     onError: (error) => {

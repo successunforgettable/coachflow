@@ -149,9 +149,13 @@ function TabPill({ label, count, active, onClick }: { label: string; count: numb
 export default function V2UniqueMethodResultPanel({
   mechanismSetId,
   onContinue,
+  generationWarning,
+  onRetry,
 }: {
   mechanismSetId: string;
   onContinue: () => void;
+  generationWarning?: string;
+  onRetry?: () => void;
 }) {
   const [activeTab, setActiveTab] = useState<TabType>("hero_mechanisms");
 
@@ -260,6 +264,49 @@ export default function V2UniqueMethodResultPanel({
         <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#999", textAlign: "center", padding: "24px 0" }}>
           No items in this category.
         </p>
+      )}
+
+      {/* ── Generation warning banner ── */}
+      {generationWarning && (
+        <div style={{
+          marginTop: "20px",
+          background: "#FFF3CD",
+          border: "1px solid #FF5B1D",
+          borderRadius: "8px",
+          padding: "12px 16px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "12px",
+        }}>
+          <span style={{
+            fontFamily: "Instrument Sans, sans-serif",
+            fontSize: "14px",
+            color: "#1A1624",
+          }}>
+            Some mechanism names couldn't be generated — try generating again for better results.
+          </span>
+          {onRetry && (
+            <button
+              onClick={onRetry}
+              style={{
+                background: "#FF5B1D",
+                color: "#fff",
+                border: "none",
+                borderRadius: "6px",
+                padding: "7px 16px",
+                fontFamily: "Instrument Sans, sans-serif",
+                fontSize: "13px",
+                fontWeight: 600,
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+                flexShrink: 0,
+              }}
+            >
+              Retry
+            </button>
+          )}
+        </div>
       )}
     </div>
   );
