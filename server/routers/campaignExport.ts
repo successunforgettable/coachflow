@@ -139,10 +139,38 @@ function buildLandingPageContent(rows: any[]): string {
         parts.push(`[${fieldLabel}]\n${angle[field]}\n`);
       }
     }
+    // asSeenIn
+    if (Array.isArray(angle?.asSeenIn) && angle.asSeenIn.length > 0) {
+      parts.push(`[As Seen In]\n${(angle.asSeenIn as string[]).join(", ")}\n`);
+    }
+    // quizSection
+    if (angle?.quizSection?.question) {
+      const q = angle.quizSection;
+      const opts = Array.isArray(q.options) ? (q.options as string[]).map((o: string, i: number) => `  ${i + 1}. ${o}`).join("\n") : "";
+      parts.push(`[Quiz Section]\nQuestion: ${q.question}\nOptions:\n${opts}\nAnswer: ${q.answer ?? ""}\n`);
+    }
+    // testimonials
     if (Array.isArray(angle?.testimonials) && angle.testimonials.length > 0) {
       parts.push("[Testimonials]");
-      (angle.testimonials as any[]).forEach((t: any) => {
-        parts.push(`  "${t?.quote ?? ""}" — ${t?.name ?? ""}, ${t?.location ?? ""}`);
+      (angle.testimonials as any[]).forEach((t: any, i: number) => {
+        parts.push(`  ${i + 1}. ${t?.name ?? ""} / ${t?.location ?? ""}\n     "${t?.quote ?? ""}"`);
+        if (t?.headline) parts.push(`     Headline: ${t.headline}`);
+      });
+      parts.push("");
+    }
+    // consultationOutline
+    if (Array.isArray(angle?.consultationOutline) && angle.consultationOutline.length > 0) {
+      parts.push("[Consultation Outline]");
+      (angle.consultationOutline as any[]).forEach((item: any, i: number) => {
+        parts.push(`  ${i + 1}. ${item?.title ?? ""}: ${item?.description ?? ""}`);
+      });
+      parts.push("");
+    }
+    // faq
+    if (Array.isArray(angle?.faq) && angle.faq.length > 0) {
+      parts.push("[FAQ]");
+      (angle.faq as any[]).forEach((item: any, i: number) => {
+        parts.push(`  Q${i + 1}: ${item?.question ?? ""}\n  A${i + 1}: ${item?.answer ?? ""}`);
       });
       parts.push("");
     }
