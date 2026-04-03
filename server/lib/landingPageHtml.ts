@@ -2,6 +2,7 @@
 // buildTextStyleHtml  — matches LandingPageVisualRenderer (dark charcoal, Inter, purple)
 // buildVisualStyleHtml — matches LandingPageVisualTemplate (alternating sections, Montserrat, orange)
 import type { LandingPageContent } from "../../drizzle/schema";
+import { cfImg } from "./cloudinaryUtils";
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 function esc(s: unknown): string {
@@ -33,15 +34,6 @@ function jp<T>(v: unknown, fb: T): T {
   if (!v) return fb;
   if (typeof v === "string") { try { return JSON.parse(v); } catch { return fb; } }
   return v as T;
-}
-
-// ─── Cloudflare image transform: HEIC → JPEG via Cloudinary URL rewrite ──────
-// Inserts /f_jpg,q_auto/ before the /upload/ segment on Cloudinary URLs.
-// Safe no-op for non-Cloudinary URLs.
-function cfImg(url: string | null | undefined): string {
-  if (!url) return "";
-  if (!url.includes("res.cloudinary.com")) return url;
-  return url.replace("/upload/", "/upload/f_jpg,q_auto/");
 }
 
 // ─── TEXT STYLE HTML ─────────────────────────────────────────────────────────
@@ -372,11 +364,13 @@ export function buildVisualStyleHtml(
     // Fix 4: if bio is under 50 chars, append service name as context
     const rawBio = coachBackground && coachBackground.trim().length > 10 ? coachBackground.trim() : "";
     const bioText = rawBio
-      ? (rawBio.length < 50 ? `${rawBio} — ${serviceName}` : rawBio)
+      ? (rawBio.length < 80
+          ? `${rawBio}. ${serviceName} specialist helping people achieve transformation.`
+          : rawBio)
       : "";
     const photoCol = headshotUrl
       ? `<div style="flex:0 1 40%;min-width:260px;">
-           <img src="${esc(cfImg(headshotUrl))}" alt="${esc(coachName || "Coach")}" style="width:100%;max-width:400px;border-radius:12px;object-fit:cover;border:4px solid #FE4500;">
+           <img src="${esc(cfImg(headshotUrl))}" alt="${esc(coachName || "Coach")}" width="400" height="400" loading="lazy" style="width:100%;max-width:400px;border-radius:12px;object-fit:cover;border:4px solid #FE4500;">
          </div>`
       : "";
     sections.push(`
@@ -399,7 +393,7 @@ export function buildVisualStyleHtml(
     <div style="max-width:${MAX_W};margin:0 auto;padding:0 24px;">
       <h2 style="font-family:${H};font-weight:700;font-style:normal;font-size:32px;color:${TEXT_DARK};margin:0 0 32px;text-align:center;">Results Our Clients Get</h2>
       <div style="display:flex;flex-wrap:nowrap;gap:16px;overflow-x:auto;padding-bottom:16px;-webkit-overflow-scrolling:touch;">
-        ${socialProofUrls.map(url => `<img src="${esc(cfImg(url))}" alt="" style="height:300px;width:auto;min-width:200px;flex-shrink:0;object-fit:cover;border-radius:8px;">`).join("")}
+        ${socialProofUrls.map(url => `<img src="${esc(cfImg(url))}" alt="" width="auto" height="300" loading="lazy" style="height:300px;width:auto;min-width:200px;flex-shrink:0;object-fit:cover;border-radius:8px;">`).join("")}
       </div>
     </div>
   </section>`);

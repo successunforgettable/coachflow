@@ -177,6 +177,11 @@ export default function CoachIdentityModal({ onComplete }: { onComplete: () => v
               boxSizing: "border-box",
             }}
           />
+          {background.length > 0 && background.length < 80 && (
+            <p style={{ fontFamily: "'Instrument Sans', sans-serif", fontSize: "12px", color: "#FF5B1D", marginTop: "4px", margin: "4px 0 0" }}>
+              Tip: Add your results and credentials for a stronger bio (aim for 80+ characters)
+            </p>
+          )}
         </div>
 
         {error && (
