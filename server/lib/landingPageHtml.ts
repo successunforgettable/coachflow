@@ -363,10 +363,10 @@ export function buildVisualStyleHtml(
   if (headshotUrl || coachName) {
     // Fix 4: if bio is under 50 chars, append service name as context
     const rawBio = coachBackground && coachBackground.trim().length > 10 ? coachBackground.trim() : "";
-    const capServiceName = serviceName.charAt(0).toUpperCase() + serviceName.slice(1);
+    const capServiceName = serviceName.replace(/\b\w/g, c => c.toUpperCase());
     const bioText = rawBio
       ? (rawBio.length < 80
-          ? `${rawBio}. ${capServiceName} specialist helping people achieve transformation.`
+          ? `${rawBio}. ${capServiceName} specialist helping people achieve their goals.`
           : rawBio)
       : "";
     const photoCol = headshotUrl

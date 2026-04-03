@@ -16,6 +16,7 @@ import UpgradePrompt from "./components/UpgradePrompt";
 import ExportButtons from "./components/ExportButtons";
 import { formatWhatsAppTxt, formatHeadlinesTxt, formatAdCopyTxt, formatOfferTxt, formatMechanismsTxt, formatHvcoTxt, formatIcpTxt, formatLandingPageTxt } from "./lib/exportUtils";
 import LandingPageVisualTemplate from "./components/LandingPageVisualTemplate";
+import CoachIdentityModal from "./components/CoachIdentityModal";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type AngleKey = "original" | "godfather" | "free" | "dollar";
@@ -769,6 +770,7 @@ export default function V2LandingPageResultPanel({
   const [styleMode, setStyleMode] = useState<"text" | "visual">("text");
   const [exportUpgradeOpen, setExportUpgradeOpen] = useState(false);
   const [coachAssets, setCoachAssets] = useState<CoachAssets>({ headshot: null, logo: null, socialProof: [] });
+  const [showCoachModal, setShowCoachModal] = useState(false);
 
   // Load coach profile for authority section
   const { data: coachProfile } = trpc.user.getCoachProfile.useQuery();
@@ -973,7 +975,16 @@ export default function V2LandingPageResultPanel({
               {coachProfile?.coachBackground && coachProfile.coachBackground.trim().length > 0 && coachProfile.coachBackground.trim().length < 80 && (
                 <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "12px", color: "#FF5B1D", margin: "0 0 12px" }}>
                   Tip: Add your results and credentials for a stronger bio (aim for 80+ characters)
+                  <span
+                    onClick={() => setShowCoachModal(true)}
+                    style={{ marginLeft: "8px", cursor: "pointer", textDecoration: "underline", fontFamily: "var(--v2-font-body)", fontSize: "12px", color: "#FF5B1D" }}
+                  >
+                    Edit bio →
+                  </span>
                 </p>
+              )}
+              {showCoachModal && (
+                <CoachIdentityModal onComplete={() => setShowCoachModal(false)} />
               )}
               <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
                 <button
