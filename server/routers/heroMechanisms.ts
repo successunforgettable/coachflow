@@ -168,26 +168,30 @@ Desired Outcome: ${input.desiredOutcome}
 Credibility: ${resolvedCredibility}
 Social Proof: ${input.socialProof}
 ${icpContext ? `\n${icpContext}\n` : ''}
-Create 5 HERO MECHANISMS. Each mechanism must have:
-1. A creative, unique NAME using the descriptor (e.g., "Breakthrough Neural Nexus System", "Proprietary Market Guardian Protocol")
-2. A full PARAGRAPH description (150-200 words) that includes:
-   - How it works (technology/method)
-   - Who developed it (credibility)
-   - Specific outcome ($10,000/month, 6 months, etc.)
-   - Emotional transformation (fear → confidence, confusion → clarity)
-   - Why it's different from existing solutions
+MECHANISM NAME RULES — apply to every name generated:
+- Must contain a specific process word or metaphor FROM THIS NICHE (not from generic business language)
+- Must sound proprietary and outcome-specific — not transferable to a different coaching niche
+- BANNED names (never generate anything like these): The Success Blueprint, The Growth System, The Transformation Framework, The Mindset Method, The Achievement Protocol, The Breakthrough System, The Empowerment Method, The Results Framework
+- GOOD name structure: [Niche-specific process word] + [Specific outcome word] + [Descriptor]. The first word must come from the vocabulary of this specific niche.
+- Test: Could this mechanism name appear in a different coaching niche? If yes, it fails — rewrite it.
 
-Examples:
-{
-  "name": "Breakthrough Neural Nexus System",
-  "description": "This innovative system harnesses neural networks and machine learning algorithms to analyze market trends and predict high-profit crypto trades. Developed by an award-winning author in collaboration with top 7-figure traders, this method teaches beginners how to confidently trade and earn at least $10,000 per month. Within 6 months, users learn the critical, often overlooked real-time data patterns that lead to significant gains, transforming fear into calculated action and building real wealth."
-}
+Create 5 HERO MECHANISMS. Each mechanism must have:
+1. A proprietary-sounding NAME that:
+   - Contains at least one word specific to the target market's niche or industry
+   - Names the specific transformation (not "growth" or "success" — what specifically changes?)
+   - Sounds like something that exists as a real system, not a marketing concept
+2. A full PARAGRAPH description (150-200 words) that includes:
+   - The specific problem it solves (name the problem, not a category of problems)
+   - Who developed it and why (credibility tied to niche, not generic "award-winning expert")
+   - A concrete outcome with a number or timeframe ($X/month, X clients in Y weeks, etc.)
+   - What specifically makes it different from what they've already tried (name the failed approaches)
+   - One before/after moment that makes the transformation real and believable
 
 Return ONLY a JSON array of 5 objects with "name" and "description" fields, nothing else.`;
 
       const heroMechanismsResponse = await invokeLLM({
         messages: [
-          { role: "system", content: "You are a direct response copywriting expert. Return ONLY valid JSON arrays." },
+          { role: "system", content: "You are a direct response copywriting expert who specialises in creating proprietary mechanism names and descriptions for coaches and consultants. You write mechanism names that are niche-specific — containing vocabulary from the target market's industry, not generic business language. Your mechanism descriptions make the reader feel the copy was written specifically for them. Return ONLY valid JSON arrays." },
           { role: "user", content: heroMechanismsPrompt }
         ],
       });
@@ -227,27 +231,30 @@ Target Market: ${input.targetMarket}
 Pressing Problem: ${resolvedPressingProblem}
 Desired Outcome: ${input.desiredOutcome}
 ${icpContext ? `\n${icpContext}\n` : ''}
-Create 5 HEADLINE IDEAS that:
-- Grab attention immediately
-- Promise a clear benefit
-- Create curiosity
-- Use power words
+THREE-QUESTION TEST — every headline must pass all three:
+1. Does it name a specific type of person in a specific situation? (not "entrepreneurs" but "coaches who've been running webinars to empty rooms")
+2. Does it promise a specific outcome — not a vague benefit? (not "more clients" but "8 discovery calls booked in 14 days")
+3. Could this headline ONLY be written for this service? (if it works for any coach, rewrite it)
+
+BANNED HEADLINE OPENERS AND PHRASES — never use:
+- "Are you ready to...", "Do you want to...", "The secret to...", "How to finally...", "Everything you need to..."
+- "Transform your...", "Unlock your...", "Discover how to...", "The ultimate guide to..."
+- Generic power words: skyrocket, explode, crush it, dominate, master
+
+Create 5 HEADLINE IDEAS for the hero mechanism. Each headline must:
+- Contain at least one word directly from the ICP's pain language or niche vocabulary
+- Name a concrete outcome (number, timeframe, or named situation) not a category of outcomes
+- Be written as a real headline, not a template with [brackets]
 
 Each headline should have:
-1. A creative NAME (the headline itself)
-2. A supporting DESCRIPTION (50-100 words explaining why this headline works)
-
-Examples:
-{
-  "name": "How Ordinary People Are Building $10K/Month Passive Income While Their Friends Work Dead-End Jobs",
-  "description": "This headline uses social proof ('ordinary people'), specific outcome ($10K/month), and contrast (passive income vs. dead-end jobs) to create desire and urgency. It speaks directly to the target market's frustration with traditional employment."
-}
+1. A creative NAME (the headline itself — a real, complete headline)
+2. A supporting DESCRIPTION (50-100 words explaining specifically: which ICP pain word it uses, which ad angle it applies, and what makes this niche-specific rather than generic)
 
 Return ONLY a JSON array of 5 objects with "name" and "description" fields, nothing else.`;
 
       const headlineIdeasResponse = await invokeLLM({
         messages: [
-          { role: "system", content: "You are a direct response copywriting expert. Return ONLY valid JSON arrays." },
+          { role: "system", content: "You are a direct response copywriting expert who specialises in creating proprietary mechanism names and descriptions for coaches and consultants. You write mechanism names that are niche-specific — containing vocabulary from the target market's industry, not generic business language. Your mechanism descriptions make the reader feel the copy was written specifically for them. Return ONLY valid JSON arrays." },
           { role: "user", content: headlineIdeasPrompt }
         ],
       });
@@ -293,22 +300,28 @@ Desired Outcome: ${input.desiredOutcome}
 Credibility: ${resolvedCredibility}
 Social Proof: ${input.socialProof}
 ${icpContext ? `\n${icpContext}\n` : ''}
-Create 5 BEAST MODE mechanisms - these should be:
-- Even more creative and unique names
-- Longer, more detailed descriptions (200-250 words)
-- Include specific numbers, timeframes, and results
-- Address objections preemptively
-- Build massive credibility
+MECHANISM NAME RULES — apply strictly to every name:
+- Must contain a specific process word or metaphor FROM THIS NICHE — not from generic business language
+- Must be so niche-specific that someone from a different coaching niche would not recognise it as applying to them
+- BANNED: The Success Blueprint, The Growth System, The Transformation Framework, The Mindset Method, The Achievement Protocol, The Breakthrough System — or anything that sounds like these
+- GOOD: names where the first or second word comes from the vocabulary this specific target market uses every day
+- Test: If you replaced the service name with a different coaching service, would the mechanism name still make sense? If yes, it fails.
+
+Create 5 POWER MODE mechanisms — the most compelling, most niche-specific, most conversion-ready versions:
+- Names are even more proprietary and niche-rooted than the standard set
+- Descriptions are 200-250 words and go deeper on: the exact mechanism of action, the named enemy (the thing that has been failing them until now), the specific before/after moment, and the concrete result with a number
+- Address the top objection preemptively within the description itself
+- Build credibility through niche-specific authority (not generic "award-winning expert" — name the specific credibility relevant to this target market)
 
 Each mechanism must have:
-1. An ultra-creative NAME with powerful descriptors
-2. A comprehensive DESCRIPTION that sells the transformation
+1. A NAME that could only apply to this specific niche and target market
+2. A comprehensive DESCRIPTION (200-250 words) that makes someone in this target market feel: "This was built for someone exactly like me"
 
 Return ONLY a JSON array of 5 objects with "name" and "description" fields, nothing else.`;
 
       const powerModeResponse = await invokeLLM({
         messages: [
-          { role: "system", content: "You are a direct response copywriting expert. Return ONLY valid JSON arrays." },
+          { role: "system", content: "You are a direct response copywriting expert who specialises in creating proprietary mechanism names and descriptions for coaches and consultants. You write mechanism names that are niche-specific — containing vocabulary from the target market's industry, not generic business language. Your mechanism descriptions make the reader feel the copy was written specifically for them. Return ONLY valid JSON arrays." },
           { role: "user", content: powerModePrompt }
         ],
       });
@@ -521,7 +534,7 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
 
           const heroMechanismsResponse = await invokeLLM({
             messages: [
-              { role: "system", content: "You are a direct response copywriting expert. Return ONLY valid JSON arrays." },
+              { role: "system", content: "You are a direct response copywriting expert who specialises in creating proprietary mechanism names and descriptions for coaches and consultants. You write mechanism names that are niche-specific — containing vocabulary from the target market's industry, not generic business language. Your mechanism descriptions make the reader feel the copy was written specifically for them. Return ONLY valid JSON arrays." },
               { role: "user", content: heroMechanismsPrompt }
             ],
           });
@@ -538,7 +551,7 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
 
           const headlineIdeasResponse = await invokeLLM({
             messages: [
-              { role: "system", content: "You are a direct response copywriting expert. Return ONLY valid JSON arrays." },
+              { role: "system", content: "You are a direct response copywriting expert who specialises in creating proprietary mechanism names and descriptions for coaches and consultants. You write mechanism names that are niche-specific — containing vocabulary from the target market's industry, not generic business language. Your mechanism descriptions make the reader feel the copy was written specifically for them. Return ONLY valid JSON arrays." },
               { role: "user", content: headlineIdeasPrompt }
             ],
           });
@@ -555,7 +568,7 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
 
           const powerModeResponse = await invokeLLM({
             messages: [
-              { role: "system", content: "You are a direct response copywriting expert. Return ONLY valid JSON arrays." },
+              { role: "system", content: "You are a direct response copywriting expert who specialises in creating proprietary mechanism names and descriptions for coaches and consultants. You write mechanism names that are niche-specific — containing vocabulary from the target market's industry, not generic business language. Your mechanism descriptions make the reader feel the copy was written specifically for them. Return ONLY valid JSON arrays." },
               { role: "user", content: powerModePrompt }
             ],
           });

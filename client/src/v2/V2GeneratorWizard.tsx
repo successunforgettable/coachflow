@@ -37,6 +37,20 @@ import V2WhatsAppResultPanel from "./V2WhatsAppResultPanel";
 
 export type { WizardStep };
 
+// ─── Campaign ZIP download helper ────────────────────────────────────────────
+function triggerZipDownload(base64: string, filename: string) {
+  const blob = new Blob(
+    [Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))],
+    { type: "application/zip" }
+  );
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 // ─── Pro-gated steps (Nodes 6–11) ────────────────────────────────────────────
 const PRO_GATED_STEPS: WizardStep[] = [
   "headlines",
@@ -1275,6 +1289,9 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
   const [latestWhatsappSequenceId, setLatestWhatsappSequenceId] = useState<number | null>(null);
   // ── ICP name input (only for ICP step) ──
   const [icpName, setIcpName] = useState("");
+  // ── Campaign ZIP download state (Node 11) ──
+  const [zipDownloading, setZipDownloading] = useState(false);
+  const [zipDownloadError, setZipDownloadError] = useState<string | null>(null);
   // ── tRPC utils for cache invalidation ──
   const utils = trpc.useUtils();
   // ── Real mutations (all use generateAsync + polling pattern) ──
@@ -1692,6 +1709,80 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
               nextStepUrl={(() => { const next = getNextStep(step); return next ? `/v2-dashboard/wizard/${next}` : null; })()}
               isLastStep={step === "pushToMeta"}
             />
+          )}
+
+          {/* ── NODE 11: Download Campaign Kit card ── */}
+          {status === "success" && step === "pushToMeta" && activeService && (
+            <div style={{
+              marginTop: "16px",
+              background: "#fff",
+              border: "1px solid rgba(26,22,36,0.10)",
+              borderRadius: "16px",
+              padding: "20px 24px",
+              textAlign: "center",
+            }}>
+              <div style={{ fontSize: "28px", marginBottom: "8px" }}>📦</div>
+              <p style={{
+                fontFamily: "var(--v2-font-heading)",
+                fontStyle: "italic",
+                fontWeight: 900,
+                fontSize: "18px",
+                color: "var(--v2-text-color)",
+                margin: "0 0 6px",
+              }}>
+                Download Campaign Kit
+              </p>
+              <p style={{
+                fontFamily: "var(--v2-font-body)",
+                fontSize: "13px",
+                color: "#777",
+                margin: "0 0 16px",
+                lineHeight: 1.5,
+              }}>
+                Get all your assets in one organised ZIP — ready to deploy manually.
+              </p>
+              <button
+                onClick={async () => {
+                  setZipDownloading(true);
+                  setZipDownloadError(null);
+                  try {
+                    const result = await utils.campaignExport.generateCampaignZip.fetch({ serviceId: activeService.id });
+                    triggerZipDownload(result.base64, result.filename);
+                  } catch (err: any) {
+                    setZipDownloadError(err?.message || "Download failed. Please try again.");
+                  } finally {
+                    setZipDownloading(false);
+                  }
+                }}
+                disabled={zipDownloading}
+                style={{
+                  background: "#1A1624",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "9999px",
+                  padding: "12px 28px",
+                  fontFamily: "var(--v2-font-body)",
+                  fontWeight: 700,
+                  fontSize: "14px",
+                  cursor: zipDownloading ? "not-allowed" : "pointer",
+                  opacity: zipDownloading ? 0.7 : 1,
+                  letterSpacing: "0.01em",
+                }}
+              >
+                {zipDownloading ? "Generating ZIP..." : "Download ZIP"}
+              </button>
+              {zipDownloadError && (
+                <p style={{
+                  fontFamily: "var(--v2-font-body)",
+                  fontSize: "12px",
+                  color: "red",
+                  marginTop: "8px",
+                  margin: "8px 0 0",
+                }}>
+                  {zipDownloadError}
+                </p>
+              )}
+            </div>
           )}
           {/* ── R1a: NODE 6 HEADLINES RESULT PANEL ── */}
           {status === "success" && step === "headlines" && latestHeadlineSetId && activeService && (

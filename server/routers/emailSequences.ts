@@ -242,6 +242,29 @@ You MUST use these exact numbers and real names. Do not fabricate.`
 
       let prompt = "";
 
+      // ONE EMAIL ONE JOB — applied to all sequence types
+      const emailRules = `
+ONE EMAIL ONE JOB RULE: Every email in this sequence has exactly ONE job. The entire email — subject line, body, and CTA — must serve only that one job. Nothing else. No secondary CTAs. No topic shifts.
+
+SUBJECT LINE RULES:
+- Every subject line must create curiosity or pattern interrupt — NEVER describe what the email is about
+- Banned subject line patterns: "Welcome to [X]", "Here's what I promised", "Don't miss [X]", "[X] is now available"
+- Good patterns: A provocative question, an incomplete statement, something unexpected, something specific and slightly strange
+- Max 50 characters. Test: Would you open this if you didn't know the sender?
+
+BODY COPY RULES:
+- Welcome sequence emails: max 200 words
+- Sales sequence emails: max 300 words
+- Max 15 words per sentence. Max 2 sentences per paragraph. Line breaks between paragraphs.
+- Grade 6 reading level. Short words. Direct language. Contractions (you're, it's, don't).
+- Never use: "I hope this email finds you well", "As per my last email", "I wanted to reach out"
+- Open with the most interesting sentence — not a greeting, not context-setting
+
+PS LINE RULE: Every email MUST end with a PS. The PS must do ONE of: add a key piece of information not in the body, create additional urgency, or deepen the curiosity loop. The PS is often read first — make it pull them into the body.
+
+CTA RULE: One CTA per email. State it once. Make it specific to the job of this email.
+`;
+
       if (input.sequenceType === "welcome") {
         prompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert email marketer. Create a 3-email welcome sequence for new subscribers using Russell Brunson's Soap Opera Sequence framework.
 
@@ -255,16 +278,19 @@ ${socialProofGuidance}
 
 ${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}
 
-Create 3 emails:
-1. SET THE STAGE (Day 1) - Welcome, set expectations, introduce yourself
-2. EPIPHANY (Day 3) - Share your transformation story, introduce solution
-3. HIDDEN BENEFITS (Day 5) - Show secondary benefits, soft CTA
+${emailRules}
 
-Each email should have:
-- Subject line (40-60 characters, curiosity-driven)
-- Preview text (30-50 characters)
-- Body (200-300 words, conversational tone, grade 4 language)
-- CTA (clear next step)
+Create 3 emails. State the ONE JOB of each email before writing it.
+1. SET THE STAGE (Day 1) — Job: Make the subscriber feel they made the right decision by joining. Welcome them into a story that has them as the protagonist.
+2. EPIPHANY (Day 3) — Job: Share the single insight that changes everything. Introduce the solution without selling it yet.
+3. HIDDEN BENEFITS (Day 5) — Job: Show one secondary benefit they weren't expecting that makes staying on the list feel valuable. Soft CTA.
+
+Each email must include:
+- subject: (curiosity or pattern-interrupt, max 50 chars, never descriptive)
+- previewText: (extends the subject line curiosity, max 50 chars)
+- body: (max 200 words, short sentences, line breaks between paragraphs)
+- cta: (one specific action)
+- ps: (mandatory — one sentence that creates curiosity or urgency)
 
 Return as a JSON object with an 'emails' key containing the array.`;
       } else if (input.sequenceType === "engagement") {
@@ -278,18 +304,21 @@ ${socialProofGuidance}
 
 ${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}
 
-Create 5 emails (Monday to Friday before event):
-1. SET THE STAGE (Monday) - Introduce, set expectations
-2. OPEN WITH HIGH DRAMA (Tuesday) - Tell your biggest problem
-3. EPIPHANY (Wednesday) - Reveal solution, promote event
-4. HIDDEN BENEFITS (Thursday) - Show secondary benefits
-5. URGENCY & CTA (Friday) - Create scarcity, final push
+${emailRules}
 
-Each email should have:
-- Subject line (40-60 characters, curiosity-driven)
-- Preview text (30-50 characters)
-- Body (200-300 words, conversational tone, grade 4 language)
-- CTA (clear next step)
+Create 5 emails (Monday to Friday before event). State the ONE JOB of each email before writing it.
+1. SET THE STAGE (Monday) — Job: Create anticipation for the event. Make them feel something valuable is coming — something they'd regret missing.
+2. OPEN WITH HIGH DRAMA (Tuesday) — Job: Tell one specific story that makes the problem feel urgent and personal. No product pitch.
+3. EPIPHANY (Wednesday) — Job: Reveal the insight that makes the event feel essential to attend. Not a feature list — one counterintuitive truth.
+4. HIDDEN BENEFITS (Thursday) — Job: Name one specific benefit of attending that they haven't considered yet. Make showing up feel obviously worth it.
+5. URGENCY & CTA (Friday) — Job: Create genuine urgency around showing up live. Name what they'll miss if they don't.
+
+Each email must include:
+- subject: (curiosity or pattern-interrupt, max 50 chars, never descriptive)
+- previewText: (extends subject line curiosity, max 50 chars)
+- body: (max 200 words, short sentences, line breaks between paragraphs)
+- cta: (one specific action)
+- ps: (mandatory — one sentence that creates curiosity or urgency)
 
 Return as a JSON object with an 'emails' key containing the array.`;
       } else {
@@ -306,20 +335,23 @@ ${socialProofGuidance}
 
 ${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}
 
-Create 7 emails (Day 1-7 after event):
-1. THANK YOU (Day 1) - Gratitude, recap key points
-2. CASE STUDY (Day 2) - Success story, social proof
-3. OBJECTION HANDLING (Day 3) - Address common objections
-4. BONUS REVEAL (Day 4) - Exclusive bonuses
-5. GUARANTEE (Day 5) - Risk reversal, guarantee
-6. SCARCITY (Day 6) - Limited spots, urgency
-7. FINAL CALL (Day 7) - Last chance, deadline
+${emailRules}
 
-Each email should have:
-- Subject line (40-60 characters, curiosity-driven)
-- Preview text (30-50 characters)
-- Body (250-350 words, conversational tone, grade 4 language)
-- CTA (clear next step)
+Create 7 emails (Day 1-7 after event). State the ONE JOB of each email before writing it.
+1. THANK YOU (Day 1) — Job: Re-open the door. Thank them and remind them of the one insight from the event that felt most true to them.
+2. CASE STUDY (Day 2) — Job: Remove the "will it work for me?" objection. Show a specific result from a specific type of person who is like them.
+3. OBJECTION HANDLING (Day 3) — Job: Name the real objection they have (not the polite one) and dismantle it with a specific answer.
+4. BONUS REVEAL (Day 4) — Job: Make the offer feel even more irresistible by revealing one bonus they weren't expecting. Use anchoring — state the bonus dollar value.
+5. GUARANTEE (Day 5) — Job: Remove the risk. Make keeping their money feel riskier than spending it.
+6. SCARCITY (Day 6) — Job: Make inaction feel costly. Name the specific thing that closes or disappears.
+7. FINAL CALL (Day 7) — Job: Create the last-chance moment. One clear choice. Make it easy to say yes, make inaction feel like a choice with consequences.
+
+Each email must include:
+- subject: (curiosity or pattern-interrupt, max 50 chars, never descriptive)
+- previewText: (extends subject line curiosity, max 50 chars)
+- body: (max 300 words, short sentences, line breaks between paragraphs)
+- cta: (one specific action)
+- ps: (mandatory — one sentence that creates urgency or reveals additional stakes)
 
 Return as a JSON object with an 'emails' key containing the array.`;
       }
@@ -328,7 +360,7 @@ Return as a JSON object with an 'emails' key containing the array.`;
           {
             role: "system",
             content:
-              "You are an expert email marketer specializing in high-converting email sequences for coaches, speakers, and consultants. Use Russell Brunson's Soap Opera Sequence framework. Always respond with valid JSON.",
+              "You are an expert email marketer specializing in high-converting email sequences for coaches, speakers, and consultants. You apply the ONE EMAIL ONE JOB principle — every email has a single clear job and the entire email serves only that job. You write curiosity-driven, pattern-interrupt subject lines that are never descriptive. You write short sentences (max 15 words), short paragraphs (max 2 sentences), with line breaks between paragraphs. Every email ends with a mandatory PS that creates curiosity or urgency. Use Russell Brunson's Soap Opera Sequence framework. Always respond with valid JSON.",
           },
           { role: "user", content: prompt },
         ],
@@ -350,8 +382,9 @@ Return as a JSON object with an 'emails' key containing the array.`;
                       previewText: { type: "string" },
                       body: { type: "string" },
                       cta: { type: "string" },
+                      ps: { type: "string" },
                     },
-                    required: ["day", "subject", "previewText", "body", "cta"],
+                    required: ["day", "subject", "previewText", "body", "cta", "ps"],
                     additionalProperties: false,
                   },
                 },

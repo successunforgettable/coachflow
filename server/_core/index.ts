@@ -69,6 +69,52 @@ async function startServer() {
     }
   });
 
+  // Image proxy — fetches private S3/Cloudinary image URLs server-side and streams to client
+  // Avoids 403 errors when the browser tries to load private URLs directly
+  app.get("/api/image-proxy", async (req, res) => {
+    try {
+      let user: { id: number | string } | null = null;
+      try {
+        user = await sdk.authenticateRequest(req);
+      } catch {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+      if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+      const rawUrl = req.query.url as string;
+      if (!rawUrl) { res.status(400).json({ error: "Missing url parameter" }); return; }
+
+      let decoded: string;
+      try {
+        decoded = decodeURIComponent(rawUrl);
+        const parsed = new URL(decoded);
+        if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+          res.status(400).json({ error: "Invalid URL scheme" }); return;
+        }
+      } catch {
+        res.status(400).json({ error: "Invalid URL" }); return;
+      }
+
+      const imageRes = await fetch(decoded);
+      if (!imageRes.ok) {
+        console.error(`[image-proxy] Upstream ${imageRes.status} for ${decoded}`);
+        res.status(imageRes.status).end();
+        return;
+      }
+
+      const contentType = imageRes.headers.get("content-type") || "image/png";
+      res.setHeader("Content-Type", contentType);
+      res.setHeader("Cache-Control", "public, max-age=86400");
+      const buffer = Buffer.from(await imageRes.arrayBuffer());
+      res.send(buffer);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[image-proxy] Error:", msg);
+      res.status(500).json({ error: msg });
+    }
+  });
+
   // Daily cleanup cron — delete jobs older than 24 hours to prevent table bloat
   setInterval(async () => {
     try {

@@ -83,28 +83,41 @@ ${ANGLE_PROMPTS[angle]}
 
 ${socialProofGuidance}
 
+LOSS AVERSION PRINCIPLE — apply throughout every section:
+The cost of NOT buying must feel greater than the cost of buying. At least one section must name the specific ongoing cost of the customer's current situation (time, money, missed opportunities, continued pain). Make saying no feel more expensive than saying yes.
+
+ANCHORING PRINCIPLE — apply to pricing and bonuses:
+- Establish a high anchor price before revealing the actual price
+- Every bonus must have a specific named dollar value (not "priceless" or "invaluable")
+- The total bonus value must be stated and must exceed the programme price
+- The actual price must be presented as a fraction of the total value
+
+GODFATHER OFFER RULE (for godfather angle): Make it impossible to say no. The offer must be structured so that refusing it feels irrational — more bonuses than they expect, a guarantee that removes all risk, and a price that feels like a fraction of the transformation value.
+
 Generate a complete offer with 7 sections:
 
-1. **Offer Name** (5-10 words, compelling and benefit-focused)
-   Example: "6-Month Crypto Mastery - Or You Don't Pay!"
+1. **Offer Name** (5-10 words, outcome-specific and risk-reversed per the angle rules)
+   Must name the specific result + the angle-specific risk reversal phrase. Not a generic name.
 
-2. **Value Proposition** (20-30 words, specific transformation)
-   Example: "Transform from crypto beginner to confident investor earning $10K/month in passive income - guaranteed or your money back."
+2. **Value Proposition** (20-30 words)
+   State the specific functional outcome (number, timeframe, or named situation) the customer gets. Then immediately name what it costs them if they stay where they are. Not a feeling — a situation.
 
-3. **Pricing** (clear price with context, 30-50 words)
-   Example: "$997 one-time payment (normally $2,997) - includes everything below. 60-day money-back guarantee if you don't see results."
+3. **Pricing** (clear price with anchoring, 30-50 words)
+   State the anchor price first. Then reveal the actual price. Show the gap. Include the guarantee duration.
+   Example structure: "Normally [anchor price]. Today [actual price] — [what's included]. [Guarantee statement]."
 
-4. **Bonuses** (3-5 bonuses with perceived value, 150-200 words total)
-   Example: "BONUS #1: Crypto Tax Optimization Guide ($497 value) - Never overpay on crypto taxes again..."
+4. **Bonuses** (3-5 bonuses with specific dollar values, 150-200 words total)
+   Every bonus must: have a real name, a specific dollar value in £/$ (not "priceless"), and one sentence explaining exactly what it does for the customer. The total bonus value must exceed the programme price.
+   Example: "BONUS #1: [Specific Name] (£497 value) — [One sentence on what it does for the customer]"
 
-5. **Guarantee** (50-75 words, risk reversal, specific)
-   Example: "60-Day 'Make $10K or Don't Pay' Guarantee: Follow the system for 60 days. If you don't make at least $10,000 in crypto income, we'll refund every penny - no questions asked."
+5. **Guarantee** (50-75 words, specific risk reversal)
+   Must include: exact duration (30-day, 60-day, etc.), the specific result guaranteed, the exact refund process (email us at X / no questions asked / etc.), and what they keep if they refund. Make keeping the money feel riskier than giving it back.
 
-6. **Urgency/Scarcity** (30-50 words, creates FOMO)
-   Example: "Only 10 spots available this month. Once they're gone, the next cohort won't start for 90 days. Secure your spot now before it's too late."
+6. **Urgency/Scarcity** (30-50 words, angle-specific)
+   Name the specific mechanism of scarcity (cohort closes, limited spots, price increases). The urgency must match the angle rules above.
 
 7. **Call to Action** (clear next step, 20-30 words)
-   Example: "Click the button below to claim your spot and start your crypto journey today. Your future self will thank you."
+   One clear action. Use angle-appropriate CTA language from the angle rules above.
 
 Return ONLY valid JSON with these exact keys: offerName, valueProposition, pricing, bonuses, guarantee, urgency, cta
 `;
@@ -114,7 +127,7 @@ Return ONLY valid JSON with these exact keys: offerName, valueProposition, prici
       {
         role: "system",
         content:
-          "You are an expert offer creator specializing in irresistible offers for coaches, speakers, and consultants. Always respond with valid JSON.",
+          "You are an expert offer creator specializing in irresistible, loss-aversion-driven offers for coaches, speakers, and consultants. You apply anchoring to make the price feel like a fraction of the value, and you make saying no feel more expensive than saying yes. You write specific outcomes and specific dollar values — never vague promises or unquantified benefits. Always respond with valid JSON.",
       },
       { role: "user", content: prompt },
     ],

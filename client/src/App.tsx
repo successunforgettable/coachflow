@@ -61,6 +61,7 @@ import CampaignICPSelection from "./pages/CampaignICPSelection";
 import Signup from "./pages/Signup";
 import V2Dashboard from "./v2/V2Dashboard";
 import V2GeneratorWizardPage from "./v2/V2GeneratorWizardPage";
+import V2AssetLibrary from "./v2/V2AssetLibrary";
 import Login from "./pages/Login";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
@@ -132,8 +133,9 @@ function Router() {
       <Route path={"/forgot-password"} component={ForgotPassword} />
       <Route path={"/reset-password"} component={ResetPassword} />
       {/* V2 Sandbox — isolated, does not affect any existing route */}
-      <Route path={"/v2-dashboard"} component={V2Dashboard} />
+      <Route path={"/v2-dashboard/asset-library"} component={V2AssetLibrary} />
       <Route path={"/v2-dashboard/wizard/:step"} component={V2GeneratorWizardPage} />
+      <Route path={"/v2-dashboard"} component={V2Dashboard} />
       <Route path={"/404"} component={NotFound} />
       {/* Fallback route for 404 */}
       <Route component={NotFound} />

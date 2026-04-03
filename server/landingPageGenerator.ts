@@ -91,6 +91,15 @@ ${ANGLE_PROMPTS[angle]}
 
 ${socialProofGuidance}
 
+EMOTIONAL ARC — every section of this landing page must serve a specific emotional purpose in sequence. A visitor who reads from top to bottom must feel each emotion in order:
+Section 1 (Hero — eyebrow + main headline + subheadline): SEEN AND UNDERSTOOD. The reader must feel "this person knows exactly who I am and what I'm going through." Use their internal language. Name their situation precisely.
+Section 2 (Problem — quizSection + problemAgitation): NAMED AND VALIDATED. "Finally, someone has put words to this." The problem must be described so accurately that the reader feels exposed. Name the specific daily situation, not a category of pain.
+Section 3 (Agitate — whyOldFail + shockingStat): COST OF INACTION. "I cannot afford to stay here." Make the cost of not solving this problem feel concrete and immediate. Name the specific ways staying stuck is costing them (time, money, relationships, self-respect).
+Section 4 (Solution — solutionIntroduction): HOPE. "There might be a way out." Introduce the possibility of a different outcome before introducing the mechanism. Make hope feel credible, not hype.
+Section 5 (Mechanism — uniqueMechanismIntro): DIFFERENT FROM WHAT THEY'VE TRIED. "This is not the same thing I've already failed with." Explicitly name 1-2 things they've already tried and explain why this is structurally different — not just "better."
+Section 6 (Proof — socialProofTestimonials + insiderAdvantages): SAFE TO BELIEVE. "Other people like me have done this." Testimonials must feel like real people, not marketing copy. Quote specific situations and specific results.
+Section 7 (Offer — scarcityUrgency + timeSavingBenefit + consultationOutline): OBVIOUS NEXT STEP. "Not buying would be irrational." The offer must stack so much value that the question becomes "why wouldn't I?" Apply anchoring — state total value before the ask.
+
 Generate a complete landing page with 16 sections following this structure:
 
 1. **Eyebrow Headline** (all caps, attention-grabbing, addresses target avatar's pain, max 100 chars)
@@ -157,7 +166,7 @@ Use direct response copywriting principles: pain agitation, unique mechanism, so
 
   const response = await invokeLLM({
     messages: [
-      { role: "system", content: "You are a world-class direct response copywriter specializing in high-converting landing pages. You write compelling, benefit-driven copy that converts visitors into customers." },
+      { role: "system", content: "You are a world-class direct response copywriter specializing in high-converting landing pages. You engineer an emotional arc through each page — every section serves a specific emotional purpose, moving the reader from 'seen and understood' through 'named and validated', 'cost of inaction', 'hope', 'different from what they've tried', 'safe to believe', and finally 'obvious next step'. You write in the customer's own language — the words they use with a close friend, not marketing language. FORMATTING RULE: Return plain text only inside all JSON string values. No markdown. No asterisks (*). No hash symbols (#). No bold or italic formatting of any kind. No bullet markers. Just clean readable sentences and paragraphs." },
       { role: "user", content: prompt }
     ],
     response_format: {

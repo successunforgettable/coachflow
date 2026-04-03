@@ -146,32 +146,40 @@ Product: ${service.name}
 Target Market: ${resolvedTargetMarket}
 HVCO Topic: ${resolvedHvcoTopic}
 ${icpContext ? `\n${icpContext}\n` : ''}
-Create 20 LONG, benefit-first titles (3-5 words each) following this pattern:
+MANDATORY TITLE RULE — every title must contain at least ONE of these:
+1. A specific number (5 steps, 7 mistakes, 3 ways — not "multiple" or "several")
+2. A specific timeframe (in 30 days, this week, before Friday — not "quickly" or "fast")
+3. A named enemy or obstacle (cold outreach, algorithm changes, discount pricing — the specific thing blocking them)
+4. An insider term from the niche (a word or phrase that only someone in this exact niche would recognise and use)
+
+WHY-THIS-SPECIFICALLY TEST: Before including any title, ask: why would this specific audience download THIS over any other lead magnet? If the title doesn't answer that question, it fails.
+
+BANNED TITLE PATTERNS — never generate:
+- "The Ultimate Guide to [X]" — too generic, no specificity
+- "Everything You Need to Know About [X]" — sounds like homework, not a gift
+- "How to Improve Your [X]" — no specific outcome, no urgency
+- "The [X] Blueprint/Playbook/Handbook" — unless followed by a specific outcome
+- Any title that works equally well for a different coaching niche
+
+GOOD examples (pass the test):
+- "7 Secrets to Close 50% More Deals in 30 Days" — specific number + specific timeframe + specific outcome
+- "The 4 Questions That Book 8 Discovery Calls a Week" — specific number + specific outcome + insider mechanism
+- "Why Posting Daily Kills Your Reach (And What to Do Instead)" — named enemy + contrarian insight
+
+Create 20 LONG, benefit-first titles following this pattern:
 [Specific Number/Timeframe] [Action/Benefit] [to/for] [Concrete Outcome]
 
-BENEFIT-FIRST Examples (CORRECT):
-- "7 Secrets to Close 50% More Deals in 30 Days"
-- "5 Steps to Generate $10K Monthly Passive Income"
-- "3 Strategies to Double Your Coaching Revenue"
-- "10 Proven Methods to Build a 6-Figure Funnel"
-- "4 Simple Tweaks to 3x Your Email Open Rates"
-
-ALLITERATIVE Examples (WRONG - too vague):
-- "Beating Bosses Blockchain Blueprint" (What's the actual benefit?)
-- "Passive Profits Playbook Unveiled" (How much profit? When?)
-- "Wealth Wave Walkaway Wizard" (Unclear outcome)
-
 Requirements:
-- PRIORITIZE clarity and specific benefits over alliteration
-- Include numbers, timeframes, or percentages when possible
-- Make the outcome concrete and measurable
-- Alliteration is optional - only use if it doesn't sacrifice clarity
+- Every title must pass the WHY-THIS-SPECIFICALLY test
+- Include at least one mandatory element per title
+- Make the outcome concrete and measurable — a number, timeframe, or named situation
+- Avoid alliteration if it sacrifices clarity
 
 Return ONLY a JSON array of ${20 * countMultiplier} title strings, nothing else.`;
 
       const longTitlesResponse = await invokeLLM({
         messages: [
-          { role: "system", content: "You are a direct response copywriting expert. Return ONLY valid JSON arrays." },
+          { role: "system", content: "You are a direct response copywriting expert who specialises in HVCO titles for coaches and consultants. You write titles that are niche-specific — every title contains at least one of: a specific number, a specific timeframe, a named enemy or obstacle, or an insider term from the niche. You never write generic titles that could apply to any coaching offer. Return ONLY valid JSON arrays." },
           { role: "user", content: longTitlesPrompt }
         ],
       });
@@ -200,28 +208,30 @@ Product: ${service.name}
 Target Market: ${resolvedTargetMarket}
 HVCO Topic: ${resolvedHvcoTopic}
 ${icpContext ? `\n${icpContext}\n` : ''}
-Create 20 SHORT, benefit-focused titles (2-4 words each) that are:
-- Concise and memorable
-- Include specific outcomes when possible
-- Action-oriented
+MANDATORY TITLE RULE — every short title must contain at least ONE of:
+1. A specific number or timeframe (5-step, 30-day, $10k — not vague amounts)
+2. A named obstacle or enemy this audience specifically faces (the exact frustration, not a category of frustrations)
+3. An insider word from this niche — a term only someone in this niche would use
 
-BENEFIT-FIRST Examples (CORRECT):
-- "10X Sales Blueprint"
-- "30-Day Revenue Boost"
-- "$100K Funnel Formula"
-- "5-Step Conversion System"
-- "Double Your Clients"
+BANNED TITLE PATTERNS — never generate these:
+- "[X] Formula/Blueprint/Playbook" without a specific outcome attached
+- "[X] Unlocked/Mastered/Hacked" — too vague
+- "The [X] Breakthrough" — what is the breakthrough, specifically?
+- Generic success language: "freedom", "wealth", "success", "results" — without a specific definition
 
-VAGUE Examples (WRONG):
-- "Crypto Freedom Formula" (Freedom from what? How much?)
-- "Wealth Unlocked" (What kind of wealth? When?)
-- "Bitcoin Breakthrough" (What's the breakthrough?)
+GOOD examples (short titles that pass):
+- "30-Day Client Sprint" — timeframe + niche-specific action
+- "5-Figure Funnel Fix" — specific outcome + named problem
+- "Zero-Follower Launch System" — named enemy + specific mechanism
+- "The Discovery Call Closer" — niche-specific insider term
+
+Create 20 SHORT titles (3-7 words) that are concise, niche-specific, and contain at least one mandatory element.
 
 Return ONLY a JSON array of ${20 * countMultiplier} title strings, nothing else.`;
 
       const shortTitlesResponse = await invokeLLM({
         messages: [
-          { role: "system", content: "You are a direct response copywriting expert. Return ONLY valid JSON arrays." },
+          { role: "system", content: "You are a direct response copywriting expert who specialises in HVCO titles for coaches and consultants. You write titles that are niche-specific — every title contains at least one of: a specific number, a specific timeframe, a named enemy or obstacle, or an insider term from the niche. You never write generic titles that could apply to any coaching offer. Return ONLY valid JSON arrays." },
           { role: "user", content: shortTitlesPrompt }
         ],
       });
@@ -250,25 +260,28 @@ Product: ${service.name}
 Target Market: ${resolvedTargetMarket}
 HVCO Topic: ${resolvedHvcoTopic}
 ${icpContext ? `\n${icpContext}\n` : ''}
-Create 30 BEAST MODE titles - a mix of long and short, all highly creative and attention-grabbing:
-- PRIORITIZE specific benefits and outcomes
-- Use numbers, timeframes, and percentages
-- Include curiosity gaps
-- Use power words
-- Alliteration is optional - clarity comes first
+MANDATORY RULE — every title must contain at least ONE of:
+1. A specific number or timeframe
+2. A named enemy, obstacle, or mistake this exact audience faces
+3. An insider term from this niche that only someone in it would recognise
+4. A counterintuitive or contrarian insight (why the obvious approach doesn't work)
 
-Examples:
-- "The 9-Step Crypto Wealth Building Blueprint"
-- "HOW ORDINARY PEOPLE ARE QUIETLY BUILDING PASSIVE INCOME"
-- "Escape The 9-5 Grind Forever"
-- "Secret Millionaire Method Revealed"
-- "10X Your Income In 6 Months"
+WHY-THIS-SPECIFICALLY TEST: Would someone in this exact niche stop scrolling for THIS title, or would any coach's lead magnet do? If they'd stop for any lead magnet, the title fails.
+
+BANNED — never generate:
+- "The Ultimate Guide to [X]" — too generic
+- "Everything You Need to Know About [X]" — sounds like homework
+- "How to Improve Your [X]" — no specificity or urgency
+- "Escape The 9-5 Grind Forever" — far too generic and clichéd
+- "Secret Millionaire Method Revealed" — forbidden sensationalist language
+
+Create 30 POWER MODE titles — a mix of long (7-15 words) and short (3-7 words), all maximally specific to this niche, all passing the WHY-THIS-SPECIFICALLY test.
 
 Return ONLY a JSON array of 30 title strings, nothing else.`;
 
       const powerModeTitlesResponse = await invokeLLM({
         messages: [
-          { role: "system", content: "You are a direct response copywriting expert. Return ONLY valid JSON arrays." },
+          { role: "system", content: "You are a direct response copywriting expert who specialises in HVCO titles for coaches and consultants. You write titles that are niche-specific — every title contains at least one of: a specific number, a specific timeframe, a named enemy or obstacle, or an insider term from the niche. You never write generic titles that could apply to any coaching offer. Return ONLY valid JSON arrays." },
           { role: "user", content: powerModeTitlesPrompt }
         ],
       });
@@ -297,23 +310,25 @@ Product: ${service.name}
 Target Market: ${resolvedTargetMarket}
 HVCO Topic: ${resolvedHvcoTopic}
 ${icpContext ? `\n${icpContext}\n` : ''}
-Create 20 SUBHEADLINES that:
-- Support and expand on the main title
-- Add specificity and credibility
-- Create curiosity
-- Promise a clear benefit
+Create 20 SUBHEADLINES. Each subheadline must do ONE of the following:
+1. Name a specific obstacle or enemy this audience faces and promise to remove it
+2. Give a specific number, timeframe, or result that makes the promise concrete
+3. Explain WHY this lead magnet is different from the thing they've already tried
+4. Use an insider term or niche-specific language that signals "this was written for you"
 
-Examples:
-- "Discover the proven 6-month system that's helped 1,000+ beginners build passive income"
-- "Learn the exact strategy top traders use to generate $10K/month"
-- "No experience needed - just follow our step-by-step blueprint"
-- "From zero to financial freedom in less than a year"
+BANNED patterns:
+- "No experience needed" — too generic
+- "From zero to [vague word like freedom or success]" — no specific outcome
+- "Discover the proven system" — vague claim without niche anchor
+- Generic superlatives: "the best", "the ultimate", "the most powerful"
+
+Each subheadline must reference a specific situation, obstacle, or desired outcome that is recognisable to someone in this exact niche — not someone in coaching generally.
 
 Return ONLY a JSON array of 20 subheadline strings, nothing else.`;
 
       const subheadlinesResponse = await invokeLLM({
         messages: [
-          { role: "system", content: "You are a direct response copywriting expert. Return ONLY valid JSON arrays." },
+          { role: "system", content: "You are a direct response copywriting expert who specialises in HVCO titles for coaches and consultants. You write titles that are niche-specific — every title contains at least one of: a specific number, a specific timeframe, a named enemy or obstacle, or an insider term from the niche. You never write generic titles that could apply to any coaching offer. Return ONLY valid JSON arrays." },
           { role: "user", content: subheadlinesPrompt }
         ],
       });

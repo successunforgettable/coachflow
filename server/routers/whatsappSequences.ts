@@ -226,6 +226,25 @@ You MUST use these exact numbers. Do not fabricate.`
 
       let prompt = "";
 
+      // WhatsApp-specific rules
+      const whatsappRules = `
+WHATSAPP COPY RULES — non-negotiable for every message:
+
+LENGTH: Maximum 3 sentences per message. WhatsApp is read on mobile in seconds — not emails, not articles.
+
+LANGUAGE: No formal language. No "I hope this message finds you well." Write like you're texting a friend who trusts you.
+
+CONTRACTIONS ONLY: "you're" not "you are". "it's" not "it is". "don't" not "do not". Contractions are mandatory.
+
+SPECIFIC SITUATION: Reference something specific about where they are right now — the event they attended, the thing they said yes to, the problem they're trying to solve. Never write a generic message.
+
+ENDING RULE — every message must end with EITHER a direct yes/no question OR a specific action with a link. NEVER both. NEVER neither.
+
+EMOJI RULES: Maximum 2 emojis per message. Only where they add context. Never in formal context.
+
+PLACEHOLDER RULES: Use [First Name] (NOT {{Name}}). Use actual service name "${service.name}". Write actual timing (not {{Date}} or {{Time}}).
+`;
+
       if (input.sequenceType === "engagement") {
         prompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert WhatsApp marketer. Create a 3-message WhatsApp engagement sequence for event attendees.
 
@@ -238,22 +257,12 @@ ${socialProofGuidance}
 
 ${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}
 
-Create 3 WhatsApp messages (Monday, Wednesday, Friday before event):
-1. WELCOME & EXPECTATION SETTING (Monday) - Personal welcome, what to expect
-2. EDUCATIONAL CONTENT (Wednesday) - Share valuable tip, build trust
-3. URGENCY & REMINDER (Friday) - Event reminder, create urgency
+${whatsappRules}
 
-Each message should:
-- Be personal and conversational (98%+ open rate on WhatsApp)
-- Use emojis appropriately (cultural sensitivity for UAE/India/Malaysia)
-- Be 50-100 words (short and scannable)
-- Include clear CTA
-- Use second-person POV ("you" not "we")
-- Be grade 4 language level
-- Use [First Name] for personalization (NOT {{Name}})
-- Use actual service name "${service.name}" (NOT {{Product}})
-- Use actual event name "${input.eventDetails?.eventName || "the event"}" (NOT {{Event}})
-- DO NOT use placeholder syntax like {{Date}} or {{Time}} - write actual timing descriptions
+Create 3 WhatsApp messages (Monday, Wednesday, Friday before event):
+1. WELCOME & EXPECTATION SETTING (Monday) — Reference the specific thing they signed up for. Set one expectation. End with a yes/no question.
+2. EDUCATIONAL CONTENT (Wednesday) — Share one specific, actionable insight they can use before the event. Make it feel like insider knowledge. End with a question about their situation.
+3. URGENCY & REMINDER (Friday) — Name the event specifically. Create one concrete reason to show up live. End with the specific link or action.
 
 Return as a JSON object with a 'messages' key containing the array.`;
       } else {
@@ -269,23 +278,12 @@ ${socialProofGuidance}
 
 ${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}
 
-Create 3 WhatsApp messages (Day 1, 3, 5 after event):
-1. EXCLUSIVE OFFER (Day 1) - Thank you, exclusive offer for attendees
-2. SUCCESS STORY (Day 3) - Social proof, case study, testimonial
-3. FINAL CALL (Day 5) - Scarcity, urgency, deadline
+${whatsappRules}
 
-Each message should:
-- Be personal and conversational (98%+ open rate on WhatsApp)
-- Use emojis appropriately (cultural sensitivity for UAE/India/Malaysia)
-- Be 50-100 words (short and scannable)
-- Include clear CTA
-- Use second-person POV ("you" not "we")
-- Be grade 4 language level
-- Include scarcity/urgency elements (+12% CVR)
-- Use [First Name] for personalization (NOT {{Name}})
-- Use actual service name "${service.name}" (NOT {{Product}})
-- Use actual offer name "${input.eventDetails?.offerName || "this offer"}" (NOT {{Offer}})
-- DO NOT use placeholder syntax like {{Date}} or {{Time}} - write actual timing descriptions
+Create 3 WhatsApp messages (Day 1, 3, 5 after event):
+1. EXCLUSIVE OFFER (Day 1) — Reference what they just attended. Name the specific offer and one concrete reason it's relevant to their situation. End with the direct link or action.
+2. SUCCESS STORY (Day 3) — Name one specific result from a specific type of person (anonymised if needed). End with: "Does that sound like where you are?"
+3. FINAL CALL (Day 5) — Name the specific thing that closes. Give the exact deadline. One sentence on what happens after the deadline. End with the link.
 
 Return as a JSON object with a 'messages' key containing the array.`;
       }
@@ -294,7 +292,7 @@ Return as a JSON object with a 'messages' key containing the array.`;
           {
             role: "system",
             content:
-              "You are an expert WhatsApp marketer specializing in high-converting WhatsApp sequences for coaches, speakers, and consultants. Always respond with valid JSON.",
+              "You are an expert WhatsApp marketer specializing in high-converting WhatsApp sequences for coaches, speakers, and consultants. You write maximum 3 sentences per message. You use contractions exclusively (you're, it's, don't, we've). You use no formal language. Every message references a specific situation and ends with either a question OR an action — never both, never neither. Always respond with valid JSON.",
           },
           { role: "user", content: prompt },
         ],

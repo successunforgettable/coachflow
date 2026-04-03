@@ -147,34 +147,42 @@ export const servicesRouter = router({
       const needsTargetCustomer = isPlaceholder(service.targetCustomer);
       const needsMainBenefit = isPlaceholder(service.mainBenefit);
 
-      const prompt = `You are a world-class direct response copywriter and market researcher.
+      const prompt = `You are a world-class direct response copywriter and market researcher applying the Jobs-To-Be-Done framework.
 
 A coach/consultant has described their service:
 - Name: ${service.name}${service.description?.trim() ? `\n- Description: ${service.description}` : ""}${service.targetCustomer?.trim() ? `\n- Target Customer: ${service.targetCustomer}` : ""}${service.mainBenefit?.trim() ? `\n- Main Benefit: ${service.mainBenefit}` : ""}
 
-Based on this service name${!service.targetCustomer?.trim() || !service.mainBenefit?.trim() ? " (and any other details provided)" : ""}, generate a complete marketing intelligence profile for a coach in this niche.
-Be specific — not generic. Use language their customer would actually use.
+Generate a complete marketing intelligence profile for a coach in this niche.
+
+SPECIFICITY RULES — every field must pass this test:
+- Find ONE word or phrase that is niche-specific (an industry term, a role title, a platform name, a specific frustration) and build each answer around it
+- If the answer could apply to any coach in any niche, it is too generic — rewrite it
+- Use the language the customer uses when talking to a friend, not polished marketing language
+
+BANNED PHRASES — never use in any field: mindset shift, limiting beliefs, step into your power, show up, do the work, level up, transform your life, unlock your potential, embrace your journey, take your business to the next level, achieve your dreams
+
+JTBD FRAMEWORK — for each field, answer the question: what is this person really hiring this service to do? What is the functional job (the task they're trying to complete)? What is the emotional job (how they want to feel)? What is the social job (how they want to be perceived)?
 
 Return JSON with these exact fields:
 {
-  "description": "A compelling 1-2 sentence description of what this service does and who it's for",
-  "targetCustomer": "Specific demographic and psychographic description of the ideal customer (age, situation, desire)",
-  "mainBenefit": "The single biggest transformation or result the customer gets — specific and outcome-focused",
-  "painPoints": "3-5 specific pain points their customer feels daily",
-  "falseBeliefsVsRealReasons": "3-5 pairs in format: what customer thinks is stopping them | what is really stopping them",
-  "failedSolutions": "3-5 things they have tried before and exactly why each one failed for this specific audience",
-  "hiddenReasons": "3-5 less-known real reasons behind their problem they would never admit or don't know",
-  "whyProblemExists": "The root cause of the problem at a deep level",
-  "uniqueMechanismSuggestion": "A compelling proprietary-sounding name for how this service solves the problem",
-  "hvcoTopicSuggestion": "A specific lead magnet title that would attract this exact customer",
-  "riskReversalSuggestion": "A compelling guarantee that removes the risk of buying",
-  "avatarName": "A realistic first name for the ideal customer",
-  "avatarTitle": "Their job title or life situation in 3-5 words"
+  "description": "1-2 sentences. Name what this service does and who it's for using niche-specific language. Include a concrete outcome (number, timeframe, or named result). Must NOT be interchangeable with any other coaching service.",
+  "targetCustomer": "Specific demographic and psychographic description. Name their job title or life situation, their current stuck state, and the specific thing they want — all in niche-specific language.",
+  "mainBenefit": "The single functional outcome the customer hires this service to deliver. Must contain a concrete result — a number, a timeframe, or a named change in situation. Not a feeling. Not a journey.",
+  "painPoints": "3-5 pains. Each must name a SPECIFIC situation this person faces — not 'feeling overwhelmed' but 'posting every day for 3 months with zero client enquiries'. Use their internal monologue language.",
+  "falseBeliefsVsRealReasons": "3-5 pairs. Format: [what customer believes is stopping them] | [what is actually stopping them]. Each pair must be niche-specific. The false belief must sound plausible. The real reason must be surprising.",
+  "failedSolutions": "3-5 things this specific audience has tried. Name the actual product, approach, or platform (e.g. 'cold outreach on LinkedIn', 'hiring a VA', 'buying a $2k course on Instagram ads'). Explain exactly why each failed for THIS audience specifically.",
+  "hiddenReasons": "3-5 real reasons behind their problem that they would never admit out loud or have never considered. These must be uncomfortable truths specific to this niche — not generic psychology.",
+  "whyProblemExists": "The systemic or structural root cause of this problem. Not the symptom. Not 'lack of mindset'. The actual mechanism that keeps people stuck in this niche.",
+  "uniqueMechanismSuggestion": "A proprietary-sounding name for how this service solves the problem. Must contain a specific process word or metaphor from this niche. NOT: The Success Blueprint, The Growth System, The Transformation Framework, The Mindset Method. Good names contain a word from the niche itself.",
+  "hvcoTopicSuggestion": "A lead magnet title that would make someone in this niche stop scrolling. Must contain a specific number or timeframe, a named enemy or obstacle, and a concrete promised insight.",
+  "riskReversalSuggestion": "A guarantee that makes the risk of not buying feel greater than the risk of buying. Must include: specific duration, specific result guaranteed, and exact refund process.",
+  "avatarName": "A realistic first name for the ideal customer (match cultural context of the niche).",
+  "avatarTitle": "Their job title or life situation in 3-5 words. Must be niche-specific."
 }`;
 
       const response = await invokeLLM({
         messages: [
-          { role: "system", content: "You are a world-class direct response copywriter. Always return valid JSON only, no markdown, no explanation." },
+          { role: "system", content: "You are a world-class direct response copywriter and Jobs-To-Be-Done researcher. You write in the language real people use — not marketing language. Always return valid JSON only, no markdown, no explanation." },
           { role: "user", content: prompt },
         ],
         response_format: {

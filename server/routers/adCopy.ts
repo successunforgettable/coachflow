@@ -356,13 +356,24 @@ Ad Type: ${adTypeContext}
 Ad Style: ${input.adStyle}
 Call To Action: ${input.adCallToAction}
 
-Create ${count} attention-grabbing headlines (max 40 characters each) that:
-- Hook the reader immediately using the pressing problem or unique mechanism
-- Highlight the transformation or benefit
-- Incorporate social proof (reviews, customers, authority figures) when available
-- Create curiosity or urgency
-- Are specific and concrete
-- Match the ad style (${input.adStyle})
+SCROLL-STOPPER RULE: The first word of every headline must arrest the scroll. Use the pressing problem or a counterintuitive insight as the opening — not a benefit, not the service name.
+
+THREE-QUESTION TEST — every headline must pass all three:
+1. Does it name a specific person in a specific situation? (Not "coaches" — "coaches posting daily with zero enquiries")
+2. Does it name a specific outcome, not a category of outcomes? (Not "more clients" — "3 clients booked in 10 days")
+3. Could this headline ONLY be written for this service? If it works for any coach's service, rewrite it.
+
+BANNED PATTERNS — never generate:
+- "Are you ready to...", "Do you want to...", "The secret to...", "How to finally...", "Discover how to..."
+- Generic power words without context: skyrocket, explode, dominate, crush, master, unlock, transform
+
+MANDATORY: Include at least one word from the pressing problem field — the actual vocabulary the target market uses to describe their situation.
+
+Create ${count} attention-grabbing headlines (max 40 characters each). Use these angles across the set:
+- Pain angle: name the specific daily frustration (1-2 words max before the hook)
+- Outcome angle: name the exact result with a number or timeframe
+- Curiosity angle: counterintuitive insight about why they're stuck
+- Social proof angle: name the result a specific type of person got
 
 Format as JSON array:
 {
@@ -438,7 +449,20 @@ Call To Action: ${input.adCallToAction}
 
 ${anglePrompt}
 
-Create ONE body copy (125-150 words) following the ${angle.replace('_', ' ')} structure above.
+PAS STRUCTURE — apply to every body copy in this order:
+PAIN (1-2 sentences): Open with the scroll-stopping pain. Use the exact language the target market uses to describe this problem to a friend. The first sentence must be about their situation — not about the product.
+AGITATE (2-3 sentences): Make the pain feel bigger and more urgent. Name the cost of staying stuck. Name the failed solutions they've already tried.
+SOLUTION (2-3 sentences): Introduce the mechanism. Name what makes it different from what they've tried. Include a specific outcome or timeframe.
+CTA (1 sentence): One clear next step. Use the approved CTA format from Meta compliance rules.
+
+FORMATTING RULES (applied to every body copy):
+- Maximum 15 words per sentence. Absolute maximum 20 words.
+- Maximum 2 sentences per paragraph.
+- One blank line between every paragraph.
+- No run-on sentences. Break long ideas into multiple short sentences.
+- Write at Grade 6 reading level — short words, short sentences, direct language.
+
+Create ONE body copy (125-150 words) following the ${angle.replace('_', ' ')} angle AND the PAS structure above.
 End with clear call-to-action: ${input.adCallToAction}
 
 Return ONLY the body text as a single string, no JSON wrapper.`;
