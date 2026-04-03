@@ -1,6 +1,6 @@
 import { invokeLLM } from "./_core/llm";
 import type { LandingPageContent } from "../drizzle/schema";
-import { META_COMPLIANCE_NOTES, truncateQuote } from "./_core/copywritingRules";
+import { BANNED_COPYWRITING_WORDS, META_COMPLIANCE_NOTES, truncateQuote } from "./_core/copywritingRules";
 
 // Angle-specific prompt modifiers based on industry research
 const ANGLE_PROMPTS = {
@@ -13,7 +13,6 @@ Focus on:
 - Step-by-step process
 - Guarantee included
 
-Headline pattern: "[Benefit]: How [Avatar]'s '[Mechanism Name]' Delivers [Result] Using [System] - In [Timeframe], Guaranteed!"
 CTA: "Claim Your FREE Consultation!"
   `,
   godfather: `
@@ -25,7 +24,6 @@ Focus on:
 - Making it impossible to say no
 - Risk reversal throughout copy
 
-Headline pattern: "Get [Result] in [Timeframe] - Or You Don't Pay [Currency]!"
 CTA: "Book My Free [Service] Call"
 Key phrase: Emphasize "Or you don't pay" throughout the copy
   `,
@@ -38,7 +36,6 @@ Focus on:
 - Risk-free start
 - Immediate access
 
-Headline pattern: "Get [Result] - FREE [Offer Type]!"
 CTA: "Claim Your FREE [Offer]!"
 Key phrase: Emphasize "FREE" and "no strings attached"
   `,
@@ -51,7 +48,6 @@ Focus on:
 - Cost breakdown
 - Limited-time pricing
 
-Headline pattern: "Get [Result] for Just $[Price]!"
 CTA: "Get Started for $[Price]"
 Key phrase: Emphasize specific price and value
   `
@@ -106,8 +102,8 @@ Generate a complete landing page with 16 sections following this structure:
 1. **Eyebrow Headline** (all caps, attention-grabbing, addresses target avatar's pain, max 100 chars)
    Example: "FOR UAE & GCC CRYPTO BEGINNERS"
 
-2. **Main Headline** (long-form, benefit-driven, includes unique mechanism, 100-150 chars)
-   Example: "Get Consistent, Halal Crypto Income in Just 6 Months - Or You Don't Pay a Dirham!"
+2. **Main Headline** (long-form, benefit-driven, 100-150 chars)
+   A great landing page headline does three things simultaneously: (1) identifies the exact person it is written for so precisely that anyone else feels excluded, (2) names the specific outcome they want using their own words not marketing language, (3) signals that this is different from everything they have already tried. Do not use fill-in-the-blank template patterns — write a headline that could only exist for this specific product and this specific avatar. The headline must not use any of these words: ${BANNED_COPYWRITING_WORDS.join(', ')}.
 
 3. **Subheadline** (explains why current methods fail or what makes this different, 150-200 chars)
    Example: "...No blocked accounts, stress, or risking your family's trust - even if you've lost money before or think the local banking system is impossible to beat."
@@ -119,8 +115,8 @@ Generate a complete landing page with 16 sections following this structure:
    Example: ["Forbes", "Inc.", "Entrepreneur", "Yahoo Finance", "Business Insider"]
    NOTE: DO NOT include "Meta", "Facebook", or "Instagram" as these imply platform endorsement which violates Meta advertising policy
 
-6. **Quiz/Question Section** (engaging question with 5 options and reveal answer, 200-300 words total)
-   Example: "Can You Guess Which One of These 'Safe' Crypto Moves… Actually Gets Your Bank Account Flagged?"
+6. **Quiz/Question Section** (niche-specific question with 5 plausible options and a surprising reveal answer, 200-300 words total)
+   A great quiz question does two things: it makes the reader feel smart for knowing the answer (or curious because they don't), and it reframes their understanding of the problem. Rules: the question must use insider language from the target market; every option must sound genuinely plausible — a good option is one the reader would seriously consider before seeing the answer; the answer must surprise the reader and teach them something they could not have known without reading this page; the question must name a specific scenario from the niche, not a generic category. BANNED quiz patterns (too generic, do not use): "Which of these is the most important X", "What is the first step to X", "How many X do you need to Y".
 
 7. **Problem Agitation** (emotional pain points, 200-300 words)
    Example: "Still Worrying You'll Be The Next Account Freeze Or Crypto Horror Story?"
@@ -153,11 +149,11 @@ Generate a complete landing page with 16 sections following this structure:
 15. **Time-Saving Benefit** (shortcut positioning, 150-200 words)
     Example: "Save Yourself Years of Painful Guesswork: Our Blueprint Gives You the Shortcut to Real Crypto Income"
 
-16. **Consultation Outline** (10 numbered items with title and description)
-    Example:
-    1. "Step-by-Step Roadmap" - "Follow our Steady Wealth Protocol to take you from frustrated beginner to confident crypto earner - with every safe step mapped out."
-    2. "Done-For-You Templates" - "Plug-and-play scripts, checklists, and spreadsheets for every transaction, from your first crypto buy to safe cashing out."
-    ... (8 more items)
+16. **Consultation Outline** (10 numbered items, each with a specific title and a deliverable-focused description)
+    The consultation outline must feel like a genuine agenda, not a marketing list. Each item must name the specific deliverable the client will have at the end of that segment — what they have after that step that they did not have before it. BANNED consultation outline patterns (do not use as titles or descriptions): "Introduction and welcome", "Q&A", "Next steps", "Strategy overview", "Getting to know you" — these are placeholders, not deliverables. Every item must name a specific analysis, assessment, calculation, or output. Example: "Revenue Gap Analysis — At the end of this segment you will have a precise number: the exact monthly gap between your current income and your target, and the three specific levers available to close it."
+
+SPECIFICITY CHECK — apply this before returning the JSON:
+For every section, ask: does this section contain at least one phrase that could only appear on a landing page for THIS specific service in THIS specific niche? If any section contains only generic direct response language that could apply to any coaching programme, rewrite that section before returning. The test: mentally swap the product name for a different coaching product in a different niche. If the section still makes sense without any changes, it is not specific enough. Rewrite until it only makes sense for this product, this avatar, and this outcome.
 
 Return as JSON matching the LandingPageContent type.
 Use the avatar's name, location, and description throughout the copy to personalize it.

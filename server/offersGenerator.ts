@@ -5,43 +5,71 @@ import { BANNED_COPYWRITING_WORDS, META_COMPLIANCE_NOTES, truncateQuote } from "
 // Angle-specific prompt modifiers for Offers (Industry standard)
 const ANGLE_PROMPTS = {
   godfather: `
-Generate an IRRESISTIBLE GODFATHER OFFER using risk reversal.
+Generate an IRRESISTIBLE GODFATHER OFFER using the Hormozi value equation: Dream Outcome × Perceived Likelihood of Achievement ÷ Time Delay × Effort and Sacrifice. Every element of the offer must increase the numerator or decrease the denominator.
 
-Focus on:
-- Money-back guarantee
-- "Or you don't pay" - removes all risk
-- Making it impossible to say no
-- Stack value so high it's a no-brainer
+STRUCTURE:
+1. Name the dream outcome in one specific sentence — not a category, a situation. Not "financial freedom" — "replacing your £8,000/month salary within 90 days."
+2. State the likelihood of achievement using social proof — specific client numbers from the data provided, or "hundreds of clients" minimum if none available.
+3. Reduce perceived time delay — name the specific first result the customer sees in the first 7 days, not just the end result.
+4. Reduce perceived effort — name the one thing they do NOT have to do that they assumed they would have to do.
+5. Stack the offer: core programme + bonuses (each with real name and specific £/$ value) + guarantee that removes all financial risk.
+6. The guarantee must make keeping the money feel riskier than giving it back — name exactly what they keep if they refund (all materials, all recordings, all bonus resources). The reader must feel that requesting a refund still leaves them better off than before.
 
-Offer Name pattern: "[Result] - Or You Don't Pay!"
-CTA: "Claim Your Risk-Free Spot"
-Key phrase: Emphasize "Or you don't pay" and risk reversal
+Risk reversal: state "or you don't pay" as a specific condition, not a slogan. Name the result that must happen for payment to be earned.
+
+CTA: "Book My Risk-Free [Service] Call"
+
+BANNED GODFATHER PHRASES (never use):
+- "too good to be true"
+- "once in a lifetime"
+- "limited time only" without a specific date
+- "act now"
+- "don't miss out"
+- "this offer expires soon" without a specific date
+- "incredible offer"
+- "you'd be crazy not to"
   `,
   free: `
-Generate a FREE OFFER emphasizing zero-cost entry.
+Generate a FREE OFFER that feels like the full value being given away — not a stripped-down version of the paid programme. The free thing must feel complete at the point of delivery, with nothing held back.
 
-Focus on:
-- Free consultation/training/audit
-- No credit card required
-- Risk-free start
-- Immediate access to value
+STRUCTURE:
+1. Name the specific deliverable from the free session — a personalised gap analysis, a three-step roadmap, a custom action plan — not "valuable insights" or "clarity." The deliverable must be something the client can act on immediately after the session ends.
+2. Name the monetary value of that deliverable if the client had paid for it, and explain why it has that value — what it includes that makes it worth that amount.
+3. Name who this free offer is NOT for — this increases perceived exclusivity and pre-qualifies leads. Be specific: "This is not for people who are just curious. This is for [specific situation with specific qualifying criteria]."
+4. Name the one thing that will happen in the session that the client cannot get anywhere else — the proprietary analysis, framework, or insight that makes this session unique to this provider.
 
-Offer Name pattern: "FREE [Service/Training/Audit]"
-CTA: "Claim Your FREE [Offer]!"
-Key phrase: Emphasize "FREE" and "no strings attached"
+Offer Name pattern: "FREE [Specific Deliverable Name] for [Specific Avatar]"
+CTA: "Claim Your FREE [Specific Deliverable]"
+
+BANNED FREE OFFER PHRASES (overused — trigger skepticism, do not use):
+- "no strings attached"
+- "completely free" (redundant)
+- "zero cost to you"
+- "nothing to lose"
+- "at no cost"
+- "totally free"
   `,
   dollar: `
-Generate a DOLLAR OFFER with specific price positioning.
+Generate a DOLLAR OFFER that anchors against the cost of the problem, not against the cost of a higher-tier programme. The price must feel like the obvious rational choice compared to what staying stuck costs per month.
 
-Focus on:
-- Exact pricing ($1, $7, $27, $97)
-- Incredible value at low price
-- Limited-time pricing
-- Value stack showing savings
+STRUCTURE:
+1. Calculate the monthly cost of the problem — if the customer is losing £X/month by not solving this, state that number explicitly. The dollar price must be shown as a fraction of that monthly cost. Example: "$7 is less than 1% of what this problem costs you every month."
+2. Name what the customer gets access to immediately on payment — not what they get "over the programme" — what lands in their inbox or account in the next 10 minutes.
+3. Use the tripwire frame: this is not the full programme. This is the specific tool that solves the single most painful problem. Name that specific problem and name that specific tool.
+4. Show the value ladder transparently: name that this low-price entry leads to the full programme. Be open about it — transparency increases conversion because it removes the hidden agenda suspicion.
 
-Offer Name pattern: "Get [Result] for Just $[Price]!"
-CTA: "Get Started for $[Price]"
-Key phrase: Emphasize specific price and massive value
+Offer Name pattern: "The [Specific Tool Name] for [Niche Avatar] — [Price]"
+CTA: "Get Instant Access for $[Price]"
+Price anchoring: state the anchor (full programme value or monthly cost of problem) before revealing the dollar price.
+
+BANNED DOLLAR PHRASES (do not use):
+- "incredible value"
+- "massive discount"
+- "for a limited time only" without a specific end date
+- "usually costs X" without a real anchor established first
+- "steal"
+- "bargain"
+- "grab this"
   `
 };
 
@@ -105,6 +133,15 @@ ANCHORING PRINCIPLE — apply to pricing and bonuses:
 - Every bonus must have a specific named dollar value (not "priceless" or "invaluable")
 - The total bonus value must be stated and must exceed the programme price
 - The actual price must be presented as a fraction of the total value
+
+SPECIFICITY RULE — applies to every field:
+Every output must pass this test: could this offer have been written for a different coaching programme in a different niche? If yes, it is not specific enough — rewrite it until the answer is no. The offer must contain at least three niche-specific words or phrases — terms that only someone in this world would recognise.
+
+BONUS CREDIBILITY RULE:
+Every bonus must feel like something that took real effort to create — not a PDF that could be made in an afternoon. Name the format explicitly: recorded workshop, live group call, private community access, custom assessment, done-for-you template, annotated swipe file. Name the specific outcome of using that bonus — what will the buyer be able to do after using it that they could not do before? Never use "access to X" as the bonus description — name what X specifically gives them.
+
+OUTCOME SPECIFICITY RULE:
+Replace any outcome that uses these words with a specific measurable alternative: results, transformation, success, growth, improvement, better, more, less. Every outcome must have a number, a timeframe, or a named situation. Not "better results" — "3 new clients in 60 days." Not "transformation" — "moving from £2,000/month to £8,000/month within a quarter."
 
 GODFATHER OFFER RULE (for godfather angle): Make it impossible to say no. The offer must be structured so that refusing it feels irrational — more bonuses than they expect, a guarantee that removes all risk, and a price that feels like a fraction of the transformation value.
 
