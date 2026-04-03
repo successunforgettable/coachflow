@@ -65,13 +65,15 @@ ${p.campaignTypeContext ? `${p.campaignTypeContext}\n\n` : ''}${p.icpContext}
 
 ${rules}
 
+COMMITMENT AND CONSISTENCY PRINCIPLE: Message 1 opens a question they cannot answer without the event. Message 2 shows proof that someone like them got the answer. Message 3 makes attending the obvious next step for someone who engaged with messages 1 and 2. Build on the micro-commitment of each previous message. Message 3 should feel like the natural conclusion of a conversation that started in message 1 — not a standalone CTA.
+
 Create 3 WhatsApp messages (Monday, Wednesday, Friday before event). Each message has ONE job — the entire message serves that job only:
 
-Message 1 job = PATTERN INTERRUPT + OPEN LOOP (Monday)
-Reference the specific thing they signed up for. Open a loop — ask one question they don't yet know the answer to, that makes them want to come to the event to find out. End with a question that makes them think. Do not answer the question in this message.
+Message 1 job = ASSUMPTION BREAK + OPEN LOOP (Monday)
+Message 1 first sentence rule: The first sentence must break an assumption the reader currently holds — not just create curiosity. Identify the most common belief someone in this niche has about their situation, then write a first sentence that makes that belief feel worth questioning. This is not a shocking statement — it is something so precisely true about their current situation that it stops the scroll because it feels personal. It must contain one niche-specific word or phrase. Open a loop — ask one question they don't yet know the answer to, that makes them want to come to the event to find out. Do not answer the question in this message.
 
 Message 2 job = SPECIFIC PROOF MOMENT (Wednesday)
-Share one real result from one specific type of person (anonymised if needed — "a [job title] in [niche]"). One sentence on what changed for them and how. Make it feel like evidence, not marketing. End with a direct question asking if that sounds familiar to them.
+Share one real result from one specific type of person (anonymised if needed). PROOF SPECIFICITY RULE: Anonymous proof must still be specific. Required format: '[specific job title or life situation] who [specific problem they had] → [specific mechanism or change] → [specific result with number, timeframe, or named outcome].' Never use: 'someone', 'a person', 'one of our clients', 'a student' without qualification. One sentence on what changed for them and how. Make it feel like evidence, not marketing. End with a direct question asking if that sounds familiar to them.
 
 Message 3 job = SOFT CTA (Friday)
 Name the event specifically. Give one clear next step and the link or action. No selling. No urgency. Just the obvious, easy thing to do next. End with the action.
@@ -100,10 +102,10 @@ Message 1 job = NAME THE COST OF INACTION (Day 1)
 Reference what they just attended. Name the specific cost of staying where they are — the thing that keeps happening if they don't act. One concrete, niche-specific consequence. End with the direct link or action.
 
 Message 2 job = PROOF + MECHANISM (Day 3)
-Name one specific result from one specific type of person (anonymised if needed). Name the method or mechanism that produced that result — one sentence. End with: "Does that sound like where you are?"
+Name one specific result from one specific type of person (anonymised if needed). PROOF SPECIFICITY RULE: Anonymous proof must still be specific. Required format: '[specific job title or life situation] who [specific problem they had] → [specific mechanism or change] → [specific result with number, timeframe, or named outcome].' Never use: 'someone', 'a person', 'one of our clients', 'a student' without qualification. Name the method or mechanism that produced that result — one sentence. End with a closing question derived from the ICP's specific situation — their named fear, their specific frustration, or their stated buying trigger. The question must make them feel seen, not categorised. Use their language, not coaching language.
 
 Message 3 job = DIRECT OFFER + URGENCY + SINGLE ACTION (Day 5)
-Name the specific offer and the exact closing mechanism (deadline, price change, or spots remaining — only if true). One sentence on what they lose after the deadline. End with the single action and link only — no question.
+ANCHORING RULE: In the first sentence, state the total value of what they get before naming the price or the close. Given the 3-sentence constraint, the format is: sentence 1 = value anchor, sentence 2 = closing mechanism with specific named condition, sentence 3 = single action with CTA copy that communicates what they get (not just 'click here'). URGENCY FALLBACK: If no genuine deadline, price increase, or spot limit exists, use social proof scarcity — 'People who attended [event] and acted within 48 hours got [specific result]. The window where momentum works in your favour is closing.' This is honest urgency grounded in psychology, not fabricated scarcity. End with the single action and link only — no question.
 
 Return as a JSON object with a 'messages' key containing the array.`;
 }
