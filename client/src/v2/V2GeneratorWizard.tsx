@@ -1890,14 +1890,23 @@ function V2ServiceStep({ onBack, onComplete }: { onBack?: () => void; onComplete
 
   // ─── Vault: handle file upload → parse → extract ───────────────────────────
   async function handleFileUpload(file: File) {
+    const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB
+    if (file.size > MAX_FILE_BYTES) {
+      setExtractError("File too large — please upload a file under 5 MB. For larger documents, copy and paste the key details into the form instead.");
+      return;
+    }
     setVaultState("extracting");
     setExtractError("");
     try {
-      const arrayBuffer = await file.arrayBuffer();
-      const bytes = new Uint8Array(arrayBuffer);
-      let binary = "";
-      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-      const base64 = btoa(binary);
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const dataUrl = reader.result as string;
+          resolve(dataUrl.substring(dataUrl.indexOf(',') + 1));
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
 
       const { text } = await parseVaultFile.mutateAsync({ base64, mimeType: file.type });
 
@@ -1971,10 +1980,8 @@ function V2ServiceStep({ onBack, onComplete }: { onBack?: () => void; onComplete
         if (!isNaN(n)) vaultPayload.price = n;
       }
       if (vPaymentPlan.trim()) vaultPayload.paymentPlan = vPaymentPlan.trim();
-      if (vEarlyBirdPrice.trim()) {
-        const n = parseFloat(vEarlyBirdPrice.replace(/[£$€,\s]/g, ""));
-        if (!isNaN(n)) vaultPayload.earlyBirdPrice = n;
-      }
+      const earlyBirdPriceNum = parseFloat(vEarlyBirdPrice.replace(/[^0-9.]/g, '')) || null;
+      vaultPayload.earlyBirdPrice = earlyBirdPriceNum;
       if (vDeliveryFormat) vaultPayload.deliveryFormat = vDeliveryFormat;
       if (vDeliveryDuration.trim()) vaultPayload.deliveryDuration = vDeliveryDuration.trim();
       if (vGuaranteeDuration.trim()) vaultPayload.guaranteeDuration = vGuaranteeDuration.trim();
@@ -2301,8 +2308,9 @@ function V2ServiceStep({ onBack, onComplete }: { onBack?: () => void; onComplete
             borderRadius: "18px",
             padding: "36px 24px",
             background: "rgba(255,91,29,0.03)",
-            cursor: "pointer",
+            cursor: existingServices === undefined ? "default" : "pointer",
             transition: "background 0.15s ease",
+            pointerEvents: existingServices === undefined ? "none" : undefined,
           }}
           onDragOver={e => { e.preventDefault(); (e.currentTarget as HTMLElement).style.background = "rgba(255,91,29,0.07)"; }}
           onDragLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,91,29,0.03)"; }}
@@ -2313,19 +2321,26 @@ function V2ServiceStep({ onBack, onComplete }: { onBack?: () => void; onComplete
             if (f) handleFileUpload(f);
           }}
           >
-            <span style={{ fontSize: "36px" }}>📄</span>
-            <div style={{ textAlign: "center" }}>
-              <p style={{ fontFamily: "var(--v2-font-body)", fontWeight: 700, fontSize: "15px", color: "var(--v2-text-color)", margin: "0 0 4px" }}>
-                Drop your file here or click to browse
-              </p>
-              <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "12px", color: "rgba(26,22,36,0.45)", margin: 0 }}>
-                PDF, Word, or .txt — up to 10 MB
-              </p>
-            </div>
+            {existingServices === undefined ? (
+              <span style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "rgba(26,22,36,0.4)" }}>Loading…</span>
+            ) : (
+              <>
+                <span style={{ fontSize: "36px" }}>📄</span>
+                <div style={{ textAlign: "center" }}>
+                  <p style={{ fontFamily: "var(--v2-font-body)", fontWeight: 700, fontSize: "15px", color: "var(--v2-text-color)", margin: "0 0 4px" }}>
+                    Drop your file here or click to browse
+                  </p>
+                  <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "12px", color: "rgba(26,22,36,0.45)", margin: 0 }}>
+                    PDF, Word, or .txt — up to 5 MB
+                  </p>
+                </div>
+              </>
+            )}
             <input
               type="file"
               accept=".pdf,.doc,.docx,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
               style={{ display: "none" }}
+              disabled={existingServices === undefined}
               onChange={e => { const f = e.target.files?.[0]; if (f) handleFileUpload(f); }}
             />
           </label>
