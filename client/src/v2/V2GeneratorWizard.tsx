@@ -1224,6 +1224,32 @@ function PushIntegrationPanel({ campaignKit, serviceId, serviceName }: { campaig
   const ghlDisconnect = trpc.ghl.disconnect.useMutation({ onSuccess: () => { refetchGhlStatus(); } });
   const [pushStatus, setPushStatus] = useState<string | null>(null);
 
+  // ZIP download state
+  const utils = trpc.useUtils();
+  const [zipLoading, setZipLoading] = useState(false);
+  const [zipError, setZipError] = useState<string | null>(null);
+
+  async function handleDownloadZip() {
+    if (!serviceId) return;
+    setZipLoading(true);
+    setZipError(null);
+    try {
+      const data = await utils.campaignExport.generateCampaignZip.fetch({ serviceId });
+      const bytes = Uint8Array.from(atob(data.base64), c => c.charCodeAt(0));
+      const blob = new Blob([bytes], { type: "application/zip" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = data.filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      setZipError(e.message || "Download failed. Please try again.");
+    } finally {
+      setZipLoading(false);
+    }
+  }
+
   // Meta push state
   const [metaPushState, setMetaPushState] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [metaPushResult, setMetaPushResult] = useState<{ campaignId?: string; adSetId?: string; adId?: string; message?: string } | null>(null);
@@ -1441,6 +1467,32 @@ function PushIntegrationPanel({ campaignKit, serviceId, serviceName }: { campaig
           {pushStatus}
         </p>
       )}
+
+      {/* Download Campaign Kit card */}
+      <div style={{ background: "#fff", borderRadius: 16, padding: "20px 24px", marginBottom: 24, textAlign: "left" }}>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 14, marginBottom: 16 }}>
+          <span style={{ fontSize: 24, lineHeight: 1 }}>⬇</span>
+          <div>
+            <p style={{ fontFamily: F, fontWeight: 600, fontSize: 14, color: "#1A1624", margin: "0 0 4px" }}>Download Campaign Kit</p>
+            <p style={{ fontFamily: F, fontSize: 12, color: "#999", margin: 0 }}>Get all your assets in one organised ZIP — ready to deploy manually.</p>
+          </div>
+        </div>
+        <button
+          onClick={handleDownloadZip}
+          disabled={zipLoading || !serviceId}
+          style={{
+            width: "100%", padding: "12px 24px", borderRadius: 9999, border: "none",
+            background: zipLoading ? "#555" : "#1A1624", color: "#fff",
+            fontFamily: F, fontWeight: 600, fontSize: 14,
+            cursor: zipLoading || !serviceId ? "wait" : "pointer",
+          }}
+        >
+          {zipLoading ? "Generating ZIP…" : "Download ZIP"}
+        </button>
+        {zipError && (
+          <p style={{ fontFamily: F, fontSize: 12, color: "#C0390A", margin: "8px 0 0" }}>{zipError}</p>
+        )}
+      </div>
 
       <p style={{ fontFamily: F, fontSize: 12, color: "#bbb", margin: "24px 0 0" }}>
         Both integrations are optional. You can also copy your campaign manually from the Campaign Kit.

@@ -107,6 +107,31 @@ export default function V2AssetLibrary() {
   const toggleAsset = (id: number, serviceId: number | null, type: "image" | "video" | "copy") =>
     setSelectedAsset(prev => (prev?.id === id ? null : { id, serviceId, type }));
 
+  // ZIP download state (per-campaign)
+  const [zipLoading, setZipLoading] = useState<number | null>(null);
+  const [zipError, setZipError] = useState<{ id: number; msg: string } | null>(null);
+  const utils = trpc.useUtils();
+
+  async function handleDownloadZip(serviceId: number, serviceName: string) {
+    setZipLoading(serviceId);
+    setZipError(null);
+    try {
+      const data = await utils.campaignExport.generateCampaignZip.fetch({ serviceId });
+      const bytes = Uint8Array.from(atob(data.base64), c => c.charCodeAt(0));
+      const blob = new Blob([bytes], { type: "application/zip" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = data.filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      setZipError({ id: serviceId, msg: e.message || "Download failed" });
+    } finally {
+      setZipLoading(null);
+    }
+  }
+
   // Zappy state
   const [zappyOpen, setZappyOpen] = useState(false);
   const [zappyQuery, setZappyQuery] = useState("");
@@ -547,7 +572,7 @@ export default function V2AssetLibrary() {
               <Fragment key={campaign.id}>
               <div>
                 {/* Row label */}
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
                   <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: "50%", background: accent, flexShrink: 0 }} />
                   <h3 style={{ fontFamily: T.fontH, fontStyle: "italic", fontWeight: 900, fontSize: 18, color: accent, margin: 0 }}>
                     {campaign.name}
@@ -555,6 +580,29 @@ export default function V2AssetLibrary() {
                   <span style={{ fontFamily: T.fontB, fontSize: 12, color: T.muted }}>
                     {camImages.length + camVideos.length + camCopy.length} assets
                   </span>
+                  <button
+                    onClick={() => handleDownloadZip(campaign.id, campaign.name)}
+                    disabled={zipLoading === campaign.id}
+                    style={{
+                      marginLeft: "auto",
+                      background: "transparent",
+                      border: "1px solid #1A1624",
+                      color: "#1A1624",
+                      borderRadius: 9999,
+                      padding: "6px 16px",
+                      fontSize: 13,
+                      fontFamily: "Instrument Sans, sans-serif",
+                      cursor: zipLoading === campaign.id ? "wait" : "pointer",
+                      opacity: zipLoading === campaign.id ? 0.6 : 1,
+                    }}
+                  >
+                    {zipLoading === campaign.id ? "Generating…" : "⬇ Download Campaign Kit"}
+                  </button>
+                  {zipError?.id === campaign.id && (
+                    <span style={{ fontFamily: T.fontB, fontSize: 12, color: "#C0390A", width: "100%", marginTop: 2 }}>
+                      {zipError.msg}
+                    </span>
+                  )}
                 </div>
                 {/* Horizontal scroll strip */}
                 <div style={{ display: "flex", gap: 16, overflowX: "auto", paddingBottom: 8, scrollbarWidth: "thin" as const }}>
