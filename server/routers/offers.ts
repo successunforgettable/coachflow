@@ -158,10 +158,22 @@ export const offersRouter = router({
         ? ['BRAND CONTEXT — this is the approved brand voice. All copy must be consistent with this:', ...sotLines].join('\n')
         : '';
 
-      // Extract real social proof data
+      // Extract real social proof data — full structure matching offersGenerator.ts social proof guard
       const socialProof = {
         hasCustomers: !!service.totalCustomers && service.totalCustomers > 0,
+        hasTestimonials: !!service.testimonial1Name || !!service.testimonial2Name || !!service.testimonial3Name,
+        hasRating: !!service.averageRating && parseFloat(service.averageRating) > 0,
+        hasReviews: !!service.totalReviews && service.totalReviews > 0,
+        hasPress: !!service.pressFeatures && service.pressFeatures.trim().length > 0,
         customerCount: service.totalCustomers || 0,
+        rating: service.averageRating || '',
+        reviewCount: service.totalReviews || 0,
+        testimonials: [
+          service.testimonial1Name ? { name: service.testimonial1Name, title: service.testimonial1Title || '', quote: service.testimonial1Quote || '' } : null,
+          service.testimonial2Name ? { name: service.testimonial2Name, title: service.testimonial2Title || '', quote: service.testimonial2Quote || '' } : null,
+          service.testimonial3Name ? { name: service.testimonial3Name, title: service.testimonial3Title || '', quote: service.testimonial3Quote || '' } : null,
+        ].filter(Boolean),
+        press: service.pressFeatures || '',
       };
 
       // Append SOT + ICP context to targetCustomer so it flows into the helper prompt — Item 1.2 + 1.4
@@ -275,7 +287,23 @@ export const offersRouter = router({
             ? ['BRAND CONTEXT — this is the approved brand voice. All copy must be consistent with this:', ...sotLines].join('\n')
             : '';
 
-          const socialProof = { hasCustomers: !!capturedService.totalCustomers && capturedService.totalCustomers > 0, customerCount: capturedService.totalCustomers || 0 };
+          // Full structure matching offersGenerator.ts social proof guard
+          const socialProof = {
+            hasCustomers: !!capturedService.totalCustomers && capturedService.totalCustomers > 0,
+            hasTestimonials: !!capturedService.testimonial1Name || !!capturedService.testimonial2Name || !!capturedService.testimonial3Name,
+            hasRating: !!capturedService.averageRating && parseFloat(capturedService.averageRating) > 0,
+            hasReviews: !!capturedService.totalReviews && capturedService.totalReviews > 0,
+            hasPress: !!capturedService.pressFeatures && capturedService.pressFeatures.trim().length > 0,
+            customerCount: capturedService.totalCustomers || 0,
+            rating: capturedService.averageRating || '',
+            reviewCount: capturedService.totalReviews || 0,
+            testimonials: [
+              capturedService.testimonial1Name ? { name: capturedService.testimonial1Name, title: capturedService.testimonial1Title || '', quote: capturedService.testimonial1Quote || '' } : null,
+              capturedService.testimonial2Name ? { name: capturedService.testimonial2Name, title: capturedService.testimonial2Title || '', quote: capturedService.testimonial2Quote || '' } : null,
+              capturedService.testimonial3Name ? { name: capturedService.testimonial3Name, title: capturedService.testimonial3Title || '', quote: capturedService.testimonial3Quote || '' } : null,
+            ].filter(Boolean),
+            press: capturedService.pressFeatures || '',
+          };
           const enrichedTargetCustomer = sotContext || icpContext
             ? `${sotContext ? `${sotContext}\n\n` : ''}${capturedService.targetCustomer || 'Target Customer'}${icpContext ? `\n\n${icpContext}` : ''}`
             : capturedService.targetCustomer || 'Target Customer';

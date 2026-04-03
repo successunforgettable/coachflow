@@ -199,8 +199,15 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
       const heroMechanismsContent = typeof heroMechanismsResponse.choices[0].message.content === 'string' 
         ? heroMechanismsResponse.choices[0].message.content 
         : JSON.stringify(heroMechanismsResponse.choices[0].message.content);
-      const heroMechanisms = JSON.parse(stripMarkdownJson(heroMechanismsContent));
-      
+      // LLM occasionally returns explanatory text — this guard prevents a crash and returns empty array as fallback.
+      let heroMechanisms: { name: string; description: string }[] = [];
+      try {
+        const parsed = JSON.parse(stripMarkdownJson(heroMechanismsContent));
+        heroMechanisms = Array.isArray(parsed) ? parsed : [];
+      } catch {
+        heroMechanisms = [];
+      }
+
       heroMechanisms.forEach((mechanism: { name: string; description: string }) => {
         allMechanisms.push({
           userId: user.id,
@@ -262,8 +269,15 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
       const headlineIdeasContent = typeof headlineIdeasResponse.choices[0].message.content === 'string' 
         ? headlineIdeasResponse.choices[0].message.content 
         : JSON.stringify(headlineIdeasResponse.choices[0].message.content);
-      const headlineIdeas = JSON.parse(stripMarkdownJson(headlineIdeasContent));
-      
+      // LLM occasionally returns explanatory text — this guard prevents a crash and returns empty array as fallback.
+      let headlineIdeas: { name: string; description: string }[] = [];
+      try {
+        const parsed = JSON.parse(stripMarkdownJson(headlineIdeasContent));
+        headlineIdeas = Array.isArray(parsed) ? parsed : [];
+      } catch {
+        headlineIdeas = [];
+      }
+
       headlineIdeas.forEach((mechanism: { name: string; description: string }) => {
         allMechanisms.push({
           userId: user.id,

@@ -13,6 +13,102 @@ import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 
+// ---------------------------------------------------------------------------
+// Shared WhatsApp prompt builders — used by generate (sync) and generateAsync.
+// Per-message job structure is defined once here; both paths call these functions.
+// ---------------------------------------------------------------------------
+
+interface WhatsappPromptParams {
+  sotContext: string;
+  serviceName: string;
+  campaignTypeContext: string;
+  icpContext: string;
+  socialProofGuidance: string;
+  eventName: string;
+  hostName: string;
+  eventDate?: string;
+  offerName?: string;
+  price?: string;
+}
+
+function buildWhatsappRules(serviceName: string): string {
+  return `WHATSAPP COPY RULES — non-negotiable for every message:
+
+LENGTH: Maximum 3 sentences per message. WhatsApp is read on mobile in seconds — not emails, not articles.
+
+LANGUAGE: No formal language. No "I hope this message finds you well." Write like you're texting a friend who trusts you.
+
+CONTRACTIONS ONLY: "you're" not "you are". "it's" not "it is". "don't" not "do not". Contractions are mandatory.
+
+SPECIFIC SITUATION: Reference something specific about where they are right now — the event they attended, the thing they said yes to, the problem they're trying to solve. Never write a generic message.
+
+ENDING RULE — every message must end with EITHER a direct yes/no question OR a specific action with a link. NEVER both. NEVER neither.
+
+EMOJI RULES: Maximum 2 emojis per message. Only where they add context. Never in formal context.
+
+PLACEHOLDER RULES: Use [First Name] (NOT {{Name}}). Use actual service name "${serviceName}". Write actual timing (not {{Date}} or {{Time}}).`;
+}
+
+export function buildWhatsappEngagementPrompt(p: WhatsappPromptParams): string {
+  const rules = buildWhatsappRules(p.serviceName);
+  return `${p.sotContext ? `${p.sotContext}\n\n` : ''}You are an expert WhatsApp marketer. Create a 3-message WhatsApp engagement sequence for event attendees.
+
+Service: ${p.serviceName}
+Event: ${p.eventName}
+Host: ${p.hostName}
+Event Date: ${p.eventDate || "Date"}
+
+${p.socialProofGuidance}
+
+${p.campaignTypeContext ? `${p.campaignTypeContext}\n\n` : ''}${p.icpContext}
+
+${rules}
+
+Create 3 WhatsApp messages (Monday, Wednesday, Friday before event). Each message has ONE job — the entire message serves that job only:
+
+Message 1 job = PATTERN INTERRUPT + OPEN LOOP (Monday)
+Reference the specific thing they signed up for. Open a loop — ask one question they don't yet know the answer to, that makes them want to come to the event to find out. End with a question that makes them think. Do not answer the question in this message.
+
+Message 2 job = SPECIFIC PROOF MOMENT (Wednesday)
+Share one real result from one specific type of person (anonymised if needed — "a [job title] in [niche]"). One sentence on what changed for them and how. Make it feel like evidence, not marketing. End with a direct question asking if that sounds familiar to them.
+
+Message 3 job = SOFT CTA (Friday)
+Name the event specifically. Give one clear next step and the link or action. No selling. No urgency. Just the obvious, easy thing to do next. End with the action.
+
+Return as a JSON object with a 'messages' key containing the array.`;
+}
+
+export function buildWhatsappSalesPrompt(p: WhatsappPromptParams): string {
+  const rules = buildWhatsappRules(p.serviceName);
+  return `${p.sotContext ? `${p.sotContext}\n\n` : ''}You are an expert WhatsApp marketer. Create a 3-message WhatsApp sales sequence for event attendees.
+
+Service: ${p.serviceName}
+Event: ${p.eventName}
+Offer: ${p.offerName || "Offer"}
+Price: ${p.price || "Price"}
+
+${p.socialProofGuidance}
+
+${p.campaignTypeContext ? `${p.campaignTypeContext}\n\n` : ''}${p.icpContext}
+
+${rules}
+
+Create 3 WhatsApp messages (Day 1, 3, 5 after event). Each message has ONE job — the entire message serves that job only:
+
+Message 1 job = NAME THE COST OF INACTION (Day 1)
+Reference what they just attended. Name the specific cost of staying where they are — the thing that keeps happening if they don't act. One concrete, niche-specific consequence. End with the direct link or action.
+
+Message 2 job = PROOF + MECHANISM (Day 3)
+Name one specific result from one specific type of person (anonymised if needed). Name the method or mechanism that produced that result — one sentence. End with: "Does that sound like where you are?"
+
+Message 3 job = DIRECT OFFER + URGENCY + SINGLE ACTION (Day 5)
+Name the specific offer and the exact closing mechanism (deadline, price change, or spots remaining — only if true). One sentence on what they lose after the deadline. End with the single action and link only — no question.
+
+Return as a JSON object with a 'messages' key containing the array.`;
+}
+
+// ---------------------------------------------------------------------------
+
 const generateWhatsAppSequenceSchema = z.object({
   serviceId: z.number(),
   campaignId: z.number().optional(),
@@ -224,81 +320,22 @@ You MUST use these exact numbers. Do not fabricate.`
 - Focus on benefit claims and value propositions
 - Use outcome-based language WITHOUT specific names`;
 
-      let prompt = "";
-
-      // WhatsApp-specific rules
-      const whatsappRules = `
-WHATSAPP COPY RULES — non-negotiable for every message:
-
-LENGTH: Maximum 3 sentences per message. WhatsApp is read on mobile in seconds — not emails, not articles.
-
-LANGUAGE: No formal language. No "I hope this message finds you well." Write like you're texting a friend who trusts you.
-
-CONTRACTIONS ONLY: "you're" not "you are". "it's" not "it is". "don't" not "do not". Contractions are mandatory.
-
-SPECIFIC SITUATION: Reference something specific about where they are right now — the event they attended, the thing they said yes to, the problem they're trying to solve. Never write a generic message.
-
-ENDING RULE — every message must end with EITHER a direct yes/no question OR a specific action with a link. NEVER both. NEVER neither.
-
-EMOJI RULES: Maximum 2 emojis per message. Only where they add context. Never in formal context.
-
-PLACEHOLDER RULES: Use [First Name] (NOT {{Name}}). Use actual service name "${service.name}". Write actual timing (not {{Date}} or {{Time}}).
-`;
-
-      if (input.sequenceType === "engagement") {
-        prompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert WhatsApp marketer. Create a 3-message WhatsApp engagement sequence for event attendees.
-
-Service: ${service.name}
-Event: ${input.eventDetails?.eventName || "Event"}
-Host: ${input.eventDetails?.hostName || "Host"}
-Event Date: ${input.eventDetails?.eventDate || "Date"}
-
-${socialProofGuidance}
-
-${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}
-
-${whatsappRules}
-
-Create 3 WhatsApp messages (Monday, Wednesday, Friday before event). Each message has ONE job — the entire message serves that job only:
-
-Message 1 job = PATTERN INTERRUPT + OPEN LOOP (Monday)
-Reference the specific thing they signed up for. Open a loop — ask one question they don't yet know the answer to, that makes them want to come to the event to find out. End with a question that makes them think. Do not answer the question in this message.
-
-Message 2 job = SPECIFIC PROOF MOMENT (Wednesday)
-Share one real result from one specific type of person (anonymised if needed — "a [job title] in [niche]"). One sentence on what changed for them and how. Make it feel like evidence, not marketing. End with a direct question asking if that sounds familiar to them.
-
-Message 3 job = SOFT CTA (Friday)
-Name the event specifically. Give one clear next step and the link or action. No selling. No urgency. Just the obvious, easy thing to do next. End with the action.
-
-Return as a JSON object with a 'messages' key containing the array.`;
-      } else {
-        // sales sequence
-        prompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert WhatsApp marketer. Create a 3-message WhatsApp sales sequence for event attendees.
-
-Service: ${service.name}
-Event: ${input.eventDetails?.eventName || "Event"}
-Offer: ${input.eventDetails?.offerName || "Offer"}
-Price: ${input.eventDetails?.price || "Price"}
-
-${socialProofGuidance}
-
-${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}
-
-${whatsappRules}
-
-Create 3 WhatsApp messages (Day 1, 3, 5 after event). Each message has ONE job — the entire message serves that job only:
-
-Message 1 job = NAME THE COST OF INACTION (Day 1)
-Reference what they just attended. Name the specific cost of staying where they are — the thing that keeps happening if they don't act. One concrete, niche-specific consequence. End with the direct link or action.
-
-Message 2 job = PROOF + MECHANISM (Day 3)
-Name one specific result from one specific type of person (anonymised if needed). Name the method or mechanism that produced that result — one sentence. End with: "Does that sound like where you are?"
-
-Message 3 job = DIRECT OFFER + URGENCY + SINGLE ACTION (Day 5)
-Name the specific offer and the exact closing mechanism (deadline, price change, or spots remaining — only if true). One sentence on what they lose after the deadline. End with the single action and link only — no question.
-
-Return as a JSON object with a 'messages' key containing the array.`;
-      }
+      // Both sync and async use the shared builder functions — per-message job structure lives there.
+      const promptParams: WhatsappPromptParams = {
+        sotContext,
+        serviceName: service.name,
+        campaignTypeContext,
+        icpContext,
+        socialProofGuidance,
+        eventName: input.eventDetails?.eventName || "Event",
+        hostName: input.eventDetails?.hostName || "Host",
+        eventDate: input.eventDetails?.eventDate,
+        offerName: input.eventDetails?.offerName,
+        price: input.eventDetails?.price,
+      };
+      const prompt = input.sequenceType === "engagement"
+        ? buildWhatsappEngagementPrompt(promptParams)
+        : buildWhatsappSalesPrompt(promptParams);
       const response = await invokeLLM({
         messages: [
           {
@@ -428,14 +465,24 @@ Return as a JSON object with a 'messages' key containing the array.`;
           const socialProof = { hasCustomers: !!capturedService.totalCustomers && capturedService.totalCustomers > 0, hasTestimonials: !!capturedService.testimonial1Name || !!capturedService.testimonial2Name || !!capturedService.testimonial3Name, customerCount: capturedService.totalCustomers || 0 };
           const socialProofGuidance = socialProof.hasCustomers || socialProof.hasTestimonials ? `REAL SOCIAL PROOF AVAILABLE:\n${socialProof.hasCustomers ? `- ${socialProof.customerCount} verified customers` : ''}\n\nYou MUST use these exact numbers. Do not fabricate.` : `NO SOCIAL PROOF DATA PROVIDED:\n- DO NOT mention customer counts or specific testimonials\n- Focus on benefit claims and value propositions\n- Use outcome-based language WITHOUT specific names`;
 
-          let prompt = "";
-          if (capturedInput.sequenceType === "engagement") {
-            prompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert WhatsApp marketer. Create a 3-message WhatsApp engagement sequence for event attendees.\n\nService: ${capturedService.name}\nEvent: ${capturedInput.eventDetails?.eventName || "Event"}\nHost: ${capturedInput.eventDetails?.hostName || "Host"}\nEvent Date: ${capturedInput.eventDetails?.eventDate || "Date"}\n\n${socialProofGuidance}\n\n${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}\n\nCreate 3 WhatsApp messages (Monday, Wednesday, Friday before event). Each message: 50-100 words, personal, conversational, emojis, clear CTA, use [First Name] for personalization.\n\nReturn as a JSON object with a 'messages' key containing the array.`;
-          } else {
-            prompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert WhatsApp marketer. Create a 3-message WhatsApp sales sequence for event attendees.\n\nService: ${capturedService.name}\nEvent: ${capturedInput.eventDetails?.eventName || "Event"}\nOffer: ${capturedInput.eventDetails?.offerName || "Offer"}\nPrice: ${capturedInput.eventDetails?.price || "Price"}\n\n${socialProofGuidance}\n\n${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}\n\nCreate 3 WhatsApp messages (Day 1, 3, 5 after event). Each message: 50-100 words, personal, conversational, emojis, clear CTA, use [First Name] for personalization.\n\nReturn as a JSON object with a 'messages' key containing the array.`;
-          }
+          // Use the shared builders — same per-message job structure as the sync path.
+          const bgPromptParams: WhatsappPromptParams = {
+            sotContext,
+            serviceName: capturedService.name,
+            campaignTypeContext,
+            icpContext,
+            socialProofGuidance,
+            eventName: capturedInput.eventDetails?.eventName || "Event",
+            hostName: capturedInput.eventDetails?.hostName || "Host",
+            eventDate: capturedInput.eventDetails?.eventDate,
+            offerName: capturedInput.eventDetails?.offerName,
+            price: capturedInput.eventDetails?.price,
+          };
+          const prompt = capturedInput.sequenceType === "engagement"
+            ? buildWhatsappEngagementPrompt(bgPromptParams)
+            : buildWhatsappSalesPrompt(bgPromptParams);
 
-          const response = await invokeLLM({ messages: [{ role: "system", content: "You are an expert WhatsApp marketer specializing in high-converting WhatsApp sequences for coaches, speakers, and consultants. Always respond with valid JSON." }, { role: "user", content: prompt }], response_format: { type: "json_schema", json_schema: { name: "whatsapp_sequence", strict: true, schema: { type: "object", properties: { messages: { type: "array", items: { type: "object", properties: { day: { type: "integer" }, message: { type: "string" }, cta: { type: "string" } }, required: ["day", "message", "cta"], additionalProperties: false } } }, required: ["messages"], additionalProperties: false } } } });
+          const response = await invokeLLM({ messages: [{ role: "system", content: "You are an expert WhatsApp marketer specializing in high-converting WhatsApp sequences for coaches, speakers, and consultants. You write maximum 3 sentences per message. You use contractions exclusively (you're, it's, don't, we've). You use no formal language. Every message references a specific situation and ends with either a question OR an action — never both, never neither. Always respond with valid JSON." }, { role: "user", content: prompt }], response_format: { type: "json_schema", json_schema: { name: "whatsapp_sequence", strict: true, schema: { type: "object", properties: { messages: { type: "array", items: { type: "object", properties: { day: { type: "integer" }, message: { type: "string" }, cta: { type: "string" } }, required: ["day", "message", "cta"], additionalProperties: false } } }, required: ["messages"], additionalProperties: false } } } });
 
           const content = response.choices[0].message.content;
           if (typeof content !== "string") throw new Error("Invalid response format from AI");
