@@ -363,14 +363,15 @@ export function buildVisualStyleHtml(
   if (headshotUrl || coachName) {
     // Fix 4: if bio is under 50 chars, append service name as context
     const rawBio = coachBackground && coachBackground.trim().length > 10 ? coachBackground.trim() : "";
+    const capServiceName = serviceName.charAt(0).toUpperCase() + serviceName.slice(1);
     const bioText = rawBio
       ? (rawBio.length < 80
-          ? `${rawBio}. ${serviceName} specialist helping people achieve transformation.`
+          ? `${rawBio}. ${capServiceName} specialist helping people achieve transformation.`
           : rawBio)
       : "";
     const photoCol = headshotUrl
       ? `<div style="flex:0 1 40%;min-width:260px;">
-           <img src="${esc(cfImg(headshotUrl))}" alt="${esc(coachName || "Coach")}" width="400" height="400" loading="lazy" style="width:100%;max-width:400px;border-radius:12px;object-fit:cover;border:4px solid #FE4500;">
+           <img src="${esc(cfImg(headshotUrl))}" alt="${esc(coachName || "Coach")}" height="400" loading="lazy" style="width:100%;max-width:400px;border-radius:12px;object-fit:cover;border:4px solid #FE4500;">
          </div>`
       : "";
     sections.push(`
@@ -393,7 +394,7 @@ export function buildVisualStyleHtml(
     <div style="max-width:${MAX_W};margin:0 auto;padding:0 24px;">
       <h2 style="font-family:${H};font-weight:700;font-style:normal;font-size:32px;color:${TEXT_DARK};margin:0 0 32px;text-align:center;">Results Our Clients Get</h2>
       <div style="display:flex;flex-wrap:nowrap;gap:16px;overflow-x:auto;padding-bottom:16px;-webkit-overflow-scrolling:touch;">
-        ${socialProofUrls.map(url => `<img src="${esc(cfImg(url))}" alt="" width="auto" height="300" loading="lazy" style="height:300px;width:auto;min-width:200px;flex-shrink:0;object-fit:cover;border-radius:8px;">`).join("")}
+        ${socialProofUrls.map(url => `<img src="${esc(cfImg(url))}" alt="" height="300" loading="lazy" style="height:300px;width:auto;min-width:200px;flex-shrink:0;object-fit:cover;border-radius:8px;">`).join("")}
       </div>
     </div>
   </section>`);

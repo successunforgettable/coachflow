@@ -970,6 +970,11 @@ export default function V2LandingPageResultPanel({
           {styleMode === "visual" && (
             <>
               <AssetUploadPanel assets={coachAssets} onUpdate={setCoachAssets} />
+              {coachProfile?.coachBackground && coachProfile.coachBackground.trim().length > 0 && coachProfile.coachBackground.trim().length < 80 && (
+                <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "12px", color: "#FF5B1D", margin: "0 0 12px" }}>
+                  Tip: Add your results and credentials for a stronger bio (aim for 80+ characters)
+                </p>
+              )}
               <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
                 <button
                   onClick={() => {

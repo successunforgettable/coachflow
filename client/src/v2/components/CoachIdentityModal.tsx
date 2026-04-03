@@ -10,6 +10,7 @@ export default function CoachIdentityModal({ onComplete }: { onComplete: () => v
   const [background, setBackground] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [hasTouchedBio, setHasTouchedBio] = useState(false);
 
   const updateCoachProfile = trpc.user.updateCoachProfile.useMutation();
 
@@ -163,6 +164,7 @@ export default function CoachIdentityModal({ onComplete }: { onComplete: () => v
             type="text"
             value={background}
             onChange={e => setBackground(e.target.value)}
+            onBlur={() => setHasTouchedBio(true)}
             placeholder="e.g. Former corporate lawyer turned business coach"
             style={{
               width: "100%",
@@ -177,7 +179,7 @@ export default function CoachIdentityModal({ onComplete }: { onComplete: () => v
               boxSizing: "border-box",
             }}
           />
-          {background.length > 0 && background.length < 80 && (
+          {hasTouchedBio && background.length > 0 && background.length < 80 && (
             <p style={{ fontFamily: "'Instrument Sans', sans-serif", fontSize: "12px", color: "#FF5B1D", marginTop: "4px", margin: "4px 0 0" }}>
               Tip: Add your results and credentials for a stronger bio (aim for 80+ characters)
             </p>
