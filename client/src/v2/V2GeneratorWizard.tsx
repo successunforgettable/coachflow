@@ -40,6 +40,29 @@ import UpgradePrompt from "./components/UpgradePrompt";
 
 export type { WizardStep };
 
+// ─── Chunked base64 decode (avoids stack overflow on large ZIPs) ──────────────
+function base64ToUint8Array(base64: string): Uint8Array {
+  const binary = atob(base64);
+  const len = binary.length;
+  const chunkSize = 8192;
+  const chunks: Uint8Array[] = [];
+  for (let offset = 0; offset < len; offset += chunkSize) {
+    const end = Math.min(offset + chunkSize, len);
+    const chunk = new Uint8Array(end - offset);
+    for (let i = 0; i < end - offset; i++) {
+      chunk[i] = binary.charCodeAt(offset + i);
+    }
+    chunks.push(chunk);
+  }
+  const result = new Uint8Array(len);
+  let pos = 0;
+  for (const chunk of chunks) {
+    result.set(chunk, pos);
+    pos += chunk.length;
+  }
+  return result;
+}
+
 // ─── Pro-gated steps (Nodes 6–11) ────────────────────────────────────────────
 const PRO_GATED_STEPS: WizardStep[] = [
   "headlines",
@@ -1225,8 +1248,9 @@ function PushIntegrationPanel({ campaignKit, serviceId, serviceName }: { campaig
   const [pushStatus, setPushStatus] = useState<string | null>(null);
 
   // ZIP download state
-  const utils = trpc.useUtils();
+  const generateZipMutation = trpc.campaignExport.generateCampaignZip.useMutation();
   const [zipLoading, setZipLoading] = useState(false);
+  const [zipCooldown, setZipCooldown] = useState(false);
   const [zipError, setZipError] = useState<string | null>(null);
 
   async function handleDownloadZip() {
@@ -1234,8 +1258,8 @@ function PushIntegrationPanel({ campaignKit, serviceId, serviceName }: { campaig
     setZipLoading(true);
     setZipError(null);
     try {
-      const data = await utils.campaignExport.generateCampaignZip.fetch({ serviceId });
-      const bytes = Uint8Array.from(atob(data.base64), c => c.charCodeAt(0));
+      const data = await generateZipMutation.mutateAsync({ serviceId: serviceId! });
+      const bytes = base64ToUint8Array(data.base64);
       const blob = new Blob([bytes], { type: "application/zip" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -1243,6 +1267,8 @@ function PushIntegrationPanel({ campaignKit, serviceId, serviceName }: { campaig
       a.download = data.filename;
       a.click();
       URL.revokeObjectURL(url);
+      setZipCooldown(true);
+      setTimeout(() => setZipCooldown(false), 5000);
     } catch (e: any) {
       setZipError(e.message || "Download failed. Please try again.");
     } finally {
@@ -1479,7 +1505,7 @@ function PushIntegrationPanel({ campaignKit, serviceId, serviceName }: { campaig
         </div>
         <button
           onClick={handleDownloadZip}
-          disabled={zipLoading || !serviceId}
+          disabled={zipLoading || zipCooldown || !serviceId}
           style={{
             width: "100%", padding: "12px 24px", borderRadius: 9999, border: "none",
             background: zipLoading ? "#555" : "#1A1624", color: "#fff",
@@ -1487,7 +1513,7 @@ function PushIntegrationPanel({ campaignKit, serviceId, serviceName }: { campaig
             cursor: zipLoading || !serviceId ? "wait" : "pointer",
           }}
         >
-          {zipLoading ? "Generating ZIP…" : "Download ZIP"}
+          {zipCooldown ? "Downloaded ✓" : zipLoading ? "Generating ZIP…" : "Download ZIP"}
         </button>
         {zipError && (
           <p style={{ fontFamily: F, fontSize: 12, color: "#C0390A", margin: "8px 0 0" }}>{zipError}</p>

@@ -14,6 +14,29 @@ const T = {
   fontH: "'Fraunces', serif", fontB: "'Instrument Sans', sans-serif",
 };
 
+// ─── Chunked base64 decode (avoids stack overflow on large ZIPs) ──────────────
+function base64ToUint8Array(base64: string): Uint8Array {
+  const binary = atob(base64);
+  const len = binary.length;
+  const chunkSize = 8192;
+  const chunks: Uint8Array[] = [];
+  for (let offset = 0; offset < len; offset += chunkSize) {
+    const end = Math.min(offset + chunkSize, len);
+    const chunk = new Uint8Array(end - offset);
+    for (let i = 0; i < end - offset; i++) {
+      chunk[i] = binary.charCodeAt(offset + i);
+    }
+    chunks.push(chunk);
+  }
+  const result = new Uint8Array(len);
+  let pos = 0;
+  for (const chunk of chunks) {
+    result.set(chunk, pos);
+    pos += chunk.length;
+  }
+  return result;
+}
+
 // ─── Campaign colour system ───────────────────────────────────────────────────
 const CAMPAIGN_COLOURS = ["#FF5B1D", "#8B5CF6", "#0EA5E9", "#10B981", "#F59E0B", "#EF4444"];
 function getCampaignColour(id: number): string {
@@ -109,15 +132,16 @@ export default function V2AssetLibrary() {
 
   // ZIP download state (per-campaign)
   const [zipLoading, setZipLoading] = useState<number | null>(null);
+  const [zipCooldown, setZipCooldown] = useState<number | null>(null);
   const [zipError, setZipError] = useState<{ id: number; msg: string } | null>(null);
-  const utils = trpc.useUtils();
+  const generateZipMutation = trpc.campaignExport.generateCampaignZip.useMutation();
 
   async function handleDownloadZip(serviceId: number, serviceName: string) {
     setZipLoading(serviceId);
     setZipError(null);
     try {
-      const data = await utils.campaignExport.generateCampaignZip.fetch({ serviceId });
-      const bytes = Uint8Array.from(atob(data.base64), c => c.charCodeAt(0));
+      const data = await generateZipMutation.mutateAsync({ serviceId });
+      const bytes = base64ToUint8Array(data.base64);
       const blob = new Blob([bytes], { type: "application/zip" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -125,6 +149,8 @@ export default function V2AssetLibrary() {
       a.download = data.filename;
       a.click();
       URL.revokeObjectURL(url);
+      setZipCooldown(serviceId);
+      setTimeout(() => setZipCooldown(null), 5000);
     } catch (e: any) {
       setZipError({ id: serviceId, msg: e.message || "Download failed" });
     } finally {
@@ -582,7 +608,7 @@ export default function V2AssetLibrary() {
                   </span>
                   <button
                     onClick={() => handleDownloadZip(campaign.id, campaign.name)}
-                    disabled={zipLoading === campaign.id}
+                    disabled={zipLoading === campaign.id || zipCooldown === campaign.id}
                     style={{
                       marginLeft: "auto",
                       background: "transparent",
@@ -596,7 +622,7 @@ export default function V2AssetLibrary() {
                       opacity: zipLoading === campaign.id ? 0.6 : 1,
                     }}
                   >
-                    {zipLoading === campaign.id ? "Generating…" : "⬇ Download Campaign Kit"}
+                    {zipCooldown === campaign.id ? "Downloaded ✓" : zipLoading === campaign.id ? "Generating…" : "⬇ Download Campaign Kit"}
                   </button>
                   {zipError?.id === campaign.id && (
                     <span style={{ fontFamily: T.fontB, fontSize: 12, color: "#C0390A", width: "100%", marginTop: 2 }}>

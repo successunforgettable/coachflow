@@ -119,6 +119,7 @@ function buildLandingPageContent(rows: any[]): string {
     const angle = (page as any)[key];
     if (!angle) continue;
     parts.push(`=== ${label} ===\n`);
+    // Key names validated against LandingPageContent schema in drizzle/schema.ts — update if schema changes.
     const fields: Array<{ field: string; label: string }> = [
       { field: "eyebrowHeadline", label: "Eyebrow Headline" },
       { field: "mainHeadline", label: "Main Headline" },
@@ -134,14 +135,14 @@ function buildLandingPageContent(rows: any[]): string {
       { field: "timeSavingBenefit", label: "Time-Saving Benefit" },
     ];
     for (const { field, label: fieldLabel } of fields) {
-      if (angle[field]) {
+      if (angle?.[field]) {
         parts.push(`[${fieldLabel}]\n${angle[field]}\n`);
       }
     }
-    if (Array.isArray(angle.testimonials) && angle.testimonials.length > 0) {
+    if (Array.isArray(angle?.testimonials) && angle.testimonials.length > 0) {
       parts.push("[Testimonials]");
       (angle.testimonials as any[]).forEach((t: any) => {
-        parts.push(`  "${t.quote}" — ${t.name}, ${t.location}`);
+        parts.push(`  "${t?.quote ?? ""}" — ${t?.name ?? ""}, ${t?.location ?? ""}`);
       });
       parts.push("");
     }
@@ -256,7 +257,8 @@ function buildHeroMechanismContent(rows: any[]): string {
 export const campaignExportRouter = router({
   generateCampaignZip: protectedProcedure
     .input(z.object({ serviceId: z.number() }))
-    .query(async ({ ctx, input }) => {
+    .mutation(async ({ ctx, input }) => {
+      const sanitizeName = (s: string) => s.replace(/[/\\:*?"<>|]/g, '-').trim();
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -341,7 +343,7 @@ export const campaignExportRouter = router({
 
       // 6. Build ZIP
       const zip = new JSZip();
-      const folder = zip.folder(`ZAP - ${serviceName} - Campaign Kit`);
+      const folder = zip.folder(`ZAP - ${sanitizeName(serviceName)} - Campaign Kit`);
       if (!folder) throw new Error("Failed to create ZIP folder");
 
       folder.file("1. Ad Copy.txt", DEPLOY.adCopy + adCopyText);
@@ -383,7 +385,7 @@ export const campaignExportRouter = router({
       // 7. Generate base64
       const base64 = await zip.generateAsync({ type: "base64" });
 
-      const filename = `ZAP - ${serviceName} - Campaign Kit.zip`;
+      const filename = `ZAP - ${sanitizeName(serviceName)} - Campaign Kit.zip`;
 
       return { filename, base64 };
     }),
