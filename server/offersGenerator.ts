@@ -61,14 +61,21 @@ export async function generateOfferAngle(
   };
 
   // Social proof guidance — full guard matching landingPageGenerator.ts
+  const testimonialLines = socialProof.hasTestimonials
+    ? socialProof.testimonials.map((t: any) => `  • ${t.name}${t.title ? ` (${t.title})` : ''}: "${t.quote}"`).join('\n')
+    : '';
   const socialProofGuidance = socialProof.hasTestimonials || socialProof.hasCustomers || socialProof.hasPress
-    ? `REAL SOCIAL PROOF AVAILABLE:
-${socialProof.hasCustomers ? `- ${socialProof.customerCount} verified customers` : ''}
-${socialProof.hasRating ? `- ${socialProof.rating} average rating from ${socialProof.reviewCount} reviews` : ''}
-${socialProof.hasTestimonials ? `- Real testimonials: ${socialProof.testimonials.map((t: any) => `${t.name} (${t.title})`).join(', ')}` : ''}
-${socialProof.hasPress ? `- Press features: ${socialProof.press}` : ''}
+    ? `REAL SOCIAL PROOF AVAILABLE — you MUST reference these in the offer copy, do not fabricate or inflate:
+${socialProof.hasCustomers ? `- CUSTOMER COUNT: ${socialProof.customerCount} verified customers — use this exact number in the offer` : ''}
+${socialProof.hasRating ? `- RATING: ${socialProof.rating} average rating from ${socialProof.reviewCount} reviews — include this specific rating number` : ''}
+${socialProof.hasTestimonials ? `- TESTIMONIALS — quote the actual words, use the real name:\n${testimonialLines}` : ''}
+${socialProof.hasPress ? `- PRESS: ${socialProof.press} — reference this specific press mention by name` : ''}
 
-You MUST use these exact numbers and real testimonials. Do not fabricate or inflate.`
+USAGE RULES:
+- If testimonials exist: quote the actual testimonial text verbatim (or paraphrase closely) and use the real name
+- If rating exists: state the exact rating number (e.g. "4.9-star rated") — never round or omit
+- If press exists: name the specific publication/feature — never say "featured in leading publications"
+- If customer count exists: use the exact number — never say "hundreds of clients"`
     : `NO SOCIAL PROOF DATA PROVIDED:
 - DO NOT mention customer counts, ratings, or specific testimonials in the offer
 - Focus on outcome-based language and benefit claims only

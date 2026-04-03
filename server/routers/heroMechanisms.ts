@@ -152,6 +152,7 @@ export const heroMechanismsRouter = router({
 
       const mechanismSetId = nanoid();
       const allMechanisms: any[] = [];
+      let generationWarning: string | undefined;
 
       // Generate Hero Mechanisms (5 variations)
       const heroMechanismsPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert direct response copywriter creating compelling Hero Mechanisms.
@@ -204,8 +205,10 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
       try {
         const parsed = JSON.parse(stripMarkdownJson(heroMechanismsContent));
         heroMechanisms = Array.isArray(parsed) ? parsed : [];
+        if (!Array.isArray(parsed)) generationWarning = "Mechanism generation returned unexpected format — please try again.";
       } catch {
         heroMechanisms = [];
+        generationWarning = "Mechanism generation returned unexpected format — please try again.";
       }
 
       heroMechanisms.forEach((mechanism: { name: string; description: string }) => {
@@ -274,8 +277,10 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
       try {
         const parsed = JSON.parse(stripMarkdownJson(headlineIdeasContent));
         headlineIdeas = Array.isArray(parsed) ? parsed : [];
+        if (!Array.isArray(parsed)) generationWarning = "Mechanism generation returned unexpected format — please try again.";
       } catch {
         headlineIdeas = [];
+        generationWarning = "Mechanism generation returned unexpected format — please try again.";
       }
 
       headlineIdeas.forEach((mechanism: { name: string; description: string }) => {
@@ -351,9 +356,11 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
           powerMode = parsed;
         } else {
           console.error('[heroMechanisms] power mode: unexpected JSON shape, falling back to empty array. Content:', powerModeContent.slice(0, 300));
+          generationWarning = "Mechanism generation returned unexpected format — please try again.";
         }
       } catch (e) {
         console.error('[heroMechanisms] power mode: JSON.parse failed, falling back to empty array. Content:', powerModeContent.slice(0, 300));
+        generationWarning = "Mechanism generation returned unexpected format — please try again.";
       }
       
       powerMode.forEach((mechanism: { name: string; description: string }) => {
@@ -382,7 +389,7 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
       await createHeroMechanisms(allMechanisms);
       await incrementHeroMechanismCount(user.id);
 
-      return { mechanismSetId };
+      return { mechanismSetId, generationWarning };
     }),
 
   /**
@@ -553,6 +560,7 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
 
           const mechanismSetId = nanoid();
           const allMechanisms: any[] = [];
+          let bgGenerationWarning: string | undefined;
 
           // --- Hero Mechanisms (5 variations) ---
           const heroMechanismsPrompt = `${bgSotContext ? `${bgSotContext}\n\n` : ''}You are an expert direct response copywriter creating compelling Hero Mechanisms.\n\nProduct: ${capturedService.name}\nTarget Market: ${capturedInput.targetMarket}\nPressing Problem: ${bgResolvedPressingProblem}\nWhy Problem Exists: ${bgResolvedWhyProblem}\nWhat They've Tried: ${bgResolvedWhatTried}\nWhy Existing Solutions Fail: ${bgResolvedWhyExistingNotWork}\nDescriptor: ${capturedInput.descriptor || "System"}\nApplication: ${capturedInput.application || "Use this system"}\nDesired Outcome: ${capturedInput.desiredOutcome}\nCredibility: ${bgResolvedCredibility}\nSocial Proof: ${capturedInput.socialProof}\n${bgIcpContext ? `\n${bgIcpContext}\n` : ''}\nCreate 5 HERO MECHANISMS. Each mechanism must have:\n1. A creative, unique NAME using the descriptor\n2. A full PARAGRAPH description (150-200 words) that includes how it works, who developed it, specific outcome, emotional transformation, and why it's different.\n\nReturn ONLY a JSON array of 5 objects with "name" and "description" fields, nothing else.`;
@@ -566,7 +574,16 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
           const heroMechanismsContent = typeof heroMechanismsResponse.choices[0].message.content === 'string'
             ? heroMechanismsResponse.choices[0].message.content
             : JSON.stringify(heroMechanismsResponse.choices[0].message.content);
-          const heroMechanisms = JSON.parse(stripMarkdownJson(heroMechanismsContent));
+          // LLM occasionally returns explanatory text — guard prevents crash, empty array as fallback.
+          let heroMechanisms: { name: string; description: string }[] = [];
+          try {
+            const parsed = JSON.parse(stripMarkdownJson(heroMechanismsContent));
+            heroMechanisms = Array.isArray(parsed) ? parsed : [];
+            if (!Array.isArray(parsed)) bgGenerationWarning = "Mechanism generation returned unexpected format — please try again.";
+          } catch {
+            heroMechanisms = [];
+            bgGenerationWarning = "Mechanism generation returned unexpected format — please try again.";
+          }
           heroMechanisms.forEach((m: { name: string; description: string }) => {
             allMechanisms.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId, mechanismSetId, tabType: "hero_mechanisms" as const, mechanismName: m.name, mechanismDescription: m.description, targetMarket: capturedInput.targetMarket, pressingProblem: capturedInput.pressingProblem, whyProblem: capturedInput.whyProblem, whatTried: capturedInput.whatTried, whyExistingNotWork: capturedInput.whyExistingNotWork, descriptor: capturedInput.descriptor, application: capturedInput.application, desiredOutcome: capturedInput.desiredOutcome, credibility: capturedInput.credibility, socialProof: capturedInput.socialProof });
           });
@@ -583,7 +600,16 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
           const headlineIdeasContent = typeof headlineIdeasResponse.choices[0].message.content === 'string'
             ? headlineIdeasResponse.choices[0].message.content
             : JSON.stringify(headlineIdeasResponse.choices[0].message.content);
-          const headlineIdeas = JSON.parse(stripMarkdownJson(headlineIdeasContent));
+          // LLM occasionally returns explanatory text — guard prevents crash, empty array as fallback.
+          let headlineIdeas: { name: string; description: string }[] = [];
+          try {
+            const parsed = JSON.parse(stripMarkdownJson(headlineIdeasContent));
+            headlineIdeas = Array.isArray(parsed) ? parsed : [];
+            if (!Array.isArray(parsed)) bgGenerationWarning = "Mechanism generation returned unexpected format — please try again.";
+          } catch {
+            headlineIdeas = [];
+            bgGenerationWarning = "Mechanism generation returned unexpected format — please try again.";
+          }
           headlineIdeas.forEach((m: { name: string; description: string }) => {
             allMechanisms.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId, mechanismSetId, tabType: "headline_ideas" as const, mechanismName: m.name, mechanismDescription: m.description, targetMarket: capturedInput.targetMarket, pressingProblem: capturedInput.pressingProblem, whyProblem: capturedInput.whyProblem, whatTried: capturedInput.whatTried, whyExistingNotWork: capturedInput.whyExistingNotWork, descriptor: capturedInput.descriptor, application: capturedInput.application, desiredOutcome: capturedInput.desiredOutcome, credibility: capturedInput.credibility, socialProof: capturedInput.socialProof });
           });
@@ -600,7 +626,18 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
           const powerModeContent = typeof powerModeResponse.choices[0].message.content === 'string'
             ? powerModeResponse.choices[0].message.content
             : JSON.stringify(powerModeResponse.choices[0].message.content);
-          const powerMode = JSON.parse(stripMarkdownJson(powerModeContent));
+          // LLM occasionally returns explanatory text — guard prevents crash, empty array as fallback.
+          let powerMode: { name: string; description: string }[] = [];
+          try {
+            const parsed = JSON.parse(stripMarkdownJson(powerModeContent));
+            if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'object' && parsed[0] !== null) {
+              powerMode = parsed;
+            } else {
+              bgGenerationWarning = "Mechanism generation returned unexpected format — please try again.";
+            }
+          } catch {
+            bgGenerationWarning = "Mechanism generation returned unexpected format — please try again.";
+          }
           powerMode.forEach((m: { name: string; description: string }) => {
             allMechanisms.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId, mechanismSetId, tabType: "beast_mode" as const, mechanismName: m.name, mechanismDescription: m.description, targetMarket: capturedInput.targetMarket, pressingProblem: capturedInput.pressingProblem, whyProblem: capturedInput.whyProblem, whatTried: capturedInput.whatTried, whyExistingNotWork: capturedInput.whyExistingNotWork, descriptor: capturedInput.descriptor, application: capturedInput.application, desiredOutcome: capturedInput.desiredOutcome, credibility: capturedInput.credibility, socialProof: capturedInput.socialProof });
           });
@@ -609,9 +646,9 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
           await createHeroMechanisms(allMechanisms);
           await incrementHeroMechanismCount(capturedUserId);
 
-          // Mark job complete
+          // Mark job complete — include generationWarning if any tab returned unexpected format
           await bgDb.update(jobs)
-            .set({ status: "complete", result: JSON.stringify({ mechanismSetId }) })
+            .set({ status: "complete", result: JSON.stringify({ mechanismSetId, generationWarning: bgGenerationWarning }) })
             .where(eq(jobs.id, jobId));
           console.log(`[generateAsync] Job ${jobId} completed, mechanismSetId: ${mechanismSetId}`);
         } catch (err: unknown) {
