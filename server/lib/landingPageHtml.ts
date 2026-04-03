@@ -35,6 +35,15 @@ function jp<T>(v: unknown, fb: T): T {
   return v as T;
 }
 
+// ─── Cloudflare image transform: HEIC → JPEG via Cloudinary URL rewrite ──────
+// Inserts /f_jpg,q_auto/ before the /upload/ segment on Cloudinary URLs.
+// Safe no-op for non-Cloudinary URLs.
+function cfImg(url: string | null | undefined): string {
+  if (!url) return "";
+  if (!url.includes("res.cloudinary.com")) return url;
+  return url.replace("/upload/", "/upload/f_jpg,q_auto/");
+}
+
 // ─── TEXT STYLE HTML ─────────────────────────────────────────────────────────
 // Matches LandingPageVisualRenderer: #1a1a1a bg, Inter font, #8B5CF6 purple accent
 export function buildTextStyleHtml(content: LandingPageContent, serviceName: string): string {
@@ -293,7 +302,7 @@ export function buildVisualStyleHtml(
   sections.push(`
   <nav style="background:${DARK};padding:16px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;border-bottom:1px solid #222;">
     ${logoUrl
-      ? `<img src="${esc(logoUrl)}" alt="${esc(serviceName)}" style="height:40px;object-fit:contain;vertical-align:middle;">`
+      ? `<img src="${esc(cfImg(logoUrl))}" alt="${esc(serviceName)}" style="height:40px;object-fit:contain;vertical-align:middle;">`
       : `<span style="font-family:${H};font-weight:700;font-style:normal;font-size:20px;color:${TEXT_DARK};">${esc(serviceName)}</span>`}
     ${ok(content.primaryCta) ? `<a href="#" style="font-family:${H};font-size:13px;font-weight:700;font-style:normal;color:#fff;background:${A};padding:10px 22px;border-radius:8px;text-decoration:none;">${esc(content.primaryCta)}</a>` : ""}
   </nav>`);
@@ -309,7 +318,7 @@ export function buildVisualStyleHtml(
       </div>`;
     const heroPhoto = headshotUrl
       ? `<div style="flex:0 1 40%;min-width:260px;display:flex;justify-content:center;align-items:center;">
-           <img src="${esc(headshotUrl)}" alt="${esc(coachName || "Coach")}" style="width:100%;max-width:420px;max-height:500px;border-radius:12px;object-fit:cover;border:6px solid #c9d1d9;">
+           <img src="${esc(cfImg(headshotUrl))}" alt="${esc(coachName || "Coach")}" style="width:100%;max-width:420px;max-height:500px;border-radius:12px;object-fit:cover;border:6px solid #FE4500;">
          </div>`
       : "";
     sections.push(`
@@ -360,10 +369,14 @@ export function buildVisualStyleHtml(
 
   // S4b: COACH AUTHORITY (DARK) — after solution intro, only if headshot or coachName present
   if (headshotUrl || coachName) {
-    const bioText = coachBackground && coachBackground.length > 10 ? coachBackground : "";
+    // Fix 4: if bio is under 50 chars, append service name as context
+    const rawBio = coachBackground && coachBackground.trim().length > 10 ? coachBackground.trim() : "";
+    const bioText = rawBio
+      ? (rawBio.length < 50 ? `${rawBio} — ${serviceName}` : rawBio)
+      : "";
     const photoCol = headshotUrl
       ? `<div style="flex:0 1 40%;min-width:260px;">
-           <img src="${esc(headshotUrl)}" alt="${esc(coachName || "Coach")}" style="width:100%;max-width:400px;border-radius:12px;object-fit:cover;">
+           <img src="${esc(cfImg(headshotUrl))}" alt="${esc(coachName || "Coach")}" style="width:100%;max-width:400px;border-radius:12px;object-fit:cover;border:4px solid #FE4500;">
          </div>`
       : "";
     sections.push(`
@@ -385,8 +398,8 @@ export function buildVisualStyleHtml(
   <section style="background:${DARK};padding:${PAD};">
     <div style="max-width:${MAX_W};margin:0 auto;padding:0 24px;">
       <h2 style="font-family:${H};font-weight:700;font-style:normal;font-size:32px;color:${TEXT_DARK};margin:0 0 32px;text-align:center;">Results Our Clients Get</h2>
-      <div style="display:flex;gap:16px;overflow-x:auto;padding:24px 0;-webkit-overflow-scrolling:touch;">
-        ${socialProofUrls.map(url => `<img src="${esc(url)}" alt="" style="height:300px;width:auto;border-radius:8px;flex-shrink:0;object-fit:cover;">`).join("")}
+      <div style="display:flex;flex-wrap:nowrap;gap:16px;overflow-x:auto;padding-bottom:16px;-webkit-overflow-scrolling:touch;">
+        ${socialProofUrls.map(url => `<img src="${esc(cfImg(url))}" alt="" style="height:300px;width:auto;min-width:200px;flex-shrink:0;object-fit:cover;border-radius:8px;">`).join("")}
       </div>
     </div>
   </section>`);
