@@ -1075,8 +1075,32 @@ function LandingPageRecommendation({ landingPageId, campaignKit, onSelect, onReg
   onSelect: (id: number, angle: string) => void;
   onRegenerate: () => void;
 }) {
-  const { data: page } = trpc.landingPages.get.useQuery({ id: landingPageId }, { enabled: !!landingPageId });
+  const { data: page, refetch: refetchPage } = trpc.landingPages.get.useQuery({ id: landingPageId }, { enabled: !!landingPageId });
   const { data: hasCompleted } = trpc.campaignKits.hasCompletedCampaign.useQuery();
+  const publishMutation = trpc.landingPages.publishToCloudflare.useMutation();
+  const [lpPublishing, setLpPublishing] = useState(false);
+  const [lpPublishError, setLpPublishError] = useState<string | null>(null);
+  const [lpCopied, setLpCopied] = useState(false);
+
+  async function handlePublish() {
+    setLpPublishing(true);
+    setLpPublishError(null);
+    try {
+      await publishMutation.mutateAsync({ landingPageId });
+      await refetchPage();
+    } catch (e: any) {
+      setLpPublishError(e.message || "Publish failed. Please try again.");
+    } finally {
+      setLpPublishing(false);
+    }
+  }
+
+  function handleCopyUrl(url: string) {
+    navigator.clipboard.writeText(url).then(() => {
+      setLpCopied(true);
+      setTimeout(() => setLpCopied(false), 2500);
+    });
+  }
 
   if (!page) {
     return <p style={{ textAlign: "center", color: "#999", fontFamily: "var(--v2-font-body)" }}>Loading landing page...</p>;
@@ -1126,30 +1150,81 @@ function LandingPageRecommendation({ landingPageId, campaignKit, onSelect, onReg
     onSelect(landingPageId, angles[0].key);
   };
 
+  const publicUrl = page?.publicUrl ?? null;
+  const F = "'Inter', system-ui, sans-serif";
+  const A = "#FF5B1D";
+
   return (
-    <RecommendedAssetPanel
-      primaryAsset={primary}
-      alternativeAssets={alternatives.map((a, i) => ({
-        ...a,
-        // Override id to encode angle index so we can differentiate on click
-        id: landingPageId * 100 + (i + 1),
-      }))}
-      allAssets={allAssets}
-      nodeLabel="landing page"
-      nodeId="landingPages"
-      isFirstCampaign={!hasCompleted}
-      onSelect={(selectedId: number) => {
-        // Decode: if selectedId > landingPageId * 10 it's an alternative
-        if (selectedId === landingPageId) {
-          onSelect(landingPageId, angles[0].key);
-        } else {
-          const altIndex = selectedId - landingPageId * 100;
-          const angleKey = angles[altIndex]?.key || angles[0].key;
-          onSelect(landingPageId, angleKey);
-        }
-      }}
-      onRegenerate={onRegenerate}
-    />
+    <>
+      <RecommendedAssetPanel
+        primaryAsset={primary}
+        alternativeAssets={alternatives.map((a, i) => ({
+          ...a,
+          // Override id to encode angle index so we can differentiate on click
+          id: landingPageId * 100 + (i + 1),
+        }))}
+        allAssets={allAssets}
+        nodeLabel="landing page"
+        nodeId="landingPages"
+        isFirstCampaign={!hasCompleted}
+        onSelect={(selectedId: number) => {
+          // Decode: if selectedId > landingPageId * 10 it's an alternative
+          if (selectedId === landingPageId) {
+            onSelect(landingPageId, angles[0].key);
+          } else {
+            const altIndex = selectedId - landingPageId * 100;
+            const angleKey = angles[altIndex]?.key || angles[0].key;
+            onSelect(landingPageId, angleKey);
+          }
+        }}
+        onRegenerate={onRegenerate}
+      />
+      {/* ── Publish to Cloudflare card ── */}
+      <div style={{ background: "#fff", borderRadius: 16, padding: "20px 24px", marginTop: 12 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 14, marginBottom: 14 }}>
+          <span style={{ fontSize: 22, lineHeight: 1 }}>🌐</span>
+          <div>
+            <p style={{ fontFamily: F, fontWeight: 600, fontSize: 14, color: "#1A1624", margin: "0 0 4px" }}>Publish Landing Page</p>
+            <p style={{ fontFamily: F, fontSize: 12, color: "#999", margin: 0 }}>
+              Deploy your landing page to a public URL at zapcampaigns.com/p/…
+            </p>
+          </div>
+        </div>
+        {publicUrl ? (
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#F5F1EA", borderRadius: 10, padding: "10px 14px", marginBottom: 10 }}>
+              <a href={publicUrl} target="_blank" rel="noopener noreferrer" style={{ fontFamily: F, fontSize: 13, color: A, textDecoration: "none", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {publicUrl}
+              </a>
+              <button
+                onClick={() => handleCopyUrl(publicUrl)}
+                style={{ flexShrink: 0, fontFamily: F, fontSize: 12, fontWeight: 600, color: lpCopied ? "#22C55E" : A, background: "transparent", border: `1.5px solid ${lpCopied ? "#22C55E" : A}`, borderRadius: 9999, padding: "5px 14px", cursor: "pointer" }}
+              >
+                {lpCopied ? "Copied!" : "Copy"}
+              </button>
+            </div>
+            <button
+              onClick={handlePublish}
+              disabled={lpPublishing}
+              style={{ width: "100%", padding: "10px 24px", borderRadius: 9999, border: `1.5px solid #E5E7EB`, background: "transparent", color: "#555", fontFamily: F, fontWeight: 600, fontSize: 13, cursor: lpPublishing ? "wait" : "pointer" }}
+            >
+              {lpPublishing ? "Re-publishing…" : "Re-publish (update page)"}
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={handlePublish}
+            disabled={lpPublishing}
+            style={{ width: "100%", padding: "12px 24px", borderRadius: 9999, border: "none", background: lpPublishing ? "#ccc" : "#1A1624", color: "#fff", fontFamily: F, fontWeight: 700, fontSize: 14, cursor: lpPublishing ? "wait" : "pointer" }}
+          >
+            {lpPublishing ? "Publishing…" : "Publish Landing Page"}
+          </button>
+        )}
+        {lpPublishError && (
+          <p style={{ fontFamily: F, fontSize: 12, color: "#C0390A", margin: "8px 0 0" }}>{lpPublishError}</p>
+        )}
+      </div>
+    </>
   );
 }
 
@@ -1234,8 +1309,13 @@ function WhatsAppRecommendation({ whatsappSequenceId, campaignKit, onSelect, onR
 }
 
 // ─── Push Integration Panel: Node 11 — Connect Meta + GHL ─────────────────────
-function PushIntegrationPanel({ campaignKit, serviceId, serviceName }: { campaignKit: any; serviceId: number | null; serviceName: string }) {
+function PushIntegrationPanel({ campaignKit, serviceId, serviceName, landingPageId }: { campaignKit: any; serviceId: number | null; serviceName: string; landingPageId?: number | null }) {
   const { data: metaStatus } = trpc.meta.getConnectionStatus.useQuery();
+  const { data: publishedLp } = trpc.landingPages.get.useQuery(
+    { id: landingPageId! },
+    { enabled: !!landingPageId }
+  );
+  const [lpUrlCopied, setLpUrlCopied] = useState(false);
   const { data: ghlStatus, refetch: refetchGhlStatus } = trpc.ghl.getConnectionStatus.useQuery();
   const ghlExchangeCode = trpc.ghl.exchangeCode.useMutation({
     onSuccess: () => { refetchGhlStatus(); },
@@ -1495,6 +1575,32 @@ function PushIntegrationPanel({ campaignKit, serviceId, serviceName }: { campaig
         <p style={{ fontFamily: F, fontSize: 13, color: pushStatus.startsWith("Error") ? "#C0390A" : "#22C55E", margin: "8px 0", whiteSpace: "pre-line", lineHeight: 1.6 }}>
           {pushStatus}
         </p>
+      )}
+
+      {/* Published Landing Page URL card */}
+      {publishedLp?.publicUrl && (
+        <div style={{ background: "#fff", borderRadius: 16, padding: "20px 24px", marginBottom: 12, textAlign: "left" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+            <span style={{ fontSize: 20 }}>🌐</span>
+            <p style={{ fontFamily: F, fontWeight: 600, fontSize: 14, color: "#1A1624", margin: 0 }}>Your Landing Page is Live</p>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#F5F1EA", borderRadius: 10, padding: "10px 14px" }}>
+            <a href={publishedLp.publicUrl} target="_blank" rel="noopener noreferrer" style={{ fontFamily: F, fontSize: 13, color: A, textDecoration: "none", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {publishedLp.publicUrl}
+            </a>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(publishedLp.publicUrl!).then(() => {
+                  setLpUrlCopied(true);
+                  setTimeout(() => setLpUrlCopied(false), 2500);
+                });
+              }}
+              style={{ flexShrink: 0, fontFamily: F, fontSize: 12, fontWeight: 600, color: lpUrlCopied ? "#22C55E" : A, background: "transparent", border: `1.5px solid ${lpUrlCopied ? "#22C55E" : A}`, borderRadius: 9999, padding: "5px 14px", cursor: "pointer" }}
+            >
+              {lpUrlCopied ? "Copied!" : "Copy"}
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Download Campaign Kit card */}
@@ -3838,7 +3944,7 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
 
           {/* ── NODE 11 — PUSH TO META / GHL ── */}
           {step === "pushToMeta" && (
-            <PushIntegrationPanel campaignKit={campaignKit} serviceId={resolvedServiceId ?? null} serviceName={activeService?.name ?? ""} />
+            <PushIntegrationPanel campaignKit={campaignKit} serviceId={resolvedServiceId ?? null} serviceName={activeService?.name ?? ""} landingPageId={campaignKit?.selectedLandingPageId ?? null} />
           )}
 
           {/* ── CONCERNED STATE (compliance violations) ── */}

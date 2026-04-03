@@ -445,7 +445,11 @@ export const landingPages = mysqlTable("landingPages", {
   
   // Active angle (for display)
   activeAngle: mysqlEnum("activeAngle", ["original", "godfather", "free", "dollar"]).default("original"),
-  
+
+  // D4: Cloudflare Workers public URL
+  publicSlug: varchar("publicSlug", { length: 255 }).unique(),
+  publicUrl: varchar("publicUrl", { length: 500 }),
+
   rating: int("rating").default(0),
   selectionScore: decimal("selectionScore", { precision: 5, scale: 2 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

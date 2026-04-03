@@ -759,4 +759,59 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
 
       return { success: true };
     }),
+
+  // D4: Publish landing page to Cloudflare Workers KV
+  publishToCloudflare: protectedProcedure
+    .input(z.object({ landingPageId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const [lp] = await db
+        .select()
+        .from(landingPages)
+        .where(and(eq(landingPages.id, input.landingPageId), eq(landingPages.userId, ctx.user.id)))
+        .limit(1);
+      if (!lp) throw new TRPCError({ code: "NOT_FOUND", message: "Landing page not found" });
+
+      let serviceName = "Campaign";
+      if (lp.serviceId) {
+        const [svc] = await db
+          .select({ name: services.name })
+          .from(services)
+          .where(eq(services.id, lp.serviceId))
+          .limit(1);
+        if (svc) serviceName = svc.name;
+      }
+
+      // Pick active angle content
+      const angleKey = lp.activeAngle || "original";
+      const content =
+        angleKey === "godfather" ? lp.godfatherAngle
+        : angleKey === "free" ? lp.freeAngle
+        : angleKey === "dollar" ? lp.dollarAngle
+        : lp.originalAngle;
+      if (!content) throw new TRPCError({ code: "BAD_REQUEST", message: "No content for selected angle — please generate a landing page first." });
+
+      // Re-use existing slug or generate a stable one
+      const slug =
+        lp.publicSlug ||
+        `${serviceName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}-${lp.id}`;
+
+      const { buildLandingPageHtml } = await import("../lib/landingPageHtml");
+      const { ensureKvNamespace, writeKvPage, deployWorker } = await import("../lib/cloudflare");
+
+      const html = buildLandingPageHtml({ content, serviceName });
+      const namespaceId = await ensureKvNamespace();
+      await writeKvPage(namespaceId, slug, html);
+      await deployWorker(namespaceId);
+
+      const publicUrl = `https://zapcampaigns.com/p/${slug}`;
+      await db
+        .update(landingPages)
+        .set({ publicSlug: slug, publicUrl })
+        .where(eq(landingPages.id, lp.id));
+
+      return { success: true, publicUrl, slug };
+    }),
 });
