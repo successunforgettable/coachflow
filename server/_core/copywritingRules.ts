@@ -88,3 +88,11 @@ export const BANNED_MECHANISM_NAMES: string[] = [
  */
 export const META_COMPLIANCE_NOTES =
   "Never include: As seen on Meta, As seen on Facebook, As seen on Instagram. Never make income guarantees. Never use banned Meta language: banned, secret they don't want you to know, leaked, exposed, glitch.";
+
+/**
+ * Truncate a testimonial quote to a maximum length (default 100 chars).
+ * Prevents the model spending token budget on quote reproduction rather than copy.
+ * Used in: offersGenerator.ts, emailSequences.ts, whatsappSequences.ts
+ */
+export const truncateQuote = (q: string, max = 100): string =>
+  q.length > max ? q.slice(0, max - 3) + '...' : q;

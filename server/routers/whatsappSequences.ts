@@ -12,6 +12,7 @@ import { invokeLLM } from "../_core/llm";
 import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
+import { truncateQuote } from "../_core/copywritingRules";
 
 // ---------------------------------------------------------------------------
 // Shared WhatsApp prompt builders — used by generate (sync) and generateAsync.
@@ -302,19 +303,25 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
 
       const campaignTypeContext = campaignTypeContextMap[campaignType] || campaignTypeContextMap['course_launch'];
 
-      // Extract real social proof data
+      // Extract real social proof data — full structure matching emailSequences.ts
       const socialProof = {
         hasCustomers: !!service.totalCustomers && service.totalCustomers > 0,
         hasTestimonials: !!service.testimonial1Name || !!service.testimonial2Name || !!service.testimonial3Name,
         customerCount: service.totalCustomers || 0,
+        testimonials: [
+          service.testimonial1Name ? { name: service.testimonial1Name, title: service.testimonial1Title || '', quote: service.testimonial1Quote || '' } : null,
+          service.testimonial2Name ? { name: service.testimonial2Name, title: service.testimonial2Title || '', quote: service.testimonial2Quote || '' } : null,
+          service.testimonial3Name ? { name: service.testimonial3Name, title: service.testimonial3Title || '', quote: service.testimonial3Quote || '' } : null,
+        ].filter(Boolean),
       };
-      
-      // Social proof guidance for WhatsApp messages
+
+      // Social proof guidance for WhatsApp messages — truncateQuote from copywritingRules.ts
       const socialProofGuidance = socialProof.hasCustomers || socialProof.hasTestimonials
         ? `REAL SOCIAL PROOF AVAILABLE:
 ${socialProof.hasCustomers ? `- ${socialProof.customerCount} verified customers` : ''}
+${socialProof.hasTestimonials ? `- Real testimonials:\n${socialProof.testimonials.map((t: any) => `  • ${t.name}${t.title ? ` (${t.title})` : ''}: "${truncateQuote(t.quote || '')}"`).join('\n')}` : ''}
 
-You MUST use these exact numbers. Do not fabricate.`
+You MUST use these exact numbers and real names. Do not fabricate.`
         : `NO SOCIAL PROOF DATA PROVIDED:
 - DO NOT mention customer counts or specific testimonials
 - Focus on benefit claims and value propositions
@@ -462,8 +469,9 @@ You MUST use these exact numbers. Do not fabricate.`
           const icpContext = capturedIcp ? `\nIDEAL CUSTOMER PROFILE — use this to make every line of copy specific and targeted:\n${capturedIcp.pains ? `Their daily pains: ${capturedIcp.pains}` : ''}\n${capturedIcp.fears ? `Their deep fears: ${capturedIcp.fears}` : ''}\n${capturedIcp.buyingTriggers ? `What makes them buy: ${capturedIcp.buyingTriggers}` : ''}\n${capturedIcp.communicationStyle ? `How they communicate: ${capturedIcp.communicationStyle}` : ''}`.trim() : '';
           const campaignTypeContextMap: Record<string, string> = { webinar: `CAMPAIGN TYPE: Webinar\nFraming: Show-up urgency. CTA language: Register now / Save your seat / Join us live on [date]`, challenge: `CAMPAIGN TYPE: Challenge\nFraming: Community commitment. CTA language: Join the challenge / Claim your spot / Start with us on [date]`, course_launch: `CAMPAIGN TYPE: Course Launch\nFraming: Transformation journey. CTA language: Enrol now / Join the programme / Claim your place before [date]`, product_launch: `CAMPAIGN TYPE: Product Launch\nFraming: Early access. CTA language: Get early access / Become a founding member / Lock in launch pricing` };
           const campaignTypeContext = campaignTypeContextMap[capturedCampaignType] || campaignTypeContextMap['course_launch'];
-          const socialProof = { hasCustomers: !!capturedService.totalCustomers && capturedService.totalCustomers > 0, hasTestimonials: !!capturedService.testimonial1Name || !!capturedService.testimonial2Name || !!capturedService.testimonial3Name, customerCount: capturedService.totalCustomers || 0 };
-          const socialProofGuidance = socialProof.hasCustomers || socialProof.hasTestimonials ? `REAL SOCIAL PROOF AVAILABLE:\n${socialProof.hasCustomers ? `- ${socialProof.customerCount} verified customers` : ''}\n\nYou MUST use these exact numbers. Do not fabricate.` : `NO SOCIAL PROOF DATA PROVIDED:\n- DO NOT mention customer counts or specific testimonials\n- Focus on benefit claims and value propositions\n- Use outcome-based language WITHOUT specific names`;
+          const socialProof = { hasCustomers: !!capturedService.totalCustomers && capturedService.totalCustomers > 0, hasTestimonials: !!capturedService.testimonial1Name || !!capturedService.testimonial2Name || !!capturedService.testimonial3Name, customerCount: capturedService.totalCustomers || 0, testimonials: [capturedService.testimonial1Name ? { name: capturedService.testimonial1Name, title: capturedService.testimonial1Title || '', quote: capturedService.testimonial1Quote || '' } : null, capturedService.testimonial2Name ? { name: capturedService.testimonial2Name, title: capturedService.testimonial2Title || '', quote: capturedService.testimonial2Quote || '' } : null, capturedService.testimonial3Name ? { name: capturedService.testimonial3Name, title: capturedService.testimonial3Title || '', quote: capturedService.testimonial3Quote || '' } : null].filter(Boolean) };
+          // truncateQuote imported from copywritingRules.ts — one definition used everywhere.
+          const socialProofGuidance = socialProof.hasCustomers || socialProof.hasTestimonials ? `REAL SOCIAL PROOF AVAILABLE:\n${socialProof.hasCustomers ? `- ${socialProof.customerCount} verified customers` : ''}\n${socialProof.hasTestimonials ? `- Real testimonials:\n${socialProof.testimonials.map((t: any) => `  • ${t.name}${t.title ? ` (${t.title})` : ''}: "${truncateQuote(t.quote || '')}"`).join('\n')}` : ''}\n\nYou MUST use these exact numbers and real names. Do not fabricate.` : `NO SOCIAL PROOF DATA PROVIDED:\n- DO NOT mention customer counts or specific testimonials\n- Focus on benefit claims and value propositions\n- Use outcome-based language WITHOUT specific names`;
 
           // Use the shared builders — same per-message job structure as the sync path.
           const bgPromptParams: WhatsappPromptParams = {

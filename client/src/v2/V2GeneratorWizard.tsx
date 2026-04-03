@@ -1405,8 +1405,8 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
   // latestMechWarning is only relevant while on the uniqueMethod step. Clearing it on
   // step change prevents stale warnings appearing if the user navigates away and returns.
   useEffect(() => {
-    setLatestMechWarning(undefined);
-  }, [step]);
+    if (latestMechWarning !== undefined) setLatestMechWarning(undefined);
+  }, [step]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Core generation logic — real tRPC mutations for all 11 steps ──
   const runGeneration = useCallback(async (payload: Record<string, unknown>) => {
@@ -1631,6 +1631,7 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
   }
 
   // ── Retry handler: re-runs the exact same payload ──
+  // Function declaration — hoisted, no linting issue with use-before-define.
   function handleRetry() {
     if (lastPayloadRef.current) {
       runGeneration(lastPayloadRef.current);

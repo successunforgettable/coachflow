@@ -1,6 +1,6 @@
 import { invokeLLM } from "./_core/llm";
 import type { OfferContent } from "../drizzle/schema";
-import { BANNED_COPYWRITING_WORDS, META_COMPLIANCE_NOTES } from "./_core/copywritingRules";
+import { BANNED_COPYWRITING_WORDS, META_COMPLIANCE_NOTES, truncateQuote } from "./_core/copywritingRules";
 
 // Angle-specific prompt modifiers for Offers (Industry standard)
 const ANGLE_PROMPTS = {
@@ -60,8 +60,7 @@ export async function generateOfferAngle(
     vip: "High-ticket offer with maximum value, exclusive access, premium bonuses",
   };
 
-  // Truncated to 100 chars to prevent model spending token budget on quote reproduction rather than offer copy.
-  const truncateQuote = (q: string) => q.length > 100 ? q.slice(0, 97) + '...' : q;
+  // truncateQuote imported from copywritingRules.ts — one definition used everywhere.
   // Social proof guidance — full guard matching landingPageGenerator.ts
   const testimonialLines = socialProof.hasTestimonials
     ? socialProof.testimonials.map((t: any) => `  • ${t.name}${t.title ? ` (${t.title})` : ''}: "${truncateQuote(t.quote || '')}"`).join('\n')

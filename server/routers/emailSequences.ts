@@ -12,6 +12,7 @@ import { invokeLLM } from "../_core/llm";
 import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
+import { truncateQuote } from "../_core/copywritingRules";
 
 // ---------------------------------------------------------------------------
 // Shared email prompt builders — used by generate (sync) and generateAsync.
@@ -369,8 +370,7 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
         press: service.pressFeatures || '',
       };
       
-      // Truncated to match offersGenerator.ts — prevents token budget being spent on quote reproduction.
-      const truncateQuote = (q: string) => q.length > 100 ? q.slice(0, 97) + '...' : q;
+      // truncateQuote imported from copywritingRules.ts — one definition used everywhere.
       // Social proof guidance for email copy
       const socialProofGuidance = socialProof.hasTestimonials || socialProof.hasCustomers
         ? `REAL SOCIAL PROOF AVAILABLE:
@@ -549,9 +549,8 @@ You MUST use these exact numbers and real names. Do not fabricate.`
           const campaignTypeContextMap: Record<string, string> = { webinar: `CAMPAIGN TYPE: Webinar\nFraming: Show-up urgency. CTA language: Register now / Save your seat / Join us live on [date]`, challenge: `CAMPAIGN TYPE: Challenge\nFraming: Community commitment. CTA language: Join the challenge / Claim your spot / Start with us on [date]`, course_launch: `CAMPAIGN TYPE: Course Launch\nFraming: Transformation journey. CTA language: Enrol now / Join the programme / Claim your place before [date]`, product_launch: `CAMPAIGN TYPE: Product Launch\nFraming: Early access. CTA language: Get early access / Become a founding member / Lock in launch pricing` };
           const campaignTypeContext = campaignTypeContextMap[capturedCampaignType] || campaignTypeContextMap['course_launch'];
           const socialProof = { hasCustomers: !!capturedService.totalCustomers && capturedService.totalCustomers > 0, hasRating: !!capturedService.averageRating && parseFloat(capturedService.averageRating) > 0, hasReviews: !!capturedService.totalReviews && capturedService.totalReviews > 0, hasTestimonials: !!capturedService.testimonial1Name || !!capturedService.testimonial2Name || !!capturedService.testimonial3Name, customerCount: capturedService.totalCustomers || 0, rating: capturedService.averageRating || '', reviewCount: capturedService.totalReviews || 0, testimonials: [capturedService.testimonial1Name ? { name: capturedService.testimonial1Name, title: capturedService.testimonial1Title || '', quote: capturedService.testimonial1Quote || '' } : null, capturedService.testimonial2Name ? { name: capturedService.testimonial2Name, title: capturedService.testimonial2Title || '', quote: capturedService.testimonial2Quote || '' } : null, capturedService.testimonial3Name ? { name: capturedService.testimonial3Name, title: capturedService.testimonial3Title || '', quote: capturedService.testimonial3Quote || '' } : null].filter(Boolean) };
-          // Truncated to match offersGenerator.ts — prevents token budget being spent on quote reproduction.
-          const bgTruncateQuote = (q: string) => q.length > 100 ? q.slice(0, 97) + '...' : q;
-          const socialProofGuidance = socialProof.hasTestimonials || socialProof.hasCustomers ? `REAL SOCIAL PROOF AVAILABLE:\n${socialProof.hasCustomers ? `- ${socialProof.customerCount} verified customers` : ''}\n${socialProof.hasRating ? `- ${socialProof.rating} average rating from ${socialProof.reviewCount} reviews` : ''}\n${socialProof.hasTestimonials ? `- Real testimonials:\n${(socialProof.testimonials as any[]).map((t: any) => `  • ${t.name}${t.title ? ` (${t.title})` : ''}: "${bgTruncateQuote(t.quote || '')}"`).join('\n')}` : ''}\n\nYou MUST use these exact numbers and real names. Do not fabricate.` : `NO SOCIAL PROOF DATA PROVIDED:\n- DO NOT mention customer counts, ratings, or specific testimonials\n- Focus on benefit claims and transformation outcomes\n- Use outcome-based stories WITHOUT specific names`;
+          // truncateQuote imported from copywritingRules.ts — one definition used everywhere.
+          const socialProofGuidance = socialProof.hasTestimonials || socialProof.hasCustomers ? `REAL SOCIAL PROOF AVAILABLE:\n${socialProof.hasCustomers ? `- ${socialProof.customerCount} verified customers` : ''}\n${socialProof.hasRating ? `- ${socialProof.rating} average rating from ${socialProof.reviewCount} reviews` : ''}\n${socialProof.hasTestimonials ? `- Real testimonials:\n${(socialProof.testimonials as any[]).map((t: any) => `  • ${t.name}${t.title ? ` (${t.title})` : ''}: "${truncateQuote(t.quote || '')}"`).join('\n')}` : ''}\n\nYou MUST use these exact numbers and real names. Do not fabricate.` : `NO SOCIAL PROOF DATA PROVIDED:\n- DO NOT mention customer counts, ratings, or specific testimonials\n- Focus on benefit claims and transformation outcomes\n- Use outcome-based stories WITHOUT specific names`;
 
           // Use the shared builders — same per-email job structure as the sync path.
           const bgEmailParams: EmailPromptParams = {
