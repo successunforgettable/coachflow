@@ -762,7 +762,7 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
 
   // D4: Publish landing page to Cloudflare Workers KV
   publishToCloudflare: protectedProcedure
-    .input(z.object({ landingPageId: z.number() }))
+    .input(z.object({ landingPageId: z.number(), styleMode: z.enum(["text", "visual"]).default("text") }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
@@ -798,10 +798,12 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
         lp.publicSlug ||
         `${serviceName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}-${lp.id}`;
 
-      const { buildLandingPageHtml } = await import("../lib/landingPageHtml");
+      const { buildTextStyleHtml, buildVisualStyleHtml } = await import("../lib/landingPageHtml");
       const { ensureKvNamespace, writeKvPage, deployWorker } = await import("../lib/cloudflare");
 
-      const html = buildLandingPageHtml({ content, serviceName });
+      const html = input.styleMode === "visual"
+        ? buildVisualStyleHtml(content, serviceName)
+        : buildTextStyleHtml(content, serviceName);
       const namespaceId = await ensureKvNamespace();
       await writeKvPage(namespaceId, slug, html);
       await deployWorker(namespaceId);
@@ -809,7 +811,7 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
       const publicUrl = `https://zapcampaigns.com/p/${slug}`;
       await db
         .update(landingPages)
-        .set({ publicSlug: slug, publicUrl })
+        .set({ publicSlug: slug, publicUrl, publishedStyle: input.styleMode })
         .where(eq(landingPages.id, lp.id));
 
       return { success: true, publicUrl, slug };

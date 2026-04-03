@@ -1081,12 +1081,13 @@ function LandingPageRecommendation({ landingPageId, campaignKit, onSelect, onReg
   const [lpPublishing, setLpPublishing] = useState(false);
   const [lpPublishError, setLpPublishError] = useState<string | null>(null);
   const [lpCopied, setLpCopied] = useState(false);
+  const [publishStyle, setPublishStyle] = useState<"text" | "visual">("text");
 
   async function handlePublish() {
     setLpPublishing(true);
     setLpPublishError(null);
     try {
-      await publishMutation.mutateAsync({ landingPageId });
+      await publishMutation.mutateAsync({ landingPageId, styleMode: publishStyle });
       await refetchPage();
     } catch (e: any) {
       setLpPublishError(e.message || "Publish failed. Please try again.");
@@ -1186,12 +1187,32 @@ function LandingPageRecommendation({ landingPageId, campaignKit, onSelect, onReg
           <div>
             <p style={{ fontFamily: F, fontWeight: 600, fontSize: 14, color: "#1A1624", margin: "0 0 4px" }}>Publish Landing Page</p>
             <p style={{ fontFamily: F, fontSize: 12, color: "#999", margin: 0 }}>
-              Deploy your landing page to a public URL at zapcampaigns.com/p/…
+              Deploy to a public URL at zapcampaigns.com/p/…
             </p>
           </div>
         </div>
+        {/* Style selector */}
+        <div style={{ display: "flex", gap: 4, marginBottom: 14, background: "rgba(26,22,36,0.07)", borderRadius: 9999, padding: 4, width: "fit-content" }}>
+          <button
+            onClick={() => setPublishStyle("text")}
+            style={{ borderRadius: 9999, padding: "7px 16px", fontFamily: F, fontWeight: 600, fontSize: 12, border: "none", cursor: "pointer", background: publishStyle === "text" ? "#fff" : "transparent", color: publishStyle === "text" ? "#1A1624" : "rgba(26,22,36,0.5)", boxShadow: publishStyle === "text" ? "0 1px 6px rgba(26,22,36,0.10)" : "none", transition: "all 0.15s" }}
+          >
+            📝 Text Style
+          </button>
+          <button
+            onClick={() => setPublishStyle("visual")}
+            style={{ borderRadius: 9999, padding: "7px 16px", fontFamily: F, fontWeight: 600, fontSize: 12, border: "none", cursor: "pointer", background: publishStyle === "visual" ? "#fff" : "transparent", color: publishStyle === "visual" ? "#1A1624" : "rgba(26,22,36,0.5)", boxShadow: publishStyle === "visual" ? "0 1px 6px rgba(26,22,36,0.10)" : "none", transition: "all 0.15s" }}
+          >
+            🖼 Visual Style
+          </button>
+        </div>
         {publicUrl ? (
           <div>
+            {page?.publishedStyle && (
+              <p style={{ fontFamily: F, fontSize: 11, color: "#999", margin: "0 0 8px" }}>
+                Currently live: {page.publishedStyle === "visual" ? "🖼 Visual Style" : "📝 Text Style"}
+              </p>
+            )}
             <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#F5F1EA", borderRadius: 10, padding: "10px 14px", marginBottom: 10 }}>
               <a href={publicUrl} target="_blank" rel="noopener noreferrer" style={{ fontFamily: F, fontSize: 13, color: A, textDecoration: "none", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {publicUrl}
@@ -1208,7 +1229,7 @@ function LandingPageRecommendation({ landingPageId, campaignKit, onSelect, onReg
               disabled={lpPublishing}
               style={{ width: "100%", padding: "10px 24px", borderRadius: 9999, border: `1.5px solid #E5E7EB`, background: "transparent", color: "#555", fontFamily: F, fontWeight: 600, fontSize: 13, cursor: lpPublishing ? "wait" : "pointer" }}
             >
-              {lpPublishing ? "Re-publishing…" : "Re-publish (update page)"}
+              {lpPublishing ? "Re-publishing…" : `Re-publish as ${publishStyle === "visual" ? "Visual" : "Text"} Style`}
             </button>
           </div>
         ) : (

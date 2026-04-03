@@ -449,6 +449,7 @@ export const landingPages = mysqlTable("landingPages", {
   // D4: Cloudflare Workers public URL
   publicSlug: varchar("publicSlug", { length: 255 }).unique(),
   publicUrl: varchar("publicUrl", { length: 500 }),
+  publishedStyle: mysqlEnum("publishedStyle", ["text", "visual"]).default("text"),
 
   rating: int("rating").default(0),
   selectionScore: decimal("selectionScore", { precision: 5, scale: 2 }),
