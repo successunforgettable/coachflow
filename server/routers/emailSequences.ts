@@ -40,6 +40,11 @@ interface EmailPromptParams {
 }
 
 function getEmailRules(): string {
+  // Word count rules per sequence type — update the BODY COPY RULES block below if new sequence types are added.
+  // Welcome sequence: max 200 words
+  // Engagement sequence: max 200 words
+  // Sales sequence: max 300 words
+  // Future sequence types: add word count here before adding a new builder.
   return `ONE EMAIL ONE JOB RULE: Every email in this sequence has exactly ONE job. The entire email — subject line, body, and CTA — must serve only that one job. Nothing else. No secondary CTAs. No topic shifts.
 
 SUBJECT LINE RULES:
