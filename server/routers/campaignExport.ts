@@ -255,6 +255,11 @@ function buildHeroMechanismContent(rows: any[]): string {
 // ─── tRPC Router ───────────────────────────────────────────────────────────────
 
 export const campaignExportRouter = router({
+  /**
+   * Read-only ZIP generation — no DB writes.
+   * Intentionally a mutation to prevent React Query caching stale ZIPs.
+   * Note: mutations do not auto-retry on failure, which is correct behaviour here.
+   */
   generateCampaignZip: protectedProcedure
     .input(z.object({ serviceId: z.number() }))
     .mutation(async ({ ctx, input }) => {

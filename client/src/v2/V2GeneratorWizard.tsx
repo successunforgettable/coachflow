@@ -1253,6 +1253,9 @@ function PushIntegrationPanel({ campaignKit, serviceId, serviceName }: { campaig
   const [zipCooldown, setZipCooldown] = useState(false);
   const [zipError, setZipError] = useState<string | null>(null);
 
+  // Asset guard — at least one node must be completed before ZIP is useful
+  const hasAssets = !!(campaignKit?.selectedHeadlineId || campaignKit?.selectedAdCopyId || campaignKit?.selectedLandingPageId);
+
   async function handleDownloadZip() {
     if (!serviceId) return;
     setZipLoading(true);
@@ -1500,17 +1503,19 @@ function PushIntegrationPanel({ campaignKit, serviceId, serviceName }: { campaig
           <span style={{ fontSize: 24, lineHeight: 1 }}>⬇</span>
           <div>
             <p style={{ fontFamily: F, fontWeight: 600, fontSize: 14, color: "#1A1624", margin: "0 0 4px" }}>Download Campaign Kit</p>
-            <p style={{ fontFamily: F, fontSize: 12, color: "#999", margin: 0 }}>Get all your assets in one organised ZIP — ready to deploy manually.</p>
+            <p style={{ fontFamily: F, fontSize: 12, color: "#999", margin: 0 }}>
+              {hasAssets ? "Get all your assets in one organised ZIP — ready to deploy manually." : "Complete at least one node to download your campaign kit."}
+            </p>
           </div>
         </div>
         <button
           onClick={handleDownloadZip}
-          disabled={zipLoading || zipCooldown || !serviceId}
+          disabled={zipLoading || zipCooldown || !serviceId || !hasAssets}
           style={{
             width: "100%", padding: "12px 24px", borderRadius: 9999, border: "none",
-            background: zipLoading ? "#555" : "#1A1624", color: "#fff",
+            background: !hasAssets ? "#999" : zipLoading ? "#555" : "#1A1624", color: "#fff",
             fontFamily: F, fontWeight: 600, fontSize: 14,
-            cursor: zipLoading || !serviceId ? "wait" : "pointer",
+            cursor: zipLoading || !serviceId || !hasAssets ? "default" : "pointer",
           }}
         >
           {zipCooldown ? "Downloaded ✓" : zipLoading ? "Generating ZIP…" : "Download ZIP"}
