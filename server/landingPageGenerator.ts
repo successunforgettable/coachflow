@@ -1,6 +1,6 @@
 import { invokeLLM } from "./_core/llm";
 import type { LandingPageContent } from "../drizzle/schema";
-import { META_COMPLIANCE_NOTES } from "./_core/copywritingRules";
+import { META_COMPLIANCE_NOTES, truncateQuote } from "./_core/copywritingRules";
 
 // Angle-specific prompt modifiers based on industry research
 const ANGLE_PROMPTS = {
@@ -70,7 +70,7 @@ export async function generateLandingPageAngle(
     ? `REAL SOCIAL PROOF AVAILABLE:
 ${socialProof.hasCustomers ? `- ${socialProof.customerCount} verified customers` : ''}
 ${socialProof.hasRating ? `- ${socialProof.rating} average rating from ${socialProof.reviewCount} reviews` : ''}
-${socialProof.hasTestimonials ? `- Real testimonials: ${socialProof.testimonials.map((t: any) => `${t.name} (${t.title})`).join(', ')}` : ''}
+${socialProof.hasTestimonials ? `- Real testimonials:\n${socialProof.testimonials.map((t: any) => `  • ${t.name}${t.title ? ` (${t.title})` : ''}: "${truncateQuote(t.quote || '')}"`).join('\n')}` : ''}
 ${socialProof.hasPress ? `- Press features: ${socialProof.press}` : ''}
 
 You MUST use these exact numbers and real testimonials. Do not fabricate or inflate.`

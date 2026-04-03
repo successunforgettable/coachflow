@@ -1406,7 +1406,8 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
   // step change prevents stale warnings appearing if the user navigates away and returns.
   useEffect(() => {
     if (latestMechWarning !== undefined) setLatestMechWarning(undefined);
-  }, [step]); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
 
   // ── Core generation logic — real tRPC mutations for all 11 steps ──
   const runGeneration = useCallback(async (payload: Record<string, unknown>) => {
