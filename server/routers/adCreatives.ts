@@ -22,21 +22,31 @@ const PROHIBITED_PHRASES = [
 ];
 
 // Meta-compliant scroll-stopper headline formulas
-// These use curiosity, benefit claims, social proof, contrast, and challenge without prohibited language
-// Issue 2 fix: social_proof formula now accepts optional real customer count
+// These use curiosity, benefit claims, social proof, contrast, challenge, and pain without prohibited language
+// Note on curiosity formula: "EXPERTS DON'T TALK ABOUT" is banned Meta suppressed-information framing — replaced
+// Note on social_proof fallback: "PROS LOVE THIS" replaced with transformation-implying copy
+// IMAGE STYLE GUIDE for future angle-matched creative selection:
+//   person_shocked  → best for proof/results angles (concrete outcome, social proof)
+//   screenshot      → best for mechanism/demonstration angles (show the tool, show the result)
+//   person_intense  → best for identity/authority angles (aspiration, credibility)
+//   object          → best for mechanism reveal angles (show the asset or deliverable)
+//   person_curious  → best for curiosity/contrarian angles (intrigue, challenge to belief)
+//   pain formula    → best for LOSS angles (name the shared pain, create recognition)
 const HEADLINE_FORMULAS = {
-  benefit: (mechanism: string, niche: string, _customers?: number) => 
+  benefit: (mechanism: string, niche: string, _customers?: number) =>
     `${mechanism.toUpperCase()}: CUT YOUR ${niche.toUpperCase()} TIME BY 90%`,
-  social_proof: (mechanism: string, niche: string, customers?: number) => 
+  social_proof: (mechanism: string, niche: string, customers?: number) =>
     customers && customers > 0
       ? `${customers.toLocaleString()}+ ${niche.toUpperCase()} PROS USE THIS ${mechanism.toUpperCase()}`
-      : `${niche.toUpperCase()} PROS LOVE THIS ${mechanism.toUpperCase()}`,
-  curiosity: (mechanism: string, niche: string, _customers?: number) => 
-    `THE ${mechanism.toUpperCase()} ${niche.toUpperCase()} EXPERTS DON'T TALK ABOUT`,
-  contrast: (mechanism: string, niche: string, _customers?: number) => 
+      : `${niche.toUpperCase()} COACHES WHO TRY THIS DON'T GO BACK`,
+  curiosity: (mechanism: string, niche: string, _customers?: number) =>
+    `WHY ${niche.toUpperCase()} COACHES ARE SWITCHING TO ${mechanism.toUpperCase()}`,
+  contrast: (mechanism: string, niche: string, _customers?: number) =>
     `BEFORE ${mechanism.toUpperCase()}: 40 HOURS. AFTER: 4 HOURS`,
-  challenge: (mechanism: string, niche: string, _customers?: number) => 
+  challenge: (mechanism: string, niche: string, _customers?: number) =>
     `STILL DOING ${niche.toUpperCase()} THE OLD WAY? TRY ${mechanism.toUpperCase()}`,
+  pain: (mechanism: string, niche: string, _customers?: number) =>
+    `EVERY ${niche.toUpperCase()} COACH FEELS THIS. MOST NEVER FIX IT.`,
 };
 
 // Check for Meta compliance issues
@@ -65,19 +75,23 @@ function generateAdImagePrompt(
   problem: string
 ): string {
   const baseStyle = "Gossip magazine style, tabloid aesthetic, phone-quality photo (NOT polished studio shot), dramatic lighting, high contrast";
-  
+
+  // Niche context and compliance — applied to every style
+  const nicheContext = `The person and setting must visually match the ${niche} niche — their clothing, environment, and expression must be recognisable to someone in that world. A fitness coach's client looks different from a crypto trader's client looks different from a corporate executive's client.`;
+  const complianceNote = `Do not generate images that imply medical treatment, guaranteed financial results, or dramatic physical before/after transformation. Images must show aspiration and possibility, not guaranteed outcomes.`;
+
   const stylePrompts = {
-    person_shocked: `${baseStyle}. Person (30-45 years old) with EXCITED expression, wide eyes, enthusiastic smile, pointing at viewer. Dark grey/black background. Green circle annotation around head with checkmark. Headline text overlay: "${headline}" in bold white text with yellow highlights on key words. Hand-drawn green arrow pointing from circle to viewer.`,
-    
-    screenshot: `${baseStyle}. Laptop screen photographed at angle showing dashboard with impressive results/numbers. Dark desk surface, coffee cup visible. Multiple green circles around key metrics. Green arrows pointing UP at gains. Handwritten text "RESULTS" near circles. Headline: "${headline}" in bold white text at top.`,
-    
-    person_intense: `${baseStyle}. Person (30-45 years old) with CONFIDENT expression, serious face, leaning forward, direct eye contact. Dark background with spotlight on face. Green circle around key element in background. Green arrow pointing TO circled element. Headline: "${headline}" in bold white text with yellow highlights.`,
-    
-    object: `${baseStyle}. Relevant object (document, product, device) for ${niche} niche. Dramatic lighting, dark background. Green circles around key features. Green arrows pointing to circled areas. Handwritten text "PROVEN" or "RESULTS". Headline: "${headline}" in bold white text.`,
-    
-    person_curious: `${baseStyle}. Person (30-45 years old) with INTRIGUED expression, raised eyebrow, interested smile, head tilted. Dark grey background. Large green circle with handwritten benefit text inside. Green arrow pointing from circle. Headline: "${headline}" in bold white text with yellow highlights on key words.`,
+    person_shocked: `${baseStyle}. Person (30-45 years old) dressed and styled for the ${niche} world, with EXCITED expression, wide eyes, enthusiastic smile, pointing at viewer. Dark grey/black background. Green circle annotation around head with checkmark. Headline text overlay: "${headline}" in bold white text with yellow highlights on key words. Hand-drawn green arrow pointing from circle to viewer. ${nicheContext} ${complianceNote}`,
+
+    screenshot: `${baseStyle}. Laptop screen photographed at angle showing a ${niche}-relevant dashboard or workspace with results/numbers. Dark desk surface, coffee cup visible. Multiple green circles around key metrics. Green arrows pointing UP at gains. Handwritten text "RESULTS" near circles. Headline: "${headline}" in bold white text at top. ${nicheContext} ${complianceNote}`,
+
+    person_intense: `${baseStyle}. Person (30-45 years old) dressed and styled for the ${niche} world, with CONFIDENT expression, serious face, leaning forward, direct eye contact. Dark background with spotlight on face. Green circle around key element in background. Green arrow pointing TO circled element. Headline: "${headline}" in bold white text with yellow highlights. ${nicheContext} ${complianceNote}`,
+
+    object: `${baseStyle}. Relevant object (document, product, device, or tool) specifically associated with the ${niche} niche. Dramatic lighting, dark background. Green circles around key features. Green arrows pointing to circled areas. Handwritten text "RESULTS" nearby. Headline: "${headline}" in bold white text. ${nicheContext} ${complianceNote}`,
+
+    person_curious: `${baseStyle}. Person (30-45 years old) dressed and styled for the ${niche} world, with INTRIGUED expression, raised eyebrow, interested smile, head tilted. Dark grey background. Large green circle with handwritten benefit text inside. Green arrow pointing from circle. Headline: "${headline}" in bold white text with yellow highlights on key words. ${nicheContext} ${complianceNote}`,
   };
-  
+
   return stylePrompts[style as keyof typeof stylePrompts] || stylePrompts.person_shocked;
 }
 

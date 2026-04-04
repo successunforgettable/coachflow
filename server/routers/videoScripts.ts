@@ -712,6 +712,16 @@ ${globalRules}`;
   if (videoType === "proof_results") {
     return `You are a world-class direct response video scriptwriter for Meta ads.
 
+${NICHE_DETECTION}
+
+${BANNED_WORDS}
+
+${CUSTOMER_LANGUAGE_RULE}
+
+${META_COMPLIANCE}
+
+${PEXELS_QUERY_RULE}
+
 Generate a ${duration}-second PROOF/RESULTS video ad script. Lead with outcomes, not problems.
 
 SERVICE DATA:
@@ -720,29 +730,37 @@ ${baseContext}
 SCENE STRUCTURE for ${duration} seconds:
 ${
   duration <= 30
-    ? `Scene 1 (0-5s): HOOK — Bold result claim
-Scene 2 (5-15s): BEFORE STATE — Where they were
-Scene 3 (15-25s): AFTER STATE — Where they are now
+    ? `Scene 1 (0-5s): HOOK — Bold result claim using niche-specific language
+Scene 2 (5-15s): BEFORE STATE — Where they were (name the specific situation, not the emotion)
+Scene 3 (15-25s): AFTER STATE — Where they are now (concrete, specific, observable)
 Scene 4 (25-${duration}s): CTA`
-    : `Scene 1 (0-5s): HOOK — Bold result claim
-Scene 2 (5-15s): BEFORE STATE — Pain and struggle
-Scene 3 (15-30s): TRANSFORMATION — What changed
-Scene 4 (30-45s): AFTER STATE — Results achieved
-Scene 5 (45-55s): SOCIAL PROOF (only use numbers provided above)
+    : `Scene 1 (0-5s): HOOK — Bold result claim using niche-specific language
+Scene 2 (5-15s): BEFORE STATE — Pain and struggle (name the specific situation, not the emotion)
+Scene 3 (15-30s): WHAT CHANGED — Name the specific mechanism or decision that changed things
+Scene 4 (30-45s): AFTER STATE — Results achieved (concrete number or named outcome)
+Scene 5 (45-55s): SOCIAL PROOF (only use numbers provided above — never fabricate)
 Scene 6 (55-${duration}s): CTA — Invite them to get same results`
 }
 
 EXTRA RULES FOR PROOF/RESULTS:
 - Lead with the result, not the problem
-- Use "from X to Y" transformation language where possible
-- If no social proof numbers are provided, use directional language: "hundreds of coaches", "most of our clients"
-- CTA should be: "Get the same results" or "Start your transformation"
+- Use "from X to Y" language where possible — name the specific before state and after state
+- If no social proof numbers are provided, use directional language: "hundreds of coaches", "most of our clients" — never fabricate a number
+- CTA must use the specificOutcome field language — never use generic phrases like "change your life" or "get results"
 
 ${globalRules}`;
   }
 
   if (videoType === "testimonial") {
     return `You are a world-class direct response video scriptwriter for Meta ads.
+
+${BANNED_WORDS}
+
+${CUSTOMER_LANGUAGE_RULE}
+
+${META_COMPLIANCE}
+
+${PEXELS_QUERY_RULE}
 
 Generate a ${duration}-second TESTIMONIAL video ad script.
 
@@ -761,18 +779,19 @@ This is not a real testimonial — it's an aspirational scenario.`
 }
 
 SCENE STRUCTURE for ${duration} seconds:
-Scene 1 (0-5s): HOOK — Before state (struggle or challenge)
-Scene 2 (5-15s): THE PROBLEM — What they were dealing with
+Scene 1 (0-5s): HOOK — Before state (name the specific situation, not the emotion)
+Scene 2 (5-15s): THE PROBLEM — What they were dealing with (niche-specific, observable)
 Scene 3 (15-30s): DISCOVERY — How they found the solution
-Scene 4 (30-45s): TRANSFORMATION — What changed
-Scene 5 (45-55s): RESULTS — Where they are now
+Scene 4 (30-45s): WHAT CHANGED — Name the specific thing that changed, not a generic description
+Scene 5 (45-55s): RESULTS — Where they are now (concrete outcome — number, named situation, or specific capability)
 Scene 6 (55-${duration}s): CTA — Invite viewer to have same experience
 
 EXTRA RULES:
 - Write in first person if using real testimonial, third person/imagine framing if not
-- Show emotional journey: frustration → relief → success
+- Show the journey through specific situations, not emotional labels
 - On-screen text should use quote-style highlights
 - Visual direction should suggest testimonial card layout
+- Never fabricate results, income claims, or specific numbers not provided in the service data
 
 ${globalRules}`;
   }
@@ -804,7 +823,7 @@ EXTRA RULES:
 - Position the mechanism as a fundamentally different approach
 - Contrast old way vs new way explicitly
 - Break mechanism into 3 steps maximum
-- Make it sound proprietary even if it isn't
+- Name the specific thing that makes this mechanism structurally different from what the audience has already tried. The mechanism must be genuinely differentiated — name the old approach explicitly and explain the precise structural difference.
 - On-screen text should emphasize the mechanism name
 - Visual direction should suggest step-by-step reveal
 

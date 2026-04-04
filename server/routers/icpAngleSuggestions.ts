@@ -57,6 +57,12 @@ Return a JSON array of exactly 10 objects with these exact fields:
   }
 ]
 
+ANGLE DIFFERENTIATION RULE: The 10 segments must be genuinely different people in genuinely different situations — not variations of the same person with slightly different demographics. Before finalising your 10, check: if two segments share the same primaryPain, they are not different segments — merge them and replace with a genuinely different audience.
+
+ANGLENAME SPECIFICITY RULE: Each angleName must be 4-6 words that could only describe people in this specific niche — not generic descriptors like "Busy Professionals" or "Growth-Minded Entrepreneurs." The name must contain a niche-specific word or situation that makes the audience immediately recognisable. Good examples: "Burnt Out Corporate Coaches", "Photographers Stuck At $1,500", "Consultants Losing Proposals To Price". Bad examples: "Success-Driven Individuals", "Aspiring Entrepreneurs", "Motivated Professionals".
+
+BUYING TRIGGER SPECIFICITY RULE: Every primaryBuyingTrigger must name a specific event or moment — not a category of motivation. Not "when they decide to invest in themselves" — "when they lose a client to a competitor who charges three times as much and realise their pricing is the problem." The trigger must be observable — something that happened or could happen on a specific day.
+
 Return valid JSON only. No markdown. No explanation.`;
 
       const response = await invokeLLM({
@@ -210,8 +216,8 @@ Return valid JSON only. No markdown. No explanation.`;
           continue;
         }
 
-        // Build biased ICP prompt: standard prompt + angle focus block (Requirement 3)
-        const prompt = `You are an expert marketing strategist. Create a detailed Ideal Customer Profile (ICP) for the following service:
+        // Build biased ICP prompt: matches ICP_USER_PROMPT quality + angle focus
+        const prompt = `Create a detailed Ideal Customer Profile (ICP) for the following service. Write from INSIDE the customer's head — use their internal monologue, not a textbook description of them.
 
 Service Name: ${service.name}
 Category: ${service.category}
@@ -225,29 +231,51 @@ Who this person is: ${suggestion.description}
 Their primary pain: ${suggestion.primaryPain}
 What would make them buy: ${suggestion.primaryBuyingTrigger}
 
-All 17 tabs must reflect this specific type of person — not a generic customer.
+All 17 tabs must reflect this specific type of person — not a generic customer. Every answer must be so specific that this person reads it and thinks "this is about me."
 
-Generate a comprehensive ICP with ALL 17 sections (Industry standard):
+VOICE RULES — apply to every section:
+- Write as if you are narrating the customer's internal experience, not describing them from the outside
+- Use specific situations, not generic emotions ("It's 2am and I'm refreshing my inbox again" not "they feel anxious")
+- Every bullet point must be niche-specific — if it could appear in any coach's ICP, rewrite it
+- Use the language they use with a close friend, not the language they'd use in a job interview
 
-1. INTRODUCTION: 2-3 paragraph overview of who this person is
-2. FEARS: 5-7 specific fears that keep them up at night
-3. HOPES & DREAMS: 5-7 aspirations and what they dream about achieving
-4. DEMOGRAPHICS: JSON object with age_range, gender, income_level, education, occupation, location, family_status
-5. PSYCHOGRAPHICS: Personality traits, lifestyle, attitudes, interests (3-4 paragraphs)
-6. PAINS: 7-10 specific pain points they experience daily
-7. FRUSTRATIONS: 5-7 daily frustrations and annoyances
-8. GOALS: 6-8 specific goals they want to achieve
-9. VALUES: 5-7 core values that guide their decisions
-10. OBJECTIONS: 5-7 common objections to buying your service
-11. BUYING TRIGGERS: 5-7 specific triggers that make them ready to buy
-12. MEDIA CONSUMPTION: Where they consume content (platforms, channels, formats)
-13. INFLUENCERS: Who they follow, trust, and listen to
-14. COMMUNICATION STYLE: How they prefer to communicate and be communicated with
-15. DECISION MAKING: How they make purchasing decisions (process, timeline, factors)
-16. SUCCESS METRICS: How they measure success in their life/business
-17. IMPLEMENTATION BARRIERS: What stops them from taking action after buying
+Generate a comprehensive ICP with ALL 17 sections:
 
-Format as JSON with these exact keys (use bullet points • for lists):
+1. INTRODUCTION: 2-3 paragraphs. Who is this person right now — their current situation, their daily life, their stuck state. Use their internal voice. Name their niche, their role, their specific problem. Reference the angle: ${suggestion.angleName}.
+
+2. FEARS: 5-7 fears. Each fear = the 3am version — the thought that wakes them at 3am, not the polite daytime version. Format: "I lie awake worrying that [specific fear]..." Not: "They fear failure."
+
+3. HOPES & DREAMS: 5-7 hopes. Each must name a SPECIFIC desired situation — what their life looks like on the day everything has worked. Not feelings. Situations. Not "feel confident" — "walk into a discovery call knowing my rate is £5,000 and not apologise for it."
+
+4. DEMOGRAPHICS: JSON object with age_range, gender, income_level, education, occupation, location, family_status — make these specific and realistic for this angle: ${suggestion.angleName}.
+
+5. PSYCHOGRAPHICS: 3-4 paragraphs. Personality traits, lifestyle, attitudes, interests — all niche-specific and angle-specific. What do they do on weekends? What do they read? What podcasts do they listen to? What do they argue about online?
+
+6. PAINS: 7-10 pains. Each pain = a specific daily situation, not an emotion. Format: "Every [day/week/month], [specific situation that happens to them]." Not: "They struggle with marketing."
+
+7. FRUSTRATIONS: 5-7 frustrations. The things that make them say "WHY does this always happen to me?" — niche-specific, situational, specific enough to recognise themselves in.
+
+8. GOALS: 6-8 goals. Each goal = a specific outcome they can picture — a number, a situation, a moment. Not "grow their business." What does it look and feel like when they've succeeded?
+
+9. VALUES: 5-7 values. Not generic values (hard work, family). The values that CONFLICT with what they need to do to solve their problem — the values that make them resist buying or taking action.
+
+10. OBJECTIONS: 5-7 objections. Each objection = the REAL reason they won't buy — not the polite reason they'd tell a salesperson. Format: "What they say: [polite objection]. What they mean: [real objection]."
+
+11. BUYING TRIGGERS: 5-7 triggers. Each trigger = the SPECIFIC MOMENT that breaks the dam — the event, conversation, or realisation that pushes them from considering to buying. "The moment I knew I had to do something was when..." Reference the angle's buying trigger: ${suggestion.primaryBuyingTrigger}.
+
+12. MEDIA CONSUMPTION: Specific platforms, specific channels, specific shows, specific newsletters, specific communities — for this exact niche and this specific audience angle.
+
+13. INFLUENCERS: Specific names of people they follow and why — not "industry experts" but real figures relevant to this niche and angle.
+
+14. COMMUNICATION STYLE: How they prefer to communicate — specific to their niche and demographics. What turns them off? What makes them trust someone?
+
+15. DECISION MAKING: How they actually make purchasing decisions — who they consult, how long they take, what triggers action vs paralysis.
+
+16. SUCCESS METRICS: How they measure whether something has worked — their specific KPIs, the numbers they track, the feeling they're chasing.
+
+17. IMPLEMENTATION BARRIERS: What stops them from taking action AFTER they've decided to buy — the real friction points, niche-specific.
+
+Format as JSON with these exact keys (use bullet points • for lists where appropriate):
 {
   "introduction": "...",
   "fears": "• Fear 1\\n• Fear 2\\n...",
@@ -273,7 +301,7 @@ Format as JSON with these exact keys (use bullet points • for lists):
             {
               role: "system",
               content:
-                "You are an expert marketing strategist specializing in creating detailed customer profiles for coaches, speakers, and consultants. Always respond with valid JSON.",
+                "You are an expert direct response copywriter who writes Ideal Customer Profiles from inside the customer's head — using their internal monologue, not a textbook description. You write in the specific language of this niche, not generic marketing language. Every answer must be so specific that the customer reads it and thinks 'this is about me.' Always respond with valid JSON.",
             },
             { role: "user", content: prompt },
           ],
