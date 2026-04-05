@@ -2059,7 +2059,7 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
                   {skipMutation.isPending ? "Skipping…" : "Skip this node — I already have this"}
                 </button>
               )}
-              {STEP_TO_MILESTONE[step] && step !== "pushToMeta" && skippedNodes?.includes(STEP_TO_MILESTONE[step]) && (
+              {showGenerateButton && STEP_TO_MILESTONE[step] && step !== "pushToMeta" && skippedNodes?.includes(STEP_TO_MILESTONE[step]) && (
                 <p style={{ display: "block", textAlign: "center" as const, marginTop: 12, fontSize: 13, color: "#FF5B1D", fontFamily: "Instrument Sans, sans-serif", margin: "12px 0 0" }}>
                   This node was skipped — generate now to add content.
                 </p>
