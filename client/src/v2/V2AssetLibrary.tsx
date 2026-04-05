@@ -231,9 +231,10 @@ export default function V2AssetLibrary() {
           createdAt: c.date || null,
         })),
       ];
+      // Sort by createdAt as Date objects — handles both ISO strings and Unix timestamps robustly.
       const assetList = rawAssetList.length > 150
         ? [...rawAssetList]
-            .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""))
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
             .slice(0, 150)
         : rawAssetList;
       const res = await fetch("/api/asset-search", {
@@ -449,54 +450,92 @@ export default function V2AssetLibrary() {
             {zappyResults && zappyResults.length === 0 && (
               <p style={{ fontFamily: T.fontB, fontSize: 13, color: T.muted, textAlign: "center" }}>No matching assets found. Try a different search.</p>
             )}
-            {zappyResults && zappyResults.length > 0 && (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                {zappyResults.map(id => {
-                  const img = filteredImages.find((i: any) => i.id === id);
-                  const vid = filteredVideos.find((v: any) => v.id === id);
-                  const copy = copyAssets.find(c => c.id === id);
-                  if (img) return (
-                    <div key={`z-${id}`} style={{ background: "#f9f8f5", borderRadius: 10, overflow: "hidden" }}>
-                      <img src={`/api/image-proxy?url=${encodeURIComponent((img as any).imageUrl)}`} style={{ width: "100%", aspectRatio: "1/1", objectFit: "cover" }} />
-                      <p style={{ fontFamily: T.fontB, fontSize: 11, padding: "6px 8px", margin: 0, color: T.dark }}>{(img as any).headline || `Image ${id}`}</p>
+            {zappyResults && zappyResults.length > 0 && (() => {
+              // Separate image/video IDs from copy IDs so each group renders in its natural layout
+              const imgVidIds = zappyResults.filter(id =>
+                filteredImages.find((i: any) => i.id === id) || filteredVideos.find((v: any) => v.id === id)
+              );
+              const copyIds = zappyResults.filter(id => copyAssets.find(c => c.id === id));
+              return (
+                <>
+                  {/* Image + video results — 2-column grid */}
+                  {imgVidIds.length > 0 && (
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                      {imgVidIds.map(id => {
+                        const img = filteredImages.find((i: any) => i.id === id);
+                        const vid = filteredVideos.find((v: any) => v.id === id);
+                        if (img) return (
+                          <div key={`z-${id}`} style={{ background: "#f9f8f5", borderRadius: 10, overflow: "hidden" }}>
+                            <img src={`/api/image-proxy?url=${encodeURIComponent((img as any).imageUrl)}`} style={{ width: "100%", aspectRatio: "1/1", objectFit: "cover" }} />
+                            <p style={{ fontFamily: T.fontB, fontSize: 11, padding: "6px 8px", margin: 0, color: T.dark }}>{(img as any).headline || `Image ${id}`}</p>
+                          </div>
+                        );
+                        if (vid) return (
+                          <div key={`z-${id}`} style={{ background: "#f9f8f5", borderRadius: 10, padding: "8px" }}>
+                            <p style={{ fontFamily: T.fontB, fontSize: 11, margin: 0, color: T.dark }}>🎬 {(vid as any).title || `Video ${id}`}</p>
+                          </div>
+                        );
+                        return null;
+                      })}
                     </div>
-                  );
-                  if (vid) return (
-                    <div key={`z-${id}`} style={{ background: "#f9f8f5", borderRadius: 10, padding: "8px" }}>
-                      <p style={{ fontFamily: T.fontB, fontSize: 11, margin: 0, color: T.dark }}>🎬 {(vid as any).title || `Video ${id}`}</p>
+                  )}
+                  {/* Copy results — single-column list, full width to suit longer text */}
+                  {copyIds.length > 0 && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: imgVidIds.length > 0 ? 16 : 0 }}>
+                      {copyIds.map(id => {
+                        const copy = copyAssets.find(c => c.id === id);
+                        if (!copy) return null;
+                        return (
+                          <div key={`z-${id}`} style={{ background: "#fff", borderRadius: 12, padding: 16, border: "1px solid #F0EBE1", borderLeft: `4px solid ${T.orange}`, display: "flex", flexDirection: "column", gap: 8 }}>
+                            <span style={{ fontFamily: T.fontB, fontSize: 10, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.06em", color: T.orange }}>{copy.type}</span>
+                            <p style={{ fontFamily: T.fontB, fontSize: 13, color: T.dark, margin: 0, lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical" as const, overflow: "hidden" }}>{copy.text}</p>
+                            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                              <button onClick={() => copyToClipboard(copy.text)} style={btnS(true)}>Copy to Clipboard</button>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                  );
-                  if (copy) return (
-                    <div key={`z-${id}`} style={{ background: "#f9f8f5", borderRadius: 10, padding: "10px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
-                      <span style={{ fontFamily: T.fontB, fontSize: 10, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.06em", color: T.orange }}>{copy.type}</span>
-                      <p style={{ fontFamily: T.fontB, fontSize: 12, color: T.dark, margin: 0, lineHeight: 1.4, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical" as const, overflow: "hidden" }}>{copy.text}</p>
-                      <button onClick={() => copyToClipboard(copy.text)} style={{ ...btnS(true), fontSize: 11, padding: "4px 10px", alignSelf: "flex-start" }}>Copy</button>
-                    </div>
-                  );
-                  return null;
-                })}
-              </div>
-            )}
+                  )}
+                </>
+              );
+            })()}
             {!zappyResults && !zappyLoading && (
               <p style={{ fontFamily: T.fontB, fontSize: 13, color: T.muted, textAlign: "center", margin: "20px 0" }}>
                 Ask me to find any asset. Try "my fitness videos" or "headlines about identity"
               </p>
             )}
           </div>
-          <div style={{ padding: "12px 16px", borderTop: "1px solid #eee", display: "flex", gap: 8 }}>
-            <div style={{ flex: 1, position: "relative", display: "flex", alignItems: "center" }}>
-              <input type="text" placeholder="Find my webinar ads..." value={zappyQuery}
-                onChange={e => setZappyQuery(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && handleZappySearch()}
-                style={{ width: "100%", padding: "10px 32px 10px 14px", borderRadius: 12, border: "1px solid #e5e0d8", fontFamily: T.fontB, fontSize: 13, outline: "none", color: T.dark, background: "#fff", boxSizing: "border-box" as const }} />
-              {zappyQuery && (
-                <button
-                  onClick={() => { setZappyQuery(""); setZappyResults(null); }}
-                  style={{ position: "absolute", right: 10, background: "none", border: "none", cursor: "pointer", color: "#999", fontSize: 16, lineHeight: 1, padding: 2 }}
-                >✕</button>
-              )}
+          <div style={{ padding: "12px 16px", borderTop: "1px solid #eee" }}>
+            <div style={{ display: "flex", gap: 8 }}>
+              <div style={{ flex: 1, position: "relative", display: "flex", alignItems: "center" }}>
+                <input
+                  type="text"
+                  autoComplete="off"
+                  placeholder="Find my webinar ads..."
+                  value={zappyQuery}
+                  onChange={e => setZappyQuery(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && handleZappySearch()}
+                  style={{ width: "100%", padding: "10px 40px 10px 14px", borderRadius: 12, border: "1px solid #e5e0d8", fontFamily: T.fontB, fontSize: 13, outline: "none", color: T.dark, background: "#fff", boxSizing: "border-box" as const }}
+                />
+                {zappyQuery && (
+                  <button
+                    onClick={() => { setZappyQuery(""); setZappyResults(null); }}
+                    style={{ position: "absolute", right: 36, background: "none", border: "none", cursor: "pointer", color: "#999", fontSize: 16, lineHeight: 1, padding: 2 }}
+                  >✕</button>
+                )}
+              </div>
+              <button onClick={handleZappySearch} disabled={zappyLoading} style={{ ...btnS(true), padding: "10px 16px" }}>Search</button>
             </div>
-            <button onClick={handleZappySearch} disabled={zappyLoading} style={{ ...btnS(true), padding: "10px 16px" }}>Search</button>
+            {/* Scope note — shown only when a campaign filter is active */}
+            {campaignFilter !== "all" && (() => {
+              const activeCampaign = campaignList.find(c => String(c.id) === campaignFilter);
+              return activeCampaign ? (
+                <p style={{ fontFamily: T.fontB, fontSize: 11, color: "#999", margin: "4px 0 0" }}>
+                  Searching within <strong>{activeCampaign.name}</strong> only — clear the filter to search all campaigns.
+                </p>
+              ) : null;
+            })()}
           </div>
         </div>
       )}
