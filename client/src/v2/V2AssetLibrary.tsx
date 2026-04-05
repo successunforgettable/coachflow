@@ -474,7 +474,7 @@ export default function V2AssetLibrary() {
             {zappyLoading && (
               <>
                 {/* Skeleton placeholder — mirrors 2-col image grid + full-width copy bar */}
-                <style>{`@keyframes zappyPulse { 0%,100%{opacity:.5} 50%{opacity:1} }`}</style>
+                {/* zappyPulse keyframe lives in client/src/index.css */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
                   <div style={{ height: 120, background: "#E8E4DD", borderRadius: 12, animation: "zappyPulse 1.5s ease-in-out infinite" }} />
                   <div style={{ height: 120, background: "#E8E4DD", borderRadius: 12, animation: "zappyPulse 1.5s ease-in-out infinite" }} />
