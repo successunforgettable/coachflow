@@ -480,23 +480,33 @@ export default function V2AssetLibrary() {
                     </div>
                   )}
                   {/* Copy results — single-column list, full width to suit longer text */}
-                  {copyIds.length > 0 && (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: imgVidIds.length > 0 ? 16 : 0 }}>
-                      {copyIds.map(id => {
-                        const copy = copyAssets.find(c => c.id === id);
-                        if (!copy) return null;
-                        return (
-                          <div key={`z-${id}`} style={{ background: "#fff", borderRadius: 12, padding: 16, border: "1px solid #F0EBE1", borderLeft: `4px solid ${T.orange}`, display: "flex", flexDirection: "column", gap: 8 }}>
+                  {(() => {
+                    // Resolve copy IDs to actual assets — filter out any stale IDs that no longer exist
+                    const resolvedCopyAssets = copyIds
+                      .map(id => copyAssets.find(c => c.id === id))
+                      .filter((c): c is NonNullable<typeof c> => c != null);
+                    // If copy resolved to nothing AND image/video also produced nothing — show empty state
+                    if (resolvedCopyAssets.length === 0 && imgVidIds.length === 0) {
+                      return (
+                        <p style={{ fontFamily: T.fontB, fontSize: 13, color: T.muted, textAlign: "center" }}>No matching assets found. Try a different search.</p>
+                      );
+                    }
+                    // If copy resolved to nothing but image/video results exist — render nothing (user got results)
+                    if (resolvedCopyAssets.length === 0) return null;
+                    return (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: imgVidIds.length > 0 ? 16 : 0 }}>
+                        {resolvedCopyAssets.map(copy => (
+                          <div key={`z-copy-${copy.id}`} style={{ background: "#fff", borderRadius: 12, padding: 16, border: "1px solid #F0EBE1", borderLeft: `4px solid ${T.orange}`, display: "flex", flexDirection: "column", gap: 8 }}>
                             <span style={{ fontFamily: T.fontB, fontSize: 10, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.06em", color: T.orange }}>{copy.type}</span>
                             <p style={{ fontFamily: T.fontB, fontSize: 13, color: T.dark, margin: 0, lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical" as const, overflow: "hidden" }}>{copy.text}</p>
                             <div style={{ display: "flex", justifyContent: "flex-end" }}>
                               <button onClick={() => copyToClipboard(copy.text)} style={btnS(true)}>Copy to Clipboard</button>
                             </div>
                           </div>
-                        );
-                      })}
-                    </div>
-                  )}
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </>
               );
             })()}
@@ -509,9 +519,11 @@ export default function V2AssetLibrary() {
           <div style={{ padding: "12px 16px", borderTop: "1px solid #eee" }}>
             <div style={{ display: "flex", gap: 8 }}>
               <div style={{ flex: 1, position: "relative", display: "flex", alignItems: "center" }}>
+                {/* autoComplete new-password + non-standard name = Chrome autofill suppression for AI search fields. */}
                 <input
                   type="text"
-                  autoComplete="off"
+                  autoComplete="new-password"
+                  name="zappy-search-nonce"
                   placeholder="Find my webinar ads..."
                   value={zappyQuery}
                   onChange={e => setZappyQuery(e.target.value)}
@@ -532,7 +544,7 @@ export default function V2AssetLibrary() {
               const activeCampaign = campaignList.find(c => String(c.id) === campaignFilter);
               return activeCampaign ? (
                 <p style={{ fontFamily: T.fontB, fontSize: 11, color: "#999", margin: "4px 0 0" }}>
-                  Searching within <strong>{activeCampaign.name}</strong> only — clear the filter to search all campaigns.
+                  Searching within <strong style={{ fontFamily: "Instrument Sans, sans-serif", fontWeight: 600 }}>{activeCampaign.name}</strong> only — clear the filter to search all campaigns.
                 </p>
               ) : null;
             })()}
