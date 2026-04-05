@@ -471,15 +471,14 @@ export default function V2AssetLibrary() {
             <button aria-label="Close Zappy search panel" onClick={() => setZappyOpen(false)} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: T.muted }}>✕</button>
           </div>
           <div style={{ flex: 1, overflow: "auto", padding: 16 }}>
+            {/* Skeleton: zappyPulse keyframe + prefers-reduced-motion guard live in client/src/index.css */}
             {zappyLoading && (
               <>
-                {/* Skeleton placeholder — mirrors 2-col image grid + full-width copy bar */}
-                {/* zappyPulse keyframe lives in client/src/index.css */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
-                  <div style={{ height: 120, background: "#E8E4DD", borderRadius: 12, animation: "zappyPulse 1.5s ease-in-out infinite" }} />
-                  <div style={{ height: 120, background: "#E8E4DD", borderRadius: 12, animation: "zappyPulse 1.5s ease-in-out infinite" }} />
+                  <div className="zappy-skeleton" style={{ height: 120, background: "#E8E4DD", borderRadius: 12, animation: "zappyPulse 1.5s ease-in-out infinite" }} />
+                  <div className="zappy-skeleton" style={{ height: 120, background: "#E8E4DD", borderRadius: 12, animation: "zappyPulse 1.5s ease-in-out infinite" }} />
                 </div>
-                <div style={{ height: 80, background: "#E8E4DD", borderRadius: 12, animation: "zappyPulse 1.5s ease-in-out infinite" }} />
+                <div className="zappy-skeleton" style={{ height: 80, background: "#E8E4DD", borderRadius: 12, animation: "zappyPulse 1.5s ease-in-out infinite" }} />
               </>
             )}
             {zappyResults && zappyResults.length === 0 && (
