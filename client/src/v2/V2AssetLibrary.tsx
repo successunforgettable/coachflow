@@ -528,12 +528,12 @@ export default function V2AssetLibrary() {
                   value={zappyQuery}
                   onChange={e => setZappyQuery(e.target.value)}
                   onKeyDown={e => e.key === "Enter" && handleZappySearch()}
-                  style={{ width: "100%", padding: "10px 40px 10px 14px", borderRadius: 12, border: "1px solid #e5e0d8", fontFamily: T.fontB, fontSize: 13, outline: "none", color: T.dark, background: "#fff", boxSizing: "border-box" as const }}
+                  style={{ width: "100%", padding: "10px 32px 10px 14px", borderRadius: 12, border: "1px solid #e5e0d8", fontFamily: T.fontB, fontSize: 13, outline: "none", color: T.dark, background: "#fff", boxSizing: "border-box" as const }}
                 />
                 {zappyQuery && (
                   <button
                     onClick={() => { setZappyQuery(""); setZappyResults(null); }}
-                    style={{ position: "absolute", right: 36, background: "none", border: "none", cursor: "pointer", color: "#999", fontSize: 16, lineHeight: 1, padding: 2 }}
+                    style={{ position: "absolute", right: 10, background: "none", border: "none", cursor: "pointer", color: "#999", fontSize: 16, lineHeight: 1, padding: 2 }}
                   >✕</button>
                 )}
               </div>
