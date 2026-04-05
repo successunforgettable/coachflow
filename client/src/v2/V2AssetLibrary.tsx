@@ -3,7 +3,7 @@
  * Shows all generated images, videos, and copy assets across campaigns.
  * Includes Zappy AI retrieval panel.
  */
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
@@ -76,6 +76,11 @@ export default function V2AssetLibrary() {
   const [zappyQuery, setZappyQuery] = useState("");
   const [zappyResults, setZappyResults] = useState<number[] | null>(null);
   const [zappyLoading, setZappyLoading] = useState(false);
+
+  // Clear Zappy results when user empties the query field
+  useEffect(() => {
+    if (zappyQuery === "") setZappyResults(null);
+  }, [zappyQuery]);
 
   // Favourites
   const imgFavs = useFavs("library_images");
@@ -196,11 +201,12 @@ export default function V2AssetLibrary() {
       // "incredible you campaign images", or "identity ads"
       const getCampaignName = (serviceId: number | null) =>
         campaignList.find(c => c.id === serviceId)?.name || "Unknown Campaign";
-      const assetList = [
+      // Cap at 150 assets and 80-char titles to prevent oversized LLM context payloads.
+      const rawAssetList = [
         ...filteredImages.map((img: any) => ({
           id: img.id,
           type: "image",
-          title: img.headline || img.productName || `Image ${img.id}`,
+          title: (img.headline || img.productName || `Image ${img.id}`).slice(0, 80),
           campaignName: getCampaignName(img.serviceId),
           nodeType: "adCreatives",
           isFavourite: imgFavs.isFav(img.id),
@@ -209,7 +215,7 @@ export default function V2AssetLibrary() {
         ...filteredVideos.map((v: any) => ({
           id: v.id,
           type: "video",
-          title: v.title || v.angle || `Video ${v.id}`,
+          title: (v.title || v.angle || `Video ${v.id}`).slice(0, 80),
           campaignName: getCampaignName(v.serviceId),
           nodeType: "videos",
           isFavourite: vidFavs.isFav(v.id),
@@ -218,13 +224,18 @@ export default function V2AssetLibrary() {
         ...copyAssets.map(c => ({
           id: c.id,
           type: "copy",
-          title: c.text,
+          title: c.text.slice(0, 80),
           campaignName: getCampaignName(c.serviceId),
           nodeType: c.type === "Ad Headline" ? "headlines" : "adCopy",
           isFavourite: copyFavs.isFav(c.id),
           createdAt: c.date || null,
         })),
       ];
+      const assetList = rawAssetList.length > 150
+        ? [...rawAssetList]
+            .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""))
+            .slice(0, 150)
+        : rawAssetList;
       const res = await fetch("/api/asset-search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -443,6 +454,7 @@ export default function V2AssetLibrary() {
                 {zappyResults.map(id => {
                   const img = filteredImages.find((i: any) => i.id === id);
                   const vid = filteredVideos.find((v: any) => v.id === id);
+                  const copy = copyAssets.find(c => c.id === id);
                   if (img) return (
                     <div key={`z-${id}`} style={{ background: "#f9f8f5", borderRadius: 10, overflow: "hidden" }}>
                       <img src={`/api/image-proxy?url=${encodeURIComponent((img as any).imageUrl)}`} style={{ width: "100%", aspectRatio: "1/1", objectFit: "cover" }} />
@@ -452,6 +464,13 @@ export default function V2AssetLibrary() {
                   if (vid) return (
                     <div key={`z-${id}`} style={{ background: "#f9f8f5", borderRadius: 10, padding: "8px" }}>
                       <p style={{ fontFamily: T.fontB, fontSize: 11, margin: 0, color: T.dark }}>🎬 {(vid as any).title || `Video ${id}`}</p>
+                    </div>
+                  );
+                  if (copy) return (
+                    <div key={`z-${id}`} style={{ background: "#f9f8f5", borderRadius: 10, padding: "10px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
+                      <span style={{ fontFamily: T.fontB, fontSize: 10, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.06em", color: T.orange }}>{copy.type}</span>
+                      <p style={{ fontFamily: T.fontB, fontSize: 12, color: T.dark, margin: 0, lineHeight: 1.4, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical" as const, overflow: "hidden" }}>{copy.text}</p>
+                      <button onClick={() => copyToClipboard(copy.text)} style={{ ...btnS(true), fontSize: 11, padding: "4px 10px", alignSelf: "flex-start" }}>Copy</button>
                     </div>
                   );
                   return null;
@@ -465,10 +484,18 @@ export default function V2AssetLibrary() {
             )}
           </div>
           <div style={{ padding: "12px 16px", borderTop: "1px solid #eee", display: "flex", gap: 8 }}>
-            <input type="text" placeholder="Find my webinar ads..." value={zappyQuery}
-              onChange={e => setZappyQuery(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && handleZappySearch()}
-              style={{ flex: 1, padding: "10px 14px", borderRadius: 12, border: "1px solid #e5e0d8", fontFamily: T.fontB, fontSize: 13, outline: "none", color: T.dark, background: "#fff" }} />
+            <div style={{ flex: 1, position: "relative", display: "flex", alignItems: "center" }}>
+              <input type="text" placeholder="Find my webinar ads..." value={zappyQuery}
+                onChange={e => setZappyQuery(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && handleZappySearch()}
+                style={{ width: "100%", padding: "10px 32px 10px 14px", borderRadius: 12, border: "1px solid #e5e0d8", fontFamily: T.fontB, fontSize: 13, outline: "none", color: T.dark, background: "#fff", boxSizing: "border-box" as const }} />
+              {zappyQuery && (
+                <button
+                  onClick={() => { setZappyQuery(""); setZappyResults(null); }}
+                  style={{ position: "absolute", right: 10, background: "none", border: "none", cursor: "pointer", color: "#999", fontSize: 16, lineHeight: 1, padding: 2 }}
+                >✕</button>
+              )}
+            </div>
             <button onClick={handleZappySearch} disabled={zappyLoading} style={{ ...btnS(true), padding: "10px 16px" }}>Search</button>
           </div>
         </div>

@@ -15,6 +15,14 @@ import { invokeLLM } from "./llm";
 // In-memory rate limiter for Zappy asset search — keyed by userId, resets every 60 s
 const assetSearchRateLimit = new Map<string, { count: number; resetAt: number }>();
 
+// Cleanup interval prevents memory leak on long-running server — evicts entries older than their reset window
+setInterval(() => {
+  const now = Date.now();
+  for (const [userId, data] of assetSearchRateLimit.entries()) {
+    if (data.resetAt < now) assetSearchRateLimit.delete(userId);
+  }
+}, 5 * 60 * 1000);
+
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
     const server = net.createServer();
