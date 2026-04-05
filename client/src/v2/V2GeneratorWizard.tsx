@@ -47,8 +47,8 @@ const STEP_TO_MILESTONE: Record<string, string> = {
   headlines:      "headlines",
   adCopy:         "adCopy",
   landingPage:    "landingPage",
-  emailSequence:  "emailSequence",
-  whatsapp:       "whatsappSequence",
+  emailSequence:      "emailSequence",
+  whatsappSequence:   "whatsappSequence",
 };
 
 // ─── Campaign ZIP download helper ────────────────────────────────────────────
@@ -2026,9 +2026,10 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
                   Generate Now
                 </button>
               )}
-              {/* Skip link — step !== "service" is guaranteed by early return above */}
-              {STEP_TO_MILESTONE[step] && step !== "pushToMeta" && !skippedNodes?.includes(STEP_TO_MILESTONE[step]) && (
+              {/* Skip link — only shown in pre-generation state (showGenerateButton), not after results */}
+              {showGenerateButton && STEP_TO_MILESTONE[step] && step !== "pushToMeta" && !skippedNodes?.includes(STEP_TO_MILESTONE[step]) && (
                 <button
+                  disabled={skipMutation.isPending}
                   onClick={() => {
                     const milestoneId = STEP_TO_MILESTONE[step];
                     if (!milestoneId || !serviceId) return;
@@ -2037,7 +2038,7 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
                       {
                         onSuccess: () => {
                           utils.progress.getProgress.invalidate();
-                          const stepOrder = ["service","icp","offer","uniqueMethod","freeOptIn","headlines","adCopy","landingPage","emailSequence","whatsapp","pushToMeta"];
+                          const stepOrder = ["service","icp","offer","uniqueMethod","freeOptIn","headlines","adCopy","landingPage","emailSequence","whatsappSequence","pushToMeta"];
                           const currentIdx = stepOrder.indexOf(step);
                           if (currentIdx >= 0 && currentIdx < stepOrder.length - 1) {
                             navigate(`/v2-dashboard/wizard/${stepOrder[currentIdx + 1]}`);
@@ -2046,9 +2047,16 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
                       }
                     );
                   }}
-                  style={{ display: "block", textAlign: "center" as const, marginTop: 12, fontSize: 13, color: "#999", cursor: "pointer", textDecoration: "underline", fontFamily: "Instrument Sans, sans-serif", background: "none", border: "none", width: "100%", padding: 0 }}
+                  style={{
+                    display: "block", textAlign: "center" as const, marginTop: 12, fontSize: 13,
+                    color: skipMutation.isPending ? "#ccc" : "#999",
+                    cursor: skipMutation.isPending ? "not-allowed" : "pointer",
+                    pointerEvents: skipMutation.isPending ? "none" : "auto",
+                    textDecoration: "underline", fontFamily: "Instrument Sans, sans-serif",
+                    background: "none", border: "none", width: "100%", padding: 0,
+                  }}
                 >
-                  Skip this node — I already have this
+                  {skipMutation.isPending ? "Skipping…" : "Skip this node — I already have this"}
                 </button>
               )}
               {STEP_TO_MILESTONE[step] && step !== "pushToMeta" && skippedNodes?.includes(STEP_TO_MILESTONE[step]) && (
