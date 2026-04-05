@@ -258,10 +258,14 @@ export default function V2AssetLibrary() {
             .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
             .slice(0, 150)
         : rawAssetList;
+      // Include active campaign filter so the LLM can explain limited results
+      const activeFilter = campaignFilter !== "all"
+        ? (campaignList.find(c => String(c.id) === campaignFilter)?.name ?? null)
+        : null;
       const res = await fetch("/api/asset-search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: zappyQuery, assets: assetList }),
+        body: JSON.stringify({ query: zappyQuery, assets: assetList, activeFilter }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -457,8 +461,14 @@ export default function V2AssetLibrary() {
 
       {/* ── ZAPPY PANEL ── */}
       {zappyOpen && (
-        <div
-          ref={zappyPanelRef}
+        <>
+          {/* Transparent backdrop — click outside the panel to close */}
+          <div
+            onClick={() => setZappyOpen(false)}
+            style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", zIndex: 99, background: "transparent", cursor: "default" }}
+          />
+          <div
+            ref={zappyPanelRef}
           onKeyDown={handleZappyKeyDown}
           style={{
             position: "fixed", bottom: 90, right: 24, width: 380, maxHeight: "60vh",
@@ -592,6 +602,7 @@ export default function V2AssetLibrary() {
             })()}
           </div>
         </div>
+        </>
       )}
     </div>
     </div>

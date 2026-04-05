@@ -246,11 +246,15 @@ async function startServer() {
         assetSearchRateLimit.set(userId, { count: 1, resetAt: now + 60_000 });
       }
 
-      const { query, assets } = req.body as { query: string; assets: unknown[] };
+      const { query, assets, activeFilter } = req.body as { query: string; assets: unknown[]; activeFilter?: string | null };
       if (!query || !Array.isArray(assets)) {
         res.json({ matchingIds: [] });
         return;
       }
+
+      const filterNote = activeFilter
+        ? `Note: the user currently has a campaign filter active — you are only seeing assets from the '${activeFilter}' campaign. If results seem limited, this is why.\n\n`
+        : "";
 
       const response = await invokeLLM({
         messages: [
@@ -262,7 +266,7 @@ async function startServer() {
             role: "user",
             content: `The user is searching their marketing asset library with this query: "${query}"
 
-Available assets:
+${filterNote}Available assets:
 ${JSON.stringify(assets, null, 2)}
 
 Return a JSON array of asset IDs that best match the user's query. Consider:
