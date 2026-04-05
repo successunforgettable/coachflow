@@ -10,6 +10,10 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { sdk } from "./sdk";
+import { invokeLLM } from "./llm";
+
+// In-memory rate limiter for Zappy asset search — keyed by userId, resets every 60 s
+const assetSearchRateLimit = new Map<string, { count: number; resetAt: number }>();
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -204,6 +208,95 @@ async function startServer() {
   registerMetaOAuthRoutes(app);
   // Custom auth: Google OAuth + magic links (no Manus dependency)
   registerCustomAuthRoutes(app);
+
+  // ── Zappy AI asset search ────────────────────────────────────────────────────
+  // Receives { query, assets[] } from the client, returns { matchingIds: number[] }.
+  // Rate limited to 10 requests per user per minute. Degrades gracefully on error.
+  app.post("/api/asset-search", async (req, res) => {
+    try {
+      // Authenticate
+      let user: { id: number | string } | null = null;
+      try {
+        user = await sdk.authenticateRequest(req);
+      } catch {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+      if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+      // Rate limit: max 10 requests per user per minute
+      const userId = String(user.id);
+      const now = Date.now();
+      const rl = assetSearchRateLimit.get(userId);
+      if (rl && now < rl.resetAt) {
+        if (rl.count >= 10) {
+          res.status(429).json({ error: "Too many searches — wait a moment and try again" });
+          return;
+        }
+        rl.count++;
+      } else {
+        assetSearchRateLimit.set(userId, { count: 1, resetAt: now + 60_000 });
+      }
+
+      const { query, assets } = req.body as { query: string; assets: unknown[] };
+      if (!query || !Array.isArray(assets)) {
+        res.json({ matchingIds: [] });
+        return;
+      }
+
+      const response = await invokeLLM({
+        messages: [
+          {
+            role: "system",
+            content: "You are an asset retrieval assistant for a marketing campaign platform. Your job is to understand what the user is looking for and return the IDs of assets that match their intent. You understand marketing terminology, campaign structures, and can interpret natural language queries about marketing assets. Return ONLY a valid JSON array of matching asset IDs — no explanation, no markdown.",
+          },
+          {
+            role: "user",
+            content: `The user is searching their marketing asset library with this query: "${query}"
+
+Available assets:
+${JSON.stringify(assets, null, 2)}
+
+Return a JSON array of asset IDs that best match the user's query. Consider:
+- Type matches: if they ask for "videos" return only video assets, "headlines" return only copy assets, "images" return only image assets
+- Campaign matches: if they mention a campaign name or niche, return assets from that campaign
+- Recency: if they say "latest" or "recent" or "last week", sort by createdAt and return the most recent matching assets
+- Content matches: if they describe content ("identity ads", "headline about burnout"), match against the title text
+- Favourites: isFavourite: true means the user has saved/hearted this asset. If the user asks for "favourites" or "saved" assets, filter to only assets where isFavourite is true
+
+Return ONLY a JSON array of IDs like: [1, 2, 3, 47, 82]
+If nothing matches, return an empty array: []
+Never return IDs that don't exist in the provided list.`,
+          },
+        ],
+      });
+
+      const content = response.choices[0]?.message?.content;
+      if (!content || typeof content !== "string") {
+        res.json({ matchingIds: [] });
+        return;
+      }
+
+      // Strip markdown code fences if the model wraps the response
+      const cleaned = content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/i, "").trim();
+      const ids: unknown = JSON.parse(cleaned);
+      if (!Array.isArray(ids)) {
+        res.json({ matchingIds: [] });
+        return;
+      }
+
+      // Guard: only return IDs that were in the provided asset list
+      const validIds = new Set((assets as Array<{ id: unknown }>).map(a => a.id));
+      const matchingIds = (ids as unknown[]).filter(
+        (id): id is number => typeof id === "number" && validIds.has(id)
+      );
+      res.json({ matchingIds });
+    } catch (err) {
+      console.error("[asset-search] Error:", err);
+      res.json({ matchingIds: [] }); // Degrade gracefully — UI shows all assets
+    }
+  });
+
   // Server-side ZIP download for campaign creatives (avoids CORS issues with CDN images)
   app.get("/api/campaigns/:campaignId/download-zip", async (req, res) => {
     try {

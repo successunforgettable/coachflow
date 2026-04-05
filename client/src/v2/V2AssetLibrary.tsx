@@ -191,11 +191,39 @@ export default function V2AssetLibrary() {
     if (!zappyQuery.trim()) return;
     setZappyLoading(true);
     try {
-      // Build asset list for context
+      // Build enriched asset list — title, campaign name, nodeType, favourite status, and date
+      // are all included so Zappy can match queries like "my latest videos", "saved headlines",
+      // "incredible you campaign images", or "identity ads"
+      const getCampaignName = (serviceId: number | null) =>
+        campaignList.find(c => c.id === serviceId)?.name || "Unknown Campaign";
       const assetList = [
-        ...filteredImages.map((img: any) => ({ id: img.id, type: "image", text: img.headline || `Image ${img.id}` })),
-        ...filteredVideos.map((v: any) => ({ id: v.id, type: "video", text: v.title || `Video ${v.id}` })),
-        ...copyAssets.map(c => ({ id: c.id, type: "copy", text: c.text })),
+        ...filteredImages.map((img: any) => ({
+          id: img.id,
+          type: "image",
+          title: img.headline || img.productName || `Image ${img.id}`,
+          campaignName: getCampaignName(img.serviceId),
+          nodeType: "adCreatives",
+          isFavourite: imgFavs.isFav(img.id),
+          createdAt: img.createdAt || null,
+        })),
+        ...filteredVideos.map((v: any) => ({
+          id: v.id,
+          type: "video",
+          title: v.title || v.angle || `Video ${v.id}`,
+          campaignName: getCampaignName(v.serviceId),
+          nodeType: "videos",
+          isFavourite: vidFavs.isFav(v.id),
+          createdAt: v.createdAt || null,
+        })),
+        ...copyAssets.map(c => ({
+          id: c.id,
+          type: "copy",
+          title: c.text,
+          campaignName: getCampaignName(c.serviceId),
+          nodeType: c.type === "Ad Headline" ? "headlines" : "adCopy",
+          isFavourite: copyFavs.isFav(c.id),
+          createdAt: c.date || null,
+        })),
       ];
       const res = await fetch("/api/asset-search", {
         method: "POST",
