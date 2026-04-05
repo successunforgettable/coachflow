@@ -1,6 +1,6 @@
 import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import {
   services,
   idealCustomerProfiles,
@@ -13,6 +13,7 @@ import {
   emailSequences,
   whatsappSequences,
   metaPublishedAds,
+  nodeSkips,
 } from "../../drizzle/schema";
 
 export const progressRouter = router({
@@ -68,18 +69,25 @@ export const progressRouter = router({
       db.select({ id: metaPublishedAds.id }).from(metaPublishedAds).where(eq(metaPublishedAds.userId, userId)).limit(1),
     ]);
 
+    // Skipped nodes — per service, so we need the service id first
+    const skippedRows = userServices.length > 0
+      ? await db.select({ nodeType: nodeSkips.nodeType }).from(nodeSkips)
+          .where(and(eq(nodeSkips.userId, userId), eq(nodeSkips.serviceId, userServices[0].id)))
+      : [];
+    const skippedSet = new Set(skippedRows.map(r => r.nodeType));
+
     // Milestone array — IDs must match MILESTONE_TO_NODE keys in V2Dashboard exactly
     const milestones = [
       { id: "service",          label: "Service defined",           completed: userServices.length > 0 },
-      { id: "icp",              label: "Dream Buyer created",       completed: userIcps.length > 0 },
-      { id: "offer",            label: "Offer crafted",             completed: userOffers.length > 0 },
-      { id: "heroMechanism",    label: "Unique Method defined",     completed: userHeroMechanisms.length > 0 },
-      { id: "hvco",             label: "Free Opt-In created",       completed: userHvco.length > 0 },
-      { id: "headlines",        label: "Headlines generated",       completed: userHeadlines.length > 0 },
-      { id: "adCopy",           label: "Ad Copy written",           completed: userAdCopy.length > 0 },
-      { id: "landingPage",      label: "Landing Page built",        completed: userLandingPages.length > 0 },
-      { id: "emailSequence",    label: "Email Sequence created",    completed: userEmailSequences.length > 0 },
-      { id: "whatsappSequence", label: "WhatsApp Sequence created", completed: userWhatsappSequences.length > 0 },
+      { id: "icp",              label: "Dream Buyer created",       completed: userIcps.length > 0 || skippedSet.has("icp") },
+      { id: "offer",            label: "Offer crafted",             completed: userOffers.length > 0 || skippedSet.has("offer") },
+      { id: "heroMechanism",    label: "Unique Method defined",     completed: userHeroMechanisms.length > 0 || skippedSet.has("heroMechanism") },
+      { id: "hvco",             label: "Free Opt-In created",       completed: userHvco.length > 0 || skippedSet.has("hvco") },
+      { id: "headlines",        label: "Headlines generated",       completed: userHeadlines.length > 0 || skippedSet.has("headlines") },
+      { id: "adCopy",           label: "Ad Copy written",           completed: userAdCopy.length > 0 || skippedSet.has("adCopy") },
+      { id: "landingPage",      label: "Landing Page built",        completed: userLandingPages.length > 0 || skippedSet.has("landingPage") },
+      { id: "emailSequence",    label: "Email Sequence created",    completed: userEmailSequences.length > 0 || skippedSet.has("emailSequence") },
+      { id: "whatsappSequence", label: "WhatsApp Sequence created", completed: userWhatsappSequences.length > 0 || skippedSet.has("whatsappSequence") },
       { id: "campaign",         label: "Pushed to Meta / GoHighLevel", completed: userMetaPublished.length > 0 },
     ];
 
