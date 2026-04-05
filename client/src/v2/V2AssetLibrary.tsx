@@ -3,7 +3,7 @@
  * Shows all generated images, videos, and copy assets across campaigns.
  * Includes Zappy AI retrieval panel.
  */
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
@@ -81,6 +81,27 @@ export default function V2AssetLibrary() {
   useEffect(() => {
     if (zappyQuery === "") setZappyResults(null);
   }, [zappyQuery]);
+
+  // Ref for keyboard focus trap inside the Zappy panel
+  const zappyPanelRef = useRef<HTMLDivElement>(null);
+
+  // Keyboard trap — cycles focus between all focusable elements inside the panel
+  const handleZappyKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== "Tab") return;
+    const panel = zappyPanelRef.current;
+    if (!panel) return;
+    const focusable = Array.from(
+      panel.querySelectorAll<HTMLElement>("button, input, [tabindex]:not([tabindex='-1'])")
+    ).filter(el => !el.hasAttribute("disabled"));
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey) {
+      if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+    } else {
+      if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+  }, []);
 
   // Favourites
   const imgFavs = useFavs("library_images");
@@ -426,7 +447,7 @@ export default function V2AssetLibrary() {
       )}
 
       {/* ── ZAPPY FAB ── */}
-      <button onClick={() => setZappyOpen(!zappyOpen)} style={{
+      <button aria-label="Open Zappy AI search" onClick={() => setZappyOpen(!zappyOpen)} style={{
         position: "fixed", bottom: 24, right: 24, width: 56, height: 56, borderRadius: "50%",
         background: T.orange, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
         boxShadow: "0 4px 16px rgba(255,91,29,0.35)", zIndex: 100, fontSize: 24, color: "#fff",
@@ -436,19 +457,40 @@ export default function V2AssetLibrary() {
 
       {/* ── ZAPPY PANEL ── */}
       {zappyOpen && (
-        <div style={{
-          position: "fixed", bottom: 90, right: 24, width: 380, maxHeight: "60vh",
-          background: "#fff", borderRadius: 20, boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
-          zIndex: 101, display: "flex", flexDirection: "column", overflow: "hidden",
-        }}>
+        <div
+          ref={zappyPanelRef}
+          onKeyDown={handleZappyKeyDown}
+          style={{
+            position: "fixed", bottom: 90, right: 24, width: 380, maxHeight: "60vh",
+            background: "#fff", borderRadius: 20, boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
+            zIndex: 101, display: "flex", flexDirection: "column", overflow: "hidden",
+          }}
+        >
           <div style={{ padding: "16px 20px", borderBottom: "1px solid #eee", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontFamily: T.fontB, fontWeight: 700, fontSize: 15, color: T.dark }}>🦊 Ask Zappy</span>
-            <button onClick={() => setZappyOpen(false)} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: T.muted }}>✕</button>
+            <button aria-label="Close Zappy search panel" onClick={() => setZappyOpen(false)} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: T.muted }}>✕</button>
           </div>
           <div style={{ flex: 1, overflow: "auto", padding: 16 }}>
-            {zappyLoading && <p style={{ fontFamily: T.fontB, fontSize: 13, color: T.orange, textAlign: "center" }}>Searching...</p>}
+            {zappyLoading && (
+              <>
+                {/* Skeleton placeholder — mirrors 2-col image grid + full-width copy bar */}
+                <style>{`@keyframes zappyPulse { 0%,100%{opacity:.5} 50%{opacity:1} }`}</style>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
+                  <div style={{ height: 120, background: "#E8E4DD", borderRadius: 12, animation: "zappyPulse 1.5s ease-in-out infinite" }} />
+                  <div style={{ height: 120, background: "#E8E4DD", borderRadius: 12, animation: "zappyPulse 1.5s ease-in-out infinite" }} />
+                </div>
+                <div style={{ height: 80, background: "#E8E4DD", borderRadius: 12, animation: "zappyPulse 1.5s ease-in-out infinite" }} />
+              </>
+            )}
             {zappyResults && zappyResults.length === 0 && (
               <p style={{ fontFamily: T.fontB, fontSize: 13, color: T.muted, textAlign: "center" }}>No matching assets found. Try a different search.</p>
+            )}
+            {zappyResults && zappyResults.length > 0 && (
+              /* Clear results link — lets users refine query without losing what they typed */
+              <button
+                onClick={() => setZappyResults(null)}
+                style={{ fontFamily: T.fontB, fontSize: 12, color: "#999", cursor: "pointer", textDecoration: "underline", display: "block", textAlign: "right", marginBottom: 8, background: "none", border: "none", padding: 0, width: "100%" }}
+              >Clear results</button>
             )}
             {zappyResults && zappyResults.length > 0 && (() => {
               // Separate image/video IDs from copy IDs so each group renders in its natural layout
@@ -521,6 +563,7 @@ export default function V2AssetLibrary() {
               <div style={{ flex: 1, position: "relative", display: "flex", alignItems: "center" }}>
                 {/* autoComplete new-password + non-standard name = Chrome autofill suppression for AI search fields. */}
                 <input
+                  aria-label="Search your asset library"
                   type="text"
                   autoComplete="new-password"
                   name="zappy-search-nonce"
@@ -537,7 +580,7 @@ export default function V2AssetLibrary() {
                   >✕</button>
                 )}
               </div>
-              <button onClick={handleZappySearch} disabled={zappyLoading} style={{ ...btnS(true), padding: "10px 16px" }}>Search</button>
+              <button aria-label="Run Zappy search" onClick={handleZappySearch} disabled={zappyLoading} style={{ ...btnS(true), padding: "10px 16px" }}>Search</button>
             </div>
             {/* Scope note — shown only when a campaign filter is active */}
             {campaignFilter !== "all" && (() => {
