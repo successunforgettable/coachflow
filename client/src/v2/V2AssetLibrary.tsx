@@ -454,7 +454,7 @@ export default function V2AssetLibrary() {
       <button aria-label="Open Zappy AI search" onClick={() => setZappyOpen(!zappyOpen)} style={{
         position: "fixed", bottom: 24, right: 24, width: 56, height: 56, borderRadius: "50%",
         background: T.orange, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-        boxShadow: "0 4px 16px rgba(255,91,29,0.35)", zIndex: 100, fontSize: 24, color: "#fff",
+        boxShadow: "0 4px 16px rgba(255,91,29,0.35)", zIndex: 102, fontSize: 24, color: "#fff",
       }}>
         🦊
       </button>
