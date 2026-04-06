@@ -6,28 +6,111 @@ import { getDb } from "../db";
 function stripMarkdownJson(content: string): string {
   return content.replace(/^```json\s*|^```\s*|\s*```$/gm, '').trim();
 }
-import { whatsappSequences, services, campaigns, idealCustomerProfiles, sourceOfTruth, jobs, campaignKits, offers, heroMechanisms } from "../../drizzle/schema";
+import { whatsappSequences, services, campaigns, idealCustomerProfiles, sourceOfTruth, jobs } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { invokeLLM } from "../_core/llm";
 import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
-import { enforceQuota, incrementQuotaCount } from "../lib/quotaEnforcement";
-import { complianceFilter } from "../lib/complianceFilter";
-import { checkCompliance } from "../lib/complianceChecker";
-import { scoreItem } from "../lib/selectionScorer";
-import { autoSelectBest } from "./campaignKits";
+import { truncateQuote } from "../_core/copywritingRules";
 
-// Apply compliance filter to a WhatsApp message's text field
-async function filterWhatsapp(msg: { text: string; [k: string]: any }): Promise<typeof msg> {
-  const result = complianceFilter(msg.text);
-  const text = result.wasModified ? result.cleanedText : msg.text;
-  const score = await checkCompliance(text);
-  if (score.score < 100) {
-    console.log(`[whatsappSequences] Compliance score ${score.score}/100 for "${text.substring(0, 50)}": ${score.issues.map(i => i.phrase).join(", ")}`);
-  }
-  return { ...msg, text };
+// ---------------------------------------------------------------------------
+// Shared WhatsApp prompt builders — used by generate (sync) and generateAsync.
+// Per-message job structure is defined once here; both paths call these functions.
+// ---------------------------------------------------------------------------
+
+interface WhatsappPromptParams {
+  sotContext: string;
+  serviceName: string;
+  campaignTypeContext: string;
+  icpContext: string;
+  socialProofGuidance: string;
+  eventName: string;
+  hostName: string;
+  eventDate?: string;
+  offerName?: string;
+  price?: string;
 }
+
+function buildWhatsappRules(serviceName: string): string {
+  return `WHATSAPP COPY RULES — non-negotiable for every message:
+
+LENGTH: Maximum 3 sentences per message. WhatsApp is read on mobile in seconds — not emails, not articles.
+
+LANGUAGE: No formal language. No "I hope this message finds you well." Write like you're texting a friend who trusts you.
+
+CONTRACTIONS ONLY: "you're" not "you are". "it's" not "it is". "don't" not "do not". Contractions are mandatory.
+
+SPECIFIC SITUATION: Reference something specific about where they are right now — the event they attended, the thing they said yes to, the problem they're trying to solve. Never write a generic message.
+
+ENDING RULE — every message must end with EITHER a direct yes/no question OR a specific action with a link. NEVER both. NEVER neither.
+
+EMOJI RULES: Maximum 2 emojis per message. Only where they add context. Never in formal context.
+
+PLACEHOLDER RULES: Use [First Name] (NOT {{Name}}). Use actual service name "${serviceName}". Write actual timing (not {{Date}} or {{Time}}).`;
+}
+
+export function buildWhatsappEngagementPrompt(p: WhatsappPromptParams): string {
+  const rules = buildWhatsappRules(p.serviceName);
+  return `${p.sotContext ? `${p.sotContext}\n\n` : ''}You are an expert WhatsApp marketer. Create a 3-message WhatsApp engagement sequence for event attendees.
+
+Service: ${p.serviceName}
+Event: ${p.eventName}
+Host: ${p.hostName}
+Event Date: ${p.eventDate || "Date"}
+
+${p.socialProofGuidance}
+
+${p.campaignTypeContext ? `${p.campaignTypeContext}\n\n` : ''}${p.icpContext}
+
+${rules}
+
+COMMITMENT AND CONSISTENCY PRINCIPLE: Message 1 opens a question they cannot answer without the event. Message 2 shows proof that someone like them got the answer. Message 3 makes attending the obvious next step for someone who engaged with messages 1 and 2. Build on the micro-commitment of each previous message. Message 3 should feel like the natural conclusion of a conversation that started in message 1 — not a standalone CTA.
+
+Create 3 WhatsApp messages (Monday, Wednesday, Friday before event). Each message has ONE job — the entire message serves that job only:
+
+Message 1 job = ASSUMPTION BREAK + OPEN LOOP (Monday)
+Message 1 first sentence rule: The first sentence must break an assumption the reader currently holds — not just create curiosity. Identify the most common belief someone in this niche has about their situation, then write a first sentence that makes that belief feel worth questioning. This is not a shocking statement — it is something so precisely true about their current situation that it stops the scroll because it feels personal. It must contain one niche-specific word or phrase. Open a loop — ask one question they don't yet know the answer to, that makes them want to come to the event to find out. Do not answer the question in this message.
+
+Message 2 job = SPECIFIC PROOF MOMENT (Wednesday)
+Share one real result from one specific type of person (anonymised if needed). PROOF SPECIFICITY RULE: Anonymous proof must still be specific. Required format: '[specific job title or life situation] who [specific problem they had] → [specific mechanism or change] → [specific result with number, timeframe, or named outcome].' Never use: 'someone', 'a person', 'one of our clients', 'a student' without qualification. One sentence on what changed for them and how. Make it feel like evidence, not marketing. End with a direct question asking if that sounds familiar to them.
+
+Message 3 job = SOFT CTA (Friday)
+Name the event specifically. Give one clear next step and the link or action. No selling. No urgency. Just the obvious, easy thing to do next. End with the action.
+
+Return as a JSON object with a 'messages' key containing the array.`;
+}
+
+export function buildWhatsappSalesPrompt(p: WhatsappPromptParams): string {
+  const rules = buildWhatsappRules(p.serviceName);
+  return `${p.sotContext ? `${p.sotContext}\n\n` : ''}You are an expert WhatsApp marketer. Create a 3-message WhatsApp sales sequence for event attendees.
+
+Service: ${p.serviceName}
+Event: ${p.eventName}
+Offer: ${p.offerName || "Offer"}
+Price: ${p.price || "Price"}
+
+${p.socialProofGuidance}
+
+${p.campaignTypeContext ? `${p.campaignTypeContext}\n\n` : ''}${p.icpContext}
+
+${rules}
+
+Create 3 WhatsApp messages (Day 1, 3, 5 after event). Each message has ONE job — the entire message serves that job only:
+
+Message 1 job = NAME THE COST OF INACTION (Day 1)
+Reference what they just attended. Name the specific cost of staying where they are — the thing that keeps happening if they don't act. One concrete, niche-specific consequence. End with the direct link or action.
+
+Message 2 job = PROOF + MECHANISM (Day 3)
+Name one specific result from one specific type of person (anonymised if needed). PROOF SPECIFICITY RULE: Anonymous proof must still be specific. Required format: '[specific job title or life situation] who [specific problem they had] → [specific mechanism or change] → [specific result with number, timeframe, or named outcome].' Never use: 'someone', 'a person', 'one of our clients', 'a student' without qualification. Name the method or mechanism that produced that result — one sentence. End with a closing question derived from the ICP's specific situation — their named fear, their specific frustration, or their stated buying trigger. The question must make them feel seen, not categorised. Use their language, not coaching language.
+
+Message 3 job = DIRECT OFFER + URGENCY + SINGLE ACTION (Day 5)
+ANCHORING RULE: In the first sentence, state the total value of what they get before naming the price or the close. Given the 3-sentence constraint, the format is: sentence 1 = value anchor, sentence 2 = closing mechanism with specific named condition, sentence 3 = single action with CTA copy that communicates what they get (not just 'click here'). URGENCY FALLBACK: If no genuine deadline, price increase, or spot limit exists, use social proof scarcity — 'People who attended [event] and acted within 48 hours got [specific result]. The window where momentum works in your favour is closing.' This is honest urgency grounded in psychology, not fabricated scarcity. End with the single action and link only — no question.
+
+Return as a JSON object with a 'messages' key containing the array.`;
+}
+
+// ---------------------------------------------------------------------------
 
 const generateWhatsAppSequenceSchema = z.object({
   serviceId: z.number(),
@@ -112,8 +195,6 @@ export const whatsappSequencesRouter = router({
   generate: protectedProcedure
     .input(generateWhatsAppSequenceSchema)
     .mutation(async ({ ctx, input }) => {
-      await enforceQuota(ctx.user.id, "whatsapp");
-
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -224,118 +305,52 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
 
       const campaignTypeContext = campaignTypeContextMap[campaignType] || campaignTypeContextMap['course_launch'];
 
-      // Extract real social proof data
+      // Extract real social proof data — full structure matching emailSequences.ts
       const socialProof = {
         hasCustomers: !!service.totalCustomers && service.totalCustomers > 0,
         hasTestimonials: !!service.testimonial1Name || !!service.testimonial2Name || !!service.testimonial3Name,
         customerCount: service.totalCustomers || 0,
+        testimonials: [
+          service.testimonial1Name ? { name: service.testimonial1Name, title: service.testimonial1Title || '', quote: service.testimonial1Quote || '' } : null,
+          service.testimonial2Name ? { name: service.testimonial2Name, title: service.testimonial2Title || '', quote: service.testimonial2Quote || '' } : null,
+          service.testimonial3Name ? { name: service.testimonial3Name, title: service.testimonial3Title || '', quote: service.testimonial3Quote || '' } : null,
+        ].filter(Boolean),
       };
-      
-      // Social proof guidance for WhatsApp messages
+
+      // Social proof guidance for WhatsApp messages — truncateQuote from copywritingRules.ts
       const socialProofGuidance = socialProof.hasCustomers || socialProof.hasTestimonials
         ? `REAL SOCIAL PROOF AVAILABLE:
 ${socialProof.hasCustomers ? `- ${socialProof.customerCount} verified customers` : ''}
+${socialProof.hasTestimonials ? `- Real testimonials:\n${socialProof.testimonials.map((t: any) => `  • ${t.name}${t.title ? ` (${t.title})` : ''}: "${truncateQuote(t.quote || '')}"`).join('\n')}` : ''}
 
-You MUST use these exact numbers. Do not fabricate.`
+You MUST use these exact numbers and real names. Do not fabricate.`
         : `NO SOCIAL PROOF DATA PROVIDED:
 - DO NOT mention customer counts or specific testimonials
 - Focus on benefit claims and value propositions
 - Use outcome-based language WITHOUT specific names`;
 
-      // ── Cascade context from Campaign Kit ──
-      let cascadeContext = "";
-      try {
-        const [relIcp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
-        if (relIcp) {
-          const [kit] = await db.select().from(campaignKits).where(and(eq(campaignKits.userId, ctx.user.id), eq(campaignKits.icpId, relIcp.id))).limit(1);
-          if (kit) {
-            const parts: string[] = [];
-            if (kit.selectedOfferId) {
-              const [offer] = await db.select().from(offers).where(eq(offers.id, kit.selectedOfferId)).limit(1);
-              if (offer) parts.push(`Offer angle: ${offer.activeAngle || "godfather"}`);
-            }
-            if (kit.selectedMechanismId) {
-              const [mech] = await db.select().from(heroMechanisms).where(eq(heroMechanisms.id, kit.selectedMechanismId)).limit(1);
-              if (mech) parts.push(`Hero mechanism: ${mech.mechanismName}`);
-            }
-            if (parts.length > 0) {
-              cascadeContext = `UPSTREAM CONTEXT — SELECTED ASSETS:\n${parts.join(". ")}. The WhatsApp sequence must complement the email sequence in tone and progression — do not duplicate it.\n\n`;
-            }
-          }
-        }
-      } catch (e) { console.warn("[cascade] whatsappSequences context fetch failed:", e); }
-
-      let prompt = "";
-
-      if (input.sequenceType === "engagement") {
-        prompt = `${cascadeContext}${sotContext ? `${sotContext}\n\n` : ''}You are an expert WhatsApp marketer. Create a 3-message WhatsApp engagement sequence for event attendees.
-
-Service: ${service.name}
-Event: ${input.eventDetails?.eventName || "Event"}
-Host: ${input.eventDetails?.hostName || "Host"}
-Event Date: ${input.eventDetails?.eventDate || "Date"}
-
-${socialProofGuidance}
-
-${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}
-
-Create 3 WhatsApp messages (Monday, Wednesday, Friday before event):
-1. WELCOME & EXPECTATION SETTING (Monday) - Personal welcome, what to expect
-2. EDUCATIONAL CONTENT (Wednesday) - Share valuable tip, build trust
-3. URGENCY & REMINDER (Friday) - Event reminder, create urgency
-
-Each message should:
-- Be personal and conversational (98%+ open rate on WhatsApp)
-- Use emojis appropriately (cultural sensitivity for UAE/India/Malaysia)
-- Be 50-100 words (short and scannable)
-- Include clear CTA
-- Use second-person POV ("you" not "we")
-- Be grade 4 language level
-- Use [First Name] for personalization (NOT {{Name}})
-- Use actual service name "${service.name}" (NOT {{Product}})
-- Use actual event name "${input.eventDetails?.eventName || "the event"}" (NOT {{Event}})
-- DO NOT use placeholder syntax like {{Date}} or {{Time}} - write actual timing descriptions
-
-Return as a JSON object with a 'messages' key containing the array.`;
-      } else {
-        // sales sequence
-        prompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert WhatsApp marketer. Create a 3-message WhatsApp sales sequence for event attendees.
-
-Service: ${service.name}
-Event: ${input.eventDetails?.eventName || "Event"}
-Offer: ${input.eventDetails?.offerName || "Offer"}
-Price: ${input.eventDetails?.price || "Price"}
-
-${socialProofGuidance}
-
-${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}
-
-Create 3 WhatsApp messages (Day 1, 3, 5 after event):
-1. EXCLUSIVE OFFER (Day 1) - Thank you, exclusive offer for attendees
-2. SUCCESS STORY (Day 3) - Social proof, case study, testimonial
-3. FINAL CALL (Day 5) - Scarcity, urgency, deadline
-
-Each message should:
-- Be personal and conversational (98%+ open rate on WhatsApp)
-- Use emojis appropriately (cultural sensitivity for UAE/India/Malaysia)
-- Be 50-100 words (short and scannable)
-- Include clear CTA
-- Use second-person POV ("you" not "we")
-- Be grade 4 language level
-- Include scarcity/urgency elements (+12% CVR)
-- Use [First Name] for personalization (NOT {{Name}})
-- Use actual service name "${service.name}" (NOT {{Product}})
-- Use actual offer name "${input.eventDetails?.offerName || "this offer"}" (NOT {{Offer}})
-- DO NOT use placeholder syntax like {{Date}} or {{Time}} - write actual timing descriptions
-
-Return as a JSON object with a 'messages' key containing the array.`;
-      }
+      // Both sync and async use the shared builder functions — per-message job structure lives there.
+      const promptParams: WhatsappPromptParams = {
+        sotContext,
+        serviceName: service.name,
+        campaignTypeContext,
+        icpContext,
+        socialProofGuidance,
+        eventName: input.eventDetails?.eventName || "Event",
+        hostName: input.eventDetails?.hostName || "Host",
+        eventDate: input.eventDetails?.eventDate,
+        offerName: input.eventDetails?.offerName,
+        price: input.eventDetails?.price,
+      };
+      const prompt = input.sequenceType === "engagement"
+        ? buildWhatsappEngagementPrompt(promptParams)
+        : buildWhatsappSalesPrompt(promptParams);
       const response = await invokeLLM({
         messages: [
           {
             role: "system",
             content:
-              "You are an expert WhatsApp marketer specializing in high-converting WhatsApp sequences for coaches, speakers, and consultants. Always respond with valid JSON.",
+              "You are an expert WhatsApp marketer specializing in high-converting WhatsApp sequences for coaches, speakers, and consultants. You write maximum 3 sentences per message. You use contractions exclusively (you're, it's, don't, we've). You use no formal language. Every message references a specific situation and ends with either a question OR an action — never both, never neither. Always respond with valid JSON.",
           },
           { role: "user", content: prompt },
         ],
@@ -387,8 +402,6 @@ Return as a JSON object with a 'messages' key containing the array.`;
         mediaUrl: msg.mediaUrl || null,
         mediaType: msg.mediaType || null,
       }));
-      // Apply compliance filter to all messages
-      sequenceData.messages = await Promise.all(sequenceData.messages.map((m: any) => filterWhatsapp(m)));
       // Save to database
       const insertResult: any = await db.insert(whatsappSequences).values({
         userId: ctx.user.id,
@@ -399,23 +412,12 @@ Return as a JSON object with a 'messages' key containing the array.`;
         messages: sequenceData.messages,
       });
 
-      await incrementQuotaCount(ctx.user.id, "whatsapp");
-
       // Fetch the created sequence
       const [newSequence] = await db
         .select()
         .from(whatsappSequences)
         .where(eq(whatsappSequences.id, insertResult[0].insertId))
         .limit(1);
-
-      // Auto-score and auto-select into campaign kit (non-blocking)
-      try {
-        const msgContent = sequenceData.messages.map((m: any) => m.text).join(" ");
-        const s = await scoreItem({ content: msgContent, nodeType: "whatsappSequences" });
-        await db.update(whatsappSequences).set({ selectionScore: String(s) } as any).where(eq(whatsappSequences.id, insertResult[0].insertId));
-        const [relatedIcp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
-        if (relatedIcp) await autoSelectBest(ctx.user.id, relatedIcp.id, "selectedWhatsAppSequenceId", insertResult[0].insertId);
-      } catch (e) { console.warn("[auto-select] whatsappSequences failed:", e); }
 
       return newSequence;
     }),
@@ -428,7 +430,6 @@ Return as a JSON object with a 'messages' key containing the array.`;
     .input(generateWhatsAppSequenceSchema)
     .mutation(async ({ ctx, input }) => {
       const { user } = ctx;
-      await enforceQuota(user.id, "whatsapp");
       await checkAndResetQuotaIfNeeded(user.id);
       if (user.role !== "superuser") {
         const limit = getQuotaLimit(user.subscriptionTier, "whatsapp");
@@ -470,17 +471,28 @@ Return as a JSON object with a 'messages' key containing the array.`;
           const icpContext = capturedIcp ? `\nIDEAL CUSTOMER PROFILE — use this to make every line of copy specific and targeted:\n${capturedIcp.pains ? `Their daily pains: ${capturedIcp.pains}` : ''}\n${capturedIcp.fears ? `Their deep fears: ${capturedIcp.fears}` : ''}\n${capturedIcp.buyingTriggers ? `What makes them buy: ${capturedIcp.buyingTriggers}` : ''}\n${capturedIcp.communicationStyle ? `How they communicate: ${capturedIcp.communicationStyle}` : ''}`.trim() : '';
           const campaignTypeContextMap: Record<string, string> = { webinar: `CAMPAIGN TYPE: Webinar\nFraming: Show-up urgency. CTA language: Register now / Save your seat / Join us live on [date]`, challenge: `CAMPAIGN TYPE: Challenge\nFraming: Community commitment. CTA language: Join the challenge / Claim your spot / Start with us on [date]`, course_launch: `CAMPAIGN TYPE: Course Launch\nFraming: Transformation journey. CTA language: Enrol now / Join the programme / Claim your place before [date]`, product_launch: `CAMPAIGN TYPE: Product Launch\nFraming: Early access. CTA language: Get early access / Become a founding member / Lock in launch pricing` };
           const campaignTypeContext = campaignTypeContextMap[capturedCampaignType] || campaignTypeContextMap['course_launch'];
-          const socialProof = { hasCustomers: !!capturedService.totalCustomers && capturedService.totalCustomers > 0, hasTestimonials: !!capturedService.testimonial1Name || !!capturedService.testimonial2Name || !!capturedService.testimonial3Name, customerCount: capturedService.totalCustomers || 0 };
-          const socialProofGuidance = socialProof.hasCustomers || socialProof.hasTestimonials ? `REAL SOCIAL PROOF AVAILABLE:\n${socialProof.hasCustomers ? `- ${socialProof.customerCount} verified customers` : ''}\n\nYou MUST use these exact numbers. Do not fabricate.` : `NO SOCIAL PROOF DATA PROVIDED:\n- DO NOT mention customer counts or specific testimonials\n- Focus on benefit claims and value propositions\n- Use outcome-based language WITHOUT specific names`;
+          const socialProof = { hasCustomers: !!capturedService.totalCustomers && capturedService.totalCustomers > 0, hasTestimonials: !!capturedService.testimonial1Name || !!capturedService.testimonial2Name || !!capturedService.testimonial3Name, customerCount: capturedService.totalCustomers || 0, testimonials: [capturedService.testimonial1Name ? { name: capturedService.testimonial1Name, title: capturedService.testimonial1Title || '', quote: capturedService.testimonial1Quote || '' } : null, capturedService.testimonial2Name ? { name: capturedService.testimonial2Name, title: capturedService.testimonial2Title || '', quote: capturedService.testimonial2Quote || '' } : null, capturedService.testimonial3Name ? { name: capturedService.testimonial3Name, title: capturedService.testimonial3Title || '', quote: capturedService.testimonial3Quote || '' } : null].filter(Boolean) };
+          // truncateQuote imported from copywritingRules.ts — one definition used everywhere.
+          const socialProofGuidance = socialProof.hasCustomers || socialProof.hasTestimonials ? `REAL SOCIAL PROOF AVAILABLE:\n${socialProof.hasCustomers ? `- ${socialProof.customerCount} verified customers` : ''}\n${socialProof.hasTestimonials ? `- Real testimonials:\n${socialProof.testimonials.map((t: any) => `  • ${t.name}${t.title ? ` (${t.title})` : ''}: "${truncateQuote(t.quote || '')}"`).join('\n')}` : ''}\n\nYou MUST use these exact numbers and real names. Do not fabricate.` : `NO SOCIAL PROOF DATA PROVIDED:\n- DO NOT mention customer counts or specific testimonials\n- Focus on benefit claims and value propositions\n- Use outcome-based language WITHOUT specific names`;
 
-          let prompt = "";
-          if (capturedInput.sequenceType === "engagement") {
-            prompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert WhatsApp marketer. Create a 3-message WhatsApp engagement sequence for event attendees.\n\nService: ${capturedService.name}\nEvent: ${capturedInput.eventDetails?.eventName || "Event"}\nHost: ${capturedInput.eventDetails?.hostName || "Host"}\nEvent Date: ${capturedInput.eventDetails?.eventDate || "Date"}\n\n${socialProofGuidance}\n\n${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}\n\nCreate 3 WhatsApp messages (Monday, Wednesday, Friday before event). Each message: 50-100 words, personal, conversational, emojis, clear CTA, use [First Name] for personalization.\n\nReturn as a JSON object with a 'messages' key containing the array.`;
-          } else {
-            prompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert WhatsApp marketer. Create a 3-message WhatsApp sales sequence for event attendees.\n\nService: ${capturedService.name}\nEvent: ${capturedInput.eventDetails?.eventName || "Event"}\nOffer: ${capturedInput.eventDetails?.offerName || "Offer"}\nPrice: ${capturedInput.eventDetails?.price || "Price"}\n\n${socialProofGuidance}\n\n${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}\n\nCreate 3 WhatsApp messages (Day 1, 3, 5 after event). Each message: 50-100 words, personal, conversational, emojis, clear CTA, use [First Name] for personalization.\n\nReturn as a JSON object with a 'messages' key containing the array.`;
-          }
+          // Use the shared builders — same per-message job structure as the sync path.
+          const bgPromptParams: WhatsappPromptParams = {
+            sotContext,
+            serviceName: capturedService.name,
+            campaignTypeContext,
+            icpContext,
+            socialProofGuidance,
+            eventName: capturedInput.eventDetails?.eventName || "Event",
+            hostName: capturedInput.eventDetails?.hostName || "Host",
+            eventDate: capturedInput.eventDetails?.eventDate,
+            offerName: capturedInput.eventDetails?.offerName,
+            price: capturedInput.eventDetails?.price,
+          };
+          const prompt = capturedInput.sequenceType === "engagement"
+            ? buildWhatsappEngagementPrompt(bgPromptParams)
+            : buildWhatsappSalesPrompt(bgPromptParams);
 
-          const response = await invokeLLM({ messages: [{ role: "system", content: "You are an expert WhatsApp marketer specializing in high-converting WhatsApp sequences for coaches, speakers, and consultants. Always respond with valid JSON." }, { role: "user", content: prompt }], response_format: { type: "json_schema", json_schema: { name: "whatsapp_sequence", strict: true, schema: { type: "object", properties: { messages: { type: "array", items: { type: "object", properties: { day: { type: "integer" }, message: { type: "string" }, cta: { type: "string" } }, required: ["day", "message", "cta"], additionalProperties: false } } }, required: ["messages"], additionalProperties: false } } } });
+          const response = await invokeLLM({ messages: [{ role: "system", content: "You are an expert WhatsApp marketer specializing in high-converting WhatsApp sequences for coaches, speakers, and consultants. You write maximum 3 sentences per message. You use contractions exclusively (you're, it's, don't, we've). You use no formal language. Every message references a specific situation and ends with either a question OR an action — never both, never neither. Always respond with valid JSON." }, { role: "user", content: prompt }], response_format: { type: "json_schema", json_schema: { name: "whatsapp_sequence", strict: true, schema: { type: "object", properties: { messages: { type: "array", items: { type: "object", properties: { day: { type: "integer" }, message: { type: "string" }, cta: { type: "string" } }, required: ["day", "message", "cta"], additionalProperties: false } } }, required: ["messages"], additionalProperties: false } } } });
 
           const content = response.choices[0].message.content;
           if (typeof content !== "string") throw new Error("Invalid response format from AI");
@@ -488,20 +500,9 @@ Return as a JSON object with a 'messages' key containing the array.`;
           if (Array.isArray(sequenceData)) sequenceData = { messages: sequenceData };
           if (!sequenceData.messages || !Array.isArray(sequenceData.messages)) throw new Error("LLM did not return a valid messages array");
           sequenceData.messages = sequenceData.messages.map((msg: any, idx: number) => ({ text: msg.message || msg.text || `Message ${idx + 1}: Check this out`, delay: msg.delay || (idx * 24), delayUnit: msg.delayUnit || 'hours', mediaUrl: msg.mediaUrl || null, mediaType: msg.mediaType || null }));
-          sequenceData.messages = await Promise.all(sequenceData.messages.map((m: any) => filterWhatsapp(m)));
 
           const insertResult: any = await bgDb.insert(whatsappSequences).values({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, sequenceType: capturedInput.sequenceType, name: capturedInput.name, messages: sequenceData.messages });
-          await incrementQuotaCount(capturedUserId, "whatsapp");
           const [newSequence] = await bgDb.select().from(whatsappSequences).where(eq(whatsappSequences.id, insertResult[0].insertId)).limit(1);
-
-          // Auto-score and auto-select into campaign kit (non-blocking)
-          try {
-            const msgContent = sequenceData.messages.map((m: any) => m.text).join(" ");
-            const s = await scoreItem({ content: msgContent, nodeType: "whatsappSequences" });
-            await bgDb.update(whatsappSequences).set({ selectionScore: String(s) } as any).where(eq(whatsappSequences.id, insertResult[0].insertId));
-            const [relatedIcp] = await bgDb.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, capturedInput.serviceId)).limit(1);
-            if (relatedIcp) await autoSelectBest(capturedUserId, relatedIcp.id, "selectedWhatsAppSequenceId", insertResult[0].insertId);
-          } catch (e) { console.warn("[auto-select] whatsappSequences async failed:", e); }
 
           await bgDb.update(jobs)
             .set({ status: "complete", result: JSON.stringify({ id: newSequence?.id }) })
@@ -561,68 +562,6 @@ Return as a JSON object with a 'messages' key containing the array.`;
         .limit(1);
 
       return updated;
-    }),
-
-  // Regenerate a single WhatsApp message within a sequence via AI
-  regenerateSingle: protectedProcedure
-    .input(z.object({ id: z.number(), index: z.number(), promptOverride: z.string().optional() }))
-    .mutation(async ({ ctx, input }) => {
-      await enforceQuota(ctx.user.id, "whatsapp");
-
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
-
-      const [row] = await db
-        .select()
-        .from(whatsappSequences)
-        .where(and(eq(whatsappSequences.id, input.id), eq(whatsappSequences.userId, ctx.user.id)))
-        .limit(1);
-
-      if (!row) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "WhatsApp sequence not found" });
-      }
-
-      const messages: any[] = typeof row.messages === "string" ? JSON.parse(row.messages) : (row.messages ?? []);
-
-      if (input.index < 0 || input.index >= messages.length) {
-        throw new TRPCError({ code: "NOT_FOUND", message: `Message index ${input.index} out of range (0-${messages.length - 1})` });
-      }
-
-      const target = messages[input.index];
-      const originalText = target.text ?? target.message ?? "";
-      const overrideInstruction = input.promptOverride?.trim()
-        ? ` Additional instruction: ${input.promptOverride.trim()}.`
-        : "";
-
-      const prompt = `Rewrite this WhatsApp message for a coaching offer sequence. Original message: ${originalText}.${overrideInstruction} Return a JSON object with exactly one key: text (string). No explanation, no markdown, just the JSON object.`;
-
-      const response = await invokeLLM({
-        messages: [
-          { role: "system", content: "You are an expert WhatsApp copywriter for coaches and consultants. Respond with only valid JSON." },
-          { role: "user", content: prompt },
-        ],
-      });
-
-      const content = response.choices[0].message.content;
-      if (typeof content !== "string") {
-        throw new Error("Invalid response from AI");
-      }
-
-      const parsed = JSON.parse(stripMarkdownJson(content));
-      if (!parsed.text) {
-        throw new Error("AI response missing text field");
-      }
-
-      // Apply compliance filter to regenerated message
-      const filtered = await filterWhatsapp({ text: parsed.text });
-      messages[input.index] = { ...messages[input.index], text: filtered.text };
-
-      await db
-        .update(whatsappSequences)
-        .set({ messages: JSON.stringify(messages), updatedAt: new Date() })
-        .where(eq(whatsappSequences.id, input.id));
-
-      return messages[input.index];
     }),
 
   // Delete WhatsApp sequence

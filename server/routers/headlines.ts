@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import { nanoid } from "nanoid";
 import { protectedProcedure, router } from "../_core/trpc";
 import { invokeLLM } from "../_core/llm";
+import { BANNED_HEADLINE_PATTERNS, META_COMPLIANCE_NOTES } from "../_core/copywritingRules";
 import {
   createHeadlines,
   getHeadlinesByUserId,
@@ -10,27 +11,21 @@ import {
   updateHeadlineRating,
   deleteHeadlineSet,
   incrementHeadlineCount,
-  getDb,
 } from "../db";
-import { headlines, jobs, campaignKits, offers, hvcoTitles } from "../../drizzle/schema";
-import { eq, and } from "drizzle-orm";
+import { headlines, jobs } from "../../drizzle/schema";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
-import { enforceQuota, incrementQuotaCount } from "../lib/quotaEnforcement";
 import { checkCompliance } from "../lib/complianceChecker";
-import { scoreItem } from "../lib/selectionScorer";
-import { autoSelectBest } from "./campaignKits";
-import { idealCustomerProfiles } from "../../drizzle/schema";
 
 // Helper to strip markdown code blocks from LLM responses
 function stripMarkdownJson(content: string): string {
   return content.replace(/^```json\s*|^```\s*|\s*```$/gm, '').trim();
 }
 
-// Headline formula prompts — specificity over vagueness, clarity over cleverness
+// Industry standard
 const FORMULA_PROMPTS = {
-  story: `Generate 5 story-formula headlines that follow this arc:
-"How a [Specific Triggering Event] Led [Specific Person] to [Specific Discovery] that [Specific Measurable Result]"
+  story: `Generate 5 story-based headlines using this EXACT format:
+"How a [Triggering Event] Led/Pushed/Triggered a [Person] to [Discovery] that [Result]!"
 
 Context:
 - Target Market: {targetMarket}
@@ -39,22 +34,21 @@ Context:
 - Unique Mechanism: {uniqueMechanism}
 
 Requirements:
-- Be concrete and specific — name the triggering event, name the transformation, name the result with a number or timeframe where possible
-- Maximum 80 characters per headline. Story headlines need room for a narrative arc — triggering event, person, discovery, result. Do not truncate mid-word.
-- Must feel like the opening line of a true story, not a marketing claim
-- Use the exact language from the target market and pressing problem — mirror the words real people use, not marketing jargon
-- Never use vague phrases like "transform your life", "unlock your potential", "achieve your dreams" — name the specific outcome
-- Each triggering event should be different and relatable to the target market (a bad day at work, a conversation with a friend, a health scare, a financial wake-up call)
+- Use varied triggering events (embarrassing moment, unexpected discovery, crisis, weekend event, etc.)
+- Make the person relatable to target market
+- Highlight the unique mechanism as the discovery
+- Promise the desired outcome as the result
+- Each headline should be 15-25 words
 - Return ONLY a JSON array of 5 headline strings, nothing else
 
 Example output format:
-["How a 3am Panic Attack Led a Burned-Out Lawyer to $12k/Month Coaching", "One Failed Launch Pushed Her to a System That Books 8 Clients a Week", "A Tearful School Run Made Her Build a Business That Runs Without Her", "How Losing His Biggest Client Led to a Method That Doubles Revenue", "One Honest Conversation Turned a Side Hustle Into a 6-Figure Practice"]`,
+["How a Weekend Vegas Bender Led an Aspiring Crypto Newbie to Discover a Revolutionary 9-Step Blueprint that Generates $10k Monthly!", "How an Embarrassing Margin Call Pushed a Skeptical 30-Something Day-Trader to Unearth a Breakthrough System that Multiplies Crypto Earnings!", ...]`,
 
   eyebrow: `Generate 5 three-part headlines with eyebrow, main headline, and subheadline:
 
-Eyebrow format: "[Specific Authority] Reveals"
-Main format: "[Named Mechanism] Turns [Specific Audience] into [Measurable Result]"
-Subheadline format: "Without [Specific Pain 1], [Specific Pain 2] or [Specific Pain 3]"
+Eyebrow format: "[Authority] Unveils/Reveals"
+Main format: "[Unique Mechanism] Turns [Audience] into [Result]"
+Subheadline format: "Without [Pain Point 1], [Pain Point 2] or [Pain Point 3]"
 
 Context:
 - Target Market: {targetMarket}
@@ -63,19 +57,17 @@ Context:
 - Unique Mechanism: {uniqueMechanism}
 
 Requirements:
-- HARD LIMIT: Main headline MUST be 40 characters or fewer. This is a Meta ad field limit — no exceptions.
-- Eyebrow establishes authority using real credentials or experience — not generic "expert"
-- Main headline names the mechanism and the specific result with a number or timeframe
-- Subheadline uses the exact pain points from the pressing problem — use the customer's own words, not marketing language
-- Never use vague phrases like "achieve success" or "reach your goals" — name the specific outcome the target market wants
+- Eyebrow should establish authority/credibility
+- Main headline should feature the unique mechanism prominently
+- Subheadline should address 3 pain points from pressing problem
 - Return ONLY a JSON array of 5 objects with this structure: {"eyebrow": "...", "main": "...", "sub": "..."}
 
 Example output format:
-[{"eyebrow": "Former Burnt-Out CFO Reveals", "main": "The 90-Day Identity Reset Method", "sub": "Without Therapy That Goes Nowhere, Self-Help Books That Collect Dust, or Retreats That Fade by Monday"}, ...]`,
+[{"eyebrow": "Award-winning Mind Coach Unveils", "main": "9-Step Crypto Wealth System Turns Beginners into $10k/Month Moneymakers", "sub": "Without Endless Hours Learning or Losing Money on Bad Trades"}, ...]`,
 
-  question: `Generate 5 question-based headlines that name specific obstacles or mistakes:
+  question: `Generate 5 question-based headlines that highlight obstacles or mistakes:
 
-Format: "[Question about a specific obstacle the target market faces]?"
+Format: "[Question about obstacle/mistake]?"
 
 Context:
 - Target Market: {targetMarket}
@@ -83,20 +75,19 @@ Context:
 - Desired Outcome: {desiredOutcome}
 
 Requirements:
-- HARD LIMIT: Every question MUST be 40 characters or fewer. This is a Meta ad field limit — no exceptions.
-- Frame as a question that makes the reader think "yes, that's exactly me"
-- Name the specific obstacle, not a generic one — use language directly from the pressing problem and target market description
-- Focus on hidden obstacles, overlooked mistakes, or counterintuitive truths the audience hasn't considered
-- Never use vague questions like "Are you struggling?" or "Want to succeed?" — name what they're struggling with specifically
+- Frame as a question that makes reader think "yes, that's me"
+- Focus on hidden obstacles, sneaky pitfalls, or overlooked mistakes
+- Use words like "preventing", "stopping", "sabotaging", "devouring", "sapping"
+- Each question should be 10-20 words
 - Return ONLY a JSON array of 5 question strings, nothing else
 
 Example output format:
-["Is Your Calendar the Reason You Can't Scale?", "Still Posting Content Nobody Engages With?", "Charging Too Little to Attract Premium Clients?", "Is Perfectionism Killing Your Launch Date?", "Trading Hours for Dollars at 50?"]`,
+["One Sneaky Crypto Pitfall Preventing You from Generating a $10k Monthly Income?", "Could this Commonly Overlooked Crypto Risk be Sapping Your Potential Earnings?", ...]`,
 
   authority: `Generate 5 authority-based headlines with main headline and subheadline:
 
-Main format: "[Credible Authority] [Action Verb] [Named Mechanism] [Specific Result]"
-Subheadline format: "This is why [Named Failed Method 1], [Named Failed Method 2], and [Named Failed Method 3] have not delivered [Specific Desired Outcome]"
+Main format: "[Authority Figure] [Action] [Unique Mechanism] [Result]"
+Subheadline format: "This is why [Old Way 1], [Old Way 2], and [Old Way 3] have failed to produce [Desired Outcome]"
 
 Context:
 - Target Market: {targetMarket}
@@ -105,19 +96,17 @@ Context:
 - Unique Mechanism: {uniqueMechanism}
 
 Requirements:
-- HARD LIMIT: Main headline MUST be 40 characters or fewer. This is a Meta ad field limit — no exceptions.
-- Authority must be specific and believable — "10-year veteran" or "former [industry] professional" not just "award-winning expert"
-- Action verbs: discovered, built, tested, proven, documented — not grandiose verbs like "unearthed" or "unveiled"
-- Subheadline must name 3 specific methods the target market has already tried and failed with — use their exact language from the pressing problem
-- Never use generic authority claims or vague results — name what was built and what it produces
+- Authority figure should be credible (award-winning, published, certified, etc.)
+- Action verbs: unearthed, discovered, revealed, disclosed, unveiled
+- Subheadline should debunk 3 old/failed methods
 - Return ONLY a JSON array of 5 objects with this structure: {"main": "...", "sub": "..."}
 
 Example output format:
-[{"main": "The System Behind 200+ Booked Calendars", "sub": "This is why posting daily on Instagram, running webinars to empty rooms, and cold DMing strangers have not filled your coaching practice"}, ...]`,
+[{"main": "Award-Winning Mind Coach Unearthed Hidden 'Crypto Code' Transforming Newbies into Fortunate Investors", "sub": "This is why day trading, HODLing, and technical analysis have failed to produce consistent crypto income"}, ...]`,
 
-  urgency: `Generate 5 urgency-based headlines with specific timeframes and named outcomes:
+  urgency: `Generate 5 urgency-based headlines with specific timeframes:
 
-Format: "[Action Verb] [Named Mechanism], and [Specific Measurable Result] in [Exact Timeframe]"
+Format: "[Action] [Unique Mechanism], and [Result] in [Timeframe]!"
 
 Context:
 - Target Market: {targetMarket}
@@ -125,15 +114,14 @@ Context:
 - Unique Mechanism: {uniqueMechanism}
 
 Requirements:
-- HARD LIMIT: Every headline MUST be 40 characters or fewer. This is a Meta ad field limit — no exceptions.
-- Start with concrete action verbs: Try, Test, Start, Join, Get — not grandiose verbs like "Unearth" or "Leverage"
-- Include a specific, believable timeframe tied to the actual programme length — "in 90 days", "in 6 weeks", "this month"
-- Name the specific result the target market wants using their language — revenue figures, client numbers, lifestyle changes
-- Never use hyperbolic language like "skyrocket" or "explode" — state the result plainly and let the timeframe create the urgency
+- Start with action verbs: Discover, Unearth, Leverage, Unlock, Access
+- Include specific timeframe: "in 30 days", "in 6 months", "in just one month", "under 30 days"
+- Promise the desired outcome
+- Use exciting result language: "skyrocket", "rains", "pull in", "multiply"
 - Return ONLY a JSON array of 5 headline strings, nothing else
 
 Example output format:
-["Get 5 New Clients in 30 Days — Guaranteed", "Fill Your Calendar This Month for $47", "Book 10 Calls in 2 Weeks With This System", "Start Earning $5k/Month in 90 Days Flat", "Land 3 Premium Clients Before Friday"]`,
+["Unearth Crypto Millionaire Blueprint, and Pull in $10k in Under 30 Days!", "Discover 9-Step Program That Rains Passive-Income in 6 Months!", ...]`,
 };
 
 export const headlinesRouter = router({
@@ -211,12 +199,9 @@ export const headlinesRouter = router({
         desiredOutcome: z.string(),
         uniqueMechanism: z.string(),
         powerMode: z.boolean().optional(),
-        formulaType: z.enum(["all", "story", "eyebrow", "question", "authority", "urgency"]).optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
-      await enforceQuota(ctx.user.id, "headlines");
-
       // Fetch service data for AutoPop if serviceId provided
       // NOTE: pre-existing issue — this fetch does not check userId (flagged for future security pass, not fixed in 1.2)
       let autoPopData: any = {};
@@ -307,41 +292,14 @@ export const headlinesRouter = router({
         }
       }
 
-      // ── Cascade context from Campaign Kit ──
-      let cascadeContext = "";
-      try {
-        const [relIcp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
-        if (relIcp) {
-          const [kit] = await db.select().from(campaignKits).where(and(eq(campaignKits.userId, ctx.user.id), eq(campaignKits.icpId, relIcp.id))).limit(1);
-          if (kit) {
-            const parts: string[] = [];
-            if (kit.selectedOfferId) {
-              const [offer] = await db.select().from(offers).where(eq(offers.id, kit.selectedOfferId)).limit(1);
-              if (offer) parts.push(`The selected offer angle is: ${offer.activeAngle || "godfather"}`);
-            }
-            if (kit.selectedHvcoId) {
-              const [hvco] = await db.select().from(hvcoTitles).where(eq(hvcoTitles.id, kit.selectedHvcoId)).limit(1);
-              if (hvco) parts.push(`The lead magnet is: ${hvco.title}`);
-            }
-            if (parts.length > 0) {
-              cascadeContext = `\n\nUPSTREAM CONTEXT — SELECTED ASSETS:\n${parts.join(". ")}. Headline tone must match whether it is promoting the free lead magnet or the high-ticket offer.\n\n`;
-            }
-          }
-        }
-      } catch (e) { console.warn("[cascade] headlines context fetch failed:", e); }
-
       const headlineSetId = nanoid();
       const allHeadlines: Array<typeof headlines.$inferInsert> = [];
-      const selectedFormula = input.formulaType && input.formulaType !== "all" ? input.formulaType : null;
-      const countPerFormula = selectedFormula ? 25 : (input.powerMode ? 15 : 5);
+      const countMultiplier = input.powerMode ? 3 : 1; // Power Mode generates 3x more
 
-      const formulasToGenerate = selectedFormula
-        ? { [selectedFormula]: (FORMULA_PROMPTS as any)[selectedFormula] }
-        : FORMULA_PROMPTS;
-
-      // Generate headlines for selected formula type(s)
-      for (const [formulaType, promptTemplate] of Object.entries(formulasToGenerate)) {
-        const modifiedTemplate = (promptTemplate as string).replace(/Generate 5/g, `Generate ${countPerFormula}`);
+      // Generate headlines for each formula type
+      for (const [formulaType, promptTemplate] of Object.entries(FORMULA_PROMPTS)) {
+        // Modify prompt to generate 3x more if Power Mode is enabled
+        const modifiedTemplate = promptTemplate.replace(/Generate 5/g, `Generate ${5 * countMultiplier}`);
         // Item 1.3 — use resolved values (server fallback from service record)
         const resolvedPressingProblem = autoPopData.resolvedPressingProblem ?? input.pressingProblem;
         const resolvedDesiredOutcome = autoPopData.resolvedDesiredOutcome ?? input.desiredOutcome;
@@ -355,16 +313,26 @@ export const headlinesRouter = router({
         // Inject SOT as outermost layer, then ICP — Item 1.2 + 1.4
         const promptWithIcp = icpContext ? prompt.replace(/\n\nGenerate /, `\n\n${icpContext}\n\nGenerate `) : prompt;
         const promptWithSot = sotContext ? `${sotContext}\n\n${promptWithIcp}` : promptWithIcp;
-        const promptWithCascade = cascadeContext ? `${cascadeContext}${promptWithSot}` : promptWithSot;
 
         try {
           const response = await invokeLLM({
             messages: [
               {
                 role: "system",
-                content: "You are an expert direct response copywriter. Return ONLY valid JSON, no markdown, no explanations.",
+                content: `You are an expert direct response copywriter specialising in Meta ad headlines for coaches, consultants and speakers. You apply a THREE-QUESTION TEST to every headline before including it:
+1. Does it name a specific person in a specific situation? (Not "coaches" but "coaches who've been running ads for 3 months with zero leads")
+2. Does it promise a specific outcome — not a vague benefit? (Not "more clients" but "8 discovery calls booked in the next 14 days")
+3. Could this headline ONLY be written for THIS service? (If it works equally well for any coach, rewrite it)
+
+BANNED OPENERS AND PHRASES — never generate headlines using these patterns:
+- ${BANNED_HEADLINE_PATTERNS.map(p => `"${p}..."`).join(', ')}, "Everything you need to..."
+- Generic power words used without specific context: skyrocket, explode, dominate, crush it, master
+
+MANDATORY: Every headline must contain at least ONE word that comes directly from the ICP's pain language, desire language, or niche-specific vocabulary — a word that signals to the ideal customer "this was written for me specifically."
+
+Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES}`,
               },
-              { role: "user", content: promptWithCascade },
+              { role: "user", content: promptWithSot },
             ],
           });
 
@@ -460,25 +428,6 @@ export const headlinesRouter = router({
       // Save all headlines with compliance data
       await createHeadlines(headlinesWithCompliance);
       await incrementHeadlineCount(ctx.user.id);
-      await incrementQuotaCount(ctx.user.id, "headlines");
-
-      // Auto-score and auto-select into campaign kit (non-blocking)
-      try {
-        const db2 = await getDb();
-        if (db2) {
-          const savedHeadlines = await db2.select().from(headlines).where(and(eq(headlines.headlineSetId, headlineSetId), eq(headlines.userId, ctx.user.id)));
-          let bestId = 0; let bestScore = -1;
-          for (const h of savedHeadlines) {
-            const s = await scoreItem({ content: h.headline, nodeType: "headlines", formulaType: h.formulaType });
-            await db2.update(headlines).set({ selectionScore: String(s) } as any).where(eq(headlines.id, h.id));
-            if (s > bestScore) { bestScore = s; bestId = h.id; }
-          }
-          if (bestId && input.serviceId) {
-            const [relatedIcp] = await db2.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
-            if (relatedIcp) await autoSelectBest(ctx.user.id, relatedIcp.id, "selectedHeadlineId", bestId);
-          }
-        }
-      } catch (e) { console.warn("[auto-select] headlines failed:", e); }
 
       return {
         headlineSetId,
@@ -499,11 +448,9 @@ export const headlinesRouter = router({
       desiredOutcome: z.string(),
       uniqueMechanism: z.string(),
       powerMode: z.boolean().optional(),
-      formulaType: z.enum(["all", "story", "eyebrow", "question", "authority", "urgency"]).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const { user } = ctx;
-      await enforceQuota(ctx.user.id, "headlines");
       await checkAndResetQuotaIfNeeded(user.id);
       if (user.role !== "superuser") {
         const maxHeadlines = user.subscriptionTier === "agency" ? 20 : 6;
@@ -559,18 +506,12 @@ export const headlinesRouter = router({
         try {
           const bgDb = await getDbBg();
           if (!bgDb) throw new Error("Database not available in background job");
-          const selectedFormula = capturedInput.formulaType && capturedInput.formulaType !== "all" ? capturedInput.formulaType : null;
-          // If a specific formula is selected, generate 25 of that type. Otherwise 5 per type.
-          const countPerFormula = selectedFormula ? 25 : (capturedInput.powerMode ? 15 : 5);
+          const countMultiplier = capturedInput.powerMode ? 3 : 1;
           const headlineSetId = nanoid();
           const allHeadlines: Array<typeof headlines.$inferInsert> = [];
 
-          const formulasToGenerate = selectedFormula
-            ? { [selectedFormula]: (FORMULA_PROMPTS as any)[selectedFormula] }
-            : FORMULA_PROMPTS;
-
-          for (const [formulaType, promptTemplate] of Object.entries(formulasToGenerate)) {
-            const modifiedTemplate = (promptTemplate as string).replace(/Generate 5/g, `Generate ${countPerFormula}`);
+          for (const [formulaType, promptTemplate] of Object.entries(FORMULA_PROMPTS)) {
+            const modifiedTemplate = (promptTemplate as string).replace(/Generate 5/g, `Generate ${5 * countMultiplier}`);
             const resolvedPressingProblem = capturedAutoPopData.resolvedPressingProblem ?? capturedInput.pressingProblem;
             const resolvedDesiredOutcome = capturedAutoPopData.resolvedDesiredOutcome ?? capturedInput.desiredOutcome;
             const resolvedUniqueMechanism = capturedAutoPopData.resolvedUniqueMechanism ?? capturedInput.uniqueMechanism;
@@ -582,7 +523,7 @@ export const headlinesRouter = router({
             const promptWithIcp = capturedIcpContext ? prompt.replace(/\n\nGenerate /, `\n\n${capturedIcpContext}\n\nGenerate `) : prompt;
             const promptWithSot = capturedSotContext ? `${capturedSotContext}\n\n${promptWithIcp}` : promptWithIcp;
 
-            const response = await invokeLLM({ messages: [{ role: "system", content: "You are an expert direct response copywriter. Return ONLY valid JSON, no markdown, no explanations." }, { role: "user", content: promptWithSot }] });
+            const response = await invokeLLM({ messages: [{ role: "system", content: `You are an expert direct response copywriter specialising in Meta ad headlines for coaches, consultants and speakers. Every headline must pass the THREE-QUESTION TEST: specific person in specific situation, specific outcome, only writeable for this service. Banned openers: ${BANNED_HEADLINE_PATTERNS.join(', ')}. Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES}` }, { role: "user", content: promptWithSot }] });
             const content = response.choices[0].message.content;
             if (typeof content !== "string") throw new Error("Invalid LLM response");
             const parsed = JSON.parse(stripMarkdownJson(content));
@@ -603,22 +544,6 @@ export const headlinesRouter = router({
 
           await createHeadlines(headlinesWithCompliance);
           await incrementHeadlineCount(capturedUserId);
-          await incrementQuotaCount(capturedUserId, "headlines");
-
-          // Auto-score and auto-select into campaign kit (non-blocking)
-          try {
-            const savedHeadlines = await bgDb.select().from(headlines).where(and(eqBg(headlines.headlineSetId, headlineSetId), eqBg(headlines.userId, capturedUserId)));
-            let bestId = 0; let bestScore = -1;
-            for (const h of savedHeadlines) {
-              const s = await scoreItem({ content: h.headline, nodeType: "headlines", formulaType: h.formulaType });
-              await bgDb.update(headlines).set({ selectionScore: String(s) } as any).where(eqBg(headlines.id, h.id));
-              if (s > bestScore) { bestScore = s; bestId = h.id; }
-            }
-            if (bestId && capturedInput.serviceId) {
-              const [relatedIcp] = await bgDb.select().from(idealCustomerProfiles).where(eqBg(idealCustomerProfiles.serviceId, capturedInput.serviceId)).limit(1);
-              if (relatedIcp) await autoSelectBest(capturedUserId, relatedIcp.id, "selectedHeadlineId", bestId);
-            }
-          } catch (e) { console.warn("[auto-select] headlines async failed:", e); }
 
           await bgDb.update(jobs)
             .set({ status: "complete", result: JSON.stringify({ headlineSetId, count: allHeadlines.length }) })
@@ -648,58 +573,6 @@ export const headlinesRouter = router({
     .mutation(async ({ ctx, input }) => {
       await updateHeadlineRating(input.headlineId, ctx.user.id, input.rating);
       return { success: true };
-    }),
-
-  regenerateSingle: protectedProcedure
-    .input(z.object({ id: z.number(), promptOverride: z.string().optional() }))
-    .mutation(async ({ ctx, input }) => {
-      await enforceQuota(ctx.user.id, "headlines");
-
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
-
-      const [existing] = await db
-        .select()
-        .from(headlines)
-        .where(and(eq(headlines.id, input.id), eq(headlines.userId, ctx.user.id)))
-        .limit(1);
-
-      if (!existing) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Headline not found" });
-      }
-
-      const subheadlinePart = existing.subheadline ? ` Current subheadline: ${existing.subheadline}.` : "";
-      const overrideInstruction = input.promptOverride?.trim()
-        ? ` Additional instruction: ${input.promptOverride.trim()}.`
-        : "";
-
-      const prompt = `Rewrite this ad headline. Current headline: ${existing.headline}.${subheadlinePart}${overrideInstruction} Return a JSON object with keys: headline (string), subheadline (string or null). No explanation, no markdown.`;
-
-      const response = await invokeLLM({
-        messages: [
-          { role: "system", content: "You are an expert ad headline copywriter. Respond with only valid JSON." },
-          { role: "user", content: prompt },
-        ],
-      });
-
-      const content = response.choices[0].message.content;
-      if (typeof content !== "string") throw new Error("Invalid response from AI");
-
-      const parsed = JSON.parse(stripMarkdownJson(content));
-      if (!parsed.headline) throw new Error("AI response missing headline field");
-
-      await db
-        .update(headlines)
-        .set({ headline: parsed.headline, subheadline: parsed.subheadline ?? existing.subheadline, updatedAt: new Date() })
-        .where(eq(headlines.id, input.id));
-
-      const [updated] = await db
-        .select()
-        .from(headlines)
-        .where(eq(headlines.id, input.id))
-        .limit(1);
-
-      return updated;
     }),
 
   // Delete headline set

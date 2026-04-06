@@ -1,5 +1,6 @@
 import { invokeLLM } from "./_core/llm";
 import type { LandingPageContent } from "../drizzle/schema";
+import { BANNED_COPYWRITING_WORDS, META_COMPLIANCE_NOTES, truncateQuote } from "./_core/copywritingRules";
 
 // Angle-specific prompt modifiers based on industry research
 const ANGLE_PROMPTS = {
@@ -12,7 +13,6 @@ Focus on:
 - Step-by-step process
 - Guarantee included
 
-Headline pattern: "[Benefit]: How [Avatar]'s '[Mechanism Name]' Delivers [Result] Using [System] - In [Timeframe], Guaranteed!"
 CTA: "Claim Your FREE Consultation!"
   `,
   godfather: `
@@ -24,7 +24,6 @@ Focus on:
 - Making it impossible to say no
 - Risk reversal throughout copy
 
-Headline pattern: "Get [Result] in [Timeframe] - Or You Don't Pay [Currency]!"
 CTA: "Book My Free [Service] Call"
 Key phrase: Emphasize "Or you don't pay" throughout the copy
   `,
@@ -37,7 +36,6 @@ Focus on:
 - Risk-free start
 - Immediate access
 
-Headline pattern: "Get [Result] - FREE [Offer Type]!"
 CTA: "Claim Your FREE [Offer]!"
 Key phrase: Emphasize "FREE" and "no strings attached"
   `,
@@ -50,7 +48,6 @@ Focus on:
 - Cost breakdown
 - Limited-time pricing
 
-Headline pattern: "Get [Result] for Just $[Price]!"
 CTA: "Get Started for $[Price]"
 Key phrase: Emphasize specific price and value
   `
@@ -62,15 +59,14 @@ export async function generateLandingPageAngle(
   avatarName: string,
   avatarDescription: string,
   angle: 'original' | 'godfather' | 'free' | 'dollar',
-  socialProof: any,
-  fallbackTestimonials?: Array<{headline: string, quote: string, name: string, location: string}>
+  socialProof: any
 ): Promise<LandingPageContent> {
   // Social proof guidance (Issue 2 fix)
   const socialProofGuidance = socialProof.hasTestimonials || socialProof.hasCustomers || socialProof.hasPress
     ? `REAL SOCIAL PROOF AVAILABLE:
 ${socialProof.hasCustomers ? `- ${socialProof.customerCount} verified customers` : ''}
 ${socialProof.hasRating ? `- ${socialProof.rating} average rating from ${socialProof.reviewCount} reviews` : ''}
-${socialProof.hasTestimonials ? `- Real testimonials: ${socialProof.testimonials.map((t: any) => `${t.name} (${t.title})`).join(', ')}` : ''}
+${socialProof.hasTestimonials ? `- Real testimonials:\n${socialProof.testimonials.map((t: any) => `  • ${t.name}${t.title ? ` (${t.title})` : ''}: "${truncateQuote(t.quote || '')}"`).join('\n')}` : ''}
 ${socialProof.hasPress ? `- Press features: ${socialProof.press}` : ''}
 
 You MUST use these exact numbers and real testimonials. Do not fabricate or inflate.`
@@ -92,13 +88,22 @@ ${ANGLE_PROMPTS[angle]}
 
 ${socialProofGuidance}
 
+EMOTIONAL ARC — every section of this landing page must serve a specific emotional purpose in sequence. A visitor who reads from top to bottom must feel each emotion in order:
+Section 1 (Hero — eyebrow + main headline + subheadline): SEEN AND UNDERSTOOD. The reader must feel "this person knows exactly who I am and what I'm going through." Use their internal language. Name their situation precisely.
+Section 2 (Problem — quizSection + problemAgitation): NAMED AND VALIDATED. "Finally, someone has put words to this." The problem must be described so accurately that the reader feels exposed. Name the specific daily situation, not a category of pain.
+Section 3 (Agitate — whyOldFail + shockingStat): COST OF INACTION. "I cannot afford to stay here." Make the cost of not solving this problem feel concrete and immediate. Name the specific ways staying stuck is costing them (time, money, relationships, self-respect).
+Section 4 (Solution — solutionIntroduction): HOPE. "There might be a way out." Introduce the possibility of a different outcome before introducing the mechanism. Make hope feel credible, not hype.
+Section 5 (Mechanism — uniqueMechanismIntro): DIFFERENT FROM WHAT THEY'VE TRIED. "This is not the same thing I've already failed with." Explicitly name 1-2 things they've already tried and explain why this is structurally different — not just "better."
+Section 6 (Proof — socialProofTestimonials + insiderAdvantages): SAFE TO BELIEVE. "Other people like me have done this." Testimonials must feel like real people, not marketing copy. Quote specific situations and specific results.
+Section 7 (Offer — scarcityUrgency + timeSavingBenefit + consultationOutline): OBVIOUS NEXT STEP. "Not buying would be irrational." The offer must stack so much value that the question becomes "why wouldn't I?" Apply anchoring — state total value before the ask.
+
 Generate a complete landing page with 16 sections following this structure:
 
 1. **Eyebrow Headline** (all caps, attention-grabbing, addresses target avatar's pain, max 100 chars)
    Example: "FOR UAE & GCC CRYPTO BEGINNERS"
 
-2. **Main Headline** (long-form, benefit-driven, includes unique mechanism, 100-150 chars)
-   Example: "Get Consistent, Halal Crypto Income in Just 6 Months - Or You Don't Pay a Dirham!"
+2. **Main Headline** (long-form, benefit-driven, 100-150 chars)
+   A great landing page headline does three things simultaneously: (1) identifies the exact person it is written for so precisely that anyone else feels excluded, (2) names the specific outcome they want using their own words not marketing language, (3) signals that this is different from everything they have already tried. Do not use fill-in-the-blank template patterns — write a headline that could only exist for this specific product and this specific avatar. The headline must not use any of these words: ${BANNED_COPYWRITING_WORDS.join(', ')}.
 
 3. **Subheadline** (explains why current methods fail or what makes this different, 150-200 chars)
    Example: "...No blocked accounts, stress, or risking your family's trust - even if you've lost money before or think the local banking system is impossible to beat."
@@ -110,9 +115,8 @@ Generate a complete landing page with 16 sections following this structure:
    Example: ["Forbes", "Inc.", "Entrepreneur", "Yahoo Finance", "Business Insider"]
    NOTE: DO NOT include "Meta", "Facebook", or "Instagram" as these imply platform endorsement which violates Meta advertising policy
 
-6. **Quiz/Question Section** (engaging question with 5 options and reveal answer, 200-300 words total)
-   CRITICAL: The "answer" field MUST be a full 2-3 sentence explanation of why the correct option is right. NEVER leave answer empty, null, or just the option text. The answer must educate and surprise the reader.
-   Example: "Can You Guess Which One of These 'Safe' Crypto Moves… Actually Gets Your Bank Account Flagged?"
+6. **Quiz/Question Section** (niche-specific question with 5 plausible options and a surprising reveal answer, 200-300 words total)
+   A great quiz question does two things: it makes the reader feel smart for knowing the answer (or curious because they don't), and it reframes their understanding of the problem. Rules: the question must use insider language from the target market; every option must sound genuinely plausible — a good option is one the reader would seriously consider before seeing the answer; the answer must surprise the reader and teach them something they could not have known without reading this page; the question must name a specific scenario from the niche, not a generic category. BANNED quiz patterns (too generic, do not use): "Which of these is the most important X", "What is the first step to X", "How many X do you need to Y".
 
 7. **Problem Agitation** (emotional pain points, 200-300 words)
    Example: "Still Worrying You'll Be The Next Account Freeze Or Crypto Horror Story?"
@@ -121,11 +125,9 @@ Generate a complete landing page with 16 sections following this structure:
    Example: "If You've Tried P2P Groups, Chased Hot Signals, or Risked Your Bank Cards - and Still Aren't Seeing Real Crypto Profits..."
 
 9. **Why Old Methods Fail** (contrarian angle, 200-300 words)
-   CRITICAL: Name 2-3 SPECIFIC reasons why conventional approaches fail for this exact avatar. Tie each reason to the avatar's niche, pain points, and situation. Never use generic filler like "traditional methods don't work." Pull from the avatar's frustrations and prior failed attempts.
    Example: "Why Playing It 'Safe' With Mainstream Crypto Advice Actually Keeps You Stuck (and Broke)"
 
 10. **Unique Mechanism Introduction** (names the proprietary system, 200-300 words)
-    CRITICAL: Name a SPECIFIC proprietary methodology or system — give it a branded name derived from the product and avatar context. Describe what it does in 2-3 concrete sentences. If the product description mentions a named method, USE that name. Never write generic copy like "our unique system" — it must have a real name and specific steps.
     Example: "Introducing the 'Steady Wealth Protocol': Your Step-by-Step Safe Haven in Middle East Crypto"
 
 11. **Social Proof / Testimonials** (4 testimonials with headline, quote, name, location)
@@ -142,38 +144,26 @@ Generate a complete landing page with 16 sections following this structure:
     Example: "The Steady Wealth Protocol Doors Are Only Open For a Short Window (Secure Your Spot Now)"
 
 14. **Shocking Statistic** (data-driven fear, 150-200 words)
-    CRITICAL: Generate a SPECIFIC, believable statistic relevant to this avatar's niche. Use a concrete percentage or number (e.g. "87% of...", "Only 3 in 100..."). The stat must feel real and credible for this industry — not a generic placeholder. Format as one punchy opening sentence with the stat, followed by 2-3 sentences explaining what it means for the avatar.
-    FORMATTING RULE: All statistics and percentages MUST be written as digits and symbols — e.g. "73%", "4x", "3 out of 10". NEVER spell out numbers as words (never "Seventy-three percent", never "four times"). This applies to every number, percentage, and multiplier in this section.
     Example: "92% of UAE Crypto Beginners Will Never Build Real Wealth Without a Proven System"
 
 15. **Time-Saving Benefit** (shortcut positioning, 150-200 words)
     Example: "Save Yourself Years of Painful Guesswork: Our Blueprint Gives You the Shortcut to Real Crypto Income"
 
-16. **Consultation Outline** (10 numbered items with title and description)
-    Example:
-    1. "Step-by-Step Roadmap" - "Follow our Steady Wealth Protocol to take you from frustrated beginner to confident crypto earner - with every safe step mapped out."
-    2. "Done-For-You Templates" - "Plug-and-play scripts, checklists, and spreadsheets for every transaction, from your first crypto buy to safe cashing out."
-    ... (8 more items)
+16. **Consultation Outline** (10 numbered items, each with a specific title and a deliverable-focused description)
+    The consultation outline must feel like a genuine agenda, not a marketing list. Each item must name the specific deliverable the client will have at the end of that segment — what they have after that step that they did not have before it. BANNED consultation outline patterns (do not use as titles or descriptions): "Introduction and welcome", "Q&A", "Next steps", "Strategy overview", "Getting to know you" — these are placeholders, not deliverables. Every item must name a specific analysis, assessment, calculation, or output. Example: "Revenue Gap Analysis — At the end of this segment you will have a precise number: the exact monthly gap between your current income and your target, and the three specific levers available to close it."
 
-17. **FAQ** (5 questions and answers addressing common objections)
-    Generate 5 frequently asked questions that address the target customer's most likely objections, fears, and hesitations about this specific offer. Each answer should be 2-3 sentences, reassuring and specific. Base the questions on the ICP pain points and the offer positioning.
-    Example:
-    - Question: "Do I need coaching experience?" Answer: "No. This programme is designed for complete beginners. We give you everything you need to get started."
-    - Question: "What if I've tried other programmes and failed?" Answer: "Most programmes fail because they use a one-size-fits-all approach. Our method is personalised to your specific situation."
+SPECIFICITY CHECK — apply this before returning the JSON:
+For every section, ask: does this section contain at least one phrase that could only appear on a landing page for THIS specific service in THIS specific niche? If any section contains only generic direct response language that could apply to any coaching programme, rewrite that section before returning. The test: mentally swap the product name for a different coaching product in a different niche. If the section still makes sense without any changes, it is not specific enough. Rewrite until it only makes sense for this product, this avatar, and this outcome.
 
 Return as JSON matching the LandingPageContent type.
 Use the avatar's name, location, and description throughout the copy to personalize it.
 Make it compelling, benefit-driven, and conversion-focused.
 Use direct response copywriting principles: pain agitation, unique mechanism, social proof, scarcity, and strong CTAs.
-
-CRITICAL FORMATTING: All string values must be plain text. NO markdown syntax anywhere — no asterisks (*), no hash symbols (#), no bold (**text**), no italic (*text*), no bullet markers. Just clean sentences and paragraphs separated by line breaks.
-
-CRITICAL CONTENT: Every single one of the 16 sections MUST contain substantial content. Never return an empty string for any section. shockingStat must contain a specific statistic. whyOldFail must contain 2-3 named reasons. Every section must be 50+ words minimum.
 `;
 
   const response = await invokeLLM({
     messages: [
-      { role: "system", content: "You are a world-class direct response copywriter specializing in high-converting landing pages. You write compelling, benefit-driven copy that converts visitors into customers. FORMATTING RULE: Return plain text only inside all JSON string values. No markdown. No asterisks (*). No hash symbols (#). No bold or italic formatting of any kind. No bullet markers. Just clean readable sentences and paragraphs." },
+      { role: "system", content: `You are a world-class direct response copywriter specializing in high-converting landing pages. You engineer an emotional arc through each page — every section serves a specific emotional purpose, moving the reader from 'seen and understood' through 'named and validated', 'cost of inaction', 'hope', 'different from what they've tried', 'safe to believe', and finally 'obvious next step'. You write in the customer's own language — the words they use with a close friend, not marketing language. FORMATTING RULE: Return plain text only inside all JSON string values. No markdown. No asterisks (*). No hash symbols (#). No bold or italic formatting of any kind. No bullet markers. Just clean readable sentences and paragraphs.\n\n${META_COMPLIANCE_NOTES}` },
       { role: "user", content: prompt }
     ],
     response_format: {
@@ -238,26 +228,13 @@ CRITICAL CONTENT: Every single one of the 16 sections MUST contain substantial c
                 required: ["title", "description"],
                 additionalProperties: false
               }
-            },
-            faq: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  question: { type: "string" },
-                  answer: { type: "string" }
-                },
-                required: ["question", "answer"],
-                additionalProperties: false
-              }
             }
           },
           required: [
             "eyebrowHeadline", "mainHeadline", "subheadline", "primaryCta",
             "asSeenIn", "quizSection", "problemAgitation", "solutionIntro",
             "whyOldFail", "uniqueMechanism", "testimonials", "insiderAdvantages",
-            "scarcityUrgency", "shockingStat", "timeSavingBenefit", "consultationOutline",
-            "faq"
+            "scarcityUrgency", "shockingStat", "timeSavingBenefit", "consultationOutline"
           ],
           additionalProperties: false
         }
@@ -278,46 +255,24 @@ CRITICAL CONTENT: Every single one of the 16 sections MUST contain substantial c
   // Strip markdown code fences if LLM wraps response in ```json ... ```
   const cleaned = content.replace(/^```json\s*|^```\s*|\s*```$/gm, '').trim();
   const parsed = JSON.parse(cleaned);
-
-  // Strip any markdown formatting from all string values
-  function stripMarkdown(val: unknown): unknown {
-    if (typeof val === "string") {
-      return val
-        .replace(/\*\*(.*?)\*\*/g, '$1')  // **bold** → bold
-        .replace(/\*(.*?)\*/g, '$1')       // *italic* → italic
-        .replace(/^#{1,6}\s+/gm, '')       // # heading → heading
-        .replace(/^[-*]\s+/gm, '')         // - bullet → bullet
-        .trim();
-    }
-    if (Array.isArray(val)) return val.map(stripMarkdown);
-    if (val && typeof val === "object") {
-      const out: Record<string, unknown> = {};
-      for (const [k, v] of Object.entries(val as Record<string, unknown>)) {
-        out[k] = stripMarkdown(v);
-      }
-      return out;
-    }
-    return val;
-  }
-  const cleanParsed = stripMarkdown(parsed) as Record<string, unknown>;
-
+  
   // Validate and add fallbacks for all required fields
   const validated: LandingPageContent = {
-    eyebrowHeadline: (cleanParsed.eyebrowHeadline as string) || 'SPECIAL OFFER',
-    mainHeadline: (cleanParsed.mainHeadline as string) || 'Transform Your Results Today',
-    subheadline: (cleanParsed.subheadline as string) || 'Discover how to achieve your goals faster than ever before',
-    primaryCta: (cleanParsed.primaryCta as string) || 'Get Started Now',
-    asSeenIn: Array.isArray(cleanParsed.asSeenIn) && cleanParsed.asSeenIn.length > 0 ? cleanParsed.asSeenIn as string[] : ['Featured'],
-    quizSection: (cleanParsed.quizSection as any) || {
+    eyebrowHeadline: parsed.eyebrowHeadline || 'SPECIAL OFFER',
+    mainHeadline: parsed.mainHeadline || 'Transform Your Results Today',
+    subheadline: parsed.subheadline || 'Discover how to achieve your goals faster than ever before',
+    primaryCta: parsed.primaryCta || 'Get Started Now',
+    asSeenIn: Array.isArray(parsed.asSeenIn) && parsed.asSeenIn.length > 0 ? parsed.asSeenIn : ['Featured'],
+    quizSection: parsed.quizSection || {
       question: 'What is your biggest challenge?',
       options: ['Option A', 'Option B', 'Option C', 'Option D'],
       answer: 'Option A'
     },
-    problemAgitation: (cleanParsed.problemAgitation as string) || '[Generation incomplete — please regenerate this section]',
-    solutionIntro: (cleanParsed.solutionIntro as string) || '[Generation incomplete — please regenerate this section]',
-    whyOldFail: (cleanParsed.whyOldFail as string) || '[Generation incomplete — please regenerate this section]',
-    uniqueMechanism: (cleanParsed.uniqueMechanism as string) || '[Generation incomplete — please regenerate this section]',
-    testimonials: Array.isArray(cleanParsed.testimonials) && cleanParsed.testimonials.length > 0 ? cleanParsed.testimonials as any : fallbackTestimonials ?? [
+    problemAgitation: parsed.problemAgitation || 'Many people struggle with this challenge every day.',
+    solutionIntro: parsed.solutionIntro || 'There is a proven solution that works.',
+    whyOldFail: parsed.whyOldFail || 'Traditional methods don\'t work because they miss the core issue.',
+    uniqueMechanism: parsed.uniqueMechanism || 'Our unique system addresses the root cause.',
+    testimonials: Array.isArray(parsed.testimonials) && parsed.testimonials.length > 0 ? parsed.testimonials : [
       {
         headline: 'Life-Changing Results',
         quote: 'This completely transformed how I approach my goals.',
@@ -325,11 +280,11 @@ CRITICAL CONTENT: Every single one of the 16 sections MUST contain substantial c
         location: 'Worldwide'
       }
     ],
-    insiderAdvantages: (cleanParsed.insiderAdvantages as string) || '[Generation incomplete — please regenerate this section]',
-    scarcityUrgency: (cleanParsed.scarcityUrgency as string) || '[Generation incomplete — please regenerate this section]',
-    shockingStat: (cleanParsed.shockingStat as string) || '[Generation incomplete — please regenerate this section]',
-    timeSavingBenefit: (cleanParsed.timeSavingBenefit as string) || '[Generation incomplete — please regenerate this section]',
-    consultationOutline: Array.isArray(cleanParsed.consultationOutline) && cleanParsed.consultationOutline.length > 0 ? cleanParsed.consultationOutline as any : [
+    insiderAdvantages: parsed.insiderAdvantages || 'Get exclusive access to proven strategies.',
+    scarcityUrgency: parsed.scarcityUrgency || 'Limited spots available this month.',
+    shockingStat: parsed.shockingStat || 'Studies show this approach works 10x better.',
+    timeSavingBenefit: parsed.timeSavingBenefit || 'Save hours every week with this system.',
+    consultationOutline: Array.isArray(parsed.consultationOutline) && parsed.consultationOutline.length > 0 ? parsed.consultationOutline : [
       {
         title: 'Assessment',
         description: 'We evaluate your current situation'
@@ -342,33 +297,13 @@ CRITICAL CONTENT: Every single one of the 16 sections MUST contain substantial c
         title: 'Implementation',
         description: 'We help you execute and succeed'
       }
-    ],
-    faq: Array.isArray(cleanParsed.faq) && cleanParsed.faq.length > 0 ? cleanParsed.faq as any : []
+    ]
   };
-
+  
   return validated;
 }
 
-// Per-angle timeout wrapper — prevents one slow AI response from blocking the entire job
-async function generateWithTimeout(
-  productName: string,
-  productDescription: string,
-  avatarName: string,
-  avatarDescription: string,
-  angle: 'original' | 'godfather' | 'free' | 'dollar',
-  socialProof: any,
-  timeoutMs = 300_000,
-  fallbackTestimonials?: Array<{headline: string, quote: string, name: string, location: string}>
-): Promise<LandingPageContent> {
-  return Promise.race([
-    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, angle, socialProof, fallbackTestimonials),
-    new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error(`Landing page ${angle} angle timed out after ${timeoutMs / 1000}s`)), timeoutMs)
-    ),
-  ]);
-}
-
-// Generate all 4 angles in parallel.
+// Generate all 4 angles at once.
 // onAngleComplete(completed, total) is called after each angle finishes so callers
 // can write real progress updates to the job record during generation.
 export async function generateAllAngles(
@@ -377,14 +312,15 @@ export async function generateAllAngles(
   avatarName: string,
   avatarDescription: string,
   socialProof: any,
-  onAngleComplete?: (completed: number, total: number) => Promise<void>,
-  fallbackTestimonials?: Array<{headline: string, quote: string, name: string, location: string}>
+  onAngleComplete?: (completed: number, total: number) => Promise<void>
 ): Promise<{
   original: LandingPageContent;
   godfather: LandingPageContent;
   free: LandingPageContent;
   dollar: LandingPageContent;
 }> {
+  // Generate in 2 batches of 2 to avoid overwhelming the LLM API with 4 concurrent
+  // large JSON-structured requests (each ~8k tokens), which can cause "fetch failed" timeouts.
   const TOTAL = 4;
   let completed = 0;
   const notify = async () => {
@@ -394,12 +330,13 @@ export async function generateAllAngles(
     }
   };
 
-  // All 4 angles in parallel — cuts total time by ~75% vs sequential
-  const [original, godfather, free, dollar] = await Promise.all([
-    generateWithTimeout(productName, productDescription, avatarName, avatarDescription, 'original', socialProof, 300_000, fallbackTestimonials).then(async r => { await notify(); return r; }),
-    generateWithTimeout(productName, productDescription, avatarName, avatarDescription, 'godfather', socialProof, 300_000, fallbackTestimonials).then(async r => { await notify(); return r; }),
-    generateWithTimeout(productName, productDescription, avatarName, avatarDescription, 'free', socialProof, 300_000, fallbackTestimonials).then(async r => { await notify(); return r; }),
-    generateWithTimeout(productName, productDescription, avatarName, avatarDescription, 'dollar', socialProof, 300_000, fallbackTestimonials).then(async r => { await notify(); return r; }),
+  const [original, godfather] = await Promise.all([
+    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'original', socialProof).then(async r => { await notify(); return r; }),
+    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'godfather', socialProof).then(async r => { await notify(); return r; }),
+  ]);
+  const [free, dollar] = await Promise.all([
+    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'free', socialProof).then(async r => { await notify(); return r; }),
+    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'dollar', socialProof).then(async r => { await notify(); return r; }),
   ]);
   return { original, godfather, free, dollar };
 }

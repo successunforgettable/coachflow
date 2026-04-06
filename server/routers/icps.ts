@@ -10,10 +10,13 @@ function stripMarkdownJson(content: string): string {
 import { eq, and, desc } from "drizzle-orm";
 import { invokeLLM } from "../_core/llm";
 import { filterRecord, getGlobalNegativePrompts } from "../lib/complianceFilter";
-import { enforceQuota, incrementQuotaCount } from "../lib/quotaEnforcement";
+import { ICP_SYSTEM_PROMPT, ICP_USER_PROMPT } from "../_core/icpPrompts";
 import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
+
+// ICP_SYSTEM_PROMPT and ICP_USER_PROMPT are defined in server/_core/icpPrompts.ts
+// and imported above — both generate (sync) and generateAsync use them.
 
 const generateICPSchema = z.object({
   serviceId: z.number(),
@@ -101,8 +104,6 @@ export const icpsRouter = router({
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
-      await enforceQuota(ctx.user.id, "icp");
-
       // Check and reset quota if user's anniversary date has passed
       await checkAndResetQuotaIfNeeded(ctx.user.id);
 
@@ -135,61 +136,13 @@ export const icpsRouter = router({
       }
 
       // Generate ICP using AI - ALL 17 KONG TABS
-      const prompt = `You are an expert marketing strategist. Create a detailed Ideal Customer Profile (ICP) for the following service:
-
-Service Name: ${service.name}
-Category: ${service.category}
-Description: ${service.description}
-Target Customer: ${service.targetCustomer}
-Main Benefit: ${service.mainBenefit}
-
-Generate a comprehensive ICP with ALL 17 sections (Industry standard):
-
-1. INTRODUCTION: 2-3 paragraph overview of who this person is
-2. FEARS: 5-7 specific fears that keep them up at night
-3. HOPES & DREAMS: 5-7 aspirations and what they dream about achieving
-4. DEMOGRAPHICS: JSON object with age_range, gender, income_level, education, occupation, location, family_status
-5. PSYCHOGRAPHICS: Personality traits, lifestyle, attitudes, interests (3-4 paragraphs)
-6. PAINS: 7-10 specific pain points they experience daily
-7. FRUSTRATIONS: 5-7 daily frustrations and annoyances
-8. GOALS: 6-8 specific goals they want to achieve
-9. VALUES: 5-7 core values that guide their decisions
-10. OBJECTIONS: 5-7 common objections to buying your service
-11. BUYING TRIGGERS: 5-7 specific triggers that make them ready to buy
-12. MEDIA CONSUMPTION: Where they consume content (platforms, channels, formats)
-13. INFLUENCERS: Who they follow, trust, and listen to
-14. COMMUNICATION STYLE: How they prefer to communicate and be communicated with
-15. DECISION MAKING: How they make purchasing decisions (process, timeline, factors)
-16. SUCCESS METRICS: How they measure success in their life/business
-17. IMPLEMENTATION BARRIERS: What stops them from taking action after buying
-
-Format as JSON with these exact keys (use bullet points • for lists):
-{
-  "introduction": "...",
-  "fears": "• Fear 1\\n• Fear 2\\n...",
-  "hopesDreams": "• Dream 1\\n• Dream 2\\n...",
-  "demographics": { ... },
-  "psychographics": "...",
-  "pains": "• Pain 1\\n• Pain 2\\n...",
-  "frustrations": "• Frustration 1\\n• Frustration 2\\n...",
-  "goals": "• Goal 1\\n• Goal 2\\n...",
-  "values": "• Value 1\\n• Value 2\\n...",
-  "objections": "• Objection 1\\n• Objection 2\\n...",
-  "buyingTriggers": "• Trigger 1\\n• Trigger 2\\n...",
-  "mediaConsumption": "...",
-  "influencers": "...",
-  "communicationStyle": "...",
-  "decisionMaking": "...",
-  "successMetrics": "...",
-  "implementationBarriers": "..."
-}`;
+      const prompt = ICP_USER_PROMPT(service);
 
       const response = await invokeLLM({
         messages: [
           {
             role: "system",
-            content:
-              `You are an expert marketing strategist specializing in creating detailed customer profiles for coaches, speakers, and consultants. Always respond with valid JSON. Never produce content containing: ${getGlobalNegativePrompts().join(", ")}.`,
+            content: ICP_SYSTEM_PROMPT(),
           },
           { role: "user", content: prompt },
         ],
@@ -318,8 +271,6 @@ Format as JSON with these exact keys (use bullet points • for lists):
         .where(eq(idealCustomerProfiles.id, insertResult[0].insertId))
         .limit(1);
 
-      await incrementQuotaCount(ctx.user.id, "icp");
-
       return newICP;
     }),
 
@@ -332,7 +283,6 @@ Format as JSON with these exact keys (use bullet points • for lists):
     .input(generateICPSchema)
     .mutation(async ({ ctx, input }) => {
       const { user } = ctx;
-      await enforceQuota(ctx.user.id, "icp");
       await checkAndResetQuotaIfNeeded(user.id);
       if (user.role !== "superuser") {
         const limit = getQuotaLimit(user.subscriptionTier, "icp");
@@ -358,11 +308,11 @@ Format as JSON with these exact keys (use bullet points • for lists):
           const bgDb = await getDb();
           if (!bgDb) throw new Error("Database not available in background job");
 
-          const prompt = `You are an expert marketing strategist. Create a detailed Ideal Customer Profile (ICP) for the following service:\n\nService Name: ${capturedService.name}\nCategory: ${capturedService.category}\nDescription: ${capturedService.description}\nTarget Customer: ${capturedService.targetCustomer}\nMain Benefit: ${capturedService.mainBenefit}\n\nGenerate a comprehensive ICP with ALL 17 sections (Industry standard):\n\n1. INTRODUCTION: 2-3 paragraph overview of who this person is\n2. FEARS: 5-7 specific fears that keep them up at night\n3. HOPES & DREAMS: 5-7 aspirations and what they dream about achieving\n4. DEMOGRAPHICS: JSON object with age_range, gender, income_level, education, occupation, location, family_status\n5. PSYCHOGRAPHICS: Personality traits, lifestyle, attitudes, interests (3-4 paragraphs)\n6. PAINS: 7-10 specific pain points they experience daily\n7. FRUSTRATIONS: 5-7 daily frustrations and annoyances\n8. GOALS: 6-8 specific goals they want to achieve\n9. VALUES: 5-7 core values that guide their decisions\n10. OBJECTIONS: 5-7 common objections to buying your service\n11. BUYING TRIGGERS: 5-7 specific triggers that make them ready to buy\n12. MEDIA CONSUMPTION: Where they consume content (platforms, channels, formats)\n13. INFLUENCERS: Who they follow, trust, and listen to\n14. COMMUNICATION STYLE: How they prefer to communicate and be communicated with\n15. DECISION MAKING: How they make purchasing decisions (process, timeline, factors)\n16. SUCCESS METRICS: How they measure success in their life/business\n17. IMPLEMENTATION BARRIERS: What stops them from taking action after buying\n\nFormat as JSON with these exact keys (use bullet points \u2022 for lists):\n{\n  "introduction": "...",\n  "fears": "\u2022 Fear 1\\n\u2022 Fear 2\\n...",\n  "hopesDreams": "\u2022 Dream 1\\n\u2022 Dream 2\\n...",\n  "demographics": { ... },\n  "psychographics": "...",\n  "pains": "\u2022 Pain 1\\n\u2022 Pain 2\\n...",\n  "frustrations": "\u2022 Frustration 1\\n\u2022 Frustration 2\\n...",\n  "goals": "\u2022 Goal 1\\n\u2022 Goal 2\\n...",\n  "values": "\u2022 Value 1\\n\u2022 Value 2\\n...",\n  "objections": "\u2022 Objection 1\\n\u2022 Objection 2\\n...",\n  "buyingTriggers": "\u2022 Trigger 1\\n\u2022 Trigger 2\\n...",\n  "mediaConsumption": "...",\n  "influencers": "...",\n  "communicationStyle": "...",\n  "decisionMaking": "...",\n  "successMetrics": "...",\n  "implementationBarriers": "..."\n}`;
+          const prompt = ICP_USER_PROMPT(capturedService);
 
           const response = await invokeLLM({
             messages: [
-              { role: "system", content: `You are an expert marketing strategist specializing in creating detailed customer profiles for coaches, speakers, and consultants. Always respond with valid JSON. Never produce content containing: ${getGlobalNegativePrompts().join(", ")}.` },
+              { role: "system", content: ICP_SYSTEM_PROMPT() },
               { role: "user", content: prompt },
             ],
             response_format: { type: "json_schema", json_schema: { name: "ideal_customer_profile_17_tabs", strict: true, schema: { type: "object", properties: { introduction: { type: "string" }, fears: { type: "string" }, hopesDreams: { type: "string" }, demographics: { type: "object", properties: { age_range: { type: "string" }, gender: { type: "string" }, income_level: { type: "string" }, education: { type: "string" }, occupation: { type: "string" }, location: { type: "string" }, family_status: { type: "string" } }, required: ["age_range","gender","income_level","education","occupation","location","family_status"], additionalProperties: false }, psychographics: { type: "string" }, pains: { type: "string" }, frustrations: { type: "string" }, goals: { type: "string" }, values: { type: "string" }, objections: { type: "string" }, buyingTriggers: { type: "string" }, mediaConsumption: { type: "string" }, influencers: { type: "string" }, communicationStyle: { type: "string" }, decisionMaking: { type: "string" }, successMetrics: { type: "string" }, implementationBarriers: { type: "string" } }, required: ["introduction","fears","hopesDreams","demographics","psychographics","pains","frustrations","goals","values","objections","buyingTriggers","mediaConsumption","influencers","communicationStyle","decisionMaking","successMetrics","implementationBarriers"], additionalProperties: false } } },
@@ -409,8 +359,6 @@ Format as JSON with these exact keys (use bullet points • for lists):
 
           const [newICP] = await bgDb.select().from(idealCustomerProfiles)
             .where(eq(idealCustomerProfiles.id, insertResult[0].insertId)).limit(1);
-
-          await incrementQuotaCount(capturedUserId, "icp");
 
           await bgDb.update(jobs)
             .set({ status: "complete", result: JSON.stringify({ icpId: newICP?.id }) })
@@ -470,57 +418,6 @@ Format as JSON with these exact keys (use bullet points • for lists):
         .limit(1);
 
       return updated;
-    }),
-
-  // Regenerate a single section of an ICP via AI
-  regenerateSection: protectedProcedure
-    .input(z.object({
-      id: z.number(),
-      sectionKey: z.enum(["introduction", "fears", "hopesDreams", "psychographics", "pains", "frustrations", "goals", "values", "objections", "buyingTriggers", "mediaConsumption", "influencers", "communicationStyle", "decisionMaking", "successMetrics", "implementationBarriers"]),
-      promptOverride: z.string().optional(),
-    }))
-    .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
-
-      await enforceQuota(ctx.user.id, "icp");
-
-      const [row] = await db
-        .select()
-        .from(idealCustomerProfiles)
-        .where(and(eq(idealCustomerProfiles.id, input.id), eq(idealCustomerProfiles.userId, ctx.user.id)))
-        .limit(1);
-
-      if (!row) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "ICP not found" });
-      }
-
-      const currentValue = (row as Record<string, unknown>)[input.sectionKey] as string ?? "";
-      const overrideInstruction = input.promptOverride?.trim()
-        ? ` Additional instruction: ${input.promptOverride.trim()}.`
-        : "";
-
-      const prompt = `Rewrite this section of an ideal customer profile. Section: ${input.sectionKey}. Current content: ${currentValue}.${overrideInstruction} Return a JSON object with exactly one key: value (string). No explanation, no markdown, just the JSON object.`;
-
-      const response = await invokeLLM({
-        messages: [
-          { role: "system", content: "You are an expert marketing strategist specializing in customer profiles for coaches and consultants. Respond with only valid JSON." },
-          { role: "user", content: prompt },
-        ],
-      });
-
-      const content = response.choices[0].message.content;
-      if (typeof content !== "string") throw new Error("Invalid response from AI");
-
-      const parsed = JSON.parse(stripMarkdownJson(content));
-      if (!parsed.value) throw new Error("AI response missing value field");
-
-      await db
-        .update(idealCustomerProfiles)
-        .set({ [input.sectionKey]: parsed.value, updatedAt: new Date() } as any)
-        .where(eq(idealCustomerProfiles.id, input.id));
-
-      return { sectionKey: input.sectionKey, value: parsed.value };
     }),
 
   // Delete ICP

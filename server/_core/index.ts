@@ -3,12 +3,25 @@ import express from "express";
 import { createServer } from "http";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
+import { registerOAuthRoutes } from "./oauth";
 import { registerMetaOAuthRoutes } from "./metaOAuth";
 import { registerCustomAuthRoutes } from "./customAuth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { sdk } from "./sdk";
+import { invokeLLM } from "./llm";
+
+// In-memory rate limiter for Zappy asset search — keyed by userId, resets every 60 s
+const assetSearchRateLimit = new Map<string, { count: number; resetAt: number }>();
+
+// Cleanup interval prevents memory leak on long-running server — evicts entries older than their reset window
+setInterval(() => {
+  const now = Date.now();
+  for (const [userId, data] of assetSearchRateLimit.entries()) {
+    if (data.resetAt < now) assetSearchRateLimit.delete(userId);
+  }
+}, 5 * 60 * 1000);
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -31,19 +44,8 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 
 async function startServer() {
   const app = express();
-  app.set("trust proxy", 1);
-
-  // Redirect www to non-www (fixes mobile Safari 404)
-  app.use((req, res, next) => {
-    if (req.hostname?.startsWith("www.")) {
-      const newUrl = `https://${req.hostname.slice(4)}${req.originalUrl}`;
-      return res.redirect(301, newUrl);
-    }
-    next();
-  });
-
   const server = createServer(app);
-
+  
   // Stripe webhook MUST be registered BEFORE express.json() for signature verification
   const { handleStripeWebhook } = await import("../stripe/webhook");
   app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), handleStripeWebhook);
@@ -125,125 +127,6 @@ async function startServer() {
     }
   });
 
-
-  // Video thumbnail generator — generates a 1080×1080 PNG thumbnail for a video
-  // Uses stored thumbnailUrl if available, otherwise generates via sharp and caches to Cloudinary
-  app.get("/api/video-thumbnail/:videoId", async (req, res) => {
-    try {
-      let user: { id: number | string } | null = null;
-      try {
-        user = await sdk.authenticateRequest(req);
-      } catch {
-        res.status(401).json({ error: "Unauthorized" });
-        return;
-      }
-      if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
-
-      const videoId = parseInt(req.params.videoId);
-      if (isNaN(videoId)) { res.status(400).json({ error: "Invalid video ID" }); return; }
-
-      const { getDb } = await import("../db");
-      const { videos } = await import("../../drizzle/schema");
-      const { eq, and } = await import("drizzle-orm");
-      const db = await getDb();
-      if (!db) { res.status(503).json({ error: "Database not available" }); return; }
-
-      const [video] = await db.select().from(videos)
-        .where(and(eq(videos.id, videoId), eq(videos.userId, Number(user.id))))
-        .limit(1);
-
-      if (!video) { res.status(404).json({ error: "Video not found" }); return; }
-
-      // If thumbnailUrl already set, redirect to image proxy
-      if (video.thumbnailUrl) {
-        res.redirect(`/api/image-proxy?url=${encodeURIComponent(video.thumbnailUrl)}`);
-        return;
-      }
-
-      // Generate thumbnail via sharp
-      const sharp = (await import("sharp")).default;
-      const W = 1080, H = 1080;
-      const title = video.title || "Untitled Video";
-      const videoType = video.videoType || "ad";
-      const duration = video.duration || "30";
-
-      // Wrap title at 30 chars/line, max 5 lines
-      const wrapText = (text: string, maxLen: number): string[] => {
-        const words = text.split(" ");
-        const lines: string[] = [];
-        let current = "";
-        for (const word of words) {
-          const candidate = current ? `${current} ${word}` : word;
-          if (candidate.length > maxLen) {
-            if (current) lines.push(current);
-            current = word;
-          } else {
-            current = candidate;
-          }
-        }
-        if (current) lines.push(current);
-        return lines.slice(0, 5);
-      };
-
-      const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-
-      const titleLines = wrapText(title, 30);
-      const lineH = 70;
-      const titleBlockH = titleLines.length * lineH;
-      const titleStartY = Math.floor((H - titleBlockH) / 2) - 30;
-
-      const titleSvg = titleLines.map((line, i) =>
-        `<text x="540" y="${titleStartY + i * lineH + 52}" text-anchor="middle"
-          font-family="Arial Black, Arial, sans-serif" font-size="54" font-weight="900" fill="white">${esc(line)}</text>`
-      ).join("\n");
-
-      const badgeText = esc(videoType.toUpperCase());
-      const badgeCharW = 13;
-      const badgePad = 32;
-      const badgeW = badgeText.length * badgeCharW + badgePad;
-      const badgeX = Math.floor(540 - badgeW / 2);
-      const badgeY = titleStartY + titleBlockH + 48;
-
-      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
-        <rect x="120" y="180" width="840" height="720" rx="28" fill="white" opacity="0.06"/>
-        ${titleSvg}
-        <rect x="${badgeX}" y="${badgeY}" width="${badgeW}" height="44" rx="22" fill="#FF5B1D"/>
-        <text x="540" y="${badgeY + 30}" text-anchor="middle"
-          font-family="Arial, sans-serif" font-size="19" font-weight="700" fill="white">${badgeText}</text>
-        <text x="1042" y="1050" text-anchor="end"
-          font-family="Arial, sans-serif" font-size="30" font-weight="600" fill="#888888">${esc(String(duration))}s</text>
-      </svg>`;
-
-      const base = await sharp({
-        create: { width: W, height: H, channels: 3, background: { r: 26, g: 22, b: 36 } }
-      }).png().toBuffer();
-
-      const thumbnail = await sharp(base)
-        .composite([{ input: Buffer.from(svg), top: 0, left: 0 }])
-        .png()
-        .toBuffer();
-
-      // Upload to Cloudinary and cache URL in DB
-      try {
-        const { storagePut } = await import("../storage");
-        const key = `video-thumbnails/${user.id}/${videoId}.png`;
-        const { url } = await storagePut(key, thumbnail, "image/png");
-        await db.update(videos).set({ thumbnailUrl: url }).where(eq(videos.id, videoId));
-      } catch (uploadErr) {
-        // Non-fatal: still return the generated image even if upload fails
-        console.error("[video-thumbnail] Upload failed, serving without caching:", uploadErr);
-      }
-
-      res.setHeader("Content-Type", "image/png");
-      res.setHeader("Cache-Control", "public, max-age=86400");
-      res.send(thumbnail);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error("[video-thumbnail] Error:", msg);
-      res.status(500).json({ error: msg });
-    }
-  });
-
   // Daily cleanup cron — delete jobs older than 24 hours to prevent table bloat
   setInterval(async () => {
     try {
@@ -260,9 +143,9 @@ async function startServer() {
     }
   }, 24 * 60 * 60 * 1000); // runs every 24 hours
 
-  // Meta Daily Read-Only Job — 150 API calls/day for App Review compliance
+  // Meta Daily Read-Only Job — 100 API calls/day for App Review compliance
   const runMetaDailyJob = async () => {
-    const MAX_CALLS = 150;
+    const MAX_CALLS = 100;
     let callCount = 0;
     const now = new Date();
     console.log(`[Meta Daily Job] Starting at ${now.toISOString()} — target: ${MAX_CALLS} read-only calls`);
@@ -288,7 +171,7 @@ async function startServer() {
         dateRanges.push({ since, until });
       }
 
-      // Round-robin through users × date ranges until 150 calls
+      // Round-robin through users × date ranges until 100 calls
       let rangeIdx = 0;
       while (callCount < MAX_CALLS) {
         for (const row of tokenRows) {
@@ -309,7 +192,7 @@ async function startServer() {
           }
         }
         rangeIdx++;
-        // Safety: if we've exhausted all date ranges × users and still not at 150, break
+        // Safety: if we've exhausted all date ranges × users and still not at 100, break
         if (rangeIdx >= dateRanges.length * 2) break;
       }
 
@@ -324,107 +207,108 @@ async function startServer() {
   runMetaDailyJob();
   setInterval(runMetaDailyJob, 24 * 60 * 60 * 1000);
 
-  // ── Asset upload endpoint (Cloudinary) ──────────────────────────────────────
-  {
-    const multer = (await import("multer")).default;
-    const upload = multer({
-      storage: multer.memoryStorage(),
-      limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
-      fileFilter: (_req, file, cb) => {
-        const allowed = ["image/jpeg", "image/png", "image/webp"];
-        if (allowed.includes(file.mimetype)) cb(null, true);
-        else cb(new Error("Only JPEG, PNG, and WebP images are allowed"));
-      },
-    });
-
-    // GHL OAuth callback
-    app.get("/api/oauth/gohighlevel/callback", async (req, res) => {
-      try {
-        const { code, state } = req.query as { code?: string; state?: string };
-        console.log("[GHL callback] Hit — code:", code ? "present" : "missing", "state:", state);
-        if (!code) { res.status(400).send("Missing authorization code"); return; }
-        // state contains the userId — redirect to dashboard with code param for client to exchange
-        res.redirect(`/v2-dashboard/wizard/pushToMeta?ghl_code=${encodeURIComponent(code)}&ghl_state=${encodeURIComponent(state || "")}`);
-      } catch (err) {
-        console.error("[GHL callback] Error:", err);
-        res.status(500).send("GHL OAuth callback failed");
-      }
-    });
-
-    app.post("/api/upload-asset", upload.single("file"), async (req, res) => {
-      try {
-        let user: { id: number | string } | null = null;
-        try { user = await sdk.authenticateRequest(req); } catch { /* */ }
-        if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
-
-        const file = (req as any).file;
-        if (!file) { res.status(400).json({ error: "No file provided" }); return; }
-
-        const { storagePut } = await import("../storage");
-        const key = `coach-assets/${user.id}/${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
-        const { url } = await storagePut(key, file.buffer, file.mimetype);
-        res.json({ url });
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.error("[upload-asset] Error:", msg);
-        res.status(400).json({ error: msg });
-      }
-    });
-  }
-
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
+  // OAuth callback under /api/oauth/callback (Manus OAuth — kept for existing users)
+  registerOAuthRoutes(app);
   // Meta OAuth callback under /api/meta/callback
   registerMetaOAuthRoutes(app);
   // Custom auth: Google OAuth + magic links (no Manus dependency)
   registerCustomAuthRoutes(app);
 
-  // Asset search via Anthropic API (Zappy retrieval)
+  // ── Zappy AI asset search ────────────────────────────────────────────────────
+  // Receives { query, assets[] } from the client, returns { matchingIds: number[] }.
+  // Rate limited to 10 requests per user per minute. Degrades gracefully on error.
   app.post("/api/asset-search", async (req, res) => {
     try {
-      const user = await sdk.authenticateRequest(req);
-      if (!user) return res.status(401).json({ error: "Unauthorized" });
+      // Authenticate
+      let user: { id: number | string } | null = null;
+      try {
+        user = await sdk.authenticateRequest(req);
+      } catch {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+      if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
 
-      const { query, assets } = req.body;
-      if (!query || !assets) return res.status(400).json({ error: "Missing query or assets" });
-
-      const apiKey = process.env.ANTHROPIC_API_KEY;
-      if (!apiKey) return res.status(500).json({ error: "Anthropic API not configured" });
-
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": apiKey,
-          "anthropic-version": "2023-06-01",
-        },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 500,
-          messages: [{
-            role: "user",
-            content: `You are an asset retrieval assistant. The user is searching their marketing asset library.\n\nUser query: "${query}"\n\nAvailable assets:\n${JSON.stringify(assets.slice(0, 100))}\n\nReturn ONLY a JSON array of asset IDs that best match the user's intent. Example: [1, 5, 12]. If nothing matches, return []. No explanation, no markdown, just the JSON array.`,
-          }],
-        }),
-      });
-
-      if (!response.ok) {
-        console.error("[Asset Search] Anthropic error:", response.status);
-        return res.status(500).json({ error: "AI search failed" });
+      // Rate limit: max 10 requests per user per minute
+      const userId = String(user.id);
+      const now = Date.now();
+      const rl = assetSearchRateLimit.get(userId);
+      if (rl && now < rl.resetAt) {
+        if (rl.count >= 10) {
+          res.status(429).json({ error: "Too many searches — wait a moment and try again" });
+          return;
+        }
+        rl.count++;
+      } else {
+        assetSearchRateLimit.set(userId, { count: 1, resetAt: now + 60_000 });
       }
 
-      const data = await response.json();
-      const text = data.content?.[0]?.text || "[]";
-      const stripped = text.replace(/```json?\s*/gi, "").replace(/```/g, "").trim();
-      const matchingIds = JSON.parse(stripped);
+      const { query, assets, activeFilter } = req.body as { query: string; assets: unknown[]; activeFilter?: string | null };
+      if (!query || !Array.isArray(assets)) {
+        res.json({ matchingIds: [] });
+        return;
+      }
 
+      const filterNote = activeFilter
+        ? `Note: the user currently has a campaign filter active — you are only seeing assets from the '${activeFilter}' campaign. If results seem limited, this is why.\n\n`
+        : "";
+
+      const response = await invokeLLM({
+        messages: [
+          {
+            role: "system",
+            content: "You are an asset retrieval assistant for a marketing campaign platform. Your job is to understand what the user is looking for and return the IDs of assets that match their intent. You understand marketing terminology, campaign structures, and can interpret natural language queries about marketing assets. Return ONLY a valid JSON array of matching asset IDs — no explanation, no markdown.",
+          },
+          {
+            role: "user",
+            content: `The user is searching their marketing asset library with this query: "${query}"
+
+${filterNote}Available assets:
+${JSON.stringify(assets, null, 2)}
+
+Return a JSON array of asset IDs that best match the user's query. Consider:
+- Type matches: if they ask for "videos" return only video assets, "headlines" return only copy assets, "images" return only image assets
+- Campaign matches: if they mention a campaign name or niche, return assets from that campaign
+- Recency: if they say "latest" or "recent" or "last week", sort by createdAt and return the most recent matching assets
+- Content matches: if they describe content ("identity ads", "headline about burnout"), match against the title text
+- Favourites: isFavourite: true means the user has saved/hearted this asset. If the user asks for "favourites" or "saved" assets, filter to only assets where isFavourite is true
+
+Return ONLY a JSON array of IDs like: [1, 2, 3, 47, 82]
+If nothing matches, return an empty array: []
+Never return IDs that don't exist in the provided list.`,
+          },
+        ],
+      });
+
+      const content = response.choices[0]?.message?.content;
+      if (!content || typeof content !== "string") {
+        res.json({ matchingIds: [] });
+        return;
+      }
+
+      // Strip markdown code fences if the model wraps the response
+      const cleaned = content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/i, "").trim();
+      const ids: unknown = JSON.parse(cleaned);
+      if (!Array.isArray(ids)) {
+        res.json({ matchingIds: [] });
+        return;
+      }
+
+      // Guard: only return IDs that were in the provided asset list
+      const validIds = new Set((assets as Array<{ id: unknown }>).map(a => a.id));
+      const matchingIds = (ids as unknown[]).filter(
+        (id): id is number => typeof id === "number" && validIds.has(id)
+      );
       res.json({ matchingIds });
-    } catch (err: any) {
-      console.error("[Asset Search] Error:", err.message);
-      res.status(500).json({ error: "Search failed" });
+    } catch (err) {
+      console.error("[asset-search] Error:", err);
+      res.json({ matchingIds: [] }); // Degrade gracefully — UI shows all assets
     }
   });
+
   // Server-side ZIP download for campaign creatives (avoids CORS issues with CDN images)
   app.get("/api/campaigns/:campaignId/download-zip", async (req, res) => {
     try {
@@ -796,14 +680,6 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
-    // Video renderer configuration check
-    const remotionFn = process.env.REMOTION_FUNCTION_NAME;
-    const remotionUrl = process.env.REMOTION_SERVE_URL;
-    if (remotionFn && remotionUrl) {
-      console.log(`[Video Renderer] Remotion Lambda CONFIGURED — function: ${remotionFn}, site: ${remotionUrl}`);
-    } else {
-      console.log(`[Video Renderer] Remotion NOT configured — falling back to Creatomate. Missing: ${!remotionFn ? "REMOTION_FUNCTION_NAME " : ""}${!remotionUrl ? "REMOTION_SERVE_URL" : ""}`);
-    }
   });
 }
 

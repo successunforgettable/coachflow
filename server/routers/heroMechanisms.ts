@@ -11,18 +11,13 @@ import {
   incrementHeroMechanismCount
 } from "../db";
 import { getDb } from "../db";
-import { services, idealCustomerProfiles, sourceOfTruth, campaigns, jobs, heroMechanisms, campaignKits, offers } from "../../drizzle/schema";
+import { services, idealCustomerProfiles, sourceOfTruth, campaigns, jobs } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { randomUUID } from "crypto";
 import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
-import { enforceQuota, incrementQuotaCount } from "../lib/quotaEnforcement";
-import { complianceFilter } from "../lib/complianceFilter";
-import { checkCompliance } from "../lib/complianceChecker";
-import { scoreItem } from "../lib/selectionScorer";
-import { autoSelectBest } from "./campaignKits";
 
 // Helper to strip markdown code blocks from JSON responses
 function stripMarkdownJson(content: string): string {
@@ -34,21 +29,6 @@ function stripMarkdownJson(content: string): string {
     return trimmed.slice(3, -3).trim();
   }
   return trimmed;
-}
-
-// Apply compliance filter + check to mechanism name and description
-async function filterMechanism(m: { name: string; description: string }): Promise<{ name: string; description: string }> {
-  const nameResult = complianceFilter(m.name);
-  const descResult = complianceFilter(m.description);
-  // Use cleaned text for both PIVOT_REQUIRED and REJECTED
-  const name = nameResult.wasModified ? nameResult.cleanedText : m.name;
-  const desc = descResult.wasModified ? descResult.cleanedText : m.description;
-  // Log compliance score (no DB column to store it)
-  const score = await checkCompliance(`${name} ${desc}`);
-  if (score.score < 100) {
-    console.log(`[heroMechanisms] Compliance score ${score.score}/100 for "${name.substring(0, 40)}...": ${score.issues.map(i => i.phrase).join(", ")}`);
-  }
-  return { name, description: desc };
 }
 
 /**
@@ -88,8 +68,7 @@ export const heroMechanismsRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const { user } = ctx;
-      await enforceQuota(ctx.user.id, "heroMechanisms");
-
+      
       // Check and reset quota if user's anniversary date has passed
       await checkAndResetQuotaIfNeeded(ctx.user.id);
 
@@ -171,29 +150,12 @@ export const heroMechanismsRouter = router({
       const resolvedWhyExistingNotWork = input.whyExistingNotWork?.trim() || service.failedSolutions || "";
       const resolvedCredibility = input.credibility?.trim() || service.pressFeatures || "";
 
-      // ── Cascade context from Campaign Kit ──
-      let cascadeContext = "";
-      try {
-        const [icp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
-        if (icp) {
-          const [kit] = await db.select().from(campaignKits).where(and(eq(campaignKits.userId, user.id), eq(campaignKits.icpId, icp.id))).limit(1);
-          if (kit?.selectedOfferId) {
-            const [offer] = await db.select().from(offers).where(eq(offers.id, kit.selectedOfferId)).limit(1);
-            if (offer) {
-              const angle = offer.activeAngle || "godfather";
-              const angleData = (offer as any)[`${angle}Angle`];
-              const offerText = typeof angleData === "string" ? angleData : JSON.stringify(angleData);
-              cascadeContext = `\n\nUPSTREAM CONTEXT — SELECTED OFFER:\nThe user's selected offer is: ${offerText.substring(0, 500)}. Angle: ${angle}. The mechanism name and positioning must complement this offer.\n\n`;
-            }
-          }
-        }
-      } catch (e) { console.warn("[cascade] heroMechanisms context fetch failed:", e); }
-
       const mechanismSetId = nanoid();
       const allMechanisms: any[] = [];
+      let generationWarning: string | undefined;
 
       // Generate Hero Mechanisms (5 variations)
-      const heroMechanismsPrompt = `${cascadeContext}${sotContext ? `${sotContext}\n\n` : ''}You are an expert direct response copywriter creating compelling Hero Mechanisms.
+      const heroMechanismsPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert direct response copywriter creating compelling Hero Mechanisms.
 
 Product: ${service.name}
 Target Market: ${input.targetMarket}
@@ -207,26 +169,30 @@ Desired Outcome: ${input.desiredOutcome}
 Credibility: ${resolvedCredibility}
 Social Proof: ${input.socialProof}
 ${icpContext ? `\n${icpContext}\n` : ''}
-Create 5 HERO MECHANISMS. Each mechanism must have:
-1. A creative, unique NAME using the descriptor (e.g., "Breakthrough Neural Nexus System", "Proprietary Market Guardian Protocol")
-2. A full PARAGRAPH description (150-200 words) that includes:
-   - How it works (technology/method)
-   - Who developed it (credibility)
-   - Specific outcome ($10,000/month, 6 months, etc.)
-   - Emotional transformation (fear → confidence, confusion → clarity)
-   - Why it's different from existing solutions
+MECHANISM NAME RULES — apply to every name generated:
+- Must contain a specific process word or metaphor FROM THIS NICHE (not from generic business language)
+- Must sound proprietary and outcome-specific — not transferable to a different coaching niche
+- BANNED names (never generate anything like these): The Success Blueprint, The Growth System, The Transformation Framework, The Mindset Method, The Achievement Protocol, The Breakthrough System, The Empowerment Method, The Results Framework
+- GOOD name structure: [Niche-specific process word] + [Specific outcome word] + [Descriptor]. The first word must come from the vocabulary of this specific niche.
+- Test: Could this mechanism name appear in a different coaching niche? If yes, it fails — rewrite it.
 
-Examples:
-{
-  "name": "Breakthrough Neural Nexus System",
-  "description": "This innovative system harnesses neural networks and machine learning algorithms to analyze market trends and predict high-profit crypto trades. Developed by an award-winning author in collaboration with top 7-figure traders, this method teaches beginners how to confidently trade and earn at least $10,000 per month. Within 6 months, users learn the critical, often overlooked real-time data patterns that lead to significant gains, transforming fear into calculated action and building real wealth."
-}
+Create 5 HERO MECHANISMS. Each mechanism must have:
+1. A proprietary-sounding NAME that:
+   - Contains at least one word specific to the target market's niche or industry
+   - Names the specific transformation (not "growth" or "success" — what specifically changes?)
+   - Sounds like something that exists as a real system, not a marketing concept
+2. A full PARAGRAPH description (150-200 words) that includes:
+   - The specific problem it solves (name the problem, not a category of problems)
+   - Who developed it and why (credibility tied to niche, not generic "award-winning expert")
+   - A concrete outcome with a number or timeframe ($X/month, X clients in Y weeks, etc.)
+   - What specifically makes it different from what they've already tried (name the failed approaches)
+   - One before/after moment that makes the transformation real and believable
 
 Return ONLY a JSON array of 5 objects with "name" and "description" fields, nothing else.`;
 
       const heroMechanismsResponse = await invokeLLM({
         messages: [
-          { role: "system", content: "You are a direct response copywriting expert. Return ONLY valid JSON arrays." },
+          { role: "system", content: "You are a direct response copywriting expert who specialises in creating proprietary mechanism names and descriptions for coaches and consultants. You write mechanism names that are niche-specific — containing vocabulary from the target market's industry, not generic business language. Your mechanism descriptions make the reader feel the copy was written specifically for them. Return ONLY valid JSON arrays." },
           { role: "user", content: heroMechanismsPrompt }
         ],
       });
@@ -234,8 +200,17 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
       const heroMechanismsContent = typeof heroMechanismsResponse.choices[0].message.content === 'string' 
         ? heroMechanismsResponse.choices[0].message.content 
         : JSON.stringify(heroMechanismsResponse.choices[0].message.content);
-      const heroMechanisms = JSON.parse(stripMarkdownJson(heroMechanismsContent));
-      
+      // LLM occasionally returns explanatory text — this guard prevents a crash and returns empty array as fallback.
+      let heroMechanisms: { name: string; description: string }[] = [];
+      try {
+        const parsed = JSON.parse(stripMarkdownJson(heroMechanismsContent));
+        heroMechanisms = Array.isArray(parsed) ? parsed : [];
+        if (!Array.isArray(parsed)) generationWarning = "Mechanism generation returned unexpected format — please try again.";
+      } catch {
+        heroMechanisms = [];
+        generationWarning = "Mechanism generation returned unexpected format — please try again.";
+      }
+
       heroMechanisms.forEach((mechanism: { name: string; description: string }) => {
         allMechanisms.push({
           userId: user.id,
@@ -266,27 +241,30 @@ Target Market: ${input.targetMarket}
 Pressing Problem: ${resolvedPressingProblem}
 Desired Outcome: ${input.desiredOutcome}
 ${icpContext ? `\n${icpContext}\n` : ''}
-Create 5 HEADLINE IDEAS that:
-- Grab attention immediately
-- Promise a clear benefit
-- Create curiosity
-- Use power words
+THREE-QUESTION TEST — every headline must pass all three:
+1. Does it name a specific type of person in a specific situation? (not "entrepreneurs" but "coaches who've been running webinars to empty rooms")
+2. Does it promise a specific outcome — not a vague benefit? (not "more clients" but "8 discovery calls booked in 14 days")
+3. Could this headline ONLY be written for this service? (if it works for any coach, rewrite it)
+
+BANNED HEADLINE OPENERS AND PHRASES — never use:
+- "Are you ready to...", "Do you want to...", "The secret to...", "How to finally...", "Everything you need to..."
+- "Transform your...", "Unlock your...", "Discover how to...", "The ultimate guide to..."
+- Generic power words: skyrocket, explode, crush it, dominate, master
+
+Create 5 HEADLINE IDEAS for the hero mechanism. Each headline must:
+- Contain at least one word directly from the ICP's pain language or niche vocabulary
+- Name a concrete outcome (number, timeframe, or named situation) not a category of outcomes
+- Be written as a real headline, not a template with [brackets]
 
 Each headline should have:
-1. A creative NAME (the headline itself)
-2. A supporting DESCRIPTION (50-100 words explaining why this headline works)
-
-Examples:
-{
-  "name": "How Ordinary People Are Building $10K/Month Passive Income While Their Friends Work Dead-End Jobs",
-  "description": "This headline uses social proof ('ordinary people'), specific outcome ($10K/month), and contrast (passive income vs. dead-end jobs) to create desire and urgency. It speaks directly to the target market's frustration with traditional employment."
-}
+1. A creative NAME (the headline itself — a real, complete headline)
+2. A supporting DESCRIPTION (50-100 words explaining specifically: which ICP pain word it uses, which ad angle it applies, and what makes this niche-specific rather than generic)
 
 Return ONLY a JSON array of 5 objects with "name" and "description" fields, nothing else.`;
 
       const headlineIdeasResponse = await invokeLLM({
         messages: [
-          { role: "system", content: "You are a direct response copywriting expert. Return ONLY valid JSON arrays." },
+          { role: "system", content: "You are a direct response copywriting expert who specialises in creating proprietary mechanism names and descriptions for coaches and consultants. You write mechanism names that are niche-specific — containing vocabulary from the target market's industry, not generic business language. Your mechanism descriptions make the reader feel the copy was written specifically for them. Return ONLY valid JSON arrays." },
           { role: "user", content: headlineIdeasPrompt }
         ],
       });
@@ -294,14 +272,18 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
       const headlineIdeasContent = typeof headlineIdeasResponse.choices[0].message.content === 'string' 
         ? headlineIdeasResponse.choices[0].message.content 
         : JSON.stringify(headlineIdeasResponse.choices[0].message.content);
-      const headlineIdeas = JSON.parse(stripMarkdownJson(headlineIdeasContent));
+      // LLM occasionally returns explanatory text — this guard prevents a crash and returns empty array as fallback.
+      let headlineIdeas: { name: string; description: string }[] = [];
+      try {
+        const parsed = JSON.parse(stripMarkdownJson(headlineIdeasContent));
+        headlineIdeas = Array.isArray(parsed) ? parsed : [];
+        if (!Array.isArray(parsed)) generationWarning = "Mechanism generation returned unexpected format — please try again.";
+      } catch {
+        headlineIdeas = [];
+        generationWarning = "Mechanism generation returned unexpected format — please try again.";
+      }
 
-      // Apply compliance filter to each mechanism
-      const filteredHeadlineIdeas = await Promise.all(
-        headlineIdeas.map((m: { name: string; description: string }) => filterMechanism(m))
-      );
-
-      filteredHeadlineIdeas.forEach((mechanism: { name: string; description: string }) => {
+      headlineIdeas.forEach((mechanism: { name: string; description: string }) => {
         allMechanisms.push({
           userId: user.id,
           serviceId: input.serviceId,
@@ -337,37 +319,51 @@ Desired Outcome: ${input.desiredOutcome}
 Credibility: ${resolvedCredibility}
 Social Proof: ${input.socialProof}
 ${icpContext ? `\n${icpContext}\n` : ''}
-Create 5 BEAST MODE mechanisms - these should be:
-- Even more creative and unique names
-- Longer, more detailed descriptions (200-250 words)
-- Include specific numbers, timeframes, and results
-- Address objections preemptively
-- Build massive credibility
+MECHANISM NAME RULES — apply strictly to every name:
+- Must contain a specific process word or metaphor FROM THIS NICHE — not from generic business language
+- Must be so niche-specific that someone from a different coaching niche would not recognise it as applying to them
+- BANNED: The Success Blueprint, The Growth System, The Transformation Framework, The Mindset Method, The Achievement Protocol, The Breakthrough System — or anything that sounds like these
+- GOOD: names where the first or second word comes from the vocabulary this specific target market uses every day
+- Test: If you replaced the service name with a different coaching service, would the mechanism name still make sense? If yes, it fails.
+
+Create 5 POWER MODE mechanisms — the most compelling, most niche-specific, most conversion-ready versions:
+- Names are even more proprietary and niche-rooted than the standard set
+- Descriptions are 200-250 words and go deeper on: the exact mechanism of action, the named enemy (the thing that has been failing them until now), the specific before/after moment, and the concrete result with a number
+- Address the top objection preemptively within the description itself
+- Build credibility through niche-specific authority (not generic "award-winning expert" — name the specific credibility relevant to this target market)
 
 Each mechanism must have:
-1. An ultra-creative NAME with powerful descriptors
-2. A comprehensive DESCRIPTION that sells the transformation
+1. A NAME that could only apply to this specific niche and target market
+2. A comprehensive DESCRIPTION (200-250 words) that makes someone in this target market feel: "This was built for someone exactly like me"
 
 Return ONLY a JSON array of 5 objects with "name" and "description" fields, nothing else.`;
 
       const powerModeResponse = await invokeLLM({
         messages: [
-          { role: "system", content: "You are a direct response copywriting expert. Return ONLY valid JSON arrays." },
+          { role: "system", content: "You are a direct response copywriting expert who specialises in creating proprietary mechanism names and descriptions for coaches and consultants. You write mechanism names that are niche-specific — containing vocabulary from the target market's industry, not generic business language. Your mechanism descriptions make the reader feel the copy was written specifically for them. Return ONLY valid JSON arrays." },
           { role: "user", content: powerModePrompt }
         ],
       });
 
-      const powerModeContent = typeof powerModeResponse.choices[0].message.content === 'string' 
-        ? powerModeResponse.choices[0].message.content 
+      const powerModeContent = typeof powerModeResponse.choices[0].message.content === 'string'
+        ? powerModeResponse.choices[0].message.content
         : JSON.stringify(powerModeResponse.choices[0].message.content);
-      const powerMode = JSON.parse(stripMarkdownJson(powerModeContent));
-
-      // Apply compliance filter to beast mode mechanisms
-      const filteredPowerMode = await Promise.all(
-        powerMode.map((m: { name: string; description: string }) => filterMechanism(m))
-      );
-
-      filteredPowerMode.forEach((mechanism: { name: string; description: string }) => {
+      // Power mode returns { name, description }[] — if LLM returns explanatory text this guard prevents a crash.
+      let powerMode: { name: string; description: string }[] = [];
+      try {
+        const parsed = JSON.parse(stripMarkdownJson(powerModeContent));
+        if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'object' && parsed[0] !== null) {
+          powerMode = parsed;
+        } else {
+          console.error('[heroMechanisms] power mode: unexpected JSON shape, falling back to empty array. Content:', powerModeContent.slice(0, 300));
+          generationWarning = "Mechanism generation returned unexpected format — please try again.";
+        }
+      } catch (e) {
+        console.error('[heroMechanisms] power mode: JSON.parse failed, falling back to empty array. Content:', powerModeContent.slice(0, 300));
+        generationWarning = "Mechanism generation returned unexpected format — please try again.";
+      }
+      
+      powerMode.forEach((mechanism: { name: string; description: string }) => {
         allMechanisms.push({
           userId: user.id,
           serviceId: input.serviceId,
@@ -392,24 +388,8 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
       // Save all mechanisms to database
       await createHeroMechanisms(allMechanisms);
       await incrementHeroMechanismCount(user.id);
-      await incrementQuotaCount(ctx.user.id, "heroMechanisms");
 
-      // Auto-score and auto-select into campaign kit (non-blocking)
-      try {
-        const savedMechanisms = await db.select().from(heroMechanisms).where(and(eq(heroMechanisms.mechanismSetId, mechanismSetId), eq(heroMechanisms.userId, user.id)));
-        let bestId = 0; let bestScore = -1;
-        for (const m of savedMechanisms) {
-          const s = await scoreItem({ content: `${m.mechanismName} ${m.mechanismDescription}`, nodeType: "heroMechanisms" });
-          await db.update(heroMechanisms).set({ selectionScore: String(s) } as any).where(eq(heroMechanisms.id, m.id));
-          if (s > bestScore) { bestScore = s; bestId = m.id; }
-        }
-        if (bestId) {
-          const [relatedIcp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
-          if (relatedIcp) await autoSelectBest(user.id, relatedIcp.id, "selectedMechanismId", bestId);
-        }
-      } catch (e) { console.warn("[auto-select] heroMechanisms failed:", e); }
-
-      return { mechanismSetId };
+      return { mechanismSetId, generationWarning };
     }),
 
   /**
@@ -460,60 +440,6 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
       return { success: true };
     }),
 
-  regenerateSingle: protectedProcedure
-    .input(z.object({ id: z.number(), promptOverride: z.string().optional() }))
-    .mutation(async ({ ctx, input }) => {
-      await enforceQuota(ctx.user.id, "heroMechanisms");
-
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
-
-      const [existing] = await db
-        .select()
-        .from(heroMechanisms)
-        .where(and(eq(heroMechanisms.id, input.id), eq(heroMechanisms.userId, ctx.user.id)))
-        .limit(1);
-
-      if (!existing) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Hero mechanism not found" });
-      }
-
-      const overrideInstruction = input.promptOverride?.trim()
-        ? ` Additional instruction: ${input.promptOverride.trim()}.`
-        : "";
-
-      const prompt = `Rewrite this coaching mechanism. Current name: ${existing.mechanismName}. Current description: ${existing.mechanismDescription}.${overrideInstruction} Return a JSON object with keys: mechanismName (string), mechanismDescription (string). No explanation, no markdown.`;
-
-      const response = await invokeLLM({
-        messages: [
-          { role: "system", content: "You are an expert coaching mechanism copywriter. Respond with only valid JSON." },
-          { role: "user", content: prompt },
-        ],
-      });
-
-      const content = response.choices[0].message.content;
-      if (typeof content !== "string") throw new Error("Invalid response from AI");
-
-      const parsed = JSON.parse(stripMarkdownJson(content));
-      if (!parsed.mechanismName || !parsed.mechanismDescription) throw new Error("AI response missing required fields");
-
-      // Apply compliance filter to regenerated mechanism
-      const filtered = await filterMechanism({ name: parsed.mechanismName, description: parsed.mechanismDescription });
-
-      await db
-        .update(heroMechanisms)
-        .set({ mechanismName: filtered.name, mechanismDescription: filtered.description, updatedAt: new Date() })
-        .where(eq(heroMechanisms.id, input.id));
-
-      const [updated] = await db
-        .select()
-        .from(heroMechanisms)
-        .where(eq(heroMechanisms.id, input.id))
-        .limit(1);
-
-      return updated;
-    }),
-
   /**
    * Delete entire mechanism set
    */
@@ -549,7 +475,6 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
     )
     .mutation(async ({ ctx, input }) => {
       const { user } = ctx;
-      await enforceQuota(ctx.user.id, "heroMechanisms");
 
       // Quota check (same as generate)
       await checkAndResetQuotaIfNeeded(ctx.user.id);
@@ -635,20 +560,30 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
 
           const mechanismSetId = nanoid();
           const allMechanisms: any[] = [];
+          let bgGenerationWarning: string | undefined;
 
           // --- Hero Mechanisms (5 variations) ---
           const heroMechanismsPrompt = `${bgSotContext ? `${bgSotContext}\n\n` : ''}You are an expert direct response copywriter creating compelling Hero Mechanisms.\n\nProduct: ${capturedService.name}\nTarget Market: ${capturedInput.targetMarket}\nPressing Problem: ${bgResolvedPressingProblem}\nWhy Problem Exists: ${bgResolvedWhyProblem}\nWhat They've Tried: ${bgResolvedWhatTried}\nWhy Existing Solutions Fail: ${bgResolvedWhyExistingNotWork}\nDescriptor: ${capturedInput.descriptor || "System"}\nApplication: ${capturedInput.application || "Use this system"}\nDesired Outcome: ${capturedInput.desiredOutcome}\nCredibility: ${bgResolvedCredibility}\nSocial Proof: ${capturedInput.socialProof}\n${bgIcpContext ? `\n${bgIcpContext}\n` : ''}\nCreate 5 HERO MECHANISMS. Each mechanism must have:\n1. A creative, unique NAME using the descriptor\n2. A full PARAGRAPH description (150-200 words) that includes how it works, who developed it, specific outcome, emotional transformation, and why it's different.\n\nReturn ONLY a JSON array of 5 objects with "name" and "description" fields, nothing else.`;
 
           const heroMechanismsResponse = await invokeLLM({
             messages: [
-              { role: "system", content: "You are a direct response copywriting expert. Return ONLY valid JSON arrays." },
+              { role: "system", content: "You are a direct response copywriting expert who specialises in creating proprietary mechanism names and descriptions for coaches and consultants. You write mechanism names that are niche-specific — containing vocabulary from the target market's industry, not generic business language. Your mechanism descriptions make the reader feel the copy was written specifically for them. Return ONLY valid JSON arrays." },
               { role: "user", content: heroMechanismsPrompt }
             ],
           });
           const heroMechanismsContent = typeof heroMechanismsResponse.choices[0].message.content === 'string'
             ? heroMechanismsResponse.choices[0].message.content
             : JSON.stringify(heroMechanismsResponse.choices[0].message.content);
-          const heroMechanisms = JSON.parse(stripMarkdownJson(heroMechanismsContent));
+          // LLM occasionally returns explanatory text — guard prevents crash, empty array as fallback.
+          let heroMechanisms: { name: string; description: string }[] = [];
+          try {
+            const parsed = JSON.parse(stripMarkdownJson(heroMechanismsContent));
+            heroMechanisms = Array.isArray(parsed) ? parsed : [];
+            if (!Array.isArray(parsed)) bgGenerationWarning = "Mechanism generation returned unexpected format — please try again.";
+          } catch {
+            heroMechanisms = [];
+            bgGenerationWarning = "Mechanism generation returned unexpected format — please try again.";
+          }
           heroMechanisms.forEach((m: { name: string; description: string }) => {
             allMechanisms.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId, mechanismSetId, tabType: "hero_mechanisms" as const, mechanismName: m.name, mechanismDescription: m.description, targetMarket: capturedInput.targetMarket, pressingProblem: capturedInput.pressingProblem, whyProblem: capturedInput.whyProblem, whatTried: capturedInput.whatTried, whyExistingNotWork: capturedInput.whyExistingNotWork, descriptor: capturedInput.descriptor, application: capturedInput.application, desiredOutcome: capturedInput.desiredOutcome, credibility: capturedInput.credibility, socialProof: capturedInput.socialProof });
           });
@@ -658,16 +593,24 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
 
           const headlineIdeasResponse = await invokeLLM({
             messages: [
-              { role: "system", content: "You are a direct response copywriting expert. Return ONLY valid JSON arrays." },
+              { role: "system", content: "You are a direct response copywriting expert who specialises in creating proprietary mechanism names and descriptions for coaches and consultants. You write mechanism names that are niche-specific — containing vocabulary from the target market's industry, not generic business language. Your mechanism descriptions make the reader feel the copy was written specifically for them. Return ONLY valid JSON arrays." },
               { role: "user", content: headlineIdeasPrompt }
             ],
           });
           const headlineIdeasContent = typeof headlineIdeasResponse.choices[0].message.content === 'string'
             ? headlineIdeasResponse.choices[0].message.content
             : JSON.stringify(headlineIdeasResponse.choices[0].message.content);
-          const headlineIdeas = JSON.parse(stripMarkdownJson(headlineIdeasContent));
-          const filteredHeadlineIdeas = await Promise.all(headlineIdeas.map((m: { name: string; description: string }) => filterMechanism(m)));
-          filteredHeadlineIdeas.forEach((m: { name: string; description: string }) => {
+          // LLM occasionally returns explanatory text — guard prevents crash, empty array as fallback.
+          let headlineIdeas: { name: string; description: string }[] = [];
+          try {
+            const parsed = JSON.parse(stripMarkdownJson(headlineIdeasContent));
+            headlineIdeas = Array.isArray(parsed) ? parsed : [];
+            if (!Array.isArray(parsed)) bgGenerationWarning = "Mechanism generation returned unexpected format — please try again.";
+          } catch {
+            headlineIdeas = [];
+            bgGenerationWarning = "Mechanism generation returned unexpected format — please try again.";
+          }
+          headlineIdeas.forEach((m: { name: string; description: string }) => {
             allMechanisms.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId, mechanismSetId, tabType: "headline_ideas" as const, mechanismName: m.name, mechanismDescription: m.description, targetMarket: capturedInput.targetMarket, pressingProblem: capturedInput.pressingProblem, whyProblem: capturedInput.whyProblem, whatTried: capturedInput.whatTried, whyExistingNotWork: capturedInput.whyExistingNotWork, descriptor: capturedInput.descriptor, application: capturedInput.application, desiredOutcome: capturedInput.desiredOutcome, credibility: capturedInput.credibility, socialProof: capturedInput.socialProof });
           });
 
@@ -676,42 +619,36 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
 
           const powerModeResponse = await invokeLLM({
             messages: [
-              { role: "system", content: "You are a direct response copywriting expert. Return ONLY valid JSON arrays." },
+              { role: "system", content: "You are a direct response copywriting expert who specialises in creating proprietary mechanism names and descriptions for coaches and consultants. You write mechanism names that are niche-specific — containing vocabulary from the target market's industry, not generic business language. Your mechanism descriptions make the reader feel the copy was written specifically for them. Return ONLY valid JSON arrays." },
               { role: "user", content: powerModePrompt }
             ],
           });
           const powerModeContent = typeof powerModeResponse.choices[0].message.content === 'string'
             ? powerModeResponse.choices[0].message.content
             : JSON.stringify(powerModeResponse.choices[0].message.content);
-          const powerMode = JSON.parse(stripMarkdownJson(powerModeContent));
-          const filteredPowerMode = await Promise.all(powerMode.map((m: { name: string; description: string }) => filterMechanism(m)));
-          filteredPowerMode.forEach((m: { name: string; description: string }) => {
+          // LLM occasionally returns explanatory text — guard prevents crash, empty array as fallback.
+          let powerMode: { name: string; description: string }[] = [];
+          try {
+            const parsed = JSON.parse(stripMarkdownJson(powerModeContent));
+            if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'object' && parsed[0] !== null) {
+              powerMode = parsed;
+            } else {
+              bgGenerationWarning = "Mechanism generation returned unexpected format — please try again.";
+            }
+          } catch {
+            bgGenerationWarning = "Mechanism generation returned unexpected format — please try again.";
+          }
+          powerMode.forEach((m: { name: string; description: string }) => {
             allMechanisms.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId, mechanismSetId, tabType: "beast_mode" as const, mechanismName: m.name, mechanismDescription: m.description, targetMarket: capturedInput.targetMarket, pressingProblem: capturedInput.pressingProblem, whyProblem: capturedInput.whyProblem, whatTried: capturedInput.whatTried, whyExistingNotWork: capturedInput.whyExistingNotWork, descriptor: capturedInput.descriptor, application: capturedInput.application, desiredOutcome: capturedInput.desiredOutcome, credibility: capturedInput.credibility, socialProof: capturedInput.socialProof });
           });
 
           // Save all mechanisms and increment quota
           await createHeroMechanisms(allMechanisms);
           await incrementHeroMechanismCount(capturedUserId);
-          await incrementQuotaCount(capturedUserId, "heroMechanisms");
 
-          // Auto-score and auto-select into campaign kit (non-blocking)
-          try {
-            const savedMechanisms = await bgDb.select().from(heroMechanisms).where(and(eq(heroMechanisms.mechanismSetId, mechanismSetId), eq(heroMechanisms.userId, capturedUserId)));
-            let bestId = 0; let bestScore = -1;
-            for (const m of savedMechanisms) {
-              const s = await scoreItem({ content: `${m.mechanismName} ${m.mechanismDescription}`, nodeType: "heroMechanisms" });
-              await bgDb.update(heroMechanisms).set({ selectionScore: String(s) } as any).where(eq(heroMechanisms.id, m.id));
-              if (s > bestScore) { bestScore = s; bestId = m.id; }
-            }
-            if (bestId) {
-              const [relatedIcp] = await bgDb.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, capturedInput.serviceId)).limit(1);
-              if (relatedIcp) await autoSelectBest(capturedUserId, relatedIcp.id, "selectedMechanismId", bestId);
-            }
-          } catch (e) { console.warn("[auto-select] heroMechanisms async failed:", e); }
-
-          // Mark job complete
+          // Mark job complete — include generationWarning if any tab returned unexpected format
           await bgDb.update(jobs)
-            .set({ status: "complete", result: JSON.stringify({ mechanismSetId }) })
+            .set({ status: "complete", result: JSON.stringify({ mechanismSetId, generationWarning: bgGenerationWarning }) })
             .where(eq(jobs.id, jobId));
           console.log(`[generateAsync] Job ${jobId} completed, mechanismSetId: ${mechanismSetId}`);
         } catch (err: unknown) {

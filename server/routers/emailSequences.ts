@@ -6,30 +6,177 @@ function stripMarkdownJson(content: string): string {
   return content.replace(/^```json\s*|^```\s*|\s*```$/gm, "").trim();
 }
 import { getDb } from "../db";
-import { emailSequences, services, campaigns, idealCustomerProfiles, sourceOfTruth, jobs, campaignKits, offers, heroMechanisms, hvcoTitles, headlines as headlinesTable } from "../../drizzle/schema";
+import { emailSequences, services, campaigns, idealCustomerProfiles, sourceOfTruth, jobs } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { invokeLLM } from "../_core/llm";
 import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
-import { enforceQuota, incrementQuotaCount } from "../lib/quotaEnforcement";
-import { complianceFilter } from "../lib/complianceFilter";
-import { checkCompliance } from "../lib/complianceChecker";
-import { scoreItem } from "../lib/selectionScorer";
-import { autoSelectBest } from "./campaignKits";
+import { truncateQuote } from "../_core/copywritingRules";
 
-// Apply compliance filter to an email's subject and body
-async function filterEmail(email: { subject: string; body: string; [k: string]: any }): Promise<typeof email> {
-  const subResult = complianceFilter(email.subject);
-  const bodyResult = complianceFilter(email.body);
-  const subject = subResult.wasModified ? subResult.cleanedText : email.subject;
-  const body = bodyResult.wasModified ? bodyResult.cleanedText : email.body;
-  const score = await checkCompliance(body);
-  if (score.score < 100) {
-    console.log(`[emailSequences] Compliance score ${score.score}/100 for subject "${subject.substring(0, 40)}": ${score.issues.map(i => i.phrase).join(", ")}`);
-  }
-  return { ...email, subject, body };
+// ---------------------------------------------------------------------------
+// Shared email prompt builders — used by generate (sync) and generateAsync.
+// Per-email job structure is defined once here; both paths call these functions.
+// ---------------------------------------------------------------------------
+
+interface EmailPromptParams {
+  sotContext: string;
+  serviceName: string;
+  campaignTypeContext: string;
+  icpContext: string;
+  socialProofGuidance: string;
+  // welcome
+  category?: string | null;
+  description?: string | null;
+  targetCustomer?: string | null;
+  mainBenefit?: string | null;
+  // engagement & sales
+  eventName?: string;
+  hostName?: string;
+  // sales
+  offerName?: string;
+  price?: string;
+  deadline?: string;
 }
+
+function getEmailRules(): string {
+  // Word count rules per sequence type — update the BODY COPY RULES block below if new sequence types are added.
+  // Welcome sequence: max 200 words
+  // Engagement sequence: max 200 words
+  // Sales sequence: max 300 words
+  // Future sequence types: add word count here before adding a new builder.
+  return `ONE EMAIL ONE JOB RULE: Every email in this sequence has exactly ONE job. The entire email — subject line, body, and CTA — must serve only that one job. Nothing else. No secondary CTAs. No topic shifts.
+
+SUBJECT LINE RULES:
+- Every subject line must create curiosity or pattern interrupt — NEVER describe what the email is about
+- Banned subject line patterns: "Welcome to [X]", "Here's what I promised", "Don't miss [X]", "[X] is now available"
+- Good patterns: A provocative question, an incomplete statement, something unexpected, something specific and slightly strange
+- Max 50 characters. Test: Would you open this if you didn't know the sender?
+
+PREVIEW TEXT RULES:
+- Preview text extends the subject line — it completes the thought or adds a second layer of intrigue. Never repeat the subject line. Never describe the email content. Max 140 characters.
+
+BODY COPY RULES:
+- Welcome sequence emails: max 200 words
+- Engagement sequence emails: max 200 words
+- Sales sequence emails: max 300 words
+- Max 15 words per sentence. Max 2 sentences per paragraph. Line breaks between paragraphs.
+- Grade 6 reading level. Short words. Direct language. Contractions (you're, it's, don't).
+- Never use: "I hope this email finds you well", "As per my last email", "I wanted to reach out"
+- Open with the most interesting sentence — not a greeting, not context-setting
+
+MOBILE-FIRST RULE: Most emails are read on a phone in under 8 seconds. Every email must pass this test: read only the first sentence of each paragraph. Does the email still make sense? If yes, the structure is correct. If no, the paragraphs are burying the lead. Front-load every paragraph with the most important information.
+
+HOOK RULE: The first sentence of every email is the hook. It must do one of three things: name a specific situation the reader is in right now, make a counterintuitive claim that challenges something they believe, or open a loop they cannot close without reading further. The hook must be niche-specific — it must contain at least one word or phrase that only someone in this specific world would recognise. A hook that could be sent by any coach in any niche is not a hook — it is a greeting.
+
+ICP LANGUAGE RULE: Write in the customer's own language — the words they use to describe their problem to a friend, not the words a coach uses to describe it. The ICP context provided contains their pains, fears, and frustrations. Extract the most specific phrase from that context and use it verbatim in at least one place in each email. Never use coaching language to describe a customer problem.
+
+PS LINE RULE: Every email MUST end with a PS. The PS must do ONE of: add a key piece of information not in the body, create additional urgency, or deepen the curiosity loop. The PS is often read first — make it pull them into the body.
+
+CTA RULE: One CTA per email. State it once. Make it specific to the job of this email.`;
+}
+
+export function buildWelcomeEmailPrompt(p: EmailPromptParams): string {
+  return `${p.sotContext ? `${p.sotContext}\n\n` : ''}You are an expert email marketer. Create a 3-email welcome sequence for new subscribers using Russell Brunson's Soap Opera Sequence framework.
+
+Service: ${p.serviceName}
+Category: ${p.category || ""}
+Description: ${p.description || ""}
+Target Customer: ${p.targetCustomer || ""}
+Main Benefit: ${p.mainBenefit || ""}
+
+${p.socialProofGuidance}
+
+${p.campaignTypeContext ? `${p.campaignTypeContext}\n\n` : ''}${p.icpContext}
+
+${getEmailRules()}
+
+SEQUENCE GOAL: By the end of email 3, the reader should feel they know who you are, believe you understand their situation better than anyone else has, and feel that the next logical step is to learn more about how you can help them specifically. Every email moves them one step closer to this state. Nothing in emails 1 or 2 asks them to buy — the sequence earns that right in email 3.
+
+Create 3 emails.
+1. DELIVER THE PROMISE (Day 1) — Primary job: Give them exactly what was promised — the lead magnet, the resource, or the access — immediately in the first paragraph. No preamble. No selling. Just the thing they signed up for. Secondary function (not a second job — a structural element): end the email with one specific unanswered question that makes them want to open email 2. The question must be real, niche-specific, and something they genuinely do not know the answer to. The question lives in the PS — not the body.
+2. ORIGIN STORY (Day 3) — Job: Why you do this work. One vulnerable moment (what it looked like when things were not working), one turning point (the specific thing that changed), one result (what became possible after). No selling. No pitch. The story must make them feel they are not alone in their situation.
+3. PROOF (Day 5) — Job: One client story with a specific before/after. Name the situation they were in before, the specific change they made, and the specific outcome they got — a number, a named situation, or a measurable result. No generic testimonials. The story must be specific enough that the reader thinks "that could be me."
+
+Each email must include:
+- subject: (curiosity or pattern-interrupt, max 50 chars, never descriptive)
+- previewText: (extends the subject line — completes the thought or adds a second layer of intrigue, never repeats the subject, max 140 chars)
+- body: (max 200 words, short sentences, line breaks between paragraphs)
+- cta: (one specific action)
+- ps: (mandatory — one sentence that creates curiosity or urgency)
+
+Return as a JSON object with an 'emails' key containing the array.`;
+}
+
+export function buildEngagementEmailPrompt(p: EmailPromptParams): string {
+  return `${p.sotContext ? `${p.sotContext}\n\n` : ''}You are an expert email marketer. Create a 5-email engagement sequence for event attendees using Russell Brunson's Soap Opera Sequence.
+
+Service: ${p.serviceName}
+Event: ${p.eventName || "Event"}
+Host: ${p.hostName || "Host"}
+
+${p.socialProofGuidance}
+
+${p.campaignTypeContext ? `${p.campaignTypeContext}\n\n` : ''}${p.icpContext}
+
+${getEmailRules()}
+
+Create 5 emails (Monday to Friday before event).
+1. SET THE STAGE (Monday) — Job: Create anticipation for the event. Make them feel something valuable is coming — something they'd regret missing.
+2. OPEN WITH HIGH DRAMA (Tuesday) — Job: Tell one specific story that makes the problem feel urgent and personal. No product pitch.
+3. EPIPHANY (Wednesday) — Job: Reveal the insight that makes the event feel essential to attend. Not a feature list — one counterintuitive truth that is specific enough that the reader thinks "I never knew that about my situation."
+4. HIDDEN BENEFITS (Thursday) — Job: Name one specific benefit of attending that they haven't considered yet. Make showing up feel obviously worth it.
+5. URGENCY & CTA (Friday) — Job: Create genuine urgency around showing up live. Name what they'll miss if they don't.
+
+Each email must include:
+- subject: (curiosity or pattern-interrupt, max 50 chars, never descriptive)
+- previewText: (extends the subject line — completes the thought or adds a second layer of intrigue, never repeats the subject, max 140 chars)
+- body: (max 200 words, short sentences, line breaks between paragraphs)
+- cta: (one specific action)
+- ps: (mandatory — one sentence that creates curiosity or urgency)
+
+Return as a JSON object with an 'emails' key containing the array.`;
+}
+
+export function buildSalesEmailPrompt(p: EmailPromptParams): string {
+  return `${p.sotContext ? `${p.sotContext}\n\n` : ''}You are an expert email marketer. Create a 7-email sales sequence for event attendees who didn't buy.
+
+Service: ${p.serviceName}
+Event: ${p.eventName || "Event"}
+Offer: ${p.offerName || "Offer"}
+Price: ${p.price || "Price"}
+Deadline: ${p.deadline || "Deadline"}
+
+${p.socialProofGuidance}
+
+${p.campaignTypeContext ? `${p.campaignTypeContext}\n\n` : ''}${p.icpContext}
+
+${getEmailRules()}
+
+LOSS AVERSION FRAME — applies to emails 1 through 4: Every email must contain at least one sentence that names something the reader is actively losing right now — not something they might gain later. Frame it in present tense: 'Every week you stay here is another week of [specific cost].' The cost must be niche-specific and concrete — a number, a named situation, or a recurring experience. Losses feel twice as painful as equivalent gains. Use this asymmetry.
+
+SUBJECT LINE SPECIFICITY RULE FOR SALES SEQUENCES: Each of the 7 emails has a different emotional job. The subject line must match that job's emotional tone — not just create generic curiosity. Email 1 (Thank You): subject must feel personal and specific to what they just experienced. Email 2 (Case Study): subject must name a specific situation, not just promise a story. Email 3 (Objection): subject must name the real objection, not hint at it. Email 4 (Bonus): subject must make the bonus feel like a surprise discovery, not a sales pitch. Email 5 (Guarantee): subject must make the guarantee feel like news, not reassurance. Email 6 (Scarcity): subject must name what specifically closes, not just create urgency. Email 7 (Final Call): subject must name the choice, not the deadline.
+
+Create 7 emails (Day 1-7 after event).
+1. THANK YOU (Day 1) — Job: Re-open the door. Thank them and name the one specific insight from the event that would have felt most personally true to someone in their situation. One clear next step at the end. Nothing else.
+2. CASE STUDY (Day 2) — Job: Remove the "will it work for me?" objection. ANCHORING RULE: State the starting point before the result. The reader must see the gap — where the person started versus where they ended up. Format: '[Situation before] → [specific change made] → [specific result with number or named outcome].' A result without a starting point has no anchor — the reader cannot feel the distance traveled. The case study situation must mirror the reader's situation. The reader must think "that person was exactly like me."
+3. OBJECTION HANDLING (Day 3) — Job: Name the real objection — not the polite version they'd say out loud, but the actual thought in their head. Then answer it with specifics: a number, a story, or a mechanism. Do not be defensive. Do not sell. Just dismantle the objection with evidence.
+4. BONUS REVEAL (Day 4) — Job: Make the offer feel more irresistible by revealing one bonus that solves a specific problem they didn't think was included. State the specific dollar value of the bonus. Use anchoring — state total value before revealing the ask. The bonus must feel directly useful, not like padding.
+5. GUARANTEE (Day 5) — Job: Remove all risk from the decision. State the exact duration, the exact result guaranteed, and the exact refund process. Make keeping their money feel riskier than spending it — name the ongoing cost of not solving this problem for one more month.
+6. SCARCITY (Day 6) — Job: Make inaction feel costly and concrete. Name the specific thing that closes or changes — a cohort deadline, a price increase, or a genuine limit. Never fabricate scarcity. Name what specifically happens after the deadline.
+7. FINAL CALL (Day 7) — Job: Resolve the most important open loop from earlier in the sequence — the one question or tension that has been building. Name it explicitly: 'You've been wondering [specific question]. Here's the answer.' Then make the choice binary and concrete: [specific outcome if they act today] versus [specific cost if they don't]. One CTA. Nothing else.
+
+Each email must include:
+- subject: (curiosity or pattern-interrupt, max 50 chars, never descriptive)
+- previewText: (extends the subject line — completes the thought or adds a second layer of intrigue, never repeats the subject, max 140 chars)
+- body: (max 300 words, short sentences, line breaks between paragraphs)
+- cta: (one specific action)
+- ps: (mandatory — one sentence that creates urgency or reveals additional stakes)
+
+Return as a JSON object with an 'emails' key containing the array.`;
+}
+
+// ---------------------------------------------------------------------------
 
 const generateEmailSequenceSchema = z.object({
   serviceId: z.number(),
@@ -115,8 +262,6 @@ export const emailSequencesRouter = router({
   generate: protectedProcedure
     .input(generateEmailSequenceSchema)
     .mutation(async ({ ctx, input }) => {
-      await enforceQuota(ctx.user.id, "email");
-
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -246,12 +391,13 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
         press: service.pressFeatures || '',
       };
       
+      // truncateQuote imported from copywritingRules.ts — one definition used everywhere.
       // Social proof guidance for email copy
       const socialProofGuidance = socialProof.hasTestimonials || socialProof.hasCustomers
         ? `REAL SOCIAL PROOF AVAILABLE:
 ${socialProof.hasCustomers ? `- ${socialProof.customerCount} verified customers` : ''}
 ${socialProof.hasRating ? `- ${socialProof.rating} average rating from ${socialProof.reviewCount} reviews` : ''}
-${socialProof.hasTestimonials ? `- Real testimonials available from: ${socialProof.testimonials.map((t: any) => t.name).join(', ')}` : ''}
+${socialProof.hasTestimonials ? `- Real testimonials:\n${socialProof.testimonials.map((t: any) => `  • ${t.name}${t.title ? ` (${t.title})` : ''}: "${truncateQuote(t.quote || '')}"`).join('\n')}` : ''}
 
 You MUST use these exact numbers and real names. Do not fabricate.`
         : `NO SOCIAL PROOF DATA PROVIDED:
@@ -260,126 +406,34 @@ You MUST use these exact numbers and real names. Do not fabricate.`
 - Use outcome-based stories WITHOUT specific names ("One client" instead of "John Smith")`;
 
 
-      // ── Cascade context from Campaign Kit ──
-      let cascadeContext = "";
-      try {
-        const [relIcp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
-        if (relIcp) {
-          const [kit] = await db.select().from(campaignKits).where(and(eq(campaignKits.userId, ctx.user.id), eq(campaignKits.icpId, relIcp.id))).limit(1);
-          if (kit) {
-            const parts: string[] = [];
-            if (kit.selectedHvcoId) {
-              const [hvco] = await db.select().from(hvcoTitles).where(eq(hvcoTitles.id, kit.selectedHvcoId)).limit(1);
-              if (hvco) parts.push(`Lead magnet: ${hvco.title}`);
-            }
-            if (kit.selectedMechanismId) {
-              const [mech] = await db.select().from(heroMechanisms).where(eq(heroMechanisms.id, kit.selectedMechanismId)).limit(1);
-              if (mech) parts.push(`Hero mechanism: ${mech.mechanismName}`);
-            }
-            if (kit.selectedHeadlineId) {
-              const [hl] = await db.select().from(headlinesTable).where(eq(headlinesTable.id, kit.selectedHeadlineId)).limit(1);
-              if (hl) parts.push(`Selected headline: ${hl.headline}`);
-            }
-            if (kit.selectedOfferId) {
-              const [offer] = await db.select().from(offers).where(eq(offers.id, kit.selectedOfferId)).limit(1);
-              if (offer) parts.push(`Offer angle: ${offer.activeAngle || "godfather"}`);
-            }
-            if (parts.length > 0) {
-              cascadeContext = `UPSTREAM CONTEXT — SELECTED ASSETS:\n${parts.join(". ")}. Early emails must reference the lead magnet. The sequence must build toward the offer.\n\n`;
-            }
-          }
-        }
-      } catch (e) { console.warn("[cascade] emailSequences context fetch failed:", e); }
-
-      let prompt = "";
-
-      if (input.sequenceType === "welcome") {
-        prompt = `${cascadeContext}${sotContext ? `${sotContext}\n\n` : ''}You are an expert email marketer. Create a 3-email welcome sequence for new subscribers using Russell Brunson's Soap Opera Sequence framework.
-
-Service: ${service.name}
-Category: ${service.category}
-Description: ${service.description}
-Target Customer: ${service.targetCustomer}
-Main Benefit: ${service.mainBenefit}
-
-${socialProofGuidance}
-
-${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}
-
-Create 3 emails:
-1. SET THE STAGE (Day 1) - Welcome, set expectations, introduce yourself
-2. EPIPHANY (Day 3) - Share your transformation story, introduce solution
-3. HIDDEN BENEFITS (Day 5) - Show secondary benefits, soft CTA
-
-Each email should have:
-- Subject line (40-60 characters, curiosity-driven)
-- Preview text (30-50 characters)
-- Body (200-300 words, conversational tone, grade 4 language)
-- CTA (clear next step)
-
-Return as a JSON object with an 'emails' key containing the array.`;
-      } else if (input.sequenceType === "engagement") {
-        prompt = `${cascadeContext}${sotContext ? `${sotContext}\n\n` : ''}You are an expert email marketer. Create a 5-email engagement sequence for event attendees using Russell Brunson's Soap Opera Sequence.
-
-Service: ${service.name}
-Event: ${input.eventDetails?.eventName || "Event"}
-Host: ${input.eventDetails?.hostName || "Host"}
-
-${socialProofGuidance}
-
-${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}
-
-Create 5 emails (Monday to Friday before event):
-1. SET THE STAGE (Monday) - Introduce, set expectations
-2. OPEN WITH HIGH DRAMA (Tuesday) - Tell your biggest problem
-3. EPIPHANY (Wednesday) - Reveal solution, promote event
-4. HIDDEN BENEFITS (Thursday) - Show secondary benefits
-5. URGENCY & CTA (Friday) - Create scarcity, final push
-
-Each email should have:
-- Subject line (40-60 characters, curiosity-driven)
-- Preview text (30-50 characters)
-- Body (200-300 words, conversational tone, grade 4 language)
-- CTA (clear next step)
-
-Return as a JSON object with an 'emails' key containing the array.`;
-      } else {
-        // sales sequence
-        prompt = `${cascadeContext}${sotContext ? `${sotContext}\n\n` : ''}You are an expert email marketer. Create a 7-email sales sequence for event attendees who didn't buy.
-
-Service: ${service.name}
-Event: ${input.eventDetails?.eventName || "Event"}
-Offer: ${input.eventDetails?.offerName || "Offer"}
-Price: ${input.eventDetails?.price || "Price"}
-Deadline: ${input.eventDetails?.deadline || "Deadline"}
-
-${socialProofGuidance}
-
-${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}
-
-Create 7 emails (Day 1-7 after event):
-1. THANK YOU (Day 1) - Gratitude, recap key points
-2. CASE STUDY (Day 2) - Success story, social proof
-3. OBJECTION HANDLING (Day 3) - Address common objections
-4. BONUS REVEAL (Day 4) - Exclusive bonuses
-5. GUARANTEE (Day 5) - Risk reversal, guarantee
-6. SCARCITY (Day 6) - Limited spots, urgency
-7. FINAL CALL (Day 7) - Last chance, deadline
-
-Each email should have:
-- Subject line (40-60 characters, curiosity-driven)
-- Preview text (30-50 characters)
-- Body (250-350 words, conversational tone, grade 4 language)
-- CTA (clear next step)
-
-Return as a JSON object with an 'emails' key containing the array.`;
-      }
+      // Both sync and async use the shared builder functions — per-email job structure lives there.
+      const emailPromptParams: EmailPromptParams = {
+        sotContext,
+        serviceName: service.name,
+        campaignTypeContext,
+        icpContext,
+        socialProofGuidance,
+        category: service.category,
+        description: service.description,
+        targetCustomer: service.targetCustomer,
+        mainBenefit: service.mainBenefit,
+        eventName: input.eventDetails?.eventName,
+        hostName: input.eventDetails?.hostName,
+        offerName: input.eventDetails?.offerName,
+        price: input.eventDetails?.price,
+        deadline: input.eventDetails?.deadline,
+      };
+      const prompt = input.sequenceType === "welcome"
+        ? buildWelcomeEmailPrompt(emailPromptParams)
+        : input.sequenceType === "engagement"
+          ? buildEngagementEmailPrompt(emailPromptParams)
+          : buildSalesEmailPrompt(emailPromptParams);
       const response = await invokeLLM({
         messages: [
           {
             role: "system",
             content:
-              "You are an expert email marketer specializing in high-converting email sequences for coaches, speakers, and consultants. Use Russell Brunson's Soap Opera Sequence framework. Always respond with valid JSON.",
+              "You are an expert email marketer specializing in high-converting email sequences for coaches, speakers, and consultants. You apply the ONE EMAIL ONE JOB principle — every email has a single clear job and the entire email serves only that job. You write curiosity-driven, pattern-interrupt subject lines that are never descriptive. You write short sentences (max 15 words), short paragraphs (max 2 sentences), with line breaks between paragraphs. Every email ends with a mandatory PS that creates curiosity or urgency. Use Russell Brunson's Soap Opera Sequence framework. Always respond with valid JSON.",
           },
           { role: "user", content: prompt },
         ],
@@ -401,8 +455,9 @@ Return as a JSON object with an 'emails' key containing the array.`;
                       previewText: { type: "string" },
                       body: { type: "string" },
                       cta: { type: "string" },
+                      ps: { type: "string" },
                     },
-                    required: ["day", "subject", "previewText", "body", "cta"],
+                    required: ["day", "subject", "previewText", "body", "cta", "ps"],
                     additionalProperties: false,
                   },
                 },
@@ -426,16 +481,25 @@ Return as a JSON object with an 'emails' key containing the array.`;
       if (!sequenceData.emails || !Array.isArray(sequenceData.emails)) {
         throw new Error("LLM did not return a valid emails array");
       }
+      // Note: email sequences generated before commit 4d04611 may have null ps fields — the LLM
+      // was returning ps but it was dropped before DB save. To find affected records run:
+      // DB is MySQL/TiDB — do not use Postgres jsonb syntax.
+      // SELECT id, JSON_LENGTH(emails) AS total,
+      //   JSON_LENGTH(JSON_EXTRACT(emails, '$[*].ps')) AS with_ps
+      // FROM email_sequences
+      // WHERE JSON_LENGTH(emails) != JSON_LENGTH(JSON_EXTRACT(emails, '$[*].ps'))
+      //    OR JSON_SEARCH(emails, 'one', NULL, NULL, '$[*].ps') IS NOT NULL;
+      // Do not attempt to backfill — downstream display code should treat null/missing ps as empty string.
       sequenceData.emails = sequenceData.emails.map((email: any, idx: number) => ({
         subject: email.subject || `Email ${idx + 1}: Check this out`,
+        previewText: email.previewText || '',
         body: email.body || `This is email ${idx + 1}. Click the link to learn more.`,
         delay: email.delay || (idx * 24),
         delayUnit: email.delayUnit || 'hours',
         cta: email.cta || 'Learn More',
         ctaLink: email.ctaLink || '#',
+        ps: email.ps || '',
       }));
-      // Apply compliance filter to all emails
-      sequenceData.emails = await Promise.all(sequenceData.emails.map((e: any) => filterEmail(e)));
       // Save to database
       const insertResult: any = await db.insert(emailSequences).values({
         userId: ctx.user.id,
@@ -446,23 +510,12 @@ Return as a JSON object with an 'emails' key containing the array.`;
         emails: sequenceData.emails,
       });
 
-      await incrementQuotaCount(ctx.user.id, "email");
-
       // Fetch the created sequence
       const [newSequence] = await db
         .select()
         .from(emailSequences)
         .where(eq(emailSequences.id, insertResult[0].insertId))
         .limit(1);
-
-      // Auto-score and auto-select into campaign kit (non-blocking)
-      try {
-        const emailContent = sequenceData.emails.map((e: any) => `${e.subject} ${e.body}`).join(" ");
-        const s = await scoreItem({ content: emailContent, nodeType: "emailSequences" });
-        await db.update(emailSequences).set({ selectionScore: String(s) } as any).where(eq(emailSequences.id, insertResult[0].insertId));
-        const [relatedIcp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
-        if (relatedIcp) await autoSelectBest(ctx.user.id, relatedIcp.id, "selectedEmailSequenceId", insertResult[0].insertId);
-      } catch (e) { console.warn("[auto-select] emailSequences failed:", e); }
 
       return newSequence;
     }),
@@ -475,7 +528,6 @@ Return as a JSON object with an 'emails' key containing the array.`;
     .input(generateEmailSequenceSchema)
     .mutation(async ({ ctx, input }) => {
       const { user } = ctx;
-      await enforceQuota(user.id, "email");
       await checkAndResetQuotaIfNeeded(user.id);
       if (user.role !== "superuser") {
         const limit = getQuotaLimit(user.subscriptionTier, "email");
@@ -518,39 +570,43 @@ Return as a JSON object with an 'emails' key containing the array.`;
           const campaignTypeContextMap: Record<string, string> = { webinar: `CAMPAIGN TYPE: Webinar\nFraming: Show-up urgency. CTA language: Register now / Save your seat / Join us live on [date]`, challenge: `CAMPAIGN TYPE: Challenge\nFraming: Community commitment. CTA language: Join the challenge / Claim your spot / Start with us on [date]`, course_launch: `CAMPAIGN TYPE: Course Launch\nFraming: Transformation journey. CTA language: Enrol now / Join the programme / Claim your place before [date]`, product_launch: `CAMPAIGN TYPE: Product Launch\nFraming: Early access. CTA language: Get early access / Become a founding member / Lock in launch pricing` };
           const campaignTypeContext = campaignTypeContextMap[capturedCampaignType] || campaignTypeContextMap['course_launch'];
           const socialProof = { hasCustomers: !!capturedService.totalCustomers && capturedService.totalCustomers > 0, hasRating: !!capturedService.averageRating && parseFloat(capturedService.averageRating) > 0, hasReviews: !!capturedService.totalReviews && capturedService.totalReviews > 0, hasTestimonials: !!capturedService.testimonial1Name || !!capturedService.testimonial2Name || !!capturedService.testimonial3Name, customerCount: capturedService.totalCustomers || 0, rating: capturedService.averageRating || '', reviewCount: capturedService.totalReviews || 0, testimonials: [capturedService.testimonial1Name ? { name: capturedService.testimonial1Name, title: capturedService.testimonial1Title || '', quote: capturedService.testimonial1Quote || '' } : null, capturedService.testimonial2Name ? { name: capturedService.testimonial2Name, title: capturedService.testimonial2Title || '', quote: capturedService.testimonial2Quote || '' } : null, capturedService.testimonial3Name ? { name: capturedService.testimonial3Name, title: capturedService.testimonial3Title || '', quote: capturedService.testimonial3Quote || '' } : null].filter(Boolean) };
-          const socialProofGuidance = socialProof.hasTestimonials || socialProof.hasCustomers ? `REAL SOCIAL PROOF AVAILABLE:\n${socialProof.hasCustomers ? `- ${socialProof.customerCount} verified customers` : ''}\n${socialProof.hasRating ? `- ${socialProof.rating} average rating from ${socialProof.reviewCount} reviews` : ''}\n${socialProof.hasTestimonials ? `- Real testimonials available from: ${(socialProof.testimonials as any[]).map((t: any) => t.name).join(', ')}` : ''}\n\nYou MUST use these exact numbers and real names. Do not fabricate.` : `NO SOCIAL PROOF DATA PROVIDED:\n- DO NOT mention customer counts, ratings, or specific testimonials\n- Focus on benefit claims and transformation outcomes\n- Use outcome-based stories WITHOUT specific names`;
+          // truncateQuote imported from copywritingRules.ts — one definition used everywhere.
+          const socialProofGuidance = socialProof.hasTestimonials || socialProof.hasCustomers ? `REAL SOCIAL PROOF AVAILABLE:\n${socialProof.hasCustomers ? `- ${socialProof.customerCount} verified customers` : ''}\n${socialProof.hasRating ? `- ${socialProof.rating} average rating from ${socialProof.reviewCount} reviews` : ''}\n${socialProof.hasTestimonials ? `- Real testimonials:\n${(socialProof.testimonials as any[]).map((t: any) => `  • ${t.name}${t.title ? ` (${t.title})` : ''}: "${truncateQuote(t.quote || '')}"`).join('\n')}` : ''}\n\nYou MUST use these exact numbers and real names. Do not fabricate.` : `NO SOCIAL PROOF DATA PROVIDED:\n- DO NOT mention customer counts, ratings, or specific testimonials\n- Focus on benefit claims and transformation outcomes\n- Use outcome-based stories WITHOUT specific names`;
 
-          let prompt = "";
-          if (capturedInput.sequenceType === "welcome") {
-            prompt = `${cascadeContext}${sotContext ? `${sotContext}\n\n` : ''}You are an expert email marketer. Create a 3-email welcome sequence for new subscribers using Russell Brunson's Soap Opera Sequence framework.\n\nService: ${capturedService.name}\nCategory: ${capturedService.category}\nDescription: ${capturedService.description}\nTarget Customer: ${capturedService.targetCustomer}\nMain Benefit: ${capturedService.mainBenefit}\n\n${socialProofGuidance}\n\n${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}\n\nCreate 3 emails (Day 1, 3, 5). Each email: subject line, preview text, body (200-300 words), CTA.\n\nReturn as a JSON object with an 'emails' key containing the array.`;
-          } else if (capturedInput.sequenceType === "engagement") {
-            prompt = `${cascadeContext}${sotContext ? `${sotContext}\n\n` : ''}You are an expert email marketer. Create a 5-email engagement sequence for event attendees using Russell Brunson's Soap Opera Sequence.\n\nService: ${capturedService.name}\nEvent: ${capturedInput.eventDetails?.eventName || "Event"}\nHost: ${capturedInput.eventDetails?.hostName || "Host"}\n\n${socialProofGuidance}\n\n${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}\n\nCreate 5 emails (Monday to Friday before event). Each email: subject line, preview text, body (200-300 words), CTA.\n\nReturn as a JSON object with an 'emails' key containing the array.`;
-          } else {
-            prompt = `${cascadeContext}${sotContext ? `${sotContext}\n\n` : ''}You are an expert email marketer. Create a 7-email sales sequence for event attendees who didn't buy.\n\nService: ${capturedService.name}\nEvent: ${capturedInput.eventDetails?.eventName || "Event"}\nOffer: ${capturedInput.eventDetails?.offerName || "Offer"}\nPrice: ${capturedInput.eventDetails?.price || "Price"}\nDeadline: ${capturedInput.eventDetails?.deadline || "Deadline"}\n\n${socialProofGuidance}\n\n${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}${icpContext}\n\nCreate 7 emails (Day 1-7 after event). Each email: subject line, preview text, body (250-350 words), CTA.\n\nReturn as a JSON object with an 'emails' key containing the array.`;
-          }
+          // Use the shared builders — same per-email job structure as the sync path.
+          const bgEmailParams: EmailPromptParams = {
+            sotContext,
+            serviceName: capturedService.name,
+            campaignTypeContext,
+            icpContext,
+            socialProofGuidance,
+            category: capturedService.category,
+            description: capturedService.description,
+            targetCustomer: capturedService.targetCustomer,
+            mainBenefit: capturedService.mainBenefit,
+            eventName: capturedInput.eventDetails?.eventName,
+            hostName: capturedInput.eventDetails?.hostName,
+            offerName: capturedInput.eventDetails?.offerName,
+            price: capturedInput.eventDetails?.price,
+            deadline: capturedInput.eventDetails?.deadline,
+          };
+          const prompt = capturedInput.sequenceType === "welcome"
+            ? buildWelcomeEmailPrompt(bgEmailParams)
+            : capturedInput.sequenceType === "engagement"
+              ? buildEngagementEmailPrompt(bgEmailParams)
+              : buildSalesEmailPrompt(bgEmailParams);
 
-          const response = await invokeLLM({ messages: [{ role: "system", content: "You are an expert email marketer specializing in high-converting email sequences for coaches, speakers, and consultants. Use Russell Brunson's Soap Opera Sequence framework. Always respond with valid JSON." }, { role: "user", content: prompt }], response_format: { type: "json_schema", json_schema: { name: "email_sequence", strict: true, schema: { type: "object", properties: { emails: { type: "array", items: { type: "object", properties: { day: { type: "integer" }, subject: { type: "string" }, previewText: { type: "string" }, body: { type: "string" }, cta: { type: "string" } }, required: ["day", "subject", "previewText", "body", "cta"], additionalProperties: false } } }, required: ["emails"], additionalProperties: false } } } });
+          const response = await invokeLLM({ messages: [{ role: "system", content: "You are an expert email marketer specializing in high-converting email sequences for coaches, speakers, and consultants. You apply the ONE EMAIL ONE JOB principle — every email has a single clear job and the entire email serves only that job. You write curiosity-driven, pattern-interrupt subject lines that are never descriptive. You write short sentences (max 15 words), short paragraphs (max 2 sentences), with line breaks between paragraphs. Every email ends with a mandatory PS that creates curiosity or urgency. Use Russell Brunson's Soap Opera Sequence framework. Always respond with valid JSON." }, { role: "user", content: prompt }], response_format: { type: "json_schema", json_schema: { name: "email_sequence", strict: true, schema: { type: "object", properties: { emails: { type: "array", items: { type: "object", properties: { day: { type: "integer" }, subject: { type: "string" }, previewText: { type: "string" }, body: { type: "string" }, cta: { type: "string" }, ps: { type: "string" } }, required: ["day", "subject", "previewText", "body", "cta", "ps"], additionalProperties: false } } }, required: ["emails"], additionalProperties: false } } } });
 
           const content = response.choices[0].message.content;
           if (typeof content !== "string") throw new Error("Invalid response format from AI");
           let sequenceData = JSON.parse(stripMarkdownJson(content));
           if (Array.isArray(sequenceData)) sequenceData = { emails: sequenceData };
           if (!sequenceData.emails || !Array.isArray(sequenceData.emails)) throw new Error("LLM did not return a valid emails array");
-          sequenceData.emails = sequenceData.emails.map((email: any, idx: number) => ({ subject: email.subject || `Email ${idx + 1}: Check this out`, body: email.body || `This is email ${idx + 1}. Click the link to learn more.`, delay: email.delay || (idx * 24), delayUnit: email.delayUnit || 'hours', cta: email.cta || 'Learn More', ctaLink: email.ctaLink || '#' }));
-          sequenceData.emails = await Promise.all(sequenceData.emails.map((e: any) => filterEmail(e)));
+          sequenceData.emails = sequenceData.emails.map((email: any, idx: number) => ({ subject: email.subject || `Email ${idx + 1}: Check this out`, previewText: email.previewText || '', body: email.body || `This is email ${idx + 1}. Click the link to learn more.`, delay: email.delay || (idx * 24), delayUnit: email.delayUnit || 'hours', cta: email.cta || 'Learn More', ctaLink: email.ctaLink || '#', ps: email.ps || '' }));
 
           const insertResult: any = await bgDb.insert(emailSequences).values({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, sequenceType: capturedInput.sequenceType, name: capturedInput.name, emails: sequenceData.emails });
-          await incrementQuotaCount(capturedUserId, "email");
           const [newSequence] = await bgDb.select().from(emailSequences).where(eq(emailSequences.id, insertResult[0].insertId)).limit(1);
-
-          // Auto-score and auto-select into campaign kit (non-blocking)
-          try {
-            const emailContent = sequenceData.emails.map((e: any) => `${e.subject} ${e.body}`).join(" ");
-            const s = await scoreItem({ content: emailContent, nodeType: "emailSequences" });
-            await bgDb.update(emailSequences).set({ selectionScore: String(s) } as any).where(eq(emailSequences.id, insertResult[0].insertId));
-            const [relatedIcp] = await bgDb.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, capturedInput.serviceId)).limit(1);
-            if (relatedIcp) await autoSelectBest(capturedUserId, relatedIcp.id, "selectedEmailSequenceId", insertResult[0].insertId);
-          } catch (e) { console.warn("[auto-select] emailSequences async failed:", e); }
 
           await bgDb.update(jobs)
             .set({ status: "complete", result: JSON.stringify({ id: newSequence?.id }) })
@@ -610,67 +666,6 @@ Return as a JSON object with an 'emails' key containing the array.`;
         .limit(1);
 
       return updated;
-    }),
-
-  // Regenerate a single email within a sequence via AI
-  regenerateSingle: protectedProcedure
-    .input(z.object({ id: z.number(), index: z.number(), promptOverride: z.string().optional() }))
-    .mutation(async ({ ctx, input }) => {
-      await enforceQuota(ctx.user.id, "email");
-
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
-
-      const [row] = await db
-        .select()
-        .from(emailSequences)
-        .where(and(eq(emailSequences.id, input.id), eq(emailSequences.userId, ctx.user.id)))
-        .limit(1);
-
-      if (!row) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Email sequence not found" });
-      }
-
-      const emails: any[] = typeof row.emails === "string" ? JSON.parse(row.emails) : (row.emails ?? []);
-
-      if (input.index < 0 || input.index >= emails.length) {
-        throw new TRPCError({ code: "NOT_FOUND", message: `Email index ${input.index} out of range (0-${emails.length - 1})` });
-      }
-
-      const target = emails[input.index];
-      const overrideInstruction = input.promptOverride?.trim()
-        ? ` Additional instruction: ${input.promptOverride.trim()}.`
-        : "";
-
-      const prompt = `Rewrite this email in a sequence for a coaching offer. Current subject: ${target.subject}. Current body: ${target.body}.${overrideInstruction} Return a JSON object with exactly two keys: subject (string) and body (string). No explanation, no markdown, just the JSON object.`;
-
-      const response = await invokeLLM({
-        messages: [
-          { role: "system", content: "You are an expert email copywriter for coaches and consultants. Respond with only valid JSON." },
-          { role: "user", content: prompt },
-        ],
-      });
-
-      const content = response.choices[0].message.content;
-      if (typeof content !== "string") {
-        throw new Error("Invalid response from AI");
-      }
-
-      const parsed = JSON.parse(stripMarkdownJson(content));
-      if (!parsed.subject || !parsed.body) {
-        throw new Error("AI response missing subject or body");
-      }
-
-      // Apply compliance filter to regenerated email
-      const filtered = await filterEmail({ subject: parsed.subject, body: parsed.body });
-      emails[input.index] = { ...emails[input.index], subject: filtered.subject, body: filtered.body };
-
-      await db
-        .update(emailSequences)
-        .set({ emails: JSON.stringify(emails), updatedAt: new Date() })
-        .where(eq(emailSequences.id, input.id));
-
-      return emails[input.index];
     }),
 
   // Delete email sequence

@@ -5,6 +5,7 @@ import { services } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { invokeLLM } from "../_core/llm";
 import { filterRecord, getGlobalNegativePrompts } from "../lib/complianceFilter";
+import { BANNED_COPYWRITING_WORDS, BANNED_MECHANISM_NAMES } from "../_core/copywritingRules";
 
 const createServiceSchema = z.object({
   name: z.string().min(1, "Name is required").max(255),
@@ -53,14 +54,6 @@ const updateServiceSchema = z.object({
   riskReversal: z.string().optional(),
   uniqueMechanismSuggestion: z.string().optional(),
   painPoints: z.string().optional(),
-  // Program Vault fields (W0 sprint)
-  bonuses: z.string().optional(), // JSON array string
-  guaranteeDuration: z.string().max(100).optional(),
-  guaranteeType: z.string().max(255).optional(),
-  deliveryFormat: z.enum(["live", "online", "hybrid"]).optional(),
-  deliveryDuration: z.string().max(100).optional(),
-  paymentPlan: z.string().max(255).optional(),
-  earlyBirdPrice: z.number().optional(),
 });
 
 export const servicesRouter = router({
@@ -155,34 +148,42 @@ export const servicesRouter = router({
       const needsTargetCustomer = isPlaceholder(service.targetCustomer);
       const needsMainBenefit = isPlaceholder(service.mainBenefit);
 
-      const prompt = `You are a world-class direct response copywriter and market researcher.
+      const prompt = `You are a world-class direct response copywriter and market researcher applying the Jobs-To-Be-Done framework.
 
 A coach/consultant has described their service:
 - Name: ${service.name}${service.description?.trim() ? `\n- Description: ${service.description}` : ""}${service.targetCustomer?.trim() ? `\n- Target Customer: ${service.targetCustomer}` : ""}${service.mainBenefit?.trim() ? `\n- Main Benefit: ${service.mainBenefit}` : ""}
 
-Based on this service name${!service.targetCustomer?.trim() || !service.mainBenefit?.trim() ? " (and any other details provided)" : ""}, generate a complete marketing intelligence profile for a coach in this niche.
-Be specific — not generic. Use language their customer would actually use.
+Generate a complete marketing intelligence profile for a coach in this niche.
+
+SPECIFICITY RULES — every field must pass this test:
+- Find ONE word or phrase that is niche-specific (an industry term, a role title, a platform name, a specific frustration) and build each answer around it
+- If the answer could apply to any coach in any niche, it is too generic — rewrite it
+- Use the language the customer uses when talking to a friend, not polished marketing language
+
+BANNED PHRASES — never use in any field: ${BANNED_COPYWRITING_WORDS.join(', ')}
+
+JTBD FRAMEWORK — for each field, answer the question: what is this person really hiring this service to do? What is the functional job (the task they're trying to complete)? What is the emotional job (how they want to feel)? What is the social job (how they want to be perceived)?
 
 Return JSON with these exact fields:
 {
-  "description": "A compelling 1-2 sentence description of what this service does and who it's for",
-  "targetCustomer": "Specific demographic and psychographic description of the ideal customer (age, situation, desire)",
-  "mainBenefit": "The single biggest transformation or result the customer gets — specific and outcome-focused",
-  "painPoints": "3-5 specific pain points their customer feels daily",
-  "falseBeliefsVsRealReasons": "3-5 pairs in format: what customer thinks is stopping them | what is really stopping them",
-  "failedSolutions": "3-5 things they have tried before and exactly why each one failed for this specific audience",
-  "hiddenReasons": "3-5 less-known real reasons behind their problem they would never admit or don't know",
-  "whyProblemExists": "The root cause of the problem at a deep level",
-  "uniqueMechanismSuggestion": "A compelling proprietary-sounding name for how this service solves the problem",
-  "hvcoTopicSuggestion": "A specific lead magnet title that would attract this exact customer",
-  "riskReversalSuggestion": "A compelling guarantee that removes the risk of buying",
-  "avatarName": "A realistic first name for the ideal customer",
-  "avatarTitle": "Their job title or life situation in 3-5 words"
+  "description": "1-2 sentences. Name what this service does and who it's for using niche-specific language. Include a concrete outcome (number, timeframe, or named result). Must NOT be interchangeable with any other coaching service.",
+  "targetCustomer": "Specific demographic and psychographic description. Name their job title or life situation, their current stuck state, and the specific thing they want — all in niche-specific language.",
+  "mainBenefit": "The single functional outcome the customer hires this service to deliver. Must contain a concrete result — a number, a timeframe, or a named change in situation. Not a feeling. Not a journey.",
+  "painPoints": "3-5 pains. Each must name a SPECIFIC situation this person faces — not 'feeling overwhelmed' but 'posting every day for 3 months with zero client enquiries'. Use their internal monologue language.",
+  "falseBeliefsVsRealReasons": "3-5 pairs. Format: [what customer believes is stopping them] | [what is actually stopping them]. Each pair must be niche-specific. The false belief must sound plausible. The real reason must be surprising.",
+  "failedSolutions": "3-5 things this specific audience has tried. Name the actual product, approach, or platform (e.g. 'cold outreach on LinkedIn', 'hiring a VA', 'buying a $2k course on Instagram ads'). Explain exactly why each failed for THIS audience specifically.",
+  "hiddenReasons": "3-5 real reasons behind their problem that they would never admit out loud or have never considered. These must be uncomfortable truths specific to this niche — not generic psychology.",
+  "whyProblemExists": "The systemic or structural root cause of this problem. Not the symptom. Not 'lack of mindset'. The actual mechanism that keeps people stuck in this niche.",
+  "uniqueMechanismSuggestion": "A proprietary-sounding name for how this service solves the problem. Must contain a specific process word or metaphor from this niche. BANNED names: ${BANNED_MECHANISM_NAMES.join(', ')}. Good names contain a word from the niche itself.",
+  "hvcoTopicSuggestion": "A lead magnet title that would make someone in this niche stop scrolling. Must contain a specific number or timeframe, a named enemy or obstacle, and a concrete promised insight.",
+  "riskReversalSuggestion": "A guarantee that makes the risk of not buying feel greater than the risk of buying. Must include: specific duration, specific result guaranteed, and exact refund process.",
+  "avatarName": "A realistic first name for the ideal customer (match cultural context of the niche).",
+  "avatarTitle": "Their job title or life situation in 3-5 words. Must be niche-specific."
 }`;
 
       const response = await invokeLLM({
         messages: [
-          { role: "system", content: "You are a world-class direct response copywriter. Always return valid JSON only, no markdown, no explanation." },
+          { role: "system", content: "You are a world-class direct response copywriter and Jobs-To-Be-Done researcher. You write in the language real people use — not marketing language. Always return valid JSON only, no markdown, no explanation." },
           { role: "user", content: prompt },
         ],
         response_format: {
@@ -391,170 +392,6 @@ Return JSON with these exact fields:
         .limit(1);
       
       return updated;
-    }),
-
-  /**
-   * W0 Program Vault — Extract structured program data from a document via LLM.
-   * Saves all extracted non-null fields to the service record before returning.
-   */
-  extractProgramVault: protectedProcedure
-    .input(z.object({
-      serviceId: z.number(),
-      rawText: z.string().min(1, "Document text is required"),
-    }))
-    .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
-
-      const [service] = await db
-        .select()
-        .from(services)
-        .where(and(eq(services.id, input.serviceId), eq(services.userId, ctx.user.id)))
-        .limit(1);
-
-      if (!service) throw new Error("Service not found");
-
-      const prompt = `You are extracting structured program details from a document.
-Extract exactly these fields if present in the text below. Return ONLY valid JSON.
-If a field is not found in the document, return null for that field.
-
-Fields to extract:
-- programName: string or null
-- description: string or null (1-2 sentences about what the program does)
-- targetCustomer: string or null (who it's for)
-- mainBenefit: string or null (the main result/transformation)
-- price: string or null (full program price, e.g. "£3,000")
-- paymentPlan: string or null (e.g. "3 x £1,000")
-- earlyBirdPrice: string or null (e.g. "£2,500")
-- bonuses: array or null (each item: {name: string, value: string, description: string})
-- guaranteeDuration: string or null (e.g. "90 days")
-- guaranteeType: string or null (e.g. "Full refund", "Results or money back")
-- deliveryFormat: "live" | "online" | "hybrid" | null
-- deliveryDuration: string or null (e.g. "12 weeks", "6 months")
-- testimonial1Name: string or null
-- testimonial1Title: string or null
-- testimonial1Quote: string or null
-- testimonial2Name: string or null
-- testimonial2Title: string or null
-- testimonial2Quote: string or null
-- testimonial3Name: string or null
-- testimonial3Title: string or null
-- testimonial3Quote: string or null
-- socialProofStat: string or null (e.g. "900,000 students trained")
-- pressFeatures: string or null (comma-separated press mentions)
-
-Document text:
-${input.rawText.slice(0, 12000)}`;
-
-      const response = await invokeLLM({
-        messages: [
-          { role: "system", content: "You are a structured data extractor. Return only valid JSON with no markdown, no explanation." },
-          { role: "user", content: prompt },
-        ],
-        response_format: { type: "json_object" },
-      });
-
-      const raw = response.choices[0].message.content;
-      let extracted: Record<string, any>;
-      try {
-        const cleaned = typeof raw === "string"
-          ? raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim()
-          : JSON.stringify(raw);
-        extracted = JSON.parse(cleaned);
-      } catch {
-        throw new Error("AI returned invalid JSON during vault extraction");
-      }
-
-      // Build update payload — only save non-null, non-empty values
-      const updates: Record<string, any> = { updatedAt: new Date() };
-      const str = (v: any, max = 65535) => (typeof v === "string" && v.trim()) ? v.trim().slice(0, max) : null;
-
-      if (str(extracted.programName) && !service.name.trim()) updates.name = str(extracted.programName, 255)!;
-      if (str(extracted.description) && !service.description?.trim()) updates.description = str(extracted.description)!;
-      if (str(extracted.targetCustomer)) updates.targetCustomer = str(extracted.targetCustomer, 500)!;
-      if (str(extracted.mainBenefit)) updates.mainBenefit = str(extracted.mainBenefit, 500)!;
-      if (str(extracted.price)) {
-        const priceNum = parseFloat(String(extracted.price).replace(/[£$€,\s]/g, ""));
-        if (!isNaN(priceNum)) updates.price = priceNum.toFixed(2);
-      }
-      if (str(extracted.paymentPlan)) updates.paymentPlan = str(extracted.paymentPlan, 255)!;
-      if (str(extracted.earlyBirdPrice)) {
-        const ebNum = parseFloat(String(extracted.earlyBirdPrice).replace(/[£$€,\s]/g, ""));
-        if (!isNaN(ebNum)) updates.earlyBirdPrice = ebNum.toFixed(2);
-      }
-      if (Array.isArray(extracted.bonuses) && extracted.bonuses.length > 0) {
-        updates.bonuses = JSON.stringify(extracted.bonuses.slice(0, 5));
-      }
-      if (str(extracted.guaranteeDuration)) updates.guaranteeDuration = str(extracted.guaranteeDuration, 100)!;
-      if (str(extracted.guaranteeType)) updates.guaranteeType = str(extracted.guaranteeType, 255)!;
-      if (["live", "online", "hybrid"].includes(extracted.deliveryFormat)) updates.deliveryFormat = extracted.deliveryFormat;
-      if (str(extracted.deliveryDuration)) updates.deliveryDuration = str(extracted.deliveryDuration, 100)!;
-      if (str(extracted.testimonial1Name)) updates.testimonial1Name = str(extracted.testimonial1Name, 255)!;
-      if (str(extracted.testimonial1Title)) updates.testimonial1Title = str(extracted.testimonial1Title, 255)!;
-      if (str(extracted.testimonial1Quote)) updates.testimonial1Quote = str(extracted.testimonial1Quote)!;
-      if (str(extracted.testimonial2Name)) updates.testimonial2Name = str(extracted.testimonial2Name, 255)!;
-      if (str(extracted.testimonial2Title)) updates.testimonial2Title = str(extracted.testimonial2Title, 255)!;
-      if (str(extracted.testimonial2Quote)) updates.testimonial2Quote = str(extracted.testimonial2Quote)!;
-      if (str(extracted.testimonial3Name)) updates.testimonial3Name = str(extracted.testimonial3Name, 255)!;
-      if (str(extracted.testimonial3Title)) updates.testimonial3Title = str(extracted.testimonial3Title, 255)!;
-      if (str(extracted.testimonial3Quote)) updates.testimonial3Quote = str(extracted.testimonial3Quote)!;
-      if (str(extracted.socialProofStat)) updates.socialProofStat = str(extracted.socialProofStat, 255)!;
-      if (str(extracted.pressFeatures)) updates.pressFeatures = str(extracted.pressFeatures)!;
-
-      if (Object.keys(updates).length > 1) {
-        await db.update(services).set(updates).where(eq(services.id, input.serviceId));
-      }
-
-      // Return the raw extracted object so client can display confirmation screen
-      return { serviceId: input.serviceId, extracted };
-    }),
-
-  /**
-   * W0 Program Vault — Parse a file (PDF or plain text) from base64 and return extracted text.
-   * Client passes base64-encoded file content and mimeType.
-   */
-  parseVaultFile: protectedProcedure
-    .input(z.object({
-      base64: z.string().min(1),
-      mimeType: z.string(),
-    }))
-    .mutation(async ({ input }) => {
-      const buffer = Buffer.from(input.base64, "base64");
-
-      // Plain text
-      if (input.mimeType === "text/plain") {
-        return { text: buffer.toString("utf-8").slice(0, 50000) };
-      }
-
-      // PDF
-      if (input.mimeType === "application/pdf") {
-        try {
-          // Dynamic import to avoid bundling issues
-          const pdfParse = (await import("pdf-parse")).default;
-          const result = await pdfParse(buffer);
-          return { text: result.text.slice(0, 50000) };
-        } catch (e: unknown) {
-          const msg = e instanceof Error ? e.message : String(e);
-          throw new Error(`PDF parsing failed: ${msg}`);
-        }
-      }
-
-      // Word documents — extract as plain text (strip XML tags)
-      if (
-        input.mimeType === "application/msword" ||
-        input.mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-      ) {
-        try {
-          const mammoth = (await import("mammoth")).default;
-          const result = await mammoth.extractRawText({ buffer });
-          return { text: result.value.slice(0, 50000) };
-        } catch {
-          // Fall back to raw buffer as text
-          return { text: buffer.toString("utf-8").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 50000) };
-        }
-      }
-
-      throw new Error(`Unsupported file type: ${input.mimeType}. Please upload a PDF, Word document, or plain text file.`);
     }),
 
   // Delete service

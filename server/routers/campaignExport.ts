@@ -119,7 +119,6 @@ function buildLandingPageContent(rows: any[]): string {
     const angle = (page as any)[key];
     if (!angle) continue;
     parts.push(`=== ${label} ===\n`);
-    // Key names validated against LandingPageContent schema in drizzle/schema.ts — update if schema changes.
     const fields: Array<{ field: string; label: string }> = [
       { field: "eyebrowHeadline", label: "Eyebrow Headline" },
       { field: "mainHeadline", label: "Main Headline" },
@@ -135,42 +134,14 @@ function buildLandingPageContent(rows: any[]): string {
       { field: "timeSavingBenefit", label: "Time-Saving Benefit" },
     ];
     for (const { field, label: fieldLabel } of fields) {
-      if (angle?.[field]) {
+      if (angle[field]) {
         parts.push(`[${fieldLabel}]\n${angle[field]}\n`);
       }
     }
-    // asSeenIn
-    if (Array.isArray(angle?.asSeenIn) && angle.asSeenIn.length > 0) {
-      parts.push(`[As Seen In]\n${(angle.asSeenIn as string[]).join(", ")}\n`);
-    }
-    // quizSection
-    if (angle?.quizSection?.question) {
-      const q = angle.quizSection;
-      const opts = Array.isArray(q.options) ? (q.options as string[]).map((o: string, i: number) => `  ${i + 1}. ${o}`).join("\n") : "";
-      parts.push(`[Quiz Section]\nQuestion: ${q.question}\nOptions:\n${opts}\nAnswer: ${q.answer ?? ""}\n`);
-    }
-    // testimonials
-    if (Array.isArray(angle?.testimonials) && angle.testimonials.length > 0) {
+    if (Array.isArray(angle.testimonials) && angle.testimonials.length > 0) {
       parts.push("[Testimonials]");
-      (angle.testimonials as any[]).forEach((t: any, i: number) => {
-        parts.push(`  ${i + 1}. ${t?.name ?? ""} / ${t?.location ?? ""}\n     "${t?.quote ?? ""}"`);
-        if (t?.headline) parts.push(`     Headline: ${t.headline}`);
-      });
-      parts.push("");
-    }
-    // consultationOutline
-    if (Array.isArray(angle?.consultationOutline) && angle.consultationOutline.length > 0) {
-      parts.push("[Consultation Outline]");
-      (angle.consultationOutline as any[]).forEach((item: any, i: number) => {
-        parts.push(`  ${i + 1}. ${item?.title ?? ""}: ${item?.description ?? ""}`);
-      });
-      parts.push("");
-    }
-    // faq
-    if (Array.isArray(angle?.faq) && angle.faq.length > 0) {
-      parts.push("[FAQ]");
-      (angle.faq as any[]).forEach((item: any, i: number) => {
-        parts.push(`  Q${i + 1}: ${item?.question ?? ""}\n  A${i + 1}: ${item?.answer ?? ""}`);
+      (angle.testimonials as any[]).forEach((t: any) => {
+        parts.push(`  "${t.quote}" — ${t.name}, ${t.location}`);
       });
       parts.push("");
     }
@@ -283,15 +254,9 @@ function buildHeroMechanismContent(rows: any[]): string {
 // ─── tRPC Router ───────────────────────────────────────────────────────────────
 
 export const campaignExportRouter = router({
-  /**
-   * Read-only ZIP generation — no DB writes.
-   * Intentionally a mutation to prevent React Query caching stale ZIPs.
-   * Note: mutations do not auto-retry on failure, which is correct behaviour here.
-   */
   generateCampaignZip: protectedProcedure
     .input(z.object({ serviceId: z.number() }))
-    .mutation(async ({ ctx, input }) => {
-      const sanitizeName = (s: string) => s.replace(/[/\\:*?"<>|]/g, '-').trim();
+    .query(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -376,7 +341,7 @@ export const campaignExportRouter = router({
 
       // 6. Build ZIP
       const zip = new JSZip();
-      const folder = zip.folder(`ZAP - ${sanitizeName(serviceName)} - Campaign Kit`);
+      const folder = zip.folder(`ZAP - ${serviceName} - Campaign Kit`);
       if (!folder) throw new Error("Failed to create ZIP folder");
 
       folder.file("1. Ad Copy.txt", DEPLOY.adCopy + adCopyText);
@@ -418,7 +383,7 @@ export const campaignExportRouter = router({
       // 7. Generate base64
       const base64 = await zip.generateAsync({ type: "base64" });
 
-      const filename = `ZAP - ${sanitizeName(serviceName)} - Campaign Kit.zip`;
+      const filename = `ZAP - ${serviceName} - Campaign Kit.zip`;
 
       return { filename, base64 };
     }),
