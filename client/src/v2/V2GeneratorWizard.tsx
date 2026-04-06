@@ -3393,7 +3393,7 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
   const _skipServiceId = resolvedServiceId ?? serviceId;
   const { data: skippedNodes } = trpc.nodeSkips.getSkippedNodes.useQuery(
     { serviceId: _skipServiceId ?? 0 },
-    { enabled: !!_skipServiceId }
+    { enabled: !!_skipServiceId, retry: false }
   );
 
   // Reset state when step changes (prevents stale errors persisting across nodes)
