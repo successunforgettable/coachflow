@@ -1273,3 +1273,18 @@ export const productEvents = mysqlTable("product_events", {
 }));
 export type ProductEvent = typeof productEvents.$inferSelect;
 export type InsertProductEvent = typeof productEvents.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// Node Skips — tracks which wizard nodes a user has skipped per service
+// ---------------------------------------------------------------------------
+export const nodeSkips = mysqlTable("nodeSkips", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  serviceId: int("serviceId").notNull().references(() => services.id, { onDelete: "cascade" }),
+  nodeType: varchar("nodeType", { length: 50 }).notNull(),
+  skippedAt: timestamp("skippedAt").defaultNow().notNull(),
+}, (table) => ({
+  uniqueSkip: uniqueIndex("nodeSkips_userId_serviceId_nodeType_unique").on(table.userId, table.serviceId, table.nodeType),
+}));
+export type NodeSkip = typeof nodeSkips.$inferSelect;
+export type InsertNodeSkip = typeof nodeSkips.$inferInsert;

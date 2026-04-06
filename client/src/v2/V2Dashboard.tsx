@@ -91,7 +91,7 @@ function QualityPill({ score }: { score: number }) {
   );
 }
 
-function PathNode({ node, isMobile, onNodeClick }: { node: PathNode; isMobile: boolean; onNodeClick: (node: PathNode) => void }) {
+function PathNode({ node, isMobile, onNodeClick, isSkipped }: { node: PathNode; isMobile: boolean; onNodeClick: (node: PathNode) => void; isSkipped?: boolean }) {
   const size = isMobile ? 60 : 80;
 
   const bgColor =
@@ -144,6 +144,16 @@ function PathNode({ node, isMobile, onNodeClick }: { node: PathNode; isMobile: b
           <span style={{ color: "#999", fontFamily: "var(--v2-font-body)", fontWeight: 700, fontSize: isMobile ? "16px" : "20px" }}>
             {node.id}
           </span>
+        )}
+        {node.state === "completed" && isSkipped && (
+          <div style={{
+            position: "absolute", top: -2, right: -2,
+            width: 14, height: 14, borderRadius: 9999,
+            background: "#999", color: "#fff",
+            fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center",
+            fontFamily: "Instrument Sans, sans-serif", fontWeight: 700,
+            zIndex: 1,
+          }}>S</div>
         )}
       </div>
       <span style={{
@@ -290,6 +300,12 @@ export default function V2Dashboard() {
 
   // ── Service quality score for Node 1 pill ──
   const { data: servicesData } = trpc.services.list.useQuery();
+  const currentServiceId = servicesData?.[0]?.id ?? 0;
+  const { data: skippedNodesData } = trpc.nodeSkips.getSkippedNodes.useQuery(
+    { serviceId: currentServiceId },
+    { enabled: currentServiceId > 0 }
+  );
+  const skippedSet = new Set(skippedNodesData ?? []);
   const serviceQualityScore = useMemo(() => {
     const svc = servicesData?.[0];
     if (!svc) return 0;
@@ -930,15 +946,19 @@ export default function V2Dashboard() {
         {activeTab === "guided" ? (
           <div style={{ display: "flex", gap: "0", alignItems: "flex-start", position: "relative" }}>
             <div className="v2-path-wrapper" style={{ flex: 1 }}>
-              {nodes.map((node, idx) => (
-                <div key={node.id} className="v2-path-column">
-                  {/* Connector above (except first node) */}
-                  {idx > 0 && (
-                    <Connector fromCompleted={nodes[idx - 1].state === "completed"} />
-                  )}
-                  <PathNode node={node} isMobile={isMobile} onNodeClick={handleNodeClick} />
-                </div>
-              ))}
+              {nodes.map((node, idx) => {
+                const milestoneId = Object.keys(MILESTONE_TO_NODE).find(k => MILESTONE_TO_NODE[k] === idx);
+                const isSkipped = milestoneId ? skippedSet.has(milestoneId) : false;
+                return (
+                  <div key={node.id} className="v2-path-column">
+                    {/* Connector above (except first node) */}
+                    {idx > 0 && (
+                      <Connector fromCompleted={nodes[idx - 1].state === "completed"} />
+                    )}
+                    <PathNode node={node} isMobile={isMobile} onNodeClick={handleNodeClick} isSkipped={isSkipped} />
+                  </div>
+                );
+              })}
             </div>
             {/* Campaign Kit sidebar on dashboard */}
             {(() => {

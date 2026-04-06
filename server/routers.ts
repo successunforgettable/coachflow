@@ -38,6 +38,7 @@ import { nativeAuthRouter } from "./routers/nativeAuth";
 import { landingRouter } from "./routers/landing";
 import { campaignKitsRouter } from "./routers/campaignKits";
 import { campaignExportRouter } from "./routers/campaignExport";
+import { nodeSkipsRouter } from "./routers/nodeSkips";
 import { getQuotaLimit } from "./quotaLimits";
 
 export const appRouter = router({
@@ -156,6 +157,7 @@ export const appRouter = router({
   landing: landingRouter,
   campaignKits: campaignKitsRouter,
   campaignExport: campaignExportRouter,
+  nodeSkips: nodeSkipsRouter,
 });
 
 export type AppRouter = typeof appRouter;

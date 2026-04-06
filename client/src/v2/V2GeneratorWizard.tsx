@@ -40,6 +40,20 @@ import UpgradePrompt from "./components/UpgradePrompt";
 
 export type { WizardStep };
 
+// ─── Step → milestone id mapping (used by skip feature) ──────────────────────
+const STEP_TO_MILESTONE: Record<string, string> = {
+  service:        "service",
+  icp:            "icp",
+  offer:          "offer",
+  uniqueMethod:   "heroMechanism",
+  freeOptIn:      "hvco",
+  headlines:      "headlines",
+  adCopy:         "adCopy",
+  landingPage:    "landingPage",
+  emailSequence:      "emailSequence",
+  whatsappSequence:   "whatsappSequence",
+};
+
 // ─── Chunked base64 decode (avoids stack overflow on large ZIPs) ──────────────
 function base64ToUint8Array(base64: string): Uint8Array {
   const binary = atob(base64);
@@ -3230,6 +3244,12 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
   const updateKitSelection = trpc.campaignKits.updateSelection.useMutation();
   // ── tRPC utils for cache invalidation ──
   const utils = trpc.useUtils();
+  // ── Skip node mutation + query ──
+  const skipMutation = trpc.nodeSkips.skip.useMutation();
+  const { data: skippedNodes } = trpc.nodeSkips.getSkippedNodes.useQuery(
+    { serviceId: serviceId ?? 0 },
+    { enabled: !!serviceId }
+  );
   // ── Real mutations (all use generateAsync + polling pattern) ──
   const generateIcpAsync = trpc.icps.generateAsync.useMutation();
   const generateOfferAsync = trpc.offers.generateAsync.useMutation();
@@ -4106,6 +4126,44 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
                   )}
                 </>
               ) : null}
+              {/* Skip link — only shown in pre-generation state (showGenerateButton), not after results */}
+              {showGenerateButton && STEP_TO_MILESTONE[step] && step !== "pushToMeta" && !skippedNodes?.includes(STEP_TO_MILESTONE[step]) && (
+                <button
+                  disabled={skipMutation.isPending}
+                  onClick={() => {
+                    const milestoneId = STEP_TO_MILESTONE[step];
+                    if (!milestoneId || !serviceId) return;
+                    skipMutation.mutate(
+                      { serviceId, nodeType: milestoneId },
+                      {
+                        onSuccess: () => {
+                          utils.progress.getProgress.invalidate();
+                          const stepOrder = ["service","icp","offer","uniqueMethod","freeOptIn","headlines","adCopy","landingPage","emailSequence","whatsappSequence","pushToMeta"];
+                          const currentIdx = stepOrder.indexOf(step);
+                          if (currentIdx >= 0 && currentIdx < stepOrder.length - 1) {
+                            navigate(`/v2-dashboard/wizard/${stepOrder[currentIdx + 1]}`);
+                          }
+                        },
+                      }
+                    );
+                  }}
+                  style={{
+                    display: "block", textAlign: "center" as const, marginTop: 12, fontSize: 13,
+                    color: skipMutation.isPending ? "#ccc" : "#999",
+                    cursor: skipMutation.isPending ? "not-allowed" : "pointer",
+                    pointerEvents: skipMutation.isPending ? "none" : "auto",
+                    textDecoration: "underline", fontFamily: "Instrument Sans, sans-serif",
+                    background: "none", border: "none", width: "100%", padding: 0,
+                  }}
+                >
+                  {skipMutation.isPending ? "Skipping…" : "Skip this node — I already have this"}
+                </button>
+              )}
+              {showGenerateButton && STEP_TO_MILESTONE[step] && step !== "pushToMeta" && skippedNodes?.includes(STEP_TO_MILESTONE[step]) && (
+                <p style={{ display: "block", textAlign: "center" as const, marginTop: 12, fontSize: 13, color: "#FF5B1D", fontFamily: "Instrument Sans, sans-serif", margin: "12px 0 0" }}>
+                  This node was skipped — generate now to add content.
+                </p>
+              )}
             </>
           )}
 
