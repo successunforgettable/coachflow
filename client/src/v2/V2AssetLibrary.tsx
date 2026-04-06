@@ -1,121 +1,66 @@
 /**
  * V2AssetLibrary — Asset Library page.
  * Shows all generated images, videos, and copy assets across campaigns.
- * Includes Zappy AI retrieval — character + speech bubble, inline at top.
+ * Includes Zappy AI retrieval panel.
  */
-import { useState, useMemo, useCallback, Fragment } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
-import ZappyMascot, { ZappyState } from "./ZappyMascot";
+
+// ─── Campaign Kit download helper ────────────────────────────────────────────
+function triggerZipDownload(base64: string, filename: string) {
+  const blob = new Blob(
+    [Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))],
+    { type: "application/zip" }
+  );
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 const T = {
   bg: "#F5F1EA", dark: "#1A1624", orange: "#FF5B1D", purple: "#8B5CF6", muted: "#999",
   fontH: "'Fraunces', serif", fontB: "'Instrument Sans', sans-serif",
 };
 
-// ─── Chunked base64 decode (avoids stack overflow on large ZIPs) ──────────────
-function base64ToUint8Array(base64: string): Uint8Array {
-  const binary = atob(base64);
-  const len = binary.length;
-  const chunkSize = 8192;
-  const chunks: Uint8Array[] = [];
-  for (let offset = 0; offset < len; offset += chunkSize) {
-    const end = Math.min(offset + chunkSize, len);
-    const chunk = new Uint8Array(end - offset);
-    for (let i = 0; i < end - offset; i++) {
-      chunk[i] = binary.charCodeAt(offset + i);
-    }
-    chunks.push(chunk);
-  }
-  const result = new Uint8Array(len);
-  let pos = 0;
-  for (const chunk of chunks) {
-    result.set(chunk, pos);
-    pos += chunk.length;
-  }
-  return result;
-}
-
-// ─── Campaign colour system ───────────────────────────────────────────────────
-const CAMPAIGN_COLOURS = ["#FF5B1D", "#8B5CF6", "#0EA5E9", "#10B981", "#F59E0B", "#EF4444"];
-function getCampaignColour(id: number): string {
-  return CAMPAIGN_COLOURS[Math.abs(id) % CAMPAIGN_COLOURS.length];
-}
-
-// ─── Video title parser ───────────────────────────────────────────────────────
-// Input:  "incredible you — IDENTITY Ad (5 scenes, 110 words)"
-// Output: { cleanTitle: "incredible you — IDENTITY Ad", angle: "IDENTITY", scenes: "5", words: "110" }
-function parseVideoTitle(title: string) {
-  const raw = (title || "Untitled").trim();
-  // Strip trailing parenthetical: " (5 scenes, 110 words)"
-  const cleanTitle = raw.replace(/\s*\([^)]*\)\s*$/, "").trim();
-  const sepIdx = raw.indexOf(" — ");
-  if (sepIdx === -1) return { cleanTitle, angle: "", scenes: null as string | null, words: null as string | null };
-  const rest = raw.slice(sepIdx + 3).trim();
-  const angleMatch = rest.match(/^(\w+)\s+Ad\b/i);
-  const angle = angleMatch ? angleMatch[1].toUpperCase() : "";
-  const metaMatch = rest.match(/\((\d+)\s+scenes?,\s*(\d+)\s+words?\)/i);
-  return {
-    cleanTitle,
-    angle,
-    scenes: metaMatch ? metaMatch[1] : null as string | null,
-    words: metaMatch ? metaMatch[2] : null as string | null,
-  };
-}
-
-// Plain-English labels for video type and visual style
-const VIDEO_TYPE_LABELS: Record<string, string> = {
-  explainer:        "Explainer Ad",
-  proof_results:    "Proof & Results",
-  testimonial:      "Testimonial",
-  mechanism_reveal: "Mechanism Reveal",
-};
-const VISUAL_STYLE_LABELS: Record<string, string> = {
-  text_only:          "Text",
-  kinetic_typography: "Kinetic",
-  motion_graphics:    "Motion",
-  stats_card:         "Stats",
-};
-function videoTypeLabel(vt: string): string { return VIDEO_TYPE_LABELS[vt] || vt; }
-function visualStyleLabel(vs: string): string { return VISUAL_STYLE_LABELS[vs] || vs; }
-
 type AssetType = "all" | "images" | "videos" | "copy";
 
-const SUGGESTION_CHIPS = [
-  "my latest videos",
-  "identity ads",
-  "headlines I saved",
-  "best performing images",
-];
-
-// ─── Favourite hook ───────────────────────────────────────────────────────────
+// ─── Favourite hook (inline — matches server procedure names) ────────────────
 function useFavs(nodeId: string) {
   const { data: favs, refetch } = trpc.favourites.getByNode.useQuery({ nodeId });
   const addFav = trpc.favourites.add.useMutation({
-    onSuccess: () => { refetch(); },
+    onSuccess: () => { console.log(`[Favs] Added to ${nodeId}, refetching...`); refetch(); },
     onError: (e: any) => { console.error(`[Favs] Add failed:`, e.message); },
   });
   const removeFav = trpc.favourites.remove.useMutation({
-    onSuccess: () => { refetch(); },
+    onSuccess: () => { console.log(`[Favs] Removed from ${nodeId}, refetching...`); refetch(); },
     onError: (e: any) => { console.error(`[Favs] Remove failed:`, e.message); },
   });
   const favIndices = useMemo(() => (favs || []).map((f: any) => f.itemIndex), [favs]);
   const isFav = (idx: number) => favIndices.includes(idx);
   const toggle = (idx: number, text?: string) => {
+    console.log(`[Favs] Toggle ${nodeId} item ${idx}, currently fav: ${isFav(idx)}`);
     if (isFav(idx)) removeFav.mutate({ nodeId, itemIndex: idx });
     else addFav.mutate({ nodeId, itemIndex: idx, itemText: text || "" });
   };
   return { isFav, toggle };
 }
 
-// Flatten adCreatives.list batch response into individual creatives
+// Flatten adCreatives.list response — it returns batches ({ batchId, creatives: [...] })
+// so we extract the individual creative objects from each batch
 function flattenCreatives(data: any): any[] {
   if (!data || !Array.isArray(data)) return [];
   const flat: any[] = [];
   for (const item of data) {
-    if (item.creatives && Array.isArray(item.creatives)) flat.push(...item.creatives);
-    else flat.push(item);
+    if (item.creatives && Array.isArray(item.creatives)) {
+      flat.push(...item.creatives);
+    } else {
+      flat.push(item);
+    }
   }
   return flat;
 }
@@ -125,53 +70,70 @@ export default function V2AssetLibrary() {
   const [tab, setTab] = useState<AssetType>("all");
   const [search, setSearch] = useState("");
   const [campaignFilter, setCampaignFilter] = useState("all");
-  const [viewMode, setViewMode] = useState<"campaign" | "all">("campaign");
-  const [selectedAsset, setSelectedAsset] = useState<{ id: number; serviceId: number | null; type: "image" | "video" | "copy" } | null>(null);
-  const toggleAsset = (id: number, serviceId: number | null, type: "image" | "video" | "copy") =>
-    setSelectedAsset(prev => (prev?.id === id ? null : { id, serviceId, type }));
-
-  // ZIP download state (per-campaign)
-  const [zipLoading, setZipLoading] = useState<number | null>(null);
-  const [zipCooldown, setZipCooldown] = useState<number | null>(null);
-  const [zipError, setZipError] = useState<{ id: number; msg: string } | null>(null);
-  const generateZipMutation = trpc.campaignExport.generateCampaignZip.useMutation();
-
-  async function handleDownloadZip(serviceId: number, serviceName: string) {
-    setZipLoading(serviceId);
-    setZipError(null);
-    try {
-      const data = await generateZipMutation.mutateAsync({ serviceId });
-      const bytes = base64ToUint8Array(data.base64);
-      const blob = new Blob([bytes], { type: "application/zip" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = data.filename;
-      a.click();
-      URL.revokeObjectURL(url);
-      setZipCooldown(serviceId);
-      setTimeout(() => setZipCooldown(null), 5000);
-    } catch (e: any) {
-      setZipError({ id: serviceId, msg: e.message || "Download failed" });
-    } finally {
-      setZipLoading(null);
-    }
-  }
-
-  // Zappy state
+  const [zipLoading, setZipLoading] = useState(false);
+  const [zipError, setZipError] = useState<string | null>(null);
   const [zappyOpen, setZappyOpen] = useState(false);
   const [zappyQuery, setZappyQuery] = useState("");
   const [zappyResults, setZappyResults] = useState<number[] | null>(null);
   const [zappyLoading, setZappyLoading] = useState(false);
 
+  // Clear Zappy results when user empties the query field
+  useEffect(() => {
+    if (zappyQuery === "") setZappyResults(null);
+  }, [zappyQuery]);
+
+  // Ref for keyboard focus trap inside the Zappy panel
+  const zappyPanelRef = useRef<HTMLDivElement>(null);
+
+  // Keyboard trap — cycles focus between all focusable elements inside the panel
+  const handleZappyKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== "Tab") return;
+    const panel = zappyPanelRef.current;
+    if (!panel) return;
+    const focusable = Array.from(
+      panel.querySelectorAll<HTMLElement>("button, input, [tabindex]:not([tabindex='-1'])")
+    ).filter(el => !el.hasAttribute("disabled"));
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey) {
+      if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+    } else {
+      if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+  }, []);
+
+  // Favourites
   const imgFavs = useFavs("library_images");
   const vidFavs = useFavs("library_videos");
   const copyFavs = useFavs("library_copy");
 
+  // tRPC utils for imperative calls
+  const utils = trpc.useUtils();
+
+  // Campaign Kit download handler
+  const handleDownloadCampaignKit = useCallback(async (serviceId: number, serviceName: string) => {
+    setZipLoading(true);
+    setZipError(null);
+    try {
+      const result = await utils.campaignExport.generateCampaignZip.fetch({ serviceId });
+      triggerZipDownload(result.base64, result.filename);
+      toast.success(`Downloaded ${result.filename}`);
+    } catch (err: any) {
+      const msg = err?.message || "Download failed";
+      setZipError(msg);
+      toast.error(`Download failed: ${msg}`);
+    } finally {
+      setZipLoading(false);
+    }
+  }, [utils]);
+
+  // Fetch data
   const { data: rawImages } = trpc.adCreatives.list.useQuery();
   const { data: videoData } = trpc.videos.list.useQuery({});
   const { data: services } = trpc.services.list.useQuery();
 
+  // Flatten batched response into individual creatives
   const images = useMemo(() => flattenCreatives(rawImages), [rawImages]);
 
   const videos = useMemo(() => {
@@ -179,30 +141,31 @@ export default function V2AssetLibrary() {
     return Array.isArray(raw) ? raw.filter((v: any) => v.creatomateStatus === "succeeded") : [];
   }, [videoData]);
 
+  // Build campaign list from services (each service = a campaign context)
   const campaignList = useMemo(() => {
     if (!services || !Array.isArray(services)) return [];
     return (services as any[]).map((s: any) => ({ id: s.id, name: s.name }));
   }, [services]);
 
-  const serviceNameMap = useMemo(() => {
-    const map: Record<number, string> = {};
-    for (const c of campaignList) map[c.id] = c.name;
-    return map;
-  }, [campaignList]);
-
+  // Filter helpers
   const matchSearch = (text: string) => !search || text.toLowerCase().includes(search.toLowerCase());
   const matchCampaign = (serviceId: number | null) => campaignFilter === "all" || String(serviceId) === campaignFilter;
 
-  const filteredImages = useMemo(() => images.filter((img: any) =>
-    matchSearch(`${img.headline || ""} ${img.productName || ""} ${img.niche || ""}`) &&
-    matchCampaign(img.serviceId)
-  ), [images, search, campaignFilter]);
+  const filteredImages = useMemo(() => {
+    return images.filter((img: any) =>
+      matchSearch(`${img.headline || ""} ${img.productName || ""} ${img.niche || ""}`) &&
+      matchCampaign(img.serviceId)
+    );
+  }, [images, search, campaignFilter]);
 
-  const filteredVideos = useMemo(() => videos.filter((v: any) =>
-    matchSearch(`${v.title || ""} ${v.angle || ""}`) &&
-    matchCampaign(v.serviceId)
-  ), [videos, search, campaignFilter]);
+  const filteredVideos = useMemo(() => {
+    return videos.filter((v: any) =>
+      matchSearch(`${v.title || ""} ${v.angle || ""}`) &&
+      matchCampaign(v.serviceId)
+    );
+  }, [videos, search, campaignFilter]);
 
+  // Copy assets — extract unique headlines from ad creatives
   const copyAssets = useMemo(() => {
     const items: { id: number; text: string; type: string; serviceId: number | null; date: string }[] = [];
     const seen = new Set<string>();
@@ -220,15 +183,6 @@ export default function V2AssetLibrary() {
     });
   }, [images, search, campaignFilter]);
 
-  // Derive ZappyMascot state from search context
-  const zappyState: ZappyState = useMemo(() => {
-    if (zappyLoading) return "loading";
-    if (zappyResults !== null && zappyResults.length > 0) return "cheering";
-    if (zappyResults !== null && zappyResults.length === 0) return "concerned";
-    if (zappyOpen && zappyQuery.length > 0) return "waiting";
-    return "idle";
-  }, [zappyLoading, zappyResults, zappyOpen, zappyQuery]);
-
   const tabs: { key: AssetType; label: string; count: number }[] = [
     { key: "all", label: "All", count: filteredImages.length + filteredVideos.length + copyAssets.length },
     { key: "images", label: "Images", count: filteredImages.length },
@@ -237,31 +191,16 @@ export default function V2AssetLibrary() {
   ];
 
   const copyToClipboard = (text: string) => { navigator.clipboard.writeText(text); toast.success("Copied!"); };
-  const downloadFile = (url: string, filename: string) => {
-    const a = document.createElement("a"); a.href = url; a.download = filename; a.target = "_blank"; a.click();
-  };
+  const downloadFile = (url: string, filename: string) => { const a = document.createElement("a"); a.href = url; a.download = filename; a.target = "_blank"; a.click(); };
 
-  const cardBase = (serviceId: number | null): React.CSSProperties => ({
-    background: "#fff",
-    borderRadius: 16,
-    overflow: "hidden",
-    boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
-    position: "relative",
-    borderLeft: `4px solid ${getCampaignColour(serviceId ?? 0)}`,
-  });
-
-  const zappyOverlay = (id: number): React.CSSProperties => {
-    if (zappyResults === null) return {};
-    if (zappyResults.includes(id)) return { outline: "2px solid #FF5B1D", outlineOffset: "0px" };
-    return { opacity: 0.3, pointerEvents: "none" };
-  };
-
+  const cardStyle: React.CSSProperties = { background: "#fff", borderRadius: 16, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", position: "relative" };
   const btnS = (primary?: boolean): React.CSSProperties => ({
     padding: "6px 14px", borderRadius: 9999, border: primary ? "none" : "1px solid #e5e0d8",
     background: primary ? T.orange : "#fff", color: primary ? "#fff" : T.dark,
     fontFamily: T.fontB, fontWeight: 600, fontSize: 12, cursor: "pointer",
   });
 
+  // Heart overlay component
   const Heart = ({ active, onClick }: { active: boolean; onClick: () => void }) => (
     <button onClick={(e) => { e.stopPropagation(); onClick(); }} style={{
       position: "absolute", top: 8, right: 8, width: 32, height: 32, borderRadius: "50%",
@@ -273,22 +212,60 @@ export default function V2AssetLibrary() {
     </button>
   );
 
-  // Zappy search — accepts optional query override for chip clicks
-  const handleZappySearch = useCallback(async (queryOverride?: string) => {
-    const q = (queryOverride !== undefined ? queryOverride : zappyQuery).trim();
-    if (!q) return;
-    if (queryOverride !== undefined) setZappyQuery(queryOverride);
+  // Zappy search
+  const handleZappySearch = useCallback(async () => {
+    if (!zappyQuery.trim()) return;
     setZappyLoading(true);
     try {
-      const assetList = [
-        ...filteredImages.map((img: any) => ({ id: img.id, type: "image", text: img.headline || `Image ${img.id}` })),
-        ...filteredVideos.map((v: any) => ({ id: v.id, type: "video", text: v.title || `Video ${v.id}` })),
-        ...copyAssets.map(c => ({ id: c.id, type: "copy", text: c.text })),
+      // Build enriched asset list — title, campaign name, nodeType, favourite status, and date
+      // are all included so Zappy can match queries like "my latest videos", "saved headlines",
+      // "incredible you campaign images", or "identity ads"
+      const getCampaignName = (serviceId: number | null) =>
+        campaignList.find(c => c.id === serviceId)?.name || "Unknown Campaign";
+      // Cap at 150 assets and 80-char titles to prevent oversized LLM context payloads.
+      const rawAssetList = [
+        ...filteredImages.map((img: any) => ({
+          id: img.id,
+          type: "image",
+          title: (img.headline || img.productName || `Image ${img.id}`).slice(0, 80),
+          campaignName: getCampaignName(img.serviceId),
+          nodeType: "adCreatives",
+          isFavourite: imgFavs.isFav(img.id),
+          createdAt: img.createdAt || null,
+        })),
+        ...filteredVideos.map((v: any) => ({
+          id: v.id,
+          type: "video",
+          title: (v.title || v.angle || `Video ${v.id}`).slice(0, 80),
+          campaignName: getCampaignName(v.serviceId),
+          nodeType: "videos",
+          isFavourite: vidFavs.isFav(v.id),
+          createdAt: v.createdAt || null,
+        })),
+        ...copyAssets.map(c => ({
+          id: c.id,
+          type: "copy",
+          title: c.text.slice(0, 80),
+          campaignName: getCampaignName(c.serviceId),
+          nodeType: c.type === "Ad Headline" ? "headlines" : "adCopy",
+          isFavourite: copyFavs.isFav(c.id),
+          createdAt: c.date || null,
+        })),
       ];
+      // Sort by createdAt as Date objects — handles both ISO strings and Unix timestamps robustly.
+      const assetList = rawAssetList.length > 150
+        ? [...rawAssetList]
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+            .slice(0, 150)
+        : rawAssetList;
+      // Include active campaign filter so the LLM can explain limited results
+      const activeFilter = campaignFilter !== "all"
+        ? (campaignList.find(c => String(c.id) === campaignFilter)?.name ?? null)
+        : null;
       const res = await fetch("/api/asset-search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: q, assets: assetList }),
+        body: JSON.stringify({ query: zappyQuery, assets: assetList, activeFilter }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -300,196 +277,9 @@ export default function V2AssetLibrary() {
     setZappyLoading(false);
   }, [zappyQuery, filteredImages, filteredVideos, copyAssets]);
 
-  const clearZappy = () => { setZappyResults(null); setZappyQuery(""); };
-
-  const renderSiblingShelf = (serviceId: number | null) => {
-    if (!selectedAsset || selectedAsset.serviceId !== serviceId) return null;
-    const campaignName = serviceId !== null ? (serviceNameMap[serviceId] || "this campaign") : "this campaign";
-    const accent = getCampaignColour(serviceId ?? 0);
-    const sibImages = images.filter((img: any) => img.serviceId === serviceId && img.id !== selectedAsset.id);
-    const sibVideos = videos.filter((v: any) => v.serviceId === serviceId && v.id !== selectedAsset.id);
-    const sibCopy = copyAssets.filter(c => c.serviceId === serviceId && c.id !== selectedAsset.id);
-    if (sibImages.length + sibVideos.length + sibCopy.length === 0) return null;
-    return (
-      <div style={{ width: "100%", background: "#F0EBE1", borderRadius: 16, padding: 24, display: "flex", flexDirection: "column", gap: 16, marginTop: 8 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <h4 style={{ fontFamily: T.fontH, fontStyle: "italic", fontWeight: 900, fontSize: 16, color: accent, margin: 0 }}>
-            More from {campaignName}
-          </h4>
-          <button onClick={() => setSelectedAsset(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: T.muted, lineHeight: 1, padding: "4px 8px" }}>✕</button>
-        </div>
-        <div style={{ display: "flex", gap: 16, overflowX: "auto", paddingBottom: 8, scrollbarWidth: "thin" as const }}>
-          {sibImages.map((img: any) => (
-            <div key={`sib-img-${img.id}`} style={{ flexShrink: 0, width: 260, cursor: "pointer" }} onClick={() => toggleAsset(img.id, img.serviceId, "image")}>
-              <div style={cardBase(img.serviceId)}>
-                <div style={{ aspectRatio: "1/1", overflow: "hidden", background: "#F5F1EA", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  {img.imageUrl ? (
-                    <img src={`/api/image-proxy?url=${encodeURIComponent(img.imageUrl)}`} alt={img.headline || "Ad image"} style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
-                  ) : (
-                    <span style={{ fontSize: 32, color: T.muted }}>🖼</span>
-                  )}
-                </div>
-                <div style={{ padding: "12px 14px" }}>
-                  <p style={{ fontFamily: T.fontB, fontWeight: 600, fontSize: 14, color: T.dark, margin: "0 0 2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{img.headline || img.productName || `Ad Image #${img.id}`}</p>
-                  <p style={{ fontFamily: T.fontB, fontSize: 12, color: T.muted, margin: 0 }}>{new Date(img.createdAt).toLocaleDateString()}</p>
-                </div>
-              </div>
-            </div>
-          ))}
-          {sibVideos.map((v: any) => {
-            const vtLabel = videoTypeLabel(v.videoType);
-            const angleVal = (v.angle || "").toUpperCase();
-            return (
-              <div key={`sib-vid-${v.id}`} style={{ flexShrink: 0, width: 260, cursor: "pointer" }} onClick={() => toggleAsset(v.id, v.serviceId, "video")}>
-                <div style={cardBase(v.serviceId)}>
-                  <div style={{ aspectRatio: "1/1", overflow: "hidden", position: "relative", background: "linear-gradient(135deg, #1A1624 0%, #2D1F3D 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "20px 18px" }}>
-                    <p style={{ fontFamily: T.fontB, fontSize: 17, fontWeight: 800, color: "#fff", textAlign: "center", margin: "0 0 8px", lineHeight: 1.3 }}>{vtLabel}</p>
-                    {angleVal && <span style={{ fontFamily: T.fontB, fontSize: 11, fontWeight: 800, color: "#FF5B1D", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 8, background: "rgba(255,91,29,0.15)", padding: "3px 10px", borderRadius: 9999 }}>{angleVal}</span>}
-                    <div onClick={e => { e.stopPropagation(); v.videoUrl && window.open(v.videoUrl, "_blank"); }} style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 44, height: 44, borderRadius: "50%", background: "rgba(255,91,29,0.75)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", marginTop: -10, boxShadow: "0 2px 12px rgba(255,91,29,0.4)" }}>
-                      <span style={{ color: "#fff", fontSize: 18, marginLeft: 3 }}>▶</span>
-                    </div>
-                  </div>
-                  <div style={{ padding: "12px 14px" }}>
-                    <p style={{ fontFamily: T.fontB, fontWeight: 600, fontSize: 14, color: T.dark, margin: "0 0 2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{vtLabel}{angleVal ? ` · ${angleVal}` : ""}</p>
-                    <p style={{ fontFamily: T.fontB, fontSize: 12, color: T.muted, margin: 0 }}>{new Date(v.createdAt).toLocaleDateString()}</p>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-          {sibCopy.map((c, idx) => (
-            <div key={`sib-copy-${c.id}-${idx}`} style={{ flexShrink: 0, width: 260, cursor: "pointer" }} onClick={() => toggleAsset(c.id, c.serviceId, "copy")}>
-              <div style={{ ...cardBase(c.serviceId), padding: "16px 18px" }}>
-                <span style={{ fontFamily: T.fontB, fontSize: 10, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.06em", color: T.orange, display: "block", marginBottom: 8, marginTop: 4 }}>{c.type}</span>
-                <p style={{ fontFamily: T.fontB, fontSize: 14, color: T.dark, margin: "0 0 10px", lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical" as const, overflow: "hidden" }}>{c.text}</p>
-                <p style={{ fontFamily: T.fontB, fontSize: 12, color: T.muted, margin: 0 }}>{new Date(c.date).toLocaleDateString()}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
-
-  // Speech bubble content
-  const renderSpeechBubbleContent = () => {
-    // Cheering: results found
-    if (zappyResults !== null && zappyResults.length > 0 && !zappyLoading) {
-      return (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-          <span style={{ fontFamily: T.fontB, fontWeight: 700, fontSize: 14, color: T.orange }}>
-            Found {zappyResults.length} asset{zappyResults.length !== 1 ? "s" : ""}! Here they are 🎉
-          </span>
-          <button onClick={clearZappy} style={{ ...btnS(), fontSize: 12, padding: "4px 12px", whiteSpace: "nowrap" }}>
-            Clear
-          </button>
-        </div>
-      );
-    }
-
-    // Concerned: no results
-    if (zappyResults !== null && zappyResults.length === 0 && !zappyLoading) {
-      return (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-          <span style={{ fontFamily: T.fontB, fontSize: 14, color: T.muted }}>
-            Hmm, nothing matched. Try different words?
-          </span>
-          <button onClick={clearZappy} style={{ ...btnS(), fontSize: 12, padding: "4px 12px", whiteSpace: "nowrap" }}>
-            Clear
-          </button>
-        </div>
-      );
-    }
-
-    // Panel open: show input + chips
-    if (zappyOpen) {
-      return (
-        <div>
-          <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-            <input
-              autoFocus
-              type="text"
-              placeholder="e.g. find my identity videos"
-              value={zappyQuery}
-              onChange={e => setZappyQuery(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && handleZappySearch()}
-              style={{
-                flex: 1, padding: "9px 13px", borderRadius: 10,
-                border: "1.5px solid #e5e0d8", fontFamily: T.fontB, fontSize: 13,
-                outline: "none", color: T.dark, background: "#f9f8f5",
-              }}
-            />
-            <button
-              onClick={() => handleZappySearch()}
-              disabled={zappyLoading}
-              style={{ ...btnS(true), padding: "9px 18px", fontSize: 13, opacity: zappyLoading ? 0.7 : 1, whiteSpace: "nowrap" }}
-            >
-              {zappyLoading ? "Searching…" : "Search"}
-            </button>
-            <button
-              onClick={() => { setZappyOpen(false); setZappyQuery(""); }}
-              style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: T.muted, padding: "0 4px", lineHeight: 1 }}
-            >
-              ✕
-            </button>
-          </div>
-          {/* Suggestion chips */}
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            {SUGGESTION_CHIPS.map(chip => (
-              <button
-                key={chip}
-                onClick={() => handleZappySearch(chip)}
-                style={{
-                  padding: "4px 12px", borderRadius: 9999,
-                  border: "1px solid #FF5B1D", background: "#FFF5F2",
-                  color: "#FF5B1D", fontFamily: T.fontB, fontSize: 12,
-                  cursor: "pointer", whiteSpace: "nowrap",
-                }}
-              >
-                {chip}
-              </button>
-            ))}
-          </div>
-        </div>
-      );
-    }
-
-    // Closed: prompt text + chips always visible
-    return (
-      <div>
-        <span
-          onClick={() => setZappyOpen(true)}
-          style={{
-            fontFamily: T.fontB, fontSize: 14, color: T.muted, fontStyle: "italic",
-            cursor: "pointer", display: "block", marginBottom: 10,
-          }}
-        >
-          Ask me to find anything in your library...
-        </span>
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-          {SUGGESTION_CHIPS.map(chip => (
-            <button
-              key={chip}
-              onClick={() => { setZappyOpen(true); handleZappySearch(chip); }}
-              style={{
-                padding: "4px 12px", borderRadius: 9999,
-                border: "1px solid #FF5B1D", background: "#FFF5F2",
-                color: "#FF5B1D", fontFamily: T.fontB, fontSize: 12,
-                cursor: "pointer", whiteSpace: "nowrap",
-              }}
-            >
-              {chip}
-            </button>
-          ))}
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div style={{ position: "fixed", inset: 0, background: T.bg, overflowY: "auto", zIndex: 1 }}>
     <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 24px 80px" }}>
-
       {/* Back link */}
       <a href="/v2-dashboard" onClick={e => { e.preventDefault(); navigate("/v2-dashboard"); }}
         style={{ fontFamily: T.fontB, fontSize: 13, color: T.muted, textDecoration: "none", display: "block", marginBottom: 12 }}>
@@ -502,415 +292,318 @@ export default function V2AssetLibrary() {
         <p style={{ fontFamily: T.fontB, fontSize: 14, color: T.muted, margin: "4px 0 0" }}>Browse and reuse everything you've generated</p>
       </div>
 
-      {/* ── Keyword search (standalone, full width, no Zappy branding) ── */}
-      <input
-        type="text"
-        placeholder="Search assets..."
-        value={search}
-        onChange={e => setSearch(e.target.value)}
-        style={{
-          width: "100%", boxSizing: "border-box",
-          padding: "10px 16px", borderRadius: 12,
-          border: "1px solid #e5e0d8", fontFamily: T.fontB, fontSize: 14,
-          outline: "none", background: "#fff", color: T.dark,
-          marginBottom: 14,
-        }}
-      />
-
-      {/* ── Zappy section: mascot + speech bubble ── */}
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 14, marginBottom: 20 }}>
-        {/* Zappy mascot — 100px, state-driven */}
-        <div style={{ flexShrink: 0 }}>
-          <ZappyMascot state={zappyState} size={100} />
-        </div>
-
-        {/* Speech bubble pointing left toward Zappy */}
-        <div
-          style={{
-            flex: 1, background: "#fff",
-            border: "2px solid #FF5B1D",
-            borderRadius: "18px 18px 18px 4px",
-            padding: "14px 16px",
-            boxShadow: "0 2px 12px rgba(255,91,29,0.1)",
-            minHeight: 56,
-            display: "flex", flexDirection: "column", justifyContent: "center",
-          }}
-        >
-          {renderSpeechBubbleContent()}
-        </div>
+      {/* Search + Campaign filter + Tabs */}
+      <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 16, flexWrap: "wrap" }}>
+        <input type="text" placeholder="Search assets..." value={search} onChange={e => setSearch(e.target.value)}
+          style={{ flex: 1, minWidth: 200, padding: "10px 14px", borderRadius: 12, border: "1px solid #e5e0d8", fontFamily: T.fontB, fontSize: 14, outline: "none", background: "#fff", color: T.dark }} />
+        <select value={campaignFilter} onChange={e => { setCampaignFilter(e.target.value); setZipError(null); }}
+          style={{ padding: "10px 14px", borderRadius: 12, border: "1px solid #e5e0d8", fontFamily: T.fontB, fontSize: 13, background: "#fff", color: T.dark, cursor: "pointer", minWidth: 160 }}>
+          <option value="all">All Campaigns</option>
+          {campaignList.map(c => <option key={c.id} value={String(c.id)}>{c.name}</option>)}
+        </select>
+        {campaignFilter !== "all" && (() => {
+          const selectedService = campaignList.find(c => String(c.id) === campaignFilter);
+          return selectedService ? (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+              <button
+                onClick={() => handleDownloadCampaignKit(selectedService.id, selectedService.name)}
+                disabled={zipLoading}
+                style={{
+                  background: "transparent",
+                  border: "1px solid #1A1624",
+                  color: "#1A1624",
+                  borderRadius: "9999px",
+                  padding: "6px 16px",
+                  fontSize: "13px",
+                  fontFamily: "Instrument Sans, sans-serif",
+                  cursor: zipLoading ? "not-allowed" : "pointer",
+                  marginLeft: "12px",
+                  opacity: zipLoading ? 0.6 : 1,
+                  whiteSpace: "nowrap" as const,
+                }}
+              >
+                {zipLoading ? "Generating..." : "Download Campaign Kit"}
+              </button>
+              {zipError && (
+                <span style={{ marginLeft: "12px", marginTop: "4px", fontSize: "12px", color: "red", fontFamily: "Instrument Sans, sans-serif" }}>
+                  {zipError}
+                </span>
+              )}
+            </div>
+          ) : null;
+        })()}
       </div>
 
-      {/* Campaign filter + Type tabs row + View toggle */}
-      <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 20, flexWrap: "wrap" }}>
-        {viewMode === "all" && (
-          <select value={campaignFilter} onChange={e => setCampaignFilter(e.target.value)}
-            style={{ padding: "8px 14px", borderRadius: 12, border: "1px solid #e5e0d8", fontFamily: T.fontB, fontSize: 13, background: "#fff", color: T.dark, cursor: "pointer", minWidth: 160 }}>
-            <option value="all">All Campaigns</option>
-            {campaignList.map(c => (
-              <option key={c.id} value={String(c.id)}>{c.name}</option>
-            ))}
-          </select>
-        )}
-
-        <div style={{ display: "flex", gap: 4, background: "#fff", borderRadius: 12, padding: 3, border: "1px solid #e5e0d8" }}>
-          {tabs.map(t => (
-            <button key={t.key} onClick={() => setTab(t.key)} style={{
-              padding: "7px 15px", borderRadius: 10, border: "none",
-              background: tab === t.key ? T.orange : "transparent",
-              color: tab === t.key ? "#fff" : T.muted,
-              fontFamily: T.fontB, fontWeight: 600, fontSize: 13, cursor: "pointer",
-            }}>
-              {t.label} ({t.count})
-            </button>
-          ))}
-        </div>
-
-        {/* View mode toggle — right-aligned */}
-        <div style={{ marginLeft: "auto", display: "flex", gap: 4, background: T.bg, borderRadius: 9999, padding: 3, border: "1px solid #e5e0d8" }}>
-          {(["campaign", "all"] as const).map(mode => (
-            <button
-              key={mode}
-              onClick={() => setViewMode(mode)}
-              style={{
-                padding: "7px 16px", borderRadius: 9999, border: "none",
-                background: viewMode === mode ? T.orange : "transparent",
-                color: viewMode === mode ? "#fff" : T.dark,
-                fontFamily: T.fontB, fontWeight: 600, fontSize: 13, cursor: "pointer",
-                whiteSpace: "nowrap" as const,
-              }}
-            >
-              {mode === "campaign" ? "By Campaign" : "All Assets"}
-            </button>
-          ))}
-        </div>
+      {/* Type tabs */}
+      <div style={{ display: "flex", gap: 4, background: "#fff", borderRadius: 12, padding: 3, border: "1px solid #e5e0d8", marginBottom: 20, width: "fit-content" }}>
+        {tabs.map(t => (
+          <button key={t.key} onClick={() => setTab(t.key)} style={{
+            padding: "8px 16px", borderRadius: 10, border: "none",
+            background: tab === t.key ? T.orange : "transparent",
+            color: tab === t.key ? "#fff" : T.muted,
+            fontFamily: T.fontB, fontWeight: 600, fontSize: 13, cursor: "pointer",
+          }}>
+            {t.label} ({t.count})
+          </button>
+        ))}
       </div>
 
-      {/* ── BY CAMPAIGN swimlane view ── */}
-      {viewMode === "campaign" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
-          {campaignList.map(campaign => {
-            const camImages  = (tab === "all" || tab === "images")  ? images.filter((img: any) => img.serviceId === campaign.id && matchSearch(`${img.headline || ""} ${img.productName || ""} ${img.niche || ""}`)) : [];
-            const camVideos  = (tab === "all" || tab === "videos")  ? videos.filter((v: any)   => v.serviceId === campaign.id && matchSearch(`${v.title || ""} ${v.angle || ""}`)) : [];
-            const camCopy    = (tab === "all" || tab === "copy")    ? copyAssets.filter(c => c.serviceId === campaign.id && (!search || c.text.toLowerCase().includes(search.toLowerCase()))) : [];
-            if (camImages.length + camVideos.length + camCopy.length === 0) return null;
-            const accent = getCampaignColour(campaign.id);
-            return (
-              <Fragment key={campaign.id}>
-              <div>
-                {/* Row label */}
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
-                  <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: "50%", background: accent, flexShrink: 0 }} />
-                  <h3 style={{ fontFamily: T.fontH, fontStyle: "italic", fontWeight: 900, fontSize: 18, color: accent, margin: 0 }}>
-                    {campaign.name}
-                  </h3>
-                  <span style={{ fontFamily: T.fontB, fontSize: 12, color: T.muted }}>
-                    {camImages.length + camVideos.length + camCopy.length} assets
-                  </span>
-                  <button
-                    onClick={() => handleDownloadZip(campaign.id, campaign.name)}
-                    disabled={zipLoading === campaign.id || zipCooldown === campaign.id}
-                    style={{
-                      marginLeft: "auto",
-                      background: "transparent",
-                      border: "1px solid #1A1624",
-                      color: "#1A1624",
-                      borderRadius: 9999,
-                      padding: "6px 16px",
-                      fontSize: 13,
-                      fontFamily: "Instrument Sans, sans-serif",
-                      cursor: zipLoading === campaign.id ? "wait" : "pointer",
-                      opacity: zipLoading === campaign.id ? 0.6 : 1,
-                    }}
-                  >
-                    {zipCooldown === campaign.id ? "Downloaded ✓" : zipLoading === campaign.id ? "Generating…" : "⬇ Download Campaign Kit"}
-                  </button>
-                  {zipError?.id === campaign.id && (
-                    <span style={{ fontFamily: T.fontB, fontSize: 12, color: "#C0390A", width: "100%", marginTop: 2 }}>
-                      {zipError.msg}
-                    </span>
-                  )}
-                </div>
-                {/* Horizontal scroll strip */}
-                <div style={{ display: "flex", gap: 16, overflowX: "auto", paddingBottom: 8, scrollbarWidth: "thin" as const }}>
-
-                  {camImages.map((img: any) => {
-                    const serviceName = serviceNameMap[img.serviceId] || null;
-                    return (
-                      <div key={`img-${img.id}`} style={{ flexShrink: 0, width: 260, cursor: "pointer" }} onClick={() => toggleAsset(img.id, img.serviceId, "image")}>
-                        <div style={{ ...cardBase(img.serviceId), ...zappyOverlay(img.id) }}>
-                          <Heart active={imgFavs.isFav(img.id)} onClick={() => imgFavs.toggle(img.id, img.headline)} />
-                          <div style={{ aspectRatio: "1/1", overflow: "hidden", background: "#F5F1EA", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                            {img.imageUrl ? (
-                              <img src={`/api/image-proxy?url=${encodeURIComponent(img.imageUrl)}`} alt={img.headline || "Ad image"} style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
-                            ) : (
-                              <span style={{ fontSize: 32, color: T.muted }}>🖼</span>
-                            )}
-                          </div>
-                          <div style={{ padding: "12px 14px" }}>
-                            <p style={{ fontFamily: T.fontB, fontWeight: 600, fontSize: 14, color: T.dark, margin: "0 0 2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{img.headline || img.productName || `Ad Image #${img.id}`}</p>
-                            <p style={{ fontFamily: T.fontB, fontSize: 12, color: T.muted, margin: "0 0 8px" }}>{new Date(img.createdAt).toLocaleDateString()}</p>
-                            <div style={{ display: "flex", gap: 6 }}>
-                              <button onClick={() => downloadFile(img.imageUrl, `zap-image-${img.id}.png`)} style={btnS(true)}>Download</button>
-                              <button onClick={() => copyToClipboard(img.imageUrl)} style={btnS()}>Copy URL</button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-
-                  {camVideos.map((v: any) => {
-                    const vtLabel = videoTypeLabel(v.videoType);
-                    const vsLabel = visualStyleLabel(v.visualStyle);
-                    const angleVal = (v.angle || "").toUpperCase();
-                    return (
-                      <div key={`vid-${v.id}`} style={{ flexShrink: 0, width: 260, cursor: "pointer" }} onClick={() => toggleAsset(v.id, v.serviceId, "video")}>
-                        <div style={{ ...cardBase(v.serviceId), ...zappyOverlay(v.id) }}>
-                          <Heart active={vidFavs.isFav(v.id)} onClick={() => vidFavs.toggle(v.id, v.title)} />
-                          <div style={{ aspectRatio: "1/1", overflow: "hidden", position: "relative", background: "linear-gradient(135deg, #1A1624 0%, #2D1F3D 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "20px 18px" }}>
-                            <p style={{ fontFamily: T.fontB, fontSize: 17, fontWeight: 800, color: "#fff", textAlign: "center", margin: "0 0 8px", lineHeight: 1.3 }}>{vtLabel}</p>
-                            {angleVal && <span style={{ fontFamily: T.fontB, fontSize: 11, fontWeight: 800, color: "#FF5B1D", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 8, background: "rgba(255,91,29,0.15)", padding: "3px 10px", borderRadius: 9999 }}>{angleVal}</span>}
-                            {v.nicheWorld && <p style={{ fontFamily: T.fontB, fontSize: 12, color: "rgba(255,255,255,0.7)", textAlign: "center", margin: "0 0 12px", lineHeight: 1.3, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const, overflow: "hidden" }}>{v.nicheWorld}</p>}
-                            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center" }}>
-                              {vsLabel && <span style={{ background: "rgba(255,255,255,0.1)", color: "#bbb", padding: "3px 10px", borderRadius: 9999, fontSize: 11, fontFamily: T.fontB }}>{vsLabel}</span>}
-                              {v.wordCount && <span style={{ background: "rgba(255,255,255,0.1)", color: "#bbb", padding: "3px 10px", borderRadius: 9999, fontSize: 11, fontFamily: T.fontB }}>{v.wordCount} words</span>}
-                              <span style={{ background: "rgba(255,255,255,0.1)", color: "#bbb", padding: "3px 10px", borderRadius: 9999, fontSize: 11, fontFamily: T.fontB }}>{v.duration || "30"}s</span>
-                            </div>
-                            <div onClick={() => v.videoUrl && window.open(v.videoUrl, "_blank")} style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 44, height: 44, borderRadius: "50%", background: "rgba(255,91,29,0.75)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", marginTop: -10, boxShadow: "0 2px 12px rgba(255,91,29,0.4)" }}>
-                              <span style={{ color: "#fff", fontSize: 18, marginLeft: 3 }}>▶</span>
-                            </div>
-                            <span style={{ position: "absolute", bottom: 8, right: 8, background: "rgba(0,0,0,0.6)", color: "#fff", padding: "2px 8px", borderRadius: 6, fontSize: 11, fontFamily: T.fontB, fontWeight: 600 }}>{v.duration || "30"}s</span>
-                          </div>
-                          <div style={{ padding: "12px 14px" }}>
-                            <p style={{ fontFamily: T.fontB, fontWeight: 600, fontSize: 14, color: T.dark, margin: "0 0 2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{vtLabel}{angleVal ? ` · ${angleVal}` : ""}{v.nicheWorld ? ` · ${v.nicheWorld}` : ""}</p>
-                            <p style={{ fontFamily: T.fontB, fontSize: 12, color: T.muted, margin: "0 0 8px" }}>{new Date(v.createdAt).toLocaleDateString()}</p>
-                            <div style={{ display: "flex", gap: 6 }}>
-                              {v.videoUrl && <button onClick={() => downloadFile(v.videoUrl, `zap-video-${v.id}.mp4`)} style={btnS(true)}>Download MP4</button>}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-
-                  {camCopy.map((c, idx) => (
-                    <div key={`copy-${c.id}-${idx}`} style={{ flexShrink: 0, width: 260, cursor: "pointer" }} onClick={() => toggleAsset(c.id, c.serviceId, "copy")}>
-                      <div style={{ ...cardBase(c.serviceId), padding: "16px 18px", ...zappyOverlay(c.id) }}>
-                        <Heart active={copyFavs.isFav(c.id)} onClick={() => copyFavs.toggle(c.id, c.text)} />
-                        <span style={{ fontFamily: T.fontB, fontSize: 10, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.06em", color: T.orange, display: "block", marginBottom: 8, marginTop: 4 }}>{c.type}</span>
-                        <p style={{ fontFamily: T.fontB, fontSize: 14, color: T.dark, margin: "0 0 10px", lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical" as const, overflow: "hidden" }}>{c.text}</p>
-                        <p style={{ fontFamily: T.fontB, fontSize: 12, color: T.muted, margin: "0 0 8px" }}>{new Date(c.date).toLocaleDateString()}</p>
-                        <button onClick={() => copyToClipboard(c.text)} style={btnS(true)}>Copy to Clipboard</button>
-                      </div>
-                    </div>
-                  ))}
-
-                </div>
-              </div>
-              {renderSiblingShelf(campaign.id)}
-              </Fragment>
-            );
-          })}
-        </div>
-      )}
-
-      {/* ── ALL ASSETS flat grid view (unchanged) ── */}
-      {viewMode === "all" && (<>
+      {/* Asset Grid */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 16 }}>
 
         {/* ── IMAGE CARDS ── */}
-        {(tab === "all" || tab === "images") && filteredImages.map((img: any) => {
-          const accentColour = getCampaignColour(img.serviceId ?? 0);
-          const serviceName = serviceNameMap[img.serviceId] || null;
-          return (
-            <div key={`img-${img.id}`} style={{ ...cardBase(img.serviceId), ...zappyOverlay(img.id), cursor: "pointer" }} onClick={() => toggleAsset(img.id, img.serviceId, "image")}>
-              <Heart active={imgFavs.isFav(img.id)} onClick={() => imgFavs.toggle(img.id, img.headline)} />
-              <div style={{ aspectRatio: "1/1", overflow: "hidden", background: "#F5F1EA", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                {img.imageUrl ? (
-                  <img
-                    src={`/api/image-proxy?url=${encodeURIComponent(img.imageUrl)}`}
-                    alt={img.headline || "Ad image"}
-                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                    onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
-                  />
-                ) : (
-                  <span style={{ fontSize: 32, color: T.muted }}>🖼</span>
-                )}
-              </div>
-              <div style={{ padding: "12px 14px" }}>
-                <p style={{ fontFamily: T.fontB, fontWeight: 600, fontSize: 14, color: T.dark, margin: "0 0 2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {img.headline || img.productName || `Ad Image #${img.id}`}
-                </p>
-                <p style={{ fontFamily: T.fontB, fontSize: 12, color: T.muted, margin: "0 0 8px" }}>
-                  {new Date(img.createdAt).toLocaleDateString()}
-                </p>
-                {serviceName && (
-                  <p style={{ fontFamily: T.fontB, fontSize: 11, fontWeight: 700, color: accentColour, margin: "0 0 10px", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                    {serviceName}
-                  </p>
-                )}
-                <div style={{ display: "flex", gap: 6 }}>
-                  <button onClick={() => downloadFile(img.imageUrl, `zap-image-${img.id}.png`)} style={btnS(true)}>Download</button>
-                  <button onClick={() => copyToClipboard(img.imageUrl)} style={btnS()}>Copy URL</button>
-                </div>
+        {(tab === "all" || tab === "images") && filteredImages.map((img: any, idx: number) => (
+          <div key={`img-${img.id}`} style={cardStyle}>
+            <Heart active={imgFavs.isFav(img.id)} onClick={() => imgFavs.toggle(img.id, img.headline)} />
+            <div style={{ aspectRatio: "1/1", overflow: "hidden", background: "#f0ede6", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              {img.imageUrl ? (
+                <img src={`/api/image-proxy?url=${encodeURIComponent(img.imageUrl)}`} alt={img.headline || "Ad image"} style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+              ) : (
+                <span style={{ fontSize: 32, color: T.muted }}>🖼</span>
+              )}
+            </div>
+            <div style={{ padding: "12px 14px" }}>
+              <p style={{ fontFamily: T.fontB, fontWeight: 600, fontSize: 14, color: T.dark, margin: "0 0 4px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {img.headline || img.productName || `Ad Image #${img.id}`}
+              </p>
+              <p style={{ fontFamily: T.fontB, fontSize: 12, color: T.muted, margin: "0 0 10px" }}>
+                {img.productName || "Campaign"} · {new Date(img.createdAt).toLocaleDateString()}
+              </p>
+              <div style={{ display: "flex", gap: 6 }}>
+                <button onClick={() => downloadFile(img.imageUrl, `zap-image-${img.id}.png`)} style={btnS(true)}>Download</button>
+                <button onClick={() => copyToClipboard(img.imageUrl)} style={btnS()}>Copy URL</button>
               </div>
             </div>
-          );
-        })}
+          </div>
+        ))}
 
-        {/* ── VIDEO CARDS — dark gradient, rich text, no thumbnail img ── */}
+        {/* ── VIDEO CARDS ── */}
         {(tab === "all" || tab === "videos") && filteredVideos.map((v: any) => {
-          const accentColour = getCampaignColour(v.serviceId ?? 0);
-          const serviceName = serviceNameMap[v.serviceId] || null;
-          const vtLabel = videoTypeLabel(v.videoType);   // "Explainer Ad"
-          const vsLabel = visualStyleLabel(v.visualStyle); // "Kinetic"
-          const angleVal = (v.angle || "").toUpperCase();  // "IDENTITY"
+          // Derive thumbnail: use stored thumbnailUrl, or convert Cloudinary video URL to poster
+          const posterUrl = v.thumbnailUrl || (v.videoUrl ? v.videoUrl.replace(/\.mp4$/i, ".jpg").replace(/\/video\/upload\//, "/video/upload/so_0/") : null);
           return (
-            <div key={`vid-${v.id}`} style={{ ...cardBase(v.serviceId), ...zappyOverlay(v.id), cursor: "pointer" }} onClick={() => toggleAsset(v.id, v.serviceId, "video")}>
-              <Heart active={vidFavs.isFav(v.id)} onClick={() => vidFavs.toggle(v.id, v.title)} />
-              {/* Dark gradient — video cards are always dark */}
-              <div style={{
-                aspectRatio: "1/1", overflow: "hidden", position: "relative",
-                background: "linear-gradient(135deg, #1A1624 0%, #2D1F3D 100%)",
-                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                padding: "20px 18px",
-              }}>
-                {/* Line 1: video type in plain English — white, bold */}
-                <p style={{
-                  fontFamily: T.fontB, fontSize: 17, fontWeight: 800,
-                  color: "#fff", textAlign: "center", margin: "0 0 8px", lineHeight: 1.3,
-                }}>
-                  {vtLabel}
-                </p>
-                {/* Line 2: angle badge — orange, uppercase */}
-                {angleVal && (
-                  <span style={{
-                    fontFamily: T.fontB, fontSize: 11, fontWeight: 800, color: "#FF5B1D",
-                    letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 8,
-                    background: "rgba(255,91,29,0.15)", padding: "3px 10px", borderRadius: 9999,
-                  }}>
-                    {angleVal}
-                  </span>
-                )}
-                {/* Line 3: nicheWorld — white, smaller */}
-                {v.nicheWorld && (
-                  <p style={{
-                    fontFamily: T.fontB, fontSize: 12, color: "rgba(255,255,255,0.7)",
-                    textAlign: "center", margin: "0 0 12px", lineHeight: 1.3,
-                    display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const, overflow: "hidden",
-                  }}>
-                    {v.nicheWorld}
-                  </p>
-                )}
-                {/* Line 4: visualStyle + wordCount + duration chips */}
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center" }}>
-                  {vsLabel && (
-                    <span style={{ background: "rgba(255,255,255,0.1)", color: "#bbb", padding: "3px 10px", borderRadius: 9999, fontSize: 11, fontFamily: T.fontB }}>
-                      {vsLabel}
-                    </span>
-                  )}
-                  {v.wordCount && (
-                    <span style={{ background: "rgba(255,255,255,0.1)", color: "#bbb", padding: "3px 10px", borderRadius: 9999, fontSize: 11, fontFamily: T.fontB }}>
-                      {v.wordCount} words
-                    </span>
-                  )}
-                  <span style={{ background: "rgba(255,255,255,0.1)", color: "#bbb", padding: "3px 10px", borderRadius: 9999, fontSize: 11, fontFamily: T.fontB }}>
-                    {v.duration || "30"}s
-                  </span>
+          <div key={`vid-${v.id}`} style={cardStyle}>
+            <Heart active={vidFavs.isFav(v.id)} onClick={() => vidFavs.toggle(v.id, v.title)} />
+            <div style={{ aspectRatio: "9/16", maxHeight: 300, overflow: "hidden", position: "relative", background: "#111" }}>
+              {posterUrl ? (
+                <img src={posterUrl} alt={v.title || "Video"} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              ) : (
+                <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <span style={{ fontSize: 48, color: "rgba(255,255,255,0.3)" }}>▶</span>
                 </div>
-                {/* Centred play button */}
-                <div
-                  onClick={e => { e.stopPropagation(); v.videoUrl && window.open(v.videoUrl, "_blank"); }}
-                  style={{
-                    position: "absolute", top: "50%", left: "50%",
-                    transform: "translate(-50%,-50%)",
-                    width: 44, height: 44, borderRadius: "50%",
-                    background: "rgba(255,91,29,0.75)",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    cursor: "pointer", marginTop: -10,
-                    boxShadow: "0 2px 12px rgba(255,91,29,0.4)",
-                  }}
-                >
-                  <span style={{ color: "#fff", fontSize: 18, marginLeft: 3 }}>▶</span>
-                </div>
-                {/* Duration badge bottom-right */}
-                <span style={{
-                  position: "absolute", bottom: 8, right: 8,
-                  background: "rgba(0,0,0,0.6)", color: "#fff",
-                  padding: "2px 8px", borderRadius: 6, fontSize: 11, fontFamily: T.fontB, fontWeight: 600,
-                }}>
-                  {v.duration || "30"}s
-                </span>
+              )}
+              <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 48, height: 48, borderRadius: "50%", background: "rgba(255,91,29,0.85)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+                onClick={() => v.videoUrl && window.open(v.videoUrl, "_blank")}>
+                <span style={{ color: "#fff", fontSize: 20, marginLeft: 3 }}>▶</span>
               </div>
-              <div style={{ padding: "12px 14px" }}>
-                <p style={{ fontFamily: T.fontB, fontWeight: 600, fontSize: 14, color: T.dark, margin: "0 0 2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {vtLabel}{angleVal ? ` · ${angleVal}` : ""}{v.nicheWorld ? ` · ${v.nicheWorld}` : ""}
-                </p>
-                <p style={{ fontFamily: T.fontB, fontSize: 12, color: T.muted, margin: "0 0 8px" }}>
-                  {new Date(v.createdAt).toLocaleDateString()}
-                </p>
-                {serviceName && (
-                  <p style={{ fontFamily: T.fontB, fontSize: 11, fontWeight: 700, color: accentColour, margin: "0 0 10px", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                    {serviceName}
-                  </p>
-                )}
-                <div style={{ display: "flex", gap: 6 }}>
-                  {v.videoUrl && (
-                    <button onClick={() => downloadFile(v.videoUrl, `zap-video-${v.id}.mp4`)} style={btnS(true)}>Download MP4</button>
-                  )}
-                </div>
+              <span style={{ position: "absolute", bottom: 8, right: 8, background: "rgba(0,0,0,0.7)", color: "#fff", padding: "2px 8px", borderRadius: 6, fontSize: 11, fontFamily: T.fontB, fontWeight: 600 }}>
+                {v.duration || "30"}s
+              </span>
+            </div>
+            <div style={{ padding: "12px 14px" }}>
+              <p style={{ fontFamily: T.fontB, fontWeight: 600, fontSize: 14, color: T.dark, margin: "0 0 4px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {v.title || `Video ${v.id}`}
+              </p>
+              <p style={{ fontFamily: T.fontB, fontSize: 12, color: T.muted, margin: "0 0 10px" }}>
+                {v.angle || "Ad"} · {new Date(v.createdAt).toLocaleDateString()}
+              </p>
+              <div style={{ display: "flex", gap: 6 }}>
+                {v.videoUrl && <button onClick={() => downloadFile(v.videoUrl, `zap-video-${v.id}.mp4`)} style={btnS(true)}>Download MP4</button>}
               </div>
             </div>
-          );
-        })}
+          </div>
+        ); })}
 
         {/* ── COPY CARDS ── */}
-        {(tab === "all" || tab === "copy") && copyAssets.map((c, idx) => {
-          const accentColour = getCampaignColour(c.serviceId ?? 0);
-          const serviceName = serviceNameMap[c.serviceId ?? -1] || null;
-          return (
-            <div key={`copy-${c.id}-${idx}`} style={{ ...cardBase(c.serviceId), padding: "16px 18px", ...zappyOverlay(c.id), cursor: "pointer" }} onClick={() => toggleAsset(c.id, c.serviceId, "copy")}>
-              <Heart active={copyFavs.isFav(c.id)} onClick={() => copyFavs.toggle(c.id, c.text)} />
-              <span style={{ fontFamily: T.fontB, fontSize: 10, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.06em", color: T.orange, display: "block", marginBottom: 8, marginTop: 4 }}>
-                {c.type}
-              </span>
-              <p style={{ fontFamily: T.fontB, fontSize: 14, color: T.dark, margin: "0 0 10px", lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical" as const, overflow: "hidden" }}>
-                {c.text}
-              </p>
-              <p style={{ fontFamily: T.fontB, fontSize: 12, color: T.muted, margin: "0 0 8px" }}>
-                {new Date(c.date).toLocaleDateString()}
-              </p>
-              {serviceName && (
-                <p style={{ fontFamily: T.fontB, fontSize: 11, fontWeight: 700, color: accentColour, margin: "0 0 10px", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                  {serviceName}
-                </p>
-              )}
-              <button onClick={() => copyToClipboard(c.text)} style={btnS(true)}>Copy to Clipboard</button>
-            </div>
-          );
-        })}
+        {(tab === "all" || tab === "copy") && copyAssets.map((c, idx) => (
+          <div key={`copy-${c.id}-${idx}`} style={{ ...cardStyle, padding: "16px 18px" }}>
+            <Heart active={copyFavs.isFav(c.id)} onClick={() => copyFavs.toggle(c.id, c.text)} />
+            <span style={{ fontFamily: T.fontB, fontSize: 10, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.06em", color: T.orange, display: "block", marginBottom: 8, marginTop: 4 }}>
+              {c.type}
+            </span>
+            <p style={{ fontFamily: T.fontB, fontSize: 14, color: T.dark, margin: "0 0 10px", lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical" as const, overflow: "hidden" }}>
+              {c.text}
+            </p>
+            <p style={{ fontFamily: T.fontB, fontSize: 12, color: T.muted, margin: "0 0 10px" }}>
+              {new Date(c.date).toLocaleDateString()}
+            </p>
+            <button onClick={() => copyToClipboard(c.text)} style={btnS(true)}>Copy to Clipboard</button>
+          </div>
+        ))}
       </div>
 
-      {selectedAsset !== null && renderSiblingShelf(selectedAsset.serviceId)}
-
-      {/* Empty states — only in All Assets mode */}
-      {viewMode === "all" && tab === "images" && filteredImages.length === 0 && (
+      {/* Empty states */}
+      {tab === "images" && filteredImages.length === 0 && (
         <div style={{ textAlign: "center", padding: "64px 20px" }}>
           <p style={{ fontFamily: T.fontB, fontSize: 16, color: T.muted }}>No images yet. Generate ad images in the campaign wizard.</p>
         </div>
       )}
-      {viewMode === "all" && tab === "videos" && filteredVideos.length === 0 && (
+      {tab === "videos" && filteredVideos.length === 0 && (
         <div style={{ textAlign: "center", padding: "64px 20px" }}>
           <p style={{ fontFamily: T.fontB, fontSize: 16, color: T.muted }}>No videos yet. Create a video in the Ad Copy node.</p>
         </div>
       )}
-      {viewMode === "all" && tab === "copy" && copyAssets.length === 0 && (
+      {tab === "copy" && copyAssets.length === 0 && (
         <div style={{ textAlign: "center", padding: "64px 20px" }}>
           <p style={{ fontFamily: T.fontB, fontSize: 16, color: T.muted }}>No copy assets yet. Generate headlines or ad copy to see them here.</p>
         </div>
       )}
-      </>)}
 
+      {/* ── ZAPPY FAB ── */}
+      <button aria-label="Open Zappy AI search" onClick={() => setZappyOpen(!zappyOpen)} style={{
+        position: "fixed", bottom: 24, right: 24, width: 56, height: 56, borderRadius: "50%",
+        background: T.orange, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+        boxShadow: "0 4px 16px rgba(255,91,29,0.35)", zIndex: 102, fontSize: 24, color: "#fff",
+      }}>
+        🦊
+      </button>
+
+      {/* ── ZAPPY PANEL ── */}
+      {zappyOpen && (
+        <>
+          {/* Transparent backdrop — click outside the panel to close */}
+          <div
+            onClick={() => setZappyOpen(false)}
+            style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", zIndex: 99, background: "transparent", cursor: "default" }}
+          />
+          <div
+            ref={zappyPanelRef}
+          onKeyDown={handleZappyKeyDown}
+          style={{
+            position: "fixed", bottom: 90, right: 24, width: 380, maxHeight: "60vh",
+            background: "#fff", borderRadius: 20, boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
+            zIndex: 101, display: "flex", flexDirection: "column", overflow: "hidden",
+          }}
+        >
+          <div style={{ padding: "16px 20px", borderBottom: "1px solid #eee", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontFamily: T.fontB, fontWeight: 700, fontSize: 15, color: T.dark }}>🦊 Ask Zappy</span>
+            <button aria-label="Close Zappy search panel" onClick={() => setZappyOpen(false)} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: T.muted }}>✕</button>
+          </div>
+          <div style={{ flex: 1, overflow: "auto", padding: 16 }}>
+            {/* Skeleton: zappyPulse keyframe + prefers-reduced-motion guard live in client/src/index.css */}
+            {zappyLoading && (
+              <>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
+                  <div className="zappy-skeleton" style={{ height: 120, background: "#E8E4DD", borderRadius: 12 }} />
+                  <div className="zappy-skeleton" style={{ height: 120, background: "#E8E4DD", borderRadius: 12 }} />
+                </div>
+                <div className="zappy-skeleton" style={{ height: 80, background: "#E8E4DD", borderRadius: 12 }} />
+              </>
+            )}
+            {zappyResults && zappyResults.length === 0 && (
+              <p style={{ fontFamily: T.fontB, fontSize: 13, color: T.muted, textAlign: "center" }}>No matching assets found. Try a different search.</p>
+            )}
+            {zappyResults && zappyResults.length > 0 && (
+              /* Clear results link — lets users refine query without losing what they typed */
+              <button
+                onClick={() => setZappyResults(null)}
+                style={{ fontFamily: T.fontB, fontSize: 12, color: "#999", cursor: "pointer", textDecoration: "underline", display: "block", textAlign: "right", marginBottom: 8, background: "none", border: "none", padding: 0, width: "100%" }}
+              >Clear results</button>
+            )}
+            {zappyResults && zappyResults.length > 0 && (() => {
+              // Separate image/video IDs from copy IDs so each group renders in its natural layout
+              const imgVidIds = zappyResults.filter(id =>
+                filteredImages.find((i: any) => i.id === id) || filteredVideos.find((v: any) => v.id === id)
+              );
+              const copyIds = zappyResults.filter(id => copyAssets.find(c => c.id === id));
+              return (
+                <>
+                  {/* Image + video results — 2-column grid */}
+                  {imgVidIds.length > 0 && (
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                      {imgVidIds.map(id => {
+                        const img = filteredImages.find((i: any) => i.id === id);
+                        const vid = filteredVideos.find((v: any) => v.id === id);
+                        if (img) return (
+                          <div key={`z-${id}`} style={{ background: "#f9f8f5", borderRadius: 10, overflow: "hidden" }}>
+                            <img src={`/api/image-proxy?url=${encodeURIComponent((img as any).imageUrl)}`} style={{ width: "100%", aspectRatio: "1/1", objectFit: "cover" }} />
+                            <p style={{ fontFamily: T.fontB, fontSize: 11, padding: "6px 8px", margin: 0, color: T.dark }}>{(img as any).headline || `Image ${id}`}</p>
+                          </div>
+                        );
+                        if (vid) return (
+                          <div key={`z-${id}`} style={{ background: "#f9f8f5", borderRadius: 10, padding: "8px" }}>
+                            <p style={{ fontFamily: T.fontB, fontSize: 11, margin: 0, color: T.dark }}>🎬 {(vid as any).title || `Video ${id}`}</p>
+                          </div>
+                        );
+                        return null;
+                      })}
+                    </div>
+                  )}
+                  {/* Copy results — single-column list, full width to suit longer text */}
+                  {(() => {
+                    // Resolve copy IDs to actual assets — filter out any stale IDs that no longer exist
+                    const resolvedCopyAssets = copyIds
+                      .map(id => copyAssets.find(c => c.id === id))
+                      .filter((c): c is NonNullable<typeof c> => c != null);
+                    // If copy resolved to nothing AND image/video also produced nothing — show empty state
+                    if (resolvedCopyAssets.length === 0 && imgVidIds.length === 0) {
+                      return (
+                        <p style={{ fontFamily: T.fontB, fontSize: 13, color: T.muted, textAlign: "center" }}>No matching assets found. Try a different search.</p>
+                      );
+                    }
+                    // If copy resolved to nothing but image/video results exist — render nothing (user got results)
+                    if (resolvedCopyAssets.length === 0) return null;
+                    return (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: imgVidIds.length > 0 ? 16 : 0 }}>
+                        {resolvedCopyAssets.map(copy => (
+                          <div key={`z-copy-${copy.id}`} style={{ background: "#fff", borderRadius: 12, padding: 16, border: "1px solid #F0EBE1", borderLeft: `4px solid ${T.orange}`, display: "flex", flexDirection: "column", gap: 8 }}>
+                            <span style={{ fontFamily: T.fontB, fontSize: 10, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.06em", color: T.orange }}>{copy.type}</span>
+                            <p style={{ fontFamily: T.fontB, fontSize: 13, color: T.dark, margin: 0, lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical" as const, overflow: "hidden" }}>{copy.text}</p>
+                            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                              <button onClick={() => copyToClipboard(copy.text)} style={btnS(true)}>Copy to Clipboard</button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </>
+              );
+            })()}
+            {!zappyResults && !zappyLoading && (
+              <p style={{ fontFamily: T.fontB, fontSize: 13, color: T.muted, textAlign: "center", margin: "20px 0" }}>
+                Ask me to find any asset. Try "my fitness videos" or "headlines about identity"
+              </p>
+            )}
+          </div>
+          <div style={{ padding: "12px 16px", borderTop: "1px solid #eee" }}>
+            <div style={{ display: "flex", gap: 8 }}>
+              <div style={{ flex: 1, position: "relative", display: "flex", alignItems: "center" }}>
+                {/* autoComplete new-password + non-standard name = Chrome autofill suppression for AI search fields. */}
+                <input
+                  aria-label="Search your asset library"
+                  type="text"
+                  autoComplete="new-password"
+                  name="zappy-search-nonce"
+                  placeholder="Find my webinar ads..."
+                  value={zappyQuery}
+                  onChange={e => setZappyQuery(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && handleZappySearch()}
+                  style={{ width: "100%", padding: "10px 32px 10px 14px", borderRadius: 12, border: "1px solid #e5e0d8", fontFamily: T.fontB, fontSize: 13, outline: "none", color: T.dark, background: "#fff", boxSizing: "border-box" as const }}
+                />
+                {zappyQuery && (
+                  <button
+                    onClick={() => { setZappyQuery(""); setZappyResults(null); }}
+                    style={{ position: "absolute", right: 10, background: "none", border: "none", cursor: "pointer", color: "#999", fontSize: 16, lineHeight: 1, padding: 2 }}
+                  >✕</button>
+                )}
+              </div>
+              <button aria-label="Run Zappy search" onClick={handleZappySearch} disabled={zappyLoading} style={{ ...btnS(true), padding: "10px 16px" }}>Search</button>
+            </div>
+            {/* Scope note — shown only when a campaign filter is active */}
+            {campaignFilter !== "all" && (() => {
+              const activeCampaign = campaignList.find(c => String(c.id) === campaignFilter);
+              return activeCampaign ? (
+                <p style={{ fontFamily: T.fontB, fontSize: 11, color: "#999", margin: "4px 0 0" }}>
+                  Searching within <strong style={{ fontFamily: "Instrument Sans, sans-serif", fontWeight: 600 }}>{activeCampaign.name}</strong> only — clear the filter to search all campaigns.
+                </p>
+              ) : null;
+            })()}
+          </div>
+        </div>
+        </>
+      )}
     </div>
     </div>
   );

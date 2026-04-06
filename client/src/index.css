@@ -657,3 +657,10 @@
 @media (max-width: 639px) {
   .swipe-hint { display: block !important; }
 }
+
+/* Zappy AI search panel — skeleton loading pulse */
+@keyframes zappyPulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+.zappy-skeleton { animation: zappyPulse 1.5s ease-in-out infinite; will-change: opacity; }
+@media (prefers-reduced-motion: reduce) {
+  .zappy-skeleton { animation: none; will-change: auto; }
+}

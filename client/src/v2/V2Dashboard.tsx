@@ -119,32 +119,13 @@ function PathNode({ node, isMobile, onNodeClick, isSkipped }: { node: PathNode; 
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
       <div style={nodeStyle} onClick={() => node.state !== "locked" && onNodeClick(node)}>
-        {node.state === "completed" && (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0, lineHeight: 1 }}>
-            <svg width={isMobile ? "18" : "22"} height={isMobile ? "18" : "22"} viewBox="0 0 28 28" fill="none">
-              <path d="M6 14.5l5.5 5.5L22 9" stroke="#fff" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            <span style={{
-              color: "#fff",
-              fontFamily: "var(--v2-font-body)",
-              fontWeight: 700,
-              fontSize: isMobile ? "13px" : "16px",
-              marginTop: "-2px",
-            }}>
-              {node.id}
-            </span>
-          </div>
-        )}
+        {node.state === "completed" && <Checkmark />}
         {node.state === "active" && (
-          <span style={{ color: "#fff", fontFamily: "var(--v2-font-body)", fontWeight: 700, fontSize: isMobile ? "18px" : "22px" }}>
+          <span style={{ color: "#fff", fontFamily: "var(--v2-font-body)", fontWeight: 700, fontSize: isMobile ? "13px" : "15px" }}>
             {node.id}
           </span>
         )}
-        {node.state === "locked" && (
-          <span style={{ color: "#999", fontFamily: "var(--v2-font-body)", fontWeight: 700, fontSize: isMobile ? "16px" : "20px" }}>
-            {node.id}
-          </span>
-        )}
+        {node.state === "locked" && <LockIcon />}
         {node.state === "completed" && isSkipped && (
           <div style={{
             position: "absolute", top: -2, right: -2,
