@@ -3244,12 +3244,6 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
   const updateKitSelection = trpc.campaignKits.updateSelection.useMutation();
   // ── tRPC utils for cache invalidation ──
   const utils = trpc.useUtils();
-  // ── Skip node mutation + query ──
-  const skipMutation = trpc.nodeSkips.skip.useMutation();
-  const { data: skippedNodes } = trpc.nodeSkips.getSkippedNodes.useQuery(
-    { serviceId: serviceId ?? 0 },
-    { enabled: !!serviceId }
-  );
   // ── Real mutations (all use generateAsync + polling pattern) ──
   const generateIcpAsync = trpc.icps.generateAsync.useMutation();
   const generateOfferAsync = trpc.offers.generateAsync.useMutation();
@@ -3393,6 +3387,14 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
   // If a result exists, set the ID state and switch to "success" status
   const historyLoadedRef = useRef(false);
   const resolvedServiceId = activeService?.id;
+
+  // ── Skip node mutation + query (placed after resolvedServiceId so we can use it directly) ──
+  const skipMutation = trpc.nodeSkips.skip.useMutation();
+  const _skipServiceId = resolvedServiceId ?? serviceId;
+  const { data: skippedNodes } = trpc.nodeSkips.getSkippedNodes.useQuery(
+    { serviceId: _skipServiceId ?? 0 },
+    { enabled: !!_skipServiceId }
+  );
 
   // Reset state when step changes (prevents stale errors persisting across nodes)
   useEffect(() => {
