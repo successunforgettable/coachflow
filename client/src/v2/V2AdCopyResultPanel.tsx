@@ -78,11 +78,12 @@ function ScoreBadge({ score }: { score?: string | null }) {
   if (score === null || score === undefined) return null;
   const n = parseFloat(score);
   if (isNaN(n)) return null;
-  const isHigh = n >= 80;
-  const isMid  = n >= 65;
-  const bg     = isHigh ? "rgba(139,92,246,0.12)" : isMid ? "rgba(139,92,246,0.07)" : "rgba(26,22,36,0.06)";
-  const border = isHigh ? "rgba(139,92,246,0.40)" : isMid ? "rgba(139,92,246,0.25)" : "rgba(26,22,36,0.15)";
-  const color  = isHigh ? "#5B21B6"               : isMid ? "#6D28D9"               : "#666";
+  const isTop  = n >= 80;
+  const isGood = n >= 60;
+  const bg     = isTop  ? "rgba(139,92,246,0.12)" : isGood ? "rgba(88,204,2,0.12)"  : "rgba(26,22,36,0.06)";
+  const border = isTop  ? "rgba(139,92,246,0.40)" : isGood ? "rgba(88,204,2,0.40)"  : "rgba(26,22,36,0.15)";
+  const color  = isTop  ? "#5B21B6"               : isGood ? "#2E7D00"              : "#666";
+  const label  = isTop  ? "⚡ Top Pick"            : isGood ? "✓ Strong"             : "~ Test";
   return (
     <span style={{
       display: "inline-flex",
@@ -98,7 +99,7 @@ function ScoreBadge({ score }: { score?: string | null }) {
       color,
       letterSpacing: "0.02em",
     }}>
-      ⚡ Score: {Math.round(n)}
+      {label}
     </span>
   );
 }
