@@ -96,3 +96,85 @@ export const META_COMPLIANCE_NOTES =
  */
 export const truncateQuote = (q: string, max = 100): string =>
   q.length > max ? q.slice(0, max - 3) + '...' : q;
+
+/**
+ * W3 — Hook Rate Scoring.
+ * Returns a 0-100 score for generated ad content based on copywriting signal strength.
+ * No LLM calls — pure heuristic, runs at insert time.
+ *
+ * Scoring bands (approximate):
+ *   90-100  → elite hook (multiple strong signals)
+ *   70-89   → solid copy
+ *   50-69   → baseline (no bonus signals triggered)
+ *   <50     → not possible with current logic (base is 50)
+ */
+export function scoreAdContent(
+  contentType: 'headline' | 'body' | 'link',
+  content: string,
+  angle?: string,
+): number {
+  let score = 50;
+
+  if (contentType === 'headline') {
+    const words = content.trim().split(/\s+/);
+    const wordCount = words.length;
+
+    // +10 if contains a number (specificity signals)
+    if (/\d/.test(content)) score += 10;
+
+    // +10 if NOT starting with a banned opener
+    const bannedStart = BANNED_HEADLINE_PATTERNS.some(p =>
+      content.toLowerCase().startsWith(p.toLowerCase()),
+    );
+    if (!bannedStart) score += 10;
+
+    // +10 if 5-12 words (optimal headline length)
+    if (wordCount >= 5 && wordCount <= 12) score += 10;
+
+    // +10 if contains "you" or "your" (direct address)
+    if (/\byou(r)?\b/i.test(content)) score += 10;
+
+    // +10 if ends with "?" or "…" (open loop / curiosity gap)
+    if (/[?…]$/.test(content.trim())) score += 10;
+  }
+
+  if (contentType === 'body') {
+    const words = content.trim().split(/\s+/);
+    const wordCount = words.length;
+
+    // +10 if PDC angle — ICP-specific, highest-specificity frameworks
+    if (angle && ['pain_pdc', 'desire_pdc', 'circumstance_pdc'].includes(angle)) score += 10;
+
+    // +10 if 100-170 words (optimal body copy length)
+    if (wordCount >= 100 && wordCount <= 170) score += 10;
+
+    // +10 if no banned copywriting words present
+    const hasBanned = BANNED_COPYWRITING_WORDS.some(w =>
+      content.toLowerCase().includes(w.toLowerCase()),
+    );
+    if (!hasBanned) score += 10;
+
+    // +10 if first sentence ≤ 15 words (punchy opener)
+    const firstSentence = content.split(/[.!?]/)[0] ?? '';
+    if (firstSentence.trim().split(/\s+/).length <= 15) score += 10;
+
+    // +10 if ends with an approved Meta CTA phrase
+    const lc = content.toLowerCase().trim();
+    const ctaPatterns = ['learn more', 'book a call', 'get started', 'sign up', 'download free guide'];
+    if (ctaPatterns.some(p => lc.endsWith(p) || lc.endsWith(p + '.'))) score += 10;
+  }
+
+  if (contentType === 'link') {
+    // +10 if ≤ 60 characters (concise link text)
+    if (content.trim().length <= 60) score += 10;
+
+    // +10 if starts with uppercase
+    if (/^[A-Z]/.test(content.trim())) score += 10;
+
+    // +15 if contains a common action verb
+    const actionVerbs = ['get', 'start', 'join', 'learn', 'try', 'claim', 'book', 'grab', 'access', 'watch', 'discover'];
+    if (actionVerbs.some(v => new RegExp(`\\b${v}\\b`, 'i').test(content))) score += 15;
+  }
+
+  return Math.min(score, 100);
+}

@@ -28,6 +28,7 @@ interface HeadlineRow {
   subheadline: string | null;
   eyebrow: string | null;
   complianceScore: number | null;
+  selectionScore?: string | null;
   rating: number;
 }
 
@@ -58,6 +59,37 @@ function ComplianceBadge({ score }: { score: number | null }) {
     }}>
       <span style={{ fontSize: "10px" }}>{isGreen ? "✓" : isAmber ? "⚠" : "✗"}</span>
       {score}/100 — {label}
+    </span>
+  );
+}
+
+// ─── Score badge (W3 — hookRate) ──────────────────────────────────────────────
+function ScoreBadge({ score }: { score?: string | null }) {
+  if (score === null || score === undefined) return null;
+  const n = parseFloat(score);
+  if (isNaN(n)) return null;
+  const isHigh = n >= 80;
+  const isMid  = n >= 65;
+  const bg     = isHigh ? "rgba(139,92,246,0.12)" : isMid ? "rgba(139,92,246,0.07)" : "rgba(26,22,36,0.06)";
+  const border = isHigh ? "rgba(139,92,246,0.40)" : isMid ? "rgba(139,92,246,0.25)" : "rgba(26,22,36,0.15)";
+  const color  = isHigh ? "#5B21B6"               : isMid ? "#6D28D9"               : "#666";
+  return (
+    <span style={{
+      display: "inline-flex",
+      alignItems: "center",
+      gap: "4px",
+      background: bg,
+      border: `1px solid ${border}`,
+      borderRadius: "9999px",
+      padding: "3px 10px",
+      fontSize: "11px",
+      fontFamily: "var(--v2-font-body)",
+      fontWeight: 600,
+      color,
+      letterSpacing: "0.02em",
+      marginTop: "6px",
+    }}>
+      ⚡ Score: {Math.round(n)}
     </span>
   );
 }
@@ -192,8 +224,11 @@ function HeadlineCard({ headline, isFreeTier, index, isFav, onToggleFav }: { hea
           {subheadlineText}
         </p>
       )}
-      {/* Compliance badge */}
-      <ComplianceBadge score={headline.complianceScore} />
+      {/* Compliance + score badges */}
+      <div style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap" }}>
+        <ComplianceBadge score={headline.complianceScore} />
+        <ScoreBadge score={headline.selectionScore} />
+      </div>
       {/* Controls row */}
       <div style={{ display: "flex", gap: "8px", marginTop: "12px", alignItems: "center" }}>
         {copyLocked ? (
@@ -295,8 +330,11 @@ export default function V2HeadlinesResultPanel({
   ];
 
   const activeHeadlines: HeadlineRow[] = (data.headlines[activeTab] ?? []) as HeadlineRow[];
+  const sortedHeadlines = [...activeHeadlines].sort(
+    (a, b) => parseFloat(b.selectionScore ?? '0') - parseFloat(a.selectionScore ?? '0'),
+  );
   const filteredHeadlines = searchQuery
-    ? activeHeadlines.filter(h => {
+    ? sortedHeadlines.filter(h => {
         const q = searchQuery.toLowerCase();
         return (
           h.headline.toLowerCase().includes(q) ||
@@ -304,7 +342,7 @@ export default function V2HeadlinesResultPanel({
           (h.eyebrow && h.eyebrow.toLowerCase().includes(q))
         );
       })
-    : activeHeadlines;
+    : sortedHeadlines;
 
   return (
     <div style={{

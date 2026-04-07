@@ -3,7 +3,7 @@ import { randomUUID } from "crypto";
 import { nanoid } from "nanoid";
 import { protectedProcedure, router } from "../_core/trpc";
 import { invokeLLM } from "../_core/llm";
-import { BANNED_HEADLINE_PATTERNS, META_COMPLIANCE_NOTES } from "../_core/copywritingRules";
+import { BANNED_HEADLINE_PATTERNS, META_COMPLIANCE_NOTES, scoreAdContent } from "../_core/copywritingRules";
 import {
   createHeadlines,
   getHeadlinesByUserId,
@@ -421,6 +421,7 @@ Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES
             complianceScore: complianceResult.score,
             complianceVersion: complianceResult.version,
             complianceCheckedAt: new Date(),
+            selectionScore: String(scoreAdContent('headline', headline.headline ?? '')),
           };
         })
       );
@@ -539,7 +540,7 @@ Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES
 
           const headlinesWithCompliance = await Promise.all(allHeadlines.map(async (headline) => {
             const complianceResult = await checkCompliance(headline.headline, { userId: capturedUserId, generatorType: 'headlines', trackUsage: true });
-            return { ...headline, complianceScore: complianceResult.score, complianceVersion: complianceResult.version, complianceCheckedAt: new Date() };
+            return { ...headline, complianceScore: complianceResult.score, complianceVersion: complianceResult.version, complianceCheckedAt: new Date(), selectionScore: String(scoreAdContent('headline', headline.headline ?? '')) };
           }));
 
           await createHeadlines(headlinesWithCompliance);

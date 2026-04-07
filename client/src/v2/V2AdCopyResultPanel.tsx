@@ -31,6 +31,7 @@ interface AdRow {
   bodyAngle: string | null;
   content: string;
   complianceScore: number | null;
+  selectionScore?: string | null;
   rating: number;
 }
 
@@ -68,6 +69,36 @@ function ComplianceBadge({ score }: { score: number | null }) {
     }}>
       <span style={{ fontSize: "10px" }}>{isGreen ? "✓" : isAmber ? "⚠" : "✗"}</span>
       {score}/100 — {label}
+    </span>
+  );
+}
+
+// ─── Score badge (W3 — hookRate) ──────────────────────────────────────────────
+function ScoreBadge({ score }: { score?: string | null }) {
+  if (score === null || score === undefined) return null;
+  const n = parseFloat(score);
+  if (isNaN(n)) return null;
+  const isHigh = n >= 80;
+  const isMid  = n >= 65;
+  const bg     = isHigh ? "rgba(139,92,246,0.12)" : isMid ? "rgba(139,92,246,0.07)" : "rgba(26,22,36,0.06)";
+  const border = isHigh ? "rgba(139,92,246,0.40)" : isMid ? "rgba(139,92,246,0.25)" : "rgba(26,22,36,0.15)";
+  const color  = isHigh ? "#5B21B6"               : isMid ? "#6D28D9"               : "#666";
+  return (
+    <span style={{
+      display: "inline-flex",
+      alignItems: "center",
+      gap: "4px",
+      background: bg,
+      border: `1px solid ${border}`,
+      borderRadius: "9999px",
+      padding: "3px 10px",
+      fontSize: "11px",
+      fontFamily: "var(--v2-font-body)",
+      fontWeight: 600,
+      color,
+      letterSpacing: "0.02em",
+    }}>
+      ⚡ Score: {Math.round(n)}
     </span>
   );
 }
@@ -256,6 +287,9 @@ function HeadlineItem({ item, index, isFreeTier, onUpgradeClick, isFav, onToggle
       }}>
         {content}
       </p>
+      <div style={{ display: "flex", gap: "6px", alignItems: "center", marginBottom: "10px", flexWrap: "wrap" }}>
+        <ScoreBadge score={item.selectionScore} />
+      </div>
       <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
         {copyLocked ? (
           <button onClick={() => onUpgradeClick?.("Full Copy Access")} style={{ ...iconBtn, opacity: 0.4, cursor: "not-allowed" }} title="Upgrade to Pro for full copy access">🔒</button>
@@ -368,8 +402,11 @@ function BodyItem({ item, index, isFreeTier, onUpgradeClick, isFav, onToggleFav 
       }}>
         {content}
       </p>
-      {/* Compliance badge */}
-      <ComplianceBadge score={item.complianceScore} />
+      {/* Compliance + score badges */}
+      <div style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap" }}>
+        <ComplianceBadge score={item.complianceScore} />
+        <ScoreBadge score={item.selectionScore} />
+      </div>
       {/* Controls row */}
       <div style={{ display: "flex", gap: "8px", marginTop: "12px", alignItems: "center", flexWrap: "wrap" }}>
         {copyLocked ? (
@@ -474,6 +511,9 @@ function LinkItem({ item, index, isFreeTier, onUpgradeClick, isFav, onToggleFav 
       }}>
         {content}
       </p>
+      <div style={{ display: "flex", gap: "6px", alignItems: "center", marginBottom: "10px", flexWrap: "wrap" }}>
+        <ScoreBadge score={item.selectionScore} />
+      </div>
       <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
         {copyLocked ? (
           <button onClick={() => onUpgradeClick?.("Full Copy Access")} style={{ ...iconBtn, opacity: 0.4, cursor: "not-allowed" }} title="Upgrade to Pro for full copy access">🔒</button>
@@ -699,19 +739,22 @@ export default function V2AdCopyResultPanel({
 
           <div>
             {activeTab === "headlines" && (() => {
-              const filtered = searchQuery ? headlines.filter(h => h.content.toLowerCase().includes(searchQuery.toLowerCase())) : headlines;
+              const sorted = [...headlines].sort((a, b) => parseFloat(b.selectionScore ?? '0') - parseFloat(a.selectionScore ?? '0'));
+              const filtered = searchQuery ? sorted.filter(h => h.content.toLowerCase().includes(searchQuery.toLowerCase())) : sorted;
               return filtered.length === 0
                 ? <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#888", textAlign: "center", padding: "24px 0" }}>No headlines found.</p>
                 : filtered.map((h, i) => <HeadlineItem key={h.id} item={h} index={i} isFreeTier={isFreeTier} onUpgradeClick={(f) => setUpgradeFeature(f || "Per-Item Regeneration")} isFav={isAdFav(h.id)} onToggleFav={() => toggleAdFav(h.id, h.content)} />);
             })()}
             {activeTab === "body" && (() => {
-              const filtered = searchQuery ? bodies.filter(b => b.content.toLowerCase().includes(searchQuery.toLowerCase())) : bodies;
+              const sorted = [...bodies].sort((a, b) => parseFloat(b.selectionScore ?? '0') - parseFloat(a.selectionScore ?? '0'));
+              const filtered = searchQuery ? sorted.filter(b => b.content.toLowerCase().includes(searchQuery.toLowerCase())) : sorted;
               return filtered.length === 0
                 ? <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#888", textAlign: "center", padding: "24px 0" }}>No body copy found.</p>
                 : filtered.map((b, i) => <BodyItem key={b.id} item={b} index={i} isFreeTier={isFreeTier} onUpgradeClick={(f) => setUpgradeFeature(f || "Per-Item Regeneration")} isFav={isAdFav(b.id)} onToggleFav={() => toggleAdFav(b.id, b.content)} />);
             })()}
             {activeTab === "links" && (() => {
-              const filtered = searchQuery ? links.filter(l => l.content.toLowerCase().includes(searchQuery.toLowerCase())) : links;
+              const sorted = [...links].sort((a, b) => parseFloat(b.selectionScore ?? '0') - parseFloat(a.selectionScore ?? '0'));
+              const filtered = searchQuery ? sorted.filter(l => l.content.toLowerCase().includes(searchQuery.toLowerCase())) : sorted;
               return filtered.length === 0
                 ? <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#888", textAlign: "center", padding: "24px 0" }}>No links found.</p>
                 : filtered.map((l, i) => <LinkItem key={l.id} item={l} index={i} isFreeTier={isFreeTier} onUpgradeClick={(f) => setUpgradeFeature(f || "Per-Item Regeneration")} isFav={isAdFav(l.id)} onToggleFav={() => toggleAdFav(l.id, l.content)} />);
