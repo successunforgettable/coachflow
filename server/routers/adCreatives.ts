@@ -67,14 +67,17 @@ function checkCompliance(headline: string, benefit: string, problem: string): st
   return issues;
 }
 
-// Generate tabloid-style ad image prompt
+// Generate ad image prompt — baseStyle switches on uglyMode
 function generateAdImagePrompt(
   style: string,
   headline: string,
   niche: string,
-  problem: string
+  problem: string,
+  uglyMode = false
 ): string {
-  const baseStyle = "Gossip magazine style, tabloid aesthetic, phone-quality photo (NOT polished studio shot), dramatic lighting, high contrast";
+  const baseStyle = uglyMode
+    ? "Raw UGC aesthetic, shot on iPhone, unpolished and authentic, slightly messy real-world environment, natural handheld camera shake, no studio lighting, no professional makeup, low-budget realism, observational documentary style, native social feed feel"
+    : "Gossip magazine style, tabloid aesthetic, phone-quality photo (NOT polished studio shot), dramatic lighting, high contrast";
 
   // Niche context and compliance — applied to every style
   const nicheContext = `The person and setting must visually match the ${niche} niche — their clothing, environment, and expression must be recognisable to someone in that world. A fitness coach's client looks different from a crypto trader's client looks different from a corporate executive's client.`;
@@ -428,6 +431,7 @@ export const adCreativesRouter = router({
       icpId: z.number().optional(),
       visualStyle: z.string().optional(),
       imageFormat: z.string().optional(),
+      uglyMode: z.boolean().optional().default(false),
     }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
@@ -478,13 +482,15 @@ export const adCreativesRouter = router({
               capturedSvc.mainBenefit || "",
               capturedSvc.painPoints || ""
             );
+            const uglyMode = capturedInput.uglyMode ?? false;
             const imagePrompt = generateAdImagePrompt(
               variation.style,
               headline,
               niche,
-              capturedSvc.painPoints || ""
+              capturedSvc.painPoints || "",
+              uglyMode
             );
-            console.log(`[adCreatives.generateAsync] Job ${jobId} — variation ${i + 1}/5`);
+            console.log(`[adCreatives.generateAsync] Job ${jobId} — variation ${i + 1}/5 uglyMode=${uglyMode}`);
             const imageResult = await genImg({ prompt: imagePrompt });
             if (!imageResult.url) throw new Error(`Failed to generate image for variation ${i + 1}`);
             const imageResponse = await fetch(imageResult.url);
@@ -501,6 +507,7 @@ export const adCreativesRouter = router({
               mainBenefit: capturedSvc.mainBenefit || "",
               pressingProblem: capturedSvc.painPoints || "",
               adType: "lead_gen",
+              styleType: uglyMode ? "lad_bible" : "tabloid",
               designStyle: variation.style as any,
               headlineFormula: variation.formula,
               headline,

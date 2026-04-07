@@ -251,6 +251,7 @@ function ImageCard({
 export default function V2AdImageCreator() {
   const [visualStyle, setVisualStyle]   = useState(VISUAL_STYLES[0].value);
   const [imageFormat, setImageFormat]   = useState(IMAGE_FORMATS[0].value);
+  const [uglyMode, setUglyMode]         = useState(false);
   const [jobId, setJobId]               = useState<string | null>(null);
   const [status, setStatus]             = useState<"idle" | "generating" | "done" | "error">("idle");
   const [batchId, setBatchId]           = useState<string | null>(null);
@@ -348,6 +349,7 @@ export default function V2AdImageCreator() {
         icpId:       activeIcp?.id,
         visualStyle,
         imageFormat,
+        uglyMode,
       });
       setJobId(jId);
       startPolling(jId);
@@ -489,6 +491,68 @@ export default function V2AdImageCreator() {
           </div>
         </div>
 
+        {/* Ugly Ad Mode toggle */}
+        <div style={{ marginBottom: "20px" }}>
+          <button
+            onClick={() => setUglyMode(p => !p)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: 0,
+            }}
+          >
+            {/* Pill track */}
+            <span style={{
+              position: "relative",
+              display: "inline-block",
+              width: "44px",
+              height: "24px",
+              borderRadius: "9999px",
+              background: uglyMode ? "#1A1624" : "rgba(26,22,36,0.15)",
+              transition: "background 0.2s",
+              flexShrink: 0,
+            }}>
+              {/* Knob */}
+              <span style={{
+                position: "absolute",
+                top: "3px",
+                left: uglyMode ? "23px" : "3px",
+                width: "18px",
+                height: "18px",
+                borderRadius: "9999px",
+                background: "#fff",
+                boxShadow: "0 1px 4px rgba(0,0,0,0.25)",
+                transition: "left 0.2s",
+              }} />
+            </span>
+            {/* Label */}
+            <span style={{ textAlign: "left" }}>
+              <span style={{
+                display: "block",
+                fontFamily: T.fontBody,
+                fontWeight: 700,
+                fontSize: "14px",
+                color: T.dark,
+              }}>
+                Ugly Ad Mode
+              </span>
+              <span style={{
+                display: "block",
+                fontFamily: T.fontBody,
+                fontSize: "12px",
+                color: "#888",
+                marginTop: "1px",
+              }}>
+                Raw UGC style — outperforms studio ads for cold traffic
+              </span>
+            </span>
+          </button>
+        </div>
+
         {/* Credit display + Generate button */}
         <div style={{ display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
           {credits === 0 ? (
@@ -528,7 +592,7 @@ export default function V2AdImageCreator() {
             }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; }}
           >
-            Generate Ad Images
+            {uglyMode ? "Generate Ugly Ads" : "Generate Ad Images"}
           </button>
         </div>
       </div>
