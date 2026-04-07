@@ -5,6 +5,7 @@ import { adCreatives, services, users, jobs } from "../../drizzle/schema";
 import { eq, and, desc, gte } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { generateImage } from "../_core/imageGeneration";
+import { compositeHeadline } from "../_core/compositeHeadline";
 import { storagePut } from "../storage";
 import { randomBytes, randomUUID } from "crypto";
 
@@ -67,10 +68,12 @@ function checkCompliance(headline: string, benefit: string, problem: string): st
   return issues;
 }
 
-// Generate ad image prompt — baseStyle switches on uglyMode
+// Generate ad image prompt — visual scene only, no text instructions.
+// Headline text is composited server-side via sharp after image generation
+// (see server/_core/compositeHeadline.ts). AI models cannot reliably render
+// text inside images — removing text instructions eliminates hallucinated glyphs.
 function generateAdImagePrompt(
   style: string,
-  headline: string,
   niche: string,
   problem: string,
   uglyMode = false
@@ -84,15 +87,15 @@ function generateAdImagePrompt(
   const complianceNote = `Do not generate images that imply medical treatment, guaranteed financial results, or dramatic physical before/after transformation. Images must show aspiration and possibility, not guaranteed outcomes.`;
 
   const stylePrompts = {
-    person_shocked: `${baseStyle}. Person (30-45 years old) dressed and styled for the ${niche} world, with EXCITED expression, wide eyes, enthusiastic smile, pointing at viewer. Dark grey/black background. Green circle annotation around head with checkmark. Headline text overlay: "${headline}" in bold white text with yellow highlights on key words. Hand-drawn green arrow pointing from circle to viewer. ${nicheContext} ${complianceNote}`,
+    person_shocked: `${baseStyle}. Person (30-45 years old) dressed and styled for the ${niche} world, with EXCITED expression, wide eyes, enthusiastic smile, pointing at viewer. Dark grey/black background. Green circle annotation around head with checkmark. Hand-drawn green arrow pointing from circle to viewer. ${nicheContext} ${complianceNote}`,
 
-    screenshot: `${baseStyle}. Laptop screen photographed at angle showing a ${niche}-relevant dashboard or workspace with results/numbers. Dark desk surface, coffee cup visible. Multiple green circles around key metrics. Green arrows pointing UP at gains. Handwritten text "RESULTS" near circles. Headline: "${headline}" in bold white text at top. ${nicheContext} ${complianceNote}`,
+    screenshot: `${baseStyle}. Laptop screen photographed at angle showing a ${niche}-relevant dashboard or workspace with results/numbers. Dark desk surface, coffee cup visible. Multiple green circles around key metrics. Green arrows pointing UP at gains. Handwritten annotation "RESULTS" near circles. ${nicheContext} ${complianceNote}`,
 
-    person_intense: `${baseStyle}. Person (30-45 years old) dressed and styled for the ${niche} world, with CONFIDENT expression, serious face, leaning forward, direct eye contact. Dark background with spotlight on face. Green circle around key element in background. Green arrow pointing TO circled element. Headline: "${headline}" in bold white text with yellow highlights. ${nicheContext} ${complianceNote}`,
+    person_intense: `${baseStyle}. Person (30-45 years old) dressed and styled for the ${niche} world, with CONFIDENT expression, serious face, leaning forward, direct eye contact. Dark background with spotlight on face. Green circle around key element in background. Green arrow pointing TO circled element. ${nicheContext} ${complianceNote}`,
 
-    object: `${baseStyle}. Relevant object (document, product, device, or tool) specifically associated with the ${niche} niche. Dramatic lighting, dark background. Green circles around key features. Green arrows pointing to circled areas. Handwritten text "RESULTS" nearby. Headline: "${headline}" in bold white text. ${nicheContext} ${complianceNote}`,
+    object: `${baseStyle}. Relevant object (document, product, device, or tool) specifically associated with the ${niche} niche. Dramatic lighting, dark background. Green circles around key features. Green arrows pointing to circled areas. Handwritten annotation "RESULTS" nearby. ${nicheContext} ${complianceNote}`,
 
-    person_curious: `${baseStyle}. Person (30-45 years old) dressed and styled for the ${niche} world, with INTRIGUED expression, raised eyebrow, interested smile, head tilted. Dark grey background. Large green circle with handwritten benefit text inside. Green arrow pointing from circle. Headline: "${headline}" in bold white text with yellow highlights on key words. ${nicheContext} ${complianceNote}`,
+    person_curious: `${baseStyle}. Person (30-45 years old) dressed and styled for the ${niche} world, with INTRIGUED expression, raised eyebrow, interested smile, head tilted. Dark grey background. Large green circle with handwritten benefit text inside. Green arrow pointing from circle. ${nicheContext} ${complianceNote}`,
   };
 
   return stylePrompts[style as keyof typeof stylePrompts] || stylePrompts.person_shocked;
@@ -221,10 +224,9 @@ export const adCreativesRouter = router({
         // Check Meta compliance
         const complianceIssues = checkCompliance(headline, input.mainBenefit, input.pressingProblem);
         
-        // Generate image prompt
+        // Generate image prompt — no headline in prompt; composited after generation
         const imagePrompt = generateAdImagePrompt(
           variation.style,
-          headline,
           input.niche,
           input.pressingProblem
         );
@@ -243,16 +245,18 @@ export const adCreativesRouter = router({
         const imageUrl = imageResult.url;
         console.log(`[Ad Creatives] Image generated: ${imageUrl}`);
         
-        // Upload to S3 for permanent storage
-        // Download image first
+        // Download raw image from Replicate/S3
         const imageResponse = await fetch(imageUrl);
-        const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
-        
-        // Upload to S3
+        const rawBuffer = Buffer.from(await imageResponse.arrayBuffer());
+
+        // Composite headline as real typography (two-pass pipeline)
+        const imageBuffer = await compositeHeadline(rawBuffer, headline, variation.style);
+
+        // Upload composited image to S3
         const fileKey = `ad-creatives/${ctx.user.id}/${batchId}/variation-${i + 1}.png`;
         const { url: s3Url } = await storagePut(fileKey, imageBuffer, "image/png");
-        
-        console.log(`[Ad Creatives] Uploaded to S3: ${s3Url}`);
+
+        console.log(`[Ad Creatives] Composited + uploaded to S3: ${s3Url}`);
         
         // Save to database
         const result = await db.insert(adCreatives).values({
@@ -336,7 +340,6 @@ export const adCreativesRouter = router({
       const headline = existing.headline || "";
       const imagePrompt = generateAdImagePrompt(
         existing.designStyle || "person_shocked",
-        headline,
         existing.niche,
         existing.pressingProblem
       );
@@ -347,9 +350,10 @@ export const adCreativesRouter = router({
       const imageResult = await generateImage({ prompt: imagePrompt });
       if (!imageResult.url) throw new Error("Failed to generate replacement image");
 
-      // Download and upload to S3
+      // Download raw image, composite headline, upload to S3
       const imageResponse = await fetch(imageResult.url);
-      const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
+      const rawBuffer = Buffer.from(await imageResponse.arrayBuffer());
+      const imageBuffer = await compositeHeadline(rawBuffer, headline, existing.designStyle || "person_shocked");
       const fileKey = `ad-creatives/${ctx.user.id}/regen-${input.id}-${Date.now()}.png`;
       const { url: s3Url } = await storagePut(fileKey, imageBuffer, "image/png");
 
@@ -485,7 +489,6 @@ export const adCreativesRouter = router({
             const uglyMode = capturedInput.uglyMode ?? false;
             const imagePrompt = generateAdImagePrompt(
               variation.style,
-              headline,
               niche,
               capturedSvc.painPoints || "",
               uglyMode
@@ -493,8 +496,11 @@ export const adCreativesRouter = router({
             console.log(`[adCreatives.generateAsync] Job ${jobId} — variation ${i + 1}/5 uglyMode=${uglyMode}`);
             const imageResult = await genImg({ prompt: imagePrompt });
             if (!imageResult.url) throw new Error(`Failed to generate image for variation ${i + 1}`);
+            // Download raw image, composite headline as real typography, upload finished creative
             const imageResponse = await fetch(imageResult.url);
-            const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
+            const rawBuffer = Buffer.from(await imageResponse.arrayBuffer());
+            const { compositeHeadline: composite } = await import("../_core/compositeHeadline");
+            const imageBuffer = await composite(rawBuffer, headline, variation.style);
             const fileKey = `ad-creatives/${capturedUserId}/${batchId}/variation-${i + 1}.png`;
             const { url: s3Url } = await s3Put(fileKey, imageBuffer, "image/png");
             await bgDb.insert(adCreativesTable).values({
@@ -620,7 +626,7 @@ export async function generateAdCreativesBatch(params: {
     const variation = variations[i];
     const headline = HEADLINE_FORMULAS[variation.formula](mechanism, params.niche, customerCount);
     const complianceIssues = checkCompliance(headline, params.mainBenefit, params.pressingProblem);
-    const imagePrompt = generateAdImagePrompt(variation.style, headline, params.niche, params.pressingProblem);
+    const imagePrompt = generateAdImagePrompt(variation.style, params.niche, params.pressingProblem);
 
     console.log(`[generateAdCreativesBatch] Generating variation ${i + 1}/5`);
 
@@ -628,9 +634,10 @@ export async function generateAdCreativesBatch(params: {
     const imageResult = await generateImage({ prompt: imagePrompt });
     if (!imageResult.url) throw new Error(`Failed to generate image ${i + 1}`);
 
-    // Download and upload to S3
+    // Download raw image, composite headline, upload finished creative to S3
     const imageResponse = await fetch(imageResult.url);
-    const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
+    const rawBuffer = Buffer.from(await imageResponse.arrayBuffer());
+    const imageBuffer = await compositeHeadline(rawBuffer, headline, variation.style);
     const fileKey = `ad-creatives/${params.userId}/${batchId}/variation-${i + 1}.png`;
     const { url: s3Url } = await storagePut(fileKey, imageBuffer, "image/png");
 
