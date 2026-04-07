@@ -1,11 +1,13 @@
 /**
  * Issue 3: Ad Copy Angle Diversity
- * 
- * 15 distinct psychological angles for ad body copy generation.
- * Each angle has a unique copywriting framework and prompt structure.
+ *
+ * 18 distinct psychological angles for ad body copy generation.
+ * Includes 15 core angles + 3 PDC (Pain/Desire/Circumstance) angles added in W2.
  */
 
-export type BodyAngle = 
+import { BANNED_COPYWRITING_WORDS } from "./_core/copywritingRules";
+
+export type BodyAngle =
   | "pain_agitation"
   | "social_proof"
   | "authority"
@@ -20,7 +22,10 @@ export type BodyAngle =
   | "contrarian"
   | "data_driven"
   | "emotional"
-  | "direct_response";
+  | "direct_response"
+  | "pain_pdc"
+  | "desire_pdc"
+  | "circumstance_pdc";
 
 export const BODY_ANGLE_PROMPTS: Record<BodyAngle, string> = {
   pain_agitation: `
@@ -233,6 +238,66 @@ Hook: Start with "Here's what you need to do:" or "The solution is simpler than 
 Format: Short sentences, active voice, imperative verbs
 Example: "Want to master crypto without the confusion? Here's the plan: Download the [Unique Mechanism] framework. Follow the 9 simple steps. Start building your portfolio with confidence. It's that straightforward. [CTA]"
 `,
+
+  pain_pdc: `
+Generate body copy using the PDC Pain angle — agitate a specific struggle the ICP is living right now.
+
+Framework: PDC Pain (Pain / Desire / Circumstance) — Pain leg.
+
+Structure following PAS:
+1. PAIN — Name the pain precisely (30-40 words): Use the exact language the ICP uses to describe this struggle to a friend. Name the specific daily frustration — not a category, the actual lived experience. The first sentence must be about their situation, not the product.
+2. AGITATE — Show the cost of staying stuck (40-50 words): Make the pain heavier. Name what they are losing every week they don't solve this. Name the failed solutions they have already tried and why those failed. Keep sentences short — maximum 15 words each.
+3. SOLUTION — Position the offer as the only logical exit (40-60 words): Introduce the unique mechanism. Name what makes it structurally different from everything they have tried. Include one specific outcome or timeframe tied to the pressing problem.
+4. CTA (1 sentence): One clear next step. Use an approved Meta CTA format: "Learn More", "Book a Call", "Get Started", "Sign Up", or "Download Free Guide".
+
+ICP CONTEXT: Use the ideal customer profile data provided — their pains, fears, objections, and buying triggers — to make every sentence specific to this exact person. Do not write for a generic audience.
+
+Tone: Empathetic but direct. No motivation-poster language. No fluff. Write like a trusted friend who has solved this exact problem.
+
+BANNED WORDS — never use any of these: ${BANNED_COPYWRITING_WORDS.join(', ')}.
+
+Output ONE body copy, 125-150 words, plain text, no JSON wrapper.
+`,
+
+  desire_pdc: `
+Generate body copy using the PDC Desire angle — paint the specific outcome the ICP wants most.
+
+Framework: PDC Desire (Pain / Desire / Circumstance) — Desire leg.
+
+Structure following PAS:
+1. PAIN — Acknowledge where they are now before painting the desire (20-30 words): One short sentence naming the gap between where they are and where they want to be. This grounds the desire in reality, not fantasy.
+2. AGITATE — Show how close they already are (40-50 words): Name the specific thing that is keeping them from the outcome they want. It is not a lack of effort — name the missing mechanism. Make it feel frustrating that the gap is this small yet still feels so far.
+3. SOLUTION — Position the offer as the final bridge (50-60 words): Describe the desired end state in concrete, specific terms — a number, a timeframe, a daily reality. Then show how the unique mechanism is the direct bridge to that state. Be aspirational but grounded: no guarantees, no hype.
+4. CTA (1 sentence): One clear next step. Use an approved Meta CTA format: "Learn More", "Book a Call", "Get Started", "Sign Up", or "Download Free Guide".
+
+ICP CONTEXT: Use the ideal customer profile data provided — their desires, buying triggers, and communication style — to make the desired end state feel personally relevant, not generic. Describe the outcome in the words they would use, not coaching language.
+
+Tone: Aspirational but grounded. Specific outcomes, not emotional hyperbole. Write the desire in a way that feels achievable and earned, not wishful.
+
+BANNED WORDS — never use any of these: ${BANNED_COPYWRITING_WORDS.join(', ')}.
+
+Output ONE body copy, 125-150 words, plain text, no JSON wrapper.
+`,
+
+  circumstance_pdc: `
+Generate body copy using the PDC Circumstance angle — mirror the ICP's exact current situation back at them.
+
+Framework: PDC Circumstance (Pain / Desire / Circumstance) — Circumstance leg.
+
+Structure following PAS:
+1. PAIN — Describe where they are right now with precision (35-45 words): Mirror their exact current situation back at them so specifically that it feels like the ad was written for them personally. Name the stage they are at, the specific actions they are already taking, and why those actions are not producing the results they expect. Do not open with a question — open with an observation.
+2. AGITATE — Identify what is holding them at this stage (40-50 words): Name the structural reason why effort alone is not enough. This is not a character flaw — it is a missing mechanism. Make it feel logical and obvious once named. Keep sentences under 15 words.
+3. SOLUTION — Show the offer as the mechanism to move forward (40-55 words): Introduce the unique mechanism as the specific thing that addresses the exact bottleneck named in the agitation. Connect it directly to the circumstance described in the opening. One concrete outcome or timeframe.
+4. CTA (1 sentence): One clear next step. Use an approved Meta CTA format: "Learn More", "Book a Call", "Get Started", "Sign Up", or "Download Free Guide".
+
+ICP CONTEXT: Use the ideal customer profile data provided — their objections, current situation, communication style, and what makes them buy — to make the circumstance description feel unnervingly accurate. The goal is pattern recognition: the reader thinks "this is exactly me."
+
+Tone: Observational, not salesy. Precise, not clinical. Write like someone who has studied this person's situation carefully and is describing it back without judgment.
+
+BANNED WORDS — never use any of these: ${BANNED_COPYWRITING_WORDS.join(', ')}.
+
+Output ONE body copy, 125-150 words, plain text, no JSON wrapper.
+`,
 };
 
 export const ALL_BODY_ANGLES: BodyAngle[] = [
@@ -251,4 +316,7 @@ export const ALL_BODY_ANGLES: BodyAngle[] = [
   "data_driven",
   "emotional",
   "direct_response",
+  "pain_pdc",
+  "desire_pdc",
+  "circumstance_pdc",
 ];
