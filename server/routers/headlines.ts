@@ -454,7 +454,7 @@ Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES
       const { user } = ctx;
       await checkAndResetQuotaIfNeeded(user.id);
       if (user.role !== "superuser") {
-        const maxHeadlines = user.subscriptionTier === "agency" ? 20 : 6;
+        const maxHeadlines = user.subscriptionTier === "agency" ? 50 : user.subscriptionTier === "pro" ? 20 : 6;
         if (user.headlineGeneratedCount >= maxHeadlines) {
           throw new TRPCError({ code: "FORBIDDEN", message: `You've reached your monthly limit of ${maxHeadlines} headline sets. Upgrade to generate more.` });
         }
