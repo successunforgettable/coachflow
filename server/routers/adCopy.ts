@@ -420,8 +420,8 @@ Format as JSON array:
       // Issue 3: Generate Body Copy using 15 distinct angles
       const { ALL_BODY_ANGLES, BODY_ANGLE_PROMPTS } = await import('../adCopyAngles');
       
-      // Select angles up to count — W2: cap raised to ALL_BODY_ANGLES.length (18) to include PDC angles
-      const selectedAngles = ALL_BODY_ANGLES.slice(0, Math.min(count, ALL_BODY_ANGLES.length));
+      // W2: always run all angles — body count is independent of headline/link count
+      const selectedAngles = [...ALL_BODY_ANGLES];
       
       // Generate one body per angle in parallel
       const bodyPromises = selectedAngles.map(async (angle) => {
@@ -753,7 +753,8 @@ Format as JSON array:
           const headlineData = JSON.parse(stripMarkdownJson(headlineContent));
 
           const { ALL_BODY_ANGLES, BODY_ANGLE_PROMPTS } = await import('../adCopyAngles');
-          const selectedAngles = ALL_BODY_ANGLES.slice(0, Math.min(count, ALL_BODY_ANGLES.length));
+          // W2: always run all angles — body count is independent of headline/link count
+          const selectedAngles = [...ALL_BODY_ANGLES];
           const bodyPromises = selectedAngles.map(async (angle: string) => {
             const anglePrompt = (BODY_ANGLE_PROMPTS as any)[angle];
             const bodyPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ONE high-converting ad BODY COPY using the ${angle.replace('_', ' ')} angle:\n\nService: ${capturedService.name}\nTarget Market: ${capturedInput.targetMarket}\nPressing Problem: ${resolvedPressingProblem}\nDesired Outcome: ${resolvedDesiredOutcome}\nUnique Mechanism: ${resolvedUniqueMechanism || 'N/A'}\n\n${socialProofGuidance}\n\n${icpContext}\n\nAd Type: ${adTypeContext}\nAd Style: ${capturedInput.adStyle}\nCall To Action: ${capturedInput.adCallToAction}\n\n${anglePrompt}\n\nCreate ONE body copy (125-150 words). End with clear call-to-action: ${capturedInput.adCallToAction}\n\nReturn ONLY the body text as a single string, no JSON wrapper.`;
