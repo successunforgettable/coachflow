@@ -143,9 +143,9 @@ async function startServer() {
     }
   }, 24 * 60 * 60 * 1000); // runs every 24 hours
 
-  // Meta Daily Read-Only Job — 100 API calls/day for App Review compliance
+  // Meta Daily Read-Only Job — 150 API calls/day for App Review compliance
   const runMetaDailyJob = async () => {
-    const MAX_CALLS = 100;
+    const MAX_CALLS = 150;
     let callCount = 0;
     const now = new Date();
     console.log(`[Meta Daily Job] Starting at ${now.toISOString()} — target: ${MAX_CALLS} read-only calls`);
