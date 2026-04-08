@@ -324,14 +324,16 @@ export const adCreativesRouter = router({
       return { success: true };
     }),
 
-  // Regenerate a single ad creative by ID
+  // Regenerate a single ad creative by ID — async job pattern to avoid
+  // Cloudflare's 100s read timeout killing the connection during Flux generation.
+  // Returns { jobId } immediately; client polls /api/jobs/:jobId for completion.
   regenerateSingle: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
-      // Get the existing creative
+      // Validate the creative exists before firing the job
       const [existing] = await db
         .select()
         .from(adCreatives)
@@ -342,34 +344,70 @@ export const adCreativesRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Creative not found" });
       }
 
-      const headline = existing.headline || "";
-      const imagePrompt = generateAdImagePrompt(
-        existing.designStyle || "person_shocked",
-        existing.niche,
-        existing.pressingProblem
-      );
+      // Create job record and return immediately — pipeline runs in background
+      const jobId = randomUUID();
+      await db.insert(jobs).values({ id: jobId, userId: String(ctx.user.id), status: "pending" });
 
-      console.log(`[adCreatives.regenerateSingle] Regenerating creative ${input.id}`);
+      const capturedUserId  = ctx.user.id;
+      const capturedId      = input.id;
+      const capturedStyle   = existing.designStyle || "person_shocked";
+      const capturedNiche   = existing.niche;
+      const capturedProblem = existing.pressingProblem;
+      const capturedHeadline = existing.headline || "";
 
-      // Generate new image
-      const imageResult = await generateImage({ prompt: imagePrompt });
-      if (!imageResult.url) throw new Error("Failed to generate replacement image");
+      setImmediate(async () => {
+        try {
+          const { getDb: getDbBg }                    = await import("../db");
+          const { eq: eqBg, and: andBg }              = await import("drizzle-orm");
+          const { adCreatives: adCreativesTable, jobs: jobsTable } = await import("../../drizzle/schema");
+          const { generateImage: genImg }             = await import("../_core/imageGeneration");
+          const { compositeHeadline: composite }      = await import("../_core/compositeHeadline");
+          const { storagePut: s3Put }                 = await import("../storage");
+          const bgDb = await getDbBg();
+          if (!bgDb) throw new Error("Database not available in background job");
 
-      // Download raw image, composite headline, upload to S3
-      const imageResponse = await fetch(imageResult.url);
-      const rawBuffer = Buffer.from(await imageResponse.arrayBuffer());
-      const imageBuffer = await compositeHeadline(rawBuffer, headline, existing.designStyle || "person_shocked");
-      const fileKey = `ad-creatives/${ctx.user.id}/regen-${input.id}-${Date.now()}.png`;
-      const { url: s3Url } = await storagePut(fileKey, imageBuffer, "image/png");
+          console.log(`[adCreatives.regenerateSingle] Job ${jobId} — regenerating creative ${capturedId}`);
 
-      // Update the existing record in-place
-      await db
-        .update(adCreatives)
-        .set({ imageUrl: s3Url })
-        .where(and(eq(adCreatives.id, input.id), eq(adCreatives.userId, ctx.user.id)));
+          const imagePrompt = generateAdImagePrompt(capturedStyle, capturedNiche, capturedProblem);
+          const imageResult = await genImg({ prompt: imagePrompt });
+          if (!imageResult.url) throw new Error("Failed to generate replacement image");
 
-      console.log(`[adCreatives.regenerateSingle] Done. New URL: ${s3Url}`);
-      return { id: input.id, imageUrl: s3Url };
+          const imageResponse = await fetch(imageResult.url);
+          const rawBuffer = Buffer.from(await imageResponse.arrayBuffer());
+          const imageBuffer = await composite(rawBuffer, capturedHeadline, capturedStyle);
+          const fileKey = `ad-creatives/${capturedUserId}/regen-${capturedId}-${Date.now()}.png`;
+          const { url: s3Url } = await s3Put(fileKey, imageBuffer, "image/png");
+
+          await bgDb
+            .update(adCreativesTable)
+            .set({ imageUrl: s3Url })
+            .where(andBg(eqBg(adCreativesTable.id, capturedId), eqBg(adCreativesTable.userId, capturedUserId)));
+
+          await bgDb
+            .update(jobsTable)
+            .set({ status: "complete", result: JSON.stringify({ id: capturedId, imageUrl: s3Url }) })
+            .where(eqBg(jobsTable.id, jobId));
+
+          console.log(`[adCreatives.regenerateSingle] Job ${jobId} complete — new URL: ${s3Url}`);
+        } catch (err: unknown) {
+          const errorMessage = err instanceof Error ? err.message : String(err);
+          console.error(`[adCreatives.regenerateSingle] Job ${jobId} failed:`, errorMessage);
+          try {
+            const { getDb: getDbBg2 } = await import("../db");
+            const { eq: eqBg2 }       = await import("drizzle-orm");
+            const { jobs: jobsTable2 } = await import("../../drizzle/schema");
+            const bgDb2 = await getDbBg2();
+            if (bgDb2) {
+              await bgDb2
+                .update(jobsTable2)
+                .set({ status: "failed", error: errorMessage.slice(0, 1024) })
+                .where(eqBg2(jobsTable2.id, jobId));
+            }
+          } catch { /* ignore */ }
+        }
+      });
+
+      return { jobId };
     }),
 
   // Rate creative

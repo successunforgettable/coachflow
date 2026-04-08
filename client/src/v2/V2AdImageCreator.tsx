@@ -362,10 +362,26 @@ export default function V2AdImageCreator() {
   }
 
   // ── Regenerate single card ───────────────────────────────────────────────────
+  // regenerateSingle now returns { jobId } immediately (async job pattern).
+  // We poll /api/jobs/:jobId until complete then refetch the batch.
   async function handleRegenerate(id: number) {
     setRegenIds((prev) => new Set(prev).add(id));
     try {
-      await regenerateSingle.mutateAsync({ id });
+      const { jobId } = await regenerateSingle.mutateAsync({ id });
+      // Poll until the background job finishes
+      await new Promise<void>((resolve) => {
+        const interval = setInterval(async () => {
+          try {
+            const res = await fetch(`/api/jobs/${jobId}`);
+            if (!res.ok) return;
+            const data = await res.json();
+            if (data.status === "complete" || data.status === "failed") {
+              clearInterval(interval);
+              resolve();
+            }
+          } catch { /* keep polling */ }
+        }, 5_000);
+      });
       await refetchBatch();
     } catch { /* ignore */ }
     setRegenIds((prev) => { const s = new Set(prev); s.delete(id); return s; });
