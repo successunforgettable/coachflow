@@ -138,30 +138,33 @@ export async function compositeHeadline(
         `</svg>`
       );
 
+    let result: Buffer;
+
     if (designStyle === "screenshot") {
       // Top bar — sits above the laptop/dashboard scene
-      return sharp(imageBuffer)
+      result = await sharp(imageBuffer)
         .composite([{ input: buildSvg("rgba(0,0,0,0.82)"), gravity: "north" }])
         .png()
         .toBuffer();
-    }
-
-    if (designStyle === "object") {
+    } else if (designStyle === "object") {
       // Centred bar — text floats over the object, drawing the eye in
-      return sharp(imageBuffer)
+      result = await sharp(imageBuffer)
         .composite([{ input: buildSvg("rgba(0,0,0,0.77)"), gravity: "center" }])
+        .png()
+        .toBuffer();
+    } else {
+      // Default: person_shocked, person_intense, person_curious — south bar
+      result = await sharp(imageBuffer)
+        .composite([{ input: buildSvg("rgba(0,0,0,0.75)"), gravity: "south" }])
         .png()
         .toBuffer();
     }
 
-    // Default: person_shocked, person_intense, person_curious — south bar
-    // Keeps the face/expression in the upper portion, text at the bottom
-    return sharp(imageBuffer)
-      .composite([{ input: buildSvg("rgba(0,0,0,0.75)"), gravity: "south" }])
-      .png()
-      .toBuffer();
+    console.log("[compositeHeadline] SUCCESS: text rendered, buffer size:", result.length);
+    return result;
 
   } catch (err) {
+    console.error("[compositeHeadline] FAILED:", err);
     // Never block generation — return the original buffer if compositing fails
     console.error("[compositeHeadline] SVG composite failed, returning original buffer:", err);
     return imageBuffer;
