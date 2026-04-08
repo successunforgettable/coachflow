@@ -86,16 +86,21 @@ function generateAdImagePrompt(
   const nicheContext = `The person and setting must visually match the ${niche} niche — their clothing, environment, and expression must be recognisable to someone in that world. A fitness coach's client looks different from a crypto trader's client looks different from a corporate executive's client.`;
   const complianceNote = `Do not generate images that imply medical treatment, guaranteed financial results, or dramatic physical before/after transformation. Images must show aspiration and possibility, not guaranteed outcomes.`;
 
+  // Hard negative — applied to every style. Diffusion models treat text as
+  // pixel-prediction and hallucinate garbled glyphs; real headlines are composited
+  // server-side by compositeHeadline.ts so the AI scene must have zero text.
+  const noText = "NO text, NO words, NO letters, NO numbers, NO captions, NO labels, NO signs, NO chalk writing, NO handwriting, NO overlay text anywhere in the image.";
+
   const stylePrompts = {
-    person_shocked: `${baseStyle}. Person (30-45 years old) dressed and styled for the ${niche} world, with EXCITED expression, wide eyes, enthusiastic smile, pointing at viewer. Dark grey/black background. Green circle annotation around head with checkmark. Hand-drawn green arrow pointing from circle to viewer. ${nicheContext} ${complianceNote}`,
+    person_shocked: `${baseStyle}. Person (30-45 years old) dressed and styled for the ${niche} world, with EXCITED expression, wide eyes, enthusiastic smile, pointing at viewer. Dark grey/black background. Green circle annotation around head with checkmark. Hand-drawn green arrow pointing from circle to viewer. ${nicheContext} ${complianceNote} ${noText}`,
 
-    screenshot: `${baseStyle}. Laptop screen photographed at angle showing a ${niche}-relevant dashboard or workspace with results/numbers. Dark desk surface, coffee cup visible. Multiple green circles around key metrics. Green arrows pointing UP at gains. Handwritten annotation "RESULTS" near circles. ${nicheContext} ${complianceNote}`,
+    screenshot: `${baseStyle}. Laptop screen photographed at angle showing a ${niche}-relevant dashboard or workspace with results/numbers. Dark desk surface, coffee cup visible. Multiple green circles around key metrics. Green arrows pointing UP at gains. ${nicheContext} ${complianceNote} ${noText}`,
 
-    person_intense: `${baseStyle}. Person (30-45 years old) dressed and styled for the ${niche} world, with CONFIDENT expression, serious face, leaning forward, direct eye contact. Dark background with spotlight on face. Green circle around key element in background. Green arrow pointing TO circled element. ${nicheContext} ${complianceNote}`,
+    person_intense: `${baseStyle}. Person (30-45 years old) dressed and styled for the ${niche} world, with CONFIDENT expression, serious face, leaning forward, direct eye contact. Dark background with spotlight on face. Green circle around key element in background. Green arrow pointing TO circled element. ${nicheContext} ${complianceNote} ${noText}`,
 
-    object: `${baseStyle}. Relevant object (document, product, device, or tool) specifically associated with the ${niche} niche. Dramatic lighting, dark background. Green circles around key features. Green arrows pointing to circled areas. Handwritten annotation "RESULTS" nearby. ${nicheContext} ${complianceNote}`,
+    object: `${baseStyle}. Relevant object (document, product, device, or tool) specifically associated with the ${niche} niche. Dramatic lighting, dark background. Green circles around key features. Green arrows pointing to circled areas. ${nicheContext} ${complianceNote} ${noText}`,
 
-    person_curious: `${baseStyle}. Person (30-45 years old) dressed and styled for the ${niche} world, with INTRIGUED expression, raised eyebrow, interested smile, head tilted. Dark grey background. Large green circle with handwritten benefit text inside. Green arrow pointing from circle. ${nicheContext} ${complianceNote}`,
+    person_curious: `${baseStyle}. Person (30-45 years old) dressed and styled for the ${niche} world, with INTRIGUED expression, raised eyebrow, interested smile, head tilted. Dark grey background. Large green circle around a key element. Green arrow pointing from circle. ${nicheContext} ${complianceNote} ${noText}`,
   };
 
   return stylePrompts[style as keyof typeof stylePrompts] || stylePrompts.person_shocked;
