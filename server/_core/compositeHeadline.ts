@@ -1,3 +1,4 @@
+// cache-bust: fonts-dejavu-core
 /**
  * R2b — Two-pass image pipeline: sharp headline compositor.
  *
