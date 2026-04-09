@@ -30,7 +30,7 @@
  * returned unchanged — generation never blocks.
  */
 import sharp from "sharp";
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
+import { existsSync, writeFileSync, mkdirSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 
@@ -68,11 +68,19 @@ import { join } from "path";
   }
 })();
 
-// ── Level-2 fix: embed a bold TTF as a data: URI in SVG @font-face ──────────
-// Bypasses fontconfig name resolution — librsvg loads font bytes from the SVG
-// string itself, no filesystem lookup needed after the initial file read.
+// ── Level-2 fix: reference bold TTF by file:// path in SVG @font-face ───────
+// Bypasses fontconfig name resolution — librsvg loads the font directly from
+// the file path embedded in the SVG @font-face src url().
+//
+// We use a file:// path rather than a base64 data URI because a 400 KB base64
+// string embedded inside every SVG string causes librsvg to silently drop the
+// @font-face (parse/memory limit), leaving font-family "ZH" unresolved and
+// text rendering as invisible zero-height glyphs.
+//
+// With a file:// url the SVG stays small (<1 KB) and librsvg reads the font
+// bytes directly from disk — no MIME-type ambiguity, no size limits.
 const BOLD_TTF_CANDIDATES = [
-  // Ubuntu / Debian (fonts-dejavu-core package)
+  // Ubuntu / Debian (fonts-dejavu-core package — installed via nixpacks.toml)
   "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
   // Ubuntu (fonts-liberation package)
   "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
@@ -90,25 +98,24 @@ const BOLD_TTF_CANDIDATES = [
 ];
 
 // Cached once per process — `undefined` = not yet searched, `null` = not found
-let _embeddedFontUri: string | null | undefined = undefined;
+let _fontFilePath: string | null | undefined = undefined;
 
-function getEmbeddedFontUri(): string | null {
-  if (_embeddedFontUri !== undefined) return _embeddedFontUri;
+function getFontFilePath(): string | null {
+  if (_fontFilePath !== undefined) return _fontFilePath;
   for (const p of BOLD_TTF_CANDIDATES) {
     try {
       if (existsSync(p)) {
-        const b64 = readFileSync(p).toString("base64");
-        _embeddedFontUri = `data:font/truetype;base64,${b64}`;
-        console.log("[compositeHeadline] embedded bold TTF from:", p);
-        return _embeddedFontUri;
+        _fontFilePath = p;
+        console.log("[compositeHeadline] found bold TTF at:", p);
+        return _fontFilePath;
       }
     } catch { /* try next */ }
   }
-  _embeddedFontUri = null;
+  _fontFilePath = null;
   console.warn(
     "[compositeHeadline] WARNING: no bold TTF found at any candidate path.",
-    "Text will use system font fallback (may be invisible if no fonts installed).",
-    "To fix permanently, add nixpacks.toml: aptPkgs = [\"fonts-dejavu-core\"]",
+    "Text will use generic font fallback (may be invisible if no fonts installed).",
+    "Fix: nixpacks.toml aptPkgs = [\"fonts-dejavu-core\"] — already committed.",
   );
   return null;
 }
@@ -166,16 +173,16 @@ export async function compositeHeadline(
     }
 
     // ── Build SVG ────────────────────────────────────────────────────────────
-    // If a bold TTF was found, embed it as a data: URI in @font-face so
-    // librsvg loads the font bytes directly from the SVG string — no fontconfig
-    // name resolution needed. Otherwise fall back to a generic font stack.
-    const fontUri = getEmbeddedFontUri();
-    const FAMILY  = fontUri ? "ZH" : "DejaVu Sans,Liberation Sans,FreeSans,sans-serif";
+    // If a bold TTF was found, reference it via file:// URI in @font-face so
+    // librsvg loads the font from disk without fontconfig name resolution.
+    // A file:// src keeps the SVG tiny (<1 KB) and avoids data URI size limits.
+    const fontPath = getFontFilePath();
+    const FAMILY   = fontPath ? "ZH" : "DejaVu Sans,Liberation Sans,FreeSans,sans-serif";
 
-    const fontFaceBlock = fontUri
+    const fontFaceBlock = fontPath
       ? `<defs><style>@font-face{` +
         `font-family:"ZH";` +
-        `src:url("${fontUri}") format("truetype");` +
+        `src:url("file://${fontPath}") format("truetype");` +
         `font-weight:bold;` +
         `}</style></defs>`
       : "";
