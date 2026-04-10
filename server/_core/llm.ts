@@ -244,11 +244,11 @@ async function invokeClaudeAPI(params: InvokeParams): Promise<InvokeResult> {
     content: typeof m.content === "string" ? m.content : JSON.stringify(m.content),
   }));
 
-  // Use latest Claude models — claude-sonnet-4-5 confirmed available on this account
+  // Use latest Claude models — updated April 2026
   const PREFERRED_MODELS = [
-    "claude-sonnet-4-5",   // Latest Sonnet — best quality for marketing copy
-    "claude-haiku-4-5",   // Latest Haiku fallback
-    "claude-3-haiku-20240307", // Legacy fallback
+    "claude-sonnet-4-6",          // Current Sonnet — best quality for marketing copy
+    "claude-haiku-4-5-20251001",  // Current Haiku fallback
+    "claude-3-haiku-20240307",    // Legacy fallback
   ];
 
   const systemContent = systemPrompt
@@ -314,8 +314,9 @@ async function invokeClaudeAPI(params: InvokeParams): Promise<InvokeResult> {
       throw new Error("Claude API overloaded — please try again in a minute");
     }
 
-    // Only retry on model-not-found (404); propagate other errors immediately
-    if (response.status !== 404) {
+    // Retry on model-not-found (404) or server error (500 — deprecated models return 500, not 404)
+    // Propagate all other errors (401, 400, 429, 529-handled-above) immediately
+    if (response.status !== 404 && response.status !== 500) {
       throw new Error(`Claude API failed: ${response.status} – ${lastError}`);
     }
   }
