@@ -36,7 +36,7 @@ export function cfImg(url: string | null | undefined): string {
  *        fl_layer_apply — close and composite the layer
  *
  * @param uploadUrl   The Cloudinary secure_url returned by storagePut
- * @param headline    Raw headline string — encoded internally
+ * @param headline    Raw plain-text headline string — encoded internally (single-pass, no double-encoding)
  * @param designStyle One of: screenshot | object | person_shocked | person_intense | person_curious
  * @returns Cloudinary delivery URL with text overlay baked into the transformation chain
  */
@@ -54,12 +54,27 @@ export function buildHeadlineUrl(
     "south"; // person_shocked, person_intense, person_curious, default
 
   // Encode headline for safe embedding in a Cloudinary URL path segment.
-  // encodeURIComponent handles most characters; additionally double-encode
-  // commas (%2C → %252C) and slashes (%2F → %252F) because these are
-  // Cloudinary transformation delimiters and must not be decoded server-side.
-  const encoded = encodeURIComponent(headline)
-    .replace(/%2C/gi, "%252C")
-    .replace(/%2F/gi, "%252F");
+  //
+  // DO NOT use encodeURIComponent here — it causes double-encoding:
+  //   encodeURIComponent("90%") → "90%25"
+  //   encodeURIComponent("CUT TIME") → "CUT%20TIME"
+  // If the URL later passes through any further encoding layer, the %25
+  // and %20 each get re-encoded, producing %2525 and %2520 respectively.
+  //
+  // Instead, use a single-pass minimal encoder:
+  //   - Only encode characters that are invalid in URL path segments, OR
+  //     that would confuse Cloudinary's transformation parser
+  //   - % MUST be encoded first (to avoid re-encoding our own escape sequences)
+  //   - Commas → %2C (Cloudinary uses commas as parameter separators)
+  //   - Slashes → %2F (slashes split the URL path into new segments)
+  //   - Spaces → %20 (invalid in URL paths)
+  //   - All other chars (letters, digits, colons, periods, +, ?, #, etc.)
+  //     are left as-is — Cloudinary's text parser handles them correctly
+  const encoded = headline
+    .replace(/%/g,  "%25") // must be first — encodes literal % signs in text
+    .replace(/ /g,  "%20") // spaces invalid in URL path segments
+    .replace(/,/g,  "%2C") // Cloudinary parameter separator
+    .replace(/\//g, "%2F"); // URL path separator
 
   const transforms = [
     `l_text:Arial_52_bold:${encoded}`,
