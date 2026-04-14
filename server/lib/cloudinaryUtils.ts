@@ -25,14 +25,17 @@ export function cfImg(url: string | null | undefined): string {
  * font stack (standard web-safe fonts + Google Fonts).
  *
  * Transformation chain applied:
- *   1. Open text layer — l_text:Arial_52_bold:{url-encoded headline}
+ *   1. Open text layer — l_text:Impact_80:{url-encoded headline}
+ *      Impact 80px: bold, condensed, high contrast — standard ad creative font
  *   2. Apply layer params:
- *        b_rgb:000000  — black background behind the text block
- *        co_white      — white text colour
+ *        b_rgb:000000  — solid black background behind the text block
+ *        co_white      — pure white text
  *        g_{gravity}   — north (screenshot) / center (object) / south (person styles)
  *        w_1080        — wrap text at full image width
- *        o_85          — 85% opacity on the whole layer (bar + text)
+ *        c_lpad        — pad layer to minimum height (adds equal top/bottom padding)
+ *        h_160         — minimum bar height: 160px (fits 1-line 80px text with padding)
  *        fl_layer_apply — close and composite the layer
+ *      No o_ (opacity) param → defaults to 100% — fully solid black bar
  *
  * @param uploadUrl   The Cloudinary secure_url returned by storagePut
  * @param headline    Raw plain-text headline string — encoded internally (single-pass, no double-encoding)
@@ -78,9 +81,13 @@ export function buildHeadlineUrl(
     .replace(/\?/g, "%3F") // query string delimiter
     .replace(/#/g,  "%23"); // fragment delimiter
 
+  // Impact 80px: bold condensed ad font — far more readable at a glance than Arial.
+  // c_lpad,h_160 — pads the text layer to 160px tall with the background colour,
+  //   giving equal top/bottom margin. Natural bar for 2-line text is ~200px.
+  // No o_ param → 100% opaque. Semi-transparency (o_85) was invisible on dark images.
   const transforms = [
-    `l_text:Arial_52_bold:${encoded}`,
-    `b_rgb:000000,co_white,g_${gravity},w_1080,o_85,fl_layer_apply`,
+    `l_text:Impact_80:${encoded}`,
+    `b_rgb:000000,co_white,g_${gravity},w_1080,c_lpad,h_160,fl_layer_apply`,
   ].join("/");
 
   // Insert before the version/public_id segment — Cloudinary applies transforms left-to-right
