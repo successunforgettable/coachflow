@@ -31,7 +31,6 @@ export function cfImg(url: string | null | undefined): string {
  *        co_white      — white text colour
  *        g_{gravity}   — north (screenshot) / center (object) / south (person styles)
  *        w_1080        — wrap text at full image width
- *        pa_30         — 30 px padding on all sides of the text block
  *        o_85          — 85% opacity on the whole layer (bar + text)
  *        fl_layer_apply — close and composite the layer
  *
@@ -61,24 +60,27 @@ export function buildHeadlineUrl(
   // If the URL later passes through any further encoding layer, the %25
   // and %20 each get re-encoded, producing %2525 and %2520 respectively.
   //
-  // Instead, use a single-pass minimal encoder:
-  //   - Only encode characters that are invalid in URL path segments, OR
-  //     that would confuse Cloudinary's transformation parser
+  // Single-pass minimal encoder — only encodes chars that would break
+  // Cloudinary's URL transformation parser:
   //   - % MUST be encoded first (to avoid re-encoding our own escape sequences)
-  //   - Commas → %2C (Cloudinary uses commas as parameter separators)
-  //   - Slashes → %2F (slashes split the URL path into new segments)
-  //   - Spaces → %20 (invalid in URL paths)
-  //   - All other chars (letters, digits, colons, periods, +, ?, #, etc.)
-  //     are left as-is — Cloudinary's text parser handles them correctly
+  //   - Colons → %3A  CRITICAL: Cloudinary uses : as the l_text:font:text separator
+  //   - Commas → %2C  Cloudinary uses commas as parameter separators
+  //   - Slashes → %2F  slashes split the URL path into new segments
+  //   - Spaces → %20  invalid in URL paths
+  //   - ? → %3F  query string delimiter
+  //   - # → %23  fragment delimiter
   const encoded = headline
     .replace(/%/g,  "%25") // must be first — encodes literal % signs in text
+    .replace(/:/g,  "%3A") // CRITICAL: Cloudinary l_text:font:text separator
     .replace(/ /g,  "%20") // spaces invalid in URL path segments
     .replace(/,/g,  "%2C") // Cloudinary parameter separator
-    .replace(/\//g, "%2F"); // URL path separator
+    .replace(/\//g, "%2F") // URL path separator
+    .replace(/\?/g, "%3F") // query string delimiter
+    .replace(/#/g,  "%23"); // fragment delimiter
 
   const transforms = [
     `l_text:Arial_52_bold:${encoded}`,
-    `b_rgb:000000,co_white,g_${gravity},w_1080,pa_30,o_85,fl_layer_apply`,
+    `b_rgb:000000,co_white,g_${gravity},w_1080,o_85,fl_layer_apply`,
   ].join("/");
 
   // Insert before the version/public_id segment — Cloudinary applies transforms left-to-right
