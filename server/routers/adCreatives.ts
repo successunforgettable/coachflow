@@ -6,7 +6,7 @@ import { eq, and, desc, gte } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { generateImage } from "../_core/imageGeneration";
 import { storagePut } from "../storage";
-import { buildHeadlineUrl } from "../lib/cloudinaryUtils";
+import { compositeHeadline } from "../_core/compositeHeadline";
 import { randomBytes, randomUUID } from "crypto";
 
 // Meta-prohibited phrases for compliance checking
@@ -69,9 +69,9 @@ function checkCompliance(headline: string, benefit: string, problem: string): st
 }
 
 // Generate ad image prompt — visual scene only, no text instructions.
-// Headline text is overlaid via Cloudinary transformation URL after generation
-// (see buildHeadlineUrl in server/lib/cloudinaryUtils.ts). AI models cannot
-// reliably render text — removing text instructions eliminates hallucinated glyphs.
+// Headline text is composited server-side via @resvg/resvg-js after generation
+// (see server/_core/compositeHeadline.ts). AI models cannot reliably render text —
+// removing text instructions eliminates hallucinated glyphs.
 function generateAdImagePrompt(
   style: string,
   niche: string,
@@ -88,7 +88,7 @@ function generateAdImagePrompt(
 
   // Hard negative — applied to every style. Diffusion models treat text as
   // pixel-prediction and hallucinate garbled glyphs; real headlines are composited
-  // server-side via Cloudinary transformation URL so the AI scene must have zero text.
+  // server-side via resvg so the AI scene must have zero text.
   const noText = "NO text, NO words, NO letters, NO numbers, NO captions, NO labels, NO signs, NO chalk writing, NO handwriting, NO overlay text anywhere in the image.";
 
   const stylePrompts = {
@@ -254,13 +254,12 @@ export const adCreativesRouter = router({
         const imageResponse = await fetch(imageUrl);
         const rawBuffer = Buffer.from(await imageResponse.arrayBuffer());
 
-        // Upload raw image to Cloudinary, then apply headline as a server-side
-        // transformation URL — no sharp compositing, no fonts on Railway required.
+        // Composite headline server-side, upload baked PNG once, store clean URL
+        const compositedBuffer = await compositeHeadline(rawBuffer, headline, variation.style);
         const fileKey = `ad-creatives/${ctx.user.id}/${batchId}/variation-${i + 1}.png`;
-        const { url: rawUrl } = await storagePut(fileKey, rawBuffer, "image/png");
-        const s3Url = buildHeadlineUrl(rawUrl, headline, variation.style);
+        const { url: s3Url } = await storagePut(fileKey, compositedBuffer, "image/png");
 
-        console.log(`[Ad Creatives] Uploaded to Cloudinary + headline overlay URL: ${s3Url}`);
+        console.log(`[Ad Creatives] Uploaded composited PNG to storage: ${s3Url}`);
         
         // Save to database
         const result = await db.insert(adCreatives).values({
@@ -361,7 +360,7 @@ export const adCreativesRouter = router({
           const { adCreatives: adCreativesTable, jobs: jobsTable } = await import("../../drizzle/schema");
           const { generateImage: genImg }             = await import("../_core/imageGeneration");
           const { storagePut: s3Put }                 = await import("../storage");
-          const { buildHeadlineUrl: buildUrl }        = await import("../lib/cloudinaryUtils");
+          const { compositeHeadline: doComposite }    = await import("../_core/compositeHeadline");
           const bgDb = await getDbBg();
           if (!bgDb) throw new Error("Database not available in background job");
 
@@ -373,9 +372,9 @@ export const adCreativesRouter = router({
 
           const imageResponse = await fetch(imageResult.url);
           const rawBuffer = Buffer.from(await imageResponse.arrayBuffer());
+          const compositedBuffer = await doComposite(rawBuffer, capturedHeadline, capturedStyle);
           const fileKey = `ad-creatives/${capturedUserId}/regen-${capturedId}-${Date.now()}.png`;
-          const { url: rawUrl } = await s3Put(fileKey, rawBuffer, "image/png");
-          const s3Url = buildUrl(rawUrl, capturedHeadline, capturedStyle);
+          const { url: s3Url } = await s3Put(fileKey, compositedBuffer, "image/png");
 
           await bgDb
             .update(adCreativesTable)
@@ -538,13 +537,13 @@ export const adCreativesRouter = router({
             console.log(`[adCreatives.generateAsync] Job ${jobId} — variation ${i+1}/5 uglyMode=${uglyMode}`);
             const imageResult = await genImg({ prompt: imagePrompt });
             if (!imageResult.url) throw new Error(`Failed to generate image for variation ${i + 1}`);
-            // Download raw image, upload to Cloudinary, apply headline as transformation URL
+            // Composite headline server-side, upload baked PNG once, store clean URL
             const imageResponse = await fetch(imageResult.url);
             const rawBuffer = Buffer.from(await imageResponse.arrayBuffer());
-            const { buildHeadlineUrl: buildUrl } = await import("../lib/cloudinaryUtils");
+            const { compositeHeadline: doComposite } = await import("../_core/compositeHeadline");
+            const compositedBuffer = await doComposite(rawBuffer, headline, variation.style);
             const fileKey = `ad-creatives/${capturedUserId}/${batchId}/variation-${i + 1}.png`;
-            const { url: rawUrl } = await s3Put(fileKey, rawBuffer, "image/png");
-            const s3Url = buildUrl(rawUrl, headline, variation.style);
+            const { url: s3Url } = await s3Put(fileKey, compositedBuffer, "image/png");
             await bgDb.insert(adCreativesTable).values({
               userId: capturedUserId,
               serviceId: capturedInput.serviceId,
@@ -676,12 +675,12 @@ export async function generateAdCreativesBatch(params: {
     const imageResult = await generateImage({ prompt: imagePrompt });
     if (!imageResult.url) throw new Error(`Failed to generate image ${i + 1}`);
 
-    // Download raw image, upload to Cloudinary, apply headline as transformation URL
+    // Composite headline server-side, upload baked PNG once, store clean URL
     const imageResponse = await fetch(imageResult.url);
     const rawBuffer = Buffer.from(await imageResponse.arrayBuffer());
+    const compositedBuffer = await compositeHeadline(rawBuffer, headline, variation.style);
     const fileKey = `ad-creatives/${params.userId}/${batchId}/variation-${i + 1}.png`;
-    const { url: rawUrl } = await storagePut(fileKey, rawBuffer, "image/png");
-    const s3Url = buildHeadlineUrl(rawUrl, headline, variation.style);
+    const { url: s3Url } = await storagePut(fileKey, compositedBuffer, "image/png");
 
     // Save to database with campaignId
     console.log("[generateAdCreativesBatch] About to insert creative", { variation: i + 1 });
