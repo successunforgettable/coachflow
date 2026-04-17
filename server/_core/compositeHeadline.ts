@@ -11,9 +11,9 @@ const FONT_FAMILY = "ZapHeadline";
 let fontLoaded = false;
 function ensureFont(): void {
   if (!fontLoaded) {
-    GlobalFonts.registerFromPath(FONT_PATH, FONT_FAMILY);
+    const ok = GlobalFonts.registerFromPath(FONT_PATH, FONT_FAMILY);
     fontLoaded = true;
-    console.log(`[compositeHeadline] Font registered from ${FONT_PATH}`);
+    console.log(`[compositeHeadline] Font registered from ${FONT_PATH} — registerFromPath returned: ${ok}`);
   }
 }
 
@@ -53,7 +53,7 @@ function layoutLines(
   const words = text.split(/\s+/).filter(Boolean);
 
   for (let fs = startFontSize; fs >= minFontSize; fs -= 4) {
-    ctx.font = `900 ${fs}px "${fontFamily}"`;
+    ctx.font = `bold ${fs}px "${fontFamily}"`;
     const lines       = wrapGreedy(ctx, words, maxWidth);
     const blockHeight = lines.length * fs * lineHeightRatio;
     const fits =
@@ -63,7 +63,7 @@ function layoutLines(
     if (fits) return { lines, fontSize: fs };
   }
 
-  ctx.font = `900 ${minFontSize}px "${fontFamily}"`;
+  ctx.font = `bold ${minFontSize}px "${fontFamily}"`;
   const allLines  = wrapGreedy(ctx, words, maxWidth);
   const truncated = allLines.slice(0, maxLines);
   if (allLines.length > maxLines) {
@@ -115,6 +115,15 @@ export async function compositeHeadline(
   // Paint background image at its native dimensions
   ctx.drawImage(img as any, 0, 0, W, H);
 
+  // Sanity-check font rendering — if measureText returns 0 for a known word,
+  // the font did not load for rendering (even if registerFromPath returned true).
+  ctx.font = `bold 100px "${FONT_FAMILY}"`;
+  const probeWidth = ctx.measureText("HELLO").width;
+  console.log(`[compositeHeadline] Font probe — measureText("HELLO") at bold 100px = ${probeWidth.toFixed(1)}px`);
+  if (probeWidth < 10) {
+    throw new Error(`[compositeHeadline] Font "${FONT_FAMILY}" is not rendering (measureText returned ${probeWidth}). Check that ${FONT_PATH} is accessible and @napi-rs/canvas can load it.`);
+  }
+
   // Big, poster-style sizing — scales with width, clamped
   const baseFontSize  = Math.max(64, Math.min(180, Math.round(W / 10)));
   const MIN_FONT_SIZE = 56;
@@ -145,7 +154,7 @@ export async function compositeHeadline(
 
   console.log(`[compositeHeadline] Layout — fontSize: ${fontSize}, lines: ${lines.length}, region: ${Math.round(region.top)}-${Math.round(region.bottom)}, blockTop: ${Math.round(blockTop)}`);
 
-  ctx.font         = `900 ${fontSize}px "${FONT_FAMILY}"`;
+  ctx.font         = `bold ${fontSize}px "${FONT_FAMILY}"`;
   ctx.textAlign    = "center";
   ctx.textBaseline = "middle";
 
