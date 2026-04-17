@@ -1,5 +1,6 @@
 import { createCanvas, GlobalFonts, loadImage } from "@napi-rs/canvas";
 import * as path from "path";
+import * as fs from "fs";
 
 // @napi-rs/canvas ships prebuilt linux-x64-gnu binaries with libcairo BUNDLED.
 // We register DejaVuSans-Bold.ttf as the "ZapHeadline" family and draw directly
@@ -10,10 +11,51 @@ const FONT_FAMILY = "ZapHeadline";
 
 let fontLoaded = false;
 function ensureFont(): void {
-  if (!fontLoaded) {
-    const ok = GlobalFonts.registerFromPath(FONT_PATH, FONT_FAMILY);
-    fontLoaded = true;
-    console.log(`[compositeHeadline] Font registered from ${FONT_PATH} — registerFromPath returned: ${ok}`);
+  if (fontLoaded) return;
+  fontLoaded = true;
+
+  // File-system sanity
+  if (!fs.existsSync(FONT_PATH)) {
+    console.error(`[compositeHeadline] FONT FILE NOT FOUND: ${FONT_PATH} (cwd=${process.cwd()})`);
+    return;
+  }
+  const stat = fs.statSync(FONT_PATH);
+  console.log(`[compositeHeadline] Font file present: ${FONT_PATH} (${stat.size} bytes)`);
+
+  // Try path-based registration
+  try {
+    const r1 = GlobalFonts.registerFromPath(FONT_PATH, FONT_FAMILY);
+    console.log(`[compositeHeadline] registerFromPath → ${r1} (${typeof r1})`);
+  } catch (e: any) {
+    console.error(`[compositeHeadline] registerFromPath threw: ${e?.message ?? e}`);
+  }
+
+  // Also try buffer-based registration as a fallback (different code path in the native addon)
+  try {
+    const buf = fs.readFileSync(FONT_PATH);
+    const r2 = (GlobalFonts as any).register(buf, FONT_FAMILY);
+    console.log(`[compositeHeadline] GlobalFonts.register(buffer) → ${r2} (${typeof r2})`);
+  } catch (e: any) {
+    console.error(`[compositeHeadline] GlobalFonts.register(buffer) threw: ${e?.message ?? e}`);
+  }
+
+  // Dump what the canvas engine thinks is available
+  try {
+    const families = (GlobalFonts as any).families;
+    console.log(`[compositeHeadline] GlobalFonts.families = ${JSON.stringify(families)?.slice(0, 500)}`);
+  } catch (e: any) {
+    console.error(`[compositeHeadline] Could not read GlobalFonts.families: ${e?.message ?? e}`);
+  }
+
+  // Which native binary actually loaded?
+  try {
+    const resolved = require.resolve("@napi-rs/canvas");
+    console.log(`[compositeHeadline] @napi-rs/canvas resolved to: ${resolved}`);
+    const pkgRoot = path.dirname(require.resolve("@napi-rs/canvas/package.json"));
+    const entries = fs.readdirSync(pkgRoot).filter(f => f.endsWith(".node") || f.includes("canvas"));
+    console.log(`[compositeHeadline] @napi-rs/canvas dir entries: ${entries.join(", ")}`);
+  } catch (e: any) {
+    console.error(`[compositeHeadline] Could not introspect @napi-rs/canvas install: ${e?.message ?? e}`);
   }
 }
 
