@@ -101,9 +101,13 @@ export async function compositeHeadline(
 ): Promise<Buffer> {
   ensureFont();
 
+  console.log(`[compositeHeadline] START — headline: "${headline.slice(0, 60)}", style: ${designStyle}, inputSize: ${rawBuffer.length}`);
+
   const img = await loadImage(rawBuffer);
   const W   = img.width;
   const H   = img.height;
+
+  console.log(`[compositeHeadline] Image loaded — ${W}×${H}`);
 
   const canvas = createCanvas(W, H);
   const ctx    = canvas.getContext("2d") as unknown as CanvasRenderingContext2D;
@@ -139,6 +143,8 @@ export async function compositeHeadline(
   const blockHeight = lines.length * lineHeight;
   const blockTop    = region.top + (regionHeight - blockHeight) / 2;
 
+  console.log(`[compositeHeadline] Layout — fontSize: ${fontSize}, lines: ${lines.length}, region: ${Math.round(region.top)}-${Math.round(region.bottom)}, blockTop: ${Math.round(blockTop)}`);
+
   ctx.font         = `900 ${fontSize}px "${FONT_FAMILY}"`;
   ctx.textAlign    = "center";
   ctx.textBaseline = "middle";
@@ -168,5 +174,7 @@ export async function compositeHeadline(
   ctx.shadowOffsetX = 0;
   ctx.shadowOffsetY = 0;
 
-  return canvas.toBuffer("image/png");
+  const outBuf = canvas.toBuffer("image/png");
+  console.log(`[compositeHeadline] DONE — outputSize: ${outBuf.length} (input was ${rawBuffer.length}, delta: ${outBuf.length - rawBuffer.length})`);
+  return outBuf;
 }
