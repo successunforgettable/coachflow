@@ -2,7 +2,7 @@ import { router, protectedProcedure } from "../_core/trpc";
 import { z } from "zod";
 import { getDb } from "../db";
 import { adCreatives, services, users, jobs } from "../../drizzle/schema";
-import { eq, and, desc, gte } from "drizzle-orm";
+import { eq, and, desc, gte, count } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { generateImage } from "../_core/imageGeneration";
 import { storagePut } from "../storage";
@@ -69,7 +69,7 @@ function checkCompliance(headline: string, benefit: string, problem: string): st
 }
 
 // Generate ad image prompt — visual scene only, no text instructions.
-// Headline text is composited server-side via @resvg/resvg-js after generation
+// Headline text is composited server-side via opentype.js + resvg-js after generation
 // (see server/_core/compositeHeadline.ts). AI models cannot reliably render text —
 // removing text instructions eliminates hallucinated glyphs.
 function generateAdImagePrompt(
@@ -104,6 +104,41 @@ function generateAdImagePrompt(
   };
 
   return stylePrompts[style as keyof typeof stylePrompts] || stylePrompts.person_shocked;
+}
+
+// Free-tier ad image gate — stops trial/free users from spamming Generate or
+// Regenerate. Each click triggers a paid Replicate image call, so unlimited
+// free usage is a direct money leak. Paid tiers (pro/agency) are ungated here
+// (separate credit-deduction sprint will cover them).
+// Threshold: once the user has ≥ FREE_TIER_AD_IMAGE_LIMIT total adCreatives
+// rows across all their campaigns, both Generate and Regenerate are blocked.
+const FREE_TIER_AD_IMAGE_LIMIT = 2;
+
+async function enforceFreeTierAdImageGate(
+  userId: number,
+  subscriptionTier: string | null | undefined,
+  userRole: string | null | undefined,
+): Promise<void> {
+  // Superusers and paid tiers (pro/agency) are ungated
+  if (userRole === "superuser") return;
+  const tier = subscriptionTier || "trial";
+  if (tier !== "trial") return;
+
+  const db = await getDb();
+  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+  const [row] = await db
+    .select({ n: count() })
+    .from(adCreatives)
+    .where(eq(adCreatives.userId, userId));
+
+  const total = row?.n ?? 0;
+  if (total >= FREE_TIER_AD_IMAGE_LIMIT) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Free tier ad image limit reached. Upgrade to Pro to regenerate.",
+    });
+  }
 }
 
 const generateAdCreativesSchema = z.object({
@@ -328,6 +363,9 @@ export const adCreativesRouter = router({
   regenerateSingle: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
+      // Free-tier gate — block regenerate once the user has ≥ 2 ad creatives
+      await enforceFreeTierAdImageGate(ctx.user.id, ctx.user.subscriptionTier, ctx.user.role);
+
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -479,6 +517,9 @@ export const adCreativesRouter = router({
       uglyMode: z.boolean().optional().default(false),
     }))
     .mutation(async ({ ctx, input }) => {
+      // Free-tier gate — block generate once the user has ≥ 2 ad creatives
+      await enforceFreeTierAdImageGate(ctx.user.id, ctx.user.subscriptionTier, ctx.user.role);
+
       const db = await getDb();
       if (!db) throw new Error("Database not available");
       // Pre-fetch service data synchronously before setImmediate

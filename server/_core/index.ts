@@ -2,6 +2,9 @@ import "dotenv/config";
 import express from "express";
 import { createServer } from "http";
 import net from "net";
+import * as fs from "fs";
+import * as path from "path";
+import { fileURLToPath } from "url";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { registerMetaOAuthRoutes } from "./metaOAuth";
@@ -11,6 +14,32 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { sdk } from "./sdk";
 import { invokeLLM } from "./llm";
+
+// Boot-time font validation — fail loudly if the TTF is missing or corrupted
+// (e.g., a prior incident where a GitHub 404 HTML page was committed as a TTF).
+// We'd rather fail the deploy than surface invisible-text ad creatives to users.
+function validateFontAtBoot(): void {
+  const moduleDir = path.dirname(fileURLToPath(import.meta.url));
+  // Try both the esbuild-bundled layout (/app/dist/ → /app/assets/) and the
+  // tsx-dev layout (server/_core/ → ../../assets/) so this works in dev and prod.
+  const candidates = [
+    path.resolve(moduleDir, "../assets/fonts/DejaVuSans-Bold.ttf"),
+    path.resolve(moduleDir, "../../assets/fonts/DejaVuSans-Bold.ttf"),
+    path.resolve(process.cwd(), "assets/fonts/DejaVuSans-Bold.ttf"),
+  ];
+  const fontPath = candidates.find(p => fs.existsSync(p));
+  if (!fontPath) {
+    console.error(`[boot][FATAL] Font file not found. Searched: ${candidates.join(", ")}`);
+    process.exit(1);
+  }
+  const buf = fs.readFileSync(fontPath);
+  const magic = buf.slice(0, 4).toString("hex");
+  if (magic !== "00010000" && magic !== "4f54544f") {
+    console.error(`[boot][FATAL] Font file at ${fontPath} is not a valid TTF/OTF — first 4 bytes are 0x${magic}. The file may be a corrupted download or HTML error page saved as a TTF.`);
+    process.exit(1);
+  }
+  console.log(`[boot] Font validation OK — ${fontPath} (${buf.length} bytes, magic 0x${magic})`);
+}
 
 // In-memory rate limiter for Zappy asset search — keyed by userId, resets every 60 s
 const assetSearchRateLimit = new Map<string, { count: number; resetAt: number }>();
@@ -43,6 +72,9 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 }
 
 async function startServer() {
+  // Validate ad-creative font before accepting any traffic — see validateFontAtBoot()
+  validateFontAtBoot();
+
   const app = express();
   const server = createServer(app);
   

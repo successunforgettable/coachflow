@@ -3,6 +3,7 @@ import sharp from "sharp";
 import opentype, { Font } from "opentype.js";
 import * as path from "path";
 import * as fs from "fs";
+import { fileURLToPath } from "url";
 
 // Text compositing pipeline:
 //   1. opentype.js parses the TTF and converts each headline line into raw SVG
@@ -11,7 +12,20 @@ import * as fs from "fs";
 //   2. resvg-js rasterizes that SVG to a transparent PNG.
 //   3. sharp composites the text PNG over the background image.
 
-const FONT_PATH = path.resolve(process.cwd(), "assets/fonts/DejaVuSans-Bold.ttf");
+// Resolve the font path relative to this module's on-disk location, not
+// process.cwd(). cwd can shift under process managers / different start scripts,
+// which would silently break the font load. Module-relative is stable.
+// Esbuild bundled output lives at /app/dist/, source lives at server/_core/,
+// so we try both offsets and fall back to cwd for safety.
+const __moduleDir = path.dirname(fileURLToPath(import.meta.url));
+const FONT_PATH = (() => {
+  const candidates = [
+    path.resolve(__moduleDir, "../assets/fonts/DejaVuSans-Bold.ttf"),    // prod: dist/ → ../assets
+    path.resolve(__moduleDir, "../../assets/fonts/DejaVuSans-Bold.ttf"), // dev: server/_core/ → ../../assets
+    path.resolve(process.cwd(), "assets/fonts/DejaVuSans-Bold.ttf"),     // fallback
+  ];
+  return candidates.find(p => fs.existsSync(p)) ?? candidates[0];
+})();
 
 let cachedFont: Font | null = null;
 function getFont(): Font {
@@ -70,7 +84,11 @@ function layoutLines(
   for (let fs = startFontSize; fs >= minFontSize; fs -= 4) {
     const lines = wrapGreedy(font, text, maxWidth, fs);
     const blockHeight = lines.length * fs * lineHeightRatio;
-    if (lines.length <= maxLines && blockHeight <= maxBlockHeight) {
+    // Per-line width check: wrapGreedy pushes an over-long single word onto its
+    // own line, so line count can pass while the line itself overflows. Catch
+    // that by measuring every wrapped line against maxWidth at this font size.
+    const everyLineFits = lines.every(line => font.getAdvanceWidth(line, fs) <= maxWidth);
+    if (lines.length <= maxLines && blockHeight <= maxBlockHeight && everyLineFits) {
       return { lines, fontSize: fs, didTruncate: false };
     }
   }
@@ -155,7 +173,15 @@ export async function compositeHeadline(
   const blockHeight = lines.length * lineHeight;
   const blockTopY   = regionTop + (regionHeight - blockHeight) / 2;
 
-  console.log(`[compositeHeadline] fontSize=${fontSize} lines=${lines.length} truncated=${didTruncate} blockTopY=${Math.round(blockTopY)} imageHeight=${H}`);
+  if (didTruncate) {
+    console.warn(
+      `[compositeHeadline][WARN] TRUNCATED: original="${headline}" rendered="${lines.join(" ⏎ ")}" fontSize=${fontSize} lines=${lines.length} blockTopY=${Math.round(blockTopY)} imageHeight=${H}`
+    );
+  } else {
+    console.log(
+      `[compositeHeadline] fontSize=${fontSize} lines=${lines.length} truncated=false blockTopY=${Math.round(blockTopY)} imageHeight=${H}`
+    );
+  }
 
   const strokeWidth = Math.max(2, Math.round(fontSize * 0.12));
   const shadowBlur  = Math.max(2, Math.round(fontSize * 0.15));
