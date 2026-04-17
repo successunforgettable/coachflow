@@ -1,49 +1,56 @@
 import { Resvg } from "@resvg/resvg-js";
 import sharp from "sharp";
+import opentype, { Font } from "opentype.js";
 import * as path from "path";
 import * as fs from "fs";
 
-// Text compositing via resvg-js + sharp.
-// resvg renders SVG <text> with an embedded @font-face (base64 TTF data URI),
-// so it never touches system fonts or fontconfig. sharp composites the
-// rasterized text PNG onto the background. Both work in Railway's Nixpacks
-// environment regardless of native binary platform detection.
+// Text compositing pipeline:
+//   1. opentype.js parses the TTF and converts each headline line into raw SVG
+//      path data (<path d="..."/>). No font lookup is ever needed by the
+//      rasterizer — text is just vector shapes.
+//   2. resvg-js rasterizes that SVG to a transparent PNG.
+//   3. sharp composites the text PNG over the background image.
+// This approach sidesteps every font-loading failure mode we've hit: no system
+// fonts, no fontconfig, no @font-face, no WASM font-buffer support required.
 
 const FONT_PATH = path.resolve(process.cwd(), "assets/fonts/DejaVuSans-Bold.ttf");
-// The internal family name inside DejaVuSans-Bold.ttf is "DejaVu Sans" (weight 700).
-// resvg-js matches by this name, not by file name or @font-face alias.
-const FONT_FAMILY = "DejaVu Sans";
 
-let fontBuffer: Buffer | null = null;
-function getFontBuffer(): Buffer {
-  if (!fontBuffer) {
-    fontBuffer = fs.readFileSync(FONT_PATH);
-    console.log(`[compositeHeadline] Font loaded from ${FONT_PATH} (${fontBuffer.length} bytes)`);
+let cachedFont: Font | null = null;
+function getFont(): Font {
+  if (cachedFont) return cachedFont;
+
+  const buf = fs.readFileSync(FONT_PATH);
+  const magic = buf.slice(0, 4).toString("hex");
+  if (magic !== "00010000" && magic !== "4f54544f") {
+    throw new Error(
+      `[compositeHeadline] Font file at ${FONT_PATH} is not a valid TTF/OTF — first 4 bytes are 0x${magic}. The file may be a corrupted download or HTML error page saved as a TTF.`
+    );
   }
-  return fontBuffer;
+
+  // opentype.parse takes an ArrayBuffer — convert cleanly from Node Buffer
+  const arrayBuffer = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+  cachedFont = opentype.parse(arrayBuffer);
+  console.log(`[compositeHeadline] Font parsed: ${FONT_PATH} (${buf.length} bytes, ${cachedFont.glyphs.length} glyphs)`);
+  return cachedFont;
 }
 
 function escapeXml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
 }
 
-// Simple greedy word-wrap: returns lines that each fit within maxWidth at the
-// given fontSize. We approximate character width as fontSize × 0.6 (DejaVu Sans
-// Bold average). This is imprecise but resvg will honour the real font metrics.
+// Greedy word-wrap using opentype's real glyph metrics (no character-width approximation)
 function wrapGreedy(
+  font: Font,
   text: string,
   maxWidth: number,
   fontSize: number
 ): string[] {
-  const charWidth = fontSize * 0.55;
-  const maxChars  = Math.floor(maxWidth / charWidth);
-  const words     = text.split(/\s+/).filter(Boolean);
+  const words = text.split(/\s+/).filter(Boolean);
   const lines: string[] = [];
   let current = "";
-
   for (const word of words) {
     const candidate = current ? `${current} ${word}` : word;
-    if (candidate.length <= maxChars) {
+    if (font.getAdvanceWidth(candidate, fontSize) <= maxWidth) {
       current = candidate;
     } else {
       if (current) lines.push(current);
@@ -54,9 +61,10 @@ function wrapGreedy(
   return lines;
 }
 
-// Find the biggest font size (stepping down by 4) that fits the headline in
-// ≤ maxLines AND within the region's vertical height.
+// Pick the largest font size that fits the text in ≤ maxLines and ≤ maxBlockHeight.
+// Truncate the last line with an ellipsis if even minFontSize overflows.
 function layoutLines(
+  font: Font,
   text: string,
   maxWidth: number,
   maxBlockHeight: number,
@@ -66,24 +74,25 @@ function layoutLines(
   lineHeightRatio: number
 ): { lines: string[]; fontSize: number } {
   for (let fs = startFontSize; fs >= minFontSize; fs -= 4) {
-    const lines       = wrapGreedy(text, maxWidth, fs);
+    const lines = wrapGreedy(font, text, maxWidth, fs);
     const blockHeight = lines.length * fs * lineHeightRatio;
     if (lines.length <= maxLines && blockHeight <= maxBlockHeight) {
       return { lines, fontSize: fs };
     }
   }
 
-  const lines     = wrapGreedy(text, maxWidth, minFontSize).slice(0, maxLines);
-  const lastIdx   = lines.length - 1;
-  const charWidth = minFontSize * 0.55;
-  const maxChars  = Math.floor(maxWidth / charWidth);
-  if (lines[lastIdx] && lines[lastIdx].length > maxChars) {
-    lines[lastIdx] = lines[lastIdx].slice(0, maxChars - 1) + "…";
+  const lines = wrapGreedy(font, text, maxWidth, minFontSize).slice(0, maxLines);
+  const lastIdx = lines.length - 1;
+  if (lines[lastIdx] && font.getAdvanceWidth(lines[lastIdx], minFontSize) > maxWidth) {
+    let last = lines[lastIdx];
+    while (last.length > 1 && font.getAdvanceWidth(last + "…", minFontSize) > maxWidth) {
+      last = last.slice(0, -1);
+    }
+    lines[lastIdx] = last.trimEnd() + "…";
   }
   return { lines, fontSize: minFontSize };
 }
 
-// Positioning region by designStyle
 function regionForStyle(
   H: number,
   designStyle: string
@@ -103,7 +112,7 @@ export async function compositeHeadline(
   headline: string,
   designStyle: string
 ): Promise<Buffer> {
-  const buf = getFontBuffer();
+  const font = getFont();
 
   const meta = await sharp(rawBuffer).metadata();
   const W    = meta.width  ?? 1080;
@@ -122,6 +131,7 @@ export async function compositeHeadline(
   const regionHeight = region.bottom - region.top;
 
   const { lines, fontSize } = layoutLines(
+    font,
     uppercased,
     maxTextWidth,
     regionHeight,
@@ -135,21 +145,20 @@ export async function compositeHeadline(
   const blockHeight = lines.length * lineHeight;
   const blockTop    = region.top + (regionHeight - blockHeight) / 2;
 
-  const strokeWidth = Math.round(fontSize * 0.12);
-  const shadowBlur  = Math.round(fontSize * 0.15);
-  const shadowOffY  = Math.round(fontSize * 0.04);
+  const strokeWidth = Math.max(2, Math.round(fontSize * 0.12));
+  const shadowBlur  = Math.max(2, Math.round(fontSize * 0.15));
+  const shadowOffY  = Math.max(1, Math.round(fontSize * 0.04));
 
-  // Build SVG — resvg resolves font-family via the fontBuffers option below,
-  // NOT via @font-face in the SVG. Use the TTF's actual internal family name.
-  const textLines = lines.map((line, i) => {
-    const y = Math.round(blockTop + lineHeight * (i + 0.5));
-    const x = Math.round(W / 2);
-    const escaped = escapeXml(line);
-    return `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central"
-      font-family="${FONT_FAMILY}" font-weight="bold" font-size="${fontSize}"
-      fill="white" stroke="black" stroke-width="${strokeWidth}" stroke-linejoin="round"
-      paint-order="stroke fill"
-      filter="url(#shadow)">${escaped}</text>`;
+  // Convert each line to SVG path data, centered on the image's horizontal axis
+  const pathElements = lines.map((line, i) => {
+    const advanceWidth = font.getAdvanceWidth(line, fontSize);
+    const x = (W - advanceWidth) / 2;
+    // Baseline y — opentype positions text on the baseline, not the center.
+    // Approximate baseline as the bottom 80% of the line's slot so x-height sits roughly centered.
+    const lineCenter = blockTop + lineHeight * (i + 0.5);
+    const y = lineCenter + fontSize * 0.35; // shift to put the cap-height roughly centered
+    const glyphPath = font.getPath(line, x, y, fontSize);
+    return `<path d="${glyphPath.toPathData(2)}" />`;
   }).join("\n    ");
 
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
@@ -158,33 +167,16 @@ export async function compositeHeadline(
       <feDropShadow dx="0" dy="${shadowOffY}" stdDeviation="${shadowBlur}" flood-color="rgba(0,0,0,0.6)" />
     </filter>
   </defs>
-  ${textLines}
+  <g fill="white" stroke="black" stroke-width="${strokeWidth}" stroke-linejoin="round" paint-order="stroke fill" filter="url(#shadow)">
+    ${pathElements}
+  </g>
 </svg>`;
 
-  // Sanity check: TTF magic must be 00010000 (TrueType) or 4f54544f ("OTTO" for OpenType).
-  // If the file is HTML (a committed 404 response etc.), glyph rendering silently fails.
-  const magic = buf.slice(0, 4).toString("hex");
-  if (magic !== "00010000" && magic !== "4f54544f") {
-    throw new Error(`[compositeHeadline] Font file at ${FONT_PATH} is not a valid TTF/OTF — first 4 bytes are 0x${magic}. The file may be a corrupted download or HTML error page saved as a TTF.`);
-  }
-
-  // Rasterize SVG to PNG via resvg. Pass the TTF buffer directly via fontBuffers.
-  // Node Buffer is already a Uint8Array subclass, so pass it directly (no view wrapper).
-  const resvg = new Resvg(svg, {
-    fitTo: { mode: "original" },
-    font: {
-      fontBuffers: [buf],
-      loadSystemFonts: false,
-      defaultFontFamily: FONT_FAMILY,
-      serifFamily: FONT_FAMILY,
-      sansSerifFamily: FONT_FAMILY,
-    },
-  });
+  const resvg   = new Resvg(svg, { fitTo: { mode: "original" } });
   const textPng = resvg.render().asPng();
 
   console.log(`[compositeHeadline] Layout — fontSize=${fontSize}, lines=${lines.length}, textPng=${textPng.length} bytes`);
 
-  // Composite text PNG onto background
   const result = await sharp(rawBuffer)
     .composite([{ input: Buffer.from(textPng), top: 0, left: 0 }])
     .png()
