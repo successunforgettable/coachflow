@@ -1,74 +1,47 @@
-import { createCanvas, GlobalFonts, loadImage } from "@napi-rs/canvas";
+import { Resvg } from "@resvg/resvg-js";
+import sharp from "sharp";
 import * as path from "path";
 import * as fs from "fs";
 
-// @napi-rs/canvas ships prebuilt linux-x64-gnu binaries with libcairo BUNDLED.
-// We register DejaVuSans-Bold.ttf as the "ZapHeadline" family and draw directly
-// onto the background image — no black bar, text IS part of the composite.
+// Text compositing via resvg-js + sharp.
+// resvg renders SVG <text> with an embedded @font-face (base64 TTF data URI),
+// so it never touches system fonts or fontconfig. sharp composites the
+// rasterized text PNG onto the background. Both work in Railway's Nixpacks
+// environment regardless of native binary platform detection.
 
-const FONT_PATH   = path.resolve(process.cwd(), "assets/fonts/DejaVuSans-Bold.ttf");
-const FONT_FAMILY = "ZapHeadline";
+const FONT_PATH = path.resolve(process.cwd(), "assets/fonts/DejaVuSans-Bold.ttf");
 
-let fontLoaded = false;
-function ensureFont(): void {
-  if (fontLoaded) return;
-  fontLoaded = true;
-
-  // File-system sanity
-  if (!fs.existsSync(FONT_PATH)) {
-    console.error(`[compositeHeadline] FONT FILE NOT FOUND: ${FONT_PATH} (cwd=${process.cwd()})`);
-    return;
-  }
-  const stat = fs.statSync(FONT_PATH);
-  console.log(`[compositeHeadline] Font file present: ${FONT_PATH} (${stat.size} bytes)`);
-
-  // Try path-based registration
-  try {
-    const r1 = GlobalFonts.registerFromPath(FONT_PATH, FONT_FAMILY);
-    console.log(`[compositeHeadline] registerFromPath → ${r1} (${typeof r1})`);
-  } catch (e: any) {
-    console.error(`[compositeHeadline] registerFromPath threw: ${e?.message ?? e}`);
-  }
-
-  // Also try buffer-based registration as a fallback (different code path in the native addon)
-  try {
+let fontBase64: string | null = null;
+function getFontBase64(): string {
+  if (!fontBase64) {
     const buf = fs.readFileSync(FONT_PATH);
-    const r2 = (GlobalFonts as any).register(buf, FONT_FAMILY);
-    console.log(`[compositeHeadline] GlobalFonts.register(buffer) → ${r2} (${typeof r2})`);
-  } catch (e: any) {
-    console.error(`[compositeHeadline] GlobalFonts.register(buffer) threw: ${e?.message ?? e}`);
+    fontBase64 = buf.toString("base64");
+    console.log(`[compositeHeadline] Font loaded from ${FONT_PATH} (${buf.length} bytes, base64 ${fontBase64.length} chars)`);
   }
-
-  // Dump what the canvas engine thinks is available
-  try {
-    const families = (GlobalFonts as any).families;
-    console.log(`[compositeHeadline] GlobalFonts.families = ${JSON.stringify(families)?.slice(0, 500)}`);
-  } catch (e: any) {
-    console.error(`[compositeHeadline] Could not read GlobalFonts.families: ${e?.message ?? e}`);
-  }
-
-  // Which native binary actually loaded?
-  try {
-    const resolved = require.resolve("@napi-rs/canvas");
-    console.log(`[compositeHeadline] @napi-rs/canvas resolved to: ${resolved}`);
-    const pkgRoot = path.dirname(require.resolve("@napi-rs/canvas/package.json"));
-    const entries = fs.readdirSync(pkgRoot).filter(f => f.endsWith(".node") || f.includes("canvas"));
-    console.log(`[compositeHeadline] @napi-rs/canvas dir entries: ${entries.join(", ")}`);
-  } catch (e: any) {
-    console.error(`[compositeHeadline] Could not introspect @napi-rs/canvas install: ${e?.message ?? e}`);
-  }
+  return fontBase64;
 }
 
+function escapeXml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
+}
+
+// Simple greedy word-wrap: returns lines that each fit within maxWidth at the
+// given fontSize. We approximate character width as fontSize × 0.6 (DejaVu Sans
+// Bold average). This is imprecise but resvg will honour the real font metrics.
 function wrapGreedy(
-  ctx: CanvasRenderingContext2D,
-  words: string[],
-  maxWidth: number
+  text: string,
+  maxWidth: number,
+  fontSize: number
 ): string[] {
+  const charWidth = fontSize * 0.55;
+  const maxChars  = Math.floor(maxWidth / charWidth);
+  const words     = text.split(/\s+/).filter(Boolean);
   const lines: string[] = [];
   let current = "";
+
   for (const word of words) {
     const candidate = current ? `${current} ${word}` : word;
-    if (ctx.measureText(candidate).width <= maxWidth) {
+    if (candidate.length <= maxChars) {
       current = candidate;
     } else {
       if (current) lines.push(current);
@@ -79,49 +52,36 @@ function wrapGreedy(
   return lines;
 }
 
-// Find the largest font size that fits within maxLines AND within maxBlockHeight.
-// If the text won't fit even at minFontSize, truncate the last line with an ellipsis.
+// Find the biggest font size (stepping down by 4) that fits the headline in
+// ≤ maxLines AND within the region's vertical height.
 function layoutLines(
-  ctx: CanvasRenderingContext2D,
   text: string,
   maxWidth: number,
   maxBlockHeight: number,
   startFontSize: number,
   minFontSize: number,
-  fontFamily: string,
   maxLines: number,
   lineHeightRatio: number
 ): { lines: string[]; fontSize: number } {
-  const words = text.split(/\s+/).filter(Boolean);
-
   for (let fs = startFontSize; fs >= minFontSize; fs -= 4) {
-    ctx.font = `bold ${fs}px "${fontFamily}"`;
-    const lines       = wrapGreedy(ctx, words, maxWidth);
+    const lines       = wrapGreedy(text, maxWidth, fs);
     const blockHeight = lines.length * fs * lineHeightRatio;
-    const fits =
-      lines.length <= maxLines &&
-      blockHeight <= maxBlockHeight &&
-      lines.every(l => ctx.measureText(l).width <= maxWidth);
-    if (fits) return { lines, fontSize: fs };
+    if (lines.length <= maxLines && blockHeight <= maxBlockHeight) {
+      return { lines, fontSize: fs };
+    }
   }
 
-  ctx.font = `bold ${minFontSize}px "${fontFamily}"`;
-  const allLines  = wrapGreedy(ctx, words, maxWidth);
-  const truncated = allLines.slice(0, maxLines);
-  if (allLines.length > maxLines) {
-    let last = truncated[maxLines - 1];
-    while (ctx.measureText(last + "…").width > maxWidth && last.length > 0) {
-      last = last.slice(0, -1).trimEnd();
-    }
-    truncated[maxLines - 1] = last + "…";
+  const lines     = wrapGreedy(text, maxWidth, minFontSize).slice(0, maxLines);
+  const lastIdx   = lines.length - 1;
+  const charWidth = minFontSize * 0.55;
+  const maxChars  = Math.floor(maxWidth / charWidth);
+  if (lines[lastIdx] && lines[lastIdx].length > maxChars) {
+    lines[lastIdx] = lines[lastIdx].slice(0, maxChars - 1) + "…";
   }
-  return { lines: truncated, fontSize: minFontSize };
+  return { lines, fontSize: minFontSize };
 }
 
-// Positioning region as fractions of image height, keyed by designStyle.
-// screenshot → upper band (so UI screenshots stay visible in the lower part)
-// object     → centred band
-// person_*   → lower band (so the subject's face stays uncovered)
+// Positioning region by designStyle
 function regionForStyle(
   H: number,
   designStyle: string
@@ -141,51 +101,30 @@ export async function compositeHeadline(
   headline: string,
   designStyle: string
 ): Promise<Buffer> {
-  ensureFont();
+  const b64 = getFontBase64();
 
-  console.log(`[compositeHeadline] START — headline: "${headline.slice(0, 60)}", style: ${designStyle}, inputSize: ${rawBuffer.length}`);
+  const meta = await sharp(rawBuffer).metadata();
+  const W    = meta.width  ?? 1080;
+  const H    = meta.height ?? 1080;
 
-  const img = await loadImage(rawBuffer);
-  const W   = img.width;
-  const H   = img.height;
+  console.log(`[compositeHeadline] START — "${headline.slice(0, 60)}", style=${designStyle}, ${W}×${H}`);
 
-  console.log(`[compositeHeadline] Image loaded — ${W}×${H}`);
-
-  const canvas = createCanvas(W, H);
-  const ctx    = canvas.getContext("2d") as unknown as CanvasRenderingContext2D;
-
-  // Paint background image at its native dimensions
-  ctx.drawImage(img as any, 0, 0, W, H);
-
-  // Sanity-check font rendering — if measureText returns 0 for a known word,
-  // the font did not load for rendering (even if registerFromPath returned true).
-  ctx.font = `bold 100px "${FONT_FAMILY}"`;
-  const probeWidth = ctx.measureText("HELLO").width;
-  console.log(`[compositeHeadline] Font probe — measureText("HELLO") at bold 100px = ${probeWidth.toFixed(1)}px`);
-  if (probeWidth < 10) {
-    throw new Error(`[compositeHeadline] Font "${FONT_FAMILY}" is not rendering (measureText returned ${probeWidth}). Check that ${FONT_PATH} is accessible and @napi-rs/canvas can load it.`);
-  }
-
-  // Big, poster-style sizing — scales with width, clamped
   const baseFontSize  = Math.max(64, Math.min(180, Math.round(W / 10)));
   const MIN_FONT_SIZE = 56;
-  const LINE_HEIGHT   = 1.08;
+  const LINE_HEIGHT   = 1.12;
   const MAX_LINES     = 3;
-
-  const uppercased   = headline.toUpperCase();
-  const maxTextWidth = W - 160; // 80px padding each side
+  const uppercased    = headline.toUpperCase();
+  const maxTextWidth  = W - 160;
 
   const region       = regionForStyle(H, designStyle);
   const regionHeight = region.bottom - region.top;
 
   const { lines, fontSize } = layoutLines(
-    ctx,
     uppercased,
     maxTextWidth,
     regionHeight,
     baseFontSize,
     MIN_FONT_SIZE,
-    FONT_FAMILY,
     MAX_LINES,
     LINE_HEIGHT
   );
@@ -194,38 +133,52 @@ export async function compositeHeadline(
   const blockHeight = lines.length * lineHeight;
   const blockTop    = region.top + (regionHeight - blockHeight) / 2;
 
-  console.log(`[compositeHeadline] Layout — fontSize: ${fontSize}, lines: ${lines.length}, region: ${Math.round(region.top)}-${Math.round(region.bottom)}, blockTop: ${Math.round(blockTop)}`);
+  const strokeWidth = Math.round(fontSize * 0.12);
+  const shadowBlur  = Math.round(fontSize * 0.15);
+  const shadowOffY  = Math.round(fontSize * 0.04);
 
-  ctx.font         = `bold ${fontSize}px "${FONT_FAMILY}"`;
-  ctx.textAlign    = "center";
-  ctx.textBaseline = "middle";
+  // Build SVG with embedded font + text lines
+  const textLines = lines.map((line, i) => {
+    const y = Math.round(blockTop + lineHeight * (i + 0.5));
+    const x = Math.round(W / 2);
+    const escaped = escapeXml(line);
+    // Paint order: stroke first, then fill — in SVG we use paint-order attribute
+    return `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central"
+      font-family="ZapHeadline" font-weight="bold" font-size="${fontSize}"
+      fill="white" stroke="black" stroke-width="${strokeWidth}" stroke-linejoin="round"
+      paint-order="stroke fill"
+      filter="url(#shadow)">${escaped}</text>`;
+  }).join("\n    ");
 
-  // Subtle drop shadow applies to both stroke and fill passes
-  ctx.shadowColor   = "rgba(0,0,0,0.6)";
-  ctx.shadowBlur    = fontSize * 0.15;
-  ctx.shadowOffsetX = 0;
-  ctx.shadowOffsetY = fontSize * 0.04;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
+  <defs>
+    <style>
+      @font-face {
+        font-family: 'ZapHeadline';
+        src: url('data:font/truetype;base64,${b64}') format('truetype');
+        font-weight: bold;
+        font-style: normal;
+      }
+    </style>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="${shadowOffY}" stdDeviation="${shadowBlur}" flood-color="rgba(0,0,0,0.6)" />
+    </filter>
+  </defs>
+  ${textLines}
+</svg>`;
 
-  // Thick black stroke for readability on any background, white fill on top
-  ctx.strokeStyle = "#000000";
-  ctx.lineJoin    = "round";
-  ctx.lineWidth   = fontSize * 0.12;
-  ctx.fillStyle   = "#ffffff";
+  // Rasterize SVG to PNG via resvg (parses the embedded font, no system fonts needed)
+  const resvg   = new Resvg(svg, { fitTo: { mode: "original" } });
+  const textPng = resvg.render().asPng();
 
-  const centerX = W / 2;
-  for (let i = 0; i < lines.length; i++) {
-    const y = blockTop + lineHeight * (i + 0.5);
-    ctx.strokeText(lines[i], centerX, y);
-    ctx.fillText(lines[i], centerX, y);
-  }
+  console.log(`[compositeHeadline] Layout — fontSize=${fontSize}, lines=${lines.length}, textPng=${textPng.length} bytes`);
 
-  // Clear shadow state so nothing bleeds into subsequent draws on this context
-  ctx.shadowColor   = "transparent";
-  ctx.shadowBlur    = 0;
-  ctx.shadowOffsetX = 0;
-  ctx.shadowOffsetY = 0;
+  // Composite text PNG onto background
+  const result = await sharp(rawBuffer)
+    .composite([{ input: Buffer.from(textPng), top: 0, left: 0 }])
+    .png()
+    .toBuffer();
 
-  const outBuf = canvas.toBuffer("image/png");
-  console.log(`[compositeHeadline] DONE — outputSize: ${outBuf.length} (input was ${rawBuffer.length}, delta: ${outBuf.length - rawBuffer.length})`);
-  return outBuf;
+  console.log(`[compositeHeadline] DONE — output=${result.length} bytes (input=${rawBuffer.length}, delta=${result.length - rawBuffer.length})`);
+  return result;
 }
