@@ -152,6 +152,11 @@
     },
     "overrides": {
       "tailwindcss>nanoid": "3.3.7"
+    },
+    "supportedArchitectures": {
+      "os": ["current", "linux", "darwin"],
+      "cpu": ["current", "x64", "arm64"],
+      "libc": ["current", "glibc", "musl"]
     }
   }
 }
