@@ -10,15 +10,17 @@ import * as fs from "fs";
 // environment regardless of native binary platform detection.
 
 const FONT_PATH = path.resolve(process.cwd(), "assets/fonts/DejaVuSans-Bold.ttf");
+// The internal family name inside DejaVuSans-Bold.ttf is "DejaVu Sans" (weight 700).
+// resvg-js matches by this name, not by file name or @font-face alias.
+const FONT_FAMILY = "DejaVu Sans";
 
-let fontBase64: string | null = null;
-function getFontBase64(): string {
-  if (!fontBase64) {
-    const buf = fs.readFileSync(FONT_PATH);
-    fontBase64 = buf.toString("base64");
-    console.log(`[compositeHeadline] Font loaded from ${FONT_PATH} (${buf.length} bytes, base64 ${fontBase64.length} chars)`);
+let fontBuffer: Buffer | null = null;
+function getFontBuffer(): Buffer {
+  if (!fontBuffer) {
+    fontBuffer = fs.readFileSync(FONT_PATH);
+    console.log(`[compositeHeadline] Font loaded from ${FONT_PATH} (${fontBuffer.length} bytes)`);
   }
-  return fontBase64;
+  return fontBuffer;
 }
 
 function escapeXml(s: string): string {
@@ -101,7 +103,7 @@ export async function compositeHeadline(
   headline: string,
   designStyle: string
 ): Promise<Buffer> {
-  const b64 = getFontBase64();
+  const buf = getFontBuffer();
 
   const meta = await sharp(rawBuffer).metadata();
   const W    = meta.width  ?? 1080;
@@ -137,14 +139,14 @@ export async function compositeHeadline(
   const shadowBlur  = Math.round(fontSize * 0.15);
   const shadowOffY  = Math.round(fontSize * 0.04);
 
-  // Build SVG with embedded font + text lines
+  // Build SVG — resvg resolves font-family via the fontBuffers option below,
+  // NOT via @font-face in the SVG. Use the TTF's actual internal family name.
   const textLines = lines.map((line, i) => {
     const y = Math.round(blockTop + lineHeight * (i + 0.5));
     const x = Math.round(W / 2);
     const escaped = escapeXml(line);
-    // Paint order: stroke first, then fill — in SVG we use paint-order attribute
     return `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central"
-      font-family="ZapHeadline" font-weight="bold" font-size="${fontSize}"
+      font-family="${FONT_FAMILY}" font-weight="bold" font-size="${fontSize}"
       fill="white" stroke="black" stroke-width="${strokeWidth}" stroke-linejoin="round"
       paint-order="stroke fill"
       filter="url(#shadow)">${escaped}</text>`;
@@ -152,14 +154,6 @@ export async function compositeHeadline(
 
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
   <defs>
-    <style>
-      @font-face {
-        font-family: 'ZapHeadline';
-        src: url('data:font/truetype;base64,${b64}') format('truetype');
-        font-weight: bold;
-        font-style: normal;
-      }
-    </style>
     <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
       <feDropShadow dx="0" dy="${shadowOffY}" stdDeviation="${shadowBlur}" flood-color="rgba(0,0,0,0.6)" />
     </filter>
@@ -167,8 +161,16 @@ export async function compositeHeadline(
   ${textLines}
 </svg>`;
 
-  // Rasterize SVG to PNG via resvg (parses the embedded font, no system fonts needed)
-  const resvg   = new Resvg(svg, { fitTo: { mode: "original" } });
+  // Rasterize SVG to PNG via resvg. Pass the TTF buffer directly via fontBuffers
+  // so resvg doesn't need system fonts or fontconfig.
+  const resvg = new Resvg(svg, {
+    fitTo: { mode: "original" },
+    font: {
+      fontBuffers: [new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength)],
+      loadSystemFonts: false,
+      defaultFontFamily: FONT_FAMILY,
+    },
+  });
   const textPng = resvg.render().asPng();
 
   console.log(`[compositeHeadline] Layout — fontSize=${fontSize}, lines=${lines.length}, textPng=${textPng.length} bytes`);
