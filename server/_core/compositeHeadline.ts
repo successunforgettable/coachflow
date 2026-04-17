@@ -10,8 +10,6 @@ import * as fs from "fs";
 //      rasterizer — text is just vector shapes.
 //   2. resvg-js rasterizes that SVG to a transparent PNG.
 //   3. sharp composites the text PNG over the background image.
-// This approach sidesteps every font-loading failure mode we've hit: no system
-// fonts, no fontconfig, no @font-face, no WASM font-buffer support required.
 
 const FONT_PATH = path.resolve(process.cwd(), "assets/fonts/DejaVuSans-Bold.ttf");
 
@@ -27,18 +25,12 @@ function getFont(): Font {
     );
   }
 
-  // opentype.parse takes an ArrayBuffer — convert cleanly from Node Buffer
   const arrayBuffer = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
   cachedFont = opentype.parse(arrayBuffer);
   console.log(`[compositeHeadline] Font parsed: ${FONT_PATH} (${buf.length} bytes, ${cachedFont.glyphs.length} glyphs)`);
   return cachedFont;
 }
 
-function escapeXml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
-}
-
-// Greedy word-wrap using opentype's real glyph metrics (no character-width approximation)
 function wrapGreedy(
   font: Font,
   text: string,
@@ -61,8 +53,10 @@ function wrapGreedy(
   return lines;
 }
 
-// Pick the largest font size that fits the text in ≤ maxLines and ≤ maxBlockHeight.
-// Truncate the last line with an ellipsis if even minFontSize overflows.
+// Font-scale cascade: try decreasing font sizes until the headline fits in
+// ≤ maxLines AND the block height fits within maxBlockHeight. Only truncate
+// as a last resort at the absolute minimum font size, at a whole-word boundary,
+// with "..." appended.
 function layoutLines(
   font: Font,
   text: string,
@@ -72,45 +66,58 @@ function layoutLines(
   minFontSize: number,
   maxLines: number,
   lineHeightRatio: number
-): { lines: string[]; fontSize: number } {
+): { lines: string[]; fontSize: number; didTruncate: boolean } {
   for (let fs = startFontSize; fs >= minFontSize; fs -= 4) {
     const lines = wrapGreedy(font, text, maxWidth, fs);
     const blockHeight = lines.length * fs * lineHeightRatio;
     if (lines.length <= maxLines && blockHeight <= maxBlockHeight) {
-      return { lines, fontSize: fs };
+      return { lines, fontSize: fs, didTruncate: false };
     }
   }
 
-  const lines = wrapGreedy(font, text, maxWidth, minFontSize).slice(0, maxLines);
-  const lastIdx = lines.length - 1;
-  if (lines[lastIdx] && font.getAdvanceWidth(lines[lastIdx], minFontSize) > maxWidth) {
-    let last = lines[lastIdx];
-    while (last.length > 1 && font.getAdvanceWidth(last + "…", minFontSize) > maxWidth) {
-      last = last.slice(0, -1);
-    }
-    lines[lastIdx] = last.trimEnd() + "…";
-  }
-  return { lines, fontSize: minFontSize };
-}
+  // At minimum font size — wrap and truncate to maxLines if needed
+  const allLines = wrapGreedy(font, text, maxWidth, minFontSize);
 
-function regionForStyle(
-  H: number,
-  designStyle: string
-): { top: number; bottom: number } {
-  switch (designStyle) {
-    case "screenshot":
-      return { top: H * 0.04, bottom: H * 0.42 };
-    case "object":
-      return { top: H * 0.32, bottom: H * 0.68 };
-    default:
-      return { top: H * 0.58, bottom: H * 0.96 };
+  if (allLines.length <= maxLines) {
+    return { lines: allLines, fontSize: minFontSize, didTruncate: false };
   }
+
+  // Truncate: keep first (maxLines - 1) lines intact, build last line from
+  // remaining words, cutting at the last whole word that fits, then append "..."
+  const kept = allLines.slice(0, maxLines - 1);
+  const remainingWords = text.split(/\s+/).filter(Boolean);
+  // Find the words that are on lines after the kept ones
+  let wordIndex = 0;
+  for (const line of kept) {
+    const lineWords = line.split(/\s+/).filter(Boolean);
+    wordIndex += lineWords.length;
+  }
+  const lastLineWords = remainingWords.slice(wordIndex);
+
+  let lastLine = "";
+  for (const word of lastLineWords) {
+    const candidate = lastLine ? `${lastLine} ${word}` : word;
+    if (font.getAdvanceWidth(candidate + "...", minFontSize) <= maxWidth) {
+      lastLine = candidate;
+    } else {
+      break;
+    }
+  }
+  if (lastLine) {
+    lastLine = lastLine + "...";
+  } else {
+    // Edge case: even a single word + "..." doesn't fit — just use the word truncated
+    lastLine = lastLineWords[0] ? lastLineWords[0].slice(0, 20) + "..." : "...";
+  }
+
+  kept.push(lastLine);
+  return { lines: kept, fontSize: minFontSize, didTruncate: true };
 }
 
 export async function compositeHeadline(
   rawBuffer: Buffer,
   headline: string,
-  designStyle: string
+  _designStyle: string
 ): Promise<Buffer> {
   const font = getFont();
 
@@ -118,45 +125,47 @@ export async function compositeHeadline(
   const W    = meta.width  ?? 1080;
   const H    = meta.height ?? 1080;
 
-  console.log(`[compositeHeadline] START — "${headline.slice(0, 60)}", style=${designStyle}, ${W}×${H}`);
+  // Lower-third region: text block always sits between 60% and 95% of image height
+  const regionTop    = H * 0.60;
+  const regionBottom = H * 0.95;
+  const regionHeight = regionBottom - regionTop; // 35% of H
 
-  const baseFontSize  = Math.max(64, Math.min(180, Math.round(W / 10)));
-  const MIN_FONT_SIZE = 56;
-  const LINE_HEIGHT   = 1.12;
-  const MAX_LINES     = 3;
-  const uppercased    = headline.toUpperCase();
-  const maxTextWidth  = W - 160;
+  const LINE_HEIGHT_RATIO = 1.1;
+  const MAX_LINES         = 3;
+  const maxTextWidth      = W - 160; // 80px padding each side
 
-  const region       = regionForStyle(H, designStyle);
-  const regionHeight = region.bottom - region.top;
+  // Font-size cascade: start at W/14 clamped [48, 140], shrink to 28 before truncating
+  const startFontSize = Math.max(48, Math.min(140, Math.round(W / 14)));
+  const MIN_FONT_SIZE = 28;
 
-  const { lines, fontSize } = layoutLines(
+  const uppercased = headline.toUpperCase();
+
+  const { lines, fontSize, didTruncate } = layoutLines(
     font,
     uppercased,
     maxTextWidth,
     regionHeight,
-    baseFontSize,
+    startFontSize,
     MIN_FONT_SIZE,
     MAX_LINES,
-    LINE_HEIGHT
+    LINE_HEIGHT_RATIO
   );
 
-  const lineHeight  = fontSize * LINE_HEIGHT;
+  const lineHeight  = fontSize * LINE_HEIGHT_RATIO;
   const blockHeight = lines.length * lineHeight;
-  const blockTop    = region.top + (regionHeight - blockHeight) / 2;
+  const blockTopY   = regionTop + (regionHeight - blockHeight) / 2;
+
+  console.log(`[compositeHeadline] fontSize=${fontSize} lines=${lines.length} truncated=${didTruncate} blockTopY=${Math.round(blockTopY)} imageHeight=${H}`);
 
   const strokeWidth = Math.max(2, Math.round(fontSize * 0.12));
   const shadowBlur  = Math.max(2, Math.round(fontSize * 0.15));
   const shadowOffY  = Math.max(1, Math.round(fontSize * 0.04));
 
-  // Convert each line to SVG path data, centered on the image's horizontal axis
   const pathElements = lines.map((line, i) => {
     const advanceWidth = font.getAdvanceWidth(line, fontSize);
     const x = (W - advanceWidth) / 2;
-    // Baseline y — opentype positions text on the baseline, not the center.
-    // Approximate baseline as the bottom 80% of the line's slot so x-height sits roughly centered.
-    const lineCenter = blockTop + lineHeight * (i + 0.5);
-    const y = lineCenter + fontSize * 0.35; // shift to put the cap-height roughly centered
+    const lineCenter = blockTopY + lineHeight * (i + 0.5);
+    const y = lineCenter + fontSize * 0.35;
     const glyphPath = font.getPath(line, x, y, fontSize);
     return `<path d="${glyphPath.toPathData(2)}" />`;
   }).join("\n    ");
@@ -175,13 +184,10 @@ export async function compositeHeadline(
   const resvg   = new Resvg(svg, { fitTo: { mode: "original" } });
   const textPng = resvg.render().asPng();
 
-  console.log(`[compositeHeadline] Layout — fontSize=${fontSize}, lines=${lines.length}, textPng=${textPng.length} bytes`);
-
   const result = await sharp(rawBuffer)
     .composite([{ input: Buffer.from(textPng), top: 0, left: 0 }])
     .png()
     .toBuffer();
 
-  console.log(`[compositeHeadline] DONE — output=${result.length} bytes (input=${rawBuffer.length}, delta=${result.length - rawBuffer.length})`);
   return result;
 }
