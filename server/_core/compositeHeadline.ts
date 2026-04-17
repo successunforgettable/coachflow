@@ -161,14 +161,19 @@ export async function compositeHeadline(
   ${textLines}
 </svg>`;
 
-  // Rasterize SVG to PNG via resvg. Pass the TTF buffer directly via fontBuffers
-  // so resvg doesn't need system fonts or fontconfig.
+  console.log(`[compositeHeadline] SVG preview: ${svg.slice(0, 400)}`);
+  console.log(`[compositeHeadline] Font buffer: ${buf.length} bytes, isBuffer=${Buffer.isBuffer(buf)}, first4bytes=${buf.slice(0,4).toString("hex")}`);
+
+  // Rasterize SVG to PNG via resvg. Pass the TTF buffer directly via fontBuffers.
+  // Node Buffer is already a Uint8Array subclass, so pass it directly (no view wrapper).
   const resvg = new Resvg(svg, {
     fitTo: { mode: "original" },
     font: {
-      fontBuffers: [new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength)],
+      fontBuffers: [buf],
       loadSystemFonts: false,
       defaultFontFamily: FONT_FAMILY,
+      serifFamily: FONT_FAMILY,
+      sansSerifFamily: FONT_FAMILY,
     },
   });
   const textPng = resvg.render().asPng();
