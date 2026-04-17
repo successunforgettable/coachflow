@@ -37,24 +37,28 @@ function wrapGreedy(
   return lines;
 }
 
-// Find the largest font size that fits the text in ≤ maxLines.
+// Find the largest font size that fits within maxLines AND within maxBlockHeight.
 // If the text won't fit even at minFontSize, truncate the last line with an ellipsis.
 function layoutLines(
   ctx: CanvasRenderingContext2D,
   text: string,
   maxWidth: number,
+  maxBlockHeight: number,
   startFontSize: number,
   minFontSize: number,
   fontFamily: string,
-  maxLines: number
+  maxLines: number,
+  lineHeightRatio: number
 ): { lines: string[]; fontSize: number } {
   const words = text.split(/\s+/).filter(Boolean);
 
   for (let fs = startFontSize; fs >= minFontSize; fs -= 4) {
     ctx.font = `900 ${fs}px "${fontFamily}"`;
-    const lines = wrapGreedy(ctx, words, maxWidth);
+    const lines       = wrapGreedy(ctx, words, maxWidth);
+    const blockHeight = lines.length * fs * lineHeightRatio;
     const fits =
       lines.length <= maxLines &&
+      blockHeight <= maxBlockHeight &&
       lines.every(l => ctx.measureText(l).width <= maxWidth);
     if (fits) return { lines, fontSize: fs };
   }
@@ -72,10 +76,28 @@ function layoutLines(
   return { lines: truncated, fontSize: minFontSize };
 }
 
+// Positioning region as fractions of image height, keyed by designStyle.
+// screenshot → upper band (so UI screenshots stay visible in the lower part)
+// object     → centred band
+// person_*   → lower band (so the subject's face stays uncovered)
+function regionForStyle(
+  H: number,
+  designStyle: string
+): { top: number; bottom: number } {
+  switch (designStyle) {
+    case "screenshot":
+      return { top: H * 0.04, bottom: H * 0.42 };
+    case "object":
+      return { top: H * 0.32, bottom: H * 0.68 };
+    default:
+      return { top: H * 0.58, bottom: H * 0.96 };
+  }
+}
+
 export async function compositeHeadline(
   rawBuffer: Buffer,
   headline: string,
-  _designStyle: string
+  designStyle: string
 ): Promise<Buffer> {
   ensureFont();
 
@@ -89,31 +111,33 @@ export async function compositeHeadline(
   // Paint background image at its native dimensions
   ctx.drawImage(img as any, 0, 0, W, H);
 
-  // Font size scales with image width, clamped
-  const baseFontSize = Math.max(48, Math.min(140, Math.round(W / 14)));
-  const MIN_FONT_SIZE = 48;
+  // Big, poster-style sizing — scales with width, clamped
+  const baseFontSize  = Math.max(64, Math.min(180, Math.round(W / 10)));
+  const MIN_FONT_SIZE = 56;
+  const LINE_HEIGHT   = 1.08;
+  const MAX_LINES     = 3;
 
   const uppercased   = headline.toUpperCase();
   const maxTextWidth = W - 160; // 80px padding each side
+
+  const region       = regionForStyle(H, designStyle);
+  const regionHeight = region.bottom - region.top;
 
   const { lines, fontSize } = layoutLines(
     ctx,
     uppercased,
     maxTextWidth,
+    regionHeight,
     baseFontSize,
     MIN_FONT_SIZE,
     FONT_FAMILY,
-    3
+    MAX_LINES,
+    LINE_HEIGHT
   );
 
-  const lineHeight  = fontSize * 1.1;
+  const lineHeight  = fontSize * LINE_HEIGHT;
   const blockHeight = lines.length * lineHeight;
-
-  // Lower ~37.5% of the image — leave 2% bottom margin
-  const regionTop    = H * 0.625;
-  const regionBottom = H * 0.98;
-  const regionHeight = regionBottom - regionTop;
-  const blockTop     = regionTop + (regionHeight - blockHeight) / 2;
+  const blockTop    = region.top + (regionHeight - blockHeight) / 2;
 
   ctx.font         = `900 ${fontSize}px "${FONT_FAMILY}"`;
   ctx.textAlign    = "center";
@@ -125,10 +149,10 @@ export async function compositeHeadline(
   ctx.shadowOffsetX = 0;
   ctx.shadowOffsetY = fontSize * 0.04;
 
-  // Black stroke for readability on any background, white fill on top
+  // Thick black stroke for readability on any background, white fill on top
   ctx.strokeStyle = "#000000";
   ctx.lineJoin    = "round";
-  ctx.lineWidth   = fontSize * 0.08;
+  ctx.lineWidth   = fontSize * 0.12;
   ctx.fillStyle   = "#ffffff";
 
   const centerX = W / 2;
