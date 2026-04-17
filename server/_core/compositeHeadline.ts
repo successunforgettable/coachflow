@@ -161,8 +161,12 @@ export async function compositeHeadline(
   ${textLines}
 </svg>`;
 
-  console.log(`[compositeHeadline] SVG preview: ${svg.slice(0, 400)}`);
-  console.log(`[compositeHeadline] Font buffer: ${buf.length} bytes, isBuffer=${Buffer.isBuffer(buf)}, first4bytes=${buf.slice(0,4).toString("hex")}`);
+  // Sanity check: TTF magic must be 00010000 (TrueType) or 4f54544f ("OTTO" for OpenType).
+  // If the file is HTML (a committed 404 response etc.), glyph rendering silently fails.
+  const magic = buf.slice(0, 4).toString("hex");
+  if (magic !== "00010000" && magic !== "4f54544f") {
+    throw new Error(`[compositeHeadline] Font file at ${FONT_PATH} is not a valid TTF/OTF — first 4 bytes are 0x${magic}. The file may be a corrupted download or HTML error page saved as a TTF.`);
+  }
 
   // Rasterize SVG to PNG via resvg. Pass the TTF buffer directly via fontBuffers.
   // Node Buffer is already a Uint8Array subclass, so pass it directly (no view wrapper).
