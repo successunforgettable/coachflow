@@ -892,7 +892,11 @@ export const adCreatives = mysqlTable("adCreatives", {
   headlineFormula: mysqlEnum("headlineFormula", ["benefit", "social_proof", "curiosity", "contrast", "challenge"]).notNull(),
   // Generated content
   headline: varchar("headline", { length: 255 }).notNull(),
-  imageUrl: text("imageUrl").notNull(), // S3 URL to generated image
+  imageUrl: text("imageUrl").notNull(), // Cloudinary URL to composited (headline baked in) image
+  // Raw Flux output BEFORE headline compositing — lets recompositeText start
+  // from a clean background so text-only edits don't leave ghost pixels from
+  // the previous headline. Nullable for legacy rows predating this column.
+  rawImageUrl: varchar("rawImageUrl", { length: 500 }),
   imageFormat: varchar("imageFormat", { length: 20 }).default("1080x1080").notNull(), // Square format
   // Meta compliance
   complianceChecked: boolean("complianceChecked").default(true).notNull(),

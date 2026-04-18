@@ -289,13 +289,16 @@ export const adCreativesRouter = router({
         const imageResponse = await fetch(imageUrl);
         const rawBuffer = Buffer.from(await imageResponse.arrayBuffer());
 
-        // Composite headline server-side, upload baked PNG once, store clean URL
+        // Dual upload: raw Flux output → rawImageUrl (for future recomposites),
+        // composited headline PNG → imageUrl (what users see).
+        const rawKey = `ad-creatives/${ctx.user.id}/${batchId}/raw-variation-${i + 1}.png`;
+        const { url: rawImageUrl } = await storagePut(rawKey, rawBuffer, "image/png");
         const compositedBuffer = await compositeHeadline(rawBuffer, headline, variation.style);
         const fileKey = `ad-creatives/${ctx.user.id}/${batchId}/variation-${i + 1}.png`;
         const { url: s3Url } = await storagePut(fileKey, compositedBuffer, "image/png");
 
-        console.log(`[Ad Creatives] Uploaded composited PNG to storage: ${s3Url}`);
-        
+        console.log(`[Ad Creatives] Uploaded raw=${rawImageUrl} composited=${s3Url}`);
+
         // Save to database
         const result = await db.insert(adCreatives).values({
           userId: ctx.user.id,
@@ -311,6 +314,7 @@ export const adCreativesRouter = router({
           headlineFormula: variation.formula,
           headline,
           imageUrl: s3Url,
+          rawImageUrl,
           imageFormat: "1080x1080",
           complianceChecked: true,
           complianceIssues: complianceIssues.length > 0 ? JSON.stringify(complianceIssues) : null,
@@ -426,13 +430,18 @@ export const adCreativesRouter = router({
 
           const imageResponse = await fetch(imageResult.url);
           const rawBuffer = Buffer.from(await imageResponse.arrayBuffer());
+
+          // Dual upload — raw Flux stays around so future recompositeText
+          // calls start from a clean background.
+          const rawKey = `ad-creatives/${capturedUserId}/raw-regen-${capturedId}-${Date.now()}.png`;
+          const { url: rawImageUrl } = await s3Put(rawKey, rawBuffer, "image/png");
           const compositedBuffer = await doComposite(rawBuffer, capturedHeadline, capturedStyle);
           const fileKey = `ad-creatives/${capturedUserId}/regen-${capturedId}-${Date.now()}.png`;
           const { url: s3Url } = await s3Put(fileKey, compositedBuffer, "image/png");
 
           await bgDb
             .update(adCreativesTable)
-            .set({ imageUrl: s3Url })
+            .set({ imageUrl: s3Url, rawImageUrl })
             .where(andBg(eqBg(adCreativesTable.id, capturedId), eqBg(adCreativesTable.userId, capturedUserId)));
 
           await bgDb
@@ -499,8 +508,20 @@ export const adCreativesRouter = router({
 
       console.log(`[adCreatives.recompositeText] Creative ${input.id} — new headline="${newHeadline.slice(0, 60)}"`);
 
-      // Fetch the current baked image from Cloudinary as our background
-      const bgResponse = await fetch(existing.imageUrl);
+      // Prefer the raw Flux output as the background so the new headline sits
+      // on a clean image (no ghost pixels from the previous headline).
+      // Legacy rows predating the rawImageUrl column fall back to the composited
+      // imageUrl with a warning — still works, just with the ghost-pixel caveat
+      // until the row is fully regenerated.
+      let bgSource: string;
+      if (existing.rawImageUrl) {
+        bgSource = existing.rawImageUrl;
+      } else {
+        console.warn(`[adCreatives.recompositeText][LEGACY] Creative ${input.id} has no rawImageUrl — falling back to composited imageUrl. Old headline pixels may bleed through.`);
+        bgSource = existing.imageUrl;
+      }
+
+      const bgResponse = await fetch(bgSource);
       if (!bgResponse.ok) {
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
@@ -509,19 +530,14 @@ export const adCreativesRouter = router({
       }
       const bgBuffer = Buffer.from(await bgResponse.arrayBuffer());
 
-      // NOTE: we're compositing on top of an already-composited image. The old
-      // headline pixels stay baked in; the new headline overlays on top. If the
-      // new layout differs from the old (different line count / font size), the
-      // old text can become visible through the gaps. This is acceptable for an
-      // MVP edit flow because the lower-third enforcement keeps placement stable.
-      // A cleaner solution (store the raw Flux background separately) is flagged
-      // as backlog.
       const compositedBuffer = await compositeHeadline(bgBuffer, newHeadline, existing.designStyle || "person_shocked");
 
       const fileKey = `ad-creatives/${ctx.user.id}/recomp-${input.id}-${Date.now()}.png`;
       const { url: newImageUrl } = await storagePut(fileKey, compositedBuffer, "image/png");
 
-      // Persist the new headline and URL. updatedAt auto-refreshes via onUpdateNow.
+      // Persist the new headline and composited URL only. rawImageUrl is
+      // immutable per row — it's the original Flux background and should
+      // never change unless the full image is regenerated.
       await db
         .update(adCreatives)
         .set({ headline: newHeadline, imageUrl: newImageUrl })
@@ -664,13 +680,18 @@ export const adCreativesRouter = router({
             console.log(`[adCreatives.generateAsync] Job ${jobId} — variation ${i+1}/5 uglyMode=${uglyMode}`);
             const imageResult = await genImg({ prompt: imagePrompt });
             if (!imageResult.url) throw new Error(`Failed to generate image for variation ${i + 1}`);
-            // Composite headline server-side, upload baked PNG once, store clean URL
             const imageResponse = await fetch(imageResult.url);
             const rawBuffer = Buffer.from(await imageResponse.arrayBuffer());
+
+            // Dual upload: keep the raw Flux output so recompositeText can
+            // rebuild cleanly later; also upload the composited headline PNG.
+            const rawKey = `ad-creatives/${capturedUserId}/${batchId}/raw-variation-${i + 1}.png`;
+            const { url: rawImageUrl } = await s3Put(rawKey, rawBuffer, "image/png");
             const { compositeHeadline: doComposite } = await import("../_core/compositeHeadline");
             const compositedBuffer = await doComposite(rawBuffer, headline, variation.style);
             const fileKey = `ad-creatives/${capturedUserId}/${batchId}/variation-${i + 1}.png`;
             const { url: s3Url } = await s3Put(fileKey, compositedBuffer, "image/png");
+
             await bgDb.insert(adCreativesTable).values({
               userId: capturedUserId,
               serviceId: capturedInput.serviceId,
@@ -686,6 +707,7 @@ export const adCreativesRouter = router({
               headlineFormula: variation.formula,
               headline,
               imageUrl: s3Url,
+              rawImageUrl,
               imageFormat: capturedInput.imageFormat || "1080x1080",
               complianceChecked: true,
               complianceIssues: complianceIssues.length > 0 ? JSON.stringify(complianceIssues) : null,
@@ -802,9 +824,11 @@ export async function generateAdCreativesBatch(params: {
     const imageResult = await generateImage({ prompt: imagePrompt });
     if (!imageResult.url) throw new Error(`Failed to generate image ${i + 1}`);
 
-    // Composite headline server-side, upload baked PNG once, store clean URL
+    // Dual upload: raw Flux output + composited PNG.
     const imageResponse = await fetch(imageResult.url);
     const rawBuffer = Buffer.from(await imageResponse.arrayBuffer());
+    const rawKey = `ad-creatives/${params.userId}/${batchId}/raw-variation-${i + 1}.png`;
+    const { url: rawImageUrl } = await storagePut(rawKey, rawBuffer, "image/png");
     const compositedBuffer = await compositeHeadline(rawBuffer, headline, variation.style);
     const fileKey = `ad-creatives/${params.userId}/${batchId}/variation-${i + 1}.png`;
     const { url: s3Url } = await storagePut(fileKey, compositedBuffer, "image/png");
@@ -826,6 +850,7 @@ export async function generateAdCreativesBatch(params: {
       headlineFormula: variation.formula,
       headline,
       imageUrl: s3Url,
+      rawImageUrl,
       imageFormat: "1080x1080",
       complianceChecked: true,
       complianceIssues: complianceIssues.length > 0 ? JSON.stringify(complianceIssues) : null,
