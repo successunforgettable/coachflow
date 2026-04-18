@@ -361,7 +361,13 @@ export const adCreativesRouter = router({
   // Cloudflare's 100s read timeout killing the connection during Flux generation.
   // Returns { jobId } immediately; client polls /api/jobs/:jobId for completion.
   regenerateSingle: protectedProcedure
-    .input(z.object({ id: z.number() }))
+    .input(z.object({
+      id: z.number(),
+      // Optional: override the stored headline with a new one. When provided,
+      // the new image is composited with this text AND the row's headline
+      // column is updated so subsequent regenerates use it.
+      headlineOverride: z.string().max(200).optional(),
+    }))
     .mutation(async ({ ctx, input }) => {
       // Free-tier gate — block regenerate once the user has ≥ 2 ad creatives
       await enforceFreeTierAdImageGate(ctx.user.id, ctx.user.subscriptionTier, ctx.user.role);
@@ -380,6 +386,16 @@ export const adCreativesRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Creative not found" });
       }
 
+      // If caller supplied a new headline, persist it now so it survives even if
+      // the background job fails — user's edit is preserved and visible on retry.
+      const nextHeadline = input.headlineOverride?.trim() || existing.headline || "";
+      if (input.headlineOverride && input.headlineOverride.trim() !== existing.headline) {
+        await db
+          .update(adCreatives)
+          .set({ headline: nextHeadline })
+          .where(and(eq(adCreatives.id, input.id), eq(adCreatives.userId, ctx.user.id)));
+      }
+
       // Create job record and return immediately — pipeline runs in background
       const jobId = randomUUID();
       await db.insert(jobs).values({ id: jobId, userId: String(ctx.user.id), status: "pending" });
@@ -389,7 +405,7 @@ export const adCreativesRouter = router({
       const capturedStyle   = existing.designStyle || "person_shocked";
       const capturedNiche   = existing.niche;
       const capturedProblem = existing.pressingProblem;
-      const capturedHeadline = existing.headline || "";
+      const capturedHeadline = nextHeadline;
 
       setImmediate(async () => {
         try {
@@ -444,6 +460,76 @@ export const adCreativesRouter = router({
       });
 
       return { jobId };
+    }),
+
+  /**
+   * recompositeText — cheap text-only refresh on an existing ad creative.
+   *
+   * Fetches the current Cloudinary image, composites the new headline onto it,
+   * uploads the result as a new image, and updates the row. Does NOT call Flux,
+   * does NOT create a background job, does NOT count toward the free-tier gate.
+   *
+   * Returns the new imageUrl synchronously — the operation is typically < 3 s
+   * (fetch + opentype.js path emit + resvg raster + Cloudinary upload).
+   */
+  recompositeText: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      headline: z.string().min(1).max(200),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      // Ownership check — same pattern as regenerateSingle
+      const [existing] = await db
+        .select()
+        .from(adCreatives)
+        .where(and(eq(adCreatives.id, input.id), eq(adCreatives.userId, ctx.user.id)))
+        .limit(1);
+
+      if (!existing) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Creative not found" });
+      }
+
+      const newHeadline = input.headline.trim();
+      if (!newHeadline) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Headline cannot be empty" });
+      }
+
+      console.log(`[adCreatives.recompositeText] Creative ${input.id} — new headline="${newHeadline.slice(0, 60)}"`);
+
+      // Fetch the current baked image from Cloudinary as our background
+      const bgResponse = await fetch(existing.imageUrl);
+      if (!bgResponse.ok) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Failed to fetch existing image (${bgResponse.status})`,
+        });
+      }
+      const bgBuffer = Buffer.from(await bgResponse.arrayBuffer());
+
+      // NOTE: we're compositing on top of an already-composited image. The old
+      // headline pixels stay baked in; the new headline overlays on top. If the
+      // new layout differs from the old (different line count / font size), the
+      // old text can become visible through the gaps. This is acceptable for an
+      // MVP edit flow because the lower-third enforcement keeps placement stable.
+      // A cleaner solution (store the raw Flux background separately) is flagged
+      // as backlog.
+      const compositedBuffer = await compositeHeadline(bgBuffer, newHeadline, existing.designStyle || "person_shocked");
+
+      const fileKey = `ad-creatives/${ctx.user.id}/recomp-${input.id}-${Date.now()}.png`;
+      const { url: newImageUrl } = await storagePut(fileKey, compositedBuffer, "image/png");
+
+      // Persist the new headline and URL. updatedAt auto-refreshes via onUpdateNow.
+      await db
+        .update(adCreatives)
+        .set({ headline: newHeadline, imageUrl: newImageUrl })
+        .where(and(eq(adCreatives.id, input.id), eq(adCreatives.userId, ctx.user.id)));
+
+      console.log(`[adCreatives.recompositeText] Creative ${input.id} — new URL: ${newImageUrl}`);
+
+      return { id: input.id, imageUrl: newImageUrl, headline: newHeadline };
     }),
 
   // Rate creative

@@ -115,13 +115,24 @@ type Creative = {
 
 function ImageCard({
   creative,
-  onRegenerate,
-  regenerating,
+  onRegenerateWithText,
+  onUpdateTextOnly,
+  busy,
+  isTrialTier,
 }: {
   creative: Creative;
-  onRegenerate: (id: number) => void;
-  regenerating: boolean;
+  onRegenerateWithText: (id: number, newHeadline: string) => void;
+  onUpdateTextOnly: (id: number, newHeadline: string) => void;
+  busy: boolean;
+  isTrialTier: boolean;
 }) {
+  const [editMode, setEditMode]             = useState(false);
+  const [editedHeadline, setEditedHeadline] = useState(creative.headline);
+
+  // Re-sync the editable text when the underlying creative.headline changes
+  // (e.g., after a successful regenerate/recomposite refetches the batch).
+  useEffect(() => { setEditedHeadline(creative.headline); }, [creative.headline]);
+
   const issues: string[] = (() => {
     if (!creative.complianceIssues) return [];
     try { return JSON.parse(creative.complianceIssues); } catch { return []; }
@@ -134,6 +145,33 @@ function ImageCard({
     a.target = "_blank";
     a.rel = "noopener noreferrer";
     a.click();
+  }
+
+  function openEdit() {
+    setEditedHeadline(creative.headline);
+    setEditMode(true);
+  }
+
+  function cancelEdit() {
+    setEditedHeadline(creative.headline);
+    setEditMode(false);
+  }
+
+  function commitUpdateText() {
+    const trimmed = editedHeadline.trim();
+    if (!trimmed || trimmed === creative.headline) {
+      // No change — just close the panel
+      setEditMode(false);
+      return;
+    }
+    onUpdateTextOnly(creative.id, trimmed);
+    setEditMode(false);
+  }
+
+  function commitRegenerate() {
+    const trimmed = editedHeadline.trim() || creative.headline;
+    onRegenerateWithText(creative.id, trimmed);
+    setEditMode(false);
   }
 
   return (
@@ -150,7 +188,7 @@ function ImageCard({
     >
       {/* Image */}
       <div style={{ position: "relative", width: "100%", aspectRatio: "1/1", background: "#f0ece4" }}>
-        {regenerating ? (
+        {busy ? (
           <div
             style={{
               position: "absolute", inset: 0,
@@ -162,7 +200,7 @@ function ImageCard({
             <div style={{ textAlign: "center" }}>
               <ZappyMascot state="loading" size={64} />
               <p style={{ fontFamily: T.fontBody, fontSize: "12px", color: "#888", marginTop: "8px" }}>
-                Regenerating…
+                Working…
               </p>
             </div>
           </div>
@@ -195,53 +233,185 @@ function ImageCard({
           <StyleBadge style={creative.designStyle || "person_shocked"} />
           <ComplianceBadge issues={issues} />
         </div>
-        {/* Buttons */}
-        <div style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
-          {/* Download */}
-          <button
-            onClick={handleDownload}
+        {/* Actions — two-state UI: default (Download + Regenerate) or edit panel */}
+        {!editMode ? (
+          <div style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
+            {/* Download */}
+            <button
+              onClick={handleDownload}
+              style={{
+                flex: 1,
+                background: T.dark,
+                color: "#fff",
+                border: "none",
+                borderRadius: T.pill,
+                padding: "10px 14px",
+                fontFamily: T.fontBody,
+                fontWeight: 700,
+                fontSize: "13px",
+                cursor: "pointer",
+                transition: "opacity 0.15s",
+              }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.85"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; }}
+            >
+              Download
+            </button>
+            {/* Regenerate — opens the edit panel */}
+            <button
+              onClick={() => !busy && openEdit()}
+              disabled={busy}
+              style={{
+                flex: 1,
+                background: "transparent",
+                color: T.dark,
+                border: `2px solid ${T.dark}`,
+                borderRadius: T.pill,
+                padding: "10px 14px",
+                fontFamily: T.fontBody,
+                fontWeight: 700,
+                fontSize: "13px",
+                cursor: busy ? "not-allowed" : "pointer",
+                opacity: busy ? 0.5 : 1,
+                transition: "opacity 0.15s",
+              }}
+              onMouseEnter={(e) => { if (!busy) (e.currentTarget as HTMLButtonElement).style.opacity = "0.75"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = busy ? "0.5" : "1"; }}
+            >
+              {busy ? "…" : "Regenerate"}
+            </button>
+          </div>
+        ) : (
+          <div
             style={{
-              flex: 1,
-              background: T.dark,
-              color: "#fff",
-              border: "none",
-              borderRadius: T.pill,
-              padding: "10px 14px",
-              fontFamily: T.fontBody,
-              fontWeight: 700,
-              fontSize: "13px",
-              cursor: "pointer",
-              transition: "opacity 0.15s",
+              display: "flex",
+              flexDirection: "column",
+              gap: "10px",
+              marginTop: "4px",
+              padding: "14px",
+              background: T.bg,
+              borderRadius: "16px",
+              border: "1.5px solid #e8e2d8",
             }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.85"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; }}
           >
-            Download
-          </button>
-          {/* Regenerate */}
-          <button
-            onClick={() => !regenerating && onRegenerate(creative.id)}
-            disabled={regenerating}
-            style={{
-              flex: 1,
-              background: "transparent",
-              color: T.dark,
-              border: `2px solid ${T.dark}`,
-              borderRadius: T.pill,
-              padding: "10px 14px",
-              fontFamily: T.fontBody,
-              fontWeight: 700,
-              fontSize: "13px",
-              cursor: regenerating ? "not-allowed" : "pointer",
-              opacity: regenerating ? 0.5 : 1,
-              transition: "opacity 0.15s",
-            }}
-            onMouseEnter={(e) => { if (!regenerating) (e.currentTarget as HTMLButtonElement).style.opacity = "0.75"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = regenerating ? "0.5" : "1"; }}
-          >
-            {regenerating ? "…" : "Regenerate"}
-          </button>
-        </div>
+            <label
+              style={{
+                fontFamily: T.fontBody,
+                fontSize: "11px",
+                fontWeight: 600,
+                color: "#999",
+                textTransform: "uppercase",
+                letterSpacing: "0.06em",
+              }}
+            >
+              Edit headline
+            </label>
+            <input
+              type="text"
+              value={editedHeadline}
+              maxLength={200}
+              onChange={(e) => setEditedHeadline(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") { e.preventDefault(); commitUpdateText(); }
+                if (e.key === "Escape") { e.preventDefault(); cancelEdit(); }
+              }}
+              autoFocus
+              style={{
+                width: "100%",
+                padding: "10px 14px",
+                borderRadius: "10px",
+                border: "1.5px solid #e8e2d8",
+                background: "#fff",
+                fontFamily: T.fontBody,
+                fontSize: "14px",
+                color: T.dark,
+                outline: "none",
+                boxSizing: "border-box",
+              }}
+              onFocus={(e) => { e.currentTarget.style.borderColor = T.orange; e.currentTarget.style.boxShadow = `0 0 0 3px rgba(255,91,29,0.15)`; }}
+              onBlur={(e)  => { e.currentTarget.style.borderColor = "#e8e2d8"; e.currentTarget.style.boxShadow = "none"; }}
+            />
+            <div
+              style={{
+                fontFamily: T.fontBody,
+                fontSize: "11px",
+                color: "#999",
+                textAlign: "right",
+              }}
+            >
+              {editedHeadline.length} / 200
+            </div>
+
+            <div style={{ display: "flex", gap: "8px" }}>
+              {/* Update Text Only — secondary, purple, cheap recomposite */}
+              <button
+                onClick={() => !busy && commitUpdateText()}
+                disabled={busy}
+                style={{
+                  flex: 1,
+                  background: T.purple,
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: T.pill,
+                  padding: "10px 14px",
+                  fontFamily: T.fontBody,
+                  fontWeight: 700,
+                  fontSize: "13px",
+                  cursor: busy ? "not-allowed" : "pointer",
+                  opacity: busy ? 0.5 : 1,
+                  transition: "opacity 0.15s",
+                }}
+                onMouseEnter={(e) => { if (!busy) (e.currentTarget as HTMLButtonElement).style.opacity = "0.85"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = busy ? "0.5" : "1"; }}
+                title="Re-composites the new headline onto the same image. Free — no Flux call."
+              >
+                Update Text Only
+              </button>
+              {/* New Image + Text — primary, orange, full regenerate */}
+              <button
+                onClick={() => !busy && commitRegenerate()}
+                disabled={busy}
+                style={{
+                  flex: 1,
+                  background: T.orange,
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: T.pill,
+                  padding: "10px 14px",
+                  fontFamily: T.fontBody,
+                  fontWeight: 700,
+                  fontSize: "13px",
+                  cursor: busy ? "not-allowed" : "pointer",
+                  opacity: busy ? 0.5 : 1,
+                  transition: "opacity 0.15s",
+                }}
+                onMouseEnter={(e) => { if (!busy) (e.currentTarget as HTMLButtonElement).style.opacity = "0.85"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = busy ? "0.5" : "1"; }}
+                title={isTrialTier ? "Counts toward your free-tier regeneration limit (2 total)." : "Generates a new image and composites the new text."}
+              >
+                New Image + Text
+              </button>
+            </div>
+
+            <button
+              onClick={cancelEdit}
+              disabled={busy}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: "#999",
+                fontFamily: T.fontBody,
+                fontSize: "12px",
+                fontWeight: 600,
+                cursor: busy ? "not-allowed" : "pointer",
+                padding: "4px",
+                alignSelf: "center",
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -267,10 +437,12 @@ export default function V2AdImageCreator() {
   const { data: services }    = trpc.services.list.useQuery(undefined, { staleTime: 30_000 });
   const { data: icpList }     = trpc.icps.list.useQuery(undefined, { staleTime: 30_000 });
   const { data: creditData }  = trpc.videoCredits.getBalance.useQuery(undefined, { staleTime: 10_000 });
+  const { data: authData }    = trpc.auth.me.useQuery(undefined, { staleTime: 60_000 });
 
   const activeService = services?.[0];
   const activeIcp     = icpList?.[0];
   const credits       = creditData?.balance ?? 0;
+  const isTrialTier   = !authData?.user?.subscriptionTier || authData.user.subscriptionTier === "trial";
 
   // ── Load last batch on mount ─────────────────────────────────────────────────
   const { data: latestBatch } = trpc.adCreatives.getLatestByServiceId.useQuery(
@@ -292,8 +464,9 @@ export default function V2AdImageCreator() {
   );
 
   // ── Mutations ───────────────────────────────────────────────────────────────
-  const generateAsync   = trpc.adCreatives.generateAsync.useMutation();
+  const generateAsync    = trpc.adCreatives.generateAsync.useMutation();
   const regenerateSingle = trpc.adCreatives.regenerateSingle.useMutation();
+  const recompositeText  = trpc.adCreatives.recompositeText.useMutation();
 
   // ── Polling logic ────────────────────────────────────────────────────────────
   const startPolling = useCallback((jId: string) => {
@@ -361,14 +534,16 @@ export default function V2AdImageCreator() {
     }
   }
 
-  // ── Regenerate single card ───────────────────────────────────────────────────
-  // regenerateSingle now returns { jobId } immediately (async job pattern).
-  // We poll /api/jobs/:jobId until complete then refetch the batch.
-  async function handleRegenerate(id: number) {
+  // ── Full regenerate (new Flux image + new/updated text) ─────────────────────
+  // Uses the async job pattern: mutation returns { jobId } immediately, we poll
+  // /api/jobs/:jobId until the background pipeline finishes then refetch.
+  async function handleRegenerateWithText(id: number, newHeadline: string) {
     setRegenIds((prev) => new Set(prev).add(id));
     try {
-      const { jobId } = await regenerateSingle.mutateAsync({ id });
-      // Poll until the background job finishes
+      const { jobId } = await regenerateSingle.mutateAsync({
+        id,
+        headlineOverride: newHeadline,
+      });
       await new Promise<void>((resolve) => {
         const interval = setInterval(async () => {
           try {
@@ -382,6 +557,16 @@ export default function V2AdImageCreator() {
           } catch { /* keep polling */ }
         }, 5_000);
       });
+      await refetchBatch();
+    } catch { /* ignore */ }
+    setRegenIds((prev) => { const s = new Set(prev); s.delete(id); return s; });
+  }
+
+  // ── Update text only (no Flux call, synchronous on the server) ──────────────
+  async function handleUpdateTextOnly(id: number, newHeadline: string) {
+    setRegenIds((prev) => new Set(prev).add(id));
+    try {
+      await recompositeText.mutateAsync({ id, headline: newHeadline });
       await refetchBatch();
     } catch { /* ignore */ }
     setRegenIds((prev) => { const s = new Set(prev); s.delete(id); return s; });
@@ -725,8 +910,10 @@ export default function V2AdImageCreator() {
               <ImageCard
                 key={creative.id}
                 creative={creative}
-                onRegenerate={handleRegenerate}
-                regenerating={regenIds.has(creative.id)}
+                onRegenerateWithText={handleRegenerateWithText}
+                onUpdateTextOnly={handleUpdateTextOnly}
+                busy={regenIds.has(creative.id)}
+                isTrialTier={isTrialTier}
               />
             ))}
           </div>
