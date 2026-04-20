@@ -589,9 +589,10 @@ Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES
    * headlines, sorted by selectionScore desc. Used by V2AdImageCreator's edit
    * panel so users pick from compliant headlines instead of typing freeform.
    * Ownership is enforced by userId in the WHERE clause.
-   * complianceScore >= 70 matches the "Mostly Compliant" band in
-   * getComplianceLabel — rows below that are excluded. Null scores
-   * (legacy/pre-scoring rows) are permitted.
+   * Strict gate: only rows with an explicit compliance score >= 70 (Mostly
+   * Compliant or better per getComplianceLabel). NULL scores are pre-scoring
+   * legacy and must not be picker-visible — user evidence confirmed zero such
+   * rows are currently reachable, so this is defensive for future imports only.
    */
   listForServiceId: protectedProcedure
     .input(z.object({ serviceId: z.number() }))
@@ -615,7 +616,7 @@ Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES
           eq(headlinesTable.serviceId, input.serviceId),
         ))
         .orderBy(desc(headlinesTable.selectionScore));
-      return rows.filter(r => r.complianceScore === null || r.complianceScore >= 70);
+      return rows.filter(r => r.complianceScore !== null && r.complianceScore >= 70);
     }),
 
   // Get the most recent headline set for a given serviceId (V2 results panel revisit)

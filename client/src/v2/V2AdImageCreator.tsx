@@ -112,6 +112,11 @@ type Creative = {
   designStyle: string | null;
   complianceIssues: string | null;
   serviceId: number | null;
+  // Raw Flux background used by recompositeText to avoid ghost pixels on
+  // text-only edits. Null on pre-R2c-cleanbackground rows — legacy path is
+  // gated client-side (Update Text Only disabled) so those users go through
+  // New Image + Text to repopulate this field.
+  rawImageUrl: string | null;
 };
 
 // Node 6 headline shape — matches headlinesRouter.listForServiceId return rows.
@@ -138,12 +143,14 @@ function ImageCard({
   onUpdateTextOnly,
   busy,
   isTrialTier,
+  regenError,
 }: {
   creative: Creative;
   onRegenerateWithText: (id: number, newHeadline: string) => void;
   onUpdateTextOnly: (id: number, newHeadline: string) => void;
   busy: boolean;
   isTrialTier: boolean;
+  regenError: string | null;
 }) {
   const [editMode, setEditMode]               = useState(false);
 
@@ -206,6 +213,16 @@ function ImageCard({
 
   const hasSelection    = selectedHeadline !== null;
   const actionsDisabled = busy || !hasSelection;
+  // Legacy rows (pre-R2c-cleanbackground) have no raw Flux background, so
+  // recompositeText would fall back to the already-baked imageUrl and ghost
+  // pixels from the old headline would bleed through the new one. Gate the
+  // Update Text Only button entirely; New Image + Text remains available
+  // and will repopulate rawImageUrl on completion.
+  const isLegacyRow         = creative.rawImageUrl == null;
+  const updateTextDisabled  = actionsDisabled || isLegacyRow;
+  const updateTextTooltip   = isLegacyRow
+    ? "Regenerate this image once to enable quick text updates"
+    : "Re-composites the new headline onto the same image. Free — no Flux call.";
 
   return (
     <div
@@ -266,6 +283,24 @@ function ImageCard({
           <StyleBadge style={creative.designStyle || "person_shocked"} />
           <ComplianceBadge issues={issues} />
         </div>
+        {/* Inline regen error — cleared when user clicks Regenerate again */}
+        {regenError && !busy && (
+          <div
+            role="alert"
+            style={{
+              background: "rgba(220,38,38,0.08)",
+              border: "1px solid rgba(220,38,38,0.25)",
+              borderRadius: "10px",
+              padding: "8px 12px",
+              fontFamily: T.fontBody,
+              fontSize: "12px",
+              color: "#991B1B",
+              lineHeight: 1.4,
+            }}
+          >
+            {regenError}
+          </div>
+        )}
         {/* Actions — two-state UI: default (Download + Regenerate) or edit panel */}
         {!editMode ? (
           <div style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
@@ -441,9 +476,10 @@ function ImageCard({
 
             <div style={{ display: "flex", gap: "8px" }}>
               {/* Update Text Only — secondary, purple, cheap recomposite */}
+              {/* Disabled on legacy rows (rawImageUrl == null) to prevent ghost-pixel composites */}
               <button
-                onClick={() => !actionsDisabled && commitUpdateText()}
-                disabled={actionsDisabled}
+                onClick={() => !updateTextDisabled && commitUpdateText()}
+                disabled={updateTextDisabled}
                 style={{
                   flex: 1,
                   background: T.purple,
@@ -454,13 +490,13 @@ function ImageCard({
                   fontFamily: T.fontBody,
                   fontWeight: 700,
                   fontSize: "13px",
-                  cursor: actionsDisabled ? "not-allowed" : "pointer",
-                  opacity: actionsDisabled ? 0.4 : 1,
+                  cursor: updateTextDisabled ? "not-allowed" : "pointer",
+                  opacity: updateTextDisabled ? 0.4 : 1,
                   transition: "opacity 0.15s",
                 }}
-                onMouseEnter={(e) => { if (!actionsDisabled) (e.currentTarget as HTMLButtonElement).style.opacity = "0.85"; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = actionsDisabled ? "0.4" : "1"; }}
-                title="Re-composites the new headline onto the same image. Free — no Flux call."
+                onMouseEnter={(e) => { if (!updateTextDisabled) (e.currentTarget as HTMLButtonElement).style.opacity = "0.85"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = updateTextDisabled ? "0.4" : "1"; }}
+                title={updateTextTooltip}
               >
                 Update Text Only
               </button>
@@ -525,10 +561,15 @@ export default function V2AdImageCreator() {
   const [elapsed, setElapsed]           = useState(0);
   const [msgIdx, setMsgIdx]             = useState(0);
   const [regenIds, setRegenIds]         = useState<Set<number>>(new Set());
+  const [regenErrors, setRegenErrors]   = useState<Map<number, string>>(new Map());
   const [errorMsg, setErrorMsg]         = useState("");
   const pollRef  = useRef<ReturnType<typeof setInterval> | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const msgRef   = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Intervals started by handleRegenerateWithText, one per in-flight card.
+  // Kept in a ref so the unmount cleanup below closes over the live Set
+  // rather than a stale value from the first render.
+  const regenIntervalsRef = useRef<Set<ReturnType<typeof setInterval>>>(new Set());
 
   // ── Data queries ────────────────────────────────────────────────────────────
   const { data: services }    = trpc.services.list.useQuery(undefined, { staleTime: 30_000 });
@@ -566,10 +607,25 @@ export default function V2AdImageCreator() {
   const recompositeText  = trpc.adCreatives.recompositeText.useMutation();
 
   // ── Polling logic ────────────────────────────────────────────────────────────
+  // Hard 180 s cap prevents an infinite spinner if the background handler dies
+  // between the stuck-job reaper's sweeps or the network stays down. The
+  // server-side reaper will eventually flip the row to failed; this cap just
+  // stops the client from waiting past the point where the user has given up.
+  const POLL_TIMEOUT_MS = 180_000;
   const startPolling = useCallback((jId: string) => {
     if (pollRef.current) clearInterval(pollRef.current);
+    const pollStart = performance.now();
     pollRef.current = setInterval(async () => {
       try {
+        if (performance.now() - pollStart > POLL_TIMEOUT_MS) {
+          clearInterval(pollRef.current!);
+          clearInterval(timerRef.current!);
+          clearInterval(msgRef.current!);
+          pollRef.current = null;
+          setErrorMsg("Generation took too long — try again.");
+          setStatus("error");
+          return;
+        }
         const res = await fetch(`/api/jobs/${jId}`);
         if (!res.ok) return;
         const data = await res.json();
@@ -594,11 +650,16 @@ export default function V2AdImageCreator() {
   }, []);
 
   // ── Cleanup on unmount ───────────────────────────────────────────────────────
+  // If the user navigates away during a regenerate, the server's setImmediate
+  // job keeps running and persists its result — but we must kill the client
+  // intervals so we don't setState on an unmounted tree (React warning + leak).
   useEffect(() => {
     return () => {
       if (pollRef.current)  clearInterval(pollRef.current);
       if (timerRef.current) clearInterval(timerRef.current);
       if (msgRef.current)   clearInterval(msgRef.current);
+      for (const id of regenIntervalsRef.current) clearInterval(id);
+      regenIntervalsRef.current.clear();
     };
   }, []);
 
@@ -632,30 +693,47 @@ export default function V2AdImageCreator() {
   }
 
   // ── Full regenerate (new Flux image + new/updated text) ─────────────────────
-  // Uses the async job pattern: mutation returns { jobId } immediately, we poll
-  // /api/jobs/:jobId until the background pipeline finishes then refetch.
+  // Async job pattern: mutation returns { jobId } immediately, we poll
+  // /api/jobs/:jobId until complete/failed. The 180 s cap is a safety net on
+  // top of the server-side stuck-job reaper — if the reaper hasn't run yet or
+  // the network is flaky, the user still gets an actionable error instead of
+  // an infinite spinner.
   async function handleRegenerateWithText(id: number, newHeadline: string) {
     setRegenIds((prev) => new Set(prev).add(id));
+    // Clear any previous error for this card when the user retries.
+    setRegenErrors((prev) => { const m = new Map(prev); m.delete(id); return m; });
     try {
       const { jobId } = await regenerateSingle.mutateAsync({
         id,
         headlineOverride: newHeadline,
       });
-      await new Promise<void>((resolve) => {
+      const pollStart = performance.now();
+      await new Promise<void>((resolve, reject) => {
         const interval = setInterval(async () => {
           try {
+            if (performance.now() - pollStart > POLL_TIMEOUT_MS) {
+              clearInterval(interval);
+              regenIntervalsRef.current.delete(interval);
+              reject(new Error("Regeneration took too long — try again"));
+              return;
+            }
             const res = await fetch(`/api/jobs/${jobId}`);
             if (!res.ok) return;
             const data = await res.json();
             if (data.status === "complete" || data.status === "failed") {
               clearInterval(interval);
+              regenIntervalsRef.current.delete(interval);
               resolve();
             }
           } catch { /* keep polling */ }
         }, 5_000);
+        regenIntervalsRef.current.add(interval);
       });
       await refetchBatch();
-    } catch { /* ignore */ }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Regeneration failed — try again";
+      setRegenErrors((prev) => { const m = new Map(prev); m.set(id, msg); return m; });
+    }
     setRegenIds((prev) => { const s = new Set(prev); s.delete(id); return s; });
   }
 
@@ -1011,6 +1089,7 @@ export default function V2AdImageCreator() {
                 onUpdateTextOnly={handleUpdateTextOnly}
                 busy={regenIds.has(creative.id)}
                 isTrialTier={isTrialTier}
+                regenError={regenErrors.get(creative.id) ?? null}
               />
             ))}
           </div>

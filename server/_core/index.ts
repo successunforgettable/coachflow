@@ -41,6 +41,39 @@ function validateFontAtBoot(): void {
   console.log(`[boot] Font validation OK — ${fontPath} (${buf.length} bytes, magic 0x${magic})`);
 }
 
+// ---------------------------------------------------------------------------
+// Stuck-job reaper — marks jobs rows stuck in "pending" as "failed" so the
+// client's /api/jobs/:id polling can unblock. The background handlers in
+// regenerateSingle / generateAsync use setImmediate, which does not survive
+// container restarts (Railway redeploys, OOM, SIGKILL). Without this sweep,
+// a crashed mid-flight regenerate leaves the row at status=pending forever
+// and the user sits on a spinner that never resolves.
+// Runs once at boot (sweeps anything orphaned by the previous process) and
+// every 60 s while the server is up (catches silent handler crashes where
+// the try/catch in setImmediate was bypassed).
+// Threshold: 5 minutes — a healthy regenerate completes in ~20 s; 5 min is
+// generous enough that we don't false-fail slow-but-live jobs.
+async function reapStuckJobs(): Promise<number> {
+  try {
+    const { getDb } = await import("../db");
+    const { jobs } = await import("../../drizzle/schema");
+    const { eq, and, lt } = await import("drizzle-orm");
+    const db = await getDb();
+    if (!db) return 0;
+    const cutoff = new Date(Date.now() - 5 * 60 * 1000);
+    const result: any = await db
+      .update(jobs)
+      .set({ status: "failed", error: "Interrupted by server restart — please try again" })
+      .where(and(eq(jobs.status, "pending"), lt(jobs.createdAt, cutoff)));
+    // drizzle-orm/mysql2 returns ResultSetHeader in result[0].affectedRows
+    const affected = Array.isArray(result) ? (result[0]?.affectedRows ?? 0) : (result?.affectedRows ?? 0);
+    return Number(affected) || 0;
+  } catch (err) {
+    console.error("[reapStuckJobs] sweep failed:", err instanceof Error ? err.message : err);
+    return 0;
+  }
+}
+
 // In-memory rate limiter for Zappy asset search — keyed by userId, resets every 60 s
 const assetSearchRateLimit = new Map<string, { count: number; resetAt: number }>();
 
@@ -74,6 +107,18 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   // Validate ad-creative font before accepting any traffic — see validateFontAtBoot()
   validateFontAtBoot();
+
+  // Sweep any jobs orphaned by the previous process's restart before we start
+  // accepting client polls — otherwise a reconnecting client polls a row that
+  // nothing will ever update and the UI hangs indefinitely.
+  const reapedAtBoot = await reapStuckJobs();
+  console.log(`[boot] Stuck-job reaper: ${reapedAtBoot} pending job(s) marked failed`);
+  // Ongoing sweep catches handler crashes (hard process death bypasses the
+  // setImmediate try/catch that would otherwise mark the job failed).
+  setInterval(async () => {
+    const reaped = await reapStuckJobs();
+    if (reaped > 0) console.log(`[reapStuckJobs] swept ${reaped} stuck job(s)`);
+  }, 60 * 1000);
 
   const app = express();
   const server = createServer(app);
