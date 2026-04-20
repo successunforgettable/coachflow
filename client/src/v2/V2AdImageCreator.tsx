@@ -113,25 +113,50 @@ type Creative = {
   complianceIssues: string | null;
 };
 
+// Node 6 headline shape — matches headlinesRouter.listForServiceId return rows.
+type NodeHeadline = {
+  id: number;
+  text: string;
+  formulaType: "story" | "eyebrow" | "question" | "authority" | "urgency";
+  selectionScore: string | null;
+};
+
+// Tier derived from Node 6's selectionScore — mirrors ScoreBadge in V2HeadlinesResultPanel.
+function tierFromScore(score: string | null | undefined): {
+  label: string; bg: string; color: string; border: string;
+} {
+  const n = score == null ? NaN : parseFloat(score);
+  if (!isNaN(n) && n >= 80) return { label: "⚡ Top Pick", bg: "rgba(139,92,246,0.12)", color: "#5B21B6", border: "rgba(139,92,246,0.40)" };
+  if (!isNaN(n) && n >= 60) return { label: "✓ Strong",   bg: "rgba(88,204,2,0.12)",   color: "#2E7D00", border: "rgba(88,204,2,0.40)"   };
+  return                          { label: "~ Test",      bg: "rgba(26,22,36,0.06)",   color: "#666",    border: "rgba(26,22,36,0.15)"  };
+}
+
 function ImageCard({
   creative,
+  availableHeadlines,
   onRegenerateWithText,
   onUpdateTextOnly,
   busy,
   isTrialTier,
 }: {
   creative: Creative;
+  availableHeadlines: NodeHeadline[];
   onRegenerateWithText: (id: number, newHeadline: string) => void;
   onUpdateTextOnly: (id: number, newHeadline: string) => void;
   busy: boolean;
   isTrialTier: boolean;
 }) {
-  const [editMode, setEditMode]             = useState(false);
-  const [editedHeadline, setEditedHeadline] = useState(creative.headline);
+  const [editMode, setEditMode]               = useState(false);
+  // Pre-select the headline currently baked into the creative if it matches one
+  // of Node 6's entries exactly. Legacy rows with non-matching copy leave this
+  // null — user must pick from the list before the action buttons enable.
+  const preSelect = availableHeadlines.find(h => h.text === creative.headline)?.text ?? null;
+  const [selectedHeadline, setSelectedHeadline] = useState<string | null>(preSelect);
 
-  // Re-sync the editable text when the underlying creative.headline changes
-  // (e.g., after a successful regenerate/recomposite refetches the batch).
-  useEffect(() => { setEditedHeadline(creative.headline); }, [creative.headline]);
+  // Re-sync selection when the underlying headline or the available list changes.
+  useEffect(() => {
+    setSelectedHeadline(availableHeadlines.find(h => h.text === creative.headline)?.text ?? null);
+  }, [creative.headline, availableHeadlines]);
 
   const issues: string[] = (() => {
     if (!creative.complianceIssues) return [];
@@ -148,31 +173,29 @@ function ImageCard({
   }
 
   function openEdit() {
-    setEditedHeadline(creative.headline);
+    setSelectedHeadline(availableHeadlines.find(h => h.text === creative.headline)?.text ?? null);
     setEditMode(true);
   }
 
   function cancelEdit() {
-    setEditedHeadline(creative.headline);
     setEditMode(false);
   }
 
   function commitUpdateText() {
-    const trimmed = editedHeadline.trim();
-    if (!trimmed || trimmed === creative.headline) {
-      // No change — just close the panel
-      setEditMode(false);
-      return;
-    }
-    onUpdateTextOnly(creative.id, trimmed);
+    if (!selectedHeadline) return;
+    if (selectedHeadline === creative.headline) { setEditMode(false); return; }
+    onUpdateTextOnly(creative.id, selectedHeadline);
     setEditMode(false);
   }
 
   function commitRegenerate() {
-    const trimmed = editedHeadline.trim() || creative.headline;
-    onRegenerateWithText(creative.id, trimmed);
+    if (!selectedHeadline) return;
+    onRegenerateWithText(creative.id, selectedHeadline);
     setEditMode(false);
   }
+
+  const hasSelection    = selectedHeadline !== null;
+  const actionsDisabled = busy || !hasSelection;
 
   return (
     <div
@@ -304,49 +327,113 @@ function ImageCard({
                 letterSpacing: "0.06em",
               }}
             >
-              Edit headline
+              Pick a headline from Node 6
             </label>
-            <input
-              type="text"
-              value={editedHeadline}
-              maxLength={200}
-              onChange={(e) => setEditedHeadline(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") { e.preventDefault(); commitUpdateText(); }
-                if (e.key === "Escape") { e.preventDefault(); cancelEdit(); }
-              }}
-              autoFocus
-              style={{
-                width: "100%",
-                padding: "10px 14px",
-                borderRadius: "10px",
-                border: "1.5px solid #e8e2d8",
-                background: "#fff",
-                fontFamily: T.fontBody,
-                fontSize: "14px",
-                color: T.dark,
-                outline: "none",
-                boxSizing: "border-box",
-              }}
-              onFocus={(e) => { e.currentTarget.style.borderColor = T.orange; e.currentTarget.style.boxShadow = `0 0 0 3px rgba(255,91,29,0.15)`; }}
-              onBlur={(e)  => { e.currentTarget.style.borderColor = "#e8e2d8"; e.currentTarget.style.boxShadow = "none"; }}
-            />
-            <div
-              style={{
-                fontFamily: T.fontBody,
-                fontSize: "11px",
-                color: "#999",
-                textAlign: "right",
-              }}
-            >
-              {editedHeadline.length} / 200
-            </div>
+
+            {availableHeadlines.length === 0 ? (
+              <div
+                style={{
+                  padding: "14px",
+                  borderRadius: "10px",
+                  border: "1.5px dashed #d9d3c7",
+                  background: "#fff",
+                  fontFamily: T.fontBody,
+                  fontSize: "13px",
+                  color: "#888",
+                  textAlign: "center",
+                  lineHeight: 1.5,
+                }}
+              >
+                No compliant headlines for this campaign yet.<br />
+                Generate a headline set in the Headlines tool, then come back to pick one.
+              </div>
+            ) : (
+              <>
+                {!hasSelection && (
+                  <div
+                    style={{
+                      fontFamily: T.fontBody,
+                      fontSize: "12px",
+                      color: "#888",
+                      fontStyle: "italic",
+                    }}
+                  >
+                    Select a headline from Node 6 to apply it
+                  </div>
+                )}
+                <div
+                  role="listbox"
+                  aria-label="Approved headlines"
+                  style={{
+                    maxHeight: "280px",
+                    overflowY: "auto",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "6px",
+                    paddingRight: "4px",
+                  }}
+                >
+                  {availableHeadlines.map((h) => {
+                    const selected = selectedHeadline === h.text;
+                    const tier     = tierFromScore(h.selectionScore);
+                    return (
+                      <button
+                        key={h.id}
+                        role="option"
+                        aria-selected={selected}
+                        onClick={() => setSelectedHeadline(h.text)}
+                        style={{
+                          textAlign: "left",
+                          cursor: "pointer",
+                          padding: "10px 12px",
+                          paddingLeft: selected ? "10px" : "14px",
+                          borderLeft: selected ? `4px solid ${T.orange}` : "0",
+                          background: selected ? T.bg : "#fff",
+                          borderTop:    "1px solid #eee",
+                          borderRight:  "1px solid #eee",
+                          borderBottom: "1px solid #eee",
+                          borderRadius: "8px",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "6px",
+                          fontFamily: T.fontBody,
+                          transition: "background 0.15s",
+                        }}
+                      >
+                        <div style={{ fontSize: "13px", color: T.dark, lineHeight: 1.4 }}>
+                          {h.text}
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <span style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            background: tier.bg,
+                            border: `1px solid ${tier.border}`,
+                            borderRadius: "9999px",
+                            padding: "2px 8px",
+                            fontSize: "10px",
+                            fontWeight: 600,
+                            color: tier.color,
+                            letterSpacing: "0.02em",
+                          }}>
+                            {tier.label}
+                          </span>
+                          <span style={{ fontSize: "10px", color: "#999" }}>
+                            {h.text.length} chars
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
 
             <div style={{ display: "flex", gap: "8px" }}>
               {/* Update Text Only — secondary, purple, cheap recomposite */}
               <button
-                onClick={() => !busy && commitUpdateText()}
-                disabled={busy}
+                onClick={() => !actionsDisabled && commitUpdateText()}
+                disabled={actionsDisabled}
                 style={{
                   flex: 1,
                   background: T.purple,
@@ -357,20 +444,20 @@ function ImageCard({
                   fontFamily: T.fontBody,
                   fontWeight: 700,
                   fontSize: "13px",
-                  cursor: busy ? "not-allowed" : "pointer",
-                  opacity: busy ? 0.5 : 1,
+                  cursor: actionsDisabled ? "not-allowed" : "pointer",
+                  opacity: actionsDisabled ? 0.4 : 1,
                   transition: "opacity 0.15s",
                 }}
-                onMouseEnter={(e) => { if (!busy) (e.currentTarget as HTMLButtonElement).style.opacity = "0.85"; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = busy ? "0.5" : "1"; }}
+                onMouseEnter={(e) => { if (!actionsDisabled) (e.currentTarget as HTMLButtonElement).style.opacity = "0.85"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = actionsDisabled ? "0.4" : "1"; }}
                 title="Re-composites the new headline onto the same image. Free — no Flux call."
               >
                 Update Text Only
               </button>
               {/* New Image + Text — primary, orange, full regenerate */}
               <button
-                onClick={() => !busy && commitRegenerate()}
-                disabled={busy}
+                onClick={() => !actionsDisabled && commitRegenerate()}
+                disabled={actionsDisabled}
                 style={{
                   flex: 1,
                   background: T.orange,
@@ -381,12 +468,12 @@ function ImageCard({
                   fontFamily: T.fontBody,
                   fontWeight: 700,
                   fontSize: "13px",
-                  cursor: busy ? "not-allowed" : "pointer",
-                  opacity: busy ? 0.5 : 1,
+                  cursor: actionsDisabled ? "not-allowed" : "pointer",
+                  opacity: actionsDisabled ? 0.4 : 1,
                   transition: "opacity 0.15s",
                 }}
-                onMouseEnter={(e) => { if (!busy) (e.currentTarget as HTMLButtonElement).style.opacity = "0.85"; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = busy ? "0.5" : "1"; }}
+                onMouseEnter={(e) => { if (!actionsDisabled) (e.currentTarget as HTMLButtonElement).style.opacity = "0.85"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = actionsDisabled ? "0.4" : "1"; }}
                 title={isTrialTier ? "Counts toward your free-tier regeneration limit (2 total)." : "Generates a new image and composites the new text."}
               >
                 New Image + Text
@@ -449,6 +536,14 @@ export default function V2AdImageCreator() {
     { serviceId: activeService?.id ?? 0 },
     { enabled: !!activeService, staleTime: 30_000 }
   );
+
+  // ── Node 6 approved headlines for the campaign's service ────────────────────
+  // Feeds the ImageCard edit-panel picker. Compliance-filtered server-side.
+  const { data: approvedHeadlines } = trpc.headlines.listForServiceId.useQuery(
+    { serviceId: activeService?.id ?? 0 },
+    { enabled: !!activeService, staleTime: 30_000 }
+  );
+  const availableHeadlines = approvedHeadlines ?? [];
 
   useEffect(() => {
     if (latestBatch && status === "idle") {
@@ -910,6 +1005,7 @@ export default function V2AdImageCreator() {
               <ImageCard
                 key={creative.id}
                 creative={creative}
+                availableHeadlines={availableHeadlines}
                 onRegenerateWithText={handleRegenerateWithText}
                 onUpdateTextOnly={handleUpdateTextOnly}
                 busy={regenIds.has(creative.id)}

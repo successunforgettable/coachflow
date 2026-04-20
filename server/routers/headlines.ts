@@ -584,6 +584,40 @@ Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES
       return { success: true };
     }),
 
+  /**
+   * listForServiceId — flat, compliance-filtered list of the campaign's Node 6
+   * headlines, sorted by selectionScore desc. Used by V2AdImageCreator's edit
+   * panel so users pick from compliant headlines instead of typing freeform.
+   * Ownership is enforced by userId in the WHERE clause.
+   * complianceScore >= 70 matches the "Mostly Compliant" band in
+   * getComplianceLabel — rows below that are excluded. Null scores
+   * (legacy/pre-scoring rows) are permitted.
+   */
+  listForServiceId: protectedProcedure
+    .input(z.object({ serviceId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const { getDb } = await import("../db");
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      const { headlines: headlinesTable } = await import("../../drizzle/schema");
+      const { eq, and, desc } = await import("drizzle-orm");
+      const rows = await db
+        .select({
+          id:              headlinesTable.id,
+          text:            headlinesTable.headline,
+          formulaType:     headlinesTable.formulaType,
+          selectionScore:  headlinesTable.selectionScore,
+          complianceScore: headlinesTable.complianceScore,
+        })
+        .from(headlinesTable)
+        .where(and(
+          eq(headlinesTable.userId, ctx.user.id),
+          eq(headlinesTable.serviceId, input.serviceId),
+        ))
+        .orderBy(desc(headlinesTable.selectionScore));
+      return rows.filter(r => r.complianceScore === null || r.complianceScore >= 70);
+    }),
+
   // Get the most recent headline set for a given serviceId (V2 results panel revisit)
   getLatestByServiceId: protectedProcedure
     .input(z.object({ serviceId: z.number() }))
