@@ -111,6 +111,7 @@ type Creative = {
   imageUrl: string;
   designStyle: string | null;
   complianceIssues: string | null;
+  serviceId: number | null;
 };
 
 // Node 6 headline shape — matches headlinesRouter.listForServiceId return rows.
@@ -133,20 +134,29 @@ function tierFromScore(score: string | null | undefined): {
 
 function ImageCard({
   creative,
-  availableHeadlines,
   onRegenerateWithText,
   onUpdateTextOnly,
   busy,
   isTrialTier,
 }: {
   creative: Creative;
-  availableHeadlines: NodeHeadline[];
   onRegenerateWithText: (id: number, newHeadline: string) => void;
   onUpdateTextOnly: (id: number, newHeadline: string) => void;
   busy: boolean;
   isTrialTier: boolean;
 }) {
   const [editMode, setEditMode]               = useState(false);
+
+  // Picker source is the creative's own serviceId — not the user's currently
+  // active service — so multi-service batches and stale revisits stay scoped
+  // correctly. React Query dedupes identical serviceIds across cards, so a
+  // single-service batch still makes one network call.
+  const { data: approvedHeadlines } = trpc.headlines.listForServiceId.useQuery(
+    { serviceId: creative.serviceId ?? 0 },
+    { enabled: creative.serviceId != null, staleTime: 30_000 }
+  );
+  const availableHeadlines: NodeHeadline[] = approvedHeadlines ?? [];
+
   // Pre-select the headline currently baked into the creative if it matches one
   // of Node 6's entries exactly. Legacy rows with non-matching copy leave this
   // null — user must pick from the list before the action buttons enable.
@@ -536,14 +546,6 @@ export default function V2AdImageCreator() {
     { serviceId: activeService?.id ?? 0 },
     { enabled: !!activeService, staleTime: 30_000 }
   );
-
-  // ── Node 6 approved headlines for the campaign's service ────────────────────
-  // Feeds the ImageCard edit-panel picker. Compliance-filtered server-side.
-  const { data: approvedHeadlines } = trpc.headlines.listForServiceId.useQuery(
-    { serviceId: activeService?.id ?? 0 },
-    { enabled: !!activeService, staleTime: 30_000 }
-  );
-  const availableHeadlines = approvedHeadlines ?? [];
 
   useEffect(() => {
     if (latestBatch && status === "idle") {
@@ -1005,7 +1007,6 @@ export default function V2AdImageCreator() {
               <ImageCard
                 key={creative.id}
                 creative={creative}
-                availableHeadlines={availableHeadlines}
                 onRegenerateWithText={handleRegenerateWithText}
                 onUpdateTextOnly={handleUpdateTextOnly}
                 busy={regenIds.has(creative.id)}
