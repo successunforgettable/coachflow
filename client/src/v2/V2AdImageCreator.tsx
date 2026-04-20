@@ -740,10 +740,18 @@ export default function V2AdImageCreator() {
   // ── Update text only (no Flux call, synchronous on the server) ──────────────
   async function handleUpdateTextOnly(id: number, newHeadline: string) {
     setRegenIds((prev) => new Set(prev).add(id));
+    // Clear any previous error for this card when the user retries.
+    setRegenErrors((prev) => { const m = new Map(prev); m.delete(id); return m; });
     try {
       await recompositeText.mutateAsync({ id, headline: newHeadline });
       await refetchBatch();
-    } catch { /* ignore */ }
+    } catch (err: unknown) {
+      // Surface tRPC errors inline — in particular the BAD_REQUEST message from
+      // assertHeadlineIsApproved, which is actionable to the user ("Headline
+      // must be selected from your campaign's approved headlines.").
+      const msg = err instanceof Error ? err.message : "Update failed — try again";
+      setRegenErrors((prev) => { const m = new Map(prev); m.set(id, msg); return m; });
+    }
     setRegenIds((prev) => { const s = new Set(prev); s.delete(id); return s; });
   }
 
