@@ -146,8 +146,10 @@ function ImageCard({
   regenError,
 }: {
   creative: Creative;
-  onRegenerateWithText: (id: number, newHeadline: string) => void;
-  onUpdateTextOnly: (id: number, newHeadline: string) => void;
+  // Callbacks take the Node 6 headlineId, not the text string — the server
+  // resolves id → authoritative text server-side (R2c-contract).
+  onRegenerateWithText: (id: number, headlineId: number) => void;
+  onUpdateTextOnly: (id: number, headlineId: number) => void;
   busy: boolean;
   isTrialTier: boolean;
   regenError: string | null;
@@ -164,15 +166,17 @@ function ImageCard({
   );
   const availableHeadlines: NodeHeadline[] = approvedHeadlines ?? [];
 
-  // Pre-select the headline currently baked into the creative if it matches one
-  // of Node 6's entries exactly. Legacy rows with non-matching copy leave this
-  // null — user must pick from the list before the action buttons enable.
-  const preSelect = availableHeadlines.find(h => h.text === creative.headline)?.text ?? null;
-  const [selectedHeadline, setSelectedHeadline] = useState<string | null>(preSelect);
+  // Pre-select the Node 6 row whose text matches the creative's current
+  // headline. Text match is fine here — it's a client-only visual hint, has
+  // no security implication; the server validates via id on commit. Legacy
+  // rows whose headline doesn't appear in the Node 6 set leave this null —
+  // user must pick something before the action buttons enable.
+  const preSelectId = availableHeadlines.find(h => h.text === creative.headline)?.id ?? null;
+  const [selectedHeadlineId, setSelectedHeadlineId] = useState<number | null>(preSelectId);
 
   // Re-sync selection when the underlying headline or the available list changes.
   useEffect(() => {
-    setSelectedHeadline(availableHeadlines.find(h => h.text === creative.headline)?.text ?? null);
+    setSelectedHeadlineId(availableHeadlines.find(h => h.text === creative.headline)?.id ?? null);
   }, [creative.headline, availableHeadlines]);
 
   const issues: string[] = (() => {
@@ -190,7 +194,7 @@ function ImageCard({
   }
 
   function openEdit() {
-    setSelectedHeadline(availableHeadlines.find(h => h.text === creative.headline)?.text ?? null);
+    setSelectedHeadlineId(availableHeadlines.find(h => h.text === creative.headline)?.id ?? null);
     setEditMode(true);
   }
 
@@ -199,19 +203,21 @@ function ImageCard({
   }
 
   function commitUpdateText() {
-    if (!selectedHeadline) return;
-    if (selectedHeadline === creative.headline) { setEditMode(false); return; }
-    onUpdateTextOnly(creative.id, selectedHeadline);
+    if (selectedHeadlineId == null || selectedHeadlineId <= 0) return;
+    // Skip no-op if the picked row's text is identical to the current headline.
+    const picked = availableHeadlines.find(h => h.id === selectedHeadlineId);
+    if (picked && picked.text === creative.headline) { setEditMode(false); return; }
+    onUpdateTextOnly(creative.id, selectedHeadlineId);
     setEditMode(false);
   }
 
   function commitRegenerate() {
-    if (!selectedHeadline) return;
-    onRegenerateWithText(creative.id, selectedHeadline);
+    if (selectedHeadlineId == null || selectedHeadlineId <= 0) return;
+    onRegenerateWithText(creative.id, selectedHeadlineId);
     setEditMode(false);
   }
 
-  const hasSelection    = selectedHeadline !== null;
+  const hasSelection    = selectedHeadlineId != null && selectedHeadlineId > 0;
   const actionsDisabled = busy || !hasSelection;
   // Legacy rows (pre-R2c-cleanbackground) have no raw Flux background, so
   // recompositeText would fall back to the already-baked imageUrl and ghost
@@ -419,14 +425,14 @@ function ImageCard({
                   }}
                 >
                   {availableHeadlines.map((h) => {
-                    const selected = selectedHeadline === h.text;
+                    const selected = selectedHeadlineId === h.id;
                     const tier     = tierFromScore(h.selectionScore);
                     return (
                       <button
                         key={h.id}
                         role="option"
                         aria-selected={selected}
-                        onClick={() => setSelectedHeadline(h.text)}
+                        onClick={() => setSelectedHeadlineId(h.id)}
                         style={{
                           textAlign: "left",
                           cursor: "pointer",
@@ -698,14 +704,14 @@ export default function V2AdImageCreator() {
   // top of the server-side stuck-job reaper — if the reaper hasn't run yet or
   // the network is flaky, the user still gets an actionable error instead of
   // an infinite spinner.
-  async function handleRegenerateWithText(id: number, newHeadline: string) {
+  async function handleRegenerateWithText(id: number, headlineId: number) {
     setRegenIds((prev) => new Set(prev).add(id));
     // Clear any previous error for this card when the user retries.
     setRegenErrors((prev) => { const m = new Map(prev); m.delete(id); return m; });
     try {
       const { jobId } = await regenerateSingle.mutateAsync({
         id,
-        headlineOverride: newHeadline,
+        headlineOverrideId: headlineId,
       });
       const pollStart = performance.now();
       await new Promise<void>((resolve, reject) => {
@@ -738,12 +744,12 @@ export default function V2AdImageCreator() {
   }
 
   // ── Update text only (no Flux call, synchronous on the server) ──────────────
-  async function handleUpdateTextOnly(id: number, newHeadline: string) {
+  async function handleUpdateTextOnly(id: number, headlineId: number) {
     setRegenIds((prev) => new Set(prev).add(id));
     // Clear any previous error for this card when the user retries.
     setRegenErrors((prev) => { const m = new Map(prev); m.delete(id); return m; });
     try {
-      await recompositeText.mutateAsync({ id, headline: newHeadline });
+      await recompositeText.mutateAsync({ id, headlineId });
       await refetchBatch();
     } catch (err: unknown) {
       // Surface tRPC errors inline — in particular the BAD_REQUEST message from
