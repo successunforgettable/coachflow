@@ -14,6 +14,7 @@ import { useState } from "react";
 import { trpc } from "../lib/trpc";
 import ZappyMascot from "./ZappyMascot";
 import UpgradePrompt from "./components/UpgradePrompt";
+import ComplianceWarningPanel from "./ComplianceWarningPanel";
 import { useFavourites } from "./hooks/useFavourites";
 import ExportButtons from "./components/ExportButtons";
 import { formatWhatsAppTxt, formatHeadlinesTxt, formatAdCopyTxt, formatOfferTxt, formatMechanismsTxt, formatHvcoTxt, formatIcpTxt, formatLandingPageTxt } from "./lib/exportUtils";
@@ -157,7 +158,7 @@ function HeadlineRegenPanel({
 }
 
 // ─── Per-headline card ────────────────────────────────────────────────────────
-function HeadlineCard({ headline, isFreeTier, index, isFav, onToggleFav }: { headline: HeadlineRow; isFreeTier?: boolean; index: number; isFav: boolean; onToggleFav: () => void }) {
+function HeadlineCard({ headline, isFreeTier, index, isFav, onToggleFav, complianceRewritesEnabled }: { headline: HeadlineRow; isFreeTier?: boolean; index: number; isFav: boolean; onToggleFav: () => void; complianceRewritesEnabled: boolean }) {
   const copyLocked = isFreeTier && index >= 10;
   const [headlineText, setHeadlineText] = useState(headline.headline);
   const [subheadlineText, setSubheadlineText] = useState(headline.subheadline);
@@ -230,6 +231,20 @@ function HeadlineCard({ headline, isFreeTier, index, isFav, onToggleFav }: { hea
         <ComplianceBadge score={headline.complianceScore} />
         <ScoreBadge score={headline.selectionScore} />
       </div>
+      {/* W5 Phase 1 — active compliance rewrite panel, replaces passive
+          badge behavior for flagged rows. Renders only when the server
+          flag is on (trpc.complianceRewrites.isEnabled) and the row's
+          score is below the picker's "Mostly Compliant" threshold. */}
+      {complianceRewritesEnabled && headline.complianceScore !== null && headline.complianceScore < 70 && (
+        <ComplianceWarningPanel
+          sourceTable="headlines"
+          sourceId={headline.id}
+          originalText={headlineText}
+          violations={[]}
+          onAccept={(newText) => setHeadlineText(newText)}
+          onDismiss={() => { /* badge flips inside the panel; local text stays */ }}
+        />
+      )}
       {/* Controls row */}
       <div style={{ display: "flex", gap: "8px", marginTop: "12px", alignItems: "center" }}>
         {copyLocked ? (
@@ -303,6 +318,16 @@ export default function V2HeadlinesResultPanel({
     { headlineSetId },
     { enabled: !!headlineSetId, staleTime: 60_000 }
   );
+
+  // W5 Phase 1 — ENABLE_COMPLIANCE_REWRITES flag probe. Cached forever on
+  // the client (the flag only changes at server restart). Used to decide
+  // whether flagged headline cards render ComplianceWarningPanel or the
+  // legacy passive badge.
+  const { data: rewriteFlag } = trpc.complianceRewrites.isEnabled.useQuery(
+    undefined,
+    { staleTime: Infinity },
+  );
+  const complianceRewritesEnabled = rewriteFlag?.enabled === true;
 
   // ── Loading ──
   if (isLoading) {
@@ -427,7 +452,7 @@ export default function V2HeadlinesResultPanel({
             No {activeTab} headlines in this set.
           </p>
         ) : (
-          filteredHeadlines.map((h, i) => <HeadlineCard key={h.id} headline={h} isFreeTier={isFreeTier} index={i} isFav={isFavourited(h.id)} onToggleFav={() => toggleFav(h.id, h.headline)} />)
+          filteredHeadlines.map((h, i) => <HeadlineCard key={h.id} headline={h} isFreeTier={isFreeTier} index={i} isFav={isFavourited(h.id)} onToggleFav={() => toggleFav(h.id, h.headline)} complianceRewritesEnabled={complianceRewritesEnabled} />)
         )}
       </div>
       <ExportButtons content={formatHeadlinesTxt(data)} serviceName="Headlines" nodeName="Headlines" showPdf={true} isFreeTier={isFreeTier} />

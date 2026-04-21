@@ -1292,3 +1292,38 @@ export const nodeSkips = mysqlTable("nodeSkips", {
 }));
 export type NodeSkip = typeof nodeSkips.$inferSelect;
 export type InsertNodeSkip = typeof nodeSkips.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// Compliance Rewrites (W5 — Compliance Rewrite Engine)
+// Pre-computed and on-demand compliant rewrites for flagged generated content.
+// Phase 1 populates sourceTable='headlines'; Phases 2/3 extend to adCopy and
+// landingPage. All writes are gated on ENABLE_COMPLIANCE_REWRITES — when the
+// flag is off (production default during development), no rows are inserted
+// and the panel never renders.
+// ---------------------------------------------------------------------------
+export const complianceRewrites = mysqlTable("complianceRewrites", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  contentType: mysqlEnum("contentType", ["headline", "adCopy", "landingPage"]).notNull(),
+  // sourceTable + sourceId form a loose foreign key into whichever generator
+  // table produced the flagged row (e.g., sourceTable='headlines' + headline.id).
+  // Kept as a free-form string rather than a real FK so a single table can
+  // reference rows across multiple generators.
+  sourceTable: varchar("sourceTable", { length: 64 }).notNull(),
+  sourceId: int("sourceId").notNull(),
+  originalText: text("originalText").notNull(),
+  rewrittenText: text("rewrittenText").notNull(),
+  // JSON array of plain-English violation reasons from checkCompliance's
+  // ComplianceIssue[] (.reason for each issue).
+  violationReasons: json("violationReasons").notNull(),
+  // Score the rewrite achieved — gated >= 70 at insert time, so nothing below
+  // that ever lives here; stored for audit and future tightening.
+  complianceScore: int("complianceScore").notNull(),
+  userAccepted: boolean("userAccepted").notNull().default(false),
+  userDismissed: boolean("userDismissed").notNull().default(false),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  sourceIdx: index("complianceRewrites_source_idx").on(table.userId, table.sourceTable, table.sourceId),
+}));
+export type ComplianceRewrite = typeof complianceRewrites.$inferSelect;
+export type InsertComplianceRewrite = typeof complianceRewrites.$inferInsert;

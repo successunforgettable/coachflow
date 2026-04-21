@@ -22,6 +22,103 @@ function stripMarkdownJson(content: string): string {
   return content.replace(/^```json\s*|^```\s*|\s*```$/gm, '').trim();
 }
 
+/**
+ * Pre-compute compliance rewrites for a just-inserted headline set.
+ *
+ * Feature flag: ENABLE_COMPLIANCE_REWRITES. Off by default — when unset or
+ * false this is a no-op so production sees no change until we flip it.
+ *
+ * Picks up every row in the set whose complianceScore is below the same
+ * threshold the picker uses (70), re-derives the issue list (the
+ * headlines table only stores the score, not the issues), asks Sonnet
+ * for a compliant rewrite via rewriteForCompliance, and inserts rows
+ * into complianceRewrites. Runs rewrites in parallel — each call is
+ * ~2 s, so total latency is bounded by the slowest single rewrite.
+ *
+ * Best-effort: per-row failures are caught and logged. We never fail
+ * the generate flow because a rewrite attempt threw. Free-tier cap is
+ * also caught-and-skip here (trial users who've hit their cap simply
+ * see the existing "1 issue" badge with no rewrite suggestion).
+ */
+async function precomputeComplianceRewrites(
+  user: { id: number; subscriptionTier: string | null; role: string | null },
+  headlineSetId: string,
+  serviceNiche: string | null,
+): Promise<void> {
+  // Feature flag — ENABLE_COMPLIANCE_REWRITES gates the entire pre-compute path.
+  if (process.env.ENABLE_COMPLIANCE_REWRITES !== "true") return;
+
+  try {
+    const { getDb } = await import("../db");
+    const db = await getDb();
+    if (!db) return;
+    const { headlines: h, complianceRewrites } = await import("../../drizzle/schema");
+    const { eq, and, lt } = await import("drizzle-orm");
+    const { rewriteForCompliance } = await import("../_core/complianceRewrite");
+    const { enforceFreeTierRewriteCap } = await import("./complianceRewrites");
+
+    const flagged = await db
+      .select()
+      .from(h)
+      .where(and(
+        eq(h.userId, user.id),
+        eq(h.headlineSetId, headlineSetId),
+        lt(h.complianceScore, 70),
+      ));
+    if (flagged.length === 0) return;
+
+    // Free-tier cap: scoped per service. All rows in a set share the same
+    // serviceId (if any) — if multiple services appear in a single set we
+    // skip the whole set rather than partial-apply; documented in honest
+    // suggestions.
+    const serviceId = flagged.find(r => r.serviceId != null)?.serviceId ?? null;
+    if (serviceId != null) {
+      try { await enforceFreeTierRewriteCap(db, user, serviceId); }
+      catch (err) {
+        console.log(`[precomputeComplianceRewrites] free-tier cap hit for user ${user.id}, skipping set ${headlineSetId}`);
+        return;
+      }
+    }
+
+    const rowsToInsert: Array<typeof complianceRewrites.$inferInsert> = [];
+    await Promise.all(flagged.map(async (row) => {
+      try {
+        const c = await checkCompliance(row.headline);
+        if (c.issues.length === 0) return;
+        const r = await rewriteForCompliance(row.headline, c.issues, "headline", {
+          niche: serviceNiche,
+          mechanism: row.uniqueMechanism,
+          mainBenefit: row.desiredOutcome,
+        });
+        rowsToInsert.push({
+          userId: user.id,
+          contentType: "headline",
+          sourceTable: "headlines",
+          sourceId: row.id,
+          originalText: row.headline,
+          rewrittenText: r.rewrite,
+          violationReasons: c.issues.map(i => i.reason),
+          complianceScore: r.score,
+        });
+      } catch (err) {
+        console.warn(
+          `[precomputeComplianceRewrites] Skipped headline ${row.id}:`,
+          err instanceof Error ? err.message : err,
+        );
+      }
+    }));
+
+    if (rowsToInsert.length > 0) {
+      await db.insert(complianceRewrites).values(rowsToInsert);
+      console.log(`[precomputeComplianceRewrites] Inserted ${rowsToInsert.length} rewrite(s) for set ${headlineSetId}`);
+    }
+  } catch (err) {
+    // Defensive outer catch — never let a pre-compute failure kill the
+    // headline generation that already succeeded.
+    console.error(`[precomputeComplianceRewrites] unexpected failure for set ${headlineSetId}:`, err instanceof Error ? err.message : err);
+  }
+}
+
 // Industry standard
 const FORMULA_PROMPTS = {
   story: `Generate 5 story-based headlines using this EXACT format:
@@ -224,6 +321,8 @@ export const headlinesRouter = router({
             resolvedPressingProblem: input.pressingProblem?.trim() || service.painPoints || "",
             resolvedDesiredOutcome: input.desiredOutcome?.trim() || service.mainBenefit || "",
             resolvedUniqueMechanism: input.uniqueMechanism?.trim() || service.uniqueMechanismSuggestion || "",
+            // W5 Phase 1 — niche passed to compliance rewrite prompt.
+            category: service.category,
           };
         }
         // Campaign fetch — Item 1.1b (icpId support)
@@ -430,6 +529,16 @@ Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES
       await createHeadlines(headlinesWithCompliance);
       await incrementHeadlineCount(ctx.user.id);
 
+      // W5 Phase 1 — pre-compute compliant rewrites for flagged rows. No-op
+      // unless ENABLE_COMPLIANCE_REWRITES=true in the environment. The flag
+      // check lives inside precomputeComplianceRewrites so call sites stay
+      // one-liners.
+      await precomputeComplianceRewrites(
+        ctx.user,
+        headlineSetId,
+        autoPopData.category ?? null,
+      );
+
       return {
         headlineSetId,
         count: allHeadlines.length,
@@ -473,7 +582,7 @@ Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES
           const serviceData = await db.select().from(services).where(eq(services.id, input.serviceId)).limit(1);
           if (serviceData.length > 0) {
             const service = serviceData[0];
-            autoPopData = { avatarName: service.avatarName, avatarTitle: service.avatarTitle, mechanismDescriptor: service.mechanismDescriptor, resolvedPressingProblem: input.pressingProblem?.trim() || service.painPoints || "", resolvedDesiredOutcome: input.desiredOutcome?.trim() || service.mainBenefit || "", resolvedUniqueMechanism: input.uniqueMechanism?.trim() || service.uniqueMechanismSuggestion || "" };
+            autoPopData = { avatarName: service.avatarName, avatarTitle: service.avatarTitle, mechanismDescriptor: service.mechanismDescriptor, resolvedPressingProblem: input.pressingProblem?.trim() || service.painPoints || "", resolvedDesiredOutcome: input.desiredOutcome?.trim() || service.mainBenefit || "", resolvedUniqueMechanism: input.uniqueMechanism?.trim() || service.uniqueMechanismSuggestion || "", category: service.category };
           }
           let campaignRecord: any;
           if (input.campaignId) {
@@ -496,6 +605,8 @@ Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES
 
       const capturedInput = { ...input };
       const capturedUserId = user.id;
+      const capturedUserTier: string | null = user.subscriptionTier ?? null;
+      const capturedUserRole: string | null = user.role ?? null;
       const capturedAutoPopData = { ...autoPopData };
       const capturedIcpContext = icpContext;
       const capturedSotContext = sotContext;
@@ -545,6 +656,15 @@ Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES
 
           await createHeadlines(headlinesWithCompliance);
           await incrementHeadlineCount(capturedUserId);
+
+          // W5 Phase 1 — pre-compute compliant rewrites for flagged rows.
+          // No-op unless ENABLE_COMPLIANCE_REWRITES=true. Run before marking
+          // the job complete so the client sees headlines + rewrites atomically.
+          await precomputeComplianceRewrites(
+            { id: capturedUserId, subscriptionTier: capturedUserTier, role: capturedUserRole },
+            headlineSetId,
+            capturedAutoPopData.category ?? null,
+          );
 
           await bgDb.update(jobs)
             .set({ status: "complete", result: JSON.stringify({ headlineSetId, count: allHeadlines.length }) })

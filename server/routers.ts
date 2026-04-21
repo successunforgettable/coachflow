@@ -39,6 +39,7 @@ import { landingRouter } from "./routers/landing";
 import { campaignKitsRouter } from "./routers/campaignKits";
 import { campaignExportRouter } from "./routers/campaignExport";
 import { nodeSkipsRouter } from "./routers/nodeSkips";
+import { complianceRewritesRouter } from "./routers/complianceRewrites";
 import { getQuotaLimit } from "./quotaLimits";
 
 export const appRouter = router({
@@ -158,6 +159,7 @@ export const appRouter = router({
   campaignKits: campaignKitsRouter,
   campaignExport: campaignExportRouter,
   nodeSkips: nodeSkipsRouter,
+  complianceRewrites: complianceRewritesRouter,
 });
 
 export type AppRouter = typeof appRouter;
