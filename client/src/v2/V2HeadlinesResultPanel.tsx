@@ -10,7 +10,7 @@
  *   headlineSetId — nanoid from the job result
  *   serviceId     — numeric service ID (for getLatestByServiceId fallback)
  */
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { trpc } from "../lib/trpc";
 import ZappyMascot from "./ZappyMascot";
 import UpgradePrompt from "./components/UpgradePrompt";
@@ -359,16 +359,27 @@ export default function V2HeadlinesResultPanel({
 
   // Batched rewrites-for-set query. Fires once on mount (not per card) when
   // the flag is on. Child cards read their own rewrite list out of the map.
+  // staleTime: 5 min because rewrites only change via user action; the
+  // explicit refetchRewrites() after accept/dismiss/undismiss/generateMore
+  // is the authoritative refresh path. refetchOnWindowFocus disabled for
+  // the same reason — tab re-focus shouldn't thrash this endpoint.
   const { data: allRewrites = [], refetch: refetchRewrites } = trpc.complianceRewrites.listForHeadlineSet.useQuery(
     { headlineSetId },
-    { enabled: complianceRewritesEnabled && !!headlineSetId, staleTime: 30_000 },
+    {
+      enabled: complianceRewritesEnabled && !!headlineSetId,
+      staleTime: 5 * 60_000,
+      refetchOnWindowFocus: false,
+    },
   );
-  const rewritesByHeadlineId = new Map<number, typeof allRewrites>();
-  for (const r of allRewrites) {
-    const list = rewritesByHeadlineId.get(r.sourceId) ?? [];
-    list.push(r);
-    rewritesByHeadlineId.set(r.sourceId, list);
-  }
+  const rewritesByHeadlineId = useMemo(() => {
+    const map = new Map<number, typeof allRewrites>();
+    for (const r of allRewrites) {
+      const list = map.get(r.sourceId) ?? [];
+      list.push(r);
+      map.set(r.sourceId, list);
+    }
+    return map;
+  }, [allRewrites]);
 
   // ── Loading ──
   if (isLoading) {

@@ -1460,4 +1460,57 @@ export const adminRouter = router({
       totalCompletedJobs: completedJobCount,
     };
   }),
+
+  /**
+   * backfillViolationReasons — W5 Phase 1 R3 one-off migration backfill.
+   *
+   * Legacy flagged headline rows (complianceScore < 70) predating the
+   * violationReasons column have that column NULL. The compliance warning
+   * panel falls back to the cached rewrite row's violationReasons, but
+   * rows with no rewrite yet (e.g., generated before the feature flag
+   * flipped) show "issue — click to fix" with no specific bullets.
+   *
+   * This mutation re-runs checkCompliance on every such row and writes
+   * the issue-reason list back. Idempotent: a second run processes 0
+   * rows because the WHERE clause excludes rows that already have the
+   * column populated. Safe to trigger at any time; safe to run multiple
+   * times; no UI side effects.
+   *
+   * Batches in chunks of 50 to cap the per-transaction row count for
+   * TiDB/MySQL and keep the audit log entry lean.
+   */
+  backfillViolationReasons: auditedAdminProcedure
+    .mutation(async () => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const { checkCompliance } = await import("../lib/complianceChecker");
+      const { isNull, lt } = await import("drizzle-orm");
+
+      const candidates = await db
+        .select({ id: headlines.id, headline: headlines.headline })
+        .from(headlines)
+        .where(and(lt(headlines.complianceScore, 70), isNull(headlines.violationReasons)));
+
+      let backfilled = 0;
+      const BATCH = 50;
+      for (let i = 0; i < candidates.length; i += BATCH) {
+        const chunk = candidates.slice(i, i + BATCH);
+        for (const row of chunk) {
+          try {
+            const result = await checkCompliance(row.headline);
+            const reasons = result.issues.map(x => x.reason);
+            if (reasons.length === 0) continue;
+            await db
+              .update(headlines)
+              .set({ violationReasons: reasons })
+              .where(eq(headlines.id, row.id));
+            backfilled += 1;
+          } catch (err) {
+            console.warn(`[backfillViolationReasons] row ${row.id} failed:`, err instanceof Error ? err.message : err);
+          }
+        }
+      }
+
+      return { scanned: candidates.length, backfilled };
+    }),
 });

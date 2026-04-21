@@ -80,6 +80,7 @@ export default function ComplianceWarningPanel({
   const generateMore = trpc.complianceRewrites.generateMore.useMutation();
   const acceptMut    = trpc.complianceRewrites.accept.useMutation();
   const dismissMut   = trpc.complianceRewrites.dismiss.useMutation();
+  const undismissMut = trpc.complianceRewrites.undismiss.useMutation();
 
   const activeRewrite    = liveRewrites[activeIndex] ?? liveRewrites[0] ?? null;
   const alternativeCount = liveRewrites.length;
@@ -116,6 +117,24 @@ export default function ComplianceWarningPanel({
         </button>
       );
     }
+    // Pick the most recently-dismissed rewrite as the candidate to undismiss.
+    // dismissedRewrites comes from the parent's batched query, ordered desc
+    // by createdAt — first element is newest.
+    const undismissTarget = dismissedRewrites[0] ?? null;
+
+    async function handleReconsider() {
+      if (!undismissTarget) return;
+      try {
+        setErrorMsg(null);
+        await undismissMut.mutateAsync({ rewriteId: undismissTarget.id });
+        // Parent refetches; if no dismissed rows remain and none accepted,
+        // the card re-renders in active red-badge state.
+        onGeneratedMore();
+      } catch (err: unknown) {
+        setErrorMsg(err instanceof Error ? err.message : "Couldn't reconsider — try again");
+      }
+    }
+
     return (
       <div style={dismissedPanelStyle}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -135,6 +154,24 @@ export default function ComplianceWarningPanel({
         <div>
           <div style={labelStyle}>Kept headline</div>
           <div style={{ fontSize: "13px", color: T.dark, fontStyle: "italic" }}>{originalText}</div>
+        </div>
+        {errorMsg && (
+          <div role="alert" style={{ fontSize: "12px", color: "#991B1B", background: "rgba(220,38,38,0.08)", borderRadius: "8px", padding: "6px 10px" }}>
+            {errorMsg}
+          </div>
+        )}
+        {/* Reconsider — flips the most recent dismissed rewrite back to
+            live, causing the parent to re-render the card in active
+            red-badge state after batched refetch. */}
+        <div style={{ display: "flex", gap: "8px" }}>
+          <button
+            onClick={handleReconsider}
+            disabled={undismissMut.isPending || !undismissTarget}
+            style={pillButton("transparent", T.dark, undismissMut.isPending || !undismissTarget, `2px solid ${T.dark}`)}
+            title="Reconsider the warning and see the suggested rewrites again"
+          >
+            {undismissMut.isPending ? "Reconsidering…" : "Reconsider"}
+          </button>
         </div>
       </div>
     );

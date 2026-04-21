@@ -306,6 +306,30 @@ export const complianceRewritesRouter = router({
         .where(eq(complianceRewrites.id, input.rewriteId));
       return { success: true };
     }),
+
+  // Undismiss — reverse a previous dismiss, sending the row back to the
+  // active red-badge state. No time window in R3; a user can reconsider
+  // any past dismissal. Ownership enforced via userId match.
+  undismiss: protectedProcedure
+    .input(z.object({ rewriteId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      assertFlagOn();
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      const [rewrite] = await db
+        .select()
+        .from(complianceRewrites)
+        .where(and(eq(complianceRewrites.id, input.rewriteId), eq(complianceRewrites.userId, ctx.user.id)))
+        .limit(1);
+      if (!rewrite) throw new TRPCError({ code: "NOT_FOUND", message: "Rewrite not found" });
+      await db
+        .update(complianceRewrites)
+        .set({ userDismissed: false })
+        .where(eq(complianceRewrites.id, input.rewriteId));
+      // Return the updated row shape so callers can patch caches without
+      // an extra roundtrip if they want.
+      return { ...rewrite, userDismissed: false };
+    }),
 });
 
 // Helpers re-exported for the headlines generator hook so the flag check
