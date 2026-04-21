@@ -28,7 +28,7 @@ import {
   headlines,
 } from "../../drizzle/schema";
 import { inArray } from "drizzle-orm";
-import { checkCompliance } from "../lib/complianceChecker";
+import { checkCompliance, type ComplianceIssue } from "../lib/complianceChecker";
 import { rewriteForComplianceBatch } from "../_core/complianceRewrite";
 
 // Feature flag — matched at every call site so production stays a no-op
@@ -140,8 +140,15 @@ export const complianceRewritesRouter = router({
     }),
 
   // On-demand: generate additional rewrite alternatives for a flagged item.
-  // Idempotent — if >= count rows already exist, returns them without
+  // Idempotent — if >= count LIVE rows already exist, returns them without
   // invoking Sonnet. Flag- and free-tier-gated.
+  //
+  // Instrumented end-to-end with `[W5.generateMore]` log lines — every
+  // branch logs its exit reason so a silent empty return can never
+  // happen undetected again (see R5 bug: live checkCompliance returned
+  // zero issues on manually-seeded rows whose stored complianceScore was
+  // < 70, so the "no issues detected" early-return fired without any
+  // log and Sonnet was never called).
   generateMore: protectedProcedure
     .input(z.object({
       sourceTable: z.literal("headlines"),
@@ -149,9 +156,14 @@ export const complianceRewritesRouter = router({
       count: z.number().min(1).max(5).default(2),
     }))
     .mutation(async ({ ctx, input }) => {
+      const flagOn = isRewriteEngineEnabled();
+      console.log(`[W5.generateMore] entered — user=${ctx.user.id} role=${ctx.user.role} tier=${ctx.user.subscriptionTier} sourceId=${input.sourceId} count=${input.count} flagOn=${flagOn}`);
       assertFlagOn();
       const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      if (!db) {
+        console.error(`[W5.generateMore] no db — throwing INTERNAL_SERVER_ERROR`);
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      }
 
       // Source row + ownership check.
       const [source] = await db
@@ -159,17 +171,26 @@ export const complianceRewritesRouter = router({
         .from(headlines)
         .where(and(eq(headlines.id, input.sourceId), eq(headlines.userId, ctx.user.id)))
         .limit(1);
-      if (!source) throw new TRPCError({ code: "NOT_FOUND", message: "Source row not found" });
+      if (!source) {
+        console.log(`[W5.generateMore] NOT_FOUND — sourceId=${input.sourceId} not owned by user=${ctx.user.id}`);
+        throw new TRPCError({ code: "NOT_FOUND", message: "Source row not found" });
+      }
       if (source.serviceId == null) {
+        console.log(`[W5.generateMore] BAD_REQUEST — source row ${input.sourceId} has null serviceId`);
         throw new TRPCError({ code: "BAD_REQUEST", message: "Source row has no associated service" });
       }
+      console.log(`[W5.generateMore] source loaded — id=${source.id} serviceId=${source.serviceId} complianceScore=${source.complianceScore} violationReasonsStored=${Array.isArray(source.violationReasons) ? (source.violationReasons as unknown[]).length : 0} headline="${source.headline.slice(0, 60)}"`);
 
-      await enforceFreeTierRewriteCap(db, ctx.user, source.serviceId);
+      try {
+        await enforceFreeTierRewriteCap(db, ctx.user, source.serviceId);
+        console.log(`[W5.generateMore] cap check passed`);
+      } catch (err) {
+        console.error(`[W5.generateMore] cap check FAILED — role=${ctx.user.role} tier=${ctx.user.subscriptionTier}:`, err instanceof Error ? err.message : err);
+        throw err;
+      }
 
       // Idempotency check: only count rewrites the user hasn't already
-      // accepted or dismissed. Without this filter, one accepted rewrite
-      // would block further "see 2 more alternatives" because count is
-      // already satisfied by the stale accepted row.
+      // accepted or dismissed.
       const existing = await db
         .select()
         .from(complianceRewrites)
@@ -181,33 +202,78 @@ export const complianceRewritesRouter = router({
           eq(complianceRewrites.userDismissed, false),
         ))
         .orderBy(desc(complianceRewrites.createdAt));
-      if (existing.length >= input.count) return existing;
+      console.log(`[W5.generateMore] idempotency check — existing.length=${existing.length} requested=${input.count}`);
+      if (existing.length >= input.count) {
+        console.log(`[W5.generateMore] RETURN path=idempotent-short-circuit rows=${existing.length}`);
+        return existing;
+      }
 
-      // Re-derive violations at generate time — headlines table doesn't
-      // store the issue array, only the score.
-      const compliance = await checkCompliance(source.headline, {
-        userId: ctx.user.id,
-        generatorType: "headlines",
-        trackUsage: false,
-      });
-      if (compliance.issues.length === 0) {
-        // Nothing to rewrite — return existing (possibly empty).
+      // R5 fix: prefer stored violationReasons (populated at insert time in
+      // sync with the stored complianceScore) over re-running checkCompliance.
+      // The old code re-derived live and bailed when the live check returned
+      // zero issues — which happened on manually-seeded QA rows and on rows
+      // whose stored phrases had since been pruned from the banned_phrases
+      // table. Stored reasons are the server-of-record at insert time; use
+      // them. Fall back to live check only on legacy rows whose stored
+      // column is NULL (pre-migration-0004).
+      let issues: ComplianceIssue[];
+      let issuesSource: "stored" | "live";
+      const storedReasons = Array.isArray(source.violationReasons)
+        ? (source.violationReasons as unknown[]).filter((v): v is string => typeof v === "string")
+        : [];
+      if (storedReasons.length > 0) {
+        issuesSource = "stored";
+        issues = storedReasons.map(reason => ({
+          severity: "warning" as const,
+          phrase: "(stored)",
+          reason,
+          suggestion: "Rephrase to comply with Meta advertising policies",
+        }));
+      } else {
+        const live = await checkCompliance(source.headline, {
+          userId: ctx.user.id,
+          generatorType: "headlines",
+          trackUsage: false,
+        });
+        issuesSource = "live";
+        issues = live.issues;
+        console.log(`[W5.generateMore] live checkCompliance — score=${live.score} issueCount=${live.issues.length}`);
+      }
+      console.log(`[W5.generateMore] issues resolved — source=${issuesSource} count=${issues.length}`);
+
+      if (issues.length === 0) {
+        console.log(`[W5.generateMore] RETURN path=no-issues-detected — neither stored nor live violations found; Sonnet NOT invoked. rows=${existing.length}`);
         return existing;
       }
 
       const needed = input.count - existing.length;
-      const fresh = await rewriteForComplianceBatch(
-        source.headline,
-        compliance.issues,
-        "headline",
-        {
-          niche: null,              // Phase 1: no service-context lookup on this path
-          mechanism: source.uniqueMechanism,
-          mainBenefit: source.desiredOutcome,
-        },
-        needed,
-      );
-      if (fresh.length === 0) return existing;
+      console.log(`[W5.generateMore] calling rewriteForComplianceBatch — needed=${needed} issueCount=${issues.length}`);
+
+      let fresh: Awaited<ReturnType<typeof rewriteForComplianceBatch>>;
+      try {
+        fresh = await rewriteForComplianceBatch(
+          source.headline,
+          issues,
+          "headline",
+          {
+            niche: null,
+            mechanism: source.uniqueMechanism,
+            mainBenefit: source.desiredOutcome,
+          },
+          needed,
+        );
+      } catch (err) {
+        console.error(`[W5.generateMore] rewriteForComplianceBatch threw — propagating:`, err instanceof Error ? err.message : err);
+        throw err;
+      }
+      fresh.forEach((r, i) => {
+        console.log(`[W5.generateMore] fresh[${i}] score=${r.score} rewrite="${r.rewrite.slice(0, 60)}"`);
+      });
+
+      if (fresh.length === 0) {
+        console.log(`[W5.generateMore] RETURN path=no-fresh-rewrites — Sonnet produced nothing across ${needed} attempt(s); rows=${existing.length}`);
+        return existing;
+      }
 
       const rowsToInsert = fresh.map(r => ({
         userId: ctx.user.id,
@@ -217,13 +283,13 @@ export const complianceRewritesRouter = router({
         sourceId: input.sourceId,
         originalText: source.headline,
         rewrittenText: r.rewrite,
-        violationReasons: compliance.issues.map(i => i.reason),
+        violationReasons: issues.map(i => i.reason),
         complianceScore: r.score,
       }));
       await db.insert(complianceRewrites).values(rowsToInsert);
+      console.log(`[W5.generateMore] inserted ${rowsToInsert.length} rewrite rows`);
 
-      // After insert: return only live (not-accepted / not-dismissed) rows
-      // so the panel sees the up-to-date candidate list.
+      // After insert: return only live (not-accepted / not-dismissed) rows.
       const after = await db
         .select()
         .from(complianceRewrites)
@@ -235,6 +301,7 @@ export const complianceRewritesRouter = router({
           eq(complianceRewrites.userDismissed, false),
         ))
         .orderBy(desc(complianceRewrites.createdAt));
+      console.log(`[W5.generateMore] RETURN path=success rows=${after.length}`);
       return after;
     }),
 
