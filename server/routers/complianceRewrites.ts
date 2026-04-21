@@ -307,28 +307,46 @@ export const complianceRewritesRouter = router({
       return { success: true };
     }),
 
-  // Undismiss — reverse a previous dismiss, sending the row back to the
-  // active red-badge state. No time window in R3; a user can reconsider
-  // any past dismissal. Ownership enforced via userId match.
+  // Undismiss — dismissal is a property of the warning on a headline,
+  // not of each individual rewrite, so Reconsider restores the
+  // pre-dismissal state of the entire headline. Bulk-flips every
+  // currently-dismissed, not-accepted rewrite for the source back to
+  // live. Ownership enforced via userId match. No time window — a user
+  // can reconsider any past dismissal.
   undismiss: protectedProcedure
-    .input(z.object({ rewriteId: z.number() }))
+    .input(z.object({
+      sourceTable: z.enum(["headlines", "adCopy", "landingPages"]),
+      sourceId: z.number(),
+    }))
     .mutation(async ({ ctx, input }) => {
       assertFlagOn();
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
-      const [rewrite] = await db
-        .select()
+      // Pre-count how many rows we're about to flip so the return is
+      // deterministic (Drizzle's update result shape isn't stable across
+      // drivers for affectedRows introspection).
+      const targets = await db
+        .select({ id: complianceRewrites.id })
         .from(complianceRewrites)
-        .where(and(eq(complianceRewrites.id, input.rewriteId), eq(complianceRewrites.userId, ctx.user.id)))
-        .limit(1);
-      if (!rewrite) throw new TRPCError({ code: "NOT_FOUND", message: "Rewrite not found" });
+        .where(and(
+          eq(complianceRewrites.userId, ctx.user.id),
+          eq(complianceRewrites.sourceTable, input.sourceTable),
+          eq(complianceRewrites.sourceId, input.sourceId),
+          eq(complianceRewrites.userDismissed, true),
+          eq(complianceRewrites.userAccepted, false),
+        ));
+      if (targets.length === 0) return { updated: 0 };
       await db
         .update(complianceRewrites)
         .set({ userDismissed: false })
-        .where(eq(complianceRewrites.id, input.rewriteId));
-      // Return the updated row shape so callers can patch caches without
-      // an extra roundtrip if they want.
-      return { ...rewrite, userDismissed: false };
+        .where(and(
+          eq(complianceRewrites.userId, ctx.user.id),
+          eq(complianceRewrites.sourceTable, input.sourceTable),
+          eq(complianceRewrites.sourceId, input.sourceId),
+          eq(complianceRewrites.userDismissed, true),
+          eq(complianceRewrites.userAccepted, false),
+        ));
+      return { updated: targets.length };
     }),
 });
 

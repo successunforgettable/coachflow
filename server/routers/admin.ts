@@ -1480,7 +1480,7 @@ export const adminRouter = router({
    * TiDB/MySQL and keep the audit log entry lean.
    */
   backfillViolationReasons: auditedAdminProcedure
-    .mutation(async () => {
+    .mutation(async ({ ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
       const { checkCompliance } = await import("../lib/complianceChecker");
@@ -1510,6 +1510,11 @@ export const adminRouter = router({
           }
         }
       }
+
+      // Surface the counts in admin_audit_log.details per the pattern
+      // documented at server/_core/auditedAdminProcedure.ts:24-25 — gives
+      // ops runs of this one-shot mutation a real trail.
+      (ctx as any).auditDetails = { scanned: candidates.length, backfilled };
 
       return { scanned: candidates.length, backfilled };
     }),

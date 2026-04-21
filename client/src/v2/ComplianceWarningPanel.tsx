@@ -117,18 +117,19 @@ export default function ComplianceWarningPanel({
         </button>
       );
     }
-    // Pick the most recently-dismissed rewrite as the candidate to undismiss.
-    // dismissedRewrites comes from the parent's batched query, ordered desc
-    // by createdAt — first element is newest.
-    const undismissTarget = dismissedRewrites[0] ?? null;
+    // Dismissal is a property of the warning on a headline, not of each
+    // individual rewrite — Reconsider restores the pre-dismissal state of
+    // the entire headline, flipping every currently-dismissed rewrite
+    // back to live in one call.
+    const hasDismissedRewrites = dismissedRewrites.length > 0;
 
     async function handleReconsider() {
-      if (!undismissTarget) return;
+      if (!hasDismissedRewrites) return;
       try {
         setErrorMsg(null);
-        await undismissMut.mutateAsync({ rewriteId: undismissTarget.id });
-        // Parent refetches; if no dismissed rows remain and none accepted,
-        // the card re-renders in active red-badge state.
+        await undismissMut.mutateAsync({ sourceTable, sourceId });
+        // Parent refetches; with no dismissed rows remaining and none
+        // accepted, the card re-renders in active red-badge state.
         onGeneratedMore();
       } catch (err: unknown) {
         setErrorMsg(err instanceof Error ? err.message : "Couldn't reconsider — try again");
@@ -160,14 +161,14 @@ export default function ComplianceWarningPanel({
             {errorMsg}
           </div>
         )}
-        {/* Reconsider — flips the most recent dismissed rewrite back to
-            live, causing the parent to re-render the card in active
-            red-badge state after batched refetch. */}
+        {/* Reconsider — flips every currently-dismissed rewrite for this
+            headline back to live, causing the parent to re-render the
+            card in active red-badge state after batched refetch. */}
         <div style={{ display: "flex", gap: "8px" }}>
           <button
             onClick={handleReconsider}
-            disabled={undismissMut.isPending || !undismissTarget}
-            style={pillButton("transparent", T.dark, undismissMut.isPending || !undismissTarget, `2px solid ${T.dark}`)}
+            disabled={undismissMut.isPending || !hasDismissedRewrites}
+            style={pillButton("transparent", T.dark, undismissMut.isPending || !hasDismissedRewrites, `2px solid ${T.dark}`)}
             title="Reconsider the warning and see the suggested rewrites again"
           >
             {undismissMut.isPending ? "Reconsidering…" : "Reconsider"}
