@@ -1,18 +1,21 @@
 /**
  * ComplianceWarningPanel — W5 Phase 1 (Headlines).
  *
- * Replaces the passive "1 issue" badge on flagged content with an active
- * pipeline: the panel shows the specific violation reasons and surfaces
- * the pre-computed compliant rewrite, letting the user Accept, Dismiss,
- * or request two more alternatives.
+ * Replaces the passive "N issues" badge with an active rewrite pipeline:
+ * shows violation reasons and the pre-computed compliant rewrite, lets
+ * the user Accept, Dismiss, or request more alternatives.
  *
- * Gated at render sites on ENABLE_COMPLIANCE_REWRITES (env flag on the
- * server; the client infers it by whether trpc.complianceRewrites.getForItem
- * returns any rows — if the flag is off, pre-compute never ran, so the
- * query is empty and the caller can render nothing new).
+ * Rendering responsibility is split with the parent (V2HeadlinesResultPanel):
+ *   - Parent runs a single batched query for all rewrites in the set and
+ *     decides *whether* this panel renders, based on per-row accepted /
+ *     dismissed state.
+ *   - This panel receives live rewrites + an initialMode. It owns only
+ *     the expand / collapse UI and the Accept / Dismiss / See-more
+ *     mutation calls; after each mutation it asks the parent to refetch
+ *     (onRewritesChanged) so the batched query stays authoritative.
  *
- * Phase 1 only uses sourceTable='headlines'. Phases 2/3 will pass
- * 'adCopy' / 'landingPages' through the same component unchanged.
+ * Phase 1 only handles sourceTable='headlines'. Phases 2/3 pass 'adCopy'
+ * / 'landingPages' through unchanged.
  */
 
 import { useState } from "react";
@@ -28,68 +31,117 @@ const T = {
   fontHead:  "Fraunces, serif",
 };
 
+export type CardRewrite = {
+  id: number;
+  rewrittenText: string;
+  complianceScore: number;
+  violationReasons: unknown;
+  userAccepted: boolean;
+  userDismissed: boolean;
+};
+
 interface Props {
   sourceTable: "headlines" | "adCopy" | "landingPages";
   sourceId: number;
   originalText: string;
-  // Plain-English violation reasons, typically from complianceChecker's
-  // ComplianceIssue[].reason. Used only when the server has rewrites cached;
-  // the server's violationReasons JSON is the source of truth at render time.
+  /** Override — if non-empty, shown as the violation bullets. Otherwise
+   *  the panel falls back to the cached rewrite row's violationReasons. */
   violations: string[];
+  /** Live (not accepted, not dismissed) rewrites for this source row. */
+  liveRewrites: CardRewrite[];
+  /** Rewrites the user has already dismissed — shown read-only in the
+   *  dismissed-mode expanded view. */
+  dismissedRewrites: CardRewrite[];
+  /** "dismissed" → amber collapsed + read-only expanded; "active" → red
+   *  collapsed + full action set. Chosen by the parent based on whether
+   *  any rewrite for this row is marked dismissed (and none accepted). */
+  initialMode: "active" | "dismissed";
   onAccept: (newText: string) => void;
   onDismiss: () => void;
+  onGeneratedMore: () => void;
 }
-
-type LocalStatus = "idle" | "accepted" | "dismissed";
 
 export default function ComplianceWarningPanel({
   sourceTable,
   sourceId,
   originalText,
   violations,
+  liveRewrites,
+  dismissedRewrites,
+  initialMode,
   onAccept,
   onDismiss,
+  onGeneratedMore,
 }: Props) {
   const [expanded, setExpanded]       = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [localStatus, setLocalStatus] = useState<LocalStatus>("idle");
   const [errorMsg, setErrorMsg]       = useState<string | null>(null);
-
-  const { data: rewrites = [], refetch } = trpc.complianceRewrites.getForItem.useQuery(
-    { sourceTable, sourceId },
-    { staleTime: 30_000 },
-  );
 
   const generateMore = trpc.complianceRewrites.generateMore.useMutation();
   const acceptMut    = trpc.complianceRewrites.accept.useMutation();
   const dismissMut   = trpc.complianceRewrites.dismiss.useMutation();
 
-  // The "currently shown" rewrite — cache-ordered desc by createdAt, so
-  // index 0 is the newest. If the server pre-computed one rewrite at
-  // generation time, this is it.
-  const activeRewrite   = rewrites[activeIndex] ?? rewrites[0] ?? null;
-  const alternativeCount = rewrites.length;
+  const activeRewrite    = liveRewrites[activeIndex] ?? liveRewrites[0] ?? null;
+  const alternativeCount = liveRewrites.length;
   const busy = generateMore.isPending || acceptMut.isPending || dismissMut.isPending;
 
-  // ── Post-decision states ─────────────────────────────────────────────
-  if (localStatus === "accepted") {
+  // Resolve the violation list for display: prop first, fall back to the
+  // first available cached rewrite's violationReasons JSON.
+  const displayViolations: string[] = (() => {
+    if (violations.length > 0) return violations;
+    const any = [...liveRewrites, ...dismissedRewrites][0];
+    if (any && Array.isArray(any.violationReasons)) return any.violationReasons as string[];
+    return [];
+  })();
+  // Real issue count — trust the list. Panel only renders when the parent
+  // has already established complianceScore < 70, so the list shouldn't be
+  // empty in practice; if it is we fall through to "issue(s)" without a
+  // count on the badge.
+  const issueCount = displayViolations.length;
+
+  // ── Dismissed state ──────────────────────────────────────────────────
+  // Amber badge; clicking expands to a read-only recap (no action buttons).
+  if (initialMode === "dismissed") {
+    if (!expanded) {
+      return (
+        <button
+          onClick={() => setExpanded(true)}
+          style={{
+            ...badgeStyle("#92400E", "rgba(255,165,0,0.12)", "rgba(255,165,0,0.40)"),
+            cursor: "pointer",
+          }}
+          title="Warning dismissed — click to review"
+        >
+          ⚠ Warning dismissed — click to review
+        </button>
+      );
+    }
     return (
-      <div style={badgeStyle("#2E7D00", "rgba(88,204,2,0.12)", "rgba(88,204,2,0.40)")}>
-        ✓ Compliance-fixed
-      </div>
-    );
-  }
-  if (localStatus === "dismissed") {
-    return (
-      <div style={badgeStyle("#92400E", "rgba(255,165,0,0.12)", "rgba(255,165,0,0.40)")}>
-        ⚠ Warning dismissed
+      <div style={dismissedPanelStyle}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span style={{ fontWeight: 700, fontSize: "13px", color: "#92400E" }}>
+            Warning dismissed
+          </span>
+          <button onClick={() => setExpanded(false)} style={closeButtonStyle} title="Collapse">✕</button>
+        </div>
+        {displayViolations.length > 0 && (
+          <div>
+            <div style={labelStyle}>Original compliance issues</div>
+            <ul style={{ margin: 0, paddingLeft: "18px", fontSize: "12px", color: "#555", lineHeight: 1.5 }}>
+              {displayViolations.map((v, i) => <li key={i}>{v}</li>)}
+            </ul>
+          </div>
+        )}
+        <div>
+          <div style={labelStyle}>Kept headline</div>
+          <div style={{ fontSize: "13px", color: T.dark, fontStyle: "italic" }}>{originalText}</div>
+        </div>
       </div>
     );
   }
 
-  // ── Collapsed badge ──────────────────────────────────────────────────
+  // ── Active collapsed badge ──────────────────────────────────────────
   if (!expanded) {
-    const issueCount = Math.max(violations.length, 1);
     return (
       <button
         onClick={() => setExpanded(true)}
@@ -100,7 +152,7 @@ export default function ComplianceWarningPanel({
         }}
         title="Open compliance rewrite suggestions"
       >
-        ⚠ {issueCount} issue{issueCount > 1 ? "s" : ""} — click to fix
+        ⚠ {issueCount > 0 ? `${issueCount} issue${issueCount > 1 ? "s" : ""}` : "issue"} — click to fix
       </button>
     );
   }
@@ -111,7 +163,8 @@ export default function ComplianceWarningPanel({
       setErrorMsg(null);
       const res = await acceptMut.mutateAsync({ rewriteId: activeRewrite.id });
       onAccept(res.rewrittenText);
-      setLocalStatus("accepted");
+      // Parent's batched query refetches; parent decides to stop rendering
+      // this panel because anyAccepted flips to true.
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : "Accept failed — try again");
     }
@@ -119,16 +172,14 @@ export default function ComplianceWarningPanel({
 
   async function handleDismiss() {
     if (!activeRewrite) {
-      // No rewrite to dismiss at the row level; just hide the panel locally.
+      // No server rewrite to mark — just hide locally for this render.
       onDismiss();
-      setLocalStatus("dismissed");
       return;
     }
     try {
       setErrorMsg(null);
       await dismissMut.mutateAsync({ rewriteId: activeRewrite.id });
       onDismiss();
-      setLocalStatus("dismissed");
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : "Dismiss failed — try again");
     }
@@ -143,83 +194,41 @@ export default function ComplianceWarningPanel({
         sourceId,
         count: Math.max(alternativeCount + 2, 3),
       });
-      await refetch();
+      onGeneratedMore();
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : "Couldn't generate more alternatives");
     }
   }
 
-  // ── Expanded state ───────────────────────────────────────────────────
+  // ── Active expanded state ───────────────────────────────────────────
   return (
-    <div style={{
-      marginTop: "10px",
-      background: T.bg,
-      borderRadius: "14px",
-      border: "1.5px solid rgba(220,38,38,0.25)",
-      padding: "14px 16px",
-      display: "flex",
-      flexDirection: "column",
-      gap: "12px",
-      fontFamily: T.fontBody,
-    }}>
-      {/* Header + collapse */}
+    <div style={activePanelStyle}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <span style={{ fontWeight: 700, fontSize: "13px", color: "#991B1B" }}>
           Compliance issues detected
         </span>
-        <button
-          onClick={() => setExpanded(false)}
-          style={{ background: "transparent", border: "none", color: "#888", cursor: "pointer", fontSize: "12px" }}
-          title="Collapse"
-        >
-          ✕
-        </button>
+        <button onClick={() => setExpanded(false)} style={closeButtonStyle} title="Collapse">✕</button>
       </div>
 
-      {/* Plain-English violations — prop first, fall back to the cached
-          rewrite row's violationReasons JSON (populated at generate time). */}
-      {(() => {
-        const fromCache = Array.isArray(activeRewrite?.violationReasons)
-          ? (activeRewrite?.violationReasons as string[])
-          : [];
-        const shown = violations.length > 0 ? violations : fromCache;
-        if (shown.length === 0) return null;
-        return (
-          <ul style={{ margin: 0, paddingLeft: "18px", fontSize: "12px", color: "#555", lineHeight: 1.5 }}>
-            {shown.map((v, i) => <li key={i}>{v}</li>)}
-          </ul>
-        );
-      })()}
+      {displayViolations.length > 0 && (
+        <ul style={{ margin: 0, paddingLeft: "18px", fontSize: "12px", color: "#555", lineHeight: 1.5 }}>
+          {displayViolations.map((v, i) => <li key={i}>{v}</li>)}
+        </ul>
+      )}
 
-      {/* Original */}
       <div>
-        <div style={{ fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.06em", color: "#999", marginBottom: "4px" }}>
-          Original (flagged)
-        </div>
-        <div style={{ fontSize: "13px", color: T.dark, fontStyle: "italic" }}>
-          {originalText}
-        </div>
+        <div style={labelStyle}>Original (flagged)</div>
+        <div style={{ fontSize: "13px", color: T.dark, fontStyle: "italic" }}>{originalText}</div>
       </div>
 
-      {/* Suggested rewrite or empty state */}
       {activeRewrite ? (
         <div>
-          <div style={{ fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.06em", color: "#999", marginBottom: "4px", display: "flex", justifyContent: "space-between" }}>
+          <div style={{ ...labelStyle, display: "flex", justifyContent: "space-between" }}>
             <span>Suggested compliant version{alternativeCount > 1 ? ` (${activeIndex + 1} of ${alternativeCount})` : ""}</span>
             {alternativeCount > 1 && (
               <span style={{ display: "inline-flex", gap: "4px" }}>
-                <button
-                  onClick={() => setActiveIndex(i => Math.max(0, i - 1))}
-                  disabled={activeIndex === 0}
-                  style={chevronStyle(activeIndex === 0)}
-                  title="Previous alternative"
-                >‹</button>
-                <button
-                  onClick={() => setActiveIndex(i => Math.min(alternativeCount - 1, i + 1))}
-                  disabled={activeIndex >= alternativeCount - 1}
-                  style={chevronStyle(activeIndex >= alternativeCount - 1)}
-                  title="Next alternative"
-                >›</button>
+                <button onClick={() => setActiveIndex(i => Math.max(0, i - 1))} disabled={activeIndex === 0} style={chevronStyle(activeIndex === 0)} title="Previous alternative">‹</button>
+                <button onClick={() => setActiveIndex(i => Math.min(alternativeCount - 1, i + 1))} disabled={activeIndex >= alternativeCount - 1} style={chevronStyle(activeIndex >= alternativeCount - 1)} title="Next alternative">›</button>
               </span>
             )}
           </div>
@@ -242,7 +251,6 @@ export default function ComplianceWarningPanel({
         </div>
       )}
 
-      {/* Actions */}
       <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
         <button
           onClick={handleAccept}
@@ -291,6 +299,46 @@ function badgeStyle(color: string, bg: string, border: string): React.CSSPropert
     marginTop: "6px",
   };
 }
+
+const activePanelStyle: React.CSSProperties = {
+  marginTop: "10px",
+  background: T.bg,
+  borderRadius: "14px",
+  border: "1.5px solid rgba(220,38,38,0.25)",
+  padding: "14px 16px",
+  display: "flex",
+  flexDirection: "column",
+  gap: "12px",
+  fontFamily: T.fontBody,
+};
+
+const dismissedPanelStyle: React.CSSProperties = {
+  marginTop: "10px",
+  background: T.bg,
+  borderRadius: "14px",
+  border: "1.5px solid rgba(255,165,0,0.35)",
+  padding: "14px 16px",
+  display: "flex",
+  flexDirection: "column",
+  gap: "10px",
+  fontFamily: T.fontBody,
+};
+
+const labelStyle: React.CSSProperties = {
+  fontSize: "10px",
+  textTransform: "uppercase",
+  letterSpacing: "0.06em",
+  color: "#999",
+  marginBottom: "4px",
+};
+
+const closeButtonStyle: React.CSSProperties = {
+  background: "transparent",
+  border: "none",
+  color: "#888",
+  cursor: "pointer",
+  fontSize: "12px",
+};
 
 function pillButton(bg: string, fg: string, disabled: boolean, border = "none"): React.CSSProperties {
   return {

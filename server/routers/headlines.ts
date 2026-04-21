@@ -82,6 +82,9 @@ async function precomputeComplianceRewrites(
 
     const rowsToInsert: Array<typeof complianceRewrites.$inferInsert> = [];
     await Promise.all(flagged.map(async (row) => {
+      // Skip rows whose service has been deleted — serviceId is notNull on
+      // complianceRewrites (denormalised for free-tier cap path).
+      if (row.serviceId == null) return;
       try {
         const c = await checkCompliance(row.headline);
         if (c.issues.length === 0) return;
@@ -92,6 +95,7 @@ async function precomputeComplianceRewrites(
         });
         rowsToInsert.push({
           userId: user.id,
+          serviceId: row.serviceId,
           contentType: "headline",
           sourceTable: "headlines",
           sourceId: row.id,
@@ -253,34 +257,45 @@ export const headlinesRouter = router({
   getBySetId: protectedProcedure
     .input(z.object({ headlineSetId: z.string() }))
     .query(async ({ ctx, input }) => {
-      const headlines = await getHeadlinesBySetId(input.headlineSetId, ctx.user.id);
-      
-      if (headlines.length === 0) {
+      const rows = await getHeadlinesBySetId(input.headlineSetId, ctx.user.id);
+
+      if (rows.length === 0) {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Headline set not found",
         });
       }
-      
+
+      // Normalise violationReasons from Drizzle's `unknown` JSON to
+      // `string[] | null` so the type flows end-to-end (client doesn't
+      // need to cast). Anything unexpected becomes null.
+      const normalised = rows.map(r => ({
+        ...r,
+        violationReasons:
+          Array.isArray((r as { violationReasons?: unknown }).violationReasons)
+            ? ((r as { violationReasons?: unknown[] }).violationReasons ?? []).filter((v): v is string => typeof v === "string")
+            : null,
+      }));
+
       // Group by formula type
       const grouped = {
-        story: headlines.filter(h => h.formulaType === "story"),
-        eyebrow: headlines.filter(h => h.formulaType === "eyebrow"),
-        question: headlines.filter(h => h.formulaType === "question"),
-        authority: headlines.filter(h => h.formulaType === "authority"),
-        urgency: headlines.filter(h => h.formulaType === "urgency"),
+        story:     normalised.filter(h => h.formulaType === "story"),
+        eyebrow:   normalised.filter(h => h.formulaType === "eyebrow"),
+        question:  normalised.filter(h => h.formulaType === "question"),
+        authority: normalised.filter(h => h.formulaType === "authority"),
+        urgency:   normalised.filter(h => h.formulaType === "urgency"),
       };
-      
+
       return {
         headlineSetId: input.headlineSetId,
         headlines: grouped,
         metadata: {
-          serviceId: headlines[0].serviceId,
-          targetMarket: headlines[0].targetMarket,
-          pressingProblem: headlines[0].pressingProblem,
-          desiredOutcome: headlines[0].desiredOutcome,
-          uniqueMechanism: headlines[0].uniqueMechanism,
-          createdAt: headlines[0].createdAt,
+          serviceId: normalised[0].serviceId,
+          targetMarket: normalised[0].targetMarket,
+          pressingProblem: normalised[0].pressingProblem,
+          desiredOutcome: normalised[0].desiredOutcome,
+          uniqueMechanism: normalised[0].uniqueMechanism,
+          createdAt: normalised[0].createdAt,
         },
       };
     }),
@@ -506,7 +521,10 @@ Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES
         }
       }
 
-      // Check compliance for all headlines and add compliance data
+      // Check compliance for all headlines and add compliance data.
+      // violationReasons is the ComplianceIssue[].reason list — stored so the
+      // warning panel can show the exact reasons and real issue count
+      // without re-running checkCompliance per render (W5 Phase 1 R2).
       const headlinesWithCompliance = await Promise.all(
         allHeadlines.map(async (headline) => {
           const complianceResult = await checkCompliance(headline.headline, {
@@ -514,13 +532,16 @@ Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES
             generatorType: 'headlines',
             trackUsage: true,
           });
-          
+
           return {
             ...headline,
             complianceScore: complianceResult.score,
             complianceVersion: complianceResult.version,
             complianceCheckedAt: new Date(),
             selectionScore: String(scoreAdContent('headline', headline.headline ?? '')),
+            violationReasons: complianceResult.issues.length > 0
+              ? complianceResult.issues.map(i => i.reason)
+              : null,
           };
         })
       );
@@ -651,7 +672,15 @@ Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES
 
           const headlinesWithCompliance = await Promise.all(allHeadlines.map(async (headline) => {
             const complianceResult = await checkCompliance(headline.headline, { userId: capturedUserId, generatorType: 'headlines', trackUsage: true });
-            return { ...headline, complianceScore: complianceResult.score, complianceVersion: complianceResult.version, complianceCheckedAt: new Date(), selectionScore: String(scoreAdContent('headline', headline.headline ?? '')) };
+            return {
+              ...headline,
+              complianceScore: complianceResult.score,
+              complianceVersion: complianceResult.version,
+              complianceCheckedAt: new Date(),
+              selectionScore: String(scoreAdContent('headline', headline.headline ?? '')),
+              // W5 Phase 1 R2 — ship the issue reasons to the client.
+              violationReasons: complianceResult.issues.length > 0 ? complianceResult.issues.map(i => i.reason) : null,
+            };
           }));
 
           await createHeadlines(headlinesWithCompliance);

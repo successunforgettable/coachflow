@@ -31,6 +31,9 @@ interface HeadlineRow {
   complianceScore: number | null;
   selectionScore?: string | null;
   rating: number;
+  // W5 Phase 1 R2 — plain-English violation reasons shipped by the server
+  // (normalised from the JSON column to a real string[] | null).
+  violationReasons?: string[] | null;
 }
 
 // ─── Compliance badge ─────────────────────────────────────────────────────────
@@ -158,7 +161,16 @@ function HeadlineRegenPanel({
 }
 
 // ─── Per-headline card ────────────────────────────────────────────────────────
-function HeadlineCard({ headline, isFreeTier, index, isFav, onToggleFav, complianceRewritesEnabled }: { headline: HeadlineRow; isFreeTier?: boolean; index: number; isFav: boolean; onToggleFav: () => void; complianceRewritesEnabled: boolean }) {
+type CardRewrite = {
+  id: number;
+  rewrittenText: string;
+  complianceScore: number;
+  violationReasons: unknown;
+  userAccepted: boolean;
+  userDismissed: boolean;
+};
+
+function HeadlineCard({ headline, isFreeTier, index, isFav, onToggleFav, complianceRewritesEnabled, rewritesForCard, onRewritesChanged }: { headline: HeadlineRow; isFreeTier?: boolean; index: number; isFav: boolean; onToggleFav: () => void; complianceRewritesEnabled: boolean; rewritesForCard: CardRewrite[]; onRewritesChanged: () => void }) {
   const copyLocked = isFreeTier && index >= 10;
   const [headlineText, setHeadlineText] = useState(headline.headline);
   const [subheadlineText, setSubheadlineText] = useState(headline.subheadline);
@@ -231,20 +243,36 @@ function HeadlineCard({ headline, isFreeTier, index, isFav, onToggleFav, complia
         <ComplianceBadge score={headline.complianceScore} />
         <ScoreBadge score={headline.selectionScore} />
       </div>
-      {/* W5 Phase 1 — active compliance rewrite panel, replaces passive
-          badge behavior for flagged rows. Renders only when the server
-          flag is on (trpc.complianceRewrites.isEnabled) and the row's
-          score is below the picker's "Mostly Compliant" threshold. */}
-      {complianceRewritesEnabled && headline.complianceScore !== null && headline.complianceScore < 70 && (
-        <ComplianceWarningPanel
-          sourceTable="headlines"
-          sourceId={headline.id}
-          originalText={headlineText}
-          violations={[]}
-          onAccept={(newText) => setHeadlineText(newText)}
-          onDismiss={() => { /* badge flips inside the panel; local text stays */ }}
-        />
-      )}
+      {/* W5 Phase 1 — active compliance rewrite panel drives three states
+          based on the batched rewrites query:
+            - Any accepted rewrite → don't render (score is already
+              compliant too, so this is belt-and-braces).
+            - Any dismissed rewrite (and none accepted) → amber
+              "Warning dismissed" collapsed badge, read-only on expand.
+            - Otherwise → red "click to fix" badge as today.
+          Gated on the feature flag AND complianceScore < 70. */}
+      {(() => {
+        if (!complianceRewritesEnabled) return null;
+        if (headline.complianceScore === null || headline.complianceScore >= 70) return null;
+        const anyAccepted  = rewritesForCard.some(r => r.userAccepted);
+        if (anyAccepted) return null;
+        const anyDismissed = rewritesForCard.some(r => r.userDismissed);
+        const liveRewrites = rewritesForCard.filter(r => !r.userAccepted && !r.userDismissed);
+        return (
+          <ComplianceWarningPanel
+            sourceTable="headlines"
+            sourceId={headline.id}
+            originalText={headlineText}
+            violations={headline.violationReasons ?? []}
+            initialMode={anyDismissed ? "dismissed" : "active"}
+            liveRewrites={liveRewrites}
+            dismissedRewrites={rewritesForCard.filter(r => r.userDismissed)}
+            onAccept={(newText) => { setHeadlineText(newText); onRewritesChanged(); }}
+            onDismiss={() => { onRewritesChanged(); }}
+            onGeneratedMore={onRewritesChanged}
+          />
+        );
+      })()}
       {/* Controls row */}
       <div style={{ display: "flex", gap: "8px", marginTop: "12px", alignItems: "center" }}>
         {copyLocked ? (
@@ -328,6 +356,19 @@ export default function V2HeadlinesResultPanel({
     { staleTime: Infinity },
   );
   const complianceRewritesEnabled = rewriteFlag?.enabled === true;
+
+  // Batched rewrites-for-set query. Fires once on mount (not per card) when
+  // the flag is on. Child cards read their own rewrite list out of the map.
+  const { data: allRewrites = [], refetch: refetchRewrites } = trpc.complianceRewrites.listForHeadlineSet.useQuery(
+    { headlineSetId },
+    { enabled: complianceRewritesEnabled && !!headlineSetId, staleTime: 30_000 },
+  );
+  const rewritesByHeadlineId = new Map<number, typeof allRewrites>();
+  for (const r of allRewrites) {
+    const list = rewritesByHeadlineId.get(r.sourceId) ?? [];
+    list.push(r);
+    rewritesByHeadlineId.set(r.sourceId, list);
+  }
 
   // ── Loading ──
   if (isLoading) {
@@ -452,7 +493,7 @@ export default function V2HeadlinesResultPanel({
             No {activeTab} headlines in this set.
           </p>
         ) : (
-          filteredHeadlines.map((h, i) => <HeadlineCard key={h.id} headline={h} isFreeTier={isFreeTier} index={i} isFav={isFavourited(h.id)} onToggleFav={() => toggleFav(h.id, h.headline)} complianceRewritesEnabled={complianceRewritesEnabled} />)
+          filteredHeadlines.map((h, i) => <HeadlineCard key={h.id} headline={h} isFreeTier={isFreeTier} index={i} isFav={isFavourited(h.id)} onToggleFav={() => toggleFav(h.id, h.headline)} complianceRewritesEnabled={complianceRewritesEnabled} rewritesForCard={rewritesByHeadlineId.get(h.id) ?? []} onRewritesChanged={refetchRewrites} />)
         )}
       </div>
       <ExportButtons content={formatHeadlinesTxt(data)} serviceName="Headlines" nodeName="Headlines" showPdf={true} isFreeTier={isFreeTier} />

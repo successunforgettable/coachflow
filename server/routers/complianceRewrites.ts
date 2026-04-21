@@ -20,13 +20,14 @@
 
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import {
   complianceRewrites,
   headlines,
 } from "../../drizzle/schema";
+import { inArray } from "drizzle-orm";
 import { checkCompliance } from "../lib/complianceChecker";
 import { rewriteForComplianceBatch } from "../_core/complianceRewrite";
 
@@ -59,21 +60,16 @@ async function enforceFreeTierRewriteCap(
 ): Promise<void> {
   if (user.role === "superuser") return;
   if (user.subscriptionTier && user.subscriptionTier !== "trial") return;
-  // Count rewrites this user has for any headline belonging to `serviceId`.
-  // For Phase 1 we only care about sourceTable='headlines'; Phases 2/3 will
-  // extend this with unions across adCopy / landingPage source tables.
-  const serviceHeadlineIds = await db
-    .select({ id: headlines.id })
-    .from(headlines)
-    .where(and(eq(headlines.userId, user.id), eq(headlines.serviceId, serviceId)));
-  if (serviceHeadlineIds.length === 0) return;
+  // Count rewrites this user has for this service. complianceRewrites
+  // carries serviceId directly (denormalised at insert time) so this is a
+  // single indexed lookup — no JOIN needed, works across all sourceTables
+  // unchanged when Phases 2/3 add adCopy / landingPage rewrites.
   const existing = await db
     .select({ id: complianceRewrites.id })
     .from(complianceRewrites)
     .where(and(
       eq(complianceRewrites.userId, user.id),
-      eq(complianceRewrites.sourceTable, "headlines"),
-      inArray(complianceRewrites.sourceId, serviceHeadlineIds.map(r => r.id)),
+      eq(complianceRewrites.serviceId, serviceId),
     ));
   if (existing.length >= FREE_TIER_REWRITE_CAP) {
     throw new TRPCError({
@@ -89,6 +85,38 @@ export const complianceRewritesRouter = router({
   // with staleTime: Infinity on the client since the flag changes only at
   // server restart.
   isEnabled: protectedProcedure.query(() => ({ enabled: isRewriteEngineEnabled() })),
+
+  // Batched fetch: every rewrite for every headline in a given set.
+  // Used once on mount by V2HeadlinesResultPanel — avoids firing getForItem
+  // per card. Client groups the returned array by sourceId.
+  listForHeadlineSet: protectedProcedure
+    .input(z.object({ headlineSetId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      const ids = await db
+        .select({ id: headlines.id })
+        .from(headlines)
+        .where(and(eq(headlines.userId, ctx.user.id), eq(headlines.headlineSetId, input.headlineSetId)));
+      if (ids.length === 0) return [];
+      const rows = await db
+        .select()
+        .from(complianceRewrites)
+        .where(and(
+          eq(complianceRewrites.userId, ctx.user.id),
+          eq(complianceRewrites.sourceTable, "headlines"),
+          inArray(complianceRewrites.sourceId, ids.map(r => r.id)),
+        ))
+        .orderBy(desc(complianceRewrites.createdAt));
+      // Normalise violationReasons from `unknown` to `string[]` so the
+      // client gets a real typed field instead of having to cast.
+      return rows.map(r => ({
+        ...r,
+        violationReasons: Array.isArray(r.violationReasons)
+          ? (r.violationReasons as unknown[]).filter((v): v is string => typeof v === "string")
+          : [],
+      }));
+    }),
 
   // Read cached rewrites for one source row — used when the warning panel expands.
   getForItem: protectedProcedure
@@ -138,6 +166,10 @@ export const complianceRewritesRouter = router({
 
       await enforceFreeTierRewriteCap(db, ctx.user, source.serviceId);
 
+      // Idempotency check: only count rewrites the user hasn't already
+      // accepted or dismissed. Without this filter, one accepted rewrite
+      // would block further "see 2 more alternatives" because count is
+      // already satisfied by the stale accepted row.
       const existing = await db
         .select()
         .from(complianceRewrites)
@@ -145,6 +177,8 @@ export const complianceRewritesRouter = router({
           eq(complianceRewrites.userId, ctx.user.id),
           eq(complianceRewrites.sourceTable, "headlines"),
           eq(complianceRewrites.sourceId, input.sourceId),
+          eq(complianceRewrites.userAccepted, false),
+          eq(complianceRewrites.userDismissed, false),
         ))
         .orderBy(desc(complianceRewrites.createdAt));
       if (existing.length >= input.count) return existing;
@@ -177,6 +211,7 @@ export const complianceRewritesRouter = router({
 
       const rowsToInsert = fresh.map(r => ({
         userId: ctx.user.id,
+        serviceId: source.serviceId!,
         contentType: "headline" as const,
         sourceTable: "headlines",
         sourceId: input.sourceId,
@@ -187,6 +222,8 @@ export const complianceRewritesRouter = router({
       }));
       await db.insert(complianceRewrites).values(rowsToInsert);
 
+      // After insert: return only live (not-accepted / not-dismissed) rows
+      // so the panel sees the up-to-date candidate list.
       const after = await db
         .select()
         .from(complianceRewrites)
@@ -194,13 +231,19 @@ export const complianceRewritesRouter = router({
           eq(complianceRewrites.userId, ctx.user.id),
           eq(complianceRewrites.sourceTable, "headlines"),
           eq(complianceRewrites.sourceId, input.sourceId),
+          eq(complianceRewrites.userAccepted, false),
+          eq(complianceRewrites.userDismissed, false),
         ))
         .orderBy(desc(complianceRewrites.createdAt));
       return after;
     }),
 
   // Accept a specific rewrite: mark userAccepted=true AND update the source
-  // table's text. Phase 1 only knows how to update the `headlines` table.
+  // row's text + compliance score so subsequent renders correctly see the
+  // row as compliant (the warning panel re-reads complianceScore on mount
+  // to decide whether to render). Phase 1 only knows how to update the
+  // `headlines` table. Wrapped in a transaction so we don't half-apply —
+  // either both writes land or neither does.
   accept: protectedProcedure
     .input(z.object({ rewriteId: z.number() }))
     .mutation(async ({ ctx, input }) => {
@@ -222,17 +265,25 @@ export const complianceRewritesRouter = router({
         });
       }
 
-      await db
-        .update(headlines)
-        .set({ headline: rewrite.rewrittenText })
-        .where(and(eq(headlines.id, rewrite.sourceId), eq(headlines.userId, ctx.user.id)));
+      await db.transaction(async (tx) => {
+        await tx
+          .update(headlines)
+          .set({
+            headline: rewrite.rewrittenText,
+            // Propagate the rewrite's re-scored complianceScore back to the
+            // source row so on reload the card no longer classifies as
+            // "< 70" and the warning panel doesn't re-show.
+            complianceScore: rewrite.complianceScore,
+          })
+          .where(and(eq(headlines.id, rewrite.sourceId), eq(headlines.userId, ctx.user.id)));
 
-      await db
-        .update(complianceRewrites)
-        .set({ userAccepted: true, userDismissed: false })
-        .where(eq(complianceRewrites.id, rewrite.id));
+        await tx
+          .update(complianceRewrites)
+          .set({ userAccepted: true, userDismissed: false })
+          .where(eq(complianceRewrites.id, rewrite.id));
+      });
 
-      return { success: true, rewrittenText: rewrite.rewrittenText };
+      return { success: true, rewrittenText: rewrite.rewrittenText, complianceScore: rewrite.complianceScore };
     }),
 
   // Dismiss a specific rewrite — keep original, flip the badge to amber

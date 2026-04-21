@@ -538,6 +538,11 @@ export const headlines = mysqlTable("headlines", {
   complianceVersion: varchar("complianceVersion", { length: 20 }),
   complianceCheckedAt: timestamp("complianceCheckedAt"),
   selectionScore: decimal("selectionScore", { precision: 5, scale: 2 }),
+  // W5 Phase 1 R2 — JSON array of plain-English violation reasons from
+  // checkCompliance (issues[].reason). Lets the warning panel show actual
+  // issue count and the exact reasons without re-running the checker on
+  // every render. Nullable for legacy rows predating the column.
+  violationReasons: json("violationReasons"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({
@@ -1304,6 +1309,10 @@ export type InsertNodeSkip = typeof nodeSkips.$inferInsert;
 export const complianceRewrites = mysqlTable("complianceRewrites", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  // Denormalised for the free-tier cap count (count-by-service path avoids
+  // a JOIN into the source generator table). Duplicated from the source
+  // row's serviceId at insert time — treated as immutable per rewrite.
+  serviceId: int("serviceId").notNull(),
   contentType: mysqlEnum("contentType", ["headline", "adCopy", "landingPage"]).notNull(),
   // sourceTable + sourceId form a loose foreign key into whichever generator
   // table produced the flagged row (e.g., sourceTable='headlines' + headline.id).
@@ -1323,7 +1332,8 @@ export const complianceRewrites = mysqlTable("complianceRewrites", {
   userDismissed: boolean("userDismissed").notNull().default(false),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, (table) => ({
-  sourceIdx: index("complianceRewrites_source_idx").on(table.userId, table.sourceTable, table.sourceId),
+  sourceIdx:  index("complianceRewrites_source_idx").on(table.userId, table.sourceTable, table.sourceId),
+  serviceIdx: index("complianceRewrites_service_idx").on(table.userId, table.serviceId),
 }));
 export type ComplianceRewrite = typeof complianceRewrites.$inferSelect;
 export type InsertComplianceRewrite = typeof complianceRewrites.$inferInsert;
