@@ -1318,7 +1318,7 @@ export const complianceRewrites = mysqlTable("complianceRewrites", {
   // a JOIN into the source generator table). Duplicated from the source
   // row's serviceId at insert time — treated as immutable per rewrite.
   serviceId: int("serviceId").notNull(),
-  contentType: mysqlEnum("contentType", ["headline", "adCopy", "landingPage"]).notNull(),
+  contentType: mysqlEnum("contentType", ["headline", "adCopy", "landingPage", "body", "link"]).notNull(),
   // sourceTable + sourceId form a loose foreign key into whichever generator
   // table produced the flagged row (e.g., sourceTable='headlines' + headline.id).
   // Kept as a free-form string rather than a real FK so a single table can
