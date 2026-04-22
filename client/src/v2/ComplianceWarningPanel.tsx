@@ -151,6 +151,7 @@ export default function ComplianceWarningPanel({
       if (!hasDismissedRewrites) return;
       try {
         setErrorMsg(null);
+        setCapError(false);
         await undismissMut.mutateAsync({ sourceTable, sourceId });
         // Parent refetches; with no dismissed rows remaining and none
         // accepted, the card re-renders in active red-badge state.
@@ -225,6 +226,7 @@ export default function ComplianceWarningPanel({
     if (!activeRewrite) return;
     try {
       setErrorMsg(null);
+      setCapError(false);
       const res = await acceptMut.mutateAsync({ rewriteId: activeRewrite.id });
       onAccept(res.rewrittenText);
       // Parent's batched query refetches; parent decides to stop rendering
@@ -242,6 +244,7 @@ export default function ComplianceWarningPanel({
     }
     try {
       setErrorMsg(null);
+      setCapError(false);
       await dismissMut.mutateAsync({ rewriteId: activeRewrite.id });
       onDismiss();
     } catch (err: unknown) {
@@ -272,6 +275,9 @@ export default function ComplianceWarningPanel({
       if (err instanceof Error && err.message.includes("Free tier compliance rewrite limit reached")) {
         setCapError(true);
       } else {
+        // Non-cap error — clear any stale amber cap block so the real
+        // errorMsg isn't swallowed when a different error follows a cap hit.
+        setCapError(false);
         setErrorMsg(msg);
       }
     }
