@@ -1350,6 +1350,42 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
   const isDemoError     = demoMode === "error";
   const isDemoOffline   = demoMode === "offline";
 
+  // Debug/QA override mirroring ?demo= and ?progress= — lets QA load any existing result set by URL without a fresh generate run. Keep this indefinitely; it doubles as an admin debug path.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    // Maps each WizardStep to the URL param name it reads and the setter
+    // that applies it. Skipped steps ("service", "pushToMeta") intentionally
+    // have no entry — no result-panel guard state to rehydrate.
+    const paramNames: Record<string, string> = {
+      icp:              "icpId",
+      offer:            "offerId",
+      uniqueMethod:     "mechanismSetId",
+      freeOptIn:        "hvcoSetId",
+      headlines:        "headlineSetId",
+      adCopy:           "adSetId",
+      landingPage:      "landingPageId",
+      emailSequence:    "emailSequenceId",
+      whatsappSequence: "whatsappSequenceId",
+    };
+    const applyOverride: Record<string, (raw: string) => boolean> = {
+      icp:              (v) => { const n = parseInt(v, 10); if (!Number.isFinite(n)) return false; setLatestIcpId(n); return true; },
+      offer:            (v) => { const n = parseInt(v, 10); if (!Number.isFinite(n)) return false; setLatestOfferId(n); return true; },
+      uniqueMethod:     (v) => { setLatestMechanismSetId(v); return true; },
+      freeOptIn:        (v) => { setLatestHvcoSetId(v); return true; },
+      headlines:        (v) => { setLatestHeadlineSetId(v); return true; },
+      adCopy:           (v) => { setLatestAdSetId(v); return true; },
+      landingPage:      (v) => { const n = parseInt(v, 10); if (!Number.isFinite(n)) return false; setLatestLandingPageId(n); return true; },
+      emailSequence:    (v) => { const n = parseInt(v, 10); if (!Number.isFinite(n)) return false; setLatestEmailSequenceId(n); return true; },
+      whatsappSequence: (v) => { const n = parseInt(v, 10); if (!Number.isFinite(n)) return false; setLatestWhatsappSequenceId(n); return true; },
+    };
+    const paramKey = paramNames[step];
+    if (!paramKey) return;
+    const raw = params.get(paramKey);
+    if (!raw) return;
+    if (applyOverride[step]?.(raw)) setStatus("success");
+  }, [step]);
+
   // ── Fetch service (real data, not mock) ──
   const { data: serviceData } = trpc.services.list.useQuery(undefined, {
     enabled: !isDemoMissing,
