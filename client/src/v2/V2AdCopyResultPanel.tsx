@@ -82,6 +82,7 @@ function renderCompliancePanelIfFlagged({
       sourceId={item.id}
       originalText={content}
       violations={item.violationReasons ?? []}
+      contentType={item.contentType}
       initialMode={anyDismissed ? "dismissed" : "active"}
       liveRewrites={liveRewrites}
       dismissedRewrites={dismissed}

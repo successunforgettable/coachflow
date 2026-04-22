@@ -47,6 +47,11 @@ interface Props {
   /** Override — if non-empty, shown as the violation bullets. Otherwise
    *  the panel falls back to the cached rewrite row's violationReasons. */
   violations: string[];
+  /** Sub-type of the source row's text — drives the dismissed-mode KEPT
+   *  label ("KEPT HEADLINE" / "KEPT BODY" / "KEPT LINK"). Node 6 always
+   *  passes "headline"; Node 7 passes the per-row item.contentType. If
+   *  omitted the panel falls back to "KEPT ORIGINAL". */
+  contentType?: "headline" | "body" | "link";
   /** Live (not accepted, not dismissed) rewrites for this source row. */
   liveRewrites: CardRewrite[];
   /** Rewrites the user has already dismissed — shown read-only in the
@@ -66,6 +71,7 @@ export default function ComplianceWarningPanel({
   sourceId,
   originalText,
   violations,
+  contentType,
   liveRewrites,
   dismissedRewrites,
   initialMode,
@@ -76,6 +82,10 @@ export default function ComplianceWarningPanel({
   const [expanded, setExpanded]       = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [errorMsg, setErrorMsg]       = useState<string | null>(null);
+  // Free-tier cap sentinel — true when the last generateMore caught a
+  // FORBIDDEN error whose message matches the cap string. Surfaces a
+  // dedicated amber "upgrade now" block instead of the raw error text.
+  const [capError, setCapError]       = useState(false);
 
   const generateMore = trpc.complianceRewrites.generateMore.useMutation();
   const acceptMut    = trpc.complianceRewrites.accept.useMutation();
@@ -85,6 +95,20 @@ export default function ComplianceWarningPanel({
   const activeRewrite    = liveRewrites[activeIndex] ?? liveRewrites[0] ?? null;
   const alternativeCount = liveRewrites.length;
   const busy = generateMore.isPending || acceptMut.isPending || dismissMut.isPending;
+
+  // "Kept" label for the dismissed-mode section showing the original text.
+  // Node 6 always passes contentType="headline"; Node 7 passes the per-row
+  // value (headline/body/link). Fallback covers the optional-prop omission
+  // case (e.g., future callers that don't wire it).
+  const keptLabel = (() => {
+    if (contentType === "body") return "Kept body";
+    if (contentType === "link") return "Kept link";
+    if (contentType === "headline") return "Kept headline";
+    // Fallback inference: if the caller is the Node 6 headlines panel,
+    // treat as headline. Otherwise "Kept original".
+    if (sourceTable === "headlines") return "Kept headline";
+    return "Kept original";
+  })();
 
   // Resolve the violation list for display: prop first, fall back to the
   // first available cached rewrite's violationReasons JSON.
@@ -153,7 +177,9 @@ export default function ComplianceWarningPanel({
           </div>
         )}
         <div>
-          <div style={labelStyle}>Kept headline</div>
+          {/* Label reflects the actual sub-type of the kept text so adCopy
+              body and link cards don't mis-label as "Kept headline". */}
+          <div style={labelStyle}>{keptLabel}</div>
           <div style={{ fontSize: "13px", color: T.dark, fontStyle: "italic" }}>{originalText}</div>
         </div>
         {errorMsg && (
@@ -226,20 +252,28 @@ export default function ComplianceWarningPanel({
   async function handleGenerateMore() {
     try {
       setErrorMsg(null);
-      // Ask for 2 more than current count so we always expand the choice set.
+      setCapError(false);
+      // Ask for 2 more than current count so we always expand the choice
+      // set. Clamp to 5 (the server's Zod max) so an over-the-cap click
+      // can't surface a raw Zod error — the button is also disabled past
+      // the cap per the disabled-state wiring below, this is belt-and-
+      // braces against future callers or UI drift.
       await generateMore.mutateAsync({
-        // Phase 1 residue fix: use the panel's sourceTable prop so this
-        // routes correctly when rendered from adCopy context, not just
-        // headlines. Narrowing cast defends against a future Phase 3
-        // caller wiring "landingPages" into a panel whose generateMore
-        // server endpoint still only accepts the two Phase 2 tables.
         sourceTable: sourceTable as "headlines" | "adCopy",
         sourceId,
-        count: Math.max(alternativeCount + 2, 3),
+        count: Math.min(Math.max(alternativeCount + 2, 3), 5),
       });
       onGeneratedMore();
     } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message : "Couldn't generate more alternatives");
+      const msg = err instanceof Error ? err.message : "Couldn't generate more alternatives";
+      // Free-tier cap detection: the server throws TRPCError FORBIDDEN
+      // with this specific sentence from enforceFreeTierRewriteCap. Lift
+      // to the dedicated upgrade CTA instead of showing raw error text.
+      if (err instanceof Error && err.message.includes("Free tier compliance rewrite limit reached")) {
+        setCapError(true);
+      } else {
+        setErrorMsg(msg);
+      }
     }
   }
 
@@ -288,38 +322,88 @@ export default function ComplianceWarningPanel({
         </div>
       )}
 
-      {errorMsg && (
+      {capError ? (
+        <div
+          role="alert"
+          style={{
+            background: "rgba(255,165,0,0.12)",
+            border: "1px solid rgba(255,165,0,0.40)",
+            borderRadius: "12px",
+            padding: "14px 16px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "8px",
+          }}
+        >
+          <div style={{ fontFamily: T.fontBody, fontSize: "13px", fontWeight: 700, color: "#92400E" }}>
+            Free tier limit reached
+          </div>
+          <div style={{ fontFamily: T.fontBody, fontSize: "12px", color: "#555", lineHeight: 1.5 }}>
+            Upgrade to Pro for unlimited compliance rewrites across all your campaigns.
+          </div>
+          <a
+            href="/pricing?utm_source=app&utm_medium=quota_gate&utm_campaign=compliance-rewrite"
+            style={{
+              alignSelf: "flex-start",
+              display: "inline-block",
+              background: T.orange,
+              color: "#fff",
+              borderRadius: T.pill,
+              padding: "8px 16px",
+              fontFamily: T.fontBody,
+              fontWeight: 700,
+              fontSize: "12px",
+              textDecoration: "none",
+              marginTop: "2px",
+            }}
+          >
+            Upgrade now
+          </a>
+        </div>
+      ) : errorMsg ? (
         <div role="alert" style={{ fontSize: "12px", color: "#991B1B", background: "rgba(220,38,38,0.08)", borderRadius: "8px", padding: "6px 10px" }}>
           {errorMsg}
         </div>
-      )}
+      ) : null}
 
-      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-        <button
-          onClick={handleAccept}
-          disabled={busy || !activeRewrite}
-          style={pillButton(T.orange, "#fff", busy || !activeRewrite)}
-          title="Replace the original with the suggested rewrite"
-        >
-          {acceptMut.isPending ? "Applying…" : "Accept rewrite"}
-        </button>
-        <button
-          onClick={handleDismiss}
-          disabled={busy}
-          style={pillButton("transparent", T.dark, busy, `2px solid ${T.dark}`)}
-          title="Keep the original, dismiss the warning"
-        >
-          Keep original
-        </button>
-        <button
-          onClick={handleGenerateMore}
-          disabled={busy}
-          style={ghostButton(busy)}
-          title="Generate two additional compliant alternatives"
-        >
-          {generateMore.isPending ? "Generating…" : "See 2 more alternatives"}
-        </button>
-      </div>
+      {(() => {
+        // Disable See-more at the 5-rewrite cap per W5 Phase 2 R2 UX polish.
+        // totalRewrites counts every rewrite that's been produced (live +
+        // dismissed) so the user can't keep requesting more once the
+        // effective ceiling is reached — matches the server's Zod max(5)
+        // constraint on the `count` param.
+        const totalRewrites   = liveRewrites.length + dismissedRewrites.length;
+        const atCap           = totalRewrites >= 5;
+        const seeMoreDisabled = busy || atCap;
+        return (
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+            <button
+              onClick={handleAccept}
+              disabled={busy || !activeRewrite}
+              style={pillButton(T.orange, "#fff", busy || !activeRewrite)}
+              title="Replace the original with the suggested rewrite"
+            >
+              {acceptMut.isPending ? "Applying…" : "Accept rewrite"}
+            </button>
+            <button
+              onClick={handleDismiss}
+              disabled={busy}
+              style={pillButton("transparent", T.dark, busy, `2px solid ${T.dark}`)}
+              title="Keep the original, dismiss the warning"
+            >
+              Keep original and dismiss warning
+            </button>
+            <button
+              onClick={handleGenerateMore}
+              disabled={seeMoreDisabled}
+              style={ghostButton(seeMoreDisabled)}
+              title={atCap ? "Maximum 5 alternatives reached for this row" : "Generate two additional compliant alternatives"}
+            >
+              {generateMore.isPending ? "Generating…" : atCap ? "Max alternatives reached" : "See 2 more alternatives"}
+            </button>
+          </div>
+        );
+      })()}
     </div>
   );
 }

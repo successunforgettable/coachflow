@@ -264,6 +264,7 @@ function HeadlineCard({ headline, isFreeTier, index, isFav, onToggleFav, complia
             sourceId={headline.id}
             originalText={headlineText}
             violations={headline.violationReasons ?? []}
+            contentType="headline"
             initialMode={anyDismissed ? "dismissed" : "active"}
             liveRewrites={liveRewrites}
             dismissedRewrites={rewritesForCard.filter(r => r.userDismissed)}
