@@ -12,10 +12,11 @@
  *   adSetId    — nanoid from the job result
  *   serviceId  — numeric service ID (for getLatestByServiceId fallback)
  */
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { trpc } from "../lib/trpc";
 import ZappyMascot from "./ZappyMascot";
 import UpgradePrompt from "./components/UpgradePrompt";
+import ComplianceWarningPanel from "./ComplianceWarningPanel";
 import { useFavourites } from "./hooks/useFavourites";
 import ExportButtons from "./components/ExportButtons";
 import { formatWhatsAppTxt, formatHeadlinesTxt, formatAdCopyTxt, formatOfferTxt, formatMechanismsTxt, formatHvcoTxt, formatIcpTxt, formatLandingPageTxt } from "./lib/exportUtils";
@@ -33,6 +34,62 @@ interface AdRow {
   complianceScore: number | null;
   selectionScore?: string | null;
   rating: number;
+  // W5 Phase 2 — plain-English violation reasons normalised server-side.
+  violationReasons?: string[] | null;
+}
+
+// W5 Phase 2 — per-card rewrite shape passed from the parent's batched
+// listForAdSet query down to each item component.
+type CardRewrite = {
+  id: number;
+  rewrittenText: string;
+  complianceScore: number;
+  violationReasons: unknown;
+  userAccepted: boolean;
+  userDismissed: boolean;
+};
+
+// Shared 3-state render logic used by HeadlineItem / BodyItem / LinkItem.
+// Mirrors the V2HeadlinesResultPanel flow:
+//   - any accepted rewrite → don't render (score also updated, row is compliant)
+//   - any dismissed + none accepted → amber "Warning dismissed" badge
+//   - otherwise red "click to fix" badge
+function renderCompliancePanelIfFlagged({
+  complianceRewritesEnabled,
+  item,
+  content,
+  rewritesForCard,
+  onAccept,
+  onRewritesChanged,
+}: {
+  complianceRewritesEnabled: boolean;
+  item: AdRow;
+  content: string;
+  rewritesForCard: CardRewrite[];
+  onAccept: (newText: string) => void;
+  onRewritesChanged: () => void;
+}) {
+  if (!complianceRewritesEnabled) return null;
+  if (item.complianceScore === null || item.complianceScore === undefined || item.complianceScore >= 70) return null;
+  const anyAccepted = rewritesForCard.some(r => r.userAccepted);
+  if (anyAccepted) return null;
+  const anyDismissed  = rewritesForCard.some(r => r.userDismissed);
+  const liveRewrites  = rewritesForCard.filter(r => !r.userAccepted && !r.userDismissed);
+  const dismissed     = rewritesForCard.filter(r => r.userDismissed);
+  return (
+    <ComplianceWarningPanel
+      sourceTable="adCopy"
+      sourceId={item.id}
+      originalText={content}
+      violations={item.violationReasons ?? []}
+      initialMode={anyDismissed ? "dismissed" : "active"}
+      liveRewrites={liveRewrites}
+      dismissedRewrites={dismissed}
+      onAccept={onAccept}
+      onDismiss={onRewritesChanged}
+      onGeneratedMore={onRewritesChanged}
+    />
+  );
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -244,7 +301,7 @@ function RegenPanel({
 }
 
 // ─── Headline item card ───────────────────────────────────────────────────────
-function HeadlineItem({ item, index, isFreeTier, onUpgradeClick, isFav, onToggleFav }: { item: AdRow; index: number; isFreeTier?: boolean; onUpgradeClick?: (feature?: string) => void; isFav?: boolean; onToggleFav?: () => void }) {
+function HeadlineItem({ item, index, isFreeTier, onUpgradeClick, isFav, onToggleFav, complianceRewritesEnabled, rewritesForCard, onRewritesChanged }: { item: AdRow; index: number; isFreeTier?: boolean; onUpgradeClick?: (feature?: string) => void; isFav?: boolean; onToggleFav?: () => void; complianceRewritesEnabled: boolean; rewritesForCard: CardRewrite[]; onRewritesChanged: () => void }) {
   const copyLocked = isFreeTier && index >= 3;
   const [content, setContent]   = useState(item.content);
   const [copied, setCopied]     = useState(false);
@@ -328,12 +385,21 @@ function HeadlineItem({ item, index, isFreeTier, onUpgradeClick, isFav, onToggle
           onClose={() => setRegenOpen(false)}
         />
       )}
+      {/* W5 Phase 2 — active compliance rewrite panel for flagged headlines. */}
+      {renderCompliancePanelIfFlagged({
+        complianceRewritesEnabled,
+        item,
+        content,
+        rewritesForCard,
+        onAccept: (newText) => { setContent(newText); onRewritesChanged(); },
+        onRewritesChanged,
+      })}
     </div>
   );
 }
 
 // ─── Body copy item card ──────────────────────────────────────────────────────
-function BodyItem({ item, index, isFreeTier, onUpgradeClick, isFav, onToggleFav }: { item: AdRow; index: number; isFreeTier?: boolean; onUpgradeClick?: (feature?: string) => void; isFav?: boolean; onToggleFav?: () => void }) {
+function BodyItem({ item, index, isFreeTier, onUpgradeClick, isFav, onToggleFav, complianceRewritesEnabled, rewritesForCard, onRewritesChanged }: { item: AdRow; index: number; isFreeTier?: boolean; onUpgradeClick?: (feature?: string) => void; isFav?: boolean; onToggleFav?: () => void; complianceRewritesEnabled: boolean; rewritesForCard: CardRewrite[]; onRewritesChanged: () => void }) {
   const copyLocked = isFreeTier && index >= 3;
   const [content, setContent]   = useState(item.content);
   const [copied, setCopied]     = useState(false);
@@ -465,12 +531,21 @@ function BodyItem({ item, index, isFreeTier, onUpgradeClick, isFav, onToggleFav 
           onClose={() => setRegenOpen(false)}
         />
       )}
+      {/* W5 Phase 2 — active compliance rewrite panel for flagged body copy. */}
+      {renderCompliancePanelIfFlagged({
+        complianceRewritesEnabled,
+        item,
+        content,
+        rewritesForCard,
+        onAccept: (newText) => { setContent(newText); onRewritesChanged(); },
+        onRewritesChanged,
+      })}
     </div>
   );
 }
 
 // ─── Link item card ───────────────────────────────────────────────────────────
-function LinkItem({ item, index, isFreeTier, onUpgradeClick, isFav, onToggleFav }: { item: AdRow; index: number; isFreeTier?: boolean; onUpgradeClick?: (feature?: string) => void; isFav?: boolean; onToggleFav?: () => void }) {
+function LinkItem({ item, index, isFreeTier, onUpgradeClick, isFav, onToggleFav, complianceRewritesEnabled, rewritesForCard, onRewritesChanged }: { item: AdRow; index: number; isFreeTier?: boolean; onUpgradeClick?: (feature?: string) => void; isFav?: boolean; onToggleFav?: () => void; complianceRewritesEnabled: boolean; rewritesForCard: CardRewrite[]; onRewritesChanged: () => void }) {
   const copyLocked = isFreeTier && index >= 3;
   const [content, setContent]   = useState(item.content);
   const [copied, setCopied]     = useState(false);
@@ -552,6 +627,15 @@ function LinkItem({ item, index, isFreeTier, onUpgradeClick, isFav, onToggleFav 
           onClose={() => setRegenOpen(false)}
         />
       )}
+      {/* W5 Phase 2 — active compliance rewrite panel for flagged link copy. */}
+      {renderCompliancePanelIfFlagged({
+        complianceRewritesEnabled,
+        item,
+        content,
+        rewritesForCard,
+        onAccept: (newText) => { setContent(newText); onRewritesChanged(); },
+        onRewritesChanged,
+      })}
     </div>
   );
 }
@@ -604,6 +688,36 @@ export default function V2AdCopyResultPanel({
     { adSetId },
     { enabled: !!adSetId, staleTime: 60_000 }
   );
+
+  // W5 Phase 2 — feature flag probe (same pattern as Node 6). Cached
+  // forever on the client; the flag only changes at server restart.
+  const { data: rewriteFlag } = trpc.complianceRewrites.isEnabled.useQuery(
+    undefined,
+    { staleTime: Infinity },
+  );
+  const complianceRewritesEnabled = rewriteFlag?.enabled === true;
+
+  // Batched rewrites-for-adset query. Fires once on mount when flag is
+  // on. Children read their own rewrite list out of the map. staleTime
+  // 5 min because rewrites only change via user action; refetchRewrites()
+  // after each mutation is the authoritative refresh path.
+  const { data: allRewrites = [], refetch: refetchRewrites } = trpc.complianceRewrites.listForAdSet.useQuery(
+    { adSetId },
+    {
+      enabled: complianceRewritesEnabled && !!adSetId,
+      staleTime: 5 * 60_000,
+      refetchOnWindowFocus: false,
+    },
+  );
+  const rewritesByAdCopyId = useMemo(() => {
+    const map = new Map<number, typeof allRewrites>();
+    for (const r of allRewrites) {
+      const list = map.get(r.sourceId) ?? [];
+      list.push(r);
+      map.set(r.sourceId, list);
+    }
+    return map;
+  }, [allRewrites]);
 
   if (isLoading) {
     return (
@@ -744,21 +858,21 @@ export default function V2AdCopyResultPanel({
               const filtered = searchQuery ? sorted.filter(h => h.content.toLowerCase().includes(searchQuery.toLowerCase())) : sorted;
               return filtered.length === 0
                 ? <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#888", textAlign: "center", padding: "24px 0" }}>No headlines found.</p>
-                : filtered.map((h, i) => <HeadlineItem key={h.id} item={h} index={i} isFreeTier={isFreeTier} onUpgradeClick={(f) => setUpgradeFeature(f || "Per-Item Regeneration")} isFav={isAdFav(h.id)} onToggleFav={() => toggleAdFav(h.id, h.content)} />);
+                : filtered.map((h, i) => <HeadlineItem key={h.id} item={h} index={i} isFreeTier={isFreeTier} onUpgradeClick={(f) => setUpgradeFeature(f || "Per-Item Regeneration")} isFav={isAdFav(h.id)} onToggleFav={() => toggleAdFav(h.id, h.content)} complianceRewritesEnabled={complianceRewritesEnabled} rewritesForCard={rewritesByAdCopyId.get(h.id) ?? []} onRewritesChanged={refetchRewrites} />);
             })()}
             {activeTab === "body" && (() => {
               const sorted = [...bodies].sort((a, b) => parseFloat(b.selectionScore ?? '0') - parseFloat(a.selectionScore ?? '0'));
               const filtered = searchQuery ? sorted.filter(b => b.content.toLowerCase().includes(searchQuery.toLowerCase())) : sorted;
               return filtered.length === 0
                 ? <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#888", textAlign: "center", padding: "24px 0" }}>No body copy found.</p>
-                : filtered.map((b, i) => <BodyItem key={b.id} item={b} index={i} isFreeTier={isFreeTier} onUpgradeClick={(f) => setUpgradeFeature(f || "Per-Item Regeneration")} isFav={isAdFav(b.id)} onToggleFav={() => toggleAdFav(b.id, b.content)} />);
+                : filtered.map((b, i) => <BodyItem key={b.id} item={b} index={i} isFreeTier={isFreeTier} onUpgradeClick={(f) => setUpgradeFeature(f || "Per-Item Regeneration")} isFav={isAdFav(b.id)} onToggleFav={() => toggleAdFav(b.id, b.content)} complianceRewritesEnabled={complianceRewritesEnabled} rewritesForCard={rewritesByAdCopyId.get(b.id) ?? []} onRewritesChanged={refetchRewrites} />);
             })()}
             {activeTab === "links" && (() => {
               const sorted = [...links].sort((a, b) => parseFloat(b.selectionScore ?? '0') - parseFloat(a.selectionScore ?? '0'));
               const filtered = searchQuery ? sorted.filter(l => l.content.toLowerCase().includes(searchQuery.toLowerCase())) : sorted;
               return filtered.length === 0
                 ? <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#888", textAlign: "center", padding: "24px 0" }}>No links found.</p>
-                : filtered.map((l, i) => <LinkItem key={l.id} item={l} index={i} isFreeTier={isFreeTier} onUpgradeClick={(f) => setUpgradeFeature(f || "Per-Item Regeneration")} isFav={isAdFav(l.id)} onToggleFav={() => toggleAdFav(l.id, l.content)} />);
+                : filtered.map((l, i) => <LinkItem key={l.id} item={l} index={i} isFreeTier={isFreeTier} onUpgradeClick={(f) => setUpgradeFeature(f || "Per-Item Regeneration")} isFav={isAdFav(l.id)} onToggleFav={() => toggleAdFav(l.id, l.content)} complianceRewritesEnabled={complianceRewritesEnabled} rewritesForCard={rewritesByAdCopyId.get(l.id) ?? []} onRewritesChanged={refetchRewrites} />);
             })()}
           </div>
         </>

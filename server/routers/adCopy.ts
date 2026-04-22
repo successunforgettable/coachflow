@@ -16,6 +16,118 @@ function stripMarkdownJson(content: string): string {
   return content.replace(/^```json\s*|^```\s*|\s*```$/gm, '').trim();
 }
 
+/**
+ * W5 Phase 2 — pre-compute compliance rewrites for a just-inserted adCopy
+ * set. Mirror of precomputeComplianceRewrites in headlines.ts but scoped
+ * to sourceTable='adCopy' and keyed on adSetId.
+ *
+ * Feature flag: ENABLE_COMPLIANCE_REWRITES. Off by default — when unset
+ * or false, this is a no-op.
+ *
+ * Picks up every adCopy row in the set whose complianceScore < 70
+ * (regardless of contentType — headline/body/link all go through), asks
+ * Sonnet for a compliant rewrite via rewriteForCompliance, inserts rows
+ * into complianceRewrites with sourceTable='adCopy'. Runs rewrites in
+ * parallel; per-row failures are caught and logged so a rewrite problem
+ * never fails the generator.
+ */
+async function precomputeAdCopyComplianceRewrites(
+  user: { id: number; subscriptionTier: string | null; role: string | null },
+  adSetId: string,
+  serviceNiche: string | null,
+): Promise<void> {
+  if (process.env.ENABLE_COMPLIANCE_REWRITES !== "true") return;
+
+  try {
+    const db = await getDb();
+    if (!db) return;
+    const { adCopy: adCopyTable, complianceRewrites } = await import("../../drizzle/schema");
+    const { eq: eqBg, and: andBg, lt: ltBg } = await import("drizzle-orm");
+    const { rewriteForCompliance } = await import("../_core/complianceRewrite");
+    const { enforceFreeTierRewriteCap } = await import("./complianceRewrites");
+
+    const flagged = await db
+      .select()
+      .from(adCopyTable)
+      .where(andBg(
+        eqBg(adCopyTable.userId, user.id),
+        eqBg(adCopyTable.adSetId, adSetId),
+        ltBg(adCopyTable.complianceScore, 70),
+      ));
+    console.log(`[W5.precompute] adCopy set=${adSetId} flagged=${flagged.length}`);
+    if (flagged.length === 0) return;
+
+    // Free-tier cap: scoped per service. If multiple services ever appeared
+    // in one adSet (shouldn't, but defensive) we bail rather than
+    // partial-apply.
+    const serviceId = flagged.find(r => r.serviceId != null)?.serviceId ?? null;
+    if (serviceId != null) {
+      try { await enforceFreeTierRewriteCap(db, user, serviceId); }
+      catch {
+        console.log(`[W5.precompute] adCopy free-tier cap hit for user ${user.id}, skipping set ${adSetId}`);
+        return;
+      }
+    }
+
+    const rowsToInsert: Array<typeof complianceRewrites.$inferInsert> = [];
+    await Promise.all(flagged.map(async (row) => {
+      if (row.serviceId == null) return;
+      try {
+        // Prefer stored reasons (just written by generateAsync) — same
+        // contract as the W5 R5 fix in generateMore.
+        const storedReasons = Array.isArray(row.violationReasons)
+          ? (row.violationReasons as unknown[]).filter((v): v is string => typeof v === "string")
+          : [];
+        let issues: Array<{ severity: "critical" | "warning" | "info"; phrase: string; reason: string; suggestion: string }>;
+        if (storedReasons.length > 0) {
+          issues = storedReasons.map(reason => ({
+            severity: "warning" as const,
+            phrase: "(stored)",
+            reason,
+            suggestion: "Rephrase to comply with Meta advertising policies",
+          }));
+        } else {
+          const live = await checkCompliance(row.content);
+          issues = live.issues;
+        }
+        if (issues.length === 0) {
+          console.log(`[W5.precompute] adCopy row=${row.id} contentType=${row.contentType} no issues — skipping`);
+          return;
+        }
+
+        const r = await rewriteForCompliance(row.content, issues, row.contentType, {
+          niche: serviceNiche,
+          mechanism: row.uniqueMechanism,
+          mainBenefit: row.desiredOutcome,
+        });
+        rowsToInsert.push({
+          userId: user.id,
+          serviceId: row.serviceId,
+          contentType: row.contentType,
+          sourceTable: "adCopy",
+          sourceId: row.id,
+          originalText: row.content,
+          rewrittenText: r.rewrite,
+          violationReasons: issues.map(i => i.reason),
+          complianceScore: r.score,
+        });
+      } catch (err) {
+        console.warn(
+          `[W5.precompute] adCopy row=${row.id} contentType=${row.contentType} failed:`,
+          err instanceof Error ? err.message : err,
+        );
+      }
+    }));
+
+    if (rowsToInsert.length > 0) {
+      await db.insert(complianceRewrites).values(rowsToInsert);
+      console.log(`[W5.precompute] adCopy inserted ${rowsToInsert.length} rewrite(s) for set ${adSetId}`);
+    }
+  } catch (err) {
+    console.error(`[W5.precompute] adCopy unexpected failure for set ${adSetId}:`, err instanceof Error ? err.message : err);
+  }
+}
+
 const META_COMPLIANCE_RULES = `
 CRITICAL COMPLIANCE RULES — Every piece of ad copy you generate MUST follow these rules without exception. These are Meta (Facebook/Instagram) advertising policy requirements.
 
@@ -159,15 +271,26 @@ export const adCopyRouter = router({
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
-      const ads = await db
+      const rawAds = await db
         .select()
         .from(adCopy)
         .where(and(eq(adCopy.adSetId, input.adSetId), eq(adCopy.userId, ctx.user.id)))
         .orderBy(desc(adCopy.createdAt));
 
-      if (ads.length === 0) {
+      if (rawAds.length === 0) {
         throw new Error("Ad set not found");
       }
+
+      // Normalise violationReasons from Drizzle's `unknown` JSON to
+      // `string[] | null` so the type flows end-to-end — mirrors
+      // headlines.getBySetId. (W5 Phase 2.)
+      const ads = rawAds.map(a => ({
+        ...a,
+        violationReasons:
+          Array.isArray((a as { violationReasons?: unknown }).violationReasons)
+            ? ((a as { violationReasons?: unknown[] }).violationReasons ?? []).filter((v): v is string => typeof v === "string")
+            : null,
+      }));
 
       const adSet = {
         adSetId: ads[0].adSetId,
@@ -779,18 +902,28 @@ Format as JSON array:
           const allInserts: any[] = [];
           for (const headline of headlineData.headlines) {
             const complianceResult = await checkCompliance(headline, { userId: capturedUserId, generatorType: 'adCopy', trackUsage: true });
-            allInserts.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, adSetId, adType: capturedInput.adType, adStyle: capturedInput.adStyle, adCallToAction: capturedInput.adCallToAction, contentType: "headline" as const, content: headline, targetMarket: capturedInput.targetMarket, productCategory: capturedInput.productCategory, specificProductName: capturedInput.specificProductName, pressingProblem: capturedInput.pressingProblem, desiredOutcome: capturedInput.desiredOutcome, uniqueMechanism: capturedInput.uniqueMechanism || null, listBenefits: capturedInput.listBenefits || null, specificTechnology: capturedInput.specificTechnology || null, scientificStudies: capturedInput.scientificStudies || null, credibleAuthority: capturedInput.credibleAuthority || null, featuredIn: capturedInput.featuredIn || null, numberOfReviews: capturedInput.numberOfReviews || null, averageReviewRating: capturedInput.averageReviewRating || null, totalCustomers: capturedInput.totalCustomers || null, testimonials: capturedInput.testimonials || null, complianceScore: complianceResult.score, complianceVersion: complianceResult.version, complianceCheckedAt: new Date(), selectionScore: String(scoreAdContent('headline', headline)) });
+            allInserts.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, adSetId, adType: capturedInput.adType, adStyle: capturedInput.adStyle, adCallToAction: capturedInput.adCallToAction, contentType: "headline" as const, content: headline, targetMarket: capturedInput.targetMarket, productCategory: capturedInput.productCategory, specificProductName: capturedInput.specificProductName, pressingProblem: capturedInput.pressingProblem, desiredOutcome: capturedInput.desiredOutcome, uniqueMechanism: capturedInput.uniqueMechanism || null, listBenefits: capturedInput.listBenefits || null, specificTechnology: capturedInput.specificTechnology || null, scientificStudies: capturedInput.scientificStudies || null, credibleAuthority: capturedInput.credibleAuthority || null, featuredIn: capturedInput.featuredIn || null, numberOfReviews: capturedInput.numberOfReviews || null, averageReviewRating: capturedInput.averageReviewRating || null, totalCustomers: capturedInput.totalCustomers || null, testimonials: capturedInput.testimonials || null, complianceScore: complianceResult.score, complianceVersion: complianceResult.version, complianceCheckedAt: new Date(), selectionScore: String(scoreAdContent('headline', headline)), violationReasons: complianceResult.issues.length > 0 ? complianceResult.issues.map(i => i.reason) : null });
           }
           for (const result of bodyResults) {
             const complianceResult = await checkCompliance((result as any).body, { userId: capturedUserId, generatorType: 'adCopy', trackUsage: true });
-            allInserts.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, adSetId, adType: capturedInput.adType, adStyle: capturedInput.adStyle, adCallToAction: capturedInput.adCallToAction, contentType: "body" as const, bodyAngle: (result as any).angle, content: (result as any).body, targetMarket: capturedInput.targetMarket, productCategory: capturedInput.productCategory, specificProductName: capturedInput.specificProductName, pressingProblem: capturedInput.pressingProblem, desiredOutcome: capturedInput.desiredOutcome, uniqueMechanism: capturedInput.uniqueMechanism || null, listBenefits: capturedInput.listBenefits || null, specificTechnology: capturedInput.specificTechnology || null, scientificStudies: capturedInput.scientificStudies || null, credibleAuthority: capturedInput.credibleAuthority || null, featuredIn: capturedInput.featuredIn || null, numberOfReviews: capturedInput.numberOfReviews || null, averageReviewRating: capturedInput.averageReviewRating || null, totalCustomers: capturedInput.totalCustomers || null, testimonials: capturedInput.testimonials || null, complianceScore: complianceResult.score, complianceVersion: complianceResult.version, complianceCheckedAt: new Date(), selectionScore: String(scoreAdContent('body', (result as any).body, (result as any).angle)) });
+            allInserts.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, adSetId, adType: capturedInput.adType, adStyle: capturedInput.adStyle, adCallToAction: capturedInput.adCallToAction, contentType: "body" as const, bodyAngle: (result as any).angle, content: (result as any).body, targetMarket: capturedInput.targetMarket, productCategory: capturedInput.productCategory, specificProductName: capturedInput.specificProductName, pressingProblem: capturedInput.pressingProblem, desiredOutcome: capturedInput.desiredOutcome, uniqueMechanism: capturedInput.uniqueMechanism || null, listBenefits: capturedInput.listBenefits || null, specificTechnology: capturedInput.specificTechnology || null, scientificStudies: capturedInput.scientificStudies || null, credibleAuthority: capturedInput.credibleAuthority || null, featuredIn: capturedInput.featuredIn || null, numberOfReviews: capturedInput.numberOfReviews || null, averageReviewRating: capturedInput.averageReviewRating || null, totalCustomers: capturedInput.totalCustomers || null, testimonials: capturedInput.testimonials || null, complianceScore: complianceResult.score, complianceVersion: complianceResult.version, complianceCheckedAt: new Date(), selectionScore: String(scoreAdContent('body', (result as any).body, (result as any).angle)), violationReasons: complianceResult.issues.length > 0 ? complianceResult.issues.map(i => i.reason) : null });
           }
           for (const link of linkData.links) {
             const complianceResult = await checkCompliance(link);
-            allInserts.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, adSetId, adType: capturedInput.adType, adStyle: capturedInput.adStyle, adCallToAction: capturedInput.adCallToAction, contentType: "link" as const, content: link, targetMarket: capturedInput.targetMarket, productCategory: capturedInput.productCategory, specificProductName: capturedInput.specificProductName, pressingProblem: capturedInput.pressingProblem, desiredOutcome: capturedInput.desiredOutcome, uniqueMechanism: capturedInput.uniqueMechanism || null, listBenefits: capturedInput.listBenefits || null, specificTechnology: capturedInput.specificTechnology || null, scientificStudies: capturedInput.scientificStudies || null, credibleAuthority: capturedInput.credibleAuthority || null, featuredIn: capturedInput.featuredIn || null, numberOfReviews: capturedInput.numberOfReviews || null, averageReviewRating: capturedInput.averageReviewRating || null, totalCustomers: capturedInput.totalCustomers || null, testimonials: capturedInput.testimonials || null, complianceScore: complianceResult.score, complianceVersion: complianceResult.version, complianceCheckedAt: new Date(), selectionScore: String(scoreAdContent('link', link)) });
+            allInserts.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, adSetId, adType: capturedInput.adType, adStyle: capturedInput.adStyle, adCallToAction: capturedInput.adCallToAction, contentType: "link" as const, content: link, targetMarket: capturedInput.targetMarket, productCategory: capturedInput.productCategory, specificProductName: capturedInput.specificProductName, pressingProblem: capturedInput.pressingProblem, desiredOutcome: capturedInput.desiredOutcome, uniqueMechanism: capturedInput.uniqueMechanism || null, listBenefits: capturedInput.listBenefits || null, specificTechnology: capturedInput.specificTechnology || null, scientificStudies: capturedInput.scientificStudies || null, credibleAuthority: capturedInput.credibleAuthority || null, featuredIn: capturedInput.featuredIn || null, numberOfReviews: capturedInput.numberOfReviews || null, averageReviewRating: capturedInput.averageReviewRating || null, totalCustomers: capturedInput.totalCustomers || null, testimonials: capturedInput.testimonials || null, complianceScore: complianceResult.score, complianceVersion: complianceResult.version, complianceCheckedAt: new Date(), selectionScore: String(scoreAdContent('link', link)), violationReasons: complianceResult.issues.length > 0 ? complianceResult.issues.map(i => i.reason) : null });
           }
 
           await bgDb.insert(adCopy).values(allInserts);
+
+          // W5 Phase 2 — pre-compute compliant rewrites for flagged rows.
+          // No-op unless ENABLE_COMPLIANCE_REWRITES=true. Runs before the
+          // job is marked complete so the client sees ad copy + rewrites
+          // atomically when the Copy tab loads.
+          await precomputeAdCopyComplianceRewrites(
+            { id: capturedUserId, subscriptionTier: user.subscriptionTier ?? null, role: user.role ?? null },
+            adSetId,
+            capturedService.category ?? null,
+          );
 
           await bgDb.update(jobs)
             .set({ status: "complete", result: JSON.stringify({ adSetId, count: allInserts.length, headlineCount: headlineData.headlines.length, bodyCount: bodyData.bodies.length, linkCount: linkData.links.length }) })
@@ -849,17 +982,23 @@ Format as JSON array:
                     const retryInserts: any[] = [];
                     for (const h of retryHeadlineData.headlines) {
                       const cr = await checkCompliance(h, { userId: capturedUserId, generatorType: 'adCopy', trackUsage: false });
-                      retryInserts.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, adSetId: retryAdSetId, adType: capturedInput.adType, adStyle: capturedInput.adStyle, adCallToAction: capturedInput.adCallToAction, contentType: 'headline' as const, content: h, targetMarket: capturedInput.targetMarket, productCategory: capturedInput.productCategory, specificProductName: capturedInput.specificProductName, pressingProblem: capturedInput.pressingProblem, desiredOutcome: capturedInput.desiredOutcome, uniqueMechanism: capturedInput.uniqueMechanism || null, listBenefits: capturedInput.listBenefits || null, specificTechnology: capturedInput.specificTechnology || null, scientificStudies: capturedInput.scientificStudies || null, credibleAuthority: capturedInput.credibleAuthority || null, featuredIn: capturedInput.featuredIn || null, numberOfReviews: capturedInput.numberOfReviews || null, averageReviewRating: capturedInput.averageReviewRating || null, totalCustomers: capturedInput.totalCustomers || null, testimonials: capturedInput.testimonials || null, complianceScore: cr.score, complianceVersion: cr.version, complianceCheckedAt: new Date(), selectionScore: String(scoreAdContent('headline', h)) });
+                      retryInserts.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, adSetId: retryAdSetId, adType: capturedInput.adType, adStyle: capturedInput.adStyle, adCallToAction: capturedInput.adCallToAction, contentType: 'headline' as const, content: h, targetMarket: capturedInput.targetMarket, productCategory: capturedInput.productCategory, specificProductName: capturedInput.specificProductName, pressingProblem: capturedInput.pressingProblem, desiredOutcome: capturedInput.desiredOutcome, uniqueMechanism: capturedInput.uniqueMechanism || null, listBenefits: capturedInput.listBenefits || null, specificTechnology: capturedInput.specificTechnology || null, scientificStudies: capturedInput.scientificStudies || null, credibleAuthority: capturedInput.credibleAuthority || null, featuredIn: capturedInput.featuredIn || null, numberOfReviews: capturedInput.numberOfReviews || null, averageReviewRating: capturedInput.averageReviewRating || null, totalCustomers: capturedInput.totalCustomers || null, testimonials: capturedInput.testimonials || null, complianceScore: cr.score, complianceVersion: cr.version, complianceCheckedAt: new Date(), selectionScore: String(scoreAdContent('headline', h)), violationReasons: cr.issues.length > 0 ? cr.issues.map(i => i.reason) : null });
                     }
                     for (const result of retryBodyResults) {
                       const cr = await checkCompliance(result.body, { userId: capturedUserId, generatorType: 'adCopy', trackUsage: false });
-                      retryInserts.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, adSetId: retryAdSetId, adType: capturedInput.adType, adStyle: capturedInput.adStyle, adCallToAction: capturedInput.adCallToAction, contentType: 'body' as const, bodyAngle: result.angle, content: result.body, targetMarket: capturedInput.targetMarket, productCategory: capturedInput.productCategory, specificProductName: capturedInput.specificProductName, pressingProblem: capturedInput.pressingProblem, desiredOutcome: capturedInput.desiredOutcome, uniqueMechanism: capturedInput.uniqueMechanism || null, listBenefits: capturedInput.listBenefits || null, specificTechnology: capturedInput.specificTechnology || null, scientificStudies: capturedInput.scientificStudies || null, credibleAuthority: capturedInput.credibleAuthority || null, featuredIn: capturedInput.featuredIn || null, numberOfReviews: capturedInput.numberOfReviews || null, averageReviewRating: capturedInput.averageReviewRating || null, totalCustomers: capturedInput.totalCustomers || null, testimonials: capturedInput.testimonials || null, complianceScore: cr.score, complianceVersion: cr.version, complianceCheckedAt: new Date(), selectionScore: String(scoreAdContent('body', result.body, result.angle)) });
+                      retryInserts.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, adSetId: retryAdSetId, adType: capturedInput.adType, adStyle: capturedInput.adStyle, adCallToAction: capturedInput.adCallToAction, contentType: 'body' as const, bodyAngle: result.angle, content: result.body, targetMarket: capturedInput.targetMarket, productCategory: capturedInput.productCategory, specificProductName: capturedInput.specificProductName, pressingProblem: capturedInput.pressingProblem, desiredOutcome: capturedInput.desiredOutcome, uniqueMechanism: capturedInput.uniqueMechanism || null, listBenefits: capturedInput.listBenefits || null, specificTechnology: capturedInput.specificTechnology || null, scientificStudies: capturedInput.scientificStudies || null, credibleAuthority: capturedInput.credibleAuthority || null, featuredIn: capturedInput.featuredIn || null, numberOfReviews: capturedInput.numberOfReviews || null, averageReviewRating: capturedInput.averageReviewRating || null, totalCustomers: capturedInput.totalCustomers || null, testimonials: capturedInput.testimonials || null, complianceScore: cr.score, complianceVersion: cr.version, complianceCheckedAt: new Date(), selectionScore: String(scoreAdContent('body', result.body, result.angle)), violationReasons: cr.issues.length > 0 ? cr.issues.map(i => i.reason) : null });
                     }
                     for (const link of retryLinkData.links) {
                       const cr = await checkCompliance(link);
-                      retryInserts.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, adSetId: retryAdSetId, adType: capturedInput.adType, adStyle: capturedInput.adStyle, adCallToAction: capturedInput.adCallToAction, contentType: 'link' as const, content: link, targetMarket: capturedInput.targetMarket, productCategory: capturedInput.productCategory, specificProductName: capturedInput.specificProductName, pressingProblem: capturedInput.pressingProblem, desiredOutcome: capturedInput.desiredOutcome, uniqueMechanism: capturedInput.uniqueMechanism || null, listBenefits: capturedInput.listBenefits || null, specificTechnology: capturedInput.specificTechnology || null, scientificStudies: capturedInput.scientificStudies || null, credibleAuthority: capturedInput.credibleAuthority || null, featuredIn: capturedInput.featuredIn || null, numberOfReviews: capturedInput.numberOfReviews || null, averageReviewRating: capturedInput.averageReviewRating || null, totalCustomers: capturedInput.totalCustomers || null, testimonials: capturedInput.testimonials || null, complianceScore: cr.score, complianceVersion: cr.version, complianceCheckedAt: new Date(), selectionScore: String(scoreAdContent('link', link)) });
+                      retryInserts.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, adSetId: retryAdSetId, adType: capturedInput.adType, adStyle: capturedInput.adStyle, adCallToAction: capturedInput.adCallToAction, contentType: 'link' as const, content: link, targetMarket: capturedInput.targetMarket, productCategory: capturedInput.productCategory, specificProductName: capturedInput.specificProductName, pressingProblem: capturedInput.pressingProblem, desiredOutcome: capturedInput.desiredOutcome, uniqueMechanism: capturedInput.uniqueMechanism || null, listBenefits: capturedInput.listBenefits || null, specificTechnology: capturedInput.specificTechnology || null, scientificStudies: capturedInput.scientificStudies || null, credibleAuthority: capturedInput.credibleAuthority || null, featuredIn: capturedInput.featuredIn || null, numberOfReviews: capturedInput.numberOfReviews || null, averageReviewRating: capturedInput.averageReviewRating || null, totalCustomers: capturedInput.totalCustomers || null, testimonials: capturedInput.testimonials || null, complianceScore: cr.score, complianceVersion: cr.version, complianceCheckedAt: new Date(), selectionScore: String(scoreAdContent('link', link)), violationReasons: cr.issues.length > 0 ? cr.issues.map(i => i.reason) : null });
                     }
                     if (retryInserts.length > 0) await retryDb.insert(adCopy).values(retryInserts);
+                    // W5 Phase 2 — same pre-compute hook on the retry path.
+                    await precomputeAdCopyComplianceRewrites(
+                      { id: capturedUserId, subscriptionTier: user.subscriptionTier ?? null, role: user.role ?? null },
+                      retryAdSetId,
+                      capturedService.category ?? null,
+                    );
                     await retryDb.update(jobs).set({ status: 'complete', result: JSON.stringify({ adSetId: retryAdSetId, count: retryInserts.length }) }).where(eq(jobs.id, jobId));
                     console.log(`[adCopy.generateAsync] Job ${jobId} retry succeeded, adSetId: ${retryAdSetId}`);
                   } catch (retryErr: unknown) {

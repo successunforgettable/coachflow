@@ -1518,4 +1518,48 @@ export const adminRouter = router({
 
       return { scanned: candidates.length, backfilled };
     }),
+
+  /**
+   * backfillAdCopyViolationReasons — W5 Phase 2 one-off backfill. Same
+   * idempotent shape as backfillViolationReasons but scoped to the
+   * adCopy table. Scans `complianceScore < 70 AND violationReasons IS
+   * NULL` rows, re-runs checkCompliance on .content, writes the reason
+   * list back. Batches of 50. Re-running returns zero because the
+   * WHERE clause excludes already-populated rows.
+   */
+  backfillAdCopyViolationReasons: auditedAdminProcedure
+    .mutation(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const { checkCompliance } = await import("../lib/complianceChecker");
+      const { isNull, lt } = await import("drizzle-orm");
+
+      const candidates = await db
+        .select({ id: adCopy.id, content: adCopy.content })
+        .from(adCopy)
+        .where(and(lt(adCopy.complianceScore, 70), isNull(adCopy.violationReasons)));
+
+      let backfilled = 0;
+      const BATCH = 50;
+      for (let i = 0; i < candidates.length; i += BATCH) {
+        const chunk = candidates.slice(i, i + BATCH);
+        for (const row of chunk) {
+          try {
+            const result = await checkCompliance(row.content);
+            const reasons = result.issues.map(x => x.reason);
+            if (reasons.length === 0) continue;
+            await db
+              .update(adCopy)
+              .set({ violationReasons: reasons })
+              .where(eq(adCopy.id, row.id));
+            backfilled += 1;
+          } catch (err) {
+            console.warn(`[backfillAdCopyViolationReasons] row ${row.id} failed:`, err instanceof Error ? err.message : err);
+          }
+        }
+      }
+
+      (ctx as any).auditDetails = { scanned: candidates.length, backfilled };
+      return { scanned: candidates.length, backfilled };
+    }),
 });

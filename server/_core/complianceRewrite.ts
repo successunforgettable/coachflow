@@ -52,9 +52,49 @@ function stripMarkdownJson(content: string): string {
   return content.replace(/^```json\s*|^```\s*|\s*```$/gm, "").trim();
 }
 
-function buildSystemPrompt(contentType: RewriteContentType): string {
+// Keywords that trigger Meta's Special Ad Category restrictions (finance,
+// housing, employment, health). When any of these appear in the detected
+// violations OR the contentType is "body" (where the higher word count
+// makes accidental SAC trips much more likely), we append a SAC reminder
+// paragraph to the system prompt so Sonnet steers clear even if the source
+// itself didn't explicitly trip SAC.
+const SAC_TRIGGER_KEYWORDS = [
+  // Finance / income
+  "income", "financial", "credit", "loan", "investment", "money",
+  // Employment
+  "employment", "job", "career", "hiring", "salary",
+  // Housing
+  "housing", "rent", "mortgage", "real estate",
+  // Health / medical
+  "health", "medical", "weight", "cure", "treat", "heal", "diet", "fitness", "mental",
+];
+
+function shouldApplySAC(contentType: RewriteContentType, violations: ComplianceIssue[]): boolean {
+  if (contentType === "body") return true;
+  const haystack = violations
+    .flatMap(v => [v.phrase, v.reason, v.suggestion])
+    .join(" ")
+    .toLowerCase();
+  return SAC_TRIGGER_KEYWORDS.some(kw => haystack.includes(kw));
+}
+
+const SAC_REMINDER_BLOCK = [
+  ``,
+  `META SPECIAL AD CATEGORY REMINDER:`,
+  `This rewrite may touch finance / housing / employment / health — Meta's Special Ad Categories (SAC). SAC rules are stricter than baseline compliance. Do NOT:`,
+  `- imply income, credit, or financial outcomes, even obliquely ("build wealth", "save on bills" are both SAC-flagged in finance context),`,
+  `- target by age, gender, postcode, or protected attribute — write copy that reads as audience-neutral,`,
+  `- reference specific health conditions, body changes, medications, or medical outcomes,`,
+  `- use employment framing that implies a job guarantee, salary change, or career outcome.`,
+  `If the original copy lived in any of these categories, the rewrite should soften outcome claims into *process* language ("learn a structured approach", "work with a certified practitioner") rather than *result* language ("earn $X", "lose Y kg", "get hired").`,
+].join("\n");
+
+function buildSystemPrompt(contentType: RewriteContentType, violations: ComplianceIssue[]): string {
   const bannedList = BANNED_HEADLINE_PATTERNS.map((p) => `"${p}"`).join(", ");
-  return [
+  const wordRule = contentType === "headline" ? "Keep headlines 5-14 words."
+                 : contentType === "body"     ? "Keep body copy 100-170 words."
+                 :                              "Keep link text ≤ 60 characters.";
+  const base = [
     `You are a Meta ad compliance rewriter for ${contentType} content.`,
     `Your job: take a flagged piece and produce a version that passes Meta compliance while preserving marketing intent.`,
     ``,
@@ -62,12 +102,14 @@ function buildSystemPrompt(contentType: RewriteContentType): string {
     `- Do NOT use these opener patterns: ${bannedList}.`,
     `- Do NOT restate the specific banned phrases the user will show you under "Violations".`,
     `- Preserve niche / mechanism / benefit where given.`,
-    `- ${contentType === "headline" ? "Keep headlines 5-14 words." : "Keep body copy 100-170 words."}`,
+    `- ${wordRule}`,
     `- Return ONLY JSON, no markdown fences, in this shape:`,
     `  {"rewrite": "...", "reasoning": "one sentence on how you fixed the violation"}`,
     ``,
     META_COMPLIANCE_NOTES,
   ].join("\n");
+
+  return shouldApplySAC(contentType, violations) ? `${base}${SAC_REMINDER_BLOCK}` : base;
 }
 
 function buildUserPrompt(
@@ -131,7 +173,7 @@ export async function rewriteForCompliance(
   contentType: RewriteContentType,
   context: RewriteContext,
 ): Promise<RewriteResult> {
-  const system = buildSystemPrompt(contentType);
+  const system = buildSystemPrompt(contentType, violations);
 
   let previousAttempt: { rewrite: string; complianceScore: number; hookScore: number; stillFlagged: ComplianceIssue[] } | undefined;
   let lastError: string | null = null;

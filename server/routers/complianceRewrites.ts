@@ -26,6 +26,7 @@ import { getDb } from "../db";
 import {
   complianceRewrites,
   headlines,
+  adCopy,
 } from "../../drizzle/schema";
 import { inArray } from "drizzle-orm";
 import { checkCompliance, type ComplianceIssue } from "../lib/complianceChecker";
@@ -52,6 +53,75 @@ function assertFlagOn(): void {
 // forever") would feel broken on second-campaign users. Documented in
 // the honest-suggestions pass.
 const FREE_TIER_REWRITE_CAP = 3;
+
+/**
+ * Unified source-row lookup across Phase 1 (headlines) and Phase 2 (adCopy).
+ * Returns a normalised shape so downstream code doesn't branch on table.
+ *
+ *   text             — the rewritable content (headline.headline / adCopy.content)
+ *   contentType      — always "headline" for headlines; row-specific for adCopy
+ *   violationReasons — normalised to string[] | null regardless of JSON shape
+ *
+ * Ownership (userId match) enforced by the query WHERE clause; returns null
+ * when the row is missing or not owned by the caller.
+ */
+type SourceRow = {
+  id: number;
+  text: string;
+  serviceId: number | null;
+  contentType: "headline" | "body" | "link";
+  violationReasons: string[] | null;
+  uniqueMechanism: string | null;
+  desiredOutcome: string | null;
+};
+
+async function getSourceRow(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  sourceTable: "headlines" | "adCopy",
+  sourceId: number,
+  userId: number,
+): Promise<SourceRow | null> {
+  const normaliseReasons = (raw: unknown): string[] | null => {
+    if (!Array.isArray(raw)) return null;
+    const list = (raw as unknown[]).filter((v): v is string => typeof v === "string");
+    return list.length > 0 ? list : null;
+  };
+
+  if (sourceTable === "headlines") {
+    const [row] = await db
+      .select()
+      .from(headlines)
+      .where(and(eq(headlines.id, sourceId), eq(headlines.userId, userId)))
+      .limit(1);
+    if (!row) return null;
+    return {
+      id: row.id,
+      text: row.headline,
+      serviceId: row.serviceId,
+      contentType: "headline",
+      violationReasons: normaliseReasons(row.violationReasons),
+      uniqueMechanism: row.uniqueMechanism,
+      desiredOutcome: row.desiredOutcome,
+    };
+  }
+
+  // adCopy
+  const [row] = await db
+    .select()
+    .from(adCopy)
+    .where(and(eq(adCopy.id, sourceId), eq(adCopy.userId, userId)))
+    .limit(1);
+  if (!row) return null;
+  return {
+    id: row.id,
+    text: row.content,
+    serviceId: row.serviceId,
+    contentType: row.contentType,
+    violationReasons: normaliseReasons(row.violationReasons),
+    uniqueMechanism: row.uniqueMechanism,
+    desiredOutcome: row.desiredOutcome,
+  };
+}
 
 async function enforceFreeTierRewriteCap(
   db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
@@ -118,6 +188,36 @@ export const complianceRewritesRouter = router({
       }));
     }),
 
+  // Batched fetch for the Node 7 Copy tab: every rewrite for every
+  // adCopy row in a given adSetId. Mirror of listForHeadlineSet — fires
+  // once on mount, client groups by sourceId.
+  listForAdSet: protectedProcedure
+    .input(z.object({ adSetId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      const ids = await db
+        .select({ id: adCopy.id })
+        .from(adCopy)
+        .where(and(eq(adCopy.userId, ctx.user.id), eq(adCopy.adSetId, input.adSetId)));
+      if (ids.length === 0) return [];
+      const rows = await db
+        .select()
+        .from(complianceRewrites)
+        .where(and(
+          eq(complianceRewrites.userId, ctx.user.id),
+          eq(complianceRewrites.sourceTable, "adCopy"),
+          inArray(complianceRewrites.sourceId, ids.map(r => r.id)),
+        ))
+        .orderBy(desc(complianceRewrites.createdAt));
+      return rows.map(r => ({
+        ...r,
+        violationReasons: Array.isArray(r.violationReasons)
+          ? (r.violationReasons as unknown[]).filter((v): v is string => typeof v === "string")
+          : [],
+      }));
+    }),
+
   // Read cached rewrites for one source row — used when the warning panel expands.
   getForItem: protectedProcedure
     .input(z.object({
@@ -151,13 +251,13 @@ export const complianceRewritesRouter = router({
   // log and Sonnet was never called).
   generateMore: protectedProcedure
     .input(z.object({
-      sourceTable: z.literal("headlines"),
+      sourceTable: z.enum(["headlines", "adCopy"]),
       sourceId: z.number(),
       count: z.number().min(1).max(5).default(2),
     }))
     .mutation(async ({ ctx, input }) => {
       const flagOn = isRewriteEngineEnabled();
-      console.log(`[W5.generateMore] entered — user=${ctx.user.id} role=${ctx.user.role} tier=${ctx.user.subscriptionTier} sourceId=${input.sourceId} count=${input.count} flagOn=${flagOn}`);
+      console.log(`[W5.generateMore] entered — user=${ctx.user.id} role=${ctx.user.role} tier=${ctx.user.subscriptionTier} sourceTable=${input.sourceTable} sourceId=${input.sourceId} count=${input.count} flagOn=${flagOn}`);
       assertFlagOn();
       const db = await getDb();
       if (!db) {
@@ -165,21 +265,17 @@ export const complianceRewritesRouter = router({
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
       }
 
-      // Source row + ownership check.
-      const [source] = await db
-        .select()
-        .from(headlines)
-        .where(and(eq(headlines.id, input.sourceId), eq(headlines.userId, ctx.user.id)))
-        .limit(1);
+      // Source row + ownership check (unified across headlines / adCopy).
+      const source = await getSourceRow(db, input.sourceTable, input.sourceId, ctx.user.id);
       if (!source) {
-        console.log(`[W5.generateMore] NOT_FOUND — sourceId=${input.sourceId} not owned by user=${ctx.user.id}`);
+        console.log(`[W5.generateMore] NOT_FOUND — ${input.sourceTable}.${input.sourceId} not owned by user=${ctx.user.id}`);
         throw new TRPCError({ code: "NOT_FOUND", message: "Source row not found" });
       }
       if (source.serviceId == null) {
-        console.log(`[W5.generateMore] BAD_REQUEST — source row ${input.sourceId} has null serviceId`);
+        console.log(`[W5.generateMore] BAD_REQUEST — ${input.sourceTable}.${input.sourceId} has null serviceId`);
         throw new TRPCError({ code: "BAD_REQUEST", message: "Source row has no associated service" });
       }
-      console.log(`[W5.generateMore] source loaded — id=${source.id} serviceId=${source.serviceId} complianceScore=${source.complianceScore} violationReasonsStored=${Array.isArray(source.violationReasons) ? (source.violationReasons as unknown[]).length : 0} headline="${source.headline.slice(0, 60)}"`);
+      console.log(`[W5.generateMore] source loaded — table=${input.sourceTable} id=${source.id} serviceId=${source.serviceId} contentType=${source.contentType} violationReasonsStored=${source.violationReasons?.length ?? 0} text="${source.text.slice(0, 60)}"`);
 
       try {
         await enforceFreeTierRewriteCap(db, ctx.user, source.serviceId);
@@ -196,7 +292,7 @@ export const complianceRewritesRouter = router({
         .from(complianceRewrites)
         .where(and(
           eq(complianceRewrites.userId, ctx.user.id),
-          eq(complianceRewrites.sourceTable, "headlines"),
+          eq(complianceRewrites.sourceTable, input.sourceTable),
           eq(complianceRewrites.sourceId, input.sourceId),
           eq(complianceRewrites.userAccepted, false),
           eq(complianceRewrites.userDismissed, false),
@@ -208,31 +304,25 @@ export const complianceRewritesRouter = router({
         return existing;
       }
 
-      // R5 fix: prefer stored violationReasons (populated at insert time in
-      // sync with the stored complianceScore) over re-running checkCompliance.
-      // The old code re-derived live and bailed when the live check returned
-      // zero issues — which happened on manually-seeded QA rows and on rows
-      // whose stored phrases had since been pruned from the banned_phrases
-      // table. Stored reasons are the server-of-record at insert time; use
-      // them. Fall back to live check only on legacy rows whose stored
-      // column is NULL (pre-migration-0004).
+      // R5 fix: prefer stored violationReasons over re-running checkCompliance.
+      // Stored reasons are the server-of-record at insert time; the live
+      // re-check bailed on manually-seeded QA rows and on rows whose phrases
+      // had been pruned from bannedPhrases. Fall back to live only on
+      // legacy rows whose stored column is NULL.
       let issues: ComplianceIssue[];
       let issuesSource: "stored" | "live";
-      const storedReasons = Array.isArray(source.violationReasons)
-        ? (source.violationReasons as unknown[]).filter((v): v is string => typeof v === "string")
-        : [];
-      if (storedReasons.length > 0) {
+      if (source.violationReasons && source.violationReasons.length > 0) {
         issuesSource = "stored";
-        issues = storedReasons.map(reason => ({
+        issues = source.violationReasons.map(reason => ({
           severity: "warning" as const,
           phrase: "(stored)",
           reason,
           suggestion: "Rephrase to comply with Meta advertising policies",
         }));
       } else {
-        const live = await checkCompliance(source.headline, {
+        const live = await checkCompliance(source.text, {
           userId: ctx.user.id,
-          generatorType: "headlines",
+          generatorType: input.sourceTable,
           trackUsage: false,
         });
         issuesSource = "live";
@@ -247,14 +337,14 @@ export const complianceRewritesRouter = router({
       }
 
       const needed = input.count - existing.length;
-      console.log(`[W5.generateMore] calling rewriteForComplianceBatch — needed=${needed} issueCount=${issues.length}`);
+      console.log(`[W5.generateMore] calling rewriteForComplianceBatch — needed=${needed} issueCount=${issues.length} contentType=${source.contentType}`);
 
       let fresh: Awaited<ReturnType<typeof rewriteForComplianceBatch>>;
       try {
         fresh = await rewriteForComplianceBatch(
-          source.headline,
+          source.text,
           issues,
-          "headline",
+          source.contentType,
           {
             niche: null,
             mechanism: source.uniqueMechanism,
@@ -278,10 +368,10 @@ export const complianceRewritesRouter = router({
       const rowsToInsert = fresh.map(r => ({
         userId: ctx.user.id,
         serviceId: source.serviceId!,
-        contentType: "headline" as const,
-        sourceTable: "headlines",
+        contentType: source.contentType,
+        sourceTable: input.sourceTable,
         sourceId: input.sourceId,
-        originalText: source.headline,
+        originalText: source.text,
         rewrittenText: r.rewrite,
         violationReasons: issues.map(i => i.reason),
         complianceScore: r.score,
@@ -295,7 +385,7 @@ export const complianceRewritesRouter = router({
         .from(complianceRewrites)
         .where(and(
           eq(complianceRewrites.userId, ctx.user.id),
-          eq(complianceRewrites.sourceTable, "headlines"),
+          eq(complianceRewrites.sourceTable, input.sourceTable),
           eq(complianceRewrites.sourceId, input.sourceId),
           eq(complianceRewrites.userAccepted, false),
           eq(complianceRewrites.userDismissed, false),
@@ -308,9 +398,9 @@ export const complianceRewritesRouter = router({
   // Accept a specific rewrite: mark userAccepted=true AND update the source
   // row's text + compliance score so subsequent renders correctly see the
   // row as compliant (the warning panel re-reads complianceScore on mount
-  // to decide whether to render). Phase 1 only knows how to update the
-  // `headlines` table. Wrapped in a transaction so we don't half-apply —
-  // either both writes land or neither does.
+  // to decide whether to render). Dispatches by sourceTable — Phase 1
+  // targets headlines; Phase 2 adds adCopy. Wrapped in a transaction so
+  // we don't half-apply — either both writes land or neither does.
   accept: protectedProcedure
     .input(z.object({ rewriteId: z.number() }))
     .mutation(async ({ ctx, input }) => {
@@ -324,31 +414,42 @@ export const complianceRewritesRouter = router({
         .where(and(eq(complianceRewrites.id, input.rewriteId), eq(complianceRewrites.userId, ctx.user.id)))
         .limit(1);
       if (!rewrite) throw new TRPCError({ code: "NOT_FOUND", message: "Rewrite not found" });
-      if (rewrite.sourceTable !== "headlines") {
-        // Phases 2/3 will add adCopy / landingPage branches here.
+
+      if (rewrite.sourceTable === "headlines") {
+        await db.transaction(async (tx) => {
+          await tx
+            .update(headlines)
+            .set({
+              headline: rewrite.rewrittenText,
+              complianceScore: rewrite.complianceScore,
+            })
+            .where(and(eq(headlines.id, rewrite.sourceId), eq(headlines.userId, ctx.user.id)));
+          await tx
+            .update(complianceRewrites)
+            .set({ userAccepted: true, userDismissed: false })
+            .where(eq(complianceRewrites.id, rewrite.id));
+        });
+      } else if (rewrite.sourceTable === "adCopy") {
+        await db.transaction(async (tx) => {
+          await tx
+            .update(adCopy)
+            .set({
+              content: rewrite.rewrittenText,
+              complianceScore: rewrite.complianceScore,
+            })
+            .where(and(eq(adCopy.id, rewrite.sourceId), eq(adCopy.userId, ctx.user.id)));
+          await tx
+            .update(complianceRewrites)
+            .set({ userAccepted: true, userDismissed: false })
+            .where(eq(complianceRewrites.id, rewrite.id));
+        });
+      } else {
+        // Phase 3 adds landingPages branch here.
         throw new TRPCError({
           code: "NOT_IMPLEMENTED",
           message: `Accept is not yet supported for sourceTable=${rewrite.sourceTable}`,
         });
       }
-
-      await db.transaction(async (tx) => {
-        await tx
-          .update(headlines)
-          .set({
-            headline: rewrite.rewrittenText,
-            // Propagate the rewrite's re-scored complianceScore back to the
-            // source row so on reload the card no longer classifies as
-            // "< 70" and the warning panel doesn't re-show.
-            complianceScore: rewrite.complianceScore,
-          })
-          .where(and(eq(headlines.id, rewrite.sourceId), eq(headlines.userId, ctx.user.id)));
-
-        await tx
-          .update(complianceRewrites)
-          .set({ userAccepted: true, userDismissed: false })
-          .where(eq(complianceRewrites.id, rewrite.id));
-      });
 
       return { success: true, rewrittenText: rewrite.rewrittenText, complianceScore: rewrite.complianceScore };
     }),

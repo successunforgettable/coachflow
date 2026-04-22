@@ -327,6 +327,11 @@ export const adCopy = mysqlTable("adCopy", {
   complianceVersion: varchar("complianceVersion", { length: 20 }),
   complianceCheckedAt: timestamp("complianceCheckedAt"),
   selectionScore: decimal("selectionScore", { precision: 5, scale: 2 }),
+  // W5 Phase 2 — JSON array of plain-English violation reasons from
+  // checkCompliance (issues[].reason). Lets the warning panel show the
+  // actual issue count + reasons and feeds the "prefer stored over live"
+  // path in complianceRewrites.generateMore. Nullable for legacy rows.
+  violationReasons: json("violationReasons"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({
