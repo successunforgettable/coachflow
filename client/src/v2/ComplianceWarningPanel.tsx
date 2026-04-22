@@ -228,7 +228,12 @@ export default function ComplianceWarningPanel({
       setErrorMsg(null);
       // Ask for 2 more than current count so we always expand the choice set.
       await generateMore.mutateAsync({
-        sourceTable: "headlines",
+        // Phase 1 residue fix: use the panel's sourceTable prop so this
+        // routes correctly when rendered from adCopy context, not just
+        // headlines. Narrowing cast defends against a future Phase 3
+        // caller wiring "landingPages" into a panel whose generateMore
+        // server endpoint still only accepts the two Phase 2 tables.
+        sourceTable: sourceTable as "headlines" | "adCopy",
         sourceId,
         count: Math.max(alternativeCount + 2, 3),
       });
