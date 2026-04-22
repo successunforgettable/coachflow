@@ -17,6 +17,27 @@ function stripMarkdownJson(content: string): string {
 }
 
 /**
+ * Simple concurrency-limited map. Processes `items` in sequential chunks
+ * of `limit`, with each chunk running its items in parallel. No external
+ * dependency. Caps peak parallel work — critical for Sonnet calls inside
+ * the precompute path, where a 30-row flagged ad set would otherwise fire
+ * 30 × up-to-3-retries = 90 in-flight requests at once.
+ */
+async function processInChunks<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = [];
+  for (let i = 0; i < items.length; i += limit) {
+    const chunk = items.slice(i, i + limit);
+    const chunkResults = await Promise.all(chunk.map((item, offset) => fn(item, i + offset)));
+    results.push(...chunkResults);
+  }
+  return results;
+}
+
+/**
  * W5 Phase 2 — pre-compute compliance rewrites for a just-inserted adCopy
  * set. Mirror of precomputeComplianceRewrites in headlines.ts but scoped
  * to sourceTable='adCopy' and keyed on adSetId.
@@ -70,7 +91,13 @@ async function precomputeAdCopyComplianceRewrites(
     }
 
     const rowsToInsert: Array<typeof complianceRewrites.$inferInsert> = [];
-    await Promise.all(flagged.map(async (row) => {
+    // R2 concurrency cap: at most 5 Sonnet pipelines in flight at once.
+    // A single flagged adCopy set can have up to ~30 flagged rows and
+    // each rewrite can retry up to 3 times — unthrottled Promise.all
+    // risks 90 concurrent Sonnet requests, which would trip provider
+    // rate limits on large sets. 5 is conservative; bodies take 15-25s
+    // each so full 30-row worst case clears in ~2 min.
+    await processInChunks(flagged, 5, async (row) => {
       if (row.serviceId == null) return;
       try {
         // Prefer stored reasons (just written by generateAsync) — same
@@ -117,7 +144,7 @@ async function precomputeAdCopyComplianceRewrites(
           err instanceof Error ? err.message : err,
         );
       }
-    }));
+    });
 
     if (rowsToInsert.length > 0) {
       await db.insert(complianceRewrites).values(rowsToInsert);
