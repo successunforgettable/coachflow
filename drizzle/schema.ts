@@ -1335,6 +1335,21 @@ export const complianceRewrites = mysqlTable("complianceRewrites", {
   complianceScore: int("complianceScore").notNull(),
   userAccepted: boolean("userAccepted").notNull().default(false),
   userDismissed: boolean("userDismissed").notNull().default(false),
+  // Phase 3 — keys a rewrite to a specific (angle, section) inside a
+  // multi-region source row (currently only landingPages, where one row
+  // holds four angle JSONs each with 12 string sections). Format
+  // "<angleKey>:<sectionKey>" — opaque string, parsed only by the panel's
+  // KEPT-label humanizer. NULL for Phase 1/2 (headlines, adCopy) since
+  // those source tables are one-content-per-row. Non-indexed: every read
+  // path narrows by (userId, sourceTable, sourceId) first.
+  sourceSubKey: varchar("sourceSubKey", { length: 128 }),
+  // Phase 3 — which LLM produced the rewrite. Hybrid routing on
+  // landing-page calls uses 'claude-opus-4-7' for body contentType and
+  // 'claude-sonnet-4-6' for headline + link. Populated on every new
+  // rewrite from Phase 3 onward (Phase 1/2 paths always write
+  // 'claude-sonnet-4-6'). NULL on pre-Phase-3 historical rows; not
+  // backfilled.
+  modelUsed: varchar("modelUsed", { length: 64 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, (table) => ({
   sourceIdx:  index("complianceRewrites_source_idx").on(table.userId, table.sourceTable, table.sourceId),

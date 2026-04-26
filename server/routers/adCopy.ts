@@ -137,6 +137,7 @@ async function precomputeAdCopyComplianceRewrites(
           rewrittenText: r.rewrite,
           violationReasons: issues.map(i => i.reason),
           complianceScore: r.score,
+          modelUsed: r.modelUsed,
         });
       } catch (err) {
         console.warn(

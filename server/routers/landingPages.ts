@@ -5,47 +5,240 @@ import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 import { getQuotaLimit } from "../quotaLimits";
 import { getDb } from "../db";
-import { landingPages, services, users, campaigns, idealCustomerProfiles, sourceOfTruth, jobs, campaignKits, offers, heroMechanisms, hvcoTitles, coachAssets } from "../../drizzle/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { landingPages, services, users, campaigns, idealCustomerProfiles, sourceOfTruth, jobs, campaignKits, offers, heroMechanisms, hvcoTitles, coachAssets, complianceRewrites } from "../../drizzle/schema";
+import { eq, and, desc, like } from "drizzle-orm";
 import { generateAllAngles } from "../landingPageGenerator";
 import { invokeLLM } from "../_core/llm";
 import { enforceQuota, incrementQuotaCount } from "../lib/quotaEnforcement";
-import { complianceFilter } from "../lib/complianceFilter";
 import { checkCompliance } from "../lib/complianceChecker";
 import { scoreItem } from "../lib/selectionScorer";
 import { autoSelectBest } from "./campaignKits";
-
-// Apply compliance filter to a text string, return cleaned version
-async function filterSection(text: string): Promise<string> {
-  const result = complianceFilter(text);
-  const cleaned = result.wasModified ? result.cleanedText : text;
-  const score = await checkCompliance(cleaned);
-  if (score.score < 100) {
-    console.log(`[landingPages] Compliance score ${score.score}/100 for "${cleaned.substring(0, 50)}": ${score.issues.map(i => i.phrase).join(", ")}`);
-  }
-  return cleaned;
-}
-
-// Apply compliance filter to all string fields in a landing page angle object
-async function filterAngleObject(angle: Record<string, unknown>): Promise<Record<string, unknown>> {
-  const filtered = { ...angle };
-  for (const key of Object.keys(filtered)) {
-    if (typeof filtered[key] === "string" && filtered[key]) {
-      filtered[key] = await filterSection(filtered[key] as string);
-    }
-  }
-  return filtered;
-}
 
 function stripMarkdownJson(content: string): string {
   return content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
 }
 
+// 12 simple-string sections that Phase 3 compliance rewrites cover.
+// Phase 3 MVP — out of scope: nested-array sections (testimonials,
+// consultation, FAQ, quiz). These render through different React
+// components with different shape contracts; layering rewrites onto them
+// is its own design problem and lands in a follow-up phase.
 const LP_STRING_SECTIONS = new Set([
   "eyebrowHeadline", "mainHeadline", "subheadline", "primaryCta",
   "problemAgitation", "solutionIntro", "whyOldFail", "uniqueMechanism",
   "insiderAdvantages", "scarcityUrgency", "shockingStat", "timeSavingBenefit",
 ]);
+
+const LP_FREE_TIER_SECTIONS = new Set(["mainHeadline", "primaryCta"]);
+
+// Map a landing-page section to the rewrite engine's contentType, which
+// drives word-count rules and the hybrid model routing in the Phase 3
+// precompute path. Mirrors lpSectionToContentType in
+// server/routers/complianceRewrites.ts — the duplication keeps both files
+// runnable in isolation.
+function lpSectionToContentType(sectionKey: string): "headline" | "body" | "link" {
+  if (sectionKey === "eyebrowHeadline" || sectionKey === "mainHeadline" || sectionKey === "subheadline") return "headline";
+  if (sectionKey === "primaryCta") return "link";
+  return "body";
+}
+
+const LP_ANGLE_COL_MAP = {
+  original: "originalAngle",
+  godfather: "godfatherAngle",
+  free: "freeAngle",
+  dollar: "dollarAngle",
+} as const;
+
+type LpAngleKey = keyof typeof LP_ANGLE_COL_MAP;
+
+/**
+ * Concurrency-limited map. Mirror of processInChunks in adCopy.ts —
+ * inlined here so the landing-page precompute path doesn't take a hard
+ * dependency on the adCopy router for a 10-line utility.
+ */
+async function processInChunks<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = [];
+  for (let i = 0; i < items.length; i += limit) {
+    const chunk = items.slice(i, i + limit);
+    const chunkResults = await Promise.all(chunk.map((item, offset) => fn(item, i + offset)));
+    results.push(...chunkResults);
+  }
+  return results;
+}
+
+/**
+ * W5 Phase 3 — pre-compute compliance rewrites for one landing-page
+ * row. Behind ENABLE_COMPLIANCE_REWRITES; when off, this is a no-op so
+ * production sees no change until Railway flips the flag.
+ *
+ * Scope:
+ *   - 12 simple-string sections of the active angle (LP_STRING_SECTIONS).
+ *   - Trial-tier users: narrowed to mainHeadline + primaryCta only.
+ *     The other 10 sections show an inline "Pro feature" upgrade message
+ *     in the panel; that gating lives client-side in the panel against
+ *     the rewrites cache, not server-side here.
+ *   - Body sections route to Opus 4.7; headline/link inherit Sonnet 4.6.
+ *   - isLandingPageContext=true so the rewrite engine unconditionally
+ *     applies the SAC reminder regardless of contentType.
+ *
+ * COUNT-guard:
+ *   - When `targetAngle` is undefined (post-generate path), skip if any
+ *     rewrites already exist for this LP — same row through the retry
+ *     path automatically becomes a no-op.
+ *   - When `targetAngle` is set (angle-switch path), skip if any rewrites
+ *     already exist for that specific angle. Other angles' rewrites do
+ *     not gate this angle's precompute.
+ *
+ * Concurrency: processInChunks(sections, 5, …) — 5 model calls in flight
+ * at peak, matching the cap in precomputeAdCopyComplianceRewrites.
+ *
+ * Best-effort: per-section failures are caught and logged. We never let
+ * a precompute failure surface to the user-facing generate path.
+ */
+async function precomputeLandingPageComplianceRewrites(
+  user: { id: number; subscriptionTier: string | null; role: string | null },
+  landingPageId: number,
+  serviceNiche: string | null,
+  targetAngle?: LpAngleKey,
+): Promise<void> {
+  if (process.env.ENABLE_COMPLIANCE_REWRITES !== "true") return;
+
+  try {
+    const db = await getDb();
+    if (!db) return;
+    const { rewriteForCompliance } = await import("../_core/complianceRewrite");
+    const { enforceFreeTierRewriteCap } = await import("./complianceRewrites");
+
+    // Ownership + row read.
+    const [lp] = await db
+      .select()
+      .from(landingPages)
+      .where(and(eq(landingPages.id, landingPageId), eq(landingPages.userId, user.id)))
+      .limit(1);
+    if (!lp) {
+      console.log(`[W5.precompute] landingPage id=${landingPageId} not found for user=${user.id} — skipping`);
+      return;
+    }
+
+    const angleKey: LpAngleKey = targetAngle ?? ((lp.activeAngle as LpAngleKey | null) ?? "original");
+    if (!(angleKey in LP_ANGLE_COL_MAP)) {
+      console.log(`[W5.precompute] landingPage id=${landingPageId} unknown angle=${angleKey} — skipping`);
+      return;
+    }
+    const angleCol = LP_ANGLE_COL_MAP[angleKey];
+
+    // COUNT-guard. Use a LIKE filter on sourceSubKey when scoped to a
+    // specific angle (angle-switch path); otherwise count any LP-keyed
+    // rewrites for the row (post-generate path).
+    const guardFilters = [
+      eq(complianceRewrites.userId, user.id),
+      eq(complianceRewrites.sourceTable, "landingPages"),
+      eq(complianceRewrites.sourceId, landingPageId),
+    ];
+    if (targetAngle) {
+      guardFilters.push(like(complianceRewrites.sourceSubKey, `${targetAngle}:%`));
+    }
+    const existing = await db
+      .select({ id: complianceRewrites.id })
+      .from(complianceRewrites)
+      .where(and(...guardFilters))
+      .limit(1);
+    if (existing.length > 0) {
+      console.log(`[W5.precompute] landingPage id=${landingPageId} angle=${angleKey} already has rewrites — skipping`);
+      return;
+    }
+
+    // Free-tier cap (skip-on-fail mirrors adCopy). Service-scoped, same
+    // 3-rewrite-per-service ceiling as Phases 1/2.
+    const serviceId = lp.serviceId ?? null;
+    if (serviceId != null) {
+      try { await enforceFreeTierRewriteCap(db, user, serviceId); }
+      catch {
+        console.log(`[W5.precompute] landingPage id=${landingPageId} free-tier cap hit for user ${user.id} — skipping`);
+        return;
+      }
+    } else {
+      console.log(`[W5.precompute] landingPage id=${landingPageId} has null serviceId — skipping (no service to attribute rewrites to)`);
+      return;
+    }
+
+    // Free-tier section narrowing. Trial users get rewrites only on the
+    // two highest-leverage sections; the rest of the in-scope set is
+    // gated to Pro/agency.
+    const isFreeTier = user.role !== "superuser" && (!user.subscriptionTier || user.subscriptionTier === "trial");
+    const inScope = isFreeTier
+      ? Array.from(LP_STRING_SECTIONS).filter(s => LP_FREE_TIER_SECTIONS.has(s))
+      : Array.from(LP_STRING_SECTIONS);
+
+    const rawAngle = (lp as Record<string, unknown>)[angleCol];
+    const angleData: Record<string, unknown> = typeof rawAngle === "string"
+      ? JSON.parse(rawAngle)
+      : ((rawAngle as Record<string, unknown>) ?? {});
+
+    const rowsToInsert: Array<typeof complianceRewrites.$inferInsert> = [];
+    console.log(`[W5.precompute] landingPage id=${landingPageId} angle=${angleKey} sectionsInScope=${inScope.length} freeTier=${isFreeTier}`);
+
+    await processInChunks(inScope, 5, async (sectionKey) => {
+      const text = angleData[sectionKey];
+      if (typeof text !== "string" || !text.trim()) return;
+
+      try {
+        const c = await checkCompliance(text);
+        // Threshold for landing pages is 100 — anything short of perfect
+        // gets a rewrite suggestion. (Phases 1/2 use 70; landing pages
+        // are higher-stakes copy with more surface area for issues.)
+        if (c.score >= 100 || c.issues.length === 0) return;
+
+        const contentType = lpSectionToContentType(sectionKey);
+        const modelOverride = contentType === "body" ? "claude-opus-4-7" : undefined;
+
+        const r = await rewriteForCompliance(
+          text,
+          c.issues,
+          contentType,
+          { niche: serviceNiche, mechanism: null, mainBenefit: null },
+          modelOverride,
+          /* isLandingPageContext */ true,
+        );
+
+        rowsToInsert.push({
+          userId: user.id,
+          serviceId,
+          contentType,
+          sourceTable: "landingPages",
+          sourceId: landingPageId,
+          sourceSubKey: `${angleKey}:${sectionKey}`,
+          originalText: text,
+          rewrittenText: r.rewrite,
+          violationReasons: c.issues.map(i => i.reason),
+          complianceScore: r.score,
+          modelUsed: r.modelUsed,
+        });
+      } catch (err) {
+        console.warn(
+          `[W5.precompute] landingPage id=${landingPageId} angle=${angleKey} section=${sectionKey} failed:`,
+          err instanceof Error ? err.message : err,
+        );
+      }
+    });
+
+    if (rowsToInsert.length > 0) {
+      await db.insert(complianceRewrites).values(rowsToInsert);
+      console.log(`[W5.precompute] landingPage id=${landingPageId} angle=${angleKey} inserted ${rowsToInsert.length} rewrite(s)`);
+    } else {
+      console.log(`[W5.precompute] landingPage id=${landingPageId} angle=${angleKey} produced no rewrites (all sections passed or skipped)`);
+    }
+  } catch (err) {
+    console.error(
+      `[W5.precompute] landingPage id=${landingPageId} unexpected failure:`,
+      err instanceof Error ? err.message : err,
+    );
+  }
+}
 
 const generateLandingPageSchema = z.object({
   serviceId: z.number(),
@@ -353,12 +546,16 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
         fallbackTestimonials
       );
 
-      // Apply compliance filter to all string fields in each angle
+      // Phase 3: regex pre-clean removed. Raw model output flows
+      // straight into the JSON column; the compliance rewrite engine
+      // handles flagged sections reactively via the precompute hook
+      // below, so any regex layer here would just be re-doing work the
+      // panel already shows the user.
       const allAngles = {
-        original: await filterAngleObject(allAnglesRaw.original as Record<string, unknown>),
-        godfather: await filterAngleObject(allAnglesRaw.godfather as Record<string, unknown>),
-        free: await filterAngleObject(allAnglesRaw.free as Record<string, unknown>),
-        dollar: await filterAngleObject(allAnglesRaw.dollar as Record<string, unknown>),
+        original: allAnglesRaw.original as Record<string, unknown>,
+        godfather: allAnglesRaw.godfather as Record<string, unknown>,
+        free: allAnglesRaw.free as Record<string, unknown>,
+        dollar: allAnglesRaw.dollar as Record<string, unknown>,
       };
 
       // Save to database
@@ -403,6 +600,19 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
         const [relatedIcp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
         if (relatedIcp) await autoSelectBest(ctx.user.id, relatedIcp.id, "selectedLandingPageId", insertResult[0].insertId);
       } catch (e) { console.warn("[auto-select] landingPages failed:", e); }
+
+      // W5 Phase 3 — fire-and-forget compliance rewrite precompute on
+      // the active angle. setImmediate lets the user-facing return land
+      // immediately; the panel fetches rewrites on its own mount and
+      // sees them populate within ~60-90s. No-op when the flag is off.
+      const newPageId = insertResult[0].insertId;
+      setImmediate(() => {
+        precomputeLandingPageComplianceRewrites(
+          { id: ctx.user.id, subscriptionTier: user.subscriptionTier ?? null, role: user.role ?? null },
+          newPageId,
+          service.category ?? null,
+        ).catch(err => console.warn(`[W5.precompute] landingPage id=${newPageId} sync-generate hook failed:`, err instanceof Error ? err.message : err));
+      });
 
       return newPage;
     }),
@@ -501,11 +711,13 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
             }
           ];
           const allAnglesRaw2 = await generateAllAngles(capturedService.name, capturedService.description || "", avatarName, enrichedAvatarDescription, socialProof, writeProgress, asyncFallbackTestimonials);
+          // Phase 3: regex pre-clean removed (see sync `generate` for
+          // rationale). Rewrite engine reactively replaces this layer.
           const allAngles = {
-            original: await filterAngleObject(allAnglesRaw2.original as Record<string, unknown>),
-            godfather: await filterAngleObject(allAnglesRaw2.godfather as Record<string, unknown>),
-            free: await filterAngleObject(allAnglesRaw2.free as Record<string, unknown>),
-            dollar: await filterAngleObject(allAnglesRaw2.dollar as Record<string, unknown>),
+            original: allAnglesRaw2.original as Record<string, unknown>,
+            godfather: allAnglesRaw2.godfather as Record<string, unknown>,
+            free: allAnglesRaw2.free as Record<string, unknown>,
+            dollar: allAnglesRaw2.dollar as Record<string, unknown>,
           };
 
           const insertResult: any = await bgDb.insert(landingPages).values({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, productName: capturedService.name, productDescription: capturedService.description || "", avatarName, avatarDescription, originalAngle: allAngles.original, godfatherAngle: allAngles.godfather, freeAngle: allAngles.free, dollarAngle: allAngles.dollar, activeAngle: "original", rating: 0 });
@@ -521,6 +733,19 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
             const [relatedIcp] = await bgDb.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, capturedInput.serviceId)).limit(1);
             if (relatedIcp) await autoSelectBest(capturedUserId, relatedIcp.id, "selectedLandingPageId", insertResult[0].insertId);
           } catch (e) { console.warn("[auto-select] landingPages async failed:", e); }
+
+          // W5 Phase 3 — fire-and-forget compliance precompute on the
+          // active angle. Mirror of the sync-generate hook above; runs
+          // before the job is marked complete so the panel sees rewrites
+          // shortly after the page resolves. No-op when flag is off.
+          const asyncPageId = insertResult[0].insertId;
+          setImmediate(() => {
+            precomputeLandingPageComplianceRewrites(
+              { id: capturedUserId, subscriptionTier: capturedUser.subscriptionTier ?? null, role: capturedUser.role ?? null },
+              asyncPageId,
+              capturedService.category ?? null,
+            ).catch(err => console.warn(`[W5.precompute] landingPage id=${asyncPageId} async-generate hook failed:`, err instanceof Error ? err.message : err));
+          });
 
           await bgDb.update(jobs)
             .set({ status: "complete", result: JSON.stringify({ id: newPage?.id }) })
@@ -713,7 +938,10 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
 
       let newValue: unknown;
       if (isStringSection) {
-        newValue = await filterSection(cleaned);
+        // Phase 3: regex pre-clean removed. The compliance rewrite hook
+        // below picks up flagged single-section regenerations and
+        // surfaces a rewrite alternative through the panel.
+        newValue = cleaned;
       } else {
         try {
           newValue = JSON.parse(cleaned);
@@ -729,7 +957,117 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
         .set({ [angleCol]: JSON.stringify(angleData), updatedAt: new Date() })
         .where(eq(landingPages.id, input.landingPageId));
 
+      // W5 Phase 3 — precompute hook for single-section regenerate. Only
+      // fires for in-scope simple-string sections; nested-array
+      // regenerations skip this entirely. Re-scopes the existing helper
+      // by treating the regenerated angle as `targetAngle`. Inserts only
+      // happen if the COUNT-guard finds zero rewrites for that angle —
+      // which means a regenerate on an angle that already has rewrites
+      // in the cache will be a no-op here. That is intentional: a
+      // single-section regen does not fan out to refresh other sections'
+      // rewrites; the user can clear and re-fire if they want a full
+      // refresh.
+      if (LP_STRING_SECTIONS.has(input.sectionKey)) {
+        const regenAngle: LpAngleKey = input.angle;
+        const regenLpId = input.landingPageId;
+        // Pull the user's tier + role for the precompute helper. Cheap
+        // single-row read — kept inline rather than threaded down from
+        // ctx because the helper signature mirrors Phase 1/2.
+        const [regenUser] = await db
+          .select({ subscriptionTier: users.subscriptionTier, role: users.role })
+          .from(users)
+          .where(eq(users.id, ctx.user.id))
+          .limit(1);
+        // Service niche for context — best-effort.
+        let regenServiceNiche: string | null = null;
+        if (row.serviceId) {
+          const [svc] = await db
+            .select({ category: services.category })
+            .from(services)
+            .where(eq(services.id, row.serviceId))
+            .limit(1);
+          regenServiceNiche = svc?.category ?? null;
+        }
+        setImmediate(() => {
+          precomputeLandingPageComplianceRewrites(
+            {
+              id: ctx.user.id,
+              subscriptionTier: regenUser?.subscriptionTier ?? null,
+              role: regenUser?.role ?? null,
+            },
+            regenLpId,
+            regenServiceNiche,
+            regenAngle,
+          ).catch(err => console.warn(`[W5.precompute] landingPage id=${regenLpId} regenerateSection hook failed:`, err instanceof Error ? err.message : err));
+        });
+      }
+
       return angleData;
+    }),
+
+  // W5 Phase 3 — lazy precompute on first switch to an inactive angle.
+  // The panel calls this when the user clicks an angle they have not
+  // viewed before. The helper's COUNT-guard makes repeated calls
+  // idempotent, so a debounce on the client is "nice to have" not
+  // "must have" — the server-side guard catches the rapid-switch case.
+  // Returns immediately; the panel polls listForLandingPage to discover
+  // when rewrites land.
+  precomputeOnAngleSwitch: protectedProcedure
+    .input(z.object({
+      landingPageId: z.number(),
+      targetAngle: z.enum(["original", "godfather", "free", "dollar"]),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      if (process.env.ENABLE_COMPLIANCE_REWRITES !== "true") {
+        return { fired: false, reason: "flag-off" as const };
+      }
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      // Ownership check.
+      const [lp] = await db
+        .select({ id: landingPages.id, serviceId: landingPages.serviceId })
+        .from(landingPages)
+        .where(and(eq(landingPages.id, input.landingPageId), eq(landingPages.userId, ctx.user.id)))
+        .limit(1);
+      if (!lp) throw new TRPCError({ code: "NOT_FOUND", message: "Landing page not found" });
+
+      // Tier read for the helper's free-tier section narrowing.
+      const [me] = await db
+        .select({ subscriptionTier: users.subscriptionTier, role: users.role })
+        .from(users)
+        .where(eq(users.id, ctx.user.id))
+        .limit(1);
+
+      // Service niche, best-effort.
+      let serviceNiche: string | null = null;
+      if (lp.serviceId) {
+        const [svc] = await db
+          .select({ category: services.category })
+          .from(services)
+          .where(eq(services.id, lp.serviceId))
+          .limit(1);
+        serviceNiche = svc?.category ?? null;
+      }
+
+      // Fire-and-forget. setImmediate so the tRPC response returns
+      // immediately and the panel can show its "Scanning…" indicator.
+      const lpId = input.landingPageId;
+      const targetAngle: LpAngleKey = input.targetAngle;
+      setImmediate(() => {
+        precomputeLandingPageComplianceRewrites(
+          {
+            id: ctx.user.id,
+            subscriptionTier: me?.subscriptionTier ?? null,
+            role: me?.role ?? null,
+          },
+          lpId,
+          serviceNiche,
+          targetAngle,
+        ).catch(err => console.warn(`[W5.precompute] landingPage id=${lpId} angle-switch hook (target=${targetAngle}) failed:`, err instanceof Error ? err.message : err));
+      });
+
+      return { fired: true as const, targetAngle };
     }),
 
   // Delete landing page

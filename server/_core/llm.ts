@@ -66,6 +66,13 @@ export type InvokeParams = {
   output_schema?: OutputSchema;
   responseFormat?: ResponseFormat;
   response_format?: ResponseFormat;
+  // Optional per-call model override. Tried FIRST, ahead of the default
+  // PREFERRED_MODELS ladder — if it returns 404/500 (e.g., a typo or
+  // newly-retired ID), the existing fallback ladder catches it and the
+  // call still succeeds on Sonnet 4.6 / Haiku. Used by W5 Phase 3 to
+  // route landing-page body rewrites to Opus 4.7 while Phase 1/2 paths
+  // continue to inherit the default Sonnet primary.
+  model?: string;
 };
 
 export type ToolCall = {
@@ -245,11 +252,18 @@ async function invokeClaudeAPI(params: InvokeParams): Promise<InvokeResult> {
   }));
 
   // Use latest Claude models — updated April 2026
-  const PREFERRED_MODELS = [
+  const DEFAULT_MODELS = [
     "claude-sonnet-4-6",          // Current Sonnet — best quality for marketing copy
     "claude-haiku-4-5-20251001",  // Current Haiku fallback
     "claude-3-haiku-20240307",    // Legacy fallback
   ];
+  // If the caller passed a model override (W5 Phase 3 routes
+  // landing-page body rewrites to Opus 4.7 this way), try it first; the
+  // default ladder still catches a 404/500 from a bad override so a
+  // typo can't break the request.
+  const PREFERRED_MODELS = params.model
+    ? [params.model, ...DEFAULT_MODELS.filter(m => m !== params.model)]
+    : DEFAULT_MODELS;
 
   const systemContent = systemPrompt
     ? systemPrompt + (needsJson ? "\n\nIMPORTANT: Respond with ONLY valid JSON. No markdown, no explanations, no code blocks." : "")

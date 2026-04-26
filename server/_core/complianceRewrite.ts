@@ -1,13 +1,18 @@
 /**
- * Compliance Rewrite Engine (W5 Phase 1 — headlines; Phases 2/3 extend to
- * ad copy and landing pages).
+ * Compliance Rewrite Engine (W5 Phase 1 — headlines; Phase 2 ad copy;
+ * Phase 3 landing pages).
  *
  * Takes a flagged piece of generated content + the specific violations
- * detected by checkCompliance, asks Sonnet 4.6 for a compliant rewrite,
- * re-scores it, and returns the first passing candidate. Retries on weak
- * rewrites up to 2 times (3 attempts total). If every attempt fails, we
- * throw — never return a rewrite we haven't verified, since the whole
- * point of this module is "users can trust what the panel surfaces."
+ * detected by checkCompliance, asks Sonnet 4.6 by default for a compliant
+ * rewrite, re-scores it, and returns the first passing candidate. Retries
+ * on weak rewrites up to 2 times (3 attempts total). If every attempt
+ * fails, we throw — never return a rewrite we haven't verified, since the
+ * whole point of this module is "users can trust what the panel surfaces."
+ *
+ * Sonnet 4.6 by default; caller may override (Phase 3 landing-page bodies
+ * use Opus 4.7). The `modelUsed` field on the return value records which
+ * model produced each accepted rewrite so callers can persist it as
+ * complianceRewrites.modelUsed for retroactive A/B telemetry.
  *
  * Gated at call sites on ENABLE_COMPLIANCE_REWRITES. This module doesn't
  * check the flag itself — it's a pure utility; callers (headlines
@@ -41,8 +46,10 @@ export interface RewriteResult {
   rewrite: string;
   /** checkCompliance score of the returned rewrite (0-100, >= 70). */
   score: number;
-  /** Sonnet's one-sentence rationale for the rewrite, used as audit context. */
+  /** LLM's short rationale for the rewrite, used as audit context. */
   reasoning: string;
+  /** Actual model that produced the accepted rewrite (e.g. "claude-opus-4-7"). */
+  modelUsed: string;
 }
 
 const MAX_ATTEMPTS = 3;
@@ -69,7 +76,16 @@ const SAC_TRIGGER_KEYWORDS = [
   "health", "medical", "weight", "cure", "treat", "heal", "diet", "fitness", "mental",
 ];
 
-function shouldApplySAC(contentType: RewriteContentType, violations: ComplianceIssue[]): boolean {
+function shouldApplySAC(
+  contentType: RewriteContentType,
+  violations: ComplianceIssue[],
+  isLandingPageContext?: boolean,
+): boolean {
+  // Phase 3: landing-page surface always gets the SAC reminder regardless
+  // of contentType — even short headlines/CTAs on a landing page sit
+  // alongside long-form body sections in a single ad-target experience,
+  // so the whole page needs to read SAC-clean as one unit.
+  if (isLandingPageContext) return true;
   if (contentType === "body") return true;
   const haystack = violations
     .flatMap(v => [v.phrase, v.reason, v.suggestion])
@@ -89,7 +105,11 @@ const SAC_REMINDER_BLOCK = [
   `If the original copy lived in any of these categories, the rewrite should soften outcome claims into *process* language ("learn a structured approach", "work with a certified practitioner") rather than *result* language ("earn $X", "lose Y kg", "get hired").`,
 ].join("\n");
 
-function buildSystemPrompt(contentType: RewriteContentType, violations: ComplianceIssue[]): string {
+function buildSystemPrompt(
+  contentType: RewriteContentType,
+  violations: ComplianceIssue[],
+  isLandingPageContext?: boolean,
+): string {
   const bannedList = BANNED_HEADLINE_PATTERNS.map((p) => `"${p}"`).join(", ");
   const wordRule = contentType === "headline" ? "Keep headlines 5-14 words."
                  : contentType === "body"     ? "Keep body copy 100-170 words."
@@ -104,12 +124,12 @@ function buildSystemPrompt(contentType: RewriteContentType, violations: Complian
     `- Preserve niche / mechanism / benefit where given.`,
     `- ${wordRule}`,
     `- Return ONLY JSON, no markdown fences, in this shape:`,
-    `  {"rewrite": "...", "reasoning": "one sentence on how you fixed the violation"}`,
+    `  {"rewrite": "...", "reasoning": "one short sentence (≤25 words) on how you fixed the violation"}`,
     ``,
     META_COMPLIANCE_NOTES,
   ].join("\n");
 
-  return shouldApplySAC(contentType, violations) ? `${base}${SAC_REMINDER_BLOCK}` : base;
+  return shouldApplySAC(contentType, violations, isLandingPageContext) ? `${base}${SAC_REMINDER_BLOCK}` : base;
 }
 
 function buildUserPrompt(
@@ -162,18 +182,37 @@ async function parseJsonResponse(content: string): Promise<{ rewrite: string; re
 }
 
 /**
- * Ask Sonnet to rewrite `originalText` to clear the `violations`, retry up
- * to MAX_ATTEMPTS times, and return the first rewrite that passes
- * checkCompliance >= 70. Throws if no attempt passes — callers decide
- * whether to swallow (skip inserting a rewrite row) or surface.
+ * Default model used when the caller does not override. Mirrors the
+ * primary in invokeClaudeAPI's PREFERRED_MODELS ladder so the
+ * `modelUsed` we record matches what the API actually ran. If invokeLLM's
+ * default ladder ever changes, update this constant in lockstep.
+ */
+const DEFAULT_MODEL = "claude-sonnet-4-6";
+
+/**
+ * Ask the model to rewrite `originalText` to clear the `violations`,
+ * retry up to MAX_ATTEMPTS times, and return the first rewrite that
+ * passes checkCompliance >= 70. Throws if no attempt passes — callers
+ * decide whether to swallow (skip inserting a rewrite row) or surface.
+ *
+ * `modelOverride` — Phase 3 landing-page bodies route here with
+ * "claude-opus-4-7". Headlines/links and Phase 1/2 callers omit it and
+ * inherit the Sonnet default.
+ *
+ * `isLandingPageContext` — when true, SAC reminder is unconditionally
+ * applied regardless of contentType. The whole landing page reads as
+ * one ad-target experience, so the SAC tone has to be consistent
+ * across short and long sections.
  */
 export async function rewriteForCompliance(
   originalText: string,
   violations: ComplianceIssue[],
   contentType: RewriteContentType,
   context: RewriteContext,
+  modelOverride?: string,
+  isLandingPageContext?: boolean,
 ): Promise<RewriteResult> {
-  const system = buildSystemPrompt(contentType, violations);
+  const system = buildSystemPrompt(contentType, violations, isLandingPageContext);
 
   let previousAttempt: { rewrite: string; complianceScore: number; hookScore: number; stillFlagged: ComplianceIssue[] } | undefined;
   let lastError: string | null = null;
@@ -186,6 +225,7 @@ export async function rewriteForCompliance(
         { role: "user",   content: user },
       ],
       responseFormat: { type: "json_object" },
+      model: modelOverride,
     });
     const content = response.choices[0]?.message?.content;
     if (typeof content !== "string") {
@@ -207,10 +247,15 @@ export async function rewriteForCompliance(
     const hookScore = scoreAdContent(contentType, parsed.rewrite);
 
     if (complianceResult.score >= MIN_ACCEPTABLE_SCORE && complianceResult.issues.every(i => i.severity !== "critical")) {
+      // response.model echoes whichever entry in the PREFERRED_MODELS
+      // ladder actually returned 200. Prefer that over the override
+      // we requested in case a 404/500 caused a fall-through.
+      const modelUsed = response.model || modelOverride || DEFAULT_MODEL;
       return {
         rewrite: parsed.rewrite,
         score: complianceResult.score,
         reasoning: parsed.reasoning,
+        modelUsed,
       };
     }
 
@@ -232,7 +277,7 @@ export async function rewriteForCompliance(
 /**
  * Generate `count` independent rewrite alternatives. Used by the
  * "See 2 more alternatives" path in the warning panel. Calls are
- * sequential (not parallel) so each retry loop sees a fresh Sonnet
+ * sequential (not parallel) so each retry loop sees a fresh model
  * roll — parallelism would likely produce near-identical rewrites.
  */
 export async function rewriteForComplianceBatch(
@@ -241,13 +286,15 @@ export async function rewriteForComplianceBatch(
   contentType: RewriteContentType,
   context: RewriteContext,
   count: number,
+  modelOverride?: string,
+  isLandingPageContext?: boolean,
 ): Promise<RewriteResult[]> {
   const results: RewriteResult[] = [];
   for (let i = 0; i < count; i++) {
     try {
-      const r = await rewriteForCompliance(originalText, violations, contentType, context);
-      // Simple de-dup: if Sonnet returned an identical rewrite, ask for
-      // another. No retry counter — rewriteForCompliance already caps.
+      const r = await rewriteForCompliance(originalText, violations, contentType, context, modelOverride, isLandingPageContext);
+      // Simple de-dup: if the model returned an identical rewrite, ask
+      // for another. No retry counter — rewriteForCompliance already caps.
       if (!results.some(prev => prev.rewrite === r.rewrite)) {
         results.push(r);
       }
