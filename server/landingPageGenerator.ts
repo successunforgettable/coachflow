@@ -1,6 +1,25 @@
 import { invokeLLM } from "./_core/llm";
+import { detectJsonLeak } from "./_core/jsonLeakDetector";
 import type { LandingPageContent } from "../drizzle/schema";
 import { BANNED_COPYWRITING_WORDS, META_COMPLIANCE_NOTES, truncateQuote } from "./_core/copywritingRules";
+
+// Top-level required fields in the landing-page schema (kept in lock-step
+// with the json_schema declared inside generateLandingPageAngle). Used by
+// the Option-A leak detector to flag responses where a string field's
+// value contains another field's key syntax — see
+// server/_core/jsonLeakDetector.ts. Removed when Option B (tool-use
+// migration) ships.
+const LP_SCHEMA_FIELDS = [
+  "eyebrowHeadline", "mainHeadline", "subheadline", "primaryCta",
+  "asSeenIn", "quizSection", "problemAgitation", "solutionIntro",
+  "whyOldFail", "uniqueMechanism", "testimonials", "insiderAdvantages",
+  "scarcityUrgency", "shockingStat", "timeSavingBenefit", "consultationOutline",
+] as const;
+
+// Option A — retry up to 3 attempts when the LLM emits a JSON-leak
+// corrupted response. Bounded retry: a hard cap that lets the function
+// throw cleanly rather than block forever or silently store corrupt data.
+const LP_LEAK_MAX_ATTEMPTS = 3;
 
 // Angle-specific prompt modifiers based on industry research
 const ANGLE_PROMPTS = {
@@ -161,6 +180,11 @@ Make it compelling, benefit-driven, and conversion-focused.
 Use direct response copywriting principles: pain agitation, unique mechanism, social proof, scarcity, and strong CTAs.
 `;
 
+  // Option A — retry-on-JSON-leak. Wraps the LLM call + parse + validate
+  // in a bounded retry; if the model emits a leak-corrupted response we
+  // discard it and try again rather than storing it. Removed when Option
+  // B (tool-use migration) ships.
+  for (let leakAttempt = 1; leakAttempt <= LP_LEAK_MAX_ATTEMPTS; leakAttempt++) {
   const response = await invokeLLM({
     messages: [
       { role: "system", content: `You are a world-class direct response copywriter specializing in high-converting landing pages. You engineer an emotional arc through each page — every section serves a specific emotional purpose, moving the reader from 'seen and understood' through 'named and validated', 'cost of inaction', 'hope', 'different from what they've tried', 'safe to believe', and finally 'obvious next step'. You write in the customer's own language — the words they use with a close friend, not marketing language. FORMATTING RULE: Return plain text only inside all JSON string values. No markdown. No asterisks (*). No hash symbols (#). No bold or italic formatting of any kind. No bullet markers. Just clean readable sentences and paragraphs.\n\n${META_COMPLIANCE_NOTES}` },
@@ -255,7 +279,20 @@ Use direct response copywriting principles: pain agitation, unique mechanism, so
   // Strip markdown code fences if LLM wraps response in ```json ... ```
   const cleaned = content.replace(/^```json\s*|^```\s*|\s*```$/gm, '').trim();
   const parsed = JSON.parse(cleaned);
-  
+
+  // Option A — schema-aware leak check before we trust the parse. If a
+  // top-level string field's value contains another field's key syntax,
+  // the model escaped a closing quote and continued writing into the
+  // current field. Retry rather than store corrupt content.
+  const leak = detectJsonLeak(parsed, LP_SCHEMA_FIELDS);
+  if (leak.leaked) {
+    console.warn(
+      `[landingPageGenerator] JSON-leak detected on attempt ${leakAttempt}/${LP_LEAK_MAX_ATTEMPTS} ` +
+      `(angle=${angle}, field=${leak.field}, pattern=${leak.pattern}). Retrying.`,
+    );
+    continue;
+  }
+
   // Validate and add fallbacks for all required fields
   const validated: LandingPageContent = {
     eyebrowHeadline: parsed.eyebrowHeadline || 'SPECIAL OFFER',
@@ -299,8 +336,13 @@ Use direct response copywriting principles: pain agitation, unique mechanism, so
       }
     ]
   };
-  
+
   return validated;
+  }
+
+  throw new Error(
+    `Landing page generation failed for angle "${angle}": all ${LP_LEAK_MAX_ATTEMPTS} attempts produced JSON-leak corruption. Aborting rather than storing corrupt content.`,
+  );
 }
 
 // Generate all 4 angles at once.

@@ -27,12 +27,20 @@
  */
 
 import { invokeLLM } from "./llm";
+import { detectJsonLeak } from "./jsonLeakDetector";
 import {
   BANNED_HEADLINE_PATTERNS,
   META_COMPLIANCE_NOTES,
   scoreAdContent,
 } from "./copywritingRules";
 import { checkCompliance, type ComplianceIssue } from "../lib/complianceChecker";
+
+// Top-level fields the rewrite engine expects in the LLM JSON response.
+// Used by the Option-A leak detector — if `rewrite` contains the substring
+// `"reasoning":` or vice versa, the model escaped a closing quote and
+// continued writing into the current field. Removed when Option B
+// (tool-use migration) ships.
+const REWRITE_RESPONSE_FIELDS = ["rewrite", "reasoning"] as const;
 
 export type RewriteContentType = "headline" | "body" | "link";
 
@@ -237,6 +245,18 @@ export async function rewriteForCompliance(
       parsed = await parseJsonResponse(content);
     } catch (err) {
       lastError = err instanceof Error ? err.message : "JSON parse failed";
+      continue;
+    }
+
+    // Option A — schema-aware leak check. If `rewrite` contains
+    // `"reasoning":` (or vice versa), the model escaped a closing quote
+    // and the field's "content" is the next field's syntax leaking in.
+    // Treat as a failed attempt; the existing retry loop catches it.
+    // Removed when Option B (tool-use migration) ships.
+    const leak = detectJsonLeak(parsed, REWRITE_RESPONSE_FIELDS);
+    if (leak.leaked) {
+      lastError = `Attempt ${attempt}: JSON-leak detected (field=${leak.field}, pattern=${leak.pattern}).`;
+      console.warn(`[complianceRewrite] ${lastError}`);
       continue;
     }
 
