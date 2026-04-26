@@ -1,0 +1,47 @@
+-- W5 Phase 3 — extend complianceRewrites with two columns to support
+-- landing-page rewrites (per-section keying + hybrid-model telemetry).
+--
+-- Two columns added in one migration:
+--
+--   sourceSubKey VARCHAR(128) NULL
+--     Identifies WHICH sub-region of a multi-region source row produced
+--     the rewrite. Phase 1 (headlines) and Phase 2 (adCopy) keyed on
+--     (sourceTable, sourceId) alone because each row holds one piece of
+--     content. Phase 3 landing pages store an entire angle JSON in a
+--     single landingPages row, so the row-level key is no longer unique
+--     per rewrite. sourceSubKey distinguishes them, encoded as
+--     "<angleKey>:<sectionKey>" — e.g. "original:mainHeadline",
+--     "godfather:problemAgitation". NULL for Phase 1/2 rows. Format is
+--     intentionally a single string (not two columns) so the panel's
+--     KEPT-label parser and the cache-hit guard can both treat it as an
+--     opaque key without joining columns.
+--
+--     INTENTIONALLY NON-INDEXED for MVP. Every read path that touches
+--     sourceSubKey first filters by (userId, sourceTable, sourceId) via
+--     complianceRewrites_source_idx, leaving at most a few-dozen-row
+--     fanout per landing page that a sequential scan handles trivially.
+--     Revisit only if a procedure begins doing point-lookups by
+--     sourceSubKey alone (none planned).
+--
+--   modelUsed VARCHAR(64) NULL
+--     Records which LLM produced the rewrite. Phase 3 introduces a
+--     hybrid model strategy on landing-page calls only:
+--     'claude-sonnet-4-6' for headline + link contentTypes,
+--     'claude-opus-4-7'   for body contentType.
+--     Captured for retroactive A/B telemetry on Sonnet vs Opus quality
+--     once production accumulates a few hundred rewrites. Populated on
+--     EVERY new rewrite from Phase 3 onward (including Phase 1/2 paths,
+--     which always write 'claude-sonnet-4-6'). NULL for pre-Phase-3
+--     historical rows. Do NOT backfill — leaving NULL preserves the
+--     "this row predates hybrid routing" signal cleanly.
+--
+-- Both columns nullable so the migration applies without locking
+-- existing rows; both non-indexed for MVP per the rationale above.
+-- No data migration. Apply anytime; safe to apply before code that
+-- writes the columns ships, since both default to NULL.
+--
+-- Apply AFTER 0006_adcopy_contenttype_expand.sql.
+
+ALTER TABLE `complianceRewrites`
+  ADD COLUMN `sourceSubKey` VARCHAR(128) NULL,
+  ADD COLUMN `modelUsed` VARCHAR(64) NULL;
