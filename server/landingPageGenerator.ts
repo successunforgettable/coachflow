@@ -191,10 +191,6 @@ Use direct response copywriting principles: pain agitation, unique mechanism, so
   // migration enforces types server-side, this runtime check stays as
   // belt-and-braces.
   for (let leakAttempt = 1; leakAttempt <= LP_SCHEMA_RETRY_MAX_ATTEMPTS; leakAttempt++) {
-  // I1 diagnostic instrumentation — log each attempt-start so we can
-  // tell from logs how often retries fire (multiple attempts per angle
-  // would inflate aggregate wall-time). Removed in Commit B'.
-  console.log(`[landingPageGenerator] attempt=${leakAttempt}/${LP_SCHEMA_RETRY_MAX_ATTEMPTS} angle=${angle} starting`);
   const response = await invokeLLM({
     messages: [
       { role: "system", content: `You are a world-class direct response copywriter specializing in high-converting landing pages. You engineer an emotional arc through each page — every section serves a specific emotional purpose, moving the reader from 'seen and understood' through 'named and validated', 'cost of inaction', 'hope', 'different from what they've tried', 'safe to believe', and finally 'obvious next step'. You write in the customer's own language — the words they use with a close friend, not marketing language. FORMATTING RULE: Return plain text only inside all JSON string values. No markdown. No asterisks (*). No hash symbols (#). No bold or italic formatting of any kind. No bullet markers. Just clean readable sentences and paragraphs.\n\n${META_COMPLIANCE_NOTES}` },
