@@ -344,8 +344,16 @@ export async function generateAllAngles(
   free: LandingPageContent;
   dollar: LandingPageContent;
 }> {
-  // Generate in 2 batches of 2 to avoid overwhelming the LLM API with 4 concurrent
-  // large JSON-structured requests (each ~8k tokens), which can cause "fetch failed" timeouts.
+  // Generate all 4 angles in parallel. Previously batched 2+2 to avoid
+  // "fetch failed" timeouts on the plain-text path under tool-use's
+  // predecessor (see commits c18a8f8 and b8d43b1, March 2026). The
+  // tool-use migration in e51aeed gives us API-level token-budget
+  // predictability + every call has a 5-minute AbortController in
+  // invokeClaudeAPI; running 4 concurrently brings end-to-end wall-time
+  // from ~250s (2 batches × ~120s) down to ~120-140s (max of 4
+  // parallel calls). Each angle's per-call output is ~5300 tokens —
+  // 4 concurrent × ~5300 = ~21k tokens in flight, well under
+  // Anthropic's tier-1 ITPM/OTPM ceilings.
   const TOTAL = 4;
   let completed = 0;
   const notify = async () => {
@@ -355,11 +363,9 @@ export async function generateAllAngles(
     }
   };
 
-  const [original, godfather] = await Promise.all([
+  const [original, godfather, free, dollar] = await Promise.all([
     generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'original', socialProof).then(async r => { await notify(); return r; }),
     generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'godfather', socialProof).then(async r => { await notify(); return r; }),
-  ]);
-  const [free, dollar] = await Promise.all([
     generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'free', socialProof).then(async r => { await notify(); return r; }),
     generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'dollar', socialProof).then(async r => { await notify(); return r; }),
   ]);
