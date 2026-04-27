@@ -228,7 +228,19 @@ const assertApiKey = () => {
 };
 
 // ─── CLAUDE (ANTHROPIC) DIRECT CALL ─────────────────────────────────────────
-// Converts OpenAI-style messages to Anthropic's Messages API format
+// Converts OpenAI-style messages to Anthropic's Messages API format.
+//
+// JSON-shape callers (those passing responseFormat/response_format/outputSchema)
+// use Anthropic's tool-use API: a synthetic tool is constructed from the
+// caller's schema, the model is forced to invoke that tool, and Anthropic
+// validates the model's tool-call arguments against input_schema server-side
+// before returning. This is the durable fix for the schema-violation class
+// of bugs (OBJECT-where-string, missing required fields, type mismatches)
+// that the previous "respond-with-JSON-via-system-prompt-instruction"
+// pattern could not enforce. The InvokeResult.content contract is preserved
+// — for tool-use callers, the structured tool input is JSON.stringify'd back
+// into content so caller-side `JSON.parse(content)` continues to work
+// unchanged.
 async function invokeClaudeAPI(params: InvokeParams): Promise<InvokeResult> {
   const { messages, responseFormat, response_format, outputSchema, output_schema } = params;
 
@@ -245,6 +257,34 @@ async function invokeClaudeAPI(params: InvokeParams): Promise<InvokeResult> {
     response_format?.type?.includes("json") ||
     outputSchema != null ||
     output_schema != null;
+
+  // Synthesise the Anthropic tool definition from the caller's schema.
+  // Three input shapes the caller can pass:
+  //   1. responseFormat / response_format = { type: "json_schema", json_schema: { name, schema } }
+  //      → tool name = json_schema.name; input_schema = json_schema.schema
+  //   2. outputSchema / output_schema = { name, schema }
+  //      → tool name = outputSchema.name; input_schema = outputSchema.schema
+  //   3. responseFormat / response_format = { type: "json_object" } (no schema)
+  //      → synthesise a permissive default tool that accepts any object
+  // Anthropic's tool-use API requires input_schema to have top-level type
+  // "object" — every caller-supplied schema in this codebase already does.
+  let toolName = "json_response";
+  let toolInputSchema: Record<string, unknown> = {
+    type: "object",
+    additionalProperties: true,
+  };
+  if (needsJson) {
+    const explicitFormat = responseFormat || response_format;
+    const explicitSchema = outputSchema || output_schema;
+    if (explicitFormat?.type === "json_schema" && explicitFormat.json_schema?.schema) {
+      toolName = explicitFormat.json_schema.name || "json_response";
+      toolInputSchema = explicitFormat.json_schema.schema as Record<string, unknown>;
+    } else if (explicitSchema?.name && explicitSchema?.schema) {
+      toolName = explicitSchema.name;
+      toolInputSchema = explicitSchema.schema as Record<string, unknown>;
+    }
+    // else json_object with no schema: keep permissive default
+  }
 
   const anthropicMessages = conversationMessages.map(m => ({
     role: m.role === "assistant" ? "assistant" : "user",
@@ -265,9 +305,12 @@ async function invokeClaudeAPI(params: InvokeParams): Promise<InvokeResult> {
     ? [params.model, ...DEFAULT_MODELS.filter(m => m !== params.model)]
     : DEFAULT_MODELS;
 
-  const systemContent = systemPrompt
-    ? systemPrompt + (needsJson ? "\n\nIMPORTANT: Respond with ONLY valid JSON. No markdown, no explanations, no code blocks." : "")
-    : (needsJson ? "IMPORTANT: Respond with ONLY valid JSON. No markdown, no explanations, no code blocks." : undefined);
+  // Under tool-use, the schema itself communicates the expected output
+  // shape — no need to also instruct the model via system-prompt text.
+  // The previous "Respond with ONLY valid JSON" appendix is dropped for
+  // tool-use callers (it was the only thing the JSON contract relied on
+  // pre-migration; tool-use replaces it with API-level enforcement).
+  const systemContent = systemPrompt || undefined;
 
   let response: Response | null = null;
   let lastError = "";
@@ -279,6 +322,14 @@ async function invokeClaudeAPI(params: InvokeParams): Promise<InvokeResult> {
       messages: anthropicMessages,
     };
     if (systemContent) body.system = systemContent;
+    if (needsJson) {
+      body.tools = [{
+        name: toolName,
+        description: "Return the structured response by invoking this tool. The tool's input_schema defines the required shape.",
+        input_schema: toolInputSchema,
+      }];
+      body.tool_choice = { type: "tool", name: toolName };
+    }
 
     // 5-minute timeout to prevent "fetch failed" on long generations
     const controller = new AbortController();
@@ -301,8 +352,18 @@ async function invokeClaudeAPI(params: InvokeParams): Promise<InvokeResult> {
 
     if (response.ok) break; // success — stop trying models
 
-    const errData = await response.json() as any;
-    lastError = errData?.error?.message ?? response.statusText;
+    // Extract error message from response body. Wrap in try/catch
+    // because some non-200 responses (e.g., HTML error pages from a
+    // proxy or upstream CDN) are not JSON-parseable; falling back to
+    // statusText keeps the retry-on-404/500/529 logic reachable.
+    let errMessage: string = response.statusText;
+    try {
+      const errData = await response.json() as any;
+      errMessage = errData?.error?.message ?? response.statusText;
+    } catch {
+      // Non-JSON error body — keep statusText.
+    }
+    lastError = errMessage;
 
     // Auto-retry once on 529 (overloaded) with 10s delay
     if (response.status === 529) {
@@ -342,6 +403,28 @@ async function invokeClaudeAPI(params: InvokeParams): Promise<InvokeResult> {
 
   const claudeResponse = await response.json() as any;
 
+  // Extract content. For tool-use callers, find the tool_use block in
+  // the response's content array and JSON.stringify its `input` field
+  // back into the InvokeResult.content slot — preserves the existing
+  // caller contract that response.choices[0].message.content is a
+  // JSON-stringified object that callers can JSON.parse. For plain-text
+  // callers, fall back to the first text block.
+  let contentString: string;
+  if (needsJson) {
+    const blocks: Array<{ type?: string; input?: unknown; text?: string }> = claudeResponse.content || [];
+    const toolUseBlock = blocks.find(b => b?.type === "tool_use");
+    if (!toolUseBlock || toolUseBlock.input == null) {
+      throw new Error(
+        `Anthropic tool-use response missing tool_use block. ` +
+        `Got block types: [${blocks.map(b => b?.type ?? "unknown").join(",")}]. ` +
+        `model=${claudeResponse.model} stop_reason=${claudeResponse.stop_reason}`
+      );
+    }
+    contentString = JSON.stringify(toolUseBlock.input);
+  } else {
+    contentString = claudeResponse.content?.[0]?.text ?? "";
+  }
+
   // Convert Anthropic response format to OpenAI-compatible InvokeResult
   return {
     id: claudeResponse.id,
@@ -353,7 +436,7 @@ async function invokeClaudeAPI(params: InvokeParams): Promise<InvokeResult> {
         index: 0,
         message: {
           role: "assistant",
-          content: claudeResponse.content?.[0]?.text ?? "",
+          content: contentString,
         },
         finish_reason: claudeResponse.stop_reason === "end_turn" ? "stop" : claudeResponse.stop_reason,
       },
