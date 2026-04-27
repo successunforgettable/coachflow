@@ -329,23 +329,29 @@ Return JSON with these exact fields:
         throw dbErr;
       }
 
-      // Return the expanded fields so the review screen can display them
-      // Always include all generated fields (even if not saved to DB) so frontend can pre-fill form
+      // Return the expanded fields so the review screen can display them.
+      // Tool-use enforces every required field server-side at the LLM API
+      // level, so `expanded.X` and `updateFields.X` are guaranteed strings
+      // here — the previous `|| ''` and chained-fallback patterns were
+      // dead code (unreachable under tool-use enforcement). Direct reads
+      // are the post-migration shape.
       const expandedResult = {
-        painPoints: updateFields.painPoints || '',
-        falseBeliefsVsRealReasons: updateFields.falseBeliefsVsRealReasons || '',
-        failedSolutions: updateFields.failedSolutions || '',
-        hiddenReasons: updateFields.hiddenReasons || '',
-        whyProblemExists: updateFields.whyProblemExists || '',
-        riskReversal: updateFields.riskReversal || '',
-        avatarName: updateFields.avatarName || '',
-        avatarTitle: updateFields.avatarTitle || '',
-        uniqueMechanismSuggestion: updateFields.uniqueMechanismSuggestion || '',
-        hvcoTopic: updateFields.hvcoTopic || '',
-        // Include user-visible generated fields even if they weren't saved (already had content)
-        targetCustomer: trunc(expanded.targetCustomer, 65535) || updateFields.targetCustomer || '',
-        mainBenefit: trunc(expanded.mainBenefit, 65535) || updateFields.mainBenefit || '',
-        description: trunc(expanded.description, 65535) || updateFields.description || '',
+        painPoints: updateFields.painPoints,
+        falseBeliefsVsRealReasons: updateFields.falseBeliefsVsRealReasons,
+        failedSolutions: updateFields.failedSolutions,
+        hiddenReasons: updateFields.hiddenReasons,
+        whyProblemExists: updateFields.whyProblemExists,
+        riskReversal: updateFields.riskReversal,
+        avatarName: updateFields.avatarName,
+        avatarTitle: updateFields.avatarTitle,
+        uniqueMechanismSuggestion: updateFields.uniqueMechanismSuggestion,
+        hvcoTopic: updateFields.hvcoTopic,
+        // User-visible fields: include the LLM's freshly-generated value
+        // for the review screen even when the DB write skipped them
+        // (because the user already had content in those columns).
+        targetCustomer: trunc(expanded.targetCustomer, 65535),
+        mainBenefit: trunc(expanded.mainBenefit, 65535),
+        description: trunc(expanded.description, 65535),
       };
       return {
         serviceId: input.serviceId,

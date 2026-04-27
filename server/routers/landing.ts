@@ -76,10 +76,12 @@ Return JSON exactly like this:
         adAngle: string;
       };
 
+      // Tool-use enforces every required field server-side; the previous
+      // `?? ""` fallbacks were unreachable under that enforcement.
       return {
-        headline: parsed.headline ?? "",
-        icpHook: parsed.icpHook ?? "",
-        adAngle: parsed.adAngle ?? "",
+        headline: parsed.headline,
+        icpHook: parsed.icpHook,
+        adAngle: parsed.adAngle,
       };
     }),
 });
