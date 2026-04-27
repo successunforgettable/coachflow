@@ -27,20 +27,12 @@
  */
 
 import { invokeLLM } from "./llm";
-import { detectJsonLeak } from "./jsonLeakDetector";
 import {
   BANNED_HEADLINE_PATTERNS,
   META_COMPLIANCE_NOTES,
   scoreAdContent,
 } from "./copywritingRules";
 import { checkCompliance, type ComplianceIssue } from "../lib/complianceChecker";
-
-// Top-level fields the rewrite engine expects in the LLM JSON response.
-// Used by the Option-A leak detector — if `rewrite` contains the substring
-// `"reasoning":` or vice versa, the model escaped a closing quote and
-// continued writing into the current field. Removed when Option B
-// (tool-use migration) ships.
-const REWRITE_RESPONSE_FIELDS = ["rewrite", "reasoning"] as const;
 
 export type RewriteContentType = "headline" | "body" | "link";
 
@@ -248,14 +240,18 @@ export async function rewriteForCompliance(
       continue;
     }
 
-    // Option A — schema-aware leak check. If `rewrite` contains
-    // `"reasoning":` (or vice versa), the model escaped a closing quote
-    // and the field's "content" is the next field's syntax leaking in.
-    // Treat as a failed attempt; the existing retry loop catches it.
-    // Removed when Option B (tool-use migration) ships.
-    const leak = detectJsonLeak(parsed, REWRITE_RESPONSE_FIELDS);
-    if (leak.leaked) {
-      lastError = `Attempt ${attempt}: JSON-leak detected (field=${leak.field}, pattern=${leak.pattern}).`;
+    // Runtime type-check on the rewrite-engine response shape. The
+    // production landing-page audit (JSON_TYPE inspection across 22
+    // rows) confirmed the LLM sometimes emits nested objects where the
+    // schema declared `type: "string"`. The rewrite engine uses
+    // {type:"json_object"} so its schema isn't even nominally enforced;
+    // the type-check below is the content-safety layer. Permanent —
+    // Option B's tool-use migration enforces type at the API level, but
+    // a no-cost runtime check is belt-and-braces and stays.
+    if (typeof parsed.rewrite !== "string" || typeof parsed.reasoning !== "string") {
+      const rewriteType = typeof parsed.rewrite;
+      const reasoningType = typeof parsed.reasoning;
+      lastError = `Attempt ${attempt}: Schema violation — rewrite type=${rewriteType}, reasoning type=${reasoningType}.`;
       console.warn(`[complianceRewrite] ${lastError}`);
       continue;
     }

@@ -1,25 +1,29 @@
 import { invokeLLM } from "./_core/llm";
-import { detectJsonLeak } from "./_core/jsonLeakDetector";
 import type { LandingPageContent } from "../drizzle/schema";
 import { BANNED_COPYWRITING_WORDS, META_COMPLIANCE_NOTES, truncateQuote } from "./_core/copywritingRules";
 
-// Top-level required fields in the landing-page schema (kept in lock-step
-// with the json_schema declared inside generateLandingPageAngle). Used by
-// the Option-A leak detector to flag responses where a string field's
-// value contains another field's key syntax — see
-// server/_core/jsonLeakDetector.ts. Removed when Option B (tool-use
-// migration) ships.
-const LP_SCHEMA_FIELDS = [
+// The 12 simple-string fields in the landing-page schema. Each is
+// declared `type: "string"` in the json_schema below; production data
+// (JSON_TYPE inspection on 22 rows) confirmed the LLM sometimes emits
+// these as nested {body, headline} objects instead of flat strings,
+// which previously slipped through three layers (JSON.parse, the
+// validated block's `||` fallback, MySQL JSON column storage) and
+// reached the renderer as visible JSON syntax. The runtime typeof
+// check below is the content-safety layer that prevents this; it is
+// permanent and survives the planned Option B tool-use migration
+// (tool-use enforces type at the API level, but a no-cost runtime
+// check is belt-and-braces — kept).
+const LP_STRING_SCHEMA_FIELDS = [
   "eyebrowHeadline", "mainHeadline", "subheadline", "primaryCta",
-  "asSeenIn", "quizSection", "problemAgitation", "solutionIntro",
-  "whyOldFail", "uniqueMechanism", "testimonials", "insiderAdvantages",
-  "scarcityUrgency", "shockingStat", "timeSavingBenefit", "consultationOutline",
+  "problemAgitation", "solutionIntro", "whyOldFail", "uniqueMechanism",
+  "insiderAdvantages", "scarcityUrgency", "shockingStat", "timeSavingBenefit",
 ] as const;
 
-// Option A — retry up to 3 attempts when the LLM emits a JSON-leak
-// corrupted response. Bounded retry: a hard cap that lets the function
-// throw cleanly rather than block forever or silently store corrupt data.
-const LP_LEAK_MAX_ATTEMPTS = 3;
+// Bounded retry on schema-violating model output. Three attempts gives
+// the model two retries to produce schema-conforming output before
+// throwing; if all three return at least one non-string field, we
+// fail the generation rather than store structurally corrupt content.
+const LP_SCHEMA_RETRY_MAX_ATTEMPTS = 3;
 
 // Angle-specific prompt modifiers based on industry research
 const ANGLE_PROMPTS = {
@@ -180,11 +184,13 @@ Make it compelling, benefit-driven, and conversion-focused.
 Use direct response copywriting principles: pain agitation, unique mechanism, social proof, scarcity, and strong CTAs.
 `;
 
-  // Option A — retry-on-JSON-leak. Wraps the LLM call + parse + validate
-  // in a bounded retry; if the model emits a leak-corrupted response we
-  // discard it and try again rather than storing it. Removed when Option
-  // B (tool-use migration) ships.
-  for (let leakAttempt = 1; leakAttempt <= LP_LEAK_MAX_ATTEMPTS; leakAttempt++) {
+  // Schema-violation retry. Wraps the LLM call + parse + type-check in a
+  // bounded loop; if the model emits a non-string value for any field
+  // declared as type:"string", we discard it and retry rather than store
+  // structurally corrupt content. Permanent — Option B's tool-use
+  // migration enforces types server-side, this runtime check stays as
+  // belt-and-braces.
+  for (let leakAttempt = 1; leakAttempt <= LP_SCHEMA_RETRY_MAX_ATTEMPTS; leakAttempt++) {
   const response = await invokeLLM({
     messages: [
       { role: "system", content: `You are a world-class direct response copywriter specializing in high-converting landing pages. You engineer an emotional arc through each page — every section serves a specific emotional purpose, moving the reader from 'seen and understood' through 'named and validated', 'cost of inaction', 'hope', 'different from what they've tried', 'safe to believe', and finally 'obvious next step'. You write in the customer's own language — the words they use with a close friend, not marketing language. FORMATTING RULE: Return plain text only inside all JSON string values. No markdown. No asterisks (*). No hash symbols (#). No bold or italic formatting of any kind. No bullet markers. Just clean readable sentences and paragraphs.\n\n${META_COMPLIANCE_NOTES}` },
@@ -280,18 +286,26 @@ Use direct response copywriting principles: pain agitation, unique mechanism, so
   const cleaned = content.replace(/^```json\s*|^```\s*|\s*```$/gm, '').trim();
   const parsed = JSON.parse(cleaned);
 
-  // Option A — schema-aware leak check before we trust the parse. If a
-  // top-level string field's value contains another field's key syntax,
-  // the model escaped a closing quote and continued writing into the
-  // current field. Retry rather than store corrupt content.
-  const leak = detectJsonLeak(parsed, LP_SCHEMA_FIELDS);
-  if (leak.leaked) {
-    console.warn(
-      `[landingPageGenerator] JSON-leak detected on attempt ${leakAttempt}/${LP_LEAK_MAX_ATTEMPTS} ` +
-      `(angle=${angle}, field=${leak.field}, pattern=${leak.pattern}). Retrying.`,
-    );
-    continue;
+  // Runtime type-check on schema-declared string fields. Production
+  // evidence (JSON_TYPE inspection across 22 rows: 13 corrupted, 59%)
+  // shows the LLM frequently emits {body, headline} nested objects for
+  // long-form sections where the schema declares `type: "string"`.
+  // JSON.parse, the validated-block's `||` fallback, and MySQL's JSON
+  // column all accept this without complaint, so the corruption surfaces
+  // only at render time. Catch it here.
+  let schemaViolated = false;
+  for (const field of LP_STRING_SCHEMA_FIELDS) {
+    const got = (parsed as Record<string, unknown>)[field];
+    if (typeof got !== "string") {
+      console.warn(
+        `[landingPageGenerator] Schema violation on attempt ${leakAttempt}/${LP_SCHEMA_RETRY_MAX_ATTEMPTS} ` +
+        `(angle=${angle}, field=${field}, gotType=${got === null ? "null" : typeof got}). Retrying.`,
+      );
+      schemaViolated = true;
+      break;
+    }
   }
+  if (schemaViolated) continue;
 
   // Validate and add fallbacks for all required fields
   const validated: LandingPageContent = {
@@ -341,7 +355,7 @@ Use direct response copywriting principles: pain agitation, unique mechanism, so
   }
 
   throw new Error(
-    `Landing page generation failed for angle "${angle}": all ${LP_LEAK_MAX_ATTEMPTS} attempts produced JSON-leak corruption. Aborting rather than storing corrupt content.`,
+    `Landing page generation failed for angle "${angle}": all ${LP_SCHEMA_RETRY_MAX_ATTEMPTS} attempts produced schema-violating output. Aborting rather than storing corrupt content.`,
   );
 }
 
