@@ -232,6 +232,13 @@ const assertApiKey = () => {
 async function invokeClaudeAPI(params: InvokeParams): Promise<InvokeResult> {
   const { messages, responseFormat, response_format, outputSchema, output_schema } = params;
 
+  // I1 diagnostic instrumentation — captures per-call latency + Anthropic's
+  // self-reported metadata (model, output_tokens, stop_reason) so we can
+  // diagnose the post-tool-use latency regression observed on e51aeed
+  // (257s vs 60-90s baseline). Logged once per successful call below.
+  // Removed when Commit B' ships.
+  const fetchStartedAt = Date.now();
+
   // Separate system message from conversation messages
   const systemMessages = messages.filter(m => m.role === "system");
   const conversationMessages = messages.filter(m => m.role !== "system");
@@ -341,6 +348,20 @@ async function invokeClaudeAPI(params: InvokeParams): Promise<InvokeResult> {
   }
 
   const claudeResponse = await response.json() as any;
+
+  // I1 diagnostic instrumentation — log per-call latency + Anthropic
+  // metadata. End-to-end wall-time INCLUDES any model-fallback retries
+  // and the 529-overloaded retry; if the number is inflated, the per-
+  // attempt breakdown can be inferred from elapsed time vs single-call
+  // expected latency. Removed in Commit B'.
+  const wallMs = Date.now() - fetchStartedAt;
+  console.log(
+    `[invokeLLM] model=${claudeResponse.model ?? "?"} ` +
+    `output_tokens=${claudeResponse.usage?.output_tokens ?? "?"} ` +
+    `input_tokens=${claudeResponse.usage?.input_tokens ?? "?"} ` +
+    `stop_reason=${claudeResponse.stop_reason ?? "?"} ` +
+    `wall_ms=${wallMs}`,
+  );
 
   // Convert Anthropic response format to OpenAI-compatible InvokeResult
   return {
