@@ -311,51 +311,16 @@ Use direct response copywriting principles: pain agitation, unique mechanism, so
   }
   if (schemaViolated) continue;
 
-  // Validate and add fallbacks for all required fields
-  const validated: LandingPageContent = {
-    eyebrowHeadline: parsed.eyebrowHeadline || 'SPECIAL OFFER',
-    mainHeadline: parsed.mainHeadline || 'Transform Your Results Today',
-    subheadline: parsed.subheadline || 'Discover how to achieve your goals faster than ever before',
-    primaryCta: parsed.primaryCta || 'Get Started Now',
-    asSeenIn: Array.isArray(parsed.asSeenIn) && parsed.asSeenIn.length > 0 ? parsed.asSeenIn : ['Featured'],
-    quizSection: parsed.quizSection || {
-      question: 'What is your biggest challenge?',
-      options: ['Option A', 'Option B', 'Option C', 'Option D'],
-      answer: 'Option A'
-    },
-    problemAgitation: parsed.problemAgitation || 'Many people struggle with this challenge every day.',
-    solutionIntro: parsed.solutionIntro || 'There is a proven solution that works.',
-    whyOldFail: parsed.whyOldFail || 'Traditional methods don\'t work because they miss the core issue.',
-    uniqueMechanism: parsed.uniqueMechanism || 'Our unique system addresses the root cause.',
-    testimonials: Array.isArray(parsed.testimonials) && parsed.testimonials.length > 0 ? parsed.testimonials : [
-      {
-        headline: 'Life-Changing Results',
-        quote: 'This completely transformed how I approach my goals.',
-        name: 'A Satisfied Customer',
-        location: 'Worldwide'
-      }
-    ],
-    insiderAdvantages: parsed.insiderAdvantages || 'Get exclusive access to proven strategies.',
-    scarcityUrgency: parsed.scarcityUrgency || 'Limited spots available this month.',
-    shockingStat: parsed.shockingStat || 'Studies show this approach works 10x better.',
-    timeSavingBenefit: parsed.timeSavingBenefit || 'Save hours every week with this system.',
-    consultationOutline: Array.isArray(parsed.consultationOutline) && parsed.consultationOutline.length > 0 ? parsed.consultationOutline : [
-      {
-        title: 'Assessment',
-        description: 'We evaluate your current situation'
-      },
-      {
-        title: 'Strategy',
-        description: 'We create a custom plan for you'
-      },
-      {
-        title: 'Implementation',
-        description: 'We help you execute and succeed'
-      }
-    ]
-  };
-
-  return validated;
+  // No more silent-fallback layer. The previous validated-block pattern
+  // (`parsed.X || 'fallback content'`) hid 5 weeks of model omissions
+  // by substituting placeholder strings — primaryCta omitted on 100% of
+  // production generations, masked as "Get Started Now"; OBJECT-typed
+  // body sections rendered as visible JSON syntax. Under invokeLLM's
+  // tool-use migration, every required field is enforced server-side
+  // by Anthropic before the response returns. The typeof retry loop
+  // above is belt-and-braces over that enforcement. Past this point,
+  // `parsed` matches LandingPageContent by contract.
+  return parsed as LandingPageContent;
   }
 
   throw new Error(
