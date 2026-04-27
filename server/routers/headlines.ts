@@ -141,10 +141,10 @@ Requirements:
 - Highlight the unique mechanism as the discovery
 - Promise the desired outcome as the result
 - Each headline should be 15-25 words
-- Return ONLY a JSON array of 5 headline strings, nothing else
+- Return ONLY a JSON object with a "headlines" field containing the array of 5 headline strings, nothing else
 
 Example output format:
-["How a Weekend Vegas Bender Led an Aspiring Crypto Newbie to Discover a Revolutionary 9-Step Blueprint that Generates $10k Monthly!", "How an Embarrassing Margin Call Pushed a Skeptical 30-Something Day-Trader to Unearth a Breakthrough System that Multiplies Crypto Earnings!", ...]`,
+{"headlines": ["How a Weekend Vegas Bender Led an Aspiring Crypto Newbie to Discover a Revolutionary 9-Step Blueprint that Generates $10k Monthly!", "How an Embarrassing Margin Call Pushed a Skeptical 30-Something Day-Trader to Unearth a Breakthrough System that Multiplies Crypto Earnings!", ...]}`,
 
   eyebrow: `Generate 5 three-part headlines with eyebrow, main headline, and subheadline:
 
@@ -162,10 +162,10 @@ Requirements:
 - Eyebrow should establish authority/credibility
 - Main headline should feature the unique mechanism prominently
 - Subheadline should address 3 pain points from pressing problem
-- Return ONLY a JSON array of 5 objects with this structure: {"eyebrow": "...", "main": "...", "sub": "..."}
+- Return ONLY a JSON object with a "headlines" field containing the array of 5 objects with this structure: {"eyebrow": "...", "main": "...", "sub": "..."}
 
 Example output format:
-[{"eyebrow": "Award-winning Mind Coach Unveils", "main": "9-Step Crypto Wealth System Turns Beginners into $10k/Month Moneymakers", "sub": "Without Endless Hours Learning or Losing Money on Bad Trades"}, ...]`,
+{"headlines": [{"eyebrow": "Award-winning Mind Coach Unveils", "main": "9-Step Crypto Wealth System Turns Beginners into $10k/Month Moneymakers", "sub": "Without Endless Hours Learning or Losing Money on Bad Trades"}, ...]}`,
 
   question: `Generate 5 question-based headlines that highlight obstacles or mistakes:
 
@@ -181,10 +181,10 @@ Requirements:
 - Focus on hidden obstacles, sneaky pitfalls, or overlooked mistakes
 - Use words like "preventing", "stopping", "sabotaging", "devouring", "sapping"
 - Each question should be 10-20 words
-- Return ONLY a JSON array of 5 question strings, nothing else
+- Return ONLY a JSON object with a "headlines" field containing the array of 5 question strings, nothing else
 
 Example output format:
-["One Sneaky Crypto Pitfall Preventing You from Generating a $10k Monthly Income?", "Could this Commonly Overlooked Crypto Risk be Sapping Your Potential Earnings?", ...]`,
+{"headlines": ["One Sneaky Crypto Pitfall Preventing You from Generating a $10k Monthly Income?", "Could this Commonly Overlooked Crypto Risk be Sapping Your Potential Earnings?", ...]}`,
 
   authority: `Generate 5 authority-based headlines with main headline and subheadline:
 
@@ -201,10 +201,10 @@ Requirements:
 - Authority figure should be credible (award-winning, published, certified, etc.)
 - Action verbs: unearthed, discovered, revealed, disclosed, unveiled
 - Subheadline should debunk 3 old/failed methods
-- Return ONLY a JSON array of 5 objects with this structure: {"main": "...", "sub": "..."}
+- Return ONLY a JSON object with a "headlines" field containing the array of 5 objects with this structure: {"main": "...", "sub": "..."}
 
 Example output format:
-[{"main": "Award-Winning Mind Coach Unearthed Hidden 'Crypto Code' Transforming Newbies into Fortunate Investors", "sub": "This is why day trading, HODLing, and technical analysis have failed to produce consistent crypto income"}, ...]`,
+{"headlines": [{"main": "Award-Winning Mind Coach Unearthed Hidden 'Crypto Code' Transforming Newbies into Fortunate Investors", "sub": "This is why day trading, HODLing, and technical analysis have failed to produce consistent crypto income"}, ...]}`,
 
   urgency: `Generate 5 urgency-based headlines with specific timeframes:
 
@@ -220,11 +220,70 @@ Requirements:
 - Include specific timeframe: "in 30 days", "in 6 months", "in just one month", "under 30 days"
 - Promise the desired outcome
 - Use exciting result language: "skyrocket", "rains", "pull in", "multiply"
-- Return ONLY a JSON array of 5 headline strings, nothing else
+- Return ONLY a JSON object with a "headlines" field containing the array of 5 headline strings, nothing else
 
 Example output format:
-["Unearth Crypto Millionaire Blueprint, and Pull in $10k in Under 30 Days!", "Discover 9-Step Program That Rains Passive-Income in 6 Months!", ...]`,
+{"headlines": ["Unearth Crypto Millionaire Blueprint, and Pull in $10k in Under 30 Days!", "Discover 9-Step Program That Rains Passive-Income in 6 Months!", ...]}`,
 };
+
+// Per-formula tool-use schemas. Each wraps the formula's array shape inside an
+// `{ headlines: [...] }` object because Anthropic tool-use's input_schema
+// requires top-level type:"object". Three distinct shapes:
+//   - story / question / urgency: array of plain strings
+//   - eyebrow:                    array of {eyebrow, main, sub} objects
+//   - authority:                  array of {main, sub} objects
+const HEADLINE_STRING_ARRAY_SCHEMA = {
+  type: "object" as const,
+  properties: {
+    headlines: { type: "array", items: { type: "string" } },
+  },
+  required: ["headlines"],
+  additionalProperties: false,
+};
+const FORMULA_SCHEMAS = {
+  story: HEADLINE_STRING_ARRAY_SCHEMA,
+  question: HEADLINE_STRING_ARRAY_SCHEMA,
+  urgency: HEADLINE_STRING_ARRAY_SCHEMA,
+  eyebrow: {
+    type: "object" as const,
+    properties: {
+      headlines: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            eyebrow: { type: "string" },
+            main: { type: "string" },
+            sub: { type: "string" },
+          },
+          required: ["eyebrow", "main", "sub"],
+          additionalProperties: false,
+        },
+      },
+    },
+    required: ["headlines"],
+    additionalProperties: false,
+  },
+  authority: {
+    type: "object" as const,
+    properties: {
+      headlines: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            main: { type: "string" },
+            sub: { type: "string" },
+          },
+          required: ["main", "sub"],
+          additionalProperties: false,
+        },
+      },
+    },
+    required: ["headlines"],
+    additionalProperties: false,
+  },
+} as const;
 
 export const headlinesRouter = router({
   // List all headline sets for current user
@@ -411,30 +470,37 @@ export const headlinesRouter = router({
       const allHeadlines: Array<typeof headlines.$inferInsert> = [];
       const countMultiplier = input.powerMode ? 3 : 1; // Power Mode generates 3x more
 
-      // Generate headlines for each formula type
-      for (const [formulaType, promptTemplate] of Object.entries(FORMULA_PROMPTS)) {
-        // Modify prompt to generate 3x more if Power Mode is enabled
-        const modifiedTemplate = promptTemplate.replace(/Generate 5/g, `Generate ${5 * countMultiplier}`);
-        // Item 1.3 — use resolved values (server fallback from service record)
-        const resolvedPressingProblem = autoPopData.resolvedPressingProblem ?? input.pressingProblem;
-        const resolvedDesiredOutcome = autoPopData.resolvedDesiredOutcome ?? input.desiredOutcome;
-        const resolvedUniqueMechanism = autoPopData.resolvedUniqueMechanism ?? input.uniqueMechanism;
-        const prompt = modifiedTemplate
-          .replace(/{targetMarket}/g, input.targetMarket)
-          .replace(/{pressingProblem}/g, resolvedPressingProblem)
-          .replace(/{desiredOutcome}/g, resolvedDesiredOutcome)
-          .replace(/{uniqueMechanism}/g, resolvedUniqueMechanism);
+      // Generate headlines for each formula type in PARALLEL via tool-use.
+      // Each formula's invokeLLM call passes a wrapped `{headlines: [...]}`
+      // schema matching its expected output shape; Anthropic's tool-use
+      // enforces the schema server-side. Parallelism brings wall-time from
+      // ~150-300s sequential to ~30-60s (max of 5 calls). allHeadlines
+      // is push'd to concurrently — JS is single-threaded so .push is
+      // atomic and safe across the parallel branches.
+      await Promise.all(
+        Object.entries(FORMULA_PROMPTS).map(async ([formulaType, promptTemplate]) => {
+          // Modify prompt to generate 3x more if Power Mode is enabled
+          const modifiedTemplate = promptTemplate.replace(/Generate 5/g, `Generate ${5 * countMultiplier}`);
+          // Item 1.3 — use resolved values (server fallback from service record)
+          const resolvedPressingProblem = autoPopData.resolvedPressingProblem ?? input.pressingProblem;
+          const resolvedDesiredOutcome = autoPopData.resolvedDesiredOutcome ?? input.desiredOutcome;
+          const resolvedUniqueMechanism = autoPopData.resolvedUniqueMechanism ?? input.uniqueMechanism;
+          const prompt = modifiedTemplate
+            .replace(/{targetMarket}/g, input.targetMarket)
+            .replace(/{pressingProblem}/g, resolvedPressingProblem)
+            .replace(/{desiredOutcome}/g, resolvedDesiredOutcome)
+            .replace(/{uniqueMechanism}/g, resolvedUniqueMechanism);
 
-        // Inject SOT as outermost layer, then ICP — Item 1.2 + 1.4
-        const promptWithIcp = icpContext ? prompt.replace(/\n\nGenerate /, `\n\n${icpContext}\n\nGenerate `) : prompt;
-        const promptWithSot = sotContext ? `${sotContext}\n\n${promptWithIcp}` : promptWithIcp;
+          // Inject SOT as outermost layer, then ICP — Item 1.2 + 1.4
+          const promptWithIcp = icpContext ? prompt.replace(/\n\nGenerate /, `\n\n${icpContext}\n\nGenerate `) : prompt;
+          const promptWithSot = sotContext ? `${sotContext}\n\n${promptWithIcp}` : promptWithIcp;
 
-        try {
-          const response = await invokeLLM({
-            messages: [
-              {
-                role: "system",
-                content: `You are an expert direct response copywriter specialising in Meta ad headlines for coaches, consultants and speakers. You apply a THREE-QUESTION TEST to every headline before including it:
+          try {
+            const response = await invokeLLM({
+              messages: [
+                {
+                  role: "system",
+                  content: `You are an expert direct response copywriter specialising in Meta ad headlines for coaches, consultants and speakers. You apply a THREE-QUESTION TEST to every headline before including it:
 1. Does it name a specific person in a specific situation? (Not "coaches" but "coaches who've been running ads for 3 months with zero leads")
 2. Does it promise a specific outcome — not a vague benefit? (Not "more clients" but "8 discovery calls booked in the next 14 days")
 3. Could this headline ONLY be written for THIS service? (If it works equally well for any coach, rewrite it)
@@ -446,81 +512,90 @@ BANNED OPENERS AND PHRASES — never generate headlines using these patterns:
 MANDATORY: Every headline must contain at least ONE word that comes directly from the ICP's pain language, desire language, or niche-specific vocabulary — a word that signals to the ideal customer "this was written for me specifically."
 
 Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES}`,
+                },
+                { role: "user", content: promptWithSot },
+              ],
+              response_format: {
+                type: "json_schema",
+                json_schema: {
+                  name: `headlines_${formulaType}`,
+                  strict: true,
+                  schema: FORMULA_SCHEMAS[formulaType as keyof typeof FORMULA_SCHEMAS],
+                },
               },
-              { role: "user", content: promptWithSot },
-            ],
-          });
+            });
 
-          const content = response.choices[0].message.content;
-          if (typeof content !== "string") {
-            throw new Error("Invalid LLM response");
-          }
-          const parsed = JSON.parse(stripMarkdownJson(content));
+            const content = response.choices[0].message.content;
+            if (typeof content !== "string") {
+              throw new Error("Invalid LLM response");
+            }
+            const parsed = JSON.parse(stripMarkdownJson(content));
 
-          // Handle different formula types
-          if (formulaType === "story" || formulaType === "question" || formulaType === "urgency") {
-            // Simple string array
-            parsed.forEach((headline: string) => {
-              allHeadlines.push({
-                userId: ctx.user.id,
-                serviceId: input.serviceId,
-                campaignId: input.campaignId,
-                headlineSetId,
-                formulaType: formulaType as any,
-                headline,
-                subheadline: null,
-                eyebrow: null,
-                targetMarket: input.targetMarket,
-                pressingProblem: input.pressingProblem,
-                desiredOutcome: input.desiredOutcome,
-                uniqueMechanism: input.uniqueMechanism,
+            // Handle different formula types
+            if (formulaType === "story" || formulaType === "question" || formulaType === "urgency") {
+              // Simple string array
+              parsed.headlines.forEach((headline: string) => {
+                allHeadlines.push({
+                  userId: ctx.user.id,
+                  serviceId: input.serviceId,
+                  campaignId: input.campaignId,
+                  headlineSetId,
+                  formulaType: formulaType as any,
+                  headline,
+                  subheadline: null,
+                  eyebrow: null,
+                  targetMarket: input.targetMarket,
+                  pressingProblem: input.pressingProblem,
+                  desiredOutcome: input.desiredOutcome,
+                  uniqueMechanism: input.uniqueMechanism,
+                });
               });
-            });
-          } else if (formulaType === "eyebrow") {
-            // Eyebrow + main + sub
-            parsed.forEach((item: { eyebrow: string; main: string; sub: string }) => {
-              allHeadlines.push({
-                userId: ctx.user.id,
-                serviceId: input.serviceId,
-                campaignId: input.campaignId,
-                headlineSetId,
-                formulaType: "eyebrow",
-                headline: item.main,
-                subheadline: item.sub,
-                eyebrow: item.eyebrow,
-                targetMarket: input.targetMarket,
-                pressingProblem: input.pressingProblem,
-                desiredOutcome: input.desiredOutcome,
-                uniqueMechanism: input.uniqueMechanism,
+            } else if (formulaType === "eyebrow") {
+              // Eyebrow + main + sub
+              parsed.headlines.forEach((item: { eyebrow: string; main: string; sub: string }) => {
+                allHeadlines.push({
+                  userId: ctx.user.id,
+                  serviceId: input.serviceId,
+                  campaignId: input.campaignId,
+                  headlineSetId,
+                  formulaType: "eyebrow",
+                  headline: item.main,
+                  subheadline: item.sub,
+                  eyebrow: item.eyebrow,
+                  targetMarket: input.targetMarket,
+                  pressingProblem: input.pressingProblem,
+                  desiredOutcome: input.desiredOutcome,
+                  uniqueMechanism: input.uniqueMechanism,
+                });
               });
-            });
-          } else if (formulaType === "authority") {
-            // Main + sub
-            parsed.forEach((item: { main: string; sub: string }) => {
-              allHeadlines.push({
-                userId: ctx.user.id,
-                serviceId: input.serviceId,
-                campaignId: input.campaignId,
-                headlineSetId,
-                formulaType: "authority",
-                headline: item.main,
-                subheadline: item.sub,
-                eyebrow: null,
-                targetMarket: input.targetMarket,
-                pressingProblem: input.pressingProblem,
-                desiredOutcome: input.desiredOutcome,
-                uniqueMechanism: input.uniqueMechanism,
+            } else if (formulaType === "authority") {
+              // Main + sub
+              parsed.headlines.forEach((item: { main: string; sub: string }) => {
+                allHeadlines.push({
+                  userId: ctx.user.id,
+                  serviceId: input.serviceId,
+                  campaignId: input.campaignId,
+                  headlineSetId,
+                  formulaType: "authority",
+                  headline: item.main,
+                  subheadline: item.sub,
+                  eyebrow: null,
+                  targetMarket: input.targetMarket,
+                  pressingProblem: input.pressingProblem,
+                  desiredOutcome: input.desiredOutcome,
+                  uniqueMechanism: input.uniqueMechanism,
+                });
               });
+            }
+          } catch (error) {
+            console.error(`Failed to generate ${formulaType} headlines:`, error);
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message: `Failed to generate ${formulaType} headlines`,
             });
           }
-        } catch (error) {
-          console.error(`Failed to generate ${formulaType} headlines:`, error);
-          throw new TRPCError({
-            code: "INTERNAL_SERVER_ERROR",
-            message: `Failed to generate ${formulaType} headlines`,
-          });
-        }
-      }
+        })
+      );
 
       // Check compliance for all headlines and add compliance data.
       // violationReasons is the ComplianceIssue[].reason list — stored so the
@@ -644,32 +719,49 @@ Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES
           const headlineSetId = nanoid();
           const allHeadlines: Array<typeof headlines.$inferInsert> = [];
 
-          for (const [formulaType, promptTemplate] of Object.entries(FORMULA_PROMPTS)) {
-            const modifiedTemplate = (promptTemplate as string).replace(/Generate 5/g, `Generate ${5 * countMultiplier}`);
-            const resolvedPressingProblem = capturedAutoPopData.resolvedPressingProblem ?? capturedInput.pressingProblem;
-            const resolvedDesiredOutcome = capturedAutoPopData.resolvedDesiredOutcome ?? capturedInput.desiredOutcome;
-            const resolvedUniqueMechanism = capturedAutoPopData.resolvedUniqueMechanism ?? capturedInput.uniqueMechanism;
-            const prompt = modifiedTemplate
-              .replace(/{targetMarket}/g, capturedInput.targetMarket)
-              .replace(/{pressingProblem}/g, resolvedPressingProblem)
-              .replace(/{desiredOutcome}/g, resolvedDesiredOutcome)
-              .replace(/{uniqueMechanism}/g, resolvedUniqueMechanism);
-            const promptWithIcp = capturedIcpContext ? prompt.replace(/\n\nGenerate /, `\n\n${capturedIcpContext}\n\nGenerate `) : prompt;
-            const promptWithSot = capturedSotContext ? `${capturedSotContext}\n\n${promptWithIcp}` : promptWithIcp;
+          // 5 formulas in parallel via tool-use; mirror of the sync
+          // generate path. ~30-60s wall-time vs ~150-300s sequential.
+          await Promise.all(
+            Object.entries(FORMULA_PROMPTS).map(async ([formulaType, promptTemplate]) => {
+              const modifiedTemplate = (promptTemplate as string).replace(/Generate 5/g, `Generate ${5 * countMultiplier}`);
+              const resolvedPressingProblem = capturedAutoPopData.resolvedPressingProblem ?? capturedInput.pressingProblem;
+              const resolvedDesiredOutcome = capturedAutoPopData.resolvedDesiredOutcome ?? capturedInput.desiredOutcome;
+              const resolvedUniqueMechanism = capturedAutoPopData.resolvedUniqueMechanism ?? capturedInput.uniqueMechanism;
+              const prompt = modifiedTemplate
+                .replace(/{targetMarket}/g, capturedInput.targetMarket)
+                .replace(/{pressingProblem}/g, resolvedPressingProblem)
+                .replace(/{desiredOutcome}/g, resolvedDesiredOutcome)
+                .replace(/{uniqueMechanism}/g, resolvedUniqueMechanism);
+              const promptWithIcp = capturedIcpContext ? prompt.replace(/\n\nGenerate /, `\n\n${capturedIcpContext}\n\nGenerate `) : prompt;
+              const promptWithSot = capturedSotContext ? `${capturedSotContext}\n\n${promptWithIcp}` : promptWithIcp;
 
-            const response = await invokeLLM({ messages: [{ role: "system", content: `You are an expert direct response copywriter specialising in Meta ad headlines for coaches, consultants and speakers. Every headline must pass the THREE-QUESTION TEST: specific person in specific situation, specific outcome, only writeable for this service. Banned openers: ${BANNED_HEADLINE_PATTERNS.join(', ')}. Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES}` }, { role: "user", content: promptWithSot }] });
-            const content = response.choices[0].message.content;
-            if (typeof content !== "string") throw new Error("Invalid LLM response");
-            const parsed = JSON.parse(stripMarkdownJson(content));
+              const response = await invokeLLM({
+                messages: [
+                  { role: "system", content: `You are an expert direct response copywriter specialising in Meta ad headlines for coaches, consultants and speakers. Every headline must pass the THREE-QUESTION TEST: specific person in specific situation, specific outcome, only writeable for this service. Banned openers: ${BANNED_HEADLINE_PATTERNS.join(', ')}. Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES}` },
+                  { role: "user", content: promptWithSot },
+                ],
+                response_format: {
+                  type: "json_schema",
+                  json_schema: {
+                    name: `headlines_${formulaType}`,
+                    strict: true,
+                    schema: FORMULA_SCHEMAS[formulaType as keyof typeof FORMULA_SCHEMAS],
+                  },
+                },
+              });
+              const content = response.choices[0].message.content;
+              if (typeof content !== "string") throw new Error("Invalid LLM response");
+              const parsed = JSON.parse(stripMarkdownJson(content));
 
-            if (formulaType === "story" || formulaType === "question" || formulaType === "urgency") {
-              parsed.forEach((headline: string) => allHeadlines.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId, headlineSetId, formulaType: formulaType as any, headline, subheadline: null, eyebrow: null, targetMarket: capturedInput.targetMarket, pressingProblem: capturedInput.pressingProblem, desiredOutcome: capturedInput.desiredOutcome, uniqueMechanism: capturedInput.uniqueMechanism }));
-            } else if (formulaType === "eyebrow") {
-              parsed.forEach((item: { eyebrow: string; main: string; sub: string }) => allHeadlines.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId, headlineSetId, formulaType: "eyebrow", headline: item.main, subheadline: item.sub, eyebrow: item.eyebrow, targetMarket: capturedInput.targetMarket, pressingProblem: capturedInput.pressingProblem, desiredOutcome: capturedInput.desiredOutcome, uniqueMechanism: capturedInput.uniqueMechanism }));
-            } else if (formulaType === "authority") {
-              parsed.forEach((item: { main: string; sub: string }) => allHeadlines.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId, headlineSetId, formulaType: "authority", headline: item.main, subheadline: item.sub, eyebrow: null, targetMarket: capturedInput.targetMarket, pressingProblem: capturedInput.pressingProblem, desiredOutcome: capturedInput.desiredOutcome, uniqueMechanism: capturedInput.uniqueMechanism }));
-            }
-          }
+              if (formulaType === "story" || formulaType === "question" || formulaType === "urgency") {
+                parsed.headlines.forEach((headline: string) => allHeadlines.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId, headlineSetId, formulaType: formulaType as any, headline, subheadline: null, eyebrow: null, targetMarket: capturedInput.targetMarket, pressingProblem: capturedInput.pressingProblem, desiredOutcome: capturedInput.desiredOutcome, uniqueMechanism: capturedInput.uniqueMechanism }));
+              } else if (formulaType === "eyebrow") {
+                parsed.headlines.forEach((item: { eyebrow: string; main: string; sub: string }) => allHeadlines.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId, headlineSetId, formulaType: "eyebrow", headline: item.main, subheadline: item.sub, eyebrow: item.eyebrow, targetMarket: capturedInput.targetMarket, pressingProblem: capturedInput.pressingProblem, desiredOutcome: capturedInput.desiredOutcome, uniqueMechanism: capturedInput.uniqueMechanism }));
+              } else if (formulaType === "authority") {
+                parsed.headlines.forEach((item: { main: string; sub: string }) => allHeadlines.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId, headlineSetId, formulaType: "authority", headline: item.main, subheadline: item.sub, eyebrow: null, targetMarket: capturedInput.targetMarket, pressingProblem: capturedInput.pressingProblem, desiredOutcome: capturedInput.desiredOutcome, uniqueMechanism: capturedInput.uniqueMechanism }));
+              }
+            })
+          );
 
           const headlinesWithCompliance = await Promise.all(allHeadlines.map(async (headline) => {
             const complianceResult = await checkCompliance(headline.headline, { userId: capturedUserId, generatorType: 'headlines', trackUsage: true });
