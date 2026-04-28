@@ -13,6 +13,7 @@ import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 import { truncateQuote } from "../_core/copywritingRules";
+import { getCascadeContext } from "../_core/cascadeContext";
 
 // ---------------------------------------------------------------------------
 // Shared email prompt builders — used by generate (sync) and generateAsync.
@@ -340,6 +341,11 @@ export const emailSequencesRouter = router({
         [icp] = await db.select().from(idealCustomerProfiles)
           .where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
       }
+
+      // Cascade context — read upstream campaignKits selections for this ICP
+      // and prepend to the LLM user-message. Must mirror the call in generateAsync.
+      const cascadeContext = await getCascadeContext(ctx.user.id, icp?.id, "email");
+
       const icpContext = icp ? `
 IDEAL CUSTOMER PROFILE — use this to make every line of copy specific and targeted:
 ${icp.pains ? `Their daily pains: ${icp.pains}` : ''}
@@ -435,7 +441,7 @@ You MUST use these exact numbers and real names. Do not fabricate.`
             content:
               "You are an expert email marketer specializing in high-converting email sequences for coaches, speakers, and consultants. You apply the ONE EMAIL ONE JOB principle — every email has a single clear job and the entire email serves only that job. You write curiosity-driven, pattern-interrupt subject lines that are never descriptive. You write short sentences (max 15 words), short paragraphs (max 2 sentences), with line breaks between paragraphs. Every email ends with a mandatory PS that creates curiosity or urgency. Use Russell Brunson's Soap Opera Sequence framework. Always respond with valid JSON.",
           },
-          { role: "user", content: prompt },
+          { role: "user", content: cascadeContext + prompt },
         ],
         response_format: {
           type: "json_schema",
@@ -549,6 +555,10 @@ You MUST use these exact numbers and real names. Do not fabricate.`
       }
       if (!icp) { [icp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1); }
 
+      // Cascade context — fetched during request, captured for setImmediate.
+      // Must mirror the call in generate.
+      const capturedCascadeContext = await getCascadeContext(user.id, icp?.id, "email");
+
       const capturedInput = { ...input };
       const capturedUserId = user.id;
       const capturedService = { ...service };
@@ -596,7 +606,7 @@ You MUST use these exact numbers and real names. Do not fabricate.`
               ? buildEngagementEmailPrompt(bgEmailParams)
               : buildSalesEmailPrompt(bgEmailParams);
 
-          const response = await invokeLLM({ messages: [{ role: "system", content: "You are an expert email marketer specializing in high-converting email sequences for coaches, speakers, and consultants. You apply the ONE EMAIL ONE JOB principle — every email has a single clear job and the entire email serves only that job. You write curiosity-driven, pattern-interrupt subject lines that are never descriptive. You write short sentences (max 15 words), short paragraphs (max 2 sentences), with line breaks between paragraphs. Every email ends with a mandatory PS that creates curiosity or urgency. Use Russell Brunson's Soap Opera Sequence framework. Always respond with valid JSON." }, { role: "user", content: prompt }], response_format: { type: "json_schema", json_schema: { name: "email_sequence", strict: true, schema: { type: "object", properties: { emails: { type: "array", items: { type: "object", properties: { day: { type: "integer" }, subject: { type: "string" }, previewText: { type: "string" }, body: { type: "string" }, cta: { type: "string" }, ps: { type: "string" } }, required: ["day", "subject", "previewText", "body", "cta", "ps"], additionalProperties: false } } }, required: ["emails"], additionalProperties: false } } } });
+          const response = await invokeLLM({ messages: [{ role: "system", content: "You are an expert email marketer specializing in high-converting email sequences for coaches, speakers, and consultants. You apply the ONE EMAIL ONE JOB principle — every email has a single clear job and the entire email serves only that job. You write curiosity-driven, pattern-interrupt subject lines that are never descriptive. You write short sentences (max 15 words), short paragraphs (max 2 sentences), with line breaks between paragraphs. Every email ends with a mandatory PS that creates curiosity or urgency. Use Russell Brunson's Soap Opera Sequence framework. Always respond with valid JSON." }, { role: "user", content: capturedCascadeContext + prompt }], response_format: { type: "json_schema", json_schema: { name: "email_sequence", strict: true, schema: { type: "object", properties: { emails: { type: "array", items: { type: "object", properties: { day: { type: "integer" }, subject: { type: "string" }, previewText: { type: "string" }, body: { type: "string" }, cta: { type: "string" }, ps: { type: "string" } }, required: ["day", "subject", "previewText", "body", "cta", "ps"], additionalProperties: false } } }, required: ["emails"], additionalProperties: false } } } });
 
           const content = response.choices[0].message.content;
           if (typeof content !== "string") throw new Error("Invalid response format from AI");

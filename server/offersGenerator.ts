@@ -80,7 +80,8 @@ export async function generateOfferAngle(
   mainBenefit: string,
   angle: 'godfather' | 'free' | 'dollar',
   offerType: 'standard' | 'premium' | 'vip',
-  socialProof: any
+  socialProof: any,
+  cascadeContext: string = "",
 ): Promise<OfferContent> {
   const offerTypeInstructions = {
     standard: "Entry-level offer with core benefits, good value",
@@ -180,7 +181,7 @@ Return ONLY valid JSON with these exact keys: offerName, valueProposition, prici
         content:
           `You are an expert offer creator specializing in irresistible, loss-aversion-driven offers for coaches, speakers, and consultants. You apply anchoring to make the price feel like a fraction of the value, and you make saying no feel more expensive than saying yes. You write specific outcomes and specific dollar values — never vague promises or unquantified benefits. Always respond with valid JSON.\n\n${META_COMPLIANCE_NOTES}`,
       },
-      { role: "user", content: prompt },
+      { role: "user", content: cascadeContext + prompt },
     ],
     response_format: {
       type: "json_schema",
@@ -230,16 +231,17 @@ export async function generateAllOfferAngles(
   targetCustomer: string,
   mainBenefit: string,
   offerType: 'standard' | 'premium' | 'vip',
-  socialProof: any
+  socialProof: any,
+  cascadeContext: string = "",
 ): Promise<{
   godfather: OfferContent;
   free: OfferContent;
   dollar: OfferContent;
 }> {
   const [godfather, free, dollar] = await Promise.all([
-    generateOfferAngle(productName, productDescription, targetCustomer, mainBenefit, 'godfather', offerType, socialProof),
-    generateOfferAngle(productName, productDescription, targetCustomer, mainBenefit, 'free', offerType, socialProof),
-    generateOfferAngle(productName, productDescription, targetCustomer, mainBenefit, 'dollar', offerType, socialProof),
+    generateOfferAngle(productName, productDescription, targetCustomer, mainBenefit, 'godfather', offerType, socialProof, cascadeContext),
+    generateOfferAngle(productName, productDescription, targetCustomer, mainBenefit, 'free', offerType, socialProof, cascadeContext),
+    generateOfferAngle(productName, productDescription, targetCustomer, mainBenefit, 'dollar', offerType, socialProof, cascadeContext),
   ]);
 
   return { godfather, free, dollar };

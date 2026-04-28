@@ -5,6 +5,7 @@ import { getDb } from "../db";
 import { adCopy, services, campaigns, idealCustomerProfiles, sourceOfTruth, jobs } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { invokeLLM } from "../_core/llm";
+import { getCascadeContext } from "../_core/cascadeContext";
 import { nanoid } from "nanoid";
 import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
@@ -411,6 +412,10 @@ export const adCopyRouter = router({
           .where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
       }
 
+      // Cascade context — read upstream campaignKits selections for this ICP
+      // and prepend to each LLM user-message. Must mirror the call in generateAsync.
+      const cascadeContext = await getCascadeContext(ctx.user.id, icp?.id, "adCopy");
+
       const icpContext = icp ? `
 IDEAL CUSTOMER PROFILE — use this to make every line of copy specific and targeted:
 ${icp.pains ? `Their daily pains: ${icp.pains}` : ''}
@@ -540,7 +545,7 @@ Format as JSON array:
             role: "system",
             content: `${META_COMPLIANCE_RULES}\n\nYou are an expert ad copywriter who specializes in Meta-compliant advertising for coaches, speakers and consultants. Always respond with valid JSON.`,
           },
-          { role: "user", content: headlinePrompt },
+          { role: "user", content: cascadeContext + headlinePrompt },
         ],
         response_format: {
           type: "json_schema",
@@ -627,7 +632,7 @@ Return ONLY the body text as a single string, no JSON wrapper.`;
               role: "system",
               content: `${META_COMPLIANCE_RULES}\n\nYou are an expert ad copywriter who specializes in Meta-compliant advertising for coaches, speakers and consultants.`,
             },
-            { role: "user", content: bodyPrompt },
+            { role: "user", content: cascadeContext + bodyPrompt },
           ],
         });
 
@@ -675,7 +680,7 @@ Format as JSON array:
             role: "system",
             content: `${META_COMPLIANCE_RULES}\n\nYou are an expert ad copywriter who specializes in Meta-compliant advertising for coaches, speakers and consultants. Always respond with valid JSON.`,
           },
-          { role: "user", content: linkPrompt },
+          { role: "user", content: cascadeContext + linkPrompt },
         ],
         response_format: {
           type: "json_schema",
@@ -866,6 +871,10 @@ Format as JSON array:
       if (!icp) { [icp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1); }
       const [sot] = await db.select().from(sourceOfTruth).where(eq(sourceOfTruth.userId, user.id)).limit(1);
 
+      // Cascade context — fetched during request, captured for setImmediate.
+      // Must mirror the call in generate.
+      const capturedCascadeContext = await getCascadeContext(user.id, icp?.id, "adCopy");
+
       const capturedInput = { ...input };
       const capturedUserId = user.id;
       const capturedService = { ...service };
@@ -901,7 +910,7 @@ Format as JSON array:
           const socialProofGuidance = socialProof.hasCustomers || socialProof.hasRating || socialProof.hasReviews ? `REAL SOCIAL PROOF AVAILABLE - Use these verified numbers:\n- ${socialProof.customerCount} total customers\n- ${socialProof.rating} average rating\n- ${socialProof.reviewCount} reviews\nYou MUST use these exact numbers when incorporating social proof. Do not fabricate or inflate.` : `NO SOCIAL PROOF DATA PROVIDED - Use launch-safe alternatives:\n- Focus on benefit claims and outcomes ("Get X result")\n- Use curiosity hooks ("The method that...")\n- Use contrast ("Before vs After")\n- DO NOT mention customer counts, ratings, or reviews\n- DO NOT fabricate testimonials or statistics`;
 
           const headlinePrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ${count} high-converting ad HEADLINES for this service:\n\nService: ${capturedService.name}\nCategory: ${capturedService.category}\nTarget Market: ${capturedInput.targetMarket}\nProduct Category: ${capturedInput.productCategory}\nSpecific Product Name: ${capturedInput.specificProductName}\nPressing Problem: ${resolvedPressingProblem}\nDesired Outcome: ${resolvedDesiredOutcome}\nUnique Mechanism: ${resolvedUniqueMechanism || 'N/A'}\nKey Benefits: ${capturedInput.listBenefits || 'N/A'}\n\n${socialProofGuidance}\n\n${icpContext}\n\nAd Type: ${adTypeContext}\nAd Style: ${capturedInput.adStyle}\nCall To Action: ${capturedInput.adCallToAction}\n\nCreate ${count} attention-grabbing headlines (max 40 characters each).\n\nFormat as JSON array: { "headlines": ["headline 1", ...] }`;
-          const headlineResponse = await invokeLLM({ messages: [{ role: "system", content: `${META_COMPLIANCE_RULES}\n\nYou are an expert ad copywriter who specializes in Meta-compliant advertising for coaches, speakers and consultants. Always respond with valid JSON.` }, { role: "user", content: headlinePrompt }], response_format: { type: "json_schema", json_schema: { name: "ad_headlines", strict: true, schema: { type: "object", properties: { headlines: { type: "array", items: { type: "string" } } }, required: ["headlines"], additionalProperties: false } } } });
+          const headlineResponse = await invokeLLM({ messages: [{ role: "system", content: `${META_COMPLIANCE_RULES}\n\nYou are an expert ad copywriter who specializes in Meta-compliant advertising for coaches, speakers and consultants. Always respond with valid JSON.` }, { role: "user", content: capturedCascadeContext + headlinePrompt }], response_format: { type: "json_schema", json_schema: { name: "ad_headlines", strict: true, schema: { type: "object", properties: { headlines: { type: "array", items: { type: "string" } } }, required: ["headlines"], additionalProperties: false } } } });
           const headlineContent = headlineResponse.choices[0].message.content;
           if (typeof headlineContent !== "string") throw new Error("Invalid headline response");
           const headlineData = JSON.parse(stripMarkdownJson(headlineContent));
@@ -912,7 +921,7 @@ Format as JSON array:
           const bodyPromises = selectedAngles.map(async (angle: string) => {
             const anglePrompt = (BODY_ANGLE_PROMPTS as any)[angle];
             const bodyPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ONE high-converting ad BODY COPY using the ${angle.replace('_', ' ')} angle:\n\nService: ${capturedService.name}\nTarget Market: ${capturedInput.targetMarket}\nPressing Problem: ${resolvedPressingProblem}\nDesired Outcome: ${resolvedDesiredOutcome}\nUnique Mechanism: ${resolvedUniqueMechanism || 'N/A'}\n\n${socialProofGuidance}\n\n${icpContext}\n\nAd Type: ${adTypeContext}\nAd Style: ${capturedInput.adStyle}\nCall To Action: ${capturedInput.adCallToAction}\n\n${anglePrompt}\n\nCreate ONE body copy (125-150 words). End with clear call-to-action: ${capturedInput.adCallToAction}\n\nReturn ONLY the body text as a single string, no JSON wrapper.`;
-            const r = await invokeLLM({ messages: [{ role: "system", content: `${META_COMPLIANCE_RULES}\n\nYou are an expert ad copywriter who specializes in Meta-compliant advertising for coaches, speakers and consultants.` }, { role: "user", content: bodyPrompt }] });
+            const r = await invokeLLM({ messages: [{ role: "system", content: `${META_COMPLIANCE_RULES}\n\nYou are an expert ad copywriter who specializes in Meta-compliant advertising for coaches, speakers and consultants.` }, { role: "user", content: capturedCascadeContext + bodyPrompt }] });
             const rawContent = r.choices[0]?.message?.content;
             if (!rawContent) throw new Error(`Empty response for ${angle} angle`);
             const content = typeof rawContent === 'string' ? rawContent.trim() : '';
@@ -922,7 +931,7 @@ Format as JSON array:
           const bodyData = { bodies: bodyResults.map((r: any) => r.body) };
 
           const linkPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ${count} high-converting LINK DESCRIPTIONS for this service:\n\nService: ${capturedService.name}\nTarget Market: ${capturedInput.targetMarket}\nDesired Outcome: ${resolvedDesiredOutcome}\nCall To Action: ${capturedInput.adCallToAction}\n\n${icpContext}\n\nAd Type: ${adTypeContext}\nAd Style: ${capturedInput.adStyle}\n\nCreate ${count} clear, action-oriented link descriptions (max 30 characters each).\n\nFormat as JSON array: { "links": ["link 1", ...] }`;
-          const linkResponse = await invokeLLM({ messages: [{ role: "system", content: `${META_COMPLIANCE_RULES}\n\nYou are an expert ad copywriter who specializes in Meta-compliant advertising for coaches, speakers and consultants. Always respond with valid JSON.` }, { role: "user", content: linkPrompt }], response_format: { type: "json_schema", json_schema: { name: "ad_links", strict: true, schema: { type: "object", properties: { links: { type: "array", items: { type: "string" } } }, required: ["links"], additionalProperties: false } } } });
+          const linkResponse = await invokeLLM({ messages: [{ role: "system", content: `${META_COMPLIANCE_RULES}\n\nYou are an expert ad copywriter who specializes in Meta-compliant advertising for coaches, speakers and consultants. Always respond with valid JSON.` }, { role: "user", content: capturedCascadeContext + linkPrompt }], response_format: { type: "json_schema", json_schema: { name: "ad_links", strict: true, schema: { type: "object", properties: { links: { type: "array", items: { type: "string" } } }, required: ["links"], additionalProperties: false } } } });
           const linkContent = linkResponse.choices[0].message.content;
           if (typeof linkContent !== "string") throw new Error("Invalid link response");
           const linkData = JSON.parse(stripMarkdownJson(linkContent));
@@ -988,7 +997,7 @@ Format as JSON array:
                     const retryCount = capturedInput.powerMode ? 30 : 15;
                     const retryAdTypeContext = capturedInput.adType === 'lead_gen' ? 'Lead Generation' : 'E-commerce';
                     const retryHeadlinePrompt = `${retrySotContext ? `${retrySotContext}\n\n` : ''}Create ${retryCount} ad headlines for: ${capturedService.name}. Target: ${capturedInput.targetMarket}. Problem: ${retryResolvedPressingProblem}. Outcome: ${retryResolvedDesiredOutcome}. ${retrySocialProofGuidance}\n\nFormat: { "headlines": ["headline 1", ...] }`;
-                    const retryHeadlineResp = await invokeLLM({ messages: [{ role: 'system', content: `${META_COMPLIANCE_RULES}\n\nAlways respond with valid JSON.` }, { role: 'user', content: retryHeadlinePrompt }], response_format: { type: 'json_schema', json_schema: { name: 'ad_headlines', strict: true, schema: { type: 'object', properties: { headlines: { type: 'array', items: { type: 'string' } } }, required: ['headlines'], additionalProperties: false } } } });
+                    const retryHeadlineResp = await invokeLLM({ messages: [{ role: 'system', content: `${META_COMPLIANCE_RULES}\n\nAlways respond with valid JSON.` }, { role: 'user', content: capturedCascadeContext + retryHeadlinePrompt }], response_format: { type: 'json_schema', json_schema: { name: 'ad_headlines', strict: true, schema: { type: 'object', properties: { headlines: { type: 'array', items: { type: 'string' } } }, required: ['headlines'], additionalProperties: false } } } });
                     const retryHeadlineContent = retryHeadlineResp.choices[0].message.content;
                     if (typeof retryHeadlineContent !== 'string') throw new Error('Invalid retry headline response');
                     const retryHeadlineData = JSON.parse(stripMarkdownJson(retryHeadlineContent));
@@ -997,13 +1006,13 @@ Format as JSON array:
                     const retryBodyResults = await Promise.all(retrySelectedAngles.map(async (angle: string) => {
                       const anglePrompt = (RETRY_ANGLE_PROMPTS as any)[angle];
                       const bp = `Create ONE ad body using ${angle} angle for: ${capturedService.name}. Problem: ${retryResolvedPressingProblem}. Outcome: ${retryResolvedDesiredOutcome}. ${retrySocialProofGuidance}\n\n${retryIcpContext}\n\n${anglePrompt}\n\nReturn ONLY the body text (125-150 words), no JSON.`;
-                      const r = await invokeLLM({ messages: [{ role: 'system', content: META_COMPLIANCE_RULES }, { role: 'user', content: bp }] });
+                      const r = await invokeLLM({ messages: [{ role: 'system', content: META_COMPLIANCE_RULES }, { role: 'user', content: capturedCascadeContext + bp }] });
                       const rawContent = r.choices[0]?.message?.content;
                       const content = typeof rawContent === 'string' ? rawContent.trim() : (Array.isArray(rawContent) ? '' : String(rawContent || ''));
                       return { angle, body: content };
                     }));
                     const retryLinkPrompt = `Create ${retryCount} ad link descriptions for: ${capturedService.name}. CTA: ${capturedInput.adCallToAction}. Format: { "links": ["link 1", ...] }`;
-                    const retryLinkResp = await invokeLLM({ messages: [{ role: 'system', content: `${META_COMPLIANCE_RULES}\n\nAlways respond with valid JSON.` }, { role: 'user', content: retryLinkPrompt }], response_format: { type: 'json_schema', json_schema: { name: 'ad_links', strict: true, schema: { type: 'object', properties: { links: { type: 'array', items: { type: 'string' } } }, required: ['links'], additionalProperties: false } } } });
+                    const retryLinkResp = await invokeLLM({ messages: [{ role: 'system', content: `${META_COMPLIANCE_RULES}\n\nAlways respond with valid JSON.` }, { role: 'user', content: capturedCascadeContext + retryLinkPrompt }], response_format: { type: 'json_schema', json_schema: { name: 'ad_links', strict: true, schema: { type: 'object', properties: { links: { type: 'array', items: { type: 'string' } } }, required: ['links'], additionalProperties: false } } } });
                     const retryLinkContent = retryLinkResp.choices[0].message.content;
                     if (typeof retryLinkContent !== 'string') throw new Error('Invalid retry link response');
                     const retryLinkData = JSON.parse(stripMarkdownJson(retryLinkContent));

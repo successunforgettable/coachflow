@@ -13,6 +13,7 @@ import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 import { truncateQuote } from "../_core/copywritingRules";
+import { getCascadeContext } from "../_core/cascadeContext";
 
 // ---------------------------------------------------------------------------
 // Shared WhatsApp prompt builders — used by generate (sync) and generateAsync.
@@ -273,6 +274,11 @@ export const whatsappSequencesRouter = router({
         [icp] = await db.select().from(idealCustomerProfiles)
           .where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
       }
+
+      // Cascade context — read upstream campaignKits selections for this ICP
+      // and prepend to the LLM user-message. Must mirror the call in generateAsync.
+      const cascadeContext = await getCascadeContext(ctx.user.id, icp?.id, "whatsapp");
+
       const icpContext = icp ? `
 IDEAL CUSTOMER PROFILE — use this to make every line of copy specific and targeted:
 ${icp.pains ? `Their daily pains: ${icp.pains}` : ''}
@@ -352,7 +358,7 @@ You MUST use these exact numbers and real names. Do not fabricate.`
             content:
               "You are an expert WhatsApp marketer specializing in high-converting WhatsApp sequences for coaches, speakers, and consultants. You write maximum 3 sentences per message. You use contractions exclusively (you're, it's, don't, we've). You use no formal language. Every message references a specific situation and ends with either a question OR an action — never both, never neither. Always respond with valid JSON.",
           },
-          { role: "user", content: prompt },
+          { role: "user", content: cascadeContext + prompt },
         ],
         response_format: {
           type: "json_schema",
@@ -451,6 +457,10 @@ You MUST use these exact numbers and real names. Do not fabricate.`
       }
       if (!icp) { [icp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1); }
 
+      // Cascade context — fetched during request, captured for setImmediate.
+      // Must mirror the call in generate.
+      const capturedCascadeContext = await getCascadeContext(user.id, icp?.id, "whatsapp");
+
       const capturedInput = { ...input };
       const capturedUserId = user.id;
       const capturedService = { ...service };
@@ -492,7 +502,7 @@ You MUST use these exact numbers and real names. Do not fabricate.`
             ? buildWhatsappEngagementPrompt(bgPromptParams)
             : buildWhatsappSalesPrompt(bgPromptParams);
 
-          const response = await invokeLLM({ messages: [{ role: "system", content: "You are an expert WhatsApp marketer specializing in high-converting WhatsApp sequences for coaches, speakers, and consultants. You write maximum 3 sentences per message. You use contractions exclusively (you're, it's, don't, we've). You use no formal language. Every message references a specific situation and ends with either a question OR an action — never both, never neither. Always respond with valid JSON." }, { role: "user", content: prompt }], response_format: { type: "json_schema", json_schema: { name: "whatsapp_sequence", strict: true, schema: { type: "object", properties: { messages: { type: "array", items: { type: "object", properties: { day: { type: "integer" }, message: { type: "string" }, cta: { type: "string" } }, required: ["day", "message", "cta"], additionalProperties: false } } }, required: ["messages"], additionalProperties: false } } } });
+          const response = await invokeLLM({ messages: [{ role: "system", content: "You are an expert WhatsApp marketer specializing in high-converting WhatsApp sequences for coaches, speakers, and consultants. You write maximum 3 sentences per message. You use contractions exclusively (you're, it's, don't, we've). You use no formal language. Every message references a specific situation and ends with either a question OR an action — never both, never neither. Always respond with valid JSON." }, { role: "user", content: capturedCascadeContext + prompt }], response_format: { type: "json_schema", json_schema: { name: "whatsapp_sequence", strict: true, schema: { type: "object", properties: { messages: { type: "array", items: { type: "object", properties: { day: { type: "integer" }, message: { type: "string" }, cta: { type: "string" } }, required: ["day", "message", "cta"], additionalProperties: false } } }, required: ["messages"], additionalProperties: false } } } });
 
           const content = response.choices[0].message.content;
           if (typeof content !== "string") throw new Error("Invalid response format from AI");

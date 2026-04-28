@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import { nanoid } from "nanoid";
 import { protectedProcedure, router } from "../_core/trpc";
 import { invokeLLM } from "../_core/llm";
+import { getCascadeContext } from "../_core/cascadeContext";
 import { BANNED_HEADLINE_PATTERNS, META_COMPLIANCE_NOTES, scoreAdContent } from "../_core/copywritingRules";
 import {
   createHeadlines,
@@ -379,6 +380,7 @@ export const headlinesRouter = router({
       let autoPopData: any = {};
       let icpContext = '';
       let sotContext = '';
+      let cascadeContext = '';
       if (input.serviceId) {
         const { getDb } = await import("../db");
         const { services, idealCustomerProfiles } = await import("../../drizzle/schema");
@@ -430,6 +432,10 @@ export const headlinesRouter = router({
             icp.buyingTriggers ? `What makes them buy: ${icp.buyingTriggers}` : '',
           ].filter(Boolean).join('\n').trim();
         }
+
+        // Cascade context — populate inside the same if-block that built icpContext.
+        // Must mirror the call in generateAsync.
+        cascadeContext = await getCascadeContext(ctx.user.id, icp?.id, "headlines");
 
         // SOT query — Item 1.4
         const { sourceOfTruth } = await import("../../drizzle/schema");
@@ -513,7 +519,7 @@ MANDATORY: Every headline must contain at least ONE word that comes directly fro
 
 Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES}`,
                 },
-                { role: "user", content: promptWithSot },
+                { role: "user", content: cascadeContext + promptWithSot },
               ],
               response_format: {
                 type: "json_schema",
@@ -670,6 +676,7 @@ Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES
       let autoPopData: any = {};
       let icpContext = '';
       let sotContext = '';
+      let cascadeContext = '';
       if (input.serviceId) {
         const { getDb } = await import("../db");
         const { services, idealCustomerProfiles, sourceOfTruth, campaigns } = await import("../../drizzle/schema");
@@ -689,6 +696,8 @@ Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES
           if (campaignRecord?.icpId) { [icp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.id, campaignRecord.icpId)).limit(1); }
           if (!icp) { [icp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId!)).limit(1); }
           if (icp) { icpContext = ['IDEAL CUSTOMER PROFILE — use this to make every line of copy specific and targeted:', icp.pains ? `Their daily pains: ${icp.pains}` : '', icp.fears ? `Their deep fears: ${icp.fears}` : '', icp.buyingTriggers ? `What makes them buy: ${icp.buyingTriggers}` : ''].filter(Boolean).join('\n').trim(); }
+          // Cascade context — populate inside the same if-block. Must mirror the call in generate.
+          cascadeContext = await getCascadeContext(user.id, icp?.id, "headlines");
           const [sot] = await db.select().from(sourceOfTruth).where(eq(sourceOfTruth.userId, user.id)).limit(1);
           const sotLines = sot ? [sot.coreOffer ? `Core offer: ${sot.coreOffer}` : '', sot.targetAudience ? `Target audience: ${sot.targetAudience}` : '', sot.mainPainPoint ? `Main pain point: ${sot.mainPainPoint}` : '', sot.mainBenefits ? `Main benefits: ${sot.mainBenefits}` : '', sot.uniqueValue ? `Unique value: ${sot.uniqueValue}` : '', sot.idealCustomerAvatar ? `Ideal customer: ${sot.idealCustomerAvatar}` : ''].filter(Boolean) : [];
           sotContext = sotLines.length > 0 ? ['BRAND CONTEXT — this is the approved brand voice. All copy must be consistent with this:', ...sotLines].join('\n') : '';
@@ -707,6 +716,7 @@ Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES
       const capturedAutoPopData = { ...autoPopData };
       const capturedIcpContext = icpContext;
       const capturedSotContext = sotContext;
+      const capturedCascadeContext = cascadeContext;
 
       const jobId = randomUUID();
       await dbForJob.insert(jobs).values({ id: jobId, userId: String(capturedUserId), status: "pending" });
@@ -738,7 +748,7 @@ Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES
               const response = await invokeLLM({
                 messages: [
                   { role: "system", content: `You are an expert direct response copywriter specialising in Meta ad headlines for coaches, consultants and speakers. Every headline must pass the THREE-QUESTION TEST: specific person in specific situation, specific outcome, only writeable for this service. Banned openers: ${BANNED_HEADLINE_PATTERNS.join(', ')}. Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES}` },
-                  { role: "user", content: promptWithSot },
+                  { role: "user", content: capturedCascadeContext + promptWithSot },
                 ],
                 response_format: {
                   type: "json_schema",

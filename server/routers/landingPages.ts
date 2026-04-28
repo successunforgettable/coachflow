@@ -8,6 +8,7 @@ import { getDb } from "../db";
 import { landingPages, services, users, campaigns, idealCustomerProfiles, sourceOfTruth, jobs, campaignKits, offers, heroMechanisms, hvcoTitles, coachAssets, complianceRewrites } from "../../drizzle/schema";
 import { eq, and, desc, like } from "drizzle-orm";
 import { generateAllAngles } from "../landingPageGenerator";
+import { getCascadeContext } from "../_core/cascadeContext";
 import { invokeLLM } from "../_core/llm";
 import { enforceQuota, incrementQuotaCount } from "../lib/quotaEnforcement";
 import { checkCompliance } from "../lib/complianceChecker";
@@ -535,15 +536,18 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
         }
       ];
 
-      // Generate all 4 angles in parallel with social proof (Issue 2 fix)
+      // Generate all 4 angles in parallel with social proof (Issue 2 fix).
+      // Sync `generate` is deferred — cascade defaults to "" via param default
+      // so this path remains uncascaded until the follow-up cleanup commit.
+      // Note: the previous 7th arg (fallbackTestimonials) was silently dropped
+      // by generateAllAngles (signature only accepted 6 params); removed here
+      // to avoid type-mismatch with the new cascadeContext 7th param.
       const allAnglesRaw = await generateAllAngles(
         service.name,
         service.description || "",
         avatarName,
         enrichedAvatarDescription,
         socialProof,
-        undefined,
-        fallbackTestimonials
       );
 
       // Phase 3: regex pre-clean removed. Raw model output flows
@@ -655,6 +659,11 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
       const capturedSot = sot ? { ...sot } : undefined;
       const capturedCampaignType = campaignType;
 
+      // Cascade context — fetched during request, captured for setImmediate.
+      // Per user spec: generateAsync only (sync deferred). Threaded through
+      // generateAllAngles → generateLandingPageAngle as a function parameter.
+      const capturedCascadeContext = await getCascadeContext(ctx.user.id, capturedIcp?.id, "landingPage");
+
       const jobId = randomUUID();
       await db.insert(jobs).values({ id: jobId, userId: String(capturedUserId), status: "pending" });
 
@@ -710,7 +719,7 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
               location: capturedService.targetCustomer ?? 'Worldwide'
             }
           ];
-          const allAnglesRaw2 = await generateAllAngles(capturedService.name, capturedService.description || "", avatarName, enrichedAvatarDescription, socialProof, writeProgress, asyncFallbackTestimonials);
+          const allAnglesRaw2 = await generateAllAngles(capturedService.name, capturedService.description || "", avatarName, enrichedAvatarDescription, socialProof, writeProgress, capturedCascadeContext);
           // Phase 3: regex pre-clean removed (see sync `generate` for
           // rationale). Rewrite engine reactively replaces this layer.
           const allAngles = {
@@ -775,7 +784,7 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
                     };
                     const retryAvatarName = capturedInput.avatarName || `${capturedService.targetCustomer}`;
                     const retryAvatarDescription = capturedInput.avatarDescription || capturedService.description || 'Target Customer';
-                    const retryAngles = await generateAllAngles(capturedService.name, capturedService.description || '', retryAvatarName, retryAvatarDescription, bgSocialProof, writeProgressRetry, asyncFallbackTestimonials);
+                    const retryAngles = await generateAllAngles(capturedService.name, capturedService.description || '', retryAvatarName, retryAvatarDescription, bgSocialProof, writeProgressRetry, capturedCascadeContext);
                     const retryInsert: any = await retryDb.insert(landingPages).values({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, productName: capturedService.name, productDescription: capturedService.description || '', avatarName: retryAvatarName, avatarDescription: retryAvatarDescription, originalAngle: retryAngles.original, godfatherAngle: retryAngles.godfather, freeAngle: retryAngles.free, dollarAngle: retryAngles.dollar, activeAngle: 'original', rating: 0 });
                     await retryDb.update(users).set({ landingPageGeneratedCount: capturedUser.landingPageGeneratedCount + 1 }).where(eq(users.id, capturedUserId));
                     const [retryPage] = await retryDb.select().from(landingPages).where(eq(landingPages.id, retryInsert[0].insertId)).limit(1);

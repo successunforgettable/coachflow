@@ -82,7 +82,8 @@ export async function generateLandingPageAngle(
   avatarName: string,
   avatarDescription: string,
   angle: 'original' | 'godfather' | 'free' | 'dollar',
-  socialProof: any
+  socialProof: any,
+  cascadeContext: string = "",
 ): Promise<LandingPageContent> {
   // Social proof guidance (Issue 2 fix)
   const socialProofGuidance = socialProof.hasTestimonials || socialProof.hasCustomers || socialProof.hasPress
@@ -194,7 +195,7 @@ Use direct response copywriting principles: pain agitation, unique mechanism, so
   const response = await invokeLLM({
     messages: [
       { role: "system", content: `You are a world-class direct response copywriter specializing in high-converting landing pages. You engineer an emotional arc through each page — every section serves a specific emotional purpose, moving the reader from 'seen and understood' through 'named and validated', 'cost of inaction', 'hope', 'different from what they've tried', 'safe to believe', and finally 'obvious next step'. You write in the customer's own language — the words they use with a close friend, not marketing language. FORMATTING RULE: Return plain text only inside all JSON string values. No markdown. No asterisks (*). No hash symbols (#). No bold or italic formatting of any kind. No bullet markers. Just clean readable sentences and paragraphs.\n\n${META_COMPLIANCE_NOTES}` },
-      { role: "user", content: prompt }
+      { role: "user", content: cascadeContext + prompt }
     ],
     response_format: {
       type: "json_schema",
@@ -333,7 +334,8 @@ export async function generateAllAngles(
   avatarName: string,
   avatarDescription: string,
   socialProof: any,
-  onAngleComplete?: (completed: number, total: number) => Promise<void>
+  onAngleComplete?: (completed: number, total: number) => Promise<void>,
+  cascadeContext: string = "",
 ): Promise<{
   original: LandingPageContent;
   godfather: LandingPageContent;
@@ -360,10 +362,10 @@ export async function generateAllAngles(
   };
 
   const [original, godfather, free, dollar] = await Promise.all([
-    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'original', socialProof).then(async r => { await notify(); return r; }),
-    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'godfather', socialProof).then(async r => { await notify(); return r; }),
-    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'free', socialProof).then(async r => { await notify(); return r; }),
-    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'dollar', socialProof).then(async r => { await notify(); return r; }),
+    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'original', socialProof, cascadeContext).then(async r => { await notify(); return r; }),
+    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'godfather', socialProof, cascadeContext).then(async r => { await notify(); return r; }),
+    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'free', socialProof, cascadeContext).then(async r => { await notify(); return r; }),
+    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'dollar', socialProof, cascadeContext).then(async r => { await notify(); return r; }),
   ]);
   return { original, godfather, free, dollar };
 }

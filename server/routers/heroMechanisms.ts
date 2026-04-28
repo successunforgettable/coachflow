@@ -1,8 +1,9 @@
 import { z } from "zod";
 import { publicProcedure, protectedProcedure, router } from "../_core/trpc";
 import { invokeLLM } from "../_core/llm";
-import { 
-  createHeroMechanisms, 
+import { getCascadeContext } from "../_core/cascadeContext";
+import {
+  createHeroMechanisms,
   getHeroMechanismSetsByUser, 
   getHeroMechanismsBySetId,
   updateHeroMechanismRating,
@@ -116,6 +117,10 @@ export const heroMechanismsRouter = router({
           .where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
       }
 
+      // Cascade context — read upstream campaignKits selections for this ICP
+      // and prepend to each LLM user-message. Must mirror the call in generateAsync.
+      const cascadeContext = await getCascadeContext(ctx.user.id, icp?.id, "mechanism");
+
       const icpContext = icp ? [
         'IDEAL CUSTOMER PROFILE — use this to make every mechanism specific and targeted:',
         icp.pains ? `Their daily pains: ${icp.pains}` : '',
@@ -193,11 +198,11 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
       const heroMechanismsResponse = await invokeLLM({
         messages: [
           { role: "system", content: "You are a direct response copywriting expert who specialises in creating proprietary mechanism names and descriptions for coaches and consultants. You write mechanism names that are niche-specific — containing vocabulary from the target market's industry, not generic business language. Your mechanism descriptions make the reader feel the copy was written specifically for them. Return ONLY valid JSON arrays." },
-          { role: "user", content: heroMechanismsPrompt }
+          { role: "user", content: cascadeContext + heroMechanismsPrompt }
         ],
       });
 
-      const heroMechanismsContent = typeof heroMechanismsResponse.choices[0].message.content === 'string' 
+      const heroMechanismsContent = typeof heroMechanismsResponse.choices[0].message.content === 'string'
         ? heroMechanismsResponse.choices[0].message.content 
         : JSON.stringify(heroMechanismsResponse.choices[0].message.content);
       // LLM occasionally returns explanatory text — this guard prevents a crash and returns empty array as fallback.
@@ -265,11 +270,11 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
       const headlineIdeasResponse = await invokeLLM({
         messages: [
           { role: "system", content: "You are a direct response copywriting expert who specialises in creating proprietary mechanism names and descriptions for coaches and consultants. You write mechanism names that are niche-specific — containing vocabulary from the target market's industry, not generic business language. Your mechanism descriptions make the reader feel the copy was written specifically for them. Return ONLY valid JSON arrays." },
-          { role: "user", content: headlineIdeasPrompt }
+          { role: "user", content: cascadeContext + headlineIdeasPrompt }
         ],
       });
 
-      const headlineIdeasContent = typeof headlineIdeasResponse.choices[0].message.content === 'string' 
+      const headlineIdeasContent = typeof headlineIdeasResponse.choices[0].message.content === 'string'
         ? headlineIdeasResponse.choices[0].message.content 
         : JSON.stringify(headlineIdeasResponse.choices[0].message.content);
       // LLM occasionally returns explanatory text — this guard prevents a crash and returns empty array as fallback.
@@ -341,7 +346,7 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
       const powerModeResponse = await invokeLLM({
         messages: [
           { role: "system", content: "You are a direct response copywriting expert who specialises in creating proprietary mechanism names and descriptions for coaches and consultants. You write mechanism names that are niche-specific — containing vocabulary from the target market's industry, not generic business language. Your mechanism descriptions make the reader feel the copy was written specifically for them. Return ONLY valid JSON arrays." },
-          { role: "user", content: powerModePrompt }
+          { role: "user", content: cascadeContext + powerModePrompt }
         ],
       });
 
@@ -515,6 +520,10 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
       const [sot] = await db.select().from(sourceOfTruth)
         .where(eq(sourceOfTruth.userId, ctx.user.id)).limit(1);
 
+      // Cascade context — fetched during request, captured for setImmediate.
+      // Must mirror the call in generate.
+      const capturedCascadeContext = await getCascadeContext(ctx.user.id, icp?.id, "mechanism");
+
       // Capture everything needed inside the closure
       const capturedInput = { ...input };
       const capturedUserId = user.id;
@@ -568,7 +577,7 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
           const heroMechanismsResponse = await invokeLLM({
             messages: [
               { role: "system", content: "You are a direct response copywriting expert who specialises in creating proprietary mechanism names and descriptions for coaches and consultants. You write mechanism names that are niche-specific — containing vocabulary from the target market's industry, not generic business language. Your mechanism descriptions make the reader feel the copy was written specifically for them. Return ONLY valid JSON arrays." },
-              { role: "user", content: heroMechanismsPrompt }
+              { role: "user", content: capturedCascadeContext + heroMechanismsPrompt }
             ],
           });
           const heroMechanismsContent = typeof heroMechanismsResponse.choices[0].message.content === 'string'
@@ -594,7 +603,7 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
           const headlineIdeasResponse = await invokeLLM({
             messages: [
               { role: "system", content: "You are a direct response copywriting expert who specialises in creating proprietary mechanism names and descriptions for coaches and consultants. You write mechanism names that are niche-specific — containing vocabulary from the target market's industry, not generic business language. Your mechanism descriptions make the reader feel the copy was written specifically for them. Return ONLY valid JSON arrays." },
-              { role: "user", content: headlineIdeasPrompt }
+              { role: "user", content: capturedCascadeContext + headlineIdeasPrompt }
             ],
           });
           const headlineIdeasContent = typeof headlineIdeasResponse.choices[0].message.content === 'string'
@@ -620,7 +629,7 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
           const powerModeResponse = await invokeLLM({
             messages: [
               { role: "system", content: "You are a direct response copywriting expert who specialises in creating proprietary mechanism names and descriptions for coaches and consultants. You write mechanism names that are niche-specific — containing vocabulary from the target market's industry, not generic business language. Your mechanism descriptions make the reader feel the copy was written specifically for them. Return ONLY valid JSON arrays." },
-              { role: "user", content: powerModePrompt }
+              { role: "user", content: capturedCascadeContext + powerModePrompt }
             ],
           });
           const powerModeContent = typeof powerModeResponse.choices[0].message.content === 'string'

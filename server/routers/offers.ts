@@ -5,6 +5,7 @@ import { getDb } from "../db";
 import { offers, services, idealCustomerProfiles, sourceOfTruth, campaigns, jobs } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { generateAllOfferAngles } from "../offersGenerator";
+import { getCascadeContext } from "../_core/cascadeContext";
 import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
@@ -130,6 +131,12 @@ export const offersRouter = router({
           .where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
       }
 
+      // Cascade context — read upstream campaignKits selections for this ICP.
+      // Threaded through generateAllOfferAngles → generateOfferAngle as a
+      // function parameter (delegated-generator pattern). Must mirror the
+      // call in generateAsync.
+      const cascadeContext = await getCascadeContext(ctx.user.id, icp?.id, "offer");
+
       const icpContext = icp ? [
         'IDEAL CUSTOMER PROFILE — use this to make every offer specific and targeted:',
         icp.objections ? `Their objections to buying: ${icp.objections}` : '',
@@ -181,14 +188,15 @@ export const offersRouter = router({
         ? `${sotContext ? `${sotContext}\n\n` : ''}${service.targetCustomer || 'Target Customer'}${icpContext ? `\n\n${icpContext}` : ''}`
         : service.targetCustomer || 'Target Customer';
 
-      // Generate all 3 angles in parallel with social proof
+      // Generate all 3 angles in parallel with social proof + cascade
       const allAngles = await generateAllOfferAngles(
         service.name,
         service.description || "",
         enrichedTargetCustomer,
         service.mainBenefit || "Main Benefit",
         input.offerType,
-        socialProof
+        socialProof,
+        cascadeContext,
       );
 
       // Save to database
@@ -253,6 +261,10 @@ export const offersRouter = router({
       const [sot] = await db.select().from(sourceOfTruth)
         .where(eq(sourceOfTruth.userId, user.id)).limit(1);
 
+      // Cascade context — fetched during request, captured for setImmediate.
+      // Must mirror the call in generate.
+      const capturedCascadeContext = await getCascadeContext(user.id, icp?.id, "offer");
+
       const capturedInput = { ...input };
       const capturedUserId = user.id;
       const capturedService = { ...service };
@@ -314,7 +326,8 @@ export const offersRouter = router({
             enrichedTargetCustomer,
             capturedService.mainBenefit || "Main Benefit",
             capturedInput.offerType,
-            socialProof
+            socialProof,
+            capturedCascadeContext,
           );
 
           const insertResult: any = await bgDb.insert(offers).values({
