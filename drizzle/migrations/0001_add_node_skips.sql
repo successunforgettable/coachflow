@@ -1,4 +1,4 @@
-CREATE TABLE `nodeSkips` (
+CREATE TABLE IF NOT EXISTS `nodeSkips` (
   `id` int AUTO_INCREMENT NOT NULL,
   `userId` int NOT NULL,
   `serviceId` int NOT NULL,
