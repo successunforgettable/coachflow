@@ -486,39 +486,11 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
       // Append SOT + campaignType + ICP context to avatarDescription — Item 1.2 + 1.4 + 1.5
       // Layer order: SOT → avatarDescription → campaignType → ICP
       const enrichedAvatarDescription = [
-        cascadeContext || null,
         sotContext || null,
         avatarDescription || null,
         campaignTypeContext || null,
         icpContext || null,
       ].filter(Boolean).join('\n\n');
-
-      // ── Cascade context from Campaign Kit ──
-      let cascadeContext = "";
-      try {
-        const [relIcp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
-        if (relIcp) {
-          const [kit] = await db.select().from(campaignKits).where(and(eq(campaignKits.userId, ctx.user.id), eq(campaignKits.icpId, relIcp.id))).limit(1);
-          if (kit) {
-            const parts: string[] = [];
-            if (kit.selectedMechanismId) {
-              const [mech] = await db.select().from(heroMechanisms).where(eq(heroMechanisms.id, kit.selectedMechanismId)).limit(1);
-              if (mech) parts.push(`The hero mechanism name is: ${mech.mechanismName} — use this in the Unique Mechanism Introduction section`);
-            }
-            if (kit.selectedOfferId) {
-              const [offer] = await db.select().from(offers).where(eq(offers.id, kit.selectedOfferId)).limit(1);
-              if (offer) parts.push(`Offer angle: ${offer.activeAngle || "godfather"}`);
-            }
-            if (kit.selectedHvcoId) {
-              const [hvco] = await db.select().from(hvcoTitles).where(eq(hvcoTitles.id, kit.selectedHvcoId)).limit(1);
-              if (hvco) parts.push(`Lead magnet: ${hvco.title} — reference this in the problem and quiz sections`);
-            }
-            if (parts.length > 0) {
-              cascadeContext = `UPSTREAM CONTEXT — SELECTED ASSETS:\n${parts.join(". ")}.\n\n`;
-            }
-          }
-        }
-      } catch (e) { console.warn("[cascade] landingPages context fetch failed:", e); }
 
       // Build service-aware testimonial fallbacks
       const fallbackTestimonials = [
@@ -537,11 +509,8 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
       ];
 
       // Generate all 4 angles in parallel with social proof (Issue 2 fix).
-      // Sync `generate` is deferred — cascade defaults to "" via param default
-      // so this path remains uncascaded until the follow-up cleanup commit.
-      // Note: the previous 7th arg (fallbackTestimonials) was silently dropped
-      // by generateAllAngles (signature only accepted 6 params); removed here
-      // to avoid type-mismatch with the new cascadeContext 7th param.
+      // Sync `generate` remains uncascaded by design; cascade is wired
+      // into generateAsync only. See server/_core/cascadeContext.ts.
       const allAnglesRaw = await generateAllAngles(
         service.name,
         service.description || "",
