@@ -612,7 +612,28 @@ You MUST use these exact numbers and real names. Do not fabricate.`
           if (typeof content !== "string") throw new Error("Invalid response format from AI");
           let sequenceData = JSON.parse(stripMarkdownJson(content));
           if (Array.isArray(sequenceData)) sequenceData = { emails: sequenceData };
-          if (!sequenceData.emails || !Array.isArray(sequenceData.emails)) throw new Error("LLM did not return a valid emails array");
+          if (!sequenceData.emails || !Array.isArray(sequenceData.emails)) {
+            // TEMPORARY DIAGNOSTIC — invokeLLM:diag shows input_keys=[emails] but
+            // validation still fails. Means emails is truthy but not an array
+            // (object-with-numeric-keys, stringified array, etc). Log what
+            // exactly came back so we can fix the right thing. Remove with the
+            // companion diag in invokeClaudeAPI once root cause is identified.
+            const emailsVal = sequenceData?.emails;
+            const emailsType = typeof emailsVal;
+            const emailsKeys = emailsType === "object" && emailsVal !== null ? Object.keys(emailsVal).slice(0, 10) : [];
+            const emailsPreview = emailsType === "string"
+              ? (emailsVal as string).slice(0, 300)
+              : JSON.stringify(emailsVal).slice(0, 300);
+            console.error(
+              `[emailSeq:diag] validation_failed top_keys=[${Object.keys(sequenceData ?? {}).join(",")}] ` +
+              `typeof_emails=${emailsType} ` +
+              `isArray=${Array.isArray(emailsVal)} ` +
+              `emails_subkeys=[${emailsKeys.join(",")}] ` +
+              `emails_preview=${emailsPreview}`,
+            );
+            console.error(`[emailSeq:diag] raw_content_first_800=${content.slice(0, 800).replace(/\n/g, " ")}`);
+            throw new Error("LLM did not return a valid emails array");
+          }
           sequenceData.emails = sequenceData.emails.map((email: any, idx: number) => ({ subject: email.subject || `Email ${idx + 1}: Check this out`, previewText: email.previewText || '', body: email.body || `This is email ${idx + 1}. Click the link to learn more.`, delay: email.delay || (idx * 24), delayUnit: email.delayUnit || 'hours', cta: email.cta || 'Learn More', ctaLink: email.ctaLink || '#', ps: email.ps || '' }));
 
           const insertResult: any = await bgDb.insert(emailSequences).values({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, sequenceType: capturedInput.sequenceType, name: capturedInput.name, emails: sequenceData.emails });
