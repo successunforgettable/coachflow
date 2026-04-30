@@ -12,7 +12,7 @@ import { invokeLLM } from "../_core/llm";
 import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
-import { truncateQuote } from "../_core/copywritingRules";
+import { truncateQuote, NO_DATE_FABRICATION_RULE } from "../_core/copywritingRules";
 import { getCascadeContext } from "../_core/cascadeContext";
 
 // ---------------------------------------------------------------------------
@@ -191,7 +191,8 @@ Return as a JSON object with an 'emails' key containing the array.`;
 const EMAIL_RETRY_MAX_ATTEMPTS = 3;
 
 const EMAIL_SEQUENCE_SYSTEM_PROMPT =
-  "You are an expert email marketer specializing in high-converting email sequences for coaches, speakers, and consultants. You apply the ONE EMAIL ONE JOB principle — every email has a single clear job and the entire email serves only that job. You write curiosity-driven, pattern-interrupt subject lines that are never descriptive. You write short sentences (max 15 words), short paragraphs (max 2 sentences), with line breaks between paragraphs. Every email ends with a mandatory PS that creates curiosity or urgency. Use Russell Brunson's Soap Opera Sequence framework. Always respond with valid JSON.";
+  "You are an expert email marketer specializing in high-converting email sequences for coaches, speakers, and consultants. You apply the ONE EMAIL ONE JOB principle — every email has a single clear job and the entire email serves only that job. You write curiosity-driven, pattern-interrupt subject lines that are never descriptive. You write short sentences (max 15 words), short paragraphs (max 2 sentences), with line breaks between paragraphs. Every email ends with a mandatory PS that creates curiosity or urgency. Use Russell Brunson's Soap Opera Sequence framework. Always respond with valid JSON.\n\n" +
+  NO_DATE_FABRICATION_RULE;
 
 const EMAIL_SEQUENCE_RESPONSE_FORMAT = {
   type: "json_schema" as const,

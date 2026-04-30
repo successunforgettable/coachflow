@@ -90,6 +90,23 @@ export const META_COMPLIANCE_NOTES =
   "Never include: As seen on Meta, As seen on Facebook, As seen on Instagram. Never make income guarantees. Never use banned Meta language: banned, secret they don't want you to know, leaked, exposed, glitch.";
 
 /**
+ * Date-fabrication ban — appended to system prompts in all generators
+ * with urgency/scarcity surfaces (Offer, Landing Page, Email, WhatsApp).
+ * The model has no temporal awareness; any specific calendar date it
+ * writes will be a guess and visibly stale to the reader. Production
+ * evidence Apr 30 2026: "August 4 2025" in Offer urgency, "January
+ * cohort" × 4 angles in Landing Page scarcityUrgency, "January cohort"
+ * in welcome Email body. WhatsApp prompts already prove the model
+ * complies with named placeholders when given them — this rule
+ * generalizes that pattern.
+ */
+export const NO_DATE_FABRICATION_RULE = `NO DATE FABRICATION: You do not have access to today's date — any calendar reference you write will be a guess and will appear stale to the reader. For urgency, scarcity, deadlines, or scheduled events, use one of these instead, in order of preference:
+1. Bracketed operator placeholders: [INSERT_START_DATE], [INSERT_DEADLINE], [INSERT_LAUNCH_DATE], [INSERT_CART_CLOSE]
+2. Relative timing: "within 14 days", "before the next cohort opens", "in the coming weeks"
+3. Bounded duration mechanisms: "30-day enrolment window", "limited to 8 places per cohort"
+Banned in published copy: literal calendar dates (e.g., "August 4 2025"), named months or seasons ("January cohort", "spring launch", "Q3"), specific weekdays as deadlines ("by Monday").`;
+
+/**
  * Truncate a testimonial quote to a maximum length (default 100 chars).
  * Prevents the model spending token budget on quote reproduction rather than copy.
  * Used in: offersGenerator.ts, emailSequences.ts, whatsappSequences.ts

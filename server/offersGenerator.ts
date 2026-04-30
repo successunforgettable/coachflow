@@ -1,6 +1,6 @@
 import { invokeLLM } from "./_core/llm";
 import type { OfferContent } from "../drizzle/schema";
-import { BANNED_COPYWRITING_WORDS, META_COMPLIANCE_NOTES, truncateQuote } from "./_core/copywritingRules";
+import { BANNED_COPYWRITING_WORDS, META_COMPLIANCE_NOTES, NO_DATE_FABRICATION_RULE, truncateQuote } from "./_core/copywritingRules";
 
 // Angle-specific prompt modifiers for Offers (Industry standard)
 const ANGLE_PROMPTS = {
@@ -179,7 +179,7 @@ Return ONLY valid JSON with these exact keys: offerName, valueProposition, prici
       {
         role: "system",
         content:
-          `You are an expert offer creator specializing in irresistible, loss-aversion-driven offers for coaches, speakers, and consultants. You apply anchoring to make the price feel like a fraction of the value, and you make saying no feel more expensive than saying yes. You write specific outcomes and specific dollar values — never vague promises or unquantified benefits. Always respond with valid JSON.\n\n${META_COMPLIANCE_NOTES}`,
+          `You are an expert offer creator specializing in irresistible, loss-aversion-driven offers for coaches, speakers, and consultants. You apply anchoring to make the price feel like a fraction of the value, and you make saying no feel more expensive than saying yes. You write specific outcomes and specific dollar values — never vague promises or unquantified benefits. Always respond with valid JSON.\n\n${META_COMPLIANCE_NOTES}\n\n${NO_DATE_FABRICATION_RULE}`,
       },
       { role: "user", content: cascadeContext + prompt },
     ],

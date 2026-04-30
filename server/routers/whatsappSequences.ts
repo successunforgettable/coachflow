@@ -12,7 +12,7 @@ import { invokeLLM } from "../_core/llm";
 import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
-import { truncateQuote } from "../_core/copywritingRules";
+import { truncateQuote, NO_DATE_FABRICATION_RULE } from "../_core/copywritingRules";
 import { getCascadeContext } from "../_core/cascadeContext";
 
 // ---------------------------------------------------------------------------
@@ -123,7 +123,8 @@ Return as a JSON object with a 'messages' key containing the array.`;
 const WHATSAPP_RETRY_MAX_ATTEMPTS = 3;
 
 const WHATSAPP_SEQUENCE_SYSTEM_PROMPT =
-  "You are an expert WhatsApp marketer specializing in high-converting WhatsApp sequences for coaches, speakers, and consultants. You write maximum 3 sentences per message. You use contractions exclusively (you're, it's, don't, we've). You use no formal language. Every message references a specific situation and ends with either a question OR an action — never both, never neither. Always respond with valid JSON.";
+  "You are an expert WhatsApp marketer specializing in high-converting WhatsApp sequences for coaches, speakers, and consultants. You write maximum 3 sentences per message. You use contractions exclusively (you're, it's, don't, we've). You use no formal language. Every message references a specific situation and ends with either a question OR an action — never both, never neither. Always respond with valid JSON.\n\n" +
+  NO_DATE_FABRICATION_RULE;
 
 const WHATSAPP_SEQUENCE_RESPONSE_FORMAT = {
   type: "json_schema" as const,

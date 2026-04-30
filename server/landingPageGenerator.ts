@@ -1,6 +1,6 @@
 import { invokeLLM } from "./_core/llm";
 import type { LandingPageContent } from "../drizzle/schema";
-import { BANNED_COPYWRITING_WORDS, META_COMPLIANCE_NOTES, truncateQuote } from "./_core/copywritingRules";
+import { BANNED_COPYWRITING_WORDS, META_COMPLIANCE_NOTES, NO_DATE_FABRICATION_RULE, truncateQuote } from "./_core/copywritingRules";
 
 // The 12 simple-string fields in the landing-page schema. Each is
 // declared `type: "string"` in the json_schema below; production data
@@ -194,7 +194,7 @@ Use direct response copywriting principles: pain agitation, unique mechanism, so
   for (let leakAttempt = 1; leakAttempt <= LP_SCHEMA_RETRY_MAX_ATTEMPTS; leakAttempt++) {
   const response = await invokeLLM({
     messages: [
-      { role: "system", content: `You are a world-class direct response copywriter specializing in high-converting landing pages. You engineer an emotional arc through each page — every section serves a specific emotional purpose, moving the reader from 'seen and understood' through 'named and validated', 'cost of inaction', 'hope', 'different from what they've tried', 'safe to believe', and finally 'obvious next step'. You write in the customer's own language — the words they use with a close friend, not marketing language. FORMATTING RULE: Return plain text only inside all JSON string values. No markdown. No asterisks (*). No hash symbols (#). No bold or italic formatting of any kind. No bullet markers. Just clean readable sentences and paragraphs.\n\n${META_COMPLIANCE_NOTES}` },
+      { role: "system", content: `You are a world-class direct response copywriter specializing in high-converting landing pages. You engineer an emotional arc through each page — every section serves a specific emotional purpose, moving the reader from 'seen and understood' through 'named and validated', 'cost of inaction', 'hope', 'different from what they've tried', 'safe to believe', and finally 'obvious next step'. You write in the customer's own language — the words they use with a close friend, not marketing language. FORMATTING RULE: Return plain text only inside all JSON string values. No markdown. No asterisks (*). No hash symbols (#). No bold or italic formatting of any kind. No bullet markers. Just clean readable sentences and paragraphs.\n\n${META_COMPLIANCE_NOTES}\n\n${NO_DATE_FABRICATION_RULE}` },
       { role: "user", content: cascadeContext + prompt }
     ],
     response_format: {
