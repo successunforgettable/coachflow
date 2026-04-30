@@ -84,15 +84,32 @@ export const metaRouter = router({
     )
     .query(async ({ ctx, input }) => {
       const { getCampaigns } = await import("../lib/metaAPI");
-      const campaigns = await getCampaigns(ctx.user.id, input);
-      return campaigns;
+      // Surgical try/catch wrap — preserves the pre-throw UI UX where
+      // CampaignComparison.tsx, MetaCampaigns.tsx, and CampaignAlerts.tsx
+      // render a benign empty list on either real-empty OR fetch-failure.
+      // The underlying getCampaigns now throws on HTTP errors so the
+      // App Review daily job (server/_core/index.ts) gets clean failure
+      // signal; we re-absorb that here to keep the user-facing contract.
+      try {
+        return await getCampaigns(ctx.user.id, input);
+      } catch (err) {
+        console.error("[meta.getCampaigns] fetch failed, returning [] to UI:", err instanceof Error ? err.message : err);
+        return [];
+      }
     }),
 
   // Get Meta ad account details
   getAdAccount: protectedProcedure.query(async ({ ctx }) => {
     const { getAdAccount } = await import("../lib/metaAPI");
-    const account = await getAdAccount(ctx.user.id);
-    return account;
+    // Same UX-preservation wrap as getCampaigns above. MetaCampaigns.tsx
+    // renders a "not connected" state on null; throwing would surface as
+    // a tRPC error in the UI, conflating fetch failure with disconnection.
+    try {
+      return await getAdAccount(ctx.user.id);
+    } catch (err) {
+      console.error("[meta.getAdAccount] fetch failed, returning null to UI:", err instanceof Error ? err.message : err);
+      return null;
+    }
   }),
 
   // Disconnect Meta Ads Manager

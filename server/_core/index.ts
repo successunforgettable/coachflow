@@ -220,25 +220,62 @@ async function startServer() {
     }
   }, 24 * 60 * 60 * 1000); // runs every 24 hours
 
-  // Meta Daily Read-Only Job — 150 API calls/day for App Review compliance
+  // Meta Daily Read-Only Job — App Review compliance.
+  //
+  // Meta's stated thresholds for Marketing API Standard Access (per
+  // developers.facebook.com/docs/marketing-api/access): 1,500 successful
+  // API calls and <15% error rate over a rolling 15-day window.
+  //
+  // This job round-robins through 4 read-only Marketing API endpoints
+  // (getCampaigns, getAdSets, getAdCreatives, getAdAccount) per connected
+  // user × per date-range. With one connected user and 30 single-day
+  // ranges × 4 endpoints × 60 outer iterations (safety break), the
+  // natural per-run cap is ~240 calls, giving 240/day × 15 days = 3,600
+  // successful calls — 2.4× over Meta's 1,500 threshold for headroom
+  // against deploy churn, transient API failures, and token issues.
+  //
+  // MAX_CALLS is the absolute ceiling (set high enough that the safety
+  // break is the binding constraint for current 1-2 user state, not
+  // MAX_CALLS itself). When a 3rd+ user connects, MAX_CALLS becomes
+  // the binding constraint.
+  //
+  // The four read functions throw on HTTP errors and network/parse
+  // failures (preconditions like no-token still return null/[] and are
+  // pre-filtered out below so they don't pollute the success counter).
+  // successCount / failureCount in the loop track Meta-side outcomes
+  // accurately for the 15-day window.
   const runMetaDailyJob = async () => {
-    const MAX_CALLS = 150;
-    let callCount = 0;
+    const MAX_CALLS = 600;
+    let attempted = 0;
+    let successCount = 0;
+    let failureCount = 0;
     const now = new Date();
-    console.log(`[Meta Daily Job] Starting at ${now.toISOString()} — target: ${MAX_CALLS} read-only calls`);
+    console.log(`[Meta Daily Job] Starting at ${now.toISOString()} — ceiling: ${MAX_CALLS} read-only calls`);
 
     try {
       const { getDb } = await import("../db");
       const { metaAccessTokens } = await import("../../drizzle/schema");
-      const { getCampaigns } = await import("../lib/metaAPI");
+      const { getCampaigns, getAdSets, getAdCreatives, getAdAccount } = await import("../lib/metaAPI");
       const db = await getDb();
       if (!db) { console.log("[Meta Daily Job] DB not available, skipping"); return; }
 
-      // Fetch all users with Meta tokens
-      const tokenRows = await db.select({ userId: metaAccessTokens.userId }).from(metaAccessTokens);
-      if (tokenRows.length === 0) { console.log("[Meta Daily Job] No users with Meta tokens, skipping"); return; }
+      // Fetch token rows and pre-filter to users with valid state. This
+      // prevents precondition cases (null adAccountId, expired token)
+      // from inflating the success counter via the read functions'
+      // null/[] return path. Only users who can actually have requests
+      // sent to Meta participate in the round-robin.
+      const allRows = await db.select().from(metaAccessTokens);
+      const nowMs = now.getTime();
+      const tokenRows = allRows.filter(t => t.adAccountId != null && new Date(t.tokenExpiresAt).getTime() > nowMs);
+      if (tokenRows.length === 0) {
+        console.log(`[Meta Daily Job] No users with valid Meta tokens (filtered ${allRows.length} → 0), skipping`);
+        return;
+      }
+      if (tokenRows.length < allRows.length) {
+        console.log(`[Meta Daily Job] Filtered token rows: ${allRows.length} total, ${tokenRows.length} usable (skipped ${allRows.length - tokenRows.length} for missing adAccountId or expired token)`);
+      }
 
-      // Build date ranges for multiple calls per user
+      // Build date ranges — 30 single-day windows going back from today.
       const dateRanges: Array<{ since: string; until: string }> = [];
       for (let daysBack = 0; daysBack < 30; daysBack++) {
         const d = new Date();
@@ -248,32 +285,72 @@ async function startServer() {
         dateRanges.push({ since, until });
       }
 
-      // Round-robin through users × date ranges until 100 calls
+      // Endpoint round-robin definition. Each entry produces one call per
+      // (user, range) tuple. getAdCreatives ignores dateRange (creatives
+      // don't have insights at the creative level); the rest accept it.
+      type EndpointResult = unknown[] | { id: string } | null;
+      const endpoints: Array<{
+        name: string;
+        call: (userId: number, range: { since: string; until: string }) => Promise<EndpointResult>;
+        countItems: (r: EndpointResult) => number;
+      }> = [
+        {
+          name: "getCampaigns",
+          call: (userId, range) => getCampaigns(userId, { limit: 10, includeInsights: true, dateRange: range }),
+          countItems: (r) => Array.isArray(r) ? r.length : 0,
+        },
+        {
+          name: "getAdSets",
+          call: (userId, range) => getAdSets(userId, { limit: 10, includeInsights: true, dateRange: range }),
+          countItems: (r) => Array.isArray(r) ? r.length : 0,
+        },
+        {
+          name: "getAdCreatives",
+          call: (userId, _range) => getAdCreatives(userId, { limit: 10 }),
+          countItems: (r) => Array.isArray(r) ? r.length : 0,
+        },
+        {
+          name: "getAdAccount",
+          call: (userId, _range) => getAdAccount(userId),
+          countItems: (r) => (r && !Array.isArray(r)) ? 1 : 0,
+        },
+      ];
+
+      // Round-robin: outer iterates date ranges (and is the safety-break
+      // dimension), middle iterates users, inner iterates endpoints.
+      // Per-iteration call count = users × endpoints. Safety break at
+      // dateRanges.length × 2 = 60 outer iterations gives the natural
+      // cap of 60 × users × 4 endpoints = 240 (one user) / 480 (two) etc.
       let rangeIdx = 0;
-      while (callCount < MAX_CALLS) {
+      while (attempted < MAX_CALLS) {
         for (const row of tokenRows) {
-          if (callCount >= MAX_CALLS) break;
-          const range = dateRanges[rangeIdx % dateRanges.length];
-          try {
-            const campaigns = await getCampaigns(row.userId, {
-              limit: 10,
-              includeInsights: true,
-              dateRange: range,
-            });
-            callCount++;
-            console.log(`[Meta Daily Job] ${now.toISOString()} call ${callCount} of ${MAX_CALLS} — user ${row.userId} range ${range.since} — ${campaigns.length} campaigns`);
-          } catch (err: unknown) {
-            callCount++;
-            const msg = err instanceof Error ? err.message : String(err);
-            console.error(`[Meta Daily Job] call ${callCount} of ${MAX_CALLS} — user ${row.userId} FAILED: ${msg}`);
+          for (const endpoint of endpoints) {
+            if (attempted >= MAX_CALLS) break;
+            const range = dateRanges[rangeIdx % dateRanges.length];
+            try {
+              const result = await endpoint.call(row.userId, range);
+              attempted++;
+              successCount++;
+              const itemCount = endpoint.countItems(result);
+              console.log(`[Meta Daily Job] ${now.toISOString()} call ${attempted}/${MAX_CALLS} — user ${row.userId} ${endpoint.name} range ${range.since} — ${itemCount} items`);
+            } catch (err: unknown) {
+              attempted++;
+              failureCount++;
+              const msg = err instanceof Error ? err.message : String(err);
+              console.error(`[Meta Daily Job] call ${attempted}/${MAX_CALLS} — user ${row.userId} ${endpoint.name} FAILED: ${msg}`);
+            }
           }
+          if (attempted >= MAX_CALLS) break;
         }
         rangeIdx++;
-        // Safety: if we've exhausted all date ranges × users and still not at 100, break
+        // Safety: if we've cycled through ranges twice without hitting
+        // MAX_CALLS, stop. Prevents runaway loops if MAX_CALLS is
+        // accidentally too high relative to user count.
         if (rangeIdx >= dateRanges.length * 2) break;
       }
 
-      console.log(`[Meta Daily Job] Completed — ${callCount} total calls`);
+      const errorRate = attempted > 0 ? ((failureCount / attempted) * 100).toFixed(1) : "0.0";
+      console.log(`[Meta Daily Job] Completed — ${attempted} attempted, ${successCount} succeeded, ${failureCount} failed (${errorRate}% error rate)`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error(`[Meta Daily Job] Fatal error: ${msg}`);

@@ -33,6 +33,32 @@ export interface MetaAdAccount {
   balance: number;
 }
 
+export interface MetaAdSet {
+  id: string;
+  name: string;
+  campaignId: string;
+  status: string;
+  dailyBudget?: number;
+  lifetimeBudget?: number;
+  createdTime: string;
+  insights?: {
+    impressions: number;
+    clicks: number;
+    spend: number;
+    reach: number;
+  };
+}
+
+export interface MetaAdCreative {
+  id: string;
+  name: string;
+  status?: string;
+  thumbnailUrl?: string;
+  imageUrl?: string;
+  body?: string;
+  title?: string;
+}
+
 /**
  * Get Meta access token for a user
  */
@@ -75,30 +101,30 @@ export async function getAdAccount(userId: number): Promise<MetaAdAccount | null
 
   if (!tokenData?.adAccountId) return null;
 
-  try {
-    const url = new URL(`https://graph.facebook.com/v21.0/${tokenData.adAccountId}`);
-    url.searchParams.set("access_token", accessToken);
-    url.searchParams.set("fields", "id,name,account_status,currency,balance");
+  // Preconditions above (no token, no DB, no adAccountId) return null and
+  // are NOT counted as Meta API failures — they're client-side state issues,
+  // not requests Meta ever saw. From here on, HTTP errors and network/parse
+  // failures throw, so callers (the daily job's success/failure counter,
+  // tRPC wraps in routers/meta.ts) classify them correctly. Pattern is
+  // consistent across getCampaigns / getAdSets / getAdCreatives below.
+  const url = new URL(`https://graph.facebook.com/v21.0/${tokenData.adAccountId}`);
+  url.searchParams.set("access_token", accessToken);
+  url.searchParams.set("fields", "id,name,account_status,currency,balance");
 
-    const response = await fetch(url.toString());
-    const data = await response.json();
+  const response = await fetch(url.toString());
+  const data = await response.json();
 
-    if (!response.ok) {
-      console.error("[Meta API] Failed to fetch ad account:", data);
-      return null;
-    }
-
-    return {
-      id: data.id,
-      name: data.name,
-      accountStatus: data.account_status,
-      currency: data.currency,
-      balance: parseFloat(data.balance) / 100, // Convert cents to dollars
-    };
-  } catch (error) {
-    console.error("[Meta API] Error fetching ad account:", error);
-    return null;
+  if (!response.ok) {
+    throw new Error(`Meta API getAdAccount HTTP ${response.status}: ${JSON.stringify(data?.error ?? data)}`);
   }
+
+  return {
+    id: data.id,
+    name: data.name,
+    accountStatus: data.account_status,
+    currency: data.currency,
+    balance: parseFloat(data.balance) / 100, // Convert cents to dollars
+  };
 }
 
 /**
@@ -130,66 +156,177 @@ export async function getCampaigns(
 
   if (!tokenData?.adAccountId) return [];
 
-  try {
-    const url = new URL(`https://graph.facebook.com/v21.0/${tokenData.adAccountId}/campaigns`);
-    url.searchParams.set("access_token", accessToken);
-    url.searchParams.set("limit", (options?.limit || 25).toString());
-    
-    let fields = "id,name,status,objective,daily_budget,lifetime_budget,created_time";
-    if (options?.includeInsights) {
-      // Add date range parameters to insights if provided
-      let insightsParams = "";
-      if (options.dateRange?.since || options.dateRange?.until) {
-        const params = [];
-        if (options.dateRange.since) params.push(`time_range={'since':'${options.dateRange.since}'}`);
-        if (options.dateRange.until) params.push(`time_range={'until':'${options.dateRange.until}'}`);
-        if (options.dateRange.since && options.dateRange.until) {
-          insightsParams = `.time_range({'since':'${options.dateRange.since}','until':'${options.dateRange.until}'})`;
-        } else if (options.dateRange.since) {
-          insightsParams = `.time_range({'since':'${options.dateRange.since}'})`;
-        } else if (options.dateRange.until) {
-          insightsParams = `.time_range({'until':'${options.dateRange.until}'})`;
-        }
-      }
-      fields += `,insights${insightsParams}{impressions,clicks,spend,reach,ctr,cpc}`;
+  // Preconditions above return []; HTTP errors below throw. See note in getAdAccount.
+  const url = new URL(`https://graph.facebook.com/v21.0/${tokenData.adAccountId}/campaigns`);
+  url.searchParams.set("access_token", accessToken);
+  url.searchParams.set("limit", (options?.limit || 25).toString());
+
+  let fields = "id,name,status,objective,daily_budget,lifetime_budget,created_time";
+  if (options?.includeInsights) {
+    // Add date range parameters to insights if provided
+    let insightsParams = "";
+    if (options.dateRange?.since && options.dateRange?.until) {
+      insightsParams = `.time_range({'since':'${options.dateRange.since}','until':'${options.dateRange.until}'})`;
+    } else if (options.dateRange?.since) {
+      insightsParams = `.time_range({'since':'${options.dateRange.since}'})`;
+    } else if (options.dateRange?.until) {
+      insightsParams = `.time_range({'until':'${options.dateRange.until}'})`;
     }
-    url.searchParams.set("fields", fields);
-
-    if (options?.status) {
-      url.searchParams.set("filtering", JSON.stringify([
-        { field: "status", operator: "EQUAL", value: options.status }
-      ]));
-    }
-
-    const response = await fetch(url.toString());
-    const data = await response.json();
-
-    if (!response.ok) {
-      console.error("[Meta API] Failed to fetch campaigns:", data);
-      return [];
-    }
-
-    return (data.data || []).map((campaign: any) => ({
-      id: campaign.id,
-      name: campaign.name,
-      status: campaign.status,
-      objective: campaign.objective,
-      dailyBudget: campaign.daily_budget ? parseFloat(campaign.daily_budget) / 100 : undefined,
-      lifetimeBudget: campaign.lifetime_budget ? parseFloat(campaign.lifetime_budget) / 100 : undefined,
-      createdTime: campaign.created_time,
-      insights: campaign.insights?.data?.[0] ? {
-        impressions: parseInt(campaign.insights.data[0].impressions || "0", 10),
-        clicks: parseInt(campaign.insights.data[0].clicks || "0", 10),
-        spend: parseFloat(campaign.insights.data[0].spend || "0"),
-        reach: parseInt(campaign.insights.data[0].reach || "0", 10),
-        ctr: parseFloat(campaign.insights.data[0].ctr || "0"),
-        cpc: parseFloat(campaign.insights.data[0].cpc || "0"),
-      } : undefined,
-    }));
-  } catch (error) {
-    console.error("[Meta API] Error fetching campaigns:", error);
-    return [];
+    fields += `,insights${insightsParams}{impressions,clicks,spend,reach,ctr,cpc}`;
   }
+  url.searchParams.set("fields", fields);
+
+  if (options?.status) {
+    url.searchParams.set("filtering", JSON.stringify([
+      { field: "status", operator: "EQUAL", value: options.status }
+    ]));
+  }
+
+  const response = await fetch(url.toString());
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(`Meta API getCampaigns HTTP ${response.status}: ${JSON.stringify(data?.error ?? data)}`);
+  }
+
+  return (data.data || []).map((campaign: any) => ({
+    id: campaign.id,
+    name: campaign.name,
+    status: campaign.status,
+    objective: campaign.objective,
+    dailyBudget: campaign.daily_budget ? parseFloat(campaign.daily_budget) / 100 : undefined,
+    lifetimeBudget: campaign.lifetime_budget ? parseFloat(campaign.lifetime_budget) / 100 : undefined,
+    createdTime: campaign.created_time,
+    insights: campaign.insights?.data?.[0] ? {
+      impressions: parseInt(campaign.insights.data[0].impressions || "0", 10),
+      clicks: parseInt(campaign.insights.data[0].clicks || "0", 10),
+      spend: parseFloat(campaign.insights.data[0].spend || "0"),
+      reach: parseInt(campaign.insights.data[0].reach || "0", 10),
+      ctr: parseFloat(campaign.insights.data[0].ctr || "0"),
+      cpc: parseFloat(campaign.insights.data[0].cpc || "0"),
+    } : undefined,
+  }));
+}
+
+/**
+ * Fetch ad sets for an ad account. Read-only Marketing API endpoint.
+ * Used by the App Review compliance daily job for endpoint diversity.
+ */
+export async function getAdSets(
+  userId: number,
+  options?: {
+    limit?: number;
+    includeInsights?: boolean;
+    dateRange?: {
+      since?: string;
+      until?: string;
+    };
+  }
+): Promise<MetaAdSet[]> {
+  const accessToken = await getMetaToken(userId);
+  if (!accessToken) return [];
+
+  const db = await getDb();
+  if (!db) return [];
+
+  const [tokenData] = await db
+    .select()
+    .from(metaAccessTokens)
+    .where(eq(metaAccessTokens.userId, userId))
+    .limit(1);
+
+  if (!tokenData?.adAccountId) return [];
+
+  // Preconditions above return []; HTTP errors below throw. See note in getAdAccount.
+  const url = new URL(`https://graph.facebook.com/v21.0/${tokenData.adAccountId}/adsets`);
+  url.searchParams.set("access_token", accessToken);
+  url.searchParams.set("limit", (options?.limit || 25).toString());
+
+  let fields = "id,name,campaign_id,status,daily_budget,lifetime_budget,created_time";
+  if (options?.includeInsights) {
+    let insightsParams = "";
+    if (options.dateRange?.since && options.dateRange?.until) {
+      insightsParams = `.time_range({'since':'${options.dateRange.since}','until':'${options.dateRange.until}'})`;
+    } else if (options.dateRange?.since) {
+      insightsParams = `.time_range({'since':'${options.dateRange.since}'})`;
+    } else if (options.dateRange?.until) {
+      insightsParams = `.time_range({'until':'${options.dateRange.until}'})`;
+    }
+    fields += `,insights${insightsParams}{impressions,clicks,spend,reach}`;
+  }
+  url.searchParams.set("fields", fields);
+
+  const response = await fetch(url.toString());
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(`Meta API getAdSets HTTP ${response.status}: ${JSON.stringify(data?.error ?? data)}`);
+  }
+
+  return (data.data || []).map((adset: any) => ({
+    id: adset.id,
+    name: adset.name,
+    campaignId: adset.campaign_id,
+    status: adset.status,
+    dailyBudget: adset.daily_budget ? parseFloat(adset.daily_budget) / 100 : undefined,
+    lifetimeBudget: adset.lifetime_budget ? parseFloat(adset.lifetime_budget) / 100 : undefined,
+    createdTime: adset.created_time,
+    insights: adset.insights?.data?.[0] ? {
+      impressions: parseInt(adset.insights.data[0].impressions || "0", 10),
+      clicks: parseInt(adset.insights.data[0].clicks || "0", 10),
+      spend: parseFloat(adset.insights.data[0].spend || "0"),
+      reach: parseInt(adset.insights.data[0].reach || "0", 10),
+    } : undefined,
+  }));
+}
+
+/**
+ * Fetch ad creatives for an ad account. Read-only Marketing API endpoint.
+ * Used by the App Review compliance daily job for endpoint diversity.
+ * Creatives are static assets — no date-range insights at this level.
+ */
+export async function getAdCreatives(
+  userId: number,
+  options?: {
+    limit?: number;
+  }
+): Promise<MetaAdCreative[]> {
+  const accessToken = await getMetaToken(userId);
+  if (!accessToken) return [];
+
+  const db = await getDb();
+  if (!db) return [];
+
+  const [tokenData] = await db
+    .select()
+    .from(metaAccessTokens)
+    .where(eq(metaAccessTokens.userId, userId))
+    .limit(1);
+
+  if (!tokenData?.adAccountId) return [];
+
+  // Preconditions above return []; HTTP errors below throw. See note in getAdAccount.
+  const url = new URL(`https://graph.facebook.com/v21.0/${tokenData.adAccountId}/adcreatives`);
+  url.searchParams.set("access_token", accessToken);
+  url.searchParams.set("limit", (options?.limit || 25).toString());
+  url.searchParams.set("fields", "id,name,status,thumbnail_url,image_url,body,title");
+
+  const response = await fetch(url.toString());
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(`Meta API getAdCreatives HTTP ${response.status}: ${JSON.stringify(data?.error ?? data)}`);
+  }
+
+  return (data.data || []).map((creative: any) => ({
+    id: creative.id,
+    name: creative.name,
+    status: creative.status,
+    thumbnailUrl: creative.thumbnail_url,
+    imageUrl: creative.image_url,
+    body: creative.body,
+    title: creative.title,
+  }));
 }
 
 /**
