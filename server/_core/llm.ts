@@ -421,6 +421,23 @@ async function invokeClaudeAPI(params: InvokeParams): Promise<InvokeResult> {
       );
     }
     contentString = JSON.stringify(toolUseBlock.input);
+
+    // TEMPORARY DIAGNOSTIC — emailSequences.generateAsync is failing post-cascade
+    // with "LLM did not return a valid emails array" despite tool-use schema
+    // requiring `emails`. Log every tool-use response shape so we can see what
+    // Anthropic is actually returning. Remove once root cause is identified.
+    const inputKeys = Object.keys((toolUseBlock as { input?: unknown }).input as object ?? {});
+    console.log(
+      `[invokeLLM:diag] tool=${(toolUseBlock as { name?: string }).name ?? "?"} ` +
+      `model=${claudeResponse.model} stop_reason=${claudeResponse.stop_reason} ` +
+      `input_keys=[${inputKeys.join(",")}] ` +
+      `input_chars=${contentString.length} ` +
+      `tokens_in=${claudeResponse.usage?.input_tokens ?? 0} ` +
+      `tokens_out=${claudeResponse.usage?.output_tokens ?? 0}`,
+    );
+    if (contentString.length < 1500 || claudeResponse.stop_reason === "max_tokens") {
+      console.log(`[invokeLLM:diag] full_input=${contentString}`);
+    }
   } else {
     contentString = claudeResponse.content?.[0]?.text ?? "";
   }
