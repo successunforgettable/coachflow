@@ -226,12 +226,15 @@ async function startServer() {
   // developers.facebook.com/docs/marketing-api/access): 1,500 successful
   // API calls and <15% error rate over a rolling 15-day window.
   //
-  // This job round-robins through 4 read-only Marketing API endpoints
-  // (getCampaigns, getAdSets, getAdCreatives, getAdAccount) per connected
-  // user × per date-range. With one connected user and 30 single-day
-  // ranges × 4 endpoints × 60 outer iterations (safety break), the
-  // natural per-run cap is ~240 calls, giving 240/day × 15 days = 3,600
-  // successful calls — 2.4× over Meta's 1,500 threshold for headroom
+  // This job round-robins through 3 read-only Marketing API endpoints
+  // (getCampaigns, getAdSets, getAdAccount) per connected user × per
+  // date-range. getAdCreatives was originally in the loop (4 endpoints)
+  // but consistently returned HTTP 500 from Meta for the connected ad
+  // account on the 2026-04-30 verification — see comment at the
+  // endpoints array below. With one connected user and 30 single-day
+  // ranges × 3 endpoints × 60 outer iterations (safety break), the
+  // natural per-run cap is ~180 calls, giving 180/day × 15 days = 2,700
+  // successful calls — 1.8× over Meta's 1,500 threshold for headroom
   // against deploy churn, transient API failures, and token issues.
   //
   // MAX_CALLS is the absolute ceiling (set high enough that the safety
@@ -255,7 +258,7 @@ async function startServer() {
     try {
       const { getDb } = await import("../db");
       const { metaAccessTokens } = await import("../../drizzle/schema");
-      const { getCampaigns, getAdSets, getAdCreatives, getAdAccount } = await import("../lib/metaAPI");
+      const { getCampaigns, getAdSets, getAdAccount } = await import("../lib/metaAPI");
       const db = await getDb();
       if (!db) { console.log("[Meta Daily Job] DB not available, skipping"); return; }
 
@@ -286,8 +289,18 @@ async function startServer() {
       }
 
       // Endpoint round-robin definition. Each entry produces one call per
-      // (user, range) tuple. getAdCreatives ignores dateRange (creatives
-      // don't have insights at the creative level); the rest accept it.
+      // (user, range) tuple. The rest accept dateRange.
+      //
+      // getAdCreatives intentionally OMITTED from this loop. The 2026-04-30
+      // boot-time run after defensive-parsing landed (commit b462038)
+      // confirmed Meta is returning HTTP 500 with empty body for ~92% of
+      // /adcreatives calls against ad account act_1254349025145319 — these
+      // are real Meta-side failures, not our parsing issue. With it in the
+      // loop, overall error rate sat at 23.3% (above Meta's 15% threshold);
+      // without it, the remaining 3 endpoints return 100% success across
+      // 180 calls/run × 15 days = 2,700 successful calls (1.8× threshold).
+      // Function kept in metaAPI.ts for post-launch investigation; not
+      // exercised here until the underlying Meta-side issue is understood.
       type EndpointResult = unknown[] | { id: string } | null;
       const endpoints: Array<{
         name: string;
@@ -302,11 +315,6 @@ async function startServer() {
         {
           name: "getAdSets",
           call: (userId, range) => getAdSets(userId, { limit: 10, includeInsights: true, dateRange: range }),
-          countItems: (r) => Array.isArray(r) ? r.length : 0,
-        },
-        {
-          name: "getAdCreatives",
-          call: (userId, _range) => getAdCreatives(userId, { limit: 10 }),
           countItems: (r) => Array.isArray(r) ? r.length : 0,
         },
         {

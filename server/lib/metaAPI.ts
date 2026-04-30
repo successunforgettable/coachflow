@@ -282,8 +282,15 @@ export async function getAdSets(
 
 /**
  * Fetch ad creatives for an ad account. Read-only Marketing API endpoint.
- * Used by the App Review compliance daily job for endpoint diversity.
- * Creatives are static assets — no date-range insights at this level.
+ *
+ * @deprecated Removed from the App Review daily job loop on 2026-04-30
+ * after Meta returned HTTP 500 with empty body for ~92% of calls against
+ * ad account act_1254349025145319 (real Meta-side failures, not our
+ * parsing — see commit b462038 for the diagnostic that surfaced this).
+ * Function retained for post-launch investigation when the Meta-side
+ * issue is understood (could be permissions/scope, could be account
+ * state, could be Meta infrastructure on this specific endpoint). Do
+ * not re-add to the daily loop until the failure mode is diagnosed.
  */
 export async function getAdCreatives(
   userId: number,
