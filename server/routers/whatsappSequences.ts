@@ -112,6 +112,90 @@ Return as a JSON object with a 'messages' key containing the array.`;
 }
 
 // ---------------------------------------------------------------------------
+// WhatsApp LLM call + retry helper. Same nested-object-array schema pattern
+// as emailSequences, same intermittent failure mode (Sonnet 4.6 occasionally
+// returns the `messages` field as a non-array shape despite tool-use schema
+// declaring it required: array). Retry up to 3 times on validation failure;
+// capture shape evidence on each failure; throw with context after all
+// attempts exhausted. Mirror of emailSequences.invokeEmailSequenceWithRetry.
+// ---------------------------------------------------------------------------
+
+const WHATSAPP_RETRY_MAX_ATTEMPTS = 3;
+
+const WHATSAPP_SEQUENCE_SYSTEM_PROMPT =
+  "You are an expert WhatsApp marketer specializing in high-converting WhatsApp sequences for coaches, speakers, and consultants. You write maximum 3 sentences per message. You use contractions exclusively (you're, it's, don't, we've). You use no formal language. Every message references a specific situation and ends with either a question OR an action — never both, never neither. Always respond with valid JSON.";
+
+const WHATSAPP_SEQUENCE_RESPONSE_FORMAT = {
+  type: "json_schema" as const,
+  json_schema: {
+    name: "whatsapp_sequence",
+    strict: true,
+    schema: {
+      type: "object",
+      properties: {
+        messages: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              day: { type: "integer" },
+              message: { type: "string" },
+              cta: { type: "string" },
+            },
+            required: ["day", "message", "cta"],
+            additionalProperties: false,
+          },
+        },
+      },
+      required: ["messages"],
+      additionalProperties: false,
+    },
+  },
+};
+
+interface RawWhatsappMessage {
+  day?: number;
+  message?: string;
+  text?: string;
+  cta?: string;
+}
+
+async function invokeWhatsappSequenceWithRetry(userPrompt: string): Promise<RawWhatsappMessage[]> {
+  let lastFailureContext: string | null = null;
+  for (let attempt = 1; attempt <= WHATSAPP_RETRY_MAX_ATTEMPTS; attempt++) {
+    const response = await invokeLLM({
+      messages: [
+        { role: "system", content: WHATSAPP_SEQUENCE_SYSTEM_PROMPT },
+        { role: "user", content: userPrompt },
+      ],
+      response_format: WHATSAPP_SEQUENCE_RESPONSE_FORMAT,
+    });
+    const content = response.choices[0].message.content;
+    if (typeof content !== "string") throw new Error("Invalid response format from AI");
+    let parsed = JSON.parse(stripMarkdownJson(content));
+    if (Array.isArray(parsed)) parsed = { messages: parsed };
+    if (parsed?.messages && Array.isArray(parsed.messages)) {
+      return parsed.messages as RawWhatsappMessage[];
+    }
+    const messagesVal = parsed?.messages;
+    const messagesType = typeof messagesVal;
+    const messagesKeys = messagesType === "object" && messagesVal !== null ? Object.keys(messagesVal).slice(0, 10) : [];
+    const messagesPreview = messagesType === "string"
+      ? (messagesVal as string).slice(0, 300)
+      : JSON.stringify(messagesVal).slice(0, 300);
+    lastFailureContext =
+      `attempt=${attempt}/${WHATSAPP_RETRY_MAX_ATTEMPTS} ` +
+      `top_keys=[${Object.keys(parsed ?? {}).join(",")}] ` +
+      `typeof_messages=${messagesType} isArray=${Array.isArray(messagesVal)} ` +
+      `messages_subkeys=[${messagesKeys.join(",")}] messages_preview=${messagesPreview}`;
+    console.warn(`[whatsappSequences] Schema violation, retrying. ${lastFailureContext}`);
+  }
+  throw new Error(
+    `LLM did not return a valid messages array after ${WHATSAPP_RETRY_MAX_ATTEMPTS} attempts. Last failure: ${lastFailureContext}`,
+  );
+}
+
+// ---------------------------------------------------------------------------
 
 const generateWhatsAppSequenceSchema = z.object({
   serviceId: z.number(),
@@ -351,63 +435,18 @@ You MUST use these exact numbers and real names. Do not fabricate.`
       const prompt = input.sequenceType === "engagement"
         ? buildWhatsappEngagementPrompt(promptParams)
         : buildWhatsappSalesPrompt(promptParams);
-      const response = await invokeLLM({
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are an expert WhatsApp marketer specializing in high-converting WhatsApp sequences for coaches, speakers, and consultants. You write maximum 3 sentences per message. You use contractions exclusively (you're, it's, don't, we've). You use no formal language. Every message references a specific situation and ends with either a question OR an action — never both, never neither. Always respond with valid JSON.",
-          },
-          { role: "user", content: cascadeContext + prompt },
-        ],
-        response_format: {
-          type: "json_schema",
-          json_schema: {
-            name: "whatsapp_sequence",
-            strict: true,
-            schema: {
-              type: "object",
-              properties: {
-                messages: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      day: { type: "integer" },
-                      message: { type: "string" },
-                      cta: { type: "string" },
-                    },
-                    required: ["day", "message", "cta"],
-                    additionalProperties: false,
-                  },
-                },
-              },
-              required: ["messages"],
-              additionalProperties: false,
-            },
-          },
-        },
-      });
-
-      const content = response.choices[0].message.content;
-      if (typeof content !== "string") {
-        throw new Error("Invalid response format from AI");
-      }
-      let sequenceData = JSON.parse(stripMarkdownJson(content));
-      // Defensive: if LLM returned a raw array instead of { messages: [...] }, wrap it
-      if (Array.isArray(sequenceData)) {
-        sequenceData = { messages: sequenceData };
-      }
-      if (!sequenceData.messages || !Array.isArray(sequenceData.messages)) {
-        throw new Error("LLM did not return a valid messages array");
-      }
-      sequenceData.messages = sequenceData.messages.map((msg: any, idx: number) => ({
-        text: msg.message || msg.text || `Message ${idx + 1}: Check this out`,
-        delay: msg.delay || (idx * 24),
-        delayUnit: msg.delayUnit || 'hours',
-        mediaUrl: msg.mediaUrl || null,
-        mediaType: msg.mediaType || null,
-      }));
+      const rawMessages = await invokeWhatsappSequenceWithRetry(cascadeContext + prompt);
+      // sequenceData typed as `any` here to match pre-existing flow (Drizzle
+      // schema-vs-actual-shape mismatch predates this commit; out of scope).
+      const sequenceData: { messages: any[] } = {
+        messages: rawMessages.map((msg: RawWhatsappMessage, idx: number) => ({
+          text: msg.message || msg.text || `Message ${idx + 1}: Check this out`,
+          delay: (msg as any).delay || (idx * 24),
+          delayUnit: (msg as any).delayUnit || 'hours',
+          mediaUrl: (msg as any).mediaUrl || null,
+          mediaType: (msg as any).mediaType || null,
+        })),
+      };
       // Save to database
       const insertResult: any = await db.insert(whatsappSequences).values({
         userId: ctx.user.id,
@@ -502,14 +541,9 @@ You MUST use these exact numbers and real names. Do not fabricate.`
             ? buildWhatsappEngagementPrompt(bgPromptParams)
             : buildWhatsappSalesPrompt(bgPromptParams);
 
-          const response = await invokeLLM({ messages: [{ role: "system", content: "You are an expert WhatsApp marketer specializing in high-converting WhatsApp sequences for coaches, speakers, and consultants. You write maximum 3 sentences per message. You use contractions exclusively (you're, it's, don't, we've). You use no formal language. Every message references a specific situation and ends with either a question OR an action — never both, never neither. Always respond with valid JSON." }, { role: "user", content: capturedCascadeContext + prompt }], response_format: { type: "json_schema", json_schema: { name: "whatsapp_sequence", strict: true, schema: { type: "object", properties: { messages: { type: "array", items: { type: "object", properties: { day: { type: "integer" }, message: { type: "string" }, cta: { type: "string" } }, required: ["day", "message", "cta"], additionalProperties: false } } }, required: ["messages"], additionalProperties: false } } } });
-
-          const content = response.choices[0].message.content;
-          if (typeof content !== "string") throw new Error("Invalid response format from AI");
-          let sequenceData = JSON.parse(stripMarkdownJson(content));
-          if (Array.isArray(sequenceData)) sequenceData = { messages: sequenceData };
-          if (!sequenceData.messages || !Array.isArray(sequenceData.messages)) throw new Error("LLM did not return a valid messages array");
-          sequenceData.messages = sequenceData.messages.map((msg: any, idx: number) => ({ text: msg.message || msg.text || `Message ${idx + 1}: Check this out`, delay: msg.delay || (idx * 24), delayUnit: msg.delayUnit || 'hours', mediaUrl: msg.mediaUrl || null, mediaType: msg.mediaType || null }));
+          const rawMessages = await invokeWhatsappSequenceWithRetry(capturedCascadeContext + prompt);
+          // See sync path note above re: `any` typing on sequenceData.
+          const sequenceData: { messages: any[] } = { messages: rawMessages.map((msg: RawWhatsappMessage, idx: number) => ({ text: msg.message || msg.text || `Message ${idx + 1}: Check this out`, delay: (msg as any).delay || (idx * 24), delayUnit: (msg as any).delayUnit || 'hours', mediaUrl: (msg as any).mediaUrl || null, mediaType: (msg as any).mediaType || null })) };
 
           const insertResult: any = await bgDb.insert(whatsappSequences).values({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, sequenceType: capturedInput.sequenceType, name: capturedInput.name, messages: sequenceData.messages });
           const [newSequence] = await bgDb.select().from(whatsappSequences).where(eq(whatsappSequences.id, insertResult[0].insertId)).limit(1);

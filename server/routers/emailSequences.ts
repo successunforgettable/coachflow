@@ -178,6 +178,97 @@ Return as a JSON object with an 'emails' key containing the array.`;
 }
 
 // ---------------------------------------------------------------------------
+// Email LLM call + retry helper. Sonnet 4.6 intermittently returns the
+// `emails` field as a non-array shape (object-with-numeric-keys, stringified
+// array, null) despite the tool-use schema declaring it `required: array`.
+// Production evidence Apr 30: ~50% failure rate on the welcome sequence
+// schema across 4 attempts (2 fail / 2 succeed). Retry up to 3 times on
+// validation failure; capture shape evidence on each failure for diagnosis;
+// on final failure throw with the captured context. Mirror of
+// landingPageGenerator's LP_SCHEMA_RETRY_MAX_ATTEMPTS pattern.
+// ---------------------------------------------------------------------------
+
+const EMAIL_RETRY_MAX_ATTEMPTS = 3;
+
+const EMAIL_SEQUENCE_SYSTEM_PROMPT =
+  "You are an expert email marketer specializing in high-converting email sequences for coaches, speakers, and consultants. You apply the ONE EMAIL ONE JOB principle — every email has a single clear job and the entire email serves only that job. You write curiosity-driven, pattern-interrupt subject lines that are never descriptive. You write short sentences (max 15 words), short paragraphs (max 2 sentences), with line breaks between paragraphs. Every email ends with a mandatory PS that creates curiosity or urgency. Use Russell Brunson's Soap Opera Sequence framework. Always respond with valid JSON.";
+
+const EMAIL_SEQUENCE_RESPONSE_FORMAT = {
+  type: "json_schema" as const,
+  json_schema: {
+    name: "email_sequence",
+    strict: true,
+    schema: {
+      type: "object",
+      properties: {
+        emails: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              day: { type: "integer" },
+              subject: { type: "string" },
+              previewText: { type: "string" },
+              body: { type: "string" },
+              cta: { type: "string" },
+              ps: { type: "string" },
+            },
+            required: ["day", "subject", "previewText", "body", "cta", "ps"],
+            additionalProperties: false,
+          },
+        },
+      },
+      required: ["emails"],
+      additionalProperties: false,
+    },
+  },
+};
+
+interface RawEmail {
+  day?: number;
+  subject?: string;
+  previewText?: string;
+  body?: string;
+  cta?: string;
+  ps?: string;
+}
+
+async function invokeEmailSequenceWithRetry(userPrompt: string): Promise<RawEmail[]> {
+  let lastFailureContext: string | null = null;
+  for (let attempt = 1; attempt <= EMAIL_RETRY_MAX_ATTEMPTS; attempt++) {
+    const response = await invokeLLM({
+      messages: [
+        { role: "system", content: EMAIL_SEQUENCE_SYSTEM_PROMPT },
+        { role: "user", content: userPrompt },
+      ],
+      response_format: EMAIL_SEQUENCE_RESPONSE_FORMAT,
+    });
+    const content = response.choices[0].message.content;
+    if (typeof content !== "string") throw new Error("Invalid response format from AI");
+    let parsed = JSON.parse(stripMarkdownJson(content));
+    if (Array.isArray(parsed)) parsed = { emails: parsed };
+    if (parsed?.emails && Array.isArray(parsed.emails)) {
+      return parsed.emails as RawEmail[];
+    }
+    const emailsVal = parsed?.emails;
+    const emailsType = typeof emailsVal;
+    const emailsKeys = emailsType === "object" && emailsVal !== null ? Object.keys(emailsVal).slice(0, 10) : [];
+    const emailsPreview = emailsType === "string"
+      ? (emailsVal as string).slice(0, 300)
+      : JSON.stringify(emailsVal).slice(0, 300);
+    lastFailureContext =
+      `attempt=${attempt}/${EMAIL_RETRY_MAX_ATTEMPTS} ` +
+      `top_keys=[${Object.keys(parsed ?? {}).join(",")}] ` +
+      `typeof_emails=${emailsType} isArray=${Array.isArray(emailsVal)} ` +
+      `emails_subkeys=[${emailsKeys.join(",")}] emails_preview=${emailsPreview}`;
+    console.warn(`[emailSequences] Schema violation, retrying. ${lastFailureContext}`);
+  }
+  throw new Error(
+    `LLM did not return a valid emails array after ${EMAIL_RETRY_MAX_ATTEMPTS} attempts. Last failure: ${lastFailureContext}`,
+  );
+}
+
+// ---------------------------------------------------------------------------
 
 const generateEmailSequenceSchema = z.object({
   serviceId: z.number(),
@@ -434,59 +525,13 @@ You MUST use these exact numbers and real names. Do not fabricate.`
         : input.sequenceType === "engagement"
           ? buildEngagementEmailPrompt(emailPromptParams)
           : buildSalesEmailPrompt(emailPromptParams);
-      const response = await invokeLLM({
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are an expert email marketer specializing in high-converting email sequences for coaches, speakers, and consultants. You apply the ONE EMAIL ONE JOB principle — every email has a single clear job and the entire email serves only that job. You write curiosity-driven, pattern-interrupt subject lines that are never descriptive. You write short sentences (max 15 words), short paragraphs (max 2 sentences), with line breaks between paragraphs. Every email ends with a mandatory PS that creates curiosity or urgency. Use Russell Brunson's Soap Opera Sequence framework. Always respond with valid JSON.",
-          },
-          { role: "user", content: cascadeContext + prompt },
-        ],
-        response_format: {
-          type: "json_schema",
-          json_schema: {
-            name: "email_sequence",
-            strict: true,
-            schema: {
-              type: "object",
-              properties: {
-                emails: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      day: { type: "integer" },
-                      subject: { type: "string" },
-                      previewText: { type: "string" },
-                      body: { type: "string" },
-                      cta: { type: "string" },
-                      ps: { type: "string" },
-                    },
-                    required: ["day", "subject", "previewText", "body", "cta", "ps"],
-                    additionalProperties: false,
-                  },
-                },
-              },
-              required: ["emails"],
-              additionalProperties: false,
-            },
-          },
-        },
-      });
-
-      const content = response.choices[0].message.content;
-      if (typeof content !== "string") {
-        throw new Error("Invalid response format from AI");
-      }
-      let sequenceData = JSON.parse(stripMarkdownJson(content));
-      // Defensive: if LLM returned a raw array instead of { emails: [...] }, wrap it
-      if (Array.isArray(sequenceData)) {
-        sequenceData = { emails: sequenceData };
-      }
-      if (!sequenceData.emails || !Array.isArray(sequenceData.emails)) {
-        throw new Error("LLM did not return a valid emails array");
-      }
+      const rawEmails = await invokeEmailSequenceWithRetry(cascadeContext + prompt);
+      // sequenceData typed as `any` here to match the pre-existing flow:
+      // before the helper extraction, `sequenceData = JSON.parse(...)` was
+      // inferred as `any`, which kept the downstream `.values({emails:...})`
+      // call happy despite a Drizzle-schema-vs-actual-shape mismatch that
+      // predates this commit. Out of scope to reconcile here.
+      const sequenceData: { emails: any[] } = { emails: rawEmails };
       // Note: email sequences generated before commit 4d04611 may have null ps fields — the LLM
       // was returning ps but it was dropped before DB save. To find affected records run:
       // DB is MySQL/TiDB — do not use Postgres jsonb syntax.
@@ -606,35 +651,9 @@ You MUST use these exact numbers and real names. Do not fabricate.`
               ? buildEngagementEmailPrompt(bgEmailParams)
               : buildSalesEmailPrompt(bgEmailParams);
 
-          const response = await invokeLLM({ messages: [{ role: "system", content: "You are an expert email marketer specializing in high-converting email sequences for coaches, speakers, and consultants. You apply the ONE EMAIL ONE JOB principle — every email has a single clear job and the entire email serves only that job. You write curiosity-driven, pattern-interrupt subject lines that are never descriptive. You write short sentences (max 15 words), short paragraphs (max 2 sentences), with line breaks between paragraphs. Every email ends with a mandatory PS that creates curiosity or urgency. Use Russell Brunson's Soap Opera Sequence framework. Always respond with valid JSON." }, { role: "user", content: capturedCascadeContext + prompt }], response_format: { type: "json_schema", json_schema: { name: "email_sequence", strict: true, schema: { type: "object", properties: { emails: { type: "array", items: { type: "object", properties: { day: { type: "integer" }, subject: { type: "string" }, previewText: { type: "string" }, body: { type: "string" }, cta: { type: "string" }, ps: { type: "string" } }, required: ["day", "subject", "previewText", "body", "cta", "ps"], additionalProperties: false } } }, required: ["emails"], additionalProperties: false } } } });
-
-          const content = response.choices[0].message.content;
-          if (typeof content !== "string") throw new Error("Invalid response format from AI");
-          let sequenceData = JSON.parse(stripMarkdownJson(content));
-          if (Array.isArray(sequenceData)) sequenceData = { emails: sequenceData };
-          if (!sequenceData.emails || !Array.isArray(sequenceData.emails)) {
-            // TEMPORARY DIAGNOSTIC — invokeLLM:diag shows input_keys=[emails] but
-            // validation still fails. Means emails is truthy but not an array
-            // (object-with-numeric-keys, stringified array, etc). Log what
-            // exactly came back so we can fix the right thing. Remove with the
-            // companion diag in invokeClaudeAPI once root cause is identified.
-            const emailsVal = sequenceData?.emails;
-            const emailsType = typeof emailsVal;
-            const emailsKeys = emailsType === "object" && emailsVal !== null ? Object.keys(emailsVal).slice(0, 10) : [];
-            const emailsPreview = emailsType === "string"
-              ? (emailsVal as string).slice(0, 300)
-              : JSON.stringify(emailsVal).slice(0, 300);
-            console.error(
-              `[emailSeq:diag] validation_failed top_keys=[${Object.keys(sequenceData ?? {}).join(",")}] ` +
-              `typeof_emails=${emailsType} ` +
-              `isArray=${Array.isArray(emailsVal)} ` +
-              `emails_subkeys=[${emailsKeys.join(",")}] ` +
-              `emails_preview=${emailsPreview}`,
-            );
-            console.error(`[emailSeq:diag] raw_content_first_800=${content.slice(0, 800).replace(/\n/g, " ")}`);
-            throw new Error("LLM did not return a valid emails array");
-          }
-          sequenceData.emails = sequenceData.emails.map((email: any, idx: number) => ({ subject: email.subject || `Email ${idx + 1}: Check this out`, previewText: email.previewText || '', body: email.body || `This is email ${idx + 1}. Click the link to learn more.`, delay: email.delay || (idx * 24), delayUnit: email.delayUnit || 'hours', cta: email.cta || 'Learn More', ctaLink: email.ctaLink || '#', ps: email.ps || '' }));
+          const rawEmails = await invokeEmailSequenceWithRetry(capturedCascadeContext + prompt);
+          // See sync path note above re: `any` typing on sequenceData.
+          const sequenceData: { emails: any[] } = { emails: rawEmails.map((email: RawEmail, idx: number) => ({ subject: email.subject || `Email ${idx + 1}: Check this out`, previewText: email.previewText || '', body: email.body || `This is email ${idx + 1}. Click the link to learn more.`, delay: (email as any).delay || (idx * 24), delayUnit: (email as any).delayUnit || 'hours', cta: email.cta || 'Learn More', ctaLink: (email as any).ctaLink || '#', ps: email.ps || '' })) };
 
           const insertResult: any = await bgDb.insert(emailSequences).values({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, sequenceType: capturedInput.sequenceType, name: capturedInput.name, emails: sequenceData.emails });
           const [newSequence] = await bgDb.select().from(emailSequences).where(eq(emailSequences.id, insertResult[0].insertId)).limit(1);
