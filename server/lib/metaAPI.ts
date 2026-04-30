@@ -306,17 +306,35 @@ export async function getAdCreatives(
   if (!tokenData?.adAccountId) return [];
 
   // Preconditions above return []; HTTP errors below throw. See note in getAdAccount.
+  //
+  // Defensive parsing — the /{ad-account}/adcreatives endpoint observed
+  // intermittent HTTP 200 with empty body on the 2026-04-30 boot-time
+  // run (55 of 60 calls, 91.7% rate). Empty body breaks `response.json()`
+  // with "Unexpected end of JSON input" and surfaces as a failure in our
+  // metrics, but Meta records the underlying call as a 200 success on
+  // their side. Read body as text first so we can distinguish: empty
+  // body on 200 → treat as { data: [] } (success); empty body on
+  // non-2xx → throw with explicit status code; non-empty body → parse
+  // normally. Pattern is scoped to this endpoint specifically; the other
+  // three read functions returned 0% errors and don't need it.
   const url = new URL(`https://graph.facebook.com/v21.0/${tokenData.adAccountId}/adcreatives`);
   url.searchParams.set("access_token", accessToken);
   url.searchParams.set("limit", (options?.limit || 25).toString());
   url.searchParams.set("fields", "id,name,status,thumbnail_url,image_url,body,title");
 
   const response = await fetch(url.toString());
-  const data = await response.json();
+  const text = await response.text();
 
   if (!response.ok) {
-    throw new Error(`Meta API getAdCreatives HTTP ${response.status}: ${JSON.stringify(data?.error ?? data)}`);
+    throw new Error(`Meta API getAdCreatives HTTP ${response.status}: ${text || 'empty body'}`);
   }
+
+  if (!text) {
+    console.log(`[Meta API] getAdCreatives empty body for user ${userId}, treating as data: [] (HTTP ${response.status})`);
+    return [];
+  }
+
+  const data = JSON.parse(text);
 
   return (data.data || []).map((creative: any) => ({
     id: creative.id,
