@@ -365,10 +365,25 @@ async function invokeClaudeAPI(params: InvokeParams): Promise<InvokeResult> {
     }
     lastError = errMessage;
 
-    // Auto-retry once on 529 (overloaded) with 10s delay
-    if (response.status === 529) {
-      console.warn(`[LLM] Claude API 529 overloaded on model ${model} — retrying in 10s...`);
-      await new Promise(resolve => setTimeout(resolve, 10_000));
+    // Auto-retry once on transient API failures with appropriate per-status
+    // delays. 529 (overloaded) needs 10s — system-wide load needs real time
+    // to clear. 502/503/504 (gateway errors) get 3s — these are usually
+    // short-lived edge hiccups, not capacity problems. Single retry per
+    // status; if 2 attempts fail, the issue is more persistent than
+    // "transient" and user manual-retry is the better UX. Retry fetch keeps
+    // the 5-minute AbortController timeout because it's doing the same LLM
+    // work as the original — gateway errors fail fast but a successful retry
+    // takes the full LLM processing time (30-60s for complex generations).
+    const RETRY_AFTER_DELAY: Record<number, number> = {
+      529: 10_000, // overloaded — give Anthropic time to recover
+      502: 3_000,  // bad gateway
+      503: 3_000,  // service unavailable
+      504: 3_000,  // gateway timeout
+    };
+    const retryDelay = RETRY_AFTER_DELAY[response.status];
+    if (retryDelay !== undefined) {
+      console.warn(`[LLM] Claude API ${response.status} on model ${model} — retrying in ${retryDelay / 1000}s...`);
+      await new Promise(resolve => setTimeout(resolve, retryDelay));
       const retryController = new AbortController();
       const retryTimeoutId = setTimeout(() => retryController.abort(), 5 * 60 * 1000);
       try {
@@ -386,7 +401,10 @@ async function invokeClaudeAPI(params: InvokeParams): Promise<InvokeResult> {
         clearTimeout(retryTimeoutId);
       }
       if (response.ok) break; // retry succeeded
-      throw new Error("Claude API overloaded — please try again in a minute");
+      if (response.status === 529) {
+        throw new Error("Claude API overloaded — please try again in a minute");
+      }
+      throw new Error(`Claude API gateway error (${response.status}) after retry — please try again in a moment`);
     }
 
     // Retry on model-not-found (404) or server error (500 — deprecated models return 500, not 404)
