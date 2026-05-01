@@ -107,6 +107,38 @@ export const NO_DATE_FABRICATION_RULE = `NO DATE FABRICATION: You do not have ac
 Banned in published copy: literal calendar dates (e.g., "August 4 2025"), named months or seasons ("January cohort", "spring launch", "Q3"), specific weekdays as deadlines ("by Monday").`;
 
 /**
+ * Credential-fabrication ban — appended to system prompts in generators
+ * with authority/expertise framing in their output (Headlines authority
+ * formula, AdCopy body authority angle). The model has no ground truth
+ * on the author's credentials, certifications, awards, tenure, or media
+ * features. Production evidence 2026-04-30: Headlines authority formula
+ * generated "Award-Winning Executive Coach", "Published Identity
+ * Researcher", "Certified Identity Reclamation Specialist"; AdCopy body
+ * authority angle generated "After 15 years working with high-achieving
+ * women..." — none of which are verifiable from the service record.
+ *
+ * Same architectural pattern as NO_DATE_FABRICATION_RULE above:
+ * system-prompt placement (mirrors META_COMPLIANCE_NOTES), single shared
+ * constant, scoped to the confirmed offenders. The headlines authority
+ * FORMULA_PROMPTS template explicitly asks for "credible authority figure
+ * (award-winning, published, certified, etc.)" and gives the example
+ * "Award-Winning Mind Coach" — this rule is written specifically to
+ * override that example signal, naming the banned forms explicitly.
+ */
+export const NO_CREDENTIAL_FABRICATION_RULE = `NO CREDENTIAL FABRICATION: You do not have ground truth on the author's credentials, certifications, awards, tenure, academic background, or media features. Do not invent any of these in published copy. Specifically banned:
+- Specific years of experience: "After 15 years...", "With over a decade...", "20+ years in the industry"
+- Named professional titles: "Award-Winning Coach", "Certified [X] Specialist", "Published Researcher", "Bestselling Author", "World-Renowned Expert", "Top 1% in [Field]"
+- Academic credentials: "PhD", "Harvard-trained", "Stanford-educated", "MBA-certified" (unless explicitly provided in input)
+- Media features: "Forbes-featured", "TEDx Speaker", "Featured in WSJ", "As seen on [outlet]" (unless explicitly provided as a non-empty value in pressFeatures, featuredIn, or credibleAuthority input fields)
+
+Use one of these instead, in order of preference:
+1. Real credentials provided in input fields (credibleAuthority, pressFeatures, featuredIn) — only if the field is populated with a non-empty, non-"N/A" value
+2. Bracketed operator placeholders: [INSERT_COACH_CREDENTIAL], [INSERT_AUTHORITY_TITLE], [INSERT_FEATURED_IN]
+3. Generic role-based framing without specifics: "an experienced coach", "a practitioner of this method", "this approach", "the framework", "a structured process"
+
+This rule overrides any in-prompt example or template that asks you to generate credibility markers like "award-winning" or "certified" — those are fabricated examples, not data to copy. If the input data does not provide a verifiable credential and a placeholder would feel awkward in the sentence, prefer rephrasing to remove the credential claim entirely rather than inventing one.`;
+
+/**
  * Truncate a testimonial quote to a maximum length (default 100 chars).
  * Prevents the model spending token budget on quote reproduction rather than copy.
  * Used in: offersGenerator.ts, emailSequences.ts, whatsappSequences.ts

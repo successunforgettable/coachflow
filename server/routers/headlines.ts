@@ -4,7 +4,7 @@ import { nanoid } from "nanoid";
 import { protectedProcedure, router } from "../_core/trpc";
 import { invokeLLM } from "../_core/llm";
 import { getCascadeContext } from "../_core/cascadeContext";
-import { BANNED_HEADLINE_PATTERNS, META_COMPLIANCE_NOTES, scoreAdContent } from "../_core/copywritingRules";
+import { BANNED_HEADLINE_PATTERNS, META_COMPLIANCE_NOTES, NO_CREDENTIAL_FABRICATION_RULE, scoreAdContent } from "../_core/copywritingRules";
 import {
   createHeadlines,
   getHeadlinesByUserId,
@@ -517,7 +517,7 @@ BANNED OPENERS AND PHRASES — never generate headlines using these patterns:
 
 MANDATORY: Every headline must contain at least ONE word that comes directly from the ICP's pain language, desire language, or niche-specific vocabulary — a word that signals to the ideal customer "this was written for me specifically."
 
-Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES}`,
+Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES}\n\n${NO_CREDENTIAL_FABRICATION_RULE}`,
                 },
                 { role: "user", content: cascadeContext + promptWithSot },
               ],
@@ -747,7 +747,7 @@ Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES
 
               const response = await invokeLLM({
                 messages: [
-                  { role: "system", content: `You are an expert direct response copywriter specialising in Meta ad headlines for coaches, consultants and speakers. Every headline must pass the THREE-QUESTION TEST: specific person in specific situation, specific outcome, only writeable for this service. Banned openers: ${BANNED_HEADLINE_PATTERNS.join(', ')}. Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES}` },
+                  { role: "system", content: `You are an expert direct response copywriter specialising in Meta ad headlines for coaches, consultants and speakers. Every headline must pass the THREE-QUESTION TEST: specific person in specific situation, specific outcome, only writeable for this service. Banned openers: ${BANNED_HEADLINE_PATTERNS.join(', ')}. Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES}\n\n${NO_CREDENTIAL_FABRICATION_RULE}` },
                   { role: "user", content: capturedCascadeContext + promptWithSot },
                 ],
                 response_format: {

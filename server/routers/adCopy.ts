@@ -11,7 +11,7 @@ import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 import { checkCompliance } from "../lib/complianceChecker";
-import { BANNED_HEADLINE_PATTERNS, META_COMPLIANCE_NOTES, scoreAdContent } from "../_core/copywritingRules";
+import { BANNED_HEADLINE_PATTERNS, META_COMPLIANCE_NOTES, NO_CREDENTIAL_FABRICATION_RULE, scoreAdContent } from "../_core/copywritingRules";
 
 function stripMarkdownJson(content: string): string {
   return content.replace(/^```json\s*|^```\s*|\s*```$/gm, '').trim();
@@ -630,7 +630,7 @@ Return ONLY the body text as a single string, no JSON wrapper.`;
           messages: [
             {
               role: "system",
-              content: `${META_COMPLIANCE_RULES}\n\nYou are an expert ad copywriter who specializes in Meta-compliant advertising for coaches, speakers and consultants.`,
+              content: `${META_COMPLIANCE_RULES}\n\nYou are an expert ad copywriter who specializes in Meta-compliant advertising for coaches, speakers and consultants.\n\n${NO_CREDENTIAL_FABRICATION_RULE}`,
             },
             { role: "user", content: cascadeContext + bodyPrompt },
           ],
@@ -921,7 +921,7 @@ Format as JSON array:
           const bodyPromises = selectedAngles.map(async (angle: string) => {
             const anglePrompt = (BODY_ANGLE_PROMPTS as any)[angle];
             const bodyPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ONE high-converting ad BODY COPY using the ${angle.replace('_', ' ')} angle:\n\nService: ${capturedService.name}\nTarget Market: ${capturedInput.targetMarket}\nPressing Problem: ${resolvedPressingProblem}\nDesired Outcome: ${resolvedDesiredOutcome}\nUnique Mechanism: ${resolvedUniqueMechanism || 'N/A'}\n\n${socialProofGuidance}\n\n${icpContext}\n\nAd Type: ${adTypeContext}\nAd Style: ${capturedInput.adStyle}\nCall To Action: ${capturedInput.adCallToAction}\n\n${anglePrompt}\n\nCreate ONE body copy (125-150 words). End with clear call-to-action: ${capturedInput.adCallToAction}\n\nReturn ONLY the body text as a single string, no JSON wrapper.`;
-            const r = await invokeLLM({ messages: [{ role: "system", content: `${META_COMPLIANCE_RULES}\n\nYou are an expert ad copywriter who specializes in Meta-compliant advertising for coaches, speakers and consultants.` }, { role: "user", content: capturedCascadeContext + bodyPrompt }] });
+            const r = await invokeLLM({ messages: [{ role: "system", content: `${META_COMPLIANCE_RULES}\n\nYou are an expert ad copywriter who specializes in Meta-compliant advertising for coaches, speakers and consultants.\n\n${NO_CREDENTIAL_FABRICATION_RULE}` }, { role: "user", content: capturedCascadeContext + bodyPrompt }] });
             const rawContent = r.choices[0]?.message?.content;
             if (!rawContent) throw new Error(`Empty response for ${angle} angle`);
             const content = typeof rawContent === 'string' ? rawContent.trim() : '';
@@ -1006,7 +1006,7 @@ Format as JSON array:
                     const retryBodyResults = await Promise.all(retrySelectedAngles.map(async (angle: string) => {
                       const anglePrompt = (RETRY_ANGLE_PROMPTS as any)[angle];
                       const bp = `Create ONE ad body using ${angle} angle for: ${capturedService.name}. Problem: ${retryResolvedPressingProblem}. Outcome: ${retryResolvedDesiredOutcome}. ${retrySocialProofGuidance}\n\n${retryIcpContext}\n\n${anglePrompt}\n\nReturn ONLY the body text (125-150 words), no JSON.`;
-                      const r = await invokeLLM({ messages: [{ role: 'system', content: META_COMPLIANCE_RULES }, { role: 'user', content: capturedCascadeContext + bp }] });
+                      const r = await invokeLLM({ messages: [{ role: 'system', content: `${META_COMPLIANCE_RULES}\n\n${NO_CREDENTIAL_FABRICATION_RULE}` }, { role: 'user', content: capturedCascadeContext + bp }] });
                       const rawContent = r.choices[0]?.message?.content;
                       const content = typeof rawContent === 'string' ? rawContent.trim() : (Array.isArray(rawContent) ? '' : String(rawContent || ''));
                       return { angle, body: content };
