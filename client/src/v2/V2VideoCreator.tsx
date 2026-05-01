@@ -13,6 +13,20 @@ import { trpc } from "@/lib/trpc";
 import ZappyMascot from "./ZappyMascot";
 import UpgradePrompt from "./components/UpgradePrompt";
 
+/**
+ * Feature gate — Video Creator is "Coming Soon" until output quality
+ * work ships post-launch. Output quality on the current pipeline is
+ * mediocre and not ready for first paying users to encounter without
+ * disclaimer. The component below remains intact behind the gate so
+ * the work to re-enable is a one-line flip, not a re-implementation.
+ *
+ * To re-enable: change this constant to true and delete the early
+ * return at the top of V2VideoCreator(). The gate in
+ * client/src/pages/VideoCreator.tsx (legacy /video-creator route)
+ * needs to be removed in lockstep.
+ */
+const VIDEO_CREATOR_FEATURE_ENABLED = false;
+
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const T = {
   bg:          "#F5F1EA",
@@ -208,8 +222,48 @@ function SceneCard({ scene, index, onUpdate }: { scene: any; index: number; onUp
   );
 }
 
+// ─── Coming Soon placeholder ──────────────────────────────────────────────────
+function ComingSoonPlaceholder() {
+  return (
+    <div style={{
+      padding: "60px 24px",
+      textAlign: "center",
+      background: T.card,
+      borderRadius: T.radius,
+      boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
+    }}>
+      <div style={{ fontSize: "48px", marginBottom: "16px", lineHeight: 1 }}>🎬</div>
+      <h2 style={{
+        fontFamily: T.fontHeading,
+        fontStyle: "italic",
+        fontWeight: 900,
+        fontSize: "28px",
+        margin: "0 0 12px 0",
+        color: T.dark,
+      }}>
+        Video Creator — Coming Soon
+      </h2>
+      <p style={{
+        fontFamily: T.fontBody,
+        fontSize: "15px",
+        color: "#555",
+        maxWidth: "480px",
+        margin: "0 auto",
+        lineHeight: 1.55,
+      }}>
+        AI-generated video ads with voiceover and motion graphics. We're putting more polish into this before opening it up — check back soon.
+      </p>
+    </div>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function V2VideoCreator({ isFreeTier }: { isFreeTier?: boolean } = {}) {
+  // Coming Soon gate — see VIDEO_CREATOR_FEATURE_ENABLED above for context.
+  if (!VIDEO_CREATOR_FEATURE_ENABLED) {
+    return <ComingSoonPlaceholder />;
+  }
+
   // Form state
   const [videoType, setVideoType]     = useState(VIDEO_TYPES[0].value);
   const [visualStyle, setVisualStyle] = useState(VISUAL_STYLES[0].value);

@@ -8,7 +8,35 @@ import { Label } from "@/components/ui/label";
 import { Loader2, Video, Sparkles, Zap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
+/**
+ * Feature gate — Video Creator is "Coming Soon" until output quality
+ * work ships post-launch. Mirrors the gate in V2VideoCreator.tsx.
+ * To re-enable: flip both flags in lockstep.
+ */
+const VIDEO_CREATOR_FEATURE_ENABLED = false;
+
+function ComingSoonPlaceholder() {
+  return (
+    <div className="container max-w-2xl mx-auto py-16 px-4">
+      <Card>
+        <CardHeader className="text-center">
+          <div className="text-5xl mb-4">🎬</div>
+          <CardTitle className="text-2xl">Video Creator — Coming Soon</CardTitle>
+          <CardDescription className="text-base mt-2">
+            AI-generated video ads with voiceover and motion graphics. We're putting more polish into this before opening it up — check back soon.
+          </CardDescription>
+        </CardHeader>
+      </Card>
+    </div>
+  );
+}
+
 export default function VideoCreator() {
+  // Coming Soon gate — see VIDEO_CREATOR_FEATURE_ENABLED above.
+  if (!VIDEO_CREATOR_FEATURE_ENABLED) {
+    return <ComingSoonPlaceholder />;
+  }
+
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   
