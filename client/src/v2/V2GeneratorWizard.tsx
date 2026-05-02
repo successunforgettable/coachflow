@@ -1397,6 +1397,44 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
     { enabled: !isDemoMissing }
   );
 
+  // ── Fetch latest sets/items per node for DB-fallback hydration on remount ──
+  // Mounting the wizard with `latestX` initialized to `null` produces an empty
+  // result panel even when the user has previously-generated content sitting
+  // in the DB. These queries surface the most-recent row per node (list
+  // procedures already sort by createdAt DESC) so the hydration effects below
+  // can populate `latestX` from the DB on mount. The job-completion handlers
+  // remain the source of truth for fresh generates — the `if (!latestX)` guard
+  // in each effect prevents the DB read from clobbering a just-completed ID.
+  const { data: offersList } = trpc.offers.list.useQuery(
+    serviceId ? { serviceId } : undefined,
+    { enabled: !isDemoMissing }
+  );
+  const { data: mechanismsList } = trpc.heroMechanisms.list.useQuery(undefined, {
+    enabled: !isDemoMissing,
+  });
+  const { data: hvcoList } = trpc.hvco.list.useQuery(undefined, {
+    enabled: !isDemoMissing,
+  });
+  const { data: headlinesList } = trpc.headlines.list.useQuery(undefined, {
+    enabled: !isDemoMissing,
+  });
+  const { data: adCopyList } = trpc.adCopy.list.useQuery(
+    serviceId ? { serviceId } : undefined,
+    { enabled: !isDemoMissing }
+  );
+  const { data: landingPagesList } = trpc.landingPages.list.useQuery(
+    serviceId ? { serviceId } : undefined,
+    { enabled: !isDemoMissing }
+  );
+  const { data: emailSeqList } = trpc.emailSequences.list.useQuery(
+    serviceId ? { serviceId } : undefined,
+    { enabled: !isDemoMissing }
+  );
+  const { data: whatsappSeqList } = trpc.whatsappSequences.list.useQuery(
+    serviceId ? { serviceId } : undefined,
+    { enabled: !isDemoMissing }
+  );
+
   // ── Resolve the active service ──
   const activeService = isDemoMissing ? undefined : (
     serviceId ? serviceData?.find(s => s.id === serviceId) : serviceData?.[0]
@@ -1435,6 +1473,96 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
       setStatus("offline");
     }
   }, [isDemoLoading, isDemoSuccess, isDemoConcerned, isDemoTimeout, isDemoError, isDemoOffline, demoProgressAngle]);
+
+  // ── DB-fallback hydration: populate `latestX` from the most recent DB row
+  // when the component mounts with no in-memory state, and flip `status` to
+  // "success" so the result-panel render gate matches. Mirrors the URL-override
+  // path at L1386 (`if (applyOverride[step]?.(raw)) setStatus("success")`):
+  // both flip status only after a successful ID hydration.
+  //
+  // Two guards protect against unintended side effects:
+  //   (a) `if (!latestX)` — never overwrite a value just set by the
+  //       job-completion handler. The list query's cache may briefly hold a
+  //       stale `[0]` while a fresh generation finishes flushing; without this
+  //       guard, a write here would clobber the just-completed ID. After
+  //       invalidation the list refetches and `[0]` becomes the new generation,
+  //       but by then `latestX` is non-null and the guard short-circuits.
+  //   (b) `if (status === "loading") return` — never hijack an in-flight
+  //       generate. If the user clicks Generate while a list query is still
+  //       resolving, the generate handler sets status="loading" first; this
+  //       guard ensures hydration cannot then flip status back to "success"
+  //       with a stale ID before the new generation completes.
+  //
+  // Pressure-test on "false-success on partially-loaded data": flipping status
+  // to "success" semantically means "an ID is rendered into a result panel."
+  // The panel's own query loads full content from that ID — if that fails,
+  // existing per-panel error handling surfaces it (same path used after a
+  // fresh generate). Status="success" without a real DB row is impossible
+  // because we only flip after `data?.[0]?.id` is truthy, which requires the
+  // list query (Drizzle SELECT) to have returned at least one row.
+  useEffect(() => {
+    if (status === "loading") return;
+    if (!latestIcpId && icpData?.[0]?.id) {
+      setLatestIcpId(icpData[0].id);
+      setStatus("success");
+    }
+  }, [icpData, latestIcpId, status]);
+  useEffect(() => {
+    if (status === "loading") return;
+    if (!latestOfferId && offersList?.[0]?.id) {
+      setLatestOfferId(offersList[0].id);
+      setStatus("success");
+    }
+  }, [offersList, latestOfferId, status]);
+  useEffect(() => {
+    if (status === "loading") return;
+    if (!latestMechanismSetId && mechanismsList?.[0]?.mechanismSetId) {
+      setLatestMechanismSetId(mechanismsList[0].mechanismSetId);
+      setStatus("success");
+    }
+  }, [mechanismsList, latestMechanismSetId, status]);
+  useEffect(() => {
+    if (status === "loading") return;
+    if (!latestHvcoSetId && hvcoList?.[0]?.hvcoSetId) {
+      setLatestHvcoSetId(hvcoList[0].hvcoSetId);
+      setStatus("success");
+    }
+  }, [hvcoList, latestHvcoSetId, status]);
+  useEffect(() => {
+    if (status === "loading") return;
+    if (!latestHeadlineSetId && headlinesList?.[0]?.headlineSetId) {
+      setLatestHeadlineSetId(headlinesList[0].headlineSetId);
+      setStatus("success");
+    }
+  }, [headlinesList, latestHeadlineSetId, status]);
+  useEffect(() => {
+    if (status === "loading") return;
+    if (!latestAdSetId && adCopyList?.[0]?.adSetId) {
+      setLatestAdSetId(adCopyList[0].adSetId);
+      setStatus("success");
+    }
+  }, [adCopyList, latestAdSetId, status]);
+  useEffect(() => {
+    if (status === "loading") return;
+    if (!latestLandingPageId && landingPagesList?.[0]?.id) {
+      setLatestLandingPageId(landingPagesList[0].id);
+      setStatus("success");
+    }
+  }, [landingPagesList, latestLandingPageId, status]);
+  useEffect(() => {
+    if (status === "loading") return;
+    if (!latestEmailSequenceId && emailSeqList?.[0]?.id) {
+      setLatestEmailSequenceId(emailSeqList[0].id);
+      setStatus("success");
+    }
+  }, [emailSeqList, latestEmailSequenceId, status]);
+  useEffect(() => {
+    if (status === "loading") return;
+    if (!latestWhatsappSequenceId && whatsappSeqList?.[0]?.id) {
+      setLatestWhatsappSequenceId(whatsappSeqList[0].id);
+      setStatus("success");
+    }
+  }, [whatsappSeqList, latestWhatsappSequenceId, status]);
 
   // ── Network loss listener (only active during generation) ──
   useEffect(() => {
