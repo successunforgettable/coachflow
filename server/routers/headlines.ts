@@ -199,12 +199,12 @@ Context:
 - Unique Mechanism: {uniqueMechanism}
 
 Requirements:
-- Authority figure should be credible (award-winning, published, certified, etc.)
+- Authority figure should be credible (award-winning, published, certified, etc.) — BUT see system-prompt rule NO_CREDENTIAL_FABRICATION_RULE: do not invent these credentials. The credibility examples below are illustrative formula structure only; the system rule overrides them and instructs you to use real input-field credentials, bracketed [INSERT_*] placeholders, or generic role framing instead. The example output below predates that rule and is retained only for formula-shape guidance, not as content to copy.
 - Action verbs: unearthed, discovered, revealed, disclosed, unveiled
 - Subheadline should debunk 3 old/failed methods
 - Return ONLY a JSON object with a "headlines" field containing the array of 5 objects with this structure: {"main": "...", "sub": "..."}
 
-Example output format:
+Example output format (formula structure only — credentials in this example are illustrative; do not copy them per NO_CREDENTIAL_FABRICATION_RULE):
 {"headlines": [{"main": "Award-Winning Mind Coach Unearthed Hidden 'Crypto Code' Transforming Newbies into Fortunate Investors", "sub": "This is why day trading, HODLing, and technical analysis have failed to produce consistent crypto income"}, ...]}`,
 
   urgency: `Generate 5 urgency-based headlines with specific timeframes:
@@ -220,7 +220,7 @@ Requirements:
 - Start with action verbs: Discover, Unearth, Leverage, Unlock, Access
 - Include specific timeframe: "in 30 days", "in 6 months", "in just one month", "under 30 days"
 - Promise the desired outcome
-- Use exciting result language: "skyrocket", "rains", "pull in", "multiply"
+- Use exciting result language with specific concrete outcomes: "scale", "build", "deliver", "claim", "secure" — paired to a measurable result (e.g., "scale your booked-call rate to 8/week"). Do NOT use clickbait-puffery verbs like "skyrocket", "explode", "rains", "dominate", "crush" — these are banned per the system-prompt rule below and read as low-quality scam-ad copy.
 - Return ONLY a JSON object with a "headlines" field containing the array of 5 headline strings, nothing else
 
 Example output format:
