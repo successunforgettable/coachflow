@@ -17,6 +17,7 @@ import ExportButtons from "./components/ExportButtons";
 import { formatWhatsAppTxt, formatHeadlinesTxt, formatAdCopyTxt, formatOfferTxt, formatMechanismsTxt, formatHvcoTxt, formatIcpTxt, formatLandingPageTxt } from "./lib/exportUtils";
 import LandingPageVisualTemplate from "./components/LandingPageVisualTemplate";
 import CoachIdentityModal from "./components/CoachIdentityModal";
+import PlaceholderBanner from "./components/PlaceholderBanner";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type AngleKey = "original" | "godfather" | "free" | "dollar";
@@ -869,6 +870,9 @@ export default function V2LandingPageResultPanel({
           </p>
         </div>
       </div>
+
+      {/* ── Operator placeholders banner — surfaces [INSERT_*] tokens across all angles ── */}
+      <PlaceholderBanner data={angles} />
 
       {/* ── Style toggle / Visual Style lock ── */}
       {isFreeTier ? (

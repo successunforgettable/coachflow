@@ -22,6 +22,7 @@ import ExportButtons from "./components/ExportButtons";
 import { formatWhatsAppTxt, formatHeadlinesTxt, formatAdCopyTxt, formatOfferTxt, formatMechanismsTxt, formatHvcoTxt, formatIcpTxt, formatLandingPageTxt } from "./lib/exportUtils";
 import V2AdImageCreator from "./V2AdImageCreator";
 import V2VideoCreator from "./V2VideoCreator";
+import PlaceholderBanner from "./components/PlaceholderBanner";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type AdTab = "headlines" | "body" | "links";
@@ -779,6 +780,9 @@ export default function V2AdCopyResultPanel({
           </p>
         </div>
       </div>
+
+      {/* ── Operator placeholders banner — surfaces [INSERT_*] tokens across headlines/body/links ── */}
+      <PlaceholderBanner data={{ headlines, bodies, links }} />
 
       {/* ── Top-level tabs: Copy / Images / Video ── */}
       <div style={{ display: "flex", gap: "6px", marginBottom: "20px", background: "rgba(26,22,36,0.07)", borderRadius: "var(--v2-border-radius-pill)", padding: "4px", width: "fit-content" }}>

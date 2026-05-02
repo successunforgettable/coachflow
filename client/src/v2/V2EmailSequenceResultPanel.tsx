@@ -11,6 +11,7 @@ import ZappyMascot from "./ZappyMascot";
 import UpgradePrompt from "./components/UpgradePrompt";
 import { useFavourites } from "./hooks/useFavourites";
 import ExportButtons from "./components/ExportButtons";
+import PlaceholderBanner from "./components/PlaceholderBanner";
 import { formatEmailsTxt } from "./lib/exportUtils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -413,6 +414,9 @@ export default function V2EmailSequenceResultPanel({
           </p>
         </div>
       </div>
+
+      {/* ── Operator placeholders banner — surfaces [INSERT_*] tokens across all emails ── */}
+      <PlaceholderBanner data={emails} />
 
       {/* ── Email cards ── */}
       {emails.map((email, i) => (

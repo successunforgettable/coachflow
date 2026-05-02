@@ -17,6 +17,7 @@ import UpgradePrompt from "./components/UpgradePrompt";
 import ComplianceWarningPanel from "./ComplianceWarningPanel";
 import { useFavourites } from "./hooks/useFavourites";
 import ExportButtons from "./components/ExportButtons";
+import PlaceholderBanner from "./components/PlaceholderBanner";
 import { formatWhatsAppTxt, formatHeadlinesTxt, formatAdCopyTxt, formatOfferTxt, formatMechanismsTxt, formatHvcoTxt, formatIcpTxt, formatLandingPageTxt } from "./lib/exportUtils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -456,6 +457,9 @@ export default function V2HeadlinesResultPanel({
           </p>
         </div>
       </div>
+
+      {/* ── Operator placeholders banner — surfaces [INSERT_*] tokens across all tabs ── */}
+      <PlaceholderBanner data={data} />
 
       {/* ── Tabs ── */}
       <div style={{
