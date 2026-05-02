@@ -2,7 +2,7 @@ import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-const FROM_EMAIL = "ZAP <noreply@send.zapcampaigns.com>";
+const FROM_EMAIL = "ZAP <noreply@zapcampaigns.com>";
 const APP_NAME = "ZAP";
 
 export async function sendPasswordResetEmail({

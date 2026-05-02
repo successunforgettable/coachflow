@@ -1399,7 +1399,7 @@ export const adminRouter = router({
     const magicUrl = `${baseUrl}/api/auth/magic?token=${token}`;
 
     await resend.emails.send({
-      from: "ZAP <noreply@send.zapcampaigns.com>",
+      from: "ZAP <noreply@zapcampaigns.com>",
       to: input.email,
       subject: "Your ZAP sign-in link",
       html: `<p>Click <a href="${magicUrl}">here</a> to sign in to ZAP. This link expires in 15 minutes.</p>`,
