@@ -161,37 +161,34 @@ const ADVANCED_FIELDS: Record<WizardStep, AdvancedField[]> = {
     { key: "name", label: "ICP Name / Label", type: "text", placeholder: "e.g. Mid-Career Professional", sourceNote: "Auto-generated from your service avatar" },
   ],
   offer: [
-    { key: "offerType", label: "Offer Type", type: "select", options: ["standard", "premium", "vip"], sourceNote: "Defaults to 'premium'" },
+    // Order matters: fieldValues default = options[0]. "premium" first so the
+    // dropdown's preselected value matches both the sourceNote and today's
+    // server-side default — users who don't touch Advanced see no change.
+    { key: "offerType", label: "Offer Type", type: "select", options: ["premium", "standard", "vip"], sourceNote: "Defaults to 'premium'" },
   ],
-  uniqueMethod: [
-    { key: "mechanismName", label: "Mechanism Name Override", type: "text", placeholder: "Leave blank to use AI suggestion", sourceNote: "AI generates this from your service description" },
-    { key: "applicationMethod", label: "Application Method", type: "text", placeholder: "e.g. 6-week group coaching", sourceNote: "Pulled from your service profile" },
-  ],
+  // ── Hidden until wired post-launch ──
+  // The accordion toggle is gated on `advancedFields.length > 0` (see render
+  // site below), so empty arrays here mean the "Advanced: Edit AI Inputs"
+  // toggle disappears for these nodes. UI fields previously offered here
+  // (mechanismName, applicationMethod, headlineStyle, quantity, platform,
+  // adFormat, pageStyle, sequenceType, emailCount, sequenceLength, tone) were
+  // collected client-side but silently dropped before reaching any LLM prompt
+  // — see the audit registered in today's session. Path A (full wiring of
+  // these 6 nodes) is queued post-launch; for now we hide rather than ship
+  // cosmetic toggles that don't change generation output.
+  uniqueMethod: [],
   freeOptIn: [
     { key: "hvcoTopic", label: "Lead Magnet Topic Override", type: "text", placeholder: "Leave blank to use AI suggestion", sourceNote: "AI generates this from your service profile" },
   ],
-  headlines: [
-    { key: "headlineStyle", label: "Headline Style", type: "select", options: ["curiosity", "benefit", "how-to", "question", "bold-claim"], sourceNote: "Defaults to 'benefit'" },
-    { key: "quantity", label: "Number of Headlines", type: "select", options: ["5", "10", "15", "20"], sourceNote: "Defaults to 10" },
-  ],
-  adCopy: [
-    { key: "platform", label: "Ad Platform", type: "select", options: ["Facebook", "Instagram", "LinkedIn", "YouTube"], sourceNote: "Defaults to Facebook" },
-    { key: "adFormat", label: "Ad Format", type: "select", options: ["single-image", "carousel", "video-script", "story"], sourceNote: "Defaults to single-image" },
-  ],
-  landingPage: [
-    { key: "pageStyle", label: "Page Style", type: "select", options: ["VSL", "long-form", "short-form", "webinar-registration"], sourceNote: "Defaults to long-form" },
-  ],
-  emailSequence: [
-    { key: "sequenceType", label: "Sequence Type", type: "select", options: ["welcome", "nurture", "launch", "re-engagement"], sourceNote: "Defaults to nurture" },
-    { key: "emailCount", label: "Number of Emails", type: "select", options: ["3", "5", "7", "10"], sourceNote: "Defaults to 5" },
-  ],
-  whatsappSequence: [
-    { key: "sequenceLength", label: "Sequence Length", type: "select", options: ["3", "5", "7"], sourceNote: "Defaults to 5" },
-    { key: "tone", label: "Tone", type: "select", options: ["conversational", "professional", "urgent"], sourceNote: "Pulled from your brand voice" },
-  ],
-  pushToMeta: [
-    { key: "platform", label: "Platform", type: "select", options: ["Meta Ads Manager", "GoHighLevel"], sourceNote: "Defaults to Meta Ads Manager" },
-  ],
+  headlines: [],
+  adCopy: [],
+  landingPage: [],
+  emailSequence: [],
+  whatsappSequence: [],
+  // pushToMeta also hidden — Platform select doesn't reach generation
+  // (this step shows instructions, no mutation runs). Same fake-knob
+  // trust-erosion pattern as the 6 above; hiding closes the audit cleanly.
+  pushToMeta: [],
 };
 
 // ─── Shared card style ────────────────────────────────────────────────────────
@@ -1647,16 +1644,28 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
         }, 5_000);
       });
       if (step === "icp") {
+        // Precedence: advanced override → inline icpName input → service-derived auto-gen.
+        // If user opens Advanced and supplies a name, it wins; otherwise existing path.
+        const advName = (payload.advancedOverrides as Record<string, string> | undefined)?.name?.trim();
         const { jobId } = await generateIcpAsync.mutateAsync({
           serviceId: svcId,
-          name: (payload.icpName as string) || (svc?.avatarName ? `${svc.avatarName} Profile` : "My Ideal Customer"),
+          name: advName || (payload.icpName as string) || (svc?.avatarName ? `${svc.avatarName} Profile` : "My Ideal Customer"),
         });
         const icpResult = await pollJob(jobId);
         if (typeof icpResult.icpId === 'number') setLatestIcpId(icpResult.icpId);
       } else if (step === "offer") {
+        // Path C: read user-selected offerType from Advanced accordion.
+        // Schema enum is ["standard","premium","vip"]; UI select offers same 3.
+        // If user hasn't touched Advanced, fieldValues default ("premium")
+        // matches the previous hardcode → behavior identical to today.
+        const advOfferType = (payload.advancedOverrides as Record<string, string> | undefined)?.offerType as
+          | "standard"
+          | "premium"
+          | "vip"
+          | undefined;
         const { jobId } = await generateOfferAsync.mutateAsync({
           serviceId: svcId,
-          offerType: "premium",
+          offerType: advOfferType ?? "premium",
         });
         const offerResult = await pollJob(jobId);
         if (typeof offerResult.offerId === 'number') setLatestOfferId(offerResult.offerId);
@@ -1677,10 +1686,13 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
         if (typeof mechResult.generationWarning === 'string' && mechResult.generationWarning) setLatestMechWarning(mechResult.generationWarning);
         else setLatestMechWarning(undefined);
       } else if (step === "freeOptIn") {
+        // Path C: read user-supplied lead-magnet topic from Advanced accordion.
+        // If user leaves it blank → existing svc fallback chain runs as before.
+        const advHvcoTopic = (payload.advancedOverrides as Record<string, string> | undefined)?.hvcoTopic?.trim();
         const { jobId } = await generateHvcoAsync.mutateAsync({
           serviceId: svcId,
           targetMarket: svc?.targetCustomer || "",
-          hvcoTopic: svc?.hvcoTopic || svc?.mainBenefit || "",
+          hvcoTopic: advHvcoTopic || svc?.hvcoTopic || svc?.mainBenefit || "",
         });
         const hvcoResult = await pollJob(jobId);
         if (typeof hvcoResult.hvcoSetId === 'string') setLatestHvcoSetId(hvcoResult.hvcoSetId);
@@ -2251,7 +2263,11 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
             </button>
           )}
 
-          {/* ── ADVANCED TOGGLE (always visible) ── */}
+          {/* ── ADVANCED TOGGLE — only renders when this step has wired fields ──
+              Empty arrays in ADVANCED_FIELDS (uniqueMethod / headlines / adCopy /
+              landingPage / emailSequence / whatsappSequence) intentionally
+              suppress the toggle until Path A wires them end-to-end. ── */}
+          {advancedFields.length > 0 && (
           <div style={{ textAlign: "center", marginTop: showGenerateButton ? "0" : "8px" }}>
             <button
               onClick={() => setAccordionOpen(prev => !prev)}
@@ -2271,8 +2287,10 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
               {accordionOpen ? "▲ Hide Advanced Inputs" : "Advanced: Edit AI Inputs"}
             </button>
           </div>
+          )}
 
           {/* ── ACCORDION (CSS max-height transition, NOT display:none) ── */}
+          {advancedFields.length > 0 && (
           <div style={{
             maxHeight: accordionOpen ? "800px" : "0px",
             overflow: "hidden",
@@ -2303,6 +2321,7 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
               ))}
             </div>
           </div>
+          )}
 
         </div>
 
