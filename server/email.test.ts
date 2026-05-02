@@ -20,7 +20,7 @@ describe("Resend Email Integration", () => {
 
     // Resend provides 'delivered@resend.dev' as a test address that always succeeds
     const { data, error } = await resend.emails.send({
-      from: "ZAP <noreply@zapcampaigns.com>",
+      from: "ZAP <noreply@send.zapcampaigns.com>",
       to: "delivered@resend.dev",
       subject: "ZAP Resend Integration Test",
       html: "<p>This is a test email to verify the Resend API key is working correctly.</p>",

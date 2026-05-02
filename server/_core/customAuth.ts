@@ -22,7 +22,7 @@ import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import { Resend } from "resend";
 
 const resend = new Resend(ENV.resendApiKey);
-const FROM_EMAIL = "ZAP <noreply@zapcampaigns.com>";
+const FROM_EMAIL = "ZAP <noreply@send.zapcampaigns.com>";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
