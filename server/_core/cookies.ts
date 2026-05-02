@@ -42,7 +42,17 @@ export function getSessionCookieOptions(
   return {
     httpOnly: true,
     path: "/",
-    sameSite: "none",
+    // SameSite=Lax — first-party auth cookie, never used in cross-site
+    // iframe or POST contexts. SameSite=None previously here was a holdover
+    // from the Manus SDK era when the app was platform-proxied through
+    // iframes; that requirement disappeared with the switch to custom JWT
+    // auth (commit f4dad8f). Chrome's tracking-protection heuristic treats
+    // SameSite=None cookies as cross-site tracking signals and purges them
+    // on browser-close even in first-party context — the symptom that
+    // surfaced in 2026-05-02 ops audit. Lax matches the actual usage
+    // pattern (top-level navigations + same-site fetches) and survives
+    // browser-restart correctly.
+    sameSite: "lax",
     secure: process.env.NODE_ENV === "production" || isSecureRequest(req),
   };
 }
