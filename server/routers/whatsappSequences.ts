@@ -20,6 +20,14 @@ import { getCascadeContext } from "../_core/cascadeContext";
 // Per-message job structure is defined once here; both paths call these functions.
 // ---------------------------------------------------------------------------
 
+// Length × tone wiring (commit 2 of WhatsApp wire sprint).
+// Both fields are optional; builders coalesce to the documented defaults
+// (length=3, tone="conversational") so callsites that don't pass them get
+// behavior identical to the pre-wire path. Schema parse provides the same
+// defaults at the tRPC boundary; this is the secondary defense.
+type WhatsappTone = "conversational" | "professional" | "urgent";
+type WhatsappSequenceLength = 3 | 5 | 7;
+
 interface WhatsappPromptParams {
   sotContext: string;
   serviceName: string;
@@ -31,9 +39,67 @@ interface WhatsappPromptParams {
   eventDate?: string;
   offerName?: string;
   price?: string;
+  tone?: WhatsappTone;
+  sequenceLength?: WhatsappSequenceLength;
 }
 
-function buildWhatsappRules(serviceName: string): string {
+// Conversational tone preserves the pre-refactor rule string verbatim — same
+// content, same order, identical bytes when no tone is supplied. Professional
+// and urgent are net-new variants per the locked research-report rules.
+function buildWhatsappRules(serviceName: string, tone: WhatsappTone = "conversational"): string {
+  if (tone === "professional") {
+    return `WHATSAPP COPY RULES — non-negotiable for every message:
+
+LENGTH: Maximum 3 sentences per message. WhatsApp is read on mobile in seconds — not emails, not articles.
+
+LANGUAGE: Business-appropriate. No slang. No "gonna", "wanna", "y'all", "ain't". Use complete sentences with proper grammar. The reader is a peer in a professional context — not a friend you'd text on a Friday night.
+
+CONTRACTIONS: Use sparingly. "you're", "it's", "don't" are fine. Avoid colloquial abbreviations like "tmrw", "pls", "u", "btw". Spell out "by the way", "tomorrow", "please".
+
+SPECIFIC SITUATION: Reference something specific about where they are right now — the event they attended, the thing they said yes to, the problem they're trying to solve. Never write a generic message.
+
+ENDING RULE — every message must end with EITHER a direct yes/no question OR a specific action with a link. NEVER both. NEVER neither.
+
+EMOJI RULES: Maximum 1 emoji per message. Only functional icons (✓ ⏰ 📅 📍). Never expressive emojis (😊 🙌 🔥). When in doubt, omit the emoji.
+
+OPENER CONVENTION: "Hello [First Name]," — comma after the name. Never "Hey".
+
+CLOSER CONVENTION: "Best," / "Speak soon," / no close + clear action. Never "Cheers" / "x" / informal sign-offs.
+
+PLACEHOLDER RULES: Use [First Name] (NOT {{Name}}). Use actual service name "${serviceName}". Write actual timing (not {{Date}} or {{Time}}).`;
+  }
+
+  if (tone === "urgent") {
+    return `WHATSAPP COPY RULES — non-negotiable for every message:
+
+LENGTH: Maximum 3 sentences per message. WhatsApp is read on mobile in seconds — not emails, not articles.
+
+LANGUAGE: Direct, time-pressured. Lead with the cost of inaction or the closing window. Trim every word that isn't pulling weight.
+
+CONTRACTIONS: Use to compress sentences and feel time-pressured. "you're", "it's", "don't" — required.
+
+SPECIFIC SITUATION: Reference something specific about where they are right now — the event they attended, the thing they said yes to, the problem they're trying to solve. Never write a generic message.
+
+ENDING RULE — every message must end with EITHER a direct yes/no question OR a specific action with a link. NEVER both. NEVER neither.
+
+SCARCITY MARKER — at least one per message, mandatory. Use ONE of:
+- Specific deadline (e.g. "ends 11:59 PM tonight", "doors close in 6 hours", "before [INSERT_CART_CLOSE]")
+- Specific quantity (e.g. "3 spots left", "12 already in")
+- Specific consequence (e.g. "after Friday, the price goes up 40%")
+
+EMOJI RULES: Maximum 1 emoji per message. Only urgency markers (⏰ 🔥 ⚠️). Never warmth emojis (😊 🙌 💕).
+
+OPENER CONVENTION: "[First Name] — [time window]" / "Quick one — [deadline]" / "Last chance —"
+
+CLOSER CONVENTION: Hard CTA only — no question. The action is the close.
+
+INTEGRITY RULE: Never invent a deadline that doesn't exist. Never invent scarcity that isn't real. If no genuine deadline, price increase, or spot limit exists, use social-proof scarcity grounded in psychology — "People who acted within 48 hours got [specific outcome]" — not fabricated countdown timers.
+
+PLACEHOLDER RULES: Use [First Name] (NOT {{Name}}). Use actual service name "${serviceName}". Write actual timing (not {{Date}} or {{Time}}).`;
+  }
+
+  // Default: conversational — verbatim pre-refactor string, byte-identical
+  // to what the no-Advanced default path produced before this commit.
   return `WHATSAPP COPY RULES — non-negotiable for every message:
 
 LENGTH: Maximum 3 sentences per message. WhatsApp is read on mobile in seconds — not emails, not articles.
@@ -51,14 +117,162 @@ EMOJI RULES: Maximum 2 emojis per message. Only where they add context. Never in
 PLACEHOLDER RULES: Use [First Name] (NOT {{Name}}). Use actual service name "${serviceName}". Write actual timing (not {{Date}} or {{Time}}).`;
 }
 
+// ── Per-message role-block helpers ─────────────────────────────────────────
+// Length 3 = pre-refactor canonical arc, preserved verbatim except where
+// Decision A explicitly tightens Message 3 (engagement only).
+// Lengths 5 and 7 = locked role arcs from the WhatsApp wire research report.
+
+const ENGAGEMENT_FINAL_MESSAGE_DECISION_A = `Name the event specifically. Give one clear next step and the link or action. **Do not add a deadline phrase, scarcity language, or "before [date]" construction.** Do not include "before [INSERT_CART_CLOSE]" or any time-pressure framing — engagement Message-final is the soft CTA, not the close. End with the action only — no question, no urgency.`;
+
+const ENGAGEMENT_PROOF_BLOCK = `Share one real result from one specific type of person (anonymised if needed). PROOF SPECIFICITY RULE: Anonymous proof must still be specific. Required format: '[specific job title or life situation] who [specific problem they had] → [specific mechanism or change] → [specific result with number, timeframe, or named outcome].' Never use: 'someone', 'a person', 'one of our clients', 'a student' without qualification. One sentence on what changed for them and how. Make it feel like evidence, not marketing. End with a direct question asking if that sounds familiar to them.`;
+
+const ENGAGEMENT_ASSUMPTION_BREAK_BLOCK = `Message 1 first sentence rule: The first sentence must break an assumption the reader currently holds — not just create curiosity. Identify the most common belief someone in this niche has about their situation, then write a first sentence that makes that belief feel worth questioning. This is not a shocking statement — it is something so precisely true about their current situation that it stops the scroll because it feels personal. It must contain one niche-specific word or phrase. Open a loop — ask one question they don't yet know the answer to, that makes them want to come to the event to find out. Do not answer the question in this message.`;
+
+function buildEngagementMessageBlocks(length: WhatsappSequenceLength): string {
+  if (length === 5) {
+    return `Create 5 WhatsApp messages (T-9, T-7, T-5, T-3, T-1 days before event). Each message has ONE job — the entire message serves that job only:
+
+Message 1 job = HOOK + MINI-STORY (T-9 days)
+Open with a specific situation from their life — the kind of moment that reveals the problem this event will help with. Tell it as a 2-sentence mini-story, not a setup-payoff joke; an observation from inside their world. Tease the event topic at the end. End with a one-line teaser question that won't resolve until the event.
+
+Message 2 job = ASSUMPTION BREAK + OPEN LOOP (T-7 days)
+${ENGAGEMENT_ASSUMPTION_BREAK_BLOCK}
+
+Message 3 job = SPECIFIC PROOF MOMENT (T-5 days)
+${ENGAGEMENT_PROOF_BLOCK}
+
+Message 4 job = OBJECTION PRE-EMPT (T-3 days)
+Name the most common reason people in this niche don't show up to events like this — the specific quiet reason, not the polite one. Reframe it. Ask for a tentative commitment ("if you can make it, are you in?") so they feel they've already half-decided. End with the question.
+
+Message 5 job = SOFT CTA (T-1 day)
+${ENGAGEMENT_FINAL_MESSAGE_DECISION_A}`;
+  }
+
+  if (length === 7) {
+    return `Create 7 WhatsApp messages (Day -7 through Day -1 — daily for the week before the event). Each message has ONE job — the entire message serves that job only:
+
+Message 1 job = TEASE THE EVENT WITH A QUESTION (Day -7)
+Pose the exact question the event answers. One sentence. No setup. Make it a question that — if they thought about it for 60 seconds — would feel uncomfortable to leave unanswered. End with the question itself, no CTA.
+
+Message 2 job = HOOK + MINI-STORY (Day -6)
+Open with a specific situation from their life — the kind of moment that reveals the problem this event will help with. Tell it as a 2-sentence mini-story, not a setup-payoff joke; an observation from inside their world. Tease the event topic at the end. End with a one-line teaser question that won't resolve until the event.
+
+Message 3 job = ASSUMPTION BREAK + OPEN LOOP (Day -5)
+${ENGAGEMENT_ASSUMPTION_BREAK_BLOCK}
+
+Message 4 job = PROOF MOMENT 1 (Day -4)
+${ENGAGEMENT_PROOF_BLOCK}
+
+Message 5 job = PROOF MOMENT 2 (Day -3)
+A second proof moment from a different angle and a different audience slice. Same PROOF SPECIFICITY RULE format. Make it clear this is NOT the same person as Message 4 — broaden the proof so it doesn't feel like a one-off. End with a question asking which version sounds more like them.
+
+Message 6 job = OBJECTION PRE-EMPT + REMINDER (Day -2)
+Name the most common reason people in this niche don't show up — the specific quiet reason, not the polite one. Reframe it. Add a soft reminder of when the event happens. Ask for a tentative commitment ("if you can make it, are you in?"). End with the question.
+
+Message 7 job = SOFT CTA (Day -1)
+${ENGAGEMENT_FINAL_MESSAGE_DECISION_A}`;
+  }
+
+  // Length 3 (default) — pre-refactor canonical arc, preserved verbatim
+  // except Message 3 swaps to the Decision A tightened final-message text.
+  return `Create 3 WhatsApp messages (Monday, Wednesday, Friday before event). Each message has ONE job — the entire message serves that job only:
+
+Message 1 job = ASSUMPTION BREAK + OPEN LOOP (Monday)
+${ENGAGEMENT_ASSUMPTION_BREAK_BLOCK}
+
+Message 2 job = SPECIFIC PROOF MOMENT (Wednesday)
+${ENGAGEMENT_PROOF_BLOCK}
+
+Message 3 job = SOFT CTA (Friday)
+${ENGAGEMENT_FINAL_MESSAGE_DECISION_A}`;
+}
+
+const SALES_COST_OF_INACTION_BLOCK = `Reference what they just attended. Name the specific cost of staying where they are — the thing that keeps happening if they don't act. One concrete, niche-specific consequence. End with the direct link or action.`;
+
+const SALES_PROOF_MECHANISM_BLOCK = `Name one specific result from one specific type of person (anonymised if needed). PROOF SPECIFICITY RULE: Anonymous proof must still be specific. Required format: '[specific job title or life situation] who [specific problem they had] → [specific mechanism or change] → [specific result with number, timeframe, or named outcome].' Never use: 'someone', 'a person', 'one of our clients', 'a student' without qualification. Name the method or mechanism that produced that result — one sentence. End with a closing question derived from the ICP's specific situation — their named fear, their specific frustration, or their stated buying trigger. The question must make them feel seen, not categorised. Use their language, not coaching language.`;
+
+const SALES_DIRECT_OFFER_BLOCK = `ANCHORING RULE: In the first sentence, state the total value of what they get before naming the price or the close. Given the 3-sentence constraint, the format is: sentence 1 = value anchor, sentence 2 = closing mechanism with specific named condition, sentence 3 = single action with CTA copy that communicates what they get (not just 'click here'). URGENCY FALLBACK: If no genuine deadline, price increase, or spot limit exists, use social proof scarcity — 'People who attended [event] and acted within 48 hours got [specific result]. The window where momentum works in your favour is closing.' This is honest urgency grounded in psychology, not fabricated scarcity. End with the single action and link only — no question.`;
+
+const SALES_DIFFERENTIATION_BLOCK = `Why this approach is different from what they've already tried — address the unsaid alternative. Don't compare directly to a named competitor; compare to the path they're already on. Make the difference structural, not just "better." End with a question that makes them notice the difference applies to their specific situation.`;
+
+const SALES_OBJECTION_HANDLER_BLOCK = `Name the specific objection most likely to keep them out — not a generic one, the actual quiet reason this audience hesitates. Reframe it with a concrete answer. Sentence 1 = the objection stated in their words (not yours). Sentence 2 = the answer. Sentence 3 = a small action to test the answer ("if X is true for you, here's the simplest next step"). End with the action.`;
+
+function buildSalesMessageBlocks(length: WhatsappSequenceLength): string {
+  if (length === 5) {
+    return `Create 5 WhatsApp messages (Day 1, 3, 5, 6, 7 after event). Each message has ONE job — the entire message serves that job only:
+
+Message 1 job = NAME THE COST OF INACTION (Day 1)
+${SALES_COST_OF_INACTION_BLOCK}
+
+Message 2 job = PROOF + MECHANISM (Day 3)
+${SALES_PROOF_MECHANISM_BLOCK}
+
+Message 3 job = DIFFERENTIATION (Day 5)
+${SALES_DIFFERENTIATION_BLOCK}
+
+Message 4 job = OBJECTION HANDLER (Day 6)
+${SALES_OBJECTION_HANDLER_BLOCK}
+
+Message 5 job = DIRECT OFFER + URGENCY + SINGLE ACTION (Day 7)
+${SALES_DIRECT_OFFER_BLOCK}`;
+  }
+
+  if (length === 7) {
+    return `Create 7 WhatsApp messages (Day 1, 2, 4, 6, 7, 8, 10 after event). Each message has ONE job — the entire message serves that job only:
+
+Message 1 job = NAME THE COST OF INACTION (Day 1)
+${SALES_COST_OF_INACTION_BLOCK}
+
+Message 2 job = PROBLEM DEEP-DIVE (Day 2)
+Articulate their problem more specifically than they've heard it articulated before. Not: "you're stuck on X". Yes: "the specific kind of stuck that happens at [specific moment in their workflow or week]." Show you understand the texture of the problem, not just the headline. End with a question that confirms you've named their actual problem.
+
+Message 3 job = SOLUTION FRAMEWORK (Day 4)
+Your method, named, in plain language. One sentence: what it is. One sentence: the principle that makes it work. One sentence: the proof point that proves the principle. End with a question or an action that asks if they want to know how it works for their specific situation.
+
+Message 4 job = PROOF + MECHANISM (Day 6)
+${SALES_PROOF_MECHANISM_BLOCK}
+
+Message 5 job = DIFFERENTIATION (Day 7)
+${SALES_DIFFERENTIATION_BLOCK}
+
+Message 6 job = OBJECTION HANDLER (Day 8)
+${SALES_OBJECTION_HANDLER_BLOCK}
+
+Message 7 job = DIRECT OFFER + URGENCY + SINGLE ACTION (Day 10)
+${SALES_DIRECT_OFFER_BLOCK}`;
+  }
+
+  // Length 3 (default) — pre-refactor canonical arc, preserved verbatim.
+  return `Create 3 WhatsApp messages (Day 1, 3, 5 after event). Each message has ONE job — the entire message serves that job only:
+
+Message 1 job = NAME THE COST OF INACTION (Day 1)
+${SALES_COST_OF_INACTION_BLOCK}
+
+Message 2 job = PROOF + MECHANISM (Day 3)
+${SALES_PROOF_MECHANISM_BLOCK}
+
+Message 3 job = DIRECT OFFER + URGENCY + SINGLE ACTION (Day 5)
+${SALES_DIRECT_OFFER_BLOCK}`;
+}
+
 export function buildWhatsappEngagementPrompt(p: WhatsappPromptParams): string {
-  const rules = buildWhatsappRules(p.serviceName);
-  return `${p.sotContext ? `${p.sotContext}\n\n` : ''}You are an expert WhatsApp marketer. Create a 3-message WhatsApp engagement sequence for event attendees.
+  const tone = p.tone ?? "conversational";
+  const length: WhatsappSequenceLength = p.sequenceLength ?? 3;
+  const rules = buildWhatsappRules(p.serviceName, tone);
+  const messageBlocks = buildEngagementMessageBlocks(length);
+  // COMMITMENT AND CONSISTENCY: length-3 path uses the verbatim pre-refactor
+  // text (preserves byte-equivalent default-flow output). Lengths 5/7 use a
+  // length-agnostic version since the original referenced specific message
+  // numbers that no longer fit a longer arc.
+  const commitmentPrinciple = length === 3
+    ? `COMMITMENT AND CONSISTENCY PRINCIPLE: Message 1 opens a question they cannot answer without the event. Message 2 shows proof that someone like them got the answer. Message 3 makes attending the obvious next step for someone who engaged with messages 1 and 2. Build on the micro-commitment of each previous message. Message 3 should feel like the natural conclusion of a conversation that started in message 1 — not a standalone CTA.`
+    : `COMMITMENT AND CONSISTENCY PRINCIPLE: Build on the micro-commitment of each previous message — each message earns the next. The final message should feel like the natural conclusion of a conversation that started with the first — not a standalone CTA.`;
+  return `${p.sotContext ? `${p.sotContext}\n\n` : ''}You are an expert WhatsApp marketer. Create a ${length}-message WhatsApp engagement sequence for event attendees.
 
 Service: ${p.serviceName}
 Event: ${p.eventName}
 Host: ${p.hostName}
-Event Date: ${p.eventDate || "Date"}
+Event Date: ${p.eventDate}
 
 ${p.socialProofGuidance}
 
@@ -66,25 +280,19 @@ ${p.campaignTypeContext ? `${p.campaignTypeContext}\n\n` : ''}${p.icpContext}
 
 ${rules}
 
-COMMITMENT AND CONSISTENCY PRINCIPLE: Message 1 opens a question they cannot answer without the event. Message 2 shows proof that someone like them got the answer. Message 3 makes attending the obvious next step for someone who engaged with messages 1 and 2. Build on the micro-commitment of each previous message. Message 3 should feel like the natural conclusion of a conversation that started in message 1 — not a standalone CTA.
+${commitmentPrinciple}
 
-Create 3 WhatsApp messages (Monday, Wednesday, Friday before event). Each message has ONE job — the entire message serves that job only:
-
-Message 1 job = ASSUMPTION BREAK + OPEN LOOP (Monday)
-Message 1 first sentence rule: The first sentence must break an assumption the reader currently holds — not just create curiosity. Identify the most common belief someone in this niche has about their situation, then write a first sentence that makes that belief feel worth questioning. This is not a shocking statement — it is something so precisely true about their current situation that it stops the scroll because it feels personal. It must contain one niche-specific word or phrase. Open a loop — ask one question they don't yet know the answer to, that makes them want to come to the event to find out. Do not answer the question in this message.
-
-Message 2 job = SPECIFIC PROOF MOMENT (Wednesday)
-Share one real result from one specific type of person (anonymised if needed). PROOF SPECIFICITY RULE: Anonymous proof must still be specific. Required format: '[specific job title or life situation] who [specific problem they had] → [specific mechanism or change] → [specific result with number, timeframe, or named outcome].' Never use: 'someone', 'a person', 'one of our clients', 'a student' without qualification. One sentence on what changed for them and how. Make it feel like evidence, not marketing. End with a direct question asking if that sounds familiar to them.
-
-Message 3 job = SOFT CTA (Friday)
-Name the event specifically. Give one clear next step and the link or action. No selling. No urgency. Just the obvious, easy thing to do next. End with the action.
+${messageBlocks}
 
 Return as a JSON object with a 'messages' key containing the array.`;
 }
 
 export function buildWhatsappSalesPrompt(p: WhatsappPromptParams): string {
-  const rules = buildWhatsappRules(p.serviceName);
-  return `${p.sotContext ? `${p.sotContext}\n\n` : ''}You are an expert WhatsApp marketer. Create a 3-message WhatsApp sales sequence for event attendees.
+  const tone = p.tone ?? "conversational";
+  const length: WhatsappSequenceLength = p.sequenceLength ?? 3;
+  const rules = buildWhatsappRules(p.serviceName, tone);
+  const messageBlocks = buildSalesMessageBlocks(length);
+  return `${p.sotContext ? `${p.sotContext}\n\n` : ''}You are an expert WhatsApp marketer. Create a ${length}-message WhatsApp sales sequence for event attendees.
 
 Service: ${p.serviceName}
 Event: ${p.eventName}
@@ -97,16 +305,7 @@ ${p.campaignTypeContext ? `${p.campaignTypeContext}\n\n` : ''}${p.icpContext}
 
 ${rules}
 
-Create 3 WhatsApp messages (Day 1, 3, 5 after event). Each message has ONE job — the entire message serves that job only:
-
-Message 1 job = NAME THE COST OF INACTION (Day 1)
-Reference what they just attended. Name the specific cost of staying where they are — the thing that keeps happening if they don't act. One concrete, niche-specific consequence. End with the direct link or action.
-
-Message 2 job = PROOF + MECHANISM (Day 3)
-Name one specific result from one specific type of person (anonymised if needed). PROOF SPECIFICITY RULE: Anonymous proof must still be specific. Required format: '[specific job title or life situation] who [specific problem they had] → [specific mechanism or change] → [specific result with number, timeframe, or named outcome].' Never use: 'someone', 'a person', 'one of our clients', 'a student' without qualification. Name the method or mechanism that produced that result — one sentence. End with a closing question derived from the ICP's specific situation — their named fear, their specific frustration, or their stated buying trigger. The question must make them feel seen, not categorised. Use their language, not coaching language.
-
-Message 3 job = DIRECT OFFER + URGENCY + SINGLE ACTION (Day 5)
-ANCHORING RULE: In the first sentence, state the total value of what they get before naming the price or the close. Given the 3-sentence constraint, the format is: sentence 1 = value anchor, sentence 2 = closing mechanism with specific named condition, sentence 3 = single action with CTA copy that communicates what they get (not just 'click here'). URGENCY FALLBACK: If no genuine deadline, price increase, or spot limit exists, use social proof scarcity — 'People who attended [event] and acted within 48 hours got [specific result]. The window where momentum works in your favour is closing.' This is honest urgency grounded in psychology, not fabricated scarcity. End with the single action and link only — no question.
+${messageBlocks}
 
 Return as a JSON object with a 'messages' key containing the array.`;
 }
@@ -203,6 +402,11 @@ const generateWhatsAppSequenceSchema = z.object({
   campaignId: z.number().optional(),
   sequenceType: z.enum(["engagement", "sales"]),
   name: z.string().min(1).max(255),
+  // Length × tone (commit 2 of WhatsApp wire sprint).
+  // Optional with defaults so callsites that omit them get the
+  // canonical pre-wire behavior (length=3, tone=conversational).
+  tone: z.enum(["conversational", "professional", "urgent"]).optional().default("conversational"),
+  sequenceLength: z.union([z.literal(3), z.literal(5), z.literal(7)]).optional().default(3),
   eventDetails: z
     .object({
       eventName: z.string(),
@@ -421,17 +625,23 @@ You MUST use these exact numbers and real names. Do not fabricate.`
 - Use outcome-based language WITHOUT specific names`;
 
       // Both sync and async use the shared builder functions — per-message job structure lives there.
+      // Decision C: when eventDetails fields are absent, emit operator placeholders
+      // ([INSERT_EVENT_NAME] / [INSERT_HOST_NAME] / [INSERT_EVENT_DATE]) instead of
+      // literal "Event" / "Host" / "Date" strings. Matches NO_DATE_FABRICATION_RULE
+      // convention; surfaced by PlaceholderBanner in V2WhatsAppResultPanel.
       const promptParams: WhatsappPromptParams = {
         sotContext,
         serviceName: service.name,
         campaignTypeContext,
         icpContext,
         socialProofGuidance,
-        eventName: input.eventDetails?.eventName || "Event",
-        hostName: input.eventDetails?.hostName || "Host",
-        eventDate: input.eventDetails?.eventDate,
+        eventName: input.eventDetails?.eventName || "[INSERT_EVENT_NAME]",
+        hostName: input.eventDetails?.hostName || "[INSERT_HOST_NAME]",
+        eventDate: input.eventDetails?.eventDate || "[INSERT_EVENT_DATE]",
         offerName: input.eventDetails?.offerName,
         price: input.eventDetails?.price,
+        tone: input.tone,
+        sequenceLength: input.sequenceLength,
       };
       const prompt = input.sequenceType === "engagement"
         ? buildWhatsappEngagementPrompt(promptParams)
@@ -448,12 +658,14 @@ You MUST use these exact numbers and real names. Do not fabricate.`
           mediaType: (msg as any).mediaType || null,
         })),
       };
-      // Save to database
+      // Save to database — tone || "conversational" is a belt-and-suspenders
+      // default in case any future codepath bypasses the Zod schema's default.
       const insertResult: any = await db.insert(whatsappSequences).values({
         userId: ctx.user.id,
         serviceId: input.serviceId,
         campaignId: input.campaignId || null,
         sequenceType: input.sequenceType,
+        tone: input.tone || "conversational",
         name: input.name,
         messages: sequenceData.messages,
       });
@@ -526,17 +738,20 @@ You MUST use these exact numbers and real names. Do not fabricate.`
           const socialProofGuidance = socialProof.hasCustomers || socialProof.hasTestimonials ? `REAL SOCIAL PROOF AVAILABLE:\n${socialProof.hasCustomers ? `- ${socialProof.customerCount} verified customers` : ''}\n${socialProof.hasTestimonials ? `- Real testimonials:\n${socialProof.testimonials.map((t: any) => `  • ${t.name}${t.title ? ` (${t.title})` : ''}: "${truncateQuote(t.quote || '')}"`).join('\n')}` : ''}\n\nYou MUST use these exact numbers and real names. Do not fabricate.` : `NO SOCIAL PROOF DATA PROVIDED:\n- DO NOT mention customer counts or specific testimonials\n- Focus on benefit claims and value propositions\n- Use outcome-based language WITHOUT specific names`;
 
           // Use the shared builders — same per-message job structure as the sync path.
+          // Decision C operator-placeholder fallback mirrored from sync path L610-621.
           const bgPromptParams: WhatsappPromptParams = {
             sotContext,
             serviceName: capturedService.name,
             campaignTypeContext,
             icpContext,
             socialProofGuidance,
-            eventName: capturedInput.eventDetails?.eventName || "Event",
-            hostName: capturedInput.eventDetails?.hostName || "Host",
-            eventDate: capturedInput.eventDetails?.eventDate,
+            eventName: capturedInput.eventDetails?.eventName || "[INSERT_EVENT_NAME]",
+            hostName: capturedInput.eventDetails?.hostName || "[INSERT_HOST_NAME]",
+            eventDate: capturedInput.eventDetails?.eventDate || "[INSERT_EVENT_DATE]",
             offerName: capturedInput.eventDetails?.offerName,
             price: capturedInput.eventDetails?.price,
+            tone: capturedInput.tone,
+            sequenceLength: capturedInput.sequenceLength,
           };
           const prompt = capturedInput.sequenceType === "engagement"
             ? buildWhatsappEngagementPrompt(bgPromptParams)
@@ -546,7 +761,8 @@ You MUST use these exact numbers and real names. Do not fabricate.`
           // See sync path note above re: `any` typing on sequenceData.
           const sequenceData: { messages: any[] } = { messages: rawMessages.map((msg: RawWhatsappMessage, idx: number) => ({ text: msg.message || msg.text || `Message ${idx + 1}: Check this out`, delay: (msg as any).delay || (idx * 24), delayUnit: (msg as any).delayUnit || 'hours', mediaUrl: (msg as any).mediaUrl || null, mediaType: (msg as any).mediaType || null })) };
 
-          const insertResult: any = await bgDb.insert(whatsappSequences).values({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, sequenceType: capturedInput.sequenceType, name: capturedInput.name, messages: sequenceData.messages });
+          // tone || "conversational" belt-and-suspenders default; mirrors sync path.
+          const insertResult: any = await bgDb.insert(whatsappSequences).values({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, sequenceType: capturedInput.sequenceType, tone: capturedInput.tone || "conversational", name: capturedInput.name, messages: sequenceData.messages });
           const [newSequence] = await bgDb.select().from(whatsappSequences).where(eq(whatsappSequences.id, insertResult[0].insertId)).limit(1);
 
           await bgDb.update(jobs)
