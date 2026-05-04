@@ -12,6 +12,7 @@ import ZappyMascot from "./ZappyMascot";
 import UpgradePrompt from "./components/UpgradePrompt";
 import { useFavourites } from "./hooks/useFavourites";
 import ExportButtons from "./components/ExportButtons";
+import PlaceholderBanner from "./components/PlaceholderBanner";
 import { formatWhatsAppTxt, formatHeadlinesTxt, formatAdCopyTxt, formatOfferTxt, formatMechanismsTxt, formatHvcoTxt, formatIcpTxt, formatLandingPageTxt } from "./lib/exportUtils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -354,6 +355,9 @@ export default function V2WhatsAppResultPanel({
           </p>
         </div>
       </div>
+
+      {/* ── Operator placeholders banner — surfaces [INSERT_*] tokens across all messages ── */}
+      <PlaceholderBanner data={messages} />
 
       {/* ── Tone selector ── */}
       <div style={{ marginBottom: "20px" }}>
