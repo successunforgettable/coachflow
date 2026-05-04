@@ -184,7 +184,16 @@ const ADVANCED_FIELDS: Record<WizardStep, AdvancedField[]> = {
   adCopy: [],
   landingPage: [],
   emailSequence: [],
-  whatsappSequence: [],
+  whatsappSequence: [
+    // sequenceLength options stored as strings (HTML <select> constraint);
+    // converted to numeric literal at the runGeneration read site below to
+    // match the server's z.union([z.literal(3), z.literal(5), z.literal(7)])
+    // schema. Order matters: fieldValues defaults to options[0] = "3", which
+    // matches the server's default — users who don't touch Advanced get
+    // identical output to today.
+    { key: "sequenceLength", label: "Number of Messages", type: "select", options: ["3", "5", "7"], sourceNote: "Number of messages. Defaults to 3 — industry standard for WhatsApp event reminders." },
+    { key: "tone", label: "Tone", type: "select", options: ["conversational", "professional", "urgent"], sourceNote: "Voice and energy of the messages. Defaults to conversational." },
+  ],
   // pushToMeta also hidden — Platform select doesn't reach generation
   // (this step shows instructions, no mutation runs). Same fake-knob
   // trust-erosion pattern as the 6 above; hiding closes the audit cleanly.
@@ -1740,10 +1749,24 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
         const emailResult = await pollJob(jobId);
         if (typeof emailResult.id === 'number') setLatestEmailSequenceId(emailResult.id);
       } else if (step === "whatsappSequence") {
+        // Path C: read user-selected tone + sequenceLength from Advanced accordion.
+        // Schema enums match the UI options exactly (commit 2 of WhatsApp wire).
+        // If user hasn't touched Advanced, fieldValues defaults match the server
+        // schema defaults (length=3, tone="conversational"); behavior identical
+        // to today's production.
+        const advTone = (payload.advancedOverrides as Record<string, string> | undefined)?.tone as
+          | "conversational"
+          | "professional"
+          | "urgent"
+          | undefined;
+        const advLengthRaw = (payload.advancedOverrides as Record<string, string> | undefined)?.sequenceLength;
+        const advLength: 3 | 5 | 7 = advLengthRaw === "5" ? 5 : advLengthRaw === "7" ? 7 : 3;
         const { jobId } = await generateWhatsappSequenceAsync.mutateAsync({
           serviceId: svcId,
           sequenceType: "engagement",
           name: `${svc?.name || "My Service"} — Engagement Sequence`,
+          tone: advTone ?? "conversational",
+          sequenceLength: advLength,
         });
         const waResult = await pollJob(jobId);
         if (typeof waResult.id === 'number') setLatestWhatsappSequenceId(waResult.id);
