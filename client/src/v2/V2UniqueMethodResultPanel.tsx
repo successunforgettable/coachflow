@@ -8,6 +8,7 @@
 import { useState } from "react";
 import { trpc } from "../lib/trpc";
 import ZappyMascot from "./ZappyMascot";
+import PlaceholderBanner from "./components/PlaceholderBanner";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type TabType = "hero_mechanisms" | "headline_ideas" | "beast_mode";
@@ -242,6 +243,9 @@ export default function V2UniqueMethodResultPanel({
           </p>
         </div>
       </div>
+
+      {/* ── Operator placeholders banner — surfaces [INSERT_*] tokens across all mechanisms ── */}
+      <PlaceholderBanner data={mechanisms} />
 
       {/* ── Tabs ── */}
       <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "20px" }}>
