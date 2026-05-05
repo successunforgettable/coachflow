@@ -176,7 +176,18 @@ const ADVANCED_FIELDS: Record<WizardStep, AdvancedField[]> = {
   // — see the audit registered in today's session. Path A (full wiring of
   // these 6 nodes) is queued post-launch; for now we hide rather than ship
   // cosmetic toggles that don't change generation output.
-  uniqueMethod: [],
+  uniqueMethod: [
+    // Path B wire (commit 3 of Unique Method sprint).
+    // application is free-text; trims+coerces empty to undefined at the
+    // runGeneration read site so the server's [INSERT_APPLICATION_METHOD]
+    // fallback (commit 75eecf3) fires when blank — surfaced via the
+    // PlaceholderBanner installed in d5313c1.
+    // descriptor options[0] = "System" matches the server's pre-commit-2
+    // hardcoded default; users who don't touch Advanced see structurally
+    // identical output to today's pre-commit-3 generations.
+    { key: "application", label: "Application Method", type: "text", placeholder: "e.g. 6-week group coaching cohort", sourceNote: "How users apply your method. Defaults to a generic placeholder if left blank." },
+    { key: "descriptor", label: "Method Type", type: "select", options: ["System", "Framework", "Method", "Strategy"], sourceNote: "What you call your method. Defaults to System." },
+  ],
   freeOptIn: [
     { key: "hvcoTopic", label: "Lead Magnet Topic Override", type: "text", placeholder: "Leave blank to use AI suggestion", sourceNote: "AI generates this from your service profile" },
   ],
@@ -1679,6 +1690,20 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
         const offerResult = await pollJob(jobId);
         if (typeof offerResult.offerId === 'number') setLatestOfferId(offerResult.offerId);
       } else if (step === "uniqueMethod") {
+        // Path B wire: read user-supplied application + descriptor from Advanced.
+        // application: empty/whitespace → undefined → server falls back to
+        //   [INSERT_APPLICATION_METHOD] placeholder (commit 75eecf3), surfaced
+        //   via PlaceholderBanner.
+        // descriptor: defaults to "System" via fieldValues options[0]; matches
+        //   the pre-commit-2 server hardcoded default → no-Advanced path produces
+        //   structurally identical output to today's generations.
+        const advApplication = (payload.advancedOverrides as Record<string, string> | undefined)?.application?.trim();
+        const advDescriptor = (payload.advancedOverrides as Record<string, string> | undefined)?.descriptor as
+          | "System"
+          | "Framework"
+          | "Method"
+          | "Strategy"
+          | undefined;
         const { jobId } = await generateHeroMechanismAsync.mutateAsync({
           serviceId: svcId,
           targetMarket: svc?.targetCustomer || "",
@@ -1689,6 +1714,8 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
           desiredOutcome: svc?.mainBenefit || "",
           credibility: svc?.pressFeatures || "",
           socialProof: svc?.socialProofStat || "",
+          application: advApplication || undefined,
+          descriptor: advDescriptor ?? "System",
         });
         const mechResult = await pollJob(jobId);
         if (typeof mechResult.mechanismSetId === 'string') setLatestMechanismSetId(mechResult.mechanismSetId);
