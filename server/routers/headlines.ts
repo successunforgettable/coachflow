@@ -372,6 +372,14 @@ export const headlinesRouter = router({
         desiredOutcome: z.string(),
         uniqueMechanism: z.string(),
         powerMode: z.boolean().optional(),
+        // Headlines wire commit 1/2: per-style filter. Optional, no default.
+        // undefined → all 5 formulas (current behavior preserved).
+        // one of the 5 enum keys → only that formula runs.
+        // Enum keys are byte-identical to FORMULA_PROMPTS keys at L130-210.
+        // The "All styles" UI option is a client-side sentinel that coerces
+        // to undefined before the mutation; server only ever sees undefined
+        // or one of these 5 values.
+        headlineStyle: z.enum(["story", "eyebrow", "question", "authority", "urgency"]).optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -483,8 +491,19 @@ export const headlinesRouter = router({
       // ~150-300s sequential to ~30-60s (max of 5 calls). allHeadlines
       // is push'd to concurrently — JS is single-threaded so .push is
       // atomic and safe across the parallel branches.
+      // Headlines wire commit 1/2: per-style filter (sync path).
+      // Filter predicate: when input.headlineStyle is undefined, the
+      // `!input.headlineStyle` branch is true so every entry passes through
+      // (preserves the all-5-formulas default). When input.headlineStyle is
+      // one of the 5 enum keys, only that single entry survives → 1-formula
+      // generation. The downstream Promise.all + forEach push to allHeadlines
+      // is iteration-size-agnostic (verified via trace before commit), so 1
+      // entry produces 5 headlines (or 15 with powerMode) and 5 entries
+      // produce 25 (or 75 with powerMode) — same scaling.
       await Promise.all(
-        Object.entries(FORMULA_PROMPTS).map(async ([formulaType, promptTemplate]) => {
+        Object.entries(FORMULA_PROMPTS)
+          .filter(([k]) => !input.headlineStyle || k === input.headlineStyle)
+          .map(async ([formulaType, promptTemplate]) => {
           // Modify prompt to generate 3x more if Power Mode is enabled
           const modifiedTemplate = promptTemplate.replace(/Generate 5/g, `Generate ${5 * countMultiplier}`);
           // Item 1.3 — use resolved values (server fallback from service record)
@@ -661,6 +680,9 @@ Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES
       desiredOutcome: z.string(),
       uniqueMechanism: z.string(),
       powerMode: z.boolean().optional(),
+      // Headlines wire commit 1/2: mirrors the sync schema. See comment
+      // above the sync `headlineStyle` field for full semantics.
+      headlineStyle: z.enum(["story", "eyebrow", "question", "authority", "urgency"]).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const { user } = ctx;
@@ -731,8 +753,13 @@ Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES
 
           // 5 formulas in parallel via tool-use; mirror of the sync
           // generate path. ~30-60s wall-time vs ~150-300s sequential.
+          // Headlines wire commit 1/2: per-style filter (async path).
+          // Mirror of the sync filter at L487-area. Same predicate semantics:
+          // undefined headlineStyle → all 5 formulas; specific enum key → 1.
           await Promise.all(
-            Object.entries(FORMULA_PROMPTS).map(async ([formulaType, promptTemplate]) => {
+            Object.entries(FORMULA_PROMPTS)
+              .filter(([k]) => !capturedInput.headlineStyle || k === capturedInput.headlineStyle)
+              .map(async ([formulaType, promptTemplate]) => {
               const modifiedTemplate = (promptTemplate as string).replace(/Generate 5/g, `Generate ${5 * countMultiplier}`);
               const resolvedPressingProblem = capturedAutoPopData.resolvedPressingProblem ?? capturedInput.pressingProblem;
               const resolvedDesiredOutcome = capturedAutoPopData.resolvedDesiredOutcome ?? capturedInput.desiredOutcome;
