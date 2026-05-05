@@ -191,7 +191,31 @@ const ADVANCED_FIELDS: Record<WizardStep, AdvancedField[]> = {
   freeOptIn: [
     { key: "hvcoTopic", label: "Lead Magnet Topic Override", type: "text", placeholder: "Leave blank to use AI suggestion", sourceNote: "AI generates this from your service profile" },
   ],
-  headlines: [],
+  headlines: [
+    // Headlines wire commit 2/2 — Path B vocabulary + Choice 1 sentinel.
+    // Server contract (commit 1, e572f7a): headlineStyle is z.enum of 5 keys
+    // story/eyebrow/question/authority/urgency, optional. undefined → all
+    // 5 formulas; specific key → 1 formula only.
+    // UI: options[0] is the "All styles" sentinel that fieldValues defaults
+    // to. The runGeneration branch maps friendly labels → server keys via a
+    // local lookup table; "All styles..." is intentionally absent from the
+    // lookup so it falls through to undefined, preserving today's all-5-
+    // formulas default.
+    {
+      key: "headlineStyle",
+      label: "Headline Style",
+      type: "select",
+      options: [
+        "All styles (mix all 5 formulas)",
+        "Story-driven (How a [Person] discovered [Result])",
+        "Authority eyebrow (Three-part with credibility tag)",
+        "Question-based (Hidden obstacles, mistakes)",
+        "Expert-led (Authority + debunked old methods)",
+        "Urgent timeframe (Action + result + days/months)",
+      ],
+      sourceNote: "Pick one formula or generate all 5. Defaults to all 5 styles.",
+    },
+  ],
   adCopy: [],
   landingPage: [],
   emailSequence: [],
@@ -1733,12 +1757,28 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
         const hvcoResult = await pollJob(jobId);
         if (typeof hvcoResult.hvcoSetId === 'string') setLatestHvcoSetId(hvcoResult.hvcoSetId);
       } else if (step === "headlines") {
+        // Path B + Choice 1: UI shows friendly labels and an "All styles"
+        // sentinel; map back to server keys here. The lookup table
+        // INTENTIONALLY omits the "All styles..." label so it falls through
+        // to undefined, which the server's commit-1 filter (e572f7a) treats
+        // as "run all 5 formulas". Keys are byte-identical to the server's
+        // FORMULA_PROMPTS keys at server/routers/headlines.ts:130-210.
+        const HEADLINE_STYLE_LABEL_TO_KEY: Record<string, "story" | "eyebrow" | "question" | "authority" | "urgency"> = {
+          "Story-driven (How a [Person] discovered [Result])": "story",
+          "Authority eyebrow (Three-part with credibility tag)": "eyebrow",
+          "Question-based (Hidden obstacles, mistakes)": "question",
+          "Expert-led (Authority + debunked old methods)": "authority",
+          "Urgent timeframe (Action + result + days/months)": "urgency",
+        };
+        const advLabel = (payload.advancedOverrides as Record<string, string> | undefined)?.headlineStyle;
+        const headlineStyle = advLabel ? HEADLINE_STYLE_LABEL_TO_KEY[advLabel] : undefined;
         const { jobId } = await generateHeadlinesAsync.mutateAsync({
           serviceId: svcId,
           targetMarket: svc?.targetCustomer || "",
           pressingProblem: svc?.painPoints || "",
           desiredOutcome: svc?.mainBenefit || "",
           uniqueMechanism: svc?.uniqueMechanismSuggestion || "",
+          headlineStyle,
         });
         const headlineResult = await pollJob(jobId);
         if (headlineResult.headlineSetId) {
