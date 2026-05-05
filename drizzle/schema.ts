@@ -351,7 +351,13 @@ export const emailSequences = mysqlTable("emailSequences", {
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   serviceId: int("serviceId").references(() => services.id, { onDelete: "set null" }),
   campaignId: int("campaignId").references(() => campaigns.id, { onDelete: "set null" }),
-  sequenceType: mysqlEnum("sequenceType", ["welcome", "engagement", "sales"]),
+  // Email Sequence wire commit 2 — extended from 3 → 6 values to match prod
+  // DB enum (migration 0065). Closes the commit-1→commit-2 drift window:
+  // commit 1 shipped only the SQL ALTER and intentionally deferred this
+  // schema.ts edit to avoid V1 callsite cascade. Now widened simultaneously
+  // with the server Zod schemas in routers/emailSequences.ts so the inferred
+  // TS type and the runtime Zod parser stay in lockstep.
+  sequenceType: mysqlEnum("sequenceType", ["welcome", "engagement", "sales", "nurture", "launch", "re-engagement"]),
   name: varchar("name", { length: 255 }).notNull(),
   emails: json("emails").$type<Array<{ day: number; subject: string; body: string; timing: string }>>().notNull(),
   automationEnabled: boolean("automationEnabled").default(false),

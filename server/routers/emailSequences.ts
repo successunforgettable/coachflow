@@ -26,26 +26,36 @@ interface EmailPromptParams {
   campaignTypeContext: string;
   icpContext: string;
   socialProofGuidance: string;
-  // welcome
+  // welcome / nurture / launch / re-engagement (generic service context)
   category?: string | null;
   description?: string | null;
   targetCustomer?: string | null;
   mainBenefit?: string | null;
-  // engagement & sales
+  // engagement & sales (event-anchored — Decision-C placeholders fall back
+  // to [INSERT_EVENT_NAME] / [INSERT_HOST_NAME] when undefined)
   eventName?: string;
   hostName?: string;
-  // sales
+  // sales (Decision-C placeholders [INSERT_OFFER_NAME] / [INSERT_PRICE] /
+  // [INSERT_DEADLINE] when undefined)
   offerName?: string;
   price?: string;
   deadline?: string;
+  // Note on nurture / launch / re-engagement (commit 2 of Email Sequence wire):
+  // these three new builders do NOT add new schema fields per the locked A1
+  // strategy. They use [INSERT_*] operator placeholders for their anchor
+  // variables (lead magnet name, cart-open/close dates, incentive, etc.) —
+  // surfaced via PlaceholderBanner at V2EmailSequenceResultPanel:419 for the
+  // operator to fill in post-generation.
 }
 
 function getEmailRules(): string {
   // Word count rules per sequence type — update the BODY COPY RULES block below if new sequence types are added.
   // Welcome sequence: max 200 words
-  // Engagement sequence: max 200 words
-  // Sales sequence: max 300 words
-  // Future sequence types: add word count here before adding a new builder.
+  // Engagement sequence: max 200 words (event-anchored)
+  // Sales sequence: max 300 words (event-anchored)
+  // Nurture sequence: max 200 words (commit 2 of Email Sequence wire)
+  // Launch sequence: max 250 words (commit 2 of Email Sequence wire)
+  // Re-engagement sequence: max 150 words (commit 2 of Email Sequence wire)
   return `ONE EMAIL ONE JOB RULE: Every email in this sequence has exactly ONE job. The entire email — subject line, body, and CTA — must serve only that one job. Nothing else. No secondary CTAs. No topic shifts.
 
 SUBJECT LINE RULES:
@@ -61,6 +71,9 @@ BODY COPY RULES:
 - Welcome sequence emails: max 200 words
 - Engagement sequence emails: max 200 words
 - Sales sequence emails: max 300 words
+- Nurture sequence emails: max 200 words
+- Launch sequence emails: max 250 words
+- Re-engagement sequence emails: max 150 words
 - Max 15 words per sentence. Max 2 sentences per paragraph. Line breaks between paragraphs.
 - Grade 6 reading level. Short words. Direct language. Contractions (you're, it's, don't).
 - Never use: "I hope this email finds you well", "As per my last email", "I wanted to reach out"
@@ -113,8 +126,8 @@ export function buildEngagementEmailPrompt(p: EmailPromptParams): string {
   return `${p.sotContext ? `${p.sotContext}\n\n` : ''}You are an expert email marketer. Create a 5-email engagement sequence for event attendees using Russell Brunson's Soap Opera Sequence.
 
 Service: ${p.serviceName}
-Event: ${p.eventName || "Event"}
-Host: ${p.hostName || "Host"}
+Event: ${p.eventName || "[INSERT_EVENT_NAME]"}
+Host: ${p.hostName || "[INSERT_HOST_NAME]"}
 
 ${p.socialProofGuidance}
 
@@ -143,10 +156,10 @@ export function buildSalesEmailPrompt(p: EmailPromptParams): string {
   return `${p.sotContext ? `${p.sotContext}\n\n` : ''}You are an expert email marketer. Create a 7-email sales sequence for event attendees who didn't buy.
 
 Service: ${p.serviceName}
-Event: ${p.eventName || "Event"}
-Offer: ${p.offerName || "Offer"}
-Price: ${p.price || "Price"}
-Deadline: ${p.deadline || "Deadline"}
+Event: ${p.eventName || "[INSERT_EVENT_NAME]"}
+Offer: ${p.offerName || "[INSERT_OFFER_NAME]"}
+Price: ${p.price || "[INSERT_PRICE]"}
+Deadline: ${p.deadline || "[INSERT_DEADLINE]"}
 
 ${p.socialProofGuidance}
 
@@ -173,6 +186,171 @@ Each email must include:
 - body: (max 300 words, short sentences, line breaks between paragraphs)
 - cta: (one specific action)
 - ps: (mandatory — one sentence that creates urgency or reveals additional stakes)
+
+Return as a JSON object with an 'emails' key containing the array.`;
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Net-new sequence types (commit 2 of Email Sequence wire).
+// Locked structural designs from the prior design pass:
+//   - Nurture: 7 emails over ~21 days, Russell Brunson Soap Opera Sequence,
+//     anchored to a lead magnet (NOT an event). [INSERT_LEAD_MAGNET_NAME]
+//     placeholder per A1 strategy (no schema field, surfaced via banner).
+//   - Launch: 9 emails around a cart-open window, Jeff Walker Product Launch
+//     Formula structure (3 pre-launch + 5 open-cart + 1 close-cart). Anchored
+//     to product/cart window. Placeholders: [INSERT_LAUNCH_PRODUCT_NAME],
+//     [INSERT_CART_OPEN_DATE], [INSERT_CART_CLOSE_DATE], [INSERT_CART_CLOSE_TIME],
+//     [INSERT_PRICE], [INSERT_BONUS_VALUE].
+//   - Re-engagement: 4 emails over 14 days, marketingskills repo template
+//     (Check-in → Value Reminder → Incentive → Last Chance). Anchored to
+//     subscriber inactivity (NOT event). Placeholders: [INSERT_LAST_ENGAGEMENT_TIMEFRAME],
+//     [INSERT_INCENTIVE].
+// All three are tier-agnostic. Free-tier gating is at the wizard-render level
+// (PRO_GATED_STEPS includes emailSequence — entire node behind paywall today).
+// ───────────────────────────────────────────────────────────────────────────
+
+export function buildNurtureEmailPrompt(p: EmailPromptParams): string {
+  return `${p.sotContext ? `${p.sotContext}\n\n` : ''}You are an expert email marketer. Create a 7-email nurture sequence for new subscribers who just downloaded a lead magnet, using Russell Brunson's Soap Opera Sequence framework.
+
+Service: ${p.serviceName}
+Category: ${p.category || ""}
+Description: ${p.description || ""}
+Target Customer: ${p.targetCustomer || ""}
+Main Benefit: ${p.mainBenefit || ""}
+Lead Magnet: [INSERT_LEAD_MAGNET_NAME]
+
+${p.socialProofGuidance}
+
+${p.campaignTypeContext ? `${p.campaignTypeContext}\n\n` : ''}${p.icpContext}
+
+${getEmailRules()}
+
+SEQUENCE GOAL: Build trust over ~21 days. The reader signed up for a lead magnet. By Email 7, they should feel they know your method, have seen one transformation it produced, and be ready to consider the offer. Emails 1 through 6 earn the right to pitch in Email 7. No selling before Email 7 — every earlier email delivers value or builds the relationship.
+
+TONE: Warm, expert, conversational throughout — same Soap Opera register as a welcome sequence. Email 1 is the warmest (delivery + handoff); Email 7 the most direct (the pitch). Curiosity and generosity stay constant; intensity rises gradually.
+
+ANCHOR PLACEHOLDER: The lead magnet name is [INSERT_LEAD_MAGNET_NAME]. Use this token verbatim wherever the email needs to reference what the subscriber just downloaded — the operator fills it in before publishing. Do not invent a lead magnet name.
+
+Create 7 emails.
+
+1. DELIVER + INTRO (Day 0) — Job: Hand off the lead magnet immediately in the first paragraph. No preamble. Brief intro of who you are (one sentence). Preview what's coming over the next ~3 weeks. End with a soft hook to the next email — one specific question or observation that pays off in Email 2. The PS is mandatory and is where the hook lives, not the body.
+
+2. EXPAND ON THE TOPIC (Day 2-3) — Job: Add one extra insight beyond what was in the lead magnet. First-person observation framing — "I've noticed something specific about [reader's situation]." Position yourself as having a deeper view than what the magnet alone delivered. Soft CTA: "reply if X resonates" or "let me know which one fits you" — invitation to dialogue, not action.
+
+3. PROBLEM DEEP-DIVE (Day 5-6) — Job: Articulate their problem more specifically than they've heard before. Name the specific moment in their workflow or week where the problem actually shows up — not the abstract version. Show you understand the texture, not just the headline. No CTA — pure value email. End with a question that confirms you've named their actual problem.
+
+4. SOLUTION FRAMEWORK (Day 8-10) — Job: Introduce your method or framework in plain language. One sentence: what it is. One sentence: the principle that makes it work. One sentence: the proof point that proves the principle. Origin framing in the opening — "I get asked this all the time" or "I spent X years figuring this out." Soft CTA: "want me to walk you through how it works for [their situation]?"
+
+5. CASE STUDY (Day 12-14) — Job: Tell one specific transformation story. Name a specific archetype ("Sarah, a [niche-specific role], came to me last [timeframe]"), the starting point, the mechanism (your method), and the outcome with a number, timeframe, or named result. Make it specific enough that the reader thinks "that could be me." Soft CTA: an invitation to explore your work or read more case studies.
+
+6. DIFFERENTIATION + OBJECTION (Day 16-18) — Combined slot. Job: Address the alternative they're probably considering AND the natural objection to your method in one email. Two-part body: (1) name the obvious approach and why it fails for their specific situation; (2) preempt the most common objection to your approach with a concrete answer. Don't be defensive. Soft CTA: "ready to talk?" or "still on the fence — what's the question?"
+
+7. DIRECT OFFER (Day 19-21) — Job: The first explicit pitch. No hedging. State the offer, the named outcome, the single specific next step. ANCHORING RULE: state the value of what they get before naming the price or the close. Confidence, not apology. Primary CTA: book a call / buy / specific action.
+
+Each email must include:
+- subject: (curiosity or pattern-interrupt, max 50 chars, never descriptive)
+- previewText: (extends the subject line — completes the thought or adds a second layer of intrigue, never repeats the subject, max 140 chars)
+- body: (max 200 words, short sentences, line breaks between paragraphs)
+- cta: (one specific action)
+- ps: (mandatory — one sentence that creates curiosity, urgency, or hooks to the next email)
+
+Return as a JSON object with an 'emails' key containing the array.`;
+}
+
+export function buildLaunchEmailPrompt(p: EmailPromptParams): string {
+  return `${p.sotContext ? `${p.sotContext}\n\n` : ''}You are an expert email marketer. Create a 9-email launch sequence around a cart-open window, using Jeff Walker's Product Launch Formula structure (3 pre-launch + 5 open-cart + 1 close-cart).
+
+Service: ${p.serviceName}
+Target Customer: ${p.targetCustomer || ""}
+Main Benefit: ${p.mainBenefit || ""}
+Product launching: [INSERT_LAUNCH_PRODUCT_NAME]
+Cart opens: [INSERT_CART_OPEN_DATE]
+Cart closes: [INSERT_CART_CLOSE_DATE] at [INSERT_CART_CLOSE_TIME]
+Price: [INSERT_PRICE]
+
+${p.socialProofGuidance}
+
+${p.campaignTypeContext ? `${p.campaignTypeContext}\n\n` : ''}${p.icpContext}
+
+${getEmailRules()}
+
+SEQUENCE GOAL: Drive cart-open conversions during the open-cart window. The 3 pre-launch emails build anticipation by teaching, story-telling, and shifting how the reader sees their problem — without revealing the offer. Day 0 (Email 4) opens the cart with a full reveal. The 5 open-cart emails (Email 4-8) work different conversion angles. Email 9 is the final-call close-cart email a few hours before the deadline.
+
+TONE: Anticipation in pre-launch (Emails 1-3) → confident clarity at cart-open (Email 4) → respectful urgency rising across open-cart (Emails 5-8) → direct, no-hedging close in Email 9. Warmth stays throughout; pressure rises only as the deadline approaches.
+
+ANCHOR PLACEHOLDERS: Use [INSERT_LAUNCH_PRODUCT_NAME] for the product, [INSERT_CART_OPEN_DATE] / [INSERT_CART_CLOSE_DATE] / [INSERT_CART_CLOSE_TIME] for the cart window dates and time, [INSERT_PRICE] for the offer price, and [INSERT_BONUS_VALUE] for any bonus dollar value. The operator fills these in before publishing. Do not invent dates, times, prices, or product names — emit the tokens verbatim.
+
+INTEGRITY RULE: Never invent scarcity that isn't real. Cart-close deadlines must reference [INSERT_CART_CLOSE_DATE] / [INSERT_CART_CLOSE_TIME] explicitly — operator-controlled, honest. Do not fabricate countdown timers, "spots left" claims, or price-increase deadlines unless they are real.
+
+Create 9 emails.
+
+1. PRE-LAUNCH HOOK (Day -7, PLF Video 1 frame) — Job: Tease that something's coming without revealing the product. First-person opener: "I've been working on something for [timeframe]." Name the bigger transformation it enables. No product reveal, no price, no CTA except "watch for the next email." Soft anticipation, warm tone.
+
+2. PRE-LAUNCH TEACHING (Day -4, PLF Video 2 frame) — Job: Teach one principle that shifts how the reader sees their problem. Counterintuitive framing — "[common belief] is actually backwards." Show that this principle ties to your method and previews why a launch is coming. Soft CTA: "tell me what you think" or "does this match your experience?" Authority + generosity.
+
+3. PRE-LAUNCH STORY (Day -2, PLF Video 3 frame) — Job: One detailed transformation arc. Name a specific archetype (or anonymized specific person), the starting point, the mechanism (your method), the outcome with a number or named result. Explicit "this is what's possible" framing. Tease that the cart opens in 48 hours. Soft CTA: "doors open [INSERT_CART_OPEN_DATE]."
+
+4. THE DOORS ARE OPEN (Day 0) — Job: Full offer reveal. State the product name ([INSERT_LAUNCH_PRODUCT_NAME]), what's included, what they'll get, the price ([INSERT_PRICE]), the bonuses, the guarantee. ANCHORING RULE: total value before ask. Direct, clear, confident. Primary CTA: buy now / enroll. Subject: direct, "It's live."
+
+5. SPECIFIC USE CASE (Day +1) — Job: Address one ICP segment specifically. Walk through one concrete user persona ("If you're a [specific archetype] dealing with [specific situation]..."), show how the product solves their version of the problem. Targeted helpful tone. Primary CTA: buy now.
+
+6. OBJECTION HANDLING (Day +3) — Job: Name the real objection their head is asking — not the polite version. Three-paragraph structure: (1) state the objection in their words, (2) answer with concrete evidence, (3) acknowledge if it's actually a fit issue (and that's okay). Honest, dismantling, not defensive. Primary CTA: buy now.
+
+7. BONUS REVEAL (Day +5) — Job: Reveal an unannounced bonus with a specific dollar value. Surprise framing — "I almost forgot to mention this." State the bonus name and what it specifically gives the buyer. ANCHORING RULE: state [INSERT_BONUS_VALUE] before reanchoring against the total package value. Generous tone with rising urgency. Primary CTA: buy now.
+
+8. SCARCITY / TIME-BOUND (Day +7, morning) — Job: Name what specifically closes when. "Cart closes [INSERT_CART_CLOSE_DATE] at [INSERT_CART_CLOSE_TIME]." Preview what they'll lose access to. One social-proof moment (specific number of buyers, specific named transformation) — only if real, never fabricated. Honest urgency. Primary CTA: buy now.
+
+9. FINAL CALL / LAST HOURS (Day +7, final hours) — Job: Resolve the most important open loop from earlier in the sequence — the question or tension that has been building. "You've been wondering [specific question]. Here's the answer." Then make the choice binary: [specific outcome if they act today] versus [specific cost if they don't]. One CTA. Nothing else. The last email you'll send about this product. Direct, no hedging.
+
+Each email must include:
+- subject: (curiosity or pattern-interrupt, max 50 chars, never descriptive)
+- previewText: (extends the subject line — completes the thought or adds a second layer of intrigue, never repeats the subject, max 140 chars)
+- body: (max 250 words, short sentences, line breaks between paragraphs)
+- cta: (one specific action)
+- ps: (mandatory — one sentence that creates urgency, reveals additional stakes, or hooks to the next email)
+
+Return as a JSON object with an 'emails' key containing the array.`;
+}
+
+export function buildReengagementEmailPrompt(p: EmailPromptParams): string {
+  return `${p.sotContext ? `${p.sotContext}\n\n` : ''}You are an expert email marketer. Create a 4-email re-engagement sequence for subscribers who've been inactive for [INSERT_LAST_ENGAGEMENT_TIMEFRAME], using the canonical Check-in → Value Reminder → Incentive → Last Chance structure.
+
+Service: ${p.serviceName}
+Target Customer: ${p.targetCustomer || ""}
+Main Benefit: ${p.mainBenefit || ""}
+Inactivity window: [INSERT_LAST_ENGAGEMENT_TIMEFRAME]
+Re-engagement incentive: [INSERT_INCENTIVE]
+
+${p.socialProofGuidance}
+
+${p.campaignTypeContext ? `${p.campaignTypeContext}\n\n` : ''}${p.icpContext}
+
+${getEmailRules()}
+
+SEQUENCE GOAL: Win back genuinely re-interested subscribers OR honestly clean the list of those who've moved on. Both outcomes are wins. The 4 emails span 14 days. By Email 4, anyone who hasn't engaged should be removed from the active list — keeping a healthy list matters more than keeping a large one.
+
+TONE — DESCENDS ACROSS THE 4: Email 1 is the warmest (genuine concern, no pressure). Email 2 stays warm but adds curiosity (value reminder). Email 3 shifts to generous-direct (specific offer). Email 4 is honest-direct, willing to be unsubscribed without guilt. Crucially: no pressure, no guilt language, no "don't leave us" pleading at any point.
+
+ANCHOR PLACEHOLDERS: Use [INSERT_LAST_ENGAGEMENT_TIMEFRAME] for the inactivity window the operator chose to define (e.g., "the past 60 days", "since March"). Use [INSERT_INCENTIVE] for the specific re-engagement offer the operator picked — typical options for coaching/consulting: free strategy call, exclusive content drop, returning-subscriber bonus, or course discount. Do not invent these — emit the tokens verbatim.
+
+INTEGRITY RULE: No fake urgency. No "limited time" framing unless [INSERT_INCENTIVE] is genuinely time-bound. The honesty of Email 4 ("Should we stop emailing you?") is what makes the whole sequence work — fake urgency in earlier emails undermines that.
+
+Create 4 emails.
+
+1. GENUINE CHECK-IN (Day 0) — Job: Honest concern, no sales. Subject: personal-feeling, "Is everything okay, [First Name]?"-style. Opening: name the inactivity directly — "I noticed you haven't been opening emails lately." Acknowledge their priorities may have changed. Ask one open question. Offer one easy win to re-engage (a single piece of content, a quick reply prompt). Soft CTA: "reply with one word: stay or go." Warm, no pressure.
+
+2. VALUE REMINDER (Day 2-3) — Job: Recall a specific moment of original engagement — what they got from being on the list when they first signed up. Subject: "Remember when you [specific thing they engaged with]?" or similar past-anchored framing. Body: remind them of past value, share what's new since they were last active, offer one piece of high-value content as a reactivation hook. Soft CTA: explore the new content. Curious, generous tone.
+
+3. INCENTIVE / BRIDGE (Day 5-7) — Job: Make a specific offer to bring them back. Subject: direct framing — "[INSERT_INCENTIVE]" or "Something I'd like to give you." Body: name [INSERT_INCENTIVE] explicitly (the operator fills in what it is). ANCHORING RULE: state the value before the ask. Generous tone with light, honest urgency if [INSERT_INCENTIVE] genuinely is time-bound. Primary CTA: claim the offer / book the call / download the resource.
+
+4. HONEST LAST CHANCE (Day 10-14) — Job: Direct binary close. Subject: "Should we stop emailing you?" Opening: "I'd rather you unsubscribe than ignore my emails — both are okay." Body: name what they'll miss if they leave (without guilt), make staying as easy as one click. Two clear options: one click to stay, one click to unsubscribe. Honest, direct, willing to lose them. No "we'll miss you so much" language. Cleaning the list is the win if they don't respond.
+
+Each email must include:
+- subject: (curiosity or pattern-interrupt, max 50 chars, never descriptive)
+- previewText: (extends the subject line — completes the thought or adds a second layer of intrigue, never repeats the subject, max 140 chars)
+- body: (max 150 words, short sentences, line breaks between paragraphs)
+- cta: (one specific action — or for Email 4, two binary actions)
+- ps: (mandatory — one sentence that adds context, hooks to the next email, or in Email 4 reinforces the no-guilt frame)
 
 Return as a JSON object with an 'emails' key containing the array.`;
 }
@@ -274,7 +452,7 @@ async function invokeEmailSequenceWithRetry(userPrompt: string): Promise<RawEmai
 const generateEmailSequenceSchema = z.object({
   serviceId: z.number(),
   campaignId: z.number().optional(),
-  sequenceType: z.enum(["welcome", "engagement", "sales"]),
+  sequenceType: z.enum(["welcome", "engagement", "sales", "nurture", "launch", "re-engagement"]),
   name: z.string().min(1).max(255),
   eventDetails: z
     .object({
@@ -521,11 +699,32 @@ You MUST use these exact numbers and real names. Do not fabricate.`
         price: input.eventDetails?.price,
         deadline: input.eventDetails?.deadline,
       };
-      const prompt = input.sequenceType === "welcome"
-        ? buildWelcomeEmailPrompt(emailPromptParams)
-        : input.sequenceType === "engagement"
-          ? buildEngagementEmailPrompt(emailPromptParams)
-          : buildSalesEmailPrompt(emailPromptParams);
+      // 6-way dispatch — commit 2 of Email Sequence wire. Existing welcome /
+      // engagement / sales preserved unchanged; nurture / launch / re-engagement
+      // are net-new builders. Switch (vs. nested ternary) gives exhaustiveness
+      // protection — adding a 7th value to the Zod enum surfaces here as a TS
+      // error instead of silently falling through to the default.
+      let prompt: string;
+      switch (input.sequenceType) {
+        case "welcome":
+          prompt = buildWelcomeEmailPrompt(emailPromptParams);
+          break;
+        case "engagement":
+          prompt = buildEngagementEmailPrompt(emailPromptParams);
+          break;
+        case "sales":
+          prompt = buildSalesEmailPrompt(emailPromptParams);
+          break;
+        case "nurture":
+          prompt = buildNurtureEmailPrompt(emailPromptParams);
+          break;
+        case "launch":
+          prompt = buildLaunchEmailPrompt(emailPromptParams);
+          break;
+        case "re-engagement":
+          prompt = buildReengagementEmailPrompt(emailPromptParams);
+          break;
+      }
       const rawEmails = await invokeEmailSequenceWithRetry(cascadeContext + prompt);
       // sequenceData typed as `any` here to match the pre-existing flow:
       // before the helper extraction, `sequenceData = JSON.parse(...)` was
@@ -646,11 +845,28 @@ You MUST use these exact numbers and real names. Do not fabricate.`
             price: capturedInput.eventDetails?.price,
             deadline: capturedInput.eventDetails?.deadline,
           };
-          const prompt = capturedInput.sequenceType === "welcome"
-            ? buildWelcomeEmailPrompt(bgEmailParams)
-            : capturedInput.sequenceType === "engagement"
-              ? buildEngagementEmailPrompt(bgEmailParams)
-              : buildSalesEmailPrompt(bgEmailParams);
+          // 6-way dispatch — mirrors sync path. Same exhaustiveness contract.
+          let prompt: string;
+          switch (capturedInput.sequenceType) {
+            case "welcome":
+              prompt = buildWelcomeEmailPrompt(bgEmailParams);
+              break;
+            case "engagement":
+              prompt = buildEngagementEmailPrompt(bgEmailParams);
+              break;
+            case "sales":
+              prompt = buildSalesEmailPrompt(bgEmailParams);
+              break;
+            case "nurture":
+              prompt = buildNurtureEmailPrompt(bgEmailParams);
+              break;
+            case "launch":
+              prompt = buildLaunchEmailPrompt(bgEmailParams);
+              break;
+            case "re-engagement":
+              prompt = buildReengagementEmailPrompt(bgEmailParams);
+              break;
+          }
 
           const rawEmails = await invokeEmailSequenceWithRetry(capturedCascadeContext + prompt);
           // See sync path note above re: `any` typing on sequenceData.
