@@ -168,8 +168,8 @@ Pressing Problem: ${resolvedPressingProblem}
 Why Problem Exists: ${resolvedWhyProblem}
 What They've Tried: ${resolvedWhatTried}
 Why Existing Solutions Fail: ${resolvedWhyExistingNotWork}
-Descriptor: ${input.descriptor || "System"}
-Application: ${input.application || "Use this system"}
+Descriptor: ${input.descriptor || "[INSERT_DESCRIPTOR]"}
+Application: ${input.application || "[INSERT_APPLICATION_METHOD]"}
 Desired Outcome: ${input.desiredOutcome}
 Credibility: ${resolvedCredibility}
 Social Proof: ${input.socialProof}
@@ -319,7 +319,7 @@ Pressing Problem: ${resolvedPressingProblem}
 Why Problem Exists: ${resolvedWhyProblem}
 What They've Tried: ${resolvedWhatTried}
 Why Existing Solutions Fail: ${resolvedWhyExistingNotWork}
-Descriptor: ${input.descriptor || "System"}
+Descriptor: ${input.descriptor || "[INSERT_DESCRIPTOR]"}
 Desired Outcome: ${input.desiredOutcome}
 Credibility: ${resolvedCredibility}
 Social Proof: ${input.socialProof}
@@ -572,7 +572,7 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
           let bgGenerationWarning: string | undefined;
 
           // --- Hero Mechanisms (5 variations) ---
-          const heroMechanismsPrompt = `${bgSotContext ? `${bgSotContext}\n\n` : ''}You are an expert direct response copywriter creating compelling Hero Mechanisms.\n\nProduct: ${capturedService.name}\nTarget Market: ${capturedInput.targetMarket}\nPressing Problem: ${bgResolvedPressingProblem}\nWhy Problem Exists: ${bgResolvedWhyProblem}\nWhat They've Tried: ${bgResolvedWhatTried}\nWhy Existing Solutions Fail: ${bgResolvedWhyExistingNotWork}\nDescriptor: ${capturedInput.descriptor || "System"}\nApplication: ${capturedInput.application || "Use this system"}\nDesired Outcome: ${capturedInput.desiredOutcome}\nCredibility: ${bgResolvedCredibility}\nSocial Proof: ${capturedInput.socialProof}\n${bgIcpContext ? `\n${bgIcpContext}\n` : ''}\nCreate 5 HERO MECHANISMS. Each mechanism must have:\n1. A creative, unique NAME using the descriptor\n2. A full PARAGRAPH description (150-200 words) that includes how it works, who developed it, specific outcome, emotional transformation, and why it's different.\n\nReturn ONLY a JSON array of 5 objects with "name" and "description" fields, nothing else.`;
+          const heroMechanismsPrompt = `${bgSotContext ? `${bgSotContext}\n\n` : ''}You are an expert direct response copywriter creating compelling Hero Mechanisms.\n\nProduct: ${capturedService.name}\nTarget Market: ${capturedInput.targetMarket}\nPressing Problem: ${bgResolvedPressingProblem}\nWhy Problem Exists: ${bgResolvedWhyProblem}\nWhat They've Tried: ${bgResolvedWhatTried}\nWhy Existing Solutions Fail: ${bgResolvedWhyExistingNotWork}\nDescriptor: ${capturedInput.descriptor || "[INSERT_DESCRIPTOR]"}\nApplication: ${capturedInput.application || "[INSERT_APPLICATION_METHOD]"}\nDesired Outcome: ${capturedInput.desiredOutcome}\nCredibility: ${bgResolvedCredibility}\nSocial Proof: ${capturedInput.socialProof}\n${bgIcpContext ? `\n${bgIcpContext}\n` : ''}\nCreate 5 HERO MECHANISMS. Each mechanism must have:\n1. A creative, unique NAME using the descriptor\n2. A full PARAGRAPH description (150-200 words) that includes how it works, who developed it, specific outcome, emotional transformation, and why it's different.\n\nReturn ONLY a JSON array of 5 objects with "name" and "description" fields, nothing else.`;
 
           const heroMechanismsResponse = await invokeLLM({
             messages: [
@@ -624,7 +624,7 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
           });
 
           // --- Power Mode (5 extra powerful variations) ---
-          const powerModePrompt = `${bgSotContext ? `${bgSotContext}\n\n` : ''}You are an expert direct response copywriter creating BEAST MODE Hero Mechanisms.\n\nProduct: ${capturedService.name}\nTarget Market: ${capturedInput.targetMarket}\nPressing Problem: ${bgResolvedPressingProblem}\nWhy Problem Exists: ${bgResolvedWhyProblem}\nWhat They've Tried: ${bgResolvedWhatTried}\nWhy Existing Solutions Fail: ${bgResolvedWhyExistingNotWork}\nDescriptor: ${capturedInput.descriptor || "System"}\nDesired Outcome: ${capturedInput.desiredOutcome}\nCredibility: ${bgResolvedCredibility}\nSocial Proof: ${capturedInput.socialProof}\n${bgIcpContext ? `\n${bgIcpContext}\n` : ''}\nCreate 5 BEAST MODE mechanisms with ultra-creative names and comprehensive descriptions (200-250 words) that include specific numbers, timeframes, results, and address objections.\n\nReturn ONLY a JSON array of 5 objects with "name" and "description" fields, nothing else.`;
+          const powerModePrompt = `${bgSotContext ? `${bgSotContext}\n\n` : ''}You are an expert direct response copywriter creating BEAST MODE Hero Mechanisms.\n\nProduct: ${capturedService.name}\nTarget Market: ${capturedInput.targetMarket}\nPressing Problem: ${bgResolvedPressingProblem}\nWhy Problem Exists: ${bgResolvedWhyProblem}\nWhat They've Tried: ${bgResolvedWhatTried}\nWhy Existing Solutions Fail: ${bgResolvedWhyExistingNotWork}\nDescriptor: ${capturedInput.descriptor || "[INSERT_DESCRIPTOR]"}\nDesired Outcome: ${capturedInput.desiredOutcome}\nCredibility: ${bgResolvedCredibility}\nSocial Proof: ${capturedInput.socialProof}\n${bgIcpContext ? `\n${bgIcpContext}\n` : ''}\nCreate 5 BEAST MODE mechanisms with ultra-creative names and comprehensive descriptions (200-250 words) that include specific numbers, timeframes, results, and address objections.\n\nReturn ONLY a JSON array of 5 objects with "name" and "description" fields, nothing else.`;
 
           const powerModeResponse = await invokeLLM({
             messages: [
