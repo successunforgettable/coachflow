@@ -218,7 +218,29 @@ const ADVANCED_FIELDS: Record<WizardStep, AdvancedField[]> = {
   ],
   adCopy: [],
   landingPage: [],
-  emailSequence: [],
+  emailSequence: [
+    // Path B (friendly labels) — same shape as headlines's headlineStyle and
+    // uniqueMethod's descriptor. The server (commit 2 of Email Sequence wire,
+    // SHA b3e49db) accepts 6 enum values: welcome / engagement / sales /
+    // nurture / launch / re-engagement. The wizard intentionally exposes only
+    // 4 of them — engagement and sales are event-anchored and stay API-only.
+    // Friendly labels are also the option values; the runGeneration branch
+    // below maps each label to its server key via SEQUENCE_TYPE_LABEL_TO_KEY.
+    // options[0] = "Welcome (...)" → maps to "welcome" → users who don't
+    // touch Advanced get identical output to today's hardcoded welcome path.
+    {
+      key: "sequenceType",
+      label: "Sequence Type",
+      type: "select",
+      options: [
+        "Welcome (3 emails over 5 days)",
+        "Nurture (7 emails over 21 days)",
+        "Launch (9 emails around cart-open window)",
+        "Re-engagement (4 emails over 14 days)",
+      ],
+      sourceNote: "Pick the type of sequence you want. Defaults to Welcome.",
+    },
+  ],
   whatsappSequence: [
     // sequenceLength options stored as strings (HTML <select> constraint);
     // converted to numeric literal at the runGeneration read site below to
@@ -1808,10 +1830,35 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
         const lpResult = await pollJob(jobId, (label) => setProgressLabel(label));
         if (typeof lpResult.id === 'number') setLatestLandingPageId(lpResult.id);
       } else if (step === "emailSequence") {
+        // Path B: UI shows friendly labels; map back to server keys here.
+        // Mirrors Headlines commit 3416aec pattern. Server enum has 6 values
+        // (b3e49db); wizard exposes 4 — engagement / sales remain API-only.
+        // No-regression: options[0] = "Welcome (3 emails over 5 days)" →
+        // resolves to "welcome", identical to the previous hardcoded value.
+        // sequenceType is REQUIRED on the server (z.enum, not .optional()),
+        // so the lookup falls back to "welcome" defensively if anything is
+        // off — never undefined.
+        const SEQUENCE_TYPE_LABEL_TO_KEY: Record<string, "welcome" | "nurture" | "launch" | "re-engagement"> = {
+          "Welcome (3 emails over 5 days)": "welcome",
+          "Nurture (7 emails over 21 days)": "nurture",
+          "Launch (9 emails around cart-open window)": "launch",
+          "Re-engagement (4 emails over 14 days)": "re-engagement",
+        };
+        // Parallel name map — handles "re-engagement" → "Re-engagement"
+        // without a one-off capitalize helper. Same shape as the key map for
+        // readability and easy extension if a 5th wizard option is added.
+        const SEQUENCE_TYPE_NAME: Record<"welcome" | "nurture" | "launch" | "re-engagement", string> = {
+          welcome: "Welcome Sequence",
+          nurture: "Nurture Sequence",
+          launch: "Launch Sequence",
+          "re-engagement": "Re-engagement Sequence",
+        };
+        const advLabel = (payload.advancedOverrides as Record<string, string> | undefined)?.sequenceType;
+        const sequenceType = advLabel ? (SEQUENCE_TYPE_LABEL_TO_KEY[advLabel] ?? "welcome") : "welcome";
         const { jobId } = await generateEmailSequenceAsync.mutateAsync({
           serviceId: svcId,
-          sequenceType: "welcome",
-          name: `${svc?.name || "My Service"} — Welcome Sequence`,
+          sequenceType,
+          name: `${svc?.name || "My Service"} — ${SEQUENCE_TYPE_NAME[sequenceType]}`,
         });
         const emailResult = await pollJob(jobId);
         if (typeof emailResult.id === 'number') setLatestEmailSequenceId(emailResult.id);
