@@ -46,6 +46,19 @@ interface EmailPromptParams {
   // variables (lead magnet name, cart-open/close dates, incentive, etc.) —
   // surfaced via PlaceholderBanner at V2EmailSequenceResultPanel:419 for the
   // operator to fill in post-generation.
+  // Workstream commit 2.5b extended eventDetails (Zod) with 7 new optional
+  // fields. Workstream commit 3b consumes them via the 4 new builders below
+  // (discovery_call_confirmation / discovery_call_reminder / event_logistics
+  // / replay_for_no_shows). All optional; missing values fall through to
+  // [INSERT_*] operator placeholders per the established Decision-C pattern.
+  eventTime?: string;       // discovery_call_*, event_logistics
+  eventTimezone?: string;   // discovery_call_*, event_logistics
+  eventDate?: string;       // event_logistics (also reused by sales prompt)
+  eventVenue?: string;      // event_logistics
+  eventAgenda?: string;     // event_logistics
+  eventDuration?: string;   // discovery_call_confirmation, event_logistics
+  replayUrl?: string;       // replay_for_no_shows
+  bookingUrl?: string;      // discovery_call_*
 }
 
 function getEmailRules(): string {
@@ -56,6 +69,10 @@ function getEmailRules(): string {
   // Nurture sequence: max 200 words (commit 2 of Email Sequence wire)
   // Launch sequence: max 250 words (commit 2 of Email Sequence wire)
   // Re-engagement sequence: max 150 words (commit 2 of Email Sequence wire)
+  // Discovery call confirmation: max 150 words (workstream commit 3b — single transactional)
+  // Discovery call reminder: max 100 words (workstream commit 3b — short mobile reminders)
+  // Event logistics: max 200 words (workstream commit 3b — practical info)
+  // Replay for no-shows: max 175 words (workstream commit 3b — value re-extension)
   return `ONE EMAIL ONE JOB RULE: Every email in this sequence has exactly ONE job. The entire email — subject line, body, and CTA — must serve only that one job. Nothing else. No secondary CTAs. No topic shifts.
 
 SUBJECT LINE RULES:
@@ -74,6 +91,10 @@ BODY COPY RULES:
 - Nurture sequence emails: max 200 words
 - Launch sequence emails: max 250 words
 - Re-engagement sequence emails: max 150 words
+- Discovery call confirmation emails: max 150 words
+- Discovery call reminder emails: max 100 words
+- Event logistics emails: max 200 words
+- Replay for no-shows emails: max 175 words
 - Max 15 words per sentence. Max 2 sentences per paragraph. Line breaks between paragraphs.
 - Grade 6 reading level. Short words. Direct language. Contractions (you're, it's, don't).
 - Never use: "I hope this email finds you well", "As per my last email", "I wanted to reach out"
@@ -355,6 +376,191 @@ Each email must include:
 Return as a JSON object with an 'emails' key containing the array.`;
 }
 
+// ───────────────────────────────────────────────────────────────────────────
+// Workstream commit 3b — 4 net-new sequence types extending the dispatcher
+// from 6 to 10. Locked architectures from the pre-flight design pass:
+//   - discovery_call_confirmation: 1 transactional email post-booking.
+//     Anchored to bookingUrl + eventTime + eventTimezone + eventDuration
+//     + hostName. Word cap 150.
+//   - discovery_call_reminder: 3 emails (T-24h, T-2h, T-15min). Drives
+//     show-up + catches reschedules. Anchored to bookingUrl + eventTime
+//     + eventTimezone. Word cap 100.
+//   - event_logistics: 4 emails (Day -7, -3, -1, +1). Practical info for
+//     in-person events — venue / parking / agenda / day-of arrival.
+//     Anchored to eventVenue + eventAgenda + eventDate + eventTime
+//     + eventTimezone + eventDuration. Word cap 200.
+//   - replay_for_no_shows: 3 emails (Day +1, +3, +5/+7). Post-event
+//     replay distribution to no-shows. Anchored to replayUrl + eventName.
+//     Word cap 175.
+// All four use [INSERT_*] operator placeholders for fields not passed via
+// eventDetails (Decision-C pattern). PlaceholderBanner self-detection at
+// V2EmailSequenceResultPanel.tsx already covers any new tokens via the
+// generic /\[INSERT_[A-Z][A-Z0-9_]*\]/g regex — no banner code change.
+// All four are tier-agnostic. Free-tier gating remains at the wizard-
+// render level (PRO_GATED_STEPS includes emailSequence).
+// ───────────────────────────────────────────────────────────────────────────
+
+export function buildDiscoveryCallConfirmationPrompt(p: EmailPromptParams): string {
+  return `${p.sotContext ? `${p.sotContext}\n\n` : ''}You are an expert email marketer. Create a 1-email discovery-call confirmation, sent immediately after a prospect books a 1:1 call. This is a transactional-but-personal email that confirms the booking, sets expectations for the call, and drives show-up.
+
+Service: ${p.serviceName}
+Host: ${p.hostName || "[INSERT_HOST_NAME]"}
+Booking time: ${p.eventTime || "[INSERT_BOOKING_TIME]"} (${p.eventTimezone || "[INSERT_BOOKING_TIMEZONE]"})
+Call duration: ${p.eventDuration || "[INSERT_BOOKING_DURATION]"}
+Booking URL (for reschedule): ${p.bookingUrl || "[INSERT_BOOKING_URL]"}
+
+${p.socialProofGuidance}
+
+${p.campaignTypeContext ? `${p.campaignTypeContext}\n\n` : ''}${p.icpContext}
+
+${getEmailRules()}
+
+SEQUENCE GOAL: Reduce no-shows. The reader has already committed to a 1:1 call — this email cements that commitment without selling anything new. By the end of this email, the reader should feel: confirmed, prepared, looking forward to the call. They should NOT feel pitched, sold-to, or that the call will be a sales call.
+
+TONE: Warm, professionally personal, transactional-but-friendly. Same register as a confirmation from a thoughtful service provider — not a sales sequence. No urgency, no pitch, no upsell. The CALL is the pitch; this email is the door-holding moment.
+
+ANCHOR PLACEHOLDERS: Use [INSERT_BOOKING_TIME] for the call time, [INSERT_BOOKING_TIMEZONE] for the timezone, [INSERT_BOOKING_DURATION] for the duration, [INSERT_BOOKING_URL] for the reschedule link, and [INSERT_HOST_NAME] for the host. Operator fills these in before sending. Do not invent times, zones, durations, URLs, or names — emit the tokens verbatim.
+
+Create 1 email.
+
+1. CONFIRMATION (Day 0, immediate post-booking) — Job: Confirm the booking. Open by restating the booking time + timezone clearly (mobile-readable). One sentence on what the reader will get from the 30 minutes — make it about THEM, not about you. Acknowledge the reschedule link is there if life happens. End warm but professional. PS: one specific question they can think about before the call to make the conversation more useful — not a sales question, a discovery question rooted in the niche.
+
+The email must include:
+- subject: (personal-feeling confirmation, max 50 chars — NOT "Booking confirmed" / "Your call is scheduled")
+- previewText: (extends the subject — confirms the time without repeating "confirmed", max 140 chars)
+- body: (max 150 words, short sentences, mobile-friendly, includes the booking time + reschedule link verbatim)
+- cta: ("Add to calendar" or "Reschedule if needed" — one specific action)
+- ps: (mandatory — one specific question to anchor the call's value, niche-specific)
+
+Return as a JSON object with an 'emails' key containing the array.`;
+}
+
+export function buildDiscoveryCallReminderPrompt(p: EmailPromptParams): string {
+  return `${p.sotContext ? `${p.sotContext}\n\n` : ''}You are an expert email marketer. Create a 3-email discovery-call reminder sequence — T-24h, T-2h, T-15min before a booked 1:1 call. This sequence prevents no-shows by progressively building reminder cadence and catching last-minute reschedules.
+
+Service: ${p.serviceName}
+Host: ${p.hostName || "[INSERT_HOST_NAME]"}
+Booking time: ${p.eventTime || "[INSERT_BOOKING_TIME]"} (${p.eventTimezone || "[INSERT_BOOKING_TIMEZONE]"})
+Booking URL (for reschedule): ${p.bookingUrl || "[INSERT_BOOKING_URL]"}
+
+${p.socialProofGuidance}
+
+${p.campaignTypeContext ? `${p.campaignTypeContext}\n\n` : ''}${p.icpContext}
+
+${getEmailRules()}
+
+SEQUENCE GOAL: Drive show-up. Industry baseline for 1:1 booked calls is ~30% no-show rate; a tight reminder sequence brings that to 10-15%. Each email has one job — the reader must see something specific that pulls them toward the call rather than letting it slip past.
+
+TONE — INTENSITY ASCENDS:
+Email 1 (T-24h): friendly reminder, low pressure, confirms timing.
+Email 2 (T-2h): day-of practical, slightly more energetic.
+Email 3 (T-15min): imminent, action-focused, link-prominent.
+NEVER apologetic ("sorry to bother you again") — these are useful nudges, not interruptions. NEVER guilt-laden ("don't bail on me") — respectful adult tone.
+
+ANCHOR PLACEHOLDERS: Use [INSERT_BOOKING_TIME] for the call time, [INSERT_BOOKING_TIMEZONE] for the timezone, [INSERT_BOOKING_URL] for the reschedule link, and [INSERT_HOST_NAME] for the host. Operator fills these in. Do not invent.
+
+Create 3 emails.
+
+1. T-24H REMINDER (Day -1) — Job: Friendly reminder. Open with confirmation of the call time + timezone. Soft tech check (zoom link auto-arrives in calendar invite). One specific outcome the reader should think about before the call — same anchor question as the confirmation email's PS, restated. End with reschedule link if life shifts. Mobile-short.
+
+2. T-2H REMINDER (Day 0, 2 hours before) — Job: Day-of practical. Open with "We're talking in 2 hours" + restated time + zone. Quick "make sure you have the calendar invite handy" practical note. Optional: name one thing you'll cover in the call (anchored to the PS question from email 1). Reschedule link if absolutely needed but tone discourages it ("if something just came up, here's the link"). Confirm-style energy.
+
+3. T-15MIN IMMINENT (Day 0, 15 minutes before) — Job: Show up now. Open with "Starting in 15 minutes". One sentence: "I'll be there." The booking URL or zoom link verbatim. NOTHING else — this is a one-tap reminder. PS optional but if present, single sentence, action-oriented.
+
+Each email must include:
+- subject: (curiosity or pattern-interrupt, max 50 chars — NOT "Reminder: your call" / "Don't forget our meeting")
+- previewText: (extends the subject — completes the thought, max 140 chars)
+- body: (max 100 words — short, mobile, action-oriented; line breaks between paragraphs)
+- cta: (one specific action — "Add to calendar" / "Reschedule" / "Join now")
+- ps: (mandatory — one sentence; for email 1 = anchor question, for email 2 = soft tech note, for email 3 = action confirm)
+
+Return as a JSON object with an 'emails' key containing the array.`;
+}
+
+export function buildEventLogisticsPrompt(p: EmailPromptParams): string {
+  return `${p.sotContext ? `${p.sotContext}\n\n` : ''}You are an expert email marketer. Create a 4-email event logistics sequence for an in-person event — Day -7, Day -3, Day -1, and Day +1 follow-up. Practical info delivery (venue / parking / agenda / day-of arrival) with a thank-you + recap close.
+
+Service: ${p.serviceName}
+Event: ${p.eventName || "[INSERT_EVENT_NAME]"}
+Host: ${p.hostName || "[INSERT_HOST_NAME]"}
+Event date: ${p.eventDate || "[INSERT_EVENT_DATE]"}
+Event time: ${p.eventTime || "[INSERT_EVENT_TIME]"} (${p.eventTimezone || "[INSERT_EVENT_TIMEZONE]"})
+Event duration: ${p.eventDuration || "[INSERT_EVENT_DURATION]"}
+Venue: ${p.eventVenue || "[INSERT_EVENT_VENUE]"}
+Agenda: ${p.eventAgenda || "[INSERT_EVENT_AGENDA]"}
+
+${p.socialProofGuidance}
+
+${p.campaignTypeContext ? `${p.campaignTypeContext}\n\n` : ''}${p.icpContext}
+
+${getEmailRules()}
+
+SEQUENCE GOAL: Deliver practical info that makes attendees feel prepared and welcome. By Day -1 every reader should know: where to go, when to arrive, what to bring, how to dress, where to park. Day +1 closes the loop with a thank-you + concrete next step.
+
+TONE: Event-host-helper. Practical, warm, concrete, host-of-a-good-gathering register. Not salesy — this is delivering on a commitment, not pitching. Use specific details over generic phrases ("park in the lot behind the building, entrance on Maple Street" beats "easy parking available").
+
+ANCHOR PLACEHOLDERS: Use [INSERT_EVENT_VENUE], [INSERT_EVENT_AGENDA], [INSERT_EVENT_DATE], [INSERT_EVENT_TIME], [INSERT_EVENT_TIMEZONE], [INSERT_EVENT_DURATION], [INSERT_EVENT_NAME], [INSERT_HOST_NAME] for fields the operator pre-supplies. For optional practical fields not in our schema, use [INSERT_PARKING_INFO], [INSERT_DRESS_CODE], [INSERT_WHAT_TO_BRING] — operator fills these in. Do not invent venue addresses, parking lots, dress codes, or items to bring.
+
+Create 4 emails.
+
+1. WELCOME + BIG PICTURE (Day -7) — Job: Confirm attendance, paint the room. Open with "You're confirmed for [INSERT_EVENT_NAME]" + restate date / time / city. One paragraph on what they'll experience — the energy, the people, the kind of conversations that happen. Soft preview of the agenda (high-level, not detailed). Close with "Detailed logistics coming Day -3." PS: anticipatory — one specific moment from a past event worth looking forward to.
+
+2. DETAILED LOGISTICS (Day -3) — Job: Practical info dump done well. Lead with venue address ([INSERT_EVENT_VENUE]) + how to get there. Parking ([INSERT_PARKING_INFO]). Dress code ([INSERT_DRESS_CODE]). What to bring ([INSERT_WHAT_TO_BRING]). Dietary notes if relevant. Full agenda ([INSERT_EVENT_AGENDA]). Each item gets one short paragraph — scannable, mobile-friendly. PS: encouragement, "looking forward to it" energy.
+
+3. FINAL REMINDER (Day -1) — Job: Day-of arrival info. Open with "See you tomorrow" + time + venue. Short list: when to arrive (15 min early), where to check in, what room/floor. Contact for last-minute issues (host phone or assistant email). Single sentence on energy: "Come ready to [verb]." PS: one specific thing they should bring or think about before walking in.
+
+4. THANK YOU + RECAP (Day +1, post-event) — Job: Close the loop. Open with thanks specific to what happened in the room — name one moment, one quote, one shift. Acknowledge their presence mattered. Concrete next step: the campaign's broader CTA (book a call, join the program, sign up for the next thing). NOT a hard pitch — a natural follow-on for someone who showed up. PS: one specific thing the event surfaced that they can apply this week.
+
+Each email must include:
+- subject: (curiosity or pattern-interrupt, max 50 chars — NOT "Event logistics" / "Important info about [event]")
+- previewText: (extends the subject — completes the thought, max 140 chars)
+- body: (max 200 words; practical, scannable, mobile-friendly; line breaks between paragraphs)
+- cta: (one specific action — "Add to calendar" / "Confirm RSVP" / "Book your follow-up call" depending on email)
+- ps: (mandatory — one sentence; specific, anticipatory or actionable)
+
+Return as a JSON object with an 'emails' key containing the array.`;
+}
+
+export function buildReplayForNoShowsPrompt(p: EmailPromptParams): string {
+  return `${p.sotContext ? `${p.sotContext}\n\n` : ''}You are an expert email marketer. Create a 3-email replay-for-no-shows sequence — Day +1, Day +3, Day +5 (or +7) post-event. Distributes the replay to registrants who didn't attend live, with respectful no-shaming framing.
+
+Service: ${p.serviceName}
+Event: ${p.eventName || "[INSERT_EVENT_NAME]"}
+Host: ${p.hostName || "[INSERT_HOST_NAME]"}
+Replay URL: ${p.replayUrl || "[INSERT_REPLAY_URL]"}
+
+${p.socialProofGuidance}
+
+${p.campaignTypeContext ? `${p.campaignTypeContext}\n\n` : ''}${p.icpContext}
+
+${getEmailRules()}
+
+SEQUENCE GOAL: Re-extend value to no-shows who still hold attention. Drive replay views — replays are the actual lever for delayed conversion. By email 3, anyone who hasn't watched should either watch or self-select out without bad feelings on either side.
+
+TONE — RESPECTFUL THROUGHOUT: No shaming. No "you missed out" guilt language. No "we worked hard on this" pity. Acknowledge they had a real reason to miss (work / life / time-zone / forgot — all legit). Lead with value re-extension, not chastisement. Crucially: never pretend they are now somehow behind everyone else — that's manipulative.
+
+ANCHOR PLACEHOLDERS: Use [INSERT_REPLAY_URL] for the replay link, [INSERT_EVENT_NAME] for the event name, [INSERT_HOST_NAME] for the host. For replay-window framing, use [INSERT_REPLAY_EXPIRY] when the operator supplies a real expiry date — DO NOT invent expiry dates.
+
+INTEGRITY RULE: Only frame the replay as time-bound if [INSERT_REPLAY_EXPIRY] is genuinely supplied AND that expiry is real. If no real expiry exists, the third email softens to a "last reminder" frame without fake scarcity. Fake replay-expiry destroys trust faster than letting the email be slightly less urgent.
+
+Create 3 emails.
+
+1. HERE'S THE REPLAY (Day +1) — Job: Drop the replay link prominently with one specific moment worth jumping to. Open with "Sharing the [INSERT_EVENT_NAME] replay — figured you'd want it whether you made it or not" — neutral framing, no shaming. Name ONE specific moment from the event with rough timestamp ("around 12 minutes in, [host] walked through [thing]"). Single CTA: replay link verbatim. PS: a second specific moment worth catching, different angle from the body's moment.
+
+2. DID YOU WATCH? (Day +3) — Job: Soft nudge for those who didn't open Email 1. Open with "Did you get a chance to watch the replay yet?" — direct, friendly, no guilt. Name TWO MORE specific moments worth catching — different from email 1's moments. End with one question that invites a reply ("which moment most resonated?" or "anything you want me to clarify?"). Replay link in CTA. PS: one specific way the event applies to a niche-specific situation the reader is in.
+
+3. LAST REMINDER (Day +5 or +7) — Job: Final value-tease + honest close. If [INSERT_REPLAY_EXPIRY] is supplied, use it ("the replay closes [INSERT_REPLAY_EXPIRY]"). If not, frame as "I won't keep sending these" — let them off the hook honestly. One last specific value-tease — the one moment most likely to land for the reader's situation. CTA: replay link. PS: "no pressure" close — same honest-direct register as re-engagement's Email 4. The unsubscribe is acceptable; clean lists matter.
+
+Each email must include:
+- subject: (curiosity or pattern-interrupt, max 50 chars — NOT "Replay available" / "You missed it but..." / "Here's the recording")
+- previewText: (extends the subject — completes the thought, max 140 chars)
+- body: (max 175 words; specific moments named, mobile-friendly, line breaks between paragraphs)
+- cta: (one specific action — replay link)
+- ps: (mandatory — one sentence; specific moment, niche application, or honest close)
+
+Return as a JSON object with an 'emails' key containing the array.`;
+}
+
 // ---------------------------------------------------------------------------
 // Email LLM call + retry helper. Sonnet 4.6 intermittently returns the
 // `emails` field as a non-array shape (object-with-numeric-keys, stringified
@@ -452,7 +658,12 @@ async function invokeEmailSequenceWithRetry(userPrompt: string): Promise<RawEmai
 const generateEmailSequenceSchema = z.object({
   serviceId: z.number(),
   campaignId: z.number().optional(),
-  sequenceType: z.enum(["welcome", "engagement", "sales", "nurture", "launch", "re-engagement"]),
+  sequenceType: z.enum([
+    "welcome", "engagement", "sales", "nurture", "launch", "re-engagement",
+    // Workstream commit 3b — 4 new types matching DB migration 0068.
+    "discovery_call_confirmation", "discovery_call_reminder",
+    "event_logistics", "replay_for_no_shows",
+  ]),
   name: z.string().min(1).max(255),
   eventDetails: z
     .object({
@@ -727,12 +938,24 @@ You MUST use these exact numbers and real names. Do not fabricate.`
         offerName: input.eventDetails?.offerName,
         price: input.eventDetails?.price,
         deadline: input.eventDetails?.deadline,
+        // Workstream commit 3b — new eventDetails fields shipped in 2.5b
+        // are now consumed by the 4 new builders. Pass-through; missing
+        // values fall through to [INSERT_*] placeholders in builders.
+        eventTime: input.eventDetails?.eventTime,
+        eventTimezone: input.eventDetails?.eventTimezone,
+        eventDate: input.eventDetails?.eventDate,
+        eventVenue: input.eventDetails?.eventVenue,
+        eventAgenda: input.eventDetails?.eventAgenda,
+        eventDuration: input.eventDetails?.eventDuration,
+        replayUrl: input.eventDetails?.replayUrl,
+        bookingUrl: input.eventDetails?.bookingUrl,
       };
-      // 6-way dispatch — commit 2 of Email Sequence wire. Existing welcome /
-      // engagement / sales preserved unchanged; nurture / launch / re-engagement
-      // are net-new builders. Switch (vs. nested ternary) gives exhaustiveness
-      // protection — adding a 7th value to the Zod enum surfaces here as a TS
-      // error instead of silently falling through to the default.
+      // 10-way dispatch — workstream commit 3b extends the 6-way switch from
+      // commit 2 (b3e49db) with 4 new types: discovery_call_confirmation /
+      // discovery_call_reminder / event_logistics / replay_for_no_shows.
+      // Switch (vs. nested ternary) gives exhaustiveness protection — adding
+      // an 11th value to the Zod enum surfaces here as a TS error instead of
+      // silently falling through to the default.
       let prompt: string;
       switch (input.sequenceType) {
         case "welcome":
@@ -752,6 +975,18 @@ You MUST use these exact numbers and real names. Do not fabricate.`
           break;
         case "re-engagement":
           prompt = buildReengagementEmailPrompt(emailPromptParams);
+          break;
+        case "discovery_call_confirmation":
+          prompt = buildDiscoveryCallConfirmationPrompt(emailPromptParams);
+          break;
+        case "discovery_call_reminder":
+          prompt = buildDiscoveryCallReminderPrompt(emailPromptParams);
+          break;
+        case "event_logistics":
+          prompt = buildEventLogisticsPrompt(emailPromptParams);
+          break;
+        case "replay_for_no_shows":
+          prompt = buildReplayForNoShowsPrompt(emailPromptParams);
           break;
       }
       const rawEmails = await invokeEmailSequenceWithRetry(cascadeContext + prompt);
@@ -886,8 +1121,17 @@ You MUST use these exact numbers and real names. Do not fabricate.`
             offerName: capturedInput.eventDetails?.offerName,
             price: capturedInput.eventDetails?.price,
             deadline: capturedInput.eventDetails?.deadline,
+            // Workstream commit 3b — mirror sync path pass-through.
+            eventTime: capturedInput.eventDetails?.eventTime,
+            eventTimezone: capturedInput.eventDetails?.eventTimezone,
+            eventDate: capturedInput.eventDetails?.eventDate,
+            eventVenue: capturedInput.eventDetails?.eventVenue,
+            eventAgenda: capturedInput.eventDetails?.eventAgenda,
+            eventDuration: capturedInput.eventDetails?.eventDuration,
+            replayUrl: capturedInput.eventDetails?.replayUrl,
+            bookingUrl: capturedInput.eventDetails?.bookingUrl,
           };
-          // 6-way dispatch — mirrors sync path. Same exhaustiveness contract.
+          // 10-way dispatch — mirrors sync path. Same exhaustiveness contract.
           let prompt: string;
           switch (capturedInput.sequenceType) {
             case "welcome":
@@ -907,6 +1151,18 @@ You MUST use these exact numbers and real names. Do not fabricate.`
               break;
             case "re-engagement":
               prompt = buildReengagementEmailPrompt(bgEmailParams);
+              break;
+            case "discovery_call_confirmation":
+              prompt = buildDiscoveryCallConfirmationPrompt(bgEmailParams);
+              break;
+            case "discovery_call_reminder":
+              prompt = buildDiscoveryCallReminderPrompt(bgEmailParams);
+              break;
+            case "event_logistics":
+              prompt = buildEventLogisticsPrompt(bgEmailParams);
+              break;
+            case "replay_for_no_shows":
+              prompt = buildReplayForNoShowsPrompt(bgEmailParams);
               break;
           }
 

@@ -364,7 +364,14 @@ export const emailSequences = mysqlTable("emailSequences", {
   // schema.ts edit to avoid V1 callsite cascade. Now widened simultaneously
   // with the server Zod schemas in routers/emailSequences.ts so the inferred
   // TS type and the runtime Zod parser stay in lockstep.
-  sequenceType: mysqlEnum("sequenceType", ["welcome", "engagement", "sales", "nurture", "launch", "re-engagement"]),
+  // Workstream commit 3b — extend sequenceType enum from 6 → 10 values to
+  // match prod DB (migration 0068 / 6c1ae5b). Closes the 3a → 3b drift
+  // window. The 4 new values (discovery_call_confirmation /
+  // discovery_call_reminder / event_logistics / replay_for_no_shows) are
+  // wired via 4 net-new prompt builders + dispatcher refactor in this
+  // commit. No V1 cascade — V1's EmailSequenceGenerator.tsx hardcodes a
+  // 3-value TS literal independent of Drizzle inference.
+  sequenceType: mysqlEnum("sequenceType", ["welcome", "engagement", "sales", "nurture", "launch", "re-engagement", "discovery_call_confirmation", "discovery_call_reminder", "event_logistics", "replay_for_no_shows"]),
   name: varchar("name", { length: 255 }).notNull(),
   emails: json("emails").$type<Array<{ day: number; subject: string; body: string; timing: string }>>().notNull(),
   automationEnabled: boolean("automationEnabled").default(false),
