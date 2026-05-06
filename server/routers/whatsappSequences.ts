@@ -41,6 +41,19 @@ interface WhatsappPromptParams {
   price?: string;
   tone?: WhatsappTone;
   sequenceLength?: WhatsappSequenceLength;
+  // Workstream commit 4b — additive optional fields consumed by the 4 new
+  // builders (discovery_call_*, nurture, event_logistics). All optional;
+  // procedure-layer pass-through applies [INSERT_*] Decision-C fallbacks
+  // for the procedurally-resolvable fields, leaving operator-discretion
+  // tokens like [INSERT_PARKING_INFO] as embedded prompt prose.
+  // Mirror of email's WhatsappPromptParams equivalents (commit 3b).
+  eventTime?: string;       // discovery_call_*, event_logistics
+  eventTimezone?: string;   // discovery_call_*, event_logistics
+  eventVenue?: string;      // event_logistics
+  eventAgenda?: string;     // event_logistics (not used in current 3-msg arc, retained for parity)
+  eventDuration?: string;   // discovery_call_confirmation
+  replayUrl?: string;       // unused on WhatsApp today (channel-omitted), retained for type-parity with email
+  bookingUrl?: string;      // discovery_call_*, nurture (final-message CTA)
 }
 
 // Conversational tone preserves the pre-refactor rule string verbatim — same
@@ -310,6 +323,211 @@ ${messageBlocks}
 Return as a JSON object with a 'messages' key containing the array.`;
 }
 
+// ───────────────────────────────────────────────────────────────────────────
+// Workstream commit 4b — 4 net-new sequence types extending the dispatcher
+// from 2 to 6. Channel-adjusted vs email's 10-type set:
+//   - discovery_call_confirmation: 1 message post-booking (single transactional).
+//     Anchored to bookingUrl + eventTime + eventTimezone + eventDuration.
+//     Tone parameter ignored — locked at professional register.
+//   - discovery_call_reminder: 3 messages T-24h / T-1h / T-15min. Tone
+//     parameter overridden — ascending intensity locked across the 3 msgs
+//     (conversational → professional → urgent).
+//   - nurture: 5 messages over 21 days, lead-magnet-anchored. Tone parameter
+//     respected (conversational throughout). Final msg ends with discovery-
+//     call CTA + bookingUrl.
+//   - event_logistics: 3 messages Day -7 / -1 / +1. In-person event practical
+//     info. Tone parameter respected (professional helpful-host).
+// All four are tier-agnostic. sequenceLength parameter IGNORED for all 4
+// (each builder has its own fixed message count). Same pattern as email's
+// commit 3b approach where each net-new type has fixed count.
+//
+// VOICE CONVENTION LOCKED PER SPRINT 3B BACKLOG ITEM #1: each builder
+// declares its pronoun/sign-off convention in prompt prose to prevent the
+// third-person/first-person drift observed in email Attempt 2. Every msg
+// in a sequence uses the SAME pronoun convention as the first.
+// ───────────────────────────────────────────────────────────────────────────
+
+export function buildWhatsappDiscoveryCallConfirmationPrompt(p: WhatsappPromptParams): string {
+  // Tone parameter intentionally ignored: confirmation is locked at the
+  // professional register regardless of caller's choice.
+  const rules = buildWhatsappRules(p.serviceName, "professional");
+  return `${p.sotContext ? `${p.sotContext}\n\n` : ''}You are an expert WhatsApp marketer. Create a 1-message WhatsApp discovery-call confirmation, sent immediately after a prospect books a 1:1 call. This is transactional-but-personal — confirms the booking, restates the time, drops the calendar link via WhatsApp's tap-to-open advantage. NOT a sales pitch.
+
+Service: ${p.serviceName}
+Host: ${p.hostName}
+Booking time: ${p.eventTime} (${p.eventTimezone})
+Call duration: ${p.eventDuration}
+Booking URL: ${p.bookingUrl}
+
+${p.socialProofGuidance}
+
+${p.campaignTypeContext ? `${p.campaignTypeContext}\n\n` : ''}${p.icpContext}
+
+${rules}
+
+SEQUENCE GOAL: Reduce no-shows by cementing the booking commitment immediately. The reader has already said yes; this message is the door-holding moment. They should feel: confirmed, prepared, looking forward to it. They should NOT feel pitched.
+
+VOICE CONVENTION LOCK: First-person singular throughout. The host (${p.hostName}) is "I" / "me" / "my". Sign-off uses the host's name. Do not switch between third-person ("Arfeen will see you") and first-person ("I'll see you") — pick first-person and stay there.
+
+TONE: Professional but warm. Same register as a thoughtful service provider's confirmation. WhatsApp-native: feels personal because of the channel.
+
+ANCHOR PLACEHOLDERS (substitute when present, leave [INSERT_*] verbatim when absent — convention locked across all 4 new builders): the booking time + timezone + duration + URL all come pre-resolved via procedure pass-through. Use them literally.
+
+Create 1 message:
+
+1. CONFIRMATION (Day 0, immediate post-booking) — Job: confirm + drop link. Open by stating the booking time + timezone explicitly. ONE sentence on what the reader will get from the time (about THEM, not about you). End with the booking URL as the action. Maximum 3 sentences. No PS, no question, no upsell.
+
+The message must include:
+- day: 0 (immediate)
+- message: (max 3 sentences, max 300 chars target — WhatsApp-native length)
+- timing: ("Immediately after booking")
+- emojis: (max 1 — only ✓ or 📅 if absolutely needed; first-person register prefers no emoji)
+
+Return as a JSON object with a 'messages' key containing the array.`;
+}
+
+export function buildWhatsappDiscoveryCallReminderPrompt(p: WhatsappPromptParams): string {
+  // Tone parameter OVERRIDDEN per locked design: ascending intensity across
+  // the 3 messages regardless of caller's tone choice. The 3 rules-blocks
+  // below get embedded inline (conversational / professional / urgent).
+  return `${p.sotContext ? `${p.sotContext}\n\n` : ''}You are an expert WhatsApp marketer. Create a 3-message WhatsApp discovery-call reminder sequence: T-24h, T-1h, T-15min before a booked 1:1 call. Drives show-up and catches reschedules via WhatsApp's high-open-rate channel.
+
+Service: ${p.serviceName}
+Host: ${p.hostName}
+Booking time: ${p.eventTime} (${p.eventTimezone})
+Booking URL (for reschedule or join): ${p.bookingUrl}
+
+${p.socialProofGuidance}
+
+${p.campaignTypeContext ? `${p.campaignTypeContext}\n\n` : ''}${p.icpContext}
+
+SEQUENCE GOAL: Industry baseline for booked 1:1 calls is ~30% no-show rate; a tight WhatsApp reminder sequence brings that to 10-15%. Each message must be useful (not interruptive) — recipients tap through gladly because each delivers a single concrete piece of info.
+
+VOICE CONVENTION LOCK: First-person singular throughout. The host is "I" / "me". Sign-off uses host name in all 3 messages (or no sign-off if message ends with the link). Do not drift to third-person ("Arfeen will be there") or first-person plural ("we'll be there") — first-person singular only, all 3 messages.
+
+TONE — INTENSITY ASCENDS (overrides caller's tone parameter):
+- Message 1 (T-24h): conversational. Friendly reminder, low pressure.
+- Message 2 (T-1h): professional. Day-of practical, energetic but composed.
+- Message 3 (T-15min): urgent. Imminent, link-prominent, single-tap.
+
+NEVER apologetic ("sorry to bother you again") — these are useful nudges, not interruptions. NEVER guilt-laden ("don't bail on me") — respectful adult tone.
+
+WHATSAPP COPY RULES — non-negotiable for every message:
+LENGTH: Maximum 3 sentences per message. WhatsApp is read on mobile in seconds.
+LANGUAGE: Mobile-native. Contractions required ("you're", "it's", "don't"). No formal corporate-speak.
+SPECIFIC SITUATION: Reference the booking specifically — the time, the duration, what they booked it for.
+ENDING RULE — every message must end with EITHER a direct yes/no question OR a specific action with a link. NEVER both. NEVER neither.
+PLACEHOLDER RULES: Use actual service name "${p.serviceName}". Booking time + timezone + URL are pre-resolved upstream — substitute literally.
+
+ANCHOR PLACEHOLDERS (substitute when present, leave [INSERT_*] verbatim when absent — convention locked across all 4 new builders).
+
+Create 3 messages.
+
+1. T-24H REMINDER (Day -1) — Job: friendly reminder. CONVERSATIONAL tone. Open with: "Quick reminder we're talking [time] [timezone]." Mention the reschedule link is there if needed. End with one anchor question that primes the call's value (something specific about their situation they should think about). Max 3 sentences. Emojis: 1 max.
+
+2. T-1H REMINDER (Day 0, 1 hour before) — Job: day-of practical. PROFESSIONAL tone. Open with: "We're talking in an hour." Restate the time + zone briefly. Single sentence: "If anything just shifted, the reschedule link is here: [booking URL]." End with the action (booking URL or zoom link). Max 3 sentences. Emojis: 0-1.
+
+3. T-15MIN IMMINENT (Day 0, 15 minutes before) — Job: show up now. URGENT tone — direct, action-focused. Open with: "Starting in 15 minutes." Single sentence with the link. That's it. Max 2 sentences. Emojis: 1 max (⏰ allowed if needed).
+
+Each message must include:
+- day: (numeric: -1 for T-24h, 0 for T-1h and T-15min — operator-side scheduling math computes actual send times relative to bookingTime)
+- message: (max 3 sentences for messages 1 + 2, max 2 sentences for message 3)
+- timing: ("T-24h" / "T-1h" / "T-15min")
+- emojis: (per-message rules above)
+
+Return as a JSON object with a 'messages' key containing the array.`;
+}
+
+export function buildWhatsappNurturePrompt(p: WhatsappPromptParams): string {
+  const tone = p.tone ?? "conversational";  // honored
+  const rules = buildWhatsappRules(p.serviceName, tone);
+  return `${p.sotContext ? `${p.sotContext}\n\n` : ''}You are an expert WhatsApp marketer. Create a 5-message WhatsApp nurture sequence for new subscribers who downloaded a lead magnet. Mirrors email's 7-message nurture arc compressed for WhatsApp's short-form, mobile-pocket, high-open-rate channel.
+
+Service: ${p.serviceName}
+Target Customer: (use ICP context below)
+Lead Magnet: [INSERT_LEAD_MAGNET_NAME]
+Booking URL (for final-message CTA): ${p.bookingUrl}
+
+${p.socialProofGuidance}
+
+${p.campaignTypeContext ? `${p.campaignTypeContext}\n\n` : ''}${p.icpContext}
+
+${rules}
+
+SEQUENCE GOAL: Build trust over ~21 days via 5 short WhatsApp touches, ending with a soft pitch to a discovery call. The reader gave you their phone number — that's higher trust than email; honor it by not over-messaging or pitching too soon. Messages 1-4 deliver value or build relationship; message 5 earns the right to ask.
+
+VOICE CONVENTION LOCK: First-person singular throughout. The host is "I" / "me" / "my". Sign-off uses the host name on messages 1, 3, and 5 (the longer / more substantive ones); 2 and 4 can omit sign-off if they end with the link or question. Do not drift to "we" or third-person — first-person singular only across all 5 messages.
+
+TONE: Conversational throughout. Warm, peer-to-peer, observation-from-inside-the-niche register. Mobile-pocket informal. NOT salesy, NOT performative.
+
+ANCHOR PLACEHOLDER: The lead magnet name is [INSERT_LEAD_MAGNET_NAME] — substitute literally if the operator pre-fills it; leave the token verbatim if not (convention locked).
+
+Create 5 messages.
+
+1. HAND-OFF (Day 0) — Job: confirm download + name the most useful page. Open with: "Got [INSERT_LEAD_MAGNET_NAME] open?" Single sentence on the most niche-relevant page worth flagging. End with one specific question that invites a reply ("which part hit closest?"). Max 3 sentences.
+
+2. FIELD NOTE (Day 3) — Job: one observation from inside the niche the reader will instantly recognize. Open with the observation, not a setup. Soft question to invite reply ("does this land?"). Max 2 sentences. NO link, NO CTA — pure relationship-building.
+
+3. MECHANISM TEASE (Day 7) — Job: name the unique method in plain language. Sentence 1: what it is. Sentence 2: the principle that makes it work. End with a question: "want me to show you how it applies to [niche-specific situation]?" Max 3 sentences.
+
+4. PROOF (Day 14) — Job: one specific transformation story with a niche-specific marker. PROOF SPECIFICITY RULE: anonymous proof must still be specific. Format: "[specific job/role] who [specific problem] → [specific change] → [specific outcome with number or named result]." End with a question that asks if any part sounds familiar. Max 3 sentences.
+
+5. SOFT PITCH (Day 21) — Job: the first explicit invitation. Open with one sentence connecting back to the reader's situation (their pain or desire from earlier messages). Sentence 2: name the discovery call by what it gives them, not by what it is ("a 30-min sit-down to map your specific path"). End with the booking URL as the action. Max 3 sentences. This is the only message in the sequence with a hard CTA.
+
+Each message must include:
+- day: (0 / 3 / 7 / 14 / 21)
+- message: (per-message length caps above; all max 3 sentences)
+- timing: ("Day 0" / "Day 3" / "Day 7" / "Day 14" / "Day 21")
+- emojis: (max 1 per message, only when functional)
+
+Return as a JSON object with a 'messages' key containing the array.`;
+}
+
+export function buildWhatsappEventLogisticsPrompt(p: WhatsappPromptParams): string {
+  const tone = p.tone ?? "professional";  // honored, default professional for helpful-host register
+  const rules = buildWhatsappRules(p.serviceName, tone);
+  return `${p.sotContext ? `${p.sotContext}\n\n` : ''}You are an expert WhatsApp marketer. Create a 3-message WhatsApp event logistics sequence for an in-person event: Day -7 (welcome + venue), Day -1 (final reminder + day-of), Day +1 (thank-you + next step). Compressed from email's 4-msg version (Day -3 detailed-logistics middle email folded into Day -7).
+
+Service: ${p.serviceName}
+Event: ${p.eventName}
+Host: ${p.hostName}
+Event date: ${p.eventDate}
+Event time: ${p.eventTime} (${p.eventTimezone})
+Venue: ${p.eventVenue}
+
+${p.socialProofGuidance}
+
+${p.campaignTypeContext ? `${p.campaignTypeContext}\n\n` : ''}${p.icpContext}
+
+${rules}
+
+SEQUENCE GOAL: Deliver practical info that makes attendees feel prepared and welcomed. WhatsApp is the right channel for day-of logistics specifically — recipients have their phones in their pockets at the venue. By Day -1, every reader should know: where to go, when to arrive. Day +1 closes the loop with thanks + concrete next step.
+
+VOICE CONVENTION LOCK: First-person singular throughout. The host is "I" / "me" / "my". Sign-off uses host name on all 3 messages. Do not drift to third-person or "we" — first-person singular only.
+
+TONE: Professional helpful-host register. Practical, warm, concrete. Use specific details over generic phrases ("park behind the building, entrance on Maple Street" beats "easy parking available"). NOT salesy.
+
+ANCHOR PLACEHOLDERS (substitute when present, leave [INSERT_*] verbatim when absent — convention locked):
+- [INSERT_EVENT_VENUE], [INSERT_EVENT_DATE], [INSERT_BOOKING_TIME], [INSERT_BOOKING_TIMEZONE], [INSERT_EVENT_NAME] are pre-resolved upstream.
+- [INSERT_PARKING_INFO] is operator-discretion — embedded as inline prose token. Leave verbatim if the operator hasn't pre-filled it.
+
+Create 3 messages.
+
+1. WELCOME + VENUE (Day -7) — Job: confirm attendance + drop venue + parking. Open with: "[INSERT_EVENT_NAME] is [date] at [venue]." Sentence 2: parking info ([INSERT_PARKING_INFO]). Sentence 3 optional: anticipation note. Max 3 sentences.
+
+2. FINAL REMINDER (Day -1) — Job: day-of arrival info. Open with: "Tomorrow!" — short, energetic. Sentence 2: doors at [time minus 15 min] / arrival prep. Sentence 3: venue address one-line. Max 3 sentences. The reader is going tomorrow; do not bury the practical info.
+
+3. THANK YOU + NEXT STEP (Day +1, post-event) — Job: close the loop. Open with one specific thank-you naming a moment from the event (operator may need to fill this in — if not, use a placeholder like "[INSERT_EVENT_MOMENT]" leaving operator to specify). Sentence 2: concrete next step (booking link, or campaign-level CTA). Max 3 sentences. Warm but professional — not pushy.
+
+Each message must include:
+- day: (-7 / -1 / 1)
+- message: (max 3 sentences; concrete; no fluff)
+- timing: ("Day -7" / "Day -1" / "Day +1")
+- emojis: (max 1; only functional — 📍 acceptable for venue, 🙏 NOT acceptable for thank-you)
+
+Return as a JSON object with a 'messages' key containing the array.`;
+}
+
 // ---------------------------------------------------------------------------
 // WhatsApp LLM call + retry helper. Same nested-object-array schema pattern
 // as emailSequences, same intermittent failure mode (Sonnet 4.6 occasionally
@@ -400,7 +618,12 @@ async function invokeWhatsappSequenceWithRetry(userPrompt: string): Promise<RawW
 const generateWhatsAppSequenceSchema = z.object({
   serviceId: z.number(),
   campaignId: z.number().optional(),
-  sequenceType: z.enum(["engagement", "sales"]),
+  sequenceType: z.enum([
+    "engagement", "sales",
+    // Workstream commit 4b — 4 new types matching DB migration 0069.
+    "discovery_call_confirmation", "discovery_call_reminder",
+    "nurture", "event_logistics",
+  ]),
   name: z.string().min(1).max(255),
   // Length × tone (commit 2 of WhatsApp wire sprint).
   // Optional with defaults so callsites that omit them get the
@@ -665,10 +888,47 @@ You MUST use these exact numbers and real names. Do not fabricate.`
         price: input.eventDetails?.price,
         tone: input.tone,
         sequenceLength: input.sequenceLength,
+        // Workstream commit 4b — pass-through for the 7 fields shipped in
+        // commit 2.5b's eventDetails extension. Field-substitution convention
+        // locked here: substitute when value present, [INSERT_*] when absent
+        // (prevents the "coin-flip" substitution pattern observed in email
+        // sprint 3b backlog item #3). Procedurally-resolvable fields get the
+        // [INSERT_*] fallback at this layer; operator-discretion tokens
+        // (parking, dress code, etc.) live as embedded prose in the builders.
+        eventTime: input.eventDetails?.eventTime || "[INSERT_BOOKING_TIME]",
+        eventTimezone: input.eventDetails?.eventTimezone || "[INSERT_BOOKING_TIMEZONE]",
+        eventVenue: input.eventDetails?.eventVenue || "[INSERT_EVENT_VENUE]",
+        eventAgenda: input.eventDetails?.eventAgenda,
+        eventDuration: input.eventDetails?.eventDuration || "[INSERT_BOOKING_DURATION]",
+        replayUrl: input.eventDetails?.replayUrl,
+        bookingUrl: input.eventDetails?.bookingUrl || "[INSERT_BOOKING_URL]",
       };
-      const prompt = input.sequenceType === "engagement"
-        ? buildWhatsappEngagementPrompt(promptParams)
-        : buildWhatsappSalesPrompt(promptParams);
+      // Workstream commit 4b — 6-way dispatch refactored from the prior
+      // 2-way ternary. Switch (vs ternary) gives exhaustiveness protection:
+      // adding a 7th value to the Zod enum surfaces here as a TS error
+      // instead of silently falling through. Cases ordered: existing 2 first,
+      // new 4 appended (mirrors enum-ordinal order in migration 0069).
+      let prompt: string;
+      switch (input.sequenceType) {
+        case "engagement":
+          prompt = buildWhatsappEngagementPrompt(promptParams);
+          break;
+        case "sales":
+          prompt = buildWhatsappSalesPrompt(promptParams);
+          break;
+        case "discovery_call_confirmation":
+          prompt = buildWhatsappDiscoveryCallConfirmationPrompt(promptParams);
+          break;
+        case "discovery_call_reminder":
+          prompt = buildWhatsappDiscoveryCallReminderPrompt(promptParams);
+          break;
+        case "nurture":
+          prompt = buildWhatsappNurturePrompt(promptParams);
+          break;
+        case "event_logistics":
+          prompt = buildWhatsappEventLogisticsPrompt(promptParams);
+          break;
+      }
       const rawMessages = await invokeWhatsappSequenceWithRetry(cascadeContext + prompt);
       // sequenceData typed as `any` here to match pre-existing flow (Drizzle
       // schema-vs-actual-shape mismatch predates this commit; out of scope).
@@ -787,10 +1047,40 @@ You MUST use these exact numbers and real names. Do not fabricate.`
             price: capturedInput.eventDetails?.price,
             tone: capturedInput.tone,
             sequenceLength: capturedInput.sequenceLength,
+            // Workstream commit 4b — async-path mirror of sync pass-through.
+            // Field-substitution convention: substitute when present,
+            // [INSERT_*] when absent (locked).
+            eventTime: capturedInput.eventDetails?.eventTime || "[INSERT_BOOKING_TIME]",
+            eventTimezone: capturedInput.eventDetails?.eventTimezone || "[INSERT_BOOKING_TIMEZONE]",
+            eventVenue: capturedInput.eventDetails?.eventVenue || "[INSERT_EVENT_VENUE]",
+            eventAgenda: capturedInput.eventDetails?.eventAgenda,
+            eventDuration: capturedInput.eventDetails?.eventDuration || "[INSERT_BOOKING_DURATION]",
+            replayUrl: capturedInput.eventDetails?.replayUrl,
+            bookingUrl: capturedInput.eventDetails?.bookingUrl || "[INSERT_BOOKING_URL]",
           };
-          const prompt = capturedInput.sequenceType === "engagement"
-            ? buildWhatsappEngagementPrompt(bgPromptParams)
-            : buildWhatsappSalesPrompt(bgPromptParams);
+          // Workstream commit 4b — 6-way dispatch (mirror of sync path).
+          // Same exhaustiveness contract.
+          let prompt: string;
+          switch (capturedInput.sequenceType) {
+            case "engagement":
+              prompt = buildWhatsappEngagementPrompt(bgPromptParams);
+              break;
+            case "sales":
+              prompt = buildWhatsappSalesPrompt(bgPromptParams);
+              break;
+            case "discovery_call_confirmation":
+              prompt = buildWhatsappDiscoveryCallConfirmationPrompt(bgPromptParams);
+              break;
+            case "discovery_call_reminder":
+              prompt = buildWhatsappDiscoveryCallReminderPrompt(bgPromptParams);
+              break;
+            case "nurture":
+              prompt = buildWhatsappNurturePrompt(bgPromptParams);
+              break;
+            case "event_logistics":
+              prompt = buildWhatsappEventLogisticsPrompt(bgPromptParams);
+              break;
+          }
 
           const rawMessages = await invokeWhatsappSequenceWithRetry(capturedCascadeContext + prompt);
           // See sync path note above re: `any` typing on sequenceData.

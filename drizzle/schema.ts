@@ -395,7 +395,17 @@ export const whatsappSequences = mysqlTable("whatsappSequences", {
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   serviceId: int("serviceId").references(() => services.id, { onDelete: "set null" }),
   campaignId: int("campaignId").references(() => campaigns.id, { onDelete: "set null" }),
-  sequenceType: mysqlEnum("sequenceType", ["engagement", "sales"]),
+  // Workstream commit 4b — extend sequenceType from 2 → 6 values to match
+  // prod DB (migration 0069 / f785392). Closes 4a → 4b drift window.
+  // Channel-adjusted vs email's 10-value enum: WhatsApp omits launch (9-msg
+  // spam-complaint risk), re-engagement, replay_for_no_shows (replay isn't
+  // a WhatsApp channel), welcome (not standard for this channel). The 4
+  // shared net-new types (discovery_call_confirmation / discovery_call_
+  // reminder / nurture / event_logistics) are wired via 4 net-new prompt
+  // builders + dispatcher refactor (ternary → 6-way switch) in this commit.
+  // Zero V1 cascade — V1's WhatsAppSequenceGenerator.tsx hardcodes a 2-value
+  // TS literal independent of Drizzle inference.
+  sequenceType: mysqlEnum("sequenceType", ["engagement", "sales", "discovery_call_confirmation", "discovery_call_reminder", "nurture", "event_logistics"]),
   // Migration 0064 — user-selected tone for the generated sequence.
   // NULLable: rows generated before the tone wire (commit 2) carry NULL.
   tone: mysqlEnum("tone", ["conversational", "professional", "urgent"]),
