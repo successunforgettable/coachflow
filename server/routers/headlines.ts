@@ -445,12 +445,20 @@ export const headlinesRouter = router({
           ].filter(Boolean).join('\n').trim();
         }
 
-        // Workstream commit 2 — campaignType funnel-context wire. Headlines-
-        // tailored shape (no CTA section — headlines aren't CTAs). Default to
-        // course_launch when the campaign isn't set or value is unknown.
-        let campaignType = 'course_launch';
-        if (campaignRecord?.campaignType) {
-          campaignType = campaignRecord.campaignType;
+        // Workstream commit 2.5b — campaignType redirected from campaigns
+        // (V1) to campaignKits (V2 source-of-truth). The campaign-keyed wire
+        // from commit 2 was silently no-op for V2 users (V2 wizard never
+        // writes campaigns rows). Lookup keyed on (userId, icpId).
+        let campaignType: string = 'course_launch';
+        if (icp?.id) {
+          const { campaignKits } = await import("../../drizzle/schema");
+          const { and: andOp } = await import("drizzle-orm");
+          const [kit] = await db.select().from(campaignKits)
+            .where(andOp(eq(campaignKits.userId, ctx.user.id), eq(campaignKits.icpId, icp.id)))
+            .limit(1);
+          if (kit?.campaignType) {
+            campaignType = kit.campaignType;
+          }
         }
         const campaignTypeContextMap: Record<string, string> = {
           webinar: `CAMPAIGN CONTEXT: Webinar
@@ -741,7 +749,7 @@ Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES
       let campaignTypeContext = '';
       if (input.serviceId) {
         const { getDb } = await import("../db");
-        const { services, idealCustomerProfiles, sourceOfTruth, campaigns } = await import("../../drizzle/schema");
+        const { services, idealCustomerProfiles, sourceOfTruth, campaigns, campaignKits } = await import("../../drizzle/schema");
         const { eq, and: andOp } = await import("drizzle-orm");
         const db = await getDb();
         if (db) {
@@ -759,10 +767,16 @@ Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES
           if (!icp) { [icp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId!)).limit(1); }
           if (icp) { icpContext = ['IDEAL CUSTOMER PROFILE — use this to make every line of copy specific and targeted:', icp.pains ? `Their daily pains: ${icp.pains}` : '', icp.fears ? `Their deep fears: ${icp.fears}` : '', icp.buyingTriggers ? `What makes them buy: ${icp.buyingTriggers}` : ''].filter(Boolean).join('\n').trim(); }
 
-          // Workstream commit 2 — campaignType funnel-context. Mirror of sync path.
-          let campaignType = 'course_launch';
-          if (campaignRecord?.campaignType) {
-            campaignType = campaignRecord.campaignType;
+          // Workstream commit 2.5b — campaignType redirected to campaignKits
+          // (V2 SoT). Mirror of sync path.
+          let campaignType: string = 'course_launch';
+          if (icp?.id) {
+            const [kit] = await db.select().from(campaignKits)
+              .where(andOp(eq(campaignKits.userId, user.id), eq(campaignKits.icpId, icp.id)))
+              .limit(1);
+            if (kit?.campaignType) {
+              campaignType = kit.campaignType;
+            }
           }
           const campaignTypeContextMap: Record<string, string> = {
             webinar: `CAMPAIGN CONTEXT: Webinar\nThe headline must give a reason to attend live — sell the event itself. Reference the show-up moment ("how I [outcome] in 60 minutes live"). Avoid evergreen-funnel language.`,

@@ -1258,6 +1258,15 @@ export const campaignKits = mysqlTable("campaignKits", {
   icpId: int("icpId").notNull(),
   name: varchar("name", { length: 255 }),
   status: mysqlEnum("status", ["draft", "complete", "exported"]).default("draft").notNull(),
+  // Workstream commit 2.5b — Option A catch-up. campaignType added to match
+  // prod DB (migration 0067 / 30fde57). 7-value enum identical to
+  // campaigns.campaignType (migration 0066). Nullable: existing kit rows
+  // pre-date this column. Generators default to course_launch when null.
+  // Closes the 2.5a → 2.5b drift window. Zero V1 cascade — campaignKits is
+  // V2-only (audited: 0 references in client/src/pages/ or client/src/
+  // components/), so widening the inferred CampaignKit TS type does not
+  // reach the V1 hand-written CampaignType literal.
+  campaignType: mysqlEnum("campaignType", ["webinar", "challenge", "course_launch", "product_launch", "discovery_call", "lead_magnet", "in_person_event"]),
   selectedOfferId: int("selectedOfferId"),
   selectedMechanismId: int("selectedMechanismId"),
   selectedHvcoId: int("selectedHvcoId"),

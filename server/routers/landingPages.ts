@@ -381,9 +381,12 @@ export const landingPagesRouter = router({
         ? ['BRAND CONTEXT — this is the approved brand voice. All copy must be consistent with this:', ...sotLines].join('\n')
         : '';
 
-      // Campaign fetch — Item 1.5 (campaignType) + Item 1.1b (icpId)
+      // Campaign fetch — Item 1.1b (icpId fallback for V1 callsites that
+      // pass campaignId). Workstream commit 2.5b separated the campaignType
+      // read from this V1-backward-compat ICP-derivation: campaignType now
+      // comes from campaignKits (V2 SoT), keyed on (userId, icpId), AFTER
+      // ICP resolution.
       let icp: typeof idealCustomerProfiles.$inferSelect | undefined;
-      let campaignType = 'course_launch'; // default
 
       if (input.campaignId) {
         const [campaign] = await db
@@ -395,9 +398,6 @@ export const landingPagesRouter = router({
           ))
           .limit(1);
 
-        if (campaign?.campaignType) {
-          campaignType = campaign.campaignType;
-        }
         if (campaign?.icpId) {
           [icp] = await db.select().from(idealCustomerProfiles)
             .where(eq(idealCustomerProfiles.id, campaign.icpId)).limit(1);
@@ -407,6 +407,21 @@ export const landingPagesRouter = router({
       if (!icp) {
         [icp] = await db.select().from(idealCustomerProfiles)
           .where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
+      }
+
+      // Workstream commit 2.5b — campaignType funnel-context redirected
+      // from campaigns (V1) to campaignKits (V2 source-of-truth). The
+      // campaign-keyed wire from earlier sprints was silently no-op for V2
+      // users (V2 wizard never writes campaigns rows). Lookup keyed on
+      // (userId, icpId). Default course_launch when no kit or null type.
+      let campaignType: string = 'course_launch';
+      if (icp?.id) {
+        const [kit] = await db.select().from(campaignKits)
+          .where(and(eq(campaignKits.userId, ctx.user.id), eq(campaignKits.icpId, icp.id)))
+          .limit(1);
+        if (kit?.campaignType) {
+          campaignType = kit.campaignType;
+        }
       }
       const icpContext = icp ? `
 IDEAL CUSTOMER PROFILE — use this to make every line of copy specific and targeted:
@@ -611,14 +626,26 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
       const [service] = await db.select().from(services).where(and(eq(services.id, input.serviceId), eq(services.userId, ctx.user.id))).limit(1);
       if (!service) throw new Error("Service not found");
       const [sot] = await db.select().from(sourceOfTruth).where(eq(sourceOfTruth.userId, ctx.user.id)).limit(1);
+      // Workstream commit 2.5b — campaign-fetch retained only for V1
+      // backward-compat ICP fallback. campaignType now comes from
+      // campaignKits (V2 SoT) below.
       let icp: any;
-      let campaignType = 'course_launch';
       if (input.campaignId) {
         const [campaign] = await db.select().from(campaigns).where(and(eq(campaigns.id, input.campaignId), eq(campaigns.userId, ctx.user.id))).limit(1);
-        if (campaign?.campaignType) campaignType = campaign.campaignType;
         if (campaign?.icpId) { [icp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.id, campaign.icpId)).limit(1); }
       }
       if (!icp) { [icp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1); }
+
+      // Workstream commit 2.5b — campaignType from campaignKits (V2 SoT).
+      let campaignType: string = 'course_launch';
+      if (icp?.id) {
+        const [kit] = await db.select().from(campaignKits)
+          .where(and(eq(campaignKits.userId, ctx.user.id), eq(campaignKits.icpId, icp.id)))
+          .limit(1);
+        if (kit?.campaignType) {
+          campaignType = kit.campaignType;
+        }
+      }
 
       const capturedInput = { ...input };
       const capturedUserId = ctx.user.id;

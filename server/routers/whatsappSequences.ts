@@ -6,7 +6,7 @@ import { getDb } from "../db";
 function stripMarkdownJson(content: string): string {
   return content.replace(/^```json\s*|^```\s*|\s*```$/gm, '').trim();
 }
-import { whatsappSequences, services, campaigns, idealCustomerProfiles, sourceOfTruth, jobs } from "../../drizzle/schema";
+import { whatsappSequences, services, campaigns, campaignKits, idealCustomerProfiles, sourceOfTruth, jobs } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { invokeLLM } from "../_core/llm";
 import { getQuotaLimit } from "../quotaLimits";
@@ -548,9 +548,12 @@ export const whatsappSequencesRouter = router({
         ? ['BRAND CONTEXT — this is the approved brand voice. All copy must be consistent with this:', ...sotLines].join('\n')
         : '';
 
-      // Campaign fetch — Item 1.5 (campaignType) + Item 1.1b (icpId)
+      // Campaign fetch — Item 1.1b (icpId fallback for V1 callsites that
+      // pass campaignId). Workstream commit 2.5b separated the campaignType
+      // read from this V1-backward-compat ICP-derivation: campaignType now
+      // comes from campaignKits (V2 SoT), keyed on (userId, icpId), AFTER
+      // ICP resolution.
       let icp: typeof idealCustomerProfiles.$inferSelect | undefined;
-      let campaignType = 'course_launch'; // default
 
       if (input.campaignId) {
         const [campaign] = await db
@@ -562,9 +565,6 @@ export const whatsappSequencesRouter = router({
           ))
           .limit(1);
 
-        if (campaign?.campaignType) {
-          campaignType = campaign.campaignType;
-        }
         if (campaign?.icpId) {
           [icp] = await db.select().from(idealCustomerProfiles)
             .where(eq(idealCustomerProfiles.id, campaign.icpId)).limit(1);
@@ -574,6 +574,17 @@ export const whatsappSequencesRouter = router({
       if (!icp) {
         [icp] = await db.select().from(idealCustomerProfiles)
           .where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
+      }
+
+      // Workstream commit 2.5b — campaignType from campaignKits (V2 SoT).
+      let campaignType: string = 'course_launch';
+      if (icp?.id) {
+        const [kit] = await db.select().from(campaignKits)
+          .where(and(eq(campaignKits.userId, ctx.user.id), eq(campaignKits.icpId, icp.id)))
+          .limit(1);
+        if (kit?.campaignType) {
+          campaignType = kit.campaignType;
+        }
       }
 
       // Cascade context — read upstream campaignKits selections for this ICP
@@ -712,14 +723,26 @@ You MUST use these exact numbers and real names. Do not fabricate.`
       const [service] = await db.select().from(services).where(and(eq(services.id, input.serviceId), eq(services.userId, user.id))).limit(1);
       if (!service) throw new Error("Service not found");
       const [sot] = await db.select().from(sourceOfTruth).where(eq(sourceOfTruth.userId, user.id)).limit(1);
+      // Workstream commit 2.5b — campaign-fetch retained only for V1
+      // backward-compat ICP fallback. campaignType now comes from
+      // campaignKits (V2 SoT) below.
       let icp: any;
-      let campaignType = 'course_launch';
       if (input.campaignId) {
         const [campaign] = await db.select().from(campaigns).where(and(eq(campaigns.id, input.campaignId), eq(campaigns.userId, user.id))).limit(1);
-        if (campaign?.campaignType) campaignType = campaign.campaignType;
         if (campaign?.icpId) { [icp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.id, campaign.icpId)).limit(1); }
       }
       if (!icp) { [icp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1); }
+
+      // Workstream commit 2.5b — campaignType from campaignKits (V2 SoT).
+      let campaignType: string = 'course_launch';
+      if (icp?.id) {
+        const [kit] = await db.select().from(campaignKits)
+          .where(and(eq(campaignKits.userId, user.id), eq(campaignKits.icpId, icp.id)))
+          .limit(1);
+        if (kit?.campaignType) {
+          campaignType = kit.campaignType;
+        }
+      }
 
       // Cascade context — fetched during request, captured for setImmediate.
       // Must mirror the call in generate.

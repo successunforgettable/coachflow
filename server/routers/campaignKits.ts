@@ -70,7 +70,17 @@ export const campaignKitsRouter = router({
    * Auto-generates the name as "{serviceName} — {icpName} Campaign".
    */
   getOrCreate: protectedProcedure
-    .input(z.object({ icpId: z.number() }))
+    .input(z.object({
+      icpId: z.number(),
+      // Workstream commit 2.5b — optional funnel-type field. Sets the kit's
+      // campaignType at creation time. Existing callsites that omit it leave
+      // the column NULL (downstream generators default to course_launch).
+      // The 7 enum values match campaignKits.campaignType (migration 0067).
+      campaignType: z.enum([
+        "webinar", "challenge", "course_launch", "product_launch",
+        "discovery_call", "lead_magnet", "in_person_event",
+      ]).optional(),
+    }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
@@ -109,6 +119,9 @@ export const campaignKitsRouter = router({
         userId: ctx.user.id,
         icpId: input.icpId,
         name,
+        // Workstream commit 2.5b — write campaignType when supplied; null
+        // otherwise. Generators default to course_launch when null.
+        campaignType: input.campaignType ?? null,
       });
 
       const [newKit] = await db
@@ -136,6 +149,14 @@ export const campaignKitsRouter = router({
       selectedLandingPageAngle: z.string().nullable().optional(),
       selectedEmailSequenceId: z.number().nullable().optional(),
       selectedWhatsAppSequenceId: z.number().nullable().optional(),
+      // Workstream commit 2.5b — optional funnel-type update. Lets the kit
+      // owner change campaignType post-creation (used by commit 7's UI).
+      // Nullable so callers can clear the field; existing callsites that
+      // omit it leave the column unchanged (the loop below skips undefined).
+      campaignType: z.enum([
+        "webinar", "challenge", "course_launch", "product_launch",
+        "discovery_call", "lead_magnet", "in_person_event",
+      ]).nullable().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();

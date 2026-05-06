@@ -2,7 +2,7 @@ import { z } from "zod";
 import { randomUUID } from "crypto";
 import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
-import { adCopy, services, campaigns, idealCustomerProfiles, sourceOfTruth, jobs } from "../../drizzle/schema";
+import { adCopy, services, campaigns, campaignKits, idealCustomerProfiles, sourceOfTruth, jobs } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { invokeLLM } from "../_core/llm";
 import { getCascadeContext } from "../_core/cascadeContext";
@@ -413,13 +413,20 @@ export const adCopyRouter = router({
           .where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
       }
 
-      // Workstream commit 2 — campaignType funnel-context wire. Mirrors the
-      // emailSequences.ts:587-650 pattern. Default to course_launch when the
-      // campaign isn't set or the value is unknown (same graceful-degrade
-      // fallback as emailSequences / landingPages / whatsappSequences).
-      let campaignType = 'course_launch';
-      if (campaignRecord?.campaignType) {
-        campaignType = campaignRecord.campaignType;
+      // Workstream commit 2.5b — campaignType funnel-context redirected
+      // from campaigns (V1) to campaignKits (V2 source-of-truth). The
+      // campaign-keyed wire from commit 2 was silently no-op for V2 users
+      // (V2 wizard never writes campaigns rows). campaignKits is keyed on
+      // (userId, icpId) and is auto-populated by V2's autoSelectBest flow.
+      // Same fallback shape: missing kit OR null campaignType → course_launch.
+      let campaignType: string = 'course_launch';
+      if (icp?.id) {
+        const [kit] = await db.select().from(campaignKits)
+          .where(and(eq(campaignKits.userId, ctx.user.id), eq(campaignKits.icpId, icp.id)))
+          .limit(1);
+        if (kit?.campaignType) {
+          campaignType = kit.campaignType;
+        }
       }
       const campaignTypeContextMap: Record<string, string> = {
         webinar: `CAMPAIGN TYPE: Webinar
@@ -933,9 +940,18 @@ Format as JSON array:
       const capturedService = { ...service };
       const capturedIcp = icp ? { ...icp } : undefined;
       const capturedSot = sot ? { ...sot } : undefined;
-      // Workstream commit 2 — capture campaignType for the setImmediate
-      // closure. Default to course_launch (same fallback as the sync path).
-      const capturedCampaignType: string = campaignRecord?.campaignType || 'course_launch';
+      // Workstream commit 2.5b — capture campaignType from campaignKits
+      // (V2 SoT) for the setImmediate closure. Mirror of sync path.
+      // Default to course_launch when no kit exists or campaignType is null.
+      let capturedCampaignType: string = 'course_launch';
+      if (icp?.id) {
+        const [kit] = await db.select().from(campaignKits)
+          .where(and(eq(campaignKits.userId, user.id), eq(campaignKits.icpId, icp.id)))
+          .limit(1);
+        if (kit?.campaignType) {
+          capturedCampaignType = kit.campaignType;
+        }
+      }
 
       const jobId = randomUUID();
       await db.insert(jobs).values({ id: jobId, userId: String(capturedUserId), status: "pending" });

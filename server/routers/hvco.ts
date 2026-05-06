@@ -14,7 +14,7 @@ import {
   incrementHvcoCount
 } from "../db";
 import { getDb } from "../db";
-import { services, idealCustomerProfiles, sourceOfTruth, campaigns, jobs } from "../../drizzle/schema";
+import { services, idealCustomerProfiles, sourceOfTruth, campaigns, campaignKits, jobs } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { getQuotaLimit } from "../quotaLimits";
@@ -118,13 +118,18 @@ export const hvcoRouter = router({
         icp.implementationBarriers ? `What stops them from taking action: ${icp.implementationBarriers}` : '',
       ].filter(Boolean).join('\n').trim() : '';
 
-      // Workstream commit 2 — campaignType funnel-context wire. HVCO-tailored
-      // shape (title-format cues per campaign type). Mirror of the
-      // emailSequences.ts:587-650 mechanism. Default to course_launch when
-      // the campaign isn't set or value is unknown.
-      let campaignType = 'course_launch';
-      if (campaignRecord?.campaignType) {
-        campaignType = campaignRecord.campaignType;
+      // Workstream commit 2.5b — campaignType redirected from campaigns
+      // (V1) to campaignKits (V2 source-of-truth). The campaign-keyed wire
+      // from commit 2 was silently no-op for V2 users. Lookup keyed on
+      // (userId, icpId).
+      let campaignType: string = 'course_launch';
+      if (icp?.id) {
+        const [kit] = await db.select().from(campaignKits)
+          .where(and(eq(campaignKits.userId, ctx.user.id), eq(campaignKits.icpId, icp.id)))
+          .limit(1);
+        if (kit?.campaignType) {
+          campaignType = kit.campaignType;
+        }
       }
       const campaignTypeContextMap: Record<string, string> = {
         webinar: `CAMPAIGN CONTEXT: Webinar
@@ -450,8 +455,17 @@ Return ONLY a JSON array of 20 subheadline strings, nothing else.`;
       const capturedService = { ...service };
       const capturedIcp = icp ? { ...icp } : undefined;
       const capturedSot = sot ? { ...sot } : undefined;
-      // Workstream commit 2 — capture campaignType for setImmediate closure.
-      const capturedCampaignType: string = campaignRecord?.campaignType || 'course_launch';
+      // Workstream commit 2.5b — capture campaignType from campaignKits
+      // (V2 SoT) for setImmediate closure. Mirror of sync path.
+      let capturedCampaignType: string = 'course_launch';
+      if (icp?.id) {
+        const [kit] = await db.select().from(campaignKits)
+          .where(and(eq(campaignKits.userId, user.id), eq(campaignKits.icpId, icp.id)))
+          .limit(1);
+        if (kit?.campaignType) {
+          capturedCampaignType = kit.campaignType;
+        }
+      }
 
       const jobId = randomUUID();
       await db.insert(jobs).values({ id: jobId, userId: String(capturedUserId), status: "pending" });
