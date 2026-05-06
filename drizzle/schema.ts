@@ -183,7 +183,14 @@ export const campaigns = mysqlTable("campaigns", {
   serviceId: int("serviceId").references(() => services.id, { onDelete: "set null" }),
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
-  campaignType: mysqlEnum("campaignType", ["webinar", "challenge", "course_launch", "product_launch"]),
+  // Workstream commit 2 — extend campaignType enum from 4 → 7 values to
+  // match prod DB (migration 0066 / db8c86e). Closes the commit-1→commit-2
+  // drift window. Three new values (discovery_call / lead_magnet /
+  // in_person_event) widen the inferred Campaign.campaignType TS type from
+  // 4 to 7 string literals. No V1 cascade: the V1 hand-written CampaignType
+  // literal in Stage1Questions.tsx + OnboardingFlow.tsx + campaignTemplates
+  // .ts is TS-isolated, NOT derived from Drizzle inference.
+  campaignType: mysqlEnum("campaignType", ["webinar", "challenge", "course_launch", "product_launch", "discovery_call", "lead_magnet", "in_person_event"]),
   status: mysqlEnum("status", ["draft", "active", "paused", "completed"]).default("draft").notNull(),
   startDate: timestamp("startDate"),
   endDate: timestamp("endDate"),

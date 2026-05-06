@@ -388,7 +388,8 @@ export const adCopyRouter = router({
         throw new Error("Service not found");
       }
 
-      // Campaign fetch — Item 1.1b (icpId support)
+      // Campaign fetch — Item 1.1b (icpId support) + Workstream commit 2
+      // (campaignType funnel-context wire).
       let campaignRecord;
       if (input.campaignId) {
         [campaignRecord] = await db
@@ -411,6 +412,52 @@ export const adCopyRouter = router({
         [icp] = await db.select().from(idealCustomerProfiles)
           .where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
       }
+
+      // Workstream commit 2 — campaignType funnel-context wire. Mirrors the
+      // emailSequences.ts:587-650 pattern. Default to course_launch when the
+      // campaign isn't set or the value is unknown (same graceful-degrade
+      // fallback as emailSequences / landingPages / whatsappSequences).
+      let campaignType = 'course_launch';
+      if (campaignRecord?.campaignType) {
+        campaignType = campaignRecord.campaignType;
+      }
+      const campaignTypeContextMap: Record<string, string> = {
+        webinar: `CAMPAIGN TYPE: Webinar
+Framing: Show-up urgency — the ad must give a compelling reason to attend live, not just register. Sell the event itself, not the offer behind it.
+Urgency mechanism: Date and time of the webinar. Limited seats available.
+CTA language: Register now / Save your seat / Join us live on [date]`,
+
+        challenge: `CAMPAIGN TYPE: Challenge
+Framing: Community commitment — the ad sells the experience of joining a group doing this together. Daily wins build momentum.
+Urgency mechanism: Challenge start date. Community closes when the challenge begins.
+CTA language: Join the challenge / Claim your spot / Start with us on [date]`,
+
+        course_launch: `CAMPAIGN TYPE: Course Launch
+Framing: Transformation journey — who they are now vs who they will become. Enrolment is the decision point.
+Urgency mechanism: Enrolment deadline. Cohort size is limited.
+CTA language: Enrol now / Join the programme / Claim your place before [date]`,
+
+        product_launch: `CAMPAIGN TYPE: Product Launch
+Framing: Early access and founding member status. First to experience something new.
+Urgency mechanism: Launch day price increase. Founding member pricing closes on launch day.
+CTA language: Get early access / Become a founding member / Lock in launch pricing`,
+
+        discovery_call: `CAMPAIGN TYPE: Discovery Call
+Framing: Selectivity and personal attention — the ad sells a free 1:1 conversation, not a mass event. Position the call as a fit-check, not a sales pitch.
+Urgency mechanism: Calendar availability is limited. Quality over quantity.
+CTA language: Book a discovery call / Apply for a call / Reserve your slot`,
+
+        lead_magnet: `CAMPAIGN TYPE: Lead Magnet
+Framing: Specific value before any pitch — the ad sells a single concrete asset (PDF, guide, training, swipe file) the reader can use today. No commitment.
+Urgency mechanism: None artificial. The asset itself is the hook. Avoid fake scarcity.
+CTA language: Get the free guide / Download free / Send me the [asset]`,
+
+        in_person_event: `CAMPAIGN TYPE: In-Person Event
+Framing: Physical-presence value — the ad sells the room, the people, the energy of being there in person. Specifics: city, venue, date.
+Urgency mechanism: Travel logistics + limited room capacity. Real seat limits.
+CTA language: Reserve your seat / Register for [city] / Save your spot at [venue]`,
+      };
+      const campaignTypeContext = campaignTypeContextMap[campaignType] || campaignTypeContextMap['course_launch'];
 
       // Cascade context — read upstream campaignKits selections for this ICP
       // and prepend to each LLM user-message. Must mirror the call in generateAsync.
@@ -511,6 +558,8 @@ ${socialProofGuidance}
 
 ${icpContext}
 
+${campaignTypeContext}
+
 Ad Type: ${adTypeContext}
 Ad Style: ${input.adStyle}
 Call To Action: ${input.adCallToAction}
@@ -602,6 +651,8 @@ ${socialProofGuidance}
 
 ${icpContext}
 
+${campaignTypeContext}
+
 Ad Type: ${adTypeContext}
 Ad Style: ${input.adStyle}
 Call To Action: ${input.adCallToAction}
@@ -659,6 +710,8 @@ Desired Outcome: ${resolvedDesiredOutcome}
 Call To Action: ${input.adCallToAction}
 
 ${icpContext}
+
+${campaignTypeContext}
 
 Ad Type: ${adTypeContext}
 Ad Style: ${input.adStyle}
@@ -880,6 +933,9 @@ Format as JSON array:
       const capturedService = { ...service };
       const capturedIcp = icp ? { ...icp } : undefined;
       const capturedSot = sot ? { ...sot } : undefined;
+      // Workstream commit 2 — capture campaignType for the setImmediate
+      // closure. Default to course_launch (same fallback as the sync path).
+      const capturedCampaignType: string = campaignRecord?.campaignType || 'course_launch';
 
       const jobId = randomUUID();
       await db.insert(jobs).values({ id: jobId, userId: String(capturedUserId), status: "pending" });
@@ -907,9 +963,21 @@ Format as JSON array:
           const adSetId = nanoid();
           const count = capturedInput.powerMode ? 30 : 15;
           const adTypeContext = capturedInput.adType === "lead_gen" ? "Lead Generation (free webinar, consultation, download)" : "E-commerce (direct product sale)";
+
+          // Workstream commit 2 — campaignType funnel-context (mirror of sync path).
+          const campaignTypeContextMap: Record<string, string> = {
+            webinar: `CAMPAIGN TYPE: Webinar\nFraming: Show-up urgency — the ad must give a compelling reason to attend live, not just register. Sell the event itself, not the offer behind it.\nUrgency mechanism: Date and time of the webinar. Limited seats available.\nCTA language: Register now / Save your seat / Join us live on [date]`,
+            challenge: `CAMPAIGN TYPE: Challenge\nFraming: Community commitment — the ad sells the experience of joining a group doing this together. Daily wins build momentum.\nUrgency mechanism: Challenge start date. Community closes when the challenge begins.\nCTA language: Join the challenge / Claim your spot / Start with us on [date]`,
+            course_launch: `CAMPAIGN TYPE: Course Launch\nFraming: Transformation journey — who they are now vs who they will become. Enrolment is the decision point.\nUrgency mechanism: Enrolment deadline. Cohort size is limited.\nCTA language: Enrol now / Join the programme / Claim your place before [date]`,
+            product_launch: `CAMPAIGN TYPE: Product Launch\nFraming: Early access and founding member status. First to experience something new.\nUrgency mechanism: Launch day price increase. Founding member pricing closes on launch day.\nCTA language: Get early access / Become a founding member / Lock in launch pricing`,
+            discovery_call: `CAMPAIGN TYPE: Discovery Call\nFraming: Selectivity and personal attention — the ad sells a free 1:1 conversation, not a mass event. Position the call as a fit-check, not a sales pitch.\nUrgency mechanism: Calendar availability is limited. Quality over quantity.\nCTA language: Book a discovery call / Apply for a call / Reserve your slot`,
+            lead_magnet: `CAMPAIGN TYPE: Lead Magnet\nFraming: Specific value before any pitch — the ad sells a single concrete asset (PDF, guide, training, swipe file) the reader can use today. No commitment.\nUrgency mechanism: None artificial. The asset itself is the hook. Avoid fake scarcity.\nCTA language: Get the free guide / Download free / Send me the [asset]`,
+            in_person_event: `CAMPAIGN TYPE: In-Person Event\nFraming: Physical-presence value — the ad sells the room, the people, the energy of being there in person. Specifics: city, venue, date.\nUrgency mechanism: Travel logistics + limited room capacity. Real seat limits.\nCTA language: Reserve your seat / Register for [city] / Save your spot at [venue]`,
+          };
+          const campaignTypeContext = campaignTypeContextMap[capturedCampaignType] || campaignTypeContextMap['course_launch'];
           const socialProofGuidance = socialProof.hasCustomers || socialProof.hasRating || socialProof.hasReviews ? `REAL SOCIAL PROOF AVAILABLE - Use these verified numbers:\n- ${socialProof.customerCount} total customers\n- ${socialProof.rating} average rating\n- ${socialProof.reviewCount} reviews\nYou MUST use these exact numbers when incorporating social proof. Do not fabricate or inflate.` : `NO SOCIAL PROOF DATA PROVIDED - Use launch-safe alternatives:\n- Focus on benefit claims and outcomes ("Get X result")\n- Use curiosity hooks ("The method that...")\n- Use contrast ("Before vs After")\n- DO NOT mention customer counts, ratings, or reviews\n- DO NOT fabricate testimonials or statistics`;
 
-          const headlinePrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ${count} high-converting ad HEADLINES for this service:\n\nService: ${capturedService.name}\nCategory: ${capturedService.category}\nTarget Market: ${capturedInput.targetMarket}\nProduct Category: ${capturedInput.productCategory}\nSpecific Product Name: ${capturedInput.specificProductName}\nPressing Problem: ${resolvedPressingProblem}\nDesired Outcome: ${resolvedDesiredOutcome}\nUnique Mechanism: ${resolvedUniqueMechanism || 'N/A'}\nKey Benefits: ${capturedInput.listBenefits || 'N/A'}\n\n${socialProofGuidance}\n\n${icpContext}\n\nAd Type: ${adTypeContext}\nAd Style: ${capturedInput.adStyle}\nCall To Action: ${capturedInput.adCallToAction}\n\nCreate ${count} attention-grabbing headlines (max 40 characters each).\n\nFormat as JSON array: { "headlines": ["headline 1", ...] }`;
+          const headlinePrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ${count} high-converting ad HEADLINES for this service:\n\nService: ${capturedService.name}\nCategory: ${capturedService.category}\nTarget Market: ${capturedInput.targetMarket}\nProduct Category: ${capturedInput.productCategory}\nSpecific Product Name: ${capturedInput.specificProductName}\nPressing Problem: ${resolvedPressingProblem}\nDesired Outcome: ${resolvedDesiredOutcome}\nUnique Mechanism: ${resolvedUniqueMechanism || 'N/A'}\nKey Benefits: ${capturedInput.listBenefits || 'N/A'}\n\n${socialProofGuidance}\n\n${icpContext}\n\n${campaignTypeContext}\n\nAd Type: ${adTypeContext}\nAd Style: ${capturedInput.adStyle}\nCall To Action: ${capturedInput.adCallToAction}\n\nCreate ${count} attention-grabbing headlines (max 40 characters each).\n\nFormat as JSON array: { "headlines": ["headline 1", ...] }`;
           const headlineResponse = await invokeLLM({ messages: [{ role: "system", content: `${META_COMPLIANCE_RULES}\n\nYou are an expert ad copywriter who specializes in Meta-compliant advertising for coaches, speakers and consultants. Always respond with valid JSON.` }, { role: "user", content: capturedCascadeContext + headlinePrompt }], response_format: { type: "json_schema", json_schema: { name: "ad_headlines", strict: true, schema: { type: "object", properties: { headlines: { type: "array", items: { type: "string" } } }, required: ["headlines"], additionalProperties: false } } } });
           const headlineContent = headlineResponse.choices[0].message.content;
           if (typeof headlineContent !== "string") throw new Error("Invalid headline response");
@@ -920,7 +988,7 @@ Format as JSON array:
           const selectedAngles = [...ALL_BODY_ANGLES];
           const bodyPromises = selectedAngles.map(async (angle: string) => {
             const anglePrompt = (BODY_ANGLE_PROMPTS as any)[angle];
-            const bodyPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ONE high-converting ad BODY COPY using the ${angle.replace('_', ' ')} angle:\n\nService: ${capturedService.name}\nTarget Market: ${capturedInput.targetMarket}\nPressing Problem: ${resolvedPressingProblem}\nDesired Outcome: ${resolvedDesiredOutcome}\nUnique Mechanism: ${resolvedUniqueMechanism || 'N/A'}\n\n${socialProofGuidance}\n\n${icpContext}\n\nAd Type: ${adTypeContext}\nAd Style: ${capturedInput.adStyle}\nCall To Action: ${capturedInput.adCallToAction}\n\n${anglePrompt}\n\nCreate ONE body copy (125-150 words). End with clear call-to-action: ${capturedInput.adCallToAction}\n\nReturn ONLY the body text as a single string, no JSON wrapper.`;
+            const bodyPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ONE high-converting ad BODY COPY using the ${angle.replace('_', ' ')} angle:\n\nService: ${capturedService.name}\nTarget Market: ${capturedInput.targetMarket}\nPressing Problem: ${resolvedPressingProblem}\nDesired Outcome: ${resolvedDesiredOutcome}\nUnique Mechanism: ${resolvedUniqueMechanism || 'N/A'}\n\n${socialProofGuidance}\n\n${icpContext}\n\n${campaignTypeContext}\n\nAd Type: ${adTypeContext}\nAd Style: ${capturedInput.adStyle}\nCall To Action: ${capturedInput.adCallToAction}\n\n${anglePrompt}\n\nCreate ONE body copy (125-150 words). End with clear call-to-action: ${capturedInput.adCallToAction}\n\nReturn ONLY the body text as a single string, no JSON wrapper.`;
             const r = await invokeLLM({ messages: [{ role: "system", content: `${META_COMPLIANCE_RULES}\n\nYou are an expert ad copywriter who specializes in Meta-compliant advertising for coaches, speakers and consultants.\n\n${NO_CREDENTIAL_FABRICATION_RULE}` }, { role: "user", content: capturedCascadeContext + bodyPrompt }] });
             const rawContent = r.choices[0]?.message?.content;
             if (!rawContent) throw new Error(`Empty response for ${angle} angle`);
@@ -930,7 +998,7 @@ Format as JSON array:
           const bodyResults = await Promise.all(bodyPromises);
           const bodyData = { bodies: bodyResults.map((r: any) => r.body) };
 
-          const linkPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ${count} high-converting LINK DESCRIPTIONS for this service:\n\nService: ${capturedService.name}\nTarget Market: ${capturedInput.targetMarket}\nDesired Outcome: ${resolvedDesiredOutcome}\nCall To Action: ${capturedInput.adCallToAction}\n\n${icpContext}\n\nAd Type: ${adTypeContext}\nAd Style: ${capturedInput.adStyle}\n\nCreate ${count} clear, action-oriented link descriptions (max 30 characters each).\n\nFormat as JSON array: { "links": ["link 1", ...] }`;
+          const linkPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ${count} high-converting LINK DESCRIPTIONS for this service:\n\nService: ${capturedService.name}\nTarget Market: ${capturedInput.targetMarket}\nDesired Outcome: ${resolvedDesiredOutcome}\nCall To Action: ${capturedInput.adCallToAction}\n\n${icpContext}\n\n${campaignTypeContext}\n\nAd Type: ${adTypeContext}\nAd Style: ${capturedInput.adStyle}\n\nCreate ${count} clear, action-oriented link descriptions (max 30 characters each).\n\nFormat as JSON array: { "links": ["link 1", ...] }`;
           const linkResponse = await invokeLLM({ messages: [{ role: "system", content: `${META_COMPLIANCE_RULES}\n\nYou are an expert ad copywriter who specializes in Meta-compliant advertising for coaches, speakers and consultants. Always respond with valid JSON.` }, { role: "user", content: capturedCascadeContext + linkPrompt }], response_format: { type: "json_schema", json_schema: { name: "ad_links", strict: true, schema: { type: "object", properties: { links: { type: "array", items: { type: "string" } } }, required: ["links"], additionalProperties: false } } } });
           const linkContent = linkResponse.choices[0].message.content;
           if (typeof linkContent !== "string") throw new Error("Invalid link response");

@@ -118,6 +118,38 @@ export const hvcoRouter = router({
         icp.implementationBarriers ? `What stops them from taking action: ${icp.implementationBarriers}` : '',
       ].filter(Boolean).join('\n').trim() : '';
 
+      // Workstream commit 2 — campaignType funnel-context wire. HVCO-tailored
+      // shape (title-format cues per campaign type). Mirror of the
+      // emailSequences.ts:587-650 mechanism. Default to course_launch when
+      // the campaign isn't set or value is unknown.
+      let campaignType = 'course_launch';
+      if (campaignRecord?.campaignType) {
+        campaignType = campaignRecord.campaignType;
+      }
+      const campaignTypeContextMap: Record<string, string> = {
+        webinar: `CAMPAIGN CONTEXT: Webinar
+The titles will name a webinar / live training. Format examples: "[Specific Outcome] in 60 Minutes Live", "Live Webinar: How [Person] [Outcome]", "The [Topic] Webinar: [Specific Promise]". Reference the live-attendance-only nature.`,
+
+        challenge: `CAMPAIGN CONTEXT: Challenge
+The titles will name a multi-day challenge. Format examples: "[N]-Day [Topic] Challenge", "The [Outcome] Sprint", "[Time period] [Action] Challenge". Reference the duration and the daily-action structure.`,
+
+        course_launch: `CAMPAIGN CONTEXT: Course Launch
+The titles will name a course or programme. Format examples: "The [Topic] [System / Method / Programme]", "[Outcome] in [Period]", "How to [Outcome] in [Timeframe]". Reference the structured-programme nature.`,
+
+        product_launch: `CAMPAIGN CONTEXT: Product Launch
+The titles will name a product or tool. Format: short, distinctive product names. Avoid generic descriptors. Reference what the product does in the title.`,
+
+        discovery_call: `CAMPAIGN CONTEXT: Discovery Call
+The titles will name a free strategy call or audit. Format examples: "The [Topic] Audit", "[Outcome] Strategy Call", "Free [Niche] Diagnostic". Reference the 1:1 nature and the specific framework being applied during the call.`,
+
+        lead_magnet: `CAMPAIGN CONTEXT: Lead Magnet
+The titles will name a downloadable asset (PDF, guide, training, swipe file). This is HVCO's native use case — every existing title rule applies fully. Reference the asset format in the framing.`,
+
+        in_person_event: `CAMPAIGN CONTEXT: In-Person Event
+The titles will name a live in-person workshop, mastermind, or training day. Format examples: "[Topic] Live in [City]", "[Period] [Topic] Intensive", "The [City] [Event Type]". Reference the physical location.`,
+      };
+      const campaignTypeContext = campaignTypeContextMap[campaignType] || campaignTypeContextMap['course_launch'];
+
       // SOT query — Item 1.4
       const [sot] = await db
         .select()
@@ -152,7 +184,7 @@ Product: ${service.name}
 Target Market: ${resolvedTargetMarket}
 HVCO Topic: ${resolvedHvcoTopic}
 ${icpContext ? `\n${icpContext}\n` : ''}
-MANDATORY TITLE RULE — every title must contain at least ONE of these:
+${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}MANDATORY TITLE RULE — every title must contain at least ONE of these:
 1. A specific number (5 steps, 7 mistakes, 3 ways — not "multiple" or "several")
 2. A specific timeframe (in 30 days, this week, before Friday — not "quickly" or "fast")
 3. A named enemy or obstacle (cold outreach, algorithm changes, discount pricing — the specific thing blocking them)
@@ -216,7 +248,7 @@ Product: ${service.name}
 Target Market: ${resolvedTargetMarket}
 HVCO Topic: ${resolvedHvcoTopic}
 ${icpContext ? `\n${icpContext}\n` : ''}
-MANDATORY TITLE RULE — every short title must contain at least ONE of:
+${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}MANDATORY TITLE RULE — every short title must contain at least ONE of:
 1. A specific number or timeframe (5-step, 30-day, $10k — not vague amounts)
 2. A named obstacle or enemy this audience specifically faces (the exact frustration, not a category of frustrations)
 3. An insider word from this niche — a term only someone in this niche would use
@@ -270,7 +302,7 @@ Product: ${service.name}
 Target Market: ${resolvedTargetMarket}
 HVCO Topic: ${resolvedHvcoTopic}
 ${icpContext ? `\n${icpContext}\n` : ''}
-MANDATORY RULE — every title must contain at least ONE of:
+${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}MANDATORY RULE — every title must contain at least ONE of:
 1. A specific number or timeframe
 2. A named enemy, obstacle, or mistake this exact audience faces
 3. An insider term from this niche that only someone in it would recognise
@@ -322,7 +354,7 @@ Product: ${service.name}
 Target Market: ${resolvedTargetMarket}
 HVCO Topic: ${resolvedHvcoTopic}
 ${icpContext ? `\n${icpContext}\n` : ''}
-Create 20 SUBHEADLINES. Each subheadline must do ONE of the following:
+${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}Create 20 SUBHEADLINES. Each subheadline must do ONE of the following:
 1. Name a specific obstacle or enemy this audience faces and promise to remove it
 2. Give a specific number, timeframe, or result that makes the promise concrete
 3. Explain WHY this lead magnet is different from the thing they've already tried
@@ -418,6 +450,8 @@ Return ONLY a JSON array of 20 subheadline strings, nothing else.`;
       const capturedService = { ...service };
       const capturedIcp = icp ? { ...icp } : undefined;
       const capturedSot = sot ? { ...sot } : undefined;
+      // Workstream commit 2 — capture campaignType for setImmediate closure.
+      const capturedCampaignType: string = campaignRecord?.campaignType || 'course_launch';
 
       const jobId = randomUUID();
       await db.insert(jobs).values({ id: jobId, userId: String(capturedUserId), status: "pending" });
@@ -435,6 +469,18 @@ Return ONLY a JSON array of 20 subheadline strings, nothing else.`;
             capturedIcp.implementationBarriers ? `What stops them from taking action: ${capturedIcp.implementationBarriers}` : '',
           ].filter(Boolean).join('\n').trim() : '';
 
+          // Workstream commit 2 — campaignType funnel-context (mirror of sync path).
+          const campaignTypeContextMap: Record<string, string> = {
+            webinar: `CAMPAIGN CONTEXT: Webinar\nThe titles will name a webinar / live training. Format examples: "[Specific Outcome] in 60 Minutes Live", "Live Webinar: How [Person] [Outcome]", "The [Topic] Webinar: [Specific Promise]". Reference the live-attendance-only nature.`,
+            challenge: `CAMPAIGN CONTEXT: Challenge\nThe titles will name a multi-day challenge. Format examples: "[N]-Day [Topic] Challenge", "The [Outcome] Sprint", "[Time period] [Action] Challenge". Reference the duration and the daily-action structure.`,
+            course_launch: `CAMPAIGN CONTEXT: Course Launch\nThe titles will name a course or programme. Format examples: "The [Topic] [System / Method / Programme]", "[Outcome] in [Period]", "How to [Outcome] in [Timeframe]". Reference the structured-programme nature.`,
+            product_launch: `CAMPAIGN CONTEXT: Product Launch\nThe titles will name a product or tool. Format: short, distinctive product names. Avoid generic descriptors. Reference what the product does in the title.`,
+            discovery_call: `CAMPAIGN CONTEXT: Discovery Call\nThe titles will name a free strategy call or audit. Format examples: "The [Topic] Audit", "[Outcome] Strategy Call", "Free [Niche] Diagnostic". Reference the 1:1 nature and the specific framework being applied during the call.`,
+            lead_magnet: `CAMPAIGN CONTEXT: Lead Magnet\nThe titles will name a downloadable asset (PDF, guide, training, swipe file). This is HVCO's native use case — every existing title rule applies fully. Reference the asset format in the framing.`,
+            in_person_event: `CAMPAIGN CONTEXT: In-Person Event\nThe titles will name a live in-person workshop, mastermind, or training day. Format examples: "[Topic] Live in [City]", "[Period] [Topic] Intensive", "The [City] [Event Type]". Reference the physical location.`,
+          };
+          const campaignTypeContext = campaignTypeContextMap[capturedCampaignType] || campaignTypeContextMap['course_launch'];
+
           const sotLines = capturedSot ? [
             capturedSot.coreOffer ? `Core offer: ${capturedSot.coreOffer}` : '',
             capturedSot.targetAudience ? `Target audience: ${capturedSot.targetAudience}` : '',
@@ -450,22 +496,22 @@ Return ONLY a JSON array of 20 subheadline strings, nothing else.`;
           const hvcoSetId = nanoid();
           const allTitles: any[] = [];
 
-          const longTitlesPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert copywriter creating compelling HVCO (High-Value Content Offer) titles.\n\nProduct: ${capturedService.name}\nTarget Market: ${resolvedTargetMarket}\nHVCO Topic: ${resolvedHvcoTopic}\n${icpContext ? `\n${icpContext}\n` : ''}\nCreate 20 LONG, benefit-first titles (3-5 words each) following this pattern:\n[Specific Number/Timeframe] [Action/Benefit] [to/for] [Concrete Outcome]\n\nReturn ONLY a JSON array of ${20 * countMultiplier} title strings, nothing else.`;
+          const longTitlesPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert copywriter creating compelling HVCO (High-Value Content Offer) titles.\n\nProduct: ${capturedService.name}\nTarget Market: ${resolvedTargetMarket}\nHVCO Topic: ${resolvedHvcoTopic}\n${icpContext ? `\n${icpContext}\n` : ''}\n${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}Create 20 LONG, benefit-first titles (3-5 words each) following this pattern:\n[Specific Number/Timeframe] [Action/Benefit] [to/for] [Concrete Outcome]\n\nReturn ONLY a JSON array of ${20 * countMultiplier} title strings, nothing else.`;
           const longR = await invokeLLM({ messages: [{ role: "system", content: "You are a direct response copywriting expert. Return ONLY valid JSON arrays." }, { role: "user", content: capturedCascadeContext + longTitlesPrompt }] });
           const longContent = typeof longR.choices[0].message.content === 'string' ? longR.choices[0].message.content : JSON.stringify(longR.choices[0].message.content);
           JSON.parse(stripMarkdownJson(longContent)).forEach((title: string) => allTitles.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId, hvcoSetId, tabType: "long" as const, title, targetMarket: capturedInput.targetMarket, hvcoTopic: capturedInput.hvcoTopic }));
 
-          const shortTitlesPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert copywriter creating compelling HVCO titles.\n\nProduct: ${capturedService.name}\nTarget Market: ${resolvedTargetMarket}\nHVCO Topic: ${resolvedHvcoTopic}\n${icpContext ? `\n${icpContext}\n` : ''}\nCreate 20 SHORT, benefit-focused titles (2-4 words each).\n\nReturn ONLY a JSON array of ${20 * countMultiplier} title strings, nothing else.`;
+          const shortTitlesPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert copywriter creating compelling HVCO titles.\n\nProduct: ${capturedService.name}\nTarget Market: ${resolvedTargetMarket}\nHVCO Topic: ${resolvedHvcoTopic}\n${icpContext ? `\n${icpContext}\n` : ''}\n${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}Create 20 SHORT, benefit-focused titles (2-4 words each).\n\nReturn ONLY a JSON array of ${20 * countMultiplier} title strings, nothing else.`;
           const shortR = await invokeLLM({ messages: [{ role: "system", content: "You are a direct response copywriting expert. Return ONLY valid JSON arrays." }, { role: "user", content: capturedCascadeContext + shortTitlesPrompt }] });
           const shortContent = typeof shortR.choices[0].message.content === 'string' ? shortR.choices[0].message.content : JSON.stringify(shortR.choices[0].message.content);
           JSON.parse(stripMarkdownJson(shortContent)).forEach((title: string) => allTitles.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId, hvcoSetId, tabType: "short" as const, title, targetMarket: capturedInput.targetMarket, hvcoTopic: capturedInput.hvcoTopic }));
 
-          const powerPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert copywriter creating compelling HVCO titles.\n\nProduct: ${capturedService.name}\nTarget Market: ${resolvedTargetMarket}\nHVCO Topic: ${resolvedHvcoTopic}\n${icpContext ? `\n${icpContext}\n` : ''}\nCreate 30 BEAST MODE titles - a mix of long and short, all highly creative and attention-grabbing.\n\nReturn ONLY a JSON array of 30 title strings, nothing else.`;
+          const powerPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert copywriter creating compelling HVCO titles.\n\nProduct: ${capturedService.name}\nTarget Market: ${resolvedTargetMarket}\nHVCO Topic: ${resolvedHvcoTopic}\n${icpContext ? `\n${icpContext}\n` : ''}\n${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}Create 30 BEAST MODE titles - a mix of long and short, all highly creative and attention-grabbing.\n\nReturn ONLY a JSON array of 30 title strings, nothing else.`;
           const powerR = await invokeLLM({ messages: [{ role: "system", content: "You are a direct response copywriting expert. Return ONLY valid JSON arrays." }, { role: "user", content: capturedCascadeContext + powerPrompt }] });
           const powerContent = typeof powerR.choices[0].message.content === 'string' ? powerR.choices[0].message.content : JSON.stringify(powerR.choices[0].message.content);
           JSON.parse(stripMarkdownJson(powerContent)).forEach((title: string) => allTitles.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId, hvcoSetId, tabType: "beast_mode" as const, title, targetMarket: capturedInput.targetMarket, hvcoTopic: capturedInput.hvcoTopic }));
 
-          const subPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert copywriter creating compelling subheadlines for HVCOs.\n\nProduct: ${capturedService.name}\nTarget Market: ${resolvedTargetMarket}\nHVCO Topic: ${resolvedHvcoTopic}\n${icpContext ? `\n${icpContext}\n` : ''}\nCreate 20 SUBHEADLINES that support and expand on the main title.\n\nReturn ONLY a JSON array of 20 subheadline strings, nothing else.`;
+          const subPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert copywriter creating compelling subheadlines for HVCOs.\n\nProduct: ${capturedService.name}\nTarget Market: ${resolvedTargetMarket}\nHVCO Topic: ${resolvedHvcoTopic}\n${icpContext ? `\n${icpContext}\n` : ''}\n${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}Create 20 SUBHEADLINES that support and expand on the main title.\n\nReturn ONLY a JSON array of 20 subheadline strings, nothing else.`;
           const subR = await invokeLLM({ messages: [{ role: "system", content: "You are a direct response copywriting expert. Return ONLY valid JSON arrays." }, { role: "user", content: capturedCascadeContext + subPrompt }] });
           const subContent = typeof subR.choices[0].message.content === 'string' ? subR.choices[0].message.content : JSON.stringify(subR.choices[0].message.content);
           JSON.parse(stripMarkdownJson(subContent)).forEach((title: string) => allTitles.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId, hvcoSetId, tabType: "subheadlines" as const, title, targetMarket: capturedInput.targetMarket, hvcoTopic: capturedInput.hvcoTopic }));

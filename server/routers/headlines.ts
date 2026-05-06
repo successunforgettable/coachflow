@@ -389,6 +389,9 @@ export const headlinesRouter = router({
       let icpContext = '';
       let sotContext = '';
       let cascadeContext = '';
+      // Workstream commit 2 — campaignType funnel-context. Empty when no
+      // campaign is loaded; populated inside the campaignId-present branch.
+      let campaignTypeContext = '';
       if (input.serviceId) {
         const { getDb } = await import("../db");
         const { services, idealCustomerProfiles } = await import("../../drizzle/schema");
@@ -410,7 +413,8 @@ export const headlinesRouter = router({
             category: service.category,
           };
         }
-        // Campaign fetch — Item 1.1b (icpId support)
+        // Campaign fetch — Item 1.1b (icpId support) + Workstream commit 2
+        // (campaignType funnel-context wire).
         let campaignRecord;
         if (input.campaignId) {
           const { campaigns } = await import("../../drizzle/schema");
@@ -440,6 +444,37 @@ export const headlinesRouter = router({
             icp.buyingTriggers ? `What makes them buy: ${icp.buyingTriggers}` : '',
           ].filter(Boolean).join('\n').trim();
         }
+
+        // Workstream commit 2 — campaignType funnel-context wire. Headlines-
+        // tailored shape (no CTA section — headlines aren't CTAs). Default to
+        // course_launch when the campaign isn't set or value is unknown.
+        let campaignType = 'course_launch';
+        if (campaignRecord?.campaignType) {
+          campaignType = campaignRecord.campaignType;
+        }
+        const campaignTypeContextMap: Record<string, string> = {
+          webinar: `CAMPAIGN CONTEXT: Webinar
+The headline must give a reason to attend live — sell the event itself. Reference the show-up moment ("how I [outcome] in 60 minutes live"). Avoid evergreen-funnel language.`,
+
+          challenge: `CAMPAIGN CONTEXT: Challenge
+The headline must hint at a community doing this together over a fixed window. Daily-wins framing. Reference the challenge name or duration ("5-day", "21-day", "by [date]").`,
+
+          course_launch: `CAMPAIGN CONTEXT: Course Launch
+The headline must hint at transformation — who they are now vs who they will become. Cohort framing acceptable. Reference the programme outcome, not the lessons.`,
+
+          product_launch: `CAMPAIGN CONTEXT: Product Launch
+The headline must signal early access or founding-member status. Reference the new thing being launched, the access window, or the price ceiling.`,
+
+          discovery_call: `CAMPAIGN CONTEXT: Discovery Call
+The headline must invite a 1:1 conversation, not a course or event. Selectivity framing — application, qualification, fit-check. Avoid mass-event language.`,
+
+          lead_magnet: `CAMPAIGN CONTEXT: Lead Magnet
+The headline must promise a specific concrete asset (the title of the PDF, guide, training, swipe). No commitment. The asset name is often the headline.`,
+
+          in_person_event: `CAMPAIGN CONTEXT: In-Person Event
+The headline must signal physical presence — city, venue, date. Reference the room or the live experience. Avoid digital-event language.`,
+        };
+        campaignTypeContext = campaignTypeContextMap[campaignType] || campaignTypeContextMap['course_launch'];
 
         // Cascade context — populate inside the same if-block that built icpContext.
         // Must mirror the call in generateAsync.
@@ -517,7 +552,9 @@ export const headlinesRouter = router({
             .replace(/{uniqueMechanism}/g, resolvedUniqueMechanism);
 
           // Inject SOT as outermost layer, then ICP — Item 1.2 + 1.4
-          const promptWithIcp = icpContext ? prompt.replace(/\n\nGenerate /, `\n\n${icpContext}\n\nGenerate `) : prompt;
+          // Workstream commit 2 — campaignType context injected alongside ICP.
+          const icpAndCampaignBlock = [icpContext, campaignTypeContext].filter(Boolean).join('\n\n');
+          const promptWithIcp = icpAndCampaignBlock ? prompt.replace(/\n\nGenerate /, `\n\n${icpAndCampaignBlock}\n\nGenerate `) : prompt;
           const promptWithSot = sotContext ? `${sotContext}\n\n${promptWithIcp}` : promptWithIcp;
 
           try {
@@ -699,6 +736,9 @@ Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES
       let icpContext = '';
       let sotContext = '';
       let cascadeContext = '';
+      // Workstream commit 2 — campaignType funnel-context. Empty when no
+      // campaign is loaded; populated inside the campaignId-present branch.
+      let campaignTypeContext = '';
       if (input.serviceId) {
         const { getDb } = await import("../db");
         const { services, idealCustomerProfiles, sourceOfTruth, campaigns } = await import("../../drizzle/schema");
@@ -718,6 +758,23 @@ Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES
           if (campaignRecord?.icpId) { [icp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.id, campaignRecord.icpId)).limit(1); }
           if (!icp) { [icp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId!)).limit(1); }
           if (icp) { icpContext = ['IDEAL CUSTOMER PROFILE — use this to make every line of copy specific and targeted:', icp.pains ? `Their daily pains: ${icp.pains}` : '', icp.fears ? `Their deep fears: ${icp.fears}` : '', icp.buyingTriggers ? `What makes them buy: ${icp.buyingTriggers}` : ''].filter(Boolean).join('\n').trim(); }
+
+          // Workstream commit 2 — campaignType funnel-context. Mirror of sync path.
+          let campaignType = 'course_launch';
+          if (campaignRecord?.campaignType) {
+            campaignType = campaignRecord.campaignType;
+          }
+          const campaignTypeContextMap: Record<string, string> = {
+            webinar: `CAMPAIGN CONTEXT: Webinar\nThe headline must give a reason to attend live — sell the event itself. Reference the show-up moment ("how I [outcome] in 60 minutes live"). Avoid evergreen-funnel language.`,
+            challenge: `CAMPAIGN CONTEXT: Challenge\nThe headline must hint at a community doing this together over a fixed window. Daily-wins framing. Reference the challenge name or duration ("5-day", "21-day", "by [date]").`,
+            course_launch: `CAMPAIGN CONTEXT: Course Launch\nThe headline must hint at transformation — who they are now vs who they will become. Cohort framing acceptable. Reference the programme outcome, not the lessons.`,
+            product_launch: `CAMPAIGN CONTEXT: Product Launch\nThe headline must signal early access or founding-member status. Reference the new thing being launched, the access window, or the price ceiling.`,
+            discovery_call: `CAMPAIGN CONTEXT: Discovery Call\nThe headline must invite a 1:1 conversation, not a course or event. Selectivity framing — application, qualification, fit-check. Avoid mass-event language.`,
+            lead_magnet: `CAMPAIGN CONTEXT: Lead Magnet\nThe headline must promise a specific concrete asset (the title of the PDF, guide, training, swipe). No commitment. The asset name is often the headline.`,
+            in_person_event: `CAMPAIGN CONTEXT: In-Person Event\nThe headline must signal physical presence — city, venue, date. Reference the room or the live experience. Avoid digital-event language.`,
+          };
+          campaignTypeContext = campaignTypeContextMap[campaignType] || campaignTypeContextMap['course_launch'];
+
           // Cascade context — populate inside the same if-block. Must mirror the call in generate.
           cascadeContext = await getCascadeContext(user.id, icp?.id, "headlines");
           const [sot] = await db.select().from(sourceOfTruth).where(eq(sourceOfTruth.userId, user.id)).limit(1);
@@ -739,6 +796,8 @@ Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES
       const capturedIcpContext = icpContext;
       const capturedSotContext = sotContext;
       const capturedCascadeContext = cascadeContext;
+      // Workstream commit 2 — capture campaignType context for setImmediate.
+      const capturedCampaignTypeContext = campaignTypeContext;
 
       const jobId = randomUUID();
       await dbForJob.insert(jobs).values({ id: jobId, userId: String(capturedUserId), status: "pending" });
@@ -769,7 +828,9 @@ Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES
                 .replace(/{pressingProblem}/g, resolvedPressingProblem)
                 .replace(/{desiredOutcome}/g, resolvedDesiredOutcome)
                 .replace(/{uniqueMechanism}/g, resolvedUniqueMechanism);
-              const promptWithIcp = capturedIcpContext ? prompt.replace(/\n\nGenerate /, `\n\n${capturedIcpContext}\n\nGenerate `) : prompt;
+              // Workstream commit 2 — campaignType context injected alongside ICP.
+              const icpAndCampaignBlock = [capturedIcpContext, capturedCampaignTypeContext].filter(Boolean).join('\n\n');
+              const promptWithIcp = icpAndCampaignBlock ? prompt.replace(/\n\nGenerate /, `\n\n${icpAndCampaignBlock}\n\nGenerate `) : prompt;
               const promptWithSot = capturedSotContext ? `${capturedSotContext}\n\n${promptWithIcp}` : promptWithIcp;
 
               const response = await invokeLLM({

@@ -414,6 +414,18 @@ const generateWhatsAppSequenceSchema = z.object({
       hostName: z.string(),
       offerName: z.string().optional(),
       price: z.string().optional(),
+      // Workstream commit 2 — additive optional fields enabling downstream
+      // sequence-type expansions (commits 3-5). Mirror of the emailSequences
+      // extension. Pre-existing email-vs-WhatsApp drift on `deadline` field
+      // (email has it, WhatsApp doesn't) stays as-is — out of scope here,
+      // registered backlog.
+      eventTime: z.string().optional(),       // "3:00 PM"
+      eventTimezone: z.string().optional(),   // "GMT" / "London time" / "PT"
+      eventVenue: z.string().optional(),      // for in_person_event
+      eventAgenda: z.string().optional(),     // also useful for webinar pre-event reminders
+      eventDuration: z.string().optional(),   // "60 minutes" / "2 hours"
+      replayUrl: z.string().optional(),       // enables future replay_for_no_shows variants
+      bookingUrl: z.string().optional(),      // enables discovery_call campaign type
     })
     .optional(),
 });

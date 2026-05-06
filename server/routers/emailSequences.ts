@@ -462,6 +462,20 @@ const generateEmailSequenceSchema = z.object({
       offerName: z.string().optional(),
       price: z.string().optional(),
       deadline: z.string().optional(),
+      // Workstream commit 2 — additive optional fields enabling downstream
+      // sequence-type expansions (commits 3-5). All optional + string-typed,
+      // backward-compatible: existing callsites that don't pass them get
+      // undefined and the existing prompt-builder fallbacks ([INSERT_*]
+      // operator placeholders or empty-string skips) handle the absence.
+      // Pre-existing email-vs-WhatsApp drift on `deadline` field stays as-is
+      // (out of scope for this commit, registered backlog).
+      eventTime: z.string().optional(),       // "3:00 PM"
+      eventTimezone: z.string().optional(),   // "GMT" / "London time" / "PT"
+      eventVenue: z.string().optional(),      // for in_person_event
+      eventAgenda: z.string().optional(),     // also useful for webinar pre-event emails
+      eventDuration: z.string().optional(),   // "60 minutes" / "2 hours"
+      replayUrl: z.string().optional(),       // enables future replay_for_no_shows email type
+      bookingUrl: z.string().optional(),      // enables discovery_call campaign type
     })
     .optional(),
 });
