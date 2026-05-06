@@ -16,6 +16,29 @@ import { truncateQuote, NO_DATE_FABRICATION_RULE } from "../_core/copywritingRul
 import { getCascadeContext } from "../_core/cascadeContext";
 
 // ---------------------------------------------------------------------------
+// PLACEHOLDER CONVENTIONS — workstream commit 4c (sprint 3b+4b backlog item #9)
+// ---------------------------------------------------------------------------
+// Two distinct token categories appear in generated WhatsApp messages.
+// Conflating them is a common LLM hallucination root cause (item #11).
+//
+// 1. [First Name] / [Last Name] — MAIL-MERGE tokens.
+//    Send-time recipient personalization. Resolved by the operator's WhatsApp
+//    platform (GoHighLevel, Twilio, Manychat, etc.) at delivery time against
+//    the recipient row. SQUARE BRACKETS, no INSERT prefix. Existing WhatsApp
+//    builders already use [First Name] in tone-rule blocks per buildWhatsapp
+//    Rules() — opener convention.
+//
+// 2. [INSERT_X] — DESIGN-TIME OPERATOR-FILL tokens.
+//    Resolved by the operator BEFORE sending — they edit the generated copy
+//    to substitute the actual value (booking URL, venue, etc.). The
+//    PlaceholderBanner at V2WhatsAppResultPanel surfaces these via
+//    /\[INSERT_[A-Z][A-Z0-9_]*\]/g regex so the operator catches all
+//    unfilled tokens at once.
+//
+// LLM rules: emit [First Name] for recipient personalization. Emit [INSERT_X]
+// only for fields enumerated in each builder's anchor-placeholder allow-list.
+// Do NOT invent ad-hoc placeholders for content the LLM should be writing.
+// ---------------------------------------------------------------------------
 // Shared WhatsApp prompt builders — used by generate (sync) and generateAsync.
 // Per-message job structure is defined once here; both paths call these functions.
 // ---------------------------------------------------------------------------
@@ -27,6 +50,36 @@ import { getCascadeContext } from "../_core/cascadeContext";
 // defaults at the tRPC boundary; this is the secondary defense.
 type WhatsappTone = "conversational" | "professional" | "urgent";
 type WhatsappSequenceLength = 3 | 5 | 7;
+
+// ───────────────────────────────────────────────────────────────────────────
+// DELAY METADATA — workstream commit 4c (sprint 3b backlog item #2)
+// ───────────────────────────────────────────────────────────────────────────
+// Per-sequenceType delay maps for WhatsApp's 4 NEW types (commit 4b).
+// Persistence layer OVERRIDES whatever the LLM emits with these values.
+// Server is source of truth for delay metadata; LLM is source of truth for
+// content only. Same convention as DELAY_HOURS_BY_EMAIL_TYPE in
+// emailSequences.ts.
+//
+// engagement and sales (existing 2 types, parameterized by sequenceLength
+// 3/5/7) are NOT in this map — their existing (idx * 24) fallback behavior
+// is preserved. Their per-length cadence imperfection is a pre-existing
+// issue, registered for the prompt-quality sprint.
+//
+// SEMANTIC CONVENTION:
+//   - nurture (sequence-start-anchored): delay = hours from first message.
+//   - discovery_call_reminder (event-anchored): delay = INTENDED SPACING
+//     since previous message. Operator computes absolute send relative to
+//     bookingTime.
+//   - event_logistics (event-anchored, 3 messages): delay = hours from
+//     first message. Event sits at +144h (Day -1's anniversary). Day +1 =
+//     +192h (24h after event).
+//   - discovery_call_confirmation (single-msg): delay=0; trigger immediately.
+const DELAY_HOURS_BY_WHATSAPP_TYPE: Record<string, number[]> = {
+  discovery_call_confirmation:   [0],                    // single message
+  discovery_call_reminder:       [0, 22, 1.75],          // Intended spacing: T-24h start; +22h = T-2h; +1.75h = T-15min
+  nurture:                       [0, 72, 168, 336, 504], // Day 0/3/7/14/21 (5 messages — locked design from commit 4b)
+  event_logistics:               [0, 144, 192],          // Day -7/-1/+1 (3 messages — locked design from commit 4b; event at +144h)
+};
 
 interface WhatsappPromptParams {
   sotContext: string;
@@ -373,9 +426,11 @@ TONE: Professional but warm. Same register as a thoughtful service provider's co
 
 ANCHOR PLACEHOLDERS (substitute when present, leave [INSERT_*] verbatim when absent — convention locked across all 4 new builders): the booking time + timezone + duration + URL all come pre-resolved via procedure pass-through. Use them literally.
 
+WORD BUDGET (workstream commit 4c — sprint 4b backlog item #8): Target 30-50 words total. Single tap to act, no preamble. WhatsApp's terse register favors brevity over completeness. Sentence cap of 3 is a HARD ceiling; word budget is the WORKING target. If the message reads >55 words, trim — every word should be working.
+
 Create 1 message:
 
-1. CONFIRMATION (Day 0, immediate post-booking) — Job: confirm + drop link. Open by stating the booking time + timezone explicitly. ONE sentence on what the reader will get from the time (about THEM, not about you). End with the booking URL as the action. Maximum 3 sentences. No PS, no question, no upsell.
+1. CONFIRMATION (Day 0, immediate post-booking) — Job: confirm + drop link. Open by stating the booking time + timezone explicitly. ONE sentence on what the reader will get from the time (about THEM, not about you). End with the booking URL as the action. Maximum 3 sentences, target 30-50 words. No PS, no question, no upsell.
 
 The message must include:
 - day: 0 (immediate)
@@ -462,6 +517,10 @@ TONE: Conversational throughout. Warm, peer-to-peer, observation-from-inside-the
 
 ANCHOR PLACEHOLDER: The lead magnet name is [INSERT_LEAD_MAGNET_NAME] — substitute literally if the operator pre-fills it; leave the token verbatim if not (convention locked).
 
+NO-FABRICATION RULE (workstream commit 4c — sprint 4b backlog item #10): Do NOT invent specific structural details about the lead magnet — chapter counts, flag counts, section counts, page numbers, durations. SPECIFICALLY FORBIDDEN: "Flag #3", "Which of the 7 [things]", "30-min sit-down", "Chapter 4", "Page 12", "Day 3 of the 21-day program". Reference the lead magnet by name only ([INSERT_LEAD_MAGNET_NAME]); let the operator's CTA + the user's own engagement with the magnet provide specifics. Same root cause as the placeholder hallucination problem — LLM is inventing details that should come from outside the prompt context. When a structural detail would help the message, write it as a generic reference ("the section that hit closest" beats "Flag #3").
+
+PLACEHOLDER ALLOW-LIST (workstream commit 4c — sprint 3b+4b items #5 + #11): The placeholders enumerated above are the COMPLETE set permitted. DO NOT invent ad-hoc tokens like [INSERT_DEADLINE], [INSERT_LAUNCH_DATE], [INSERT_FLAG_COUNT], [INSERT_CHAPTER_NUMBER]. Write actual content for any value not in the allow-list.
+
 Create 5 messages.
 
 1. HAND-OFF (Day 0) — Job: confirm download + name the most useful page. Open with: "Got [INSERT_LEAD_MAGNET_NAME] open?" Single sentence on the most niche-relevant page worth flagging. End with one specific question that invites a reply ("which part hit closest?"). Max 3 sentences.
@@ -517,7 +576,11 @@ Create 3 messages.
 
 2. FINAL REMINDER (Day -1) — Job: day-of arrival info. Open with: "Tomorrow!" — short, energetic. Sentence 2: doors at [time minus 15 min] / arrival prep. Sentence 3: venue address one-line. Max 3 sentences. The reader is going tomorrow; do not bury the practical info.
 
-3. THANK YOU + NEXT STEP (Day +1, post-event) — Job: close the loop. Open with one specific thank-you naming a moment from the event (operator may need to fill this in — if not, use a placeholder like "[INSERT_EVENT_MOMENT]" leaving operator to specify). Sentence 2: concrete next step (booking link, or campaign-level CTA). Max 3 sentences. Warm but professional — not pushy.
+3. THANK YOU + NEXT STEP (Day +1, post-event) — Job: close the loop. Open with one specific thank-you naming a moment from the event (write a generic reference like "the room's energy on the topic of X" rather than inventing a specific moment; if uncertain leave it generic — operator will personalize). Sentence 2: concrete next step (booking link, or campaign-level CTA). Max 3 sentences. Warm but professional — not pushy.
+
+MSG 3 BANNED PHRASES (workstream commit 4c — sprint 4b backlog item #12): "claim your place", "before this cohort closes", "cohort closing", "places limited", "spots filling fast", "apply now rather than later", "doors closing", any urgency / scarcity language. Day +1 is INFORMATIONAL, not URGENT. Operator-side urgency lives at the CTA destination, not in this message. The CTA mention is a single concrete sentence with the link, no urgency framing.
+
+PLACEHOLDER ALLOW-LIST (workstream commit 4c — sprint 3b+4b items #5 + #11): The placeholders enumerated above are the COMPLETE set permitted. You MAY emit additional [INSERT_X_Y] tokens ONLY for operator-discretion data fields (parking, room number, host contact). DO NOT invent placeholders for content the LLM should be writing. SPECIFICALLY FORBIDDEN: [INSERT_LAUNCH_DATE], [INSERT_DEADLINE], [INSERT_REGISTRATION_DATE], [INSERT_EVENT_MOMENT], [INSERT_CTA_DESTINATION], [INSERT_NEXT_PROGRAM_NAME]. Write actual content (or a generic descriptive phrase) for any value not in the allow-list.
 
 Each message must include:
 - day: (-7 / -1 / 1)
@@ -932,11 +995,16 @@ You MUST use these exact numbers and real names. Do not fabricate.`
       const rawMessages = await invokeWhatsappSequenceWithRetry(cascadeContext + prompt);
       // sequenceData typed as `any` here to match pre-existing flow (Drizzle
       // schema-vs-actual-shape mismatch predates this commit; out of scope).
+      // Workstream commit 4c (sprint 3b backlog item #2) — server-controlled
+      // delays for the 4 new types. engagement/sales preserve existing
+      // (idx * 24) fallback (pre-existing imperfect cadence registered for
+      // prompt-quality sprint).
+      const delays = DELAY_HOURS_BY_WHATSAPP_TYPE[input.sequenceType] ?? [];
       const sequenceData: { messages: any[] } = {
         messages: rawMessages.map((msg: RawWhatsappMessage, idx: number) => ({
           text: msg.message || msg.text || `Message ${idx + 1}: Check this out`,
-          delay: (msg as any).delay || (idx * 24),
-          delayUnit: (msg as any).delayUnit || 'hours',
+          delay: delays[idx] ?? (idx * 24),
+          delayUnit: 'hours',
           mediaUrl: (msg as any).mediaUrl || null,
           mediaType: (msg as any).mediaType || null,
         })),
@@ -1084,7 +1152,9 @@ You MUST use these exact numbers and real names. Do not fabricate.`
 
           const rawMessages = await invokeWhatsappSequenceWithRetry(capturedCascadeContext + prompt);
           // See sync path note above re: `any` typing on sequenceData.
-          const sequenceData: { messages: any[] } = { messages: rawMessages.map((msg: RawWhatsappMessage, idx: number) => ({ text: msg.message || msg.text || `Message ${idx + 1}: Check this out`, delay: (msg as any).delay || (idx * 24), delayUnit: (msg as any).delayUnit || 'hours', mediaUrl: (msg as any).mediaUrl || null, mediaType: (msg as any).mediaType || null })) };
+          // Workstream commit 4c (sprint 3b backlog item #2) — server-controlled delays. Mirror of sync path.
+          const delays = DELAY_HOURS_BY_WHATSAPP_TYPE[capturedInput.sequenceType] ?? [];
+          const sequenceData: { messages: any[] } = { messages: rawMessages.map((msg: RawWhatsappMessage, idx: number) => ({ text: msg.message || msg.text || `Message ${idx + 1}: Check this out`, delay: delays[idx] ?? (idx * 24), delayUnit: 'hours', mediaUrl: (msg as any).mediaUrl || null, mediaType: (msg as any).mediaType || null })) };
 
           // tone || "conversational" belt-and-suspenders default; mirrors sync path.
           const insertResult: any = await bgDb.insert(whatsappSequences).values({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, sequenceType: capturedInput.sequenceType, tone: capturedInput.tone || "conversational", name: capturedInput.name, messages: sequenceData.messages });

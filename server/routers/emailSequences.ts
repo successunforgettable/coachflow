@@ -16,6 +16,28 @@ import { truncateQuote, NO_DATE_FABRICATION_RULE } from "../_core/copywritingRul
 import { getCascadeContext } from "../_core/cascadeContext";
 
 // ---------------------------------------------------------------------------
+// PLACEHOLDER CONVENTIONS — workstream commit 4c (sprint 3b+4b backlog item #9)
+// ---------------------------------------------------------------------------
+// Two distinct token categories appear in generated email copy. Conflating them
+// is a common LLM hallucination root cause (sprint 4b item #11).
+//
+// 1. [First Name] / [Last Name] / [Email] — MAIL-MERGE tokens.
+//    Send-time recipient personalization. Resolved by the operator's email
+//    platform (GoHighLevel, ActiveCampaign, Mailchimp, etc.) at delivery time
+//    against the recipient row. SQUARE BRACKETS, no INSERT prefix.
+//
+// 2. [INSERT_X] — DESIGN-TIME OPERATOR-FILL tokens.
+//    Resolved by the operator BEFORE sending — they edit the generated copy
+//    to substitute the actual value (date, URL, venue, etc.). The Placeholder
+//    Banner at V2EmailSequenceResultPanel surfaces these via
+//    /\[INSERT_[A-Z][A-Z0-9_]*\]/g regex so the operator catches all unfilled
+//    tokens at one glance.
+//
+// LLM rules: emit [First Name] for recipient personalization (operator's
+// platform handles it). Emit [INSERT_X] only for fields enumerated in each
+// builder's anchor-placeholder allow-list. Do NOT invent ad-hoc placeholders
+// for content the LLM should be writing.
+// ---------------------------------------------------------------------------
 // Shared email prompt builders — used by generate (sync) and generateAsync.
 // Per-email job structure is defined once here; both paths call these functions.
 // ---------------------------------------------------------------------------
@@ -60,6 +82,41 @@ interface EmailPromptParams {
   replayUrl?: string;       // replay_for_no_shows
   bookingUrl?: string;      // discovery_call_*
 }
+
+// ───────────────────────────────────────────────────────────────────────────
+// DELAY METADATA — workstream commit 4c (sprint 3b backlog item #2)
+// ───────────────────────────────────────────────────────────────────────────
+// Per-sequenceType delay maps. The persistence layer OVERRIDES whatever the
+// LLM emits with these server-controlled values. Server is source of truth
+// for delay metadata; LLM is source of truth for content only.
+//
+// SEMANTIC CONVENTION (documented per type):
+//   - Sequence-start-anchored types (welcome, engagement, sales, nurture,
+//     launch, re-engagement, replay_for_no_shows): delay = hours from first
+//     message send time. Day 0 = first message; Day N = N*24h offset.
+//   - Event-anchored types (discovery_call_reminder, event_logistics):
+//     delay = INTENDED SPACING since previous message. Operator-side
+//     automation computes absolute send time relative to the anchor event
+//     (booking time, event date). The first message's delay=0 marks the
+//     start of the sequence; subsequent values are spacing.
+//   - Single-message types (discovery_call_confirmation): delay=0;
+//     operator triggers immediately on the booking event.
+//
+// Replaces the prior (idx * 24) naive fallback that produced wrong cadence
+// for non-daily sequences (nurture, launch, replay) and semantically-wrong
+// cadence for event-anchored types.
+const DELAY_HOURS_BY_EMAIL_TYPE: Record<string, number[]> = {
+  welcome:                       [0, 48, 96],                                  // Day 1/3/5 (3 emails)
+  engagement:                    [0, 24, 48, 72, 96],                          // Mon-Fri pre-event (5 emails)
+  sales:                         [0, 24, 48, 72, 96, 120, 144],                // Day 1-7 post-event (7 emails)
+  nurture:                       [0, 60, 132, 216, 312, 408, 480],             // 7 emails: Day 0 / Day 2-3 / Day 5-6 / Day 8-10 / Day 12-14 / Day 16-18 / Day 19-21 (mid-range hour offsets)
+  launch:                        [0, 72, 120, 168, 192, 240, 288, 336, 342],   // 9 emails: Day -7 / -4 / -2 / 0 (cart open) / +1 / +3 / +5 / +7 morning / +7 final hours (~6h after morning)
+  "re-engagement":               [0, 48, 120, 336],                            // Day 0/2/5/14 (4 emails)
+  discovery_call_confirmation:   [0],                                          // single message — operator triggers immediately on booking
+  discovery_call_reminder:       [0, 22, 1.75],                                // Intended spacing: T-24h start; +22h = T-2h; +1.75h = T-15min
+  event_logistics:               [0, 96, 144, 192],                            // Day -7/-3/-1/+1 (event sits at 168h from Day -7; +1 = +192h, +24h after event)
+  replay_for_no_shows:           [0, 48, 96],                                  // Day +1/+3/+5 from first send
+};
 
 function getEmailRules(): string {
   // Word count rules per sequence type — update the BODY COPY RULES block below if new sequence types are added.
@@ -419,6 +476,10 @@ SEQUENCE GOAL: Reduce no-shows. The reader has already committed to a 1:1 call �
 
 TONE: Warm, professionally personal, transactional-but-friendly. Same register as a confirmation from a thoughtful service provider — not a sales sequence. No urgency, no pitch, no upsell. The CALL is the pitch; this email is the door-holding moment.
 
+VOICE CONVENTION LOCK (workstream commit 4c — sprint 3b backlog item #1): First-person singular throughout. The host is "I" / "me" / "my". Sign-off uses the host name. Do not switch between third-person ("Arfeen will see you") and first-person ("I'll see you") — pick first-person and stay there.
+
+FIELD SUBSTITUTION CONVENTION (workstream commit 4c — sprint 3b backlog item #3): When a field above (Booking time, Booking URL, etc.) is provided as a literal value (e.g., "3:00 PM"), use that literal value verbatim in the body. When the field above is provided as an [INSERT_*] placeholder, emit the placeholder verbatim in the body. Never paraphrase a literal value, never substitute different content for an [INSERT_*] placeholder.
+
 ANCHOR PLACEHOLDERS: Use [INSERT_BOOKING_TIME] for the call time, [INSERT_BOOKING_TIMEZONE] for the timezone, [INSERT_BOOKING_DURATION] for the duration, [INSERT_BOOKING_URL] for the reschedule link, and [INSERT_HOST_NAME] for the host. Operator fills these in before sending. Do not invent times, zones, durations, URLs, or names — emit the tokens verbatim.
 
 Create 1 email.
@@ -456,6 +517,10 @@ Email 1 (T-24h): friendly reminder, low pressure, confirms timing.
 Email 2 (T-2h): day-of practical, slightly more energetic.
 Email 3 (T-15min): imminent, action-focused, link-prominent.
 NEVER apologetic ("sorry to bother you again") — these are useful nudges, not interruptions. NEVER guilt-laden ("don't bail on me") — respectful adult tone.
+
+VOICE CONVENTION LOCK (workstream commit 4c — sprint 3b backlog item #1): First-person singular throughout. The host is "I" / "me". Sign-off uses host name in all 3 emails (or no sign-off if email ends with the link). Do not drift to third-person ("Arfeen will be there") or first-person plural ("we'll be there") — first-person singular only, all 3 emails. This explicitly addresses the 3b Attempt 2 drift where messages cycled third-person → first-person plural → first-person singular.
+
+FIELD SUBSTITUTION CONVENTION (workstream commit 4c — sprint 3b backlog item #3): When a field above (Booking time, Booking URL, etc.) is provided as a literal value, use that literal value verbatim in every email's body. When provided as an [INSERT_*] placeholder, emit the placeholder verbatim. Consistent across all 3 emails — no coin-flip behavior between substituting and leaving placeholder.
 
 ANCHOR PLACEHOLDERS: Use [INSERT_BOOKING_TIME] for the call time, [INSERT_BOOKING_TIMEZONE] for the timezone, [INSERT_BOOKING_URL] for the reschedule link, and [INSERT_HOST_NAME] for the host. Operator fills these in. Do not invent.
 
@@ -499,7 +564,13 @@ SEQUENCE GOAL: Deliver practical info that makes attendees feel prepared and wel
 
 TONE: Event-host-helper. Practical, warm, concrete, host-of-a-good-gathering register. Not salesy — this is delivering on a commitment, not pitching. Use specific details over generic phrases ("park in the lot behind the building, entrance on Maple Street" beats "easy parking available").
 
-ANCHOR PLACEHOLDERS: Use [INSERT_EVENT_VENUE], [INSERT_EVENT_AGENDA], [INSERT_EVENT_DATE], [INSERT_EVENT_TIME], [INSERT_EVENT_TIMEZONE], [INSERT_EVENT_DURATION], [INSERT_EVENT_NAME], [INSERT_HOST_NAME] for fields the operator pre-supplies. For optional practical fields not in our schema, use [INSERT_PARKING_INFO], [INSERT_DRESS_CODE], [INSERT_WHAT_TO_BRING] — operator fills these in. Do not invent venue addresses, parking lots, dress codes, or items to bring.
+VOICE CONVENTION LOCK (workstream commit 4c — sprint 3b backlog item #1): First-person singular throughout all 4 emails. The host is "I" / "me" / "my". Sign-off uses host name. Do not drift to third-person or first-person plural — first-person singular only, all 4 emails.
+
+FIELD SUBSTITUTION CONVENTION (workstream commit 4c — sprint 3b backlog item #3): When a field above is provided as a literal value, use it verbatim across all 4 emails. When provided as an [INSERT_*] placeholder, emit the placeholder verbatim. Consistent — no coin-flip between substituting and placeholder.
+
+ANCHOR PLACEHOLDERS: Use [INSERT_EVENT_VENUE], [INSERT_EVENT_AGENDA], [INSERT_EVENT_DATE], [INSERT_EVENT_TIME], [INSERT_EVENT_TIMEZONE], [INSERT_EVENT_DURATION], [INSERT_EVENT_NAME], [INSERT_HOST_NAME] for fields the operator pre-supplies. For optional practical fields not in our schema, use [INSERT_PARKING_INFO], [INSERT_DRESS_CODE], [INSERT_WHAT_TO_BRING], [INSERT_ROOM_OR_FLOOR_INFO], [INSERT_HOST_CONTACT_OR_ASSISTANT_EMAIL] — operator fills these in. Do not invent venue addresses, parking lots, dress codes, or items to bring.
+
+PLACEHOLDER ALLOW-LIST (workstream commit 4c — sprint 3b+4b backlog items #5 + #11): The placeholders enumerated above are the COMPLETE set of [INSERT_*] tokens permitted in this builder. You MAY emit additional [INSERT_X_Y] tokens ONLY for operator-discretion data fields the operator must pre-fill before sending (room number, host contact, dietary notes, accessibility info — fields the operator would type into a configuration screen). DO NOT invent placeholders for content the LLM should be writing. SPECIFICALLY FORBIDDEN: [INSERT_LAUNCH_DATE], [INSERT_DEADLINE], [INSERT_REGISTRATION_DATE], [INSERT_CTA_DESTINATION], [INSERT_NEXT_PROGRAM_NAME], [INSERT_EVENT_MOMENT], [INSERT_SPECIFIC_OUTCOME]. If uncertain whether a value is operator-supplied or LLM-generated, default to LLM-generated and write the actual content rather than emit a placeholder.
 
 Create 4 emails.
 
@@ -511,6 +582,10 @@ Create 4 emails.
 
 4. THANK YOU + RECAP (Day +1, post-event) — Job: Close the loop. Open with thanks specific to what happened in the room — name one moment, one quote, one shift. Acknowledge their presence mattered. Concrete next step: the campaign's broader CTA (book a call, join the program, sign up for the next thing). NOT a hard pitch — a natural follow-on for someone who showed up. PS: one specific thing the event surfaced that they can apply this week.
 
+EMAIL 4 STRICT RULES (workstream commit 4c — sprint 3b backlog items #4 + #7):
+- WORD CAP: 200 words STRICT. Count carefully; trim adverbs and parenthetical asides if approaching cap. Item #4 fix.
+- BANNED PHRASES (item #7 fix): "Cohort places are limited", "apply now rather than later", "spots filling fast", "limited spots", "before this cohort closes", "doors closing", any urgency / scarcity language. Day +1 is INFORMATIONAL, not URGENT. Operator-side urgency lives at the CTA destination page, not in this email. The next-step mention is a single concrete sentence with the CTA, no urgency framing.
+
 Each email must include:
 - subject: (curiosity or pattern-interrupt, max 50 chars — NOT "Event logistics" / "Important info about [event]")
 - previewText: (extends the subject — completes the thought, max 140 chars)
@@ -521,6 +596,13 @@ Each email must include:
 Return as a JSON object with an 'emails' key containing the array.`;
 }
 
+// Workstream commit 4c — sprint 3b backlog item #6 resolution: the
+// soft-last-reminder-without-expiry framing is INTENTIONAL DESIGN, not a
+// bug. When [INSERT_REPLAY_EXPIRY] is not supplied, the builder explicitly
+// instructs email 3 to use "I won't keep sending these" honest-close framing
+// instead of fabricating expiry urgency. Verified against locked design
+// from sprint 3b pre-flight section 10. Backlog item #6 closed as
+// "intentional, not a bug."
 export function buildReplayForNoShowsPrompt(p: EmailPromptParams): string {
   return `${p.sotContext ? `${p.sotContext}\n\n` : ''}You are an expert email marketer. Create a 3-email replay-for-no-shows sequence — Day +1, Day +3, Day +5 (or +7) post-event. Distributes the replay to registrants who didn't attend live, with respectful no-shaming framing.
 
@@ -539,7 +621,13 @@ SEQUENCE GOAL: Re-extend value to no-shows who still hold attention. Drive repla
 
 TONE — RESPECTFUL THROUGHOUT: No shaming. No "you missed out" guilt language. No "we worked hard on this" pity. Acknowledge they had a real reason to miss (work / life / time-zone / forgot — all legit). Lead with value re-extension, not chastisement. Crucially: never pretend they are now somehow behind everyone else — that's manipulative.
 
+VOICE CONVENTION LOCK (workstream commit 4c — sprint 3b backlog item #1): First-person singular throughout all 3 emails. The host is "I" / "me". Sign-off uses host name. Do not drift to first-person plural ("we") or third-person — first-person singular only.
+
+FIELD SUBSTITUTION CONVENTION (workstream commit 4c — sprint 3b backlog item #3): When a field above is provided as a literal value, use it verbatim across all 3 emails. When provided as an [INSERT_*] placeholder, emit the placeholder verbatim. Consistent — no coin-flip behavior.
+
 ANCHOR PLACEHOLDERS: Use [INSERT_REPLAY_URL] for the replay link, [INSERT_EVENT_NAME] for the event name, [INSERT_HOST_NAME] for the host. For replay-window framing, use [INSERT_REPLAY_EXPIRY] when the operator supplies a real expiry date — DO NOT invent expiry dates.
+
+PLACEHOLDER ALLOW-LIST (workstream commit 4c — sprint 3b+4b backlog items #5 + #11): The placeholders enumerated above are the COMPLETE set of [INSERT_*] tokens permitted. DO NOT invent placeholders for content the LLM should be writing. SPECIFICALLY FORBIDDEN: [INSERT_LAUNCH_DATE], [INSERT_DEADLINE], [INSERT_REGISTRATION_DATE], [INSERT_CTA_DESTINATION], [INSERT_NEXT_PROGRAM_NAME], [INSERT_SPECIFIC_OUTCOME]. Write actual content for any value not in the allow-list.
 
 INTEGRITY RULE: Only frame the replay as time-bound if [INSERT_REPLAY_EXPIRY] is genuinely supplied AND that expiry is real. If no real expiry exists, the third email softens to a "last reminder" frame without fake scarcity. Fake replay-expiry destroys trust faster than letting the email be slightly less urgent.
 
@@ -1005,12 +1093,17 @@ You MUST use these exact numbers and real names. Do not fabricate.`
       // WHERE JSON_LENGTH(emails) != JSON_LENGTH(JSON_EXTRACT(emails, '$[*].ps'))
       //    OR JSON_SEARCH(emails, 'one', NULL, NULL, '$[*].ps') IS NOT NULL;
       // Do not attempt to backfill — downstream display code should treat null/missing ps as empty string.
+      // Workstream commit 4c (sprint 3b backlog item #2) — server-controlled
+      // delay metadata. Override LLM emit with per-sequenceType locked values
+      // from DELAY_HOURS_BY_EMAIL_TYPE. LLM is source of truth for content;
+      // server is source of truth for cadence.
+      const delays = DELAY_HOURS_BY_EMAIL_TYPE[input.sequenceType] ?? [];
       sequenceData.emails = sequenceData.emails.map((email: any, idx: number) => ({
         subject: email.subject || `Email ${idx + 1}: Check this out`,
         previewText: email.previewText || '',
         body: email.body || `This is email ${idx + 1}. Click the link to learn more.`,
-        delay: email.delay || (idx * 24),
-        delayUnit: email.delayUnit || 'hours',
+        delay: delays[idx] ?? (idx * 24),  // server-locked; (idx * 24) fallback only if delays array is shorter than emails (shouldn't happen if locked correctly)
+        delayUnit: 'hours',                 // always hours per the locked convention
         cta: email.cta || 'Learn More',
         ctaLink: email.ctaLink || '#',
         ps: email.ps || '',
@@ -1168,7 +1261,9 @@ You MUST use these exact numbers and real names. Do not fabricate.`
 
           const rawEmails = await invokeEmailSequenceWithRetry(capturedCascadeContext + prompt);
           // See sync path note above re: `any` typing on sequenceData.
-          const sequenceData: { emails: any[] } = { emails: rawEmails.map((email: RawEmail, idx: number) => ({ subject: email.subject || `Email ${idx + 1}: Check this out`, previewText: email.previewText || '', body: email.body || `This is email ${idx + 1}. Click the link to learn more.`, delay: (email as any).delay || (idx * 24), delayUnit: (email as any).delayUnit || 'hours', cta: email.cta || 'Learn More', ctaLink: (email as any).ctaLink || '#', ps: email.ps || '' })) };
+          // Workstream commit 4c (sprint 3b backlog item #2) — server-controlled delay metadata. Mirror of sync path.
+          const delays = DELAY_HOURS_BY_EMAIL_TYPE[capturedInput.sequenceType] ?? [];
+          const sequenceData: { emails: any[] } = { emails: rawEmails.map((email: RawEmail, idx: number) => ({ subject: email.subject || `Email ${idx + 1}: Check this out`, previewText: email.previewText || '', body: email.body || `This is email ${idx + 1}. Click the link to learn more.`, delay: delays[idx] ?? (idx * 24), delayUnit: 'hours', cta: email.cta || 'Learn More', ctaLink: (email as any).ctaLink || '#', ps: email.ps || '' })) };
 
           const insertResult: any = await bgDb.insert(emailSequences).values({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, sequenceType: capturedInput.sequenceType, name: capturedInput.name, emails: sequenceData.emails });
           const [newSequence] = await bgDb.select().from(emailSequences).where(eq(emailSequences.id, insertResult[0].insertId)).limit(1);
