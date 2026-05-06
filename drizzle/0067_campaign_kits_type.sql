@@ -1,0 +1,11 @@
+-- Workstream commit 2.5a — extend campaignKits with a campaignType column.
+-- Same 7-value enum as campaigns.campaignType (migration 0066), so the
+-- semantic value space is identical across both grouping tables. Nullable:
+-- existing campaignKits rows pre-date this column and stay valid; downstream
+-- generators default to course_launch when null.
+-- This is the V2 source-of-truth catch-up for the funnel-context wire that
+-- commit 2 (27dbb00) shipped against the wrong table — V2 never writes
+-- campaigns rows, so the campaign-keyed wire was silently no-op. Generators
+-- will be updated in commit 2.5b to read campaignType from this column,
+-- keyed on (userId, icpId) — the V2 source-of-truth lookup pattern.
+ALTER TABLE `campaignKits` ADD COLUMN `campaignType` enum('webinar','challenge','course_launch','product_launch','discovery_call','lead_magnet','in_person_event') NULL;
