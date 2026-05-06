@@ -1,0 +1,11 @@
+-- Workstream commit 1: extend campaignType enum from 4 to 7 values.
+-- Adds discovery_call / lead_magnet / in_person_event to the existing
+-- webinar / challenge / course_launch / product_launch.
+-- Existing rows with the 4 original values stay valid — backward compatible.
+-- Order matters: original 4 preserved at ordinals 1-4; new 3 appended at 5-7.
+-- The 3 new values are exposed via downstream commits (sequence-type
+-- expansions in commits 3-5). schema.ts edit deferred per Option A pattern,
+-- matching the Email Sequence commit 1 precedent (4de33b4) — no V1 cascade
+-- because client/src/pages CampaignType literal is hand-written, not Drizzle-
+-- inferred, so widening the DB enum doesn't cascade into the V1 type.
+ALTER TABLE `campaigns` MODIFY COLUMN `campaignType` enum('webinar','challenge','course_launch','product_launch','discovery_call','lead_magnet','in_person_event');
