@@ -1,0 +1,12 @@
+-- Workstream commit 3a — extend emailSequences sequenceType enum from 6 → 10 values.
+-- Adds discovery_call_confirmation / discovery_call_reminder / event_logistics /
+-- replay_for_no_shows to the existing welcome / engagement / sales / nurture /
+-- launch / re-engagement set (commit b3e49db).
+-- Existing rows with the 6 original values stay valid — backward compatible.
+-- Order matters for MySQL ENUM ordinals: original 6 preserved at positions 1-6;
+-- new 4 appended at 7-10. Reordering or removing existing values would corrupt
+-- existing rows; we strictly append.
+-- The 4 new values are wired via 4 net-new prompt builders + dispatcher refactor
+-- in commit 3b. schema.ts edit deferred per Option A pattern (matching commits
+-- 4de33b4, db8c86e, 30fde57).
+ALTER TABLE `emailSequences` MODIFY COLUMN `sequenceType` enum('welcome','engagement','sales','nurture','launch','re-engagement','discovery_call_confirmation','discovery_call_reminder','event_logistics','replay_for_no_shows');
