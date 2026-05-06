@@ -1,0 +1,15 @@
+-- Workstream commit 4a — extend whatsappSequences sequenceType enum from
+-- 2 → 6 values. Adds discovery_call_confirmation / discovery_call_reminder /
+-- nurture / event_logistics to the existing engagement / sales pair.
+-- Existing rows with the 2 original values stay valid — backward compatible.
+-- Order matters for MySQL ENUM ordinals: original 2 preserved at positions
+-- 1-2; new 4 appended at 3-6. Reordering or removing existing values would
+-- corrupt existing rows; we strictly append.
+-- The 4 new values are wired via 4 net-new prompt builders + dispatcher
+-- refactor (ternary → 6-way switch) in commit 4b. schema.ts edit deferred
+-- per Option A pattern (matching commits 4de33b4, db8c86e, 30fde57, 6c1ae5b).
+-- Channel-adjusted set vs email's 10 values: WhatsApp omits launch (9-msg
+-- spam-complaint risk), re-engagement (low-priority for launch ICP), and
+-- replay_for_no_shows (not a WhatsApp channel use case — replay distribution
+-- happens via email).
+ALTER TABLE `whatsappSequences` MODIFY COLUMN `sequenceType` enum('engagement','sales','discovery_call_confirmation','discovery_call_reminder','nurture','event_logistics');
