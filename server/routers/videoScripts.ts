@@ -45,6 +45,16 @@ export interface Scene {
   pexelsQuery: string;
 }
 
+// ─── WORD COUNT CAP ───────────────────────────────────────────────────────────
+// Validator ceiling for total script word count across all scenes. Single
+// source of truth — imported by tests. Restored to 300 to match main's
+// design intent (commit dc718fc on main, March 2026: "AI reliably generates
+// 150-250 words"). Commit 605909f on railway-build inadvertently reverted
+// this to 150 while porting unrelated prompt copy from main; this file's
+// per-prompt word-budget instructions and natural LLM output land in
+// 100-260 words depending on duration, so 300 leaves comfortable margin.
+export const MAX_SCRIPT_WORDS = 300;
+
 // ─── CREDIT COST BY DURATION ──────────────────────────────────────────────────
 export function getCreditCost(duration: string): number {
   if (duration === "15" || duration === "30") return 1;
@@ -769,7 +779,7 @@ Scene 4 (30-45s): AFTER STATE — Results achieved (concrete number or named out
 Scene 5 (45-55s): SOCIAL PROOF (only use numbers provided above — never fabricate)
 Scene 6 (55-${duration}s): CTA — Invite them to get same results
 
-⚠️ WRITE PUNCHY, CONCISE COPY: Each scene should be 10-25 words. Total script 100-150 words (creates 40-60s video with natural pacing).`
+⚠️ WRITE PUNCHY, CONCISE COPY: Total script ${duration === 60 ? '150-180' : '220-260'} words (creates ${duration === 60 ? '60-75s' : '90-110s'} video with natural pacing).`
 }
 
 EXTRA RULES FOR PROOF/RESULTS:
@@ -816,7 +826,7 @@ Scene 4 (30-45s): WHAT CHANGED — Name the specific thing that changed, not a g
 Scene 5 (45-55s): RESULTS — Where they are now (concrete outcome — number, named situation, or specific capability)
 Scene 6 (55-${duration}s): CTA — Invite viewer to have same experience
 
-⚠️ WRITE PUNCHY, CONCISE COPY: Each scene should be 10-25 words. Total script 100-150 words (creates 40-60s video with natural pacing).
+⚠️ WRITE PUNCHY, CONCISE COPY: Total script ${duration === 15 ? '40-55' : duration === 30 ? '80-110' : duration === 60 ? '150-180' : '220-260'} words (creates ${duration === 15 ? '15-20s' : duration === 30 ? '30-40s' : duration === 60 ? '60-75s' : '90-110s'} video with natural pacing).
 
 EXTRA RULES:
 - Write in first person if using real testimonial, third person/imagine framing if not
@@ -852,7 +862,7 @@ Scene 4 (30-45s): HOW IT WORKS — 3-step breakdown (simple, clear)
 Scene 5 (45-55s): RESULTS — What this mechanism enables
 Scene 6 (55-${duration}s): CTA
 
-⚠️ WRITE PUNCHY, CONCISE COPY: Each scene should be 10-25 words. Total script 100-150 words (creates 40-60s video with natural pacing).`
+⚠️ WRITE PUNCHY, CONCISE COPY: Total script ${duration === 60 ? '150-180' : '220-260'} words (creates ${duration === 60 ? '60-75s' : '90-110s'} video with natural pacing).`
 }
 
 EXTRA RULES:
@@ -926,13 +936,13 @@ export const videoScriptsRouter = router({
         throw new Error("No scenes returned — please try again");
       }
 
-      // Word count validation — max 150 words
+      // Word count validation — max MAX_SCRIPT_WORDS
       const totalWords = scriptData.scenes.reduce((sum: number, s: any) =>
         sum + (s.voiceoverText?.trim().split(/\s+/).length || 0), 0
       );
       console.log(`[Script] Total word count: ${totalWords}`);
-      if (totalWords > 150) {
-        throw new Error(`Script too long: ${totalWords} words. Maximum 150. Regenerate.`);
+      if (totalWords > MAX_SCRIPT_WORDS) {
+        throw new Error(`Script too long: ${totalWords} words. Maximum ${MAX_SCRIPT_WORDS}. Regenerate.`);
       }
 
       console.log(`✅ ZAP-generated script for: ${service.name}`);
@@ -1120,8 +1130,8 @@ export const videoScriptsRouter = router({
             (sum: number, s: any) => sum + (s.voiceoverText?.trim().split(/\s+/).length || 0),
             0
           );
-          if (totalWords > 150) {
-            throw new Error(`Script too long: ${totalWords} words. Maximum 150.`);
+          if (totalWords > MAX_SCRIPT_WORDS) {
+            throw new Error(`Script too long: ${totalWords} words. Maximum ${MAX_SCRIPT_WORDS}.`);
           }
           const voiceoverText = parsed.scenes.map((s: any) => s.voiceoverText).join(" ");
           const enrichedScenes = parsed.scenes.map((s: any, i: number) =>
@@ -1212,13 +1222,13 @@ export async function generateVideoScriptForService(params: {
     throw new Error(`Invalid script structure — expected 5 scenes, got: ${JSON.stringify(parsed)}`);
   }
 
-  // Word count validation — max 150 words
+  // Word count validation — max MAX_SCRIPT_WORDS
   const totalWords = parsed.scenes.reduce((sum: number, s: any) =>
     sum + (s.voiceoverText?.trim().split(/\s+/).length || 0), 0
   );
   console.log(`[Script] Total word count: ${totalWords}`);
-  if (totalWords > 150) {
-    throw new Error(`Script too long: ${totalWords} words. Maximum 150. Regenerate.`);
+  if (totalWords > MAX_SCRIPT_WORDS) {
+    throw new Error(`Script too long: ${totalWords} words. Maximum ${MAX_SCRIPT_WORDS}. Regenerate.`);
   }
 
   console.log(`✅ ZAP-generated script for: ${service.name}`);

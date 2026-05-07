@@ -4,7 +4,7 @@
  * Covers all 6 issues from the "4 Pipeline Fixes" and "2 Pre-Launch Fixes" sections:
  *
  * Issue 1 (4-Pipeline): Gradient fallback throws instead of silently using a solid shape
- * Issue 2 (4-Pipeline): DURATION_RULE in buildScriptPrompt + word count validation (max 150)
+ * Issue 2 (4-Pipeline): DURATION_RULE in buildScriptPrompt + word count validation (max MAX_SCRIPT_WORDS)
  * Issue 3 (4-Pipeline): Last scene duration trims to audioDuration; dark overlay is rgba(0,0,0,0.95)
  * Issue 4 (4-Pipeline): video.title generated from script metadata and stored in DB
  * Issue 5 (Pre-Launch): PEXELS QUERY RULES in buildScriptPrompt
@@ -13,7 +13,7 @@
 
 import { describe, it, expect } from "vitest";
 import { calculateSceneDurations } from "./routers/videos";
-import { buildScriptPrompt } from "./routers/videoScripts";
+import { buildScriptPrompt, MAX_SCRIPT_WORDS } from "./routers/videoScripts";
 
 // ─── Issue 1: Gradient fallback throws ────────────────────────────────────────
 
@@ -87,38 +87,40 @@ describe("Issue 2 — DURATION_RULE in buildScriptPrompt + word count validation
     expect(prompt).toContain("80-120");
   });
 
-  it("word count validation throws when script exceeds 150 words", () => {
+  it(`word count validation throws when script exceeds ${MAX_SCRIPT_WORDS} words`, () => {
     const validateWordCount = (scenes: Array<{ voiceoverText: string }>) => {
       const totalWords = scenes.reduce(
         (sum, s) => sum + (s.voiceoverText?.trim().split(/\s+/).length || 0),
         0
       );
-      if (totalWords > 150) {
-        throw new Error(`Script too long: ${totalWords} words. Maximum 150. Regenerate.`);
+      if (totalWords > MAX_SCRIPT_WORDS) {
+        throw new Error(`Script too long: ${totalWords} words. Maximum ${MAX_SCRIPT_WORDS}. Regenerate.`);
       }
       return totalWords;
     };
 
-    // 31 words per scene × 5 scenes = 155 words — should throw
-    const longScene = { voiceoverText: "word ".repeat(31).trim() };
+    // (MAX_SCRIPT_WORDS / 5) + 1 words per scene × 5 scenes = MAX_SCRIPT_WORDS + 5 — should throw
+    const wordsPerScene = Math.floor(MAX_SCRIPT_WORDS / 5) + 1;
+    const longScene = { voiceoverText: "word ".repeat(wordsPerScene).trim() };
     const scenes = [longScene, longScene, longScene, longScene, longScene];
-    expect(() => validateWordCount(scenes)).toThrowError(/Maximum 150/);
+    expect(() => validateWordCount(scenes)).toThrowError(new RegExp(`Maximum ${MAX_SCRIPT_WORDS}`));
   });
 
-  it("word count validation does NOT throw for 150 words exactly", () => {
+  it(`word count validation does NOT throw for ${MAX_SCRIPT_WORDS} words exactly`, () => {
     const validateWordCount = (scenes: Array<{ voiceoverText: string }>) => {
       const totalWords = scenes.reduce(
         (sum, s) => sum + (s.voiceoverText?.trim().split(/\s+/).length || 0),
         0
       );
-      if (totalWords > 150) {
-        throw new Error(`Script too long: ${totalWords} words. Maximum 150. Regenerate.`);
+      if (totalWords > MAX_SCRIPT_WORDS) {
+        throw new Error(`Script too long: ${totalWords} words. Maximum ${MAX_SCRIPT_WORDS}. Regenerate.`);
       }
       return totalWords;
     };
 
-    // 30 words per scene × 5 scenes = 150 words — should NOT throw
-    const scene = { voiceoverText: "word ".repeat(30).trim() };
+    // (MAX_SCRIPT_WORDS / 5) words per scene × 5 scenes = MAX_SCRIPT_WORDS — should NOT throw
+    const wordsPerScene = Math.floor(MAX_SCRIPT_WORDS / 5);
+    const scene = { voiceoverText: "word ".repeat(wordsPerScene).trim() };
     const scenes = [scene, scene, scene, scene, scene];
     expect(() => validateWordCount(scenes)).not.toThrow();
   });
