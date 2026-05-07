@@ -4,7 +4,7 @@
  * Covers all 6 issues from the "4 Pipeline Fixes" and "2 Pre-Launch Fixes" sections:
  *
  * Issue 1 (4-Pipeline): Gradient fallback throws instead of silently using a solid shape
- * Issue 2 (4-Pipeline): DURATION_RULE in buildScriptPrompt + word count validation (max MAX_SCRIPT_WORDS)
+ * Issue 2 (4-Pipeline): VOICEOVER_PACING_FACTS in buildScriptPrompt (renamed from DURATION_RULE in Sprint A patch v3) + word count validation (max MAX_SCRIPT_WORDS)
  * Issue 3 (4-Pipeline): Last scene duration trims to audioDuration; dark overlay is rgba(0,0,0,0.95)
  * Issue 4 (4-Pipeline): video.title generated from script metadata and stored in DB
  * Issue 5 (Pre-Launch): PEXELS QUERY RULES in buildScriptPrompt
@@ -60,7 +60,7 @@ describe("Issue 1 — Gradient fallback throws instead of silently falling back"
 
 // ─── Issue 2: DURATION_RULE in buildScriptPrompt + word count validation ──────
 
-describe("Issue 2 — DURATION_RULE in buildScriptPrompt + word count validation", () => {
+describe("Issue 2 — VOICEOVER_PACING_FACTS in buildScriptPrompt + word count validation", () => {
   const mockService = {
     name: "Test Coaching Program",
     targetCustomer: "Coaches",
@@ -76,15 +76,35 @@ describe("Issue 2 — DURATION_RULE in buildScriptPrompt + word count validation
     testimonial1Title: "Coach",
   };
 
-  it("buildScriptPrompt includes DURATION_RULE section", () => {
+  it("buildScriptPrompt includes VOICEOVER_PACING_FACTS section (renamed from DURATION_RULE in Sprint A patch v3)", () => {
     const prompt = buildScriptPrompt("explainer", 30, mockService);
-    expect(prompt).toContain("DURATION RULE");
-    expect(prompt).toContain("NON-NEGOTIABLE");
+    expect(prompt).toContain("VOICEOVER PACING");
+    expect(prompt).toContain("130 words per minute");
   });
 
-  it("buildScriptPrompt includes word count guidance (80-120 words)", () => {
+  it("buildScriptPrompt includes duration-aware word count guidance for explainer 30s (80-110 words post-v3)", () => {
     const prompt = buildScriptPrompt("explainer", 30, mockService);
-    expect(prompt).toContain("80-120");
+    expect(prompt).toContain("80-110 words");
+    expect(prompt).toContain("30-40s video");
+  });
+
+  it("buildScriptPrompt scales word budget per duration (15s vs 90s — verifies v3 ternary restructure)", () => {
+    const prompt15 = buildScriptPrompt("explainer", 15, mockService);
+    const prompt90 = buildScriptPrompt("explainer", 90, mockService);
+    // 15s: tight budget (30-50 words), 90s: full budget (200-250 words)
+    expect(prompt15).toContain("30-50 words");
+    expect(prompt90).toContain("200-250 words");
+    // 15s prompt should NOT contain 90s budget (regression guard for ternary bug)
+    expect(prompt15).not.toContain("200-250 words");
+  });
+
+  it("buildScriptPrompt scene count claim matches actual ternary branches per duration (v3 fix for L716 hardcoded EXACTLY 5)", () => {
+    const prompt30 = buildScriptPrompt("explainer", 30, mockService);
+    const prompt90 = buildScriptPrompt("explainer", 90, mockService);
+    // Pre-v3, 30s explainer routed to else-branch (7 scenes / 200-250 words). Post-v3 has its own 5-scene branch.
+    expect(prompt30).toContain("EXACTLY 5 SCENES");
+    expect(prompt30).not.toContain("200-250 words");
+    expect(prompt90).toContain("EXACTLY 7 SCENES");
   });
 
   it(`word count validation throws when script exceeds ${MAX_SCRIPT_WORDS} words`, () => {
