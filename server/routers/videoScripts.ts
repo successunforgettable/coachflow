@@ -2,6 +2,32 @@
 // Generates AI scripts for video ads — FREE, no credits consumed
 // Credit is only consumed when the user hits Generate Video
 
+// ───────────────────────────────────────────────────────────────────────────
+// SPRINT A AUDIT NOTES — workstream Sprint A (single micro-commit)
+// ───────────────────────────────────────────────────────────────────────────
+// Sprint A reconciled main's P2/P3/P4 prompt-quality work onto railway-build.
+// Audit cross-referenced 50 distinct fixes across 4 main commits (3e65eec
+// P2, 87bebb9 P3, f33a893 doc, e08682c P4/P4b) against current RB state.
+// Finding: 49 of 50 fixes were already incorporated organically by workstream
+// commits 3b/4b/4c — convergent evolution from shared direct-response
+// copywriting lineage (Hormozi value equation, Brunson hook-story-offer,
+// Cialdini commitment+consistency, internal-monologue voice rules).
+//
+// The single residual partial-port — closed by this commit — was the
+// mechanism_reveal goal-line at L802: previously framed the mechanism as
+// something to "make sound proprietary and revolutionary" (deception cue
+// inherited from the original P4 pre-state). Now reframed as genuine
+// structural differentiation, matching the EXTRA RULES block at L826 which
+// already had the corrected language.
+//
+// Future engineers: P2/P3/P4's prompt-quality fixes are present on railway-
+// build via convergent workstream incorporation, NOT via direct merge from
+// main. If you compare main HEAD vs railway-build HEAD on these files, the
+// diffs are large but driven by workstream additions (new builders,
+// dispatcher, allow-list blocks, delay metadata, PAGETYPE_PROMPTS), not by
+// missing prompt-quality work. Sprint A audit is closed.
+// ───────────────────────────────────────────────────────────────────────────
+
 import { z } from "zod";
 import { router, protectedProcedure } from "../_core/trpc";
 import { getDb } from "../db";
@@ -799,7 +825,7 @@ ${globalRules}`;
   if (videoType === "mechanism_reveal") {
     return `You are a world-class direct response video scriptwriter for Meta ads.
 
-Generate a ${duration}-second MECHANISM REVEAL video ad script. The goal is to make the unique mechanism sound proprietary and revolutionary.
+Generate a ${duration}-second MECHANISM REVEAL video ad script. The goal is to position the unique mechanism as a fundamentally different structural approach to the problem — naming the old way and explaining the precise mechanistic difference, not making vague claims of proprietary status.
 
 SERVICE DATA:
 ${baseContext}
