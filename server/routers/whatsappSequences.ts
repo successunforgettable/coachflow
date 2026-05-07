@@ -371,6 +371,10 @@ ${p.campaignTypeContext ? `${p.campaignTypeContext}\n\n` : ''}${p.icpContext}
 
 ${rules}
 
+ANCHOR PLACEHOLDERS: Use [INSERT_EVENT_NAME] for the event the reader attended, [INSERT_OFFER_NAME] for the offer being sold, [INSERT_PRICE] for the price tag, and [INSERT_OFFER_LINK] for the offer URL the CTA drives to (distinct from [INSERT_BOOKING_URL] which is for 1:1 call scheduling — use OFFER_LINK for sales-page or checkout destinations). Operator pre-fills these before sending — emit the tokens verbatim when not pre-supplied. Do not invent prices, offer names, or URLs.
+
+PLACEHOLDER ALLOW-LIST (Bucket 3 — retroactive coverage of pre-existing WA sales builder, matching the commit 6 nurture/launch/re-engagement pattern; OFFER_LINK newly cataloged from WA sales spot-check 1): [INSERT_EVENT_NAME], [INSERT_OFFER_NAME], [INSERT_PRICE], [INSERT_OFFER_LINK] are the COMPLETE set of [INSERT_*] tokens permitted in this builder. DO NOT invent placeholders for content the LLM should be writing — WhatsApp sales messages' job is to BUILD the case in 30-100 words per message, not to defer that work to the operator. SPECIFICALLY FORBIDDEN: [INSERT_LAUNCH_DATE], [INSERT_DEADLINE], [INSERT_REGISTRATION_DATE], [INSERT_CTA_DESTINATION] (use canonical [INSERT_OFFER_LINK]), [INSERT_NEXT_PROGRAM_NAME], [INSERT_BOOKING_LINK] (use canonical [INSERT_BOOKING_URL] if the offer drives to a 1:1 call, otherwise [INSERT_OFFER_LINK]), [INSERT_BOOKING_TIME], [INSERT_BOOKING_TIMEZONE] (sales messages do not anchor to call times — the event already happened). Write actual content for any value not in the allow-list.
+
 ${messageBlocks}
 
 Return as a JSON object with a 'messages' key containing the array.`;
@@ -523,7 +527,7 @@ ANCHOR PLACEHOLDER: The lead magnet name is [INSERT_LEAD_MAGNET_NAME] — substi
 
 NO-FABRICATION RULE (workstream commit 4c — sprint 4b backlog item #10): Do NOT invent specific structural details about the lead magnet — chapter counts, flag counts, section counts, page numbers, durations. SPECIFICALLY FORBIDDEN: "Flag #3", "Which of the 7 [things]", "30-min sit-down", "Chapter 4", "Page 12", "Day 3 of the 21-day program". Reference the lead magnet by name only ([INSERT_LEAD_MAGNET_NAME]); let the operator's CTA + the user's own engagement with the magnet provide specifics. Same root cause as the placeholder hallucination problem — LLM is inventing details that should come from outside the prompt context. When a structural detail would help the message, write it as a generic reference ("the section that hit closest" beats "Flag #3").
 
-PLACEHOLDER ALLOW-LIST (workstream commit 4c — sprint 3b+4b items #5 + #11): The placeholders enumerated above are the COMPLETE set permitted. DO NOT invent ad-hoc tokens like [INSERT_DEADLINE], [INSERT_LAUNCH_DATE], [INSERT_FLAG_COUNT], [INSERT_CHAPTER_NUMBER]. Write actual content for any value not in the allow-list.
+PLACEHOLDER ALLOW-LIST (workstream commit 4c — sprint 3b+4b items #5 + #11; Bucket 3 PROGRAMME_DURATION addition from commit 6 spot-check 4 12-week-vs-6-month drift): [INSERT_LEAD_MAGNET_NAME] and [INSERT_PROGRAMME_DURATION] are the COMPLETE set of [INSERT_*] tokens permitted in this builder ([INSERT_BOOKING_URL] is pre-resolved upstream and used literally in msg 5). [INSERT_PROGRAMME_DURATION] is the canonical operator-fill for total programme length (e.g. "12 weeks", "6 months") — distinct from [INSERT_BOOKING_DURATION] (call duration) and [INSERT_EVENT_DURATION] (event duration). Use it whenever a message references how long the programme runs; emit verbatim if the operator hasn't pre-filled it. Do NOT invent durations like "12-week" or "6-month" — pick the token, let the operator resolve. DO NOT invent ad-hoc tokens like [INSERT_DEADLINE], [INSERT_LAUNCH_DATE], [INSERT_FLAG_COUNT], [INSERT_CHAPTER_NUMBER]. Write actual content for any value not in the allow-list.
 
 Create 5 messages.
 
@@ -571,7 +575,7 @@ VOICE CONVENTION LOCK: First-person singular throughout. The host is "I" / "me" 
 TONE: Professional helpful-host register. Practical, warm, concrete. Use specific details over generic phrases ("park behind the building, entrance on Maple Street" beats "easy parking available"). NOT salesy.
 
 ANCHOR PLACEHOLDERS (substitute when present, leave [INSERT_*] verbatim when absent — convention locked):
-- [INSERT_EVENT_VENUE], [INSERT_EVENT_DATE], [INSERT_BOOKING_TIME], [INSERT_BOOKING_TIMEZONE], [INSERT_EVENT_NAME] are pre-resolved upstream.
+- [INSERT_EVENT_VENUE], [INSERT_EVENT_DATE], [INSERT_EVENT_TIME], [INSERT_EVENT_TIMEZONE], [INSERT_EVENT_NAME] are pre-resolved upstream.
 - [INSERT_PARKING_INFO] is operator-discretion — embedded as inline prose token. Leave verbatim if the operator hasn't pre-filled it.
 
 Create 3 messages.
@@ -584,7 +588,7 @@ Create 3 messages.
 
 MSG 3 BANNED PHRASES (workstream commit 4c — sprint 4b backlog item #12): "claim your place", "before this cohort closes", "cohort closing", "places limited", "spots filling fast", "apply now rather than later", "doors closing", any urgency / scarcity language. Day +1 is INFORMATIONAL, not URGENT. Operator-side urgency lives at the CTA destination, not in this message. The CTA mention is a single concrete sentence with the link, no urgency framing.
 
-PLACEHOLDER ALLOW-LIST (workstream commit 4c — sprint 3b+4b items #5 + #11; commit 6 token-drift expansion): The placeholders enumerated above are the COMPLETE set permitted. Operator-discretion tokens explicitly allowed: [INSERT_PARKING_INFO], [INSERT_ROOM_OR_FLOOR_INFO], [INSERT_EVENT_AGENDA], [INSERT_DRESS_CODE], [INSERT_DIETARY_NOTES] — operator pre-fills before sending. DO NOT invent placeholders for content the LLM should be writing. SPECIFICALLY FORBIDDEN: [INSERT_LAUNCH_DATE], [INSERT_DEADLINE], [INSERT_REGISTRATION_DATE], [INSERT_EVENT_MOMENT], [INSERT_CTA_DESTINATION], [INSERT_NEXT_PROGRAM_NAME], [INSERT_BOOKING_LINK] (use [INSERT_BOOKING_URL] — sprint 4b item #14 fix). Write actual content (or a generic descriptive phrase) for any value not in the allow-list.
+PLACEHOLDER ALLOW-LIST (workstream commit 4c — sprint 3b+4b items #5 + #11; commit 6 token-drift expansion; Bucket 3 BOOKING_TIME drift fix from commit 6 spot-check 2): The placeholders enumerated above are the COMPLETE set permitted. Operator-discretion tokens explicitly allowed: [INSERT_PARKING_INFO], [INSERT_ROOM_OR_FLOOR_INFO], [INSERT_EVENT_AGENDA], [INSERT_DRESS_CODE], [INSERT_DIETARY_NOTES] — operator pre-fills before sending. DO NOT invent placeholders for content the LLM should be writing. SPECIFICALLY FORBIDDEN: [INSERT_LAUNCH_DATE], [INSERT_DEADLINE], [INSERT_REGISTRATION_DATE], [INSERT_EVENT_MOMENT], [INSERT_CTA_DESTINATION], [INSERT_NEXT_PROGRAM_NAME], [INSERT_BOOKING_LINK] (use [INSERT_BOOKING_URL] — sprint 4b item #14 fix), [INSERT_BOOKING_TIME], [INSERT_BOOKING_TIMEZONE] (use canonical [INSERT_EVENT_TIME] / [INSERT_EVENT_TIMEZONE] for event start time — BOOKING_* tokens are for 1:1 call scheduling, not in-person events). Write actual content (or a generic descriptive phrase) for any value not in the allow-list.
 
 Each message must include:
 - day: (-7 / -1 / 1)
