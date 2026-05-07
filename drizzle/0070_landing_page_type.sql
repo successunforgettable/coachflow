@@ -1,0 +1,24 @@
+-- Workstream commit 5a — add pageType column to landingPages.
+-- Adds 5-value enum (sales_page existing default + 4 new types covering the
+-- 4-funnel coverage: webinar_registration / discovery_call_booking /
+-- lead_magnet_download / event_registration).
+--
+-- NOT NULL DEFAULT 'sales_page' — existing rows get auto-set to sales_page
+-- by MySQL during the ALTER. Backward compatible: every existing row
+-- continues to render as a sales page (the default behavior pre-commit-5b).
+-- New rows that don't pass pageType get the default at the SQL layer.
+--
+-- Path A architecture (locked per pre-flight section 2): pageType drives
+-- prompt copy emphasis + intentional section blanks within the existing
+-- 16-section LandingPageContent shape. Renderer (server/lib/landingPageHtml
+-- .ts:76-220) already gracefully omits empty sections via ok(content.X)
+-- checks — no renderer changes needed in commit 5b.
+--
+-- The 4 new values are wired via PAGETYPE_PROMPTS dispatch + Zod schema
+-- extension in commit 5b. schema.ts edit deferred per Option A pattern
+-- (matching commits 4de33b4, db8c86e, 30fde57, 6c1ae5b, f785392).
+--
+-- V1 cascade: zero — V1 reads landingPages.activeAngle as a string display
+-- (not narrowed); no V1 file hardcodes a literal pageType. Adding the
+-- column does not cascade to V1 even after schema.ts catch-up in 5b.
+ALTER TABLE `landingPages` ADD COLUMN `pageType` enum('sales_page','webinar_registration','discovery_call_booking','lead_magnet_download','event_registration') NOT NULL DEFAULT 'sales_page';
