@@ -759,13 +759,17 @@ ${
     ? `Scene 1 (0-5s): HOOK — Bold result claim using niche-specific language
 Scene 2 (5-15s): BEFORE STATE — Where they were (name the specific situation, not the emotion)
 Scene 3 (15-25s): AFTER STATE — Where they are now (concrete, specific, observable)
-Scene 4 (25-${duration}s): CTA`
+Scene 4 (25-${duration}s): CTA
+
+⚠️ WRITE PUNCHY, CONCISE COPY: Each scene should be 10-25 words. Total script 100-150 words (creates 40-60s video with natural pacing).`
     : `Scene 1 (0-5s): HOOK — Bold result claim using niche-specific language
 Scene 2 (5-15s): BEFORE STATE — Pain and struggle (name the specific situation, not the emotion)
 Scene 3 (15-30s): WHAT CHANGED — Name the specific mechanism or decision that changed things
 Scene 4 (30-45s): AFTER STATE — Results achieved (concrete number or named outcome)
 Scene 5 (45-55s): SOCIAL PROOF (only use numbers provided above — never fabricate)
-Scene 6 (55-${duration}s): CTA — Invite them to get same results`
+Scene 6 (55-${duration}s): CTA — Invite them to get same results
+
+⚠️ WRITE PUNCHY, CONCISE COPY: Each scene should be 10-25 words. Total script 100-150 words (creates 40-60s video with natural pacing).`
 }
 
 EXTRA RULES FOR PROOF/RESULTS:
@@ -812,6 +816,8 @@ Scene 4 (30-45s): WHAT CHANGED — Name the specific thing that changed, not a g
 Scene 5 (45-55s): RESULTS — Where they are now (concrete outcome — number, named situation, or specific capability)
 Scene 6 (55-${duration}s): CTA — Invite viewer to have same experience
 
+⚠️ WRITE PUNCHY, CONCISE COPY: Each scene should be 10-25 words. Total script 100-150 words (creates 40-60s video with natural pacing).
+
 EXTRA RULES:
 - Write in first person if using real testimonial, third person/imagine framing if not
 - Show the journey through specific situations, not emotional labels
@@ -836,13 +842,17 @@ ${
     ? `Scene 1 (0-5s): HOOK — Question challenging the old approach
 Scene 2 (5-15s): OLD WAY — Why current methods fail
 Scene 3 (15-25s): NEW WAY — Reveal the mechanism
-Scene 4 (25-${duration}s): CTA`
+Scene 4 (25-${duration}s): CTA
+
+⚠️ WRITE PUNCHY, CONCISE COPY: Each scene should be 10-25 words. Total script 100-150 words (creates 40-60s video with natural pacing).`
     : `Scene 1 (0-5s): HOOK — Question challenging the old approach
 Scene 2 (5-15s): OLD WAY — Why current methods fail
 Scene 3 (15-30s): NEW WAY — Reveal the mechanism
 Scene 4 (30-45s): HOW IT WORKS — 3-step breakdown (simple, clear)
 Scene 5 (45-55s): RESULTS — What this mechanism enables
-Scene 6 (55-${duration}s): CTA`
+Scene 6 (55-${duration}s): CTA
+
+⚠️ WRITE PUNCHY, CONCISE COPY: Each scene should be 10-25 words. Total script 100-150 words (creates 40-60s video with natural pacing).`
 }
 
 EXTRA RULES:
