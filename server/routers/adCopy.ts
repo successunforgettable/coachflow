@@ -555,11 +555,11 @@ Product Category: ${input.productCategory}
 Specific Product Name: ${input.specificProductName}
 Pressing Problem: ${resolvedPressingProblem}
 Desired Outcome: ${resolvedDesiredOutcome}
-Unique Mechanism: ${resolvedUniqueMechanism || 'N/A'}
-Key Benefits: ${input.listBenefits || 'N/A'}
-Specific Technology: ${input.specificTechnology || 'N/A'}
-Scientific Studies: ${input.scientificStudies || 'N/A'}
-Credible Authority: ${resolvedCredibleAuthority || 'N/A'}
+Unique Mechanism: ${resolvedUniqueMechanism || '[INSERT_UNIQUE_MECHANISM]'}
+Key Benefits: ${input.listBenefits || '[INSERT_KEY_BENEFITS]'}
+Specific Technology: ${input.specificTechnology || '[INSERT_SPECIFIC_TECHNOLOGY]'}
+Scientific Studies: ${input.scientificStudies || '[INSERT_SCIENTIFIC_STUDIES]'}
+Credible Authority: ${resolvedCredibleAuthority || '[INSERT_CREDIBLE_AUTHORITY]'}
 
 ${socialProofGuidance}
 
@@ -648,11 +648,11 @@ Product Category: ${input.productCategory}
 Specific Product Name: ${input.specificProductName}
 Pressing Problem: ${resolvedPressingProblem}
 Desired Outcome: ${resolvedDesiredOutcome}
-Unique Mechanism: ${resolvedUniqueMechanism || 'N/A'}
-Key Benefits: ${input.listBenefits || 'N/A'}
-Specific Technology: ${input.specificTechnology || 'N/A'}
-Scientific Studies: ${input.scientificStudies || 'N/A'}
-Credible Authority: ${resolvedCredibleAuthority || 'N/A'}
+Unique Mechanism: ${resolvedUniqueMechanism || '[INSERT_UNIQUE_MECHANISM]'}
+Key Benefits: ${input.listBenefits || '[INSERT_KEY_BENEFITS]'}
+Specific Technology: ${input.specificTechnology || '[INSERT_SPECIFIC_TECHNOLOGY]'}
+Scientific Studies: ${input.scientificStudies || '[INSERT_SCIENTIFIC_STUDIES]'}
+Credible Authority: ${resolvedCredibleAuthority || '[INSERT_CREDIBLE_AUTHORITY]'}
 
 ${socialProofGuidance}
 
@@ -993,7 +993,7 @@ Format as JSON array:
           const campaignTypeContext = campaignTypeContextMap[capturedCampaignType] || campaignTypeContextMap['course_launch'];
           const socialProofGuidance = socialProof.hasCustomers || socialProof.hasRating || socialProof.hasReviews ? `REAL SOCIAL PROOF AVAILABLE - Use these verified numbers:\n- ${socialProof.customerCount} total customers\n- ${socialProof.rating} average rating\n- ${socialProof.reviewCount} reviews\nYou MUST use these exact numbers when incorporating social proof. Do not fabricate or inflate.` : `NO SOCIAL PROOF DATA PROVIDED - Use launch-safe alternatives:\n- Focus on benefit claims and outcomes ("Get X result")\n- Use curiosity hooks ("The method that...")\n- Use contrast ("Before vs After")\n- DO NOT mention customer counts, ratings, or reviews\n- DO NOT fabricate testimonials or statistics`;
 
-          const headlinePrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ${count} high-converting ad HEADLINES for this service:\n\nService: ${capturedService.name}\nCategory: ${capturedService.category}\nTarget Market: ${capturedInput.targetMarket}\nProduct Category: ${capturedInput.productCategory}\nSpecific Product Name: ${capturedInput.specificProductName}\nPressing Problem: ${resolvedPressingProblem}\nDesired Outcome: ${resolvedDesiredOutcome}\nUnique Mechanism: ${resolvedUniqueMechanism || 'N/A'}\nKey Benefits: ${capturedInput.listBenefits || 'N/A'}\n\n${socialProofGuidance}\n\n${icpContext}\n\n${campaignTypeContext}\n\nAd Type: ${adTypeContext}\nAd Style: ${capturedInput.adStyle}\nCall To Action: ${capturedInput.adCallToAction}\n\nCreate ${count} attention-grabbing headlines (max 40 characters each).\n\nFormat as JSON array: { "headlines": ["headline 1", ...] }`;
+          const headlinePrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ${count} high-converting ad HEADLINES for this service:\n\nService: ${capturedService.name}\nCategory: ${capturedService.category}\nTarget Market: ${capturedInput.targetMarket}\nProduct Category: ${capturedInput.productCategory}\nSpecific Product Name: ${capturedInput.specificProductName}\nPressing Problem: ${resolvedPressingProblem}\nDesired Outcome: ${resolvedDesiredOutcome}\nUnique Mechanism: ${resolvedUniqueMechanism || '[INSERT_UNIQUE_MECHANISM]'}\nKey Benefits: ${capturedInput.listBenefits || '[INSERT_KEY_BENEFITS]'}\n\n${socialProofGuidance}\n\n${icpContext}\n\n${campaignTypeContext}\n\nAd Type: ${adTypeContext}\nAd Style: ${capturedInput.adStyle}\nCall To Action: ${capturedInput.adCallToAction}\n\nCreate ${count} attention-grabbing headlines (max 40 characters each).\n\nFormat as JSON array: { "headlines": ["headline 1", ...] }`;
           const headlineResponse = await invokeLLM({ messages: [{ role: "system", content: `${META_COMPLIANCE_RULES}\n\nYou are an expert ad copywriter who specializes in Meta-compliant advertising for coaches, speakers and consultants. Always respond with valid JSON.` }, { role: "user", content: capturedCascadeContext + headlinePrompt }], response_format: { type: "json_schema", json_schema: { name: "ad_headlines", strict: true, schema: { type: "object", properties: { headlines: { type: "array", items: { type: "string" } } }, required: ["headlines"], additionalProperties: false } } } });
           const headlineContent = headlineResponse.choices[0].message.content;
           if (typeof headlineContent !== "string") throw new Error("Invalid headline response");
@@ -1004,7 +1004,7 @@ Format as JSON array:
           const selectedAngles = [...ALL_BODY_ANGLES];
           const bodyPromises = selectedAngles.map(async (angle: string) => {
             const anglePrompt = (BODY_ANGLE_PROMPTS as any)[angle];
-            const bodyPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ONE high-converting ad BODY COPY using the ${angle.replace('_', ' ')} angle:\n\nService: ${capturedService.name}\nTarget Market: ${capturedInput.targetMarket}\nPressing Problem: ${resolvedPressingProblem}\nDesired Outcome: ${resolvedDesiredOutcome}\nUnique Mechanism: ${resolvedUniqueMechanism || 'N/A'}\n\n${socialProofGuidance}\n\n${icpContext}\n\n${campaignTypeContext}\n\nAd Type: ${adTypeContext}\nAd Style: ${capturedInput.adStyle}\nCall To Action: ${capturedInput.adCallToAction}\n\n${anglePrompt}\n\nCreate ONE body copy (125-150 words). End with clear call-to-action: ${capturedInput.adCallToAction}\n\nReturn ONLY the body text as a single string, no JSON wrapper.`;
+            const bodyPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ONE high-converting ad BODY COPY using the ${angle.replace('_', ' ')} angle:\n\nService: ${capturedService.name}\nTarget Market: ${capturedInput.targetMarket}\nPressing Problem: ${resolvedPressingProblem}\nDesired Outcome: ${resolvedDesiredOutcome}\nUnique Mechanism: ${resolvedUniqueMechanism || '[INSERT_UNIQUE_MECHANISM]'}\n\n${socialProofGuidance}\n\n${icpContext}\n\n${campaignTypeContext}\n\nAd Type: ${adTypeContext}\nAd Style: ${capturedInput.adStyle}\nCall To Action: ${capturedInput.adCallToAction}\n\n${anglePrompt}\n\nCreate ONE body copy (125-150 words). End with clear call-to-action: ${capturedInput.adCallToAction}\n\nReturn ONLY the body text as a single string, no JSON wrapper.`;
             const r = await invokeLLM({ messages: [{ role: "system", content: `${META_COMPLIANCE_RULES}\n\nYou are an expert ad copywriter who specializes in Meta-compliant advertising for coaches, speakers and consultants.\n\n${NO_CREDENTIAL_FABRICATION_RULE}` }, { role: "user", content: capturedCascadeContext + bodyPrompt }] });
             const rawContent = r.choices[0]?.message?.content;
             if (!rawContent) throw new Error(`Empty response for ${angle} angle`);

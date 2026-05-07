@@ -118,6 +118,16 @@ solutionIntro, whyOldFail, uniqueMechanism, testimonials, insiderAdvantages,
 scarcityUrgency, shockingStat, timeSavingBenefit, consultationOutline, faq.
 
 Follow the EMOTIONAL ARC structure below in full.
+
+PLACEHOLDER ALLOW-LIST (workstream commit 6 — sprint 3b+4b items #5 + #11
++ #14, retroactive coverage of sales_page baseline): Sales page copy is
+generated as final content; do NOT emit operator-fill [INSERT_*] tokens
+for content the LLM should be writing. SPECIFICALLY FORBIDDEN: [INSERT_
+LAUNCH_DATE], [INSERT_DEADLINE], [INSERT_REGISTRATION_DATE], [INSERT_
+CTA_DESTINATION], [INSERT_NEXT_PROGRAM_NAME], [INSERT_BOOKING_LINK]
+(use canonical [INSERT_BOOKING_URL] only if the page is meant to drive
+a 1:1 booking, otherwise write the actual call-to-action). Write actual
+content for any value not in this allow-list.
 `,
 
   webinar_registration: `

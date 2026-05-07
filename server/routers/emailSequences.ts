@@ -309,6 +309,8 @@ TONE: Warm, expert, conversational throughout — same Soap Opera register as a 
 
 ANCHOR PLACEHOLDER: The lead magnet name is [INSERT_LEAD_MAGNET_NAME]. Use this token verbatim wherever the email needs to reference what the subscriber just downloaded — the operator fills it in before publishing. Do not invent a lead magnet name.
 
+PLACEHOLDER ALLOW-LIST (workstream commit 6 — sprint 3b+4b items #5 + #11 + #14, retroactive coverage of pre-existing nurture builder): [INSERT_LEAD_MAGNET_NAME] is the COMPLETE set permitted in this builder. DO NOT invent placeholders for content the LLM should be writing. SPECIFICALLY FORBIDDEN: [INSERT_LAUNCH_DATE], [INSERT_DEADLINE], [INSERT_REGISTRATION_DATE], [INSERT_CTA_DESTINATION], [INSERT_NEXT_PROGRAM_NAME], [INSERT_BOOKING_LINK], [INSERT_FLAG_COUNT], [INSERT_CHAPTER_NUMBER]. Same NO-FABRICATION reasoning as WhatsApp's nurture builder (item #10): do NOT invent specific structural details about the lead magnet (chapter counts, flag counts, page numbers, durations).
+
 Create 7 emails.
 
 1. DELIVER + INTRO (Day 0) — Job: Hand off the lead magnet immediately in the first paragraph. No preamble. Brief intro of who you are (one sentence). Preview what's coming over the next ~3 weeks. End with a soft hook to the next email — one specific question or observation that pays off in Email 2. The PS is mandatory and is where the hook lives, not the body.
@@ -357,6 +359,8 @@ SEQUENCE GOAL: Drive cart-open conversions during the open-cart window. The 3 pr
 TONE: Anticipation in pre-launch (Emails 1-3) → confident clarity at cart-open (Email 4) → respectful urgency rising across open-cart (Emails 5-8) → direct, no-hedging close in Email 9. Warmth stays throughout; pressure rises only as the deadline approaches.
 
 ANCHOR PLACEHOLDERS: Use [INSERT_LAUNCH_PRODUCT_NAME] for the product, [INSERT_CART_OPEN_DATE] / [INSERT_CART_CLOSE_DATE] / [INSERT_CART_CLOSE_TIME] for the cart window dates and time, [INSERT_PRICE] for the offer price, and [INSERT_BONUS_VALUE] for any bonus dollar value. The operator fills these in before publishing. Do not invent dates, times, prices, or product names — emit the tokens verbatim.
+
+PLACEHOLDER ALLOW-LIST (workstream commit 6 — sprint 3b+4b items #5 + #11 + #14, retroactive coverage of pre-existing launch builder): The placeholders enumerated above are the COMPLETE set permitted. DO NOT invent placeholders for content the LLM should be writing. SPECIFICALLY FORBIDDEN: [INSERT_LAUNCH_DATE] (use [INSERT_CART_OPEN_DATE] / [INSERT_CART_CLOSE_DATE] for cart-window framing), [INSERT_DEADLINE] (use [INSERT_CART_CLOSE_DATE]), [INSERT_REGISTRATION_DATE], [INSERT_CTA_DESTINATION], [INSERT_NEXT_PROGRAM_NAME], [INSERT_BOOKING_LINK]. Write actual content for any value not in the allow-list.
 
 INTEGRITY RULE: Never invent scarcity that isn't real. Cart-close deadlines must reference [INSERT_CART_CLOSE_DATE] / [INSERT_CART_CLOSE_TIME] explicitly — operator-controlled, honest. Do not fabricate countdown timers, "spots left" claims, or price-increase deadlines unless they are real.
 
@@ -410,6 +414,8 @@ SEQUENCE GOAL: Win back genuinely re-interested subscribers OR honestly clean th
 TONE — DESCENDS ACROSS THE 4: Email 1 is the warmest (genuine concern, no pressure). Email 2 stays warm but adds curiosity (value reminder). Email 3 shifts to generous-direct (specific offer). Email 4 is honest-direct, willing to be unsubscribed without guilt. Crucially: no pressure, no guilt language, no "don't leave us" pleading at any point.
 
 ANCHOR PLACEHOLDERS: Use [INSERT_LAST_ENGAGEMENT_TIMEFRAME] for the inactivity window the operator chose to define (e.g., "the past 60 days", "since March"). Use [INSERT_INCENTIVE] for the specific re-engagement offer the operator picked — typical options for coaching/consulting: free strategy call, exclusive content drop, returning-subscriber bonus, or course discount. Do not invent these — emit the tokens verbatim.
+
+PLACEHOLDER ALLOW-LIST (workstream commit 6 — sprint 3b+4b items #5 + #11 + #14, retroactive coverage of pre-existing re-engagement builder): The placeholders enumerated above are the COMPLETE set permitted. DO NOT invent placeholders for content the LLM should be writing. SPECIFICALLY FORBIDDEN: [INSERT_LAUNCH_DATE], [INSERT_DEADLINE], [INSERT_REGISTRATION_DATE], [INSERT_CTA_DESTINATION], [INSERT_NEXT_PROGRAM_NAME], [INSERT_BOOKING_LINK]. Write actual content for any value not in the allow-list.
 
 INTEGRITY RULE: No fake urgency. No "limited time" framing unless [INSERT_INCENTIVE] is genuinely time-bound. The honesty of Email 4 ("Should we stop emailing you?") is what makes the whole sequence work — fake urgency in earlier emails undermines that.
 
@@ -482,6 +488,8 @@ FIELD SUBSTITUTION CONVENTION (workstream commit 4c — sprint 3b backlog item #
 
 ANCHOR PLACEHOLDERS: Use [INSERT_BOOKING_TIME] for the call time, [INSERT_BOOKING_TIMEZONE] for the timezone, [INSERT_BOOKING_DURATION] for the duration, [INSERT_BOOKING_URL] for the reschedule link, and [INSERT_HOST_NAME] for the host. Operator fills these in before sending. Do not invent times, zones, durations, URLs, or names — emit the tokens verbatim.
 
+PLACEHOLDER ALLOW-LIST (workstream commit 6 — sprint 3b+4b items #5 + #11 + #14): The placeholders enumerated above are the COMPLETE set of [INSERT_*] tokens permitted in this builder. DO NOT invent placeholders for content the LLM should be writing. SPECIFICALLY FORBIDDEN: [INSERT_LAUNCH_DATE], [INSERT_DEADLINE], [INSERT_REGISTRATION_DATE], [INSERT_CTA_DESTINATION], [INSERT_NEXT_PROGRAM_NAME], [INSERT_BOOKING_LINK] (use canonical [INSERT_BOOKING_URL]). Write actual content for any value not in the allow-list.
+
 Create 1 email.
 
 1. CONFIRMATION (Day 0, immediate post-booking) — Job: Confirm the booking. Open by restating the booking time + timezone clearly (mobile-readable). One sentence on what the reader will get from the 30 minutes — make it about THEM, not about you. Acknowledge the reschedule link is there if life happens. End warm but professional. PS: one specific question they can think about before the call to make the conversation more useful — not a sales question, a discovery question rooted in the niche.
@@ -523,6 +531,8 @@ VOICE CONVENTION LOCK (workstream commit 4c — sprint 3b backlog item #1): Firs
 FIELD SUBSTITUTION CONVENTION (workstream commit 4c — sprint 3b backlog item #3): When a field above (Booking time, Booking URL, etc.) is provided as a literal value, use that literal value verbatim in every email's body. When provided as an [INSERT_*] placeholder, emit the placeholder verbatim. Consistent across all 3 emails — no coin-flip behavior between substituting and leaving placeholder.
 
 ANCHOR PLACEHOLDERS: Use [INSERT_BOOKING_TIME] for the call time, [INSERT_BOOKING_TIMEZONE] for the timezone, [INSERT_BOOKING_URL] for the reschedule link, and [INSERT_HOST_NAME] for the host. Operator fills these in. Do not invent.
+
+PLACEHOLDER ALLOW-LIST (workstream commit 6 — sprint 3b+4b items #5 + #11 + #14): The placeholders enumerated above are the COMPLETE set permitted in this builder. DO NOT invent placeholders for content the LLM should be writing. SPECIFICALLY FORBIDDEN: [INSERT_LAUNCH_DATE], [INSERT_DEADLINE], [INSERT_REGISTRATION_DATE], [INSERT_CTA_DESTINATION], [INSERT_NEXT_PROGRAM_NAME], [INSERT_BOOKING_LINK] (use canonical [INSERT_BOOKING_URL]). Write actual content for any value not in the allow-list.
 
 Create 3 emails.
 
@@ -625,7 +635,7 @@ VOICE CONVENTION LOCK (workstream commit 4c — sprint 3b backlog item #1): Firs
 
 FIELD SUBSTITUTION CONVENTION (workstream commit 4c — sprint 3b backlog item #3): When a field above is provided as a literal value, use it verbatim across all 3 emails. When provided as an [INSERT_*] placeholder, emit the placeholder verbatim. Consistent — no coin-flip behavior.
 
-ANCHOR PLACEHOLDERS: Use [INSERT_REPLAY_URL] for the replay link, [INSERT_EVENT_NAME] for the event name, [INSERT_HOST_NAME] for the host. For replay-window framing, use [INSERT_REPLAY_EXPIRY] when the operator supplies a real expiry date — DO NOT invent expiry dates.
+ANCHOR PLACEHOLDERS: Use [INSERT_REPLAY_URL] for the replay link, [INSERT_EVENT_NAME] for the event name, [INSERT_HOST_NAME] for the host. For replay-window framing, use [INSERT_REPLAY_EXPIRY] when the operator supplies a real expiry date — DO NOT invent expiry dates. For replay-audience framing (e.g., "live attendees only" / "all registrants" / "publicly available"), use [INSERT_REPLAY_AVAILABILITY] when the operator supplies it; omit otherwise.
 
 PLACEHOLDER ALLOW-LIST (workstream commit 4c — sprint 3b+4b backlog items #5 + #11): The placeholders enumerated above are the COMPLETE set of [INSERT_*] tokens permitted. DO NOT invent placeholders for content the LLM should be writing. SPECIFICALLY FORBIDDEN: [INSERT_LAUNCH_DATE], [INSERT_DEADLINE], [INSERT_REGISTRATION_DATE], [INSERT_CTA_DESTINATION], [INSERT_NEXT_PROGRAM_NAME], [INSERT_SPECIFIC_OUTCOME]. Write actual content for any value not in the allow-list.
 

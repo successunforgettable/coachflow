@@ -149,7 +149,7 @@ SPECIFIC SITUATION: Reference something specific about where they are right now 
 ENDING RULE — every message must end with EITHER a direct yes/no question OR a specific action with a link. NEVER both. NEVER neither.
 
 SCARCITY MARKER — at least one per message, mandatory. Use ONE of:
-- Specific deadline (e.g. "ends 11:59 PM tonight", "doors close in 6 hours", "before [INSERT_CART_CLOSE]")
+- Specific deadline (e.g. "ends 11:59 PM tonight", "doors close in 6 hours", "before [INSERT_CART_CLOSE_DATE]")
 - Specific quantity (e.g. "3 spots left", "12 already in")
 - Specific consequence (e.g. "after Friday, the price goes up 40%")
 
@@ -188,7 +188,7 @@ PLACEHOLDER RULES: Use [First Name] (NOT {{Name}}). Use actual service name "${s
 // Decision A explicitly tightens Message 3 (engagement only).
 // Lengths 5 and 7 = locked role arcs from the WhatsApp wire research report.
 
-const ENGAGEMENT_FINAL_MESSAGE_DECISION_A = `Name the event specifically. Give one clear next step and the link or action. **Do not add a deadline phrase, scarcity language, or "before [date]" construction.** Do not include "before [INSERT_CART_CLOSE]" or any time-pressure framing — engagement Message-final is the soft CTA, not the close. End with the action only — no question, no urgency.`;
+const ENGAGEMENT_FINAL_MESSAGE_DECISION_A = `Name the event specifically. Give one clear next step and the link or action. **Do not add a deadline phrase, scarcity language, or "before [date]" construction.** Do not include "before [INSERT_CART_CLOSE_DATE]" or any time-pressure framing — engagement Message-final is the soft CTA, not the close. End with the action only — no question, no urgency.`;
 
 const ENGAGEMENT_PROOF_BLOCK = `Share one real result from one specific type of person (anonymised if needed). PROOF SPECIFICITY RULE: Anonymous proof must still be specific. Required format: '[specific job title or life situation] who [specific problem they had] → [specific mechanism or change] → [specific result with number, timeframe, or named outcome].' Never use: 'someone', 'a person', 'one of our clients', 'a student' without qualification. One sentence on what changed for them and how. Make it feel like evidence, not marketing. End with a direct question asking if that sounds familiar to them.`;
 
@@ -362,8 +362,8 @@ export function buildWhatsappSalesPrompt(p: WhatsappPromptParams): string {
 
 Service: ${p.serviceName}
 Event: ${p.eventName}
-Offer: ${p.offerName || "Offer"}
-Price: ${p.price || "Price"}
+Offer: ${p.offerName}
+Price: ${p.price}
 
 ${p.socialProofGuidance}
 
@@ -428,6 +428,8 @@ ANCHOR PLACEHOLDERS (substitute when present, leave [INSERT_*] verbatim when abs
 
 WORD BUDGET (workstream commit 4c — sprint 4b backlog item #8): Target 30-50 words total. Single tap to act, no preamble. WhatsApp's terse register favors brevity over completeness. Sentence cap of 3 is a HARD ceiling; word budget is the WORKING target. If the message reads >55 words, trim — every word should be working.
 
+PLACEHOLDER ALLOW-LIST (workstream commit 6 — sprint 3b+4b items #5 + #11 + #14): The placeholders enumerated above ([INSERT_BOOKING_URL], [INSERT_BOOKING_TIME], [INSERT_BOOKING_TIMEZONE], [INSERT_BOOKING_DURATION], [INSERT_HOST_NAME]) are the COMPLETE set permitted. DO NOT invent placeholders for content the LLM should be writing. SPECIFICALLY FORBIDDEN: [INSERT_LAUNCH_DATE], [INSERT_DEADLINE], [INSERT_REGISTRATION_DATE], [INSERT_CTA_DESTINATION], [INSERT_NEXT_PROGRAM_NAME], [INSERT_BOOKING_LINK] (use canonical [INSERT_BOOKING_URL]). Write actual content for any value not in the allow-list.
+
 Create 1 message:
 
 1. CONFIRMATION (Day 0, immediate post-booking) — Job: confirm + drop link. Open by stating the booking time + timezone explicitly. ONE sentence on what the reader will get from the time (about THEM, not about you). End with the booking URL as the action. Maximum 3 sentences, target 30-50 words. No PS, no question, no upsell.
@@ -475,6 +477,8 @@ ENDING RULE — every message must end with EITHER a direct yes/no question OR a
 PLACEHOLDER RULES: Use actual service name "${p.serviceName}". Booking time + timezone + URL are pre-resolved upstream — substitute literally.
 
 ANCHOR PLACEHOLDERS (substitute when present, leave [INSERT_*] verbatim when absent — convention locked across all 4 new builders).
+
+PLACEHOLDER ALLOW-LIST (workstream commit 6 — sprint 3b+4b items #5 + #11 + #14): The placeholders enumerated above ([INSERT_BOOKING_URL], [INSERT_BOOKING_TIME], [INSERT_BOOKING_TIMEZONE], [INSERT_HOST_NAME]) are the COMPLETE set permitted. DO NOT invent placeholders for content the LLM should be writing. SPECIFICALLY FORBIDDEN: [INSERT_LAUNCH_DATE], [INSERT_DEADLINE], [INSERT_REGISTRATION_DATE], [INSERT_CTA_DESTINATION], [INSERT_NEXT_PROGRAM_NAME], [INSERT_BOOKING_LINK] (use canonical [INSERT_BOOKING_URL]). Write actual content for any value not in the allow-list.
 
 Create 3 messages.
 
@@ -580,7 +584,7 @@ Create 3 messages.
 
 MSG 3 BANNED PHRASES (workstream commit 4c — sprint 4b backlog item #12): "claim your place", "before this cohort closes", "cohort closing", "places limited", "spots filling fast", "apply now rather than later", "doors closing", any urgency / scarcity language. Day +1 is INFORMATIONAL, not URGENT. Operator-side urgency lives at the CTA destination, not in this message. The CTA mention is a single concrete sentence with the link, no urgency framing.
 
-PLACEHOLDER ALLOW-LIST (workstream commit 4c — sprint 3b+4b items #5 + #11): The placeholders enumerated above are the COMPLETE set permitted. You MAY emit additional [INSERT_X_Y] tokens ONLY for operator-discretion data fields (parking, room number, host contact). DO NOT invent placeholders for content the LLM should be writing. SPECIFICALLY FORBIDDEN: [INSERT_LAUNCH_DATE], [INSERT_DEADLINE], [INSERT_REGISTRATION_DATE], [INSERT_EVENT_MOMENT], [INSERT_CTA_DESTINATION], [INSERT_NEXT_PROGRAM_NAME]. Write actual content (or a generic descriptive phrase) for any value not in the allow-list.
+PLACEHOLDER ALLOW-LIST (workstream commit 4c — sprint 3b+4b items #5 + #11; commit 6 token-drift expansion): The placeholders enumerated above are the COMPLETE set permitted. Operator-discretion tokens explicitly allowed: [INSERT_PARKING_INFO], [INSERT_ROOM_OR_FLOOR_INFO], [INSERT_EVENT_AGENDA], [INSERT_DRESS_CODE], [INSERT_DIETARY_NOTES] — operator pre-fills before sending. DO NOT invent placeholders for content the LLM should be writing. SPECIFICALLY FORBIDDEN: [INSERT_LAUNCH_DATE], [INSERT_DEADLINE], [INSERT_REGISTRATION_DATE], [INSERT_EVENT_MOMENT], [INSERT_CTA_DESTINATION], [INSERT_NEXT_PROGRAM_NAME], [INSERT_BOOKING_LINK] (use [INSERT_BOOKING_URL] — sprint 4b item #14 fix). Write actual content (or a generic descriptive phrase) for any value not in the allow-list.
 
 Each message must include:
 - day: (-7 / -1 / 1)
@@ -947,8 +951,13 @@ You MUST use these exact numbers and real names. Do not fabricate.`
         eventName: input.eventDetails?.eventName || "[INSERT_EVENT_NAME]",
         hostName: input.eventDetails?.hostName || "[INSERT_HOST_NAME]",
         eventDate: input.eventDetails?.eventDate || "[INSERT_EVENT_DATE]",
-        offerName: input.eventDetails?.offerName,
-        price: input.eventDetails?.price,
+        // Workstream commit 6 — Decision-C procedure-layer fix. Replaces the
+        // builder-template literal "Offer" / "Price" fallbacks at L383-384
+        // (now empty fallbacks since this procedure-layer Decision-C swap
+        // makes them moot). Matches the existing eventName/hostName/event
+        // Date pattern above for cross-channel consistency with email.
+        offerName: input.eventDetails?.offerName || "[INSERT_OFFER_NAME]",
+        price: input.eventDetails?.price || "[INSERT_PRICE]",
         tone: input.tone,
         sequenceLength: input.sequenceLength,
         // Workstream commit 4b — pass-through for the 7 fields shipped in
@@ -1111,8 +1120,9 @@ You MUST use these exact numbers and real names. Do not fabricate.`
             eventName: capturedInput.eventDetails?.eventName || "[INSERT_EVENT_NAME]",
             hostName: capturedInput.eventDetails?.hostName || "[INSERT_HOST_NAME]",
             eventDate: capturedInput.eventDetails?.eventDate || "[INSERT_EVENT_DATE]",
-            offerName: capturedInput.eventDetails?.offerName,
-            price: capturedInput.eventDetails?.price,
+            // Workstream commit 6 — Decision-C procedure-layer fix (mirror of sync path).
+            offerName: capturedInput.eventDetails?.offerName || "[INSERT_OFFER_NAME]",
+            price: capturedInput.eventDetails?.price || "[INSERT_PRICE]",
             tone: capturedInput.tone,
             sequenceLength: capturedInput.sequenceLength,
             // Workstream commit 4b — async-path mirror of sync pass-through.
