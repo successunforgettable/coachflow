@@ -484,6 +484,17 @@ export const landingPages = mysqlTable("landingPages", {
   // Active angle (for display)
   activeAngle: mysqlEnum("activeAngle", ["original", "godfather", "free", "dollar"]).default("original"),
 
+  // Workstream commit 5b — pageType drives prompt copy emphasis + intentional
+  // section blanks within the existing 16-section LandingPageContent shape.
+  // 5 values matching prod DB (migration 0070 / 78c3cce). Path A architecture:
+  // sales_page = current behavior (all 16 sections); 4 new types use the
+  // same shape with intentional blanks in non-relevant sections (renderer
+  // already handles empty sections via ok(content.X) checks). NOT NULL
+  // DEFAULT 'sales_page' — every existing row + every new row that omits
+  // pageType continues to render as a long-form sales page. Zero V1 cascade
+  // — V1 reads landingPages columns as string display, no narrowing.
+  pageType: mysqlEnum("pageType", ["sales_page", "webinar_registration", "discovery_call_booking", "lead_magnet_download", "event_registration"]).notNull().default("sales_page"),
+
   // D4: Cloudflare Workers public URL
   publicSlug: varchar("publicSlug", { length: 255 }).unique(),
   publicUrl: varchar("publicUrl", { length: 500 }),

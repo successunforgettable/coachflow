@@ -76,6 +76,262 @@ Key phrase: Emphasize specific price and value
   `
 };
 
+// ───────────────────────────────────────────────────────────────────────────
+// PAGETYPE_PROMPTS — workstream commit 5b
+// ───────────────────────────────────────────────────────────────────────────
+// Path A architecture: pageType drives prompt copy emphasis + intentional
+// section blanks within the existing 16-section LandingPageContent shape.
+// Renderer (server/lib/landingPageHtml.ts:76-220) already gracefully omits
+// empty sections via ok(content.X) checks — so for non-sales-page types,
+// instructing the LLM to leave specific sections as empty strings produces
+// a structurally appropriate page (webinar registration, discovery call
+// booking, lead magnet download, event registration) without renderer
+// changes.
+//
+// Sprint 3b/4b/4c learnings baked in at builder-design time:
+//   - VOICE CONVENTION LOCK (item #1): each block declares first-person
+//     singular pronoun convention. Critical for discovery_call_booking
+//     which overlaps email's discovery_call domain.
+//   - FIELD SUBSTITUTION CONVENTION (item #3): substitute when present,
+//     [INSERT_*] when absent — uniform across all sections.
+//   - PLACEHOLDER ALLOW-LIST (items #5 + #11): only emit cataloged
+//     [INSERT_*] tokens. Negative list explicit. Canonical names used
+//     ([INSERT_BOOKING_URL] not [INSERT_BOOKING_LINK] — item #14
+//     preemptively applied).
+//   - BANNED-PHRASE BLOCKS (item #7): lead_magnet_download forbids fake
+//     urgency. discovery_call_booking forbids cohort-scarcity language.
+export type LpPageType =
+  | 'sales_page'
+  | 'webinar_registration'
+  | 'discovery_call_booking'
+  | 'lead_magnet_download'
+  | 'event_registration';
+
+const PAGETYPE_PROMPTS: Record<LpPageType, string> = {
+  sales_page: `
+PAGE TYPE: Long-form sales page (default; backward-compatible with all
+landing pages generated pre-commit-5b).
+
+SECTIONS TO POPULATE: ALL 16 sections — eyebrowHeadline, mainHeadline,
+subheadline, primaryCta, asSeenIn, quizSection, problemAgitation,
+solutionIntro, whyOldFail, uniqueMechanism, testimonials, insiderAdvantages,
+scarcityUrgency, shockingStat, timeSavingBenefit, consultationOutline, faq.
+
+Follow the EMOTIONAL ARC structure below in full.
+`,
+
+  webinar_registration: `
+PAGE TYPE: Webinar registration page.
+
+SECTIONS TO POPULATE (fill substantively):
+- eyebrowHeadline, mainHeadline, subheadline, primaryCta — registration hero.
+- scarcityUrgency — date + time + timezone of the LIVE webinar (use
+  [INSERT_EVENT_DATE], [INSERT_EVENT_TIME], [INSERT_EVENT_TIMEZONE] if not
+  pre-supplied; never invent dates).
+- consultationOutline — re-purposed as "What you'll learn LIVE" — 3-4
+  specific learning outcomes the attendee will walk away with.
+- testimonials — 2-3 short-form quotes from past attendees if available.
+- timeSavingBenefit — re-purposed as "Why attend live (not just the replay)" —
+  one specific reason live attendance matters.
+
+SECTIONS TO LEAVE EMPTY (return as empty string ""):
+- problemAgitation: ""
+- solutionIntro: ""
+- whyOldFail: ""
+- uniqueMechanism: ""
+- shockingStat: ""
+- insiderAdvantages: ""
+- quizSection: { question: "", options: [], answer: "" }
+- faq: []
+- asSeenIn: [] (or 1-2 entries if real)
+
+VOICE CONVENTION LOCK: First-person singular throughout. The host is "I" /
+"me" / "my". No drift to "we" or third-person.
+
+FIELD SUBSTITUTION CONVENTION: Use literal values from above when supplied
+(eventDate, eventTime, etc.); use [INSERT_*] tokens verbatim when not
+supplied. No coin-flipping.
+
+PLACEHOLDER ALLOW-LIST: Only emit [INSERT_EVENT_DATE], [INSERT_EVENT_TIME],
+[INSERT_EVENT_TIMEZONE], [INSERT_HOST_NAME], [INSERT_REPLAY_AVAILABILITY]
+when their values are operator-supplied. SPECIFICALLY FORBIDDEN: [INSERT_
+LAUNCH_DATE], [INSERT_DEADLINE], [INSERT_REGISTRATION_DATE], [INSERT_CTA_
+DESTINATION], [INSERT_NEXT_PROGRAM_NAME], [INSERT_BOOKING_LINK] (use
+[INSERT_BOOKING_URL] if needed). Write actual content for any value not
+in the allow-list.
+
+CTA copy: "Save your seat", "Register now", "Join us live on [date]"
+(substitute eventDate if supplied).
+
+EMOTIONAL ARC: Show-up urgency (the live event is the vehicle) — copy must
+give a compelling reason to attend live, not just register. Section voice
+focuses on what the attendee WILL EXPERIENCE in the room/Zoom, not on
+problem-agitation or transformation-journey arcs. Sales page emotional
+sequencing does NOT apply here.
+`,
+
+  discovery_call_booking: `
+PAGE TYPE: 1:1 discovery call booking page.
+
+SECTIONS TO POPULATE (fill substantively):
+- eyebrowHeadline, mainHeadline, subheadline, primaryCta — booking hero.
+  CTA: "Book a Discovery Call", "Apply for a Call", "Reserve Your Slot".
+- insiderAdvantages — re-purposed as "What we'll cover in [duration]" —
+  3-bullet list of specific topics the call addresses. Use [INSERT_
+  BOOKING_DURATION] if duration not supplied; never invent durations.
+- testimonials — 1-2 short quotes from past clients if available.
+
+SECTIONS TO LEAVE EMPTY (return as empty string ""):
+- problemAgitation: ""
+- whyOldFail: ""
+- scarcityUrgency: ""
+- shockingStat: ""
+- uniqueMechanism: ""
+- solutionIntro: ""
+- timeSavingBenefit: ""
+- consultationOutline: []
+- quizSection: { question: "", options: [], answer: "" }
+- faq: []
+- asSeenIn: []
+
+VOICE CONVENTION LOCK: First-person singular throughout. The host is "I" /
+"me" / "my". Sign-off uses host name. No drift to "we" or third-person.
+This page MUST match the voice convention used by email's discovery_call_
+confirmation/reminder builders (commit 4c retroactive port) — operator-
+side cross-channel consistency.
+
+FIELD SUBSTITUTION CONVENTION: Use literal values when supplied; use
+[INSERT_*] tokens verbatim when not.
+
+PLACEHOLDER ALLOW-LIST: Only emit [INSERT_BOOKING_DURATION], [INSERT_
+HOST_NAME], [INSERT_BOOKING_URL]. SPECIFICALLY FORBIDDEN: [INSERT_LAUNCH_
+DATE], [INSERT_DEADLINE], [INSERT_REGISTRATION_DATE], [INSERT_CTA_
+DESTINATION], [INSERT_NEXT_PROGRAM_NAME], [INSERT_COHORT_DATE], [INSERT_
+APPLICATION_DEADLINE]. Write actual content for any value not in the
+allow-list.
+
+BANNED PHRASES (item #7 + sprint 4b item #12 lessons applied):
+"cohort places limited", "spots filling fast", "apply now rather than
+later", "before this cohort closes", "places filling up", any
+fabricated cohort-scarcity language. The CTA is informational
+("Book a call"), not urgent. Operator-side urgency lives at the
+calendar destination, not on this page.
+
+NO-FABRICATION RULE (item #10 lesson applied): Do NOT invent specific
+call durations beyond what's supplied. Do NOT invent cohort dates,
+program names, application windows. If duration not supplied, use
+[INSERT_BOOKING_DURATION] verbatim.
+
+EMOTIONAL ARC: Selectivity + qualification framing. The page's job is
+to set the expectation that this is a 1:1 fit-check, not a sales pitch.
+The reader should feel: "this is for people serious about [outcome] —
+let me see if I qualify." NOT: "I'm being pitched to / This is a
+high-pressure close."
+`,
+
+  lead_magnet_download: `
+PAGE TYPE: Lead magnet download / opt-in page.
+
+SECTIONS TO POPULATE (fill substantively):
+- eyebrowHeadline, mainHeadline, subheadline, primaryCta — opt-in hero.
+  CTA: "Get the Free Guide", "Download Free", "Send Me the [Asset]".
+- problemAgitation — one short paragraph naming the specific situation the
+  reader is in that this asset addresses. Concrete + niche-specific.
+- testimonials — 1-2 short quotes from past readers if available.
+
+SECTIONS TO LEAVE EMPTY (return as empty string ""):
+- scarcityUrgency: "" (CRITICAL — see banned phrases below)
+- shockingStat: ""
+- whyOldFail: ""
+- uniqueMechanism: ""
+- solutionIntro: ""
+- insiderAdvantages: ""
+- timeSavingBenefit: ""
+- consultationOutline: []
+- quizSection: { question: "", options: [], answer: "" }
+- faq: []
+- asSeenIn: []
+
+VOICE CONVENTION LOCK: First-person singular throughout. The host is "I" /
+"me" / "my". No drift to "we".
+
+FIELD SUBSTITUTION CONVENTION: Use literal values when supplied;
+[INSERT_*] verbatim otherwise.
+
+PLACEHOLDER ALLOW-LIST: Only emit [INSERT_LEAD_MAGNET_NAME], [INSERT_
+HOST_NAME]. SPECIFICALLY FORBIDDEN: [INSERT_LAUNCH_DATE], [INSERT_
+DEADLINE], [INSERT_REGISTRATION_DATE], [INSERT_CTA_DESTINATION], [INSERT_
+NEXT_PROGRAM_NAME], [INSERT_DOWNLOAD_LINK] (the form handles delivery,
+no link in copy needed).
+
+BANNED PHRASES (CRITICAL — this is an opt-in page, not a sales close):
+NO "limited time", NO "limited spots", NO "available for X days", NO
+"hurry before this expires", NO "act fast", NO countdown timers, NO
+fabricated urgency. The asset itself is the value — fake urgency on
+opt-in pages erodes trust faster than it converts. The integrity of
+the offer comes from "what you get is genuinely useful," not from
+artificial scarcity.
+
+NO-FAKE-PRICING RULE: Do NOT mention pricing, "normally $X / today
+free", "value of $XYZ" anchoring. The asset is positioned as
+genuinely-free, no anchor games.
+
+EMOTIONAL ARC: Specific concrete asset framing. The reader should
+feel: "this is exactly the [PDF / guide / training / template] I
+needed — let me grab it before I lose the tab." NOT: "this is part
+of a sales sequence I'm being funneled through."
+`,
+
+  event_registration: `
+PAGE TYPE: In-person event registration page.
+
+SECTIONS TO POPULATE (fill substantively):
+- eyebrowHeadline, mainHeadline, subheadline, primaryCta — registration
+  hero. CTA: "Reserve Your Seat", "Register for [city]", "Save Your
+  Spot at [venue]".
+- scarcityUrgency — venue + date + time + timezone. Use [INSERT_EVENT_
+  VENUE], [INSERT_EVENT_DATE], [INSERT_EVENT_TIME], [INSERT_EVENT_
+  TIMEZONE] when not supplied.
+- consultationOutline — re-purposed as "Event agenda" — bullet list of
+  what happens during the day. Use [INSERT_EVENT_AGENDA] if not
+  supplied; never invent agenda items.
+- insiderAdvantages — "Why this is worth being in the room for" — 2-3
+  reasons attending in person beats watching recordings.
+
+SECTIONS TO LEAVE EMPTY (return as empty string ""):
+- problemAgitation: ""
+- whyOldFail: ""
+- shockingStat: ""
+- uniqueMechanism: ""
+- solutionIntro: ""
+- timeSavingBenefit: ""
+- testimonials: [] (or 1-2 entries if real)
+- quizSection: { question: "", options: [], answer: "" }
+- faq: []
+- asSeenIn: []
+
+VOICE CONVENTION LOCK: First-person singular throughout. The host is "I" /
+"me" / "my". Sign-off uses host name. No drift to "we" or third-person.
+
+FIELD SUBSTITUTION CONVENTION: Literal when supplied; [INSERT_*] verbatim
+when not.
+
+PLACEHOLDER ALLOW-LIST: Only emit [INSERT_EVENT_VENUE], [INSERT_EVENT_
+DATE], [INSERT_EVENT_TIME], [INSERT_EVENT_TIMEZONE], [INSERT_EVENT_
+AGENDA], [INSERT_HOST_NAME], plus operator-discretion: [INSERT_PARKING_
+INFO], [INSERT_DRESS_CODE], [INSERT_ROOM_OR_FLOOR_INFO], [INSERT_DIETARY_
+NOTES]. SPECIFICALLY FORBIDDEN: [INSERT_LAUNCH_DATE], [INSERT_DEADLINE],
+[INSERT_REGISTRATION_DATE], [INSERT_CTA_DESTINATION], [INSERT_NEXT_
+PROGRAM_NAME].
+
+EMOTIONAL ARC: Physical-presence value framing. The reader should feel:
+"the room itself is the value — being there in person matters." NOT:
+"this is one of many events I could attend / I can catch the recording."
+Specific city + venue + date anchor the sense of "this specific moment
+in this specific place."
+`,
+};
+
 export async function generateLandingPageAngle(
   productName: string,
   productDescription: string,
@@ -84,6 +340,7 @@ export async function generateLandingPageAngle(
   angle: 'original' | 'godfather' | 'free' | 'dollar',
   socialProof: any,
   cascadeContext: string = "",
+  pageType: LpPageType = 'sales_page',
 ): Promise<LandingPageContent> {
   // Social proof guidance (Issue 2 fix)
   const socialProofGuidance = socialProof.hasTestimonials || socialProof.hasCustomers || socialProof.hasPress
@@ -107,8 +364,11 @@ Product: ${productName}
 Description: ${productDescription}
 Target Avatar: ${avatarName} - ${avatarDescription}
 Angle: ${angle}
+Page Type: ${pageType}
 
 ${ANGLE_PROMPTS[angle]}
+
+${PAGETYPE_PROMPTS[pageType]}
 
 ${socialProofGuidance}
 
@@ -336,6 +596,10 @@ export async function generateAllAngles(
   socialProof: any,
   onAngleComplete?: (completed: number, total: number) => Promise<void>,
   cascadeContext: string = "",
+  // Workstream commit 5b — pageType drives prompt copy emphasis + section
+  // blanks (Path A architecture). Default 'sales_page' preserves backward-
+  // compatible behavior for all existing callsites that don't pass pageType.
+  pageType: LpPageType = 'sales_page',
 ): Promise<{
   original: LandingPageContent;
   godfather: LandingPageContent;
@@ -362,10 +626,10 @@ export async function generateAllAngles(
   };
 
   const [original, godfather, free, dollar] = await Promise.all([
-    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'original', socialProof, cascadeContext).then(async r => { await notify(); return r; }),
-    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'godfather', socialProof, cascadeContext).then(async r => { await notify(); return r; }),
-    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'free', socialProof, cascadeContext).then(async r => { await notify(); return r; }),
-    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'dollar', socialProof, cascadeContext).then(async r => { await notify(); return r; }),
+    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'original', socialProof, cascadeContext, pageType).then(async r => { await notify(); return r; }),
+    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'godfather', socialProof, cascadeContext, pageType).then(async r => { await notify(); return r; }),
+    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'free', socialProof, cascadeContext, pageType).then(async r => { await notify(); return r; }),
+    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'dollar', socialProof, cascadeContext, pageType).then(async r => { await notify(); return r; }),
   ]);
   return { original, godfather, free, dollar };
 }
