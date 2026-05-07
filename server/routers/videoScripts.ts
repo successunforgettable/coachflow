@@ -633,15 +633,12 @@ TESTIMONIAL: ${
   }
 `;
 
-  const DURATION_RULE = `
-DURATION RULE — NON-NEGOTIABLE:
-- Total script must produce 30-45 seconds of voiceover when spoken at natural pace
-- 5 scenes maximum — hook, problem, authority, solution, cta
+  const VOICEOVER_PACING_FACTS = `
+VOICEOVER PACING — math basis only (NOT a budget; the SCENE STRUCTURE block below is authoritative):
+- Average voiceover speaking pace is 130 words per minute
+- 100 words ≈ 46 seconds spoken
 - Each voiceoverText must be 1-3 sentences maximum
-- Count words: aim for 80-120 total words across all 5 scenes
-- Average speaking pace is 130 words per minute
-- 100 words = approximately 46 seconds spoken
-- If you write more than 120 words total — you have written too much. Cut it.
+- Use the SCENE STRUCTURE block's per-duration word total as the authoritative budget — these facts exist only as a reference for the underlying math
 `;
 
   const globalRules = `
@@ -704,25 +701,33 @@ ${AUTHORITY_SCENE_RULE}
 
 ${PEXELS_QUERY_RULE}
 
-${DURATION_RULE}
+${VOICEOVER_PACING_FACTS}
 
 ═══════════════════════════════════════════════════════════════════════════════
 
-Generate an EXPLAINER video ad script. TOTAL DURATION MUST BE 30-45 SECONDS.
+Generate an EXPLAINER video ad script. TOTAL DURATION MUST BE APPROXIMATELY ${duration} SECONDS.
 
 SERVICE DATA:
 ${baseContext}
 
-SCENE STRUCTURE (EXACTLY 5 SCENES):
+SCENE STRUCTURE (EXACTLY ${duration === 90 ? '7' : '5'} SCENES):
 
 ${duration === 15
-    ? `Scene 1: HOOK — Fast punch. 1-2 sentences. Pattern interrupt using pain point, outcome, social proof, curiosity, or comparison.
-Scene 2: PROBLEM — Build pain. 2-3 sentences that deepen emotional pain.
-Scene 3: AUTHORITY — Credibility. 2-3 sentences with specific proof (only if data provided).
-Scene 4: SOLUTION — Relief. 2-3 sentences explaining how it works.
-Scene 5: CTA — Drive action. 1-2 sentences maximum.
+    ? `Scene 1: HOOK — Fast punch. 1 sentence. Pattern interrupt using pain point, outcome, social proof, curiosity, or comparison.
+Scene 2: PROBLEM — Name the pain. 1 sentence.
+Scene 3: AUTHORITY — Credibility. 1 sentence with specific proof (only if data provided).
+Scene 4: SOLUTION — Relief. 1 sentence explaining the core mechanism.
+Scene 5: CTA — Drive action. 1 sentence.
 
-⚠️ WRITE PUNCHY, CONCISE COPY: Each scene should be 10-25 words. Total script 100-150 words (creates 40-60s video with natural pacing).`
+⚠️ WRITE TIGHT, RHYTHMIC COPY: Each scene should be 6-10 words. Total script 30-50 words (creates 12-18s video with natural pacing).`
+    : duration === 30
+    ? `Scene 1: HOOK — Pattern interrupt. 1-2 sentences.
+Scene 2: PROBLEM — Build pain quickly. 2 sentences.
+Scene 3: AUTHORITY — Credibility. 1-2 sentences with specific proof (only if data provided).
+Scene 4: SOLUTION — Introduce the product. 1-2 sentences explaining how it works.
+Scene 5: CTA — Single specific action. 1 sentence.
+
+⚠️ WRITE PUNCHY, CONCISE COPY: Total script 80-110 words (creates 30-40s video with natural pacing).`
     : duration === 60
     ? `Scene 1: HOOK — Pattern interrupt. 1-2 sentences maximum.
 Scene 2: PROBLEM AGITATION — Make the pain real. 2-3 sentences.
@@ -730,7 +735,7 @@ Scene 3: AUTHORITY — Credibility. 2-3 sentences with specific proof (only if d
 Scene 4: SOLUTION — Introduce the product and how it works. 2-3 sentences.
 Scene 5: CTA — Single specific action. 1-2 sentences maximum.
 
-⚠️ WRITE PUNCHY, CONCISE COPY: Each scene should be 10-25 words. Total script 100-150 words (creates 40-60s video with natural pacing).`
+⚠️ WRITE PUNCHY, CONCISE COPY: Total script 150-180 words (creates 60-75s video with natural pacing).`
     : `Scene 1: HOOK — 1-2 sentences
 Scene 2: PROBLEM AGITATION — 2-3 sentences
 Scene 3: RELATABLE STORY SCENARIO — 3-4 sentences
@@ -771,7 +776,7 @@ Scene 2 (5-15s): BEFORE STATE — Where they were (name the specific situation, 
 Scene 3 (15-25s): AFTER STATE — Where they are now (concrete, specific, observable)
 Scene 4 (25-${duration}s): CTA
 
-⚠️ WRITE PUNCHY, CONCISE COPY: Each scene should be 10-25 words. Total script 100-150 words (creates 40-60s video with natural pacing).`
+⚠️ WRITE PUNCHY, CONCISE COPY: Total script ${duration === 15 ? '30-45' : '80-110'} words (creates ${duration === 15 ? '12-18s' : '30-40s'} video with natural pacing).`
     : `Scene 1 (0-5s): HOOK — Bold result claim using niche-specific language
 Scene 2 (5-15s): BEFORE STATE — Pain and struggle (name the specific situation, not the emotion)
 Scene 3 (15-30s): WHAT CHANGED — Name the specific mechanism or decision that changed things
@@ -854,7 +859,7 @@ Scene 2 (5-15s): OLD WAY — Why current methods fail
 Scene 3 (15-25s): NEW WAY — Reveal the mechanism
 Scene 4 (25-${duration}s): CTA
 
-⚠️ WRITE PUNCHY, CONCISE COPY: Each scene should be 10-25 words. Total script 100-150 words (creates 40-60s video with natural pacing).`
+⚠️ WRITE PUNCHY, CONCISE COPY: Total script ${duration === 15 ? '30-45' : '80-110'} words (creates ${duration === 15 ? '12-18s' : '30-40s'} video with natural pacing).`
     : `Scene 1 (0-5s): HOOK — Question challenging the old approach
 Scene 2 (5-15s): OLD WAY — Why current methods fail
 Scene 3 (15-30s): NEW WAY — Reveal the mechanism
@@ -1123,8 +1128,8 @@ export const videoScriptsRouter = router({
           } catch {
             throw new Error("Script generation failed — LLM did not return valid JSON");
           }
-          if (!parsed.scenes || parsed.scenes.length !== 5) {
-            throw new Error(`Invalid script structure — expected 5 scenes, got ${parsed.scenes?.length ?? 0}`);
+          if (!parsed.scenes || parsed.scenes.length < 3 || parsed.scenes.length > 10) {
+            throw new Error(`Invalid script structure — expected 3-10 scenes, got ${parsed.scenes?.length ?? 0}`);
           }
           const totalWords = parsed.scenes.reduce(
             (sum: number, s: any) => sum + (s.voiceoverText?.trim().split(/\s+/).length || 0),
@@ -1218,8 +1223,8 @@ export async function generateVideoScriptForService(params: {
   } catch {
     throw new Error("Script generation failed — LLM did not return valid JSON");
   }
-  if (!parsed.scenes || parsed.scenes.length !== 5) {
-    throw new Error(`Invalid script structure — expected 5 scenes, got: ${JSON.stringify(parsed)}`);
+  if (!parsed.scenes || parsed.scenes.length < 3 || parsed.scenes.length > 10) {
+    throw new Error(`Invalid script structure — expected 3-10 scenes, got ${parsed.scenes?.length ?? 0}`);
   }
 
   // Word count validation — max MAX_SCRIPT_WORDS
