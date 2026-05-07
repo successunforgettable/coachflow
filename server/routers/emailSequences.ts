@@ -755,6 +755,17 @@ async function invokeEmailSequenceWithRetry(userPrompt: string): Promise<RawEmai
       response_format: EMAIL_SEQUENCE_RESPONSE_FORMAT,
     });
     const content = response.choices[0].message.content;
+    // [Sprint B DIAG — REMOVE AFTER ROOT-CAUSE FIX] Capture LLM call meta so we
+    // can confirm whether the response is being truncated at max_tokens (8192)
+    // or whether (G) defensive un-stringify path even fires.
+    console.warn(
+      `[emailSequences DIAG attempt=${attempt}] ` +
+      `content_type=${typeof content} ` +
+      `content_length=${typeof content === "string" ? content.length : -1} ` +
+      `finish_reason=${response.choices[0].finish_reason ?? "null"} ` +
+      `completion_tokens=${response.usage?.completion_tokens ?? -1} ` +
+      `prompt_tokens=${response.usage?.prompt_tokens ?? -1}`
+    );
     if (typeof content !== "string") throw new Error("Invalid response format from AI");
     let parsed = JSON.parse(stripMarkdownJson(content));
     if (Array.isArray(parsed)) parsed = { emails: parsed };
@@ -764,10 +775,39 @@ async function invokeEmailSequenceWithRetry(userPrompt: string): Promise<RawEmai
     // to un-stringify before declaring failure — content is valid, only the
     // wrapping shape is wrong, so this recovers the response without a retry.
     if (typeof parsed?.emails === "string") {
+      // [Sprint B DIAG — REMOVE AFTER ROOT-CAUSE FIX] Confirm (G) path fires;
+      // capture full string length + tail to detect mid-content truncation.
+      const emailsStr: string = parsed.emails;
+      console.warn(
+        `[emailSequences DIAG attempt=${attempt}] (G) FIRED: ` +
+        `emails_string_length=${emailsStr.length} ` +
+        `head=${JSON.stringify(emailsStr.slice(0, 80))} ` +
+        `tail=${JSON.stringify(emailsStr.slice(-200))}`
+      );
       try {
-        const unstringified = JSON.parse(parsed.emails);
+        const unstringified = JSON.parse(emailsStr);
+        // [Sprint B DIAG — REMOVE AFTER ROOT-CAUSE FIX] Parse succeeded; what is it?
+        console.warn(
+          `[emailSequences DIAG attempt=${attempt}] (G) PARSE OK: ` +
+          `unstringified_type=${typeof unstringified} ` +
+          `isArray=${Array.isArray(unstringified)} ` +
+          `length=${Array.isArray(unstringified) ? unstringified.length : -1}`
+        );
         if (Array.isArray(unstringified)) parsed.emails = unstringified;
-      } catch { /* leave as-is; failure path below catches and retries */ }
+      } catch (err: unknown) {
+        // [Sprint B DIAG — REMOVE AFTER ROOT-CAUSE FIX] Parse threw — capture err message + position.
+        const errMsg = err instanceof Error ? err.message : String(err);
+        console.warn(`[emailSequences DIAG attempt=${attempt}] (G) PARSE THREW: ${errMsg}`);
+        /* leave as-is; failure path below catches and retries */
+      }
+    } else {
+      // [Sprint B DIAG — REMOVE AFTER ROOT-CAUSE FIX] (G) didn't fire — log what emails actually is.
+      console.warn(
+        `[emailSequences DIAG attempt=${attempt}] (G) NOT FIRED: ` +
+        `emails_type=${typeof parsed?.emails} ` +
+        `isArray=${Array.isArray(parsed?.emails)} ` +
+        `top_keys=[${Object.keys(parsed ?? {}).join(",")}]`
+      );
     }
     if (parsed?.emails && Array.isArray(parsed.emails)) {
       return parsed.emails as RawEmail[];
