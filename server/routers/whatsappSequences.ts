@@ -190,7 +190,7 @@ PLACEHOLDER RULES: Use [First Name] (NOT {{Name}}). Use actual service name "${s
 
 const ENGAGEMENT_FINAL_MESSAGE_DECISION_A = `Name the event specifically. Give one clear next step and the link or action. **Do not add a deadline phrase, scarcity language, or "before [date]" construction.** Do not include "before [INSERT_CART_CLOSE_DATE]" or any time-pressure framing — engagement Message-final is the soft CTA, not the close. End with the action only — no question, no urgency.`;
 
-const ENGAGEMENT_PROOF_BLOCK = `Share one real result from one specific type of person (anonymised if needed). PROOF SPECIFICITY RULE: Anonymous proof must still be specific. Required format: '[specific job title or life situation] who [specific problem they had] → [specific mechanism or change] → [specific result with number, timeframe, or named outcome].' Never use: 'someone', 'a person', 'one of our clients', 'a student' without qualification. One sentence on what changed for them and how. Make it feel like evidence, not marketing. End with a direct question asking if that sounds familiar to them.`;
+const ENGAGEMENT_PROOF_BLOCK = `Share one real result from one specific type of person (anonymised if needed). PROOF SPECIFICITY RULE: Anonymous proof must still be specific. Required structure: state the role first (specific job title or life situation), then the problem they had, then the mechanism or change, then the outcome with a number, timeframe, or named result. Never use: 'someone', 'a person', 'one of our clients', 'a student' without qualification. One sentence on what changed for them and how. Make it feel like evidence, not marketing. End with a direct question asking if that sounds familiar to them.`;
 
 const ENGAGEMENT_ASSUMPTION_BREAK_BLOCK = `Message 1 first sentence rule: The first sentence must break an assumption the reader currently holds — not just create curiosity. Identify the most common belief someone in this niche has about their situation, then write a first sentence that makes that belief feel worth questioning. This is not a shocking statement — it is something so precisely true about their current situation that it stops the scroll because it feels personal. It must contain one niche-specific word or phrase. Open a loop — ask one question they don't yet know the answer to, that makes them want to come to the event to find out. Do not answer the question in this message.`;
 
@@ -255,7 +255,7 @@ ${ENGAGEMENT_FINAL_MESSAGE_DECISION_A}`;
 
 const SALES_COST_OF_INACTION_BLOCK = `Reference what they just attended. Name the specific cost of staying where they are — the thing that keeps happening if they don't act. One concrete, niche-specific consequence. End with the direct link or action.`;
 
-const SALES_PROOF_MECHANISM_BLOCK = `Name one specific result from one specific type of person (anonymised if needed). PROOF SPECIFICITY RULE: Anonymous proof must still be specific. Required format: '[specific job title or life situation] who [specific problem they had] → [specific mechanism or change] → [specific result with number, timeframe, or named outcome].' Never use: 'someone', 'a person', 'one of our clients', 'a student' without qualification. Name the method or mechanism that produced that result — one sentence. End with a closing question derived from the ICP's specific situation — their named fear, their specific frustration, or their stated buying trigger. The question must make them feel seen, not categorised. Use their language, not coaching language.`;
+const SALES_PROOF_MECHANISM_BLOCK = `Name one specific result from one specific type of person (anonymised if needed). PROOF SPECIFICITY RULE: Anonymous proof must still be specific. Required structure: state the role first (specific job title or life situation), then the problem they had, then the mechanism or change, then the outcome with a number, timeframe, or named result. Never use: 'someone', 'a person', 'one of our clients', 'a student' without qualification. Name the method or mechanism that produced that result — one sentence. End with a closing question derived from the ICP's specific situation — their named fear, their specific frustration, or their stated buying trigger. The question must make them feel seen, not categorised. Use their language, not coaching language.`;
 
 const SALES_DIRECT_OFFER_BLOCK = `ANCHORING RULE: In the first sentence, state the total value of what they get before naming the price or the close. Given the 3-sentence constraint, the format is: sentence 1 = value anchor, sentence 2 = closing mechanism with specific named condition, sentence 3 = single action with CTA copy that communicates what they get (not just 'click here'). URGENCY FALLBACK: If no genuine deadline, price increase, or spot limit exists, use social proof scarcity — 'People who attended [event] and acted within 48 hours got [specific result]. The window where momentum works in your favour is closing.' This is honest urgency grounded in psychology, not fabricated scarcity. End with the single action and link only — no question.`;
 
@@ -663,6 +663,18 @@ async function invokeWhatsappSequenceWithRetry(userPrompt: string): Promise<RawW
     if (typeof content !== "string") throw new Error("Invalid response format from AI");
     let parsed = JSON.parse(stripMarkdownJson(content));
     if (Array.isArray(parsed)) parsed = { messages: parsed };
+    // Defensive un-stringify (Sprint B regression fix — preemptive port from
+    // email helper): Sonnet 4.6 sometimes returns the `messages` field as a
+    // JSON-encoded string ("[{...}]") rather than a literal array, despite
+    // strict json_schema declaring array. Try to un-stringify before declaring
+    // failure — content is valid, only the wrapping shape is wrong, so this
+    // recovers the response without a retry. Mirror of email helper.
+    if (typeof parsed?.messages === "string") {
+      try {
+        const unstringified = JSON.parse(parsed.messages);
+        if (Array.isArray(unstringified)) parsed.messages = unstringified;
+      } catch { /* leave as-is; failure path below catches and retries */ }
+    }
     if (parsed?.messages && Array.isArray(parsed.messages)) {
       return parsed.messages as RawWhatsappMessage[];
     }
