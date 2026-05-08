@@ -948,13 +948,17 @@ export default function V2Dashboard() {
             </div>
             {/* Campaign Kit sidebar on dashboard */}
             {(() => {
-              // Commit 7 (Item 7b): ICP switcher resolves activeIcp from
-              // selectedIcpId when set, falls back to first ICP otherwise.
-              // Single-ICP users see no switcher; multi-ICP users get a
-              // <select> at the top of the sidebar to pick which ICP's kit
-              // they're viewing. Cross-ICP browsing flows through the
-              // all-my-kits inline section below the path (Item 7c).
-              const effectiveIcpId = selectedIcpId ?? icpList?.[0]?.id;
+              // Commit 7 (Item 7b) + 7.1 hotfix: resolve effective ICP via
+              // (1) explicit user selection (selectedIcpId), then
+              // (2) first ICP that has a kit attached (covers multi-ICP
+              //     accounts where the newest ICP isn't the one with a kit;
+              //     pre-7.1 this fallback hardcoded icpList[0] and the
+              //     sidebar hid silently when ids didn't match), then
+              // (3) first ICP unconditionally (preserves prior single-ICP UX).
+              const firstIcpWithKit = icpList && campaignKitsList
+                ? icpList.find((i: any) => campaignKitsList.some((k: any) => k.icpId === i.id))
+                : undefined;
+              const effectiveIcpId = selectedIcpId ?? firstIcpWithKit?.id ?? icpList?.[0]?.id;
               const activeIcp = effectiveIcpId ? icpList?.find((i: any) => i.id === effectiveIcpId) : undefined;
               const kit = activeIcp ? campaignKitsList?.find((k: any) => k.icpId === activeIcp.id) : null;
               const hasMultipleIcps = (icpList?.length ?? 0) > 1;

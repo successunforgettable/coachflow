@@ -1559,13 +1559,28 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
     serviceId ? serviceData?.find(s => s.id === serviceId) : serviceData?.[0]
   );
 
-  // ── Resolve the active ICP ──
-  const activeIcp = isDemoMissing ? undefined : icpData?.[0];
+  // ── Resolve the active ICP (Commit 7.1 hotfix) ──
+  // Prefer the ICP that has a kit attached, falling back to the first ICP
+  // unconditionally. Pre-7.1 the wizard hardcoded `icpData?.[0]`, which on
+  // multi-ICP accounts surfaces the newest ICP — but a user's kit is often
+  // attached to an older ICP. That mismatch caused activeKit to resolve as
+  // undefined for multi-ICP users (Step 0 empty-state, hidden dashboard
+  // sidebar), even though they had a valid kit. The "first ICP with a kit"
+  // default keeps single-ICP users unchanged and aligns multi-ICP users to
+  // the kit they're actually working on.
+  const activeIcp = isDemoMissing ? undefined : (() => {
+    if (!icpData) return undefined;
+    const firstKit = campaignKitsList?.[0];
+    if (firstKit) {
+      const matching = icpData.find((i: { id: number }) => i.id === firstKit.icpId);
+      if (matching) return matching;
+    }
+    return icpData[0];
+  })();
 
   // ── Resolve the active campaign kit (Commit 7) ──
-  // Mirrors V2Dashboard.tsx:945 pattern: find kit by activeIcp.id. Kit auto-
-  // creates when ICP generates, so it'll be undefined until the user has
-  // completed the ICP step. Cascade in landingPage / adCopy dispatchers
+  // With the 7.1 activeIcp fix, this lookup matches reliably for
+  // multi-ICP-with-kit accounts. Cascade in landingPage / adCopy dispatchers
   // tolerates undefined and falls back to historical defaults.
   const activeKit = activeIcp && campaignKitsList
     ? campaignKitsList.find((k: { icpId: number; id: number; campaignType: string | null }) => k.icpId === activeIcp.id)
