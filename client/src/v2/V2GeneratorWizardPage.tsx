@@ -14,6 +14,7 @@ import { trpc } from "@/lib/trpc";
 export { STEP_LABELS };
 
 const VALID_STEPS: WizardStep[] = [
+  "campaignType",
   "service",
   "icp",
   "offer",

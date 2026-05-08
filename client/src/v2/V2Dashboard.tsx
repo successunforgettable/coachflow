@@ -393,6 +393,10 @@ export default function V2Dashboard() {
     return localStorage.getItem("v2_fork_dismissed") === "true";
   });
   const [isMobile, setIsMobile] = useState(false);
+  // ── Commit 7 (Item 7b): ICP switcher state for the kit sidebar ──
+  // Defaults to first ICP via `?? icpList?.[0]?.id` at the read site so the
+  // pre-Commit-7 single-ICP experience is preserved when only one ICP exists.
+  const [selectedIcpId, setSelectedIcpId] = useState<number | null>(null);
 
   // Detect mobile
   useEffect(() => {
@@ -925,6 +929,7 @@ export default function V2Dashboard() {
 
         {/* ── COMPONENT 2: 11-Step Winding Path (Guided) OR Tool Library ── */}
         {activeTab === "guided" ? (
+          <>
           <div style={{ display: "flex", gap: "0", alignItems: "flex-start", position: "relative" }}>
             <div className="v2-path-wrapper" style={{ flex: 1 }}>
               {nodes.map((node, idx) => {
@@ -943,8 +948,16 @@ export default function V2Dashboard() {
             </div>
             {/* Campaign Kit sidebar on dashboard */}
             {(() => {
-              const activeIcp = icpList?.[0];
+              // Commit 7 (Item 7b): ICP switcher resolves activeIcp from
+              // selectedIcpId when set, falls back to first ICP otherwise.
+              // Single-ICP users see no switcher; multi-ICP users get a
+              // <select> at the top of the sidebar to pick which ICP's kit
+              // they're viewing. Cross-ICP browsing flows through the
+              // all-my-kits inline section below the path (Item 7c).
+              const effectiveIcpId = selectedIcpId ?? icpList?.[0]?.id;
+              const activeIcp = effectiveIcpId ? icpList?.find((i: any) => i.id === effectiveIcpId) : undefined;
               const kit = activeIcp ? campaignKitsList?.find((k: any) => k.icpId === activeIcp.id) : null;
+              const hasMultipleIcps = (icpList?.length ?? 0) > 1;
               if (!kit) return null;
               const KIT_FIELDS = [
                 { label: "Offer", field: "selectedOfferId", num: 3 },
@@ -986,6 +999,29 @@ export default function V2Dashboard() {
                   }}>
                     🎯 Campaign Kit
                   </h3>
+                  {/* Commit 7 (Item 7b): ICP switcher — only renders for
+                      multi-ICP users; single-ICP users see no UI change. */}
+                  {hasMultipleIcps && (
+                    <select
+                      value={effectiveIcpId ?? ""}
+                      onChange={(e) => setSelectedIcpId(Number(e.target.value))}
+                      style={{
+                        width: "100%",
+                        padding: "6px 10px",
+                        fontSize: "12px",
+                        fontFamily: "var(--v2-font-body)",
+                        border: "1px solid #e5e0d8",
+                        borderRadius: "8px",
+                        background: "#fff",
+                        color: "var(--v2-text-dark, #1A1624)",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {icpList!.map((i: any) => (
+                        <option key={i.id} value={i.id}>{i.name || `ICP #${i.id}`}</option>
+                      ))}
+                    </select>
+                  )}
                   <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                     {KIT_FIELDS.map(f => {
                       const isFilled = (kit as any)[f.field] != null;
@@ -1071,6 +1107,101 @@ export default function V2Dashboard() {
               );
             })()}
           </div>
+          {/* ── Commit 7 (Item 7c): All-my-kits inline section ──
+              Renders below the path, lists every campaign kit across all
+              ICPs the user owns. Existing campaignKits.getByUser query
+              (line 280) returns rows joined with ICP name, so no new query
+              needed. Empty state hidden when user has zero kits. */}
+          {(campaignKitsList?.length ?? 0) > 0 && (
+            <section style={{ marginTop: "32px", marginRight: isMobile ? 0 : 240 }}>
+              <h3 style={{
+                fontFamily: "var(--v2-font-heading, 'Fraunces', serif)",
+                fontStyle: "italic",
+                fontWeight: 900,
+                fontSize: "20px",
+                color: "var(--v2-text-dark, #1A1624)",
+                margin: "0 0 16px",
+              }}>
+                All My Campaign Kits
+              </h3>
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(260px, 1fr))",
+                gap: "12px",
+              }}>
+                {campaignKitsList!.map((k: any) => {
+                  const KIT_FIELDS_ALL = [
+                    "selectedOfferId", "selectedMechanismId", "selectedHvcoId",
+                    "selectedHeadlineId", "selectedAdCopyId", "selectedLandingPageId",
+                    "selectedEmailSequenceId", "selectedWhatsAppSequenceId",
+                  ];
+                  const filledCount = KIT_FIELDS_ALL.filter(f => k[f] != null).length;
+                  const totalCount = KIT_FIELDS_ALL.length;
+                  const pctVal = Math.round((filledCount / totalCount) * 100);
+                  const isCompleteCard = filledCount === totalCount;
+                  return (
+                    <a
+                      key={k.id}
+                      href={`/v2-dashboard/campaign-kit/${k.id}`}
+                      style={{
+                        display: "block",
+                        padding: "16px 18px",
+                        background: "#fff",
+                        border: "1px solid #e5e0d8",
+                        borderRadius: "12px",
+                        textDecoration: "none",
+                        color: "inherit",
+                        transition: "border-color 0.15s ease, transform 0.12s ease",
+                      }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "var(--v2-primary-btn, #FF5B1D)"; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "#e5e0d8"; }}
+                    >
+                      <div style={{
+                        fontFamily: "var(--v2-font-body)",
+                        fontSize: "11px",
+                        fontWeight: 700,
+                        color: "#777",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.04em",
+                        marginBottom: "4px",
+                      }}>
+                        {k.icpName || `ICP #${k.icpId}`}
+                      </div>
+                      <div style={{
+                        fontFamily: "var(--v2-font-heading, 'Fraunces', serif)",
+                        fontStyle: "italic",
+                        fontWeight: 900,
+                        fontSize: "16px",
+                        color: "var(--v2-text-dark, #1A1624)",
+                        marginBottom: "10px",
+                      }}>
+                        {k.name || "Untitled Kit"}
+                      </div>
+                      <div style={{
+                        fontFamily: "var(--v2-font-body)",
+                        fontSize: "12px",
+                        color: "#555",
+                        marginBottom: "8px",
+                      }}>
+                        {k.campaignType ? k.campaignType.replace(/_/g, " ") : "Campaign type not set"}
+                        {" · "}
+                        {filledCount}/{totalCount} steps
+                      </div>
+                      <div style={{ height: 4, borderRadius: 2, background: "#e5e0d8", overflow: "hidden" }}>
+                        <div style={{
+                          height: "100%",
+                          width: `${pctVal}%`,
+                          background: isCompleteCard ? "#58CC02" : "var(--v2-primary-btn, #FF5B1D)",
+                          transition: "width 0.3s ease",
+                        }} />
+                      </div>
+                    </a>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+          </>
         ) : (
           <V2ToolLibrary />
         )}

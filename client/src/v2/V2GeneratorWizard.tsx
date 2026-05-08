@@ -85,6 +85,7 @@ const UTM_PATHS: Partial<Record<WizardStep, string>> = {
 };
 
 const LOCKED_COPY: Record<WizardStep, string> = {
+  campaignType: "",
   service: "",
   icp: "",
   offer: "",
@@ -156,6 +157,7 @@ interface AdvancedField {
 }
 
 const ADVANCED_FIELDS: Record<WizardStep, AdvancedField[]> = {
+  campaignType: [],
   service: [],
   icp: [
     { key: "name", label: "ICP Name / Label", type: "text", placeholder: "e.g. Mid-Career Professional", sourceNote: "Auto-generated from your service avatar" },
@@ -217,13 +219,31 @@ const ADVANCED_FIELDS: Record<WizardStep, AdvancedField[]> = {
     },
   ],
   adCopy: [],
-  landingPage: [],
+  landingPage: [
+    // Commit 7: expose all 5 server enum values
+    // (landingPages.ts:253). options[0] = "Sales Page" → maps to
+    // "sales_page", identical to the previous default at the server schema
+    // (landingPages.ts:259, .default("sales_page")).
+    {
+      key: "pageType",
+      label: "Page Type",
+      type: "select",
+      options: [
+        "Sales Page",
+        "Webinar Registration",
+        "Discovery Call Booking",
+        "Lead Magnet Download",
+        "Event Registration",
+      ],
+      sourceNote: "Pick the page structure. Defaults to Sales Page.",
+    },
+  ],
   emailSequence: [
     // Path B (friendly labels) — same shape as headlines's headlineStyle and
-    // uniqueMethod's descriptor. The server (commit 2 of Email Sequence wire,
-    // SHA b3e49db) accepts 6 enum values: welcome / engagement / sales /
-    // nurture / launch / re-engagement. The wizard intentionally exposes only
-    // 4 of them — engagement and sales are event-anchored and stay API-only.
+    // uniqueMethod's descriptor. Commit 7 expands the surface to all 10
+    // server-side enum values (welcome / engagement / sales / nurture /
+    // launch / re-engagement / discovery_call_confirmation /
+    // discovery_call_reminder / event_logistics / replay_for_no_shows).
     // Friendly labels are also the option values; the runGeneration branch
     // below maps each label to its server key via SEQUENCE_TYPE_LABEL_TO_KEY.
     // options[0] = "Welcome (...)" → maps to "welcome" → users who don't
@@ -234,14 +254,37 @@ const ADVANCED_FIELDS: Record<WizardStep, AdvancedField[]> = {
       type: "select",
       options: [
         "Welcome (3 emails over 5 days)",
+        "Engagement",
+        "Sales (cart-open sequence)",
         "Nurture (7 emails over 21 days)",
         "Launch (9 emails around cart-open window)",
         "Re-engagement (4 emails over 14 days)",
+        "Discovery Call Confirmation",
+        "Discovery Call Reminder",
+        "Event Logistics",
+        "Replay (for event no-shows)",
       ],
       sourceNote: "Pick the type of sequence you want. Defaults to Welcome.",
     },
   ],
   whatsappSequence: [
+    // Commit 7: expose all 6 server enum values
+    // (whatsappSequences.ts:711). options[0] = "Engagement" → maps to
+    // "engagement", identical to the previous hardcoded value at runGeneration.
+    {
+      key: "sequenceType",
+      label: "Sequence Type",
+      type: "select",
+      options: [
+        "Engagement",
+        "Sales (cart-open sequence)",
+        "Nurture",
+        "Discovery Call Confirmation",
+        "Discovery Call Reminder",
+        "Event Logistics",
+      ],
+      sourceNote: "Pick the type of sequence you want. Defaults to Engagement.",
+    },
     // sequenceLength options stored as strings (HTML <select> constraint);
     // converted to numeric literal at the runGeneration read site below to
     // match the server's z.union([z.literal(3), z.literal(5), z.literal(7)])
@@ -1388,6 +1431,12 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
   const generateLandingPageAsync = trpc.landingPages.generateAsync.useMutation();
   const generateEmailSequenceAsync = trpc.emailSequences.generateAsync.useMutation();
   const generateWhatsappSequenceAsync = trpc.whatsappSequences.generateAsync.useMutation();
+  // ── Commit 7: campaignKits.updateSelection mutation (used by Step 0 picker) ──
+  // The campaignKits.getByUser QUERY is co-located with the other tRPC list
+  // queries below (after isDemoMissing is declared). Server-side mutation is
+  // updateSelection (campaignKits.ts:140) — accepts campaignType nullable
+  // optional per the commit-7 comment at L152-154.
+  const updateKitMutation = trpc.campaignKits.updateSelection.useMutation();
   // Polling interval ref for background jobs
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -1497,6 +1546,13 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
     serviceId ? { serviceId } : undefined,
     { enabled: !isDemoMissing }
   );
+  // ── Commit 7: campaign kit query for campaignType cascade ──
+  // Drives Step 0 picker, landingPage pageType cascade, and adCopy CTA
+  // derivation (per locked spec Q-A/Q-D/Q-C).
+  const { data: campaignKitsList } = trpc.campaignKits.getByUser.useQuery(
+    undefined,
+    { enabled: !isDemoMissing }
+  );
 
   // ── Resolve the active service ──
   const activeService = isDemoMissing ? undefined : (
@@ -1505,6 +1561,15 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
 
   // ── Resolve the active ICP ──
   const activeIcp = isDemoMissing ? undefined : icpData?.[0];
+
+  // ── Resolve the active campaign kit (Commit 7) ──
+  // Mirrors V2Dashboard.tsx:945 pattern: find kit by activeIcp.id. Kit auto-
+  // creates when ICP generates, so it'll be undefined until the user has
+  // completed the ICP step. Cascade in landingPage / adCopy dispatchers
+  // tolerates undefined and falls back to historical defaults.
+  const activeKit = activeIcp && campaignKitsList
+    ? campaignKitsList.find((k: { icpId: number; id: number; campaignType: string | null }) => k.icpId === activeIcp.id)
+    : undefined;
 
   // ── Demo state triggers (for screenshots) ──
   useEffect(() => {
@@ -1807,11 +1872,29 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
           setLatestHeadlineSetId(headlineResult.headlineSetId);
         }
       } else if (step === "adCopy") {
+        // Commit 7: derive CTA from activeKit?.campaignType per locked spec
+        // Q-C. Falls back to "Book a Free Call" (the prior hardcoded value)
+        // when no campaignType is set — preserves no-regression for kits
+        // pre-dating Step 0. Operator can edit the generated ad copy text
+        // post-generation; no Advanced field for inline override (kept tight
+        // per spec).
+        const CAMPAIGN_TO_CTA: Record<string, string> = {
+          discovery_call: "Book a Free Call",
+          webinar: "Save My Seat",
+          challenge: "Join the Challenge",
+          lead_magnet: "Download Now",
+          course_launch: "Enroll Now",
+          product_launch: "Get Instant Access",
+          in_person_event: "Reserve My Spot",
+        };
+        const adCallToAction = activeKit?.campaignType
+          ? (CAMPAIGN_TO_CTA[activeKit.campaignType] ?? "Book a Free Call")
+          : "Book a Free Call";
         const { jobId } = await generateAdCopyAsync.mutateAsync({
           serviceId: svcId,
           adType: "lead_gen",
           adStyle: "conversational",
-          adCallToAction: "Book a Free Call",
+          adCallToAction,
           targetMarket: svc?.targetCustomer || "",
           productCategory: svc?.category || "coaching",
           specificProductName: svc?.name || "",
@@ -1823,38 +1906,93 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
           setLatestAdSetId(adCopyResult.adSetId);
         }
       } else if (step === "landingPage") {
+        // Commit 7: read user-selected pageType from Advanced accordion.
+        // Server enum default is "sales_page" (landingPages.ts:259); wizard
+        // mirrors that as options[0] so users who don't touch Advanced get
+        // identical output to today UNLESS Step 0 campaignType is set, in
+        // which case the cascade default applies. Advanced override always
+        // wins. Cascade map per locked spec Q-D.
+        type LandingPageType =
+          | "sales_page"
+          | "webinar_registration"
+          | "discovery_call_booking"
+          | "lead_magnet_download"
+          | "event_registration";
+        const PAGE_TYPE_LABEL_TO_KEY: Record<string, LandingPageType> = {
+          "Sales Page": "sales_page",
+          "Webinar Registration": "webinar_registration",
+          "Discovery Call Booking": "discovery_call_booking",
+          "Lead Magnet Download": "lead_magnet_download",
+          "Event Registration": "event_registration",
+        };
+        const CAMPAIGN_TO_PAGE_TYPE: Record<string, LandingPageType> = {
+          webinar: "webinar_registration",
+          discovery_call: "discovery_call_booking",
+          lead_magnet: "lead_magnet_download",
+          in_person_event: "event_registration",
+          course_launch: "sales_page",
+          product_launch: "sales_page",
+          challenge: "sales_page",
+        };
+        const cascadeDefault: LandingPageType = activeKit?.campaignType
+          ? (CAMPAIGN_TO_PAGE_TYPE[activeKit.campaignType] ?? "sales_page")
+          : "sales_page";
+        const advPageTypeLabel = (payload.advancedOverrides as Record<string, string> | undefined)?.pageType;
+        const pageType: LandingPageType = advPageTypeLabel ? (PAGE_TYPE_LABEL_TO_KEY[advPageTypeLabel] ?? cascadeDefault) : cascadeDefault;
         const { jobId } = await generateLandingPageAsync.mutateAsync({
           serviceId: svcId,
+          pageType,
         });
         // Pass onProgress so the LoadingState shows "Generating angle X of 4…" in real time
         const lpResult = await pollJob(jobId, (label) => setProgressLabel(label));
         if (typeof lpResult.id === 'number') setLatestLandingPageId(lpResult.id);
       } else if (step === "emailSequence") {
         // Path B: UI shows friendly labels; map back to server keys here.
-        // Mirrors Headlines commit 3416aec pattern. Server enum has 6 values
-        // (b3e49db); wizard exposes 4 — engagement / sales remain API-only.
-        // No-regression: options[0] = "Welcome (3 emails over 5 days)" →
-        // resolves to "welcome", identical to the previous hardcoded value.
-        // sequenceType is REQUIRED on the server (z.enum, not .optional()),
-        // so the lookup falls back to "welcome" defensively if anything is
-        // off — never undefined.
-        const SEQUENCE_TYPE_LABEL_TO_KEY: Record<string, "welcome" | "nurture" | "launch" | "re-engagement"> = {
+        // Commit 7 expands to all 10 server enum values
+        // (emailSequences.ts:804). No-regression: options[0] = "Welcome (3
+        // emails over 5 days)" → resolves to "welcome", identical to the
+        // previous hardcoded value. sequenceType is REQUIRED on the server
+        // (z.enum, not .optional()), so the lookup falls back to "welcome"
+        // defensively if anything is off — never undefined.
+        type EmailSequenceKey =
+          | "welcome"
+          | "engagement"
+          | "sales"
+          | "nurture"
+          | "launch"
+          | "re-engagement"
+          | "discovery_call_confirmation"
+          | "discovery_call_reminder"
+          | "event_logistics"
+          | "replay_for_no_shows";
+        const SEQUENCE_TYPE_LABEL_TO_KEY: Record<string, EmailSequenceKey> = {
           "Welcome (3 emails over 5 days)": "welcome",
+          "Engagement": "engagement",
+          "Sales (cart-open sequence)": "sales",
           "Nurture (7 emails over 21 days)": "nurture",
           "Launch (9 emails around cart-open window)": "launch",
           "Re-engagement (4 emails over 14 days)": "re-engagement",
+          "Discovery Call Confirmation": "discovery_call_confirmation",
+          "Discovery Call Reminder": "discovery_call_reminder",
+          "Event Logistics": "event_logistics",
+          "Replay (for event no-shows)": "replay_for_no_shows",
         };
-        // Parallel name map — handles "re-engagement" → "Re-engagement"
-        // without a one-off capitalize helper. Same shape as the key map for
-        // readability and easy extension if a 5th wizard option is added.
-        const SEQUENCE_TYPE_NAME: Record<"welcome" | "nurture" | "launch" | "re-engagement", string> = {
+        // Parallel name map — used in the persisted sequence name
+        // ("${svc.name} — ${SEQUENCE_TYPE_NAME[sequenceType]}").
+        const SEQUENCE_TYPE_NAME: Record<EmailSequenceKey, string> = {
           welcome: "Welcome Sequence",
+          engagement: "Engagement Sequence",
+          sales: "Sales Sequence",
           nurture: "Nurture Sequence",
           launch: "Launch Sequence",
           "re-engagement": "Re-engagement Sequence",
+          discovery_call_confirmation: "Discovery Call Confirmation",
+          discovery_call_reminder: "Discovery Call Reminder",
+          event_logistics: "Event Logistics",
+          replay_for_no_shows: "Replay Sequence",
         };
         const advLabel = (payload.advancedOverrides as Record<string, string> | undefined)?.sequenceType;
-        const sequenceType = advLabel ? (SEQUENCE_TYPE_LABEL_TO_KEY[advLabel] ?? "welcome") : "welcome";
+        const sequenceType: EmailSequenceKey = advLabel ? (SEQUENCE_TYPE_LABEL_TO_KEY[advLabel] ?? "welcome") : "welcome";
         const { jobId } = await generateEmailSequenceAsync.mutateAsync({
           serviceId: svcId,
           sequenceType,
@@ -1863,11 +2001,36 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
         const emailResult = await pollJob(jobId);
         if (typeof emailResult.id === 'number') setLatestEmailSequenceId(emailResult.id);
       } else if (step === "whatsappSequence") {
-        // Path C: read user-selected tone + sequenceLength from Advanced accordion.
-        // Schema enums match the UI options exactly (commit 2 of WhatsApp wire).
-        // If user hasn't touched Advanced, fieldValues defaults match the server
-        // schema defaults (length=3, tone="conversational"); behavior identical
-        // to today's production.
+        // Path C: read user-selected tone + sequenceLength + sequenceType from
+        // Advanced accordion. Schema enums match UI options exactly. If user
+        // hasn't touched Advanced, fieldValues defaults match the server schema
+        // defaults (type=engagement, length=3, tone=conversational); behavior
+        // identical to today's production.
+        type WhatsappSequenceKey =
+          | "engagement"
+          | "sales"
+          | "nurture"
+          | "discovery_call_confirmation"
+          | "discovery_call_reminder"
+          | "event_logistics";
+        const WA_SEQUENCE_TYPE_LABEL_TO_KEY: Record<string, WhatsappSequenceKey> = {
+          "Engagement": "engagement",
+          "Sales (cart-open sequence)": "sales",
+          "Nurture": "nurture",
+          "Discovery Call Confirmation": "discovery_call_confirmation",
+          "Discovery Call Reminder": "discovery_call_reminder",
+          "Event Logistics": "event_logistics",
+        };
+        const WA_SEQUENCE_TYPE_NAME: Record<WhatsappSequenceKey, string> = {
+          engagement: "Engagement Sequence",
+          sales: "Sales Sequence",
+          nurture: "Nurture Sequence",
+          discovery_call_confirmation: "Discovery Call Confirmation",
+          discovery_call_reminder: "Discovery Call Reminder",
+          event_logistics: "Event Logistics",
+        };
+        const advTypeLabel = (payload.advancedOverrides as Record<string, string> | undefined)?.sequenceType;
+        const waSequenceType: WhatsappSequenceKey = advTypeLabel ? (WA_SEQUENCE_TYPE_LABEL_TO_KEY[advTypeLabel] ?? "engagement") : "engagement";
         const advTone = (payload.advancedOverrides as Record<string, string> | undefined)?.tone as
           | "conversational"
           | "professional"
@@ -1877,8 +2040,8 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
         const advLength: 3 | 5 | 7 = advLengthRaw === "5" ? 5 : advLengthRaw === "7" ? 7 : 3;
         const { jobId } = await generateWhatsappSequenceAsync.mutateAsync({
           serviceId: svcId,
-          sequenceType: "engagement",
-          name: `${svc?.name || "My Service"} — Engagement Sequence`,
+          sequenceType: waSequenceType,
+          name: `${svc?.name || "My Service"} — ${WA_SEQUENCE_TYPE_NAME[waSequenceType]}`,
           tone: advTone ?? "conversational",
           sequenceLength: advLength,
         });
@@ -1902,7 +2065,7 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
         setStatus("error");
       }
     }
-  }, [step, activeService, generateIcpAsync, generateOfferAsync, generateHeroMechanismAsync, generateHvcoAsync, generateHeadlinesAsync, generateAdCopyAsync, generateLandingPageAsync, generateEmailSequenceAsync, generateWhatsappSequenceAsync, utils, pollIntervalRef]);
+  }, [step, activeService, activeKit, generateIcpAsync, generateOfferAsync, generateHeroMechanismAsync, generateHvcoAsync, generateHeadlinesAsync, generateAdCopyAsync, generateLandingPageAsync, generateEmailSequenceAsync, generateWhatsappSequenceAsync, utils, pollIntervalRef]);
 
   // ── Generate Now handler ──
   function handleGenerateNow() {
@@ -1982,6 +2145,106 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
         onBack={onBack}
         onComplete={() => navigate("/v2-dashboard/wizard/icp")}
       />
+    );
+  }
+
+  // ── Commit 7: campaignType picker (Step 0) ──
+  // Renders inline (mirrors service early-return pattern). Persists to
+  // campaignKits.campaignType via updateSelection mutation. Cascade in
+  // landingPage / adCopy dispatchers reads activeKit?.campaignType.
+  // Empty state when activeKit is undefined (user must complete Service +
+  // ICP first — kit auto-creates on ICP generate per V2Dashboard pattern).
+  if (step === "campaignType") {
+    type CampaignType =
+      | "webinar"
+      | "challenge"
+      | "course_launch"
+      | "product_launch"
+      | "discovery_call"
+      | "lead_magnet"
+      | "in_person_event";
+    const CAMPAIGN_TYPE_LABELS: Record<CampaignType, string> = {
+      webinar: "Webinar",
+      challenge: "Challenge",
+      course_launch: "Course Launch",
+      product_launch: "Product Launch",
+      discovery_call: "Discovery Call",
+      lead_magnet: "Lead Magnet",
+      in_person_event: "In-Person Event",
+    };
+    const currentValue = (activeKit?.campaignType ?? "") as CampaignType | "";
+    const handleChange = async (next: CampaignType) => {
+      if (!activeKit) return;
+      try {
+        await updateKitMutation.mutateAsync({ kitId: activeKit.id, campaignType: next });
+        utils.campaignKits.getByUser.invalidate();
+      } catch {
+        // Surface failure via existing error UX path; non-blocking otherwise.
+        setStatus("error");
+      }
+    };
+    return (
+      <V2Layout>
+        <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", padding: "48px 16px 64px" }}>
+          {onBack && (
+            <button
+              onClick={onBack}
+              style={{ alignSelf: "flex-start", marginBottom: "24px", fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#777", background: "none", border: "none", cursor: "pointer", padding: "0", display: "flex", alignItems: "center", gap: "6px" }}
+            >
+              ← Back to Campaign Path
+            </button>
+          )}
+          <div style={cardStyle}>
+            <h1 style={{ fontFamily: "var(--v2-font-heading)", fontStyle: "italic", fontWeight: 900, fontSize: "clamp(22px, 5vw, 30px)", color: "var(--v2-text-color)", lineHeight: 1.2, marginBottom: "16px", marginTop: 0, textAlign: "center" }}>
+              Pick Your Campaign Type
+            </h1>
+            <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "15px", color: "#555", lineHeight: 1.55, margin: "0 0 28px", textAlign: "center" }}>
+              This shapes downstream defaults: landing-page structure, ad CTA, and which sequence types we suggest.
+            </p>
+            {!activeKit ? (
+              <div style={{ textAlign: "center", padding: "16px 0" }}>
+                <ZappyMascot state="waiting" size={90} />
+                <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "15px", color: "#555", lineHeight: 1.55, margin: "20px 0 24px" }}>
+                  Complete your Service profile and ICP first — your campaign kit will be ready to set the type.
+                </p>
+                <button onClick={() => navigate("/v2-dashboard/wizard/service")} style={primaryBtnStyle}>
+                  Start with Service
+                </button>
+              </div>
+            ) : (
+              <>
+                <select
+                  value={currentValue}
+                  onChange={(e) => {
+                    const v = e.target.value as CampaignType | "";
+                    if (v) void handleChange(v);
+                  }}
+                  disabled={updateKitMutation.isPending}
+                  style={{ width: "100%", padding: "14px 16px", fontSize: "16px", fontFamily: "var(--v2-font-body)", border: "1px solid rgba(26,22,36,0.15)", borderRadius: "12px", background: "#fff", color: "var(--v2-text-color)", marginBottom: "12px", cursor: "pointer" }}
+                >
+                  <option value="" disabled>Select a campaign type…</option>
+                  {(Object.keys(CAMPAIGN_TYPE_LABELS) as CampaignType[]).map((key) => (
+                    <option key={key} value={key}>{CAMPAIGN_TYPE_LABELS[key]}</option>
+                  ))}
+                </select>
+                <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "13px", color: "#777", lineHeight: 1.5, margin: "0 0 24px" }}>
+                  You can change this later — cascade defaults reapply on the next generation.
+                </p>
+                <button
+                  onClick={() => {
+                    const next = getNextStep("campaignType");
+                    if (next) navigate(`/v2-dashboard/wizard/${next}`);
+                  }}
+                  disabled={!currentValue || updateKitMutation.isPending}
+                  style={{ ...primaryBtnStyle, opacity: !currentValue || updateKitMutation.isPending ? 0.55 : 1, cursor: !currentValue || updateKitMutation.isPending ? "not-allowed" : "pointer" }}
+                >
+                  Continue →
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </V2Layout>
     );
   }
 

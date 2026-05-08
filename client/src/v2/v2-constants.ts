@@ -5,6 +5,7 @@
  */
 
 export type WizardStep =
+  | "campaignType"
   | "service"
   | "icp"
   | "offer"
@@ -18,6 +19,7 @@ export type WizardStep =
   | "pushToMeta";
 
 export const STEP_LABELS: Record<WizardStep, string> = {
+  campaignType:      "Campaign Type",
   service:           "Your Service",
   icp:               "Ideal Customer Profile",
   offer:             "Sales Offer",
@@ -31,8 +33,13 @@ export const STEP_LABELS: Record<WizardStep, string> = {
   pushToMeta:        "Push to Meta / GoHighLevel",
 };
 
-// Ordered step sequence for "Continue to Next Step" navigation
+// Ordered step sequence for "Continue to Next Step" navigation.
+// Commit 7: campaignType is Step 0 — runs first so cascade (pageType, CTA)
+// has a value when downstream generation steps execute. Picker is gated on
+// activeKit existence (which requires Service + ICP); empty state directs the
+// user to complete those first.
 export const ORDERED_STEPS: WizardStep[] = [
+  "campaignType",
   "service",
   "icp",
   "offer",
@@ -56,6 +63,7 @@ export function getNextStep(step: WizardStep): WizardStep | null {
 
 // Map from path node id to wizard step key
 export const NODE_STEP_MAP: Record<string, WizardStep> = {
+  campaignType:      "campaignType",
   service:           "service",
   icp:               "icp",
   offer:             "offer",
