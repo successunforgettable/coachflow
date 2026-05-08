@@ -1707,6 +1707,32 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
     }
   }, [whatsappSeqList, latestWhatsappSequenceId, status]);
 
+  // ── Commit 7.2 (Bug 1): seed pageType field from cascade ──
+  // The dispatcher cascade fires at GENERATION time (Item 5) — pageType is
+  // correctly set on the LLM call. But the Advanced dropdown UI showed
+  // "Sales Page" preselected (options[0] static default), which read as
+  // "cascade not firing" to users. This effect overwrites the field default
+  // with the cascaded label whenever the user lands on the landingPage step
+  // with a campaignType set on the kit. User can still override in the
+  // dropdown — their choice persists until they leave the step or change
+  // campaignType.
+  useEffect(() => {
+    if (step !== "landingPage") return;
+    if (!activeKit?.campaignType) return;
+    const CAMPAIGN_TO_PAGE_TYPE_LABEL: Record<string, string> = {
+      webinar: "Webinar Registration",
+      discovery_call: "Discovery Call Booking",
+      lead_magnet: "Lead Magnet Download",
+      in_person_event: "Event Registration",
+      course_launch: "Sales Page",
+      product_launch: "Sales Page",
+      challenge: "Sales Page",
+    };
+    const cascadeLabel = CAMPAIGN_TO_PAGE_TYPE_LABEL[activeKit.campaignType];
+    if (!cascadeLabel) return;
+    setFieldValues(prev => ({ ...prev, pageType: cascadeLabel }));
+  }, [step, activeKit?.campaignType]);
+
   // ── Network loss listener (only active during generation) ──
   useEffect(() => {
     if (status !== "loading" && status !== "waiting") return;
@@ -2192,7 +2218,13 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
       if (!activeKit) return;
       try {
         await updateKitMutation.mutateAsync({ kitId: activeKit.id, campaignType: next });
-        utils.campaignKits.getByUser.invalidate();
+        // Commit 7.2 (Bug 2): refetch() instead of invalidate() — invalidate
+        // marks queries stale but doesn't immediately refetch; on a fast
+        // navigation away (Step 0 → other wizard step → back to dashboard)
+        // the dashboard's all-my-kits card could read the cached pre-update
+        // value before observing the stale flag. refetch() forces an
+        // immediate query update, eliminating the race.
+        await utils.campaignKits.getByUser.refetch();
       } catch {
         // Surface failure via existing error UX path; non-blocking otherwise.
         setStatus("error");
