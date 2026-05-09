@@ -655,14 +655,17 @@ export default function V2Dashboard() {
               fontWeight: 800,
               fontSize: "22px",
               color: "var(--v2-text-color)",
-              marginBottom: "12px",
+              marginBottom: "20px",
               lineHeight: 1.3,
               maxWidth: "420px",
             }}>
-              Let&apos;s build your first campaign. It starts with one sentence about what you do.
+              Let&apos;s build your first campaign.
             </h2>
+            {/* Auto Mode Phase A: two-CTA fork. Primary = let Zappy generate
+                everything from a paragraph; secondary = walk through the
+                wizard manually with full control. */}
             <button
-              onClick={() => navigate("/v2-dashboard/wizard/service")}
+              onClick={() => navigate("/v2-dashboard/auto-mode")}
               style={{
                 background: "var(--v2-primary-btn, #FF5B1D)",
                 color: "#fff",
@@ -673,7 +676,7 @@ export default function V2Dashboard() {
                 fontWeight: 700,
                 fontSize: "17px",
                 cursor: "pointer",
-                marginBottom: "14px",
+                marginBottom: "10px",
                 boxShadow: "0 4px 20px rgba(255,91,29,0.30)",
                 transition: "transform 0.15s ease, box-shadow 0.15s ease",
               }}
@@ -686,15 +689,57 @@ export default function V2Dashboard() {
                 (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 4px 20px rgba(255,91,29,0.30)";
               }}
             >
-              Define My Service
+              Have Zappy Build It For You
+            </button>
+            <p style={{
+              fontFamily: "var(--v2-font-body)",
+              fontSize: "13px",
+              color: "rgba(26,22,36,0.45)",
+              margin: "0 0 18px",
+              maxWidth: "320px",
+              lineHeight: 1.5,
+            }}>
+              Describe your business in a paragraph. Zappy generates everything in about 5 minutes.
+            </p>
+            <p style={{
+              fontFamily: "var(--v2-font-body)",
+              fontSize: "12px",
+              color: "rgba(26,22,36,0.40)",
+              margin: "0 0 18px",
+              fontWeight: 600,
+              letterSpacing: "0.04em",
+            }}>
+              — or —
+            </p>
+            <button
+              onClick={() => navigate("/v2-dashboard/wizard/service")}
+              style={{
+                background: "transparent",
+                color: "var(--v2-text-color)",
+                border: "1px solid rgba(26,22,36,0.15)",
+                borderRadius: "var(--v2-border-radius-pill, 999px)",
+                padding: "14px 36px",
+                fontFamily: "var(--v2-font-body)",
+                fontWeight: 600,
+                fontSize: "15px",
+                cursor: "pointer",
+                marginBottom: "10px",
+                transition: "border-color 0.15s ease",
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(26,22,36,0.35)"; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(26,22,36,0.15)"; }}
+            >
+              Set Up Manually
             </button>
             <p style={{
               fontFamily: "var(--v2-font-body)",
               fontSize: "13px",
               color: "rgba(26,22,36,0.45)",
               margin: 0,
+              maxWidth: "320px",
+              lineHeight: 1.5,
             }}>
-              Takes 2 minutes. Powers everything else.
+              Walk through each step yourself with full control.
             </p>
           </div>
         ) : null}

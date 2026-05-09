@@ -406,20 +406,137 @@ Return JSON with these exact fields:
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
-      
+
       // Verify ownership
       const [existing] = await db
         .select()
         .from(services)
         .where(and(eq(services.id, input.id), eq(services.userId, ctx.user.id)))
         .limit(1);
-      
+
       if (!existing) {
         throw new Error("Service not found");
       }
-      
+
       await db.delete(services).where(eq(services.id, input.id));
-      
+
       return { success: true };
+    }),
+
+  // ── Auto Mode Phase A — extractFromText ─────────────────────────────────
+  // Single LLM call: takes raw user-typed business description, returns a
+  // structured profile draft. NO DB writes. The user reviews + edits on the
+  // confirmation screen before any persistence happens via services.create
+  // and downstream icps.generateAsync.
+  //
+  // Output schema mirrors what services.create + icps.generate need
+  // downstream so the confirm screen can call those without translation.
+  // category enum constrained to the 3 values services.create accepts
+  // (coaching / speaking / consulting); LLM picks the closest fit when
+  // input describes something off-spec (e.g. "online course" → "consulting").
+  //
+  // Confidence rules + grounding rule documented in the system prompt.
+  // Per institutional finding from Sprint B regression v2 (handover §6),
+  // prompt uses positive-only directives — no "Wrong:/Right:" framing.
+  extractFromText: protectedProcedure
+    .input(z.object({
+      rawText: z.string().min(120, "Need at least 120 characters to extract a useful profile.").max(4000),
+    }))
+    .mutation(async ({ input }) => {
+      const systemPrompt = `You analyze raw business descriptions from coaches, speakers, and consultants and extract a structured business profile. Your output is JSON conforming to a strict schema. The user will review and edit your extraction on a confirmation screen — your job is to be accurate about what's actually present in the input, not to fabricate plausible-sounding fields where information is missing.
+
+OUTPUT FIELDS:
+
+- serviceName: the product or programme name as the user names it (≤ 60 chars). If a name appears in the input ("called X", "I sell Y", "my Z programme"), capture it verbatim. If no name is given, leave empty.
+
+- serviceCategory: one of [coaching, speaking, consulting]. Choose the closest match based on the delivery model described. If the input describes online courses, masterminds, agency services, or other models, pick the nearest of the three (typically "consulting" for agency/done-for-you, "coaching" for done-with-you and online courses, "speaking" for speaker/keynote work).
+
+- serviceDescription: a single sentence (≤ 200 chars) describing what they do, in the user's own framing. Mirror their language, not marketing language.
+
+- targetCustomer: who they help (≤ 120 chars). Capture the demographic + context the user describes (e.g., "senior leaders at fast-growing tech companies who feel exhausted after 10+ years"). If only generic ("business owners"), capture that and mark this field as low-grounding.
+
+- mainBenefit: the primary outcome they deliver (≤ 120 chars). Capture in the user's own outcome language.
+
+- icpDescriptor: a one-line ideal-customer descriptor for downstream ICP generation (≤ 150 chars). Combine targetCustomer specificity with the emotional / situational state the user mentioned.
+
+- confidence: "high" if all six content fields are clearly grounded in the input. "medium" if at least four are grounded and the rest are reasonable inferences from context. "low" if fewer than four are grounded — when the input is too short, too generic, or so vague the extraction would be guesswork.
+
+- lowConfidenceFields: array of field names where grounding is weak (e.g. ["targetCustomer", "mainBenefit"]). Empty array if confidence is "high".
+
+GROUNDING RULE:
+
+Leave a field as empty string ("") if you cannot infer it with reasonable confidence from the input. The user prefers an empty field they can type into over an invented field they have to delete. Empty fields automatically go into lowConfidenceFields.`;
+
+      const userPrompt = `RAW BUSINESS DESCRIPTION (entered by user):
+
+"""
+${input.rawText}
+"""
+
+Extract the structured business profile. Return JSON matching the schema.`;
+
+      const response = await invokeLLM({
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "auto_mode_intake_extraction",
+            strict: true,
+            schema: {
+              type: "object",
+              properties: {
+                serviceName: { type: "string" },
+                serviceCategory: { type: "string", enum: ["coaching", "speaking", "consulting"] },
+                serviceDescription: { type: "string" },
+                targetCustomer: { type: "string" },
+                mainBenefit: { type: "string" },
+                icpDescriptor: { type: "string" },
+                confidence: { type: "string", enum: ["high", "medium", "low"] },
+                lowConfidenceFields: { type: "array", items: { type: "string" } },
+              },
+              required: [
+                "serviceName",
+                "serviceCategory",
+                "serviceDescription",
+                "targetCustomer",
+                "mainBenefit",
+                "icpDescriptor",
+                "confidence",
+                "lowConfidenceFields",
+              ],
+              additionalProperties: false,
+            },
+          },
+        },
+      });
+
+      const rawContent = response.choices[0].message.content;
+      let extracted: {
+        serviceName: string;
+        serviceCategory: "coaching" | "speaking" | "consulting";
+        serviceDescription: string;
+        targetCustomer: string;
+        mainBenefit: string;
+        icpDescriptor: string;
+        confidence: "high" | "medium" | "low";
+        lowConfidenceFields: string[];
+      };
+      // Mirror the rawContent handling pattern from expandProfile (L248-260):
+      // some LLM backends return a parsed object directly instead of a JSON
+      // string. Strict json_schema response_format guarantees the shape; we
+      // just need to handle both representations.
+      if (typeof rawContent !== "string") {
+        extracted = rawContent as unknown as typeof extracted;
+      } else {
+        try {
+          extracted = JSON.parse(rawContent);
+        } catch {
+          throw new Error("Extraction returned invalid JSON. Please refine your description and try again.");
+        }
+      }
+      return extracted;
     }),
 });
