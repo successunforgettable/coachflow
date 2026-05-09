@@ -2,10 +2,9 @@ import { z } from "zod";
 import { randomUUID } from "crypto";
 import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
-import { offers, services, idealCustomerProfiles, sourceOfTruth, campaigns, jobs } from "../../drizzle/schema";
+import { offers, jobs } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
-import { generateAllOfferAngles } from "../offersGenerator";
-import { getCascadeContext } from "../_core/cascadeContext";
+import { runOfferGeneration } from "../offersGenerator";
 import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
@@ -79,18 +78,17 @@ export const offersRouter = router({
     }),
 
   // Generate offer with all 3 angles using AI (Godfather, Free, Dollar)
+  // Auto Mode Phase B1: thin wrapper around runOfferGeneration. Quota
+  // checks live here in the tRPC layer; the gen-core itself is in
+  // server/offersGenerator.ts and is callable directly by the orchestrator.
   generate: protectedProcedure
     .input(generateOfferSchema)
     .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
-
       // Check and reset quota if user's anniversary date has passed
       await checkAndResetQuotaIfNeeded(ctx.user.id);
 
       // Superusers have unlimited quota
       if (ctx.user.role !== "superuser") {
-        // Check quota limit
         const limit = getQuotaLimit(ctx.user.subscriptionTier, "offers");
         if (ctx.user.offerGeneratedCount >= limit) {
           throw new TRPCError({
@@ -100,124 +98,19 @@ export const offersRouter = router({
         }
       }
 
-      // Get service details with social proof (Issue 2 fix)
-      const [service] = await db
-        .select()
-        .from(services)
-        .where(
-          and(eq(services.id, input.serviceId), eq(services.userId, ctx.user.id))
-        )
-        .limit(1);
-
-      if (!service) {
-        throw new Error("Service not found");
-      }
-
-      // Campaign fetch — Item 1.1b (icpId support)
-      let campaignRecord;
-      if (input.campaignId) {
-        [campaignRecord] = await db.select().from(campaigns)
-          .where(and(eq(campaigns.id, input.campaignId), eq(campaigns.userId, ctx.user.id))).limit(1);
-      }
-
-      // ICP fetch — Item 1.1b: campaign-specific ICP first, serviceId fallback
-      let icp;
-      if (campaignRecord?.icpId) {
-        [icp] = await db.select().from(idealCustomerProfiles)
-          .where(eq(idealCustomerProfiles.id, campaignRecord.icpId)).limit(1);
-      }
-      if (!icp) {
-        [icp] = await db.select().from(idealCustomerProfiles)
-          .where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
-      }
-
-      // Cascade context — read upstream campaignKits selections for this ICP.
-      // Threaded through generateAllOfferAngles → generateOfferAngle as a
-      // function parameter (delegated-generator pattern). Must mirror the
-      // call in generateAsync.
-      const cascadeContext = await getCascadeContext(ctx.user.id, icp?.id, "offer");
-
-      const icpContext = icp ? [
-        'IDEAL CUSTOMER PROFILE — use this to make every offer specific and targeted:',
-        icp.objections ? `Their objections to buying: ${icp.objections}` : '',
-        icp.buyingTriggers ? `What makes them buy: ${icp.buyingTriggers}` : '',
-        icp.implementationBarriers ? `What stops them from taking action: ${icp.implementationBarriers}` : '',
-        icp.successMetrics ? `How they measure success: ${icp.successMetrics}` : '',
-      ].filter(Boolean).join('\n').trim() : '';
-
-      // SOT query — Item 1.4
-      const [sot] = await db
-        .select()
-        .from(sourceOfTruth)
-        .where(eq(sourceOfTruth.userId, ctx.user.id))
-        .limit(1);
-
-      const sotLines = sot ? [
-        sot.coreOffer        ? `Core offer: ${sot.coreOffer}` : '',
-        sot.targetAudience   ? `Target audience: ${sot.targetAudience}` : '',
-        sot.mainPainPoint    ? `Main pain point: ${sot.mainPainPoint}` : '',
-        sot.mainBenefits     ? `Main benefits: ${sot.mainBenefits}` : '',
-        sot.uniqueValue      ? `Unique value: ${sot.uniqueValue}` : '',
-        sot.idealCustomerAvatar ? `Ideal customer: ${sot.idealCustomerAvatar}` : '',
-      ].filter(Boolean) : [];
-
-      const sotContext = sotLines.length > 0
-        ? ['BRAND CONTEXT — this is the approved brand voice. All copy must be consistent with this:', ...sotLines].join('\n')
-        : '';
-
-      // Extract real social proof data — full structure matching offersGenerator.ts social proof guard
-      const socialProof = {
-        hasCustomers: !!service.totalCustomers && service.totalCustomers > 0,
-        hasTestimonials: !!service.testimonial1Name || !!service.testimonial2Name || !!service.testimonial3Name,
-        hasRating: !!service.averageRating && parseFloat(service.averageRating) > 0,
-        hasReviews: !!service.totalReviews && service.totalReviews > 0,
-        hasPress: !!service.pressFeatures && service.pressFeatures.trim().length > 0,
-        customerCount: service.totalCustomers || 0,
-        rating: service.averageRating || '',
-        reviewCount: service.totalReviews || 0,
-        testimonials: [
-          service.testimonial1Name ? { name: service.testimonial1Name, title: service.testimonial1Title || '', quote: service.testimonial1Quote || '' } : null,
-          service.testimonial2Name ? { name: service.testimonial2Name, title: service.testimonial2Title || '', quote: service.testimonial2Quote || '' } : null,
-          service.testimonial3Name ? { name: service.testimonial3Name, title: service.testimonial3Title || '', quote: service.testimonial3Quote || '' } : null,
-        ].filter(Boolean),
-        press: service.pressFeatures || '',
-      };
-
-      // Append SOT + ICP context to targetCustomer so it flows into the helper prompt — Item 1.2 + 1.4
-      const enrichedTargetCustomer = sotContext || icpContext
-        ? `${sotContext ? `${sotContext}\n\n` : ''}${service.targetCustomer || 'Target Customer'}${icpContext ? `\n\n${icpContext}` : ''}`
-        : service.targetCustomer || 'Target Customer';
-
-      // Generate all 3 angles in parallel with social proof + cascade
-      const allAngles = await generateAllOfferAngles(
-        service.name,
-        service.description || "",
-        enrichedTargetCustomer,
-        service.mainBenefit || "Main Benefit",
-        input.offerType,
-        socialProof,
-        cascadeContext,
-      );
-
-      // Save to database
-      const insertResult: any = await db.insert(offers).values({
+      const { offerId } = await runOfferGeneration({
         userId: ctx.user.id,
         serviceId: input.serviceId,
-        campaignId: input.campaignId || null,
-        productName: service.name,
+        campaignId: input.campaignId,
         offerType: input.offerType,
-        godfatherAngle: allAngles.godfather,
-        freeAngle: allAngles.free,
-        dollarAngle: allAngles.dollar,
-        activeAngle: "godfather",
-        rating: 0,
       });
 
-      // Fetch the created offer
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
       const [newOffer] = await db
         .select()
         .from(offers)
-        .where(eq(offers.id, insertResult[0].insertId))
+        .where(eq(offers.id, offerId))
         .limit(1);
 
       return newOffer;
@@ -226,6 +119,7 @@ export const offersRouter = router({
   /**
    * generateAsync — background job version of generate.
    * Returns jobId immediately; offer generation runs via setImmediate.
+   * Auto Mode Phase B1: thin wrapper around runOfferGeneration.
    */
   generateAsync: protectedProcedure
     .input(generateOfferSchema)
@@ -240,111 +134,25 @@ export const offersRouter = router({
       }
       const db = await getDb();
       if (!db) throw new Error("Database not available");
-      const [service] = await db.select().from(services)
-        .where(and(eq(services.id, input.serviceId), eq(services.userId, user.id))).limit(1);
-      if (!service) throw new Error("Service not found");
-
-      let campaignRecord: any;
-      if (input.campaignId) {
-        [campaignRecord] = await db.select().from(campaigns)
-          .where(and(eq(campaigns.id, input.campaignId), eq(campaigns.userId, user.id))).limit(1);
-      }
-      let icp: any;
-      if (campaignRecord?.icpId) {
-        [icp] = await db.select().from(idealCustomerProfiles)
-          .where(eq(idealCustomerProfiles.id, campaignRecord.icpId)).limit(1);
-      }
-      if (!icp) {
-        [icp] = await db.select().from(idealCustomerProfiles)
-          .where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
-      }
-      const [sot] = await db.select().from(sourceOfTruth)
-        .where(eq(sourceOfTruth.userId, user.id)).limit(1);
-
-      // Cascade context — fetched during request, captured for setImmediate.
-      // Must mirror the call in generate.
-      const capturedCascadeContext = await getCascadeContext(user.id, icp?.id, "offer");
 
       const capturedInput = { ...input };
       const capturedUserId = user.id;
-      const capturedService = { ...service };
-      const capturedIcp = icp ? { ...icp } : undefined;
-      const capturedSot = sot ? { ...sot } : undefined;
 
       const jobId = randomUUID();
       await db.insert(jobs).values({ id: jobId, userId: String(capturedUserId), status: "pending" });
 
       setImmediate(async () => {
         try {
-          const bgDb = await getDb();
-          if (!bgDb) throw new Error("Database not available in background job");
-
-          const icpContext = capturedIcp ? [
-            'IDEAL CUSTOMER PROFILE — use this to make every offer specific and targeted:',
-            capturedIcp.objections ? `Their objections to buying: ${capturedIcp.objections}` : '',
-            capturedIcp.buyingTriggers ? `What makes them buy: ${capturedIcp.buyingTriggers}` : '',
-            capturedIcp.implementationBarriers ? `What stops them from taking action: ${capturedIcp.implementationBarriers}` : '',
-            capturedIcp.successMetrics ? `How they measure success: ${capturedIcp.successMetrics}` : '',
-          ].filter(Boolean).join('\n').trim() : '';
-
-          const sotLines = capturedSot ? [
-            capturedSot.coreOffer ? `Core offer: ${capturedSot.coreOffer}` : '',
-            capturedSot.targetAudience ? `Target audience: ${capturedSot.targetAudience}` : '',
-            capturedSot.mainPainPoint ? `Main pain point: ${capturedSot.mainPainPoint}` : '',
-            capturedSot.mainBenefits ? `Main benefits: ${capturedSot.mainBenefits}` : '',
-            capturedSot.uniqueValue ? `Unique value: ${capturedSot.uniqueValue}` : '',
-            capturedSot.idealCustomerAvatar ? `Ideal customer: ${capturedSot.idealCustomerAvatar}` : '',
-          ].filter(Boolean) : [];
-          const sotContext = sotLines.length > 0
-            ? ['BRAND CONTEXT — this is the approved brand voice. All copy must be consistent with this:', ...sotLines].join('\n')
-            : '';
-
-          // Full structure matching offersGenerator.ts social proof guard
-          const socialProof = {
-            hasCustomers: !!capturedService.totalCustomers && capturedService.totalCustomers > 0,
-            hasTestimonials: !!capturedService.testimonial1Name || !!capturedService.testimonial2Name || !!capturedService.testimonial3Name,
-            hasRating: !!capturedService.averageRating && parseFloat(capturedService.averageRating) > 0,
-            hasReviews: !!capturedService.totalReviews && capturedService.totalReviews > 0,
-            hasPress: !!capturedService.pressFeatures && capturedService.pressFeatures.trim().length > 0,
-            customerCount: capturedService.totalCustomers || 0,
-            rating: capturedService.averageRating || '',
-            reviewCount: capturedService.totalReviews || 0,
-            testimonials: [
-              capturedService.testimonial1Name ? { name: capturedService.testimonial1Name, title: capturedService.testimonial1Title || '', quote: capturedService.testimonial1Quote || '' } : null,
-              capturedService.testimonial2Name ? { name: capturedService.testimonial2Name, title: capturedService.testimonial2Title || '', quote: capturedService.testimonial2Quote || '' } : null,
-              capturedService.testimonial3Name ? { name: capturedService.testimonial3Name, title: capturedService.testimonial3Title || '', quote: capturedService.testimonial3Quote || '' } : null,
-            ].filter(Boolean),
-            press: capturedService.pressFeatures || '',
-          };
-          const enrichedTargetCustomer = sotContext || icpContext
-            ? `${sotContext ? `${sotContext}\n\n` : ''}${capturedService.targetCustomer || 'Target Customer'}${icpContext ? `\n\n${icpContext}` : ''}`
-            : capturedService.targetCustomer || 'Target Customer';
-
-          const allAngles = await generateAllOfferAngles(
-            capturedService.name,
-            capturedService.description || "",
-            enrichedTargetCustomer,
-            capturedService.mainBenefit || "Main Benefit",
-            capturedInput.offerType,
-            socialProof,
-            capturedCascadeContext,
-          );
-
-          const insertResult: any = await bgDb.insert(offers).values({
+          const result = await runOfferGeneration({
             userId: capturedUserId,
             serviceId: capturedInput.serviceId,
-            campaignId: capturedInput.campaignId || null,
-            productName: capturedService.name,
+            campaignId: capturedInput.campaignId,
             offerType: capturedInput.offerType,
-            godfatherAngle: allAngles.godfather,
-            freeAngle: allAngles.free,
-            dollarAngle: allAngles.dollar,
-            activeAngle: "godfather",
-            rating: 0,
           });
-
+          const bgDb = await getDb();
+          if (!bgDb) throw new Error("Database not available in background job");
           await bgDb.update(jobs)
-            .set({ status: "complete", result: JSON.stringify({ offerId: insertResult[0].insertId }) })
+            .set({ status: "complete", result: JSON.stringify({ offerId: result.offerId }) })
             .where(eq(jobs.id, jobId));
           console.log(`[offers.generateAsync] Job ${jobId} completed`);
         } catch (err: unknown) {

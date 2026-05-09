@@ -1,290 +1,20 @@
 import { z } from "zod";
 import { randomUUID } from "crypto";
-import { nanoid } from "nanoid";
 import { protectedProcedure, router } from "../_core/trpc";
-import { invokeLLM } from "../_core/llm";
-import { getCascadeContext } from "../_core/cascadeContext";
-import { BANNED_HEADLINE_PATTERNS, META_COMPLIANCE_NOTES, NO_CREDENTIAL_FABRICATION_RULE, scoreAdContent } from "../_core/copywritingRules";
 import {
-  createHeadlines,
   getHeadlinesByUserId,
   getHeadlinesBySetId,
   updateHeadlineRating,
   deleteHeadlineSet,
-  incrementHeadlineCount,
 } from "../db";
-import { headlines, jobs } from "../../drizzle/schema";
+import { getDb } from "../db";
+import { jobs } from "../../drizzle/schema";
+import { eq } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
-import { checkCompliance } from "../lib/complianceChecker";
+import { runHeadlinesGeneration } from "../headlinesGenerator";
 
 // Helper to strip markdown code blocks from LLM responses
-function stripMarkdownJson(content: string): string {
-  return content.replace(/^```json\s*|^```\s*|\s*```$/gm, '').trim();
-}
-
-/**
- * Pre-compute compliance rewrites for a just-inserted headline set.
- *
- * Feature flag: ENABLE_COMPLIANCE_REWRITES. Off by default — when unset or
- * false this is a no-op so production sees no change until we flip it.
- *
- * Picks up every row in the set whose complianceScore is below the same
- * threshold the picker uses (70), re-derives the issue list (the
- * headlines table only stores the score, not the issues), asks Sonnet
- * for a compliant rewrite via rewriteForCompliance, and inserts rows
- * into complianceRewrites. Runs rewrites in parallel — each call is
- * ~2 s, so total latency is bounded by the slowest single rewrite.
- *
- * Best-effort: per-row failures are caught and logged. We never fail
- * the generate flow because a rewrite attempt threw. Free-tier cap is
- * also caught-and-skip here (trial users who've hit their cap simply
- * see the existing "1 issue" badge with no rewrite suggestion).
- */
-async function precomputeComplianceRewrites(
-  user: { id: number; subscriptionTier: string | null; role: string | null },
-  headlineSetId: string,
-  serviceNiche: string | null,
-): Promise<void> {
-  // Feature flag — ENABLE_COMPLIANCE_REWRITES gates the entire pre-compute path.
-  if (process.env.ENABLE_COMPLIANCE_REWRITES !== "true") return;
-
-  try {
-    const { getDb } = await import("../db");
-    const db = await getDb();
-    if (!db) return;
-    const { headlines: h, complianceRewrites } = await import("../../drizzle/schema");
-    const { eq, and, lt } = await import("drizzle-orm");
-    const { rewriteForCompliance } = await import("../_core/complianceRewrite");
-    const { enforceFreeTierRewriteCap } = await import("./complianceRewrites");
-
-    const flagged = await db
-      .select()
-      .from(h)
-      .where(and(
-        eq(h.userId, user.id),
-        eq(h.headlineSetId, headlineSetId),
-        lt(h.complianceScore, 70),
-      ));
-    if (flagged.length === 0) return;
-
-    // Free-tier cap: scoped per service. All rows in a set share the same
-    // serviceId (if any) — if multiple services appear in a single set we
-    // skip the whole set rather than partial-apply; documented in honest
-    // suggestions.
-    const serviceId = flagged.find(r => r.serviceId != null)?.serviceId ?? null;
-    if (serviceId != null) {
-      try { await enforceFreeTierRewriteCap(db, user, serviceId); }
-      catch (err) {
-        console.log(`[precomputeComplianceRewrites] free-tier cap hit for user ${user.id}, skipping set ${headlineSetId}`);
-        return;
-      }
-    }
-
-    const rowsToInsert: Array<typeof complianceRewrites.$inferInsert> = [];
-    await Promise.all(flagged.map(async (row) => {
-      // Skip rows whose service has been deleted — serviceId is notNull on
-      // complianceRewrites (denormalised for free-tier cap path).
-      if (row.serviceId == null) return;
-      try {
-        const c = await checkCompliance(row.headline);
-        if (c.issues.length === 0) return;
-        const r = await rewriteForCompliance(row.headline, c.issues, "headline", {
-          niche: serviceNiche,
-          mechanism: row.uniqueMechanism,
-          mainBenefit: row.desiredOutcome,
-        });
-        rowsToInsert.push({
-          userId: user.id,
-          serviceId: row.serviceId,
-          contentType: "headline",
-          sourceTable: "headlines",
-          sourceId: row.id,
-          originalText: row.headline,
-          rewrittenText: r.rewrite,
-          violationReasons: c.issues.map(i => i.reason),
-          complianceScore: r.score,
-          modelUsed: r.modelUsed,
-        });
-      } catch (err) {
-        console.warn(
-          `[precomputeComplianceRewrites] Skipped headline ${row.id}:`,
-          err instanceof Error ? err.message : err,
-        );
-      }
-    }));
-
-    if (rowsToInsert.length > 0) {
-      await db.insert(complianceRewrites).values(rowsToInsert);
-      console.log(`[precomputeComplianceRewrites] Inserted ${rowsToInsert.length} rewrite(s) for set ${headlineSetId}`);
-    }
-  } catch (err) {
-    // Defensive outer catch — never let a pre-compute failure kill the
-    // headline generation that already succeeded.
-    console.error(`[precomputeComplianceRewrites] unexpected failure for set ${headlineSetId}:`, err instanceof Error ? err.message : err);
-  }
-}
-
-// Industry standard
-const FORMULA_PROMPTS = {
-  story: `Generate 5 story-based headlines using this EXACT format:
-"How a [Triggering Event] Led/Pushed/Triggered a [Person] to [Discovery] that [Result]!"
-
-Context:
-- Target Market: {targetMarket}
-- Pressing Problem: {pressingProblem}
-- Desired Outcome: {desiredOutcome}
-- Unique Mechanism: {uniqueMechanism}
-
-Requirements:
-- Use varied triggering events (embarrassing moment, unexpected discovery, crisis, weekend event, etc.)
-- Make the person relatable to target market
-- Highlight the unique mechanism as the discovery
-- Promise the desired outcome as the result
-- Each headline should be 15-25 words
-- Return ONLY a JSON object with a "headlines" field containing the array of 5 headline strings, nothing else
-
-Example output format:
-{"headlines": ["How a Weekend Vegas Bender Led an Aspiring Crypto Newbie to Discover a Revolutionary 9-Step Blueprint that Generates $10k Monthly!", "How an Embarrassing Margin Call Pushed a Skeptical 30-Something Day-Trader to Unearth a Breakthrough System that Multiplies Crypto Earnings!", ...]}`,
-
-  eyebrow: `Generate 5 three-part headlines with eyebrow, main headline, and subheadline:
-
-Eyebrow format: "[Authority] Unveils/Reveals"
-Main format: "[Unique Mechanism] Turns [Audience] into [Result]"
-Subheadline format: "Without [Pain Point 1], [Pain Point 2] or [Pain Point 3]"
-
-Context:
-- Target Market: {targetMarket}
-- Pressing Problem: {pressingProblem}
-- Desired Outcome: {desiredOutcome}
-- Unique Mechanism: {uniqueMechanism}
-
-Requirements:
-- Eyebrow should establish authority/credibility
-- Main headline should feature the unique mechanism prominently
-- Subheadline should address 3 pain points from pressing problem
-- Return ONLY a JSON object with a "headlines" field containing the array of 5 objects with this structure: {"eyebrow": "...", "main": "...", "sub": "..."}
-
-Example output format:
-{"headlines": [{"eyebrow": "Award-winning Mind Coach Unveils", "main": "9-Step Crypto Wealth System Turns Beginners into $10k/Month Moneymakers", "sub": "Without Endless Hours Learning or Losing Money on Bad Trades"}, ...]}`,
-
-  question: `Generate 5 question-based headlines that highlight obstacles or mistakes:
-
-Format: "[Question about obstacle/mistake]?"
-
-Context:
-- Target Market: {targetMarket}
-- Pressing Problem: {pressingProblem}
-- Desired Outcome: {desiredOutcome}
-
-Requirements:
-- Frame as a question that makes reader think "yes, that's me"
-- Focus on hidden obstacles, sneaky pitfalls, or overlooked mistakes
-- Use words like "preventing", "stopping", "sabotaging", "devouring", "sapping"
-- Each question should be 10-20 words
-- Return ONLY a JSON object with a "headlines" field containing the array of 5 question strings, nothing else
-
-Example output format:
-{"headlines": ["One Sneaky Crypto Pitfall Preventing You from Generating a $10k Monthly Income?", "Could this Commonly Overlooked Crypto Risk be Sapping Your Potential Earnings?", ...]}`,
-
-  authority: `Generate 5 authority-based headlines with main headline and subheadline:
-
-Main format: "[Authority Figure] [Action] [Unique Mechanism] [Result]"
-Subheadline format: "This is why [Old Way 1], [Old Way 2], and [Old Way 3] have failed to produce [Desired Outcome]"
-
-Context:
-- Target Market: {targetMarket}
-- Pressing Problem: {pressingProblem}
-- Desired Outcome: {desiredOutcome}
-- Unique Mechanism: {uniqueMechanism}
-
-Requirements:
-- Authority figure should be credible (award-winning, published, certified, etc.) — BUT see system-prompt rule NO_CREDENTIAL_FABRICATION_RULE: do not invent these credentials. The credibility examples below are illustrative formula structure only; the system rule overrides them and instructs you to use real input-field credentials, bracketed [INSERT_*] placeholders, or generic role framing instead. The example output below predates that rule and is retained only for formula-shape guidance, not as content to copy.
-- Action verbs: unearthed, discovered, revealed, disclosed, unveiled
-- Subheadline should debunk 3 old/failed methods
-- Return ONLY a JSON object with a "headlines" field containing the array of 5 objects with this structure: {"main": "...", "sub": "..."}
-
-Example output format (formula structure only — credentials in this example are illustrative; do not copy them per NO_CREDENTIAL_FABRICATION_RULE):
-{"headlines": [{"main": "Award-Winning Mind Coach Unearthed Hidden 'Crypto Code' Transforming Newbies into Fortunate Investors", "sub": "This is why day trading, HODLing, and technical analysis have failed to produce consistent crypto income"}, ...]}`,
-
-  urgency: `Generate 5 urgency-based headlines with specific timeframes:
-
-Format: "[Action] [Unique Mechanism], and [Result] in [Timeframe]!"
-
-Context:
-- Target Market: {targetMarket}
-- Desired Outcome: {desiredOutcome}
-- Unique Mechanism: {uniqueMechanism}
-
-Requirements:
-- Start with action verbs: Discover, Unearth, Leverage, Unlock, Access
-- Include specific timeframe: "in 30 days", "in 6 months", "in just one month", "under 30 days"
-- Promise the desired outcome
-- Use exciting result language with specific concrete outcomes: "scale", "build", "deliver", "claim", "secure" — paired to a measurable result (e.g., "scale your booked-call rate to 8/week"). Do NOT use clickbait-puffery verbs like "skyrocket", "explode", "rains", "dominate", "crush" — these are banned per the system-prompt rule below and read as low-quality scam-ad copy.
-- Return ONLY a JSON object with a "headlines" field containing the array of 5 headline strings, nothing else
-
-Example output format:
-{"headlines": ["Unearth Crypto Millionaire Blueprint, and Pull in $10k in Under 30 Days!", "Discover 9-Step Program That Rains Passive-Income in 6 Months!", ...]}`,
-};
-
-// Per-formula tool-use schemas. Each wraps the formula's array shape inside an
-// `{ headlines: [...] }` object because Anthropic tool-use's input_schema
-// requires top-level type:"object". Three distinct shapes:
-//   - story / question / urgency: array of plain strings
-//   - eyebrow:                    array of {eyebrow, main, sub} objects
-//   - authority:                  array of {main, sub} objects
-const HEADLINE_STRING_ARRAY_SCHEMA = {
-  type: "object" as const,
-  properties: {
-    headlines: { type: "array", items: { type: "string" } },
-  },
-  required: ["headlines"],
-  additionalProperties: false,
-};
-const FORMULA_SCHEMAS = {
-  story: HEADLINE_STRING_ARRAY_SCHEMA,
-  question: HEADLINE_STRING_ARRAY_SCHEMA,
-  urgency: HEADLINE_STRING_ARRAY_SCHEMA,
-  eyebrow: {
-    type: "object" as const,
-    properties: {
-      headlines: {
-        type: "array",
-        items: {
-          type: "object",
-          properties: {
-            eyebrow: { type: "string" },
-            main: { type: "string" },
-            sub: { type: "string" },
-          },
-          required: ["eyebrow", "main", "sub"],
-          additionalProperties: false,
-        },
-      },
-    },
-    required: ["headlines"],
-    additionalProperties: false,
-  },
-  authority: {
-    type: "object" as const,
-    properties: {
-      headlines: {
-        type: "array",
-        items: {
-          type: "object",
-          properties: {
-            main: { type: "string" },
-            sub: { type: "string" },
-          },
-          required: ["main", "sub"],
-          additionalProperties: false,
-        },
-      },
-    },
-    required: ["headlines"],
-    additionalProperties: false,
-  },
-} as const;
 
 export const headlinesRouter = router({
   // List all headline sets for current user
@@ -362,6 +92,7 @@ export const headlinesRouter = router({
     }),
 
   // Generate new headline set (25 headlines: 5 per formula type, or 75 with Power Mode)
+  // Auto Mode Phase B1: thin wrapper around runHeadlinesGeneration.
   generate: protectedProcedure
     .input(
       z.object({
@@ -372,148 +103,13 @@ export const headlinesRouter = router({
         desiredOutcome: z.string(),
         uniqueMechanism: z.string(),
         powerMode: z.boolean().optional(),
-        // Headlines wire commit 1/2: per-style filter. Optional, no default.
-        // undefined → all 5 formulas (current behavior preserved).
-        // one of the 5 enum keys → only that formula runs.
-        // Enum keys are byte-identical to FORMULA_PROMPTS keys at L130-210.
-        // The "All styles" UI option is a client-side sentinel that coerces
-        // to undefined before the mutation; server only ever sees undefined
-        // or one of these 5 values.
         headlineStyle: z.enum(["story", "eyebrow", "question", "authority", "urgency"]).optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
-      // Fetch service data for AutoPop if serviceId provided
-      // NOTE: pre-existing issue — this fetch does not check userId (flagged for future security pass, not fixed in 1.2)
-      let autoPopData: any = {};
-      let icpContext = '';
-      let sotContext = '';
-      let cascadeContext = '';
-      // Workstream commit 2 — campaignType funnel-context. Empty when no
-      // campaign is loaded; populated inside the campaignId-present branch.
-      let campaignTypeContext = '';
-      if (input.serviceId) {
-        const { getDb } = await import("../db");
-        const { services, idealCustomerProfiles } = await import("../../drizzle/schema");
-        const { eq } = await import("drizzle-orm");
-        const db = await getDb();
-        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
-        const serviceData = await db.select().from(services).where(eq(services.id, input.serviceId)).limit(1);
-        if (serviceData.length > 0) {
-          const service = serviceData[0];
-          autoPopData = {
-            avatarName: service.avatarName,
-            avatarTitle: service.avatarTitle,
-            mechanismDescriptor: service.mechanismDescriptor,
-            // Item 1.3 — Rule 4: server-side fallbacks
-            resolvedPressingProblem: input.pressingProblem?.trim() || service.painPoints || "",
-            resolvedDesiredOutcome: input.desiredOutcome?.trim() || service.mainBenefit || "",
-            resolvedUniqueMechanism: input.uniqueMechanism?.trim() || service.uniqueMechanismSuggestion || "",
-            // W5 Phase 1 — niche passed to compliance rewrite prompt.
-            category: service.category,
-          };
-        }
-        // Campaign fetch — Item 1.1b (icpId support) + Workstream commit 2
-        // (campaignType funnel-context wire).
-        let campaignRecord;
-        if (input.campaignId) {
-          const { campaigns } = await import("../../drizzle/schema");
-          const { and: andOp } = await import("drizzle-orm");
-          [campaignRecord] = await db
-            .select()
-            .from(campaigns)
-            .where(andOp(eq(campaigns.id, input.campaignId), eq(campaigns.userId, ctx.user.id)))
-            .limit(1);
-        }
-
-        // ICP fetch — Item 1.1b: campaign-specific ICP first, serviceId fallback
-        let icp;
-        if (campaignRecord?.icpId) {
-          [icp] = await db.select().from(idealCustomerProfiles)
-            .where(eq(idealCustomerProfiles.id, campaignRecord.icpId)).limit(1);
-        }
-        if (!icp) {
-          [icp] = await db.select().from(idealCustomerProfiles)
-            .where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
-        }
-        if (icp) {
-          icpContext = [
-            'IDEAL CUSTOMER PROFILE — use this to make every line of copy specific and targeted:',
-            icp.pains ? `Their daily pains: ${icp.pains}` : '',
-            icp.fears ? `Their deep fears: ${icp.fears}` : '',
-            icp.buyingTriggers ? `What makes them buy: ${icp.buyingTriggers}` : '',
-          ].filter(Boolean).join('\n').trim();
-        }
-
-        // Workstream commit 2.5b — campaignType redirected from campaigns
-        // (V1) to campaignKits (V2 source-of-truth). The campaign-keyed wire
-        // from commit 2 was silently no-op for V2 users (V2 wizard never
-        // writes campaigns rows). Lookup keyed on (userId, icpId).
-        let campaignType: string = 'course_launch';
-        if (icp?.id) {
-          const { campaignKits } = await import("../../drizzle/schema");
-          const { and: andOp } = await import("drizzle-orm");
-          const [kit] = await db.select().from(campaignKits)
-            .where(andOp(eq(campaignKits.userId, ctx.user.id), eq(campaignKits.icpId, icp.id)))
-            .limit(1);
-          if (kit?.campaignType) {
-            campaignType = kit.campaignType;
-          }
-        }
-        const campaignTypeContextMap: Record<string, string> = {
-          webinar: `CAMPAIGN CONTEXT: Webinar
-The headline must give a reason to attend live — sell the event itself. Reference the show-up moment ("how I [outcome] in 60 minutes live"). Avoid evergreen-funnel language.`,
-
-          challenge: `CAMPAIGN CONTEXT: Challenge
-The headline must hint at a community doing this together over a fixed window. Daily-wins framing. Reference the challenge name or duration ("5-day", "21-day", "by [date]").`,
-
-          course_launch: `CAMPAIGN CONTEXT: Course Launch
-The headline must hint at transformation — who they are now vs who they will become. Cohort framing acceptable. Reference the programme outcome, not the lessons.`,
-
-          product_launch: `CAMPAIGN CONTEXT: Product Launch
-The headline must signal early access or founding-member status. Reference the new thing being launched, the access window, or the price ceiling.`,
-
-          discovery_call: `CAMPAIGN CONTEXT: Discovery Call
-The headline must invite a 1:1 conversation, not a course or event. Selectivity framing — application, qualification, fit-check. Avoid mass-event language.`,
-
-          lead_magnet: `CAMPAIGN CONTEXT: Lead Magnet
-The headline must promise a specific concrete asset (the title of the PDF, guide, training, swipe). No commitment. The asset name is often the headline.`,
-
-          in_person_event: `CAMPAIGN CONTEXT: In-Person Event
-The headline must signal physical presence — city, venue, date. Reference the room or the live experience. Avoid digital-event language.`,
-        };
-        campaignTypeContext = campaignTypeContextMap[campaignType] || campaignTypeContextMap['course_launch'];
-
-        // Cascade context — populate inside the same if-block that built icpContext.
-        // Must mirror the call in generateAsync.
-        cascadeContext = await getCascadeContext(ctx.user.id, icp?.id, "headlines");
-
-        // SOT query — Item 1.4
-        const { sourceOfTruth } = await import("../../drizzle/schema");
-        const [sot] = await db
-          .select()
-          .from(sourceOfTruth)
-          .where(eq(sourceOfTruth.userId, ctx.user.id))
-          .limit(1);
-        const sotLines = sot ? [
-          sot.coreOffer        ? `Core offer: ${sot.coreOffer}` : '',
-          sot.targetAudience   ? `Target audience: ${sot.targetAudience}` : '',
-          sot.mainPainPoint    ? `Main pain point: ${sot.mainPainPoint}` : '',
-          sot.mainBenefits     ? `Main benefits: ${sot.mainBenefits}` : '',
-          sot.uniqueValue      ? `Unique value: ${sot.uniqueValue}` : '',
-          sot.idealCustomerAvatar ? `Ideal customer: ${sot.idealCustomerAvatar}` : '',
-        ].filter(Boolean) : [];
-        sotContext = sotLines.length > 0
-          ? ['BRAND CONTEXT — this is the approved brand voice. All copy must be consistent with this:', ...sotLines].join('\n')
-          : '';
-      }
-
-      // Check and reset quota if user's anniversary date has passed
       await checkAndResetQuotaIfNeeded(ctx.user.id);
 
-      // Superusers have unlimited quota
       if (ctx.user.role !== "superuser") {
-        // Check quota (Pro plan: 6 per month)
         const maxHeadlines = ctx.user.subscriptionTier === "agency" ? 20 : 6;
         if (ctx.user.headlineGeneratedCount >= maxHeadlines) {
           throw new TRPCError({
@@ -523,198 +119,25 @@ The headline must signal physical presence — city, venue, date. Reference the 
         }
       }
 
-      const headlineSetId = nanoid();
-      const allHeadlines: Array<typeof headlines.$inferInsert> = [];
-      const countMultiplier = input.powerMode ? 3 : 1; // Power Mode generates 3x more
-
-      // Generate headlines for each formula type in PARALLEL via tool-use.
-      // Each formula's invokeLLM call passes a wrapped `{headlines: [...]}`
-      // schema matching its expected output shape; Anthropic's tool-use
-      // enforces the schema server-side. Parallelism brings wall-time from
-      // ~150-300s sequential to ~30-60s (max of 5 calls). allHeadlines
-      // is push'd to concurrently — JS is single-threaded so .push is
-      // atomic and safe across the parallel branches.
-      // Headlines wire commit 1/2: per-style filter (sync path).
-      // Filter predicate: when input.headlineStyle is undefined, the
-      // `!input.headlineStyle` branch is true so every entry passes through
-      // (preserves the all-5-formulas default). When input.headlineStyle is
-      // one of the 5 enum keys, only that single entry survives → 1-formula
-      // generation. The downstream Promise.all + forEach push to allHeadlines
-      // is iteration-size-agnostic (verified via trace before commit), so 1
-      // entry produces 5 headlines (or 15 with powerMode) and 5 entries
-      // produce 25 (or 75 with powerMode) — same scaling.
-      await Promise.all(
-        Object.entries(FORMULA_PROMPTS)
-          .filter(([k]) => !input.headlineStyle || k === input.headlineStyle)
-          .map(async ([formulaType, promptTemplate]) => {
-          // Modify prompt to generate 3x more if Power Mode is enabled
-          const modifiedTemplate = promptTemplate.replace(/Generate 5/g, `Generate ${5 * countMultiplier}`);
-          // Item 1.3 — use resolved values (server fallback from service record)
-          const resolvedPressingProblem = autoPopData.resolvedPressingProblem ?? input.pressingProblem;
-          const resolvedDesiredOutcome = autoPopData.resolvedDesiredOutcome ?? input.desiredOutcome;
-          const resolvedUniqueMechanism = autoPopData.resolvedUniqueMechanism ?? input.uniqueMechanism;
-          const prompt = modifiedTemplate
-            .replace(/{targetMarket}/g, input.targetMarket)
-            .replace(/{pressingProblem}/g, resolvedPressingProblem)
-            .replace(/{desiredOutcome}/g, resolvedDesiredOutcome)
-            .replace(/{uniqueMechanism}/g, resolvedUniqueMechanism);
-
-          // Inject SOT as outermost layer, then ICP — Item 1.2 + 1.4
-          // Workstream commit 2 — campaignType context injected alongside ICP.
-          const icpAndCampaignBlock = [icpContext, campaignTypeContext].filter(Boolean).join('\n\n');
-          const promptWithIcp = icpAndCampaignBlock ? prompt.replace(/\n\nGenerate /, `\n\n${icpAndCampaignBlock}\n\nGenerate `) : prompt;
-          const promptWithSot = sotContext ? `${sotContext}\n\n${promptWithIcp}` : promptWithIcp;
-
-          try {
-            const response = await invokeLLM({
-              messages: [
-                {
-                  role: "system",
-                  content: `You are an expert direct response copywriter specialising in Meta ad headlines for coaches, consultants and speakers. You apply a THREE-QUESTION TEST to every headline before including it:
-1. Does it name a specific person in a specific situation? (Not "coaches" but "coaches who've been running ads for 3 months with zero leads")
-2. Does it promise a specific outcome — not a vague benefit? (Not "more clients" but "8 discovery calls booked in the next 14 days")
-3. Could this headline ONLY be written for THIS service? (If it works equally well for any coach, rewrite it)
-
-BANNED OPENERS AND PHRASES — never generate headlines using these patterns:
-- ${BANNED_HEADLINE_PATTERNS.map(p => `"${p}..."`).join(', ')}, "Everything you need to..."
-- Generic power words used without specific context: skyrocket, explode, dominate, crush it, master
-
-MANDATORY: Every headline must contain at least ONE word that comes directly from the ICP's pain language, desire language, or niche-specific vocabulary — a word that signals to the ideal customer "this was written for me specifically."
-
-Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES}\n\n${NO_CREDENTIAL_FABRICATION_RULE}`,
-                },
-                { role: "user", content: cascadeContext + promptWithSot },
-              ],
-              response_format: {
-                type: "json_schema",
-                json_schema: {
-                  name: `headlines_${formulaType}`,
-                  strict: true,
-                  schema: FORMULA_SCHEMAS[formulaType as keyof typeof FORMULA_SCHEMAS],
-                },
-              },
-            });
-
-            const content = response.choices[0].message.content;
-            if (typeof content !== "string") {
-              throw new Error("Invalid LLM response");
-            }
-            const parsed = JSON.parse(stripMarkdownJson(content));
-
-            // Handle different formula types
-            if (formulaType === "story" || formulaType === "question" || formulaType === "urgency") {
-              // Simple string array
-              parsed.headlines.forEach((headline: string) => {
-                allHeadlines.push({
-                  userId: ctx.user.id,
-                  serviceId: input.serviceId,
-                  campaignId: input.campaignId,
-                  headlineSetId,
-                  formulaType: formulaType as any,
-                  headline,
-                  subheadline: null,
-                  eyebrow: null,
-                  targetMarket: input.targetMarket,
-                  pressingProblem: input.pressingProblem,
-                  desiredOutcome: input.desiredOutcome,
-                  uniqueMechanism: input.uniqueMechanism,
-                });
-              });
-            } else if (formulaType === "eyebrow") {
-              // Eyebrow + main + sub
-              parsed.headlines.forEach((item: { eyebrow: string; main: string; sub: string }) => {
-                allHeadlines.push({
-                  userId: ctx.user.id,
-                  serviceId: input.serviceId,
-                  campaignId: input.campaignId,
-                  headlineSetId,
-                  formulaType: "eyebrow",
-                  headline: item.main,
-                  subheadline: item.sub,
-                  eyebrow: item.eyebrow,
-                  targetMarket: input.targetMarket,
-                  pressingProblem: input.pressingProblem,
-                  desiredOutcome: input.desiredOutcome,
-                  uniqueMechanism: input.uniqueMechanism,
-                });
-              });
-            } else if (formulaType === "authority") {
-              // Main + sub
-              parsed.headlines.forEach((item: { main: string; sub: string }) => {
-                allHeadlines.push({
-                  userId: ctx.user.id,
-                  serviceId: input.serviceId,
-                  campaignId: input.campaignId,
-                  headlineSetId,
-                  formulaType: "authority",
-                  headline: item.main,
-                  subheadline: item.sub,
-                  eyebrow: null,
-                  targetMarket: input.targetMarket,
-                  pressingProblem: input.pressingProblem,
-                  desiredOutcome: input.desiredOutcome,
-                  uniqueMechanism: input.uniqueMechanism,
-                });
-              });
-            }
-          } catch (error) {
-            console.error(`Failed to generate ${formulaType} headlines:`, error);
-            throw new TRPCError({
-              code: "INTERNAL_SERVER_ERROR",
-              message: `Failed to generate ${formulaType} headlines`,
-            });
-          }
-        })
-      );
-
-      // Check compliance for all headlines and add compliance data.
-      // violationReasons is the ComplianceIssue[].reason list — stored so the
-      // warning panel can show the exact reasons and real issue count
-      // without re-running checkCompliance per render (W5 Phase 1 R2).
-      const headlinesWithCompliance = await Promise.all(
-        allHeadlines.map(async (headline) => {
-          const complianceResult = await checkCompliance(headline.headline, {
-            userId: ctx.user.id,
-            generatorType: 'headlines',
-            trackUsage: true,
-          });
-
-          return {
-            ...headline,
-            complianceScore: complianceResult.score,
-            complianceVersion: complianceResult.version,
-            complianceCheckedAt: new Date(),
-            selectionScore: String(scoreAdContent('headline', headline.headline ?? '')),
-            violationReasons: complianceResult.issues.length > 0
-              ? complianceResult.issues.map(i => i.reason)
-              : null,
-          };
-        })
-      );
-
-      // Save all headlines with compliance data
-      await createHeadlines(headlinesWithCompliance);
-      await incrementHeadlineCount(ctx.user.id);
-
-      // W5 Phase 1 — pre-compute compliant rewrites for flagged rows. No-op
-      // unless ENABLE_COMPLIANCE_REWRITES=true in the environment. The flag
-      // check lives inside precomputeComplianceRewrites so call sites stay
-      // one-liners.
-      await precomputeComplianceRewrites(
-        ctx.user,
-        headlineSetId,
-        autoPopData.category ?? null,
-      );
-
-      return {
-        headlineSetId,
-        count: allHeadlines.length,
-      };
+      return await runHeadlinesGeneration({
+        userId: ctx.user.id,
+        serviceId: input.serviceId,
+        campaignId: input.campaignId,
+        targetMarket: input.targetMarket,
+        pressingProblem: input.pressingProblem,
+        desiredOutcome: input.desiredOutcome,
+        uniqueMechanism: input.uniqueMechanism,
+        powerMode: input.powerMode,
+        headlineStyle: input.headlineStyle,
+        userSubscriptionTier: ctx.user.subscriptionTier ?? null,
+        userRole: ctx.user.role ?? null,
+      });
     }),
 
   /**
    * generateAsync — background job version of generate.
    * Returns jobId immediately; headline generation runs via setImmediate.
+   * Auto Mode Phase B1: thin wrapper around runHeadlinesGeneration.
    */
   generateAsync: protectedProcedure
     .input(z.object({
@@ -725,8 +148,6 @@ Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES
       desiredOutcome: z.string(),
       uniqueMechanism: z.string(),
       powerMode: z.boolean().optional(),
-      // Headlines wire commit 1/2: mirrors the sync schema. See comment
-      // above the sync `headlineStyle` field for full semantics.
       headlineStyle: z.enum(["story", "eyebrow", "question", "authority", "urgency"]).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
@@ -739,177 +160,44 @@ Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES
         }
       }
 
-      // Pre-fetch service/ICP/SOT data before firing setImmediate
-      let autoPopData: any = {};
-      let icpContext = '';
-      let sotContext = '';
-      let cascadeContext = '';
-      // Workstream commit 2 — campaignType funnel-context. Empty when no
-      // campaign is loaded; populated inside the campaignId-present branch.
-      let campaignTypeContext = '';
-      if (input.serviceId) {
-        const { getDb } = await import("../db");
-        const { services, idealCustomerProfiles, sourceOfTruth, campaigns, campaignKits } = await import("../../drizzle/schema");
-        const { eq, and: andOp } = await import("drizzle-orm");
-        const db = await getDb();
-        if (db) {
-          const serviceData = await db.select().from(services).where(eq(services.id, input.serviceId)).limit(1);
-          if (serviceData.length > 0) {
-            const service = serviceData[0];
-            autoPopData = { avatarName: service.avatarName, avatarTitle: service.avatarTitle, mechanismDescriptor: service.mechanismDescriptor, resolvedPressingProblem: input.pressingProblem?.trim() || service.painPoints || "", resolvedDesiredOutcome: input.desiredOutcome?.trim() || service.mainBenefit || "", resolvedUniqueMechanism: input.uniqueMechanism?.trim() || service.uniqueMechanismSuggestion || "", category: service.category };
-          }
-          let campaignRecord: any;
-          if (input.campaignId) {
-            [campaignRecord] = await db.select().from(campaigns).where(andOp(eq(campaigns.id, input.campaignId), eq(campaigns.userId, user.id))).limit(1);
-          }
-          let icp: any;
-          if (campaignRecord?.icpId) { [icp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.id, campaignRecord.icpId)).limit(1); }
-          if (!icp) { [icp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId!)).limit(1); }
-          if (icp) { icpContext = ['IDEAL CUSTOMER PROFILE — use this to make every line of copy specific and targeted:', icp.pains ? `Their daily pains: ${icp.pains}` : '', icp.fears ? `Their deep fears: ${icp.fears}` : '', icp.buyingTriggers ? `What makes them buy: ${icp.buyingTriggers}` : ''].filter(Boolean).join('\n').trim(); }
-
-          // Workstream commit 2.5b — campaignType redirected to campaignKits
-          // (V2 SoT). Mirror of sync path.
-          let campaignType: string = 'course_launch';
-          if (icp?.id) {
-            const [kit] = await db.select().from(campaignKits)
-              .where(andOp(eq(campaignKits.userId, user.id), eq(campaignKits.icpId, icp.id)))
-              .limit(1);
-            if (kit?.campaignType) {
-              campaignType = kit.campaignType;
-            }
-          }
-          const campaignTypeContextMap: Record<string, string> = {
-            webinar: `CAMPAIGN CONTEXT: Webinar\nThe headline must give a reason to attend live — sell the event itself. Reference the show-up moment ("how I [outcome] in 60 minutes live"). Avoid evergreen-funnel language.`,
-            challenge: `CAMPAIGN CONTEXT: Challenge\nThe headline must hint at a community doing this together over a fixed window. Daily-wins framing. Reference the challenge name or duration ("5-day", "21-day", "by [date]").`,
-            course_launch: `CAMPAIGN CONTEXT: Course Launch\nThe headline must hint at transformation — who they are now vs who they will become. Cohort framing acceptable. Reference the programme outcome, not the lessons.`,
-            product_launch: `CAMPAIGN CONTEXT: Product Launch\nThe headline must signal early access or founding-member status. Reference the new thing being launched, the access window, or the price ceiling.`,
-            discovery_call: `CAMPAIGN CONTEXT: Discovery Call\nThe headline must invite a 1:1 conversation, not a course or event. Selectivity framing — application, qualification, fit-check. Avoid mass-event language.`,
-            lead_magnet: `CAMPAIGN CONTEXT: Lead Magnet\nThe headline must promise a specific concrete asset (the title of the PDF, guide, training, swipe). No commitment. The asset name is often the headline.`,
-            in_person_event: `CAMPAIGN CONTEXT: In-Person Event\nThe headline must signal physical presence — city, venue, date. Reference the room or the live experience. Avoid digital-event language.`,
-          };
-          campaignTypeContext = campaignTypeContextMap[campaignType] || campaignTypeContextMap['course_launch'];
-
-          // Cascade context — populate inside the same if-block. Must mirror the call in generate.
-          cascadeContext = await getCascadeContext(user.id, icp?.id, "headlines");
-          const [sot] = await db.select().from(sourceOfTruth).where(eq(sourceOfTruth.userId, user.id)).limit(1);
-          const sotLines = sot ? [sot.coreOffer ? `Core offer: ${sot.coreOffer}` : '', sot.targetAudience ? `Target audience: ${sot.targetAudience}` : '', sot.mainPainPoint ? `Main pain point: ${sot.mainPainPoint}` : '', sot.mainBenefits ? `Main benefits: ${sot.mainBenefits}` : '', sot.uniqueValue ? `Unique value: ${sot.uniqueValue}` : '', sot.idealCustomerAvatar ? `Ideal customer: ${sot.idealCustomerAvatar}` : ''].filter(Boolean) : [];
-          sotContext = sotLines.length > 0 ? ['BRAND CONTEXT — this is the approved brand voice. All copy must be consistent with this:', ...sotLines].join('\n') : '';
-        }
-      }
-
-      const { getDb: getDbBg } = await import("../db");
-      const { eq: eqBg } = await import("drizzle-orm");
-      const dbForJob = await getDbBg();
-      if (!dbForJob) throw new Error("Database not available");
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
 
       const capturedInput = { ...input };
       const capturedUserId = user.id;
-      const capturedUserTier: string | null = user.subscriptionTier ?? null;
-      const capturedUserRole: string | null = user.role ?? null;
-      const capturedAutoPopData = { ...autoPopData };
-      const capturedIcpContext = icpContext;
-      const capturedSotContext = sotContext;
-      const capturedCascadeContext = cascadeContext;
-      // Workstream commit 2 — capture campaignType context for setImmediate.
-      const capturedCampaignTypeContext = campaignTypeContext;
+      const capturedUserTier = user.subscriptionTier ?? null;
+      const capturedUserRole = user.role ?? null;
 
       const jobId = randomUUID();
-      await dbForJob.insert(jobs).values({ id: jobId, userId: String(capturedUserId), status: "pending" });
+      await db.insert(jobs).values({ id: jobId, userId: String(capturedUserId), status: "pending" });
 
       setImmediate(async () => {
         try {
-          const bgDb = await getDbBg();
+          const result = await runHeadlinesGeneration({
+            userId: capturedUserId,
+            serviceId: capturedInput.serviceId,
+            campaignId: capturedInput.campaignId,
+            targetMarket: capturedInput.targetMarket,
+            pressingProblem: capturedInput.pressingProblem,
+            desiredOutcome: capturedInput.desiredOutcome,
+            uniqueMechanism: capturedInput.uniqueMechanism,
+            powerMode: capturedInput.powerMode,
+            headlineStyle: capturedInput.headlineStyle,
+            userSubscriptionTier: capturedUserTier,
+            userRole: capturedUserRole,
+          });
+          const bgDb = await getDb();
           if (!bgDb) throw new Error("Database not available in background job");
-          const countMultiplier = capturedInput.powerMode ? 3 : 1;
-          const headlineSetId = nanoid();
-          const allHeadlines: Array<typeof headlines.$inferInsert> = [];
-
-          // 5 formulas in parallel via tool-use; mirror of the sync
-          // generate path. ~30-60s wall-time vs ~150-300s sequential.
-          // Headlines wire commit 1/2: per-style filter (async path).
-          // Mirror of the sync filter at L487-area. Same predicate semantics:
-          // undefined headlineStyle → all 5 formulas; specific enum key → 1.
-          await Promise.all(
-            Object.entries(FORMULA_PROMPTS)
-              .filter(([k]) => !capturedInput.headlineStyle || k === capturedInput.headlineStyle)
-              .map(async ([formulaType, promptTemplate]) => {
-              const modifiedTemplate = (promptTemplate as string).replace(/Generate 5/g, `Generate ${5 * countMultiplier}`);
-              const resolvedPressingProblem = capturedAutoPopData.resolvedPressingProblem ?? capturedInput.pressingProblem;
-              const resolvedDesiredOutcome = capturedAutoPopData.resolvedDesiredOutcome ?? capturedInput.desiredOutcome;
-              const resolvedUniqueMechanism = capturedAutoPopData.resolvedUniqueMechanism ?? capturedInput.uniqueMechanism;
-              const prompt = modifiedTemplate
-                .replace(/{targetMarket}/g, capturedInput.targetMarket)
-                .replace(/{pressingProblem}/g, resolvedPressingProblem)
-                .replace(/{desiredOutcome}/g, resolvedDesiredOutcome)
-                .replace(/{uniqueMechanism}/g, resolvedUniqueMechanism);
-              // Workstream commit 2 — campaignType context injected alongside ICP.
-              const icpAndCampaignBlock = [capturedIcpContext, capturedCampaignTypeContext].filter(Boolean).join('\n\n');
-              const promptWithIcp = icpAndCampaignBlock ? prompt.replace(/\n\nGenerate /, `\n\n${icpAndCampaignBlock}\n\nGenerate `) : prompt;
-              const promptWithSot = capturedSotContext ? `${capturedSotContext}\n\n${promptWithIcp}` : promptWithIcp;
-
-              const response = await invokeLLM({
-                messages: [
-                  { role: "system", content: `You are an expert direct response copywriter specialising in Meta ad headlines for coaches, consultants and speakers. Every headline must pass the THREE-QUESTION TEST: specific person in specific situation, specific outcome, only writeable for this service. Banned openers: ${BANNED_HEADLINE_PATTERNS.join(', ')}. Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES}\n\n${NO_CREDENTIAL_FABRICATION_RULE}` },
-                  { role: "user", content: capturedCascadeContext + promptWithSot },
-                ],
-                response_format: {
-                  type: "json_schema",
-                  json_schema: {
-                    name: `headlines_${formulaType}`,
-                    strict: true,
-                    schema: FORMULA_SCHEMAS[formulaType as keyof typeof FORMULA_SCHEMAS],
-                  },
-                },
-              });
-              const content = response.choices[0].message.content;
-              if (typeof content !== "string") throw new Error("Invalid LLM response");
-              const parsed = JSON.parse(stripMarkdownJson(content));
-
-              if (formulaType === "story" || formulaType === "question" || formulaType === "urgency") {
-                parsed.headlines.forEach((headline: string) => allHeadlines.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId, headlineSetId, formulaType: formulaType as any, headline, subheadline: null, eyebrow: null, targetMarket: capturedInput.targetMarket, pressingProblem: capturedInput.pressingProblem, desiredOutcome: capturedInput.desiredOutcome, uniqueMechanism: capturedInput.uniqueMechanism }));
-              } else if (formulaType === "eyebrow") {
-                parsed.headlines.forEach((item: { eyebrow: string; main: string; sub: string }) => allHeadlines.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId, headlineSetId, formulaType: "eyebrow", headline: item.main, subheadline: item.sub, eyebrow: item.eyebrow, targetMarket: capturedInput.targetMarket, pressingProblem: capturedInput.pressingProblem, desiredOutcome: capturedInput.desiredOutcome, uniqueMechanism: capturedInput.uniqueMechanism }));
-              } else if (formulaType === "authority") {
-                parsed.headlines.forEach((item: { main: string; sub: string }) => allHeadlines.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId, headlineSetId, formulaType: "authority", headline: item.main, subheadline: item.sub, eyebrow: null, targetMarket: capturedInput.targetMarket, pressingProblem: capturedInput.pressingProblem, desiredOutcome: capturedInput.desiredOutcome, uniqueMechanism: capturedInput.uniqueMechanism }));
-              }
-            })
-          );
-
-          const headlinesWithCompliance = await Promise.all(allHeadlines.map(async (headline) => {
-            const complianceResult = await checkCompliance(headline.headline, { userId: capturedUserId, generatorType: 'headlines', trackUsage: true });
-            return {
-              ...headline,
-              complianceScore: complianceResult.score,
-              complianceVersion: complianceResult.version,
-              complianceCheckedAt: new Date(),
-              selectionScore: String(scoreAdContent('headline', headline.headline ?? '')),
-              // W5 Phase 1 R2 — ship the issue reasons to the client.
-              violationReasons: complianceResult.issues.length > 0 ? complianceResult.issues.map(i => i.reason) : null,
-            };
-          }));
-
-          await createHeadlines(headlinesWithCompliance);
-          await incrementHeadlineCount(capturedUserId);
-
-          // W5 Phase 1 — pre-compute compliant rewrites for flagged rows.
-          // No-op unless ENABLE_COMPLIANCE_REWRITES=true. Run before marking
-          // the job complete so the client sees headlines + rewrites atomically.
-          await precomputeComplianceRewrites(
-            { id: capturedUserId, subscriptionTier: capturedUserTier, role: capturedUserRole },
-            headlineSetId,
-            capturedAutoPopData.category ?? null,
-          );
-
           await bgDb.update(jobs)
-            .set({ status: "complete", result: JSON.stringify({ headlineSetId, count: allHeadlines.length }) })
-            .where(eqBg(jobs.id, jobId));
-          console.log(`[headlines.generateAsync] Job ${jobId} completed, headlineSetId: ${headlineSetId}`);
+            .set({ status: "complete", result: JSON.stringify(result) })
+            .where(eq(jobs.id, jobId));
+          console.log(`[headlines.generateAsync] Job ${jobId} completed, headlineSetId: ${result.headlineSetId}`);
         } catch (err: unknown) {
           const errorMessage = err instanceof Error ? err.message : String(err);
           console.error(`[headlines.generateAsync] Job ${jobId} failed:`, errorMessage);
           try {
-            const bgDb2 = await getDbBg();
-            if (bgDb2) await bgDb2.update(jobs).set({ status: "failed", error: errorMessage.slice(0, 1024) }).where(eqBg(jobs.id, jobId));
+            const bgDb2 = await getDb();
+            if (bgDb2) await bgDb2.update(jobs).set({ status: "failed", error: errorMessage.slice(0, 1024) }).where(eq(jobs.id, jobId));
           } catch { /* ignore */ }
         }
       });

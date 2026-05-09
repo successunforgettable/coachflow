@@ -7,7 +7,7 @@ import { getQuotaLimit } from "../quotaLimits";
 import { getDb } from "../db";
 import { landingPages, services, users, campaigns, idealCustomerProfiles, sourceOfTruth, jobs, campaignKits, offers, heroMechanisms, hvcoTitles, coachAssets, complianceRewrites } from "../../drizzle/schema";
 import { eq, and, desc, like } from "drizzle-orm";
-import { generateAllAngles } from "../landingPageGenerator";
+import { generateAllAngles, runLandingPageGeneration } from "../landingPageGenerator";
 import { getCascadeContext } from "../_core/cascadeContext";
 import { invokeLLM } from "../_core/llm";
 import { enforceQuota, incrementQuotaCount } from "../lib/quotaEnforcement";
@@ -325,297 +325,60 @@ export const landingPagesRouter = router({
     }),
 
   // Generate landing page with all 4 angles using AI
+  // Auto Mode Phase B1: thin wrapper around runLandingPageGeneration.
+  // Quota enforcement + sync-path fallback (no cascade context, no
+  // progress callback) live here in the tRPC layer; gen-core itself is
+  // in server/landingPageGenerator.ts and is callable directly by the
+  // orchestrator.
+  //
+  // NOTE: sync `generate` previously called generateAllAngles with
+  // cascadeContext="" (uncascaded by design — only async fired cascade).
+  // The B1 refactor preserves this by NOT setting up a fresh cascade
+  // path; runLandingPageGeneration's own cascade fetch surfaces the
+  // upstream selections regardless. If V1 sync callsites depend on the
+  // uncascaded behavior, that's now a behavioral change to flag.
   generate: protectedProcedure
     .input(generateLandingPageSchema)
     .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
-
       await enforceQuota(ctx.user.id, "landingPages");
-
-      // Check and reset quota if user's anniversary date has passed
       await checkAndResetQuotaIfNeeded(ctx.user.id);
 
-      // Check quota
-      const [user] = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, ctx.user.id))
-        .limit(1);
-
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      const [user] = await db.select().from(users).where(eq(users.id, ctx.user.id)).limit(1);
       if (!user) throw new Error("User not found");
 
-      // Superusers have unlimited quota
       if (user.role !== "superuser") {
-        const quotaLimits = {
-          trial: 2,
-          pro: 50,
-          agency: 500,
-        };
-
+        const quotaLimits = { trial: 2, pro: 50, agency: 500 };
         const limit = quotaLimits[user.subscriptionTier || "trial"];
         if (user.landingPageGeneratedCount >= limit) {
           throw new Error(`Landing page generation limit reached (${limit}). Please upgrade your plan.`);
         }
       }
 
-      // Get service details with social proof (Issue 2 fix)
-      const [service] = await db
-        .select()
-        .from(services)
-        .where(
-          and(eq(services.id, input.serviceId), eq(services.userId, ctx.user.id))
-        )
-        .limit(1);
-
-      if (!service) {
-        throw new Error("Service not found");
-      }
-
-      // SOT query — Item 1.4
-      const [sot] = await db
-        .select()
-        .from(sourceOfTruth)
-        .where(eq(sourceOfTruth.userId, ctx.user.id))
-        .limit(1);
-
-      const sotLines = sot ? [
-        sot.coreOffer        ? `Core offer: ${sot.coreOffer}` : '',
-        sot.targetAudience   ? `Target audience: ${sot.targetAudience}` : '',
-        sot.mainPainPoint    ? `Main pain point: ${sot.mainPainPoint}` : '',
-        sot.mainBenefits     ? `Main benefits: ${sot.mainBenefits}` : '',
-        sot.uniqueValue      ? `Unique value: ${sot.uniqueValue}` : '',
-        sot.idealCustomerAvatar ? `Ideal customer: ${sot.idealCustomerAvatar}` : '',
-      ].filter(Boolean) : [];
-
-      const sotContext = sotLines.length > 0
-        ? ['BRAND CONTEXT — this is the approved brand voice. All copy must be consistent with this:', ...sotLines].join('\n')
-        : '';
-
-      // Campaign fetch — Item 1.1b (icpId fallback for V1 callsites that
-      // pass campaignId). Workstream commit 2.5b separated the campaignType
-      // read from this V1-backward-compat ICP-derivation: campaignType now
-      // comes from campaignKits (V2 SoT), keyed on (userId, icpId), AFTER
-      // ICP resolution.
-      let icp: typeof idealCustomerProfiles.$inferSelect | undefined;
-
-      if (input.campaignId) {
-        const [campaign] = await db
-          .select()
-          .from(campaigns)
-          .where(and(
-            eq(campaigns.id, input.campaignId),
-            eq(campaigns.userId, ctx.user.id)
-          ))
-          .limit(1);
-
-        if (campaign?.icpId) {
-          [icp] = await db.select().from(idealCustomerProfiles)
-            .where(eq(idealCustomerProfiles.id, campaign.icpId)).limit(1);
-        }
-      }
-      // ICP serviceId fallback — Item 1.1b
-      if (!icp) {
-        [icp] = await db.select().from(idealCustomerProfiles)
-          .where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
-      }
-
-      // Workstream commit 2.5b — campaignType funnel-context redirected
-      // from campaigns (V1) to campaignKits (V2 source-of-truth). The
-      // campaign-keyed wire from earlier sprints was silently no-op for V2
-      // users (V2 wizard never writes campaigns rows). Lookup keyed on
-      // (userId, icpId). Default course_launch when no kit or null type.
-      let campaignType: string = 'course_launch';
-      if (icp?.id) {
-        const [kit] = await db.select().from(campaignKits)
-          .where(and(eq(campaignKits.userId, ctx.user.id), eq(campaignKits.icpId, icp.id)))
-          .limit(1);
-        if (kit?.campaignType) {
-          campaignType = kit.campaignType;
-        }
-      }
-      const icpContext = icp ? `
-IDEAL CUSTOMER PROFILE — use this to make every line of copy specific and targeted:
-${icp.pains ? `Their daily pains: ${icp.pains}` : ''}
-${icp.fears ? `Their deep fears: ${icp.fears}` : ''}
-${icp.objections ? `Their objections to buying: ${icp.objections}` : ''}
-${icp.buyingTriggers ? `What makes them buy: ${icp.buyingTriggers}` : ''}
-${icp.implementationBarriers ? `What stops them from taking action: ${icp.implementationBarriers}` : ''}
-${icp.successMetrics ? `How they measure success: ${icp.successMetrics}` : ''}
-`.trim() : '';
-
-      const campaignTypeContextMap: Record<string, string> = {
-        webinar: `CAMPAIGN TYPE: Webinar
-Framing: Show-up urgency — the live event is the vehicle. Copy must give a compelling reason to attend live, not just register.
-Urgency mechanism: Date and time of the webinar. Limited seats available.
-CTA language: Register now / Save your seat / Join us live on [date]`,
-
-        challenge: `CAMPAIGN TYPE: Challenge
-Framing: Community commitment — joining a group doing this together. Daily wins build momentum.
-Urgency mechanism: Challenge start date. Community closes when the challenge begins.
-CTA language: Join the challenge / Claim your spot / Start with us on [date]`,
-
-        course_launch: `CAMPAIGN TYPE: Course Launch
-Framing: Transformation journey — who they are now vs who they will become. Enrolment is the decision point.
-Urgency mechanism: Enrolment deadline. Cohort size is limited.
-CTA language: Enrol now / Join the programme / Claim your place before [date]`,
-
-        product_launch: `CAMPAIGN TYPE: Product Launch
-Framing: Early access and founding member status. First to experience something new.
-Urgency mechanism: Launch day price increase. Founding member pricing closes on launch day.
-CTA language: Get early access / Become a founding member / Lock in launch pricing`,
-      };
-
-      const campaignTypeContext = campaignTypeContextMap[campaignType] || campaignTypeContextMap['course_launch'];
-
-      // Extract real social proof data
-      const socialProof = {
-        hasCustomers: !!service.totalCustomers && service.totalCustomers > 0,
-        hasRating: !!service.averageRating && parseFloat(service.averageRating) > 0,
-        hasReviews: !!service.totalReviews && service.totalReviews > 0,
-        hasTestimonials: !!service.testimonial1Name || !!service.testimonial2Name || !!service.testimonial3Name,
-        hasPress: !!service.pressFeatures && service.pressFeatures.trim().length > 0,
-        customerCount: service.totalCustomers || 0,
-        rating: service.averageRating || '',
-        reviewCount: service.totalReviews || 0,
-        testimonials: [
-          service.testimonial1Name ? { name: service.testimonial1Name, title: service.testimonial1Title || '', quote: service.testimonial1Quote || '' } : null,
-          service.testimonial2Name ? { name: service.testimonial2Name, title: service.testimonial2Title || '', quote: service.testimonial2Quote || '' } : null,
-          service.testimonial3Name ? { name: service.testimonial3Name, title: service.testimonial3Title || '', quote: service.testimonial3Quote || '' } : null,
-        ].filter(Boolean),
-        press: service.pressFeatures || '',
-      };
-
-      // Issue 5: Parse avatar from comma-separated format (name, age, role, location)
-      let avatarName = input.avatarName || `${service.targetCustomer}`;
-      let avatarDescription = input.avatarDescription || service.description || "Target Customer";
-      
-      // If avatarName contains commas, parse it
-      if (avatarName.includes(',')) {
-        const parts = avatarName.split(',').map(p => p.trim());
-        if (parts.length >= 3) {
-          // Format: "Name, Age, Role, Location" or "Name, Age, Role"
-          const name = parts[0];
-          const role = parts[2];
-          avatarName = `${name} the ${role}`; // "Sarah the Marketing Director"
-          avatarDescription = parts.length >= 4 ? parts[3] : role; // Location or Role
-        } else if (parts.length === 2) {
-          // Format: "Name, Role"
-          const name = parts[0];
-          const role = parts[1];
-          avatarName = `${name} the ${role}`;
-          avatarDescription = role;
-        }
-        // Otherwise keep original format
-      }
-
-      // Append SOT + campaignType + ICP context to avatarDescription — Item 1.2 + 1.4 + 1.5
-      // Layer order: SOT → avatarDescription → campaignType → ICP
-      const enrichedAvatarDescription = [
-        sotContext || null,
-        avatarDescription || null,
-        campaignTypeContext || null,
-        icpContext || null,
-      ].filter(Boolean).join('\n\n');
-
-      // Build service-aware testimonial fallbacks
-      const fallbackTestimonials = [
-        {
-          headline: `Finally Achieving ${service.mainBenefit ?? 'Real Results'}`,
-          quote: `I was skeptical at first, but the results speak for themselves. If you are ${service.targetCustomer ?? 'looking for a change'}, this is exactly what you need.`,
-          name: service.avatarName ?? 'A Client',
-          location: service.avatarTitle ?? 'Satisfied Client'
-        },
-        {
-          headline: 'This Changed Everything For Me',
-          quote: `The approach is unlike anything else I have tried. Within weeks I could see real progress toward ${service.mainBenefit ?? 'my goals'}.`,
-          name: 'A Recent Client',
-          location: service.targetCustomer ?? 'Worldwide'
-        }
-      ];
-
-      // Generate all 4 angles in parallel with social proof (Issue 2 fix).
-      // Sync `generate` remains uncascaded by design; cascade is wired
-      // into generateAsync only. See server/_core/cascadeContext.ts.
-      // Workstream commit 5b — forward pageType through to the generator.
-      const allAnglesRaw = await generateAllAngles(
-        service.name,
-        service.description || "",
-        avatarName,
-        enrichedAvatarDescription,
-        socialProof,
-        undefined, // onAngleComplete — sync path doesn't track progress
-        "",        // cascadeContext — sync path uncascaded by design
-        input.pageType,
-      );
-
-      // Phase 3: regex pre-clean removed. Raw model output flows
-      // straight into the JSON column; the compliance rewrite engine
-      // handles flagged sections reactively via the precompute hook
-      // below, so any regex layer here would just be re-doing work the
-      // panel already shows the user.
-      const allAngles = {
-        original: allAnglesRaw.original as Record<string, unknown>,
-        godfather: allAnglesRaw.godfather as Record<string, unknown>,
-        free: allAnglesRaw.free as Record<string, unknown>,
-        dollar: allAnglesRaw.dollar as Record<string, unknown>,
-      };
-
-      // Save to database
-      const insertResult: any = await db.insert(landingPages).values({
+      const { landingPageId } = await runLandingPageGeneration({
         userId: ctx.user.id,
         serviceId: input.serviceId,
-        campaignId: input.campaignId || null,
-        productName: service.name,
-        productDescription: service.description || "",
-        avatarName,
-        avatarDescription,
-        originalAngle: allAngles.original,
-        godfatherAngle: allAngles.godfather,
-        freeAngle: allAngles.free,
-        dollarAngle: allAngles.dollar,
-        activeAngle: "original",
-        pageType: input.pageType,  // workstream commit 5b — persist pageType
-        rating: 0,
+        campaignId: input.campaignId,
+        avatarName: input.avatarName,
+        avatarDescription: input.avatarDescription,
+        pageType: input.pageType,
+        // No onProgress on sync path — tRPC sync mutation doesn't poll a job.
       });
 
-      // Update usage count
-      await db
-        .update(users)
-        .set({
-          landingPageGeneratedCount: user.landingPageGeneratedCount + 1,
-        })
-        .where(eq(users.id, ctx.user.id));
+      const [newPage] = await db.select().from(landingPages).where(eq(landingPages.id, landingPageId)).limit(1);
+      const [service] = await db.select().from(services).where(eq(services.id, input.serviceId)).limit(1);
 
-      await incrementQuotaCount(ctx.user.id, "landingPages");
-
-      // Fetch the created landing page
-      const [newPage] = await db
-        .select()
-        .from(landingPages)
-        .where(eq(landingPages.id, insertResult[0].insertId))
-        .limit(1);
-
-      // Auto-score and auto-select into campaign kit (non-blocking)
-      try {
-        const originalContent = JSON.stringify(allAngles.original);
-        const s = await scoreItem({ content: originalContent, nodeType: "landingPages", formulaType: "original" });
-        await db.update(landingPages).set({ selectionScore: String(s) } as any).where(eq(landingPages.id, insertResult[0].insertId));
-        const [relatedIcp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
-        if (relatedIcp) await autoSelectBest(ctx.user.id, relatedIcp.id, "selectedLandingPageId", insertResult[0].insertId);
-      } catch (e) { console.warn("[auto-select] landingPages failed:", e); }
-
-      // W5 Phase 3 — fire-and-forget compliance rewrite precompute on
-      // the active angle. setImmediate lets the user-facing return land
-      // immediately; the panel fetches rewrites on its own mount and
-      // sees them populate within ~60-90s. No-op when the flag is off.
-      const newPageId = insertResult[0].insertId;
+      // Compliance precompute fire-and-forget — kept in the wrapper so
+      // runX stays focused on producing the row; precompute runs async
+      // after the row exists. setImmediate lets the user-facing return
+      // land immediately.
       setImmediate(() => {
         precomputeLandingPageComplianceRewrites(
           { id: ctx.user.id, subscriptionTier: user.subscriptionTier ?? null, role: user.role ?? null },
-          newPageId,
-          service.category ?? null,
-        ).catch(err => console.warn(`[W5.precompute] landingPage id=${newPageId} sync-generate hook failed:`, err instanceof Error ? err.message : err));
+          landingPageId,
+          service?.category ?? null,
+        ).catch(err => console.warn(`[W5.precompute] landingPage id=${landingPageId} sync-generate hook failed:`, err instanceof Error ? err.message : err));
       });
 
       return newPage;
@@ -625,6 +388,11 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
    * generateAsync — background job version of generate.
    * Returns jobId immediately; landing page generation runs via setImmediate.
    */
+  // Auto Mode Phase B1: thin wrapper around runLandingPageGeneration.
+  // Network-error retry-once-after-30s preserved (the user-spec retry
+  // policy from prior workstream); both the initial run and the retry
+  // delegate to runX. writeProgress callback routes "Generating angle
+  // X of 4…" labels to the job's own progress field.
   generateAsync: protectedProcedure
     .input(generateLandingPageSchema)
     .mutation(async ({ ctx, input }) => {
@@ -641,137 +409,56 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
       }
       const [service] = await db.select().from(services).where(and(eq(services.id, input.serviceId), eq(services.userId, ctx.user.id))).limit(1);
       if (!service) throw new Error("Service not found");
-      const [sot] = await db.select().from(sourceOfTruth).where(eq(sourceOfTruth.userId, ctx.user.id)).limit(1);
-      // Workstream commit 2.5b — campaign-fetch retained only for V1
-      // backward-compat ICP fallback. campaignType now comes from
-      // campaignKits (V2 SoT) below.
-      let icp: any;
-      if (input.campaignId) {
-        const [campaign] = await db.select().from(campaigns).where(and(eq(campaigns.id, input.campaignId), eq(campaigns.userId, ctx.user.id))).limit(1);
-        if (campaign?.icpId) { [icp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.id, campaign.icpId)).limit(1); }
-      }
-      if (!icp) { [icp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1); }
-
-      // Workstream commit 2.5b — campaignType from campaignKits (V2 SoT).
-      let campaignType: string = 'course_launch';
-      if (icp?.id) {
-        const [kit] = await db.select().from(campaignKits)
-          .where(and(eq(campaignKits.userId, ctx.user.id), eq(campaignKits.icpId, icp.id)))
-          .limit(1);
-        if (kit?.campaignType) {
-          campaignType = kit.campaignType;
-        }
-      }
 
       const capturedInput = { ...input };
       const capturedUserId = ctx.user.id;
-      const capturedService = { ...service };
-      const capturedUser = { ...user };
-      const capturedIcp = icp ? { ...icp } : undefined;
-      const capturedSot = sot ? { ...sot } : undefined;
-      const capturedCampaignType = campaignType;
-
-      // Cascade context — fetched during request, captured for setImmediate.
-      // Per user spec: generateAsync only (sync deferred). Threaded through
-      // generateAllAngles → generateLandingPageAngle as a function parameter.
-      const capturedCascadeContext = await getCascadeContext(ctx.user.id, capturedIcp?.id, "landingPage");
+      const capturedUser = { id: user.id, subscriptionTier: user.subscriptionTier, role: user.role };
+      const capturedServiceCategory = service.category;
 
       const jobId = randomUUID();
       await db.insert(jobs).values({ id: jobId, userId: String(capturedUserId), status: "pending" });
 
-      // ── Pre-compute socialProof outside try so retry block can access it ──
-      const bgSocialProof = { hasCustomers: !!capturedService.totalCustomers && capturedService.totalCustomers > 0, hasRating: !!capturedService.averageRating && parseFloat(capturedService.averageRating) > 0, hasReviews: !!capturedService.totalReviews && capturedService.totalReviews > 0, hasTestimonials: !!capturedService.testimonial1Name || !!capturedService.testimonial2Name || !!capturedService.testimonial3Name, hasPress: !!capturedService.pressFeatures && capturedService.pressFeatures.trim().length > 0, customerCount: capturedService.totalCustomers || 0, rating: capturedService.averageRating || '', reviewCount: capturedService.totalReviews || 0, testimonials: [capturedService.testimonial1Name ? { name: capturedService.testimonial1Name, title: capturedService.testimonial1Title || '', quote: capturedService.testimonial1Quote || '' } : null, capturedService.testimonial2Name ? { name: capturedService.testimonial2Name, title: capturedService.testimonial2Title || '', quote: capturedService.testimonial2Quote || '' } : null, capturedService.testimonial3Name ? { name: capturedService.testimonial3Name, title: capturedService.testimonial3Title || '', quote: capturedService.testimonial3Quote || '' } : null].filter(Boolean), press: capturedService.pressFeatures || '' };
+      // ── Helper: write angle-progress to job record (caller passes to runX)
+      const makeWriteProgress = (bgDb: NonNullable<Awaited<ReturnType<typeof getDb>>>) => async (completed: number, total: number) => {
+        const label = completed < total
+          ? `Generating angle ${completed + 1} of ${total}…`
+          : `Finalising your landing page…`;
+        try {
+          await bgDb.update(jobs)
+            .set({ progress: JSON.stringify({ step: completed, total, label }) })
+            .where(eq(jobs.id, jobId));
+        } catch { /* non-fatal */ }
+      };
 
       setImmediate(async () => {
         try {
           const bgDb = await getDb();
           if (!bgDb) throw new Error("Database not available in background job");
 
-          const sotLines = capturedSot ? [capturedSot.coreOffer ? `Core offer: ${capturedSot.coreOffer}` : '', capturedSot.targetAudience ? `Target audience: ${capturedSot.targetAudience}` : '', capturedSot.mainPainPoint ? `Main pain point: ${capturedSot.mainPainPoint}` : '', capturedSot.mainBenefits ? `Main benefits: ${capturedSot.mainBenefits}` : '', capturedSot.uniqueValue ? `Unique value: ${capturedSot.uniqueValue}` : '', capturedSot.idealCustomerAvatar ? `Ideal customer: ${capturedSot.idealCustomerAvatar}` : ''].filter(Boolean) : [];
-          const sotContext = sotLines.length > 0 ? ['BRAND CONTEXT — this is the approved brand voice. All copy must be consistent with this:', ...sotLines].join('\n') : '';
-          const icpContext = capturedIcp ? `\nIDEAL CUSTOMER PROFILE — use this to make every line of copy specific and targeted:\n${capturedIcp.pains ? `Their daily pains: ${capturedIcp.pains}` : ''}\n${capturedIcp.fears ? `Their deep fears: ${capturedIcp.fears}` : ''}\n${capturedIcp.objections ? `Their objections to buying: ${capturedIcp.objections}` : ''}\n${capturedIcp.buyingTriggers ? `What makes them buy: ${capturedIcp.buyingTriggers}` : ''}\n${capturedIcp.implementationBarriers ? `What stops them from taking action: ${capturedIcp.implementationBarriers}` : ''}\n${capturedIcp.successMetrics ? `How they measure success: ${capturedIcp.successMetrics}` : ''}`.trim() : '';
+          const { landingPageId } = await runLandingPageGeneration({
+            userId: capturedUserId,
+            serviceId: capturedInput.serviceId,
+            campaignId: capturedInput.campaignId,
+            avatarName: capturedInput.avatarName,
+            avatarDescription: capturedInput.avatarDescription,
+            pageType: capturedInput.pageType,
+            onProgress: makeWriteProgress(bgDb),
+          });
 
-          const campaignTypeContextMap: Record<string, string> = { webinar: `CAMPAIGN TYPE: Webinar\nFraming: Show-up urgency. Copy must give a compelling reason to attend live.\nCTA language: Register now / Save your seat / Join us live on [date]`, challenge: `CAMPAIGN TYPE: Challenge\nFraming: Community commitment. Daily wins build momentum.\nCTA language: Join the challenge / Claim your spot / Start with us on [date]`, course_launch: `CAMPAIGN TYPE: Course Launch\nFraming: Transformation journey.\nCTA language: Enrol now / Join the programme / Claim your place before [date]`, product_launch: `CAMPAIGN TYPE: Product Launch\nFraming: Early access and founding member status.\nCTA language: Get early access / Become a founding member / Lock in launch pricing` };
-          const campaignTypeContext = campaignTypeContextMap[capturedCampaignType] || campaignTypeContextMap['course_launch'];
-
-          const socialProof = bgSocialProof;
-
-          let avatarName = capturedInput.avatarName || `${capturedService.targetCustomer}`;
-          let avatarDescription = capturedInput.avatarDescription || capturedService.description || "Target Customer";
-          if (avatarName.includes(',')) {
-            const parts = avatarName.split(',').map((p: string) => p.trim());
-            if (parts.length >= 3) { avatarName = `${parts[0]} the ${parts[2]}`; avatarDescription = parts.length >= 4 ? parts[3] : parts[2]; }
-            else if (parts.length === 2) { avatarName = `${parts[0]} the ${parts[1]}`; avatarDescription = parts[1]; }
-          }
-          const enrichedAvatarDescription = [sotContext || null, avatarDescription || null, campaignTypeContext || null, icpContext || null].filter(Boolean).join('\n\n');
-
-          // ── Helper: write real angle-progress to job record ──────────────────
-          const writeProgress = async (completed: number, total: number) => {
-            const label = completed < total
-              ? `Generating angle ${completed + 1} of ${total}…`
-              : `Finalising your landing page…`;
-            try {
-              await bgDb.update(jobs)
-                .set({ progress: JSON.stringify({ step: completed, total, label }) })
-                .where(eq(jobs.id, jobId));
-            } catch { /* non-fatal */ }
-          };
-
-          const asyncFallbackTestimonials = [
-            {
-              headline: `Finally Achieving ${capturedService.mainBenefit ?? 'Real Results'}`,
-              quote: `I was skeptical at first, but the results speak for themselves. If you are ${capturedService.targetCustomer ?? 'looking for a change'}, this is exactly what you need.`,
-              name: capturedService.avatarName ?? 'A Client',
-              location: capturedService.avatarTitle ?? 'Satisfied Client'
-            },
-            {
-              headline: 'This Changed Everything For Me',
-              quote: `The approach is unlike anything else I have tried. Within weeks I could see real progress toward ${capturedService.mainBenefit ?? 'my goals'}.`,
-              name: 'A Recent Client',
-              location: capturedService.targetCustomer ?? 'Worldwide'
-            }
-          ];
-          const allAnglesRaw2 = await generateAllAngles(capturedService.name, capturedService.description || "", avatarName, enrichedAvatarDescription, socialProof, writeProgress, capturedCascadeContext, capturedInput.pageType);
-          // Phase 3: regex pre-clean removed (see sync `generate` for
-          // rationale). Rewrite engine reactively replaces this layer.
-          const allAngles = {
-            original: allAnglesRaw2.original as Record<string, unknown>,
-            godfather: allAnglesRaw2.godfather as Record<string, unknown>,
-            free: allAnglesRaw2.free as Record<string, unknown>,
-            dollar: allAnglesRaw2.dollar as Record<string, unknown>,
-          };
-
-          const insertResult: any = await bgDb.insert(landingPages).values({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, productName: capturedService.name, productDescription: capturedService.description || "", avatarName, avatarDescription, originalAngle: allAngles.original, godfatherAngle: allAngles.godfather, freeAngle: allAngles.free, dollarAngle: allAngles.dollar, activeAngle: "original", pageType: capturedInput.pageType, rating: 0 });
-          await bgDb.update(users).set({ landingPageGeneratedCount: capturedUser.landingPageGeneratedCount + 1 }).where(eq(users.id, capturedUserId));
-          await incrementQuotaCount(capturedUserId, "landingPages");
-          const [newPage] = await bgDb.select().from(landingPages).where(eq(landingPages.id, insertResult[0].insertId)).limit(1);
-
-          // Auto-score and auto-select into campaign kit (non-blocking)
-          try {
-            const originalContent = JSON.stringify(allAngles.original);
-            const s = await scoreItem({ content: originalContent, nodeType: "landingPages", formulaType: "original" });
-            await bgDb.update(landingPages).set({ selectionScore: String(s) } as any).where(eq(landingPages.id, insertResult[0].insertId));
-            const [relatedIcp] = await bgDb.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, capturedInput.serviceId)).limit(1);
-            if (relatedIcp) await autoSelectBest(capturedUserId, relatedIcp.id, "selectedLandingPageId", insertResult[0].insertId);
-          } catch (e) { console.warn("[auto-select] landingPages async failed:", e); }
-
-          // W5 Phase 3 — fire-and-forget compliance precompute on the
-          // active angle. Mirror of the sync-generate hook above; runs
-          // before the job is marked complete so the panel sees rewrites
-          // shortly after the page resolves. No-op when flag is off.
-          const asyncPageId = insertResult[0].insertId;
+          // Compliance precompute fire-and-forget — wrapper concern,
+          // mirrors sync-generate hook.
           setImmediate(() => {
             precomputeLandingPageComplianceRewrites(
               { id: capturedUserId, subscriptionTier: capturedUser.subscriptionTier ?? null, role: capturedUser.role ?? null },
-              asyncPageId,
-              capturedService.category ?? null,
-            ).catch(err => console.warn(`[W5.precompute] landingPage id=${asyncPageId} async-generate hook failed:`, err instanceof Error ? err.message : err));
+              landingPageId,
+              capturedServiceCategory ?? null,
+            ).catch(err => console.warn(`[W5.precompute] landingPage id=${landingPageId} async-generate hook failed:`, err instanceof Error ? err.message : err));
           });
 
           await bgDb.update(jobs)
-            .set({ status: "complete", result: JSON.stringify({ id: newPage?.id }) })
+            .set({ status: "complete", result: JSON.stringify({ id: landingPageId }) })
             .where(eq(jobs.id, jobId));
-          console.log(`[landingPages.generateAsync] Job ${jobId} completed, landingPageId: ${newPage?.id}`);
+          console.log(`[landingPages.generateAsync] Job ${jobId} completed, landingPageId: ${landingPageId}`);
         } catch (err: unknown) {
           const errorMessage = err instanceof Error ? err.message : String(err);
           // ── Network-error auto-retry (once, 30-second delay) ─────────────────
@@ -790,18 +477,17 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
                   try {
                     const retryDb = await getDb();
                     if (!retryDb) throw new Error('Database not available on retry');
-                    const writeProgressRetry = async (completed: number, total: number) => {
-                      const label = completed < total ? `Generating angle ${completed + 1} of ${total}…` : `Finalising your landing page…`;
-                      try { await retryDb.update(jobs).set({ progress: JSON.stringify({ step: completed, total, label }) }).where(eq(jobs.id, jobId)); } catch { /* non-fatal */ }
-                    };
-                    const retryAvatarName = capturedInput.avatarName || `${capturedService.targetCustomer}`;
-                    const retryAvatarDescription = capturedInput.avatarDescription || capturedService.description || 'Target Customer';
-                    const retryAngles = await generateAllAngles(capturedService.name, capturedService.description || '', retryAvatarName, retryAvatarDescription, bgSocialProof, writeProgressRetry, capturedCascadeContext, capturedInput.pageType);
-                    const retryInsert: any = await retryDb.insert(landingPages).values({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, productName: capturedService.name, productDescription: capturedService.description || '', avatarName: retryAvatarName, avatarDescription: retryAvatarDescription, originalAngle: retryAngles.original, godfatherAngle: retryAngles.godfather, freeAngle: retryAngles.free, dollarAngle: retryAngles.dollar, activeAngle: 'original', pageType: capturedInput.pageType, rating: 0 });
-                    await retryDb.update(users).set({ landingPageGeneratedCount: capturedUser.landingPageGeneratedCount + 1 }).where(eq(users.id, capturedUserId));
-                    const [retryPage] = await retryDb.select().from(landingPages).where(eq(landingPages.id, retryInsert[0].insertId)).limit(1);
-                    await retryDb.update(jobs).set({ status: 'complete', result: JSON.stringify({ id: retryPage?.id }) }).where(eq(jobs.id, jobId));
-                    console.log(`[landingPages.generateAsync] Job ${jobId} retry succeeded, landingPageId: ${retryPage?.id}`);
+                    const { landingPageId: retryLandingPageId } = await runLandingPageGeneration({
+                      userId: capturedUserId,
+                      serviceId: capturedInput.serviceId,
+                      campaignId: capturedInput.campaignId,
+                      avatarName: capturedInput.avatarName,
+                      avatarDescription: capturedInput.avatarDescription,
+                      pageType: capturedInput.pageType,
+                      onProgress: makeWriteProgress(retryDb),
+                    });
+                    await retryDb.update(jobs).set({ status: 'complete', result: JSON.stringify({ id: retryLandingPageId }) }).where(eq(jobs.id, jobId));
+                    console.log(`[landingPages.generateAsync] Job ${jobId} retry succeeded, landingPageId: ${retryLandingPageId}`);
                   } catch (retryErr: unknown) {
                     const retryMsg = retryErr instanceof Error ? retryErr.message : String(retryErr);
                     console.error(`[landingPages.generateAsync] Job ${jobId} retry also failed:`, retryMsg);

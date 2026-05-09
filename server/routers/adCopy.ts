@@ -2,194 +2,12 @@ import { z } from "zod";
 import { randomUUID } from "crypto";
 import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
-import { adCopy, services, campaigns, campaignKits, idealCustomerProfiles, sourceOfTruth, jobs } from "../../drizzle/schema";
+import { adCopy, jobs } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
-import { invokeLLM } from "../_core/llm";
-import { getCascadeContext } from "../_core/cascadeContext";
-import { nanoid } from "nanoid";
 import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
-import { checkCompliance } from "../lib/complianceChecker";
-import { BANNED_HEADLINE_PATTERNS, META_COMPLIANCE_NOTES, NO_CREDENTIAL_FABRICATION_RULE, scoreAdContent } from "../_core/copywritingRules";
-
-function stripMarkdownJson(content: string): string {
-  return content.replace(/^```json\s*|^```\s*|\s*```$/gm, '').trim();
-}
-
-/**
- * Simple concurrency-limited map. Processes `items` in sequential chunks
- * of `limit`, with each chunk running its items in parallel. No external
- * dependency. Caps peak parallel work — critical for Sonnet calls inside
- * the precompute path, where a 30-row flagged ad set would otherwise fire
- * 30 × up-to-3-retries = 90 in-flight requests at once.
- */
-async function processInChunks<T, R>(
-  items: T[],
-  limit: number,
-  fn: (item: T, index: number) => Promise<R>,
-): Promise<R[]> {
-  const results: R[] = [];
-  for (let i = 0; i < items.length; i += limit) {
-    const chunk = items.slice(i, i + limit);
-    const chunkResults = await Promise.all(chunk.map((item, offset) => fn(item, i + offset)));
-    results.push(...chunkResults);
-  }
-  return results;
-}
-
-/**
- * W5 Phase 2 — pre-compute compliance rewrites for a just-inserted adCopy
- * set. Mirror of precomputeComplianceRewrites in headlines.ts but scoped
- * to sourceTable='adCopy' and keyed on adSetId.
- *
- * Feature flag: ENABLE_COMPLIANCE_REWRITES. Off by default — when unset
- * or false, this is a no-op.
- *
- * Picks up every adCopy row in the set whose complianceScore < 70
- * (regardless of contentType — headline/body/link all go through), asks
- * Sonnet for a compliant rewrite via rewriteForCompliance, inserts rows
- * into complianceRewrites with sourceTable='adCopy'. Runs rewrites in
- * parallel; per-row failures are caught and logged so a rewrite problem
- * never fails the generator.
- */
-async function precomputeAdCopyComplianceRewrites(
-  user: { id: number; subscriptionTier: string | null; role: string | null },
-  adSetId: string,
-  serviceNiche: string | null,
-): Promise<void> {
-  if (process.env.ENABLE_COMPLIANCE_REWRITES !== "true") return;
-
-  try {
-    const db = await getDb();
-    if (!db) return;
-    const { adCopy: adCopyTable, complianceRewrites } = await import("../../drizzle/schema");
-    const { eq: eqBg, and: andBg, lt: ltBg } = await import("drizzle-orm");
-    const { rewriteForCompliance } = await import("../_core/complianceRewrite");
-    const { enforceFreeTierRewriteCap } = await import("./complianceRewrites");
-
-    const flagged = await db
-      .select()
-      .from(adCopyTable)
-      .where(andBg(
-        eqBg(adCopyTable.userId, user.id),
-        eqBg(adCopyTable.adSetId, adSetId),
-        ltBg(adCopyTable.complianceScore, 70),
-      ));
-    console.log(`[W5.precompute] adCopy set=${adSetId} flagged=${flagged.length}`);
-    if (flagged.length === 0) return;
-
-    // Free-tier cap: scoped per service. If multiple services ever appeared
-    // in one adSet (shouldn't, but defensive) we bail rather than
-    // partial-apply.
-    const serviceId = flagged.find(r => r.serviceId != null)?.serviceId ?? null;
-    if (serviceId != null) {
-      try { await enforceFreeTierRewriteCap(db, user, serviceId); }
-      catch {
-        console.log(`[W5.precompute] adCopy free-tier cap hit for user ${user.id}, skipping set ${adSetId}`);
-        return;
-      }
-    }
-
-    const rowsToInsert: Array<typeof complianceRewrites.$inferInsert> = [];
-    // R2 concurrency cap: at most 5 Sonnet pipelines in flight at once.
-    // A single flagged adCopy set can have up to ~30 flagged rows and
-    // each rewrite can retry up to 3 times — unthrottled Promise.all
-    // risks 90 concurrent Sonnet requests, which would trip provider
-    // rate limits on large sets. 5 is conservative; bodies take 15-25s
-    // each so full 30-row worst case clears in ~2 min.
-    await processInChunks(flagged, 5, async (row) => {
-      if (row.serviceId == null) return;
-      try {
-        // Prefer stored reasons (just written by generateAsync) — same
-        // contract as the W5 R5 fix in generateMore.
-        const storedReasons = Array.isArray(row.violationReasons)
-          ? (row.violationReasons as unknown[]).filter((v): v is string => typeof v === "string")
-          : [];
-        let issues: Array<{ severity: "critical" | "warning" | "info"; phrase: string; reason: string; suggestion: string }>;
-        if (storedReasons.length > 0) {
-          issues = storedReasons.map(reason => ({
-            severity: "warning" as const,
-            phrase: "(stored)",
-            reason,
-            suggestion: "Rephrase to comply with Meta advertising policies",
-          }));
-        } else {
-          const live = await checkCompliance(row.content);
-          issues = live.issues;
-        }
-        if (issues.length === 0) {
-          console.log(`[W5.precompute] adCopy row=${row.id} contentType=${row.contentType} no issues — skipping`);
-          return;
-        }
-
-        const r = await rewriteForCompliance(row.content, issues, row.contentType, {
-          niche: serviceNiche,
-          mechanism: row.uniqueMechanism,
-          mainBenefit: row.desiredOutcome,
-        });
-        rowsToInsert.push({
-          userId: user.id,
-          serviceId: row.serviceId,
-          contentType: row.contentType,
-          sourceTable: "adCopy",
-          sourceId: row.id,
-          originalText: row.content,
-          rewrittenText: r.rewrite,
-          violationReasons: issues.map(i => i.reason),
-          complianceScore: r.score,
-          modelUsed: r.modelUsed,
-        });
-      } catch (err) {
-        console.warn(
-          `[W5.precompute] adCopy row=${row.id} contentType=${row.contentType} failed:`,
-          err instanceof Error ? err.message : err,
-        );
-      }
-    });
-
-    if (rowsToInsert.length > 0) {
-      await db.insert(complianceRewrites).values(rowsToInsert);
-      console.log(`[W5.precompute] adCopy inserted ${rowsToInsert.length} rewrite(s) for set ${adSetId}`);
-    }
-  } catch (err) {
-    console.error(`[W5.precompute] adCopy unexpected failure for set ${adSetId}:`, err instanceof Error ? err.message : err);
-  }
-}
-
-const META_COMPLIANCE_RULES = `
-CRITICAL COMPLIANCE RULES — Every piece of ad copy you generate MUST follow these rules without exception. These are Meta (Facebook/Instagram) advertising policy requirements.
-
-NEVER include:
-1. Income or earnings claims — Do NOT write: "make $10k/month", "earn passive income", "quit your 9-5", "replace your salary", "make money from home", "6-figure income", "financial freedom in 30 days"
-2. Guaranteed results — Do NOT write: "guaranteed", "100% results", "works every time", "proven to work for everyone"
-3. Specific transformation claims — Do NOT write: "lose 20kg in 30 days", "get abs in 6 weeks", "cure your anxiety", "fix your relationship overnight"
-4. Superlatives without qualification — Do NOT write: "#1 coach", "the best program", "world's greatest", "unbeatable results" (unless qualified with "in [specific verified category]")
-5. Sensationalist language — Do NOT write: "shocking secret", "they don't want you to know", "banned method", "underground technique", "what doctors won't tell you"
-6. False urgency or scarcity — Do NOT write: "only 3 spots left" (unless literally true), "offer expires tonight" (unless literally true), "last chance forever"
-7. Before/after transformation language — Do NOT write: "before I was broke, now I'm rich", "I used to be fat, now I'm thin" style claims
-8. Personal attribute targeting language — Do NOT write copy that singles out age, religion, race, sexual orientation, disability, health conditions, or financial hardship as audience identifiers
-9. Misleading claims — Do NOT imply celebrity endorsement, Meta endorsement, government approval, or scientific proof without verified evidence
-10. Prohibited CTAs — Do NOT use: "Click here to get rich", "Buy now before it's too late", "You'd be stupid not to"
-
-ALWAYS include:
-1. Results qualifier when making any outcome claim: use "results may vary", "typical results", "individual results will differ"
-2. Honest benefit language: focus on the process and experience, not guaranteed outcomes
-3. Approved CTA formats: "Learn More", "Sign Up", "Book a Call", "Get Started", "Download Free Guide", "Watch Free Training"
-4. Professional tone: authoritative but not sensationalist
-
-REFRAME THESE COMMON VIOLATIONS:
-- "Make $10k/month" → "Build a sustainable coaching income"
-- "Guaranteed results" → "A proven framework used by [X] coaches"
-- "Lose 20kg guaranteed" → "A structured approach to sustainable weight loss"
-- "Secret method" → "A counterintuitive approach that most coaches overlook"
-- "Quit your 9-5" → "Create a coaching business that fits your life"
-- "Only 3 spots left" → "Applications now open" (unless truly limited)
-
-Your output must be ad copy that could be submitted directly to Meta without triggering a policy violation review.
-
-${META_COMPLIANCE_NOTES}
-`;
+import { runAdCopyGeneration } from "../adCopyGenerator";
 
 const generateAdCopySchema = z.object({
   serviceId: z.coerce.number(),
@@ -354,18 +172,13 @@ export const adCopyRouter = router({
     }),
 
   // Generate ad copy using AI (Industry standard: 15 headlines, 15 bodies, 15 links)
+  // Auto Mode Phase B1: thin wrapper around runAdCopyGeneration.
   generate: protectedProcedure
     .input(generateAdCopySchema)
     .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
-
-      // Check and reset quota if user's anniversary date has passed
       await checkAndResetQuotaIfNeeded(ctx.user.id);
 
-      // Superusers have unlimited quota
       if (ctx.user.role !== "superuser") {
-        // Check quota limit
         const limit = getQuotaLimit(ctx.user.subscriptionTier, "adCopy");
         if (ctx.user.adCopyGeneratedCount >= limit) {
           throw new TRPCError({
@@ -375,534 +188,39 @@ export const adCopyRouter = router({
         }
       }
 
-      // Get service details with social proof (Issue 2 fix)
-      const [service] = await db
-        .select()
-        .from(services)
-        .where(
-          and(eq(services.id, input.serviceId), eq(services.userId, ctx.user.id))
-        )
-        .limit(1);
-
-      if (!service) {
-        throw new Error("Service not found");
-      }
-
-      // Campaign fetch — Item 1.1b (icpId support) + Workstream commit 2
-      // (campaignType funnel-context wire).
-      let campaignRecord;
-      if (input.campaignId) {
-        [campaignRecord] = await db
-          .select()
-          .from(campaigns)
-          .where(and(
-            eq(campaigns.id, input.campaignId),
-            eq(campaigns.userId, ctx.user.id)
-          ))
-          .limit(1);
-      }
-
-      // ICP fetch — Item 1.1b: campaign-specific ICP first, serviceId fallback
-      let icp;
-      if (campaignRecord?.icpId) {
-        [icp] = await db.select().from(idealCustomerProfiles)
-          .where(eq(idealCustomerProfiles.id, campaignRecord.icpId)).limit(1);
-      }
-      if (!icp) {
-        [icp] = await db.select().from(idealCustomerProfiles)
-          .where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
-      }
-
-      // Workstream commit 2.5b — campaignType funnel-context redirected
-      // from campaigns (V1) to campaignKits (V2 source-of-truth). The
-      // campaign-keyed wire from commit 2 was silently no-op for V2 users
-      // (V2 wizard never writes campaigns rows). campaignKits is keyed on
-      // (userId, icpId) and is auto-populated by V2's autoSelectBest flow.
-      // Same fallback shape: missing kit OR null campaignType → course_launch.
-      let campaignType: string = 'course_launch';
-      if (icp?.id) {
-        const [kit] = await db.select().from(campaignKits)
-          .where(and(eq(campaignKits.userId, ctx.user.id), eq(campaignKits.icpId, icp.id)))
-          .limit(1);
-        if (kit?.campaignType) {
-          campaignType = kit.campaignType;
-        }
-      }
-      const campaignTypeContextMap: Record<string, string> = {
-        webinar: `CAMPAIGN TYPE: Webinar
-Framing: Show-up urgency — the ad must give a compelling reason to attend live, not just register. Sell the event itself, not the offer behind it.
-Urgency mechanism: Date and time of the webinar. Limited seats available.
-CTA language: Register now / Save your seat / Join us live on [date]`,
-
-        challenge: `CAMPAIGN TYPE: Challenge
-Framing: Community commitment — the ad sells the experience of joining a group doing this together. Daily wins build momentum.
-Urgency mechanism: Challenge start date. Community closes when the challenge begins.
-CTA language: Join the challenge / Claim your spot / Start with us on [date]`,
-
-        course_launch: `CAMPAIGN TYPE: Course Launch
-Framing: Transformation journey — who they are now vs who they will become. Enrolment is the decision point.
-Urgency mechanism: Enrolment deadline. Cohort size is limited.
-CTA language: Enrol now / Join the programme / Claim your place before [date]`,
-
-        product_launch: `CAMPAIGN TYPE: Product Launch
-Framing: Early access and founding member status. First to experience something new.
-Urgency mechanism: Launch day price increase. Founding member pricing closes on launch day.
-CTA language: Get early access / Become a founding member / Lock in launch pricing`,
-
-        discovery_call: `CAMPAIGN TYPE: Discovery Call
-Framing: Selectivity and personal attention — the ad sells a free 1:1 conversation, not a mass event. Position the call as a fit-check, not a sales pitch.
-Urgency mechanism: Calendar availability is limited. Quality over quantity.
-CTA language: Book a discovery call / Apply for a call / Reserve your slot`,
-
-        lead_magnet: `CAMPAIGN TYPE: Lead Magnet
-Framing: Specific value before any pitch — the ad sells a single concrete asset (PDF, guide, training, swipe file) the reader can use today. No commitment.
-Urgency mechanism: None artificial. The asset itself is the hook. Avoid fake scarcity.
-CTA language: Get the free guide / Download free / Send me the [asset]`,
-
-        in_person_event: `CAMPAIGN TYPE: In-Person Event
-Framing: Physical-presence value — the ad sells the room, the people, the energy of being there in person. Specifics: city, venue, date.
-Urgency mechanism: Travel logistics + limited room capacity. Real seat limits.
-CTA language: Reserve your seat / Register for [city] / Save your spot at [venue]`,
-      };
-      const campaignTypeContext = campaignTypeContextMap[campaignType] || campaignTypeContextMap['course_launch'];
-
-      // Cascade context — read upstream campaignKits selections for this ICP
-      // and prepend to each LLM user-message. Must mirror the call in generateAsync.
-      const cascadeContext = await getCascadeContext(ctx.user.id, icp?.id, "adCopy");
-
-      const icpContext = icp ? `
-IDEAL CUSTOMER PROFILE — use this to make every line of copy specific and targeted:
-${icp.pains ? `Their daily pains: ${icp.pains}` : ''}
-${icp.fears ? `Their deep fears: ${icp.fears}` : ''}
-${icp.objections ? `Their objections to buying: ${icp.objections}` : ''}
-${icp.buyingTriggers ? `What makes them buy: ${icp.buyingTriggers}` : ''}
-${icp.communicationStyle ? `How they communicate: ${icp.communicationStyle}` : ''}
-`.trim() : '';
-
-      // SOT query — Item 1.4
-      const [sot] = await db
-        .select()
-        .from(sourceOfTruth)
-        .where(eq(sourceOfTruth.userId, ctx.user.id))
-        .limit(1);
-
-      const sotLines = sot ? [
-        sot.coreOffer        ? `Core offer: ${sot.coreOffer}` : '',
-        sot.targetAudience   ? `Target audience: ${sot.targetAudience}` : '',
-        sot.mainPainPoint    ? `Main pain point: ${sot.mainPainPoint}` : '',
-        sot.mainBenefits     ? `Main benefits: ${sot.mainBenefits}` : '',
-        sot.uniqueValue      ? `Unique value: ${sot.uniqueValue}` : '',
-        sot.idealCustomerAvatar ? `Ideal customer: ${sot.idealCustomerAvatar}` : '',
-      ].filter(Boolean) : [];
-
-      const sotContext = sotLines.length > 0
-        ? ['BRAND CONTEXT — this is the approved brand voice. All copy must be consistent with this:', ...sotLines].join('\n')
-        : '';
-
-      // Item 1.3 — Rule 4: server-side fallbacks (use input if provided, else fall back to service record)
-      const resolvedPressingProblem = input.pressingProblem?.trim() || service.painPoints || "";
-      const resolvedDesiredOutcome = input.desiredOutcome?.trim() || service.mainBenefit || "";
-      const resolvedUniqueMechanism = input.uniqueMechanism?.trim() || service.uniqueMechanismSuggestion || "";
-      const resolvedCredibleAuthority = input.credibleAuthority?.trim() || service.pressFeatures || "";
-      const resolvedFeaturedIn = input.featuredIn?.trim() || service.pressFeatures || "";
-      const resolvedNumberOfReviews = input.numberOfReviews?.trim() || service.totalReviews?.toString() || "";
-      const resolvedAverageReviewRating = input.averageReviewRating?.trim() || service.averageRating?.toString() || "";
-      const resolvedTotalCustomers = input.totalCustomers?.trim() || service.totalCustomers?.toString() || "";
-      const resolvedTestimonials = input.testimonials?.trim() ||
-        [service.testimonial1Quote, service.testimonial2Quote, service.testimonial3Quote]
-          .filter(Boolean).join(" | ") || "";
-
-      // Extract real social proof data
-      const socialProof = {
-        hasCustomers: !!service.totalCustomers && service.totalCustomers > 0,
-        hasRating: !!service.averageRating && parseFloat(service.averageRating) > 0,
-        hasReviews: !!service.totalReviews && service.totalReviews > 0,
-        hasTestimonials: !!service.testimonial1Name || !!service.testimonial2Name || !!service.testimonial3Name,
-        hasPress: !!service.pressFeatures && service.pressFeatures.trim().length > 0,
-        customerCount: service.totalCustomers || 0,
-        rating: service.averageRating || '',
-        reviewCount: service.totalReviews || 0,
-        press: service.pressFeatures || '',
-      };
-
-      const adSetId = nanoid();
-      const count = input.powerMode ? 30 : 15; // Power Mode generates 2x
-
-      const adTypeContext = input.adType === "lead_gen"
-        ? "Lead Generation (free webinar, consultation, download)"
-        : "E-commerce (direct product sale)";
-
-      // Generate Headlines with social proof guidance (Issue 2 fix)
-      const socialProofGuidance = socialProof.hasCustomers || socialProof.hasRating || socialProof.hasReviews
-        ? `REAL SOCIAL PROOF AVAILABLE - Use these verified numbers:
-- ${socialProof.customerCount} total customers
-- ${socialProof.rating} average rating
-- ${socialProof.reviewCount} reviews
-You MUST use these exact numbers when incorporating social proof. Do not fabricate or inflate.`
-        : `NO SOCIAL PROOF DATA PROVIDED - Use launch-safe alternatives:
-- Focus on benefit claims and outcomes ("Get X result")
-- Use curiosity hooks ("The method that...")
-- Use contrast ("Before vs After")
-- DO NOT mention customer counts, ratings, or reviews
-- DO NOT fabricate testimonials or statistics`;
-      
-      const headlinePrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ${count} high-converting ad HEADLINES for this service:
-
-Service: ${service.name}
-Category: ${service.category}
-Target Market: ${input.targetMarket}
-Product Category: ${input.productCategory}
-Specific Product Name: ${input.specificProductName}
-Pressing Problem: ${resolvedPressingProblem}
-Desired Outcome: ${resolvedDesiredOutcome}
-Unique Mechanism: ${resolvedUniqueMechanism || '[INSERT_UNIQUE_MECHANISM]'}
-Key Benefits: ${input.listBenefits || '[INSERT_KEY_BENEFITS]'}
-Specific Technology: ${input.specificTechnology || '[INSERT_SPECIFIC_TECHNOLOGY]'}
-Scientific Studies: ${input.scientificStudies || '[INSERT_SCIENTIFIC_STUDIES]'}
-Credible Authority: ${resolvedCredibleAuthority || '[INSERT_CREDIBLE_AUTHORITY]'}
-
-${socialProofGuidance}
-
-${icpContext}
-
-${campaignTypeContext}
-
-Ad Type: ${adTypeContext}
-Ad Style: ${input.adStyle}
-Call To Action: ${input.adCallToAction}
-
-SCROLL-STOPPER RULE: The first word of every headline must arrest the scroll. Use the pressing problem or a counterintuitive insight as the opening — not a benefit, not the service name.
-
-THREE-QUESTION TEST — every headline must pass all three:
-1. Does it name a specific person in a specific situation? (Not "coaches" — "coaches posting daily with zero enquiries")
-2. Does it name a specific outcome, not a category of outcomes? (Not "more clients" — "3 clients booked in 10 days")
-3. Could this headline ONLY be written for this service? If it works for any coach's service, rewrite it.
-
-BANNED PATTERNS — never generate:
-- ${BANNED_HEADLINE_PATTERNS.map(p => `"${p}..."`).join(', ')}
-- Generic power words without context: skyrocket, explode, dominate, crush, master, unlock, transform
-
-MANDATORY: Include at least one word from the pressing problem field — the actual vocabulary the target market uses to describe their situation.
-
-Create ${count} attention-grabbing headlines (max 40 characters each). Use these angles across the set:
-- Pain angle: name the specific daily frustration (1-2 words max before the hook)
-- Outcome angle: name the exact result with a number or timeframe
-- Curiosity angle: counterintuitive insight about why they're stuck
-- Social proof angle: name the result a specific type of person got
-
-Format as JSON array:
-{
-  "headlines": ["headline 1", "headline 2", ...]
-}`;
-
-      const headlineResponse = await invokeLLM({
-        messages: [
-          {
-            role: "system",
-            content: `${META_COMPLIANCE_RULES}\n\nYou are an expert ad copywriter who specializes in Meta-compliant advertising for coaches, speakers and consultants. Always respond with valid JSON.`,
-          },
-          { role: "user", content: cascadeContext + headlinePrompt },
-        ],
-        response_format: {
-          type: "json_schema",
-          json_schema: {
-            name: "ad_headlines",
-            strict: true,
-            schema: {
-              type: "object",
-              properties: {
-                headlines: {
-                  type: "array",
-                  items: { type: "string" },
-                },
-              },
-              required: ["headlines"],
-              additionalProperties: false,
-            },
-          },
-        },
+      return await runAdCopyGeneration({
+        userId: ctx.user.id,
+        serviceId: input.serviceId,
+        campaignId: input.campaignId,
+        adType: input.adType,
+        adStyle: input.adStyle,
+        adCallToAction: input.adCallToAction,
+        targetMarket: input.targetMarket,
+        productCategory: input.productCategory,
+        specificProductName: input.specificProductName,
+        pressingProblem: input.pressingProblem,
+        desiredOutcome: input.desiredOutcome,
+        uniqueMechanism: input.uniqueMechanism,
+        listBenefits: input.listBenefits,
+        specificTechnology: input.specificTechnology,
+        scientificStudies: input.scientificStudies,
+        credibleAuthority: input.credibleAuthority,
+        featuredIn: input.featuredIn,
+        numberOfReviews: input.numberOfReviews,
+        averageReviewRating: input.averageReviewRating,
+        totalCustomers: input.totalCustomers,
+        testimonials: input.testimonials,
+        powerMode: input.powerMode,
+        userSubscriptionTier: ctx.user.subscriptionTier ?? null,
+        userRole: ctx.user.role ?? null,
       });
-
-      const headlineContent = headlineResponse.choices[0].message.content;
-      if (typeof headlineContent !== "string") {
-        throw new Error("Invalid headline response");
-      }
-      const headlineData = JSON.parse(stripMarkdownJson(headlineContent));
-
-      // Issue 3: Generate Body Copy using 15 distinct angles
-      const { ALL_BODY_ANGLES, BODY_ANGLE_PROMPTS } = await import('../adCopyAngles');
-      
-      // W2: always run all angles — body count is independent of headline/link count
-      const selectedAngles = [...ALL_BODY_ANGLES];
-      
-      // Generate one body per angle in parallel
-      const bodyPromises = selectedAngles.map(async (angle) => {
-        const anglePrompt = BODY_ANGLE_PROMPTS[angle];
-        
-        const bodyPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ONE high-converting ad BODY COPY using the ${angle.replace('_', ' ')} angle:
-
-Service: ${service.name}
-Category: ${service.category}
-Target Market: ${input.targetMarket}
-Product Category: ${input.productCategory}
-Specific Product Name: ${input.specificProductName}
-Pressing Problem: ${resolvedPressingProblem}
-Desired Outcome: ${resolvedDesiredOutcome}
-Unique Mechanism: ${resolvedUniqueMechanism || '[INSERT_UNIQUE_MECHANISM]'}
-Key Benefits: ${input.listBenefits || '[INSERT_KEY_BENEFITS]'}
-Specific Technology: ${input.specificTechnology || '[INSERT_SPECIFIC_TECHNOLOGY]'}
-Scientific Studies: ${input.scientificStudies || '[INSERT_SCIENTIFIC_STUDIES]'}
-Credible Authority: ${resolvedCredibleAuthority || '[INSERT_CREDIBLE_AUTHORITY]'}
-
-${socialProofGuidance}
-
-${icpContext}
-
-${campaignTypeContext}
-
-Ad Type: ${adTypeContext}
-Ad Style: ${input.adStyle}
-Call To Action: ${input.adCallToAction}
-
-${anglePrompt}
-
-PAS STRUCTURE — apply to every body copy in this order:
-PAIN (1-2 sentences): Open with the scroll-stopping pain. Use the exact language the target market uses to describe this problem to a friend. The first sentence must be about their situation — not about the product.
-AGITATE (2-3 sentences): Make the pain feel bigger and more urgent. Name the cost of staying stuck. Name the failed solutions they've already tried.
-SOLUTION (2-3 sentences): Introduce the mechanism. Name what makes it different from what they've tried. Include a specific outcome or timeframe.
-CTA (1 sentence): One clear next step. Use the approved CTA format from Meta compliance rules.
-
-FORMATTING RULES (applied to every body copy):
-- Maximum 15 words per sentence. Absolute maximum 20 words.
-- Maximum 2 sentences per paragraph.
-- One blank line between every paragraph.
-- No run-on sentences. Break long ideas into multiple short sentences.
-- Write at Grade 6 reading level — short words, short sentences, direct language.
-
-Create ONE body copy (125-150 words) following the ${angle.replace('_', ' ')} angle AND the PAS structure above.
-End with clear call-to-action: ${input.adCallToAction}
-
-Return ONLY the body text as a single string, no JSON wrapper.`;
-
-        const response = await invokeLLM({
-          messages: [
-            {
-              role: "system",
-              content: `${META_COMPLIANCE_RULES}\n\nYou are an expert ad copywriter who specializes in Meta-compliant advertising for coaches, speakers and consultants.\n\n${NO_CREDENTIAL_FABRICATION_RULE}`,
-            },
-            { role: "user", content: cascadeContext + bodyPrompt },
-          ],
-        });
-
-        const rawContent = response.choices[0]?.message?.content;
-        if (!rawContent) throw new Error(`Empty response for ${angle} angle`);
-        const content = typeof rawContent === 'string' ? rawContent.trim() : '';
-        if (!content) throw new Error(`Invalid content type for ${angle} angle`);
-        
-        return { angle, body: content };
-      });
-      
-      const bodyResults = await Promise.all(bodyPromises);
-      const bodyData = { bodies: bodyResults.map(r => r.body) };
-
-      // Generate Link Descriptions
-      const linkPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ${count} high-converting LINK DESCRIPTIONS for this service:
-
-Service: ${service.name}
-Category: ${service.category}
-Target Market: ${input.targetMarket}
-Product Category: ${input.productCategory}
-Specific Product Name: ${input.specificProductName}
-Desired Outcome: ${resolvedDesiredOutcome}
-Call To Action: ${input.adCallToAction}
-
-${icpContext}
-
-${campaignTypeContext}
-
-Ad Type: ${adTypeContext}
-Ad Style: ${input.adStyle}
-
-Create ${count} clear, action-oriented link descriptions (max 30 characters each) that:
-- State the clear next step aligned with the CTA (${input.adCallToAction})
-- Create urgency or excitement
-- Are benefit-focused
-- Match the ad style tone
-
-Format as JSON array:
-{
-  "links": ["link 1", "link 2", ...]
-}`;
-
-      const linkResponse = await invokeLLM({
-        messages: [
-          {
-            role: "system",
-            content: `${META_COMPLIANCE_RULES}\n\nYou are an expert ad copywriter who specializes in Meta-compliant advertising for coaches, speakers and consultants. Always respond with valid JSON.`,
-          },
-          { role: "user", content: cascadeContext + linkPrompt },
-        ],
-        response_format: {
-          type: "json_schema",
-          json_schema: {
-            name: "ad_links",
-            strict: true,
-            schema: {
-              type: "object",
-              properties: {
-                links: {
-                  type: "array",
-                  items: { type: "string" },
-                },
-              },
-              required: ["links"],
-              additionalProperties: false,
-            },
-          },
-        },
-      });
-
-      const linkContent = linkResponse.choices[0].message.content;
-      if (typeof linkContent !== "string") {
-        throw new Error("Invalid link response");
-      }
-      const linkData = JSON.parse(stripMarkdownJson(linkContent));
-
-      // Save all variations to database
-      const allInserts = [];
-
-      // Insert headlines
-      for (const headline of headlineData.headlines) {
-        const complianceResult = await checkCompliance(headline, {
-          userId: ctx.user.id,
-          generatorType: 'adCopy',
-          trackUsage: true,
-        });
-        allInserts.push({
-          userId: ctx.user.id,
-          serviceId: input.serviceId,
-          campaignId: input.campaignId || null,
-          adSetId,
-          adType: input.adType,
-          adStyle: input.adStyle,
-          adCallToAction: input.adCallToAction,
-          contentType: "headline" as const,
-          content: headline,
-          // 17 fields
-          targetMarket: input.targetMarket,
-          productCategory: input.productCategory,
-          specificProductName: input.specificProductName,
-          pressingProblem: input.pressingProblem,
-          desiredOutcome: input.desiredOutcome,
-          uniqueMechanism: input.uniqueMechanism || null,
-          listBenefits: input.listBenefits || null,
-          specificTechnology: input.specificTechnology || null,
-          scientificStudies: input.scientificStudies || null,
-          credibleAuthority: input.credibleAuthority || null,
-          featuredIn: input.featuredIn || null,
-          numberOfReviews: input.numberOfReviews || null,
-          averageReviewRating: input.averageReviewRating || null,
-          totalCustomers: input.totalCustomers || null,
-          testimonials: input.testimonials || null,
-          // Compliance fields
-          complianceScore: complianceResult.score,
-          complianceVersion: complianceResult.version,
-          complianceCheckedAt: new Date(),
-          selectionScore: String(scoreAdContent('headline', headline)),
-        });
-      }
-
-      // Insert body copies with angles (Issue 3)
-      for (const result of bodyResults) {
-        const complianceResult = await checkCompliance(result.body, {
-          userId: ctx.user.id,
-          generatorType: 'adCopy',
-          trackUsage: true,
-        });
-        allInserts.push({
-          userId: ctx.user.id,
-          serviceId: input.serviceId,
-          campaignId: input.campaignId || null,
-          adSetId,
-          adType: input.adType,
-          adStyle: input.adStyle,
-          adCallToAction: input.adCallToAction,
-          contentType: "body" as const,
-          bodyAngle: result.angle,
-          content: result.body,
-          targetMarket: input.targetMarket,
-          productCategory: input.productCategory,
-          specificProductName: input.specificProductName,
-          pressingProblem: input.pressingProblem,
-          desiredOutcome: input.desiredOutcome,
-          uniqueMechanism: input.uniqueMechanism || null,
-          listBenefits: input.listBenefits || null,
-          specificTechnology: input.specificTechnology || null,
-          scientificStudies: input.scientificStudies || null,
-          credibleAuthority: input.credibleAuthority || null,
-          featuredIn: input.featuredIn || null,
-          numberOfReviews: input.numberOfReviews || null,
-          averageReviewRating: input.averageReviewRating || null,
-          totalCustomers: input.totalCustomers || null,
-          testimonials: input.testimonials || null,
-          // Compliance fields
-          complianceScore: complianceResult.score,
-          complianceVersion: complianceResult.version,
-          complianceCheckedAt: new Date(),
-          selectionScore: String(scoreAdContent('body', result.body, result.angle)),
-        });
-      }
-
-      // Insert links
-      for (const link of linkData.links) {
-        const complianceResult = await checkCompliance(link);
-        allInserts.push({
-          userId: ctx.user.id,
-          serviceId: input.serviceId,
-          campaignId: input.campaignId || null,
-          adSetId,
-          adType: input.adType,
-          adStyle: input.adStyle,
-          adCallToAction: input.adCallToAction,
-          contentType: "link" as const,
-          content: link,
-          targetMarket: input.targetMarket,
-          productCategory: input.productCategory,
-          specificProductName: input.specificProductName,
-          pressingProblem: input.pressingProblem,
-          desiredOutcome: input.desiredOutcome,
-          uniqueMechanism: input.uniqueMechanism || null,
-          listBenefits: input.listBenefits || null,
-          specificTechnology: input.specificTechnology || null,
-          scientificStudies: input.scientificStudies || null,
-          credibleAuthority: input.credibleAuthority || null,
-          featuredIn: input.featuredIn || null,
-          numberOfReviews: input.numberOfReviews || null,
-          averageReviewRating: input.averageReviewRating || null,
-          totalCustomers: input.totalCustomers || null,
-          testimonials: input.testimonials || null,
-          // Compliance fields
-          complianceScore: complianceResult.score,
-          complianceVersion: complianceResult.version,
-          complianceCheckedAt: new Date(),
-          selectionScore: String(scoreAdContent('link', link)),
-        });
-      }
-
-      await db.insert(adCopy).values(allInserts);
-
-      return {
-        adSetId,
-        count: allInserts.length,
-        headlineCount: headlineData.headlines.length,
-        bodyCount: bodyData.bodies.length,
-        linkCount: linkData.links.length,
-      };
     }),
 
   /**
    * generateAsync — background job version of generate.
    * Returns jobId immediately; ad copy generation runs via setImmediate.
+   * Auto Mode Phase B1: thin wrapper around runAdCopyGeneration.
+   * Network-error retry-once-after-30s preserved (each attempt delegates to runX).
    */
   generateAsync: protectedProcedure
     .input(generateAdCopySchema)
@@ -915,145 +233,57 @@ Format as JSON array:
           throw new TRPCError({ code: "FORBIDDEN", message: `You've reached your monthly limit of ${limit} ad copy sets. Upgrade to generate more.` });
         }
       }
+
       const db = await getDb();
       if (!db) throw new Error("Database not available");
-      const [service] = await db.select().from(services)
-        .where(and(eq(services.id, input.serviceId), eq(services.userId, user.id))).limit(1);
-      if (!service) throw new Error("Service not found");
-
-      let campaignRecord: any;
-      if (input.campaignId) {
-        [campaignRecord] = await db.select().from(campaigns)
-          .where(and(eq(campaigns.id, input.campaignId), eq(campaigns.userId, user.id))).limit(1);
-      }
-      let icp: any;
-      if (campaignRecord?.icpId) { [icp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.id, campaignRecord.icpId)).limit(1); }
-      if (!icp) { [icp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1); }
-      const [sot] = await db.select().from(sourceOfTruth).where(eq(sourceOfTruth.userId, user.id)).limit(1);
-
-      // Cascade context — fetched during request, captured for setImmediate.
-      // Must mirror the call in generate.
-      const capturedCascadeContext = await getCascadeContext(user.id, icp?.id, "adCopy");
 
       const capturedInput = { ...input };
       const capturedUserId = user.id;
-      const capturedService = { ...service };
-      const capturedIcp = icp ? { ...icp } : undefined;
-      const capturedSot = sot ? { ...sot } : undefined;
-      // Workstream commit 2.5b — capture campaignType from campaignKits
-      // (V2 SoT) for the setImmediate closure. Mirror of sync path.
-      // Default to course_launch when no kit exists or campaignType is null.
-      let capturedCampaignType: string = 'course_launch';
-      if (icp?.id) {
-        const [kit] = await db.select().from(campaignKits)
-          .where(and(eq(campaignKits.userId, user.id), eq(campaignKits.icpId, icp.id)))
-          .limit(1);
-        if (kit?.campaignType) {
-          capturedCampaignType = kit.campaignType;
-        }
-      }
+      const capturedUserTier = user.subscriptionTier ?? null;
+      const capturedUserRole = user.role ?? null;
 
       const jobId = randomUUID();
       await db.insert(jobs).values({ id: jobId, userId: String(capturedUserId), status: "pending" });
 
+      const callRunX = async () => await runAdCopyGeneration({
+        userId: capturedUserId,
+        serviceId: capturedInput.serviceId,
+        campaignId: capturedInput.campaignId,
+        adType: capturedInput.adType,
+        adStyle: capturedInput.adStyle,
+        adCallToAction: capturedInput.adCallToAction,
+        targetMarket: capturedInput.targetMarket,
+        productCategory: capturedInput.productCategory,
+        specificProductName: capturedInput.specificProductName,
+        pressingProblem: capturedInput.pressingProblem,
+        desiredOutcome: capturedInput.desiredOutcome,
+        uniqueMechanism: capturedInput.uniqueMechanism,
+        listBenefits: capturedInput.listBenefits,
+        specificTechnology: capturedInput.specificTechnology,
+        scientificStudies: capturedInput.scientificStudies,
+        credibleAuthority: capturedInput.credibleAuthority,
+        featuredIn: capturedInput.featuredIn,
+        numberOfReviews: capturedInput.numberOfReviews,
+        averageReviewRating: capturedInput.averageReviewRating,
+        totalCustomers: capturedInput.totalCustomers,
+        testimonials: capturedInput.testimonials,
+        powerMode: capturedInput.powerMode,
+        userSubscriptionTier: capturedUserTier,
+        userRole: capturedUserRole,
+      });
+
       setImmediate(async () => {
         try {
+          const result = await callRunX();
           const bgDb = await getDb();
           if (!bgDb) throw new Error("Database not available in background job");
-
-          const icpContext = capturedIcp ? `\nIDEAL CUSTOMER PROFILE — use this to make every line of copy specific and targeted:\n${capturedIcp.pains ? `Their daily pains: ${capturedIcp.pains}` : ''}\n${capturedIcp.fears ? `Their deep fears: ${capturedIcp.fears}` : ''}\n${capturedIcp.objections ? `Their objections to buying: ${capturedIcp.objections}` : ''}\n${capturedIcp.buyingTriggers ? `What makes them buy: ${capturedIcp.buyingTriggers}` : ''}\n${capturedIcp.communicationStyle ? `How they communicate: ${capturedIcp.communicationStyle}` : ''}`.trim() : '';
-          const sotLines = capturedSot ? [capturedSot.coreOffer ? `Core offer: ${capturedSot.coreOffer}` : '', capturedSot.targetAudience ? `Target audience: ${capturedSot.targetAudience}` : '', capturedSot.mainPainPoint ? `Main pain point: ${capturedSot.mainPainPoint}` : '', capturedSot.mainBenefits ? `Main benefits: ${capturedSot.mainBenefits}` : '', capturedSot.uniqueValue ? `Unique value: ${capturedSot.uniqueValue}` : '', capturedSot.idealCustomerAvatar ? `Ideal customer: ${capturedSot.idealCustomerAvatar}` : ''].filter(Boolean) : [];
-          const sotContext = sotLines.length > 0 ? ['BRAND CONTEXT — this is the approved brand voice. All copy must be consistent with this:', ...sotLines].join('\n') : '';
-
-          const resolvedPressingProblem = capturedInput.pressingProblem?.trim() || capturedService.painPoints || "";
-          const resolvedDesiredOutcome = capturedInput.desiredOutcome?.trim() || capturedService.mainBenefit || "";
-          const resolvedUniqueMechanism = capturedInput.uniqueMechanism?.trim() || capturedService.uniqueMechanismSuggestion || "";
-          const resolvedCredibleAuthority = capturedInput.credibleAuthority?.trim() || capturedService.pressFeatures || "";
-          const resolvedFeaturedIn = capturedInput.featuredIn?.trim() || capturedService.pressFeatures || "";
-          const resolvedNumberOfReviews = capturedInput.numberOfReviews?.trim() || capturedService.totalReviews?.toString() || "";
-          const resolvedAverageReviewRating = capturedInput.averageReviewRating?.trim() || capturedService.averageRating?.toString() || "";
-          const resolvedTotalCustomers = capturedInput.totalCustomers?.trim() || capturedService.totalCustomers?.toString() || "";
-          const resolvedTestimonials = capturedInput.testimonials?.trim() || [capturedService.testimonial1Quote, capturedService.testimonial2Quote, capturedService.testimonial3Quote].filter(Boolean).join(" | ") || "";
-
-          const socialProof = { hasCustomers: !!capturedService.totalCustomers && capturedService.totalCustomers > 0, hasRating: !!capturedService.averageRating && parseFloat(capturedService.averageRating) > 0, hasReviews: !!capturedService.totalReviews && capturedService.totalReviews > 0, hasTestimonials: !!capturedService.testimonial1Name || !!capturedService.testimonial2Name || !!capturedService.testimonial3Name, hasPress: !!capturedService.pressFeatures && capturedService.pressFeatures.trim().length > 0, customerCount: capturedService.totalCustomers || 0, rating: capturedService.averageRating || '', reviewCount: capturedService.totalReviews || 0, press: capturedService.pressFeatures || '' };
-          const adSetId = nanoid();
-          const count = capturedInput.powerMode ? 30 : 15;
-          const adTypeContext = capturedInput.adType === "lead_gen" ? "Lead Generation (free webinar, consultation, download)" : "E-commerce (direct product sale)";
-
-          // Workstream commit 2 — campaignType funnel-context (mirror of sync path).
-          const campaignTypeContextMap: Record<string, string> = {
-            webinar: `CAMPAIGN TYPE: Webinar\nFraming: Show-up urgency — the ad must give a compelling reason to attend live, not just register. Sell the event itself, not the offer behind it.\nUrgency mechanism: Date and time of the webinar. Limited seats available.\nCTA language: Register now / Save your seat / Join us live on [date]`,
-            challenge: `CAMPAIGN TYPE: Challenge\nFraming: Community commitment — the ad sells the experience of joining a group doing this together. Daily wins build momentum.\nUrgency mechanism: Challenge start date. Community closes when the challenge begins.\nCTA language: Join the challenge / Claim your spot / Start with us on [date]`,
-            course_launch: `CAMPAIGN TYPE: Course Launch\nFraming: Transformation journey — who they are now vs who they will become. Enrolment is the decision point.\nUrgency mechanism: Enrolment deadline. Cohort size is limited.\nCTA language: Enrol now / Join the programme / Claim your place before [date]`,
-            product_launch: `CAMPAIGN TYPE: Product Launch\nFraming: Early access and founding member status. First to experience something new.\nUrgency mechanism: Launch day price increase. Founding member pricing closes on launch day.\nCTA language: Get early access / Become a founding member / Lock in launch pricing`,
-            discovery_call: `CAMPAIGN TYPE: Discovery Call\nFraming: Selectivity and personal attention — the ad sells a free 1:1 conversation, not a mass event. Position the call as a fit-check, not a sales pitch.\nUrgency mechanism: Calendar availability is limited. Quality over quantity.\nCTA language: Book a discovery call / Apply for a call / Reserve your slot`,
-            lead_magnet: `CAMPAIGN TYPE: Lead Magnet\nFraming: Specific value before any pitch — the ad sells a single concrete asset (PDF, guide, training, swipe file) the reader can use today. No commitment.\nUrgency mechanism: None artificial. The asset itself is the hook. Avoid fake scarcity.\nCTA language: Get the free guide / Download free / Send me the [asset]`,
-            in_person_event: `CAMPAIGN TYPE: In-Person Event\nFraming: Physical-presence value — the ad sells the room, the people, the energy of being there in person. Specifics: city, venue, date.\nUrgency mechanism: Travel logistics + limited room capacity. Real seat limits.\nCTA language: Reserve your seat / Register for [city] / Save your spot at [venue]`,
-          };
-          const campaignTypeContext = campaignTypeContextMap[capturedCampaignType] || campaignTypeContextMap['course_launch'];
-          const socialProofGuidance = socialProof.hasCustomers || socialProof.hasRating || socialProof.hasReviews ? `REAL SOCIAL PROOF AVAILABLE - Use these verified numbers:\n- ${socialProof.customerCount} total customers\n- ${socialProof.rating} average rating\n- ${socialProof.reviewCount} reviews\nYou MUST use these exact numbers when incorporating social proof. Do not fabricate or inflate.` : `NO SOCIAL PROOF DATA PROVIDED - Use launch-safe alternatives:\n- Focus on benefit claims and outcomes ("Get X result")\n- Use curiosity hooks ("The method that...")\n- Use contrast ("Before vs After")\n- DO NOT mention customer counts, ratings, or reviews\n- DO NOT fabricate testimonials or statistics`;
-
-          const headlinePrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ${count} high-converting ad HEADLINES for this service:\n\nService: ${capturedService.name}\nCategory: ${capturedService.category}\nTarget Market: ${capturedInput.targetMarket}\nProduct Category: ${capturedInput.productCategory}\nSpecific Product Name: ${capturedInput.specificProductName}\nPressing Problem: ${resolvedPressingProblem}\nDesired Outcome: ${resolvedDesiredOutcome}\nUnique Mechanism: ${resolvedUniqueMechanism || '[INSERT_UNIQUE_MECHANISM]'}\nKey Benefits: ${capturedInput.listBenefits || '[INSERT_KEY_BENEFITS]'}\n\n${socialProofGuidance}\n\n${icpContext}\n\n${campaignTypeContext}\n\nAd Type: ${adTypeContext}\nAd Style: ${capturedInput.adStyle}\nCall To Action: ${capturedInput.adCallToAction}\n\nCreate ${count} attention-grabbing headlines (max 40 characters each).\n\nFormat as JSON array: { "headlines": ["headline 1", ...] }`;
-          const headlineResponse = await invokeLLM({ messages: [{ role: "system", content: `${META_COMPLIANCE_RULES}\n\nYou are an expert ad copywriter who specializes in Meta-compliant advertising for coaches, speakers and consultants. Always respond with valid JSON.` }, { role: "user", content: capturedCascadeContext + headlinePrompt }], response_format: { type: "json_schema", json_schema: { name: "ad_headlines", strict: true, schema: { type: "object", properties: { headlines: { type: "array", items: { type: "string" } } }, required: ["headlines"], additionalProperties: false } } } });
-          const headlineContent = headlineResponse.choices[0].message.content;
-          if (typeof headlineContent !== "string") throw new Error("Invalid headline response");
-          const headlineData = JSON.parse(stripMarkdownJson(headlineContent));
-
-          const { ALL_BODY_ANGLES, BODY_ANGLE_PROMPTS } = await import('../adCopyAngles');
-          // W2: always run all angles — body count is independent of headline/link count
-          const selectedAngles = [...ALL_BODY_ANGLES];
-          const bodyPromises = selectedAngles.map(async (angle: string) => {
-            const anglePrompt = (BODY_ANGLE_PROMPTS as any)[angle];
-            const bodyPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ONE high-converting ad BODY COPY using the ${angle.replace('_', ' ')} angle:\n\nService: ${capturedService.name}\nTarget Market: ${capturedInput.targetMarket}\nPressing Problem: ${resolvedPressingProblem}\nDesired Outcome: ${resolvedDesiredOutcome}\nUnique Mechanism: ${resolvedUniqueMechanism || '[INSERT_UNIQUE_MECHANISM]'}\n\n${socialProofGuidance}\n\n${icpContext}\n\n${campaignTypeContext}\n\nAd Type: ${adTypeContext}\nAd Style: ${capturedInput.adStyle}\nCall To Action: ${capturedInput.adCallToAction}\n\n${anglePrompt}\n\nCreate ONE body copy (125-150 words). End with clear call-to-action: ${capturedInput.adCallToAction}\n\nReturn ONLY the body text as a single string, no JSON wrapper.`;
-            const r = await invokeLLM({ messages: [{ role: "system", content: `${META_COMPLIANCE_RULES}\n\nYou are an expert ad copywriter who specializes in Meta-compliant advertising for coaches, speakers and consultants.\n\n${NO_CREDENTIAL_FABRICATION_RULE}` }, { role: "user", content: capturedCascadeContext + bodyPrompt }] });
-            const rawContent = r.choices[0]?.message?.content;
-            if (!rawContent) throw new Error(`Empty response for ${angle} angle`);
-            const content = typeof rawContent === 'string' ? rawContent.trim() : '';
-            return { angle, body: content };
-          });
-          const bodyResults = await Promise.all(bodyPromises);
-          const bodyData = { bodies: bodyResults.map((r: any) => r.body) };
-
-          const linkPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ${count} high-converting LINK DESCRIPTIONS for this service:\n\nService: ${capturedService.name}\nTarget Market: ${capturedInput.targetMarket}\nDesired Outcome: ${resolvedDesiredOutcome}\nCall To Action: ${capturedInput.adCallToAction}\n\n${icpContext}\n\n${campaignTypeContext}\n\nAd Type: ${adTypeContext}\nAd Style: ${capturedInput.adStyle}\n\nCreate ${count} clear, action-oriented link descriptions (max 30 characters each).\n\nFormat as JSON array: { "links": ["link 1", ...] }`;
-          const linkResponse = await invokeLLM({ messages: [{ role: "system", content: `${META_COMPLIANCE_RULES}\n\nYou are an expert ad copywriter who specializes in Meta-compliant advertising for coaches, speakers and consultants. Always respond with valid JSON.` }, { role: "user", content: capturedCascadeContext + linkPrompt }], response_format: { type: "json_schema", json_schema: { name: "ad_links", strict: true, schema: { type: "object", properties: { links: { type: "array", items: { type: "string" } } }, required: ["links"], additionalProperties: false } } } });
-          const linkContent = linkResponse.choices[0].message.content;
-          if (typeof linkContent !== "string") throw new Error("Invalid link response");
-          const linkData = JSON.parse(stripMarkdownJson(linkContent));
-
-          const allInserts: any[] = [];
-          for (const headline of headlineData.headlines) {
-            const complianceResult = await checkCompliance(headline, { userId: capturedUserId, generatorType: 'adCopy', trackUsage: true });
-            allInserts.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, adSetId, adType: capturedInput.adType, adStyle: capturedInput.adStyle, adCallToAction: capturedInput.adCallToAction, contentType: "headline" as const, content: headline, targetMarket: capturedInput.targetMarket, productCategory: capturedInput.productCategory, specificProductName: capturedInput.specificProductName, pressingProblem: capturedInput.pressingProblem, desiredOutcome: capturedInput.desiredOutcome, uniqueMechanism: capturedInput.uniqueMechanism || null, listBenefits: capturedInput.listBenefits || null, specificTechnology: capturedInput.specificTechnology || null, scientificStudies: capturedInput.scientificStudies || null, credibleAuthority: capturedInput.credibleAuthority || null, featuredIn: capturedInput.featuredIn || null, numberOfReviews: capturedInput.numberOfReviews || null, averageReviewRating: capturedInput.averageReviewRating || null, totalCustomers: capturedInput.totalCustomers || null, testimonials: capturedInput.testimonials || null, complianceScore: complianceResult.score, complianceVersion: complianceResult.version, complianceCheckedAt: new Date(), selectionScore: String(scoreAdContent('headline', headline)), violationReasons: complianceResult.issues.length > 0 ? complianceResult.issues.map(i => i.reason) : null });
-          }
-          for (const result of bodyResults) {
-            const complianceResult = await checkCompliance((result as any).body, { userId: capturedUserId, generatorType: 'adCopy', trackUsage: true });
-            allInserts.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, adSetId, adType: capturedInput.adType, adStyle: capturedInput.adStyle, adCallToAction: capturedInput.adCallToAction, contentType: "body" as const, bodyAngle: (result as any).angle, content: (result as any).body, targetMarket: capturedInput.targetMarket, productCategory: capturedInput.productCategory, specificProductName: capturedInput.specificProductName, pressingProblem: capturedInput.pressingProblem, desiredOutcome: capturedInput.desiredOutcome, uniqueMechanism: capturedInput.uniqueMechanism || null, listBenefits: capturedInput.listBenefits || null, specificTechnology: capturedInput.specificTechnology || null, scientificStudies: capturedInput.scientificStudies || null, credibleAuthority: capturedInput.credibleAuthority || null, featuredIn: capturedInput.featuredIn || null, numberOfReviews: capturedInput.numberOfReviews || null, averageReviewRating: capturedInput.averageReviewRating || null, totalCustomers: capturedInput.totalCustomers || null, testimonials: capturedInput.testimonials || null, complianceScore: complianceResult.score, complianceVersion: complianceResult.version, complianceCheckedAt: new Date(), selectionScore: String(scoreAdContent('body', (result as any).body, (result as any).angle)), violationReasons: complianceResult.issues.length > 0 ? complianceResult.issues.map(i => i.reason) : null });
-          }
-          for (const link of linkData.links) {
-            const complianceResult = await checkCompliance(link);
-            allInserts.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, adSetId, adType: capturedInput.adType, adStyle: capturedInput.adStyle, adCallToAction: capturedInput.adCallToAction, contentType: "link" as const, content: link, targetMarket: capturedInput.targetMarket, productCategory: capturedInput.productCategory, specificProductName: capturedInput.specificProductName, pressingProblem: capturedInput.pressingProblem, desiredOutcome: capturedInput.desiredOutcome, uniqueMechanism: capturedInput.uniqueMechanism || null, listBenefits: capturedInput.listBenefits || null, specificTechnology: capturedInput.specificTechnology || null, scientificStudies: capturedInput.scientificStudies || null, credibleAuthority: capturedInput.credibleAuthority || null, featuredIn: capturedInput.featuredIn || null, numberOfReviews: capturedInput.numberOfReviews || null, averageReviewRating: capturedInput.averageReviewRating || null, totalCustomers: capturedInput.totalCustomers || null, testimonials: capturedInput.testimonials || null, complianceScore: complianceResult.score, complianceVersion: complianceResult.version, complianceCheckedAt: new Date(), selectionScore: String(scoreAdContent('link', link)), violationReasons: complianceResult.issues.length > 0 ? complianceResult.issues.map(i => i.reason) : null });
-          }
-
-          await bgDb.insert(adCopy).values(allInserts);
-
-          // W5 Phase 2 — pre-compute compliant rewrites for flagged rows.
-          // No-op unless ENABLE_COMPLIANCE_REWRITES=true. Runs before the
-          // job is marked complete so the client sees ad copy + rewrites
-          // atomically when the Copy tab loads.
-          await precomputeAdCopyComplianceRewrites(
-            { id: capturedUserId, subscriptionTier: user.subscriptionTier ?? null, role: user.role ?? null },
-            adSetId,
-            capturedService.category ?? null,
-          );
-
           await bgDb.update(jobs)
-            .set({ status: "complete", result: JSON.stringify({ adSetId, count: allInserts.length, headlineCount: headlineData.headlines.length, bodyCount: bodyData.bodies.length, linkCount: linkData.links.length }) })
+            .set({ status: "complete", result: JSON.stringify(result) })
             .where(eq(jobs.id, jobId));
-          console.log(`[adCopy.generateAsync] Job ${jobId} completed, adSetId: ${adSetId}`);
+          console.log(`[adCopy.generateAsync] Job ${jobId} completed, adSetId: ${result.adSetId}`);
         } catch (err: unknown) {
           const errorMessage = err instanceof Error ? err.message : String(err);
-          // ── Network-error auto-retry (once, 30-second delay) ─────────────────
-          // Only retry on transient network failures — never on Zod/validation errors.
+          // Network-error auto-retry (once, 30-second delay) — preserved from pre-B1.
           const isNetworkError = errorMessage.includes('fetch failed') || errorMessage.includes('AbortError') || errorMessage.includes('ECONNRESET') || errorMessage.includes('ETIMEDOUT') || errorMessage.includes('network timeout');
           if (isNetworkError) {
             try {
@@ -1064,71 +294,20 @@ Format as JSON array:
                 console.warn(`[adCopy.generateAsync] Job ${jobId} network error (attempt ${retryCount + 1}), retrying in 30s:`, errorMessage);
                 if (checkDb) await checkDb.update(jobs).set({ retryCount: retryCount + 1, progress: JSON.stringify({ step: 0, total: 1, label: 'Network hiccup — retrying in 30s…' }) }).where(eq(jobs.id, jobId));
                 await new Promise(resolve => setTimeout(resolve, 30_000));
-                // Re-run the full generation logic using the same captured closure variables
                 setImmediate(async () => {
                   try {
+                    const retryResult = await callRunX();
                     const retryDb = await getDb();
                     if (!retryDb) throw new Error('Database not available on retry');
-                    const retryIcpContext = capturedIcp ? `\nIDEAL CUSTOMER PROFILE:\n${capturedIcp.pains ? `Their daily pains: ${capturedIcp.pains}` : ''}\n${capturedIcp.fears ? `Their deep fears: ${capturedIcp.fears}` : ''}\n${capturedIcp.objections ? `Their objections to buying: ${capturedIcp.objections}` : ''}\n${capturedIcp.buyingTriggers ? `What makes them buy: ${capturedIcp.buyingTriggers}` : ''}\n${capturedIcp.communicationStyle ? `How they communicate: ${capturedIcp.communicationStyle}` : ''}`.trim() : '';
-                    const retrySotLines = capturedSot ? [capturedSot.coreOffer ? `Core offer: ${capturedSot.coreOffer}` : '', capturedSot.targetAudience ? `Target audience: ${capturedSot.targetAudience}` : '', capturedSot.mainPainPoint ? `Main pain point: ${capturedSot.mainPainPoint}` : ''].filter(Boolean) : [];
-                    const retrySotContext = retrySotLines.length > 0 ? ['BRAND CONTEXT:', ...retrySotLines].join('\n') : '';
-                    const retryResolvedPressingProblem = capturedInput.pressingProblem?.trim() || capturedService.painPoints || '';
-                    const retryResolvedDesiredOutcome = capturedInput.desiredOutcome?.trim() || capturedService.mainBenefit || '';
-                    const retryResolvedUniqueMechanism = capturedInput.uniqueMechanism?.trim() || capturedService.uniqueMechanismSuggestion || '';
-                    const retrySocialProof = { hasCustomers: !!capturedService.totalCustomers && capturedService.totalCustomers > 0, hasRating: !!capturedService.averageRating && parseFloat(capturedService.averageRating) > 0, hasReviews: !!capturedService.totalReviews && capturedService.totalReviews > 0, customerCount: capturedService.totalCustomers || 0, rating: capturedService.averageRating || '', reviewCount: capturedService.totalReviews || 0 };
-                    const retrySocialProofGuidance = retrySocialProof.hasCustomers || retrySocialProof.hasRating || retrySocialProof.hasReviews ? `REAL SOCIAL PROOF: ${retrySocialProof.customerCount} customers, ${retrySocialProof.rating} rating, ${retrySocialProof.reviewCount} reviews.` : 'NO SOCIAL PROOF DATA - use benefit claims only.';
-                    const retryAdSetId = nanoid();
-                    const retryCount = capturedInput.powerMode ? 30 : 15;
-                    const retryAdTypeContext = capturedInput.adType === 'lead_gen' ? 'Lead Generation' : 'E-commerce';
-                    const retryHeadlinePrompt = `${retrySotContext ? `${retrySotContext}\n\n` : ''}Create ${retryCount} ad headlines for: ${capturedService.name}. Target: ${capturedInput.targetMarket}. Problem: ${retryResolvedPressingProblem}. Outcome: ${retryResolvedDesiredOutcome}. ${retrySocialProofGuidance}\n\nFormat: { "headlines": ["headline 1", ...] }`;
-                    const retryHeadlineResp = await invokeLLM({ messages: [{ role: 'system', content: `${META_COMPLIANCE_RULES}\n\nAlways respond with valid JSON.` }, { role: 'user', content: capturedCascadeContext + retryHeadlinePrompt }], response_format: { type: 'json_schema', json_schema: { name: 'ad_headlines', strict: true, schema: { type: 'object', properties: { headlines: { type: 'array', items: { type: 'string' } } }, required: ['headlines'], additionalProperties: false } } } });
-                    const retryHeadlineContent = retryHeadlineResp.choices[0].message.content;
-                    if (typeof retryHeadlineContent !== 'string') throw new Error('Invalid retry headline response');
-                    const retryHeadlineData = JSON.parse(stripMarkdownJson(retryHeadlineContent));
-                    const { ALL_BODY_ANGLES: RETRY_ANGLES, BODY_ANGLE_PROMPTS: RETRY_ANGLE_PROMPTS } = await import('../adCopyAngles');
-                    const retrySelectedAngles = [...RETRY_ANGLES];
-                    const retryBodyResults = await Promise.all(retrySelectedAngles.map(async (angle: string) => {
-                      const anglePrompt = (RETRY_ANGLE_PROMPTS as any)[angle];
-                      const bp = `Create ONE ad body using ${angle} angle for: ${capturedService.name}. Problem: ${retryResolvedPressingProblem}. Outcome: ${retryResolvedDesiredOutcome}. ${retrySocialProofGuidance}\n\n${retryIcpContext}\n\n${anglePrompt}\n\nReturn ONLY the body text (125-150 words), no JSON.`;
-                      const r = await invokeLLM({ messages: [{ role: 'system', content: `${META_COMPLIANCE_RULES}\n\n${NO_CREDENTIAL_FABRICATION_RULE}` }, { role: 'user', content: capturedCascadeContext + bp }] });
-                      const rawContent = r.choices[0]?.message?.content;
-                      const content = typeof rawContent === 'string' ? rawContent.trim() : (Array.isArray(rawContent) ? '' : String(rawContent || ''));
-                      return { angle, body: content };
-                    }));
-                    const retryLinkPrompt = `Create ${retryCount} ad link descriptions for: ${capturedService.name}. CTA: ${capturedInput.adCallToAction}. Format: { "links": ["link 1", ...] }`;
-                    const retryLinkResp = await invokeLLM({ messages: [{ role: 'system', content: `${META_COMPLIANCE_RULES}\n\nAlways respond with valid JSON.` }, { role: 'user', content: capturedCascadeContext + retryLinkPrompt }], response_format: { type: 'json_schema', json_schema: { name: 'ad_links', strict: true, schema: { type: 'object', properties: { links: { type: 'array', items: { type: 'string' } } }, required: ['links'], additionalProperties: false } } } });
-                    const retryLinkContent = retryLinkResp.choices[0].message.content;
-                    if (typeof retryLinkContent !== 'string') throw new Error('Invalid retry link response');
-                    const retryLinkData = JSON.parse(stripMarkdownJson(retryLinkContent));
-                    const retryInserts: any[] = [];
-                    for (const h of retryHeadlineData.headlines) {
-                      const cr = await checkCompliance(h, { userId: capturedUserId, generatorType: 'adCopy', trackUsage: false });
-                      retryInserts.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, adSetId: retryAdSetId, adType: capturedInput.adType, adStyle: capturedInput.adStyle, adCallToAction: capturedInput.adCallToAction, contentType: 'headline' as const, content: h, targetMarket: capturedInput.targetMarket, productCategory: capturedInput.productCategory, specificProductName: capturedInput.specificProductName, pressingProblem: capturedInput.pressingProblem, desiredOutcome: capturedInput.desiredOutcome, uniqueMechanism: capturedInput.uniqueMechanism || null, listBenefits: capturedInput.listBenefits || null, specificTechnology: capturedInput.specificTechnology || null, scientificStudies: capturedInput.scientificStudies || null, credibleAuthority: capturedInput.credibleAuthority || null, featuredIn: capturedInput.featuredIn || null, numberOfReviews: capturedInput.numberOfReviews || null, averageReviewRating: capturedInput.averageReviewRating || null, totalCustomers: capturedInput.totalCustomers || null, testimonials: capturedInput.testimonials || null, complianceScore: cr.score, complianceVersion: cr.version, complianceCheckedAt: new Date(), selectionScore: String(scoreAdContent('headline', h)), violationReasons: cr.issues.length > 0 ? cr.issues.map(i => i.reason) : null });
-                    }
-                    for (const result of retryBodyResults) {
-                      const cr = await checkCompliance(result.body, { userId: capturedUserId, generatorType: 'adCopy', trackUsage: false });
-                      retryInserts.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, adSetId: retryAdSetId, adType: capturedInput.adType, adStyle: capturedInput.adStyle, adCallToAction: capturedInput.adCallToAction, contentType: 'body' as const, bodyAngle: result.angle, content: result.body, targetMarket: capturedInput.targetMarket, productCategory: capturedInput.productCategory, specificProductName: capturedInput.specificProductName, pressingProblem: capturedInput.pressingProblem, desiredOutcome: capturedInput.desiredOutcome, uniqueMechanism: capturedInput.uniqueMechanism || null, listBenefits: capturedInput.listBenefits || null, specificTechnology: capturedInput.specificTechnology || null, scientificStudies: capturedInput.scientificStudies || null, credibleAuthority: capturedInput.credibleAuthority || null, featuredIn: capturedInput.featuredIn || null, numberOfReviews: capturedInput.numberOfReviews || null, averageReviewRating: capturedInput.averageReviewRating || null, totalCustomers: capturedInput.totalCustomers || null, testimonials: capturedInput.testimonials || null, complianceScore: cr.score, complianceVersion: cr.version, complianceCheckedAt: new Date(), selectionScore: String(scoreAdContent('body', result.body, result.angle)), violationReasons: cr.issues.length > 0 ? cr.issues.map(i => i.reason) : null });
-                    }
-                    for (const link of retryLinkData.links) {
-                      const cr = await checkCompliance(link);
-                      retryInserts.push({ userId: capturedUserId, serviceId: capturedInput.serviceId, campaignId: capturedInput.campaignId || null, adSetId: retryAdSetId, adType: capturedInput.adType, adStyle: capturedInput.adStyle, adCallToAction: capturedInput.adCallToAction, contentType: 'link' as const, content: link, targetMarket: capturedInput.targetMarket, productCategory: capturedInput.productCategory, specificProductName: capturedInput.specificProductName, pressingProblem: capturedInput.pressingProblem, desiredOutcome: capturedInput.desiredOutcome, uniqueMechanism: capturedInput.uniqueMechanism || null, listBenefits: capturedInput.listBenefits || null, specificTechnology: capturedInput.specificTechnology || null, scientificStudies: capturedInput.scientificStudies || null, credibleAuthority: capturedInput.credibleAuthority || null, featuredIn: capturedInput.featuredIn || null, numberOfReviews: capturedInput.numberOfReviews || null, averageReviewRating: capturedInput.averageReviewRating || null, totalCustomers: capturedInput.totalCustomers || null, testimonials: capturedInput.testimonials || null, complianceScore: cr.score, complianceVersion: cr.version, complianceCheckedAt: new Date(), selectionScore: String(scoreAdContent('link', link)), violationReasons: cr.issues.length > 0 ? cr.issues.map(i => i.reason) : null });
-                    }
-                    if (retryInserts.length > 0) await retryDb.insert(adCopy).values(retryInserts);
-                    // W5 Phase 2 — same pre-compute hook on the retry path.
-                    await precomputeAdCopyComplianceRewrites(
-                      { id: capturedUserId, subscriptionTier: user.subscriptionTier ?? null, role: user.role ?? null },
-                      retryAdSetId,
-                      capturedService.category ?? null,
-                    );
-                    await retryDb.update(jobs).set({ status: 'complete', result: JSON.stringify({ adSetId: retryAdSetId, count: retryInserts.length }) }).where(eq(jobs.id, jobId));
-                    console.log(`[adCopy.generateAsync] Job ${jobId} retry succeeded, adSetId: ${retryAdSetId}`);
+                    await retryDb.update(jobs).set({ status: 'complete', result: JSON.stringify(retryResult) }).where(eq(jobs.id, jobId));
+                    console.log(`[adCopy.generateAsync] Job ${jobId} retry succeeded, adSetId: ${retryResult.adSetId}`);
                   } catch (retryErr: unknown) {
                     const retryMsg = retryErr instanceof Error ? retryErr.message : String(retryErr);
                     console.error(`[adCopy.generateAsync] Job ${jobId} retry also failed:`, retryMsg);
                     try { const fd = await getDb(); if (fd) await fd.update(jobs).set({ status: 'failed', error: retryMsg.slice(0, 1024) }).where(eq(jobs.id, jobId)); } catch { /* ignore */ }
                   }
                 });
-                return; // Don't mark as failed yet — retry is in flight
+                return;
               }
             } catch { /* if retry setup fails, fall through to permanent failure */ }
           }

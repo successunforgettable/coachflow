@@ -246,3 +246,143 @@ export async function generateAllOfferAngles(
 
   return { godfather, free, dollar };
 }
+
+// ─── Auto Mode Phase B1 — runOfferGeneration ────────────────────────────────
+// Gen-core for the offers node. Callable directly by:
+//   - offers.generate (sync tRPC mutation) — wrapped with quota check, returns full row
+//   - offers.generateAsync (async tRPC mutation) — wrapped with quota check + jobId enqueue, runs in setImmediate
+//   - autoMode.orchestrate (Phase B2 orchestrator) — direct call, no HTTP round-trip
+//
+// Shape: takes minimal pre-validated input, fetches everything it needs from
+// the DB, builds cascade/ICP/SOT context, calls generateAllOfferAngles,
+// inserts the offer row, returns { offerId }. Quota checks live in the
+// tRPC wrappers (orchestrator skips them by design — Auto Mode is one user-
+// initiated action that already passed the entry gate at intake).
+export async function runOfferGeneration(input: {
+  userId: number;
+  serviceId: number;
+  campaignId?: number;
+  offerType: 'standard' | 'premium' | 'vip';
+}): Promise<{ offerId: number }> {
+  // Lazy-import DB types/runtime to keep this file framework-agnostic for the
+  // orchestrator's direct-call path.
+  const { getDb } = await import("./db");
+  const { offers, services, idealCustomerProfiles, sourceOfTruth, campaigns } = await import("../drizzle/schema");
+  const { eq, and } = await import("drizzle-orm");
+  const { getCascadeContext } = await import("./_core/cascadeContext");
+
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  // Service fetch — owner-scoped
+  const [service] = await db
+    .select()
+    .from(services)
+    .where(and(eq(services.id, input.serviceId), eq(services.userId, input.userId)))
+    .limit(1);
+  if (!service) throw new Error("Service not found");
+
+  // Campaign fetch (if scoped to a campaign) — Item 1.1b icpId support
+  let campaignRecord: typeof campaigns.$inferSelect | undefined;
+  if (input.campaignId) {
+    [campaignRecord] = await db
+      .select()
+      .from(campaigns)
+      .where(and(eq(campaigns.id, input.campaignId), eq(campaigns.userId, input.userId)))
+      .limit(1);
+  }
+
+  // ICP fetch — campaign-specific first, serviceId fallback
+  let icp: typeof idealCustomerProfiles.$inferSelect | undefined;
+  if (campaignRecord?.icpId) {
+    [icp] = await db
+      .select()
+      .from(idealCustomerProfiles)
+      .where(eq(idealCustomerProfiles.id, campaignRecord.icpId))
+      .limit(1);
+  }
+  if (!icp) {
+    [icp] = await db
+      .select()
+      .from(idealCustomerProfiles)
+      .where(eq(idealCustomerProfiles.serviceId, input.serviceId))
+      .limit(1);
+  }
+
+  // Cascade context — upstream campaignKits selections for this ICP
+  const cascadeContext = await getCascadeContext(input.userId, icp?.id, "offer");
+
+  // ICP context block
+  const icpContext = icp ? [
+    'IDEAL CUSTOMER PROFILE — use this to make every offer specific and targeted:',
+    icp.objections ? `Their objections to buying: ${icp.objections}` : '',
+    icp.buyingTriggers ? `What makes them buy: ${icp.buyingTriggers}` : '',
+    icp.implementationBarriers ? `What stops them from taking action: ${icp.implementationBarriers}` : '',
+    icp.successMetrics ? `How they measure success: ${icp.successMetrics}` : '',
+  ].filter(Boolean).join('\n').trim() : '';
+
+  // SOT fetch + context block
+  const [sot] = await db
+    .select()
+    .from(sourceOfTruth)
+    .where(eq(sourceOfTruth.userId, input.userId))
+    .limit(1);
+  const sotLines = sot ? [
+    sot.coreOffer ? `Core offer: ${sot.coreOffer}` : '',
+    sot.targetAudience ? `Target audience: ${sot.targetAudience}` : '',
+    sot.mainPainPoint ? `Main pain point: ${sot.mainPainPoint}` : '',
+    sot.mainBenefits ? `Main benefits: ${sot.mainBenefits}` : '',
+    sot.uniqueValue ? `Unique value: ${sot.uniqueValue}` : '',
+    sot.idealCustomerAvatar ? `Ideal customer: ${sot.idealCustomerAvatar}` : '',
+  ].filter(Boolean) : [];
+  const sotContext = sotLines.length > 0
+    ? ['BRAND CONTEXT — this is the approved brand voice. All copy must be consistent with this:', ...sotLines].join('\n')
+    : '';
+
+  // Social proof — full structure matching offersGenerator's social proof guard
+  const socialProof = {
+    hasCustomers: !!service.totalCustomers && service.totalCustomers > 0,
+    hasTestimonials: !!service.testimonial1Name || !!service.testimonial2Name || !!service.testimonial3Name,
+    hasRating: !!service.averageRating && parseFloat(service.averageRating) > 0,
+    hasReviews: !!service.totalReviews && service.totalReviews > 0,
+    hasPress: !!service.pressFeatures && service.pressFeatures.trim().length > 0,
+    customerCount: service.totalCustomers || 0,
+    rating: service.averageRating || '',
+    reviewCount: service.totalReviews || 0,
+    testimonials: [
+      service.testimonial1Name ? { name: service.testimonial1Name, title: service.testimonial1Title || '', quote: service.testimonial1Quote || '' } : null,
+      service.testimonial2Name ? { name: service.testimonial2Name, title: service.testimonial2Title || '', quote: service.testimonial2Quote || '' } : null,
+      service.testimonial3Name ? { name: service.testimonial3Name, title: service.testimonial3Title || '', quote: service.testimonial3Quote || '' } : null,
+    ].filter(Boolean),
+    press: service.pressFeatures || '',
+  };
+
+  const enrichedTargetCustomer = sotContext || icpContext
+    ? `${sotContext ? `${sotContext}\n\n` : ''}${service.targetCustomer || 'Target Customer'}${icpContext ? `\n\n${icpContext}` : ''}`
+    : service.targetCustomer || 'Target Customer';
+
+  const allAngles = await generateAllOfferAngles(
+    service.name,
+    service.description || "",
+    enrichedTargetCustomer,
+    service.mainBenefit || "Main Benefit",
+    input.offerType,
+    socialProof,
+    cascadeContext,
+  );
+
+  const insertResult: any = await db.insert(offers).values({
+    userId: input.userId,
+    serviceId: input.serviceId,
+    campaignId: input.campaignId || null,
+    productName: service.name,
+    offerType: input.offerType,
+    godfatherAngle: allAngles.godfather,
+    freeAngle: allAngles.free,
+    dollarAngle: allAngles.dollar,
+    activeAngle: "godfather",
+    rating: 0,
+  });
+
+  return { offerId: insertResult[0].insertId };
+}

@@ -646,3 +646,213 @@ export async function generateAllAngles(
   ]);
   return { original, godfather, free, dollar };
 }
+
+// ─── Auto Mode Phase B1 — runLandingPageGeneration ──────────────────────────
+// Gen-core for the landing-page node. Callable directly by:
+//   - landingPages.generate (sync tRPC mutation) — wrapped with quota check, returns full row
+//   - landingPages.generateAsync (async tRPC mutation) — wrapped with quota check + jobId enqueue + retry-on-network-error path
+//   - autoMode.orchestrate (Phase B2 orchestrator) — direct call with onProgress callback for "Generating angle X of 4…" labels routed to the orchestrator's own job
+//
+// What's inside: Service/SOT/ICP/Kit fetches → context building → avatar
+// parsing → social-proof shape → generateAllAngles → DB insert → user-count
+// + quota-count increments → auto-score + autoSelectBest into kit.
+// What's outside: quota ENFORCEMENT (caller's job — wizard wrapper enforces;
+// orchestrator skips by design), compliance precompute fire-and-forget
+// (caller fires setImmediate after success).
+export async function runLandingPageGeneration(input: {
+  userId: number;
+  serviceId: number;
+  campaignId?: number;
+  avatarName?: string;
+  avatarDescription?: string;
+  pageType?: LpPageType;
+  onProgress?: (completed: number, total: number) => Promise<void>;
+}): Promise<{ landingPageId: number }> {
+  const { getDb } = await import("./db");
+  const { landingPages, services, users, idealCustomerProfiles, sourceOfTruth, campaigns, campaignKits } = await import("../drizzle/schema");
+  const { eq, and } = await import("drizzle-orm");
+  const { getCascadeContext } = await import("./_core/cascadeContext");
+  const { incrementQuotaCount } = await import("./lib/quotaEnforcement");
+  const { scoreItem } = await import("./lib/selectionScorer");
+  const { autoSelectBest } = await import("./routers/campaignKits");
+
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const [service] = await db
+    .select()
+    .from(services)
+    .where(and(eq(services.id, input.serviceId), eq(services.userId, input.userId)))
+    .limit(1);
+  if (!service) throw new Error("Service not found");
+
+  const [user] = await db.select().from(users).where(eq(users.id, input.userId)).limit(1);
+  if (!user) throw new Error("User not found");
+
+  const [sot] = await db
+    .select()
+    .from(sourceOfTruth)
+    .where(eq(sourceOfTruth.userId, input.userId))
+    .limit(1);
+
+  // ICP fetch — campaign-specific first, serviceId fallback
+  let icp: typeof idealCustomerProfiles.$inferSelect | undefined;
+  if (input.campaignId) {
+    const [campaign] = await db
+      .select()
+      .from(campaigns)
+      .where(and(eq(campaigns.id, input.campaignId), eq(campaigns.userId, input.userId)))
+      .limit(1);
+    if (campaign?.icpId) {
+      [icp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.id, campaign.icpId)).limit(1);
+    }
+  }
+  if (!icp) {
+    [icp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
+  }
+
+  // campaignType from campaignKits (V2 SoT). Default course_launch when no kit.
+  let campaignType: string = 'course_launch';
+  if (icp?.id) {
+    const [kit] = await db
+      .select()
+      .from(campaignKits)
+      .where(and(eq(campaignKits.userId, input.userId), eq(campaignKits.icpId, icp.id)))
+      .limit(1);
+    if (kit?.campaignType) campaignType = kit.campaignType;
+  }
+
+  // Cascade context — upstream campaignKits selections for this ICP
+  const cascadeContext = await getCascadeContext(input.userId, icp?.id, "landingPage");
+
+  const sotLines = sot ? [
+    sot.coreOffer ? `Core offer: ${sot.coreOffer}` : '',
+    sot.targetAudience ? `Target audience: ${sot.targetAudience}` : '',
+    sot.mainPainPoint ? `Main pain point: ${sot.mainPainPoint}` : '',
+    sot.mainBenefits ? `Main benefits: ${sot.mainBenefits}` : '',
+    sot.uniqueValue ? `Unique value: ${sot.uniqueValue}` : '',
+    sot.idealCustomerAvatar ? `Ideal customer: ${sot.idealCustomerAvatar}` : '',
+  ].filter(Boolean) : [];
+  const sotContext = sotLines.length > 0
+    ? ['BRAND CONTEXT — this is the approved brand voice. All copy must be consistent with this:', ...sotLines].join('\n')
+    : '';
+
+  const icpContext = icp ? `
+IDEAL CUSTOMER PROFILE — use this to make every line of copy specific and targeted:
+${icp.pains ? `Their daily pains: ${icp.pains}` : ''}
+${icp.fears ? `Their deep fears: ${icp.fears}` : ''}
+${icp.objections ? `Their objections to buying: ${icp.objections}` : ''}
+${icp.buyingTriggers ? `What makes them buy: ${icp.buyingTriggers}` : ''}
+${icp.implementationBarriers ? `What stops them from taking action: ${icp.implementationBarriers}` : ''}
+${icp.successMetrics ? `How they measure success: ${icp.successMetrics}` : ''}
+`.trim() : '';
+
+  const campaignTypeContextMap: Record<string, string> = {
+    webinar: `CAMPAIGN TYPE: Webinar
+Framing: Show-up urgency — the live event is the vehicle. Copy must give a compelling reason to attend live, not just register.
+Urgency mechanism: Date and time of the webinar. Limited seats available.
+CTA language: Register now / Save your seat / Join us live on [date]`,
+    challenge: `CAMPAIGN TYPE: Challenge
+Framing: Community commitment — joining a group doing this together. Daily wins build momentum.
+Urgency mechanism: Challenge start date. Community closes when the challenge begins.
+CTA language: Join the challenge / Claim your spot / Start with us on [date]`,
+    course_launch: `CAMPAIGN TYPE: Course Launch
+Framing: Transformation journey — who they are now vs who they will become. Enrolment is the decision point.
+Urgency mechanism: Enrolment deadline. Cohort size is limited.
+CTA language: Enrol now / Join the programme / Claim your place before [date]`,
+    product_launch: `CAMPAIGN TYPE: Product Launch
+Framing: Early access and founding member status. First to experience something new.
+Urgency mechanism: Launch day price increase. Founding member pricing closes on launch day.
+CTA language: Get early access / Become a founding member / Lock in launch pricing`,
+  };
+  const campaignTypeContext = campaignTypeContextMap[campaignType] || campaignTypeContextMap['course_launch'];
+
+  // Social proof
+  const socialProof = {
+    hasCustomers: !!service.totalCustomers && service.totalCustomers > 0,
+    hasRating: !!service.averageRating && parseFloat(service.averageRating) > 0,
+    hasReviews: !!service.totalReviews && service.totalReviews > 0,
+    hasTestimonials: !!service.testimonial1Name || !!service.testimonial2Name || !!service.testimonial3Name,
+    hasPress: !!service.pressFeatures && service.pressFeatures.trim().length > 0,
+    customerCount: service.totalCustomers || 0,
+    rating: service.averageRating || '',
+    reviewCount: service.totalReviews || 0,
+    testimonials: [
+      service.testimonial1Name ? { name: service.testimonial1Name, title: service.testimonial1Title || '', quote: service.testimonial1Quote || '' } : null,
+      service.testimonial2Name ? { name: service.testimonial2Name, title: service.testimonial2Title || '', quote: service.testimonial2Quote || '' } : null,
+      service.testimonial3Name ? { name: service.testimonial3Name, title: service.testimonial3Title || '', quote: service.testimonial3Quote || '' } : null,
+    ].filter(Boolean),
+    press: service.pressFeatures || '',
+  };
+
+  // Avatar parsing — Issue 5
+  let avatarName = input.avatarName || `${service.targetCustomer}`;
+  let avatarDescription = input.avatarDescription || service.description || "Target Customer";
+  if (avatarName.includes(',')) {
+    const parts = avatarName.split(',').map(p => p.trim());
+    if (parts.length >= 3) {
+      avatarName = `${parts[0]} the ${parts[2]}`;
+      avatarDescription = parts.length >= 4 ? parts[3] : parts[2];
+    } else if (parts.length === 2) {
+      avatarName = `${parts[0]} the ${parts[1]}`;
+      avatarDescription = parts[1];
+    }
+  }
+
+  const enrichedAvatarDescription = [
+    sotContext || null,
+    avatarDescription || null,
+    campaignTypeContext || null,
+    icpContext || null,
+  ].filter(Boolean).join('\n\n');
+
+  const allAnglesRaw = await generateAllAngles(
+    service.name,
+    service.description || "",
+    avatarName,
+    enrichedAvatarDescription,
+    socialProof,
+    input.onProgress,
+    cascadeContext,
+    input.pageType,
+  );
+
+  const allAngles = {
+    original: allAnglesRaw.original as Record<string, unknown>,
+    godfather: allAnglesRaw.godfather as Record<string, unknown>,
+    free: allAnglesRaw.free as Record<string, unknown>,
+    dollar: allAnglesRaw.dollar as Record<string, unknown>,
+  };
+
+  const insertResult: any = await db.insert(landingPages).values({
+    userId: input.userId,
+    serviceId: input.serviceId,
+    campaignId: input.campaignId || null,
+    productName: service.name,
+    productDescription: service.description || "",
+    avatarName,
+    avatarDescription,
+    originalAngle: allAngles.original,
+    godfatherAngle: allAngles.godfather,
+    freeAngle: allAngles.free,
+    dollarAngle: allAngles.dollar,
+    activeAngle: "original",
+    pageType: input.pageType,
+    rating: 0,
+  });
+  const landingPageId = insertResult[0].insertId;
+
+  // Quota tracking — both wizard and orchestrator paths increment consistently
+  await db.update(users).set({ landingPageGeneratedCount: user.landingPageGeneratedCount + 1 }).where(eq(users.id, input.userId));
+  await incrementQuotaCount(input.userId, "landingPages");
+
+  // Auto-score + autoSelectBest — non-blocking
+  try {
+    const originalContent = JSON.stringify(allAngles.original);
+    const s = await scoreItem({ content: originalContent, nodeType: "landingPages", formulaType: "original" });
+    await db.update(landingPages).set({ selectionScore: String(s) } as any).where(eq(landingPages.id, landingPageId));
+    if (icp?.id) await autoSelectBest(input.userId, icp.id, "selectedLandingPageId", landingPageId);
+  } catch (e) { console.warn("[auto-select] landingPages failed:", e); }
+
+  return { landingPageId };
+}
