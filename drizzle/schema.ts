@@ -1267,7 +1267,12 @@ export type InsertCoachAsset = typeof coachAssets.$inferInsert;
 export const jobs = mysqlTable("jobs", {
   id: varchar("id", { length: 36 }).primaryKey(), // UUID
   userId: varchar("userId", { length: 36 }).notNull().default(""), // Owner — used for ownership check in GET /api/jobs/:jobId
-  status: mysqlEnum("status", ["pending", "complete", "failed"]).notNull().default("pending"),
+  // Auto Mode Phase 0: 'running' added for multi-step orchestrators. Reaper
+  // (server/_core/index.ts:67) filters on status='pending' only, so 'running'
+  // jobs are never swept. Single-step generators continue using
+  // pending → complete/failed; only Auto Mode-class orchestrators transition
+  // through pending → running → complete/failed. Migration: 0071.
+  status: mysqlEnum("status", ["pending", "complete", "failed", "running"]).notNull().default("pending"),
   result: text("result"), // JSON stored as longtext-compatible text
   error: varchar("error", { length: 1024 }),
   progress: text("progress"), // JSON: { step: number, total: number, label: string } — updated during generation

@@ -1,0 +1,28 @@
+-- Auto Mode Phase 0 — extend jobs.status enum from 3 → 4 values.
+-- Appends 'running' to the existing 'pending' / 'complete' / 'failed' set.
+--
+-- Why: Auto Mode (Sprint 1, Phase B) chains 8 sequential LLM generations into
+-- a single orchestration job. Total runtime can exceed the 5-minute stuck-job
+-- reaper threshold (server/_core/index.ts:56-75). Single-step generators
+-- complete well under 5 min and remain in 'pending' for their entire lifecycle,
+-- which is fine. Multi-step orchestration jobs need a status the reaper can
+-- distinguish from "stuck pending" — hence 'running'.
+--
+-- Reaper logic at server/_core/index.ts:67 already filters on
+--   `eq(jobs.status, "pending")`
+-- so it skips 'running' rows automatically. No reaper code change needed in
+-- this commit — only schema.ts catches up to the new enum value.
+--
+-- Order matters for MySQL ENUM ordinals: original 3 preserved at positions
+-- 1-3; new 'running' appended at 4. Reordering or removing existing values
+-- would corrupt existing rows; we strictly append (matches the pattern from
+-- 0068_email_sequence_types_phase2.sql).
+--
+-- Default stays 'pending' — every job starts in pending. Single-step generators
+-- transition pending → complete/failed on terminal write. Multi-step
+-- orchestrators transition pending → running on first internal step, then
+-- running → complete/failed at end.
+--
+-- Backward compatible: existing rows are at one of the 3 original values; no
+-- data migration needed.
+ALTER TABLE `jobs` MODIFY COLUMN `status` enum('pending','complete','failed','running') NOT NULL DEFAULT 'pending';
