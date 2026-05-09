@@ -83,7 +83,13 @@ export default function V2AutoModeIntakeConfirm() {
 
   const createService = trpc.services.create.useMutation();
   const expandProfile = trpc.services.expandProfile.useMutation();
-  const generateIcpAsync = trpc.icps.generateAsync.useMutation();
+  // Phase B3 hand-off: switched from icps.generateAsync to icps.generate (sync)
+  // because autoMode.orchestrate needs icpId synchronously to enqueue the
+  // orchestration job. Sync generate adds ~30-90s to the confirm-screen wait,
+  // but the user was already waiting ~5min on the progress screen — net UX
+  // unchanged; flow is just clearly two-staged now (ICP setup → orchestration).
+  const generateIcp = trpc.icps.generate.useMutation();
+  const orchestrate = trpc.autoMode.orchestrate.useMutation();
 
   // No state from intake → bounce back. Avoids broken direct-link state.
   useEffect(() => {
@@ -135,10 +141,36 @@ export default function V2AutoModeIntakeConfirm() {
       // Expand downstream Service fields. If this fails non-fatally, we
       // still proceed — expansion is enhancement, not gating.
       try { await expandProfile.mutateAsync({ serviceId }); } catch { /* surfaced via dashboard if needed */ }
-      // Kick ICP generation async. Returns a jobId; user sees the kit
-      // form on the dashboard while this completes in the background.
-      try { await generateIcpAsync.mutateAsync({ serviceId, name: extracted.icpDescriptor.trim() || `${extracted.serviceName.trim()} Profile` }); } catch { /* user can re-trigger from dashboard */ }
-      navigate("/v2-dashboard");
+      // Generate ICP synchronously so we have icpId for autoMode.orchestrate.
+      // If ICP fails, fall back to dashboard (user can retry from there).
+      let icpId: number | null = null;
+      try {
+        const newIcp = await generateIcp.mutateAsync({
+          serviceId,
+          name: extracted.icpDescriptor.trim() || `${extracted.serviceName.trim()} Profile`,
+        });
+        icpId = (newIcp as { id: number }).id;
+      } catch (icpErr) {
+        const msg = icpErr instanceof Error ? icpErr.message : "Could not generate your ICP. You can retry from the dashboard.";
+        setSubmitError(msg);
+        setIsSubmitting(false);
+        return;
+      }
+      // Kick Auto Mode orchestration — server-side job; client polls progress.
+      try {
+        const { jobId } = await orchestrate.mutateAsync({
+          serviceId,
+          icpId,
+          // campaignType undefined per locked B3 spec — orchestrator falls
+          // back to runX defaults (course_launch in cascade map).
+        });
+        navigate(`/v2-dashboard/auto-mode/progress?jobId=${jobId}`);
+      } catch (orchestrateErr) {
+        const msg = orchestrateErr instanceof Error ? orchestrateErr.message : "Could not start Auto Mode. You can pick up generation manually from the dashboard.";
+        setSubmitError(msg);
+        setIsSubmitting(false);
+        return;
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Could not save your profile. Please try again.";
       setSubmitError(msg);
