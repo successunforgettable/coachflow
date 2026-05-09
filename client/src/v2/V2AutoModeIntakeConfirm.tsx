@@ -155,12 +155,25 @@ export default function V2AutoModeIntakeConfirm() {
   return (
     <V2Layout>
       <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", padding: "48px 16px 64px" }}>
-        <button
-          onClick={handleRewrite}
-          style={{ alignSelf: "flex-start", marginBottom: "24px", fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#777", background: "none", border: "none", cursor: "pointer", padding: "0", display: "flex", alignItems: "center", gap: "6px" }}
-        >
-          ← Re-write My Description
-        </button>
+        {/* Phase A.1: dual back-links — out-of-flow exit (Dashboard) + in-flow
+            back (Re-write). Mirrors intake-screen "Back to Dashboard" position
+            and styling so the abandon path is 1-click from anywhere in the
+            Auto Mode flow. */}
+        <div style={{ alignSelf: "flex-start", marginBottom: "24px", display: "flex", alignItems: "center", gap: "12px" }}>
+          <button
+            onClick={() => navigate("/v2-dashboard")}
+            style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#777", background: "none", border: "none", cursor: "pointer", padding: "0", display: "flex", alignItems: "center", gap: "6px" }}
+          >
+            ← Back to Dashboard
+          </button>
+          <span style={{ color: "rgba(26,22,36,0.20)", fontSize: "14px", userSelect: "none" }}>·</span>
+          <button
+            onClick={handleRewrite}
+            style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#777", background: "none", border: "none", cursor: "pointer", padding: "0", display: "flex", alignItems: "center", gap: "6px" }}
+          >
+            ← Re-write My Description
+          </button>
+        </div>
         <div style={cardStyle}>
           <h1 style={{ fontFamily: "var(--v2-font-heading)", fontStyle: "italic", fontWeight: 900, fontSize: "clamp(22px, 5vw, 30px)", color: "var(--v2-text-color)", lineHeight: 1.2, marginBottom: "8px", marginTop: 0, textAlign: "center" }}>
             Here&apos;s what Zappy understood
