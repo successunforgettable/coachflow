@@ -16,7 +16,7 @@
  * when overall confidence === "low". CTA gated on flagged fields meeting
  * an 8-character minimum each.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import V2Layout from "./V2Layout";
@@ -80,21 +80,41 @@ export default function V2AutoModeIntakeConfirm() {
   const [rawText] = useState<string>(incomingState?.rawText ?? "");
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // B3.3 hotfix: split loading phase so the button label can rotate
+  // ("Saving…" during fast service writes → "Setting up your profile…"
+  // during the ICP poll). Two distinct states better than one ambiguous
+  // "Saving…" for 30-120s during ICP generation.
+  const [loadingPhase, setLoadingPhase] = useState<"saving" | "icp" | null>(null);
 
   const createService = trpc.services.create.useMutation();
   const expandProfile = trpc.services.expandProfile.useMutation();
-  // Phase B3 hand-off: switched from icps.generateAsync to icps.generate (sync)
-  // because autoMode.orchestrate needs icpId synchronously to enqueue the
-  // orchestration job. Sync generate adds ~30-90s to the confirm-screen wait,
-  // but the user was already waiting ~5min on the progress screen — net UX
-  // unchanged; flow is just clearly two-staged now (ICP setup → orchestration).
-  const generateIcp = trpc.icps.generate.useMutation();
+  // B3.3 hotfix: reverted from icps.generate (sync, blocks HTTP request for
+  // the LLM call duration → Railway proxy timeout at ~3min → HTML 504 →
+  // tRPC client JSON.parse fails with "Unexpected token '<', '<!DOCTYPE'")
+  // back to icps.generateAsync (returns jobId in <100ms; LLM runs
+  // server-side via setImmediate, escaping the HTTP request lifetime).
+  // Client-side polls /api/jobs/<jobId> every 5s for completion, extracts
+  // result.icpId from the polled response, then calls autoMode.orchestrate.
+  // Mirrors the existing V2GeneratorWizard polling pattern.
+  const generateIcpAsync = trpc.icps.generateAsync.useMutation();
   const orchestrate = trpc.autoMode.orchestrate.useMutation();
+
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // No state from intake → bounce back. Avoids broken direct-link state.
   useEffect(() => {
     if (!extracted) navigate("/v2-dashboard/auto-mode");
   }, [extracted, navigate]);
+
+  // Cleanup poll interval on unmount.
+  useEffect(() => {
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+    };
+  }, []);
 
   if (!extracted) return null;
 
@@ -125,10 +145,54 @@ export default function V2AutoModeIntakeConfirm() {
   const noFlaggedGaps = !requiredKeys.some(k => isFieldFlagged(k));
   const submitEnabled = allRequiredFilled && noFlaggedGaps && !isSubmitting;
 
+  // Poll /api/jobs/<jobId> every 5s until terminal status. Mirrors the
+  // V2GeneratorWizard pattern (L1782+) — single source of truth for the
+  // 5s cadence + 300s ceiling.
+  function pollIcpJob(jobId: string): Promise<number> {
+    return new Promise((resolve, reject) => {
+      const POLL_INTERVAL_MS = 5_000;
+      const MAX_POLL_MS = 300_000;
+      const pollStart = Date.now();
+      pollIntervalRef.current = setInterval(async () => {
+        try {
+          const res = await fetch(`/api/jobs/${jobId}`);
+          if (!res.ok) {
+            // Transient HTTP error — keep polling until ceiling.
+            if (Date.now() - pollStart > MAX_POLL_MS) {
+              if (pollIntervalRef.current) { clearInterval(pollIntervalRef.current); pollIntervalRef.current = null; }
+              reject(new Error("ICP generation timed out after 300 seconds"));
+            }
+            return;
+          }
+          const data = (await res.json()) as { status: string; result: { icpId?: number } | null; error?: string };
+          if (data.status === "complete") {
+            if (pollIntervalRef.current) { clearInterval(pollIntervalRef.current); pollIntervalRef.current = null; }
+            const icpId = data.result?.icpId;
+            if (typeof icpId !== "number") {
+              reject(new Error("ICP job completed without an icpId."));
+              return;
+            }
+            resolve(icpId);
+          } else if (data.status === "failed") {
+            if (pollIntervalRef.current) { clearInterval(pollIntervalRef.current); pollIntervalRef.current = null; }
+            reject(new Error(data.error || "ICP generation failed."));
+          } else if (Date.now() - pollStart > MAX_POLL_MS) {
+            if (pollIntervalRef.current) { clearInterval(pollIntervalRef.current); pollIntervalRef.current = null; }
+            reject(new Error("ICP generation timed out after 300 seconds"));
+          }
+        } catch (pollErr) {
+          if (pollIntervalRef.current) { clearInterval(pollIntervalRef.current); pollIntervalRef.current = null; }
+          reject(pollErr);
+        }
+      }, POLL_INTERVAL_MS);
+    });
+  }
+
   async function handleConfirm() {
     if (!submitEnabled || !extracted) return;
     setSubmitError(null);
     setIsSubmitting(true);
+    setLoadingPhase("saving");
     try {
       const created = await createService.mutateAsync({
         name: extracted.serviceName.trim(),
@@ -141,19 +205,24 @@ export default function V2AutoModeIntakeConfirm() {
       // Expand downstream Service fields. If this fails non-fatally, we
       // still proceed — expansion is enhancement, not gating.
       try { await expandProfile.mutateAsync({ serviceId }); } catch { /* surfaced via dashboard if needed */ }
-      // Generate ICP synchronously so we have icpId for autoMode.orchestrate.
-      // If ICP fails, fall back to dashboard (user can retry from there).
-      let icpId: number | null = null;
+      // Generate ICP via async job + poll. The sync icps.generate path held
+      // the HTTP request open for the LLM call (~30-120s) which exceeded
+      // Railway's proxy timeout, returning HTML 504 → tRPC JSON.parse fail.
+      // generateIcpAsync returns {jobId} in <100ms; LLM runs server-side
+      // via setImmediate.
+      setLoadingPhase("icp");
+      let icpId: number;
       try {
-        const newIcp = await generateIcp.mutateAsync({
+        const { jobId } = await generateIcpAsync.mutateAsync({
           serviceId,
           name: extracted.icpDescriptor.trim() || `${extracted.serviceName.trim()} Profile`,
         });
-        icpId = (newIcp as { id: number }).id;
+        icpId = await pollIcpJob(jobId);
       } catch (icpErr) {
         const msg = icpErr instanceof Error ? icpErr.message : "Could not generate your ICP. You can retry from the dashboard.";
         setSubmitError(msg);
         setIsSubmitting(false);
+        setLoadingPhase(null);
         return;
       }
       // Kick Auto Mode orchestration — server-side job; client polls progress.
@@ -169,12 +238,14 @@ export default function V2AutoModeIntakeConfirm() {
         const msg = orchestrateErr instanceof Error ? orchestrateErr.message : "Could not start Auto Mode. You can pick up generation manually from the dashboard.";
         setSubmitError(msg);
         setIsSubmitting(false);
+        setLoadingPhase(null);
         return;
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Could not save your profile. Please try again.";
       setSubmitError(msg);
       setIsSubmitting(false);
+      setLoadingPhase(null);
     }
   }
 
@@ -324,7 +395,9 @@ export default function V2AutoModeIntakeConfirm() {
               marginTop: "8px",
             }}
           >
-            {isSubmitting ? "Saving…" : "Looks Good — Build My Campaign"}
+            {isSubmitting
+              ? (loadingPhase === "icp" ? "Setting up your profile…" : "Saving…")
+              : "Looks Good — Build My Campaign"}
           </button>
         </div>
       </div>
