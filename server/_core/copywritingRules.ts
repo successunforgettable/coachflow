@@ -139,6 +139,71 @@ Use one of these instead, in order of preference:
 This rule overrides any in-prompt example or template that asks you to generate credibility markers like "award-winning" or "certified" — those are fabricated examples, not data to copy. If the input data does not provide a verifiable credential and a placeholder would feel awkward in the sentence, prefer rephrasing to remove the credential claim entirely rather than inventing one.`;
 
 /**
+ * Research-statistic-fabrication ban — appended to system prompts in
+ * generators that produce body-length copy where the model is tempted to
+ * invent population-level statistics framed as research findings. The
+ * model has no ground truth on epidemiological / demographic / behavioural-
+ * science findings; any specific stat it writes is a guess presented as
+ * established research, which is a credibility hazard for the operator
+ * and a Meta-compliance hazard if used in ad-policy-relevant copy.
+ *
+ * Production evidence 2026-05-10: Quiet Mornings landing page (kit 11,
+ * landingPages.id=52) generated "first reactive decision within 90
+ * seconds of waking", "fewer than 1 in 8", "above 80% failure rate",
+ * "fewer than 11 uninterrupted personal minutes per day" — all framed
+ * as established findings without operator-supplied source. None
+ * verifiable from the service record.
+ *
+ * Same architectural pattern as NO_DATE_FABRICATION_RULE and
+ * NO_CREDENTIAL_FABRICATION_RULE: single shared constant, system-prompt
+ * placement, scoped to the confirmed offender (landing page generator)
+ * this commit. Sprint B+2 budget: cross-generator audit for the same
+ * leakage in email / whatsapp / headlines / adCopy / offers body copy.
+ *
+ * Sprint B+1 placement scope locked: landing-page-only this commit. The
+ * rule's allow-list is deliberately permissive on first-person
+ * experiential framing and explicit hypotheticals so it does not
+ * over-scrub useful niche-grounded prose.
+ */
+export const NO_RESEARCH_STATISTIC_FABRICATION_RULE = `NO RESEARCH STATISTIC FABRICATION: You do not have ground truth on epidemiological, demographic, behavioural-science, or industry-survey findings. Do not invent any population-level statistic in published copy. Specifically banned:
+- Invented percentages framed as research findings: "above 80% failure rate", "92% of [group] experience X", "less than 12% of people..."
+- Invented X-of-Y ratios: "fewer than 1 in 8", "1 in 5 [group] report", "3 out of 4 [target] struggle with..."
+- Invented time-to-X claims: "first reactive decision within 90 seconds of waking", "make 35,000 decisions a day", "lose 47 minutes per interruption"
+- Invented bounded-quantity claims: "fewer than 11 uninterrupted personal minutes per day", "the average person checks their phone 144 times daily"
+- Research-shaped phrasings presented as established findings: "studies show", "research finds", "data indicates", "neuroscience tells us", "the science is clear" — when no operator-supplied source backs the claim
+- Named-source attribution without operator-supplied source: "Stanford research shows", "a Harvard study found", "Gallup data indicates"
+
+Use one of these instead, in order of preference:
+1. Real statistics supplied in input fields (when populated with non-empty, non-"N/A" values) — quoted verbatim, attributed if attribution was supplied
+2. First-person experiential framing without research shape: "many of the people I work with", "in my work with [niche]", "the pattern I see most often is", "what I've noticed across [n] cohorts"
+3. Explicit hypothetical framing: "imagine you're someone who", "what often happens when [situation]", "consider the [niche]-specific case where"
+4. Generic situational framing without quantifier: "when [situation], it's common to feel", "people in [role] often find that"
+
+This rule overrides any in-prompt example or template that asks you to "make the problem feel urgent with a number" — research-shaped numbers are fabricated examples, not data to copy. The model's job is to make the problem feel personal through specific situational framing, not to invent population-level statistics. If a sentence reads better with a specific number, prefer rephrasing toward situational specificity ("the moment between alarm and first decision") over fabricated quantification ("the 90 seconds between alarm and first decision").`;
+
+/**
+ * PROOF specificity compositional-ceiling modifier — appended to the
+ * existing PROOF SPECIFICITY blocks across email + WhatsApp builders.
+ * The existing rule (welcome 3 / engagement 2 / sales 2 / WA engagement /
+ * WA sales) requires "role-first composite" and bans named individuals,
+ * but treats the role as the FLOOR rather than the CEILING — biographical
+ * scaffolding (family composition, partner profession, employer specifics)
+ * and direct quoted speech were both slipping through.
+ *
+ * Production evidence 2026-05-10: Quiet Mornings welcome email 3
+ * (emailSequences.id=66) and WA engagement message 2 (whatsappSequences
+ * .id=43) both fabricated "a primary school teacher with a 10-month-old
+ * and a partner on shift work" + invented direct quoted speech, despite
+ * complying with the role-first composite requirement.
+ *
+ * Positive-only framing per b4f2fb4 lesson — appended as a small modifier
+ * string to existing rule blocks rather than introduced as a top-of-prompt
+ * NO-FABRICATION rule. Breaks the 5-paste-site repetition into a single
+ * shared constant for maintenance.
+ */
+export const PROOF_COMPOSITIONAL_CEILING_RULE = `COMPOSITIONAL CEILING (Sprint B+1 — extends PROOF SPECIFICITY beyond the role-first floor): the role-based composite is the WHOLE composite, not a foundation to layer biographical scaffolding on. Permitted: 1 niche-specific situational anchor (the role itself or its proximate context — e.g. "a primary school teacher", "a senior manager in healthcare", "a freelance designer between contracts") + the problem → mechanism/change → outcome structure. Forbidden in addition to the existing rule: invented family composition ("with a 10-month-old", "with three kids under 5", "newly single"), invented partner specifics ("a partner on shift work", "a stay-at-home spouse"), invented employer detail ("at a Big-4 firm", "at a Y Combinator startup"), invented dependent ages or relationship status, invented direct quoted speech ("she told me X", "he said Y"), invented dialogue or paraphrase attributed to the composite individual. The composite is a structural placeholder for the reader to project themselves into — not a third-party narrative to flesh out. If the proof needs more weight than role + situation supports, prefer mechanism-only framing (the structural shift the method produces) over biographical scaffolding.`;
+
+/**
  * Truncate a testimonial quote to a maximum length (default 100 chars).
  * Prevents the model spending token budget on quote reproduction rather than copy.
  * Used in: offersGenerator.ts, emailSequences.ts, whatsappSequences.ts
