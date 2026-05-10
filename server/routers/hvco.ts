@@ -9,8 +9,8 @@ import {
   deleteHvcoSet,
 } from "../db";
 import { getDb } from "../db";
-import { jobs } from "../../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { jobs, hvcoTitles } from "../../drizzle/schema";
+import { eq, and } from "drizzle-orm";
 import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
@@ -133,6 +133,28 @@ export const hvcoRouter = router({
     const sets = await getHvcoSetsByUser(ctx.user.id);
     return sets;
   }),
+
+  // Get single HVCO title by ID
+  get: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const [title] = await db
+        .select()
+        .from(hvcoTitles)
+        .where(
+          and(eq(hvcoTitles.id, input.id), eq(hvcoTitles.userId, ctx.user.id))
+        )
+        .limit(1);
+
+      if (!title) {
+        throw new Error("HVCO title not found");
+      }
+
+      return title;
+    }),
 
   /**
    * Get all titles from a specific HVCO set

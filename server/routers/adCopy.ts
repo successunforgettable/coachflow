@@ -111,6 +111,28 @@ export const adCopyRouter = router({
       return Array.from(adSets.values());
     }),
 
+  // Get single ad copy row by ID
+  get: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const [row] = await db
+        .select()
+        .from(adCopy)
+        .where(
+          and(eq(adCopy.id, input.id), eq(adCopy.userId, ctx.user.id))
+        )
+        .limit(1);
+
+      if (!row) {
+        throw new Error("Ad copy not found");
+      }
+
+      return row;
+    }),
+
   // Get single ad set by adSetId
   getByAdSetId: protectedProcedure
     .input(z.object({ adSetId: z.string() }))

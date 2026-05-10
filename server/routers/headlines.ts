@@ -8,8 +8,8 @@ import {
   deleteHeadlineSet,
 } from "../db";
 import { getDb } from "../db";
-import { jobs } from "../../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { jobs, headlines } from "../../drizzle/schema";
+import { eq, and } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 import { runHeadlinesGeneration } from "../headlinesGenerator";
@@ -39,10 +39,32 @@ export const headlinesRouter = router({
       set.count += 1;
     });
     
-    return Array.from(sets.values()).sort((a, b) => 
+    return Array.from(sets.values()).sort((a, b) =>
       b.createdAt.getTime() - a.createdAt.getTime()
     );
   }),
+
+  // Get single headline by ID
+  get: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const [headline] = await db
+        .select()
+        .from(headlines)
+        .where(
+          and(eq(headlines.id, input.id), eq(headlines.userId, ctx.user.id))
+        )
+        .limit(1);
+
+      if (!headline) {
+        throw new Error("Headline not found");
+      }
+
+      return headline;
+    }),
 
   // Get all headlines in a set
   getBySetId: protectedProcedure

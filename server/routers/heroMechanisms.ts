@@ -8,8 +8,8 @@ import {
   deleteHeroMechanismSet,
 } from "../db";
 import { getDb } from "../db";
-import { jobs } from "../../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { jobs, heroMechanisms } from "../../drizzle/schema";
+import { eq, and } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
@@ -94,6 +94,28 @@ export const heroMechanismsRouter = router({
     const sets = await getHeroMechanismSetsByUser(ctx.user.id);
     return sets;
   }),
+
+  // Get single mechanism by ID
+  get: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const [mechanism] = await db
+        .select()
+        .from(heroMechanisms)
+        .where(
+          and(eq(heroMechanisms.id, input.id), eq(heroMechanisms.userId, ctx.user.id))
+        )
+        .limit(1);
+
+      if (!mechanism) {
+        throw new Error("Mechanism not found");
+      }
+
+      return mechanism;
+    }),
 
   /**
    * Get all mechanisms from a specific set
