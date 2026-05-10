@@ -745,11 +745,32 @@ async function invokeEmailSequenceWithRetry(userPrompt: string): Promise<RawEmai
     // than a literal array, despite strict json_schema declaring array. Try
     // to un-stringify before declaring failure — content is valid, only the
     // wrapping shape is wrong, so this recovers the response without a retry.
+    //
+    // Sprint B+1 regression-fix v1: Sonnet 4.6 also emits Python-dict-style
+    // single-quote object literals ("[{ 'day': 1, 'subject': '...' }]") when
+    // prompt size grows past Sprint B+1's PROOF_COMPOSITIONAL_CEILING_RULE
+    // additions. Plain JSON.parse fails on single quotes; recover via guarded
+    // property-name + value-string conversion. Guard requires the string to
+    // LOOK like a single-quoted dict (starts with [{ or { and contains a
+    // single-quoted word-char key) before converting — avoids touching
+    // strings that happen to contain apostrophes for unrelated reasons.
     if (typeof parsed?.emails === "string") {
+      const raw = parsed.emails as string;
       try {
-        const unstringified = JSON.parse(parsed.emails);
-        if (Array.isArray(unstringified)) parsed.emails = unstringified;
-      } catch { /* leave as-is; failure path below catches and retries */ }
+        const v = JSON.parse(raw);
+        if (Array.isArray(v)) parsed.emails = v;
+      } catch {
+        const looksLikePyDict = /^\s*[\[{].*?'[a-zA-Z_]\w*'\s*:/.test(raw);
+        if (looksLikePyDict) {
+          const converted = raw
+            .replace(/'(\w+)'\s*:/g, '"$1":')
+            .replace(/:\s*'([^']*)'/g, ': "$1"');
+          try {
+            const v = JSON.parse(converted);
+            if (Array.isArray(v)) parsed.emails = v;
+          } catch { /* fall through to retry */ }
+        }
+      }
     }
     if (parsed?.emails && Array.isArray(parsed.emails)) {
       return parsed.emails as RawEmail[];
