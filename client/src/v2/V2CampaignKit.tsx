@@ -6,6 +6,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
 import V2Layout from "./V2Layout";
+import ZappyMascot from "./ZappyMascot";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { downloadCampaignBrief } from "./lib/exportUtils";
@@ -276,6 +277,35 @@ export default function V2CampaignKit() {
   const { data: briefLP } = trpc.landingPages.get.useQuery({ id: kit?.selectedLandingPageId! }, { enabled: !!kit?.selectedLandingPageId });
   const { data: briefEmail } = trpc.emailSequences.get.useQuery({ id: kit?.selectedEmailSequenceId! }, { enabled: !!kit?.selectedEmailSequenceId });
 
+  // B4: post-Auto-Mode greeting overlay. Shows once per kit when the user
+  // arrives via /v2-dashboard/campaign-kit/<id>?from=auto-mode (the redirect
+  // V2AutoModeProgress fires on cascade complete). localStorage key persists
+  // the dismissal so the overlay does not reappear on subsequent visits.
+  const [showOverlay, setShowOverlay] = useState(false);
+
+  useEffect(() => {
+    if (!kit || kitId == null) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("from") !== "auto-mode") return;
+    try {
+      if (localStorage.getItem(`autoMode_kit_${kitId}_greeted`)) return;
+    } catch { /* private mode / disabled storage — fall through and show */ }
+    setShowOverlay(true);
+  }, [kit, kitId]);
+
+  function dismissOverlay() {
+    if (kitId != null) {
+      try { localStorage.setItem(`autoMode_kit_${kitId}_greeted`, "true"); } catch { /* non-fatal */ }
+    }
+    setShowOverlay(false);
+  }
+
+  // Shared push handler — single source of truth for the placeholder toast
+  // (Node 11 push surface not yet built). Called from both the floating
+  // action bar's "Push to Meta / GHL" button and the greeting overlay's
+  // primary CTA so a future swap to the real push lands in one place.
+  const handlePush = () => toast("Push coming soon");
+
   const handleDownloadBrief = () => {
     const icp = icpData as any;
     const offer = briefOffer as any;
@@ -374,6 +404,123 @@ export default function V2CampaignKit() {
 
   return (
     <V2Layout>
+      {showOverlay && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="auto-mode-greeting-heading"
+          onClick={dismissOverlay}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(26,22,36,0.55)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "24px 16px",
+            zIndex: 200,
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              position: "relative",
+              background: "#ffffff",
+              borderRadius: "24px",
+              boxShadow: "0 12px 40px rgba(0,0,0,0.18)",
+              padding: "44px 36px 36px",
+              maxWidth: "520px",
+              width: "100%",
+              textAlign: "center",
+            }}
+          >
+            <button
+              aria-label="Dismiss"
+              onClick={dismissOverlay}
+              style={{
+                position: "absolute",
+                top: "14px",
+                right: "16px",
+                background: "transparent",
+                border: "none",
+                fontSize: "22px",
+                lineHeight: 1,
+                color: "#999",
+                cursor: "pointer",
+                padding: "4px 8px",
+              }}
+            >
+              ×
+            </button>
+            <ZappyMascot state="cheering" size={140} />
+            <h2
+              id="auto-mode-greeting-heading"
+              style={{
+                fontFamily: "var(--v2-font-heading, 'Fraunces', serif)",
+                fontStyle: "italic",
+                fontWeight: 900,
+                fontSize: "clamp(24px, 5vw, 30px)",
+                color: "var(--v2-text-dark, #1A1624)",
+                lineHeight: 1.2,
+                margin: "20px 0 12px",
+              }}
+            >
+              Your campaign is built.
+            </h2>
+            <p
+              style={{
+                fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)",
+                fontSize: "14px",
+                color: "#555",
+                lineHeight: 1.55,
+                margin: "0 0 28px",
+                maxWidth: "420px",
+                marginLeft: "auto",
+                marginRight: "auto",
+              }}
+            >
+              All 8 assets generated and ready. Take a look around — or push live now.
+            </p>
+            <button
+              onClick={() => { dismissOverlay(); handlePush(); }}
+              style={{
+                display: "block",
+                width: "100%",
+                background: "var(--v2-primary-btn, #FF5B1D)",
+                color: "#fff",
+                border: "none",
+                borderRadius: "var(--v2-border-radius-pill, 9999px)",
+                padding: "14px 28px",
+                fontSize: "16px",
+                fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)",
+                fontWeight: 700,
+                cursor: "pointer",
+                marginBottom: "10px",
+              }}
+            >
+              Push Live to Meta + GHL →
+            </button>
+            <button
+              onClick={dismissOverlay}
+              style={{
+                display: "block",
+                width: "100%",
+                background: "transparent",
+                color: "#777",
+                border: "1px solid rgba(26,22,36,0.15)",
+                borderRadius: "var(--v2-border-radius-pill, 9999px)",
+                padding: "12px 24px",
+                fontSize: "14px",
+                fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)",
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              Look Around First
+            </button>
+          </div>
+        </div>
+      )}
       <div style={{
         minHeight: "100vh",
         padding: "48px 16px 120px",
@@ -478,7 +625,7 @@ export default function V2CampaignKit() {
         </button>
         <button
           disabled={!isComplete}
-          onClick={() => toast("Push coming soon")}
+          onClick={handlePush}
           style={{
             padding: "10px 24px",
             borderRadius: "var(--v2-border-radius-pill, 9999px)",
