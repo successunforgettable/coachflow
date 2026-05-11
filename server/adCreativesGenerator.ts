@@ -141,12 +141,41 @@ The 5 headlines must each match a different ad-emotional register, in order:
 Output: a JSON object with a "headlines" key containing an array of exactly 5 strings, in the order above.`;
 }
 
+/**
+ * Per-attempt diagnostic record for Bridge-B-style observability on retry
+ * exhaust. Captures everything needed to reconstruct what Sonnet produced
+ * across all 3 attempts + how the fail-context evolved between them.
+ * Mirrors the email validator's Bridge B pattern; richer here because ad-
+ * headline failures are a content-class problem (compliance) where seeing
+ * Sonnet's output evolution matters more than just the final raw content.
+ */
+type AdHeadlineAttemptRecord = {
+  attempt: number;
+  rawContent: string;
+  headlinesPreview: string[]; // each parsed headline string (or [] if parse-shape unexpected)
+  charCounts: number[]; // each headline's char count
+  validationOk: boolean;
+  subCase: string | null;
+  failContextInjectedNext: string | null; // what got prepended to the NEXT attempt's prompt
+};
+
 export async function generateContextualAdHeadlines(
   input: GenerateContextualAdHeadlinesInput,
 ): Promise<string[]> {
   const userPromptBase = buildAdHeadlinesUserPrompt(input);
   let lastFailContext: string | null = null;
   let lastFailureSubCase: string | null = null;
+  // Phase C C1.1 diagnostic (Bridge-B-style — Sprint B+1 path d lineage):
+  // captures every attempt's raw content + parsed headlines + char counts +
+  // validation outcome + fail-context-injected-for-next-attempt. On retry
+  // exhaust, the full history dumps to console.error so Railway logs let us
+  // see what Sonnet actually produced across all 3 attempts. Without this,
+  // the existing console.warn only shows subCase + attempt number, which
+  // doesn't reveal whether Sonnet is missing the 38-char cap by 2 chars
+  // (prompt-tuning territory) or by 30+ chars (architectural prompt failure
+  // territory). Bounded cost: history array max 3 entries; only dumps on
+  // exhaust, never on success path.
+  const attemptHistory: AdHeadlineAttemptRecord[] = [];
 
   for (let attempt = 1; attempt <= AD_HEADLINES_RETRY_MAX_ATTEMPTS; attempt++) {
     const effectivePrompt = lastFailContext
@@ -166,7 +195,46 @@ export async function generateContextualAdHeadlines(
     }
     const parsed = JSON.parse(content);
 
+    // Pre-extract headlines for diagnostic regardless of validation outcome.
+    // The validator may reject these but we still want to log what Sonnet
+    // produced so we can see content + lengths.
+    let diagnosticHeadlines: string[] = [];
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      const candidate = (parsed as Record<string, unknown>).headlines;
+      if (Array.isArray(candidate)) {
+        diagnosticHeadlines = candidate.filter((h): h is string => typeof h === "string");
+      } else if (typeof candidate === "string") {
+        // Pre-un-stringify for diagnostic purposes (mirrors validator's path)
+        try {
+          const v = JSON.parse(candidate);
+          if (Array.isArray(v)) diagnosticHeadlines = v.filter((h): h is string => typeof h === "string");
+        } catch { /* leave empty */ }
+      }
+    } else if (Array.isArray(parsed)) {
+      diagnosticHeadlines = parsed.filter((h): h is string => typeof h === "string");
+    }
+    const diagnosticCharCounts = diagnosticHeadlines.map(h => h.length);
+
     const result = validateAdHeadlines(parsed);
+
+    // Per-attempt visibility log (always fires — pass or fail). Concise
+    // summary line + verbatim headlines so log greps can correlate.
+    if (diagnosticHeadlines.length > 0) {
+      console.warn(
+        `[adCreativesGenerator] Attempt ${attempt}/${AD_HEADLINES_RETRY_MAX_ATTEMPTS} produced ` +
+          `${diagnosticHeadlines.length} headlines, char counts [${diagnosticCharCounts.join(",")}], ` +
+          `validation=${result.ok ? "PASS" : `FAIL(${result.subCase})`}`,
+      );
+      diagnosticHeadlines.forEach((h, i) => {
+        console.warn(`[adCreativesGenerator]   attempt ${attempt} headline[${i}] (${h.length} chars): "${h}"`);
+      });
+    } else {
+      console.warn(
+        `[adCreativesGenerator] Attempt ${attempt}/${AD_HEADLINES_RETRY_MAX_ATTEMPTS} produced ` +
+          `no extractable headlines (parsed shape unexpected), validation=FAIL(${result.ok ? "OK?" : result.subCase})`,
+      );
+    }
+
     if (result.ok) {
       console.log(
         `[adCreativesGenerator] Contextual ad headlines: ${result.headlines.length} produced, ` +
@@ -174,6 +242,19 @@ export async function generateContextualAdHeadlines(
       );
       return result.headlines;
     }
+
+    // Record attempt for exhaust dump; failContext gets recorded AS the
+    // one that will be injected into the NEXT attempt (or, on attempt 3,
+    // would have been injected into a non-existent attempt 4).
+    attemptHistory.push({
+      attempt,
+      rawContent: content,
+      headlinesPreview: diagnosticHeadlines,
+      charCounts: diagnosticCharCounts,
+      validationOk: false,
+      subCase: result.subCase,
+      failContextInjectedNext: result.failContext,
+    });
 
     lastFailContext = result.failContext;
     lastFailureSubCase = result.subCase;
@@ -183,9 +264,42 @@ export async function generateContextualAdHeadlines(
     );
   }
 
-  // Retry exhaust — headlines unrecoverable. Throw with diagnostic so the
-  // orchestrator's per-step catch marks the job failed cleanly (better than
-  // shipping headlines that fail Meta compliance).
+  // Retry exhaust — Bridge-B-style comprehensive diagnostic dump.
+  // Mirrors invokeEmailSequenceWithRetry's RETRY EXHAUST pattern: console.error
+  // (so log aggregators surface above warnings) + multiple lines (so
+  // line-length truncation doesn't lose data) + full per-attempt history.
+  console.error(`[adCreativesGenerator] RETRY EXHAUST — Phase C C1.1 Bridge B diagnostic dump for ad headlines generation.`);
+  console.error(`[adCreativesGenerator] RETRY EXHAUST — final lastFailureSubCase: ${lastFailureSubCase}`);
+  console.error(`[adCreativesGenerator] RETRY EXHAUST — attempt count: ${attemptHistory.length}`);
+  attemptHistory.forEach((rec) => {
+    console.error(
+      `[adCreativesGenerator] RETRY EXHAUST — attempt ${rec.attempt}: ` +
+        `validation=FAIL(${rec.subCase}), ${rec.charCounts.length} headlines extracted, ` +
+        `char counts [${rec.charCounts.join(",")}], over38=${rec.charCounts.filter(c => c > 38).length}`,
+    );
+    rec.headlinesPreview.forEach((h, i) => {
+      console.error(`[adCreativesGenerator] RETRY EXHAUST — attempt ${rec.attempt} headline[${i}] (${h.length} chars): "${h}"`);
+    });
+  });
+  // Dump full raw content of the LAST attempt (in case parse extracted
+  // different content than the validator saw — e.g. if the schema response
+  // wrapped the array in an unexpected outer shape).
+  const last = attemptHistory[attemptHistory.length - 1];
+  if (last) {
+    console.error(`[adCreativesGenerator] RETRY EXHAUST — last attempt FULL RAW CONTENT: ${last.rawContent}`);
+  }
+  // Show the SHAPE of fail-context evolution: was the next-attempt prompt
+  // the same advice every retry, or did it change? Answers H3 (fail-context
+  // staleness) from the Phase 1 diagnosis hypothesis ranking.
+  attemptHistory.forEach((rec) => {
+    if (rec.failContextInjectedNext) {
+      const truncated = rec.failContextInjectedNext.length > 600
+        ? rec.failContextInjectedNext.slice(0, 600) + "...[truncated]"
+        : rec.failContextInjectedNext;
+      console.error(`[adCreativesGenerator] RETRY EXHAUST — attempt ${rec.attempt} failContext injected into attempt ${rec.attempt + 1}: ${truncated}`);
+    }
+  });
+
   throw new Error(
     `Ad headlines LLM did not return Meta-compliant headlines after ${AD_HEADLINES_RETRY_MAX_ATTEMPTS} attempts. ` +
       `Last failure: subCase=${lastFailureSubCase}`,
