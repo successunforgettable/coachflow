@@ -182,13 +182,25 @@ Use one of these instead, in order of preference:
 This rule overrides any in-prompt example or template that asks you to "make the problem feel urgent with a number" — research-shaped numbers are fabricated examples, not data to copy. The model's job is to make the problem feel personal through specific situational framing, not to invent population-level statistics. If a sentence reads better with a specific number, prefer rephrasing toward situational specificity ("the moment between alarm and first decision") over fabricated quantification ("the 90 seconds between alarm and first decision").`;
 
 /**
- * PROOF specificity compositional-ceiling modifier — appended to the
- * existing PROOF SPECIFICITY blocks across email + WhatsApp builders.
- * The existing rule (welcome 3 / engagement 2 / sales 2 / WA engagement /
- * WA sales) requires "role-first composite" and bans named individuals,
- * but treats the role as the FLOOR rather than the CEILING — biographical
- * scaffolding (family composition, partner profession, employer specifics)
- * and direct quoted speech were both slipping through.
+ * PROOF specificity compositional-ceiling modifier — DEFINED BUT NOT
+ * CURRENTLY PASTED INTO PROMPTS. Retained as a pattern-catalog entry for
+ * the post-generation validator (Sprint 2 architectural shift, in flight
+ * 2026-05-11). Originally pasted into 5 email + WhatsApp paste sites by
+ * Sprint B+1; rolled back the same day after Sprint B+1 surfaced an
+ * intermittent JSON-shape regression class (commit 6225ca0 Option A
+ * handled the Python-dict sub-case; sub-case 3 — likely truncation at
+ * max_tokens — emerged ~30 min later and is not durably recoverable via
+ * defensive parser). The validator approach replaces in-prompt rule
+ * pasting with post-generation regex / LLM-as-judge pattern matching +
+ * retry-with-fail-context — slim prompts eliminate the size-pressure
+ * regression class while preserving fabrication coverage.
+ *
+ * The existing PROOF SPECIFICITY rule (welcome 3 / engagement 2 / sales 2
+ * / WA engagement / WA sales) requires "role-first composite" and bans
+ * named individuals, but treats the role as the FLOOR rather than the
+ * CEILING — biographical scaffolding (family composition, partner
+ * profession, employer specifics) and direct quoted speech were both
+ * slipping through.
  *
  * Production evidence 2026-05-10: Quiet Mornings welcome email 3
  * (emailSequences.id=66) and WA engagement message 2 (whatsappSequences
@@ -196,10 +208,20 @@ This rule overrides any in-prompt example or template that asks you to "make the
  * and a partner on shift work" + invented direct quoted speech, despite
  * complying with the role-first composite requirement.
  *
- * Positive-only framing per b4f2fb4 lesson — appended as a small modifier
- * string to existing rule blocks rather than introduced as a top-of-prompt
- * NO-FABRICATION rule. Breaks the 5-paste-site repetition into a single
- * shared constant for maintenance.
+ * Validator pattern targets (extracted from this rule's content):
+ *   - Family composition strings: /\bwith a \d+-?(month|year)-old\b/i,
+ *     /\bnewly (single|divorced|married)\b/i
+ *   - Partner profession strings: /\b(a partner|a spouse) (on|in|at)\b/i
+ *   - Employer specifics: /\bat (a )?(Big-?4|Y Combinator|FAANG|MAANG)\b/i
+ *   - Direct quoted speech in proof context: detect quoted dialogue
+ *     attributed to anonymised composites (harder regex; LLM-as-judge
+ *     candidate)
+ *
+ * Positive-only framing was preserved per b4f2fb4 lesson when the rule
+ * was pasted in-prompt; same positive-only framing transfers to the
+ * validator's retry-fail-context message ("the previous output included
+ * biographical scaffolding; rewrite the composite at role + situation
+ * level only").
  */
 export const PROOF_COMPOSITIONAL_CEILING_RULE = `COMPOSITIONAL CEILING (Sprint B+1 — extends PROOF SPECIFICITY beyond the role-first floor): the role-based composite is the WHOLE composite, not a foundation to layer biographical scaffolding on. Permitted: 1 niche-specific situational anchor (the role itself or its proximate context — e.g. "a primary school teacher", "a senior manager in healthcare", "a freelance designer between contracts") + the problem → mechanism/change → outcome structure. Forbidden in addition to the existing rule: invented family composition ("with a 10-month-old", "with three kids under 5", "newly single"), invented partner specifics ("a partner on shift work", "a stay-at-home spouse"), invented employer detail ("at a Big-4 firm", "at a Y Combinator startup"), invented dependent ages or relationship status, invented direct quoted speech ("she told me X", "he said Y"), invented dialogue or paraphrase attributed to the composite individual. The composite is a structural placeholder for the reader to project themselves into — not a third-party narrative to flesh out. If the proof needs more weight than role + situation supports, prefer mechanism-only framing (the structural shift the method produces) over biographical scaffolding.`;
 
