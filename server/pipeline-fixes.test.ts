@@ -1031,3 +1031,90 @@ describe("Phase C C1.1 — ad headlines length validator", () => {
     }
   });
 });
+
+// ─── Phase C C1.1 Phase 2: prompt-fortification regression guards ────────────
+// Smoke tests for buildAdHeadlinesUserPrompt — guard against future edits
+// silently removing the few-shot example compressions, the length rule, or
+// the social_proof tightening. These were the high-leverage fortifications
+// added 2026-05-11 after kit 13 C1.1 attempt 1 exhausted all 3 retries on
+// identical inputs that a 2nd attempt later passed (Sonnet variance). The
+// fortification's goal is variance reduction; these tests prevent the
+// fortification from silently regressing.
+
+import { buildAdHeadlinesUserPrompt } from "./adCreativesGenerator";
+
+const SAMPLE_INPUT = {
+  productName: "The Calm Authority",
+  mainBenefit: "Present to boards with calm conviction",
+  targetAudience: "Senior finance and engineering leaders",
+  uniqueMechanism: "The Boardroom Pressure Calibration Protocol",
+  pressingProblem: "Going clipped or defensive on adversarial board questions",
+};
+
+describe("Phase C C1.1 Phase 2 — ad headlines prompt fortification", () => {
+  it("prompt includes the length rule with HARD LIMIT framing", () => {
+    const prompt = buildAdHeadlinesUserPrompt(SAMPLE_INPUT);
+    expect(prompt).toContain("38");
+    expect(prompt).toMatch(/HARD LIMIT/);
+    expect(prompt).toMatch(/LENGTH RULE/i);
+  });
+
+  it("prompt includes word-count planning strategy (4-7 words)", () => {
+    const prompt = buildAdHeadlinesUserPrompt(SAMPLE_INPUT);
+    // The fortification's most empirically-supported element: tell Sonnet to
+    // plan WORDS rather than count chars after the fact.
+    expect(prompt).toMatch(/4 to 7 WORDS/);
+  });
+
+  it("prompt explicitly bans audience-prefix headlines", () => {
+    const prompt = buildAdHeadlinesUserPrompt(SAMPLE_INPUT);
+    // Highest-leverage compression: dropping "Senior leaders who…" /
+    // "Founders at $X ARR…" prefixes that consumed 40-60% of chars in the
+    // C1 HEADLINE_FORMULAS failures.
+    expect(prompt).toMatch(/Drop the audience prefix/i);
+    expect(prompt).toMatch(/Senior leaders who/);
+  });
+
+  it("prompt includes all 3 few-shot compression examples across audited niches", () => {
+    const prompt = buildAdHeadlinesUserPrompt(SAMPLE_INPUT);
+    // Cross-context examples (speaking + consulting + info-product) so
+    // Sonnet sees the pattern across niches, not just the current one.
+    expect(prompt).toContain("Boardroom voice killed the promotion.");
+    expect(prompt).toContain("Your $800k pipeline might be $200k.");
+    expect(prompt).toContain("Why your last clip went unusable.");
+  });
+
+  it("prompt tightens SOCIAL_PROOF register against generic credibility claims", () => {
+    const prompt = buildAdHeadlinesUserPrompt(SAMPLE_INPUT);
+    // The position-1 weak headline gap from the successful run: closes the
+    // "Senior leaders trust this protocol" generic-credibility class.
+    expect(prompt).toMatch(/trust this/);
+    expect(prompt).toMatch(/forbidden/i);
+  });
+
+  it("prompt includes per-register example shapes for all 5 emotional registers", () => {
+    const prompt = buildAdHeadlinesUserPrompt(SAMPLE_INPUT);
+    // Each register needs concrete length-fitting reference shapes.
+    expect(prompt).toMatch(/BENEFIT/);
+    expect(prompt).toMatch(/SOCIAL_PROOF/);
+    expect(prompt).toMatch(/CURIOSITY/);
+    expect(prompt).toMatch(/CONTRAST/);
+    expect(prompt).toMatch(/CHALLENGE/);
+    // Sample of expected example-shape phrases that should round-trip
+    expect(prompt).toMatch(/Example shapes/);
+  });
+
+  it("prompt closes with a count-characters reminder as final instruction", () => {
+    const prompt = buildAdHeadlinesUserPrompt(SAMPLE_INPUT);
+    expect(prompt).toMatch(/Count the characters on each headline before finalising/);
+  });
+
+  it("prompt interpolates all 5 input fields verbatim", () => {
+    const prompt = buildAdHeadlinesUserPrompt(SAMPLE_INPUT);
+    expect(prompt).toContain(SAMPLE_INPUT.productName);
+    expect(prompt).toContain(SAMPLE_INPUT.mainBenefit);
+    expect(prompt).toContain(SAMPLE_INPUT.targetAudience);
+    expect(prompt).toContain(SAMPLE_INPUT.uniqueMechanism);
+    expect(prompt).toContain(SAMPLE_INPUT.pressingProblem);
+  });
+});

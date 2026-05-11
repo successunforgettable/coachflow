@@ -115,7 +115,40 @@ export type GenerateContextualAdHeadlinesInput = {
   pressingProblem: string;
 };
 
-function buildAdHeadlinesUserPrompt(input: GenerateContextualAdHeadlinesInput): string {
+/**
+ * Build the user prompt for the contextual-ad-headlines LLM call.
+ * Phase C C1.1 Phase 2 fortification (Sprint B+1 path d, 2026-05-11):
+ *
+ *   - Length rule moved to the TOP with word-count planning strategy
+ *     (4-7 words → ~25-45 chars). Empirically, Sonnet length-follows
+ *     better when given a word-count proxy than abstract char counts.
+ *   - "Avoid generic audience-naming" rule added explicitly. The kit 13
+ *     C1 audit showed compliance-flagged HEADLINE_FORMULAS pattern was
+ *     always shape `WHY {LONG_AUDIENCE_NAMING} COACHES ARE SWITCHING TO
+ *     {MECH}` — dropping the audience-prefix is the single
+ *     highest-leverage compression. Few-shot examples reinforce the
+ *     pattern.
+ *   - 3 few-shot compression examples spanning the 3 service categories
+ *     audited this session (speaking / consulting / info-product). Each
+ *     pair shows the long-form being compressed → compliant headline +
+ *     names what got cut + names what stayed. Cross-context examples
+ *     (not Calm Authority — the actual ICP) avoid seeding specific
+ *     output while still teaching the pattern.
+ *   - SOCIAL_PROOF register guidance tightened. The successful kit 13
+ *     C1.1 run produced 4/5 strong headlines + 1/5 weak — the weak one
+ *     was "Senior leaders trust this protocol", a generic credibility
+ *     claim. New guidance: ban "X trust this" / "experts use this"
+ *     shapes, require named contexts or numeric proofs.
+ *   - Per-register example shapes (1-2 short references per emotional
+ *     register) so each register has concrete length-fitting models,
+ *     not just abstract guidance.
+ *   - Closes with a "count characters on each" final reminder.
+ *
+ * Exported for smoke-testability — pipeline-fixes.test.ts verifies the
+ * example compressions + length-rule wording are present in the
+ * constructed prompt.
+ */
+export function buildAdHeadlinesUserPrompt(input: GenerateContextualAdHeadlinesInput): string {
   return `Write 5 Meta-compliant ad headlines for this service.
 
 Service: ${input.productName}
@@ -124,21 +157,56 @@ Main benefit: ${input.mainBenefit}
 Mechanism: ${input.uniqueMechanism}
 Pressing problem: ${input.pressingProblem}
 
-HARD RULES:
-- Each headline MUST be ≤ 38 characters. Count before finalising. This is a HARD LIMIT — anything over forces a rewrite.
+LENGTH RULE (READ TWICE):
+- Each headline MUST be ≤ 38 characters. This is a HARD LIMIT — Meta-compliance gate.
+- Plan each headline as 4 to 7 WORDS before writing. A 5-word headline averages 25-35 characters; a 7-word headline averages 35-45 characters. Word-count planning is more reliable than character-counting after the fact.
+- After writing each headline, count the characters. If 38 or fewer, keep. If over 38, cut filler words (the, a, your, this, that, our) or pick a shorter verb. Never ship a headline over 38 characters.
+
+VOICE RULES:
 - No exclamation points anywhere.
 - No vague buzzwords (synergy, leverage, optimize, transform, unlock, revolutionary).
-- Use ICP-recognising specific language; avoid generic coach-speak.
-- Each headline must work as a standalone Meta Facebook ad headline a paying user would actually run.
+- Drop the audience prefix. Headlines like "Senior leaders who…", "Founders at $X ARR…", "Coaches struggling with…" are forbidden — the Meta ad targeting handles audience selection. Lead with the scenario, outcome, or pattern-interrupt instead.
+- Each headline must reference a SPECIFIC scenario, number, outcome, or contrast — NEVER a generic claim like "trust this", "experts use this", "the best way to…".
 
-The 5 headlines must each match a different ad-emotional register, in order:
-1. BENEFIT — name the outcome the audience wants (paired with shocked-face visual)
-2. SOCIAL_PROOF — imply credibility or peer adoption (paired with screenshot visual)
-3. CURIOSITY — open a loop or hint at a reframe (paired with intense-gaze visual)
-4. CONTRAST — before/after framing OR what-vs-what positioning (paired with object visual)
-5. CHALLENGE — call out the wrong way; provoke action (paired with curious-face visual)
+EXAMPLE COMPRESSIONS — see how long-form audience descriptions become compliant ad headlines:
 
-Output: a JSON object with a "headlines" key containing an array of exactly 5 strings, in the order above.`;
+Service: senior-leader keynote presence coaching
+TOO LONG: "Finance and engineering leaders who struggle with boardroom pressure"
+COMPLIANT (38 chars): "Boardroom voice killed the promotion."
+Pattern: dropped audience prefix ("Finance and engineering leaders who…"); kept the specific failure scenario; declarative form.
+
+Service: B2B SaaS pipeline-diagnosis consulting
+TOO LONG: "SaaS founders who can't distinguish closing deals from time-wasters"
+COMPLIANT (33 chars): "Your $800k pipeline might be $200k."
+Pattern: dropped audience prefix; kept the specific number-contrast; question-shape via "might be".
+
+Service: field-audio-recording info-product course
+TOO LONG: "Field journalists who struggle with inconsistent phone audio quality"
+COMPLIANT (33 chars): "Why your last clip went unusable."
+Pattern: dropped audience prefix; kept the niche-specific failure mode ("last clip went unusable"); question-shape.
+
+In all three compressions, the audience-naming consumed 40-60% of the characters and added zero ad-headline value. Compress aggressively.
+
+THE 5 HEADLINES — each must match a different ad register, in order:
+
+1. BENEFIT — name the outcome the audience wants. Direct, declarative, claim-the-result.
+   Example shapes: "Cut sales cycles 50%." / "Board-ready in 90 days." / "Stop the 2am replay loop."
+
+2. SOCIAL_PROOF — reference a SPECIFIC outcome, named context, or numeric proof. NOT "X trust this" or "experts use this" or "leaders adopt this" — those are generic and forbidden. Use a concrete claim, a named situation, or a number.
+   Example shapes: "Most boards see it in 90 days." / "From 26 dead deals to 11 real ones."
+
+3. CURIOSITY — open a loop or hint at a reframe. Make the reader want to know more.
+   Example shapes: "Your prep is fine. Your state isn't." / "It's not the deck." / "The 4-second window before words."
+
+4. CONTRAST — before/after framing OR what-vs-what positioning.
+   Example shapes: "Six rehearsals at home, froze onstage." / "Hope vs. data." / "Closed-won — not closed-wished."
+
+5. CHALLENGE — call out the wrong way; provoke action against a counterproductive pattern.
+   Example shapes: "Stop chasing dead pipeline." / "Sitting up straight won't hold a room." / "Forecasting fiction isn't strategy."
+
+Output: a JSON object with a "headlines" key containing an array of exactly 5 strings, in the order above (benefit, social_proof, curiosity, contrast, challenge).
+
+Count the characters on each headline before finalising. Anything over 38 forces a rewrite.`;
 }
 
 /**
