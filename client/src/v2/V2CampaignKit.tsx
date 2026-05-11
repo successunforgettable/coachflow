@@ -79,11 +79,22 @@ function LandingPagePreview({ data, angle }: { data: any; angle?: string }) {
   if (!data) return null;
   const angleData = angle === "godfather" ? data.godfatherAngle : angle === "free" ? data.freeAngle : angle === "dollar" ? data.dollarAngle : data.originalAngle;
   const parsed = typeof angleData === "string" ? JSON.parse(angleData) : angleData;
+  // Phase C C2: publicUrl is populated by orchestrator's auto-publish call
+  // (or by the wizard's manual publishToCloudflare mutation). Render as a
+  // clickable link below the angle indicator so the user can preview the
+  // live page directly from the kit page. opacity-respect: only render when
+  // populated (un-published LPs show angle-only as before).
+  const publicUrl = (data as { publicUrl?: string | null }).publicUrl;
   return (
     <div>
       <p style={previewHeading}>{parsed?.mainHeadline || "Landing Page"}</p>
       <p style={previewBody}>{parsed?.subheadline || ""}</p>
       <p style={previewMuted}>Angle: {angle || "original"}</p>
+      {publicUrl && (
+        <p style={previewMuted}>
+          Live at: <a href={publicUrl} target="_blank" rel="noopener noreferrer" style={{ color: "var(--v2-primary-btn, #FF5B1D)", textDecoration: "underline" }}>{publicUrl} →</a>
+        </p>
+      )}
     </div>
   );
 }

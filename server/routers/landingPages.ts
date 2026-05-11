@@ -805,78 +805,36 @@ export const landingPagesRouter = router({
       return { success: true };
     }),
 
-  // D4: Publish landing page to Cloudflare Workers KV
+  // D4: Publish landing page to Cloudflare Workers KV.
+  // Phase C C2 refactor: publish logic extracted to
+  // server/landingPagePublisher.ts so the Auto Mode orchestrator can call
+  // it directly. This mutation is now a thin wrapper preserving the
+  // TRPCError code translations the wizard-side callers expect.
   publishToCloudflare: protectedProcedure
     .input(z.object({ landingPageId: z.number(), styleMode: z.enum(["text", "visual"]).default("text") }))
     .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
-
-      const [lp] = await db
-        .select()
-        .from(landingPages)
-        .where(and(eq(landingPages.id, input.landingPageId), eq(landingPages.userId, ctx.user.id)))
-        .limit(1);
-      if (!lp) throw new TRPCError({ code: "NOT_FOUND", message: "Landing page not found" });
-
-      let serviceName = "Campaign";
-      if (lp.serviceId) {
-        const [svc] = await db
-          .select({ name: services.name })
-          .from(services)
-          .where(eq(services.id, lp.serviceId))
-          .limit(1);
-        if (svc) serviceName = svc.name;
+      const { runLandingPagePublish } = await import("../landingPagePublisher");
+      try {
+        const { publicUrl, slug } = await runLandingPagePublish({
+          userId: ctx.user.id,
+          landingPageId: input.landingPageId,
+          styleMode: input.styleMode,
+        });
+        return { success: true, publicUrl, slug };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        // Translate gen-core's plain Error.message shape into the tRPC
+        // error codes the wizard's callers already handle.
+        if (message.includes("not found for user")) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Landing page not found" });
+        }
+        if (message.includes("no content for angle")) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "No content for selected angle — please generate a landing page first.",
+          });
+        }
+        throw err;
       }
-
-      // Pick active angle content
-      const angleKey = lp.activeAngle || "original";
-      const content =
-        angleKey === "godfather" ? lp.godfatherAngle
-        : angleKey === "free" ? lp.freeAngle
-        : angleKey === "dollar" ? lp.dollarAngle
-        : lp.originalAngle;
-      if (!content) throw new TRPCError({ code: "BAD_REQUEST", message: "No content for selected angle — please generate a landing page first." });
-
-      // Fetch coach profile (name + bio) from users table
-      const [coachProfileRow] = await db
-        .select({ coachName: users.coachName, coachBackground: users.coachBackground })
-        .from(users)
-        .where(eq(users.id, ctx.user.id))
-        .limit(1);
-      const coachName = coachProfileRow?.coachName ?? null;
-      const coachBackground = coachProfileRow?.coachBackground ?? null;
-
-      // Fetch coach assets (headshot, logo, social_proof) from coachAssets table
-      const assetRows = await db
-        .select({ assetType: coachAssets.assetType, url: coachAssets.url })
-        .from(coachAssets)
-        .where(eq(coachAssets.userId, ctx.user.id));
-      const headshotUrl = assetRows.find(a => a.assetType === "headshot")?.url ?? null;
-      const logoUrl = assetRows.find(a => a.assetType === "logo")?.url ?? null;
-      const socialProofUrls = assetRows.filter(a => a.assetType === "social_proof").map(a => a.url);
-
-      // Re-use existing slug or generate a stable one
-      const slug =
-        lp.publicSlug ||
-        `${serviceName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}-${lp.id}`;
-
-      const { buildTextStyleHtml, buildVisualStyleHtml } = await import("../lib/landingPageHtml");
-      const { ensureKvNamespace, writeKvPage, deployWorker } = await import("../lib/cloudflare");
-
-      const html = input.styleMode === "visual"
-        ? buildVisualStyleHtml(content, serviceName, { headshotUrl, logoUrl, socialProofUrls, coachName, coachBackground })
-        : buildTextStyleHtml(content, serviceName);
-      const namespaceId = await ensureKvNamespace();
-      await writeKvPage(namespaceId, slug, html);
-      await deployWorker(namespaceId);
-
-      const publicUrl = `https://zapcampaigns.com/p/${slug}`;
-      await db
-        .update(landingPages)
-        .set({ publicSlug: slug, publicUrl, publishedStyle: input.styleMode })
-        .where(eq(landingPages.id, lp.id));
-
-      return { success: true, publicUrl, slug };
     }),
 });

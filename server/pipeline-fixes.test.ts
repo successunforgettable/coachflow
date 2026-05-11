@@ -1118,3 +1118,34 @@ describe("Phase C C1.1 Phase 2 — ad headlines prompt fortification", () => {
     expect(prompt).toContain(SAMPLE_INPUT.pressingProblem);
   });
 });
+
+// ─── Phase C C2: landing page auto-publish (structural assertions) ───────────
+// The runLandingPagePublish gen-core itself is too I/O-heavy to test inline
+// (it hits Cloudflare KV + Workers + DB). Coverage here is structural:
+// gen-core is exported with the documented signature shape; orchestrator
+// step labels still intact post-wire (no regression on the C1 / C1.1
+// guarantees).
+
+import { runLandingPagePublish } from "./landingPagePublisher";
+
+describe("Phase C C2 — landing page auto-publish", () => {
+  it("runLandingPagePublish is exported with the documented call shape", () => {
+    // Compile-time check via runtime introspection — if the function
+    // signature changes silently, this fails. Doesn't actually invoke
+    // (Cloudflare side-effects); just confirms the export exists + is
+    // callable.
+    expect(typeof runLandingPagePublish).toBe("function");
+    expect(runLandingPagePublish.length).toBe(1); // takes a single input object
+  });
+
+  it("ORCHESTRATION_STEP_LABELS landingPage entry still references angle generation (not regression)", () => {
+    // After C2 wire, the landingPage label evolves through:
+    //   "Generating angle {N} of 4 for your landing page…" → (during gen)
+    //   "Publishing your landing page…" → (between gen and finalise)
+    //   "Finalising your landing page…" → (terminal step state)
+    // The static label in ORCHESTRATION_STEP_LABELS uses the {N} pattern
+    // (gets overwritten by writeProgress at runtime).
+    expect(ORCHESTRATION_STEP_LABELS.landingPage).toMatch(/angle/i);
+    expect(ORCHESTRATION_STEP_LABELS.landingPage).toMatch(/landing page/i);
+  });
+});

@@ -40,6 +40,7 @@ import { runLandingPageGeneration } from "../landingPageGenerator";
 import { runEmailSequenceGeneration } from "../emailSequenceGenerator";
 import { runWhatsappSequenceGeneration } from "../whatsappSequenceGenerator";
 import { runAdCreativesGeneration, generateContextualAdHeadlines } from "../adCreativesGenerator";
+import { runLandingPagePublish } from "../landingPagePublisher";
 
 // ─── Locked B-2 Zappy script labels ────────────────────────────────────────
 // 10 labels: init + 8 steps + finalize. V2AutoModeProgress (Phase B3) reads
@@ -325,6 +326,49 @@ export async function runOrchestration(input: OrchestrationInput): Promise<void>
         generatedId = landingPageId;
         // runLandingPageGeneration calls autoSelectBest internally already.
         // Skip the orchestrator-level call below (idempotent but redundant).
+
+        // Phase C C2: auto-publish the landing page to Cloudflare Workers KV
+        // so the user has a live public URL the moment the cascade completes.
+        // Visual style mode by default — Auto Mode runs are paid-tier per
+        // Phase C C0 gate; branded full-fidelity is the right default.
+        // Original angle by default — matches the LP generator's default
+        // output and publishToCloudflare's fallback when activeAngle=NULL.
+        //
+        // Non-fatal: try/catch wrapper. If Cloudflare KV write or worker
+        // deploy hiccups, log warning + continue cascade. LP content is
+        // already in DB; user can re-publish via the wizard. Better than
+        // failing the entire cascade on a transient Cloudflare API issue.
+        try {
+          await writeProgress(step.index, `Publishing your landing page…`);
+          const { publicUrl, slug } = await runLandingPagePublish({
+            userId: input.userId,
+            landingPageId,
+            styleMode: "visual",
+          });
+          console.log(`[orchestration] LP published to ${publicUrl} (slug=${slug})`);
+
+          // Set kit.selectedLandingPageAngle so the kit page renders the
+          // angle that was just published. Default 'original' matches what
+          // runLandingPagePublish picked (activeAngle was NULL, fell back).
+          const [postPublishKit] = await db
+            .select()
+            .from(campaignKits)
+            .where(and(eq(campaignKits.userId, input.userId), eq(campaignKits.icpId, input.icpId)))
+            .limit(1);
+          if (postPublishKit) {
+            await db
+              .update(campaignKits)
+              .set({ selectedLandingPageAngle: "original", updatedAt: new Date() })
+              .where(eq(campaignKits.id, postPublishKit.id));
+          }
+        } catch (publishErr) {
+          const errorMessage = publishErr instanceof Error ? publishErr.message : String(publishErr);
+          console.warn(
+            `[orchestration] LP publish to Cloudflare failed for landingPageId=${landingPageId}: ${errorMessage}. ` +
+              `Cascade continues; user can re-publish via wizard.`,
+          );
+        }
+
         await writeProgress(step.index, `Finalising your landing page…`);
         continue;
       }
