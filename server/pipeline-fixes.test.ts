@@ -341,3 +341,153 @@ describe("Issue 6 — actualDuration stored from Creatomate statusData.duration"
     expect(displayDuration(undefined, "60")).toBe("60s");
   });
 });
+
+// ─── Validator Phase 1: email sequence shape validation ──────────────────────
+// Sprint B+1 path d. Covers the 3 known emails-as-string sub-cases (valid
+// JSON-encoded array string, Python-dict single-quote literal, unrecoverable
+// malformed string) plus other shape failures (missing field, wrong type,
+// empty array, non-object items, items missing required fields). Each
+// fail case asserts a specific subCase tag + a failContext message that
+// the validator returns for next-retry injection.
+
+import { validateEmailSequenceShape } from "./_core/validator";
+
+const validEmail = {
+  day: 1,
+  subject: "subject one",
+  previewText: "preview",
+  body: "body content here",
+  cta: "cta link",
+  ps: "ps line",
+};
+
+describe("Validator Phase 1 — email sequence shape", () => {
+  it("ok: well-formed parsed object with emails array recovers cleanly", () => {
+    const result = validateEmailSequenceShape({ emails: [validEmail] });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.emails).toHaveLength(1);
+      expect(result.emails[0].subject).toBe("subject one");
+    }
+  });
+
+  it("ok: legacy shape where root parsed is the array directly", () => {
+    const result = validateEmailSequenceShape([validEmail, { ...validEmail, day: 2 }]);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.emails).toHaveLength(2);
+    }
+  });
+
+  it("sub-case 1: emails is a valid JSON-encoded array string — recovers via JSON.parse", () => {
+    const stringified = JSON.stringify([validEmail]);
+    const result = validateEmailSequenceShape({ emails: stringified });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.emails[0].subject).toBe("subject one");
+    }
+  });
+
+  it("sub-case 2: emails is a Python-dict single-quote literal — recovers via guarded conversion", () => {
+    const pyDictStyle = `[{ 'day': 1, 'subject': 'subject one', 'previewText': 'preview', 'body': 'body content here', 'cta': 'cta link', 'ps': 'ps line' }]`;
+    const result = validateEmailSequenceShape({ emails: pyDictStyle });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.emails).toHaveLength(1);
+      expect(result.emails[0].subject).toBe("subject one");
+    }
+  });
+
+  it("sub-case 3: emails is a truncated/malformed string — unrecoverable, returns failContext with preview", () => {
+    const truncated = `[ { "day": 1, "subject": "your 12-hour slide deck problem", "preview`;
+    const result = validateEmailSequenceShape({ emails: truncated });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.subCase).toBe("emails_string_unrecoverable");
+      // failContext must include the preview so Sonnet sees what it emitted.
+      expect(result.failContext).toContain("your 12-hour slide deck problem");
+      // failContext must instruct the retry to emit a literal JSON array.
+      expect(result.failContext).toMatch(/literal JSON array/i);
+    }
+  });
+
+  it("emails field missing — failContext lists actual top-level keys", () => {
+    const result = validateEmailSequenceShape({ messages: [], other: "x" });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.subCase).toBe("emails_field_missing");
+      expect(result.failContext).toContain("messages");
+      expect(result.failContext).toContain("other");
+    }
+  });
+
+  it("emails is wrong type (number) — failContext names the type", () => {
+    const result = validateEmailSequenceShape({ emails: 42 });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.subCase).toBe("emails_wrong_type");
+      expect(result.failContext).toContain("number");
+    }
+  });
+
+  it("emails is empty array — failContext says empty", () => {
+    const result = validateEmailSequenceShape({ emails: [] });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.subCase).toBe("emails_empty_array");
+      expect(result.failContext).toMatch(/empty/i);
+    }
+  });
+
+  it("email item is not an object (string instead) — failContext names the index", () => {
+    const result = validateEmailSequenceShape({ emails: [validEmail, "not an object"] });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.subCase).toBe("email_item_not_object");
+      expect(result.failContext).toContain("index 1");
+    }
+  });
+
+  it("email item missing required field (body) — failContext names the missing field", () => {
+    const { body: _ignored, ...incomplete } = validEmail;
+    void _ignored;
+    const result = validateEmailSequenceShape({ emails: [incomplete] });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.subCase).toBe("email_item_missing_required");
+      expect(result.failContext).toContain("body");
+    }
+  });
+
+  it("non-object root (null) — failContext asks for a JSON object", () => {
+    const result = validateEmailSequenceShape(null);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.subCase).toBe("non_object_root");
+      expect(result.failContext).toMatch(/JSON object/i);
+    }
+  });
+
+  it("non-object root (string) — failContext names the parsed type", () => {
+    const result = validateEmailSequenceShape("not a json object");
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.subCase).toBe("non_object_root");
+      expect(result.failContext).toContain("string");
+    }
+  });
+
+  it("apostrophe-in-content survives the Python-dict guard (no false positive on legitimate apostrophes)", () => {
+    // Valid JSON-encoded array with apostrophes inside string values — must
+    // NOT be mistaken for a Python-dict literal by the conversion guard.
+    const validWithApostrophes = JSON.stringify([
+      { ...validEmail, body: "you're not alone — don't give up" },
+    ]);
+    const result = validateEmailSequenceShape({ emails: validWithApostrophes });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.emails[0].body).toContain("you're");
+      expect(result.emails[0].body).toContain("don't");
+    }
+  });
+});

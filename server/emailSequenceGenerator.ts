@@ -12,6 +12,7 @@
 
 import { invokeLLM } from "./_core/llm";
 import { truncateQuote, NO_DATE_FABRICATION_RULE } from "./_core/copywritingRules";
+import { validateEmailSequenceShape } from "./_core/validator";
 import { getCascadeContext } from "./_core/cascadeContext";
 
 function stripMarkdownJson(content: string): string {
@@ -728,88 +729,68 @@ interface RawEmail {
 
 async function invokeEmailSequenceWithRetry(userPrompt: string): Promise<RawEmail[]> {
   let lastFailureContext: string | null = null;
-  // Bridge B (Sprint B+1, 2026-05-11) — full diagnostic capture for the
-  // validator-build-window investigation. Stores the raw LLM content
-  // (already JSON.stringify'd from toolUseBlock.input at llm.ts:441) and
-  // the post-defensive-un-stringify parsed snapshot from the most recent
-  // failed attempt. On retry exhaust (all 3 attempts schema-violated),
-  // console.error dumps both so Railway logs capture the full failure
-  // content — the existing varchar(1024) error column truncates at 300
-  // chars and loses the data we need to design the validator's shape-
-  // validation pre-step. Logging is bounded: only fires on the throw path
-  // (max 1× per request), not per attempt.
+  // Validator Phase 1 (Sprint B+1 path d, 2026-05-11): post-generation
+  // shape validation. Replaces the inline defensive un-stringify + array-
+  // check with a call to validateEmailSequenceShape (server/_core/
+  // validator.ts), which centralizes shape recovery (sub-cases 1 + 2) and
+  // shape validation (sub-case 3 + others), AND returns explicit
+  // failContext on validation failure. On retry, that failContext is
+  // injected into the next user prompt so Sonnet has specific information
+  // about what was wrong with its previous output — closes the descriptive-
+  // vs-strict architectural mismatch where Anthropic tool-use's input_schema
+  // is guidance not enforcement.
+  //
+  // Bridge B (commit 4fa53a6) full-diagnostic logging on retry exhaust is
+  // preserved — provides live Railway-log signal on whether the validator's
+  // shape-validation pre-step catches everything before the throw, or
+  // whether new sub-cases emerge that Phase 2 needs to address.
   let lastRawContent: string | null = null;
   let lastParsedSnapshot: unknown = null;
+  let validatorFailContext: string | null = null;
   for (let attempt = 1; attempt <= EMAIL_RETRY_MAX_ATTEMPTS; attempt++) {
+    // Inject the validator's fail-context from the previous attempt (if
+    // any) into the user prompt. First attempt has no prior context so
+    // sends the original prompt verbatim.
+    const effectiveUserPrompt = validatorFailContext
+      ? `${userPrompt}\n\n---\n\nIMPORTANT: your previous attempt failed validation. ${validatorFailContext}`
+      : userPrompt;
     const response = await invokeLLM({
       messages: [
         { role: "system", content: EMAIL_SEQUENCE_SYSTEM_PROMPT },
-        { role: "user", content: userPrompt },
+        { role: "user", content: effectiveUserPrompt },
       ],
       response_format: EMAIL_SEQUENCE_RESPONSE_FORMAT,
     });
     const content = response.choices[0].message.content;
     if (typeof content !== "string") throw new Error("Invalid response format from AI");
-    let parsed = JSON.parse(stripMarkdownJson(content));
-    if (Array.isArray(parsed)) parsed = { emails: parsed };
-    // Defensive un-stringify (Sprint B regression fix): Sonnet 4.6 sometimes
-    // returns the `emails` field as a JSON-encoded string ("[{...}]") rather
-    // than a literal array, despite strict json_schema declaring array. Try
-    // to un-stringify before declaring failure — content is valid, only the
-    // wrapping shape is wrong, so this recovers the response without a retry.
-    //
-    // Sprint B+1 regression-fix v1: Sonnet 4.6 also emits Python-dict-style
-    // single-quote object literals ("[{ 'day': 1, 'subject': '...' }]") when
-    // prompt size grows past Sprint B+1's PROOF_COMPOSITIONAL_CEILING_RULE
-    // additions. Plain JSON.parse fails on single quotes; recover via guarded
-    // property-name + value-string conversion. Guard requires the string to
-    // LOOK like a single-quoted dict (starts with [{ or { and contains a
-    // single-quoted word-char key) before converting — avoids touching
-    // strings that happen to contain apostrophes for unrelated reasons.
-    if (typeof parsed?.emails === "string") {
-      const raw = parsed.emails as string;
-      try {
-        const v = JSON.parse(raw);
-        if (Array.isArray(v)) parsed.emails = v;
-      } catch {
-        const looksLikePyDict = /^\s*[\[{].*?'[a-zA-Z_]\w*'\s*:/.test(raw);
-        if (looksLikePyDict) {
-          const converted = raw
-            .replace(/'(\w+)'\s*:/g, '"$1":')
-            .replace(/:\s*'([^']*)'/g, ': "$1"');
-          try {
-            const v = JSON.parse(converted);
-            if (Array.isArray(v)) parsed.emails = v;
-          } catch { /* fall through to retry */ }
-        }
-      }
+    const parsed = JSON.parse(stripMarkdownJson(content));
+
+    // Run shape validator. Handles defensive un-stringification of sub-
+    // cases 1 + 2 internally, returns explicit failContext for sub-case 3
+    // and other shape failures.
+    const validatorResult = validateEmailSequenceShape(parsed);
+    if (validatorResult.ok) {
+      return validatorResult.emails as RawEmail[];
     }
-    if (parsed?.emails && Array.isArray(parsed.emails)) {
-      return parsed.emails as RawEmail[];
-    }
-    const emailsVal = parsed?.emails;
-    const emailsType = typeof emailsVal;
-    const emailsKeys = emailsType === "object" && emailsVal !== null ? Object.keys(emailsVal).slice(0, 10) : [];
-    const emailsPreview = emailsType === "string"
-      ? (emailsVal as string).slice(0, 300)
-      : JSON.stringify(emailsVal).slice(0, 300);
+
+    // Validation failed: capture failContext for next-attempt injection,
+    // build lastFailureContext for diagnostic, fall through to retry.
+    validatorFailContext = validatorResult.failContext;
     lastFailureContext =
-      `attempt=${attempt}/${EMAIL_RETRY_MAX_ATTEMPTS} ` +
-      `top_keys=[${Object.keys(parsed ?? {}).join(",")}] ` +
-      `typeof_emails=${emailsType} isArray=${Array.isArray(emailsVal)} ` +
-      `emails_subkeys=[${emailsKeys.join(",")}] emails_preview=${emailsPreview}`;
-    console.warn(`[emailSequences] Schema violation, retrying. ${lastFailureContext}`);
+      `attempt=${attempt}/${EMAIL_RETRY_MAX_ATTEMPTS} subCase=${validatorResult.subCase}`;
+    console.warn(`[emailSequences] Validator shape check failed, retrying with fail-context. ${lastFailureContext}`);
     // Bridge B: capture full raw + parsed for retry-exhaust diagnostic.
     lastRawContent = content;
     lastParsedSnapshot = parsed;
   }
   // Bridge B retry-exhaust diagnostic: dump FULL raw content + parsed
   // snapshot to console.error so Railway logs capture the data needed
-  // to design the validator's shape-validation pre-step. Multiple
-  // console.error calls used (not one big string) so log aggregators
-  // don't truncate at line-length limits.
-  console.error(`[emailSequences] RETRY EXHAUST — Bridge B diagnostic dump for jobId-correlated failure (Sprint B+1 validator-build-window investigation).`);
+  // to inform Phase 2 + future validator pattern catalog additions.
+  // Multiple console.error calls used (not one big string) so log
+  // aggregators don't truncate at line-length limits.
+  console.error(`[emailSequences] RETRY EXHAUST — Bridge B + validator Phase 1 diagnostic dump.`);
   console.error(`[emailSequences] RETRY EXHAUST — lastFailureContext: ${lastFailureContext}`);
+  console.error(`[emailSequences] RETRY EXHAUST — last validator failContext: ${validatorFailContext}`);
   console.error(`[emailSequences] RETRY EXHAUST — FULL RAW CONTENT (from invokeLLM, post tool-use stringify): ${lastRawContent}`);
   try {
     console.error(`[emailSequences] RETRY EXHAUST — FULL PARSED SNAPSHOT: ${JSON.stringify(lastParsedSnapshot)}`);
