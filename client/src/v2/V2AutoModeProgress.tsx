@@ -30,7 +30,10 @@ import {
   getFailedStepNameFromProgressStep,
 } from "./AutoModeZappyScript";
 
-const TOTAL_STEPS = 8;
+// Phase C C1: cascade is now 9 steps (added adCreatives at end). The runtime
+// value comes from progress?.total via the polled job response — this is the
+// fallback used only when progress is null/missing on the first poll tick.
+const TOTAL_STEPS = 9;
 const POLL_INTERVAL_MS = 5_000;
 
 const cardStyle: React.CSSProperties = {

@@ -39,6 +39,7 @@ import { runAdCopyGeneration } from "../adCopyGenerator";
 import { runLandingPageGeneration } from "../landingPageGenerator";
 import { runEmailSequenceGeneration } from "../emailSequenceGenerator";
 import { runWhatsappSequenceGeneration } from "../whatsappSequenceGenerator";
+import { runAdCreativesGeneration } from "../adCreativesGenerator";
 
 // ─── Locked B-2 Zappy script labels ────────────────────────────────────────
 // 10 labels: init + 8 steps + finalize. V2AutoModeProgress (Phase B3) reads
@@ -53,6 +54,7 @@ export const ORCHESTRATION_STEP_LABELS = {
   landingPage: "Generating angle {N} of 4 for your landing page…",
   emailSequence: "Composing your email sequence…",
   whatsappSequence: "Adding your WhatsApp follow-up…",
+  adCreatives: "Generating 5 ad creative variations…",
   finalize: "Putting it all together for you…",
 } as const;
 
@@ -78,6 +80,12 @@ const ORCHESTRATION_STEPS: OrchestrationStep[] = [
   { index: 6, name: "landingPage",      kitField: "selectedLandingPageId" },
   { index: 7, name: "emailSequence",    kitField: "selectedEmailSequenceId" },
   { index: 8, name: "whatsappSequence", kitField: "selectedWhatsAppSequenceId" },
+  // Phase C C1: ad creative generation as cascade step 9 (inserted at end
+  // so 8 text generators complete first; visual finale lands after text
+  // is settled). Wall-clock +2-2.5 min sequential per batch; cost ~$0.20.
+  // selectedAdCreativeBatchId is varchar(100), unlike the int IDs of
+  // steps 1-8 — autoSelectBest signature widened to accept string|number.
+  { index: 9, name: "adCreatives",      kitField: "selectedAdCreativeBatchId" },
 ];
 
 const TOTAL_STEPS = ORCHESTRATION_STEPS.length;
@@ -188,7 +196,10 @@ export async function runOrchestration(input: OrchestrationInput): Promise<void>
 
     await writeProgress(step.index, ORCHESTRATION_STEP_LABELS[step.name]);
 
-    let generatedId: number | null = null;
+    // Widened to string|number: 8 text steps return numeric IDs; Phase C C1's
+    // adCreatives step returns a varchar batchId. autoSelectBest signature
+    // widened in parallel (campaignKits.ts) to accept either shape.
+    let generatedId: number | string | null = null;
     switch (step.name) {
       case "offer": {
         const { offerId } = await runOfferGeneration({
@@ -343,6 +354,46 @@ export async function runOrchestration(input: OrchestrationInput): Promise<void>
           sequenceLength: 3,
         });
         generatedId = id;
+        break;
+      }
+      case "adCreatives": {
+        // Phase C C1: 5 ad image variations generated via Replicate Flux,
+        // composited with server-trusted headlines. Inputs derived from
+        // service + the kit's selected mechanism (looked up via the kit
+        // we already read above for skip-already-populated check).
+        const [svc] = await db.select().from(services).where(eq(services.id, input.serviceId)).limit(1);
+        if (!svc) throw new Error("Service not found for adCreatives step");
+        // Look up the selected mechanism's name from the kit's
+        // selectedMechanismId pointer (populated by step 2 earlier in the
+        // cascade). Falls back to "System" if absent (shouldn't happen in
+        // a fresh cascade but possible on partial-resume).
+        let mechanismName = "System";
+        if (kit?.selectedMechanismId) {
+          const [m] = await db.select({ name: heroMechanisms.mechanismName })
+            .from(heroMechanisms)
+            .where(eq(heroMechanisms.id, kit.selectedMechanismId))
+            .limit(1);
+          if (m?.name) mechanismName = m.name;
+        }
+        // Niche derivation: targetCustomer is the most niche-specific
+        // operator-supplied field (e.g. "SaaS founders at $500k-$3M ARR")
+        // — better visual-prompting flavor than service.category which is
+        // a coarse 3-value enum (coaching/speaking/consulting). Truncated
+        // to fit varchar(255) niche column on adCreatives.
+        const niche = (svc.targetCustomer ?? svc.category ?? "coaching").slice(0, 200);
+        const pressingProblem = svc.painPoints ?? svc.description ?? "";
+        const { batchId } = await runAdCreativesGeneration({
+          userId: input.userId,
+          serviceId: input.serviceId,
+          niche,
+          productName: svc.name,
+          uniqueMechanism: mechanismName,
+          targetAudience: svc.targetCustomer ?? "",
+          mainBenefit: svc.mainBenefit ?? "",
+          pressingProblem,
+          adType: "lead_gen",
+        });
+        generatedId = batchId;
         break;
       }
     }

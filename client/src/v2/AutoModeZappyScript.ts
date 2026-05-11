@@ -20,6 +20,7 @@ export type OrchestrationStepName =
   | "landingPage"
   | "emailSequence"
   | "whatsappSequence"
+  | "adCreatives"
   | "finalize";
 
 /**
@@ -42,6 +43,7 @@ export const STEP_TO_WIZARD_ROUTE: Record<OrchestrationStepName, string | null> 
   landingPage: "/v2-dashboard/wizard/landingPage",
   emailSequence: "/v2-dashboard/wizard/emailSequence",
   whatsappSequence: "/v2-dashboard/wizard/whatsappSequence",
+  adCreatives: "/ad-creatives",
   finalize: null,
 };
 
@@ -59,6 +61,7 @@ export const STEP_DISPLAY_NAME: Record<OrchestrationStepName, string> = {
   landingPage: "Landing Page",
   emailSequence: "Email Sequence",
   whatsappSequence: "WhatsApp Sequence",
+  adCreatives: "Ad Creatives",
   finalize: "Finalisation",
 };
 
@@ -71,8 +74,9 @@ export const STEP_DISPLAY_NAME: Record<OrchestrationStepName, string> = {
  * crash. Caller passes the last known step name from progress.step.
  */
 export function getFailedStepNameFromProgressStep(progressStep: number | undefined): OrchestrationStepName | null {
-  // Step indices 1-8 map to the 8 generation steps in order.
-  // 0 = init (pre-step crash), 9 = finalize (post-step crash).
+  // Step indices 1-9 map to the 9 generation steps in order.
+  // 0 = init (pre-step crash), 10 = finalize (post-step crash).
+  // Phase C C1: adCreatives added as step 9 at end of cascade.
   const STEP_BY_INDEX: Record<number, OrchestrationStepName> = {
     1: "offer",
     2: "mechanism",
@@ -82,6 +86,7 @@ export function getFailedStepNameFromProgressStep(progressStep: number | undefin
     6: "landingPage",
     7: "emailSequence",
     8: "whatsappSequence",
+    9: "adCreatives",
   };
   if (progressStep === undefined) return null;
   return STEP_BY_INDEX[progressStep] ?? null;

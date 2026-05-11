@@ -859,3 +859,25 @@ describe("Phase C C0 — Auto Mode tier gate", () => {
     expect(result.allowed).toBe(false);
   });
 });
+
+// ─── Phase C C1: ad creatives cascade step (structural assertions) ───────────
+// The gen-core runAdCreativesGeneration itself is too I/O-heavy to test here
+// (it hits Replicate + S3). Coverage here is structural: orchestration's
+// step-label catalog includes the new step, and the AutoModeZappyScript
+// failure-path map covers it for client-side deep-link UX. The end-to-end
+// behaviour is verified by the post-deploy Auto Mode probe.
+
+import { ORCHESTRATION_STEP_LABELS } from "./_core/orchestration";
+
+describe("Phase C C1 — ad creatives cascade step", () => {
+  it("ORCHESTRATION_STEP_LABELS includes adCreatives entry", () => {
+    expect(ORCHESTRATION_STEP_LABELS).toHaveProperty("adCreatives");
+    expect(typeof ORCHESTRATION_STEP_LABELS.adCreatives).toBe("string");
+    expect(ORCHESTRATION_STEP_LABELS.adCreatives.length).toBeGreaterThan(0);
+  });
+
+  it("adCreatives label is user-facing copy mentioning creatives or variations", () => {
+    // Sanity that the label is the user-facing progress string, not just a slug
+    expect(ORCHESTRATION_STEP_LABELS.adCreatives).toMatch(/creative|variation/i);
+  });
+});

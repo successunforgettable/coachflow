@@ -479,7 +479,7 @@ export default function V2CampaignKit() {
                 marginRight: "auto",
               }}
             >
-              All 8 assets generated and ready. Take a look around — or push live now.
+              All 9 assets generated and ready. Take a look around — or push live now.
             </p>
             <button
               onClick={() => { dismissOverlay(); handlePush(); }}

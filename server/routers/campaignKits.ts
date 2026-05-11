@@ -9,7 +9,12 @@ export async function autoSelectBest(
   userId: number,
   icpId: number,
   field: string,
-  itemId: number
+  // Phase C C1: widened to number|string. 8 text-asset selectedXxxId fields
+  // are numeric row IDs; selectedAdCreativeBatchId is a varchar(100) batchId
+  // pointing to the adCreatives.batchId grouping. Both shapes go through
+  // the same auto-select-on-cascade-completion path; Drizzle's set() accepts
+  // either because the column types differ per field.
+  itemId: number | string,
 ): Promise<void> {
   const db = await getDb();
   if (!db) return;
@@ -56,7 +61,13 @@ export async function autoSelectBest(
       updated.selectedAdCopyId != null &&
       updated.selectedLandingPageId != null &&
       updated.selectedEmailSequenceId != null &&
-      updated.selectedWhatsAppSequenceId != null;
+      updated.selectedWhatsAppSequenceId != null &&
+      // Phase C C1: ad creative batch required for new-cascade completeness.
+      // Legacy kits (id ≤ 15) that completed before C1 already have
+      // status='complete' set — this check only flips draft→complete, so
+      // they're not retroactively re-evaluated. New Auto Mode runs after
+      // C1 wait for adCreatives step 9 before flipping.
+      updated.selectedAdCreativeBatchId != null;
 
     if (isComplete && updated.status === "draft") {
       await db.update(campaignKits).set({ status: "complete", updatedAt: new Date() } as any).where(eq(campaignKits.id, kitId));

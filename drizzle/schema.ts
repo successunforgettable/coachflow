@@ -1309,6 +1309,12 @@ export const campaignKits = mysqlTable("campaignKits", {
   selectedLandingPageAngle: varchar("selectedLandingPageAngle", { length: 50 }),
   selectedEmailSequenceId: int("selectedEmailSequenceId"),
   selectedWhatsAppSequenceId: int("selectedWhatsAppSequenceId"),
+  // Phase C C1 (migration 0072): pointer to the adCreatives.batchId
+  // varchar(100) that the Auto Mode cascade's adCreatives step produces.
+  // Nullable for legacy kits predating C1; required-for-completion for
+  // new Auto Mode runs (autoSelectBest's isComplete check at
+  // server/routers/campaignKits.ts L51-59 includes this field).
+  selectedAdCreativeBatchId: varchar("selectedAdCreativeBatchId", { length: 100 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

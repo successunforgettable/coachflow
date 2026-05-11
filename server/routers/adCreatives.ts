@@ -8,6 +8,7 @@ import { generateImage } from "../_core/imageGeneration";
 import { storagePut } from "../storage";
 import { compositeHeadline } from "../_core/compositeHeadline";
 import { randomBytes, randomUUID } from "crypto";
+import { runAdCreativesGeneration } from "../adCreativesGenerator";
 
 // Meta-prohibited phrases for compliance checking
 const PROHIBITED_PHRASES = [
@@ -33,7 +34,7 @@ const PROHIBITED_PHRASES = [
 //   object          → best for mechanism reveal angles (show the asset or deliverable)
 //   person_curious  → best for curiosity/contrarian angles (intrigue, challenge to belief)
 //   pain formula    → best for LOSS angles (name the shared pain, create recognition)
-const HEADLINE_FORMULAS = {
+export const HEADLINE_FORMULAS = {
   benefit: (mechanism: string, niche: string, _customers?: number) =>
     `${mechanism.toUpperCase()}: CUT YOUR ${niche.toUpperCase()} TIME BY 90%`,
   social_proof: (mechanism: string, niche: string, customers?: number) =>
@@ -51,7 +52,7 @@ const HEADLINE_FORMULAS = {
 };
 
 // Check for Meta compliance issues
-function checkCompliance(headline: string, benefit: string, problem: string): string[] {
+export function checkCompliance(headline: string, benefit: string, problem: string): string[] {
   const issues: string[] = [];
   const textToCheck = `${headline} ${benefit} ${problem}`.toLowerCase();
   
@@ -72,7 +73,7 @@ function checkCompliance(headline: string, benefit: string, problem: string): st
 // Headline text is composited server-side via opentype.js + resvg-js after generation
 // (see server/_core/compositeHeadline.ts). AI models cannot reliably render text —
 // removing text instructions eliminates hallucinated glyphs.
-function generateAdImagePrompt(
+export function generateAdImagePrompt(
   style: string,
   niche: string,
   problem: string,
@@ -256,133 +257,50 @@ export const adCreativesRouter = router({
       return creatives;
     }),
 
-  // Generate 5 ad creative variations
+  // Generate 5 ad creative variations.
+  // Phase C C1 refactor: generation logic extracted to runAdCreativesGeneration
+  // (server/adCreativesGenerator.ts) so the Auto Mode orchestrator can call it
+  // directly. This mutation now wraps the gen-core with the existing wizard-
+  // facing return shape (batchId + creatives[] for backward compat with the
+  // V2 wizard's AdCreativesGenerator page, which reads data.batchId only —
+  // creatives[] is preserved defensively for any other consumer not surfaced
+  // in the kit-13/14/15 audits).
   generate: protectedProcedure
     .input(generateAdCreativesSchema)
     .mutation(async ({ ctx, input }) => {
+      const { batchId } = await runAdCreativesGeneration({
+        userId: ctx.user.id,
+        serviceId: input.serviceId,
+        niche: input.niche,
+        productName: input.productName,
+        uniqueMechanism: input.uniqueMechanism,
+        targetAudience: input.targetAudience,
+        mainBenefit: input.mainBenefit,
+        pressingProblem: input.pressingProblem,
+        adType: input.adType,
+      });
+
+      // Re-fetch the batch's rows for the wizard-facing return shape.
+      // ~1 extra query vs the inline-collection pattern; acceptable cost
+      // for single-source-of-truth on the generation logic.
       const db = await getDb();
-    if (!db) throw new Error("Database not available");
-      
-      // Check quota (if needed - add to users table)
-      // const user = await db.select().from(users).where(eq(users.id, ctx.user.id)).limit(1);
-      
-      // Get service details with social proof
-      const service = await db
+      if (!db) throw new Error("Database not available");
+      const rows = await db
         .select()
-        .from(services)
-        .where(eq(services.id, input.serviceId))
-        .limit(1);
-      
-      if (service.length === 0) {
-        throw new Error("Service not found");
-      }
-      
-      // Extract social proof data (Issue 2 fix)
-      const serviceData = service[0];
-      const customerCount = serviceData.totalCustomers || 0;
-      const hasSocialProof = {
-        customers: customerCount > 0,
-        rating: !!serviceData.averageRating && parseFloat(serviceData.averageRating) > 0,
-        reviews: !!serviceData.totalReviews && serviceData.totalReviews > 0,
-        testimonials: !!serviceData.testimonial1Name || !!serviceData.testimonial2Name || !!serviceData.testimonial3Name,
-        press: !!serviceData.pressFeatures && serviceData.pressFeatures.trim().length > 0,
-      };
-      
-      const batchId = `batch-${Date.now()}-${randomBytes(4).toString("hex")}`;
-      const mechanism = input.uniqueMechanism || "System";
-      
-      // Define 5 variations with different styles and headlines
-      const variations = [
-        { style: "person_shocked", formula: "benefit" as const },
-        { style: "screenshot", formula: "social_proof" as const },
-        { style: "person_intense", formula: "curiosity" as const },
-        { style: "object", formula: "contrast" as const },
-        { style: "person_curious", formula: "challenge" as const },
-      ];
-      
-      const generatedCreatives = [];
-      
-      for (let i = 0; i < 5; i++) {
-        const variation = variations[i];
-        const headline = HEADLINE_FORMULAS[variation.formula](mechanism, input.niche, customerCount);
-        
-        // Check Meta compliance
-        const complianceIssues = checkCompliance(headline, input.mainBenefit, input.pressingProblem);
-        
-        // Generate image prompt — no headline in prompt; composited after generation
-        const imagePrompt = generateAdImagePrompt(
-          variation.style,
-          input.niche,
-          input.pressingProblem
-        );
-        
-        console.log(`[Ad Creatives] Generating variation ${i + 1}/5 - Style: ${variation.style}, Formula: ${variation.formula}`);
-        
-        // Generate image using AI
-        const imageResult = await generateImage({
-          prompt: imagePrompt,
-        });
-        
-        if (!imageResult.url) {
-          throw new Error(`Failed to generate image for variation ${i + 1}`);
-        }
-        
-        const imageUrl = imageResult.url;
-        console.log(`[Ad Creatives] Image generated: ${imageUrl}`);
-        
-        // Download raw image from Replicate/S3
-        const imageResponse = await fetch(imageUrl);
-        const rawBuffer = Buffer.from(await imageResponse.arrayBuffer());
+        .from(adCreatives)
+        .where(and(eq(adCreatives.userId, ctx.user.id), eq(adCreatives.batchId, batchId)))
+        .orderBy(adCreatives.variationNumber);
 
-        // Dual upload: raw Flux output → rawImageUrl (for future recomposites),
-        // composited headline PNG → imageUrl (what users see).
-        const rawKey = `ad-creatives/${ctx.user.id}/${batchId}/raw-variation-${i + 1}.png`;
-        const { url: rawImageUrl } = await storagePut(rawKey, rawBuffer, "image/png");
-        const compositedBuffer = await compositeHeadline(rawBuffer, headline, variation.style);
-        const fileKey = `ad-creatives/${ctx.user.id}/${batchId}/variation-${i + 1}.png`;
-        const { url: s3Url } = await storagePut(fileKey, compositedBuffer, "image/png");
-
-        console.log(`[Ad Creatives] Uploaded raw=${rawImageUrl} composited=${s3Url}`);
-
-        // Save to database
-        const result = await db.insert(adCreatives).values({
-          userId: ctx.user.id,
-          serviceId: input.serviceId,
-          niche: input.niche,
-          productName: input.productName,
-          uniqueMechanism: mechanism,
-          targetAudience: input.targetAudience,
-          mainBenefit: input.mainBenefit,
-          pressingProblem: input.pressingProblem,
-          adType: input.adType,
-          designStyle: variation.style as any,
-          headlineFormula: variation.formula,
-          headline,
-          imageUrl: s3Url,
-          rawImageUrl,
-          imageFormat: "1080x1080",
-          complianceChecked: true,
-          complianceIssues: complianceIssues.length > 0 ? JSON.stringify(complianceIssues) : null,
-      batchId,
-      variationNumber: i + 1,
-    } as any);
-        
-      const creativeId = Number((result as any).insertId ?? (result as any)[0]?.insertId ?? 0);
-      generatedCreatives.push({
-          id: creativeId,
-          headline,
-          imageUrl: s3Url,
-          style: variation.style,
-          formula: variation.formula,
-          complianceIssues,
-        });
-      }
-      
-      console.log(`[Ad Creatives] Batch generation complete: ${batchId}`);
-      
       return {
         batchId,
-        creatives: generatedCreatives,
+        creatives: rows.map((r) => ({
+          id: r.id,
+          headline: r.headline,
+          imageUrl: r.imageUrl,
+          style: r.designStyle,
+          formula: r.headlineFormula,
+          complianceIssues: r.complianceIssues ? JSON.parse(r.complianceIssues) : [],
+        })),
         message: "5 ad creatives generated successfully",
       };
     }),
