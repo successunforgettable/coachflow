@@ -728,6 +728,18 @@ interface RawEmail {
 
 async function invokeEmailSequenceWithRetry(userPrompt: string): Promise<RawEmail[]> {
   let lastFailureContext: string | null = null;
+  // Bridge B (Sprint B+1, 2026-05-11) — full diagnostic capture for the
+  // validator-build-window investigation. Stores the raw LLM content
+  // (already JSON.stringify'd from toolUseBlock.input at llm.ts:441) and
+  // the post-defensive-un-stringify parsed snapshot from the most recent
+  // failed attempt. On retry exhaust (all 3 attempts schema-violated),
+  // console.error dumps both so Railway logs capture the full failure
+  // content — the existing varchar(1024) error column truncates at 300
+  // chars and loses the data we need to design the validator's shape-
+  // validation pre-step. Logging is bounded: only fires on the throw path
+  // (max 1× per request), not per attempt.
+  let lastRawContent: string | null = null;
+  let lastParsedSnapshot: unknown = null;
   for (let attempt = 1; attempt <= EMAIL_RETRY_MAX_ATTEMPTS; attempt++) {
     const response = await invokeLLM({
       messages: [
@@ -787,6 +799,22 @@ async function invokeEmailSequenceWithRetry(userPrompt: string): Promise<RawEmai
       `typeof_emails=${emailsType} isArray=${Array.isArray(emailsVal)} ` +
       `emails_subkeys=[${emailsKeys.join(",")}] emails_preview=${emailsPreview}`;
     console.warn(`[emailSequences] Schema violation, retrying. ${lastFailureContext}`);
+    // Bridge B: capture full raw + parsed for retry-exhaust diagnostic.
+    lastRawContent = content;
+    lastParsedSnapshot = parsed;
+  }
+  // Bridge B retry-exhaust diagnostic: dump FULL raw content + parsed
+  // snapshot to console.error so Railway logs capture the data needed
+  // to design the validator's shape-validation pre-step. Multiple
+  // console.error calls used (not one big string) so log aggregators
+  // don't truncate at line-length limits.
+  console.error(`[emailSequences] RETRY EXHAUST — Bridge B diagnostic dump for jobId-correlated failure (Sprint B+1 validator-build-window investigation).`);
+  console.error(`[emailSequences] RETRY EXHAUST — lastFailureContext: ${lastFailureContext}`);
+  console.error(`[emailSequences] RETRY EXHAUST — FULL RAW CONTENT (from invokeLLM, post tool-use stringify): ${lastRawContent}`);
+  try {
+    console.error(`[emailSequences] RETRY EXHAUST — FULL PARSED SNAPSHOT: ${JSON.stringify(lastParsedSnapshot)}`);
+  } catch (snapshotErr) {
+    console.error(`[emailSequences] RETRY EXHAUST — parsed snapshot stringify failed: ${snapshotErr instanceof Error ? snapshotErr.message : String(snapshotErr)}`);
   }
   throw new Error(
     `LLM did not return a valid emails array after ${EMAIL_RETRY_MAX_ATTEMPTS} attempts. Last failure: ${lastFailureContext}`,
