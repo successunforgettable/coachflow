@@ -13,6 +13,7 @@
 import { invokeLLM } from "./_core/llm";
 import { truncateQuote, NO_DATE_FABRICATION_RULE } from "./_core/copywritingRules";
 import { getCascadeContext } from "./_core/cascadeContext";
+import { validateWhatsappSequenceShape, validateWhatsappFabricationPatterns } from "./_core/validator";
 
 function stripMarkdownJson(content: string): string {
   return content.replace(/^```json\s*|^```\s*|\s*```$/gm, "").trim();
@@ -633,46 +634,80 @@ interface RawWhatsappMessage {
 }
 
 async function invokeWhatsappSequenceWithRetry(userPrompt: string): Promise<RawWhatsappMessage[]> {
+  // Validator Phase 2 (Sprint B+1 path d, 2026-05-11): mirrors the email
+  // generator's Phase 1 + Phase 2 architecture. Shape validation via
+  // validateWhatsappSequenceShape (centralizes defensive un-stringification
+  // + array shape + per-item required fields), then fabrication-pattern
+  // validation via validateWhatsappFabricationPatterns (catches family
+  // composition / partner / employer / quoted speech / invented tenure /
+  // programme duration drift / named research source / X-of-Y demographic).
+  // Retry semantics: shape failure throws on exhaust (content is unrecoverable);
+  // fabrication failure logs + returns content on exhaust (best-effort —
+  // kit completes, individual fabrications persist for user-side swap).
   let lastFailureContext: string | null = null;
+  let lastRawContent: string | null = null;
+  let lastParsedSnapshot: unknown = null;
+  let validatorFailContext: string | null = null;
   for (let attempt = 1; attempt <= WHATSAPP_RETRY_MAX_ATTEMPTS; attempt++) {
+    const effectiveUserPrompt = validatorFailContext
+      ? `${userPrompt}\n\n---\n\nIMPORTANT: your previous attempt failed validation. ${validatorFailContext}`
+      : userPrompt;
     const response = await invokeLLM({
       messages: [
         { role: "system", content: WHATSAPP_SEQUENCE_SYSTEM_PROMPT },
-        { role: "user", content: userPrompt },
+        { role: "user", content: effectiveUserPrompt },
       ],
       response_format: WHATSAPP_SEQUENCE_RESPONSE_FORMAT,
     });
     const content = response.choices[0].message.content;
     if (typeof content !== "string") throw new Error("Invalid response format from AI");
-    let parsed = JSON.parse(stripMarkdownJson(content));
-    if (Array.isArray(parsed)) parsed = { messages: parsed };
-    // Defensive un-stringify (Sprint B regression fix — preemptive port from
-    // email helper): Sonnet 4.6 sometimes returns the `messages` field as a
-    // JSON-encoded string ("[{...}]") rather than a literal array, despite
-    // strict json_schema declaring array. Try to un-stringify before declaring
-    // failure — content is valid, only the wrapping shape is wrong, so this
-    // recovers the response without a retry. Mirror of email helper.
-    if (typeof parsed?.messages === "string") {
-      try {
-        const unstringified = JSON.parse(parsed.messages);
-        if (Array.isArray(unstringified)) parsed.messages = unstringified;
-      } catch { /* leave as-is; failure path below catches and retries */ }
+    const parsed = JSON.parse(stripMarkdownJson(content));
+
+    // Stage 1: shape validation.
+    const shapeResult = validateWhatsappSequenceShape(parsed);
+    if (!shapeResult.ok) {
+      validatorFailContext = shapeResult.failContext;
+      lastFailureContext =
+        `attempt=${attempt}/${WHATSAPP_RETRY_MAX_ATTEMPTS} stage=shape subCase=${shapeResult.subCase}`;
+      console.warn(`[whatsappSequences] Validator shape check failed, retrying with fail-context. ${lastFailureContext}`);
+      lastRawContent = content;
+      lastParsedSnapshot = parsed;
+      continue;
     }
-    if (parsed?.messages && Array.isArray(parsed.messages)) {
-      return parsed.messages as RawWhatsappMessage[];
+
+    // Stage 2: fabrication-pattern validation. Best-effort on exhaust.
+    const fabResult = validateWhatsappFabricationPatterns(shapeResult.messages);
+    if (fabResult.ok) {
+      return shapeResult.messages as RawWhatsappMessage[];
     }
-    const messagesVal = parsed?.messages;
-    const messagesType = typeof messagesVal;
-    const messagesKeys = messagesType === "object" && messagesVal !== null ? Object.keys(messagesVal).slice(0, 10) : [];
-    const messagesPreview = messagesType === "string"
-      ? (messagesVal as string).slice(0, 300)
-      : JSON.stringify(messagesVal).slice(0, 300);
-    lastFailureContext =
-      `attempt=${attempt}/${WHATSAPP_RETRY_MAX_ATTEMPTS} ` +
-      `top_keys=[${Object.keys(parsed ?? {}).join(",")}] ` +
-      `typeof_messages=${messagesType} isArray=${Array.isArray(messagesVal)} ` +
-      `messages_subkeys=[${messagesKeys.join(",")}] messages_preview=${messagesPreview}`;
-    console.warn(`[whatsappSequences] Schema violation, retrying. ${lastFailureContext}`);
+    if (attempt < WHATSAPP_RETRY_MAX_ATTEMPTS) {
+      validatorFailContext = fabResult.failContext;
+      const hitCount = fabResult.hits.length;
+      const hitSummary = fabResult.hits.slice(0, 3).map(h => `${h.classId}@${h.location}`).join(",");
+      lastFailureContext =
+        `attempt=${attempt}/${WHATSAPP_RETRY_MAX_ATTEMPTS} stage=fabrication hits=${hitCount} top=[${hitSummary}]`;
+      console.warn(`[whatsappSequences] Fabrication-pattern check failed (${hitCount} hits), retrying with fail-context. ${lastFailureContext}`);
+      lastRawContent = content;
+      lastParsedSnapshot = parsed;
+      continue;
+    }
+    // Best-effort return on fabrication exhaust.
+    const hitClasses = fabResult.hits.map(h => h.classId).join(",");
+    console.warn(`[whatsappSequences] Fabrication-pattern check exhausted retries (${fabResult.hits.length} hits remaining, classes=[${hitClasses}]); returning content as best-effort. Sprint B+1 path d Phase 2.`);
+    fabResult.hits.forEach((h, i) => {
+      if (i < 5) console.warn(`[whatsappSequences]   hit ${i + 1}: ${h.classId} @ ${h.location} matched "${h.matched}"`);
+    });
+    return shapeResult.messages as RawWhatsappMessage[];
+  }
+  // Shape exhaust diagnostic (mirror of Bridge B email path).
+  console.error(`[whatsappSequences] RETRY EXHAUST — validator shape failure on all ${WHATSAPP_RETRY_MAX_ATTEMPTS} attempts.`);
+  console.error(`[whatsappSequences] RETRY EXHAUST — lastFailureContext: ${lastFailureContext}`);
+  console.error(`[whatsappSequences] RETRY EXHAUST — last validator failContext: ${validatorFailContext}`);
+  console.error(`[whatsappSequences] RETRY EXHAUST — FULL RAW CONTENT (from invokeLLM, post tool-use stringify): ${lastRawContent}`);
+  try {
+    console.error(`[whatsappSequences] RETRY EXHAUST — FULL PARSED SNAPSHOT: ${JSON.stringify(lastParsedSnapshot)}`);
+  } catch (snapshotErr) {
+    console.error(`[whatsappSequences] RETRY EXHAUST — parsed snapshot stringify failed: ${snapshotErr instanceof Error ? snapshotErr.message : String(snapshotErr)}`);
   }
   throw new Error(
     `LLM did not return a valid messages array after ${WHATSAPP_RETRY_MAX_ATTEMPTS} attempts. Last failure: ${lastFailureContext}`,

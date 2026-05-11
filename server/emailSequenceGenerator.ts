@@ -12,7 +12,7 @@
 
 import { invokeLLM } from "./_core/llm";
 import { truncateQuote, NO_DATE_FABRICATION_RULE } from "./_core/copywritingRules";
-import { validateEmailSequenceShape } from "./_core/validator";
+import { validateEmailSequenceShape, validateEmailFabricationPatterns } from "./_core/validator";
 import { getCascadeContext } from "./_core/cascadeContext";
 
 function stripMarkdownJson(content: string): string {
@@ -768,20 +768,45 @@ async function invokeEmailSequenceWithRetry(userPrompt: string): Promise<RawEmai
     // Run shape validator. Handles defensive un-stringification of sub-
     // cases 1 + 2 internally, returns explicit failContext for sub-case 3
     // and other shape failures.
-    const validatorResult = validateEmailSequenceShape(parsed);
-    if (validatorResult.ok) {
-      return validatorResult.emails as RawEmail[];
+    const shapeResult = validateEmailSequenceShape(parsed);
+    if (!shapeResult.ok) {
+      // Shape failure: retry with shape fail-context. Shape is unrecoverable
+      // without LLM-side correction; throw on exhaust (Phase 1 contract).
+      validatorFailContext = shapeResult.failContext;
+      lastFailureContext =
+        `attempt=${attempt}/${EMAIL_RETRY_MAX_ATTEMPTS} stage=shape subCase=${shapeResult.subCase}`;
+      console.warn(`[emailSequences] Validator shape check failed, retrying with fail-context. ${lastFailureContext}`);
+      lastRawContent = content;
+      lastParsedSnapshot = parsed;
+      continue;
     }
 
-    // Validation failed: capture failContext for next-attempt injection,
-    // build lastFailureContext for diagnostic, fall through to retry.
-    validatorFailContext = validatorResult.failContext;
-    lastFailureContext =
-      `attempt=${attempt}/${EMAIL_RETRY_MAX_ATTEMPTS} subCase=${validatorResult.subCase}`;
-    console.warn(`[emailSequences] Validator shape check failed, retrying with fail-context. ${lastFailureContext}`);
-    // Bridge B: capture full raw + parsed for retry-exhaust diagnostic.
-    lastRawContent = content;
-    lastParsedSnapshot = parsed;
+    // Shape passed. Run fabrication-pattern validator (Phase 2). On hits,
+    // retry with fabrication fail-context. On retry exhaust, fabrication
+    // is best-effort: log + return content anyway (kit completes, individual
+    // fabrications may persist for user to swap via kit page Swap button).
+    const fabResult = validateEmailFabricationPatterns(shapeResult.emails);
+    if (fabResult.ok) {
+      return shapeResult.emails as RawEmail[];
+    }
+    if (attempt < EMAIL_RETRY_MAX_ATTEMPTS) {
+      validatorFailContext = fabResult.failContext;
+      const hitCount = fabResult.hits.length;
+      const hitSummary = fabResult.hits.slice(0, 3).map(h => `${h.classId}@${h.location}`).join(",");
+      lastFailureContext =
+        `attempt=${attempt}/${EMAIL_RETRY_MAX_ATTEMPTS} stage=fabrication hits=${hitCount} top=[${hitSummary}]`;
+      console.warn(`[emailSequences] Fabrication-pattern check failed (${hitCount} hits), retrying with fail-context. ${lastFailureContext}`);
+      lastRawContent = content;
+      lastParsedSnapshot = parsed;
+      continue;
+    }
+    // Final attempt and fabrications remain — best-effort return + warning log.
+    const hitClasses = fabResult.hits.map(h => h.classId).join(",");
+    console.warn(`[emailSequences] Fabrication-pattern check exhausted retries (${fabResult.hits.length} hits remaining, classes=[${hitClasses}]); returning content as best-effort. Sprint B+1 path d Phase 2.`);
+    fabResult.hits.forEach((h, i) => {
+      if (i < 5) console.warn(`[emailSequences]   hit ${i + 1}: ${h.classId} @ ${h.location} matched "${h.matched}"`);
+    });
+    return shapeResult.emails as RawEmail[];
   }
   // Bridge B retry-exhaust diagnostic: dump FULL raw content + parsed
   // snapshot to console.error so Railway logs capture the data needed

@@ -1,6 +1,7 @@
 import { invokeLLM } from "./_core/llm";
 import type { LandingPageContent } from "../drizzle/schema";
 import { BANNED_COPYWRITING_WORDS, META_COMPLIANCE_NOTES, NO_DATE_FABRICATION_RULE, NO_RESEARCH_STATISTIC_FABRICATION_RULE, truncateQuote } from "./_core/copywritingRules";
+import { validateLandingPageTestimonialsFabrication } from "./_core/validator";
 
 // The 12 simple-string fields in the landing-page schema. Each is
 // declared `type: "string"` in the json_schema below; production data
@@ -464,11 +465,23 @@ Use direct response copywriting principles: pain agitation, unique mechanism, so
   // structurally corrupt content. Permanent — Option B's tool-use
   // migration enforces types server-side, this runtime check stays as
   // belt-and-braces.
+  //
+  // Validator Phase 2 (Sprint B+1 path d, 2026-05-11): testimonials
+  // fabrication-pattern check wired into the same retry loop. On
+  // fabrication hits with attempts remaining, the validator's failContext
+  // is injected into the next user prompt so Sonnet has explicit
+  // information about what to fix. On retry exhaust, fabrication is
+  // best-effort: log warning + return content (the LP completes; user
+  // can swap individual fabricated testimonials post-hoc).
+  let validatorFailContext: string | null = null;
   for (let leakAttempt = 1; leakAttempt <= LP_SCHEMA_RETRY_MAX_ATTEMPTS; leakAttempt++) {
+  const effectiveUserContent = validatorFailContext
+    ? `${cascadeContext}${prompt}\n\n---\n\nIMPORTANT: your previous attempt failed validation. ${validatorFailContext}`
+    : `${cascadeContext}${prompt}`;
   const response = await invokeLLM({
     messages: [
       { role: "system", content: `You are a world-class direct response copywriter specializing in high-converting landing pages. You engineer an emotional arc through each page — every section serves a specific emotional purpose, moving the reader from 'seen and understood' through 'named and validated', 'cost of inaction', 'hope', 'different from what they've tried', 'safe to believe', and finally 'obvious next step'. You write in the customer's own language — the words they use with a close friend, not marketing language. FORMATTING RULE: Return plain text only inside all JSON string values. No markdown. No asterisks (*). No hash symbols (#). No bold or italic formatting of any kind. No bullet markers. Just clean readable sentences and paragraphs.\n\n${META_COMPLIANCE_NOTES}\n\n${NO_DATE_FABRICATION_RULE}\n\n${NO_RESEARCH_STATISTIC_FABRICATION_RULE}` },
-      { role: "user", content: cascadeContext + prompt }
+      { role: "user", content: effectiveUserContent }
     ],
     response_format: {
       type: "json_schema",
@@ -590,6 +603,32 @@ Use direct response copywriting principles: pain agitation, unique mechanism, so
   // by Anthropic before the response returns. The typeof retry loop
   // above is belt-and-braces over that enforcement. Past this point,
   // `parsed` matches LandingPageContent by contract.
+
+  // Validator Phase 2: testimonials fabrication-pattern check. Catches
+  // direct quoted speech, invented tenure, family composition, research-
+  // source attribution, etc. in the testimonials array. On hits with
+  // attempts remaining, retry with fail-context. On exhaust, return
+  // best-effort (LP completes; user-side swap available post-hoc).
+  const testimonials = (parsed as { testimonials?: unknown }).testimonials;
+  if (Array.isArray(testimonials)) {
+    const fabResult = validateLandingPageTestimonialsFabrication(testimonials as Parameters<typeof validateLandingPageTestimonialsFabrication>[0]);
+    if (!fabResult.ok) {
+      if (leakAttempt < LP_SCHEMA_RETRY_MAX_ATTEMPTS) {
+        validatorFailContext = fabResult.failContext;
+        const hitCount = fabResult.hits.length;
+        const hitSummary = fabResult.hits.slice(0, 3).map(h => `${h.classId}@${h.location}`).join(",");
+        console.warn(`[landingPageGenerator] Testimonials fabrication check failed on attempt ${leakAttempt}/${LP_SCHEMA_RETRY_MAX_ATTEMPTS} (angle=${angle}, ${hitCount} hits, top=[${hitSummary}]). Retrying with fail-context.`);
+        continue;
+      }
+      // Exhaust path — best-effort return + warning log.
+      const hitClasses = fabResult.hits.map(h => h.classId).join(",");
+      console.warn(`[landingPageGenerator] Testimonials fabrication check exhausted retries on angle=${angle} (${fabResult.hits.length} hits remaining, classes=[${hitClasses}]); returning content as best-effort. Sprint B+1 path d Phase 2.`);
+      fabResult.hits.forEach((h, i) => {
+        if (i < 5) console.warn(`[landingPageGenerator]   hit ${i + 1}: ${h.classId} @ ${h.location} matched "${h.matched}"`);
+      });
+    }
+  }
+
   return parsed as LandingPageContent;
   }
 

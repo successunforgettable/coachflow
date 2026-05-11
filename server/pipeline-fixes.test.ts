@@ -491,3 +491,318 @@ describe("Validator Phase 1 — email sequence shape", () => {
     }
   });
 });
+
+// ─── Validator Phase 2: WhatsApp sequence shape ──────────────────────────────
+// Mirrors email shape tests but for `messages` field with day/message/cta.
+
+import {
+  validateWhatsappSequenceShape,
+  validateEmailFabricationPatterns,
+  validateWhatsappFabricationPatterns,
+  validateLandingPageTestimonialsFabrication,
+} from "./_core/validator";
+
+const validWaMsg = {
+  day: 0,
+  message: "Hey friend, here's the thing about board pressure.",
+  cta: "Reply with where you're stuck.",
+};
+
+describe("Validator Phase 2 — WhatsApp sequence shape", () => {
+  it("ok: well-formed parsed object with messages array recovers cleanly", () => {
+    const result = validateWhatsappSequenceShape({ messages: [validWaMsg] });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.messages).toHaveLength(1);
+      expect(result.messages[0].message).toBe(validWaMsg.message);
+    }
+  });
+
+  it("ok: legacy `text` field instead of `message` is accepted as body", () => {
+    const result = validateWhatsappSequenceShape({ messages: [{ day: 0, text: "legacy body", cta: "click" }] });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.messages[0].text).toBe("legacy body");
+    }
+  });
+
+  it("sub-case 1: messages as JSON-encoded array string — recovers via JSON.parse", () => {
+    const stringified = JSON.stringify([validWaMsg]);
+    const result = validateWhatsappSequenceShape({ messages: stringified });
+    expect(result.ok).toBe(true);
+  });
+
+  it("sub-case 2: messages as Python-dict single-quote literal — recovers", () => {
+    const pyDictStyle = `[{ 'day': 0, 'message': 'short body', 'cta': 'reply' }]`;
+    const result = validateWhatsappSequenceShape({ messages: pyDictStyle });
+    expect(result.ok).toBe(true);
+  });
+
+  it("sub-case 3: messages as truncated string — unrecoverable, failContext with preview", () => {
+    const truncated = `[ { "day": 0, "message": "Hey friend here is`;
+    const result = validateWhatsappSequenceShape({ messages: truncated });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.subCase).toBe("messages_string_unrecoverable");
+      expect(result.failContext).toMatch(/literal JSON array/i);
+    }
+  });
+
+  it("messages field missing — failContext lists actual top keys", () => {
+    const result = validateWhatsappSequenceShape({ emails: [], other: "x" });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.subCase).toBe("messages_field_missing");
+      expect(result.failContext).toContain("emails");
+    }
+  });
+
+  it("message item missing body (neither message nor text) — failContext names missing field", () => {
+    const result = validateWhatsappSequenceShape({ messages: [{ day: 0, cta: "click" }] });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.subCase).toBe("message_item_missing_required");
+      expect(result.failContext).toContain("message");
+    }
+  });
+});
+
+// ─── Validator Phase 2: fabrication-pattern catalog ──────────────────────────
+// Per-class positive (catches), negative (no false positive), and token-override
+// (where applicable) cases. Patterns operate on email/WA/LP testimonial bodies.
+
+const cleanEmail = {
+  day: 1,
+  subject: "subject",
+  previewText: "preview",
+  body: "A Head of Engineering at a professional services firm came in with a specific problem. The Protocol works differently. Conducted over [INSERT_PROGRAMME_DURATION], it shifts the pattern.",
+  cta: "click",
+  ps: "ps line",
+};
+
+describe("Validator Phase 2 — fabrication patterns (email)", () => {
+  it("ok: clean email with role + situation + token usage — no hits", () => {
+    const result = validateEmailFabricationPatterns([cleanEmail]);
+    expect(result.ok).toBe(true);
+  });
+
+  it("family_composition: 'with a 10-month-old' — caught with class label + location", () => {
+    const dirty = { ...cleanEmail, body: "She is a primary school teacher with a 10-month-old and a partner on shift work." };
+    const result = validateEmailFabricationPatterns([dirty]);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      const families = result.hits.filter(h => h.classId === "family_composition");
+      expect(families.length).toBeGreaterThanOrEqual(1);
+      expect(families[0].location).toBe("email[0].body");
+    }
+  });
+
+  it("family_composition: 'with three kids under 5' — caught", () => {
+    const dirty = { ...cleanEmail, body: "He came in with three kids under 5 and no spare hour in the day." };
+    const result = validateEmailFabricationPatterns([dirty]);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.hits.some(h => h.classId === "family_composition")).toBe(true);
+    }
+  });
+
+  it("partner_specifics: 'a partner on shift work' — caught", () => {
+    const dirty = { ...cleanEmail, body: "She had a partner on shift work and no morning routine." };
+    const result = validateEmailFabricationPatterns([dirty]);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.hits.some(h => h.classId === "partner_specifics")).toBe(true);
+    }
+  });
+
+  it("employer_specifics: 'at a Big-4 firm' — caught", () => {
+    const dirty = { ...cleanEmail, body: "She'd been at a Big-4 firm for six years before the move." };
+    const result = validateEmailFabricationPatterns([dirty]);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.hits.some(h => h.classId === "employer_specifics")).toBe(true);
+    }
+  });
+
+  it("direct_quoted_speech: 'she told me' — caught", () => {
+    const dirty = { ...cleanEmail, body: "After the session she told me that nothing would be the same again." };
+    const result = validateEmailFabricationPatterns([dirty]);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.hits.some(h => h.classId === "direct_quoted_speech")).toBe(true);
+    }
+  });
+
+  it("invented_tenure: 'twelve years of domain depth' — caught (kit 13 evidence)", () => {
+    const dirty = { ...cleanEmail, body: "A VP of Finance with twelve years of domain depth came in." };
+    const result = validateEmailFabricationPatterns([dirty]);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.hits.some(h => h.classId === "invented_tenure")).toBe(true);
+    }
+  });
+
+  it("invented_tenure: 'after fifteen years working' — caught (kit 11 era evidence)", () => {
+    const dirty = { ...cleanEmail, body: "After fifteen years working with high-achieving women, the pattern is clear." };
+    const result = validateEmailFabricationPatterns([dirty]);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.hits.some(h => h.classId === "invented_tenure")).toBe(true);
+    }
+  });
+
+  it("programme_duration_drift: 'inside eight weeks of The Calm Authority' — caught (kit 13 evidence)", () => {
+    const dirty = { ...cleanEmail, body: "And inside eight weeks of The Calm Authority's Protocol, she presented to a live exec panel." };
+    const result = validateEmailFabricationPatterns([dirty]);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.hits.some(h => h.classId === "programme_duration_drift")).toBe(true);
+    }
+  });
+
+  it("programme_duration_drift: '12-week programme' — caught (sprint history evidence)", () => {
+    const dirty = { ...cleanEmail, body: "Our 12-week programme runs quarterly." };
+    const result = validateEmailFabricationPatterns([dirty]);
+    expect(result.ok).toBe(false);
+  });
+
+  it("programme_duration_drift: TOKEN OVERRIDE — [INSERT_PROGRAMME_DURATION] in same body — no false positive", () => {
+    // Same suspicious phrase, but operator-fill token is present in the body.
+    const tokened = {
+      ...cleanEmail,
+      body: "The Protocol runs over [INSERT_PROGRAMME_DURATION] and operates on the same arc, even when the phrase '12-week programme' would otherwise apply.",
+    };
+    const result = validateEmailFabricationPatterns([tokened]);
+    expect(result.ok).toBe(true);
+  });
+
+  it("named_research_source: 'Harvard study finds' — caught", () => {
+    const dirty = { ...cleanEmail, body: "A Harvard study finds that 92% of leaders feel this way." };
+    const result = validateEmailFabricationPatterns([dirty]);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.hits.some(h => h.classId === "named_research_source")).toBe(true);
+    }
+  });
+
+  it("named_research_source: 'studies show' — caught (generic research-shape)", () => {
+    const dirty = { ...cleanEmail, body: "Studies show that timing matters more than content." };
+    const result = validateEmailFabricationPatterns([dirty]);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.hits.some(h => h.classId === "named_research_source")).toBe(true);
+    }
+  });
+
+  it("x_of_y_demographic: 'fewer than 1 in 8 women' — caught (kit 11 evidence)", () => {
+    const dirty = { ...cleanEmail, body: "Fewer than 1 in 8 women in your position make the next jump." };
+    const result = validateEmailFabricationPatterns([dirty]);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.hits.some(h => h.classId === "x_of_y_demographic")).toBe(true);
+    }
+  });
+
+  it("x_of_y_demographic: 'above 80% of professionals' — caught", () => {
+    const dirty = { ...cleanEmail, body: "Above 80% of professionals at this level report the same pattern." };
+    const result = validateEmailFabricationPatterns([dirty]);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.hits.some(h => h.classId === "x_of_y_demographic")).toBe(true);
+    }
+  });
+
+  it("multiple classes in one email — all hits captured", () => {
+    const veryDirty = {
+      ...cleanEmail,
+      body: "A primary school teacher with a 10-month-old and a partner on shift work — she told me after twelve years of domain depth that inside eight weeks of our Protocol nothing was the same.",
+    };
+    const result = validateEmailFabricationPatterns([veryDirty]);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      const classes = new Set(result.hits.map(h => h.classId));
+      expect(classes.has("family_composition")).toBe(true);
+      expect(classes.has("partner_specifics")).toBe(true);
+      expect(classes.has("direct_quoted_speech")).toBe(true);
+      expect(classes.has("invented_tenure")).toBe(true);
+      // failContext capped at top-N hits but message must surface "additional hit(s)".
+      expect(result.failContext).toMatch(/additional hit/);
+    }
+  });
+
+  it("hits include both body AND subject scans (cross-field)", () => {
+    const subjectFab = { ...cleanEmail, subject: "Studies show this works" };
+    const result = validateEmailFabricationPatterns([subjectFab]);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.hits.some(h => h.location === "email[0].subject")).toBe(true);
+    }
+  });
+});
+
+describe("Validator Phase 2 — fabrication patterns (WhatsApp)", () => {
+  it("ok: clean WA message — no hits", () => {
+    const result = validateWhatsappFabricationPatterns([{ day: 0, message: "Hey friend — short clean body." }]);
+    expect(result.ok).toBe(true);
+  });
+
+  it("catches programme_duration_drift in WA message — kit 13 evidence verbatim", () => {
+    const kit13Msg = {
+      day: 24,
+      message: "A VP of Finance — twelve years of domain depth — was told her delivery needed work, and inside eight weeks of The Calm Authority's Boardroom Pressure Calibration Protocol, she presented to a live exec panel.",
+    };
+    const result = validateWhatsappFabricationPatterns([kit13Msg]);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      const classes = new Set(result.hits.map(h => h.classId));
+      expect(classes.has("invented_tenure")).toBe(true);
+      expect(classes.has("programme_duration_drift")).toBe(true);
+    }
+  });
+
+  it("accepts `text` field as body for pattern check", () => {
+    const result = validateWhatsappFabricationPatterns([{ day: 0, text: "studies show this works" }]);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.hits.some(h => h.classId === "named_research_source")).toBe(true);
+    }
+  });
+});
+
+describe("Validator Phase 2 — fabrication patterns (LP testimonials)", () => {
+  it("ok: clean testimonials — no hits", () => {
+    const clean = [
+      { headline: "Great experience", quote: "I tried the method and the structural shift was real.", name: "A coach", location: "Remote" },
+    ];
+    const result = validateLandingPageTestimonialsFabrication(clean);
+    expect(result.ok).toBe(true);
+  });
+
+  it("catches invented tenure in quote — kit 13 LP evidence verbatim shape", () => {
+    const dirty = [
+      { headline: "Real shift", quote: "I have been presenting to boards for eleven years and nothing has worked like this.", name: "A Finance Director", location: "London" },
+    ];
+    const result = validateLandingPageTestimonialsFabrication(dirty);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.hits.some(h => h.classId === "invented_tenure")).toBe(true);
+      expect(result.hits[0].location).toMatch(/testimonial\[0\]\.quote/);
+    }
+  });
+
+  it("catches direct quoted speech pattern inside quote", () => {
+    const dirty = [
+      { headline: "...", quote: "After the session she told me everything would change.", name: "x", location: "y" },
+    ];
+    const result = validateLandingPageTestimonialsFabrication(dirty);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.hits.some(h => h.classId === "direct_quoted_speech")).toBe(true);
+    }
+  });
+
+  it("non-array input returns ok (defensive — no testimonials means nothing to validate)", () => {
+    const result = validateLandingPageTestimonialsFabrication(undefined as unknown as Parameters<typeof validateLandingPageTestimonialsFabrication>[0]);
+    expect(result.ok).toBe(true);
+  });
+});
