@@ -39,7 +39,7 @@ import { runAdCopyGeneration } from "../adCopyGenerator";
 import { runLandingPageGeneration } from "../landingPageGenerator";
 import { runEmailSequenceGeneration } from "../emailSequenceGenerator";
 import { runWhatsappSequenceGeneration } from "../whatsappSequenceGenerator";
-import { runAdCreativesGeneration } from "../adCreativesGenerator";
+import { runAdCreativesGeneration, generateContextualAdHeadlines } from "../adCreativesGenerator";
 
 // ─── Locked B-2 Zappy script labels ────────────────────────────────────────
 // 10 labels: init + 8 steps + finalize. V2AutoModeProgress (Phase B3) reads
@@ -382,6 +382,21 @@ export async function runOrchestration(input: OrchestrationInput): Promise<void>
         // to fit varchar(255) niche column on adCreatives.
         const niche = (svc.targetCustomer ?? svc.category ?? "coaching").slice(0, 200);
         const pressingProblem = svc.painPoints ?? svc.description ?? "";
+        // Phase C C1.1: generate 5 Meta-compliant ≤38-char headlines via
+        // a small LLM call instead of relying on HEADLINE_FORMULAS template-
+        // fill (which produced over-40-char headlines for every variation
+        // in C1's first kit 13 run — generic templates collide with the
+        // long niche/mechanism strings the cascade derives). The contextual
+        // headlines validator + retry-with-fail-context ensures the 5
+        // strings are all ≤38 chars; throws on retry exhaust so the kit
+        // does not ship compliance-flagged headlines.
+        const headlines = await generateContextualAdHeadlines({
+          productName: svc.name,
+          mainBenefit: svc.mainBenefit ?? "",
+          targetAudience: svc.targetCustomer ?? "",
+          uniqueMechanism: mechanismName,
+          pressingProblem,
+        });
         const { batchId } = await runAdCreativesGeneration({
           userId: input.userId,
           serviceId: input.serviceId,
@@ -392,6 +407,7 @@ export async function runOrchestration(input: OrchestrationInput): Promise<void>
           mainBenefit: svc.mainBenefit ?? "",
           pressingProblem,
           adType: "lead_gen",
+          headlines,
         });
         generatedId = batchId;
         break;

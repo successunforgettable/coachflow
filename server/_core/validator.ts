@@ -518,6 +518,97 @@ export function validateWhatsappFabricationPatterns(messages: RawWhatsappMessage
   return { ok: false, hits: allHits, failContext: buildFabricationFailContext(allHits) };
 }
 
+// ─── Phase C C1.1: ad headlines length validator ─────────────────────────────
+// Meta's recommended ad headline length is ≤40 characters. C1's first
+// implementation used HEADLINE_FORMULAS templates with cascade-derived niche
+// + mechanism strings — for high-ticket Auto Mode kits these inputs are long
+// enough that every variation got flagged compliance "Headline exceeds 40
+// characters" (kit 13 evidence: all 5 variations flagged, niche from
+// targetCustomer = "Finance, legal, and engineering senior leaders…" and
+// mechanism = "The Boardroom Pressure Calibration Protocol"). C1.1 replaces
+// the template-fill path for Auto Mode with an LLM micro-call that produces
+// 5 contextual short headlines; this validator enforces the length cap
+// post-generation, with retry-with-fail-context if any headline is over.
+//
+// Threshold: 38 chars (2-char safety margin under Meta's 40-char rec). Keeps
+// headroom for any operator-side edit + avoids edge cases at exactly 40.
+
+const AD_HEADLINE_MAX_CHARS = 38;
+const AD_HEADLINE_REQUIRED_COUNT = 5;
+
+export type AdHeadlinesValidatorResult =
+  | { ok: true; headlines: string[] }
+  | { ok: false; failContext: string; subCase: string };
+
+export function validateAdHeadlines(parsed: unknown): AdHeadlinesValidatorResult {
+  // Accept {headlines: [...]} or [...] root.
+  let headlinesCandidate: unknown;
+  if (parsed != null && typeof parsed === "object" && !Array.isArray(parsed)) {
+    headlinesCandidate = (parsed as Record<string, unknown>).headlines;
+  } else {
+    headlinesCandidate = parsed;
+  }
+
+  if (typeof headlinesCandidate === "string") {
+    // Sub-case 1/2: defensive un-stringification (mirrors email shape pattern)
+    const recovered = tryUnstringifyArray(headlinesCandidate);
+    if (recovered === null) {
+      return {
+        ok: false,
+        subCase: "headlines_string_unrecoverable",
+        failContext: `Your previous response had "headlines" as a string value, not as a JSON array. Output the headlines field as a literal JSON array of strings: {"headlines": ["...", "...", "...", "...", "..."]}. Do NOT stringify the array.`,
+      };
+    }
+    headlinesCandidate = recovered;
+  }
+
+  if (!Array.isArray(headlinesCandidate)) {
+    return {
+      ok: false,
+      subCase: "headlines_wrong_type",
+      failContext: `Your previous response did not return a "headlines" array. Return a JSON object with a "headlines" key containing an array of exactly ${AD_HEADLINE_REQUIRED_COUNT} short strings.`,
+    };
+  }
+
+  if (headlinesCandidate.length !== AD_HEADLINE_REQUIRED_COUNT) {
+    return {
+      ok: false,
+      subCase: "headlines_wrong_count",
+      failContext: `Your previous response returned ${headlinesCandidate.length} headlines but exactly ${AD_HEADLINE_REQUIRED_COUNT} are required (one per ad style: benefit, social_proof, curiosity, contrast, challenge). Return exactly ${AD_HEADLINE_REQUIRED_COUNT} headlines.`,
+    };
+  }
+
+  // Validate each headline is a non-empty string ≤ length cap.
+  const overLength: Array<{ idx: number; text: string; len: number }> = [];
+  for (let i = 0; i < headlinesCandidate.length; i++) {
+    const h = headlinesCandidate[i];
+    if (typeof h !== "string" || h.trim() === "") {
+      return {
+        ok: false,
+        subCase: "headline_not_string",
+        failContext: `Headline at index ${i} in your previous response was not a non-empty string (was ${h === null ? "null" : typeof h}). Each headline must be a non-empty string ≤ ${AD_HEADLINE_MAX_CHARS} characters.`,
+      };
+    }
+    if (h.length > AD_HEADLINE_MAX_CHARS) {
+      overLength.push({ idx: i, text: h, len: h.length });
+    }
+  }
+
+  if (overLength.length > 0) {
+    const hits = overLength
+      .slice(0, 5)
+      .map(o => `  - headline[${o.idx}] (${o.len} chars): "${o.text}"`)
+      .join("\n");
+    return {
+      ok: false,
+      subCase: "headline_over_length",
+      failContext: `Your previous response had ${overLength.length} headline(s) exceeding the ${AD_HEADLINE_MAX_CHARS}-character Meta-compliance limit:\n${hits}\n\nRewrite ALL ${AD_HEADLINE_REQUIRED_COUNT} headlines to be ≤ ${AD_HEADLINE_MAX_CHARS} characters each. Count characters before finalising. Strip filler words, use punchy active verbs, and avoid long compound nouns. Each headline must still be a punchy ad-style line that an ad copywriter would write — not a truncated phrase ending mid-thought.`,
+    };
+  }
+
+  return { ok: true, headlines: headlinesCandidate as string[] };
+}
+
 /** Landing-page testimonials fabrication check. Reads each testimonial's quote + headline. */
 export interface RawTestimonial {
   headline?: string;

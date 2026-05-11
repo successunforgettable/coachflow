@@ -399,7 +399,17 @@ export default function V2CampaignKit() {
     );
   }
 
-  const filledCount = SECTIONS.filter(s => kit[s.key as keyof typeof kit] != null).length;
+  // Phase C C1.1: TOTAL_KIT_ASSETS = SECTIONS.length (8 text assets, each
+  // with a rendered section card on this page) PLUS 1 for the
+  // selectedAdCreativeBatchId field — which is populated by Auto Mode's
+  // cascade step 9 but doesn't yet have its own section card on this page
+  // (deferred to a future C1.x commit that adds an AdCreativesPreview
+  // component). The counter line and the greeting-overlay subhead both
+  // read TOTAL_KIT_ASSETS so they cannot drift out of sync again.
+  const TOTAL_KIT_ASSETS = SECTIONS.length + 1;
+  const filledCount =
+    SECTIONS.filter(s => kit[s.key as keyof typeof kit] != null).length +
+    (kit.selectedAdCreativeBatchId != null ? 1 : 0);
   const isComplete = kit.status === "complete";
 
   return (
@@ -479,7 +489,7 @@ export default function V2CampaignKit() {
                 marginRight: "auto",
               }}
             >
-              All 9 assets generated and ready. Take a look around — or push live now.
+              All {TOTAL_KIT_ASSETS} assets generated and ready. Take a look around — or push live now.
             </p>
             <button
               onClick={() => { dismissOverlay(); handlePush(); }}
@@ -574,7 +584,7 @@ export default function V2CampaignKit() {
             color: "#999",
             margin: "6px 0 0",
           }}>
-            {(icpData as any)?.name || "Loading ICP..."} · {filledCount} of {SECTIONS.length} selected
+            {(icpData as any)?.name || "Loading ICP..."} · {filledCount} of {TOTAL_KIT_ASSETS} selected
           </p>
         </div>
 

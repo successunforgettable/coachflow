@@ -881,3 +881,153 @@ describe("Phase C C1 — ad creatives cascade step", () => {
     expect(ORCHESTRATION_STEP_LABELS.adCreatives).toMatch(/creative|variation/i);
   });
 });
+
+// ─── Phase C C1.1: ad headlines length validator ─────────────────────────────
+// Validates the 5-headline shape + per-headline ≤38 char Meta-compliance cap.
+// Used by generateContextualAdHeadlines's retry-with-fail-context loop in the
+// Auto Mode cascade's step 9 (adCreatives) — replaces HEADLINE_FORMULAS
+// template-fill which produced over-40-char headlines for kit 13.
+
+import { validateAdHeadlines } from "./_core/validator";
+
+const FIVE_VALID_SHORT_HEADLINES = [
+  "Cut Decision Time 50%",      // 21 chars
+  "Founders Trust This System", // 26 chars
+  "Why Your Forecast Lies",     // 22 chars
+  "From Guess to Number",       // 20 chars
+  "Stop Chasing Dead Deals",    // 23 chars
+];
+
+describe("Phase C C1.1 — ad headlines length validator", () => {
+  it("ok: 5 valid ≤38-char headlines pass", () => {
+    const result = validateAdHeadlines({ headlines: FIVE_VALID_SHORT_HEADLINES });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.headlines).toHaveLength(5);
+    }
+  });
+
+  it("ok: legacy shape where root parsed is the array directly", () => {
+    const result = validateAdHeadlines(FIVE_VALID_SHORT_HEADLINES);
+    expect(result.ok).toBe(true);
+  });
+
+  it("FAIL: any headline over 38 chars → failContext lists overlength items with chars + text", () => {
+    const dirty = [
+      "Cut Decision Time 50%",
+      "THE BOARDROOM PRESSURE CALIBRATION PROTOCOL: CUT YOUR FINANCE TIME BY 90%", // 73 chars (kit 13 evidence-shape)
+      "Why Your Forecast Lies",
+      "From Guess to Number",
+      "Stop Chasing Dead Deals",
+    ];
+    const result = validateAdHeadlines({ headlines: dirty });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.subCase).toBe("headline_over_length");
+      // failContext must surface the offending index + length + text + 38-char rule
+      expect(result.failContext).toContain("headline[1]");
+      expect(result.failContext).toContain(`${dirty[1].length}`); // computed length, no off-by-one
+      expect(result.failContext).toMatch(/38/);
+      expect(result.failContext).toContain("BOARDROOM PRESSURE CALIBRATION");
+    }
+  });
+
+  it("FAIL: multiple over-length headlines all reported in failContext", () => {
+    const veryDirty = [
+      "Cut Decision Time 50%",
+      "FINANCE LEGAL AND ENGINEERING LEADERS WHO STRUGGLE WITH STAGE PRESENCE", // 70 chars
+      "PRESSURE CALIBRATION: CUT YOUR FINANCE LEGAL ENGINEERING TIME", // 61 chars
+      "From Guess to Number",
+      "Stop Chasing Dead Deals",
+    ];
+    const result = validateAdHeadlines({ headlines: veryDirty });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.subCase).toBe("headline_over_length");
+      expect(result.failContext).toContain("headline[1]");
+      expect(result.failContext).toContain("headline[2]");
+    }
+  });
+
+  it("FAIL: wrong count (4 instead of 5) → failContext names the count mismatch", () => {
+    const result = validateAdHeadlines({ headlines: FIVE_VALID_SHORT_HEADLINES.slice(0, 4) });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.subCase).toBe("headlines_wrong_count");
+      expect(result.failContext).toContain("4");
+      expect(result.failContext).toContain("5");
+    }
+  });
+
+  it("FAIL: 6 headlines → also failContext names the count mismatch", () => {
+    const result = validateAdHeadlines({ headlines: [...FIVE_VALID_SHORT_HEADLINES, "Extra one"] });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.subCase).toBe("headlines_wrong_count");
+    }
+  });
+
+  it("FAIL: missing headlines field → wrong_type", () => {
+    const result = validateAdHeadlines({ other: "x" });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.subCase).toBe("headlines_wrong_type");
+    }
+  });
+
+  it("FAIL: non-string element → headline_not_string", () => {
+    const dirty = [
+      "Cut Decision Time 50%",
+      123, // not a string
+      "Why Your Forecast Lies",
+      "From Guess to Number",
+      "Stop Chasing Dead Deals",
+    ];
+    const result = validateAdHeadlines({ headlines: dirty });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.subCase).toBe("headline_not_string");
+      expect(result.failContext).toContain("index 1");
+    }
+  });
+
+  it("FAIL: empty string element → headline_not_string", () => {
+    const dirty = [
+      "Cut Decision Time 50%",
+      "",
+      "Why Your Forecast Lies",
+      "From Guess to Number",
+      "Stop Chasing Dead Deals",
+    ];
+    const result = validateAdHeadlines({ headlines: dirty });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.subCase).toBe("headline_not_string");
+    }
+  });
+
+  it("OK: headlines field as valid JSON-encoded string is recovered (sub-case 1)", () => {
+    const stringified = JSON.stringify(FIVE_VALID_SHORT_HEADLINES);
+    const result = validateAdHeadlines({ headlines: stringified });
+    expect(result.ok).toBe(true);
+  });
+
+  it("OK: exactly 38-char headline (boundary) passes", () => {
+    const at_38 = "0123456789012345678901234567890123 ab8"; // exactly 38
+    expect(at_38.length).toBe(38);
+    const headlines = [at_38, "B", "C", "D", "E"];
+    const result = validateAdHeadlines({ headlines });
+    expect(result.ok).toBe(true);
+  });
+
+  it("FAIL: 39-char headline (boundary+1) caught", () => {
+    const at_39 = "0123456789012345678901234567890123 ab89"; // exactly 39
+    expect(at_39.length).toBe(39);
+    const headlines = [at_39, "B", "C", "D", "E"];
+    const result = validateAdHeadlines({ headlines });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.subCase).toBe("headline_over_length");
+    }
+  });
+});
