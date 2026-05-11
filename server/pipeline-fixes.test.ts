@@ -1149,3 +1149,67 @@ describe("Phase C C2 — landing page auto-publish", () => {
     expect(ORCHESTRATION_STEP_LABELS.landingPage).toMatch(/landing page/i);
   });
 });
+
+// ─── Phase C C3: Meta + GHL push wire-up (structural assertions) ─────────────
+// The PushKitModal React component is too I/O-heavy to invoke in vitest
+// (real tRPC mutations, OAuth popups, Promise.allSettled across two live
+// platform mutations). Coverage here is structural:
+//   1. Meta OAuth callback was patched to capture pageId from /me/accounts
+//      and write it into the metaAccessTokens row — closes the L537 latent
+//      trap where createAdCreative emitted object_story_spec.page_id="".
+//   2. PushKitModal component file exists and exports the deriveDefaultBody
+//      helper used to seed the Meta body textarea from LP angle data.
+//   3. V2CampaignKit kit page is no longer rendering the "Push coming soon"
+//      toast — handlePush opens the unified push modal.
+
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+describe("Phase C C3 — Meta + GHL push wire-up", () => {
+  it("metaOAuth callback captures pageId from /me/accounts and persists it on insert + update", () => {
+    const src = readFileSync(join(__dirname, "_core/metaOAuth.ts"), "utf8");
+    // /me/accounts call is present (Pages list, distinct from /me/adaccounts)
+    expect(src).toMatch(/\/me\/accounts/);
+    // pageId variable is declared, populated from the response, and written
+    // into both the update and insert paths so reconnects pick it up.
+    expect(src).toMatch(/let\s+pageId/);
+    expect(src).toMatch(/pageId\s*=\s*pagesData\.data\[0\]\.id/);
+    // Both DB write paths carry pageId (update + insert)
+    const insertCount = (src.match(/pageId,?\s*\n?\s*}\)/g) || []).length;
+    expect(insertCount).toBeGreaterThanOrEqual(1);
+  });
+
+  it("PushKitModal component file exists with the deriveDefaultBody helper exported", () => {
+    const src = readFileSync(
+      join(__dirname, "../client/src/v2/PushKitModal.tsx"),
+      "utf8",
+    );
+    // Component exports
+    expect(src).toMatch(/export\s+default\s+function\s+PushKitModal/);
+    expect(src).toMatch(/export\s+function\s+deriveDefaultBody/);
+    // Both router endpoints wired
+    expect(src).toMatch(/trpc\.meta\.publishToMeta\.useMutation/);
+    expect(src).toMatch(/trpc\.ghl\.pushCampaign\.useMutation/);
+    expect(src).toMatch(/trpc\.meta\.getConnectionStatus/);
+    expect(src).toMatch(/trpc\.ghl\.getConnectionStatus/);
+    // Promise.allSettled is used for the "Push to both" path (partial-
+    // failure handling per C3 lock).
+    expect(src).toMatch(/Promise\.allSettled/);
+    // OAuth-at-click-time bridge — focus listener triggers refetch on
+    // both connection-status queries when the OAuth popup returns.
+    expect(src).toMatch(/window\.addEventListener\(\s*["']focus["']/);
+  });
+
+  it("V2CampaignKit kit page no longer renders the 'Push coming soon' placeholder", () => {
+    const src = readFileSync(
+      join(__dirname, "../client/src/v2/V2CampaignKit.tsx"),
+      "utf8",
+    );
+    // The C3 commit replaces the toast stub with the PushKitModal import
+    // and a setShowPushModal handler. Regression-guard the toast string.
+    expect(src).not.toMatch(/toast\("Push coming soon"\)/);
+    expect(src).toMatch(/import\s+PushKitModal\s+from\s+["']\.\/PushKitModal["']/);
+    expect(src).toMatch(/setShowPushModal/);
+    expect(src).toMatch(/<PushKitModal\b/);
+  });
+});

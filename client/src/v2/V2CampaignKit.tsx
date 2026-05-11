@@ -7,8 +7,8 @@ import { useState, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
 import V2Layout from "./V2Layout";
 import ZappyMascot from "./ZappyMascot";
+import PushKitModal from "./PushKitModal";
 import { trpc } from "@/lib/trpc";
-import { toast } from "sonner";
 import { downloadCampaignBrief } from "./lib/exportUtils";
 
 // ─── Asset section config ──────────────────────────────────────────────────────
@@ -311,11 +311,13 @@ export default function V2CampaignKit() {
     setShowOverlay(false);
   }
 
-  // Shared push handler — single source of truth for the placeholder toast
-  // (Node 11 push surface not yet built). Called from both the floating
-  // action bar's "Push to Meta / GHL" button and the greeting overlay's
-  // primary CTA so a future swap to the real push lands in one place.
-  const handlePush = () => toast("Push coming soon");
+  // Phase C C3: Push to Meta + GHL — opens the unified PushKitModal.
+  // Single source of truth for both the floating-action-bar button and the
+  // greeting-overlay CTA. Modal handles per-platform OAuth-at-click-time,
+  // partial-failure recovery via Promise.allSettled, and post-push result
+  // rendering. See PushKitModal.tsx for the full UX spec.
+  const [showPushModal, setShowPushModal] = useState(false);
+  const handlePush = () => setShowPushModal(true);
 
   const handleDownloadBrief = () => {
     const icp = icpData as any;
@@ -662,6 +664,15 @@ export default function V2CampaignKit() {
           Push to Meta / GHL
         </button>
       </div>
+
+      {/* Phase C C3: unified push modal — Meta + GHL, OAuth-at-click-time */}
+      {showPushModal && kitId != null && (
+        <PushKitModal
+          kitId={kitId}
+          kitName={kit.name || "Campaign"}
+          onClose={() => setShowPushModal(false)}
+        />
+      )}
     </V2Layout>
   );
 }

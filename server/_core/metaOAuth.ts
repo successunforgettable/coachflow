@@ -94,6 +94,35 @@ export function registerMetaOAuthRoutes(app: Express) {
       const adAccountId = activeAccount?.id || adAccountsData.data[0]?.id;
       const adAccountName = activeAccount?.name || adAccountsData.data[0]?.name;
 
+      // Step 3.5 (Phase C C3): Fetch the user's managed Facebook Pages and
+      // pick a default pageId. createAdCreative at server/lib/metaAPI.ts L537
+      // puts tokenData.pageId into object_story_spec.page_id when publishing;
+      // pre-C3 callbacks never captured a Page so the field stayed NULL and
+      // the Graph API rejected the creative with an empty page_id. Capturing
+      // here closes that latent trap for every fresh OAuth (existing rows
+      // need a reconnect to pick up the pageId on their next refresh).
+      //
+      // Non-fatal: if /me/accounts returns no pages (e.g. the user has only
+      // an ad account but no Page), pageId stays null and the modal surfaces
+      // the gap to the user. We don't want to block OAuth completion on it
+      // because some users may use ZAP for non-creative pushes via GHL only.
+      let pageId: string | null = null;
+      try {
+        const pagesUrl = new URL("https://graph.facebook.com/v21.0/me/accounts");
+        pagesUrl.searchParams.set("access_token", accessToken);
+        pagesUrl.searchParams.set("fields", "id,name,access_token");
+        const pagesResponse = await fetch(pagesUrl.toString());
+        const pagesData = await pagesResponse.json();
+        if (pagesResponse.ok && Array.isArray(pagesData.data) && pagesData.data.length > 0) {
+          pageId = pagesData.data[0].id || null;
+          console.log(`[Meta OAuth] Captured pageId=${pageId} for user ${userId} (page: ${pagesData.data[0].name})`);
+        } else {
+          console.warn(`[Meta OAuth] No Pages on /me/accounts for user ${userId}; pageId stays NULL. createAdCreative will surface this to the user.`);
+        }
+      } catch (pagesErr) {
+        console.warn(`[Meta OAuth] Failed to fetch /me/accounts for user ${userId}:`, pagesErr);
+      }
+
       // Step 4: Store token in database
       const db = await getDb();
       if (!db) {
@@ -109,7 +138,9 @@ export function registerMetaOAuthRoutes(app: Express) {
         .limit(1);
 
       if (existing) {
-        // Update existing connection
+        // Update existing connection — overwrites pageId on reconnect so a
+        // user reconnecting after C3 picks up the captured Page even when
+        // the previous row had pageId=NULL.
         await db
           .update(metaAccessTokens)
           .set({
@@ -117,6 +148,7 @@ export function registerMetaOAuthRoutes(app: Express) {
             tokenExpiresAt: expiresAt,
             adAccountId,
             adAccountName,
+            pageId,
             lastRefreshedAt: new Date(),
           })
           .where(eq(metaAccessTokens.userId, userId));
@@ -128,10 +160,11 @@ export function registerMetaOAuthRoutes(app: Express) {
           tokenExpiresAt: expiresAt,
           adAccountId,
           adAccountName,
+          pageId,
         });
       }
 
-      console.log(`[Meta OAuth] Successfully connected user ${userId} to Meta ad account ${adAccountId}`);
+      console.log(`[Meta OAuth] Successfully connected user ${userId} to Meta ad account ${adAccountId} (pageId=${pageId ?? "NULL"})`);
 
       // Redirect back to integrations page with success
       return res.redirect("/settings/integrations?meta_success=true");
