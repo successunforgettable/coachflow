@@ -117,7 +117,12 @@ export function registerMetaOAuthRoutes(app: Express) {
           pageId = pagesData.data[0].id || null;
           console.log(`[Meta OAuth] Captured pageId=${pageId} for user ${userId} (page: ${pagesData.data[0].name})`);
         } else {
-          console.warn(`[Meta OAuth] No Pages on /me/accounts for user ${userId}; pageId stays NULL. createAdCreative will surface this to the user.`);
+          // Phase C C3 follow-on: dump the raw response body (capped) so the
+          // empty-array vs error-envelope vs missing-data-field sub-cases are
+          // diagnosable from logs alone, without needing diagnostic deploy
+          // cycles. Pre-follow-on logging lumped all three under one message.
+          const rawBody = JSON.stringify(pagesData).substring(0, 500);
+          console.warn(`[Meta OAuth] No Pages on /me/accounts for user ${userId}; pageId stays NULL. HTTP status: ${pagesResponse.status}. Raw response: ${rawBody}`);
         }
       } catch (pagesErr) {
         console.warn(`[Meta OAuth] Failed to fetch /me/accounts for user ${userId}:`, pagesErr);

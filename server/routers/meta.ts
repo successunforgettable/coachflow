@@ -62,7 +62,15 @@ export const metaRouter = router({
     const oauthUrl = new URL("https://www.facebook.com/v21.0/dialog/oauth");
     oauthUrl.searchParams.set("client_id", appId);
     oauthUrl.searchParams.set("redirect_uri", redirectUri);
-    oauthUrl.searchParams.set("scope", "ads_management,ads_read,business_management");
+    // Phase C C3 follow-on: pages_show_list is required for /me/accounts to
+    // return the user's managed Pages (without it, the endpoint returns an
+    // empty data:[] array even when Pages exist). pages_read_engagement is
+    // belt-and-suspenders for Page metadata reads. Together they let the
+    // OAuth callback's Step 3.5 capture pageId into the metaAccessTokens row
+    // so createAdCreative's object_story_spec.page_id is populated.
+    // pages_manage_ads deliberately omitted — Page-as-creative-author works
+    // with ads_management + the user's existing admin role on the Page.
+    oauthUrl.searchParams.set("scope", "ads_management,ads_read,business_management,pages_show_list,pages_read_engagement");
     oauthUrl.searchParams.set("state", ctx.user.id.toString()); // Pass user ID for callback
     oauthUrl.searchParams.set("response_type", "code");
 
