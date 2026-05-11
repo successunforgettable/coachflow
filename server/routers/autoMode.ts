@@ -23,11 +23,58 @@
  */
 import { z } from "zod";
 import { randomUUID } from "crypto";
+import { TRPCError } from "@trpc/server";
 import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { jobs } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { runOrchestration } from "../_core/orchestration";
+
+/**
+ * Phase C C0: Auto Mode tier gate.
+ *
+ * Auto Mode is a paid-only feature. Per the locked Phase C product
+ * decisions (Sprint B+1 path d completion + Phase C scope writeup):
+ *   - Free-tier ("trial") users would consume their entire trial
+ *     allotment of ad creatives in one cascade (FREE_TIER_AD_IMAGE_LIMIT
+ *     = 2 vs 5 generated per Auto Mode run)
+ *   - Per-asset quotas live at the per-router tRPC layer; Auto Mode's
+ *     runX cores bypass them (B1 design), so trial users would burn
+ *     through 8 quota slots per cascade — bad UX and bad economics
+ *   - The greeting overlay CTA promises a launchable campaign; gating
+ *     mid-flow is worse UX than gating at intake
+ *
+ * Backend FORBIDDEN check is mandatory (belt-and-suspenders behind the
+ * V2AutoModeIntake frontend gate). Free-tier users hitting the endpoint
+ * directly (or via stale frontend cache) get a clean tRPC error.
+ *
+ * Pure helper extracted for unit-testability — the mutation calls it
+ * with ctx.user; tests call it directly with synthetic user shapes.
+ *
+ * Subscription tiers (drizzle/schema.ts: `["trial", "pro", "agency"]`):
+ *   - trial: blocked (free-equivalent entry tier)
+ *   - pro / agency: allowed
+ *   - null/missing subscriptionTier: blocked (defensive — defaults to
+ *     trial per schema, but coerce explicitly)
+ *
+ * Role bypass: `superuser` always allowed regardless of tier (matches
+ * the existing per-router quota check pattern at adCopy.ts:203, etc).
+ * `admin` does NOT bypass — admin is a workstream role, not a
+ * paid-tier substitute.
+ */
+export function isAutoModeTierAllowed(user: {
+  role: string;
+  subscriptionTier: string | null | undefined;
+}): { allowed: boolean; reason?: string } {
+  if (user.role === "superuser") return { allowed: true };
+  const tier = user.subscriptionTier;
+  if (tier === "pro" || tier === "agency") return { allowed: true };
+  return {
+    allowed: false,
+    reason:
+      "Auto Mode is a Pro feature. Upgrade your subscription to unlock the 1-click campaign builder.",
+  };
+}
 
 const orchestrateSchema = z.object({
   serviceId: z.number(),
@@ -53,6 +100,13 @@ export const autoModeRouter = router({
   orchestrate: protectedProcedure
     .input(orchestrateSchema)
     .mutation(async ({ ctx, input }) => {
+      // Phase C C0: tier gate. Trial-tier users must upgrade to use Auto
+      // Mode. Superuser bypass per existing quota-check convention.
+      const tierCheck = isAutoModeTierAllowed(ctx.user);
+      if (!tierCheck.allowed) {
+        throw new TRPCError({ code: "FORBIDDEN", message: tierCheck.reason! });
+      }
+
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 

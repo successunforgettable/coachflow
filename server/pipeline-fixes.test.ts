@@ -806,3 +806,56 @@ describe("Validator Phase 2 — fabrication patterns (LP testimonials)", () => {
     expect(result.ok).toBe(true);
   });
 });
+
+// ─── Phase C C0: Auto Mode tier gate ─────────────────────────────────────────
+// Pure helper isAutoModeTierAllowed gates the orchestrate mutation. Trial-tier
+// users are blocked; pro/agency are allowed; superuser bypasses regardless of
+// tier. Admin role does NOT bypass — admin is a workstream role, not a paid-
+// tier substitute.
+
+import { isAutoModeTierAllowed } from "./routers/autoMode";
+
+describe("Phase C C0 — Auto Mode tier gate", () => {
+  it("trial tier blocked — returns reason mentioning upgrade", () => {
+    const result = isAutoModeTierAllowed({ role: "user", subscriptionTier: "trial" });
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toMatch(/upgrade/i);
+    expect(result.reason).toMatch(/Pro/);
+  });
+
+  it("pro tier allowed", () => {
+    const result = isAutoModeTierAllowed({ role: "user", subscriptionTier: "pro" });
+    expect(result.allowed).toBe(true);
+    expect(result.reason).toBeUndefined();
+  });
+
+  it("agency tier allowed", () => {
+    const result = isAutoModeTierAllowed({ role: "user", subscriptionTier: "agency" });
+    expect(result.allowed).toBe(true);
+  });
+
+  it("superuser role bypasses tier gate even on trial", () => {
+    const result = isAutoModeTierAllowed({ role: "superuser", subscriptionTier: "trial" });
+    expect(result.allowed).toBe(true);
+  });
+
+  it("admin role does NOT bypass — admin still blocked on trial", () => {
+    const result = isAutoModeTierAllowed({ role: "admin", subscriptionTier: "trial" });
+    expect(result.allowed).toBe(false);
+  });
+
+  it("null subscriptionTier blocked (defensive — defaults to trial per schema but coerce explicitly)", () => {
+    const result = isAutoModeTierAllowed({ role: "user", subscriptionTier: null });
+    expect(result.allowed).toBe(false);
+  });
+
+  it("undefined subscriptionTier blocked (same defensive case)", () => {
+    const result = isAutoModeTierAllowed({ role: "user", subscriptionTier: undefined });
+    expect(result.allowed).toBe(false);
+  });
+
+  it("unknown tier string blocked (defensive — schema enum could expand without this gate being updated)", () => {
+    const result = isAutoModeTierAllowed({ role: "user", subscriptionTier: "enterprise_legacy" });
+    expect(result.allowed).toBe(false);
+  });
+});
