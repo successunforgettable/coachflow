@@ -457,6 +457,15 @@ export async function createAdSet(
     url.searchParams.set("status", params.status);
     url.searchParams.set("billing_event", "IMPRESSIONS");
     url.searchParams.set("optimization_goal", "REACH");
+    // Phase C C3 follow-on 4: explicit auto-bidding strategy. Without this,
+    // Meta's Graph API v21 defaults to a bid-cap strategy (LOWEST_COST_WITH_BID_CAP
+    // or TARGET_COST) when daily_budget is set, then rejects the request
+    // with error_subcode 1815857 ("Bid amount required for bid strategy
+    // provided") because we don't pass bid_amount. LOWEST_COST_WITHOUT_CAP
+    // forces auto-bidding which requires no bid_amount — canonical default
+    // for users who haven't tuned manual bids, matching the modal's
+    // "Initial Status: Paused (review first)" safety pattern.
+    url.searchParams.set("bid_strategy", "LOWEST_COST_WITHOUT_CAP");
 
     if (params.dailyBudget) {
       url.searchParams.set("daily_budget", Math.round(params.dailyBudget * 100).toString());

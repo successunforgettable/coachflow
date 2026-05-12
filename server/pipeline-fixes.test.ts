@@ -1200,6 +1200,15 @@ describe("Phase C C3 — Meta + GHL push wire-up", () => {
     expect(src).toMatch(/window\.addEventListener\(\s*["']focus["']/);
   });
 
+  it("Meta createAdSet payload includes bid_strategy=LOWEST_COST_WITHOUT_CAP (C3 follow-on 4)", () => {
+    // Without bid_strategy, Meta Graph API v21 defaults to a bid-cap
+    // strategy when daily_budget is set, then rejects with error_subcode
+    // 1815857. Auto-bidding is the canonical default — matches the
+    // modal's "Paused (review first)" UX. Structural regression-guard.
+    const src = readFileSync(join(__dirname, "lib/metaAPI.ts"), "utf8");
+    expect(src).toMatch(/bid_strategy["']?\s*,\s*["']LOWEST_COST_WITHOUT_CAP["']/);
+  });
+
   it("GHL OAuth Express callback handler is registered at the redirect URI path (C3 follow-on 3)", () => {
     // The redirect URI built at ghl.ts:312 must have a matching Express
     // GET route — pre-C3-follow-on-3 the handler didn't exist and the
