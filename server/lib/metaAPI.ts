@@ -388,6 +388,16 @@ export async function createCampaign(
     url.searchParams.set("objective", params.objective);
     url.searchParams.set("status", params.status);
     url.searchParams.set("special_ad_categories", "[]");
+    // Phase C C3 follow-on 6: Meta v21 requires explicit budget-model
+    // declaration when no campaign-level budget is set (we keep budget at
+    // ad-set level — see publishToMeta in routers/meta.ts for the
+    // CBO/bid_strategy rationale). Without this field Meta rejects with
+    // error_subcode 4834011 ("Must specify True or False in
+    // is_adset_budget_sharing_enabled field"). `false` = strict per-ad-set
+    // budgets, no cross-ad-set sharing; safer default for single-ad-set
+    // pushes (our use case), and the semantic the modal's "Daily budget"
+    // field implies.
+    url.searchParams.set("is_adset_budget_sharing_enabled", "false");
 
     if (params.dailyBudget) {
       url.searchParams.set("daily_budget", Math.round(params.dailyBudget * 100).toString());
@@ -395,6 +405,15 @@ export async function createCampaign(
     if (params.lifetimeBudget) {
       url.searchParams.set("lifetime_budget", Math.round(params.lifetimeBudget * 100).toString());
     }
+
+    // Phase C C3 follow-on 6: symmetric forensic outbound-URL log (token
+    // redacted). Closes the 8th planning miss — observability was only on
+    // createAdSet (added in c9a35c9). All 4 Meta API calls in the publish
+    // chain now log their outbound payload so future failures are
+    // diagnosable from a single push attempt.
+    const debugUrl = new URL(url.toString());
+    debugUrl.searchParams.set("access_token", "<REDACTED>");
+    console.log("[Meta API] createCampaign outbound URL:", debugUrl.toString());
 
     const response = await fetch(url.toString(), { method: "POST" });
     const data = await response.json();
@@ -456,7 +475,17 @@ export async function createAdSet(
     url.searchParams.set("campaign_id", params.campaignId);
     url.searchParams.set("status", params.status);
     url.searchParams.set("billing_event", "IMPRESSIONS");
-    url.searchParams.set("optimization_goal", "REACH");
+    // Phase C C3 follow-on 6: optimization_goal aligned with Meta's ODAX
+    // (Outcome-Driven Ad Experiences, post-2023) objective taxonomy.
+    // LINK_CLICKS is the canonical website-traffic-leads pairing — it works
+    // across OUTCOME_AWARENESS / OUTCOME_TRAFFIC / OUTCOME_ENGAGEMENT /
+    // OUTCOME_LEADS / OUTCOME_SALES campaigns when the destination is a
+    // landing page (our case — Auto Mode publishes to zapcampaigns.com/p/{slug}
+    // via Cloudflare KV in C2). REACH was the legacy AWARENESS-objective
+    // pairing and is mismatched for OUTCOME_LEADS in v21. If a future
+    // sprint adds Meta Pixel tracking on the LP, OFFSITE_CONVERSIONS becomes
+    // available for lead/sale optimization.
+    url.searchParams.set("optimization_goal", "LINK_CLICKS");
     // Phase C C3 follow-on 4: explicit auto-bidding strategy. Without this,
     // Meta's Graph API v21 defaults to a bid-cap strategy (LOWEST_COST_WITH_BID_CAP
     // or TARGET_COST) when daily_budget is set, then rejects the request
@@ -577,6 +606,13 @@ export async function createAdCreative(
 
     url.searchParams.set("object_story_spec", JSON.stringify(objectStorySpec));
 
+    // Phase C C3 follow-on 6: symmetric forensic outbound-URL log (token
+    // redacted). Mirrors createCampaign + createAdSet observability for
+    // single-cycle byte-level diagnosis on any future creative-layer failure.
+    const debugUrl = new URL(url.toString());
+    debugUrl.searchParams.set("access_token", "<REDACTED>");
+    console.log("[Meta API] createAdCreative outbound URL:", debugUrl.toString());
+
     const response = await fetch(url.toString(), { method: "POST" });
     const data = await response.json();
 
@@ -627,6 +663,13 @@ export async function createAd(
     url.searchParams.set("adset_id", params.adSetId);
     url.searchParams.set("creative", JSON.stringify({ creative_id: params.creativeId }));
     url.searchParams.set("status", params.status);
+
+    // Phase C C3 follow-on 6: symmetric forensic outbound-URL log (token
+    // redacted). Completes the 4-call symmetric observability across the
+    // Meta publish chain (campaign + adset + creative + ad).
+    const debugUrl = new URL(url.toString());
+    debugUrl.searchParams.set("access_token", "<REDACTED>");
+    console.log("[Meta API] createAd outbound URL:", debugUrl.toString());
 
     const response = await fetch(url.toString(), { method: "POST" });
     const data = await response.json();

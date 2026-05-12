@@ -1215,13 +1215,45 @@ describe("Phase C C3 — Meta + GHL push wire-up", () => {
     expect(src).toMatch(/createAdSet\(ctx\.user\.id,[\s\S]*?dailyBudget:/);
   });
 
-  it("Meta createAdSet payload includes bid_strategy=LOWEST_COST_WITHOUT_CAP (C3 follow-on 4)", () => {
-    // Without bid_strategy, Meta Graph API v21 defaults to a bid-cap
+  it("Meta createAdSet payload includes bid_strategy=LOWEST_COST_WITHOUT_CAP + optimization_goal=LINK_CLICKS (C3 follow-ons 4+6)", () => {
+    // bid_strategy: without it, Meta Graph API v21 defaults to a bid-cap
     // strategy when daily_budget is set, then rejects with error_subcode
     // 1815857. Auto-bidding is the canonical default — matches the
-    // modal's "Paused (review first)" UX. Structural regression-guard.
+    // modal's "Paused (review first)" UX.
+    // optimization_goal: post-ODAX (2023+) objective taxonomy requires
+    // LINK_CLICKS for website-traffic-leads pairing. REACH was the legacy
+    // AWARENESS pairing and is mismatched for OUTCOME_LEADS in v21.
     const src = readFileSync(join(__dirname, "lib/metaAPI.ts"), "utf8");
     expect(src).toMatch(/bid_strategy["']?\s*,\s*["']LOWEST_COST_WITHOUT_CAP["']/);
+    expect(src).toMatch(/optimization_goal["']?\s*,\s*["']LINK_CLICKS["']/);
+    // Regression-guard: REACH should no longer appear as an
+    // optimization_goal value (it does still appear in comments).
+    expect(src).not.toMatch(/optimization_goal["']?\s*,\s*["']REACH["']/);
+  });
+
+  it("Meta createCampaign payload includes is_adset_budget_sharing_enabled=false (C3 follow-on 6)", () => {
+    // Meta v21 rejects createCampaign with error_subcode 4834011 when no
+    // campaign-level budget is set unless is_adset_budget_sharing_enabled
+    // is explicitly true|false. We keep budget at ad-set level (CBO off,
+    // per c9a35c9) and pick `false` for strict per-ad-set budgets — safer
+    // default for single-ad-set pushes, matches modal "Daily budget" UX.
+    const src = readFileSync(join(__dirname, "lib/metaAPI.ts"), "utf8");
+    expect(src).toMatch(/is_adset_budget_sharing_enabled["']?\s*,\s*["']false["']/);
+  });
+
+  it("Meta publish chain has symmetric forensic outbound-URL logs across all 4 create calls (C3 follow-on 6)", () => {
+    // 8th planning miss closure — c9a35c9 added the forensic log only to
+    // createAdSet. The next failure landed at createCampaign and we had
+    // no payload visibility. This regression-guard ensures all 4 Meta
+    // create calls log their outbound URL with access_token redacted.
+    const src = readFileSync(join(__dirname, "lib/metaAPI.ts"), "utf8");
+    expect(src).toMatch(/\[Meta API\] createCampaign outbound URL:/);
+    expect(src).toMatch(/\[Meta API\] createAdSet outbound URL:/);
+    expect(src).toMatch(/\[Meta API\] createAdCreative outbound URL:/);
+    expect(src).toMatch(/\[Meta API\] createAd outbound URL:/);
+    // Access token must be redacted, not raw, in every log site
+    const redactionCount = (src.match(/access_token["']?\s*,\s*["']<REDACTED>["']/g) || []).length;
+    expect(redactionCount).toBeGreaterThanOrEqual(4);
   });
 
   it("GHL OAuth Express callback handler is registered at the redirect URI path (C3 follow-on 3)", () => {
