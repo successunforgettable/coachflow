@@ -26,8 +26,16 @@ async function upsertCustomValue(
   name: string,
   value: string
 ): Promise<boolean> {
+  // Phase C C3 follow-on 7: forensic outbound-URL log, mirrors the Meta
+  // a71efc1 instrumentation pattern. GHL uses Bearer Authorization header
+  // (not URL access_token query param like Meta), so no redaction needed —
+  // URLs are safe to log as-is. Closes the GHL observability gap so any
+  // future Custom Value push failure is byte-level diagnosable from the
+  // first cycle.
   try {
-    const listRes = await fetch(`${GHL_BASE}/locations/${locationId}/customValues`, {
+    const listUrl = `${GHL_BASE}/locations/${locationId}/customValues`;
+    console.log(`[GHL API] upsertCustomValue LIST GET ${listUrl} (name="${name}")`);
+    const listRes = await fetch(listUrl, {
       method: "GET",
       headers,
     });
@@ -35,7 +43,9 @@ async function upsertCustomValue(
       const listData = await listRes.json() as { customValues?: Array<{ id: string; name: string }> };
       const existing = (listData.customValues || []).find((cv) => cv.name === name);
       if (existing) {
-        const putRes = await fetch(`${GHL_BASE}/locations/${locationId}/customValues/${existing.id}`, {
+        const putUrl = `${GHL_BASE}/locations/${locationId}/customValues/${existing.id}`;
+        console.log(`[GHL API] upsertCustomValue PUT ${putUrl}`);
+        const putRes = await fetch(putUrl, {
           method: "PUT",
           headers,
           body: JSON.stringify({ name, value }),
@@ -44,7 +54,9 @@ async function upsertCustomValue(
         return putRes.ok;
       }
     }
-    const postRes = await fetch(`${GHL_BASE}/locations/${locationId}/customValues`, {
+    const postUrl = `${GHL_BASE}/locations/${locationId}/customValues`;
+    console.log(`[GHL API] upsertCustomValue POST ${postUrl}`);
+    const postRes = await fetch(postUrl, {
       method: "POST",
       headers,
       body: JSON.stringify({ name, value }),
@@ -57,186 +69,67 @@ async function upsertCustomValue(
   }
 }
 
-// ─── D2 Helper: Upsert Email Template ─────────────────────────────────────────
-async function upsertEmailTemplate(
-  locationId: string,
-  headers: Record<string, string>,
-  name: string,
-  subject: string,
-  body: string
-): Promise<boolean> {
-  try {
-    // List existing email templates to check for duplicates by name
-    const listRes = await fetch(
-      `${GHL_BASE}/locations/${locationId}/templates?type=email&limit=100`,
-      { method: "GET", headers }
-    );
-    if (listRes.ok) {
-      const listData = await listRes.json() as {
-        templates?: Array<{ id: string; name: string }>;
-        data?: Array<{ id: string; name: string }>;
-      };
-      const templates = listData.templates || listData.data || [];
-      const existing = templates.find((t) => t.name === name);
-      if (existing) {
-        const putRes = await fetch(`${GHL_BASE}/locations/${locationId}/templates/${existing.id}`, {
-          method: "PUT",
-          headers,
-          body: JSON.stringify({ name, subject, body, type: "email" }),
-        });
-        if (!putRes.ok) console.warn(`[GHL] PUT template failed for "${name}":`, await putRes.text());
-        return putRes.ok;
-      }
-    }
-    const postRes = await fetch(`${GHL_BASE}/locations/${locationId}/templates`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ name, subject, body, type: "email" }),
-    });
-    if (!postRes.ok) console.warn(`[GHL] POST template failed for "${name}":`, await postRes.text());
-    return postRes.ok;
-  } catch (e) {
-    console.warn(`[GHL] upsertEmailTemplate error for "${name}":`, e);
-    return false;
-  }
-}
+// ─── D2 Helpers: Email Template + Landing Page Funnel — REMOVED in C3 f-o 7 ──
+//
+// Two helpers (upsertEmailTemplate + createGhlFunnel) and one private support
+// helper (buildLandingPageHtml) were removed together in Phase C C3 follow-on 7
+// after Arfeen's frame (c) push surfaced byte-level forensic confirmation that
+// both endpoints are structurally inaccessible to GHL v2 marketplace OAuth
+// apps — the same pattern as the createWhatsAppWorkflow removal in C3 f-o 2.
+//
+// EMAIL TEMPLATES (upsertEmailTemplate):
+//   Previous endpoint: POST/PUT/GET on /locations/{locationId}/templates
+//   Forensic: HTTP 401 "The token is not authorized for this scope"
+//   Root cause: this is the v1 legacy path. The v2 scope emails/builder.write
+//   (renamed in C3 f-o 2) maps to POST /emails/builder — which the current
+//   GHL docs flag as "deprecated and may be replaced or removed in future
+//   versions of the API." GHL's stated direction for templates is "design
+//   in the GHL template editor and reference by template ID in the API" —
+//   not API-side template creation.
+//
+// LANDING PAGE FUNNEL (createGhlFunnel):
+//   Previous endpoint: POST /locations/{locationId}/funnels (and nested
+//   /funnels/{id}/pages for the page creation step).
+//   Forensic: HTTP 404 "Cannot POST /locations/{id}/funnels" — endpoint
+//   does not exist in v2.
+//   Root cause: GHL v2 marketplace OAuth catalog has no funnels.write or
+//   funnels/funnel.write — only funnels/funnel.readonly + funnels/page.readonly
+//   (read) and funnels/redirect.write (URL-redirect rules only, NOT page or
+//   funnel creation). Funnel creation is admin-UI-only via the GHL dashboard,
+//   not exposed to marketplace OAuth apps.
+//
+// LANDING PAGE HTML BUILDER (buildLandingPageHtml):
+//   Was only called by createGhlFunnel — orphaned after that removal.
+//   Verified single call site at the pre-removal L623 grep; removing
+//   alongside is structurally clean.
+//
+// OPERATOR-FILL SEAM:
+//   Both email + landing page content STILL push to GHL via the surviving
+//   D1 Custom Value slots (emailPushed at the email sequence path,
+//   landingPagePushed at the landing page path) using
+//   locations/customValues.write — fully valid in v2. Operator pastes
+//   those Custom Values into manually-built email templates + funnel pages
+//   on the GHL side. Same architectural precedent as:
+//     - [INSERT_LEAD_MAGNET_NAME] in email nurture (May 9 handover §7.5)
+//     - [INSERT_REPLAY_MOMENT_N] in replay (May 9 handover §7.5)
+//     - createWhatsAppWorkflow removal (C3 f-o 2)
+//   Minimum-viable defenses given the structural marketplace-OAuth gap, NOT
+//   tactical fixes that failed.
+//
+// FUTURE RESTORE PATH (registered in post-launch backlog):
+//   GHL operator-fill alternative — Arfeen creates email templates + funnels
+//   in GHL UI, ZAP stores template_id / funnel_id references in campaignKits
+//   (new FK columns), push chain references by ID via the existing GHL API
+//   surface (which DOES support "send with template" + "redirect to funnel"
+//   operations — just not creation). Scope: ~1 migration + ~30 LOC UI for
+//   ID picker + ~20 LOC push reference logic ≈ 60 LOC. Post-launch, not
+//   C3-blocking.
+//
+// Forensic capture of the removed bodies retained in git history at parent
+// commit a71efc1 — recoverable via `git show a71efc1:server/routers/ghl.ts`
+// if the post-launch backlog "GHL operator-fill alternative" sprint needs
+// the prior payload shapes as a reference.
 
-// ─── D2 Helper: Build landing page HTML from angle data ───────────────────────
-function buildLandingPageHtml(angleData: Record<string, any>): string {
-  const esc = (s: string) =>
-    String(s)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/\n/g, "<br>");
-
-  const section = (title: string, content: string) =>
-    `<div style="margin-bottom:36px"><h2 style="font-size:26px;font-weight:800;margin:0 0 12px">${title}</h2><p style="font-size:16px;line-height:1.75;margin:0">${content}</p></div>`;
-
-  const ctaBtn = (label: string) =>
-    `<div style="text-align:center;margin:40px 0"><a href="#" style="display:inline-block;background:#FF5B1D;color:#fff;font-size:18px;font-weight:700;padding:18px 48px;border-radius:8px;text-decoration:none">${esc(label)}</a></div>`;
-
-  const parts: string[] = [
-    `<!DOCTYPE html><html><body style="font-family:system-ui,-apple-system,sans-serif;max-width:800px;margin:0 auto;padding:48px 24px;background:#fff;color:#111">`,
-  ];
-
-  if (angleData.eyebrowHeadline)
-    parts.push(`<p style="font-size:13px;text-transform:uppercase;letter-spacing:2px;color:#888;margin:0 0 8px">${esc(angleData.eyebrowHeadline)}</p>`);
-
-  if (angleData.mainHeadline)
-    parts.push(`<h1 style="font-size:44px;font-weight:900;line-height:1.1;margin:0 0 16px">${esc(angleData.mainHeadline)}</h1>`);
-
-  if (angleData.subheadline)
-    parts.push(`<p style="font-size:20px;color:#555;margin:0 0 32px">${esc(angleData.subheadline)}</p>`);
-
-  const ctaLabel = angleData.primaryCta || "Book Your Call";
-  parts.push(ctaBtn(ctaLabel));
-
-  if (angleData.problemAgitation)
-    parts.push(section("The Problem", esc(angleData.problemAgitation)));
-
-  if (angleData.solutionIntro)
-    parts.push(section("The Solution", esc(angleData.solutionIntro)));
-
-  if (angleData.whyOldFail)
-    parts.push(section("Why Other Approaches Fail", esc(angleData.whyOldFail)));
-
-  if (angleData.uniqueMechanism)
-    parts.push(section("How It Works", esc(angleData.uniqueMechanism)));
-
-  if (angleData.insiderAdvantages)
-    parts.push(section("Why This Works", esc(angleData.insiderAdvantages)));
-
-  if (Array.isArray(angleData.testimonials) && angleData.testimonials.length) {
-    const tHtml = angleData.testimonials
-      .map(
-        (t: any) =>
-          `<blockquote style="border-left:4px solid #FF5B1D;margin:0 0 20px;padding:16px 20px;background:#fafafa">"${esc(t.quote || "")}" <footer style="margin-top:8px;font-size:14px;color:#666">— ${esc(t.name || "")}, ${esc(t.location || "")}</footer></blockquote>`
-      )
-      .join("\n");
-    parts.push(`<div style="margin-bottom:36px"><h2 style="font-size:26px;font-weight:800;margin:0 0 20px">What Others Say</h2>${tHtml}</div>`);
-  }
-
-  if (angleData.shockingStat)
-    parts.push(
-      `<div style="margin-bottom:36px;background:#fff8f0;border-left:4px solid #FF5B1D;padding:24px"><p style="font-size:20px;font-weight:700;margin:0">${esc(angleData.shockingStat)}</p></div>`
-    );
-
-  if (angleData.scarcityUrgency)
-    parts.push(
-      `<div style="margin-bottom:36px;background:#fff8f0;border:1px solid #FF5B1D;padding:20px;border-radius:8px"><p style="font-size:16px;margin:0">${esc(angleData.scarcityUrgency)}</p></div>`
-    );
-
-  if (angleData.timeSavingBenefit)
-    parts.push(section("Save Time", esc(angleData.timeSavingBenefit)));
-
-  if (Array.isArray(angleData.consultationOutline) && angleData.consultationOutline.length) {
-    const steps = angleData.consultationOutline
-      .map(
-        (o: any, i: number) =>
-          `<div style="display:flex;gap:16px;margin-bottom:16px"><span style="font-size:24px;font-weight:900;color:#FF5B1D;min-width:32px">${i + 1}</span><div><strong>${esc(o.title || "")}</strong><p style="margin:4px 0 0;color:#555">${esc(o.description || "")}</p></div></div>`
-      )
-      .join("\n");
-    parts.push(`<div style="margin-bottom:36px"><h2 style="font-size:26px;font-weight:800;margin:0 0 20px">What Happens Next</h2>${steps}</div>`);
-  }
-
-  if (Array.isArray(angleData.faq) && angleData.faq.length) {
-    const faqHtml = angleData.faq
-      .map(
-        (f: any) =>
-          `<details style="margin-bottom:12px;border:1px solid #e5e5e5;border-radius:6px;padding:16px"><summary style="font-weight:700;cursor:pointer">${esc(f.question || "")}</summary><p style="margin:12px 0 0;color:#555">${esc(f.answer || "")}</p></details>`
-      )
-      .join("\n");
-    parts.push(`<div style="margin-bottom:36px"><h2 style="font-size:26px;font-weight:800;margin:0 0 20px">FAQ</h2>${faqHtml}</div>`);
-  }
-
-  parts.push(ctaBtn(ctaLabel));
-  parts.push(`</body></html>`);
-  return parts.join("\n");
-}
-
-// ─── D2 Helper: Create GHL Funnel with a single landing page ──────────────────
-async function createGhlFunnel(
-  locationId: string,
-  headers: Record<string, string>,
-  funnelName: string,
-  htmlBody: string
-): Promise<boolean> {
-  try {
-    const funnelRes = await fetch(`${GHL_BASE}/locations/${locationId}/funnels`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ name: funnelName }),
-    });
-    if (!funnelRes.ok) {
-      console.warn("[GHL] Funnel creation failed:", await funnelRes.text());
-      return false;
-    }
-    const funnelData = await funnelRes.json() as any;
-    const funnelId: string | undefined =
-      funnelData?.id || funnelData?.funnel?.id || funnelData?.data?.id;
-    if (!funnelId) {
-      console.warn("[GHL] Funnel creation returned no id:", JSON.stringify(funnelData));
-      return false;
-    }
-
-    // Create a page inside the funnel
-    const pageRes = await fetch(`${GHL_BASE}/locations/${locationId}/funnels/${funnelId}/pages`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ name: "Main Page", body: htmlBody }),
-    });
-    if (!pageRes.ok) {
-      console.warn("[GHL] Funnel page creation failed:", await pageRes.text());
-      // Funnel was created but page failed — still partial success
-      return false;
-    }
-    return true;
-  } catch (e) {
-    console.warn("[GHL] createGhlFunnel error:", e);
-    return false;
-  }
-}
 
 // ─── D2 Helper: WhatsApp Workflow — REMOVED in Phase C C3 follow-on 2 ──────────
 // The createWhatsAppWorkflow helper previously POSTed to
@@ -450,7 +343,14 @@ export const ghlRouter = router({
       const locationId = ghl.locationId!;
 
       const results: Record<string, boolean> = {
-        // D1 (Custom Values — all 8 kit asset slots)
+        // D1 (Custom Values — all 8 kit asset slots, all valid in v2 OAuth
+        // via locations/customValues.write). C3 f-o 7 removed the D2 native-
+        // object slots (emailTemplatesPushed + funnelCreated) after forensic
+        // confirmation they were unreachable for marketplace OAuth; C3 f-o 2
+        // had already removed the third D2 slot (whatsappWorkflowCreated).
+        // GHL push chain is now 8/8 Custom Values. Operator-fill seam in
+        // place for templates + funnel + workflow — see the tombstone
+        // comment blocks earlier in this file.
         emailPushed: false,
         whatsappPushed: false,
         landingPagePushed: false,
@@ -459,11 +359,6 @@ export const ghlRouter = router({
         offerPushed: false,
         hvcoTitlePushed: false,
         heroMechanismPushed: false,
-        // D2 (native GHL objects — 2 slots; whatsappWorkflowCreated removed
-        // in C3 follow-on 2, see "D2 Helper: WhatsApp Workflow — REMOVED"
-        // comment block earlier in this file)
-        emailTemplatesPushed: false,
-        funnelCreated: false,
       };
 
       const headers: Record<string, string> = {
@@ -497,21 +392,14 @@ export const ghlRouter = router({
               emailText
             );
 
-            // D2 — Individual Email Templates (one per email)
-            try {
-              let allOk = true;
-              for (let i = 0; i < emails.length; i++) {
-                const em = emails[i];
-                const subject = em.subject || `Email ${i + 1}`;
-                const body = em.body || "";
-                const templateName = `ZAP - ${kitName} - Email ${i + 1}: ${subject}`.substring(0, 100);
-                const ok = await upsertEmailTemplate(locationId, headers, templateName, subject, body);
-                if (!ok) allOk = false;
-              }
-              results.emailTemplatesPushed = allOk && emails.length > 0;
-            } catch (e2) {
-              console.warn("[GHL] D2 email templates error:", e2);
-            }
+            // D2 — Individual Email Template creation: REMOVED in C3 f-o 7.
+            // HTTP 401 at the v1 /locations/{id}/templates path; v2 scope
+            // emails/builder.write maps to /emails/builder which GHL docs
+            // flag deprecated. Email content is still in GHL via emailPushed
+            // Custom Value above — operator pastes into manually-built
+            // templates on the GHL side. See "D2 Helpers: Email Template +
+            // Landing Page Funnel — REMOVED" comment block above for the
+            // full architectural rationale.
           }
         } catch (e) { console.warn("[GHL] Email push error:", e); }
       }
@@ -617,19 +505,14 @@ export const ghlRouter = router({
               lpText
             );
 
-            // D2 — GHL Funnel with HTML page
-            try {
-              if (angleData) {
-                const htmlBody = buildLandingPageHtml(angleData);
-                results.funnelCreated = await createGhlFunnel(
-                  locationId, headers,
-                  `ZAP - ${kitName} - Landing Page`,
-                  htmlBody
-                );
-              }
-            } catch (e2) {
-              console.warn("[GHL] D2 funnel error:", e2);
-            }
+            // D2 — GHL Funnel creation: REMOVED in C3 f-o 7.
+            // HTTP 404 on POST /locations/{id}/funnels — endpoint does not
+            // exist in v2 marketplace OAuth; funnel creation is admin-UI-
+            // only. LP content is still in GHL via landingPagePushed
+            // Custom Value above + the C2 LP is live at zapcampaigns.com/p/{slug}.
+            // Operator can build a funnel page manually in GHL using the
+            // Custom Value as content reference. See tombstone block above
+            // for full rationale.
           }
         } catch (e) { console.warn("[GHL] Landing page push error:", e); }
       }

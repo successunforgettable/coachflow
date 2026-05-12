@@ -1269,6 +1269,34 @@ describe("Phase C C3 — Meta + GHL push wire-up", () => {
     expect(indexSrc).toMatch(/registerGhlOAuthRoutes\(app\)/);
   });
 
+  it("GHL pushCampaign no longer references removed D2 helpers + emits 8 D1 slots only (C3 follow-on 7)", () => {
+    // Frame (c) verification at 01:48 BST surfaced HTTP 401 on /templates
+    // (v2 scope ≠ v1 endpoint URL) + HTTP 404 on /funnels (endpoint absent
+    // in v2 marketplace OAuth). Same structural pattern as the workflow
+    // removal in C3 f-o 2. Removal regression-guards + observability
+    // presence on the surviving D1 path.
+    const src = readFileSync(join(__dirname, "routers/ghl.ts"), "utf8");
+    // The 3 removed identifiers must not be referenced as live code (they
+    // remain in comments which is fine — match on `await fooName(` or
+    // `results.fooName =` to scope to live-code references only).
+    expect(src).not.toMatch(/await\s+upsertEmailTemplate\(/);
+    expect(src).not.toMatch(/await\s+createGhlFunnel\(/);
+    expect(src).not.toMatch(/buildLandingPageHtml\(/);
+    expect(src).not.toMatch(/results\.emailTemplatesPushed\s*=/);
+    expect(src).not.toMatch(/results\.funnelCreated\s*=/);
+    // The 8 D1 Custom Value slots must all still be live
+    for (const slot of [
+      "emailPushed", "whatsappPushed", "landingPagePushed", "headlinesPushed",
+      "adCopyPushed", "offerPushed", "hvcoTitlePushed", "heroMechanismPushed",
+    ]) {
+      expect(src).toMatch(new RegExp(`results\\.${slot}\\s*=\\s*await\\s+upsertCustomValue`));
+    }
+    // Forensic outbound-URL log present on upsertCustomValue — mirrors the
+    // Meta a71efc1 instrumentation pattern (GHL uses Bearer header so no
+    // redaction needed; URLs safe to log as-is).
+    expect(src).toMatch(/\[GHL API\] upsertCustomValue (LIST GET|PUT|POST)/);
+  });
+
   it("V2CampaignKit kit page no longer renders the 'Push coming soon' placeholder", () => {
     const src = readFileSync(
       join(__dirname, "../client/src/v2/V2CampaignKit.tsx"),
