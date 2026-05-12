@@ -8,6 +8,7 @@ import { fileURLToPath } from "url";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { registerMetaOAuthRoutes } from "./metaOAuth";
+import { registerGhlOAuthRoutes } from "./ghlOAuth";
 import { registerCustomAuthRoutes } from "./customAuth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
@@ -376,6 +377,11 @@ async function startServer() {
   registerOAuthRoutes(app);
   // Meta OAuth callback under /api/meta/callback
   registerMetaOAuthRoutes(app);
+  // GHL OAuth callback under /api/oauth/gohighlevel/callback (Phase C C3
+  // follow-on 3 — popup OAuth completion handler, mirrors Meta + Manus
+  // pattern; redirect URI is fixed by ghl.ts:312 + the marketplace app
+  // config at marketplace.gohighlevel.com/app-settings/69af3395095745d484bc1b18)
+  registerGhlOAuthRoutes(app);
   // Custom auth: Google OAuth + magic links (no Manus dependency)
   registerCustomAuthRoutes(app);
 

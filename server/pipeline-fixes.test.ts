@@ -1200,6 +1200,19 @@ describe("Phase C C3 — Meta + GHL push wire-up", () => {
     expect(src).toMatch(/window\.addEventListener\(\s*["']focus["']/);
   });
 
+  it("GHL OAuth Express callback handler is registered at the redirect URI path (C3 follow-on 3)", () => {
+    // The redirect URI built at ghl.ts:312 must have a matching Express
+    // GET route — pre-C3-follow-on-3 the handler didn't exist and the
+    // path fell through to the React SPA's 404 catchall. Structural
+    // assertion: the registration function exists + is wired in index.ts
+    // alongside the Meta callback.
+    const ghlOAuthSrc = readFileSync(join(__dirname, "_core/ghlOAuth.ts"), "utf8");
+    expect(ghlOAuthSrc).toMatch(/export\s+function\s+registerGhlOAuthRoutes/);
+    expect(ghlOAuthSrc).toMatch(/app\.get\(\s*["']\/api\/oauth\/gohighlevel\/callback["']/);
+    const indexSrc = readFileSync(join(__dirname, "_core/index.ts"), "utf8");
+    expect(indexSrc).toMatch(/registerGhlOAuthRoutes\(app\)/);
+  });
+
   it("V2CampaignKit kit page no longer renders the 'Push coming soon' placeholder", () => {
     const src = readFileSync(
       join(__dirname, "../client/src/v2/V2CampaignKit.tsx"),
