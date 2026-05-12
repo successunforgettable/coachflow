@@ -238,44 +238,33 @@ async function createGhlFunnel(
   }
 }
 
-// ─── D2 Helper: Create GHL WhatsApp Workflow ──────────────────────────────────
-async function createWhatsAppWorkflow(
-  locationId: string,
-  headers: Record<string, string>,
-  workflowName: string,
-  messages: Array<{ text?: string; message?: string }>
-): Promise<boolean> {
-  try {
-    // Build sequential actions: whatsapp send → 1-day wait → whatsapp send → …
-    const actions: any[] = [];
-    messages.forEach((msg, i) => {
-      actions.push({
-        type: "whatsapp",
-        body: msg.text || msg.message || "",
-      });
-      if (i < messages.length - 1) {
-        actions.push({
-          type: "wait",
-          delay: { unit: "days", value: 1 },
-        });
-      }
-    });
-
-    const res = await fetch(`${GHL_BASE}/locations/${locationId}/workflows`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ name: workflowName, status: "draft", actions }),
-    });
-    if (!res.ok) {
-      console.warn("[GHL] Workflow creation failed:", await res.text());
-      return false;
-    }
-    return true;
-  } catch (e) {
-    console.warn("[GHL] createWhatsAppWorkflow error:", e);
-    return false;
-  }
-}
+// ─── D2 Helper: WhatsApp Workflow — REMOVED in Phase C C3 follow-on 2 ──────────
+// The createWhatsAppWorkflow helper previously POSTed to
+//   POST {GHL_BASE}/locations/{locationId}/workflows
+// to create a native GHL workflow with sequential whatsapp + wait actions.
+//
+// GHL's V1 API end-of-support landed on 2025-12-31. Their v2 OAuth scope
+// catalog structurally does not expose workflow creation to marketplace
+// apps — only `workflows.readonly` exists; there is no `workflows.write`
+// or any nested-namespace equivalent (no `workflows/workflow.write`, no
+// `automations.write`). Workflow creation is admin-level access only,
+// reachable via Private Integration API keys (which we deliberately don't
+// take from users for security reasons), not via marketplace OAuth.
+//
+// Operator-fill seam: WhatsApp content still pushes to GHL via the
+// `whatsappPushed` Custom Value slot (upsertCustomValue at the D1 path)
+// using the valid `locations/customValues.write` scope. The operator
+// pastes that Custom Value into a manually-built GHL workflow on the GHL
+// side. Same architectural precedent as [INSERT_LEAD_MAGNET_NAME] in the
+// email nurture builder + [INSERT_REPLAY_MOMENT_N] in the replay builder
+// (see May 9 handover §7.5 — "minimum-viable defenses given a structural
+// data-layer / API-surface gap, not tactical fixes that didn't converge").
+//
+// If GHL adds a workflow-write scope in a future API version, this helper
+// can be restored — keep the call shape in mind:
+//   POST /locations/{locationId}/workflows
+//   body: { name, status: "draft", actions: [{type:"whatsapp", body},
+//                                            {type:"wait", delay:{unit,value}}, …] }
 
 /**
  * GoHighLevel Integration Router
@@ -321,6 +310,29 @@ export const ghlRouter = router({
     }
 
     const redirectUri = `${process.env.APP_URL || "https://zapcampaigns.com"}/api/oauth/gohighlevel/callback`;
+    // Phase C C3 follow-on 2: scope catalog migrated to GHL v2 nested-namespace
+    // pattern. GHL's V1 API reached end-of-support on 2025-12-31; the
+    // flat-namespace v1 names (templates.*, funnels.*, workflows.write) were
+    // rejected by the marketplace OAuth chooser at /oauth/chooselocation as
+    // "Invalid scope(s)". Renames per the canonical v2 scope catalog at
+    // marketplace.gohighlevel.com/docs/Authorization/Scopes:
+    //   templates.{write,readonly}  → emails/builder.{write,readonly}
+    //   funnels.readonly            → funnels/funnel.readonly + funnels/page.readonly
+    //   funnels.write               → funnels/redirect.write
+    //   workflows.readonly          → workflows.readonly (unchanged; v2-valid)
+    //   workflows.write             → DROPPED (no v2 equivalent — GHL's v2 OAuth
+    //                                 catalog structurally does not expose workflow
+    //                                 creation to marketplace apps; admin-level
+    //                                 access only via Private Integration API keys).
+    //                                 The createWhatsAppWorkflow code path that
+    //                                 depended on this scope has also been removed
+    //                                 (see "D2 Helper: WhatsApp Workflow" block
+    //                                 above — operator-fill seam pattern, same
+    //                                 architectural precedent as the replay
+    //                                 slot-template lock in the May 9 handover §7.5).
+    //                                 WhatsApp content still pushes to GHL via the
+    //                                 whatsappPushed Custom Value slot using the
+    //                                 valid locations/customValues.write scope.
     const scopes = [
       "contacts.write",
       "contacts.readonly",
@@ -331,11 +343,11 @@ export const ghlRouter = router({
       "locations.readonly",
       "locations/customValues.write",
       "locations/customValues.readonly",
-      "templates.write",
-      "templates.readonly",
-      "funnels.write",
-      "funnels.readonly",
-      "workflows.write",
+      "emails/builder.write",
+      "emails/builder.readonly",
+      "funnels/funnel.readonly",
+      "funnels/page.readonly",
+      "funnels/redirect.write",
       "workflows.readonly",
     ].join(" ");
     const state = String(ctx.user.id);
@@ -438,7 +450,7 @@ export const ghlRouter = router({
       const locationId = ghl.locationId!;
 
       const results: Record<string, boolean> = {
-        // D1
+        // D1 (Custom Values — all 8 kit asset slots)
         emailPushed: false,
         whatsappPushed: false,
         landingPagePushed: false,
@@ -447,10 +459,11 @@ export const ghlRouter = router({
         offerPushed: false,
         hvcoTitlePushed: false,
         heroMechanismPushed: false,
-        // D2
+        // D2 (native GHL objects — 2 slots; whatsappWorkflowCreated removed
+        // in C3 follow-on 2, see "D2 Helper: WhatsApp Workflow — REMOVED"
+        // comment block earlier in this file)
         emailTemplatesPushed: false,
         funnelCreated: false,
-        whatsappWorkflowCreated: false,
       };
 
       const headers: Record<string, string> = {
@@ -528,18 +541,14 @@ export const ghlRouter = router({
               waText
             );
 
-            // D2 — WhatsApp Workflow
-            try {
-              if (messages.length > 0) {
-                results.whatsappWorkflowCreated = await createWhatsAppWorkflow(
-                  locationId, headers,
-                  `ZAP - ${kitName} - WhatsApp Sequence`,
-                  messages
-                );
-              }
-            } catch (e2) {
-              console.warn("[GHL] D2 WhatsApp workflow error:", e2);
-            }
+            // D2 — WhatsApp Workflow creation: REMOVED in C3 follow-on 2.
+            // GHL's v2 OAuth catalog has no workflows.write scope (V1 EOL
+            // 2025-12-31); workflow creation is admin-only via Private
+            // Integration API keys, not marketplace OAuth. WhatsApp content
+            // is still in GHL as a Custom Value (whatsappPushed above) —
+            // operator pastes it into a manually-built workflow on the GHL
+            // side. See "D2 Helper: WhatsApp Workflow — REMOVED" comment
+            // block above for the full architectural rationale.
           }
         } catch (e) { console.warn("[GHL] WhatsApp push error:", e); }
       }
