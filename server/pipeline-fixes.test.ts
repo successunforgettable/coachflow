@@ -1200,6 +1200,21 @@ describe("Phase C C3 — Meta + GHL push wire-up", () => {
     expect(src).toMatch(/window\.addEventListener\(\s*["']focus["']/);
   });
 
+  it("Meta publishToMeta no longer passes daily_budget to createCampaign (C3 follow-on 5)", () => {
+    // CBO override regression-guard. Passing daily_budget at campaign-
+    // level activates Meta CBO, which overrides ad-set-level bid_strategy.
+    // The fix keeps budget exclusively on the ad-set call.
+    const src = readFileSync(join(__dirname, "routers/meta.ts"), "utf8");
+    // The createCampaign call should NOT include dailyBudget or
+    // lifetimeBudget keys. Regex matches the createCampaign({...}) block.
+    const campaignCallMatch = src.match(/createCampaign\(ctx\.user\.id,\s*\{[\s\S]*?\}\)/);
+    expect(campaignCallMatch).toBeTruthy();
+    expect(campaignCallMatch![0]).not.toMatch(/dailyBudget:/);
+    expect(campaignCallMatch![0]).not.toMatch(/lifetimeBudget:/);
+    // createAdSet call should still carry the budget passthrough
+    expect(src).toMatch(/createAdSet\(ctx\.user\.id,[\s\S]*?dailyBudget:/);
+  });
+
   it("Meta createAdSet payload includes bid_strategy=LOWEST_COST_WITHOUT_CAP (C3 follow-on 4)", () => {
     // Without bid_strategy, Meta Graph API v21 defaults to a bid-cap
     // strategy when daily_budget is set, then rejects with error_subcode

@@ -229,13 +229,23 @@ export const metaRouter = router({
       const { createCampaign, createAdSet, createAdCreative, createAd } = await import("../lib/metaAPI");
 
       try {
-        // Step 1: Create campaign
+        // Step 1: Create campaign — budget intentionally NOT passed here.
+        // Phase C C3 follow-on 5: passing daily_budget at the campaign
+        // level activates Meta's Campaign Budget Optimization (CBO) mode,
+        // which then overrides the ad-set-level bid_strategy with a
+        // campaign-level default (LOWEST_COST_WITH_BID_CAP — the bid-cap
+        // strategy). That default requires bid_amount which we don't pass,
+        // so Meta rejects with error_subcode 1815857. Keeping the budget
+        // exclusively at the ad-set level disables CBO and lets the
+        // ad-set bid_strategy=LOWEST_COST_WITHOUT_CAP from f7accd5
+        // actually take effect. Forensic confirmation: Meta's error
+        // message enumerated LOWEST_COST_WITH_BID_CAP + TARGET_COST as
+        // the strategies requiring bid_amount, but NOT
+        // LOWEST_COST_WITHOUT_CAP — proving CBO was overriding our value.
         const campaign = await createCampaign(ctx.user.id, {
           name: input.campaignName,
           objective: input.objective,
           status: input.status,
-          dailyBudget: input.dailyBudget,
-          lifetimeBudget: input.lifetimeBudget,
         });
 
         if (!campaign) {

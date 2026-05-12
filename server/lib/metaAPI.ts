@@ -491,6 +491,17 @@ export async function createAdSet(
       url.searchParams.set("end_time", params.endTime);
     }
 
+    // Phase C C3 follow-on 5: permanent forensic outbound-URL log. The
+    // access_token query param is redacted before logging — never write
+    // bearer credentials to Railway logs. This observability would've
+    // caught the CBO/bid_strategy override 90 minutes earlier in the C3
+    // verification cycle; making it permanent so future Meta payload
+    // issues are diagnosable from the first failure rather than needing
+    // a separate instrumentation deploy.
+    const debugUrl = new URL(url.toString());
+    debugUrl.searchParams.set("access_token", "<REDACTED>");
+    console.log("[Meta API] createAdSet outbound URL:", debugUrl.toString());
+
     const response = await fetch(url.toString(), { method: "POST" });
     const data = await response.json();
 
