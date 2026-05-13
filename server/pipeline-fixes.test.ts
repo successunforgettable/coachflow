@@ -1256,6 +1256,106 @@ describe("Phase C C3 — Meta + GHL push wire-up", () => {
     expect(redactionCount).toBeGreaterThanOrEqual(4);
   });
 
+  // ─── Phase C C3 follow-on 8 (Phase 1): GHL master snapshot CV architecture ──
+
+  it("GHL pushCampaign uses stable CV names (no ` - ${kitName}` suffix) — C3 f-o 8", () => {
+    // Stable CV names are required so a generic master snapshot can reference
+    // them with hard-coded {{custom_values.X}} placeholders. Kit-suffixed names
+    // would force per-kit snapshot rebuilds, defeating the architecture.
+    const src = readFileSync(join(__dirname, "routers/ghl.ts"), "utf8");
+    // No live code should template-literal kitName into a CV name. Comments OK.
+    expect(src).not.toMatch(/`ZAP [A-Z][^`]* - \$\{kitName\}`/);
+    // Stable names present
+    for (const name of [
+      "ZAP Landing Page", "ZAP Headlines", "ZAP Ad Copy",
+      "ZAP Offer Copy", "ZAP Lead Magnet", "ZAP Hero Mechanism",
+    ]) {
+      expect(src).toMatch(new RegExp("`" + name.replace(/ /g, " ") + "`"));
+    }
+  });
+
+  it("GHL pushCampaign pushes granular per-email CVs (subject + body per email) — C3 f-o 8", () => {
+    const src = readFileSync(join(__dirname, "routers/ghl.ts"), "utf8");
+    // Per-email loop pushes Subject + Body per index — variable N, not fixed
+    expect(src).toMatch(/`ZAP Email \$\{i \+ 1\} Subject`/);
+    expect(src).toMatch(/`ZAP Email \$\{i \+ 1\} Body`/);
+    // Loop bound is emails.length (variable N), not a MAX constant
+    expect(src).toMatch(/i < emailCount/);
+  });
+
+  it("GHL pushCampaign pushes granular per-message WhatsApp CVs — C3 f-o 8", () => {
+    const src = readFileSync(join(__dirname, "routers/ghl.ts"), "utf8");
+    expect(src).toMatch(/`ZAP WhatsApp \$\{i \+ 1\}`/);
+    expect(src).toMatch(/i < whatsappCount/);
+  });
+
+  it("GHL pushCampaign pushes count + sequence-type indicator CVs — C3 f-o 8", () => {
+    const src = readFileSync(join(__dirname, "routers/ghl.ts"), "utf8");
+    // The 4 indicator CVs that drive elastic-workflow branching
+    expect(src).toMatch(/"ZAP Email Count"/);
+    expect(src).toMatch(/"ZAP Email Sequence Type"/);
+    expect(src).toMatch(/"ZAP WhatsApp Count"/);
+    expect(src).toMatch(/"ZAP WhatsApp Sequence Type"/);
+  });
+
+  it("GHL pushCampaign cleans up orphan over-N slots after each push — C3 f-o 8", () => {
+    const src = readFileSync(join(__dirname, "routers/ghl.ts"), "utf8");
+    // cleanupOrphanCustomValues helper exists + is called for both email and WhatsApp
+    expect(src).toMatch(/async function cleanupOrphanCustomValues/);
+    // Forensic log on the DELETE site
+    expect(src).toMatch(/\[GHL API\] cleanupOrphans DELETE/);
+    // Both blocks invoke cleanup with regex that excludes slots <=N
+    const cleanupCalls = (src.match(/await cleanupOrphanCustomValues\(/g) || []).length;
+    expect(cleanupCalls).toBeGreaterThanOrEqual(2);
+  });
+
+  it("ghl.getConnectionStatus surfaces masterSnapshotId from env var — C3 f-o 8", () => {
+    const src = readFileSync(join(__dirname, "routers/ghl.ts"), "utf8");
+    expect(src).toMatch(/masterSnapshotId:\s*process\.env\.GHL_MASTER_SNAPSHOT_ID/);
+  });
+
+  it("PushKitModal ResultsView renders Apply Snapshot banner when masterSnapshotId set + GHL push succeeded — C3 f-o 8", () => {
+    const src = readFileSync(
+      join(__dirname, "../client/src/v2/PushKitModal.tsx"),
+      "utf8",
+    );
+    // Banner gating condition
+    expect(src).toMatch(/showSnapshotBanner\s*=\s*ghlSuccessfulPush\s*&&\s*!!masterSnapshotId/);
+    // Banner copy includes the canonical CTA
+    expect(src).toMatch(/Apply ZAP Master Snapshot/);
+    // Deep link helper imported from the new lib
+    expect(src).toMatch(/from\s+["']\.\/lib\/ghlSnapshot["']/);
+  });
+
+  it("PushKitModal stale copy (funnel + email-template + workflow) removed — C3 f-o 8", () => {
+    const src = readFileSync(
+      join(__dirname, "../client/src/v2/PushKitModal.tsx"),
+      "utf8",
+    );
+    // Stale promise from cb23ce0 must be gone — would mislead users post-878a911 + post-f-o-8
+    expect(src).not.toMatch(/Funnel page, an email-template per email, and a WhatsApp workflow/);
+  });
+
+  it("V2Settings renders Integrations section with Apply Snapshot link — C3 f-o 8", () => {
+    const src = readFileSync(
+      join(__dirname, "../client/src/v2/V2Settings.tsx"),
+      "utf8",
+    );
+    expect(src).toMatch(/function IntegrationsSection\(/);
+    expect(src).toMatch(/SECTION 1\.5:\s*INTEGRATIONS/);
+    expect(src).toMatch(/Apply ZAP Master Snapshot/);
+  });
+
+  it("ghlSnapshot helper exists with buildSnapshotApplyUrl + openSnapshotApplyTab exports — C3 f-o 8", () => {
+    const src = readFileSync(
+      join(__dirname, "../client/src/v2/lib/ghlSnapshot.ts"),
+      "utf8",
+    );
+    expect(src).toMatch(/export function buildSnapshotApplyUrl/);
+    expect(src).toMatch(/export function openSnapshotApplyTab/);
+    expect(src).toMatch(/window\.open/);
+  });
+
   it("GHL OAuth Express callback handler is registered at the redirect URI path (C3 follow-on 3)", () => {
     // The redirect URI built at ghl.ts:312 must have a matching Express
     // GET route — pre-C3-follow-on-3 the handler didn't exist and the
@@ -1284,13 +1384,20 @@ describe("Phase C C3 — Meta + GHL push wire-up", () => {
     expect(src).not.toMatch(/buildLandingPageHtml\(/);
     expect(src).not.toMatch(/results\.emailTemplatesPushed\s*=/);
     expect(src).not.toMatch(/results\.funnelCreated\s*=/);
-    // The 8 D1 Custom Value slots must all still be live
+    // The 6 single-blob D1 Custom Value slots still use direct upsertCustomValue
+    // (C3 f-o 7 shape preserved). emailPushed + whatsappPushed assignment shape
+    // changed in C3 f-o 8 (Phase 1) — they're now gated boolean expressions
+    // over the granular per-message slot upsert results + count + type CVs.
     for (const slot of [
-      "emailPushed", "whatsappPushed", "landingPagePushed", "headlinesPushed",
+      "landingPagePushed", "headlinesPushed",
       "adCopyPushed", "offerPushed", "hvcoTitlePushed", "heroMechanismPushed",
     ]) {
       expect(src).toMatch(new RegExp(`results\\.${slot}\\s*=\\s*await\\s+upsertCustomValue`));
     }
+    // emailPushed + whatsappPushed are still assigned, just via the new
+    // gated-boolean shape. Asserting that the assignments exist (some shape).
+    expect(src).toMatch(/results\.emailPushed\s*=/);
+    expect(src).toMatch(/results\.whatsappPushed\s*=/);
     // Forensic outbound-URL log present on upsertCustomValue — mirrors the
     // Meta a71efc1 instrumentation pattern (GHL uses Bearer header so no
     // redaction needed; URLs safe to log as-is).

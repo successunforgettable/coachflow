@@ -69,6 +69,46 @@ async function upsertCustomValue(
   }
 }
 
+// ─── Orphan cleanup: DELETE stale per-message CVs from prior longer pushes ───
+//
+// Phase C C3 follow-on 8 (Phase 1) — when a user previously pushed a 7-email
+// kit then re-pushes a 3-email kit, the granular email CVs at slots 4-7 from
+// the prior push are now stale. The elastic workflow's count-based If/Else
+// branches won't read them (correct behavior gated by `ZAP Email Count`),
+// but defensive cleanup keeps the GHL location's CV list tidy AND prevents
+// any future workflow-design edit by Arfeen from accidentally referencing a
+// stale orphan.
+//
+// Pattern: LIST all customValues, regex-match orphan names where N > current
+// push length, DELETE each by id. One LIST + variable DELETEs per cleanup
+// call. Forensic logs on every outbound URL per the C3 observability pattern.
+async function cleanupOrphanCustomValues(
+  locationId: string,
+  headers: Record<string, string>,
+  orphanNameRegex: RegExp,
+): Promise<number> {
+  try {
+    const listUrl = `${GHL_BASE}/locations/${locationId}/customValues`;
+    console.log(`[GHL API] cleanupOrphans LIST GET ${listUrl} (pattern=${orphanNameRegex})`);
+    const listRes = await fetch(listUrl, { method: "GET", headers });
+    if (!listRes.ok) return 0;
+    const listData = await listRes.json() as { customValues?: Array<{ id: string; name: string }> };
+    const orphans = (listData.customValues || []).filter((cv) => orphanNameRegex.test(cv.name));
+    let deleted = 0;
+    for (const cv of orphans) {
+      const deleteUrl = `${GHL_BASE}/locations/${locationId}/customValues/${cv.id}`;
+      console.log(`[GHL API] cleanupOrphans DELETE ${deleteUrl} (orphan="${cv.name}")`);
+      const delRes = await fetch(deleteUrl, { method: "DELETE", headers });
+      if (delRes.ok) deleted++;
+      else console.warn(`[GHL] DELETE orphan failed for "${cv.name}":`, await delRes.text());
+    }
+    return deleted;
+  } catch (e) {
+    console.warn(`[GHL] cleanupOrphanCustomValues error:`, e);
+    return 0;
+  }
+}
+
 // ─── D2 Helpers: Email Template + Landing Page Funnel — REMOVED in C3 f-o 7 ──
 //
 // Two helpers (upsertEmailTemplate + createGhlFunnel) and one private support
@@ -190,6 +230,11 @@ export const ghlRouter = router({
       connectedAt: connection.connectedAt,
       expiresAt: connection.tokenExpiresAt,
       isExpired,
+      // Phase C C3 follow-on 8 (Phase 1): surface the master snapshot ID
+      // to the client so the post-push banner + Settings link can build
+      // the GHL deep link. null when not configured — banner/link hide
+      // gracefully (graceful degradation pre-snapshot-build window).
+      masterSnapshotId: process.env.GHL_MASTER_SNAPSHOT_ID ?? null,
     };
   }),
 
@@ -382,24 +427,48 @@ export const ghlRouter = router({
               ? JSON.parse(emailSeq.emails)
               : [];
 
-            // D1 — Custom Value (full dump)
-            const emailText = emails.length
-              ? emails.map((e: any, i: number) => `Email ${i + 1}: ${e.subject || ""}\n${e.body || ""}`).join("\n\n---\n\n")
-              : "No emails";
-            results.emailPushed = await upsertCustomValue(
-              locationId, headers,
-              `ZAP Email Sequence - ${kitName}`,
-              emailText
-            );
+            // Phase C C3 follow-on 8 (Phase 1): granular per-message CVs that
+            // feed the elastic per-sequence-type workflows in Arfeen's master
+            // snapshot. Push EXACTLY N=emails.length CVs (no padding) plus
+            // ZAP Email Count + ZAP Email Sequence Type as routing/branching
+            // signals. Snapshot's If/Else nodes branch on the count CV
+            // (bridged to a Contact custom field) to determine how many
+            // emails to send; orphan cleanup removes stale slot CVs from
+            // any prior longer push so the location stays clean.
+            const emailCount = emails.length;
+            const sequenceType = (emailSeq as any).sequenceType ?? "";
 
-            // D2 — Individual Email Template creation: REMOVED in C3 f-o 7.
-            // HTTP 401 at the v1 /locations/{id}/templates path; v2 scope
-            // emails/builder.write maps to /emails/builder which GHL docs
-            // flag deprecated. Email content is still in GHL via emailPushed
-            // Custom Value above — operator pastes into manually-built
-            // templates on the GHL side. See "D2 Helpers: Email Template +
-            // Landing Page Funnel — REMOVED" comment block above for the
-            // full architectural rationale.
+            // Per-email subject + body CVs (exactly N, no padding)
+            let emailSlotsOk = 0;
+            for (let i = 0; i < emailCount; i++) {
+              const em = emails[i] as { subject?: string; body?: string };
+              const okSubj = await upsertCustomValue(locationId, headers, `ZAP Email ${i + 1} Subject`, em.subject || "");
+              const okBody = await upsertCustomValue(locationId, headers, `ZAP Email ${i + 1} Body`, em.body || "");
+              if (okSubj && okBody) emailSlotsOk++;
+            }
+
+            // Count + type indicator CVs (snapshot reads these for branching)
+            const okCount = await upsertCustomValue(locationId, headers, "ZAP Email Count", String(emailCount));
+            const okType = await upsertCustomValue(locationId, headers, "ZAP Email Sequence Type", sequenceType);
+
+            // emailPushed = true only when every per-message slot AND the
+            // two indicator CVs landed. Partial-success surfaces as ✗ to
+            // match the existing slot-flag semantic (binary all-or-nothing
+            // per slot per ResultsView rendering).
+            results.emailPushed = emailSlotsOk === emailCount && okCount && okType && emailCount > 0;
+
+            // Orphan cleanup: DELETE stale `ZAP Email N (Subject|Body)` CVs
+            // where N > emailCount (left over from a prior longer push).
+            // emailCount ≤ 7 by Zod schema today; cleanup matches up to
+            // N=20 defensively against future schema relaxation.
+            const orphanEmailSlots = Array.from(
+              { length: 20 - emailCount },
+              (_, k) => k + emailCount + 1,
+            );
+            await cleanupOrphanCustomValues(
+              locationId, headers,
+              new RegExp(`^ZAP Email (?:${orphanEmailSlots.join("|")}) (Subject|Body)$`),
+            );
           }
         } catch (e) { console.warn("[GHL] Email push error:", e); }
       }
@@ -419,24 +488,37 @@ export const ghlRouter = router({
               ? JSON.parse(waSeq.messages)
               : [];
 
-            // D1 — Custom Value
-            const waText = messages.length
-              ? messages.map((m: any, i: number) => `Message ${i + 1}: ${m.text || m.message || ""}`).join("\n\n---\n\n")
-              : "No messages";
-            results.whatsappPushed = await upsertCustomValue(
-              locationId, headers,
-              `ZAP WhatsApp Sequence - ${kitName}`,
-              waText
-            );
+            // Phase C C3 follow-on 8 (Phase 1): granular per-message CVs +
+            // count + type indicator. Same architecture as the email block
+            // above (see comment block there for the snapshot-side rationale).
+            // WhatsApp has no subject/body split — just body per message.
+            const whatsappCount = messages.length;
+            const waSequenceType = (waSeq as any).sequenceType ?? "";
 
-            // D2 — WhatsApp Workflow creation: REMOVED in C3 follow-on 2.
-            // GHL's v2 OAuth catalog has no workflows.write scope (V1 EOL
-            // 2025-12-31); workflow creation is admin-only via Private
-            // Integration API keys, not marketplace OAuth. WhatsApp content
-            // is still in GHL as a Custom Value (whatsappPushed above) —
-            // operator pastes it into a manually-built workflow on the GHL
-            // side. See "D2 Helper: WhatsApp Workflow — REMOVED" comment
-            // block above for the full architectural rationale.
+            // Per-message body CVs
+            let waSlotsOk = 0;
+            for (let i = 0; i < whatsappCount; i++) {
+              const m = messages[i] as { text?: string; message?: string };
+              const ok = await upsertCustomValue(locationId, headers, `ZAP WhatsApp ${i + 1}`, m.text || m.message || "");
+              if (ok) waSlotsOk++;
+            }
+
+            // Count + type indicator CVs
+            const okWaCount = await upsertCustomValue(locationId, headers, "ZAP WhatsApp Count", String(whatsappCount));
+            const okWaType = await upsertCustomValue(locationId, headers, "ZAP WhatsApp Sequence Type", waSequenceType);
+
+            results.whatsappPushed = waSlotsOk === whatsappCount && okWaCount && okWaType && whatsappCount > 0;
+
+            // Orphan cleanup: DELETE stale `ZAP WhatsApp N` CVs where
+            // N > whatsappCount. Pattern parallels email cleanup.
+            const orphanWaSlots = Array.from(
+              { length: 20 - whatsappCount },
+              (_, k) => k + whatsappCount + 1,
+            );
+            await cleanupOrphanCustomValues(
+              locationId, headers,
+              new RegExp(`^ZAP WhatsApp (?:${orphanWaSlots.join("|")})$`),
+            );
           }
         } catch (e) { console.warn("[GHL] WhatsApp push error:", e); }
       }
@@ -501,7 +583,7 @@ export const ghlRouter = router({
             }
             results.landingPagePushed = await upsertCustomValue(
               locationId, headers,
-              `ZAP Landing Page - ${kitName}`,
+              `ZAP Landing Page`,
               lpText
             );
 
@@ -540,7 +622,7 @@ export const ghlRouter = router({
               : `1. ${selectedHL.headline}`;
             results.headlinesPushed = await upsertCustomValue(
               locationId, headers,
-              `ZAP Headlines - ${kitName}`,
+              `ZAP Headlines`,
               hlText
             );
           }
@@ -574,7 +656,7 @@ export const ghlRouter = router({
 
             results.adCopyPushed = await upsertCustomValue(
               locationId, headers,
-              `ZAP Ad Copy - ${kitName}`,
+              `ZAP Ad Copy`,
               sections.join("\n\n") || "No ad copy"
             );
           }
@@ -614,7 +696,7 @@ export const ghlRouter = router({
 
             results.offerPushed = await upsertCustomValue(
               locationId, headers,
-              `ZAP Offer Copy - ${kitName}`,
+              `ZAP Offer Copy`,
               offerText
             );
           }
@@ -637,7 +719,7 @@ export const ghlRouter = router({
             ].join("\n");
             results.hvcoTitlePushed = await upsertCustomValue(
               locationId, headers,
-              `ZAP Lead Magnet - ${kitName}`,
+              `ZAP Lead Magnet`,
               hvcoText
             );
           }
@@ -661,7 +743,7 @@ export const ghlRouter = router({
             ].filter(Boolean).join("\n");
             results.heroMechanismPushed = await upsertCustomValue(
               locationId, headers,
-              `ZAP Hero Mechanism - ${kitName}`,
+              `ZAP Hero Mechanism`,
               mechText
             );
           }

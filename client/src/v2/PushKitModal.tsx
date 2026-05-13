@@ -33,6 +33,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
+import { openSnapshotApplyTab } from "./lib/ghlSnapshot";
 
 type Props = {
   kitId: number;
@@ -376,7 +377,12 @@ export default function PushKitModal({ kitId, kitName, onClose }: Props) {
         </p>
 
         {results ? (
-          <ResultsView results={results} onClose={onClose} onRetry={() => setResults(null)} />
+          <ResultsView
+            results={results}
+            onClose={onClose}
+            onRetry={() => setResults(null)}
+            masterSnapshotId={(ghlConn.data as { masterSnapshotId?: string | null } | undefined)?.masterSnapshotId ?? null}
+          />
         ) : (
           <>
             {/* ─── Meta section ─────────────────────────────────────────── */}
@@ -475,7 +481,7 @@ export default function PushKitModal({ kitId, kitName, onClose }: Props) {
                 )}
               </div>
               <p style={{ fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)", fontSize: "13px", color: "#555", margin: 0, lineHeight: 1.5 }}>
-                Pushes 8 Custom Values (offer, mechanism, lead magnet, headlines, ad copy, landing page, email seq, WhatsApp seq) plus a Funnel page, an email-template per email, and a WhatsApp workflow. No config needed.
+                Pushes the kit's content into your GHL location as Custom Values — offer, lead magnet, mechanism, headlines, ad copy, landing page, plus the email + WhatsApp sequences split per message. Apply ZAP's Master Snapshot once to your sub-account and every push auto-renders functional templates, funnels, and workflows from these values.
               </p>
             </div>
 
@@ -532,12 +538,22 @@ function actionButtonStyle(weight: "primary" | "secondary", enabled: boolean): R
 }
 
 // ─── Post-push results view ──────────────────────────────────────────────────
-function ResultsView({ results, onClose, onRetry }: {
+function ResultsView({ results, onClose, onRetry, masterSnapshotId }: {
   results: { platform: "meta" | "ghl"; ok: boolean; [k: string]: any }[];
   onClose: () => void;
   onRetry: () => void;
+  masterSnapshotId: string | null;
 }) {
   const allOk = results.every(r => r.ok);
+  // Phase C C3 follow-on 8 (Phase 1): Apply Snapshot banner renders after
+  // any GHL push (success or partial) when masterSnapshotId is configured
+  // server-side. Hides gracefully pre-snapshot-build window when the env
+  // var isn't yet set. Deep link opens GHL's snapshot apply UI in a new
+  // tab; user applies once per sub-account, then every future kit push
+  // auto-renders functional templates/workflows/funnels from the Custom
+  // Values via the elastic per-sequence-type workflow architecture.
+  const ghlSuccessfulPush = results.some(r => r.platform === "ghl" && r.ok);
+  const showSnapshotBanner = ghlSuccessfulPush && !!masterSnapshotId;
   return (
     <div>
       <div style={{
@@ -575,6 +591,47 @@ function ResultsView({ results, onClose, onRetry }: {
           </div>
         ))}
       </div>
+      {showSnapshotBanner && (
+        <div style={{
+          padding: "16px 18px",
+          borderRadius: "16px",
+          background: "rgba(255,91,29,0.08)",
+          border: "1px solid rgba(255,91,29,0.25)",
+          marginBottom: "16px",
+        }}>
+          <p style={{
+            fontFamily: "var(--v2-font-heading, 'Fraunces', serif)",
+            fontStyle: "italic",
+            fontWeight: 800,
+            fontSize: "16px",
+            color: "#1A1624",
+            margin: "0 0 6px",
+          }}>Render your kit in GHL</p>
+          <p style={{
+            fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)",
+            fontSize: "13px",
+            color: "#555",
+            margin: "0 0 12px",
+            lineHeight: 1.55,
+          }}>
+            Your Custom Values are live in GHL. Apply ZAP's Master Snapshot once to your sub-account — your funnels, email templates, and workflows then auto-render from these values on every push. Requires GHL agency-admin permission.
+          </p>
+          <button
+            onClick={() => masterSnapshotId && openSnapshotApplyTab(masterSnapshotId)}
+            style={{
+              padding: "10px 18px",
+              borderRadius: "9999px",
+              border: "none",
+              background: "var(--v2-primary-btn, #FF5B1D)",
+              color: "#fff",
+              fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)",
+              fontWeight: 700,
+              fontSize: "13px",
+              cursor: "pointer",
+            }}
+          >Apply ZAP Master Snapshot →</button>
+        </div>
+      )}
       <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
         <button onClick={onRetry} style={actionButtonStyle("secondary", true)}>Push again</button>
         <button onClick={onClose} style={actionButtonStyle("primary", true)}>Done</button>

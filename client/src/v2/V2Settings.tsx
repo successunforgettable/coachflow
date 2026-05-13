@@ -12,6 +12,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { openSnapshotApplyTab } from "./lib/ghlSnapshot";
 
 const T = {
   bg: "#F5F1EA",
@@ -32,6 +33,38 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
       color: T.dark,
       margin: "0 0 16px 0",
     }}>{children}</h2>
+  );
+}
+
+function IntegrationsSection() {
+  // Phase C C3 follow-on 8 (Phase 1): forever-available link to apply the
+  // ZAP Master Snapshot in GHL. Source of truth = server env var
+  // GHL_MASTER_SNAPSHOT_ID, surfaced via trpc.ghl.getConnectionStatus.
+  // Hides entirely when env var not configured — graceful pre-build window.
+  const ghlConn = trpc.ghl.getConnectionStatus.useQuery();
+  const snapshotId = (ghlConn.data as { masterSnapshotId?: string | null } | undefined)?.masterSnapshotId ?? null;
+  if (!snapshotId) return null;
+  return (
+    <div style={T.card}>
+      <SectionHeading>Integrations</SectionHeading>
+      <p style={{ fontSize: 14, color: "#555", lineHeight: 1.55, margin: "0 0 14px" }}>
+        Apply ZAP's Master Snapshot to your GoHighLevel sub-account once — your funnels, email templates, and workflows then auto-render from the Custom Values ZAP pushes on every kit publish. Requires GHL agency-admin permission.
+      </p>
+      <button
+        onClick={() => openSnapshotApplyTab(snapshotId)}
+        style={{
+          padding: "10px 20px",
+          background: T.orange,
+          color: "#fff",
+          border: "none",
+          borderRadius: 9999,
+          fontSize: 14,
+          fontWeight: 600,
+          fontFamily: T.fontB,
+          cursor: "pointer",
+        }}
+      >Apply ZAP Master Snapshot →</button>
+    </div>
   );
 }
 
@@ -217,6 +250,11 @@ export default function V2Settings() {
             </span>
           </div>
         </div>
+
+        {/* ── SECTION 1.5: INTEGRATIONS — Phase C C3 follow-on 8 (Phase 1) ── */}
+        {/* Apply ZAP Master Snapshot — forever-available reference for users to */}
+        {/* re-apply or share the snapshot deep link. Hides when env var not set. */}
+        <IntegrationsSection />
 
         {/* ── SECTION 2: USAGE STATS ── */}
         <div style={T.card}>
