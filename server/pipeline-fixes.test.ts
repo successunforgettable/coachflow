@@ -1417,3 +1417,240 @@ describe("Phase C C3 — Meta + GHL push wire-up", () => {
     expect(src).toMatch(/<PushKitModal\b/);
   });
 });
+
+// ─── Phase D Phase 1 — Offer fabrication validator + canonical operator-fill ──
+// Anchored on red-team baseline v1 (docs/redteam-audit-baseline-v1.md).
+// Each test validates one fabrication category from the audit's 12-category
+// catalog OR confirms USER-SUPPLIED data is correctly classified.
+
+import {
+  validateOfferFabricationPatterns,
+  getCanonicalOfferTokens,
+  type OfferSuppliedData,
+  type RawOfferFields,
+} from "./_core/validator";
+
+describe("Phase D Phase 1 — validateOfferFabricationPatterns", () => {
+  const cleanOffer: RawOfferFields = {
+    offerName: "The Clarity Sprint",
+    valueProposition: "Move from stuck to clear within your next decision cycle.",
+    pricing: "Investment: [INSERT_PRICE]. Includes the full sprint plus [INSERT_GUARANTEE_TERMS].",
+    bonuses: "BONUS #1: [INSERT_BONUS_1_NAME] ([INSERT_BONUS_1_VALUE]) — Maps your next 90 days.",
+    guarantee: "Guarantee: [INSERT_GUARANTEE_TERMS]. Email [INSERT_CONTACT_EMAIL] for refund.",
+    urgency: "Limited to [INSERT_COHORT_LIMIT] participants. Enrolment closes [INSERT_COHORT_CLOSE_DATE].",
+    cta: "Book a call to begin.",
+  };
+
+  // Baseline: clean offer with canonical placeholders passes
+  it("returns ok=true when offer uses canonical placeholders only", () => {
+    const result = validateOfferFabricationPatterns(cleanOffer, {});
+    expect(result.ok).toBe(true);
+  });
+
+  it("returns ok=true on empty/missing fields", () => {
+    const result = validateOfferFabricationPatterns({}, {});
+    expect(result.ok).toBe(true);
+  });
+
+  // Category 1: fabricated_pricing_currency_amount
+  it("catches fabricated currency amount when no operator price supplied", () => {
+    const offer: RawOfferFields = { ...cleanOffer, pricing: "Investment: £8,500. Includes the full sprint." };
+    const result = validateOfferFabricationPatterns(offer, {});
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.hits.some(h => h.classId === "offer_invented_currency")).toBe(true);
+  });
+
+  it("classifies user-supplied price as USER-SUPPLIED (not flagged)", () => {
+    const offer: RawOfferFields = { ...cleanOffer, pricing: "Investment: £5,000. Includes the full sprint." };
+    const supplied: OfferSuppliedData = { price: "5000.00" };
+    const result = validateOfferFabricationPatterns(offer, supplied);
+    expect(result.ok).toBe(true);
+  });
+
+  it("catches additional invented currency amounts even when one price is supplied", () => {
+    // Operator supplied £5,000 — output contains £5,000 (user-supplied, ok) AND £18,000 (invented anchor)
+    const offer: RawOfferFields = { ...cleanOffer, pricing: "Normally £18,000. Today £5,000." };
+    const supplied: OfferSuppliedData = { price: "5000.00" };
+    const result = validateOfferFabricationPatterns(offer, supplied);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      const inventedCurrency = result.hits.filter(h => h.classId === "offer_invented_currency");
+      expect(inventedCurrency.length).toBeGreaterThanOrEqual(1);
+      expect(inventedCurrency.some(h => h.matched.includes("18,000"))).toBe(true);
+    }
+  });
+
+  // Category 2: fabricated_anchor_price_range
+  it("catches anchor price range pattern (£X – £Y)", () => {
+    const offer: RawOfferFields = { ...cleanOffer, pricing: "Investment: £18,000–£24,000 typical retainer; today [INSERT_PRICE]." };
+    const result = validateOfferFabricationPatterns(offer, {});
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.hits.some(h => h.classId === "offer_invented_anchor_range")).toBe(true);
+  });
+
+  // Category 3: fabricated_bonus_value
+  it("catches fabricated bonus value pattern (£X value)", () => {
+    const offer: RawOfferFields = { ...cleanOffer, bonuses: "BONUS #1: The Strategy Playbook (£1,200 value) — Maps your 90 days." };
+    const result = validateOfferFabricationPatterns(offer, {});
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.hits.some(h => h.classId === "offer_invented_bonus_value")).toBe(true);
+  });
+
+  // Category 4: fabricated_total_value
+  it("catches fabricated total bonus value summation", () => {
+    const offer: RawOfferFields = { ...cleanOffer, bonuses: "Bonuses worth a combined total bonus value: £5,000 — yours free." };
+    const result = validateOfferFabricationPatterns(offer, {});
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.hits.some(h => h.classId === "offer_invented_total_value")).toBe(true);
+  });
+
+  // Category 5: fabricated_cohort_limit
+  it("catches invented cohort size", () => {
+    const offer: RawOfferFields = { ...cleanOffer, urgency: "Maximum of 8 leaders per cohort window." };
+    const result = validateOfferFabricationPatterns(offer, {});
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.hits.some(h => h.classId === "offer_invented_cohort_limit")).toBe(true);
+  });
+
+  // Category 6: fabricated_programme_duration
+  it("catches invented programme duration when no deliveryDuration supplied", () => {
+    const offer: RawOfferFields = { ...cleanOffer, pricing: "Investment: [INSERT_PRICE]. Includes a 12-week sprint with weekly calls." };
+    const result = validateOfferFabricationPatterns(offer, {});
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.hits.some(h => h.classId === "offer_invented_programme_duration")).toBe(true);
+  });
+
+  it("classifies supplied programme duration as USER-SUPPLIED (not flagged)", () => {
+    const offer: RawOfferFields = { ...cleanOffer, pricing: "Investment: [INSERT_PRICE]. Includes a 12-week sprint." };
+    const supplied: OfferSuppliedData = { deliveryDuration: "12 weeks" };
+    const result = validateOfferFabricationPatterns(offer, supplied);
+    expect(result.ok).toBe(true);
+  });
+
+  // Category 7: fabricated_guarantee_timeframe
+  it("catches invented guarantee timeframe when no guaranteeDuration supplied", () => {
+    const offer: RawOfferFields = { ...cleanOffer, guarantee: "Refund within 30 days, no questions." };
+    const result = validateOfferFabricationPatterns(offer, {});
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      const ids = result.hits.map(h => h.classId);
+      expect(ids).toContain("offer_invented_guarantee_timeframe");
+    }
+  });
+
+  // Category 8: fabricated_specific_refund_mechanic
+  it("catches invented refund mechanics ('pay nothing', 'full refund', 'money-back')", () => {
+    const offer1: RawOfferFields = { ...cleanOffer, guarantee: "If unsatisfied, you pay nothing." };
+    const r1 = validateOfferFabricationPatterns(offer1, {});
+    expect(r1.ok).toBe(false);
+    if (!r1.ok) expect(r1.hits.some(h => h.classId === "offer_invented_refund_mechanic")).toBe(true);
+
+    const offer2: RawOfferFields = { ...cleanOffer, guarantee: "Full refund if not delighted." };
+    const r2 = validateOfferFabricationPatterns(offer2, {});
+    expect(r2.ok).toBe(false);
+    if (!r2.ok) expect(r2.hits.some(h => h.classId === "offer_invented_refund_mechanic")).toBe(true);
+
+    const offer3: RawOfferFields = { ...cleanOffer, guarantee: "100% money-back assured." };
+    const r3 = validateOfferFabricationPatterns(offer3, {});
+    expect(r3.ok).toBe(false);
+    if (!r3.ok) expect(r3.hits.some(h => h.classId === "offer_invented_refund_mechanic")).toBe(true);
+  });
+
+  // Category 9: fabricated_next_cohort_date
+  it("catches invented cohort date framing", () => {
+    const offer: RawOfferFields = { ...cleanOffer, urgency: "The next cohort opens within the coming weeks." };
+    const result = validateOfferFabricationPatterns(offer, {});
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.hits.some(h => h.classId === "offer_invented_cohort_date")).toBe(true);
+  });
+
+  // Category 10: offer_banned_placeholder — the 11 banned/invented variants observed in red-team v1
+  it("catches the 11 banned/invented placeholder variants observed in red-team baseline v1", () => {
+    const bannedTokens = [
+      "[INSERT_AVAILABLE_SPOTS]",
+      "[INSERT_BOOKING_LINK]",
+      "[INSERT_CART_CLOSE]",
+      "[INSERT_LAUNCH_DATE]",
+      "[INSERT_NEXT_LAUNCH_DATE]",
+      "[INSERT_NEXT_OPEN_DATE]",
+      "[INSERT_REFUND_EMAIL]",
+      "[INSERT_REMAINING_SPOTS]",
+      "[INSERT_SPOTS_REMAINING]",
+      "[INSERT_START_DATE]",
+      "[INSERT_SUPPORT_EMAIL]",
+    ];
+    for (const tok of bannedTokens) {
+      const offer: RawOfferFields = { ...cleanOffer, urgency: `Closes at ${tok}.` };
+      const result = validateOfferFabricationPatterns(offer, {});
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.hits.some(h => h.classId === "offer_banned_placeholder" && h.matched === tok)).toBe(true);
+      }
+    }
+  });
+
+  it("does NOT flag canonical placeholders as banned", () => {
+    const canonical = getCanonicalOfferTokens();
+    expect(canonical.length).toBeGreaterThan(20); // sanity — allow-list is non-trivial
+    for (const tok of canonical) {
+      const offer: RawOfferFields = { ...cleanOffer, valueProposition: `Reference: ${tok}.` };
+      const result = validateOfferFabricationPatterns(offer, {});
+      const bannedHits = result.ok ? [] : result.hits.filter(h => h.classId === "offer_banned_placeholder");
+      expect(bannedHits.length).toBe(0);
+    }
+  });
+
+  it("failContext is non-empty + actionable when validator returns ok=false", () => {
+    const offer: RawOfferFields = { ...cleanOffer, pricing: "Investment: £8,500 — was £18,000." };
+    const result = validateOfferFabricationPatterns(offer, {});
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.failContext.length).toBeGreaterThan(50);
+      expect(result.failContext).toMatch(/canonical/i);
+      expect(result.failContext).toMatch(/placeholder/i);
+    }
+  });
+});
+
+describe("Phase D Phase 1 — offersGenerator wires validator into retry-with-failContext loop", () => {
+  // Structural assertions — verify the generator file invokes the validator
+  // and follows the retry-loop pattern.
+  it("imports validateOfferFabricationPatterns + getCanonicalOfferTokens", () => {
+    const src = readFileSync(join(__dirname, "offersGenerator.ts"), "utf8");
+    expect(src).toMatch(/validateOfferFabricationPatterns/);
+    expect(src).toMatch(/getCanonicalOfferTokens/);
+  });
+
+  it("contains the retry loop with attempt counter + max attempts constant", () => {
+    const src = readFileSync(join(__dirname, "offersGenerator.ts"), "utf8");
+    expect(src).toMatch(/OFFER_VALIDATOR_RETRY_MAX_ATTEMPTS/);
+    expect(src).toMatch(/for\s*\(\s*let\s+attempt\s*=\s*1[\s\S]+attempt\s*<=\s*OFFER_VALIDATOR_RETRY_MAX_ATTEMPTS/);
+  });
+
+  it("calls validateOfferFabricationPatterns inside the per-attempt loop", () => {
+    const src = readFileSync(join(__dirname, "offersGenerator.ts"), "utf8");
+    expect(src).toMatch(/validateOfferFabricationPatterns\(/);
+  });
+
+  it("injects validator failContext into retry attempts via PRIOR-ATTEMPT FABRICATION FEEDBACK", () => {
+    const src = readFileSync(join(__dirname, "offersGenerator.ts"), "utf8");
+    expect(src).toMatch(/PRIOR-ATTEMPT FABRICATION FEEDBACK/);
+  });
+
+  it("emits CANONICAL TOKEN ALLOW-LIST guidance in offer prompt", () => {
+    const src = readFileSync(join(__dirname, "offersGenerator.ts"), "utf8");
+    expect(src).toMatch(/CANONICAL TOKEN ALLOW-LIST/);
+  });
+
+  it("passes operator-supplied data (price, guarantee, duration, bonuses) to generateOfferAngle", () => {
+    const src = readFileSync(join(__dirname, "offersGenerator.ts"), "utf8");
+    // runOfferGeneration must construct an OfferSuppliedData object from service fields
+    expect(src).toMatch(/OfferSuppliedData/);
+    expect(src).toMatch(/offerSupplied/);
+    expect(src).toMatch(/service\.price/);
+    expect(src).toMatch(/service\.guaranteeType/);
+    expect(src).toMatch(/service\.guaranteeDuration/);
+    expect(src).toMatch(/service\.deliveryDuration/);
+    expect(src).toMatch(/service\.bonuses/);
+  });
+});

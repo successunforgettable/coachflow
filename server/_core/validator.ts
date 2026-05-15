@@ -628,3 +628,391 @@ export function validateLandingPageTestimonialsFabrication(testimonials: RawTest
   if (allHits.length === 0) return { ok: true };
   return { ok: false, hits: allHits, failContext: buildFabricationFailContext(allHits) };
 }
+
+// ─── Phase D — Offer fabrication validator (Phase 1: offer hardening) ────────
+//
+// Pattern catalog seeded from red-team baseline v1 (Scope β audit, 2026-05-13;
+// see docs/redteam-audit-baseline-v1.md for measured rates). Each pattern
+// pairs a regex with a cross-check against operator-supplied data — a match
+// is only flagged as fabrication when no supplied value matches it. This
+// is the architectural mirror of email+WhatsApp+LP fabrication validators
+// (Sprint B+1 / Phase 2) extended to offers, where the baseline measured
+// 100% fabrication rates on 4 categories + 80-93% on 4 more.
+//
+// The validator returns FabricationCheckResult identical to other validators
+// so the retry-with-failContext loop in offersGenerator can reuse the same
+// architecture as landingPageGenerator.
+//
+// Severity per docs/redteam-failure-taxonomy-v1.md §3:
+//   offer_invented_currency / bonus_value / total_value / refund_mechanic / anchor_range:
+//     SYSTEMIC + LAUNCH BLOCKER (target ≤1/15 post-fix)
+//   offer_invented_guarantee_timeframe / cohort_date / cohort_limit / programme_duration:
+//     RECURRING / SYSTEMIC + LAUNCH BLOCKER
+//   offer_banned_placeholder:
+//     SYSTEMIC + HIGH (target 0/15 — zero tolerance for banned variants)
+
+export type OfferFabricationClass =
+  | "offer_invented_currency"
+  | "offer_invented_anchor_range"
+  | "offer_invented_bonus_value"
+  | "offer_invented_total_value"
+  | "offer_invented_cohort_limit"
+  | "offer_invented_programme_duration"
+  | "offer_invented_guarantee_timeframe"
+  | "offer_invented_refund_mechanic"
+  | "offer_invented_cohort_date"
+  | "offer_banned_placeholder";
+
+/** Operator-supplied fields the validator cross-checks against to distinguish
+ * USER-SUPPLIED from MODEL-INVENTED. Mirrors the classification methodology
+ * in docs/redteam-failure-taxonomy-v1.md §1. */
+export interface OfferSuppliedData {
+  price?: string | null;                // service.price (decimal string)
+  guaranteeType?: string | null;        // service.guaranteeType
+  guaranteeDuration?: string | null;    // service.guaranteeDuration
+  deliveryDuration?: string | null;     // service.deliveryDuration
+  bonuses?: string | null;              // service.bonuses (free text)
+}
+
+/** Parsed offer angle fields the validator scans. Matches the OfferContent
+ * JSON schema produced by generateOfferAngle. */
+export interface RawOfferFields {
+  offerName?: string;
+  valueProposition?: string;
+  pricing?: string;
+  bonuses?: string;
+  guarantee?: string;
+  urgency?: string;
+  cta?: string;
+}
+
+export interface OfferFabricationHit {
+  classId: OfferFabricationClass;
+  description: string;
+  matched: string;
+  location: string; // e.g. "pricing" or "bonuses"
+}
+
+export type OfferFabricationResult =
+  | { ok: true }
+  | { ok: false; failContext: string; hits: OfferFabricationHit[] };
+
+/** Allow-list of canonical operator-fill placeholder tokens. Tokens emitted
+ * by the offer generator MUST be in this set; anything else flags as
+ * offer_banned_placeholder. List anchored against May 9 handover §8 canonical
+ * register + the offer-specific extensions added in Phase D Phase 1. */
+const CANONICAL_PLACEHOLDER_TOKENS = new Set<string>([
+  // Universal
+  "[INSERT_HOST_NAME]",
+  "[INSERT_OFFER_NAME]",
+  "[INSERT_OFFER_LINK]",
+  "[INSERT_PRICE]",
+  "[INSERT_DEADLINE]",
+  "[INSERT_BOOKING_URL]",
+  "[INSERT_BOOKING_TIME]",
+  "[INSERT_BOOKING_TIMEZONE]",
+  "[INSERT_BOOKING_DURATION]",
+  "[INSERT_EVENT_NAME]",
+  "[INSERT_EVENT_DATE]",
+  "[INSERT_EVENT_TIME]",
+  "[INSERT_EVENT_TIMEZONE]",
+  "[INSERT_EVENT_DURATION]",
+  "[INSERT_EVENT_VENUE]",
+  "[INSERT_EVENT_AGENDA]",
+  "[INSERT_LEAD_MAGNET_NAME]",
+  "[INSERT_PROGRAMME_DURATION]",
+  "[INSERT_GUARANTEE_TERMS]",
+  "[INSERT_COHORT_LIMIT]",
+  "[INSERT_COHORT_CLOSE_DATE]",
+  "[INSERT_PROGRAMME_START_DATE]",
+  "[INSERT_CONTACT_EMAIL]",
+  // Offer-specific (added in Phase D Phase 1)
+  "[INSERT_BONUS_1_NAME]", "[INSERT_BONUS_1_VALUE]",
+  "[INSERT_BONUS_2_NAME]", "[INSERT_BONUS_2_VALUE]",
+  "[INSERT_BONUS_3_NAME]", "[INSERT_BONUS_3_VALUE]",
+  "[INSERT_BONUS_4_NAME]", "[INSERT_BONUS_4_VALUE]",
+  "[INSERT_BONUS_5_NAME]", "[INSERT_BONUS_5_VALUE]",
+  "[INSERT_FIRST_RESULT_TIMEFRAME]",
+]);
+
+/** Get the canonical token allow-list as a frozen array. Exposed so the
+ * generator's prompt can list the exact tokens to the LLM. */
+export function getCanonicalOfferTokens(): readonly string[] {
+  return Array.from(CANONICAL_PLACEHOLDER_TOKENS);
+}
+
+// ─── Detection primitives ────────────────────────────────────────────────────
+
+/** Normalize a number string by stripping currency, commas, whitespace. */
+function normalizeNumeric(s: string): number | null {
+  const m = s.match(/\d[\d,]*(?:\.\d+)?/);
+  if (!m) return null;
+  const n = parseFloat(m[0].replace(/,/g, ""));
+  return Number.isFinite(n) ? n : null;
+}
+
+/** Detect invented currency amounts in body text. Excludes any amount that
+ * matches the operator-supplied price (USER-SUPPLIED). Anchor-range patterns
+ * (£X–£Y) handled separately by detectInventedAnchorRange. */
+function detectInventedCurrencyAmounts(
+  body: string,
+  suppliedPrice: number | null,
+): RegExpMatchArray[] {
+  const all = Array.from(body.matchAll(/[£$€¥]\s?\d[\d,]*(?:\.\d+)?/g));
+  if (suppliedPrice == null) return all; // any amount is invented
+  return all.filter(m => {
+    const n = normalizeNumeric(m[0]);
+    if (n == null) return true;
+    return Math.abs(n - suppliedPrice) >= 0.01; // not USER-SUPPLIED
+  });
+}
+
+/** Detect anchor price-range patterns (£X – £Y). Always invented unless both
+ * endpoints are operator-supplied — practically always invented since service
+ * schema has one price field, not a range. */
+function detectInventedAnchorRange(body: string): RegExpMatchArray[] {
+  return Array.from(body.matchAll(/[£$€¥]\s?\d[\d,]+\s?[-–—]\s?[£$€¥]?\s?\d[\d,]+/g));
+}
+
+/** Detect `(£X value)` bonus value patterns. */
+function detectInventedBonusValue(body: string, suppliedBonuses: string | null): RegExpMatchArray[] {
+  const matches = Array.from(body.matchAll(/\(\s?[£$€¥]?\s?\d[\d,]*\s?(?:value|worth)\s?\)/gi));
+  if (!suppliedBonuses) return matches;
+  // Cross-check: if the entire match substring appears in supplied bonuses, treat as user-supplied
+  const suppliedNorm = suppliedBonuses.toLowerCase().replace(/[\s,]/g, "");
+  return matches.filter(m => !suppliedNorm.includes(m[0].toLowerCase().replace(/[\s,]/g, "")));
+}
+
+/** Detect `total bonus value: £X` patterns. */
+function detectInventedTotalValue(body: string): RegExpMatchArray[] {
+  return Array.from(body.matchAll(/total\s+(?:bonus\s+)?value[:\s]+[£$€¥]?\s?\d[\d,]*/gi));
+}
+
+/** Detect `maximum of N places/seats/leaders` cohort limits. */
+function detectInventedCohortLimit(body: string): RegExpMatchArray[] {
+  return Array.from(body.matchAll(/\b(?:maximum of|only|just|limited to)\s+\d+\s+(?:places?|seats?|spots?|leaders?|members?|founders?|participants?|attendees?|clients?)\b/gi));
+}
+
+/** Normalize a duration-bearing string for comparison: lowercase, strip
+ * whitespace/hyphens, strip trailing 's' from common units. This lets us
+ * match "12-week" against operator-supplied "12 weeks" (which would otherwise
+ * miss due to plural + space differences). */
+function normalizeDuration(s: string): string {
+  return s.toLowerCase()
+    .replace(/[\s-]/g, "")
+    .replace(/(minute|hour|day|week|month)s\b/g, "$1");
+}
+
+/** Detect `N-week/day/month sprint/session/workshop/programme` patterns. */
+function detectInventedProgrammeDuration(body: string, suppliedDuration: string | null): RegExpMatchArray[] {
+  const matches = Array.from(body.matchAll(/\b\d+[-\s]?(?:minute|hour|day|week|month)\s+(?:keynote|session|workshop|programme|program|engagement|sprint|cohort|intensive|coaching|consulting)\b/gi));
+  if (!suppliedDuration) return matches;
+  const suppliedNorm = normalizeDuration(suppliedDuration);
+  return matches.filter(m => {
+    // Extract just the duration prefix (e.g., "12-week" from "12-week sprint")
+    const durMatch = m[0].match(/\d+[-\s]?(?:minute|hour|day|week|month)s?/i);
+    if (!durMatch) return true;
+    const durNorm = normalizeDuration(durMatch[0]);
+    // Bidirectional substring — handles "12week" vs "12weeks" via normalizeDuration's plural strip
+    return !(suppliedNorm.includes(durNorm) || durNorm.includes(suppliedNorm));
+  });
+}
+
+/** Detect `within N days/weeks/months` guarantee timeframe patterns. */
+function detectInventedGuaranteeTimeframe(body: string, suppliedDuration: string | null): RegExpMatchArray[] {
+  const matches = Array.from(body.matchAll(/\b(?:within|in)\s+\d+[-\s]?(?:days?|weeks?|months?|hours?)\b/gi));
+  if (!suppliedDuration) return matches;
+  const suppliedNorm = normalizeDuration(suppliedDuration);
+  return matches.filter(m => {
+    const durMatch = m[0].match(/\d+[-\s]?(?:day|week|month|hour)s?/i);
+    if (!durMatch) return true;
+    const durNorm = normalizeDuration(durMatch[0]);
+    return !(suppliedNorm.includes(durNorm) || durNorm.includes(suppliedNorm));
+  });
+}
+
+/** Detect `pay nothing` / `full refund` / `money-back` refund-mechanic patterns. */
+function detectInventedRefundMechanic(body: string, suppliedGuaranteeType: string | null): RegExpMatchArray[] {
+  const matches = Array.from(body.matchAll(/\b(?:pay nothing|full refund|money[\s-]back|no[\s-]questions[\s-]asked|risk[\s-]free)\b/gi));
+  if (!suppliedGuaranteeType) return matches;
+  const suppliedNorm = suppliedGuaranteeType.toLowerCase();
+  return matches.filter(m => !suppliedNorm.includes(m[0].toLowerCase()));
+}
+
+/** Detect `next cohort opens` / `enrolment closes` cohort-date patterns. */
+function detectInventedCohortDate(body: string): RegExpMatchArray[] {
+  return Array.from(body.matchAll(/\b(?:next cohort|next round|cohort opens?|enrolment closes?|enrollment closes?|next intake|registration closes?)\b/gi));
+}
+
+/** Detect placeholder tokens not in the canonical allow-list. */
+function detectBannedPlaceholders(body: string): RegExpMatchArray[] {
+  const matches = Array.from(body.matchAll(/\[INSERT_[A-Z_0-9]+\]/g));
+  return matches.filter(m => !CANONICAL_PLACEHOLDER_TOKENS.has(m[0]));
+}
+
+// ─── Per-field detection wrapper ─────────────────────────────────────────────
+
+/** Token-presence overrides — when these canonical placeholders are in the
+ * field body, the LLM is correctly using the operator-fill seam, not
+ * fabricating. Skip the matching pattern class for that field.
+ * Mirrors the `tokenOverrideAnyOf` pattern from the email/LP fabrication
+ * catalog (validator.ts L351). */
+// Field-level token-presence overrides — when these canonical placeholders
+// appear anywhere in the field body, the LLM is correctly using the operator-
+// fill seam for THAT class of fact. Skip the matching pattern for that field.
+//
+// Critical scoping: overrides apply ONLY to single-value pattern classes where
+// "field has the seam" → "field is using the seam correctly." For multi-value
+// patterns (currency amounts, anchor ranges, bonus values, total values) the
+// LLM may emit BOTH a seam AND an invented value in the same field — those
+// classes have NO override list and rely on per-match cross-checks instead.
+const OFFER_TOKEN_OVERRIDES: Record<OfferFabricationClass, string[]> = {
+  // Multi-value categories — no field-level override; per-match cross-check
+  // (against supplied price/bonuses) already filters USER-SUPPLIED matches.
+  offer_invented_currency:           [],
+  offer_invented_anchor_range:       [],
+  offer_invented_bonus_value:        [],
+  offer_invented_total_value:        [],
+  // Single-value categories — field-level override on the matching canonical
+  // token is the right granularity.
+  offer_invented_cohort_limit:       ["[INSERT_COHORT_LIMIT]"],
+  offer_invented_programme_duration: ["[INSERT_PROGRAMME_DURATION]"],
+  offer_invented_guarantee_timeframe:["[INSERT_GUARANTEE_TERMS]"],
+  offer_invented_refund_mechanic:    ["[INSERT_GUARANTEE_TERMS]"],
+  offer_invented_cohort_date:        ["[INSERT_COHORT_CLOSE_DATE]", "[INSERT_PROGRAMME_START_DATE]"],
+  // Banned variants are never overridden.
+  offer_banned_placeholder:          [],
+};
+
+function fieldHasOverrideToken(fieldValue: string, classId: OfferFabricationClass): boolean {
+  const overrides = OFFER_TOKEN_OVERRIDES[classId];
+  if (!overrides || overrides.length === 0) return false;
+  return overrides.some(tok => fieldValue.includes(tok));
+}
+
+function detectOfferFabricationsInField(
+  fieldName: string,
+  value: string,
+  supplied: OfferSuppliedData,
+  suppliedPriceNumeric: number | null,
+): OfferFabricationHit[] {
+  if (!value || typeof value !== "string") return [];
+  const hits: OfferFabricationHit[] = [];
+  const push = (classId: OfferFabricationClass, description: string, matched: string) => {
+    // Token-presence override — if the LLM emitted the canonical placeholder
+    // in the same field, it's using the operator-fill seam correctly.
+    if (fieldHasOverrideToken(value, classId)) return;
+    hits.push({ classId, description, matched: matched.substring(0, 200), location: fieldName });
+  };
+
+  // Currency amounts — applies to pricing + bonuses
+  if (fieldName === "pricing" || fieldName === "bonuses") {
+    for (const m of detectInventedCurrencyAmounts(value, suppliedPriceNumeric)) {
+      push("offer_invented_currency",
+        "Invented currency amount with no operator-supplied price. Emit `[INSERT_PRICE]` (and `[INSERT_BONUS_N_VALUE]` for bonuses) verbatim when no service.price is supplied.",
+        m[0]);
+    }
+  }
+  // Anchor ranges — applies to pricing
+  if (fieldName === "pricing") {
+    for (const m of detectInventedAnchorRange(value)) {
+      push("offer_invented_anchor_range",
+        "Invented anchor price range. Anchor pricing must be operator-supplied; do not invent £X-£Y comparisons.",
+        m[0]);
+    }
+  }
+  // Bonus values
+  if (fieldName === "bonuses") {
+    for (const m of detectInventedBonusValue(value, supplied.bonuses ?? null)) {
+      push("offer_invented_bonus_value",
+        "Invented (£X value) bonus pricing. Each bonus must emit `[INSERT_BONUS_N_VALUE]` when no operator-supplied bonus is provided.",
+        m[0]);
+    }
+    for (const m of detectInventedTotalValue(value)) {
+      push("offer_invented_total_value",
+        "Invented total bonus value summation. Total bonus value is operator-supplied or not stated at all.",
+        m[0]);
+    }
+  }
+  // Cohort limits + dates — applies to urgency
+  if (fieldName === "urgency") {
+    for (const m of detectInventedCohortLimit(value)) {
+      push("offer_invented_cohort_limit",
+        "Invented cohort size. Emit `[INSERT_COHORT_LIMIT]` verbatim when no operator-supplied cohort size exists.",
+        m[0]);
+    }
+    for (const m of detectInventedCohortDate(value)) {
+      push("offer_invented_cohort_date",
+        "Invented cohort opening/closing date. Emit `[INSERT_COHORT_CLOSE_DATE]` or `[INSERT_PROGRAMME_START_DATE]` verbatim; do not invent timeframes.",
+        m[0]);
+    }
+  }
+  // Programme duration + guarantee timeframe + refund mechanic — applies to pricing + guarantee
+  if (fieldName === "pricing" || fieldName === "guarantee") {
+    for (const m of detectInventedProgrammeDuration(value, supplied.deliveryDuration ?? null)) {
+      push("offer_invented_programme_duration",
+        "Invented programme duration. Emit `[INSERT_PROGRAMME_DURATION]` verbatim when no operator-supplied service.deliveryDuration exists.",
+        m[0]);
+    }
+  }
+  if (fieldName === "guarantee") {
+    for (const m of detectInventedGuaranteeTimeframe(value, supplied.guaranteeDuration ?? null)) {
+      push("offer_invented_guarantee_timeframe",
+        "Invented guarantee timeframe. Emit `[INSERT_GUARANTEE_TERMS]` verbatim when no operator-supplied service.guaranteeDuration exists.",
+        m[0]);
+    }
+    for (const m of detectInventedRefundMechanic(value, supplied.guaranteeType ?? null)) {
+      push("offer_invented_refund_mechanic",
+        "Invented refund mechanic. Emit `[INSERT_GUARANTEE_TERMS]` verbatim when no operator-supplied service.guaranteeType exists.",
+        m[0]);
+    }
+  }
+  // Banned placeholders — applies to every field (never overridden)
+  for (const m of detectBannedPlaceholders(value)) {
+    hits.push({
+      classId: "offer_banned_placeholder",
+      description: `Non-canonical placeholder token "${m[0]}". Use only canonical tokens from the allow-list (e.g., [INSERT_PRICE], [INSERT_GUARANTEE_TERMS], [INSERT_COHORT_LIMIT]). See docs/redteam-failure-taxonomy-v1.md.`,
+      matched: m[0].substring(0, 200),
+      location: fieldName,
+    });
+  }
+  return hits;
+}
+
+// ─── Main validator function + failContext builder ───────────────────────────
+
+/** Build a retry failContext message from offer fabrication hits. */
+function buildOfferFailContext(hits: OfferFabricationHit[], maxHits = 5): string {
+  if (hits.length === 0) return "";
+  const top = hits.slice(0, maxHits);
+  const lines = top.map(h => `- ${h.location}: matched "${h.matched}" — ${h.description}`);
+  const more = hits.length > maxHits ? `\n(plus ${hits.length - maxHits} additional hit${hits.length - maxHits === 1 ? "" : "s"} not shown)` : "";
+  return `Your previous offer response contained fabricated content that must not appear in published copy:\n${lines.join("\n")}${more}\n\nRegenerate the offer with these specific fabricated values REPLACED by the canonical operator-fill placeholders listed in your prompt's CANONICAL TOKEN ALLOW-LIST section. Emit placeholders verbatim — operators fill them post-generation via the PlaceholderBanner UX. Never invent currency amounts, bonus values, cohort sizes, durations, or guarantee timeframes that the operator has not supplied. Never emit non-canonical [INSERT_X] variants.`;
+}
+
+/**
+ * Validate a parsed offer JSON object against the offer fabrication catalog.
+ * Cross-checks each pattern against operator-supplied data — flags only the
+ * MODEL-INVENTED subset, never USER-SUPPLIED matches.
+ *
+ * Returns ok=true if no fabrications detected; ok=false with hits + failContext
+ * otherwise. The failContext is shaped for prompt-injection on the next retry
+ * attempt of the retry-with-failContext loop in offersGenerator.
+ */
+export function validateOfferFabricationPatterns(
+  offer: RawOfferFields,
+  supplied: OfferSuppliedData,
+): OfferFabricationResult {
+  const suppliedPriceNumeric = supplied.price ? parseFloat(supplied.price) : null;
+  const allHits: OfferFabricationHit[] = [];
+
+  for (const field of ["offerName", "valueProposition", "pricing", "bonuses", "guarantee", "urgency", "cta"] as const) {
+    const value = offer[field];
+    if (typeof value === "string" && value.length > 0) {
+      allHits.push(...detectOfferFabricationsInField(field, value, supplied, suppliedPriceNumeric));
+    }
+  }
+
+  if (allHits.length === 0) return { ok: true };
+  return { ok: false, hits: allHits, failContext: buildOfferFailContext(allHits) };
+}

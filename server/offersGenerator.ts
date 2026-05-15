@@ -1,6 +1,12 @@
 import { invokeLLM } from "./_core/llm";
 import type { OfferContent } from "../drizzle/schema";
 import { BANNED_COPYWRITING_WORDS, META_COMPLIANCE_NOTES, NO_DATE_FABRICATION_RULE, truncateQuote } from "./_core/copywritingRules";
+import { validateOfferFabricationPatterns, getCanonicalOfferTokens, type OfferSuppliedData, type RawOfferFields } from "./_core/validator";
+
+// Phase D Phase 1 — offer hardening (red-team baseline v1 evidence-driven).
+// See docs/redteam-audit-baseline-v1.md for measured pre-fix rates +
+// docs/redteam-failure-taxonomy-v1.md for the pass criteria contracts.
+const OFFER_VALIDATOR_RETRY_MAX_ATTEMPTS = 3;
 
 // Angle-specific prompt modifiers for Offers (Industry standard)
 const ANGLE_PROMPTS = {
@@ -82,6 +88,7 @@ export async function generateOfferAngle(
   offerType: 'standard' | 'premium' | 'vip',
   socialProof: any,
   cascadeContext: string = "",
+  supplied: OfferSuppliedData = {},
 ): Promise<OfferContent> {
   const offerTypeInstructions = {
     standard: "Entry-level offer with core benefits, good value",
@@ -111,7 +118,69 @@ USAGE RULES:
 - Focus on outcome-based language and benefit claims only
 - Use transformation language WITHOUT specific names ("A client in this niche" instead of "John Smith")
 - DO NOT fabricate social proof of any kind`;
-  
+
+  // ─── Phase D Phase 1: canonical operator-fill token directive ──────────────
+  // Per docs/redteam-audit-baseline-v1.md, the pre-fix offer prompt produced
+  // 100% fabrication rate on pricing + bonuses + total value + placeholders;
+  // 80-93% on guarantees + cohort + anchor ranges. Root cause: the prompt
+  // explicitly INSTRUCTED the LLM to invent currency amounts ("each bonus
+  // must have a real name and specific £/$ value"). Phase 1 fix inverts the
+  // pattern: emit canonical operator-fill placeholders verbatim when the
+  // operator hasn't supplied the underlying field. Allow-list of canonical
+  // tokens is enforced post-generation by validateOfferFabricationPatterns.
+  const suppliedPriceLine = supplied.price
+    ? `- The operator HAS supplied a price: ${supplied.price}. Use this exact number in pricing. Do not invent additional anchor prices or alternative tiers.`
+    : `- The operator has NOT supplied a price. Emit the placeholder [INSERT_PRICE] verbatim wherever the price would appear. Do NOT invent a currency amount.`;
+  const suppliedGuaranteeLine = (supplied.guaranteeType || supplied.guaranteeDuration)
+    ? `- The operator HAS supplied guarantee terms: ${[supplied.guaranteeDuration, supplied.guaranteeType].filter(Boolean).join(", ")}. Use these terms verbatim in the guarantee section.`
+    : `- The operator has NOT supplied a guarantee. Emit the placeholder [INSERT_GUARANTEE_TERMS] verbatim in the guarantee section. Do NOT invent refund mechanics, timeframes, or "pay nothing" / "full refund" / "money-back" language.`;
+  const suppliedDurationLine = supplied.deliveryDuration
+    ? `- The operator HAS supplied a delivery duration: ${supplied.deliveryDuration}. Use this verbatim wherever programme duration is mentioned.`
+    : `- The operator has NOT supplied a delivery duration. Emit the placeholder [INSERT_PROGRAMME_DURATION] verbatim wherever programme duration would appear. Do NOT invent "N-minute session", "N-week sprint", or similar durations.`;
+  const suppliedBonusesLine = supplied.bonuses
+    ? `- The operator HAS supplied bonuses content. Reference it directly without inventing additional currency values.`
+    : `- The operator has NOT supplied bonuses. For each bonus, use [INSERT_BONUS_N_NAME] for the name and [INSERT_BONUS_N_VALUE] for the value (N=1, 2, 3, 4, 5). Do NOT invent "(£497 value)" / "(£1,200 value)" / etc. Do NOT invent a total bonus value summation.`;
+
+  const canonicalTokensList = getCanonicalOfferTokens().join(", ");
+
+  const operatorFillBlock = `
+CANONICAL TOKEN ALLOW-LIST — operator-fill seam:
+
+ZAP separates two layers:
+  1. The asset-generation layer (you, the LLM) — produces structure + copy
+  2. The operator-fill layer (the user) — fills in specific facts ZAP cannot know
+
+When the operator has not supplied a specific fact (price, guarantee terms,
+cohort size, programme duration, bonus values, etc.), you MUST emit one of
+the canonical operator-fill placeholder tokens listed below VERBATIM at the
+position where the fact would appear. The placeholders are surfaced to the
+operator in the UI for inline editing before publication.
+
+OPERATOR-SUPPLIED DATA FOR THIS GENERATION:
+${suppliedPriceLine}
+${suppliedGuaranteeLine}
+${suppliedDurationLine}
+${suppliedBonusesLine}
+- No fixture field exists for cohort size. Always emit [INSERT_COHORT_LIMIT] verbatim when cohort scarcity is mentioned. Never invent "8 leaders" / "maximum of 12 founders" / etc.
+- No fixture field exists for cohort dates. Always emit [INSERT_COHORT_CLOSE_DATE] or [INSERT_PROGRAMME_START_DATE] verbatim. Never invent "next cohort opens" / "enrolment closes" framing.
+- No fixture field exists for first-result timing. Emit [INSERT_FIRST_RESULT_TIMEFRAME] verbatim if naming a specific timeframe. Never invent "within 7 days" / "in the first 14 days".
+
+CANONICAL TOKENS (use ONLY these — never invent variants like [INSERT_LAUNCH_DATE], [INSERT_SPOTS_REMAINING], [INSERT_START_DATE], [INSERT_BOOKING_LINK], [INSERT_CART_CLOSE]):
+${canonicalTokensList}
+
+ABSOLUTE PROHIBITIONS — these are zero-tolerance fabrications that will trigger retry:
+- Inventing currency amounts when no price is supplied
+- Inventing anchor price ranges (£X – £Y)
+- Inventing bonus values (£N value)
+- Inventing a total bonus value summation
+- Inventing cohort sizes (maximum of N seats/leaders/places)
+- Inventing programme durations (N-week sprint, N-minute session)
+- Inventing guarantee timeframes (within N days)
+- Inventing refund mechanics (pay nothing, full refund, money-back) when no guarantee is supplied
+- Inventing next-cohort opening/closing dates
+- Emitting any [INSERT_X] token NOT in the canonical allow-list above
+`;
+
   const prompt = `
 You are an expert offer creator specializing in irresistible offers for coaches, speakers, and consultants.
 
@@ -126,25 +195,27 @@ ${ANGLE_PROMPTS[angle]}
 
 ${socialProofGuidance}
 
+${operatorFillBlock}
+
 LOSS AVERSION PRINCIPLE — apply throughout every section:
 The cost of NOT buying must feel greater than the cost of buying. At least one section must name the specific ongoing cost of the customer's current situation (time, money, missed opportunities, continued pain). Make saying no feel more expensive than saying yes.
 
-ANCHORING PRINCIPLE — apply to pricing and bonuses:
-- Establish a high anchor price before revealing the actual price
-- Every bonus must have a specific named dollar value (not "priceless" or "invaluable")
-- The total bonus value must be stated and must exceed the programme price
-- The actual price must be presented as a fraction of the total value
+ANCHORING PRINCIPLE — apply to pricing and bonuses (within the operator-fill constraints above):
+- If the operator has supplied a price, establish a high anchor price BEFORE revealing the actual price (but anchor must be operator-supplied or derived from supplied data — never invent a fabricated anchor)
+- Every bonus must have an operator-supplied dollar value OR a [INSERT_BONUS_N_VALUE] placeholder (never invent the £/$ amount)
+- The total bonus value, if stated, must come from operator-supplied data (never invent the summation)
+- The actual price (if supplied) must be presented as a fraction of the total value
 
 SPECIFICITY RULE — applies to every field:
-Every output must pass this test: could this offer have been written for a different coaching programme in a different niche? If yes, it is not specific enough — rewrite it until the answer is no. The offer must contain at least three niche-specific words or phrases — terms that only someone in this world would recognise.
+Every output must pass this test: could this offer have been written for a different coaching programme in a different niche? If yes, it is not specific enough — rewrite it until the answer is no. The offer must contain at least three niche-specific words or phrases — terms that only someone in this world would recognise. Specificity comes from NICHE-SPECIFIC LANGUAGE, never from invented currency amounts or durations.
 
 BONUS CREDIBILITY RULE:
-Every bonus must feel like something that took real effort to create — not a PDF that could be made in an afternoon. Name the format explicitly: recorded workshop, live group call, private community access, custom assessment, done-for-you template, annotated swipe file. Name the specific outcome of using that bonus — what will the buyer be able to do after using it that they could not do before? Never use "access to X" as the bonus description — name what X specifically gives them.
+Every bonus must feel like something that took real effort to create — not a PDF that could be made in an afternoon. Name the format explicitly: recorded workshop, live group call, private community access, custom assessment, done-for-you template, annotated swipe file. Name the specific outcome of using that bonus — what will the buyer be able to do after using it that they could not do before? Never use "access to X" as the bonus description — name what X specifically gives them. For bonus VALUES, use the operator-fill placeholders specified above.
 
 OUTCOME SPECIFICITY RULE:
-Replace any outcome that uses these words with a specific measurable alternative: results, transformation, success, growth, improvement, better, more, less. Every outcome must have a number, a timeframe, or a named situation. Not "better results" — "3 new clients in 60 days." Not "transformation" — "moving from £2,000/month to £8,000/month within a quarter."
+Replace any outcome that uses these words with a specific measurable alternative: results, transformation, success, growth, improvement, better, more, less. Every outcome must have a number, a timeframe, or a named situation — but the number, timeframe, or situation MUST come from operator-supplied data or be marked with a canonical token. Not "better results" — "3 new clients in 60 days" (if 60 days is operator-supplied), or "3 new clients in [INSERT_FIRST_RESULT_TIMEFRAME]" if not.
 
-GODFATHER OFFER RULE (for godfather angle): Make it impossible to say no. The offer must be structured so that refusing it feels irrational — more bonuses than they expect, a guarantee that removes all risk, and a price that feels like a fraction of the transformation value.
+GODFATHER OFFER RULE (for godfather angle): Make it impossible to say no. Structure so refusing it feels irrational — bonus stack (with canonical-token values when not supplied), a guarantee (with canonical-token terms when not supplied), and a price (operator-supplied or [INSERT_PRICE] placeholder).
 
 Generate a complete offer with 7 sections:
 
@@ -155,18 +226,18 @@ Generate a complete offer with 7 sections:
    State the specific functional outcome (number, timeframe, or named situation) the customer gets. Then immediately name what it costs them if they stay where they are. Not a feeling — a situation.
 
 3. **Pricing** (clear price with anchoring, 30-50 words)
-   State the anchor price first. Then reveal the actual price. Show the gap. Include the guarantee duration.
-   Example structure: "Normally [anchor price]. Today [actual price] — [what's included]. [Guarantee statement]."
+   Use operator-supplied price OR [INSERT_PRICE] placeholder verbatim. Do NOT invent a price or anchor range. Include the guarantee duration only if operator-supplied; otherwise reference the [INSERT_GUARANTEE_TERMS] placeholder.
 
-4. **Bonuses** (3-5 bonuses with specific dollar values, 150-200 words total)
-   Every bonus must: have a real name, a specific dollar value in £/$ (not "priceless"), and one sentence explaining exactly what it does for the customer. The total bonus value must exceed the programme price.
-   Example: "BONUS #1: [Specific Name] (£497 value) — [One sentence on what it does for the customer]"
+4. **Bonuses** (3-5 bonuses, 150-200 words total)
+   Every bonus must: have a real name (or [INSERT_BONUS_N_NAME] placeholder), the operator-supplied value or [INSERT_BONUS_N_VALUE] placeholder, and one sentence explaining exactly what it does for the customer.
+   Example with supplied value: "BONUS #1: The Strategy Playbook (£497 value) — Maps your next 90 days in actionable detail."
+   Example without supplied value: "BONUS #1: [INSERT_BONUS_1_NAME] ([INSERT_BONUS_1_VALUE]) — Maps your next 90 days in actionable detail."
 
 5. **Guarantee** (50-75 words, specific risk reversal)
-   Must include: exact duration (30-day, 60-day, etc.), the specific result guaranteed, the exact refund process (email us at X / no questions asked / etc.), and what they keep if they refund. Make keeping the money feel riskier than giving it back.
+   Use operator-supplied guarantee terms OR [INSERT_GUARANTEE_TERMS] placeholder verbatim. Do NOT invent "30-day refund", "pay nothing", "full refund", "money-back" mechanics.
 
 6. **Urgency/Scarcity** (30-50 words, angle-specific)
-   Name the specific mechanism of scarcity (cohort closes, limited spots, price increases). The urgency must match the angle rules above.
+   Use [INSERT_COHORT_LIMIT] for cohort sizes and [INSERT_COHORT_CLOSE_DATE] for closing dates. Never invent "8 leaders per cohort" / "next cohort opens".
 
 7. **Call to Action** (clear next step, 20-30 words)
    One clear action. Use angle-appropriate CTA language from the angle rules above.
@@ -174,54 +245,97 @@ Generate a complete offer with 7 sections:
 Return ONLY valid JSON with these exact keys: offerName, valueProposition, pricing, bonuses, guarantee, urgency, cta
 `;
 
-  const response = await invokeLLM({
-    messages: [
-      {
-        role: "system",
-        content:
-          `You are an expert offer creator specializing in irresistible, loss-aversion-driven offers for coaches, speakers, and consultants. You apply anchoring to make the price feel like a fraction of the value, and you make saying no feel more expensive than saying yes. You write specific outcomes and specific dollar values — never vague promises or unquantified benefits. Always respond with valid JSON.\n\n${META_COMPLIANCE_NOTES}\n\n${NO_DATE_FABRICATION_RULE}`,
-      },
-      { role: "user", content: cascadeContext + prompt },
-    ],
-    response_format: {
-      type: "json_schema",
-      json_schema: {
-        name: "offer_content",
-        strict: true,
-        schema: {
-          type: "object",
-          properties: {
-            offerName: { type: "string" },
-            valueProposition: { type: "string" },
-            pricing: { type: "string" },
-            bonuses: { type: "string" },
-            guarantee: { type: "string" },
-            urgency: { type: "string" },
-            cta: { type: "string" },
+  // ─── Phase D Phase 1: retry-with-failContext loop ──────────────────────────
+  // Mirrors the landingPageGenerator.ts pattern. Max 3 attempts; each retry
+  // injects validatorFailContext (from validateOfferFabricationPatterns) into
+  // the next prompt. On exhaust, persist best-effort with diagnostic log dump
+  // (same shape as LP exhaust path).
+  let validatorFailContext = "";
+  let lastParsed: OfferContent | null = null;
+
+  for (let attempt = 1; attempt <= OFFER_VALIDATOR_RETRY_MAX_ATTEMPTS; attempt++) {
+    const failContextInjection = validatorFailContext
+      ? `\n\nPRIOR-ATTEMPT FABRICATION FEEDBACK (you must address this):\n${validatorFailContext}\n\n`
+      : "";
+
+    const response = await invokeLLM({
+      messages: [
+        {
+          role: "system",
+          content:
+            `You are an expert offer creator specializing in irresistible, loss-aversion-driven offers for coaches, speakers, and consultants. You apply anchoring to make the price feel like a fraction of the value, and you make saying no feel more expensive than saying yes. You write specific outcomes — but you NEVER invent currency amounts, bonus values, cohort sizes, programme durations, or guarantee timeframes that the operator has not supplied. When such facts are unavailable, you emit the canonical operator-fill placeholder tokens listed in the user prompt verbatim. Always respond with valid JSON.\n\n${META_COMPLIANCE_NOTES}\n\n${NO_DATE_FABRICATION_RULE}`,
+        },
+        { role: "user", content: cascadeContext + failContextInjection + prompt },
+      ],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "offer_content",
+          strict: true,
+          schema: {
+            type: "object",
+            properties: {
+              offerName: { type: "string" },
+              valueProposition: { type: "string" },
+              pricing: { type: "string" },
+              bonuses: { type: "string" },
+              guarantee: { type: "string" },
+              urgency: { type: "string" },
+              cta: { type: "string" },
+            },
+            required: [
+              "offerName",
+              "valueProposition",
+              "pricing",
+              "bonuses",
+              "guarantee",
+              "urgency",
+              "cta",
+            ],
+            additionalProperties: false,
           },
-          required: [
-            "offerName",
-            "valueProposition",
-            "pricing",
-            "bonuses",
-            "guarantee",
-            "urgency",
-            "cta",
-          ],
-          additionalProperties: false,
         },
       },
-    },
-  });
+    });
 
-  const content = response.choices[0].message.content;
-  if (typeof content !== "string") {
-    throw new Error("Invalid response format from AI");
+    const content = response.choices[0].message.content;
+    if (typeof content !== "string") {
+      throw new Error("Invalid response format from AI");
+    }
+    const stripped = content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
+    const parsed = JSON.parse(stripped) as OfferContent;
+    lastParsed = parsed;
+
+    // Fabrication-pattern check against the canonical-token allow-list.
+    const fabResult = validateOfferFabricationPatterns(parsed as RawOfferFields, supplied);
+    if (fabResult.ok) {
+      return parsed;
+    }
+
+    if (attempt < OFFER_VALIDATOR_RETRY_MAX_ATTEMPTS) {
+      validatorFailContext = fabResult.failContext;
+      const hitCount = fabResult.hits.length;
+      const hitSummary = fabResult.hits.slice(0, 3).map(h => `${h.classId}@${h.location}`).join(",");
+      console.warn(`[offersGenerator] Offer fabrication check failed on attempt ${attempt}/${OFFER_VALIDATOR_RETRY_MAX_ATTEMPTS} (angle=${angle}, ${hitCount} hits, top=[${hitSummary}]). Retrying with fail-context.`);
+      continue;
+    }
+
+    // Exhaust path — best-effort return + diagnostic dump for forensic
+    // recovery (mirrors LP testimonial exhaust + C1.1 ad headlines exhaust
+    // patterns). Persist content so the user gets *something* rather than
+    // a hard generation failure; the PlaceholderBanner UX (Phase 3) will
+    // surface remaining fabricated fields to the operator for inline edit.
+    const hitClasses = fabResult.hits.map(h => h.classId).join(",");
+    console.warn(`[offersGenerator] Offer fabrication check exhausted retries on angle=${angle} (${fabResult.hits.length} hits remaining, classes=[${hitClasses}]); returning content as best-effort. Phase D Phase 1.`);
+    fabResult.hits.forEach((h, i) => {
+      if (i < 10) console.warn(`[offersGenerator]   hit ${i + 1}: ${h.classId} @ ${h.location} matched "${h.matched}"`);
+    });
+    return parsed;
   }
 
-  // Strip markdown code fences if the LLM wraps the JSON (e.g. ```json\n{...}\n```)
-  const stripped = content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
-  return JSON.parse(stripped) as OfferContent;
+  // Unreachable — loop returns or throws — but TS exhaustiveness:
+  if (!lastParsed) throw new Error("Offer generation failed: no response captured");
+  return lastParsed;
 }
 
 // Generate all 3 angles in parallel
@@ -233,15 +347,16 @@ export async function generateAllOfferAngles(
   offerType: 'standard' | 'premium' | 'vip',
   socialProof: any,
   cascadeContext: string = "",
+  supplied: OfferSuppliedData = {},
 ): Promise<{
   godfather: OfferContent;
   free: OfferContent;
   dollar: OfferContent;
 }> {
   const [godfather, free, dollar] = await Promise.all([
-    generateOfferAngle(productName, productDescription, targetCustomer, mainBenefit, 'godfather', offerType, socialProof, cascadeContext),
-    generateOfferAngle(productName, productDescription, targetCustomer, mainBenefit, 'free', offerType, socialProof, cascadeContext),
-    generateOfferAngle(productName, productDescription, targetCustomer, mainBenefit, 'dollar', offerType, socialProof, cascadeContext),
+    generateOfferAngle(productName, productDescription, targetCustomer, mainBenefit, 'godfather', offerType, socialProof, cascadeContext, supplied),
+    generateOfferAngle(productName, productDescription, targetCustomer, mainBenefit, 'free', offerType, socialProof, cascadeContext, supplied),
+    generateOfferAngle(productName, productDescription, targetCustomer, mainBenefit, 'dollar', offerType, socialProof, cascadeContext, supplied),
   ]);
 
   return { godfather, free, dollar };
@@ -361,6 +476,18 @@ export async function runOfferGeneration(input: {
     ? `${sotContext ? `${sotContext}\n\n` : ''}${service.targetCustomer || 'Target Customer'}${icpContext ? `\n\n${icpContext}` : ''}`
     : service.targetCustomer || 'Target Customer';
 
+  // Phase D Phase 1 — Operator-supplied facts for the offer fabrication
+  // validator's cross-check (USER-SUPPLIED vs MODEL-INVENTED classification).
+  // Anything not supplied here gets emitted as a canonical [INSERT_X] token
+  // by the generator and is enforced by validateOfferFabricationPatterns.
+  const offerSupplied: OfferSuppliedData = {
+    price: service.price ?? null,
+    guaranteeType: service.guaranteeType ?? null,
+    guaranteeDuration: service.guaranteeDuration ?? null,
+    deliveryDuration: service.deliveryDuration ?? null,
+    bonuses: service.bonuses ?? null,
+  };
+
   const allAngles = await generateAllOfferAngles(
     service.name,
     service.description || "",
@@ -369,6 +496,7 @@ export async function runOfferGeneration(input: {
     input.offerType,
     socialProof,
     cascadeContext,
+    offerSupplied,
   );
 
   const insertResult: any = await db.insert(offers).values({
