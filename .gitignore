@@ -33,6 +33,11 @@ Thumbs.db
 # Logs
 logs
 *.log
+# Exception: red-team forensic baselines need their stdout.log archived
+# alongside results.json + raw-outputs.jsonl + prompts.jsonl. The stdout.log
+# captures in-flight validator-firing log lines which are unique evidence
+# per audit run. See docs/redteam-failure-taxonomy-v1.md §5 governance rules.
+!tools/redteam-baseline/**/*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
