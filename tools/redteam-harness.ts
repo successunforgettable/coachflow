@@ -582,6 +582,69 @@ type FabricationFinding = {
   classification_reason: string;
 };
 
+// ─── METHODOLOGY GAPS — surfaced at v2 baseline lock, 2026-05-15 ─────────────
+//
+// The classifier below was the v1 implementation. It has two known
+// methodology gaps that AMPLIFIED apparent failure rates in v2 (post-fix)
+// audit runs once the generator started emitting canonical placeholders
+// routinely. The gaps are documented in
+// `docs/redteam-audit-baseline-v2.md §6` and reproduced here for any
+// future maintainer who runs the harness:
+//
+// GAP #1 — Token-override absent in audit classifier
+//   The validator at generation time applies a token-override rule: if a
+//   field contains the canonical placeholder corresponding to a
+//   fabrication category (e.g. [INSERT_COHORT_CLOSE_DATE] for cohort-date
+//   patterns), the validator suppresses that pattern's hit. The harness
+//   audit classifier (`classifyFinding` below) does NOT apply this rule.
+//
+//   For accurate post-Phase-1 measurements, the corrected logic should:
+//     - For each fabrication-category match, check whether the matching
+//       canonical token from `server/_core/validator.ts:OFFER_TOKEN_OVERRIDES`
+//       is present in the same field's text.
+//     - If yes, classify as UNCERTAIN or skip (validator already
+//       suppressed it at generation time).
+//   Affected categories: `fabricated_next_cohort_date`,
+//   `fabricated_guarantee_timeframe`, `fabricated_cohort_limit`,
+//   `fabricated_programme_duration`, `fabricated_specific_refund_mechanic`.
+//
+// GAP #2 — Full-operator-context cross-check absent
+//   The USER-SUPPLIED classification for `fabricated_pricing_currency_amount`
+//   cross-checks findings only against `service.price`. Operator-supplied
+//   content also lives in:
+//     - service.description
+//     - service.targetCustomer
+//     - service.mainBenefit
+//     - service.testimonial[1-3]Quote (currency amounts in real
+//       testimonials should classify USER-SUPPLIED, not MODEL-INVENTED)
+//     - ICP fields: pains, goals, objections, buyingTriggers, frustrations
+//
+//   For accurate post-Phase-1 measurements, the corrected logic should
+//   concatenate all of the above operator-supplied text into a context
+//   blob and cross-check currency findings against it (substring match
+//   on both raw and digit-normalized forms).
+//
+// GAP #3 — USER-SUPPLIED / MODEL-INVENTED / UNCERTAIN methodology
+//   The classification methodology should explicitly enumerate every
+//   operator-supplied source. The taxonomy doc
+//   (`docs/redteam-failure-taxonomy-v1.md §1`) defines this in principle;
+//   the implementation below didn't fully realize it. A future v2+
+//   classifier should treat the operator-supplied surface as:
+//     {service.* text columns + service.price numeric + service.testimonial[N]*
+//      + ICP.* text columns + sourceOfTruth.* if relevant}
+//   and apply a uniform "is this evidence sourced from supplied context"
+//   check before flagging.
+//
+// WHY NOT FIXED IN v2 BASELINE LOCK:
+//   v2 was a strict archival + documentation pass per user authorization.
+//   Changing the classifier would have broken cross-version comparability
+//   with v1's measurements (which used the original classifier). The fix
+//   should land in a separate sprint (suggested label: v2.1 or v3) which
+//   becomes the new methodology baseline for all future audits. At that
+//   point, v3 audit results are directly comparable to v2's
+//   "corrected" rates documented in docs/redteam-audit-baseline-v2.md §3,
+//   not to v2's raw rates.
+
 // Safeguard #3: classify each finding against the source fixture's supplied data
 function classifyFinding(
   testId: string,

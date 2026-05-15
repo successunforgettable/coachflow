@@ -4,6 +4,22 @@
 
 ---
 
+## ⚠ POST-AUDIT ADDENDUM (added 2026-05-15, after v2 baseline lock)
+
+The 12 fabrication rates measured in this document remain factually correct AS MEASURED BY THE V1 HARNESS CLASSIFIER. However, the v2 baseline lock surfaced two methodology gaps in that classifier that AMPLIFIED the apparent rates for certain categories:
+
+1. **Token-override absent in audit classifier**: the harness regex flagged phrases like `"Enrolment closes"` even when immediately followed by the canonical placeholder `[INSERT_COHORT_CLOSE_DATE]`. The validator (used at generation time) DOES apply token-override; the audit classifier did not. Affected categories: `fabricated_next_cohort_date`, `fabricated_guarantee_timeframe`, potentially `fabricated_cohort_limit`. **In the v1 pre-fix data, this had limited effect** because canonical tokens were rarely emitted by the unhardened generator. Post-Phase-1 (see `docs/redteam-audit-baseline-v2.md`), the gap became visible because the hardened generator emits canonical tokens routinely.
+
+2. **Full-operator-context cross-check absent**: the harness's USER-SUPPLIED classification cross-checked findings only against `service.price`. Operator-supplied content also lives in `service.description`, `service.targetCustomer`, `service.mainBenefit`, `service.testimonial[1-3]Quote`, ICP fields (`pains`, `goals`, etc.). Currency amounts appearing in those fields and quoted back by the LLM should classify USER-SUPPLIED, not MODEL-INVENTED. **In v1's measurement**, this likely had small effect because the unhardened generator rarely echoed operator context faithfully; effect amplifies in v2+.
+
+**What this addendum DOES change**: the qualitative interpretation of certain v1 numbers. For example, the v1 `fabricated_pricing_currency_amount` raw rate of 15/15 is correct AS MEASURED by the harness, but the proportion of those that represent TRUE fabrication vs. operator-context-echo is undermeasured.
+
+**What this addendum DOES NOT change**: the headline finding — offer generator was systemically unsafe pre-Phase-1. Even a 30% reduction in raw rates from methodology correction would leave 10+/15 in the SYSTEMIC band for at least 4 categories. The v1 verdict (warm beta blocked on offer generator) stands.
+
+**v1 baseline data below is preserved verbatim.** No retroactive edits. Future audits should reference v2 (`docs/redteam-audit-baseline-v2.md`) for the corrected-methodology measurement of the post-fix state.
+
+---
+
 ## 1. Audit Metadata
 
 | Field | Value |

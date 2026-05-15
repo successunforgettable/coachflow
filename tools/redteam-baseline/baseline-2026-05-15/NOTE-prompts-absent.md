@@ -1,0 +1,1 @@
+Note: prompts.jsonl is intentionally absent. The REDTEAM_PROMPT_LOG_FILE env hook was reverted in commit edf9afc as part of the Pre-Phase-1 governance lock — that env var no longer activates any logging behaviour. Future v3+ baselines can restore the hook if forensic prompt capture is needed again.
