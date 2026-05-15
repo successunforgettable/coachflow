@@ -1748,3 +1748,195 @@ describe("Phase D Sprint 2 — LP testimonial archetypal_name_with_location_deta
     }
   });
 });
+
+// ─── Phase D Sprint 3 — PlaceholderBanner UX + placeholderDetector ───────────
+// Unit tests for the pure detector function (importable + statically testable)
+// + structural tests for the React component + integration wiring.
+
+import { detectPlaceholders, detectPlaceholdersInText, summarizePlaceholders } from "../client/src/v2/lib/placeholderDetector";
+
+describe("Phase D Sprint 3 — detectPlaceholdersInText (pure)", () => {
+  it("empty string returns no matches", () => {
+    expect(detectPlaceholdersInText("")).toEqual([]);
+  });
+
+  it("text with no tokens returns no matches", () => {
+    expect(detectPlaceholdersInText("Plain copy with no placeholders.")).toEqual([]);
+  });
+
+  it("single token detected with count 1", () => {
+    const r = detectPlaceholdersInText("Investment: [INSERT_PRICE] today.");
+    expect(r).toEqual([{ token: "[INSERT_PRICE]", count: 1 }]);
+  });
+
+  it("multiple distinct tokens detected separately", () => {
+    const r = detectPlaceholdersInText("Pay [INSERT_PRICE] with [INSERT_GUARANTEE_TERMS].");
+    const tokens = r.map(x => x.token).sort();
+    expect(tokens).toEqual(["[INSERT_GUARANTEE_TERMS]", "[INSERT_PRICE]"]);
+  });
+
+  it("same token appearing multiple times has aggregated count", () => {
+    const r = detectPlaceholdersInText("[INSERT_PRICE] · [INSERT_PRICE] · [INSERT_PRICE]");
+    expect(r).toEqual([{ token: "[INSERT_PRICE]", count: 3 }]);
+  });
+
+  it("tokens with digits + underscores match (e.g. INSERT_BONUS_1_VALUE)", () => {
+    const r = detectPlaceholdersInText("Bonus 1 ([INSERT_BONUS_1_VALUE]) and bonus 2 ([INSERT_BONUS_2_VALUE])");
+    expect(r.length).toBe(2);
+    expect(r.some(x => x.token === "[INSERT_BONUS_1_VALUE]")).toBe(true);
+    expect(r.some(x => x.token === "[INSERT_BONUS_2_VALUE]")).toBe(true);
+  });
+
+  it("lowercase or malformed tokens NOT matched", () => {
+    expect(detectPlaceholdersInText("[insert_price]")).toEqual([]);
+    expect(detectPlaceholdersInText("INSERT_PRICE without brackets")).toEqual([]);
+    expect(detectPlaceholdersInText("[INSERT-PRICE]")).toEqual([]);
+  });
+});
+
+describe("Phase D Sprint 3 — detectPlaceholders (kit-level aggregator)", () => {
+  it("empty kit data returns total=0 + empty findings", () => {
+    const report = detectPlaceholders({});
+    expect(report.total).toBe(0);
+    expect(report.findings).toEqual([]);
+    expect(report.uniqueTokenCount).toBe(0);
+  });
+
+  it("kit with placeholders in offer + LP aggregates correctly", () => {
+    const report = detectPlaceholders({
+      offer: {
+        godfatherAngle: {
+          pricing: "Investment: [INSERT_PRICE]",
+          guarantee: "Protected by [INSERT_GUARANTEE_TERMS]",
+        },
+      },
+      lp: {
+        originalAngle: {
+          scarcityUrgency: "Closes [INSERT_COHORT_CLOSE_DATE]",
+        },
+      },
+    });
+    expect(report.total).toBe(3);
+    expect(report.uniqueTokens.sort()).toEqual([
+      "[INSERT_COHORT_CLOSE_DATE]",
+      "[INSERT_GUARANTEE_TERMS]",
+      "[INSERT_PRICE]",
+    ]);
+    expect(report.byAsset["Offer"]).toBe(2);
+    expect(report.byAsset["Landing Page"]).toBe(1);
+  });
+
+  it("clean kit (all real content, no placeholders) returns total=0", () => {
+    const report = detectPlaceholders({
+      offer: {
+        godfatherAngle: {
+          pricing: "Investment: £5,000",
+          guarantee: "30-day refund",
+        },
+      },
+      lp: {
+        originalAngle: {
+          mainHeadline: "Real Headline Without Placeholders",
+        },
+      },
+    });
+    expect(report.total).toBe(0);
+  });
+
+  it("kit with JSON-stringified inner blobs also scanned (defensive un-stringification)", () => {
+    const report = detectPlaceholders({
+      offer: {
+        godfatherAngle: JSON.stringify({ pricing: "[INSERT_PRICE]" }),
+      },
+    });
+    expect(report.total).toBe(1);
+  });
+
+  it("byToken aggregation correct across multiple assets", () => {
+    const report = detectPlaceholders({
+      offer: { godfatherAngle: { pricing: "[INSERT_PRICE] [INSERT_PRICE]" } },
+      email: { emails: [{ body: "[INSERT_PRICE]" }] },
+    });
+    expect(report.byToken["[INSERT_PRICE]"]).toBe(3);
+  });
+
+  it("summarizePlaceholders renders human-readable count", () => {
+    const report = detectPlaceholders({
+      offer: { godfatherAngle: { pricing: "[INSERT_PRICE]" } },
+      lp: { originalAngle: { scarcityUrgency: "[INSERT_COHORT_LIMIT]" } },
+    });
+    expect(summarizePlaceholders(report)).toBe("2 placeholders across 2 assets");
+  });
+
+  it("summarizePlaceholders returns empty string on clean kit", () => {
+    expect(summarizePlaceholders(detectPlaceholders({}))).toBe("");
+  });
+});
+
+describe("Phase D Sprint 3 — KitPlaceholderBanner component + integration", () => {
+  it("KitPlaceholderBanner component file exists with expected exports + compact mode", () => {
+    const src = readFileSync(
+      join(__dirname, "../client/src/v2/components/KitPlaceholderBanner.tsx"),
+      "utf8",
+    );
+    expect(src).toMatch(/export\s+default\s+function\s+KitPlaceholderBanner/);
+    // Compact mode for push modal embedding
+    expect(src).toMatch(/compact\??\s*[:=]/);
+    // Self-hide when report.total === 0
+    expect(src).toMatch(/report\.total\s*===\s*0/);
+    // Operator-fill explanation (warning, not error)
+    expect(src).toMatch(/needs your details/i);
+    // Review CTA when onReviewClick supplied
+    expect(src).toMatch(/Review\s*&\s*Complete/);
+  });
+
+  it("V2CampaignKit imports + renders KitPlaceholderBanner with placeholderReport", () => {
+    const src = readFileSync(
+      join(__dirname, "../client/src/v2/V2CampaignKit.tsx"),
+      "utf8",
+    );
+    expect(src).toMatch(/import\s+KitPlaceholderBanner\s+from/);
+    expect(src).toMatch(/import\s*\{\s*detectPlaceholders\s*\}\s*from/);
+    expect(src).toMatch(/<KitPlaceholderBanner\s+report=\{placeholderReport\}/);
+    expect(src).toMatch(/detectPlaceholders\(\{/);
+  });
+
+  it("V2CampaignKit AssetSection has data-section-key for scroll-to anchor", () => {
+    const src = readFileSync(
+      join(__dirname, "../client/src/v2/V2CampaignKit.tsx"),
+      "utf8",
+    );
+    expect(src).toMatch(/data-section-key=\{sectionKey\}/);
+  });
+
+  it("PushKitModal accepts placeholderReport prop + renders compact warning conditionally", () => {
+    const src = readFileSync(
+      join(__dirname, "../client/src/v2/PushKitModal.tsx"),
+      "utf8",
+    );
+    expect(src).toMatch(/placeholderReport\??\s*:\s*PlaceholderReport/);
+    expect(src).toMatch(/<KitPlaceholderBanner\s+report=\{placeholderReport\}\s+compact/);
+    // Warning only shows pre-push (suppressed in ResultsView)
+    expect(src).toMatch(/!results\s*&&\s*placeholderReport/);
+    // Review-on-kit-page back button
+    expect(src).toMatch(/Review on kit page/);
+  });
+
+  it("placeholderDetector handles deeply nested arrays + objects (kit cascade shape)", () => {
+    const report = detectPlaceholders({
+      email: {
+        emails: [
+          { subject: "Email 1", body: "Hello [INSERT_LEAD_MAGNET_NAME]" },
+          { subject: "Email 2", body: "Pay [INSERT_PRICE] to enrol" },
+        ],
+      },
+      adCreatives: [
+        { headline: "Plain headline" },
+        { headline: "Limited to [INSERT_COHORT_LIMIT]" },
+      ],
+    });
+    expect(report.total).toBe(3);
+    expect(report.byAsset["Email Sequence"]).toBe(2);
+    expect(report.byAsset["Ad Creatives"]).toBe(1);
+  });
+});

@@ -3,11 +3,13 @@
  * Route: /v2-dashboard/campaign-kit/:kitId
  * Shows all selected assets in one scrollable page with export actions.
  */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useLocation } from "wouter";
 import V2Layout from "./V2Layout";
 import ZappyMascot from "./ZappyMascot";
 import PushKitModal from "./PushKitModal";
+import KitPlaceholderBanner from "./components/KitPlaceholderBanner";
+import { detectPlaceholders } from "./lib/placeholderDetector";
 import { trpc } from "@/lib/trpc";
 import { downloadCampaignBrief } from "./lib/exportUtils";
 
@@ -168,9 +170,11 @@ function AssetSection({ sectionKey, label, step, selectedId, angle, navigate }: 
   const waQuery = trpc.whatsappSequences.get.useQuery({ id: selectedId! }, { enabled: sectionKey === "selectedWhatsAppSequenceId" && !!selectedId });
 
   const isEmpty = !selectedId;
+  // Phase D Sprint 3: data-section-key anchor for KitPlaceholderBanner's
+  // "Review & Complete" CTA scroll-to target. Inert otherwise.
 
   return (
-    <div style={{ marginBottom: "20px" }}>
+    <div data-section-key={sectionKey} style={{ marginBottom: "20px" }}>
       {/* Section label */}
       <p style={{
         fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)",
@@ -287,6 +291,12 @@ export default function V2CampaignKit() {
   const { data: briefAdCopy } = trpc.adCopy.get.useQuery({ id: kit?.selectedAdCopyId! }, { enabled: !!kit?.selectedAdCopyId });
   const { data: briefLP } = trpc.landingPages.get.useQuery({ id: kit?.selectedLandingPageId! }, { enabled: !!kit?.selectedLandingPageId });
   const { data: briefEmail } = trpc.emailSequences.get.useQuery({ id: kit?.selectedEmailSequenceId! }, { enabled: !!kit?.selectedEmailSequenceId });
+  // Phase D Sprint 3: additional queries needed for kit-level placeholder
+  // detection across ALL assets (the existing brief queries above were scoped
+  // to the campaign brief export feature). Loaded lazily — only enabled when
+  // the kit has a selection for the respective asset.
+  const { data: briefWa } = trpc.whatsappSequences.get.useQuery({ id: kit?.selectedWhatsAppSequenceId! }, { enabled: !!kit?.selectedWhatsAppSequenceId });
+  const { data: briefAdCreatives } = trpc.adCreatives.getBatch.useQuery({ batchId: kit?.selectedAdCreativeBatchId! }, { enabled: !!kit?.selectedAdCreativeBatchId });
 
   // B4: post-Auto-Mode greeting overlay. Shows once per kit when the user
   // arrives via /v2-dashboard/campaign-kit/<id>?from=auto-mode (the redirect
@@ -310,6 +320,23 @@ export default function V2CampaignKit() {
     }
     setShowOverlay(false);
   }
+
+  // Phase D Sprint 3: kit-level placeholder detection. Aggregates canonical
+  // operator-fill [INSERT_X] tokens across every loaded asset and produces a
+  // structured report consumed by KitPlaceholderBanner (kit page) and
+  // PushKitModal (compact warning). Memoized on the loaded brief data so the
+  // detector doesn't re-scan on unrelated re-renders.
+  const placeholderReport = useMemo(() => detectPlaceholders({
+    offer: briefOffer,
+    lp: briefLP,
+    email: briefEmail,
+    whatsapp: briefWa,
+    headlines: briefHeadline,
+    adCopy: briefAdCopy,
+    hvco: briefHvco,
+    heroMechanism: briefMech,
+    adCreatives: briefAdCreatives,
+  }), [briefOffer, briefLP, briefEmail, briefWa, briefHeadline, briefAdCopy, briefHvco, briefMech, briefAdCreatives]);
 
   // Phase C C3: Push to Meta + GHL — opens the unified PushKitModal.
   // Single source of truth for both the floating-action-bar button and the
@@ -601,6 +628,35 @@ export default function V2CampaignKit() {
           </p>
         </div>
 
+        {/* Phase D Sprint 3: kit-level placeholder banner. Self-hides when
+            placeholderReport.total === 0 (clean kit). When placeholders exist,
+            shows aggregate count + per-asset breakdown + "Review & Complete"
+            CTA that scrolls to the first affected asset section. */}
+        <KitPlaceholderBanner
+          report={placeholderReport}
+          onReviewClick={() => {
+            // Scroll to the asset card for the highest-count affected asset.
+            // Asset-key to SECTIONS.key mapping mirrors the detector's assetKey
+            // strings exactly; falls back to scrolling to first section if no
+            // match (shouldn't happen in practice).
+            const firstAsset = Object.keys(placeholderReport.byAsset)[0];
+            const keyMap: Record<string, string> = {
+              "Offer": "selectedOfferId",
+              "Hero Mechanism": "selectedMechanismId",
+              "Lead Magnet": "selectedHvcoId",
+              "Headlines": "selectedHeadlineId",
+              "Ad Copy": "selectedAdCopyId",
+              "Landing Page": "selectedLandingPageId",
+              "Email Sequence": "selectedEmailSequenceId",
+              "WhatsApp Sequence": "selectedWhatsAppSequenceId",
+              "Ad Creatives": "selectedAdCreativeBatchId",
+            };
+            const target = keyMap[firstAsset];
+            const el = target ? document.querySelector(`[data-section-key="${target}"]`) : null;
+            if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+          }}
+        />
+
         {/* Asset sections */}
         {SECTIONS.map(section => (
           <AssetSection
@@ -665,12 +721,24 @@ export default function V2CampaignKit() {
         </button>
       </div>
 
-      {/* Phase C C3: unified push modal — Meta + GHL, OAuth-at-click-time */}
+      {/* Phase C C3: unified push modal — Meta + GHL, OAuth-at-click-time.
+          Phase D Sprint 3: passes placeholderReport so the modal can render
+          a compact warning section if placeholders exist (kit page banner
+          carries the full UX; modal just nudges the user to review first). */}
       {showPushModal && kitId != null && (
         <PushKitModal
           kitId={kitId}
           kitName={kit.name || "Campaign"}
           onClose={() => setShowPushModal(false)}
+          placeholderReport={placeholderReport}
+          onReviewPlaceholdersFromModal={() => {
+            setShowPushModal(false);
+            // Allow modal close animation, then scroll to banner anchor.
+            requestAnimationFrame(() => {
+              const banner = document.querySelector('[aria-label="Placeholders need review"]');
+              if (banner) banner.scrollIntoView({ behavior: "smooth", block: "start" });
+            });
+          }}
         />
       )}
     </V2Layout>

@@ -34,11 +34,19 @@ import { useEffect, useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { openSnapshotApplyTab } from "./lib/ghlSnapshot";
+import KitPlaceholderBanner from "./components/KitPlaceholderBanner";
+import type { PlaceholderReport } from "./lib/placeholderDetector";
 
 type Props = {
   kitId: number;
   kitName: string;
   onClose: () => void;
+  /** Phase D Sprint 3 — kit-level placeholder report from V2CampaignKit.
+   * Optional (defaults to empty report) so existing call sites don't break. */
+  placeholderReport?: PlaceholderReport;
+  /** Phase D Sprint 3 — invoked by the modal's "Review on kit page" CTA when
+   * placeholders exist. Parent (V2CampaignKit) handles close + scroll-to-banner. */
+  onReviewPlaceholdersFromModal?: () => void;
 };
 
 const OBJECTIVES = [
@@ -132,7 +140,7 @@ function PillBadge({ tone, children }: { tone: "ok" | "warn" | "err"; children: 
   );
 }
 
-export default function PushKitModal({ kitId, kitName, onClose }: Props) {
+export default function PushKitModal({ kitId, kitName, onClose, placeholderReport, onReviewPlaceholdersFromModal }: Props) {
   // ─── Connection status (both platforms) ────────────────────────────────────
   const metaConn = trpc.meta.getConnectionStatus.useQuery();
   const ghlConn  = trpc.ghl.getConnectionStatus.useQuery();
@@ -375,6 +383,35 @@ export default function PushKitModal({ kitId, kitName, onClose }: Props) {
         }}>
           Pick one or both. Meta needs per-ad config; GHL pushes the whole kit in one shot.
         </p>
+
+        {/* Phase D Sprint 3: compact placeholder warning. Renders only when
+            parent passed a report containing placeholders. Suppressed in the
+            ResultsView (post-push state) — the warning is for pre-push
+            decision-making. The "Review on kit page" button invokes the
+            parent's onReviewPlaceholdersFromModal which closes the modal +
+            scrolls to the full banner. */}
+        {!results && placeholderReport && placeholderReport.total > 0 && (
+          <div>
+            <KitPlaceholderBanner report={placeholderReport} compact />
+            {onReviewPlaceholdersFromModal && (
+              <button
+                onClick={onReviewPlaceholdersFromModal}
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: 9999,
+                  border: "1px solid rgba(255, 91, 29, 0.35)",
+                  background: "transparent",
+                  color: "var(--v2-primary-btn, #FF5B1D)",
+                  fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)",
+                  fontWeight: 700,
+                  fontSize: 12,
+                  cursor: "pointer",
+                  marginBottom: 14,
+                }}
+              >← Review on kit page first</button>
+            )}
+          </div>
+        )}
 
         {results ? (
           <ResultsView
