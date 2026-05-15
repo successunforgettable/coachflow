@@ -1654,3 +1654,97 @@ describe("Phase D Phase 1 — offersGenerator wires validator into retry-with-fa
     expect(src).toMatch(/service\.bonuses/);
   });
 });
+
+// ─── Phase D Sprint 2 — LP testimonial archetypal-name detection ─────────────
+// Closes v2 baseline residual on lp_testimonial_archetypal_with_location.
+// Empirical anchors: fixture 01 produced 4 archetypal testimonials in v2 LP
+// despite the prompt's intent to use real names (operator supplied none).
+// The new validator catches the structural "A/An + Role" name pattern.
+
+import { validateLandingPageTestimonialsFabrication, type RawTestimonial } from "./_core/validator";
+
+describe("Phase D Sprint 2 — LP testimonial archetypal_name_with_location_detail", () => {
+  // Positive detection — exact v2 baseline slips from fixture 01
+  it("catches v2 baseline fixture 01 archetypal slips (all 4)", () => {
+    const v2Slips: RawTestimonial[] = [
+      { name: "A Head of Strategy at a FTSE 250 firm", quote: "I had done two rounds of presentation coaching before this." },
+      { name: "A VP of Finance preparing for an investor roadshow", quote: "My pattern was specific — I was fine in the main presentation." },
+      { name: "A Commercial Director at a professional services firm", quote: "I had received some version of 'needs more presence'." },
+      { name: "A Managing Director at a financial services firm", quote: "I had been doing more and more preparation." },
+    ];
+    const result = validateLandingPageTestimonialsFabrication(v2Slips);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      const archHits = result.hits.filter(h => h.classId === "archetypal_name_with_location_detail");
+      expect(archHits.length).toBe(4);
+      // Each hit should reference the name field by index
+      expect(archHits.map(h => h.location)).toEqual([
+        "testimonial[0].name", "testimonial[1].name", "testimonial[2].name", "testimonial[3].name",
+      ]);
+    }
+  });
+
+  // Positive detection — v1 kit-13 archetypal patterns
+  it("catches v1 kit-13 archetypal patterns", () => {
+    const v1Slips: RawTestimonial[] = [
+      { name: "A Finance Director at a professional services firm", quote: "test." },
+      { name: "An Engineering VP at a mid-sized technology company", quote: "test." },
+      { name: "A Head of Finance at a listed infrastructure business", quote: "test." },
+      { name: "A Chief Risk Officer at a financial services group", quote: "test." },
+    ];
+    const result = validateLandingPageTestimonialsFabrication(v1Slips);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      const archHits = result.hits.filter(h => h.classId === "archetypal_name_with_location_detail");
+      expect(archHits.length).toBe(4);
+    }
+  });
+
+  // Negative — real operator-supplied names from v2 fixtures must not flag
+  it("does NOT flag real operator-supplied names from v2 fixtures", () => {
+    const realNames: RawTestimonial[] = [
+      { name: "Maria Hernandez", quote: "Went from £8k months to £35k months." },
+      { name: "Tom Aldridge", quote: "Three months later our weekly leadership tension is structurally lower." },
+      { name: "David Chen", quote: "I had been stuck at £120k for two years." },
+      { name: "Anika Patel", quote: "The pricing rebuild added $1.4M." },
+      { name: "Anders Bjornsson", quote: "The positioning shift cut our sales cycle." },
+      { name: "Sarah Chen", quote: "We had tried two prior consultants." },
+      { name: "Priya Sharma", quote: "Raised my pricing 3x." },
+      { name: "Lin Wei", quote: "I was the bottleneck on every launch." },
+      { name: "Aiden O'Connor", quote: "I went from 60-hour weeks to 45." },
+      { name: "Rachel Park", quote: "By week 8 I had handed off the project." },
+    ];
+    const result = validateLandingPageTestimonialsFabrication(realNames);
+    // None of these should trigger the archetypal class
+    const archHits = result.ok ? [] : result.hits.filter(h => h.classId === "archetypal_name_with_location_detail");
+    expect(archHits.length).toBe(0);
+  });
+
+  // Negative — edge cases that should NOT trigger
+  it("does NOT flag edge cases (empty name, lowercase descriptor, no prefix)", () => {
+    const edge: RawTestimonial[] = [
+      { name: "", quote: "test." },                                    // empty
+      { name: "An angry customer", quote: "test." },                   // "angry" lowercase — no role match
+      { name: "Senior VP at Acme Corp", quote: "test." },              // no A/An prefix
+      { name: "Tom Smith, COO at Series B SaaS", quote: "test." },     // real first name first
+      { name: "A passionate learner", quote: "test." },                // no role title
+      { name: "An honest review", quote: "test." },                    // no role title
+    ];
+    const result = validateLandingPageTestimonialsFabrication(edge);
+    const archHits = result.ok ? [] : result.hits.filter(h => h.classId === "archetypal_name_with_location_detail");
+    expect(archHits.length).toBe(0);
+  });
+
+  // Failure context must include actionable corrective guidance
+  it("failContext includes corrective guidance referencing empty array OR real names", () => {
+    const v2Slips: RawTestimonial[] = [
+      { name: "A Head of Strategy at a FTSE 250 firm", quote: "test." },
+    ];
+    const result = validateLandingPageTestimonialsFabrication(v2Slips);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      // The failContext (built from hit.description) must convey the corrective action
+      expect(result.failContext).toMatch(/EMPTY testimonials array|operator-supplied real names/i);
+    }
+  });
+});

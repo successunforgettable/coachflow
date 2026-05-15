@@ -342,7 +342,8 @@ export type FabricationClass =
   | "invented_tenure"
   | "programme_duration_drift"
   | "named_research_source"
-  | "x_of_y_demographic";
+  | "x_of_y_demographic"
+  | "archetypal_name_with_location_detail";
 
 interface PatternDef {
   pattern: RegExp;
@@ -617,6 +618,47 @@ export interface RawTestimonial {
   location?: string;
 }
 
+// ─── Phase D Sprint 2 — archetypal_name_with_location_detail ─────────────────
+//
+// Closes the v2 baseline residual on LP testimonial fabrication (1/15 measured;
+// 4/15 visible in fixture 01 underlying data). All v1 + v2 archetypal slips
+// shared a structural identity: testimonial.name starts with "A" or "An",
+// followed by 0-3 capitalized modifier words, followed by a role-title noun.
+//
+// Examples from v1 (kit 13 LP) — caught:
+//   "A Finance Director at a professional services firm"
+//   "An Engineering VP at a mid-sized technology company"
+//   "A Head of Finance at a listed infrastructure business"
+//   "A Chief Risk Officer at a financial services group"
+//
+// Examples from v2 (fixture 01) — caught:
+//   "A Head of Strategy at a FTSE 250 firm"
+//   "A VP of Finance preparing for an investor roadshow"
+//   "A Commercial Director at a professional services firm"
+//   "A Managing Director at a financial services firm"
+//
+// Real operator-supplied names that MUST NOT trigger:
+//   "Maria Hernandez", "Tom Aldridge", "David Chen", "Anika Patel",
+//   "Anders Bjornsson", "Sarah Chen"  ← real surnames, no "A/An" prefix
+//
+// Why detection happens on the NAME field (not quote/headline): the existing
+// FABRICATION_PATTERNS catalog operates on quote/headline body text. The
+// archetypal signal lives in the NAME field — distinguishing fabricated
+// "A {Role} at {Org}" from real "Maria Hernandez" is the structural test.
+const ARCHETYPAL_NAME_PATTERN = /^(?:A|An)\s+(?:[A-Z][a-z]+(?:-[A-Z][a-z]+)?\s+){0,3}(?:Vice\s+President|VP|CEO|CTO|CFO|COO|CMO|CRO|CIO|CISO|CDO|President|Founder|Co-Founder|Owner|Director|Manager|Lead|Officer|Head|Chief|Partner|Engineer|Analyst|Architect|Designer|Consultant|Specialist|Advisor|Coach)\b/;
+
+function detectArchetypalTestimonialName(name: string, locationLabel: string): FabricationHit | null {
+  if (!name || typeof name !== "string") return null;
+  const m = name.match(ARCHETYPAL_NAME_PATTERN);
+  if (!m) return null;
+  return {
+    classId: "archetypal_name_with_location_detail",
+    description: "Archetypal testimonial name (form: \"A {Role} at {Org-type}\") indicating fabricated identity. CORRECTIVE ACTION: when no operator-supplied testimonials exist, emit an EMPTY testimonials array rather than fabricating role-based archetypes. Testimonial names must be real operator-supplied names (e.g., \"Maria Hernandez\", \"Tom Aldridge\") or omitted entirely. Do NOT use \"A {Role} at {Org}\" framing.",
+    matched: m[0],
+    location: locationLabel,
+  };
+}
+
 export function validateLandingPageTestimonialsFabrication(testimonials: RawTestimonial[]): FabricationCheckResult {
   if (!Array.isArray(testimonials)) return { ok: true };
   const allHits: FabricationHit[] = [];
@@ -624,6 +666,10 @@ export function validateLandingPageTestimonialsFabrication(testimonials: RawTest
     const t = testimonials[i];
     if (t.quote) allHits.push(...detectFabricationsInBody(t.quote, `testimonial[${i}].quote`));
     if (t.headline) allHits.push(...detectFabricationsInBody(t.headline, `testimonial[${i}].headline`));
+    // Phase D Sprint 2: name-field archetypal-identity detection. Empty
+    // names pass; only matches the structural "A {Role}" prefix shape.
+    const archHit = detectArchetypalTestimonialName(t.name || "", `testimonial[${i}].name`);
+    if (archHit) allHits.push(archHit);
   }
   if (allHits.length === 0) return { ok: true };
   return { ok: false, hits: allHits, failContext: buildFabricationFailContext(allHits) };
