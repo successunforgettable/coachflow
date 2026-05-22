@@ -11,8 +11,19 @@
 // + tRPC mutation wrappers in server/routers/emailSequences.ts).
 
 import { invokeLLM } from "./_core/llm";
-import { truncateQuote, NO_DATE_FABRICATION_RULE } from "./_core/copywritingRules";
-import { validateEmailSequenceShape, validateEmailFabricationPatterns } from "./_core/validator";
+import {
+  truncateQuote,
+  NO_DATE_FABRICATION_RULE,
+  // Phase E Sprint 2 — system-prompt symmetry vs LP generator (LB-E3 per
+  // docs/redteam-email-baseline-v1.md §10.1). LP injects all four of these
+  // rules; email injected only NO_DATE before. baseline-v1 surfaced the
+  // exact fabrication classes these rules suppress (research-shaped stats,
+  // credential inventions, Meta-compliance hazards) appearing in email body.
+  NO_CREDENTIAL_FABRICATION_RULE,
+  NO_RESEARCH_STATISTIC_FABRICATION_RULE,
+  META_COMPLIANCE_NOTES,
+} from "./_core/copywritingRules";
+import { validateEmailSequenceShape, validateEmailFabricationPatterns, type EmailSuppliedData } from "./_core/validator";
 import { getCascadeContext } from "./_core/cascadeContext";
 
 function stripMarkdownJson(content: string): string {
@@ -684,8 +695,15 @@ const EMAIL_RETRY_MAX_ATTEMPTS = 3;
 
 const EMAIL_SEQUENCE_SYSTEM_PROMPT =
   "You are an expert email marketer specializing in high-converting email sequences for coaches, speakers, and consultants. You apply the ONE EMAIL ONE JOB principle — every email has a single clear job and the entire email serves only that job. You write curiosity-driven, pattern-interrupt subject lines that are never descriptive. You write short sentences (max 15 words), short paragraphs (max 2 sentences), with line breaks between paragraphs. Every email ends with a mandatory PS that creates curiosity or urgency. Use Russell Brunson's Soap Opera Sequence framework. Always respond with valid JSON.\n\n" +
-  "CRITICAL OUTPUT FORMAT: The tool input's 'emails' field is an array of email objects. Each email object has the keys day, subject, previewText, body, cta, ps. Emit each email as a structured object directly — populate the array with objects, do not wrap them in any container.\n\n" +
-  NO_DATE_FABRICATION_RULE;
+  "CRITICAL OUTPUT FORMAT: The tool input's 'emails' field is an array of email objects. Each email object has the keys day, subject, previewText, body, cta, ps. Emit each email as a structured object directly — populate the array with objects, do not wrap them in any container. NEVER emit the emails field as a stringified array — emit a literal JSON array of objects.\n\n" +
+  // Phase E Sprint 2 (LB-E3): system-prompt symmetry vs LP generator. The
+  // baseline-v1 forensic confirmed the exact fabrication classes these
+  // rules suppress (named-research stats, invented tenure, refund mechanic,
+  // Meta-banned phrasing) appearing in email body across 14/15 fixtures.
+  NO_DATE_FABRICATION_RULE + "\n\n" +
+  NO_CREDENTIAL_FABRICATION_RULE + "\n\n" +
+  NO_RESEARCH_STATISTIC_FABRICATION_RULE + "\n\n" +
+  META_COMPLIANCE_NOTES;
 
 const EMAIL_SEQUENCE_RESPONSE_FORMAT = {
   type: "json_schema" as const,
@@ -727,7 +745,10 @@ interface RawEmail {
   ps?: string;
 }
 
-async function invokeEmailSequenceWithRetry(userPrompt: string): Promise<RawEmail[]> {
+async function invokeEmailSequenceWithRetry(
+  userPrompt: string,
+  supplied?: EmailSuppliedData,
+): Promise<RawEmail[]> {
   let lastFailureContext: string | null = null;
   // Validator Phase 1 (Sprint B+1 path d, 2026-05-11): post-generation
   // shape validation. Replaces the inline defensive un-stringify + array-
@@ -785,7 +806,7 @@ async function invokeEmailSequenceWithRetry(userPrompt: string): Promise<RawEmai
     // retry with fabrication fail-context. On retry exhaust, fabrication
     // is best-effort: log + return content anyway (kit completes, individual
     // fabrications may persist for user to swap via kit page Swap button).
-    const fabResult = validateEmailFabricationPatterns(shapeResult.emails);
+    const fabResult = validateEmailFabricationPatterns(shapeResult.emails, supplied);
     if (fabResult.ok) {
       return shapeResult.emails as RawEmail[];
     }
@@ -1044,7 +1065,23 @@ You MUST use these exact numbers and real names. Do not fabricate.`
       break;
   }
 
-  const rawEmails = await invokeEmailSequenceWithRetry(cascadeContext + prompt);
+  // Phase E Sprint 2 — build EmailSuppliedData for the email-specific
+  // fabrication catalog. Cross-checks operator-supplied facts to distinguish
+  // USER-SUPPLIED from MODEL-INVENTED at validation time. Mirrors the offer
+  // generator's OfferSuppliedData shape (server/offersGenerator.ts).
+  const supplied: EmailSuppliedData = {
+    price: service.price ?? null,
+    guaranteeType: service.guaranteeType ?? null,
+    guaranteeDuration: service.guaranteeDuration ?? null,
+    deliveryDuration: service.deliveryDuration ?? null,
+    bonuses: service.bonuses ?? null,
+    testimonialNames: [
+      service.testimonial1Name,
+      service.testimonial2Name,
+      service.testimonial3Name,
+    ],
+  };
+  const rawEmails = await invokeEmailSequenceWithRetry(cascadeContext + prompt, supplied);
   const sequenceData: { emails: any[] } = { emails: rawEmails };
 
   // Server-controlled delay metadata override (workstream commit 4c).

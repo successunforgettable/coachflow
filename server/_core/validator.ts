@@ -182,7 +182,71 @@ function tryUnstringifyEmails(raw: string): unknown[] | null {
     } catch { /* fall through */ }
   }
 
+  // Sub-case 3a (Phase E Sprint 2 — LB-E1 hardening, narrowly-scoped):
+  // When the array-as-string contains escape errors that defeat full-array
+  // JSON.parse (sub-case 1) and isn't Python-dict-shaped (sub-case 2), walk
+  // the string and extract each top-level {...} block via balanced-brace
+  // scanning + string-aware quote tracking. Parse each chunk individually.
+  // Robust against single-character escape errors that doomed sub-case 1
+  // on long sequences (launch=9 emails, nurture=7 emails — see
+  // docs/redteam-email-baseline-v1.md §2).
+  //
+  // SAFETY: the validator remains authoritative — extracted items still pass
+  // through the per-item shape check (lines 122–144 above), so any item
+  // missing day/subject/body still fails validation. This is recovery, not
+  // bypass.
+  const extracted = extractTopLevelObjectsFromArrayString(raw);
+  if (extracted !== null && extracted.length > 0) return extracted;
+
   return null;
+}
+
+/**
+ * Phase E Sprint 2 — brute-force top-level object extraction from a string
+ * that should have been a JSON array literal but failed full-array parsing.
+ *
+ * Walks the string tracking string-context (so quoted-content braces don't
+ * affect depth) and extracts each balanced `{...}` block at depth 0 (relative
+ * to outer brackets). Each chunk is parsed with JSON.parse; chunks that fail
+ * to parse are skipped (not the whole array).
+ *
+ * Returns the assembled array of recovered objects, or null if extraction
+ * found zero parseable objects. Used by tryUnstringifyEmails sub-case 3a.
+ */
+function extractTopLevelObjectsFromArrayString(raw: string): unknown[] | null {
+  const objects: unknown[] = [];
+  let depth = 0;
+  let start = -1;
+  let inString = false;
+  let escape = false;
+  for (let i = 0; i < raw.length; i++) {
+    const ch = raw[i];
+    if (escape) { escape = false; continue; }
+    if (ch === "\\") { escape = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === "{") {
+      if (depth === 0) start = i;
+      depth++;
+    } else if (ch === "}") {
+      depth--;
+      if (depth === 0 && start !== -1) {
+        const chunk = raw.slice(start, i + 1);
+        try {
+          const obj = JSON.parse(chunk);
+          if (obj && typeof obj === "object" && !Array.isArray(obj)) {
+            objects.push(obj);
+          }
+        } catch { /* skip unparseable chunk; try next */ }
+        start = -1;
+      } else if (depth < 0) {
+        // Malformed nesting — abort. Caller falls through to original
+        // unrecoverable failContext.
+        return null;
+      }
+    }
+  }
+  return objects.length > 0 ? objects : null;
 }
 
 // ─── Phase 2: WhatsApp sequence shape validator ────────────────────────────────
@@ -343,7 +407,22 @@ export type FabricationClass =
   | "programme_duration_drift"
   | "named_research_source"
   | "x_of_y_demographic"
-  | "archetypal_name_with_location_detail";
+  | "archetypal_name_with_location_detail"
+  // Phase E Sprint 2 — email catalog parity vs offer hardened generator
+  // (LB-E2 from docs/redteam-email-baseline-v1.md §10.1). These classes
+  // are emitted EXCLUSIVELY by validateEmailFabricationPatterns when an
+  // EmailSuppliedData is provided. WhatsApp + LP testimonial paths use
+  // only the catalog above; baseline-v1/v2 comparability preserved.
+  | "email_invented_currency"
+  | "email_invented_anchor_range"
+  | "email_invented_bonus_value"
+  | "email_invented_total_value"
+  | "email_invented_cohort_limit"
+  | "email_invented_programme_duration"
+  | "email_invented_guarantee_timeframe"
+  | "email_invented_refund_mechanic"
+  | "email_invented_cohort_date"
+  | "email_archetypal_in_body";
 
 interface PatternDef {
   pattern: RegExp;
@@ -493,15 +572,207 @@ function buildFabricationFailContext(hits: FabricationHit[], maxHits = 3): strin
   return `Your previous response contained fabricated content that must not appear in published copy:\n${lines.join("\n")}${more}\n\nRegenerate the response with these specific phrasings removed. Use role + situational anchor only for composite proofs. Do not invent biographical scaffolding, tenure, programme duration, or research-source attributions. Where you would have referenced a duration, use the [INSERT_PROGRAMME_DURATION] token verbatim.`;
 }
 
-/** Email-sequence fabrication check. Reads each email's body, subject, previewText, and ps for patterns. */
-export function validateEmailFabricationPatterns(emails: RawEmailFields[]): FabricationCheckResult {
+// ─── Phase E Sprint 2 — Email fabrication catalog parity (LB-E2) ────────────
+//
+// Mirrors the offer-side fabrication catalog architecture (line 700+) for the
+// email generator. Brings the email validator to catalog parity with the
+// hardened offer validator: pricing currency, anchor ranges, bonus values,
+// guarantee timeframe, refund mechanic, cohort dates, cohort limits,
+// programme duration, archetypal composite in body.
+//
+// Critical scoping:
+//   - These patterns fire ONLY via validateEmailFabricationPatterns when an
+//     EmailSuppliedData is provided. WhatsApp + LP testimonial paths continue
+//     to call the same function WITHOUT supplied data and therefore receive
+//     only the legacy FABRICATION_PATTERNS catalog (line 355+).
+//   - The detector primitives are the SAME functions the offer validator uses
+//     (detectInventedCurrencyAmounts, etc., line 800+). No duplication, exact
+//     regex parity, USER-SUPPLIED cross-check semantics preserved.
+
+/** Operator-supplied fields the email validator cross-checks against. Mirrors
+ * `OfferSuppliedData` (line 715) but with optional testimonial-name array for
+ * the archetypal-in-body cross-check. */
+export interface EmailSuppliedData {
+  price?: string | null;
+  guaranteeType?: string | null;
+  guaranteeDuration?: string | null;
+  deliveryDuration?: string | null;
+  bonuses?: string | null;
+  /** Real testimonial names from service.testimonial[1-3]Name — used to
+   * suppress archetypal-in-body hits when the matched phrase contains an
+   * operator-supplied real name (USER-SUPPLIED). */
+  testimonialNames?: (string | null | undefined)[];
+}
+
+const EMAIL_TOKEN_OVERRIDES: Record<string, string[]> = {
+  // Multi-value categories — no field-level override; per-match cross-check
+  // (against supplied.price/bonuses) filters USER-SUPPLIED matches per-match.
+  email_invented_currency:           [],
+  email_invented_anchor_range:       [],
+  email_invented_bonus_value:        [],
+  email_invented_total_value:        [],
+  // Single-value categories — field-level override on the matching canonical
+  // token is the right granularity. Email canonicals here include
+  // [INSERT_CART_CLOSE_DATE] + [INSERT_DEADLINE] in addition to offer's
+  // [INSERT_COHORT_CLOSE_DATE] — email scope covers launch + sales cart
+  // framing where the offer catalog doesn't.
+  email_invented_cohort_limit:       ["[INSERT_COHORT_LIMIT]"],
+  email_invented_programme_duration: ["[INSERT_PROGRAMME_DURATION]"],
+  email_invented_guarantee_timeframe:["[INSERT_GUARANTEE_TERMS]"],
+  email_invented_refund_mechanic:    ["[INSERT_GUARANTEE_TERMS]"],
+  email_invented_cohort_date:        ["[INSERT_COHORT_CLOSE_DATE]", "[INSERT_CART_CLOSE_DATE]", "[INSERT_DEADLINE]", "[INSERT_PROGRAMME_START_DATE]"],
+  email_archetypal_in_body:          [],
+};
+
+/** Archetypal-composite-in-body pattern: "A VP of Strategy at a professional
+ * services firm" / "A Founder at a fast-scaling SaaS company". Email-scoped
+ * port of Sprint 2 LP archetypal detector. Captures the role-prefix + "at" +
+ * descriptor envelope without requiring a structured name field. */
+const EMAIL_ARCHETYPAL_BODY_PATTERN = /\b(?:A|An)\s+(?:Senior|Chief|Head|Director|VP|CEO|CTO|CFO|COO|Founder|Owner|Manager|Lead|Partner|Principal|Executive|Strategist)(?:\s+(?:of|for))?(?:\s+[A-Za-z][A-Za-z\s]*?)?\s+at\s+(?:a|an|the)\s+[A-Za-z][^.!?\n]{2,80}/g;
+
+function fieldHasEmailOverrideToken(fieldValue: string, classId: string): boolean {
+  const overrides = EMAIL_TOKEN_OVERRIDES[classId];
+  if (!overrides || overrides.length === 0) return false;
+  return overrides.some(tok => fieldValue.includes(tok));
+}
+
+function detectEmailFabricationsInField(
+  fieldName: string,
+  value: string,
+  supplied: EmailSuppliedData,
+  suppliedPriceNumeric: number | null,
+): FabricationHit[] {
+  if (!value || typeof value !== "string") return [];
+  const hits: FabricationHit[] = [];
+  const push = (classId: FabricationClass, description: string, matched: string) => {
+    if (fieldHasEmailOverrideToken(value, classId)) return;
+    hits.push({ classId, description, matched: matched.substring(0, 200), location: fieldName });
+  };
+
+  // Currency amounts — applies to body / subject / previewText / ps.
+  // CTA intentionally NOT scanned: baseline-v1 forensic (docs/redteam-email-
+  // baseline-v1.md §5.3) confirmed 0/15 MODEL-INVENTED CTA URLs — CTAs are
+  // operator-fill via canonical tokens [INSERT_OFFER_LINK]/[INSERT_BOOKING_URL]
+  // and scanning them produces no signal at material cost.
+  for (const m of detectInventedCurrencyAmounts(value, suppliedPriceNumeric)) {
+    push("email_invented_currency",
+      "Invented currency amount with no operator-supplied price. Emit `[INSERT_PRICE]` verbatim when no service.price is supplied; use `[INSERT_BONUS_VALUE]` for launch bonuses.",
+      m[0]);
+  }
+  for (const m of detectInventedAnchorRange(value)) {
+    push("email_invented_anchor_range",
+      "Invented anchor price range. Email anchor pricing must be operator-supplied; do not invent £X-£Y comparisons.",
+      m[0]);
+  }
+  for (const m of detectInventedBonusValue(value, supplied.bonuses ?? null)) {
+    push("email_invented_bonus_value",
+      "Invented (£X value) bonus value. Each launch bonus must emit `[INSERT_BONUS_VALUE]` when no operator-supplied bonus is provided.",
+      m[0]);
+  }
+  for (const m of detectInventedTotalValue(value)) {
+    push("email_invented_total_value",
+      "Invented total bonus value summation. Do not emit 'total value: £X' framings without operator-supplied bonuses.",
+      m[0]);
+  }
+  for (const m of detectInventedCohortLimit(value)) {
+    push("email_invented_cohort_limit",
+      "Invented cohort size. Emit `[INSERT_COHORT_LIMIT]` verbatim when no operator-supplied cohort size exists.",
+      m[0]);
+  }
+  for (const m of detectInventedCohortDate(value)) {
+    push("email_invented_cohort_date",
+      "Invented cohort opening/closing date. Emit `[INSERT_COHORT_CLOSE_DATE]`, `[INSERT_CART_CLOSE_DATE]`, or `[INSERT_DEADLINE]` verbatim.",
+      m[0]);
+  }
+  for (const m of detectInventedProgrammeDuration(value, supplied.deliveryDuration ?? null)) {
+    push("email_invented_programme_duration",
+      "Invented programme duration. Emit `[INSERT_PROGRAMME_DURATION]` verbatim when no operator-supplied service.deliveryDuration exists.",
+      m[0]);
+  }
+  for (const m of detectInventedGuaranteeTimeframe(value, supplied.guaranteeDuration ?? null)) {
+    push("email_invented_guarantee_timeframe",
+      "Invented guarantee timeframe. Emit `[INSERT_GUARANTEE_TERMS]` verbatim when no operator-supplied service.guaranteeDuration exists.",
+      m[0]);
+  }
+  for (const m of detectInventedRefundMechanic(value, supplied.guaranteeType ?? null)) {
+    push("email_invented_refund_mechanic",
+      "Invented refund mechanic phrasing (e.g. 'money-back', 'pay nothing', 'risk-free'). Emit `[INSERT_GUARANTEE_TERMS]` verbatim when no operator-supplied guarantee type exists.",
+      m[0]);
+  }
+
+  // Archetypal-composite-in-body — Phase E Sprint 2 LB-E4 port of LP Sprint 2
+  // archetypal detector to email content. Captures "A [TITLE] at [a/an/the]
+  // [DESCRIPTOR]" envelope inside narrative proof / case-study blocks.
+  for (const m of Array.from(value.matchAll(EMAIL_ARCHETYPAL_BODY_PATTERN))) {
+    const matchedNorm = m[0].toLowerCase();
+    const realNames = (supplied.testimonialNames ?? []).filter((n): n is string => typeof n === "string" && n.trim().length > 0);
+    // USER-SUPPLIED cross-check: if the matched phrase contains an operator-
+    // supplied real testimonial name, the archetypal envelope is anchored on
+    // a real person and is NOT fabrication.
+    if (realNames.some(n => matchedNorm.includes(n.toLowerCase()))) continue;
+    push("email_archetypal_in_body",
+      "Archetypal composite-with-location envelope ('A VP of X at a Y firm') in email narrative. Anonymised composites must anchor on role + situation only; do not invent location/firm descriptors. Use only operator-supplied real testimonial names.",
+      m[0]);
+  }
+
+  return hits;
+}
+
+/**
+ * Email-sequence fabrication check. Reads each email's body, subject,
+ * previewText, and ps for patterns.
+ *
+ * Phase E Sprint 2 extension: when `supplied` is provided, additionally runs
+ * the email-specific catalog (pricing / cohort / guarantee / refund /
+ * programme-duration / archetypal-in-body) with operator-context cross-check.
+ * Backward-compatible: calls without `supplied` get only the legacy shared
+ * FABRICATION_PATTERNS catalog (preserves WhatsApp + LP comparability).
+ */
+export function validateEmailFabricationPatterns(
+  emails: RawEmailFields[],
+  supplied?: EmailSuppliedData,
+): FabricationCheckResult {
   const allHits: FabricationHit[] = [];
+  const suppliedPriceNumeric = supplied?.price ? parseFloat(supplied.price) : null;
+
   for (let i = 0; i < emails.length; i++) {
     const e = emails[i];
-    if (e.body) allHits.push(...detectFabricationsInBody(e.body, `email[${i}].body`));
-    if (e.subject) allHits.push(...detectFabricationsInBody(e.subject, `email[${i}].subject`));
-    if (e.previewText) allHits.push(...detectFabricationsInBody(e.previewText, `email[${i}].previewText`));
-    if (e.ps) allHits.push(...detectFabricationsInBody(e.ps, `email[${i}].ps`));
+    // Legacy shared catalog — family / partner / employer / tenure / research
+    // / demographics / archetypal (testimonial-shaped). Always runs.
+    const legacyHits: FabricationHit[] = [];
+    if (e.body) legacyHits.push(...detectFabricationsInBody(e.body, `email[${i}].body`));
+    if (e.subject) legacyHits.push(...detectFabricationsInBody(e.subject, `email[${i}].subject`));
+    if (e.previewText) legacyHits.push(...detectFabricationsInBody(e.previewText, `email[${i}].previewText`));
+    if (e.ps) legacyHits.push(...detectFabricationsInBody(e.ps, `email[${i}].ps`));
+
+    // Phase E Sprint 2 — apply operator-context cross-check to the legacy
+    // catalog's `programme_duration_drift` hits when email supplies a
+    // deliveryDuration. Legacy catalog itself does not cross-check (correct
+    // for WhatsApp + LP which don't pass supplied data); but for email, if
+    // the operator-supplied duration matches the matched duration, treat as
+    // USER-SUPPLIED. Scoped to email validator only — legacy catalog
+    // behaviour for WhatsApp + LP unchanged.
+    const filteredLegacyHits = supplied?.deliveryDuration
+      ? legacyHits.filter(h => {
+          if (h.classId !== "programme_duration_drift") return true;
+          const dur = h.matched.match(/\d+[-\s]?(?:minute|hour|day|week|month)s?/i);
+          if (!dur) return true;
+          const durNorm = dur[0].toLowerCase().replace(/[\s-]/g, "").replace(/(minute|hour|day|week|month)s\b/g, "$1");
+          const sup = supplied.deliveryDuration!.toLowerCase().replace(/[\s,]/g, "").replace(/(minute|hour|day|week|month)s\b/g, "$1");
+          return !(sup.includes(durNorm) || durNorm.includes(sup));
+        })
+      : legacyHits;
+    allHits.push(...filteredLegacyHits);
+
+    // Phase E Sprint 2 email catalog — pricing / cohort / guarantee / etc.
+    // Only when operator-supplied data is provided (production call site
+    // always provides it; some legacy tests intentionally do not).
+    if (supplied) {
+      if (e.body)        allHits.push(...detectEmailFabricationsInField(`email[${i}].body`,        e.body,        supplied, suppliedPriceNumeric));
+      if (e.subject)     allHits.push(...detectEmailFabricationsInField(`email[${i}].subject`,     e.subject,     supplied, suppliedPriceNumeric));
+      if (e.previewText) allHits.push(...detectEmailFabricationsInField(`email[${i}].previewText`, e.previewText, supplied, suppliedPriceNumeric));
+      if (e.ps)          allHits.push(...detectEmailFabricationsInField(`email[${i}].ps`,          e.ps,          supplied, suppliedPriceNumeric));
+    }
   }
   if (allHits.length === 0) return { ok: true };
   return { ok: false, hits: allHits, failContext: buildFabricationFailContext(allHits) };

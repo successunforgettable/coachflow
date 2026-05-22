@@ -1940,3 +1940,290 @@ describe("Phase D Sprint 3 — KitPlaceholderBanner component + integration", ()
     expect(report.byAsset["Ad Creatives"]).toBe(1);
   });
 });
+
+// ─── Phase E Sprint 2 — Email generator hardening ────────────────────────────
+//
+// Closes the 4 launch blockers from docs/redteam-email-baseline-v1.md §10.1:
+//   LB-E1 — shape-validator exhaust on long sequences (sub-case 3a recovery)
+//   LB-E2 — fabrication catalog parity vs offer generator (9 new classes)
+//   LB-E3 — system-prompt symmetry vs LP (3 rules injected)
+//   LB-E4 — archetypal-name-with-location applied to email body
+
+import {
+  validateEmailFabricationPatterns as validateEmailFabricationPatternsV2,
+  validateEmailSequenceShape as validateEmailSequenceShapeV2,
+  type EmailSuppliedData as EmailSuppliedDataV2,
+} from "./_core/validator";
+
+describe("Phase E Sprint 2 — Email validator catalog parity (LB-E2)", () => {
+  // Helper to build a one-email kit with one fabrication body for testing.
+  const oneEmail = (body: string, extra: Record<string, string> = {}) => [{
+    day: 1, subject: "S", previewText: "P", body, cta: "C", ps: "X", ...extra,
+  }];
+  const supplied: EmailSuppliedDataV2 = {
+    price: null, guaranteeType: null, guaranteeDuration: null,
+    deliveryDuration: null, bonuses: null, testimonialNames: [],
+  };
+
+  it("catches email_invented_currency when no operator price supplied", () => {
+    const result = validateEmailFabricationPatternsV2(oneEmail("Pay only £497 today"), supplied);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.hits.some(h => h.classId === "email_invented_currency")).toBe(true);
+  });
+
+  it("does NOT flag currency when token-override present ([INSERT_PRICE])", () => {
+    const result = validateEmailFabricationPatternsV2(oneEmail("Pay only [INSERT_PRICE] today"), supplied);
+    expect(result.ok).toBe(true);
+  });
+
+  it("classifies user-supplied currency as USER-SUPPLIED (skipped)", () => {
+    const result = validateEmailFabricationPatternsV2(
+      oneEmail("Invest just £5,000 in your future"),
+      { ...supplied, price: "5000" },
+    );
+    expect(result.ok).toBe(true);
+  });
+
+  it("catches email_invented_anchor_range (£X–£Y patterns)", () => {
+    const result = validateEmailFabricationPatternsV2(oneEmail("Normally £5,000-£7,500. Today £1,997."), supplied);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.hits.some(h => h.classId === "email_invented_anchor_range")).toBe(true);
+  });
+
+  it("catches email_invented_bonus_value '(£X value)' framings", () => {
+    const result = validateEmailFabricationPatternsV2(oneEmail("Plus the Diagnostic Audit (£497 value)"), supplied);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.hits.some(h => h.classId === "email_invented_bonus_value")).toBe(true);
+  });
+
+  it("catches email_invented_cohort_limit", () => {
+    // Detector requires "<keyword> <digits> <noun>" with noun in the
+    // alternation (places/seats/spots/leaders/members/founders/etc).
+    const result = validateEmailFabricationPatternsV2(oneEmail("Limited to 12 members in this cohort"), supplied);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.hits.some(h => h.classId === "email_invented_cohort_limit")).toBe(true);
+  });
+
+  it("does NOT flag cohort limit when [INSERT_COHORT_LIMIT] present", () => {
+    const result = validateEmailFabricationPatternsV2(
+      oneEmail("Limited to [INSERT_COHORT_LIMIT] founding members"),
+      supplied,
+    );
+    expect(result.ok).toBe(true);
+  });
+
+  it("catches email_invented_cohort_date ('next cohort opens')", () => {
+    const result = validateEmailFabricationPatternsV2(oneEmail("The next cohort opens soon"), supplied);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.hits.some(h => h.classId === "email_invented_cohort_date")).toBe(true);
+  });
+
+  it("does NOT flag cohort date when [INSERT_CART_CLOSE_DATE] present", () => {
+    const result = validateEmailFabricationPatternsV2(
+      oneEmail("Cart closes on [INSERT_CART_CLOSE_DATE]. Enrolment closes then."),
+      supplied,
+    );
+    expect(result.ok).toBe(true);
+  });
+
+  it("catches email_invented_programme_duration ('12-week programme')", () => {
+    const result = validateEmailFabricationPatternsV2(oneEmail("Inside this 12-week programme, you will…"), supplied);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.hits.some(h => h.classId === "email_invented_programme_duration")).toBe(true);
+  });
+
+  it("classifies supplied programme duration as USER-SUPPLIED", () => {
+    const result = validateEmailFabricationPatternsV2(
+      oneEmail("Inside this 12-week programme, you will…"),
+      { ...supplied, deliveryDuration: "12 weeks" },
+    );
+    expect(result.ok).toBe(true);
+  });
+
+  it("catches email_invented_guarantee_timeframe ('within 30 days')", () => {
+    const result = validateEmailFabricationPatternsV2(oneEmail("Risk-free guarantee within 30 days"), supplied);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.hits.some(h => h.classId === "email_invented_guarantee_timeframe")).toBe(true);
+  });
+
+  it("catches email_invented_refund_mechanic ('full refund', 'money-back')", () => {
+    const result = validateEmailFabricationPatternsV2(oneEmail("Pay nothing if it doesn't work. Full refund, no questions asked."), supplied);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.hits.some(h => h.classId === "email_invented_refund_mechanic")).toBe(true);
+  });
+
+  it("does NOT flag refund mechanic when [INSERT_GUARANTEE_TERMS] present", () => {
+    const result = validateEmailFabricationPatternsV2(
+      oneEmail("Our guarantee: [INSERT_GUARANTEE_TERMS]. Full refund available."),
+      supplied,
+    );
+    expect(result.ok).toBe(true);
+  });
+
+  it("backward-compatible — call without supplied data runs only legacy catalog", () => {
+    // No supplied data → legacy FABRICATION_PATTERNS only. Pricing fabrication NOT caught.
+    const result = validateEmailFabricationPatternsV2(oneEmail("Pay only £497 today"));
+    expect(result.ok).toBe(true);
+  });
+
+  it("buildFailContext produces non-empty actionable message on fab hit", () => {
+    const result = validateEmailFabricationPatternsV2(oneEmail("Pay £497 today"), supplied);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.failContext.length).toBeGreaterThan(50);
+    expect(result.failContext).toContain("£497");
+  });
+});
+
+describe("Phase E Sprint 2 — Email archetypal-in-body detection (LB-E4)", () => {
+  const noNames: EmailSuppliedDataV2 = { testimonialNames: [] };
+  const oneEmailBody = (body: string) => [{ day: 1, subject: "S", previewText: "P", body, cta: "C", ps: "X" }];
+
+  it("catches 'A VP of Strategy at a professional services firm' composite", () => {
+    const result = validateEmailFabricationPatternsV2(
+      oneEmailBody("A VP of Strategy at a professional services firm came in with one specific problem."),
+      noNames,
+    );
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.hits.some(h => h.classId === "email_archetypal_in_body")).toBe(true);
+  });
+
+  it("catches 'A Founder at a fast-scaling SaaS company' composite", () => {
+    const result = validateEmailFabricationPatternsV2(
+      oneEmailBody("A Founder at a fast-scaling SaaS company told me her team was stuck."),
+      noNames,
+    );
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.hits.some(h => h.classId === "email_archetypal_in_body")).toBe(true);
+  });
+
+  it("does NOT flag operator-supplied real name in archetypal envelope", () => {
+    const result = validateEmailFabricationPatternsV2(
+      oneEmailBody("Sarah Chen, a Chief of Staff at a global consultancy, described it this way…"),
+      { testimonialNames: ["Sarah Chen", null, undefined] },
+    );
+    // The "at a global consultancy" envelope matches the regex, but the
+    // matched phrase contains "Sarah Chen" (a real operator-supplied name)
+    // and is therefore USER-SUPPLIED, not fabrication.
+    if (result.ok) return; // pass — exact USER-SUPPLIED suppression
+    expect(result.hits.filter(h => h.classId === "email_archetypal_in_body")).toHaveLength(0);
+  });
+
+  it("does NOT flag generic role framing without 'at [a/an/the]' envelope", () => {
+    const result = validateEmailFabricationPatternsV2(
+      oneEmailBody("Many of the people I work with describe a similar frustration."),
+      noNames,
+    );
+    expect(result.ok).toBe(true);
+  });
+
+  it("does NOT flag if title appears without role descriptor", () => {
+    const result = validateEmailFabricationPatternsV2(
+      oneEmailBody("She came to me last spring — a VP, but otherwise no other detail."),
+      noNames,
+    );
+    // No "at [a/an/the] X" envelope, so no archetypal-composite match.
+    expect(result.ok).toBe(true);
+  });
+});
+
+describe("Phase E Sprint 2 — Shape sub-case 3a recovery (LB-E1)", () => {
+  it("recovers when emails is a stringified array (sub-case 1, valid JSON)", () => {
+    // Pre-existing sub-case 1: clean JSON-encoded array string. Should
+    // continue to work post-Sprint-2 (no regression).
+    const arr = JSON.stringify([{ day: 1, subject: "S", body: "B" }]);
+    const result = validateEmailSequenceShapeV2({ emails: arr });
+    expect(result.ok).toBe(true);
+  });
+
+  it("recovers when stringified array has unescaped quotes via object extraction (sub-case 3a)", () => {
+    // Simulate the LLM emitting an array-as-string with a single quote issue
+    // that breaks whole-array JSON.parse but leaves each individual object
+    // parseable. Sub-case 3a should still recover the valid objects.
+    //
+    // Construct a malformed-array string where outer brackets break but the
+    // individual {...} objects are valid JSON.
+    const malformedArrayString = "[\n   garbage_at_top \n  {\"day\":1,\"subject\":\"S\",\"body\":\"hello\"}\n,\n  {\"day\":2,\"subject\":\"S2\",\"body\":\"hi\"}\n  ]";
+    const result = validateEmailSequenceShapeV2({ emails: malformedArrayString });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.emails).toHaveLength(2);
+    expect(result.emails[0].day).toBe(1);
+    expect(result.emails[1].day).toBe(2);
+  });
+
+  it("falls through to emails_string_unrecoverable when 3a finds zero parseable objects", () => {
+    // A truly malformed string with no parseable objects should still hit
+    // the original unrecoverable failContext path.
+    const result = validateEmailSequenceShapeV2({ emails: "this is just garbage with no braces" });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.subCase).toBe("emails_string_unrecoverable");
+  });
+
+  it("recovers when stringified array has body fields with internal quotes (regression on a class observed in baseline-v1)", () => {
+    // Long-sequence shape: model emits emails as a string. Objects inside
+    // are valid JSON individually. Sub-case 3a extracts them.
+    const obj1 = "{\"day\":0,\"subject\":\"hello\",\"body\":\"I'm here to help — let me know.\"}";
+    const obj2 = "{\"day\":3,\"subject\":\"reminder\",\"body\":\"Don't forget the deadline.\"}";
+    const arrStr = `[ ${obj1} , ${obj2} ]`;
+    const result = validateEmailSequenceShapeV2({ emails: arrStr });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.emails).toHaveLength(2);
+  });
+});
+
+describe("Phase E Sprint 2 — Email generator system prompt + supplied wiring", () => {
+  const path = require("path");
+  const fs = require("fs");
+  const generatorPath = path.resolve(__dirname, "emailSequenceGenerator.ts");
+  const generatorSrc = fs.readFileSync(generatorPath, "utf8");
+
+  it("imports NO_CREDENTIAL_FABRICATION_RULE (LB-E3)", () => {
+    expect(generatorSrc).toContain("NO_CREDENTIAL_FABRICATION_RULE");
+  });
+
+  it("imports NO_RESEARCH_STATISTIC_FABRICATION_RULE (LB-E3)", () => {
+    expect(generatorSrc).toContain("NO_RESEARCH_STATISTIC_FABRICATION_RULE");
+  });
+
+  it("imports META_COMPLIANCE_NOTES (LB-E3)", () => {
+    expect(generatorSrc).toContain("META_COMPLIANCE_NOTES");
+  });
+
+  it("EMAIL_SEQUENCE_SYSTEM_PROMPT injects all four rules", () => {
+    // Check that the system prompt definition includes all four rule constants.
+    const promptDefSnippet = generatorSrc.split("EMAIL_SEQUENCE_SYSTEM_PROMPT")[1] ?? "";
+    const head = promptDefSnippet.substring(0, 2000);
+    expect(head).toContain("NO_DATE_FABRICATION_RULE");
+    expect(head).toContain("NO_CREDENTIAL_FABRICATION_RULE");
+    expect(head).toContain("NO_RESEARCH_STATISTIC_FABRICATION_RULE");
+    expect(head).toContain("META_COMPLIANCE_NOTES");
+  });
+
+  it("invokeEmailSequenceWithRetry accepts EmailSuppliedData parameter", () => {
+    expect(generatorSrc).toContain("supplied?: EmailSuppliedData");
+  });
+
+  it("runEmailSequenceGeneration builds EmailSuppliedData from service + passes to retry helper", () => {
+    expect(generatorSrc).toContain("const supplied: EmailSuppliedData = {");
+    expect(generatorSrc).toContain("price: service.price");
+    expect(generatorSrc).toContain("testimonialNames:");
+    expect(generatorSrc).toContain("invokeEmailSequenceWithRetry(cascadeContext + prompt, supplied)");
+  });
+
+  it("fabrication validator call forwards supplied data", () => {
+    expect(generatorSrc).toContain("validateEmailFabricationPatterns(shapeResult.emails, supplied)");
+  });
+});
