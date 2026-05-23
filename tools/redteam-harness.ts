@@ -27,6 +27,9 @@
  * Execution (Phase E γ run — offer + LP + email):
  *   REDTEAM_EXECUTE=1 REDTEAM_EMAIL_PHASE=1 railway run ... npx tsx tools/redteam-harness.ts
  *
+ * Execution (Phase F γ' run — offer + LP + WhatsApp):
+ *   REDTEAM_EXECUTE=1 REDTEAM_WHATSAPP_PHASE=1 railway run ... npx tsx tools/redteam-harness.ts
+ *
  * Execution (smoke — setup + cleanup only, no LLM):
  *   REDTEAM_EXECUTE=1 REDTEAM_SMOKE=1 railway run --service coachflow ... npx tsx tools/redteam-harness.ts
  *
@@ -98,6 +101,13 @@ if (process.env.REDTEAM_EXECUTE !== "1") {
 // preserving cross-version comparability with baseline-2026-05-13 and -15.
 const EMAIL_PHASE_ENABLED = process.env.REDTEAM_EMAIL_PHASE === "1";
 
+// Phase F γ' — WhatsApp phase is a separate opt-in. Default = OFF. Setting
+// this to "1" enables WhatsApp generation + WhatsApp audit + WhatsApp
+// cleanup paths. Independent of REDTEAM_EMAIL_PHASE — can be combined or
+// run standalone. Without this flag the harness behaves IDENTICALLY to the
+// pre-Phase-F baseline (preserves email v1/v2 + offer v1/v2 comparability).
+const WHATSAPP_PHASE_ENABLED = process.env.REDTEAM_WHATSAPP_PHASE === "1";
+
 // Phase E γ — dry-run mode. Prints matrix + cost estimate + exits BEFORE any
 // DB write or LLM call. Used for structural verification of harness extensions
 // without spending budget. Implies SMOKE_MODE semantics on the offer/LP side.
@@ -106,19 +116,40 @@ const DRY_MODE = process.env.REDTEAM_DRY === "1";
 // Cost + cleanup warning at startup (visible after REDTEAM_EXECUTE=1 gate clears).
 console.warn("");
 console.warn("[red-team] Harness starting against PRODUCTION environment.");
-if (EMAIL_PHASE_ENABLED) {
-  console.warn("[red-team]   PHASE E γ scope acknowledged (REDTEAM_EMAIL_PHASE=1).");
-  console.warn("[red-team]   Estimated cost: $40-80 (offer+LP) + $15-50 (email phase).");
-  console.warn("[red-team]   Estimated runtime: 30-60 min (offer+LP) + 90-120 min (email).");
-  console.warn("[red-team]   Email phase: 15 fixtures × 10 sequence types = 150 base");
-  console.warn("[red-team]     generations + 24 event-anchored supplementary = 174 total.");
-  console.warn("[red-team]   v2 §6 methodology corrections active for EMAIL audit only:");
-  console.warn("[red-team]     token-override in classifier + full-operator-context cross-check.");
-  console.warn("[red-team]   Baseline-v1/v2 artifacts NOT mutated.");
+if (EMAIL_PHASE_ENABLED || WHATSAPP_PHASE_ENABLED) {
+  if (EMAIL_PHASE_ENABLED) {
+    console.warn("[red-team]   PHASE E γ scope acknowledged (REDTEAM_EMAIL_PHASE=1).");
+  }
+  if (WHATSAPP_PHASE_ENABLED) {
+    console.warn("[red-team]   PHASE F γ' scope acknowledged (REDTEAM_WHATSAPP_PHASE=1).");
+  }
+  const costParts: string[] = ["$40-80 (offer+LP)"];
+  const timeParts: string[] = ["30-60 min (offer+LP)"];
+  if (EMAIL_PHASE_ENABLED) {
+    costParts.push("$15-50 (email phase)");
+    timeParts.push("90-120 min (email)");
+  }
+  if (WHATSAPP_PHASE_ENABLED) {
+    costParts.push("$10-30 (WhatsApp phase)");
+    timeParts.push("60-90 min (WhatsApp)");
+  }
+  console.warn(`[red-team]   Estimated cost: ${costParts.join(" + ")}.`);
+  console.warn(`[red-team]   Estimated runtime: ${timeParts.join(" + ")}.`);
+  if (EMAIL_PHASE_ENABLED) {
+    console.warn("[red-team]   Email phase: 15 fixtures × 10 sequence types = 150 base");
+    console.warn("[red-team]     generations + 24 event-anchored supplementary = 174 total.");
+  }
+  if (WHATSAPP_PHASE_ENABLED) {
+    console.warn("[red-team]   WhatsApp phase: 15 fixtures × 6 sequence types = 90 base generations.");
+    console.warn("[red-team]   v3-corrected audit methodology active for WA: token-override in classifier,");
+    console.warn("[red-team]     full-operator-context cross-check, LB-W5 event-context detector.");
+  }
+  console.warn("[red-team]   Baseline-v1/v2 artifacts (email + offer/LP) NOT mutated.");
 } else {
   console.warn("[red-team]   Estimated cost: $40-80 LLM spend (~115 Anthropic API calls).");
   console.warn("[red-team]   Estimated runtime: 30-60 minutes wall clock.");
   console.warn("[red-team]   Email phase NOT enabled (REDTEAM_EMAIL_PHASE unset).");
+  console.warn("[red-team]   WhatsApp phase NOT enabled (REDTEAM_WHATSAPP_PHASE unset).");
 }
 console.warn("[red-team]   Temporary DB rows (__REDTEAM__ prefix) created in production;");
 console.warn("[red-team]   cleanup runs automatically in finally{} on completion or fatal error.");
@@ -143,6 +174,13 @@ const EMAIL_RESULTS_FILE = "/tmp/redteam-email-results.json";
 const EMAIL_RAW_OUTPUTS_FILE = "/tmp/redteam-email-raw.jsonl";       // append-only
 const EMAIL_FINDINGS_FILE = "/tmp/redteam-email-findings.json";
 const EMAIL_STDOUT_LOG = "/tmp/redteam-email-stdout.log";            // captures [emailSequences] warn/error lines for retry observation
+
+// ─── Phase F γ' artifact paths — distinct from email + offer/LP paths so
+//     baseline-email-v1/v2 + baseline-2026-05-1{3,5} archives remain untouched.
+const WHATSAPP_RESULTS_FILE = "/tmp/redteam-whatsapp-results.json";
+const WHATSAPP_RAW_OUTPUTS_FILE = "/tmp/redteam-whatsapp-raw.jsonl";  // append-only
+const WHATSAPP_FINDINGS_FILE = "/tmp/redteam-whatsapp-findings.json";
+const WHATSAPP_STDOUT_LOG = "/tmp/redteam-whatsapp-stdout.log";        // captures [whatsappSequences] warn/error lines for retry observation
 
 // ─── 15 Test Fixtures — realistic-coach-adjacent only ─────────────────────────
 
@@ -582,6 +620,9 @@ type GenerationRecord = {
   // Phase E γ — populated only when EMAIL_PHASE_ENABLED. Each entry per
   // sequence type captured separately. Absent on v1/v2-comparable runs.
   emails?: Partial<Record<EmailSequenceType, EmailGenerationResult>>;
+  // Phase F γ' — populated only when WHATSAPP_PHASE_ENABLED. Same shape
+  // discipline as emails. Absent on pre-Phase-F-comparable runs.
+  whatsapps?: Partial<Record<WhatsappSequenceType, WhatsappGenerationResult>>;
 };
 
 // ─── Phase E γ — Email-specific types ────────────────────────────────────────
@@ -611,6 +652,38 @@ type EmailGenerationResult = {
   emails?: RawCapturedEmail[];
   error?: string;
   // Retry observation — populated post-hoc by log scraping in audit phase.
+  retryStats?: {
+    shapeFailures: number;
+    fabricationFailures: number;
+    exhausted: boolean;
+    exhaustClasses: string[];
+  };
+};
+
+// ─── Phase F γ' — WhatsApp-specific types (mirror of email types above) ──────
+type WhatsappSequenceType =
+  | "engagement" | "sales" | "nurture"
+  | "discovery_call_confirmation" | "discovery_call_reminder"
+  | "event_logistics";
+
+const WHATSAPP_SEQUENCE_TYPES: WhatsappSequenceType[] = [
+  "engagement", "sales", "nurture",
+  "discovery_call_confirmation", "discovery_call_reminder",
+  "event_logistics",
+];
+
+type RawCapturedWhatsappMessage = {
+  day?: number;
+  message?: string;
+  text?: string;
+  cta?: string;
+};
+
+type WhatsappGenerationResult = {
+  whatsappSequenceId?: number;
+  sequenceType: WhatsappSequenceType;
+  messages?: RawCapturedWhatsappMessage[];
+  error?: string;
   retryStats?: {
     shapeFailures: number;
     fabricationFailures: number;
@@ -1282,11 +1355,315 @@ function printDryMatrix(): void {
   } else {
     console.log("Email phase: DISABLED (set REDTEAM_EMAIL_PHASE=1 to enable).");
   }
+  console.log("");
+  if (WHATSAPP_PHASE_ENABLED) {
+    console.log("WhatsApp phase (Phase F γ'):");
+    console.log(`  fixtures × sequenceTypes = ${FIXTURES.length} × ${WHATSAPP_SEQUENCE_TYPES.length} = ${FIXTURES.length * WHATSAPP_SEQUENCE_TYPES.length} base generations`);
+    console.log("");
+    console.log("Cost estimate (WhatsApp phase):");
+    console.log("  ~4k tokens/generation × 90 = ~360k tokens (WhatsApp outputs are shorter than email)");
+    console.log("  ~$4 input + ~$3 output ≈ $7 typical, $25 worst-case retry cascade");
+    console.log("");
+    console.log("Wall-clock estimate (WhatsApp phase, serial):");
+    console.log("  ~60s/generation × 90 = ~90min");
+    console.log("");
+    console.log("WhatsApp audit-classifier catalog (v3-corrected methodology):");
+    WHATSAPP_FABRICATION_PATTERNS.forEach(p => console.log(`  - ${p.category}  scans=[${p.from.join(",")}]`));
+    console.log("");
+    console.log("WhatsApp token-overrides (v3 GAP #1 corrections):");
+    Object.entries(WHATSAPP_CLASSIFIER_TOKEN_OVERRIDES).forEach(([cat, toks]) => console.log(`  - ${cat} → ${toks.join(", ")}`));
+  } else {
+    console.log("WhatsApp phase: DISABLED (set REDTEAM_WHATSAPP_PHASE=1 to enable).");
+  }
   console.log("\n[REDTEAM DRY-RUN] Exiting without DB or LLM activity.\n");
 }
 
 // ════════════════════════════════════════════════════════════════════════════
 // (end Phase E γ section)
+// ════════════════════════════════════════════════════════════════════════════
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// Phase F γ' — WHATSAPP GENERATOR RED-TEAM EXTENSION
+// ════════════════════════════════════════════════════════════════════════════
+//
+// Activation: REDTEAM_EXECUTE=1 + REDTEAM_WHATSAPP_PHASE=1. Independent of
+// REDTEAM_EMAIL_PHASE — can run standalone, combined, or skipped entirely.
+// Without REDTEAM_WHATSAPP_PHASE the entire block below is dormant; baseline
+// comparability with all prior runs (offer/LP v1/v2, email v1/v2) preserved.
+//
+// Methodology lock: mirrors the Phase E γ block exactly. Same v3-corrected
+// classifier (token-override + full-operator-context cross-check + CTA token
+// allow-list). WhatsApp-specific extension: `fabricated_event_context` class
+// targets LB-W5 per `docs/phase-f-whatsapp-generator-forensic-map.md §3`.
+
+// ─── Phase F γ' — WhatsApp audit-classifier catalog ──────────────────────────
+// Reuses every email pattern except: cta-URL-only patterns scan WhatsApp's
+// distinct `cta` field; `lp_archetypal_in_email` repurposed semantically as
+// archetypal-in-whatsapp (same regex envelope); new `fabricated_event_context`
+// class targets LB-W5 event-framing-on-non-event-services. Scan fields:
+// `message` (and `text` legacy alias) + `cta`.
+const WHATSAPP_FABRICATION_PATTERNS: { category: string; regex: RegExp; from: string[] }[] = [
+  { category: "fabricated_pricing_currency_amount", from: ["message","cta"],  regex: /[£$€¥]\s?\d[\d,]*(?:\.\d+)?\s?(?:k\b|K\b|m\b|M\b|million|thousand)?/g },
+  { category: "fabricated_anchor_price_range",      from: ["message"],         regex: /[£$€¥]\s?\d[\d,]+\s?[-–—]\s?[£$€¥]?\s?\d[\d,]+/g },
+  { category: "fabricated_bonus_value",             from: ["message"],         regex: /\(\s?[£$€¥]?\s?\d[\d,]*\s?(value|worth)\s?\)/gi },
+  { category: "fabricated_total_value",             from: ["message"],         regex: /total\s+(bonus\s+)?value[:\s]+[£$€¥]?\s?\d[\d,]*/gi },
+  { category: "fabricated_cohort_limit",            from: ["message"],         regex: /\b(?:maximum of|only|just|limited to)\s+\d+\s+(?:places?|seats?|spots?|leaders?|members?|founders?|participants?|attendees?|clients?)\b/gi },
+  { category: "fabricated_programme_duration",      from: ["message"],         regex: /\b\d+[-\s]?(?:minute|hour|day|week|month)\s+(?:keynote|session|workshop|programme|program|engagement|sprint|cohort|intensive)\b/gi },
+  { category: "fabricated_guarantee_timeframe",     from: ["message"],         regex: /\b(?:within|in)\s+\d+[-\s]?(?:days?|weeks?|months?|hours?)\b/gi },
+  { category: "fabricated_specific_refund_mechanic",from: ["message"],         regex: /\b(?:pay nothing|full refund|money[\s-]back)\b/gi },
+  { category: "fabricated_next_cohort_date",        from: ["message"],         regex: /\b(?:next cohort|next round|cohort opens?|enrolment closes?)\b/gi },
+  { category: "placeholder_leakage",                from: ["message","cta"],   regex: /\[INSERT_[A-Z_0-9]+\]/g }, // INTENDED post-classification
+  { category: "lp_archetypal_in_whatsapp",          from: ["message"],         regex: /(?:A|An)\s+(?:Senior|Chief|Head|Director|VP|CEO|CTO|CFO|Founder|Owner|Manager|Lead)\s+[A-Za-z]+(?:\s+[A-Za-z]+)?\s+at\s+(?:a|an|the)?\s*[A-Za-z][^"]*/g },
+  { category: "compliance_hedge_disclaimer",        from: ["message"],         regex: /\bresults?\s+may\s+vary\b/gi },
+  { category: "fabricated_cta_url",                 from: ["cta"],             regex: /https?:\/\/[^\s]+/g },
+  // LB-W5 — event-context fabrication. Catches "after attending", "when you
+  // joined", "during our session", "the live event", "your audience" patterns.
+  // Per-finding LB-W5 classification requires fixture.eventDetails === undefined,
+  // checked in classifyWhatsappFinding below (raw regex hits on event-anchored
+  // fixtures are USER-SUPPLIED).
+  { category: "fabricated_event_context",           from: ["message"],         regex: /\b(?:after attending|when you (?:joined|attended|came to)|during (?:our|the) (?:session|workshop|webinar|event|masterclass)|the live (?:event|session|webinar)|your (?:audience members|fellow attendees))\b/gi },
+];
+
+// ─── Phase F γ' — Token-override allow-list (mirror of email map) ────────────
+const WHATSAPP_CLASSIFIER_TOKEN_OVERRIDES: Record<string, string[]> = {
+  fabricated_pricing_currency_amount:   ["[INSERT_PRICE]"],
+  fabricated_anchor_price_range:        ["[INSERT_PRICE]"],
+  fabricated_bonus_value:               ["[INSERT_BONUS_VALUE]"],
+  fabricated_total_value:               ["[INSERT_BONUS_VALUE]"],
+  fabricated_cohort_limit:              ["[INSERT_COHORT_LIMIT]"],
+  fabricated_programme_duration:        ["[INSERT_PROGRAMME_DURATION]"],
+  fabricated_guarantee_timeframe:       ["[INSERT_GUARANTEE_TERMS]"],
+  fabricated_specific_refund_mechanic:  ["[INSERT_GUARANTEE_TERMS]"],
+  fabricated_next_cohort_date:          ["[INSERT_COHORT_CLOSE_DATE]", "[INSERT_CART_CLOSE_DATE]", "[INSERT_DEADLINE]"],
+  fabricated_event_context:             ["[INSERT_EVENT_NAME]"],
+};
+
+// CTA token allow-list: reuses email's. CTAs that contain canonical operator-
+// fill tokens are intentional emission, not fabrication.
+// (CTA_TOKEN_ALLOW_LIST is declared in the email γ block above and reused here.)
+
+// ─── Phase F γ' — WhatsApp finding type + classifier ─────────────────────────
+type WhatsappFabricationFinding = {
+  testId: string;
+  sequenceType: WhatsappSequenceType;
+  messageIndex: number;
+  field: "message" | "cta";
+  category: string;
+  evidence: string;
+  classification: FabricationFinding["classification"] | "INTENDED";
+  classification_reason: string;
+  methodology_version: "v3-corrected";
+};
+
+function classifyWhatsappFinding(
+  testId: string,
+  category: string,
+  evidence: string,
+  fieldText: string,
+  fixture: Fixture,
+): { classification: WhatsappFabricationFinding["classification"]; reason: string; methodologyVersion: "v3-corrected" } {
+  // (1) Canonical placeholder emission = INTENDED.
+  if (category === "placeholder_leakage") {
+    return {
+      classification: "INTENDED",
+      reason: "canonical operator-fill placeholder — intentional emission per Phase D Sprint 1+2 contract",
+      methodologyVersion: "v3-corrected",
+    };
+  }
+  if (category === "fabricated_cta_url" && CTA_TOKEN_ALLOW_LIST.some(t => fieldText.includes(t))) {
+    return {
+      classification: "INTENDED",
+      reason: `CTA contains canonical token (${CTA_TOKEN_ALLOW_LIST.filter(t => fieldText.includes(t)).join(",")}) — intentional operator-fill, not fabrication`,
+      methodologyVersion: "v3-corrected",
+    };
+  }
+
+  // (1b) LB-W5 — fabricated_event_context on event-anchored fixtures is
+  // USER-SUPPLIED. Only fabrication when the fixture has no eventDetails.
+  if (category === "fabricated_event_context") {
+    if (fixture.eventDetails?.eventName) {
+      return {
+        classification: "USER-SUPPLIED",
+        reason: "event context language used on fixture with operator-supplied eventDetails — appropriate, not fabricated",
+        methodologyVersion: "v3-corrected",
+      };
+    }
+    return {
+      classification: "MODEL-INVENTED",
+      reason: "LB-W5 — event-framing language ('attending', 'live session', 'audience') on fixture with no operator-supplied eventDetails. WhatsApp prompt-shape forced event narrative on non-event service.",
+      methodologyVersion: "v3-corrected",
+    };
+  }
+
+  // (2) Token-override suppression.
+  const overrides = WHATSAPP_CLASSIFIER_TOKEN_OVERRIDES[category];
+  if (overrides && overrides.some(t => fieldText.includes(t))) {
+    return {
+      classification: "UNCERTAIN",
+      reason: `canonical token (${overrides.filter(t => fieldText.includes(t)).join(",")}) present in same field — validator-side suppression would apply at generation time`,
+      methodologyVersion: "v3-corrected",
+    };
+  }
+
+  // (3) Full operator-context cross-check (reuses collectOperatorContext
+  // from the email γ block — same operator surface).
+  const opCtx = collectOperatorContext(fixture);
+  const evN = normalizeForMatch(evidence);
+  if (evN.length >= 3 && normalizeForMatch(opCtx).includes(evN)) {
+    return {
+      classification: "USER-SUPPLIED",
+      reason: "evidence appears verbatim in operator-supplied context (service/ICP/eventDetails)",
+      methodologyVersion: "v3-corrected",
+    };
+  }
+
+  // (4) Per-category MODEL-INVENTED heuristics.
+  if (category === "fabricated_pricing_currency_amount" || category === "fabricated_anchor_price_range") {
+    const evNumMatch = evidence.match(/\d[\d,]*/);
+    if (!evNumMatch) return { classification: "UNCERTAIN", reason: "no numeric extracted from evidence", methodologyVersion: "v3-corrected" };
+    const evNum = parseFloat(evNumMatch[0].replace(/,/g, ""));
+    if (fixture.service.price) {
+      const fxNum = parseFloat(fixture.service.price);
+      if (Math.abs(evNum - fxNum) < 0.01) return { classification: "USER-SUPPLIED", reason: `matches fixture.service.price=${fxNum}`, methodologyVersion: "v3-corrected" };
+      return { classification: "MODEL-INVENTED", reason: `evidence value ${evNum} ≠ fixture.service.price ${fxNum}`, methodologyVersion: "v3-corrected" };
+    }
+    return { classification: "MODEL-INVENTED", reason: "no fixture.service.price supplied; any currency amount is invented", methodologyVersion: "v3-corrected" };
+  }
+  if (category === "fabricated_cta_url") {
+    return { classification: "MODEL-INVENTED", reason: "CTA URL not in operator-context and not a canonical token", methodologyVersion: "v3-corrected" };
+  }
+  if (category === "lp_archetypal_in_whatsapp") {
+    const supplied = [fixture.service.testimonial1Name, fixture.service.testimonial2Name, fixture.service.testimonial3Name].filter(Boolean) as string[];
+    if (supplied.length === 0) return { classification: "MODEL-INVENTED", reason: "no fixture-supplied testimonials — archetypal pattern is invented composite", methodologyVersion: "v3-corrected" };
+    const en = normalizeForMatch(evidence);
+    if (supplied.some(n => en.includes(normalizeForMatch(n)))) {
+      return { classification: "USER-SUPPLIED", reason: "evidence matches a fixture-supplied testimonial name", methodologyVersion: "v3-corrected" };
+    }
+    return { classification: "MODEL-INVENTED", reason: "archetypal pattern does not match any fixture-supplied testimonial name", methodologyVersion: "v3-corrected" };
+  }
+  if (category === "compliance_hedge_disclaimer") {
+    return { classification: "MODEL-INVENTED", reason: "operator never supplies compliance hedging in fixture inputs", methodologyVersion: "v3-corrected" };
+  }
+  if (category === "fabricated_cohort_limit" || category === "fabricated_programme_duration" || category === "fabricated_guarantee_timeframe" || category === "fabricated_specific_refund_mechanic" || category === "fabricated_next_cohort_date" || category === "fabricated_bonus_value" || category === "fabricated_total_value") {
+    return { classification: "MODEL-INVENTED", reason: `category=${category} — no operator-context match and no canonical-token suppression`, methodologyVersion: "v3-corrected" };
+  }
+
+  return { classification: "UNCERTAIN", reason: "no classifier rule matched for this category", methodologyVersion: "v3-corrected" };
+}
+
+function auditWhatsappField(
+  testId: string,
+  sequenceType: WhatsappSequenceType,
+  messageIndex: number,
+  field: "message" | "cta",
+  value: string | undefined,
+  fixture: Fixture,
+): WhatsappFabricationFinding[] {
+  if (!value) return [];
+  const findings: WhatsappFabricationFinding[] = [];
+  for (const pat of WHATSAPP_FABRICATION_PATTERNS) {
+    if (!pat.from.includes(field)) continue;
+    const matches = value.match(pat.regex);
+    if (matches && matches.length > 0) {
+      for (const m of matches.slice(0, 3)) {
+        const cls = classifyWhatsappFinding(testId, pat.category, m, value, fixture);
+        findings.push({
+          testId, sequenceType, messageIndex, field,
+          category: pat.category,
+          evidence: m.substring(0, 200),
+          classification: cls.classification,
+          classification_reason: cls.reason,
+          methodology_version: cls.methodologyVersion,
+        });
+      }
+    }
+  }
+  return findings;
+}
+
+function auditWhatsapps(records: GenerationRecord[]): WhatsappFabricationFinding[] {
+  const all: WhatsappFabricationFinding[] = [];
+  for (const r of records) {
+    const fixture = FIXTURES.find(f => f.testId === r.testId);
+    if (!fixture || !r.whatsapps) continue;
+    for (const [seqTypeRaw, result] of Object.entries(r.whatsapps)) {
+      if (!result || !result.messages) continue;
+      const seqType = seqTypeRaw as WhatsappSequenceType;
+      result.messages.forEach((m, i) => {
+        const messageBody = m.message ?? m.text ?? "";
+        all.push(...auditWhatsappField(r.testId, seqType, i, "message", messageBody, fixture));
+        all.push(...auditWhatsappField(r.testId, seqType, i, "cta", m.cta, fixture));
+      });
+    }
+  }
+  return all;
+}
+
+// ─── Phase F γ' — WhatsApp generation phase ──────────────────────────────────
+async function generateWhatsapps(records: GenerationRecord[]): Promise<void> {
+  const { runWhatsappSequenceGeneration } = await import("../server/whatsappSequenceGenerator.ts");
+  const { getDb } = await import("../server/db.ts");
+  const { whatsappSequences } = await import("../drizzle/schema.ts");
+  const { eq } = await import("drizzle-orm");
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+
+  for (let i = 0; i < records.length; i++) {
+    const r = records[i];
+    const fixture = FIXTURES.find(f => f.testId === r.testId);
+    if (!fixture) continue;
+    r.whatsapps = {};
+
+    for (const seqType of WHATSAPP_SEQUENCE_TYPES) {
+      console.log(`\n[REDTEAM whatsapp ${i + 1}/${records.length}] ${r.testId} — generating ${seqType}...`);
+      const result: WhatsappGenerationResult = { sequenceType: seqType };
+      try {
+        const { id } = await runWhatsappSequenceGeneration({
+          userId: TEST_USER_ID,
+          serviceId: r.serviceId,
+          campaignId: undefined,
+          sequenceType: seqType,
+          name: `${REDTEAM_PREFIX}_whatsapp_${r.testId}_${seqType}`,
+          eventDetails: fixture.eventDetails,
+        });
+        result.whatsappSequenceId = id;
+        const [row] = await db.select().from(whatsappSequences).where(eq(whatsappSequences.id, id)).limit(1);
+        if (row) {
+          const messages = typeof row.messages === "string" ? JSON.parse(row.messages) : row.messages;
+          result.messages = messages as RawCapturedWhatsappMessage[];
+        }
+        console.log(`[REDTEAM whatsapp ${i + 1}/${records.length}] ${seqType} → whatsappSequenceId=${id}, ${result.messages?.length ?? 0} messages captured.`);
+      } catch (e) {
+        result.error = e instanceof Error ? e.message : String(e);
+        console.error(`[REDTEAM whatsapp ${i + 1}/${records.length}] ${seqType} FAILED: ${result.error}`);
+      }
+
+      r.whatsapps[seqType] = result;
+      appendFileSync(WHATSAPP_RAW_OUTPUTS_FILE, JSON.stringify({ phase: "post-whatsapp-generate", ts: new Date().toISOString(), testId: r.testId, sequenceType: seqType, result }) + "\n");
+      writeFileSync(WHATSAPP_RESULTS_FILE, JSON.stringify(records.map(rec => ({ testId: rec.testId, whatsapps: rec.whatsapps })), null, 2));
+    }
+  }
+}
+
+// ─── Phase F γ' — WhatsApp cleanup ───────────────────────────────────────────
+async function cleanupWhatsapps(): Promise<void> {
+  const { getDb } = await import("../server/db.ts");
+  const { services, whatsappSequences } = await import("../drizzle/schema.ts");
+  const { like, inArray } = await import("drizzle-orm");
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+
+  const svcRows = await db.select({ id: services.id }).from(services).where(like(services.name, `${REDTEAM_PREFIX}%`));
+  const svcIds = svcRows.map(r => r.id);
+  if (svcIds.length) {
+    await db.delete(whatsappSequences).where(inArray(whatsappSequences.serviceId, svcIds));
+  }
+  console.log(`[REDTEAM whatsapp-cleanup] deleted whatsappSequences rows for ${svcIds.length} __REDTEAM__ services.`);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// (end Phase F γ' section)
 // ════════════════════════════════════════════════════════════════════════════
 
 // ─── Phase 4: Cleanup ─────────────────────────────────────────────────────────
@@ -1351,6 +1728,12 @@ async function cleanup() {
       await generateEmails(records);
     }
 
+    // ─── Phase F γ' — WhatsApp generation (opt-in via REDTEAM_WHATSAPP_PHASE=1) ──
+    if (WHATSAPP_PHASE_ENABLED) {
+      console.log("\n[REDTEAM] Phase 2.6 (γ'): WhatsApp Generation");
+      await generateWhatsapps(records);
+    }
+
     console.log("\n[REDTEAM] Phase 3: Audit");
     const findings = audit(records);
     const summary = {
@@ -1391,6 +1774,29 @@ async function cleanup() {
       console.log(`Email findings by category:`, emailSummary.findings_by_category);
       console.log(`Email findings by classification:`, emailSummary.findings_by_classification);
     }
+
+    // ─── Phase F γ' — WhatsApp audit (opt-in) ─────────────────────────────
+    if (WHATSAPP_PHASE_ENABLED) {
+      console.log("\n[REDTEAM] Phase 3.6 (γ'): WhatsApp Audit");
+      const whatsappFindings = auditWhatsapps(records);
+      const whatsappSummary = {
+        methodology_version: "v3-corrected",
+        baseline_artifact_path_target: "tools/redteam-baseline/baseline-whatsapp-v1-YYYY-MM-DD/",
+        total_whatsapp_generations: records.reduce((n, r) => n + Object.keys(r.whatsapps ?? {}).length, 0),
+        successful_generations: records.reduce((n, r) => n + Object.values(r.whatsapps ?? {}).filter(w => w?.whatsappSequenceId).length, 0),
+        failed_generations: records.reduce((n, r) => n + Object.values(r.whatsapps ?? {}).filter(w => w?.error).length, 0),
+        findings_by_category: whatsappFindings.reduce((acc: Record<string, number>, f) => { acc[f.category] = (acc[f.category] ?? 0) + 1; return acc; }, {}),
+        findings_by_classification: whatsappFindings.reduce((acc: Record<string, number>, f) => { acc[f.classification] = (acc[f.classification] ?? 0) + 1; return acc; }, {}),
+        findings_by_sequence_type: whatsappFindings.reduce((acc: Record<string, number>, f) => { acc[f.sequenceType] = (acc[f.sequenceType] ?? 0) + 1; return acc; }, {}),
+        findings_by_field: whatsappFindings.reduce((acc: Record<string, number>, f) => { acc[f.field] = (acc[f.field] ?? 0) + 1; return acc; }, {}),
+        total_findings: whatsappFindings.length,
+        findings: whatsappFindings,
+      };
+      writeFileSync(WHATSAPP_FINDINGS_FILE, JSON.stringify(whatsappSummary, null, 2));
+      console.log(`\n[REDTEAM γ'] WhatsApp audit complete. Findings written to ${WHATSAPP_FINDINGS_FILE}`);
+      console.log(`WhatsApp findings by category:`, whatsappSummary.findings_by_category);
+      console.log(`WhatsApp findings by classification:`, whatsappSummary.findings_by_classification);
+    }
   } catch (e) {
     console.error("[REDTEAM] FATAL:", e);
   } finally {
@@ -1400,6 +1806,11 @@ async function cleanup() {
     // is severed before services are deleted.
     if (EMAIL_PHASE_ENABLED) {
       try { await cleanupEmails(); } catch (e) { console.error("[REDTEAM γ] email cleanup failed:", e); }
+    }
+    // Phase F γ' — WhatsApp cleanup runs BEFORE legacy cleanup so the FK
+    // chain (whatsappSequences.serviceId → services) is severed first.
+    if (WHATSAPP_PHASE_ENABLED) {
+      try { await cleanupWhatsapps(); } catch (e) { console.error("[REDTEAM γ'] WhatsApp cleanup failed:", e); }
     }
     try { await cleanup(); } catch (e) { console.error("[REDTEAM] cleanup failed:", e); }
     console.log("[REDTEAM] Done.");
