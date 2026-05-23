@@ -57,16 +57,23 @@ import { runOrchestration } from "../_core/orchestration";
  *   - null/missing subscriptionTier: blocked (defensive — defaults to
  *     trial per schema, but coerce explicitly)
  *
- * Role bypass: `superuser` always allowed regardless of tier (matches
- * the existing per-router quota check pattern at adCopy.ts:203, etc).
- * `admin` does NOT bypass — admin is a workstream role, not a
- * paid-tier substitute.
+ * Role bypass: `superuser` AND `admin` always allowed regardless of tier
+ * (matches V2GeneratorWizard's existing isFreeTier client-side predicate
+ * which already treats both roles as bypassing — and C0.1 client/server
+ * predicate mirror per Phase F sequencing decision). Admin is an
+ * internal-only role never held by customers, so bypass is safe and
+ * keeps Auto Mode consistent with the wizard's gating model.
+ *
+ * Pure helper, single call site at autoMode.orchestrate below. No
+ * cross-router dependency — this change does not widen bypass behavior
+ * on any other tier gate (per-router quota checks at adCopy.ts:203,
+ * adCreatives.ts:123, etc. remain unaffected).
  */
 export function isAutoModeTierAllowed(user: {
   role: string;
   subscriptionTier: string | null | undefined;
 }): { allowed: boolean; reason?: string } {
-  if (user.role === "superuser") return { allowed: true };
+  if (user.role === "superuser" || user.role === "admin") return { allowed: true };
   const tier = user.subscriptionTier;
   if (tier === "pro" || tier === "agency") return { allowed: true };
   return {

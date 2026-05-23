@@ -19,7 +19,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
 import V2Layout from "./V2Layout";
+import UpgradePrompt from "./components/UpgradePrompt";
 
 type ServiceCategory = "coaching" | "speaking" | "consulting";
 
@@ -71,6 +73,23 @@ const inputBaseStyle: React.CSSProperties = {
 
 export default function V2AutoModeIntakeConfirm() {
   const [location, navigate] = useLocation();
+
+  // ── Phase F Item 1 (C0.1) — belt-and-suspenders trial-user gate ──────────
+  // Mirror gate to V2AutoModeIntake's proactive gate. Defense against:
+  //   - User pastes /v2-dashboard/auto-mode/confirm URL directly
+  //   - Back-button navigation after a downgrade
+  //   - Stale window.history.state from a previous Pro session
+  // Server-side `isAutoModeTierAllowed` (autoMode.ts:65) is the ground
+  // truth; this client-side mirror prevents the trial user from wasting
+  // the services.create + expandProfile + icps.generateAsync work before
+  // the orchestrate FORBIDDEN throw.
+  const { user: authUser } = useAuth();
+  const isFreeTier = !authUser
+    || (authUser.role !== "superuser"
+        && authUser.role !== "admin"
+        && authUser.subscriptionTier !== "pro"
+        && authUser.subscriptionTier !== "agency");
+
   // wouter passes location state via history.state (set on navigate(_, {state}))
   const incomingState = (typeof window !== "undefined" ? (window.history.state ?? null) : null) as
     | { extracted?: Extracted; rawText?: string }
@@ -115,6 +134,35 @@ export default function V2AutoModeIntakeConfirm() {
       }
     };
   }, []);
+
+  // Phase F Item 1 (C0.1) — render upgrade screen for trial users BEFORE
+  // any extracted-state checks. All hooks above must run unconditionally
+  // (React rules-of-hooks); the early return below is the only conditional
+  // render gate.
+  if (isFreeTier) {
+    return (
+      <V2Layout>
+        <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", padding: "48px 16px 64px" }}>
+          <button
+            onClick={() => navigate("/v2-dashboard")}
+            style={{ alignSelf: "flex-start", marginBottom: "24px", fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#777", background: "none", border: "none", cursor: "pointer", padding: "0", display: "flex", alignItems: "center", gap: "6px" }}
+          >
+            ← Back to Dashboard
+          </button>
+          <div style={{ maxWidth: "640px", width: "100%", margin: "0 auto" }}>
+            <UpgradePrompt
+              variant="inline"
+              featureName="Auto Mode"
+              bodyCopy={{
+                line1: "Auto Mode is a Pro feature.",
+                line2: "Upgrade to unlock the 1-click campaign builder.",
+              }}
+            />
+          </div>
+        </div>
+      </V2Layout>
+    );
+  }
 
   if (!extracted) return null;
 

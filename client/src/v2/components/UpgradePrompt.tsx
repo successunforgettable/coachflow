@@ -12,11 +12,30 @@ interface UpgradePromptProps {
   variant: "modal" | "inline";
   featureName: string;
   onClose?: () => void;
+  /**
+   * Optional two-line body copy. Defaults to the L-QUOTA quota-limit
+   * messaging when omitted (preserves backward-compat with the 4
+   * existing call sites: V2Settings, V2AdImageCreator, V2VideoCreator,
+   * V2LandingPageResultPanel, ComplianceWarningPanel).
+   *
+   * Phase F Item 1 (C0.1) uses this to render the Auto-Mode-specific
+   * Pro-feature-gate copy instead of the generic quota-limit copy —
+   * trial users hitting Auto Mode haven't exhausted a quota; they're
+   * blocked from a Pro-only feature entirely. Semantically different
+   * message, same UX primitive.
+   */
+  bodyCopy?: { line1: string; line2: string };
 }
 
-export default function UpgradePrompt({ variant, featureName, onClose }: UpgradePromptProps) {
+const DEFAULT_BODY_COPY = {
+  line1: "You've reached your trial limit.",
+  line2: "Upgrade to Pro to keep going.",
+};
+
+export default function UpgradePrompt({ variant, featureName, onClose, bodyCopy }: UpgradePromptProps) {
   const campaign = featureName.toLowerCase().replace(/\s+/g, "-");
   const pricingUrl = `/pricing?utm_source=app&utm_medium=quota_gate&utm_campaign=${campaign}`;
+  const copy = bodyCopy ?? DEFAULT_BODY_COPY;
 
   const card = (
     <div style={{
@@ -92,7 +111,7 @@ export default function UpgradePrompt({ variant, featureName, onClose }: Upgrade
           margin: "0 0 4px",
           lineHeight: 1.5,
         }}>
-          You've reached your trial limit.
+          {copy.line1}
         </p>
         <p style={{
           fontFamily: "var(--v2-font-body)",
@@ -102,7 +121,7 @@ export default function UpgradePrompt({ variant, featureName, onClose }: Upgrade
           margin: 0,
           lineHeight: 1.5,
         }}>
-          Upgrade to Pro to keep going.
+          {copy.line2}
         </p>
       </div>
 

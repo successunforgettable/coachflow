@@ -839,9 +839,9 @@ describe("Phase C C0 — Auto Mode tier gate", () => {
     expect(result.allowed).toBe(true);
   });
 
-  it("admin role does NOT bypass — admin still blocked on trial", () => {
+  it("admin role bypasses tier gate (Phase F sequencing — admin is internal-only, never customer-held)", () => {
     const result = isAutoModeTierAllowed({ role: "admin", subscriptionTier: "trial" });
-    expect(result.allowed).toBe(false);
+    expect(result.allowed).toBe(true);
   });
 
   it("null subscriptionTier blocked (defensive — defaults to trial per schema but coerce explicitly)", () => {
@@ -2225,5 +2225,111 @@ describe("Phase E Sprint 2 — Email generator system prompt + supplied wiring",
 
   it("fabrication validator call forwards supplied data", () => {
     expect(generatorSrc).toContain("validateEmailFabricationPatterns(shapeResult.emails, supplied)");
+  });
+});
+
+// ─── Phase F Item 1 — C0.1 trial-user upsell screen ──────────────────────────
+//
+// Three layers under test:
+//   1. Server predicate `isAutoModeTierAllowed` now bypasses both superuser
+//      AND admin (deliberate divergence from the v1 baseline test which had
+//      admin blocked). Verified by re-asserting the role table.
+//   2. Client-side gate on V2AutoModeIntake + V2AutoModeIntakeConfirm
+//      mirrors the server predicate exactly (structural fs-readFileSync
+//      checks — no React renderer needed).
+//   3. UpgradePrompt component accepts the new optional bodyCopy prop
+//      while remaining backward-compatible with the 4+ existing call sites
+//      that omit it.
+
+describe("Phase F Item 1 (C0.1) — server tier-gate predicate admin bypass", () => {
+  it("admin role + trial tier is now ALLOWED (admin is internal-only, never customer-held)", () => {
+    const result = isAutoModeTierAllowed({ role: "admin", subscriptionTier: "trial" });
+    expect(result.allowed).toBe(true);
+    expect(result.reason).toBeUndefined();
+  });
+
+  it("admin role + null tier is ALLOWED (admin bypass is unconditional on tier)", () => {
+    const result = isAutoModeTierAllowed({ role: "admin", subscriptionTier: null });
+    expect(result.allowed).toBe(true);
+  });
+
+  it("superuser bypass behaviour preserved (regression guard for v1 tier-gate test)", () => {
+    const result = isAutoModeTierAllowed({ role: "superuser", subscriptionTier: "trial" });
+    expect(result.allowed).toBe(true);
+  });
+
+  it("regular user + trial still blocked (admin bypass widened scope is exactly admin + superuser, no further widening)", () => {
+    const result = isAutoModeTierAllowed({ role: "user", subscriptionTier: "trial" });
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toContain("Auto Mode is a Pro feature");
+  });
+
+  it("regular user + pro tier still allowed", () => {
+    const result = isAutoModeTierAllowed({ role: "user", subscriptionTier: "pro" });
+    expect(result.allowed).toBe(true);
+  });
+});
+
+describe("Phase F Item 1 (C0.1) — client-side gate structural wiring", () => {
+  const path = require("path");
+  const fs = require("fs");
+  const intakePath = path.resolve(__dirname, "../client/src/v2/V2AutoModeIntake.tsx");
+  const confirmPath = path.resolve(__dirname, "../client/src/v2/V2AutoModeIntakeConfirm.tsx");
+  const upgradePromptPath = path.resolve(__dirname, "../client/src/v2/components/UpgradePrompt.tsx");
+  const intakeSrc = fs.readFileSync(intakePath, "utf8");
+  const confirmSrc = fs.readFileSync(confirmPath, "utf8");
+  const upgradePromptSrc = fs.readFileSync(upgradePromptPath, "utf8");
+
+  it("V2AutoModeIntake imports useAuth + UpgradePrompt", () => {
+    expect(intakeSrc).toContain('import { useAuth } from "@/_core/hooks/useAuth"');
+    expect(intakeSrc).toContain('import UpgradePrompt from "./components/UpgradePrompt"');
+  });
+
+  it("V2AutoModeIntake mirrors the server tier-gate predicate exactly (superuser + admin + pro + agency = bypass)", () => {
+    expect(intakeSrc).toContain('authUser.role !== "superuser"');
+    expect(intakeSrc).toContain('authUser.role !== "admin"');
+    expect(intakeSrc).toContain('authUser.subscriptionTier !== "pro"');
+    expect(intakeSrc).toContain('authUser.subscriptionTier !== "agency"');
+  });
+
+  it("V2AutoModeIntake renders Auto-Mode-specific bodyCopy on UpgradePrompt", () => {
+    expect(intakeSrc).toContain('featureName="Auto Mode"');
+    expect(intakeSrc).toContain("Auto Mode is a Pro feature.");
+    expect(intakeSrc).toContain("Upgrade to unlock the 1-click campaign builder.");
+  });
+
+  it("V2AutoModeIntakeConfirm carries the same belt-and-suspenders gate", () => {
+    expect(confirmSrc).toContain('import { useAuth } from "@/_core/hooks/useAuth"');
+    expect(confirmSrc).toContain('import UpgradePrompt from "./components/UpgradePrompt"');
+    expect(confirmSrc).toContain('authUser.role !== "superuser"');
+    expect(confirmSrc).toContain('authUser.role !== "admin"');
+    expect(confirmSrc).toContain('authUser.subscriptionTier !== "pro"');
+    expect(confirmSrc).toContain('authUser.subscriptionTier !== "agency"');
+    expect(confirmSrc).toContain('featureName="Auto Mode"');
+  });
+});
+
+describe("Phase F Item 1 (C0.1) — UpgradePrompt bodyCopy backward-compat", () => {
+  const path = require("path");
+  const fs = require("fs");
+  const upgradePromptSrc = fs.readFileSync(
+    path.resolve(__dirname, "../client/src/v2/components/UpgradePrompt.tsx"),
+    "utf8",
+  );
+
+  it("UpgradePrompt accepts optional bodyCopy prop with line1+line2", () => {
+    expect(upgradePromptSrc).toContain("bodyCopy?: { line1: string; line2: string }");
+  });
+
+  it("UpgradePrompt defaults to existing L-QUOTA copy when bodyCopy omitted (backward-compat for existing call sites)", () => {
+    expect(upgradePromptSrc).toContain("const DEFAULT_BODY_COPY");
+    expect(upgradePromptSrc).toContain("You've reached your trial limit.");
+    expect(upgradePromptSrc).toContain("Upgrade to Pro to keep going.");
+    expect(upgradePromptSrc).toContain("const copy = bodyCopy ?? DEFAULT_BODY_COPY");
+  });
+
+  it("UpgradePrompt renders copy.line1 / copy.line2 in the body paragraphs (not hardcoded strings)", () => {
+    expect(upgradePromptSrc).toContain("{copy.line1}");
+    expect(upgradePromptSrc).toContain("{copy.line2}");
   });
 });

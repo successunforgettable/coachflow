@@ -14,7 +14,9 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
 import V2Layout from "./V2Layout";
+import UpgradePrompt from "./components/UpgradePrompt";
 
 const PLACEHOLDER_EXAMPLE = "I'm a business coach for new consultants who want to land their first $10k clients. My method is the Authority Stack — LinkedIn positioning, outbound scripts, and a tiered offer ladder. Most clients book their first paid call within 30 days. I sell a 12-week accelerator at $4,500.";
 
@@ -35,6 +37,48 @@ export default function V2AutoModeIntake() {
   const [rawText, setRawText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const extractMutation = trpc.services.extractFromText.useMutation();
+
+  // ── Phase F Item 1 (C0.1) — proactive trial-user gate ─────────────────────
+  // Mirrors server `isAutoModeTierAllowed` (server/routers/autoMode.ts:65)
+  // EXACTLY: superuser + admin bypass; pro + agency tiers allowed; everyone
+  // else (trial, null, unknown) sees the upgrade screen.
+  //
+  // Proactive (render-time) rather than reactive (catch FORBIDDEN after
+  // orchestrate) — saves ~$0.05 of LLM cost + ~30s of user effort + 4 DB
+  // writes that trial users would otherwise waste before discovering the
+  // gate. Belt-and-suspenders mirror gate lives on V2AutoModeIntakeConfirm
+  // for defense against URL-paste / back-button / stale-state navigation.
+  const { user: authUser } = useAuth();
+  const isFreeTier = !authUser
+    || (authUser.role !== "superuser"
+        && authUser.role !== "admin"
+        && authUser.subscriptionTier !== "pro"
+        && authUser.subscriptionTier !== "agency");
+
+  if (isFreeTier) {
+    return (
+      <V2Layout>
+        <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", padding: "48px 16px 64px" }}>
+          <button
+            onClick={() => navigate("/v2-dashboard")}
+            style={{ alignSelf: "flex-start", marginBottom: "24px", fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#777", background: "none", border: "none", cursor: "pointer", padding: "0", display: "flex", alignItems: "center", gap: "6px" }}
+          >
+            ← Back to Dashboard
+          </button>
+          <div style={{ maxWidth: "640px", width: "100%", margin: "0 auto" }}>
+            <UpgradePrompt
+              variant="inline"
+              featureName="Auto Mode"
+              bodyCopy={{
+                line1: "Auto Mode is a Pro feature.",
+                line2: "Upgrade to unlock the 1-click campaign builder.",
+              }}
+            />
+          </div>
+        </div>
+      </V2Layout>
+    );
+  }
 
   const charCount = rawText.length;
   const meetsMinimum = charCount >= CHAR_MIN;
