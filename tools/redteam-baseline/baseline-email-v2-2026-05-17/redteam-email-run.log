@@ -1,0 +1,990 @@
+
+[red-team] Harness starting against PRODUCTION environment.
+[red-team]   PHASE E γ scope acknowledged (REDTEAM_EMAIL_PHASE=1).
+[red-team]   Estimated cost: $40-80 (offer+LP) + $15-50 (email phase).
+[red-team]   Estimated runtime: 30-60 min (offer+LP) + 90-120 min (email).
+[red-team]   Email phase: 15 fixtures × 10 sequence types = 150 base
+[red-team]     generations + 24 event-anchored supplementary = 174 total.
+[red-team]   v2 §6 methodology corrections active for EMAIL audit only:
+[red-team]     token-override in classifier + full-operator-context cross-check.
+[red-team]   Baseline-v1/v2 artifacts NOT mutated.
+[red-team]   Temporary DB rows (__REDTEAM__ prefix) created in production;
+[red-team]   cleanup runs automatically in finally{} on completion or fatal error.
+[red-team]   If interrupted (Ctrl+C / kill), manual cleanup may be required.
+[red-team]   See harness file header comment for manual cleanup SQL.
+
+[REDTEAM] Harness loaded. 15 fixtures defined.
+
+[REDTEAM] Phase 1: Setup 
+[REDTEAM] Setup 01-exec-coach-no-price-no-testim: serviceId=126 icpId=131
+[REDTEAM] Setup 02-life-coach-minimal: serviceId=127 icpId=132
+[REDTEAM] Setup 03-biz-coach-real-price-real-testim: serviceId=128 icpId=133
+[REDTEAM] Setup 04-speaker-vague-price-1-testim: serviceId=129 icpId=134
+[REDTEAM] Setup 05-consultant-no-price-2-testim: serviceId=130 icpId=135
+[REDTEAM] Setup 06-course-low-ticket: serviceId=131 icpId=136
+[REDTEAM] Setup 07-mastermind-high-ticket-full: serviceId=132 icpId=137
+[REDTEAM] Setup 08-webinar-no-inputs: serviceId=133 icpId=138
+[REDTEAM] Setup 09-infoproduct-low-ticket: serviceId=134 icpId=139
+[REDTEAM] Setup 10-productivity-low-stakes: serviceId=135 icpId=140
+[REDTEAM] Setup 11-sales-coach-15k-no-testim: serviceId=136 icpId=141
+[REDTEAM] Setup 12-voice-coach-no-inputs: serviceId=137 icpId=142
+[REDTEAM] Setup 13-confidence-vague-price: serviceId=138 icpId=143
+[REDTEAM] Setup 14-cohort-testim-no-price: serviceId=139 icpId=144
+[REDTEAM] Setup 15-consultant-full-inputs: serviceId=140 icpId=145
+
+[REDTEAM] Phase 2: Generate
+
+[REDTEAM 1/15] 01-exec-coach-no-price-no-testim — generating offer...
+[cascade] forNode=offer userId=1 icpId=131 kit=missing selectionsResolved=0/0 contextLength=0 preview=""
+[REDTEAM 1/15] offer 94 captured.
+[REDTEAM 1/15] 01-exec-coach-no-price-no-testim — generating landing page...
+[cascade] forNode=landingPage userId=1 icpId=131 kit=missing selectionsResolved=0/5 contextLength=0 preview=""
+[landingPageGenerator] Testimonials fabrication check failed on attempt 1/3 (angle=dollar, 1 hits, top=[invented_tenure@testimonial[0].quote]). Retrying with fail-context.
+[landingPageGenerator] Testimonials fabrication check failed on attempt 1/3 (angle=godfather, 4 hits, top=[archetypal_name_with_location_detail@testimonial[0].name,archetypal_name_with_location_detail@testimonial[1].name,archetypal_name_with_location_detail@testimonial[2].name]). Retrying with fail-context.
+[landingPageGenerator] Testimonials fabrication check failed on attempt 2/3 (angle=dollar, 4 hits, top=[archetypal_name_with_location_detail@testimonial[0].name,archetypal_name_with_location_detail@testimonial[1].name,archetypal_name_with_location_detail@testimonial[2].name]). Retrying with fail-context.
+[REDTEAM 1/15] LP 118 captured.
+
+[REDTEAM 2/15] 02-life-coach-minimal — generating offer...
+[cascade] forNode=offer userId=1 icpId=132 kit=missing selectionsResolved=0/0 contextLength=0 preview=""
+[REDTEAM 2/15] offer 95 captured.
+[REDTEAM 2/15] 02-life-coach-minimal — generating landing page...
+[cascade] forNode=landingPage userId=1 icpId=132 kit=missing selectionsResolved=0/5 contextLength=0 preview=""
+[landingPageGenerator] Testimonials fabrication check failed on attempt 1/3 (angle=free, 4 hits, top=[archetypal_name_with_location_detail@testimonial[0].name,archetypal_name_with_location_detail@testimonial[1].name,archetypal_name_with_location_detail@testimonial[2].name]). Retrying with fail-context.
+[landingPageGenerator] Testimonials fabrication check failed on attempt 1/3 (angle=dollar, 4 hits, top=[archetypal_name_with_location_detail@testimonial[0].name,archetypal_name_with_location_detail@testimonial[1].name,archetypal_name_with_location_detail@testimonial[2].name]). Retrying with fail-context.
+[REDTEAM 2/15] LP 119 captured.
+
+[REDTEAM 3/15] 03-biz-coach-real-price-real-testim — generating offer...
+[cascade] forNode=offer userId=1 icpId=133 kit=missing selectionsResolved=0/0 contextLength=0 preview=""
+[offersGenerator] Offer fabrication check failed on attempt 1/3 (angle=dollar, 4 hits, top=[offer_invented_currency@pricing,offer_invented_currency@pricing,offer_invented_currency@pricing]). Retrying with fail-context.
+[offersGenerator] Offer fabrication check failed on attempt 1/3 (angle=godfather, 6 hits, top=[offer_invented_currency@pricing,offer_invented_currency@pricing,offer_invented_currency@pricing]). Retrying with fail-context.
+[offersGenerator] Offer fabrication check failed on attempt 1/3 (angle=free, 1 hits, top=[offer_invented_currency@bonuses]). Retrying with fail-context.
+[offersGenerator] Offer fabrication check failed on attempt 2/3 (angle=dollar, 4 hits, top=[offer_invented_currency@pricing,offer_invented_currency@pricing,offer_invented_currency@pricing]). Retrying with fail-context.
+[offersGenerator] Offer fabrication check failed on attempt 2/3 (angle=godfather, 4 hits, top=[offer_invented_currency@pricing,offer_invented_currency@bonuses,offer_invented_currency@bonuses]). Retrying with fail-context.
+[offersGenerator] Offer fabrication check failed on attempt 2/3 (angle=free, 2 hits, top=[offer_invented_currency@bonuses,offer_invented_currency@bonuses]). Retrying with fail-context.
+[offersGenerator] Offer fabrication check exhausted retries on angle=dollar (8 hits remaining, classes=[offer_invented_currency,offer_invented_currency,offer_invented_currency,offer_invented_currency,offer_invented_currency,offer_invented_anchor_range,offer_invented_currency,offer_invented_currency]); returning content as best-effort. Phase D Phase 1.
+[offersGenerator]   hit 1: offer_invented_currency @ pricing matched "£80"
+[offersGenerator]   hit 2: offer_invented_currency @ pricing matched "£200"
+[offersGenerator]   hit 3: offer_invented_currency @ pricing matched "£250"
+[offersGenerator]   hit 4: offer_invented_currency @ pricing matched "£4,000"
+[offersGenerator]   hit 5: offer_invented_currency @ pricing matched "£14,000"
+[offersGenerator]   hit 6: offer_invented_anchor_range @ pricing matched "£4,000–£14,000"
+[offersGenerator]   hit 7: offer_invented_currency @ bonuses matched "£80"
+[offersGenerator]   hit 8: offer_invented_currency @ bonuses matched "£200"
+[offersGenerator] Offer fabrication check exhausted retries on angle=free (1 hits remaining, classes=[offer_invented_currency]); returning content as best-effort. Phase D Phase 1.
+[offersGenerator]   hit 1: offer_invented_currency @ bonuses matched "£250"
+[REDTEAM 3/15] offer 96 captured.
+[REDTEAM 3/15] 03-biz-coach-real-price-real-testim — generating landing page...
+[cascade] forNode=landingPage userId=1 icpId=133 kit=missing selectionsResolved=0/5 contextLength=0 preview=""
+[REDTEAM 3/15] LP 120 captured.
+
+[REDTEAM 4/15] 04-speaker-vague-price-1-testim — generating offer...
+[cascade] forNode=offer userId=1 icpId=134 kit=missing selectionsResolved=0/0 contextLength=0 preview=""
+[REDTEAM 4/15] offer 97 captured.
+[REDTEAM 4/15] 04-speaker-vague-price-1-testim — generating landing page...
+[cascade] forNode=landingPage userId=1 icpId=134 kit=missing selectionsResolved=0/5 contextLength=0 preview=""
+[landingPageGenerator] Testimonials fabrication check failed on attempt 1/3 (angle=free, 1 hits, top=[invented_tenure@testimonial[1].quote]). Retrying with fail-context.
+[REDTEAM 4/15] LP 121 captured.
+
+[REDTEAM 5/15] 05-consultant-no-price-2-testim — generating offer...
+[cascade] forNode=offer userId=1 icpId=135 kit=missing selectionsResolved=0/0 contextLength=0 preview=""
+[REDTEAM 5/15] offer 98 captured.
+[REDTEAM 5/15] 05-consultant-no-price-2-testim — generating landing page...
+[cascade] forNode=landingPage userId=1 icpId=135 kit=missing selectionsResolved=0/5 contextLength=0 preview=""
+[REDTEAM 5/15] LP 122 captured.
+
+[REDTEAM 6/15] 06-course-low-ticket — generating offer...
+[cascade] forNode=offer userId=1 icpId=136 kit=missing selectionsResolved=0/0 contextLength=0 preview=""
+[REDTEAM 6/15] offer 99 captured.
+[REDTEAM 6/15] 06-course-low-ticket — generating landing page...
+[cascade] forNode=landingPage userId=1 icpId=136 kit=missing selectionsResolved=0/5 contextLength=0 preview=""
+[REDTEAM 6/15] LP 123 captured.
+
+[REDTEAM 7/15] 07-mastermind-high-ticket-full — generating offer...
+[cascade] forNode=offer userId=1 icpId=137 kit=missing selectionsResolved=0/0 contextLength=0 preview=""
+[offersGenerator] Offer fabrication check failed on attempt 1/3 (angle=godfather, 3 hits, top=[offer_invented_currency@pricing,offer_invented_currency@bonuses,offer_invented_currency@bonuses]). Retrying with fail-context.
+[offersGenerator] Offer fabrication check failed on attempt 1/3 (angle=dollar, 1 hits, top=[offer_invented_currency@pricing]). Retrying with fail-context.
+[offersGenerator] Offer fabrication check failed on attempt 1/3 (angle=free, 6 hits, top=[offer_invented_currency@bonuses,offer_invented_currency@bonuses,offer_invented_currency@bonuses]). Retrying with fail-context.
+[offersGenerator] Offer fabrication check failed on attempt 2/3 (angle=dollar, 2 hits, top=[offer_invented_currency@pricing,offer_invented_currency@pricing]). Retrying with fail-context.
+[offersGenerator] Offer fabrication check failed on attempt 2/3 (angle=godfather, 3 hits, top=[offer_invented_currency@pricing,offer_invented_currency@pricing,offer_invented_currency@bonuses]). Retrying with fail-context.
+[offersGenerator] Offer fabrication check failed on attempt 2/3 (angle=free, 3 hits, top=[offer_invented_currency@pricing,offer_invented_currency@bonuses,offer_invented_currency@bonuses]). Retrying with fail-context.
+[offersGenerator] Offer fabrication check exhausted retries on angle=dollar (5 hits remaining, classes=[offer_invented_currency,offer_invented_currency,offer_invented_currency,offer_invented_currency,offer_invented_currency]); returning content as best-effort. Phase D Phase 1.
+[offersGenerator]   hit 1: offer_invented_currency @ pricing matched "$5"
+[offersGenerator]   hit 2: offer_invented_currency @ pricing matched "$20"
+[offersGenerator]   hit 3: offer_invented_currency @ pricing matched "$500"
+[offersGenerator]   hit 4: offer_invented_currency @ pricing matched "$1"
+[offersGenerator]   hit 5: offer_invented_currency @ bonuses matched "$1.4"
+[offersGenerator] Offer fabrication check exhausted retries on angle=free (5 hits remaining, classes=[offer_invented_currency,offer_invented_currency,offer_invented_currency,offer_invented_currency,offer_invented_currency]); returning content as best-effort. Phase D Phase 1.
+[offersGenerator]   hit 1: offer_invented_currency @ pricing matched "$0"
+[offersGenerator]   hit 2: offer_invented_currency @ bonuses matched "$12"
+[offersGenerator]   hit 3: offer_invented_currency @ bonuses matched "$8"
+[offersGenerator]   hit 4: offer_invented_currency @ bonuses matched "$1.4"
+[offersGenerator]   hit 5: offer_invented_currency @ bonuses matched "$18"
+[REDTEAM 7/15] offer 100 captured.
+[REDTEAM 7/15] 07-mastermind-high-ticket-full — generating landing page...
+[cascade] forNode=landingPage userId=1 icpId=137 kit=missing selectionsResolved=0/5 contextLength=0 preview=""
+[REDTEAM 7/15] LP 124 captured.
+
+[REDTEAM 8/15] 08-webinar-no-inputs — generating offer...
+[cascade] forNode=offer userId=1 icpId=138 kit=missing selectionsResolved=0/0 contextLength=0 preview=""
+[offersGenerator] Offer fabrication check failed on attempt 1/3 (angle=dollar, 2 hits, top=[offer_invented_currency@pricing,offer_invented_currency@pricing]). Retrying with fail-context.
+[REDTEAM 8/15] offer 101 captured.
+[REDTEAM 8/15] 08-webinar-no-inputs — generating landing page...
+[cascade] forNode=landingPage userId=1 icpId=138 kit=missing selectionsResolved=0/5 contextLength=0 preview=""
+[REDTEAM 8/15] LP 125 captured.
+
+[REDTEAM 9/15] 09-infoproduct-low-ticket — generating offer...
+[cascade] forNode=offer userId=1 icpId=139 kit=missing selectionsResolved=0/0 contextLength=0 preview=""
+[offersGenerator] Offer fabrication check failed on attempt 1/3 (angle=dollar, 1 hits, top=[offer_invented_cohort_date@urgency]). Retrying with fail-context.
+[REDTEAM 9/15] offer 102 captured.
+[REDTEAM 9/15] 09-infoproduct-low-ticket — generating landing page...
+[cascade] forNode=landingPage userId=1 icpId=139 kit=missing selectionsResolved=0/5 contextLength=0 preview=""
+[REDTEAM 9/15] LP 126 captured.
+
+[REDTEAM 10/15] 10-productivity-low-stakes — generating offer...
+[cascade] forNode=offer userId=1 icpId=140 kit=missing selectionsResolved=0/0 contextLength=0 preview=""
+[REDTEAM 10/15] offer 103 captured.
+[REDTEAM 10/15] 10-productivity-low-stakes — generating landing page...
+[cascade] forNode=landingPage userId=1 icpId=140 kit=missing selectionsResolved=0/5 contextLength=0 preview=""
+[landingPageGenerator] Testimonials fabrication check failed on attempt 1/3 (angle=godfather, 1 hits, top=[archetypal_name_with_location_detail@testimonial[0].name]). Retrying with fail-context.
+[REDTEAM 10/15] LP 127 captured.
+
+[REDTEAM 11/15] 11-sales-coach-15k-no-testim — generating offer...
+[cascade] forNode=offer userId=1 icpId=141 kit=missing selectionsResolved=0/0 contextLength=0 preview=""
+[offersGenerator] Offer fabrication check failed on attempt 1/3 (angle=free, 1 hits, top=[offer_invented_currency@bonuses]). Retrying with fail-context.
+[offersGenerator] Offer fabrication check failed on attempt 1/3 (angle=dollar, 2 hits, top=[offer_invented_currency@pricing,offer_invented_currency@bonuses]). Retrying with fail-context.
+[offersGenerator] Offer fabrication check failed on attempt 2/3 (angle=free, 1 hits, top=[offer_invented_currency@bonuses]). Retrying with fail-context.
+[offersGenerator] Offer fabrication check failed on attempt 2/3 (angle=dollar, 3 hits, top=[offer_invented_currency@pricing,offer_invented_currency@pricing,offer_invented_currency@bonuses]). Retrying with fail-context.
+[offersGenerator] Offer fabrication check exhausted retries on angle=free (1 hits remaining, classes=[offer_invented_currency]); returning content as best-effort. Phase D Phase 1.
+[offersGenerator]   hit 1: offer_invented_currency @ bonuses matched "£50"
+[offersGenerator] Offer fabrication check exhausted retries on angle=dollar (4 hits remaining, classes=[offer_invented_currency,offer_invented_currency,offer_invented_currency,offer_invented_currency]); returning content as best-effort. Phase D Phase 1.
+[offersGenerator]   hit 1: offer_invented_currency @ pricing matched "£50"
+[offersGenerator]   hit 2: offer_invented_currency @ pricing matched "£50"
+[offersGenerator]   hit 3: offer_invented_currency @ bonuses matched "£50"
+[offersGenerator]   hit 4: offer_invented_currency @ bonuses matched "£50"
+[REDTEAM 11/15] offer 104 captured.
+[REDTEAM 11/15] 11-sales-coach-15k-no-testim — generating landing page...
+[cascade] forNode=landingPage userId=1 icpId=141 kit=missing selectionsResolved=0/5 contextLength=0 preview=""
+[landingPageGenerator] Testimonials fabrication check failed on attempt 1/3 (angle=free, 1 hits, top=[programme_duration_drift@testimonial[0].quote]). Retrying with fail-context.
+[landingPageGenerator] Testimonials fabrication check failed on attempt 1/3 (angle=original, 1 hits, top=[programme_duration_drift@testimonial[0].quote]). Retrying with fail-context.
+[landingPageGenerator] Testimonials fabrication check failed on attempt 1/3 (angle=dollar, 1 hits, top=[programme_duration_drift@testimonial[0].quote]). Retrying with fail-context.
+[REDTEAM 11/15] LP 128 captured.
+
+[REDTEAM 12/15] 12-voice-coach-no-inputs — generating offer...
+[cascade] forNode=offer userId=1 icpId=142 kit=missing selectionsResolved=0/0 contextLength=0 preview=""
+[REDTEAM 12/15] offer 105 captured.
+[REDTEAM 12/15] 12-voice-coach-no-inputs — generating landing page...
+[cascade] forNode=landingPage userId=1 icpId=142 kit=missing selectionsResolved=0/5 contextLength=0 preview=""
+[landingPageGenerator] Testimonials fabrication check failed on attempt 1/3 (angle=free, 5 hits, top=[invented_tenure@testimonial[0].quote,archetypal_name_with_location_detail@testimonial[0].name,archetypal_name_with_location_detail@testimonial[1].name]). Retrying with fail-context.
+[landingPageGenerator] Testimonials fabrication check failed on attempt 1/3 (angle=original, 5 hits, top=[archetypal_name_with_location_detail@testimonial[0].name,programme_duration_drift@testimonial[1].quote,archetypal_name_with_location_detail@testimonial[1].name]). Retrying with fail-context.
+[landingPageGenerator] Testimonials fabrication check failed on attempt 1/3 (angle=godfather, 5 hits, top=[archetypal_name_with_location_detail@testimonial[0].name,archetypal_name_with_location_detail@testimonial[1].name,invented_tenure@testimonial[2].quote]). Retrying with fail-context.
+[REDTEAM 12/15] LP 129 captured.
+
+[REDTEAM 13/15] 13-confidence-vague-price — generating offer...
+[cascade] forNode=offer userId=1 icpId=143 kit=missing selectionsResolved=0/0 contextLength=0 preview=""
+[REDTEAM 13/15] offer 106 captured.
+[REDTEAM 13/15] 13-confidence-vague-price — generating landing page...
+[cascade] forNode=landingPage userId=1 icpId=143 kit=missing selectionsResolved=0/5 contextLength=0 preview=""
+[landingPageGenerator] Testimonials fabrication check failed on attempt 1/3 (angle=dollar, 2 hits, top=[archetypal_name_with_location_detail@testimonial[1].name,archetypal_name_with_location_detail@testimonial[2].name]). Retrying with fail-context.
+[landingPageGenerator] Testimonials fabrication check failed on attempt 1/3 (angle=original, 1 hits, top=[invented_tenure@testimonial[3].headline]). Retrying with fail-context.
+[landingPageGenerator] Testimonials fabrication check failed on attempt 1/3 (angle=godfather, 3 hits, top=[archetypal_name_with_location_detail@testimonial[0].name,archetypal_name_with_location_detail@testimonial[1].name,archetypal_name_with_location_detail@testimonial[2].name]). Retrying with fail-context.
+[REDTEAM 13/15] LP 130 captured.
+
+[REDTEAM 14/15] 14-cohort-testim-no-price — generating offer...
+[cascade] forNode=offer userId=1 icpId=144 kit=missing selectionsResolved=0/0 contextLength=0 preview=""
+[REDTEAM 14/15] offer 107 captured.
+[REDTEAM 14/15] 14-cohort-testim-no-price — generating landing page...
+[cascade] forNode=landingPage userId=1 icpId=144 kit=missing selectionsResolved=0/5 contextLength=0 preview=""
+[REDTEAM 14/15] LP 131 captured.
+
+[REDTEAM 15/15] 15-consultant-full-inputs — generating offer...
+[cascade] forNode=offer userId=1 icpId=145 kit=missing selectionsResolved=0/0 contextLength=0 preview=""
+[offersGenerator] Offer fabrication check failed on attempt 1/3 (angle=dollar, 2 hits, top=[offer_invented_currency@pricing,offer_invented_currency@pricing]). Retrying with fail-context.
+[REDTEAM 15/15] offer 108 captured.
+[REDTEAM 15/15] 15-consultant-full-inputs — generating landing page...
+[cascade] forNode=landingPage userId=1 icpId=145 kit=missing selectionsResolved=0/5 contextLength=0 preview=""
+[REDTEAM 15/15] LP 132 captured.
+
+[REDTEAM] Phase 2.5 (γ): Email Generation
+
+[REDTEAM email 1/15] 01-exec-coach-no-price-no-testim — generating welcome...
+[cascade] forNode=email userId=1 icpId=131 kit=found selectionsResolved=1/4 contextLength=278 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Have Done th"
+[emailSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=1 top=[email_archetypal_in_body@email[2].body]
+[emailSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=2/3 stage=fabrication hits=1 top=[email_invented_cohort_date@email[2].ps]
+[REDTEAM email 1/15] welcome FAILED: This operation was aborted
+
+[REDTEAM email 1/15] 01-exec-coach-no-price-no-testim — generating engagement...
+[cascade] forNode=email userId=1 icpId=131 kit=found selectionsResolved=1/4 contextLength=278 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Have Done th"
+[REDTEAM email 1/15] engagement → emailSequenceId=207, 5 emails captured.
+
+[REDTEAM email 1/15] 01-exec-coach-no-price-no-testim — generating sales...
+[cascade] forNode=email userId=1 icpId=131 kit=found selectionsResolved=1/4 contextLength=278 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Have Done th"
+[emailSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=1 top=[email_invented_cohort_date@email[5].previewText]
+[REDTEAM email 1/15] sales → emailSequenceId=208, 7 emails captured.
+
+[REDTEAM email 1/15] 01-exec-coach-no-price-no-testim — generating nurture...
+[cascade] forNode=email userId=1 icpId=131 kit=found selectionsResolved=1/4 contextLength=278 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Have Done th"
+[REDTEAM email 1/15] nurture → emailSequenceId=209, 7 emails captured.
+
+[REDTEAM email 1/15] 01-exec-coach-no-price-no-testim — generating launch...
+[cascade] forNode=email userId=1 icpId=131 kit=found selectionsResolved=1/4 contextLength=278 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Have Done th"
+[emailSequences] Fabrication-pattern check failed (3 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=3 top=[email_invented_guarantee_timeframe@email[2].body,email_invented_refund_mechanic@email[3].previewText,email_invented_cohort_date@email[3].ps]
+[REDTEAM email 1/15] launch → emailSequenceId=210, 8 emails captured.
+
+[REDTEAM email 1/15] 01-exec-coach-no-price-no-testim — generating re-engagement...
+[cascade] forNode=email userId=1 icpId=131 kit=found selectionsResolved=1/4 contextLength=278 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Have Done th"
+[REDTEAM email 1/15] re-engagement → emailSequenceId=211, 4 emails captured.
+
+[REDTEAM email 1/15] 01-exec-coach-no-price-no-testim — generating discovery_call_confirmation...
+[cascade] forNode=email userId=1 icpId=131 kit=found selectionsResolved=1/4 contextLength=278 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Have Done th"
+[REDTEAM email 1/15] discovery_call_confirmation → emailSequenceId=212, 1 emails captured.
+
+[REDTEAM email 1/15] 01-exec-coach-no-price-no-testim — generating discovery_call_reminder...
+[cascade] forNode=email userId=1 icpId=131 kit=found selectionsResolved=1/4 contextLength=278 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Have Done th"
+[emailSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=1 top=[email_invented_guarantee_timeframe@email[1].body]
+[REDTEAM email 1/15] discovery_call_reminder → emailSequenceId=213, 3 emails captured.
+
+[REDTEAM email 1/15] 01-exec-coach-no-price-no-testim — generating event_logistics...
+[cascade] forNode=email userId=1 icpId=131 kit=found selectionsResolved=1/4 contextLength=278 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Have Done th"
+[REDTEAM email 1/15] event_logistics → emailSequenceId=214, 4 emails captured.
+
+[REDTEAM email 1/15] 01-exec-coach-no-price-no-testim — generating replay_for_no_shows...
+[cascade] forNode=email userId=1 icpId=131 kit=found selectionsResolved=1/4 contextLength=278 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Have Done th"
+[REDTEAM email 1/15] replay_for_no_shows → emailSequenceId=215, 3 emails captured.
+
+[REDTEAM email 2/15] 02-life-coach-minimal — generating welcome...
+[cascade] forNode=email userId=1 icpId=132 kit=found selectionsResolved=1/4 contextLength=296 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Can Answer E"
+[REDTEAM email 2/15] welcome → emailSequenceId=216, 3 emails captured.
+
+[REDTEAM email 2/15] 02-life-coach-minimal — generating engagement...
+[cascade] forNode=email userId=1 icpId=132 kit=found selectionsResolved=1/4 contextLength=296 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Can Answer E"
+[emailSequences] Fabrication-pattern check failed (2 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=2 top=[programme_duration_drift@email[4].body,email_invented_programme_duration@email[4].body]
+[REDTEAM email 2/15] engagement → emailSequenceId=217, 5 emails captured.
+
+[REDTEAM email 2/15] 02-life-coach-minimal — generating sales...
+[cascade] forNode=email userId=1 icpId=132 kit=found selectionsResolved=1/4 contextLength=296 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Can Answer E"
+[REDTEAM email 2/15] sales → emailSequenceId=218, 7 emails captured.
+
+[REDTEAM email 2/15] 02-life-coach-minimal — generating nurture...
+[cascade] forNode=email userId=1 icpId=132 kit=found selectionsResolved=1/4 contextLength=296 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Can Answer E"
+[REDTEAM email 2/15] nurture → emailSequenceId=219, 6 emails captured.
+
+[REDTEAM email 2/15] 02-life-coach-minimal — generating launch...
+[cascade] forNode=email userId=1 icpId=132 kit=found selectionsResolved=1/4 contextLength=296 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Can Answer E"
+[emailSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=1 top=[email_invented_cohort_date@email[6].ps]
+[emailSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=2/3 stage=fabrication hits=1 top=[email_invented_cohort_date@email[3].ps]
+[REDTEAM email 2/15] launch → emailSequenceId=220, 9 emails captured.
+
+[REDTEAM email 2/15] 02-life-coach-minimal — generating re-engagement...
+[cascade] forNode=email userId=1 icpId=132 kit=found selectionsResolved=1/4 contextLength=296 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Can Answer E"
+[emailSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=1 top=[email_invented_cohort_date@email[2].body]
+[REDTEAM email 2/15] re-engagement → emailSequenceId=221, 4 emails captured.
+
+[REDTEAM email 2/15] 02-life-coach-minimal — generating discovery_call_confirmation...
+[cascade] forNode=email userId=1 icpId=132 kit=found selectionsResolved=1/4 contextLength=296 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Can Answer E"
+[REDTEAM email 2/15] discovery_call_confirmation → emailSequenceId=222, 1 emails captured.
+
+[REDTEAM email 2/15] 02-life-coach-minimal — generating discovery_call_reminder...
+[cascade] forNode=email userId=1 icpId=132 kit=found selectionsResolved=1/4 contextLength=296 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Can Answer E"
+[emailSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=1 top=[email_invented_guarantee_timeframe@email[1].body]
+[REDTEAM email 2/15] discovery_call_reminder → emailSequenceId=223, 3 emails captured.
+
+[REDTEAM email 2/15] 02-life-coach-minimal — generating event_logistics...
+[cascade] forNode=email userId=1 icpId=132 kit=found selectionsResolved=1/4 contextLength=296 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Can Answer E"
+[REDTEAM email 2/15] event_logistics → emailSequenceId=224, 4 emails captured.
+
+[REDTEAM email 2/15] 02-life-coach-minimal — generating replay_for_no_shows...
+[cascade] forNode=email userId=1 icpId=132 kit=found selectionsResolved=1/4 contextLength=296 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Can Answer E"
+[REDTEAM email 2/15] replay_for_no_shows → emailSequenceId=225, 3 emails captured.
+
+[REDTEAM email 3/15] 03-biz-coach-real-price-real-testim — generating welcome...
+[cascade] forNode=email userId=1 icpId=133 kit=found selectionsResolved=1/4 contextLength=278 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Why the Smartest"
+[emailSequences] Fabrication-pattern check failed (3 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=3 top=[email_invented_currency@email[0].body,email_invented_currency@email[0].body,email_invented_currency@email[0].body]
+[emailSequences] Fabrication-pattern check failed (2 hits), retrying with fail-context. attempt=2/3 stage=fabrication hits=2 top=[email_invented_currency@email[2].body,email_invented_currency@email[2].body]
+[emailSequences] Fabrication-pattern check exhausted retries (8 hits remaining, classes=[email_invented_currency,email_invented_currency,email_invented_currency,email_invented_currency,email_invented_currency,email_invented_currency,email_invented_currency,email_invented_cohort_date]); returning content as best-effort. Sprint B+1 path d Phase 2.
+[emailSequences]   hit 1: email_invented_currency @ email[2].body matched "£8"
+[emailSequences]   hit 2: email_invented_currency @ email[2].body matched "£35"
+[emailSequences]   hit 3: email_invented_currency @ email[2].body matched "£120"
+[emailSequences]   hit 4: email_invented_currency @ email[2].body matched "£80"
+[emailSequences]   hit 5: email_invented_currency @ email[2].body matched "£200"
+[REDTEAM email 3/15] welcome → emailSequenceId=226, 3 emails captured.
+
+[REDTEAM email 3/15] 03-biz-coach-real-price-real-testim — generating engagement...
+[cascade] forNode=email userId=1 icpId=133 kit=found selectionsResolved=1/4 contextLength=278 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Why the Smartest"
+[emailSequences] Fabrication-pattern check failed (3 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=3 top=[email_invented_currency@email[4].body,email_invented_currency@email[4].body,email_invented_currency@email[4].ps]
+[emailSequences] Fabrication-pattern check failed (3 hits), retrying with fail-context. attempt=2/3 stage=fabrication hits=3 top=[email_invented_cohort_date@email[4].body,email_invented_cohort_date@email[4].ps,email_invented_cohort_date@email[4].ps]
+[REDTEAM email 3/15] engagement → emailSequenceId=227, 3 emails captured.
+
+[REDTEAM email 3/15] 03-biz-coach-real-price-real-testim — generating sales...
+[cascade] forNode=email userId=1 icpId=133 kit=found selectionsResolved=1/4 contextLength=278 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Why the Smartest"
+[emailSequences] Fabrication-pattern check failed (12 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=12 top=[email_invented_currency@email[1].body,email_invented_currency@email[1].body,email_invented_currency@email[1].body]
+[emailSequences] Fabrication-pattern check failed (7 hits), retrying with fail-context. attempt=2/3 stage=fabrication hits=7 top=[email_invented_currency@email[1].body,email_invented_currency@email[1].body,email_invented_currency@email[1].body]
+[REDTEAM email 3/15] sales → emailSequenceId=228, 6 emails captured.
+
+[REDTEAM email 3/15] 03-biz-coach-real-price-real-testim — generating nurture...
+[cascade] forNode=email userId=1 icpId=133 kit=found selectionsResolved=1/4 contextLength=278 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Why the Smartest"
+[emailSequences] Fabrication-pattern check failed (20 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=20 top=[email_invented_currency@email[0].body,email_invented_currency@email[0].body,email_invented_currency@email[0].ps]
+[emailSequences] Fabrication-pattern check failed (7 hits), retrying with fail-context. attempt=2/3 stage=fabrication hits=7 top=[direct_quoted_speech@email[4].body,email_invented_currency@email[4].body,email_invented_currency@email[5].body]
+[emailSequences] Fabrication-pattern check exhausted retries (12 hits remaining, classes=[email_invented_currency,email_invented_currency,email_invented_currency,email_invented_currency,email_invented_currency,email_invented_currency,email_invented_currency,email_invented_currency,email_invented_currency,email_invented_currency,email_invented_currency,email_invented_currency]); returning content as best-effort. Sprint B+1 path d Phase 2.
+[emailSequences]   hit 1: email_invented_currency @ email[0].body matched "£80"
+[emailSequences]   hit 2: email_invented_currency @ email[0].body matched "£200"
+[emailSequences]   hit 3: email_invented_currency @ email[1].body matched "£200"
+[emailSequences]   hit 4: email_invented_currency @ email[1].subject matched "£200"
+[emailSequences]   hit 5: email_invented_currency @ email[4].body matched "£120"
+[REDTEAM email 3/15] nurture → emailSequenceId=229, 7 emails captured.
+
+[REDTEAM email 3/15] 03-biz-coach-real-price-real-testim — generating launch...
+[cascade] forNode=email userId=1 icpId=133 kit=found selectionsResolved=1/4 contextLength=278 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Why the Smartest"
+[emailSequences] Fabrication-pattern check failed (26 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=26 top=[email_invented_currency@email[0].ps,email_invented_currency@email[0].ps,email_invented_currency@email[1].body]
+[REDTEAM email 3/15] launch → emailSequenceId=230, 3 emails captured.
+
+[REDTEAM email 3/15] 03-biz-coach-real-price-real-testim — generating re-engagement...
+[cascade] forNode=email userId=1 icpId=133 kit=found selectionsResolved=1/4 contextLength=278 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Why the Smartest"
+[emailSequences] Fabrication-pattern check failed (8 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=8 top=[email_invented_currency@email[0].body,email_invented_currency@email[0].body,email_invented_currency@email[1].body]
+[emailSequences] Fabrication-pattern check failed (2 hits), retrying with fail-context. attempt=2/3 stage=fabrication hits=2 top=[email_invented_currency@email[2].body,email_invented_currency@email[2].body]
+[emailSequences] Fabrication-pattern check exhausted retries (4 hits remaining, classes=[email_invented_currency,email_invented_currency,email_invented_currency,email_invented_currency]); returning content as best-effort. Sprint B+1 path d Phase 2.
+[emailSequences]   hit 1: email_invented_currency @ email[1].body matched "£120"
+[emailSequences]   hit 2: email_invented_currency @ email[1].body matched "£80"
+[emailSequences]   hit 3: email_invented_currency @ email[1].body matched "£200"
+[emailSequences]   hit 4: email_invented_currency @ email[3].body matched "£200"
+[REDTEAM email 3/15] re-engagement → emailSequenceId=231, 4 emails captured.
+
+[REDTEAM email 3/15] 03-biz-coach-real-price-real-testim — generating discovery_call_confirmation...
+[cascade] forNode=email userId=1 icpId=133 kit=found selectionsResolved=1/4 contextLength=278 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Why the Smartest"
+[REDTEAM email 3/15] discovery_call_confirmation → emailSequenceId=232, 1 emails captured.
+
+[REDTEAM email 3/15] 03-biz-coach-real-price-real-testim — generating discovery_call_reminder...
+[cascade] forNode=email userId=1 icpId=133 kit=found selectionsResolved=1/4 contextLength=278 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Why the Smartest"
+[emailSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=1 top=[email_invented_guarantee_timeframe@email[1].body]
+[REDTEAM email 3/15] discovery_call_reminder → emailSequenceId=233, 3 emails captured.
+
+[REDTEAM email 3/15] 03-biz-coach-real-price-real-testim — generating event_logistics...
+[cascade] forNode=email userId=1 icpId=133 kit=found selectionsResolved=1/4 contextLength=278 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Why the Smartest"
+[REDTEAM email 3/15] event_logistics → emailSequenceId=234, 4 emails captured.
+
+[REDTEAM email 3/15] 03-biz-coach-real-price-real-testim — generating replay_for_no_shows...
+[cascade] forNode=email userId=1 icpId=133 kit=found selectionsResolved=1/4 contextLength=278 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Why the Smartest"
+[REDTEAM email 3/15] replay_for_no_shows → emailSequenceId=235, 3 emails captured.
+
+[REDTEAM email 4/15] 04-speaker-vague-price-1-testim — generating welcome...
+[cascade] forNode=email userId=1 icpId=134 kit=found selectionsResolved=1/4 contextLength=306 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Your next leader"
+[REDTEAM email 4/15] welcome → emailSequenceId=236, 3 emails captured.
+
+[REDTEAM email 4/15] 04-speaker-vague-price-1-testim — generating engagement...
+[cascade] forNode=email userId=1 icpId=134 kit=found selectionsResolved=1/4 contextLength=306 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Your next leader"
+[emailSequences] Fabrication-pattern check failed (3 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=3 top=[email_invented_cohort_date@email[4].body,email_invented_cohort_date@email[4].body,email_invented_cohort_date@email[4].body]
+[emailSequences] Fabrication-pattern check failed (2 hits), retrying with fail-context. attempt=2/3 stage=fabrication hits=2 top=[programme_duration_drift@email[3].body,email_invented_programme_duration@email[3].body]
+[emailSequences] Fabrication-pattern check exhausted retries (2 hits remaining, classes=[email_invented_cohort_date,email_invented_cohort_date]); returning content as best-effort. Sprint B+1 path d Phase 2.
+[emailSequences]   hit 1: email_invented_cohort_date @ email[4].body matched "enrolment closes"
+[emailSequences]   hit 2: email_invented_cohort_date @ email[4].body matched "next cohort"
+[REDTEAM email 4/15] engagement → emailSequenceId=237, 5 emails captured.
+
+[REDTEAM email 4/15] 04-speaker-vague-price-1-testim — generating sales...
+[cascade] forNode=email userId=1 icpId=134 kit=found selectionsResolved=1/4 contextLength=306 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Your next leader"
+[REDTEAM email 4/15] sales → emailSequenceId=238, 4 emails captured.
+
+[REDTEAM email 4/15] 04-speaker-vague-price-1-testim — generating nurture...
+[cascade] forNode=email userId=1 icpId=134 kit=found selectionsResolved=1/4 contextLength=306 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Your next leader"
+[emailSequences] Fabrication-pattern check failed (2 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=2 top=[direct_quoted_speech@email[4].body,email_invented_programme_duration@email[6].body]
+[REDTEAM email 4/15] nurture → emailSequenceId=239, 6 emails captured.
+
+[REDTEAM email 4/15] 04-speaker-vague-price-1-testim — generating launch...
+[cascade] forNode=email userId=1 icpId=134 kit=found selectionsResolved=1/4 contextLength=306 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Your next leader"
+[emailSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=1 top=[email_invented_cohort_date@email[8].body]
+[emailSequences] Fabrication-pattern check failed (2 hits), retrying with fail-context. attempt=2/3 stage=fabrication hits=2 top=[email_invented_guarantee_timeframe@email[1].body,email_invented_cohort_date@email[2].ps]
+[REDTEAM email 4/15] launch → emailSequenceId=240, 8 emails captured.
+
+[REDTEAM email 4/15] 04-speaker-vague-price-1-testim — generating re-engagement...
+[cascade] forNode=email userId=1 icpId=134 kit=found selectionsResolved=1/4 contextLength=306 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Your next leader"
+[emailSequences] Fabrication-pattern check failed (5 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=5 top=[email_invented_cohort_date@email[1].ps,email_invented_cohort_date@email[2].body,email_invented_cohort_date@email[2].body]
+[REDTEAM email 4/15] re-engagement → emailSequenceId=241, 4 emails captured.
+
+[REDTEAM email 4/15] 04-speaker-vague-price-1-testim — generating discovery_call_confirmation...
+[cascade] forNode=email userId=1 icpId=134 kit=found selectionsResolved=1/4 contextLength=306 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Your next leader"
+[REDTEAM email 4/15] discovery_call_confirmation → emailSequenceId=242, 1 emails captured.
+
+[REDTEAM email 4/15] 04-speaker-vague-price-1-testim — generating discovery_call_reminder...
+[cascade] forNode=email userId=1 icpId=134 kit=found selectionsResolved=1/4 contextLength=306 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Your next leader"
+[emailSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=1 top=[email_invented_guarantee_timeframe@email[1].body]
+[REDTEAM email 4/15] discovery_call_reminder → emailSequenceId=243, 3 emails captured.
+
+[REDTEAM email 4/15] 04-speaker-vague-price-1-testim — generating event_logistics...
+[cascade] forNode=email userId=1 icpId=134 kit=found selectionsResolved=1/4 contextLength=306 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Your next leader"
+[REDTEAM email 4/15] event_logistics → emailSequenceId=244, 4 emails captured.
+
+[REDTEAM email 4/15] 04-speaker-vague-price-1-testim — generating replay_for_no_shows...
+[cascade] forNode=email userId=1 icpId=134 kit=found selectionsResolved=1/4 contextLength=306 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Your next leader"
+[REDTEAM email 4/15] replay_for_no_shows → emailSequenceId=245, 3 emails captured.
+
+[REDTEAM email 5/15] 05-consultant-no-price-2-testim — generating welcome...
+[cascade] forNode=email userId=1 icpId=135 kit=found selectionsResolved=1/4 contextLength=289 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Your Company Gre"
+[emailSequences] Fabrication-pattern check failed (2 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=2 top=[employer_specifics@email[2].body,email_archetypal_in_body@email[2].body]
+[REDTEAM email 5/15] welcome → emailSequenceId=246, 1 emails captured.
+
+[REDTEAM email 5/15] 05-consultant-no-price-2-testim — generating engagement...
+[cascade] forNode=email userId=1 icpId=135 kit=found selectionsResolved=1/4 contextLength=289 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Your Company Gre"
+[emailSequences] Fabrication-pattern check failed (3 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=3 top=[employer_specifics@email[3].ps,programme_duration_drift@email[4].body,email_invented_programme_duration@email[4].body]
+[REDTEAM email 5/15] engagement → emailSequenceId=247, 3 emails captured.
+
+[REDTEAM email 5/15] 05-consultant-no-price-2-testim — generating sales...
+[cascade] forNode=email userId=1 icpId=135 kit=found selectionsResolved=1/4 contextLength=289 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Your Company Gre"
+[emailSequences] Fabrication-pattern check failed (2 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=2 top=[employer_specifics@email[1].ps,email_invented_cohort_date@email[5].ps]
+[REDTEAM email 5/15] sales → emailSequenceId=248, 5 emails captured.
+
+[REDTEAM email 5/15] 05-consultant-no-price-2-testim — generating nurture...
+[cascade] forNode=email userId=1 icpId=135 kit=found selectionsResolved=1/4 contextLength=289 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Your Company Gre"
+[emailSequences] Fabrication-pattern check failed (3 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=3 top=[employer_specifics@email[0].body,employer_specifics@email[1].previewText,email_invented_cohort_date@email[3].ps]
+[REDTEAM email 5/15] nurture → emailSequenceId=249, 4 emails captured.
+
+[REDTEAM email 5/15] 05-consultant-no-price-2-testim — generating launch...
+[cascade] forNode=email userId=1 icpId=135 kit=found selectionsResolved=1/4 contextLength=289 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Your Company Gre"
+[emailSequences] Fabrication-pattern check failed (5 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=5 top=[employer_specifics@email[0].body,employer_specifics@email[2].body,email_invented_guarantee_timeframe@email[2].ps]
+[REDTEAM email 5/15] launch → emailSequenceId=250, 3 emails captured.
+
+[REDTEAM email 5/15] 05-consultant-no-price-2-testim — generating re-engagement...
+[cascade] forNode=email userId=1 icpId=135 kit=found selectionsResolved=1/4 contextLength=289 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Your Company Gre"
+[emailSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=1 top=[employer_specifics@email[1].body]
+[emailSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=2/3 stage=fabrication hits=1 top=[email_invented_cohort_date@email[1].body]
+[emailSequences] Fabrication-pattern check exhausted retries (2 hits remaining, classes=[employer_specifics,employer_specifics]); returning content as best-effort. Sprint B+1 path d Phase 2.
+[emailSequences]   hit 1: employer_specifics @ email[1].body matched "at Series B"
+[emailSequences]   hit 2: employer_specifics @ email[2].body matched "at Series B"
+[REDTEAM email 5/15] re-engagement → emailSequenceId=251, 4 emails captured.
+
+[REDTEAM email 5/15] 05-consultant-no-price-2-testim — generating discovery_call_confirmation...
+[cascade] forNode=email userId=1 icpId=135 kit=found selectionsResolved=1/4 contextLength=289 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Your Company Gre"
+[REDTEAM email 5/15] discovery_call_confirmation → emailSequenceId=252, 1 emails captured.
+
+[REDTEAM email 5/15] 05-consultant-no-price-2-testim — generating discovery_call_reminder...
+[cascade] forNode=email userId=1 icpId=135 kit=found selectionsResolved=1/4 contextLength=289 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Your Company Gre"
+[emailSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=1 top=[email_invented_guarantee_timeframe@email[1].body]
+[REDTEAM email 5/15] discovery_call_reminder → emailSequenceId=253, 3 emails captured.
+
+[REDTEAM email 5/15] 05-consultant-no-price-2-testim — generating event_logistics...
+[cascade] forNode=email userId=1 icpId=135 kit=found selectionsResolved=1/4 contextLength=289 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Your Company Gre"
+[REDTEAM email 5/15] event_logistics → emailSequenceId=254, 4 emails captured.
+
+[REDTEAM email 5/15] 05-consultant-no-price-2-testim — generating replay_for_no_shows...
+[cascade] forNode=email userId=1 icpId=135 kit=found selectionsResolved=1/4 contextLength=289 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Your Company Gre"
+[REDTEAM email 5/15] replay_for_no_shows → emailSequenceId=255, 3 emails captured.
+
+[REDTEAM email 6/15] 06-course-low-ticket — generating welcome...
+[cascade] forNode=email userId=1 icpId=136 kit=found selectionsResolved=1/4 contextLength=298 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "The Solo Founder"
+[REDTEAM email 6/15] welcome → emailSequenceId=256, 3 emails captured.
+
+[REDTEAM email 6/15] 06-course-low-ticket — generating engagement...
+[cascade] forNode=email userId=1 icpId=136 kit=found selectionsResolved=1/4 contextLength=298 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "The Solo Founder"
+[REDTEAM email 6/15] engagement → emailSequenceId=257, 5 emails captured.
+
+[REDTEAM email 6/15] 06-course-low-ticket — generating sales...
+[cascade] forNode=email userId=1 icpId=136 kit=found selectionsResolved=1/4 contextLength=298 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "The Solo Founder"
+[REDTEAM email 6/15] sales → emailSequenceId=258, 7 emails captured.
+
+[REDTEAM email 6/15] 06-course-low-ticket — generating nurture...
+[cascade] forNode=email userId=1 icpId=136 kit=found selectionsResolved=1/4 contextLength=298 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "The Solo Founder"
+[REDTEAM email 6/15] nurture → emailSequenceId=259, 7 emails captured.
+
+[REDTEAM email 6/15] 06-course-low-ticket — generating launch...
+[cascade] forNode=email userId=1 icpId=136 kit=found selectionsResolved=1/4 contextLength=298 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "The Solo Founder"
+[REDTEAM email 6/15] launch → emailSequenceId=260, 3 emails captured.
+
+[REDTEAM email 6/15] 06-course-low-ticket — generating re-engagement...
+[cascade] forNode=email userId=1 icpId=136 kit=found selectionsResolved=1/4 contextLength=298 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "The Solo Founder"
+[REDTEAM email 6/15] re-engagement → emailSequenceId=261, 4 emails captured.
+
+[REDTEAM email 6/15] 06-course-low-ticket — generating discovery_call_confirmation...
+[cascade] forNode=email userId=1 icpId=136 kit=found selectionsResolved=1/4 contextLength=298 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "The Solo Founder"
+[REDTEAM email 6/15] discovery_call_confirmation → emailSequenceId=262, 1 emails captured.
+
+[REDTEAM email 6/15] 06-course-low-ticket — generating discovery_call_reminder...
+[cascade] forNode=email userId=1 icpId=136 kit=found selectionsResolved=1/4 contextLength=298 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "The Solo Founder"
+[emailSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=1 top=[email_invented_guarantee_timeframe@email[1].body]
+[REDTEAM email 6/15] discovery_call_reminder → emailSequenceId=263, 2 emails captured.
+
+[REDTEAM email 6/15] 06-course-low-ticket — generating event_logistics...
+[cascade] forNode=email userId=1 icpId=136 kit=found selectionsResolved=1/4 contextLength=298 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "The Solo Founder"
+[REDTEAM email 6/15] event_logistics → emailSequenceId=264, 4 emails captured.
+
+[REDTEAM email 6/15] 06-course-low-ticket — generating replay_for_no_shows...
+[cascade] forNode=email userId=1 icpId=136 kit=found selectionsResolved=1/4 contextLength=298 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "The Solo Founder"
+[REDTEAM email 6/15] replay_for_no_shows → emailSequenceId=265, 3 emails captured.
+
+[REDTEAM email 7/15] 07-mastermind-high-ticket-full — generating welcome...
+[cascade] forNode=email userId=1 icpId=137 kit=found selectionsResolved=1/4 contextLength=245 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "The Private Peer"
+[emailSequences] Fabrication-pattern check failed (3 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=3 top=[email_invented_currency@email[0].body,email_invented_currency@email[0].body,email_invented_currency@email[0].body]
+[REDTEAM email 7/15] welcome → emailSequenceId=266, 2 emails captured.
+
+[REDTEAM email 7/15] 07-mastermind-high-ticket-full — generating engagement...
+[cascade] forNode=email userId=1 icpId=137 kit=found selectionsResolved=1/4 contextLength=245 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "The Private Peer"
+[emailSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=1 top=[email_invented_currency@email[1].body]
+[emailSequences] Fabrication-pattern check failed (5 hits), retrying with fail-context. attempt=2/3 stage=fabrication hits=5 top=[email_invented_currency@email[1].body,email_invented_currency@email[2].body,email_invented_currency@email[2].body]
+[REDTEAM email 7/15] engagement → emailSequenceId=267, 5 emails captured.
+
+[REDTEAM email 7/15] 07-mastermind-high-ticket-full — generating sales...
+[cascade] forNode=email userId=1 icpId=137 kit=found selectionsResolved=1/4 contextLength=245 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "The Private Peer"
+[REDTEAM email 7/15] sales → emailSequenceId=268, 1 emails captured.
+
+[REDTEAM email 7/15] 07-mastermind-high-ticket-full — generating nurture...
+[cascade] forNode=email userId=1 icpId=137 kit=found selectionsResolved=1/4 contextLength=245 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "The Private Peer"
+[emailSequences] Fabrication-pattern check failed (14 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=14 top=[email_invented_currency@email[0].body,email_invented_currency@email[0].body,email_invented_currency@email[1].body]
+[emailSequences] Fabrication-pattern check failed (17 hits), retrying with fail-context. attempt=2/3 stage=fabrication hits=17 top=[email_invented_currency@email[0].body,email_invented_currency@email[0].body,email_invented_currency@email[1].body]
+[emailSequences] Fabrication-pattern check exhausted retries (16 hits remaining, classes=[email_invented_currency,email_invented_currency,email_invented_currency,email_invented_currency,email_invented_currency,email_invented_currency,email_invented_currency,email_invented_currency,email_invented_currency,email_invented_currency,email_invented_currency,email_invented_currency,email_invented_currency,email_invented_currency,email_invented_currency,email_invented_currency]); returning content as best-effort. Sprint B+1 path d Phase 2.
+[emailSequences]   hit 1: email_invented_currency @ email[0].body matched "$5"
+[emailSequences]   hit 2: email_invented_currency @ email[0].body matched "$20"
+[emailSequences]   hit 3: email_invented_currency @ email[1].body matched "$5"
+[emailSequences]   hit 4: email_invented_currency @ email[1].body matched "$20"
+[emailSequences]   hit 5: email_invented_currency @ email[3].body matched "$12"
+[REDTEAM email 7/15] nurture → emailSequenceId=269, 7 emails captured.
+
+[REDTEAM email 7/15] 07-mastermind-high-ticket-full — generating launch...
+[cascade] forNode=email userId=1 icpId=137 kit=found selectionsResolved=1/4 contextLength=245 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "The Private Peer"
+[emailSequences] Fabrication-pattern check failed (9 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=9 top=[email_invented_currency@email[0].body,email_invented_currency@email[0].previewText,email_invented_currency@email[0].previewText]
+[emailSequences] Fabrication-pattern check failed (9 hits), retrying with fail-context. attempt=2/3 stage=fabrication hits=9 top=[email_invented_currency@email[0].body,email_invented_currency@email[0].body,email_invented_currency@email[0].body]
+[emailSequences] Fabrication-pattern check exhausted retries (12 hits remaining, classes=[email_invented_currency,email_invented_currency,email_invented_currency,email_invented_currency,email_invented_currency,email_invented_currency,email_invented_currency,email_invented_currency,email_invented_currency,email_invented_currency,email_invented_currency,email_invented_cohort_date]); returning content as best-effort. Sprint B+1 path d Phase 2.
+[emailSequences]   hit 1: email_invented_currency @ email[0].body matched "$5"
+[emailSequences]   hit 2: email_invented_currency @ email[0].body matched "$20"
+[emailSequences]   hit 3: email_invented_currency @ email[1].body matched "$5"
+[emailSequences]   hit 4: email_invented_currency @ email[1].body matched "$20"
+[emailSequences]   hit 5: email_invented_currency @ email[2].body matched "$1.4"
+[REDTEAM email 7/15] launch → emailSequenceId=270, 5 emails captured.
+
+[REDTEAM email 7/15] 07-mastermind-high-ticket-full — generating re-engagement...
+[cascade] forNode=email userId=1 icpId=137 kit=found selectionsResolved=1/4 contextLength=245 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "The Private Peer"
+[emailSequences] Fabrication-pattern check failed (7 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=7 top=[email_invented_currency@email[0].body,email_invented_currency@email[1].subject,email_invented_currency@email[2].body]
+[emailSequences] Fabrication-pattern check failed (7 hits), retrying with fail-context. attempt=2/3 stage=fabrication hits=7 top=[email_invented_currency@email[0].body,email_invented_currency@email[0].body,email_invented_currency@email[1].body]
+[REDTEAM email 7/15] re-engagement → emailSequenceId=271, 4 emails captured.
+
+[REDTEAM email 7/15] 07-mastermind-high-ticket-full — generating discovery_call_confirmation...
+[cascade] forNode=email userId=1 icpId=137 kit=found selectionsResolved=1/4 contextLength=245 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "The Private Peer"
+[REDTEAM email 7/15] discovery_call_confirmation → emailSequenceId=272, 1 emails captured.
+
+[REDTEAM email 7/15] 07-mastermind-high-ticket-full — generating discovery_call_reminder...
+[cascade] forNode=email userId=1 icpId=137 kit=found selectionsResolved=1/4 contextLength=245 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "The Private Peer"
+[emailSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=1 top=[email_invented_guarantee_timeframe@email[1].body]
+[REDTEAM email 7/15] discovery_call_reminder → emailSequenceId=273, 3 emails captured.
+
+[REDTEAM email 7/15] 07-mastermind-high-ticket-full — generating event_logistics...
+[cascade] forNode=email userId=1 icpId=137 kit=found selectionsResolved=1/4 contextLength=245 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "The Private Peer"
+[emailSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=1 top=[email_invented_currency@email[0].ps]
+[REDTEAM email 7/15] event_logistics → emailSequenceId=274, 4 emails captured.
+
+[REDTEAM email 7/15] 07-mastermind-high-ticket-full — generating replay_for_no_shows...
+[cascade] forNode=email userId=1 icpId=137 kit=found selectionsResolved=1/4 contextLength=245 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "The Private Peer"
+[REDTEAM email 7/15] replay_for_no_shows → emailSequenceId=275, 3 emails captured.
+
+[REDTEAM email 8/15] 08-webinar-no-inputs — generating welcome...
+[cascade] forNode=email userId=1 icpId=138 kit=found selectionsResolved=1/4 contextLength=309 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Built a Webi"
+[emailSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=1 top=[email_invented_cohort_date@email[2].ps]
+[REDTEAM email 8/15] welcome → emailSequenceId=276, 2 emails captured.
+
+[REDTEAM email 8/15] 08-webinar-no-inputs — generating engagement...
+[cascade] forNode=email userId=1 icpId=138 kit=found selectionsResolved=1/4 contextLength=309 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Built a Webi"
+[REDTEAM email 8/15] engagement → emailSequenceId=277, 5 emails captured.
+
+[REDTEAM email 8/15] 08-webinar-no-inputs — generating sales...
+[cascade] forNode=email userId=1 icpId=138 kit=found selectionsResolved=1/4 contextLength=309 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Built a Webi"
+[REDTEAM email 8/15] sales → emailSequenceId=278, 7 emails captured.
+
+[REDTEAM email 8/15] 08-webinar-no-inputs — generating nurture...
+[cascade] forNode=email userId=1 icpId=138 kit=found selectionsResolved=1/4 contextLength=309 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Built a Webi"
+[REDTEAM email 8/15] nurture → emailSequenceId=279, 7 emails captured.
+
+[REDTEAM email 8/15] 08-webinar-no-inputs — generating launch...
+[cascade] forNode=email userId=1 icpId=138 kit=found selectionsResolved=1/4 contextLength=309 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Built a Webi"
+[emailSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=1 top=[email_invented_guarantee_timeframe@email[8].body]
+[emailSequences] Fabrication-pattern check failed (2 hits), retrying with fail-context. attempt=2/3 stage=fabrication hits=2 top=[email_invented_cohort_date@email[2].body,email_invented_cohort_date@email[3].ps]
+[REDTEAM email 8/15] launch → emailSequenceId=280, 6 emails captured.
+
+[REDTEAM email 8/15] 08-webinar-no-inputs — generating re-engagement...
+[cascade] forNode=email userId=1 icpId=138 kit=found selectionsResolved=1/4 contextLength=309 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Built a Webi"
+[REDTEAM email 8/15] re-engagement → emailSequenceId=281, 4 emails captured.
+
+[REDTEAM email 8/15] 08-webinar-no-inputs — generating discovery_call_confirmation...
+[cascade] forNode=email userId=1 icpId=138 kit=found selectionsResolved=1/4 contextLength=309 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Built a Webi"
+[REDTEAM email 8/15] discovery_call_confirmation → emailSequenceId=282, 1 emails captured.
+
+[REDTEAM email 8/15] 08-webinar-no-inputs — generating discovery_call_reminder...
+[cascade] forNode=email userId=1 icpId=138 kit=found selectionsResolved=1/4 contextLength=309 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Built a Webi"
+[emailSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=1 top=[email_invented_guarantee_timeframe@email[1].body]
+[REDTEAM email 8/15] discovery_call_reminder → emailSequenceId=283, 3 emails captured.
+
+[REDTEAM email 8/15] 08-webinar-no-inputs — generating event_logistics...
+[cascade] forNode=email userId=1 icpId=138 kit=found selectionsResolved=1/4 contextLength=309 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Built a Webi"
+[REDTEAM email 8/15] event_logistics → emailSequenceId=284, 4 emails captured.
+
+[REDTEAM email 8/15] 08-webinar-no-inputs — generating replay_for_no_shows...
+[cascade] forNode=email userId=1 icpId=138 kit=found selectionsResolved=1/4 contextLength=309 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Built a Webi"
+[REDTEAM email 8/15] replay_for_no_shows → emailSequenceId=285, 3 emails captured.
+
+[REDTEAM email 9/15] 09-infoproduct-low-ticket — generating welcome...
+[cascade] forNode=email userId=1 icpId=139 kit=found selectionsResolved=1/4 contextLength=291 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You stopped mid-"
+[REDTEAM email 9/15] welcome → emailSequenceId=286, 3 emails captured.
+
+[REDTEAM email 9/15] 09-infoproduct-low-ticket — generating engagement...
+[cascade] forNode=email userId=1 icpId=139 kit=found selectionsResolved=1/4 contextLength=291 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You stopped mid-"
+[emailSequences] Fabrication-pattern check failed (4 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=4 top=[programme_duration_drift@email[4].body,programme_duration_drift@email[4].ps,email_invented_programme_duration@email[4].body]
+[emailSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=2/3 stage=fabrication hits=1 top=[email_invented_cohort_date@email[3].body]
+[REDTEAM email 9/15] engagement → emailSequenceId=287, 5 emails captured.
+
+[REDTEAM email 9/15] 09-infoproduct-low-ticket — generating sales...
+[cascade] forNode=email userId=1 icpId=139 kit=found selectionsResolved=1/4 contextLength=291 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You stopped mid-"
+[emailSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=1 top=[email_invented_cohort_date@email[2].ps]
+[REDTEAM email 9/15] sales → emailSequenceId=288, 7 emails captured.
+
+[REDTEAM email 9/15] 09-infoproduct-low-ticket — generating nurture...
+[cascade] forNode=email userId=1 icpId=139 kit=found selectionsResolved=1/4 contextLength=291 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You stopped mid-"
+[REDTEAM email 9/15] nurture → emailSequenceId=289, 4 emails captured.
+
+[REDTEAM email 9/15] 09-infoproduct-low-ticket — generating launch...
+[cascade] forNode=email userId=1 icpId=139 kit=found selectionsResolved=1/4 contextLength=291 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You stopped mid-"
+[REDTEAM email 9/15] launch → emailSequenceId=290, 7 emails captured.
+
+[REDTEAM email 9/15] 09-infoproduct-low-ticket — generating re-engagement...
+[cascade] forNode=email userId=1 icpId=139 kit=found selectionsResolved=1/4 contextLength=291 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You stopped mid-"
+[REDTEAM email 9/15] re-engagement → emailSequenceId=291, 4 emails captured.
+
+[REDTEAM email 9/15] 09-infoproduct-low-ticket — generating discovery_call_confirmation...
+[cascade] forNode=email userId=1 icpId=139 kit=found selectionsResolved=1/4 contextLength=291 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You stopped mid-"
+[REDTEAM email 9/15] discovery_call_confirmation → emailSequenceId=292, 1 emails captured.
+
+[REDTEAM email 9/15] 09-infoproduct-low-ticket — generating discovery_call_reminder...
+[cascade] forNode=email userId=1 icpId=139 kit=found selectionsResolved=1/4 contextLength=291 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You stopped mid-"
+[emailSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=1 top=[email_invented_guarantee_timeframe@email[1].body]
+[REDTEAM email 9/15] discovery_call_reminder → emailSequenceId=293, 3 emails captured.
+
+[REDTEAM email 9/15] 09-infoproduct-low-ticket — generating event_logistics...
+[cascade] forNode=email userId=1 icpId=139 kit=found selectionsResolved=1/4 contextLength=291 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You stopped mid-"
+[REDTEAM email 9/15] event_logistics → emailSequenceId=294, 4 emails captured.
+
+[REDTEAM email 9/15] 09-infoproduct-low-ticket — generating replay_for_no_shows...
+[cascade] forNode=email userId=1 icpId=139 kit=found selectionsResolved=1/4 contextLength=291 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You stopped mid-"
+[REDTEAM email 9/15] replay_for_no_shows → emailSequenceId=295, 3 emails captured.
+
+[REDTEAM email 10/15] 10-productivity-low-stakes — generating welcome...
+[cascade] forNode=email userId=1 icpId=140 kit=found selectionsResolved=1/4 contextLength=316 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You can answer e"
+[emailSequences] Fabrication-pattern check failed (2 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=2 top=[email_invented_guarantee_timeframe@email[2].body,email_invented_cohort_date@email[2].ps]
+[REDTEAM email 10/15] welcome → emailSequenceId=296, 3 emails captured.
+
+[REDTEAM email 10/15] 10-productivity-low-stakes — generating engagement...
+[cascade] forNode=email userId=1 icpId=140 kit=found selectionsResolved=1/4 contextLength=316 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You can answer e"
+[emailSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=1 top=[email_invented_cohort_date@email[4].body]
+[REDTEAM email 10/15] engagement → emailSequenceId=297, 5 emails captured.
+
+[REDTEAM email 10/15] 10-productivity-low-stakes — generating sales...
+[cascade] forNode=email userId=1 icpId=140 kit=found selectionsResolved=1/4 contextLength=316 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You can answer e"
+[REDTEAM email 10/15] sales → emailSequenceId=298, 7 emails captured.
+
+[REDTEAM email 10/15] 10-productivity-low-stakes — generating nurture...
+[cascade] forNode=email userId=1 icpId=140 kit=found selectionsResolved=1/4 contextLength=316 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You can answer e"
+[emailSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=1 top=[email_invented_guarantee_timeframe@email[5].previewText]
+[REDTEAM email 10/15] nurture → emailSequenceId=299, 7 emails captured.
+
+[REDTEAM email 10/15] 10-productivity-low-stakes — generating launch...
+[cascade] forNode=email userId=1 icpId=140 kit=found selectionsResolved=1/4 contextLength=316 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You can answer e"
+[emailSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=1 top=[email_invented_guarantee_timeframe@email[0].body]
+[REDTEAM email 10/15] launch → emailSequenceId=300, 6 emails captured.
+
+[REDTEAM email 10/15] 10-productivity-low-stakes — generating re-engagement...
+[cascade] forNode=email userId=1 icpId=140 kit=found selectionsResolved=1/4 contextLength=316 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You can answer e"
+[emailSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=1 top=[email_invented_guarantee_timeframe@email[2].body]
+[REDTEAM email 10/15] re-engagement → emailSequenceId=301, 4 emails captured.
+
+[REDTEAM email 10/15] 10-productivity-low-stakes — generating discovery_call_confirmation...
+[cascade] forNode=email userId=1 icpId=140 kit=found selectionsResolved=1/4 contextLength=316 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You can answer e"
+[REDTEAM email 10/15] discovery_call_confirmation → emailSequenceId=302, 1 emails captured.
+
+[REDTEAM email 10/15] 10-productivity-low-stakes — generating discovery_call_reminder...
+[cascade] forNode=email userId=1 icpId=140 kit=found selectionsResolved=1/4 contextLength=316 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You can answer e"
+[emailSequences] Fabrication-pattern check failed (3 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=3 top=[email_invented_guarantee_timeframe@email[1].body,email_invented_guarantee_timeframe@email[1].body,email_invented_guarantee_timeframe@email[1].subject]
+[REDTEAM email 10/15] discovery_call_reminder → emailSequenceId=303, 3 emails captured.
+
+[REDTEAM email 10/15] 10-productivity-low-stakes — generating event_logistics...
+[cascade] forNode=email userId=1 icpId=140 kit=found selectionsResolved=1/4 contextLength=316 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You can answer e"
+[REDTEAM email 10/15] event_logistics → emailSequenceId=304, 4 emails captured.
+
+[REDTEAM email 10/15] 10-productivity-low-stakes — generating replay_for_no_shows...
+[cascade] forNode=email userId=1 icpId=140 kit=found selectionsResolved=1/4 contextLength=316 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You can answer e"
+[REDTEAM email 10/15] replay_for_no_shows → emailSequenceId=305, 3 emails captured.
+
+[REDTEAM email 11/15] 11-sales-coach-15k-no-testim — generating welcome...
+[cascade] forNode=email userId=1 icpId=141 kit=found selectionsResolved=1/4 contextLength=239 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Know Your Wo"
+[emailSequences] Fabrication-pattern check failed (7 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=7 top=[email_invented_currency@email[0].body,email_invented_currency@email[0].previewText,email_invented_currency@email[1].body]
+[emailSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=2/3 stage=fabrication hits=1 top=[email_invented_cohort_date@email[2].ps]
+[emailSequences] Fabrication-pattern check exhausted retries (3 hits remaining, classes=[email_invented_currency,email_invented_currency,email_invented_currency]); returning content as best-effort. Sprint B+1 path d Phase 2.
+[emailSequences]   hit 1: email_invented_currency @ email[1].body matched "£50"
+[emailSequences]   hit 2: email_invented_currency @ email[1].subject matched "£60"
+[emailSequences]   hit 3: email_invented_currency @ email[2].body matched "£50"
+[REDTEAM email 11/15] welcome → emailSequenceId=306, 3 emails captured.
+
+[REDTEAM email 11/15] 11-sales-coach-15k-no-testim — generating engagement...
+[cascade] forNode=email userId=1 icpId=141 kit=found selectionsResolved=1/4 contextLength=239 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Know Your Wo"
+[emailSequences] Fabrication-pattern check failed (2 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=2 top=[programme_duration_drift@email[4].body,email_invented_programme_duration@email[4].body]
+[REDTEAM email 11/15] engagement → emailSequenceId=307, 2 emails captured.
+
+[REDTEAM email 11/15] 11-sales-coach-15k-no-testim — generating sales...
+[cascade] forNode=email userId=1 icpId=141 kit=found selectionsResolved=1/4 contextLength=239 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Know Your Wo"
+[REDTEAM email 11/15] sales → emailSequenceId=308, 7 emails captured.
+
+[REDTEAM email 11/15] 11-sales-coach-15k-no-testim — generating nurture...
+[cascade] forNode=email userId=1 icpId=141 kit=found selectionsResolved=1/4 contextLength=239 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Know Your Wo"
+[emailSequences] Fabrication-pattern check failed (5 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=5 top=[email_invented_currency@email[0].body,email_invented_currency@email[1].ps,email_invented_currency@email[3].previewText]
+[emailSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=2/3 stage=fabrication hits=1 top=[email_invented_cohort_date@email[5].ps]
+[emailSequences] Fabrication-pattern check exhausted retries (11 hits remaining, classes=[email_invented_currency,email_invented_currency,email_invented_currency,email_invented_currency,email_invented_currency,email_invented_currency,email_invented_currency,email_invented_currency,email_invented_currency,email_invented_currency,email_invented_currency]); returning content as best-effort. Sprint B+1 path d Phase 2.
+[emailSequences]   hit 1: email_invented_currency @ email[0].body matched "£50"
+[emailSequences]   hit 2: email_invented_currency @ email[1].body matched "£50"
+[emailSequences]   hit 3: email_invented_currency @ email[1].body matched "£50"
+[emailSequences]   hit 4: email_invented_currency @ email[1].ps matched "£50"
+[emailSequences]   hit 5: email_invented_currency @ email[2].body matched "£50"
+[REDTEAM email 11/15] nurture → emailSequenceId=309, 7 emails captured.
+
+[REDTEAM email 11/15] 11-sales-coach-15k-no-testim — generating launch...
+[cascade] forNode=email userId=1 icpId=141 kit=found selectionsResolved=1/4 contextLength=239 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Know Your Wo"
+[emailSequences] Fabrication-pattern check failed (2 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=2 top=[email_invented_currency@email[1].body,email_invented_currency@email[3].body]
+[emailSequences] Fabrication-pattern check failed (12 hits), retrying with fail-context. attempt=2/3 stage=fabrication hits=12 top=[email_invented_currency@email[0].body,email_invented_guarantee_timeframe@email[1].body,email_invented_currency@email[2].body]
+[emailSequences] Fabrication-pattern check exhausted retries (4 hits remaining, classes=[email_invented_currency,email_invented_currency,email_invented_currency,email_invented_currency]); returning content as best-effort. Sprint B+1 path d Phase 2.
+[emailSequences]   hit 1: email_invented_currency @ email[0].body matched "£50"
+[emailSequences]   hit 2: email_invented_currency @ email[3].body matched "£50"
+[emailSequences]   hit 3: email_invented_currency @ email[5].body matched "£50"
+[emailSequences]   hit 4: email_invented_currency @ email[5].body matched "£50"
+[REDTEAM email 11/15] launch → emailSequenceId=310, 9 emails captured.
+
+[REDTEAM email 11/15] 11-sales-coach-15k-no-testim — generating re-engagement...
+[cascade] forNode=email userId=1 icpId=141 kit=found selectionsResolved=1/4 contextLength=239 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Know Your Wo"
+[emailSequences] Fabrication-pattern check failed (2 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=2 top=[email_invented_currency@email[1].body,email_invented_currency@email[2].body]
+[emailSequences] Fabrication-pattern check failed (2 hits), retrying with fail-context. attempt=2/3 stage=fabrication hits=2 top=[email_invented_currency@email[1].body,email_invented_currency@email[2].body]
+[emailSequences] Fabrication-pattern check exhausted retries (5 hits remaining, classes=[email_invented_currency,email_invented_currency,email_invented_cohort_date,email_invented_cohort_date,email_invented_cohort_date]); returning content as best-effort. Sprint B+1 path d Phase 2.
+[emailSequences]   hit 1: email_invented_currency @ email[0].body matched "£50"
+[emailSequences]   hit 2: email_invented_currency @ email[2].body matched "£50"
+[emailSequences]   hit 3: email_invented_cohort_date @ email[2].body matched "enrolment closes"
+[emailSequences]   hit 4: email_invented_cohort_date @ email[2].body matched "next cohort"
+[emailSequences]   hit 5: email_invented_cohort_date @ email[3].body matched "next cohort"
+[REDTEAM email 11/15] re-engagement → emailSequenceId=311, 4 emails captured.
+
+[REDTEAM email 11/15] 11-sales-coach-15k-no-testim — generating discovery_call_confirmation...
+[cascade] forNode=email userId=1 icpId=141 kit=found selectionsResolved=1/4 contextLength=239 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Know Your Wo"
+[REDTEAM email 11/15] discovery_call_confirmation → emailSequenceId=312, 1 emails captured.
+
+[REDTEAM email 11/15] 11-sales-coach-15k-no-testim — generating discovery_call_reminder...
+[cascade] forNode=email userId=1 icpId=141 kit=found selectionsResolved=1/4 contextLength=239 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Know Your Wo"
+[emailSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=1 top=[email_invented_guarantee_timeframe@email[1].body]
+[REDTEAM email 11/15] discovery_call_reminder → emailSequenceId=313, 3 emails captured.
+
+[REDTEAM email 11/15] 11-sales-coach-15k-no-testim — generating event_logistics...
+[cascade] forNode=email userId=1 icpId=141 kit=found selectionsResolved=1/4 contextLength=239 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Know Your Wo"
+[REDTEAM email 11/15] event_logistics → emailSequenceId=314, 4 emails captured.
+
+[REDTEAM email 11/15] 11-sales-coach-15k-no-testim — generating replay_for_no_shows...
+[cascade] forNode=email userId=1 icpId=141 kit=found selectionsResolved=1/4 contextLength=239 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Know Your Wo"
+[REDTEAM email 11/15] replay_for_no_shows → emailSequenceId=315, 3 emails captured.
+
+[REDTEAM email 12/15] 12-voice-coach-no-inputs — generating welcome...
+[cascade] forNode=email userId=1 icpId=142 kit=found selectionsResolved=1/4 contextLength=294 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Did Not Get "
+[REDTEAM email 12/15] welcome → emailSequenceId=316, 3 emails captured.
+
+[REDTEAM email 12/15] 12-voice-coach-no-inputs — generating engagement...
+[cascade] forNode=email userId=1 icpId=142 kit=found selectionsResolved=1/4 contextLength=294 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Did Not Get "
+[emailSequences] Fabrication-pattern check failed (2 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=2 top=[programme_duration_drift@email[4].ps,email_invented_programme_duration@email[4].ps]
+[REDTEAM email 12/15] engagement → emailSequenceId=317, 5 emails captured.
+
+[REDTEAM email 12/15] 12-voice-coach-no-inputs — generating sales...
+[cascade] forNode=email userId=1 icpId=142 kit=found selectionsResolved=1/4 contextLength=294 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Did Not Get "
+[REDTEAM email 12/15] sales → emailSequenceId=318, 3 emails captured.
+
+[REDTEAM email 12/15] 12-voice-coach-no-inputs — generating nurture...
+[cascade] forNode=email userId=1 icpId=142 kit=found selectionsResolved=1/4 contextLength=294 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Did Not Get "
+[REDTEAM email 12/15] nurture → emailSequenceId=319, 3 emails captured.
+
+[REDTEAM email 12/15] 12-voice-coach-no-inputs — generating launch...
+[cascade] forNode=email userId=1 icpId=142 kit=found selectionsResolved=1/4 contextLength=294 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Did Not Get "
+[REDTEAM email 12/15] launch → emailSequenceId=320, 9 emails captured.
+
+[REDTEAM email 12/15] 12-voice-coach-no-inputs — generating re-engagement...
+[cascade] forNode=email userId=1 icpId=142 kit=found selectionsResolved=1/4 contextLength=294 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Did Not Get "
+[REDTEAM email 12/15] re-engagement → emailSequenceId=321, 4 emails captured.
+
+[REDTEAM email 12/15] 12-voice-coach-no-inputs — generating discovery_call_confirmation...
+[cascade] forNode=email userId=1 icpId=142 kit=found selectionsResolved=1/4 contextLength=294 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Did Not Get "
+[REDTEAM email 12/15] discovery_call_confirmation → emailSequenceId=322, 1 emails captured.
+
+[REDTEAM email 12/15] 12-voice-coach-no-inputs — generating discovery_call_reminder...
+[cascade] forNode=email userId=1 icpId=142 kit=found selectionsResolved=1/4 contextLength=294 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Did Not Get "
+[emailSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=1 top=[email_invented_guarantee_timeframe@email[1].body]
+[REDTEAM email 12/15] discovery_call_reminder → emailSequenceId=323, 3 emails captured.
+
+[REDTEAM email 12/15] 12-voice-coach-no-inputs — generating event_logistics...
+[cascade] forNode=email userId=1 icpId=142 kit=found selectionsResolved=1/4 contextLength=294 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Did Not Get "
+[REDTEAM email 12/15] event_logistics → emailSequenceId=324, 4 emails captured.
+
+[REDTEAM email 12/15] 12-voice-coach-no-inputs — generating replay_for_no_shows...
+[cascade] forNode=email userId=1 icpId=142 kit=found selectionsResolved=1/4 contextLength=294 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Did Not Get "
+[REDTEAM email 12/15] replay_for_no_shows → emailSequenceId=325, 3 emails captured.
+
+[REDTEAM email 13/15] 13-confidence-vague-price — generating welcome...
+[cascade] forNode=email userId=1 icpId=143 kit=found selectionsResolved=1/4 contextLength=291 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Have Answere"
+[REDTEAM email 13/15] welcome → emailSequenceId=326, 3 emails captured.
+
+[REDTEAM email 13/15] 13-confidence-vague-price — generating engagement...
+[cascade] forNode=email userId=1 icpId=143 kit=found selectionsResolved=1/4 contextLength=291 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Have Answere"
+[REDTEAM email 13/15] engagement → emailSequenceId=327, 3 emails captured.
+
+[REDTEAM email 13/15] 13-confidence-vague-price — generating sales...
+[cascade] forNode=email userId=1 icpId=143 kit=found selectionsResolved=1/4 contextLength=291 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Have Answere"
+[emailSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=1 top=[email_invented_cohort_date@email[3].previewText]
+[REDTEAM email 13/15] sales → emailSequenceId=328, 7 emails captured.
+
+[REDTEAM email 13/15] 13-confidence-vague-price — generating nurture...
+[cascade] forNode=email userId=1 icpId=143 kit=found selectionsResolved=1/4 contextLength=291 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Have Answere"
+[emailSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=1 top=[invented_tenure@email[1].body]
+[emailSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=2/3 stage=fabrication hits=1 top=[email_invented_guarantee_timeframe@email[5].body]
+[REDTEAM email 13/15] nurture → emailSequenceId=329, 7 emails captured.
+
+[REDTEAM email 13/15] 13-confidence-vague-price — generating launch...
+[cascade] forNode=email userId=1 icpId=143 kit=found selectionsResolved=1/4 contextLength=291 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Have Answere"
+[REDTEAM email 13/15] launch → emailSequenceId=330, 9 emails captured.
+
+[REDTEAM email 13/15] 13-confidence-vague-price — generating re-engagement...
+[cascade] forNode=email userId=1 icpId=143 kit=found selectionsResolved=1/4 contextLength=291 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Have Answere"
+[emailSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=1 top=[email_invented_cohort_date@email[3].body]
+[REDTEAM email 13/15] re-engagement → emailSequenceId=331, 4 emails captured.
+
+[REDTEAM email 13/15] 13-confidence-vague-price — generating discovery_call_confirmation...
+[cascade] forNode=email userId=1 icpId=143 kit=found selectionsResolved=1/4 contextLength=291 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Have Answere"
+[REDTEAM email 13/15] discovery_call_confirmation → emailSequenceId=332, 1 emails captured.
+
+[REDTEAM email 13/15] 13-confidence-vague-price — generating discovery_call_reminder...
+[cascade] forNode=email userId=1 icpId=143 kit=found selectionsResolved=1/4 contextLength=291 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Have Answere"
+[emailSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=1 top=[email_invented_guarantee_timeframe@email[1].body]
+[REDTEAM email 13/15] discovery_call_reminder → emailSequenceId=333, 3 emails captured.
+
+[REDTEAM email 13/15] 13-confidence-vague-price — generating event_logistics...
+[cascade] forNode=email userId=1 icpId=143 kit=found selectionsResolved=1/4 contextLength=291 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Have Answere"
+[REDTEAM email 13/15] event_logistics → emailSequenceId=334, 4 emails captured.
+
+[REDTEAM email 13/15] 13-confidence-vague-price — generating replay_for_no_shows...
+[cascade] forNode=email userId=1 icpId=143 kit=found selectionsResolved=1/4 contextLength=291 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Have Answere"
+[REDTEAM email 13/15] replay_for_no_shows → emailSequenceId=335, 3 emails captured.
+
+[REDTEAM email 14/15] 14-cohort-testim-no-price — generating welcome...
+[cascade] forNode=email userId=1 icpId=144 kit=found selectionsResolved=1/4 contextLength=256 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Were Promote"
+[emailSequences] Fabrication-pattern check failed (2 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=2 top=[employer_specifics@email[2].body,email_invented_cohort_date@email[2].body]
+[REDTEAM email 14/15] welcome → emailSequenceId=336, 1 emails captured.
+
+[REDTEAM email 14/15] 14-cohort-testim-no-price — generating engagement...
+[cascade] forNode=email userId=1 icpId=144 kit=found selectionsResolved=1/4 contextLength=256 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Were Promote"
+[emailSequences] Fabrication-pattern check failed (2 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=2 top=[employer_specifics@email[1].body,email_invented_cohort_date@email[4].body]
+[emailSequences] Fabrication-pattern check failed (2 hits), retrying with fail-context. attempt=2/3 stage=fabrication hits=2 top=[programme_duration_drift@email[4].body,email_invented_programme_duration@email[4].body]
+[emailSequences] Fabrication-pattern check exhausted retries (1 hits remaining, classes=[employer_specifics]); returning content as best-effort. Sprint B+1 path d Phase 2.
+[emailSequences]   hit 1: employer_specifics @ email[1].body matched "at a Series C"
+[REDTEAM email 14/15] engagement → emailSequenceId=337, 5 emails captured.
+
+[REDTEAM email 14/15] 14-cohort-testim-no-price — generating sales...
+[cascade] forNode=email userId=1 icpId=144 kit=found selectionsResolved=1/4 contextLength=256 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Were Promote"
+[emailSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=1 top=[email_invented_cohort_date@email[0].body]
+[REDTEAM email 14/15] sales → emailSequenceId=338, 7 emails captured.
+
+[REDTEAM email 14/15] 14-cohort-testim-no-price — generating nurture...
+[cascade] forNode=email userId=1 icpId=144 kit=found selectionsResolved=1/4 contextLength=256 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Were Promote"
+[emailSequences] Fabrication-pattern check failed (3 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=3 top=[email_invented_guarantee_timeframe@email[0].ps,employer_specifics@email[3].body,employer_specifics@email[5].body]
+[REDTEAM email 14/15] nurture → emailSequenceId=339, 2 emails captured.
+
+[REDTEAM email 14/15] 14-cohort-testim-no-price — generating launch...
+[cascade] forNode=email userId=1 icpId=144 kit=found selectionsResolved=1/4 contextLength=256 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Were Promote"
+[emailSequences] Fabrication-pattern check failed (3 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=3 top=[email_invented_guarantee_timeframe@email[1].body,email_invented_guarantee_timeframe@email[1].ps,employer_specifics@email[4].body]
+[emailSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=2/3 stage=fabrication hits=1 top=[email_invented_cohort_date@email[0].body]
+[emailSequences] Fabrication-pattern check exhausted retries (1 hits remaining, classes=[employer_specifics]); returning content as best-effort. Sprint B+1 path d Phase 2.
+[emailSequences]   hit 1: employer_specifics @ email[2].body matched "at a Series C"
+[REDTEAM email 14/15] launch → emailSequenceId=340, 9 emails captured.
+
+[REDTEAM email 14/15] 14-cohort-testim-no-price — generating re-engagement...
+[cascade] forNode=email userId=1 icpId=144 kit=found selectionsResolved=1/4 contextLength=256 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Were Promote"
+[REDTEAM email 14/15] re-engagement → emailSequenceId=341, 3 emails captured.
+
+[REDTEAM email 14/15] 14-cohort-testim-no-price — generating discovery_call_confirmation...
+[cascade] forNode=email userId=1 icpId=144 kit=found selectionsResolved=1/4 contextLength=256 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Were Promote"
+[REDTEAM email 14/15] discovery_call_confirmation → emailSequenceId=342, 1 emails captured.
+
+[REDTEAM email 14/15] 14-cohort-testim-no-price — generating discovery_call_reminder...
+[cascade] forNode=email userId=1 icpId=144 kit=found selectionsResolved=1/4 contextLength=256 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Were Promote"
+[emailSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=1 top=[email_invented_guarantee_timeframe@email[1].body]
+[REDTEAM email 14/15] discovery_call_reminder → emailSequenceId=343, 3 emails captured.
+
+[REDTEAM email 14/15] 14-cohort-testim-no-price — generating event_logistics...
+[cascade] forNode=email userId=1 icpId=144 kit=found selectionsResolved=1/4 contextLength=256 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Were Promote"
+[REDTEAM email 14/15] event_logistics → emailSequenceId=344, 4 emails captured.
+
+[REDTEAM email 14/15] 14-cohort-testim-no-price — generating replay_for_no_shows...
+[cascade] forNode=email userId=1 icpId=144 kit=found selectionsResolved=1/4 contextLength=256 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Were Promote"
+[REDTEAM email 14/15] replay_for_no_shows → emailSequenceId=345, 3 emails captured.
+
+[REDTEAM email 15/15] 15-consultant-full-inputs — generating welcome...
+[cascade] forNode=email userId=1 icpId=145 kit=found selectionsResolved=1/4 contextLength=274 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Your Homepage, P"
+[REDTEAM email 15/15] welcome → emailSequenceId=346, 1 emails captured.
+
+[REDTEAM email 15/15] 15-consultant-full-inputs — generating engagement...
+[cascade] forNode=email userId=1 icpId=145 kit=found selectionsResolved=1/4 contextLength=274 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Your Homepage, P"
+[emailSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=1 top=[email_invented_guarantee_timeframe@email[1].subject]
+[REDTEAM email 15/15] engagement → emailSequenceId=347, 5 emails captured.
+
+[REDTEAM email 15/15] 15-consultant-full-inputs — generating sales...
+[cascade] forNode=email userId=1 icpId=145 kit=found selectionsResolved=1/4 contextLength=274 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Your Homepage, P"
+[emailSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=1 top=[email_invented_cohort_date@email[4].ps]
+[REDTEAM email 15/15] sales → emailSequenceId=348, 7 emails captured.
+
+[REDTEAM email 15/15] 15-consultant-full-inputs — generating nurture...
+[cascade] forNode=email userId=1 icpId=145 kit=found selectionsResolved=1/4 contextLength=274 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Your Homepage, P"
+[REDTEAM email 15/15] nurture → emailSequenceId=349, 3 emails captured.
+
+[REDTEAM email 15/15] 15-consultant-full-inputs — generating launch...
+[cascade] forNode=email userId=1 icpId=145 kit=found selectionsResolved=1/4 contextLength=274 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Your Homepage, P"
+[REDTEAM email 15/15] launch → emailSequenceId=350, 9 emails captured.
+
+[REDTEAM email 15/15] 15-consultant-full-inputs — generating re-engagement...
+[cascade] forNode=email userId=1 icpId=145 kit=found selectionsResolved=1/4 contextLength=274 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Your Homepage, P"
+[REDTEAM email 15/15] re-engagement → emailSequenceId=351, 4 emails captured.
+
+[REDTEAM email 15/15] 15-consultant-full-inputs — generating discovery_call_confirmation...
+[cascade] forNode=email userId=1 icpId=145 kit=found selectionsResolved=1/4 contextLength=274 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Your Homepage, P"
+[REDTEAM email 15/15] discovery_call_confirmation → emailSequenceId=352, 1 emails captured.
+
+[REDTEAM email 15/15] 15-consultant-full-inputs — generating discovery_call_reminder...
+[cascade] forNode=email userId=1 icpId=145 kit=found selectionsResolved=1/4 contextLength=274 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Your Homepage, P"
+[emailSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=1 top=[email_invented_guarantee_timeframe@email[1].body]
+[REDTEAM email 15/15] discovery_call_reminder → emailSequenceId=353, 3 emails captured.
+
+[REDTEAM email 15/15] 15-consultant-full-inputs — generating event_logistics...
+[cascade] forNode=email userId=1 icpId=145 kit=found selectionsResolved=1/4 contextLength=274 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Your Homepage, P"
+[REDTEAM email 15/15] event_logistics → emailSequenceId=354, 4 emails captured.
+
+[REDTEAM email 15/15] 15-consultant-full-inputs — generating replay_for_no_shows...
+[cascade] forNode=email userId=1 icpId=145 kit=found selectionsResolved=1/4 contextLength=274 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Your Homepage, P"
+[REDTEAM email 15/15] replay_for_no_shows → emailSequenceId=355, 3 emails captured.
+
+[REDTEAM] Phase 3: Audit
+
+[REDTEAM] Audit complete. Summary written to /tmp/redteam-results.json
+Findings by category: {
+  placeholder_leakage: 354,
+  fabricated_next_cohort_date: 27,
+  fabricated_pricing_currency_amount: 28,
+  fabricated_anchor_price_range: 1,
+  fabricated_guarantee_timeframe: 1
+}
+
+[REDTEAM] Phase 3.5 (γ): Email Audit
+
+[REDTEAM γ] Email audit complete. Findings written to /tmp/redteam-email-findings.json
+Email findings by category: {
+  placeholder_leakage: 2064,
+  fabricated_next_cohort_date: 94,
+  fabricated_pricing_currency_amount: 65,
+  fabricated_guarantee_timeframe: 1
+}
+Email findings by classification: {
+  INTENDED: 2064,
+  UNCERTAIN: 79,
+  'MODEL-INVENTED': 27,
+  'USER-SUPPLIED': 54
+}
+
+[REDTEAM] Phase 4: Cleanup
+[REDTEAM email-cleanup] deleted emailSequences rows for 15 __REDTEAM__ services.
+[REDTEAM] Cleanup: deleted 15 services, 15 ICPs, and downstream artifacts.
+[REDTEAM] Done.
