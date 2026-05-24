@@ -1,0 +1,625 @@
+
+[red-team] Harness starting against PRODUCTION environment.
+[red-team]   PHASE F γ' scope acknowledged (REDTEAM_WHATSAPP_PHASE=1).
+[red-team]   Estimated cost: $40-80 (offer+LP) + $10-30 (WhatsApp phase).
+[red-team]   Estimated runtime: 30-60 min (offer+LP) + 60-90 min (WhatsApp).
+[red-team]   WhatsApp phase: 15 fixtures × 6 sequence types = 90 base generations.
+[red-team]   v3-corrected audit methodology active for WA: token-override in classifier,
+[red-team]     full-operator-context cross-check, LB-W5 event-context detector.
+[red-team]   Baseline-v1/v2 artifacts (email + offer/LP) NOT mutated.
+[red-team]   Temporary DB rows (__REDTEAM__ prefix) created in production;
+[red-team]   cleanup runs automatically in finally{} on completion or fatal error.
+[red-team]   If interrupted (Ctrl+C / kill), manual cleanup may be required.
+[red-team]   See harness file header comment for manual cleanup SQL.
+
+[REDTEAM] Harness loaded. 15 fixtures defined.
+
+[REDTEAM] Phase 1: Setup 
+[REDTEAM] Setup 01-exec-coach-no-price-no-testim: serviceId=156 icpId=161
+[REDTEAM] Setup 02-life-coach-minimal: serviceId=157 icpId=162
+[REDTEAM] Setup 03-biz-coach-real-price-real-testim: serviceId=158 icpId=163
+[REDTEAM] Setup 04-speaker-vague-price-1-testim: serviceId=159 icpId=164
+[REDTEAM] Setup 05-consultant-no-price-2-testim: serviceId=160 icpId=165
+[REDTEAM] Setup 06-course-low-ticket: serviceId=161 icpId=166
+[REDTEAM] Setup 07-mastermind-high-ticket-full: serviceId=162 icpId=167
+[REDTEAM] Setup 08-webinar-no-inputs: serviceId=163 icpId=168
+[REDTEAM] Setup 09-infoproduct-low-ticket: serviceId=164 icpId=169
+[REDTEAM] Setup 10-productivity-low-stakes: serviceId=165 icpId=170
+[REDTEAM] Setup 11-sales-coach-15k-no-testim: serviceId=166 icpId=171
+[REDTEAM] Setup 12-voice-coach-no-inputs: serviceId=167 icpId=172
+[REDTEAM] Setup 13-confidence-vague-price: serviceId=168 icpId=173
+[REDTEAM] Setup 14-cohort-testim-no-price: serviceId=169 icpId=174
+[REDTEAM] Setup 15-consultant-full-inputs: serviceId=170 icpId=175
+
+[REDTEAM] Phase 2: Generate
+
+[REDTEAM 1/15] 01-exec-coach-no-price-no-testim — generating offer...
+[cascade] forNode=offer userId=1 icpId=161 kit=missing selectionsResolved=0/0 contextLength=0 preview=""
+[REDTEAM 1/15] offer 124 captured.
+[REDTEAM 1/15] 01-exec-coach-no-price-no-testim — generating landing page...
+[cascade] forNode=landingPage userId=1 icpId=161 kit=missing selectionsResolved=0/5 contextLength=0 preview=""
+[landingPageGenerator] Testimonials fabrication check failed on attempt 1/3 (angle=free, 4 hits, top=[archetypal_name_with_location_detail@testimonial[0].name,archetypal_name_with_location_detail@testimonial[1].name,archetypal_name_with_location_detail@testimonial[2].name]). Retrying with fail-context.
+[REDTEAM 1/15] LP 148 captured.
+
+[REDTEAM 2/15] 02-life-coach-minimal — generating offer...
+[cascade] forNode=offer userId=1 icpId=162 kit=missing selectionsResolved=0/0 contextLength=0 preview=""
+[REDTEAM 2/15] offer 125 captured.
+[REDTEAM 2/15] 02-life-coach-minimal — generating landing page...
+[cascade] forNode=landingPage userId=1 icpId=162 kit=missing selectionsResolved=0/5 contextLength=0 preview=""
+[landingPageGenerator] Testimonials fabrication check failed on attempt 1/3 (angle=dollar, 3 hits, top=[archetypal_name_with_location_detail@testimonial[0].name,archetypal_name_with_location_detail@testimonial[1].name,archetypal_name_with_location_detail@testimonial[3].name]). Retrying with fail-context.
+[landingPageGenerator] Testimonials fabrication check failed on attempt 1/3 (angle=free, 1 hits, top=[invented_tenure@testimonial[2].headline]). Retrying with fail-context.
+[REDTEAM 2/15] LP 149 captured.
+
+[REDTEAM 3/15] 03-biz-coach-real-price-real-testim — generating offer...
+[cascade] forNode=offer userId=1 icpId=163 kit=missing selectionsResolved=0/0 contextLength=0 preview=""
+[offersGenerator] Offer fabrication check failed on attempt 1/3 (angle=dollar, 5 hits, top=[offer_invented_currency@pricing,offer_invented_currency@pricing,offer_invented_currency@pricing]). Retrying with fail-context.
+[offersGenerator] Offer fabrication check failed on attempt 1/3 (angle=free, 3 hits, top=[offer_invented_currency@pricing,offer_invented_currency@bonuses,offer_invented_currency@bonuses]). Retrying with fail-context.
+[offersGenerator] Offer fabrication check failed on attempt 1/3 (angle=godfather, 6 hits, top=[offer_invented_currency@pricing,offer_invented_currency@pricing,offer_invented_currency@bonuses]). Retrying with fail-context.
+[offersGenerator] Offer fabrication check failed on attempt 2/3 (angle=dollar, 5 hits, top=[offer_invented_currency@pricing,offer_invented_currency@pricing,offer_invented_currency@pricing]). Retrying with fail-context.
+[offersGenerator] Offer fabrication check failed on attempt 2/3 (angle=free, 4 hits, top=[offer_invented_currency@pricing,offer_invented_currency@pricing,offer_invented_currency@bonuses]). Retrying with fail-context.
+[offersGenerator] Offer fabrication check exhausted retries on angle=free (2 hits remaining, classes=[offer_invented_currency,offer_invented_currency]); returning content as best-effort. Phase D Phase 1.
+[offersGenerator]   hit 1: offer_invented_currency @ bonuses matched "£80"
+[offersGenerator]   hit 2: offer_invented_currency @ bonuses matched "£200"
+[offersGenerator] Offer fabrication check exhausted retries on angle=dollar (6 hits remaining, classes=[offer_invented_currency,offer_invented_currency,offer_invented_currency,offer_invented_currency,offer_invented_currency,offer_invented_currency]); returning content as best-effort. Phase D Phase 1.
+[offersGenerator]   hit 1: offer_invented_currency @ pricing matched "£250"
+[offersGenerator]   hit 2: offer_invented_currency @ pricing matched "£120"
+[offersGenerator]   hit 3: offer_invented_currency @ pricing matched "£250"
+[offersGenerator]   hit 4: offer_invented_currency @ pricing matched "£10,800"
+[offersGenerator]   hit 5: offer_invented_currency @ bonuses matched "£200"
+[offersGenerator]   hit 6: offer_invented_currency @ bonuses matched "£250"
+[REDTEAM 3/15] offer 126 captured.
+[REDTEAM 3/15] 03-biz-coach-real-price-real-testim — generating landing page...
+[cascade] forNode=landingPage userId=1 icpId=163 kit=missing selectionsResolved=0/5 contextLength=0 preview=""
+[REDTEAM 3/15] LP 150 captured.
+
+[REDTEAM 4/15] 04-speaker-vague-price-1-testim — generating offer...
+[cascade] forNode=offer userId=1 icpId=164 kit=missing selectionsResolved=0/0 contextLength=0 preview=""
+[REDTEAM 4/15] offer 127 captured.
+[REDTEAM 4/15] 04-speaker-vague-price-1-testim — generating landing page...
+[cascade] forNode=landingPage userId=1 icpId=164 kit=missing selectionsResolved=0/5 contextLength=0 preview=""
+[landingPageGenerator] Testimonials fabrication check failed on attempt 1/3 (angle=original, 1 hits, top=[invented_tenure@testimonial[2].quote]). Retrying with fail-context.
+[REDTEAM 4/15] LP 151 captured.
+
+[REDTEAM 5/15] 05-consultant-no-price-2-testim — generating offer...
+[cascade] forNode=offer userId=1 icpId=165 kit=missing selectionsResolved=0/0 contextLength=0 preview=""
+[REDTEAM 5/15] offer 128 captured.
+[REDTEAM 5/15] 05-consultant-no-price-2-testim — generating landing page...
+[cascade] forNode=landingPage userId=1 icpId=165 kit=missing selectionsResolved=0/5 contextLength=0 preview=""
+[landingPageGenerator] Testimonials fabrication check failed on attempt 1/3 (angle=original, 2 hits, top=[direct_quoted_speech@testimonial[2].quote,programme_duration_drift@testimonial[2].quote]). Retrying with fail-context.
+[REDTEAM 5/15] LP 152 captured.
+
+[REDTEAM 6/15] 06-course-low-ticket — generating offer...
+[cascade] forNode=offer userId=1 icpId=166 kit=missing selectionsResolved=0/0 contextLength=0 preview=""
+[offersGenerator] Offer fabrication check failed on attempt 1/3 (angle=dollar, 3 hits, top=[offer_invented_currency@pricing,offer_invented_currency@pricing,offer_invented_anchor_range@pricing]). Retrying with fail-context.
+[offersGenerator] Offer fabrication check failed on attempt 1/3 (angle=free, 1 hits, top=[offer_invented_currency@pricing]). Retrying with fail-context.
+[REDTEAM 6/15] offer 129 captured.
+[REDTEAM 6/15] 06-course-low-ticket — generating landing page...
+[cascade] forNode=landingPage userId=1 icpId=166 kit=missing selectionsResolved=0/5 contextLength=0 preview=""
+[REDTEAM 6/15] LP 153 captured.
+
+[REDTEAM 7/15] 07-mastermind-high-ticket-full — generating offer...
+[cascade] forNode=offer userId=1 icpId=167 kit=missing selectionsResolved=0/0 contextLength=0 preview=""
+[offersGenerator] Offer fabrication check failed on attempt 1/3 (angle=free, 4 hits, top=[offer_invented_currency@pricing,offer_invented_currency@pricing,offer_invented_currency@bonuses]). Retrying with fail-context.
+[offersGenerator] Offer fabrication check failed on attempt 1/3 (angle=godfather, 1 hits, top=[offer_invented_currency@bonuses]). Retrying with fail-context.
+[offersGenerator] Offer fabrication check failed on attempt 1/3 (angle=dollar, 7 hits, top=[offer_invented_currency@pricing,offer_invented_currency@pricing,offer_invented_currency@bonuses]). Retrying with fail-context.
+[offersGenerator] Offer fabrication check failed on attempt 2/3 (angle=dollar, 5 hits, top=[offer_invented_currency@pricing,offer_invented_currency@pricing,offer_invented_currency@pricing]). Retrying with fail-context.
+[offersGenerator] Offer fabrication check failed on attempt 2/3 (angle=godfather, 5 hits, top=[offer_invented_currency@bonuses,offer_invented_currency@bonuses,offer_invented_currency@bonuses]). Retrying with fail-context.
+[offersGenerator] Offer fabrication check exhausted retries on angle=godfather (5 hits remaining, classes=[offer_invented_currency,offer_invented_currency,offer_invented_currency,offer_invented_currency,offer_invented_currency]); returning content as best-effort. Phase D Phase 1.
+[offersGenerator]   hit 1: offer_invented_currency @ pricing matched "$1.4"
+[offersGenerator]   hit 2: offer_invented_currency @ bonuses matched "$5"
+[offersGenerator]   hit 3: offer_invented_currency @ bonuses matched "$20"
+[offersGenerator]   hit 4: offer_invented_currency @ bonuses matched "$8"
+[offersGenerator]   hit 5: offer_invented_currency @ bonuses matched "$18"
+[offersGenerator] Offer fabrication check exhausted retries on angle=dollar (3 hits remaining, classes=[offer_invented_currency,offer_invented_currency,offer_invented_currency]); returning content as best-effort. Phase D Phase 1.
+[offersGenerator]   hit 1: offer_invented_currency @ pricing matched "$1.4"
+[offersGenerator]   hit 2: offer_invented_currency @ bonuses matched "$5"
+[offersGenerator]   hit 3: offer_invented_currency @ bonuses matched "$20"
+[REDTEAM 7/15] offer 130 captured.
+[REDTEAM 7/15] 07-mastermind-high-ticket-full — generating landing page...
+[cascade] forNode=landingPage userId=1 icpId=167 kit=missing selectionsResolved=0/5 contextLength=0 preview=""
+[REDTEAM 7/15] LP 154 captured.
+
+[REDTEAM 8/15] 08-webinar-no-inputs — generating offer...
+[cascade] forNode=offer userId=1 icpId=168 kit=missing selectionsResolved=0/0 contextLength=0 preview=""
+[REDTEAM 8/15] offer 131 captured.
+[REDTEAM 8/15] 08-webinar-no-inputs — generating landing page...
+[cascade] forNode=landingPage userId=1 icpId=168 kit=missing selectionsResolved=0/5 contextLength=0 preview=""
+[REDTEAM 8/15] LP 155 captured.
+
+[REDTEAM 9/15] 09-infoproduct-low-ticket — generating offer...
+[cascade] forNode=offer userId=1 icpId=169 kit=missing selectionsResolved=0/0 contextLength=0 preview=""
+[offersGenerator] Offer fabrication check failed on attempt 1/3 (angle=dollar, 1 hits, top=[offer_invented_cohort_date@urgency]). Retrying with fail-context.
+[REDTEAM 9/15] offer 132 captured.
+[REDTEAM 9/15] 09-infoproduct-low-ticket — generating landing page...
+[cascade] forNode=landingPage userId=1 icpId=169 kit=missing selectionsResolved=0/5 contextLength=0 preview=""
+[landingPageGenerator] Testimonials fabrication check failed on attempt 1/3 (angle=original, 1 hits, top=[archetypal_name_with_location_detail@testimonial[0].name]). Retrying with fail-context.
+[REDTEAM 9/15] LP 156 captured.
+
+[REDTEAM 10/15] 10-productivity-low-stakes — generating offer...
+[cascade] forNode=offer userId=1 icpId=170 kit=missing selectionsResolved=0/0 contextLength=0 preview=""
+[REDTEAM 10/15] offer 133 captured.
+[REDTEAM 10/15] 10-productivity-low-stakes — generating landing page...
+[cascade] forNode=landingPage userId=1 icpId=170 kit=missing selectionsResolved=0/5 contextLength=0 preview=""
+[landingPageGenerator] Testimonials fabrication check failed on attempt 1/3 (angle=godfather, 1 hits, top=[programme_duration_drift@testimonial[2].quote]). Retrying with fail-context.
+[REDTEAM 10/15] LP 157 captured.
+
+[REDTEAM 11/15] 11-sales-coach-15k-no-testim — generating offer...
+[cascade] forNode=offer userId=1 icpId=171 kit=missing selectionsResolved=0/0 contextLength=0 preview=""
+[offersGenerator] Offer fabrication check failed on attempt 1/3 (angle=free, 3 hits, top=[offer_invented_currency@pricing,offer_invented_currency@bonuses,offer_invented_currency@bonuses]). Retrying with fail-context.
+[offersGenerator] Offer fabrication check failed on attempt 1/3 (angle=dollar, 5 hits, top=[offer_invented_currency@pricing,offer_invented_currency@pricing,offer_invented_currency@pricing]). Retrying with fail-context.
+[offersGenerator] Offer fabrication check failed on attempt 2/3 (angle=free, 3 hits, top=[offer_invented_currency@pricing,offer_invented_currency@bonuses,offer_invented_currency@bonuses]). Retrying with fail-context.
+[offersGenerator] Offer fabrication check failed on attempt 2/3 (angle=dollar, 3 hits, top=[offer_invented_currency@pricing,offer_invented_currency@pricing,offer_invented_currency@bonuses]). Retrying with fail-context.
+[offersGenerator] Offer fabrication check exhausted retries on angle=free (3 hits remaining, classes=[offer_invented_currency,offer_invented_currency,offer_invented_currency]); returning content as best-effort. Phase D Phase 1.
+[offersGenerator]   hit 1: offer_invented_currency @ pricing matched "£50"
+[offersGenerator]   hit 2: offer_invented_currency @ bonuses matched "£50"
+[offersGenerator]   hit 3: offer_invented_currency @ bonuses matched "£50"
+[offersGenerator] Offer fabrication check exhausted retries on angle=dollar (2 hits remaining, classes=[offer_invented_currency,offer_invented_currency]); returning content as best-effort. Phase D Phase 1.
+[offersGenerator]   hit 1: offer_invented_currency @ pricing matched "£50"
+[offersGenerator]   hit 2: offer_invented_currency @ bonuses matched "£50"
+[REDTEAM 11/15] offer 134 captured.
+[REDTEAM 11/15] 11-sales-coach-15k-no-testim — generating landing page...
+[cascade] forNode=landingPage userId=1 icpId=171 kit=missing selectionsResolved=0/5 contextLength=0 preview=""
+[landingPageGenerator] Testimonials fabrication check failed on attempt 1/3 (angle=godfather, 2 hits, top=[programme_duration_drift@testimonial[0].quote,programme_duration_drift@testimonial[2].quote]). Retrying with fail-context.
+[REDTEAM 11/15] LP 158 captured.
+
+[REDTEAM 12/15] 12-voice-coach-no-inputs — generating offer...
+[cascade] forNode=offer userId=1 icpId=172 kit=missing selectionsResolved=0/0 contextLength=0 preview=""
+[REDTEAM 12/15] offer 135 captured.
+[REDTEAM 12/15] 12-voice-coach-no-inputs — generating landing page...
+[cascade] forNode=landingPage userId=1 icpId=172 kit=missing selectionsResolved=0/5 contextLength=0 preview=""
+[landingPageGenerator] Testimonials fabrication check failed on attempt 1/3 (angle=original, 5 hits, top=[archetypal_name_with_location_detail@testimonial[0].name,invented_tenure@testimonial[1].quote,archetypal_name_with_location_detail@testimonial[1].name]). Retrying with fail-context.
+[landingPageGenerator] Testimonials fabrication check failed on attempt 1/3 (angle=dollar, 5 hits, top=[invented_tenure@testimonial[0].quote,archetypal_name_with_location_detail@testimonial[0].name,archetypal_name_with_location_detail@testimonial[1].name]). Retrying with fail-context.
+[landingPageGenerator] Testimonials fabrication check failed on attempt 1/3 (angle=godfather, 4 hits, top=[archetypal_name_with_location_detail@testimonial[0].name,archetypal_name_with_location_detail@testimonial[1].name,archetypal_name_with_location_detail@testimonial[2].name]). Retrying with fail-context.
+[REDTEAM 12/15] LP 159 captured.
+
+[REDTEAM 13/15] 13-confidence-vague-price — generating offer...
+[cascade] forNode=offer userId=1 icpId=173 kit=missing selectionsResolved=0/0 contextLength=0 preview=""
+[REDTEAM 13/15] offer 136 captured.
+[REDTEAM 13/15] 13-confidence-vague-price — generating landing page...
+[cascade] forNode=landingPage userId=1 icpId=173 kit=missing selectionsResolved=0/5 contextLength=0 preview=""
+[landingPageGenerator] Testimonials fabrication check failed on attempt 1/3 (angle=godfather, 3 hits, top=[archetypal_name_with_location_detail@testimonial[1].name,archetypal_name_with_location_detail@testimonial[2].name,archetypal_name_with_location_detail@testimonial[3].name]). Retrying with fail-context.
+[landingPageGenerator] Testimonials fabrication check failed on attempt 1/3 (angle=original, 4 hits, top=[archetypal_name_with_location_detail@testimonial[0].name,archetypal_name_with_location_detail@testimonial[1].name,archetypal_name_with_location_detail@testimonial[2].name]). Retrying with fail-context.
+[landingPageGenerator] Testimonials fabrication check failed on attempt 1/3 (angle=dollar, 5 hits, top=[invented_tenure@testimonial[0].quote,archetypal_name_with_location_detail@testimonial[0].name,archetypal_name_with_location_detail@testimonial[1].name]). Retrying with fail-context.
+[REDTEAM 13/15] LP FAILED: This operation was aborted
+
+[REDTEAM 14/15] 14-cohort-testim-no-price — generating offer...
+[cascade] forNode=offer userId=1 icpId=174 kit=missing selectionsResolved=0/0 contextLength=0 preview=""
+[offersGenerator] Offer fabrication check failed on attempt 1/3 (angle=dollar, 1 hits, top=[offer_invented_programme_duration@pricing]). Retrying with fail-context.
+[REDTEAM 14/15] offer 137 captured.
+[REDTEAM 14/15] 14-cohort-testim-no-price — generating landing page...
+[cascade] forNode=landingPage userId=1 icpId=174 kit=missing selectionsResolved=0/5 contextLength=0 preview=""
+[REDTEAM 14/15] LP 160 captured.
+
+[REDTEAM 15/15] 15-consultant-full-inputs — generating offer...
+[cascade] forNode=offer userId=1 icpId=175 kit=missing selectionsResolved=0/0 contextLength=0 preview=""
+[offersGenerator] Offer fabrication check failed on attempt 1/3 (angle=dollar, 1 hits, top=[offer_invented_currency@pricing]). Retrying with fail-context.
+[REDTEAM 15/15] offer 138 captured.
+[REDTEAM 15/15] 15-consultant-full-inputs — generating landing page...
+[cascade] forNode=landingPage userId=1 icpId=175 kit=missing selectionsResolved=0/5 contextLength=0 preview=""
+[landingPageGenerator] Testimonials fabrication check failed on attempt 1/3 (angle=original, 1 hits, top=[programme_duration_drift@testimonial[0].quote]). Retrying with fail-context.
+[REDTEAM 15/15] LP 161 captured.
+
+[REDTEAM] Phase 2.6 (γ'): WhatsApp Generation
+
+[REDTEAM whatsapp 1/15] 01-exec-coach-no-price-no-testim — generating engagement...
+[cascade] forNode=whatsapp userId=1 icpId=161 kit=found selectionsResolved=1/7 contextLength=241 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Have The Tra"
+[whatsappSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=1 top=[programme_duration_drift@message[1]]
+[REDTEAM whatsapp 1/15] engagement → whatsappSequenceId=138, 3 messages captured.
+
+[REDTEAM whatsapp 1/15] 01-exec-coach-no-price-no-testim — generating sales...
+[cascade] forNode=whatsapp userId=1 icpId=161 kit=found selectionsResolved=1/7 contextLength=241 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Have The Tra"
+[REDTEAM whatsapp 1/15] sales → whatsappSequenceId=139, 3 messages captured.
+
+[REDTEAM whatsapp 1/15] 01-exec-coach-no-price-no-testim — generating nurture...
+[cascade] forNode=whatsapp userId=1 icpId=161 kit=found selectionsResolved=1/7 contextLength=241 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Have The Tra"
+[REDTEAM whatsapp 1/15] nurture → whatsappSequenceId=140, 5 messages captured.
+
+[REDTEAM whatsapp 1/15] 01-exec-coach-no-price-no-testim — generating discovery_call_confirmation...
+[cascade] forNode=whatsapp userId=1 icpId=161 kit=found selectionsResolved=1/7 contextLength=241 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Have The Tra"
+[REDTEAM whatsapp 1/15] discovery_call_confirmation → whatsappSequenceId=141, 1 messages captured.
+
+[REDTEAM whatsapp 1/15] 01-exec-coach-no-price-no-testim — generating discovery_call_reminder...
+[cascade] forNode=whatsapp userId=1 icpId=161 kit=found selectionsResolved=1/7 contextLength=241 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Have The Tra"
+[REDTEAM whatsapp 1/15] discovery_call_reminder → whatsappSequenceId=142, 3 messages captured.
+
+[REDTEAM whatsapp 1/15] 01-exec-coach-no-price-no-testim — generating event_logistics...
+[cascade] forNode=whatsapp userId=1 icpId=161 kit=found selectionsResolved=1/7 contextLength=241 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Have The Tra"
+[REDTEAM whatsapp 1/15] event_logistics → whatsappSequenceId=143, 3 messages captured.
+
+[REDTEAM whatsapp 2/15] 02-life-coach-minimal — generating engagement...
+[cascade] forNode=whatsapp userId=1 icpId=162 kit=found selectionsResolved=1/7 contextLength=305 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You can describe"
+[REDTEAM whatsapp 2/15] engagement → whatsappSequenceId=144, 3 messages captured.
+
+[REDTEAM whatsapp 2/15] 02-life-coach-minimal — generating sales...
+[cascade] forNode=whatsapp userId=1 icpId=162 kit=found selectionsResolved=1/7 contextLength=305 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You can describe"
+[REDTEAM whatsapp 2/15] sales → whatsappSequenceId=145, 3 messages captured.
+
+[REDTEAM whatsapp 2/15] 02-life-coach-minimal — generating nurture...
+[cascade] forNode=whatsapp userId=1 icpId=162 kit=found selectionsResolved=1/7 contextLength=305 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You can describe"
+[whatsappSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=1 top=[whatsapp_invented_cohort_date@message[4]]
+[REDTEAM whatsapp 2/15] nurture → whatsappSequenceId=146, 5 messages captured.
+
+[REDTEAM whatsapp 2/15] 02-life-coach-minimal — generating discovery_call_confirmation...
+[cascade] forNode=whatsapp userId=1 icpId=162 kit=found selectionsResolved=1/7 contextLength=305 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You can describe"
+[REDTEAM whatsapp 2/15] discovery_call_confirmation → whatsappSequenceId=147, 1 messages captured.
+
+[REDTEAM whatsapp 2/15] 02-life-coach-minimal — generating discovery_call_reminder...
+[cascade] forNode=whatsapp userId=1 icpId=162 kit=found selectionsResolved=1/7 contextLength=305 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You can describe"
+[REDTEAM whatsapp 2/15] discovery_call_reminder → whatsappSequenceId=148, 3 messages captured.
+
+[REDTEAM whatsapp 2/15] 02-life-coach-minimal — generating event_logistics...
+[cascade] forNode=whatsapp userId=1 icpId=162 kit=found selectionsResolved=1/7 contextLength=305 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You can describe"
+[REDTEAM whatsapp 2/15] event_logistics → whatsappSequenceId=149, 3 messages captured.
+
+[REDTEAM whatsapp 3/15] 03-biz-coach-real-price-real-testim — generating engagement...
+[cascade] forNode=whatsapp userId=1 icpId=163 kit=found selectionsResolved=1/7 contextLength=309 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Built a Real"
+[REDTEAM whatsapp 3/15] engagement → whatsappSequenceId=150, 3 messages captured.
+
+[REDTEAM whatsapp 3/15] 03-biz-coach-real-price-real-testim — generating sales...
+[cascade] forNode=whatsapp userId=1 icpId=163 kit=found selectionsResolved=1/7 contextLength=309 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Built a Real"
+[whatsappSequences] Fabrication-pattern check failed (2 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=2 top=[whatsapp_invented_currency@message[2],whatsapp_invented_currency@message[2]]
+[REDTEAM whatsapp 3/15] sales → whatsappSequenceId=151, 3 messages captured.
+
+[REDTEAM whatsapp 3/15] 03-biz-coach-real-price-real-testim — generating nurture...
+[cascade] forNode=whatsapp userId=1 icpId=163 kit=found selectionsResolved=1/7 contextLength=309 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Built a Real"
+[whatsappSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=1 top=[whatsapp_invented_cohort_date@message[3]]
+[whatsappSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=2/3 stage=fabrication hits=1 top=[whatsapp_invented_cohort_date@message[3]]
+[whatsappSequences] Fabrication-pattern check exhausted retries (4 hits remaining, classes=[direct_quoted_speech,whatsapp_invented_currency,whatsapp_invented_currency,whatsapp_invented_currency]); returning content as best-effort. Sprint B+1 path d Phase 2.
+[whatsappSequences]   hit 1: direct_quoted_speech @ message[3] matched "she told me"
+[whatsappSequences]   hit 2: whatsapp_invented_currency @ message[3] matched "£8"
+[whatsappSequences]   hit 3: whatsapp_invented_currency @ message[3] matched "£35"
+[whatsappSequences]   hit 4: whatsapp_invented_currency @ message[4] matched "£120"
+[REDTEAM whatsapp 3/15] nurture → whatsappSequenceId=152, 5 messages captured.
+
+[REDTEAM whatsapp 3/15] 03-biz-coach-real-price-real-testim — generating discovery_call_confirmation...
+[cascade] forNode=whatsapp userId=1 icpId=163 kit=found selectionsResolved=1/7 contextLength=309 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Built a Real"
+[REDTEAM whatsapp 3/15] discovery_call_confirmation → whatsappSequenceId=153, 1 messages captured.
+
+[REDTEAM whatsapp 3/15] 03-biz-coach-real-price-real-testim — generating discovery_call_reminder...
+[cascade] forNode=whatsapp userId=1 icpId=163 kit=found selectionsResolved=1/7 contextLength=309 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Built a Real"
+[REDTEAM whatsapp 3/15] discovery_call_reminder → whatsappSequenceId=154, 3 messages captured.
+
+[REDTEAM whatsapp 3/15] 03-biz-coach-real-price-real-testim — generating event_logistics...
+[cascade] forNode=whatsapp userId=1 icpId=163 kit=found selectionsResolved=1/7 contextLength=309 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Built a Real"
+[REDTEAM whatsapp 3/15] event_logistics → whatsappSequenceId=155, 3 messages captured.
+
+[REDTEAM whatsapp 4/15] 04-speaker-vague-price-1-testim — generating engagement...
+[cascade] forNode=whatsapp userId=1 icpId=164 kit=found selectionsResolved=1/7 contextLength=276 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "A Leadership Key"
+[REDTEAM whatsapp 4/15] engagement → whatsappSequenceId=156, 3 messages captured.
+
+[REDTEAM whatsapp 4/15] 04-speaker-vague-price-1-testim — generating sales...
+[cascade] forNode=whatsapp userId=1 icpId=164 kit=found selectionsResolved=1/7 contextLength=276 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "A Leadership Key"
+[REDTEAM whatsapp 4/15] sales → whatsappSequenceId=157, 3 messages captured.
+
+[REDTEAM whatsapp 4/15] 04-speaker-vague-price-1-testim — generating nurture...
+[cascade] forNode=whatsapp userId=1 icpId=164 kit=found selectionsResolved=1/7 contextLength=276 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "A Leadership Key"
+[whatsappSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=1 top=[direct_quoted_speech@message[3]]
+[REDTEAM whatsapp 4/15] nurture → whatsappSequenceId=158, 5 messages captured.
+
+[REDTEAM whatsapp 4/15] 04-speaker-vague-price-1-testim — generating discovery_call_confirmation...
+[cascade] forNode=whatsapp userId=1 icpId=164 kit=found selectionsResolved=1/7 contextLength=276 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "A Leadership Key"
+[REDTEAM whatsapp 4/15] discovery_call_confirmation → whatsappSequenceId=159, 1 messages captured.
+
+[REDTEAM whatsapp 4/15] 04-speaker-vague-price-1-testim — generating discovery_call_reminder...
+[cascade] forNode=whatsapp userId=1 icpId=164 kit=found selectionsResolved=1/7 contextLength=276 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "A Leadership Key"
+[REDTEAM whatsapp 4/15] discovery_call_reminder → whatsappSequenceId=160, 3 messages captured.
+
+[REDTEAM whatsapp 4/15] 04-speaker-vague-price-1-testim — generating event_logistics...
+[cascade] forNode=whatsapp userId=1 icpId=164 kit=found selectionsResolved=1/7 contextLength=276 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "A Leadership Key"
+[REDTEAM whatsapp 4/15] event_logistics → whatsappSequenceId=161, 3 messages captured.
+
+[REDTEAM whatsapp 5/15] 05-consultant-no-price-2-testim — generating engagement...
+[cascade] forNode=whatsapp userId=1 icpId=165 kit=found selectionsResolved=1/7 contextLength=298 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "When Your Compan"
+[whatsappSequences] Fabrication-pattern check failed (2 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=2 top=[employer_specifics@message[2],whatsapp_invented_cohort_date@message[2]]
+[REDTEAM whatsapp 5/15] engagement → whatsappSequenceId=162, 3 messages captured.
+
+[REDTEAM whatsapp 5/15] 05-consultant-no-price-2-testim — generating sales...
+[cascade] forNode=whatsapp userId=1 icpId=165 kit=found selectionsResolved=1/7 contextLength=298 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "When Your Compan"
+[REDTEAM whatsapp 5/15] sales → whatsappSequenceId=163, 3 messages captured.
+
+[REDTEAM whatsapp 5/15] 05-consultant-no-price-2-testim — generating nurture...
+[cascade] forNode=whatsapp userId=1 icpId=165 kit=found selectionsResolved=1/7 contextLength=298 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "When Your Compan"
+[whatsappSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=1 top=[direct_quoted_speech@message[3]]
+[REDTEAM whatsapp 5/15] nurture → whatsappSequenceId=164, 5 messages captured.
+
+[REDTEAM whatsapp 5/15] 05-consultant-no-price-2-testim — generating discovery_call_confirmation...
+[cascade] forNode=whatsapp userId=1 icpId=165 kit=found selectionsResolved=1/7 contextLength=298 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "When Your Compan"
+[REDTEAM whatsapp 5/15] discovery_call_confirmation → whatsappSequenceId=165, 1 messages captured.
+
+[REDTEAM whatsapp 5/15] 05-consultant-no-price-2-testim — generating discovery_call_reminder...
+[cascade] forNode=whatsapp userId=1 icpId=165 kit=found selectionsResolved=1/7 contextLength=298 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "When Your Compan"
+[REDTEAM whatsapp 5/15] discovery_call_reminder → whatsappSequenceId=166, 3 messages captured.
+
+[REDTEAM whatsapp 5/15] 05-consultant-no-price-2-testim — generating event_logistics...
+[cascade] forNode=whatsapp userId=1 icpId=165 kit=found selectionsResolved=1/7 contextLength=298 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "When Your Compan"
+[REDTEAM whatsapp 5/15] event_logistics → whatsappSequenceId=167, 3 messages captured.
+
+[REDTEAM whatsapp 6/15] 06-course-low-ticket — generating engagement...
+[cascade] forNode=whatsapp userId=1 icpId=166 kit=found selectionsResolved=1/7 contextLength=267 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Built Someth"
+[REDTEAM whatsapp 6/15] engagement → whatsappSequenceId=168, 3 messages captured.
+
+[REDTEAM whatsapp 6/15] 06-course-low-ticket — generating sales...
+[cascade] forNode=whatsapp userId=1 icpId=166 kit=found selectionsResolved=1/7 contextLength=267 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Built Someth"
+[REDTEAM whatsapp 6/15] sales → whatsappSequenceId=169, 3 messages captured.
+
+[REDTEAM whatsapp 6/15] 06-course-low-ticket — generating nurture...
+[cascade] forNode=whatsapp userId=1 icpId=166 kit=found selectionsResolved=1/7 contextLength=267 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Built Someth"
+[whatsappSequences] Fabrication-pattern check failed (2 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=2 top=[invented_tenure@message[3],whatsapp_invented_cohort_date@message[4]]
+[REDTEAM whatsapp 6/15] nurture → whatsappSequenceId=170, 5 messages captured.
+
+[REDTEAM whatsapp 6/15] 06-course-low-ticket — generating discovery_call_confirmation...
+[cascade] forNode=whatsapp userId=1 icpId=166 kit=found selectionsResolved=1/7 contextLength=267 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Built Someth"
+[REDTEAM whatsapp 6/15] discovery_call_confirmation → whatsappSequenceId=171, 1 messages captured.
+
+[REDTEAM whatsapp 6/15] 06-course-low-ticket — generating discovery_call_reminder...
+[cascade] forNode=whatsapp userId=1 icpId=166 kit=found selectionsResolved=1/7 contextLength=267 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Built Someth"
+[REDTEAM whatsapp 6/15] discovery_call_reminder → whatsappSequenceId=172, 3 messages captured.
+
+[REDTEAM whatsapp 6/15] 06-course-low-ticket — generating event_logistics...
+[cascade] forNode=whatsapp userId=1 icpId=166 kit=found selectionsResolved=1/7 contextLength=267 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Built Someth"
+[REDTEAM whatsapp 6/15] event_logistics → whatsappSequenceId=173, 3 messages captured.
+
+[REDTEAM whatsapp 7/15] 07-mastermind-high-ticket-full — generating engagement...
+[cascade] forNode=whatsapp userId=1 icpId=167 kit=found selectionsResolved=1/7 contextLength=251 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "The Peer Group B"
+[whatsappSequences] Fabrication-pattern check failed (2 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=2 top=[whatsapp_invented_currency@message[1],whatsapp_invented_cohort_date@message[2]]
+[whatsappSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=2/3 stage=fabrication hits=1 top=[whatsapp_invented_currency@message[2]]
+[whatsappSequences] Fabrication-pattern check exhausted retries (2 hits remaining, classes=[whatsapp_invented_currency,whatsapp_invented_cohort_date]); returning content as best-effort. Sprint B+1 path d Phase 2.
+[whatsappSequences]   hit 1: whatsapp_invented_currency @ message[1] matched "$18"
+[whatsappSequences]   hit 2: whatsapp_invented_cohort_date @ message[2] matched "next cohort"
+[REDTEAM whatsapp 7/15] engagement → whatsappSequenceId=174, 3 messages captured.
+
+[REDTEAM whatsapp 7/15] 07-mastermind-high-ticket-full — generating sales...
+[cascade] forNode=whatsapp userId=1 icpId=167 kit=found selectionsResolved=1/7 contextLength=251 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "The Peer Group B"
+[whatsappSequences] Fabrication-pattern check failed (2 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=2 top=[whatsapp_invented_currency@message[1],whatsapp_invented_currency@message[1]]
+[whatsappSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=2/3 stage=fabrication hits=1 top=[whatsapp_invented_currency@message[1]]
+[whatsappSequences] Fabrication-pattern check exhausted retries (1 hits remaining, classes=[whatsapp_invented_currency]); returning content as best-effort. Sprint B+1 path d Phase 2.
+[whatsappSequences]   hit 1: whatsapp_invented_currency @ message[2] matched "$1.4"
+[REDTEAM whatsapp 7/15] sales → whatsappSequenceId=175, 3 messages captured.
+
+[REDTEAM whatsapp 7/15] 07-mastermind-high-ticket-full — generating nurture...
+[cascade] forNode=whatsapp userId=1 icpId=167 kit=found selectionsResolved=1/7 contextLength=251 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "The Peer Group B"
+[whatsappSequences] Fabrication-pattern check failed (3 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=3 top=[whatsapp_invented_currency@message[3],whatsapp_invented_cohort_date@message[4],whatsapp_invented_cohort_date@message[4]]
+[whatsappSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=2/3 stage=fabrication hits=1 top=[whatsapp_invented_currency@message[3]]
+[whatsappSequences] Fabrication-pattern check exhausted retries (2 hits remaining, classes=[whatsapp_invented_cohort_date,whatsapp_invented_cohort_date]); returning content as best-effort. Sprint B+1 path d Phase 2.
+[whatsappSequences]   hit 1: whatsapp_invented_cohort_date @ message[4] matched "enrolment closes"
+[whatsappSequences]   hit 2: whatsapp_invented_cohort_date @ message[4] matched "next cohort"
+[REDTEAM whatsapp 7/15] nurture → whatsappSequenceId=176, 5 messages captured.
+
+[REDTEAM whatsapp 7/15] 07-mastermind-high-ticket-full — generating discovery_call_confirmation...
+[cascade] forNode=whatsapp userId=1 icpId=167 kit=found selectionsResolved=1/7 contextLength=251 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "The Peer Group B"
+[REDTEAM whatsapp 7/15] discovery_call_confirmation → whatsappSequenceId=177, 1 messages captured.
+
+[REDTEAM whatsapp 7/15] 07-mastermind-high-ticket-full — generating discovery_call_reminder...
+[cascade] forNode=whatsapp userId=1 icpId=167 kit=found selectionsResolved=1/7 contextLength=251 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "The Peer Group B"
+[REDTEAM whatsapp 7/15] discovery_call_reminder → whatsappSequenceId=178, 3 messages captured.
+
+[REDTEAM whatsapp 7/15] 07-mastermind-high-ticket-full — generating event_logistics...
+[cascade] forNode=whatsapp userId=1 icpId=167 kit=found selectionsResolved=1/7 contextLength=251 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "The Peer Group B"
+[REDTEAM whatsapp 7/15] event_logistics → whatsappSequenceId=179, 3 messages captured.
+
+[REDTEAM whatsapp 8/15] 08-webinar-no-inputs — generating engagement...
+[cascade] forNode=whatsapp userId=1 icpId=168 kit=found selectionsResolved=1/7 contextLength=269 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Built a Webi"
+[REDTEAM whatsapp 8/15] engagement → whatsappSequenceId=180, 3 messages captured.
+
+[REDTEAM whatsapp 8/15] 08-webinar-no-inputs — generating sales...
+[cascade] forNode=whatsapp userId=1 icpId=168 kit=found selectionsResolved=1/7 contextLength=269 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Built a Webi"
+[REDTEAM whatsapp 8/15] sales → whatsappSequenceId=181, 3 messages captured.
+
+[REDTEAM whatsapp 8/15] 08-webinar-no-inputs — generating nurture...
+[cascade] forNode=whatsapp userId=1 icpId=168 kit=found selectionsResolved=1/7 contextLength=269 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Built a Webi"
+[whatsappSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=1 top=[whatsapp_invented_cohort_date@message[3]]
+[REDTEAM whatsapp 8/15] nurture → whatsappSequenceId=182, 5 messages captured.
+
+[REDTEAM whatsapp 8/15] 08-webinar-no-inputs — generating discovery_call_confirmation...
+[cascade] forNode=whatsapp userId=1 icpId=168 kit=found selectionsResolved=1/7 contextLength=269 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Built a Webi"
+[REDTEAM whatsapp 8/15] discovery_call_confirmation → whatsappSequenceId=183, 1 messages captured.
+
+[REDTEAM whatsapp 8/15] 08-webinar-no-inputs — generating discovery_call_reminder...
+[cascade] forNode=whatsapp userId=1 icpId=168 kit=found selectionsResolved=1/7 contextLength=269 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Built a Webi"
+[REDTEAM whatsapp 8/15] discovery_call_reminder → whatsappSequenceId=184, 3 messages captured.
+
+[REDTEAM whatsapp 8/15] 08-webinar-no-inputs — generating event_logistics...
+[cascade] forNode=whatsapp userId=1 icpId=168 kit=found selectionsResolved=1/7 contextLength=269 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Built a Webi"
+[REDTEAM whatsapp 8/15] event_logistics → whatsappSequenceId=185, 3 messages captured.
+
+[REDTEAM whatsapp 9/15] 09-infoproduct-low-ticket — generating engagement...
+[cascade] forNode=whatsapp userId=1 icpId=169 kit=found selectionsResolved=1/7 contextLength=274 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Your Emails Are "
+[REDTEAM whatsapp 9/15] engagement → whatsappSequenceId=186, 3 messages captured.
+
+[REDTEAM whatsapp 9/15] 09-infoproduct-low-ticket — generating sales...
+[cascade] forNode=whatsapp userId=1 icpId=169 kit=found selectionsResolved=1/7 contextLength=274 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Your Emails Are "
+[REDTEAM whatsapp 9/15] sales → whatsappSequenceId=187, 3 messages captured.
+
+[REDTEAM whatsapp 9/15] 09-infoproduct-low-ticket — generating nurture...
+[cascade] forNode=whatsapp userId=1 icpId=169 kit=found selectionsResolved=1/7 contextLength=274 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Your Emails Are "
+[REDTEAM whatsapp 9/15] nurture → whatsappSequenceId=188, 5 messages captured.
+
+[REDTEAM whatsapp 9/15] 09-infoproduct-low-ticket — generating discovery_call_confirmation...
+[cascade] forNode=whatsapp userId=1 icpId=169 kit=found selectionsResolved=1/7 contextLength=274 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Your Emails Are "
+[REDTEAM whatsapp 9/15] discovery_call_confirmation → whatsappSequenceId=189, 1 messages captured.
+
+[REDTEAM whatsapp 9/15] 09-infoproduct-low-ticket — generating discovery_call_reminder...
+[cascade] forNode=whatsapp userId=1 icpId=169 kit=found selectionsResolved=1/7 contextLength=274 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Your Emails Are "
+[REDTEAM whatsapp 9/15] discovery_call_reminder → whatsappSequenceId=190, 3 messages captured.
+
+[REDTEAM whatsapp 9/15] 09-infoproduct-low-ticket — generating event_logistics...
+[cascade] forNode=whatsapp userId=1 icpId=169 kit=found selectionsResolved=1/7 contextLength=274 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Your Emails Are "
+[REDTEAM whatsapp 9/15] event_logistics → whatsappSequenceId=191, 3 messages captured.
+
+[REDTEAM whatsapp 10/15] 10-productivity-low-stakes — generating engagement...
+[cascade] forNode=whatsapp userId=1 icpId=170 kit=found selectionsResolved=1/7 contextLength=306 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Built a Care"
+[REDTEAM whatsapp 10/15] engagement → whatsappSequenceId=192, 3 messages captured.
+
+[REDTEAM whatsapp 10/15] 10-productivity-low-stakes — generating sales...
+[cascade] forNode=whatsapp userId=1 icpId=170 kit=found selectionsResolved=1/7 contextLength=306 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Built a Care"
+[REDTEAM whatsapp 10/15] sales → whatsappSequenceId=193, 3 messages captured.
+
+[REDTEAM whatsapp 10/15] 10-productivity-low-stakes — generating nurture...
+[cascade] forNode=whatsapp userId=1 icpId=170 kit=found selectionsResolved=1/7 contextLength=306 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Built a Care"
+[whatsappSequences] Fabrication-pattern check failed (2 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=2 top=[whatsapp_invented_cohort_date@message[4],whatsapp_invented_cohort_date@message[4]]
+[REDTEAM whatsapp 10/15] nurture → whatsappSequenceId=194, 5 messages captured.
+
+[REDTEAM whatsapp 10/15] 10-productivity-low-stakes — generating discovery_call_confirmation...
+[cascade] forNode=whatsapp userId=1 icpId=170 kit=found selectionsResolved=1/7 contextLength=306 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Built a Care"
+[REDTEAM whatsapp 10/15] discovery_call_confirmation → whatsappSequenceId=195, 1 messages captured.
+
+[REDTEAM whatsapp 10/15] 10-productivity-low-stakes — generating discovery_call_reminder...
+[cascade] forNode=whatsapp userId=1 icpId=170 kit=found selectionsResolved=1/7 contextLength=306 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Built a Care"
+[REDTEAM whatsapp 10/15] discovery_call_reminder → whatsappSequenceId=196, 3 messages captured.
+
+[REDTEAM whatsapp 10/15] 10-productivity-low-stakes — generating event_logistics...
+[cascade] forNode=whatsapp userId=1 icpId=170 kit=found selectionsResolved=1/7 contextLength=306 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You Built a Care"
+[REDTEAM whatsapp 10/15] event_logistics → whatsappSequenceId=197, 3 messages captured.
+
+[REDTEAM whatsapp 11/15] 11-sales-coach-15k-no-testim — generating engagement...
+[cascade] forNode=whatsapp userId=1 icpId=171 kit=found selectionsResolved=1/7 contextLength=327 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Why Accomplished"
+[REDTEAM whatsapp 11/15] engagement → whatsappSequenceId=198, 3 messages captured.
+
+[REDTEAM whatsapp 11/15] 11-sales-coach-15k-no-testim — generating sales...
+[cascade] forNode=whatsapp userId=1 icpId=171 kit=found selectionsResolved=1/7 contextLength=327 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Why Accomplished"
+[REDTEAM whatsapp 11/15] sales → whatsappSequenceId=199, 3 messages captured.
+
+[REDTEAM whatsapp 11/15] 11-sales-coach-15k-no-testim — generating nurture...
+[cascade] forNode=whatsapp userId=1 icpId=171 kit=found selectionsResolved=1/7 contextLength=327 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Why Accomplished"
+[REDTEAM whatsapp 11/15] nurture → whatsappSequenceId=200, 5 messages captured.
+
+[REDTEAM whatsapp 11/15] 11-sales-coach-15k-no-testim — generating discovery_call_confirmation...
+[cascade] forNode=whatsapp userId=1 icpId=171 kit=found selectionsResolved=1/7 contextLength=327 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Why Accomplished"
+[REDTEAM whatsapp 11/15] discovery_call_confirmation → whatsappSequenceId=201, 1 messages captured.
+
+[REDTEAM whatsapp 11/15] 11-sales-coach-15k-no-testim — generating discovery_call_reminder...
+[cascade] forNode=whatsapp userId=1 icpId=171 kit=found selectionsResolved=1/7 contextLength=327 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Why Accomplished"
+[REDTEAM whatsapp 11/15] discovery_call_reminder → whatsappSequenceId=202, 3 messages captured.
+
+[REDTEAM whatsapp 11/15] 11-sales-coach-15k-no-testim — generating event_logistics...
+[cascade] forNode=whatsapp userId=1 icpId=171 kit=found selectionsResolved=1/7 contextLength=327 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Why Accomplished"
+[REDTEAM whatsapp 11/15] event_logistics → whatsappSequenceId=203, 3 messages captured.
+
+[REDTEAM whatsapp 12/15] 12-voice-coach-no-inputs — generating engagement...
+[cascade] forNode=whatsapp userId=1 icpId=172 kit=found selectionsResolved=1/7 contextLength=312 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You have built a"
+[REDTEAM whatsapp 12/15] engagement → whatsappSequenceId=204, 3 messages captured.
+
+[REDTEAM whatsapp 12/15] 12-voice-coach-no-inputs — generating sales...
+[cascade] forNode=whatsapp userId=1 icpId=172 kit=found selectionsResolved=1/7 contextLength=312 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You have built a"
+[REDTEAM whatsapp 12/15] sales → whatsappSequenceId=205, 3 messages captured.
+
+[REDTEAM whatsapp 12/15] 12-voice-coach-no-inputs — generating nurture...
+[cascade] forNode=whatsapp userId=1 icpId=172 kit=found selectionsResolved=1/7 contextLength=312 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You have built a"
+[REDTEAM whatsapp 12/15] nurture → whatsappSequenceId=206, 5 messages captured.
+
+[REDTEAM whatsapp 12/15] 12-voice-coach-no-inputs — generating discovery_call_confirmation...
+[cascade] forNode=whatsapp userId=1 icpId=172 kit=found selectionsResolved=1/7 contextLength=312 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You have built a"
+[REDTEAM whatsapp 12/15] discovery_call_confirmation → whatsappSequenceId=207, 1 messages captured.
+
+[REDTEAM whatsapp 12/15] 12-voice-coach-no-inputs — generating discovery_call_reminder...
+[cascade] forNode=whatsapp userId=1 icpId=172 kit=found selectionsResolved=1/7 contextLength=312 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You have built a"
+[REDTEAM whatsapp 12/15] discovery_call_reminder → whatsappSequenceId=208, 3 messages captured.
+
+[REDTEAM whatsapp 12/15] 12-voice-coach-no-inputs — generating event_logistics...
+[cascade] forNode=whatsapp userId=1 icpId=172 kit=found selectionsResolved=1/7 contextLength=312 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You have built a"
+[REDTEAM whatsapp 12/15] event_logistics → whatsappSequenceId=209, 3 messages captured.
+
+[REDTEAM whatsapp 13/15] 13-confidence-vague-price — generating engagement...
+[cascade] forNode=whatsapp userId=1 icpId=173 kit=missing selectionsResolved=0/7 contextLength=0 preview=""
+[REDTEAM whatsapp 13/15] engagement → whatsappSequenceId=210, 3 messages captured.
+
+[REDTEAM whatsapp 13/15] 13-confidence-vague-price — generating sales...
+[cascade] forNode=whatsapp userId=1 icpId=173 kit=missing selectionsResolved=0/7 contextLength=0 preview=""
+[REDTEAM whatsapp 13/15] sales → whatsappSequenceId=211, 3 messages captured.
+
+[REDTEAM whatsapp 13/15] 13-confidence-vague-price — generating nurture...
+[cascade] forNode=whatsapp userId=1 icpId=173 kit=missing selectionsResolved=0/7 contextLength=0 preview=""
+[REDTEAM whatsapp 13/15] nurture → whatsappSequenceId=212, 5 messages captured.
+
+[REDTEAM whatsapp 13/15] 13-confidence-vague-price — generating discovery_call_confirmation...
+[cascade] forNode=whatsapp userId=1 icpId=173 kit=missing selectionsResolved=0/7 contextLength=0 preview=""
+[REDTEAM whatsapp 13/15] discovery_call_confirmation → whatsappSequenceId=213, 1 messages captured.
+
+[REDTEAM whatsapp 13/15] 13-confidence-vague-price — generating discovery_call_reminder...
+[cascade] forNode=whatsapp userId=1 icpId=173 kit=missing selectionsResolved=0/7 contextLength=0 preview=""
+[REDTEAM whatsapp 13/15] discovery_call_reminder → whatsappSequenceId=214, 3 messages captured.
+
+[REDTEAM whatsapp 13/15] 13-confidence-vague-price — generating event_logistics...
+[cascade] forNode=whatsapp userId=1 icpId=173 kit=missing selectionsResolved=0/7 contextLength=0 preview=""
+[REDTEAM whatsapp 13/15] event_logistics → whatsappSequenceId=215, 3 messages captured.
+
+[REDTEAM whatsapp 14/15] 14-cohort-testim-no-price — generating engagement...
+[cascade] forNode=whatsapp userId=1 icpId=174 kit=found selectionsResolved=1/7 contextLength=376 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You got promoted"
+[REDTEAM whatsapp 14/15] engagement → whatsappSequenceId=216, 3 messages captured.
+
+[REDTEAM whatsapp 14/15] 14-cohort-testim-no-price — generating sales...
+[cascade] forNode=whatsapp userId=1 icpId=174 kit=found selectionsResolved=1/7 contextLength=376 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You got promoted"
+[REDTEAM whatsapp 14/15] sales → whatsappSequenceId=217, 3 messages captured.
+
+[REDTEAM whatsapp 14/15] 14-cohort-testim-no-price — generating nurture...
+[cascade] forNode=whatsapp userId=1 icpId=174 kit=found selectionsResolved=1/7 contextLength=376 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You got promoted"
+[REDTEAM whatsapp 14/15] nurture → whatsappSequenceId=218, 5 messages captured.
+
+[REDTEAM whatsapp 14/15] 14-cohort-testim-no-price — generating discovery_call_confirmation...
+[cascade] forNode=whatsapp userId=1 icpId=174 kit=found selectionsResolved=1/7 contextLength=376 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You got promoted"
+[REDTEAM whatsapp 14/15] discovery_call_confirmation → whatsappSequenceId=219, 1 messages captured.
+
+[REDTEAM whatsapp 14/15] 14-cohort-testim-no-price — generating discovery_call_reminder...
+[cascade] forNode=whatsapp userId=1 icpId=174 kit=found selectionsResolved=1/7 contextLength=376 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You got promoted"
+[REDTEAM whatsapp 14/15] discovery_call_reminder → whatsappSequenceId=220, 3 messages captured.
+
+[REDTEAM whatsapp 14/15] 14-cohort-testim-no-price — generating event_logistics...
+[cascade] forNode=whatsapp userId=1 icpId=174 kit=found selectionsResolved=1/7 contextLength=376 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "You got promoted"
+[REDTEAM whatsapp 14/15] event_logistics → whatsappSequenceId=221, 3 messages captured.
+
+[REDTEAM whatsapp 15/15] 15-consultant-full-inputs — generating engagement...
+[cascade] forNode=whatsapp userId=1 icpId=175 kit=found selectionsResolved=1/7 contextLength=279 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Your Homepage, P"
+[REDTEAM whatsapp 15/15] engagement → whatsappSequenceId=222, 3 messages captured.
+
+[REDTEAM whatsapp 15/15] 15-consultant-full-inputs — generating sales...
+[cascade] forNode=whatsapp userId=1 icpId=175 kit=found selectionsResolved=1/7 contextLength=279 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Your Homepage, P"
+[whatsappSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=1/3 stage=fabrication hits=1 top=[whatsapp_invented_cohort_date@message[0]]
+[whatsappSequences] Fabrication-pattern check failed (1 hits), retrying with fail-context. attempt=2/3 stage=fabrication hits=1 top=[whatsapp_invented_cohort_date@message[2]]
+[whatsappSequences] Fabrication-pattern check exhausted retries (1 hits remaining, classes=[employer_specifics]); returning content as best-effort. Sprint B+1 path d Phase 2.
+[whatsappSequences]   hit 1: employer_specifics @ message[1] matched "at a Series A"
+[REDTEAM whatsapp 15/15] sales → whatsappSequenceId=223, 3 messages captured.
+
+[REDTEAM whatsapp 15/15] 15-consultant-full-inputs — generating nurture...
+[cascade] forNode=whatsapp userId=1 icpId=175 kit=found selectionsResolved=1/7 contextLength=279 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Your Homepage, P"
+[REDTEAM whatsapp 15/15] nurture → whatsappSequenceId=224, 5 messages captured.
+
+[REDTEAM whatsapp 15/15] 15-consultant-full-inputs — generating discovery_call_confirmation...
+[cascade] forNode=whatsapp userId=1 icpId=175 kit=found selectionsResolved=1/7 contextLength=279 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Your Homepage, P"
+[REDTEAM whatsapp 15/15] discovery_call_confirmation → whatsappSequenceId=225, 1 messages captured.
+
+[REDTEAM whatsapp 15/15] 15-consultant-full-inputs — generating discovery_call_reminder...
+[cascade] forNode=whatsapp userId=1 icpId=175 kit=found selectionsResolved=1/7 contextLength=279 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Your Homepage, P"
+[REDTEAM whatsapp 15/15] discovery_call_reminder → whatsappSequenceId=226, 3 messages captured.
+
+[REDTEAM whatsapp 15/15] 15-consultant-full-inputs — generating event_logistics...
+[cascade] forNode=whatsapp userId=1 icpId=175 kit=found selectionsResolved=1/7 contextLength=279 preview="UPSTREAM CONTEXT — SELECTED ASSETS: Selected landing-page direction: hero headline "Your Homepage, P"
+[REDTEAM whatsapp 15/15] event_logistics → whatsappSequenceId=227, 3 messages captured.
+
+[REDTEAM] Phase 3: Audit
+
+[REDTEAM] Audit complete. Summary written to /tmp/redteam-results.json
+Findings by category: {
+  placeholder_leakage: 352,
+  fabricated_next_cohort_date: 24,
+  fabricated_pricing_currency_amount: 29
+}
+
+[REDTEAM] Phase 3.6 (γ'): WhatsApp Audit
+
+[REDTEAM γ'] WhatsApp audit complete. Findings written to /tmp/redteam-whatsapp-findings.json
+WhatsApp findings by category: {
+  placeholder_leakage: 466,
+  fabricated_next_cohort_date: 15,
+  fabricated_pricing_currency_amount: 5
+}
+WhatsApp findings by classification: {
+  INTENDED: 466,
+  UNCERTAIN: 13,
+  'USER-SUPPLIED': 4,
+  'MODEL-INVENTED': 3
+}
+
+[REDTEAM] Phase 4: Cleanup
+[REDTEAM whatsapp-cleanup] deleted whatsappSequences rows for 15 __REDTEAM__ services.
+[REDTEAM] Cleanup: deleted 15 services, 15 ICPs, and downstream artifacts.
+[REDTEAM] Done.
