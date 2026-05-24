@@ -213,6 +213,68 @@ behaviour expectation.
 
 ---
 
+## L8 — Nurture-builder vague-urgency residual (cross-cutting email + WhatsApp)
+
+**What it is.** The email + WhatsApp nurture sequence builders produce
+a small number of vague-urgency phrasings — `"next cohort"`,
+`"enrolment closes"` — in message bodies without a canonical
+operator-fill token to anchor them. Quantified evidence:
+
+- Email v2 baseline (`docs/redteam-email-baseline-v2.md`, post Phase E
+  Sprint 2 `bd67189`): 21 MI in this class out of 27 total residual
+  MI (78%). Concentrated in nurture (18 of 27) + engagement / welcome
+  / launch / re-engagement.
+- WhatsApp v2 baseline (`docs/redteam-whatsapp-baseline-v2.md`, post
+  Phase F Sprint 2 `d1fb883`): 3 MI in this class out of 3 total
+  residual MI (100%). Concentrated in nurture (2) + engagement (1).
+
+**Why it persists.** The nurture builders' canonical-token allow-lists
+**intentionally exclude** cart/cohort tokens
+(`[INSERT_COHORT_CLOSE_DATE]`, `[INSERT_CART_CLOSE_DATE]`,
+`[INSERT_DEADLINE]`). Nurture is a non-event-anchored format
+(Russell Brunson Soap Opera Sequence, anchored to a lead-magnet
+download — not a cart-close window). The LLM occasionally generates
+vague-urgency phrasings to create momentum toward the lead-magnet CTA;
+the validator catches the pattern, retry-with-failContext fires, but
+the LLM has no canonical token to substitute — so retry exhausts and
+content ships best-effort with diagnostic `console.warn` logs.
+
+**Why it's not closed by Phase E + F hardening.** Both Phase E Sprint 2
+(email) and Phase F Sprint 2 (WhatsApp) added validator catalog parity
++ system-prompt symmetry. Both substantially reduced MI rates (email
+71→27, WhatsApp 8→3). The 3 WhatsApp + 21 email residuals share this
+single class because closing it would require a **builder-architecture
+decision**: introduce a canonical operator-fill token for nurture's
+"imagined-future-deadline" framing so the LLM has something to emit
+verbatim instead of vague-urgency phrasings. That's nurture-builder
+scope work, not validator hardening.
+
+**Classification.** Same lane as L1 (operator-fill philosophy — AI
+drafts, operator finishes). L1 covers the cases where a canonical
+token IS emitted and PlaceholderBanner catches it; L8 covers the
+nurture-specific case where no canonical exists and the operator
+content-review surface is the guardrail. Operationally:
+
+- Banner does **not** surface these — no `[INSERT_X]` is emitted.
+- Operators must content-review nurture sequences before push (same
+  expectation as L2 retry-exhaust review).
+- The vague phrasings are non-fabricated in the strict sense (no
+  invented date, no invented number) — they're imprecise framing
+  that the operator should rewrite to point to their actual
+  lead-magnet timing or omit the urgency.
+
+**Acceptable for warm beta** with the operator-content-review surface.
+Public-beta gating would require either (a) a builder-architecture
+fix to introduce nurture cart-anchor canonicals, or (b) a measured
+exhaust rate <0.5% on the class (currently ~3% on WhatsApp, ~14% on
+email nurture).
+
+**Tracking.** Cross-cutting registration logged 2026-05-24 post Phase F
+closure. Address-or-defer decision deferred per the standing post-Phase-F
+instruction; not a warm-beta blocker.
+
+---
+
 ## Expected operator behaviour
 
 A cohort operator using ZAP correctly will:
@@ -247,9 +309,15 @@ Operators who skip steps 3–6 are outside the supported envelope.
 
 ## Update protocol
 
-This document is frozen at the warm-beta lock (`0f4e080`). Do not
-edit during the cohort window. If a new limitation is discovered
-during warm beta, log it in the support ticketing system and append a
-sibling document `docs/warm-beta-discovered-limitations-YYYY-MM-DD.md`.
-The next post-beta planning cycle merges the two and produces the
-next versioned snapshot.
+This document is frozen at the warm-beta lock (`0f4e080`) for the
+cohort window. Pre-cohort post-Phase-D additions (L8, registered
+2026-05-24 post Phase F Sprint 2 closure) are folded in here directly
+because the cohort hasn't opened yet — the freeze applies to cohort-
+active edits only.
+
+Once the cohort opens, do not edit this document during the cohort
+window. If a new limitation is discovered during warm beta, log it in
+the support ticketing system and append a sibling document
+`docs/warm-beta-discovered-limitations-YYYY-MM-DD.md`. The next
+post-beta planning cycle merges the two and produces the next
+versioned snapshot.
