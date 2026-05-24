@@ -11,9 +11,20 @@
 // + tRPC mutation wrappers in server/routers/whatsappSequences.ts).
 
 import { invokeLLM } from "./_core/llm";
-import { truncateQuote, NO_DATE_FABRICATION_RULE } from "./_core/copywritingRules";
+import {
+  truncateQuote,
+  NO_DATE_FABRICATION_RULE,
+  // Phase F Sprint 2 — system-prompt symmetry vs LP/email (LB-W3 per
+  // docs/redteam-whatsapp-baseline-v1.md §6). LP+email inject all four of
+  // these rules; WhatsApp injected only NO_DATE before. Adding the three
+  // additional constants suppresses framings that produced the 3 measured
+  // guarantee-timeframe MI findings (Bridge B baseline-v1 evidence).
+  NO_CREDENTIAL_FABRICATION_RULE,
+  NO_RESEARCH_STATISTIC_FABRICATION_RULE,
+  META_COMPLIANCE_NOTES,
+} from "./_core/copywritingRules";
 import { getCascadeContext } from "./_core/cascadeContext";
-import { validateWhatsappSequenceShape, validateWhatsappFabricationPatterns } from "./_core/validator";
+import { validateWhatsappSequenceShape, validateWhatsappFabricationPatterns, type WhatsappSuppliedData } from "./_core/validator";
 
 function stripMarkdownJson(content: string): string {
   return content.replace(/^```json\s*|^```\s*|\s*```$/gm, "").trim();
@@ -596,7 +607,16 @@ const WHATSAPP_RETRY_MAX_ATTEMPTS = 3;
 
 const WHATSAPP_SEQUENCE_SYSTEM_PROMPT =
   "You are an expert WhatsApp marketer specializing in high-converting WhatsApp sequences for coaches, speakers, and consultants. You write maximum 3 sentences per message. You use contractions exclusively (you're, it's, don't, we've). You use no formal language. Every message references a specific situation and ends with either a question OR an action — never both, never neither. Always respond with valid JSON.\n\n" +
-  NO_DATE_FABRICATION_RULE;
+  "CRITICAL OUTPUT FORMAT: The tool input's 'messages' field is an array of message objects. Each message object has the keys day, message, cta. Emit each message as a structured object directly — populate the array with objects. Emit the messages field as a literal JSON array of message objects.\n\n" +
+  // Phase F Sprint 2 (LB-W3): system-prompt symmetry vs LP + email Sprint 2.
+  // The baseline-v1 forensic confirmed the exact fabrication classes these
+  // rules suppress (guarantee timeframe 3 MI, refund mechanic, named-research
+  // stats, invented tenure, Meta-banned phrasing) appearing in WhatsApp
+  // message bodies across the 90-generation matrix.
+  NO_DATE_FABRICATION_RULE + "\n\n" +
+  NO_CREDENTIAL_FABRICATION_RULE + "\n\n" +
+  NO_RESEARCH_STATISTIC_FABRICATION_RULE + "\n\n" +
+  META_COMPLIANCE_NOTES;
 
 const WHATSAPP_SEQUENCE_RESPONSE_FORMAT = {
   type: "json_schema" as const,
@@ -633,7 +653,10 @@ interface RawWhatsappMessage {
   cta?: string;
 }
 
-async function invokeWhatsappSequenceWithRetry(userPrompt: string): Promise<RawWhatsappMessage[]> {
+async function invokeWhatsappSequenceWithRetry(
+  userPrompt: string,
+  supplied?: WhatsappSuppliedData,
+): Promise<RawWhatsappMessage[]> {
   // Validator Phase 2 (Sprint B+1 path d, 2026-05-11): mirrors the email
   // generator's Phase 1 + Phase 2 architecture. Shape validation via
   // validateWhatsappSequenceShape (centralizes defensive un-stringification
@@ -676,7 +699,7 @@ async function invokeWhatsappSequenceWithRetry(userPrompt: string): Promise<RawW
     }
 
     // Stage 2: fabrication-pattern validation. Best-effort on exhaust.
-    const fabResult = validateWhatsappFabricationPatterns(shapeResult.messages);
+    const fabResult = validateWhatsappFabricationPatterns(shapeResult.messages, supplied);
     if (fabResult.ok) {
       return shapeResult.messages as RawWhatsappMessage[];
     }
@@ -907,7 +930,23 @@ You MUST use these exact numbers and real names. Do not fabricate.`
       break;
   }
 
-  const rawMessages = await invokeWhatsappSequenceWithRetry(cascadeContext + prompt);
+  // Phase F Sprint 2 — build WhatsappSuppliedData for the WhatsApp-specific
+  // fabrication catalog. Cross-checks operator-supplied facts to distinguish
+  // USER-SUPPLIED from MODEL-INVENTED at validation time. Mirrors the email
+  // generator's EmailSuppliedData shape (server/emailSequenceGenerator.ts).
+  const supplied: WhatsappSuppliedData = {
+    price: service.price ?? null,
+    guaranteeType: service.guaranteeType ?? null,
+    guaranteeDuration: service.guaranteeDuration ?? null,
+    deliveryDuration: service.deliveryDuration ?? null,
+    bonuses: service.bonuses ?? null,
+    testimonialNames: [
+      service.testimonial1Name,
+      service.testimonial2Name,
+      service.testimonial3Name,
+    ],
+  };
+  const rawMessages = await invokeWhatsappSequenceWithRetry(cascadeContext + prompt, supplied);
   const delays = DELAY_HOURS_BY_WHATSAPP_TYPE[input.sequenceType] ?? [];
   const sequenceData: { messages: any[] } = {
     messages: rawMessages.map((msg: RawWhatsappMessage, idx: number) => ({

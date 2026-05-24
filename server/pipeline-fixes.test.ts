@@ -2333,3 +2333,287 @@ describe("Phase F Item 1 (C0.1) — UpgradePrompt bodyCopy backward-compat", () 
     expect(upgradePromptSrc).toContain("{copy.line2}");
   });
 });
+
+// ─── Phase F Sprint 2 — WhatsApp generator hardening ────────────────────────
+//
+// Closes the 4 in-scope launch blockers from docs/redteam-whatsapp-baseline-v1.md §8:
+//   LB-W1 — shape sub-case 3a recovery (defensive port from email Sprint 2)
+//   LB-W2 — fabrication catalog parity vs offer/email (10 new classes)
+//   LB-W3 — system-prompt symmetry vs LP/email (3 rules injected)
+//   LB-W4 — archetypal-name-with-location applied to WhatsApp body (defensive)
+//
+// LB-W5 deliberately skipped — v1 baseline measured 0 findings + code-level
+// investigation confirmed all 5 event-referencing builders carry explicit
+// "emit [INSERT_EVENT_NAME] verbatim when not pre-supplied" prompt guidance.
+
+import {
+  validateWhatsappFabricationPatterns as validateWhatsappFabricationPatternsV2,
+  validateWhatsappSequenceShape as validateWhatsappSequenceShapeV2,
+  type WhatsappSuppliedData as WhatsappSuppliedDataV2,
+} from "./_core/validator";
+
+describe("Phase F Sprint 2 — WhatsApp validator catalog parity (LB-W2)", () => {
+  // Helper: one-message kit with one fabrication body.
+  const oneMessage = (message: string, extra: Record<string, string> = {}) => [{
+    day: 0, message, cta: "C", ...extra,
+  }];
+  const supplied: WhatsappSuppliedDataV2 = {
+    price: null, guaranteeType: null, guaranteeDuration: null,
+    deliveryDuration: null, bonuses: null, testimonialNames: [],
+  };
+
+  it("catches whatsapp_invented_currency when no operator price supplied", () => {
+    const result = validateWhatsappFabricationPatternsV2(oneMessage("Pay only £497 today"), supplied);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.hits.some(h => h.classId === "whatsapp_invented_currency")).toBe(true);
+  });
+
+  it("does NOT flag currency when [INSERT_PRICE] token present (token-override absent for currency — uses per-match cross-check)", () => {
+    // Multi-value categories use per-match supplied.price cross-check, not
+    // field-level token-override. Confirm: supplying matching price suppresses.
+    const result = validateWhatsappFabricationPatternsV2(
+      oneMessage("Invest just £5,000 in your future"),
+      { ...supplied, price: "5000" },
+    );
+    expect(result.ok).toBe(true);
+  });
+
+  it("catches whatsapp_invented_anchor_range (£X–£Y patterns)", () => {
+    const result = validateWhatsappFabricationPatternsV2(oneMessage("Normally £5,000-£7,500. Today £1,997."), supplied);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.hits.some(h => h.classId === "whatsapp_invented_anchor_range")).toBe(true);
+  });
+
+  it("catches whatsapp_invented_bonus_value '(£X value)' framings", () => {
+    const result = validateWhatsappFabricationPatternsV2(oneMessage("Plus the Diagnostic Audit (£497 value)"), supplied);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.hits.some(h => h.classId === "whatsapp_invented_bonus_value")).toBe(true);
+  });
+
+  it("catches whatsapp_invented_cohort_limit", () => {
+    const result = validateWhatsappFabricationPatternsV2(oneMessage("Limited to 12 members in this cohort"), supplied);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.hits.some(h => h.classId === "whatsapp_invented_cohort_limit")).toBe(true);
+  });
+
+  it("does NOT flag cohort limit when [INSERT_COHORT_LIMIT] token present", () => {
+    const result = validateWhatsappFabricationPatternsV2(
+      oneMessage("Limited to [INSERT_COHORT_LIMIT] members in this cohort"),
+      supplied,
+    );
+    expect(result.ok).toBe(true);
+  });
+
+  it("catches whatsapp_invented_cohort_date ('next cohort opens', 'enrolment closes')", () => {
+    const result = validateWhatsappFabricationPatternsV2(oneMessage("The next cohort opens soon"), supplied);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.hits.some(h => h.classId === "whatsapp_invented_cohort_date")).toBe(true);
+  });
+
+  it("does NOT flag cohort date when [INSERT_CART_CLOSE_DATE] token present", () => {
+    const result = validateWhatsappFabricationPatternsV2(
+      oneMessage("Cart closes on [INSERT_CART_CLOSE_DATE]. Enrolment closes then."),
+      supplied,
+    );
+    expect(result.ok).toBe(true);
+  });
+
+  it("catches whatsapp_invented_programme_duration ('12-week programme')", () => {
+    const result = validateWhatsappFabricationPatternsV2(oneMessage("Inside this 12-week programme, you will…"), supplied);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.hits.some(h => h.classId === "whatsapp_invented_programme_duration")).toBe(true);
+  });
+
+  it("classifies supplied programme duration as USER-SUPPLIED (legacy programme_duration_drift filtered + WhatsApp catalog suppressed)", () => {
+    const result = validateWhatsappFabricationPatternsV2(
+      oneMessage("Inside this 12-week programme, you will…"),
+      { ...supplied, deliveryDuration: "12 weeks" },
+    );
+    expect(result.ok).toBe(true);
+  });
+
+  it("catches whatsapp_invented_guarantee_timeframe ('within 30 days')", () => {
+    const result = validateWhatsappFabricationPatternsV2(oneMessage("Risk-free guarantee within 30 days"), supplied);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.hits.some(h => h.classId === "whatsapp_invented_guarantee_timeframe")).toBe(true);
+  });
+
+  it("catches whatsapp_invented_refund_mechanic ('full refund', 'money-back')", () => {
+    const result = validateWhatsappFabricationPatternsV2(oneMessage("Pay nothing if it doesn't work. Money-back guarantee."), supplied);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.hits.some(h => h.classId === "whatsapp_invented_refund_mechanic")).toBe(true);
+  });
+
+  it("does NOT flag refund mechanic when [INSERT_GUARANTEE_TERMS] token present", () => {
+    const result = validateWhatsappFabricationPatternsV2(
+      oneMessage("Our guarantee: [INSERT_GUARANTEE_TERMS]. Full refund available."),
+      supplied,
+    );
+    expect(result.ok).toBe(true);
+  });
+
+  it("backward-compatible — call without supplied data runs only legacy catalog", () => {
+    // No supplied data → legacy FABRICATION_PATTERNS only. Pricing fabrication NOT caught.
+    const result = validateWhatsappFabricationPatternsV2(oneMessage("Pay only £497 today"));
+    expect(result.ok).toBe(true);
+  });
+
+  it("buildFailContext produces non-empty actionable message on fab hit", () => {
+    const result = validateWhatsappFabricationPatternsV2(oneMessage("Pay £497 today"), supplied);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.failContext.length).toBeGreaterThan(50);
+    expect(result.failContext).toContain("£497");
+  });
+
+  it("scans `text` legacy alias as message body equivalent", () => {
+    // RawWhatsappMessageFields supports both `message` and `text` — validator
+    // must scan whichever is present.
+    const messages = [{ day: 0, text: "Pay only £497 today", cta: "C" }];
+    const result = validateWhatsappFabricationPatternsV2(messages, supplied);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.hits.some(h => h.classId === "whatsapp_invented_currency")).toBe(true);
+  });
+});
+
+describe("Phase F Sprint 2 — WhatsApp archetypal-in-body detection (LB-W4)", () => {
+  const noNames: WhatsappSuppliedDataV2 = { testimonialNames: [] };
+  const oneMessage = (body: string) => [{ day: 0, message: body, cta: "C" }];
+
+  it("catches 'A VP of Strategy at a professional services firm' composite", () => {
+    const result = validateWhatsappFabricationPatternsV2(
+      oneMessage("A VP of Strategy at a professional services firm came in with one problem."),
+      noNames,
+    );
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.hits.some(h => h.classId === "whatsapp_archetypal_in_body")).toBe(true);
+  });
+
+  it("catches 'A Founder at a fast-scaling SaaS company' composite", () => {
+    const result = validateWhatsappFabricationPatternsV2(
+      oneMessage("A Founder at a fast-scaling SaaS company told me her team was stuck."),
+      noNames,
+    );
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.hits.some(h => h.classId === "whatsapp_archetypal_in_body")).toBe(true);
+  });
+
+  it("does NOT flag operator-supplied real name in archetypal envelope", () => {
+    const result = validateWhatsappFabricationPatternsV2(
+      oneMessage("Sarah Chen, a Chief of Staff at a global consultancy, described it this way."),
+      { testimonialNames: ["Sarah Chen", null, undefined] },
+    );
+    if (result.ok) return; // pass — exact USER-SUPPLIED suppression
+    expect(result.hits.filter(h => h.classId === "whatsapp_archetypal_in_body")).toHaveLength(0);
+  });
+
+  it("does NOT flag generic role framing without 'at [a/an/the]' envelope", () => {
+    const result = validateWhatsappFabricationPatternsV2(
+      oneMessage("Many of the people I work with describe a similar frustration."),
+      noNames,
+    );
+    expect(result.ok).toBe(true);
+  });
+});
+
+describe("Phase F Sprint 2 — Shape sub-case 3a recovery (LB-W1)", () => {
+  it("recovers when messages is a stringified array (sub-case 1, valid JSON) — backward-compat", () => {
+    const arr = JSON.stringify([{ day: 0, message: "Hello", cta: "C" }]);
+    const result = validateWhatsappSequenceShapeV2({ messages: arr });
+    expect(result.ok).toBe(true);
+  });
+
+  it("recovers when stringified array has surrounding garbage via object extraction (sub-case 3a)", () => {
+    const malformedArrayString = "[\n   garbage_at_top \n  {\"day\":0,\"message\":\"hi\",\"cta\":\"C\"}\n,\n  {\"day\":1,\"message\":\"hello\",\"cta\":\"C\"}\n  ]";
+    const result = validateWhatsappSequenceShapeV2({ messages: malformedArrayString });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.messages).toHaveLength(2);
+    expect(result.messages[0].day).toBe(0);
+    expect(result.messages[1].day).toBe(1);
+  });
+
+  it("falls through to messages_string_unrecoverable when 3a finds zero parseable objects", () => {
+    const result = validateWhatsappSequenceShapeV2({ messages: "this is just garbage with no braces" });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.subCase).toBe("messages_string_unrecoverable");
+  });
+
+  it("recovers when stringified array has bodies with internal apostrophes (long-sequence escape edge case)", () => {
+    const obj1 = "{\"day\":0,\"message\":\"I'm here to help.\",\"cta\":\"C\"}";
+    const obj2 = "{\"day\":3,\"message\":\"Don't forget the deadline.\",\"cta\":\"C\"}";
+    const arrStr = `[ ${obj1} , ${obj2} ]`;
+    const result = validateWhatsappSequenceShapeV2({ messages: arrStr });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.messages).toHaveLength(2);
+  });
+});
+
+describe("Phase F Sprint 2 — WhatsApp generator system prompt + supplied wiring", () => {
+  const path = require("path");
+  const fs = require("fs");
+  const generatorPath = path.resolve(__dirname, "whatsappSequenceGenerator.ts");
+  const generatorSrc = fs.readFileSync(generatorPath, "utf8");
+
+  it("imports NO_CREDENTIAL_FABRICATION_RULE (LB-W3)", () => {
+    expect(generatorSrc).toContain("NO_CREDENTIAL_FABRICATION_RULE");
+  });
+
+  it("imports NO_RESEARCH_STATISTIC_FABRICATION_RULE (LB-W3)", () => {
+    expect(generatorSrc).toContain("NO_RESEARCH_STATISTIC_FABRICATION_RULE");
+  });
+
+  it("imports META_COMPLIANCE_NOTES (LB-W3)", () => {
+    expect(generatorSrc).toContain("META_COMPLIANCE_NOTES");
+  });
+
+  it("WHATSAPP_SEQUENCE_SYSTEM_PROMPT injects all four rules", () => {
+    const promptDefSnippet = generatorSrc.split("WHATSAPP_SEQUENCE_SYSTEM_PROMPT")[1] ?? "";
+    const head = promptDefSnippet.substring(0, 2000);
+    expect(head).toContain("NO_DATE_FABRICATION_RULE");
+    expect(head).toContain("NO_CREDENTIAL_FABRICATION_RULE");
+    expect(head).toContain("NO_RESEARCH_STATISTIC_FABRICATION_RULE");
+    expect(head).toContain("META_COMPLIANCE_NOTES");
+  });
+
+  it("WHATSAPP_SEQUENCE_SYSTEM_PROMPT includes anti-stringify instruction (LB-W1 prompt-level)", () => {
+    const promptDefSnippet = generatorSrc.split("WHATSAPP_SEQUENCE_SYSTEM_PROMPT")[1] ?? "";
+    const head = promptDefSnippet.substring(0, 2000);
+    expect(head).toContain("Emit the messages field as a literal JSON array");
+  });
+
+  it("WHATSAPP_SEQUENCE_SYSTEM_PROMPT uses positive-only framing — no Wrong:/Right: pattern (Sprint B regression lesson)", () => {
+    const promptDefSnippet = generatorSrc.split("WHATSAPP_SEQUENCE_SYSTEM_PROMPT")[1] ?? "";
+    const head = promptDefSnippet.substring(0, 2000);
+    expect(head).not.toMatch(/Wrong:/);
+    expect(head).not.toMatch(/Right:/);
+  });
+
+  it("invokeWhatsappSequenceWithRetry accepts WhatsappSuppliedData parameter", () => {
+    expect(generatorSrc).toContain("supplied?: WhatsappSuppliedData");
+  });
+
+  it("runWhatsappSequenceGeneration builds WhatsappSuppliedData from service + passes to retry helper", () => {
+    expect(generatorSrc).toContain("const supplied: WhatsappSuppliedData = {");
+    expect(generatorSrc).toContain("price: service.price");
+    expect(generatorSrc).toContain("testimonialNames:");
+    expect(generatorSrc).toContain("invokeWhatsappSequenceWithRetry(cascadeContext + prompt, supplied)");
+  });
+
+  it("fabrication validator call forwards supplied data", () => {
+    expect(generatorSrc).toContain("validateWhatsappFabricationPatterns(shapeResult.messages, supplied)");
+  });
+});

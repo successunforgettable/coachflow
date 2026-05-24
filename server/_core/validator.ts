@@ -365,6 +365,19 @@ function tryUnstringifyArray(raw: string): unknown[] | null {
     } catch { /* fall through */ }
   }
 
+  // Sub-case 3a (Phase F Sprint 2 — LB-W1 hardening, mirror of email
+  // Sprint 2's port). Walks the string with balanced-brace + string-context
+  // scanning and parses each top-level {...} block individually. Robust
+  // against single-character escape errors that defeat full-array JSON.parse.
+  // Email v1 had 65 shape exhausts saved by this recovery; WA v1 had 0
+  // exhausts — included as defensive parity for future generation drift on
+  // longer (5/7-msg) variants.
+  //
+  // SAFETY: the validator remains authoritative — extracted items still pass
+  // through the per-item shape check below.
+  const extracted = extractTopLevelObjectsFromArrayString(raw);
+  if (extracted !== null && extracted.length > 0) return extracted;
+
   return null;
 }
 
@@ -422,7 +435,23 @@ export type FabricationClass =
   | "email_invented_guarantee_timeframe"
   | "email_invented_refund_mechanic"
   | "email_invented_cohort_date"
-  | "email_archetypal_in_body";
+  | "email_archetypal_in_body"
+  // Phase F Sprint 2 — WhatsApp catalog parity vs offer/email hardened
+  // generators (LB-W2 + LB-W4 from docs/redteam-whatsapp-baseline-v1.md §6).
+  // These classes are emitted EXCLUSIVELY by validateWhatsappFabricationPatterns
+  // when a WhatsappSuppliedData is provided. Email + LP testimonial paths
+  // remain unaffected; baseline-email-v1/v2 + baseline-v1/v2 comparability
+  // preserved.
+  | "whatsapp_invented_currency"
+  | "whatsapp_invented_anchor_range"
+  | "whatsapp_invented_bonus_value"
+  | "whatsapp_invented_total_value"
+  | "whatsapp_invented_cohort_limit"
+  | "whatsapp_invented_programme_duration"
+  | "whatsapp_invented_guarantee_timeframe"
+  | "whatsapp_invented_refund_mechanic"
+  | "whatsapp_invented_cohort_date"
+  | "whatsapp_archetypal_in_body";
 
 interface PatternDef {
   pattern: RegExp;
@@ -778,13 +807,191 @@ export function validateEmailFabricationPatterns(
   return { ok: false, hits: allHits, failContext: buildFabricationFailContext(allHits) };
 }
 
-/** WhatsApp-sequence fabrication check. Reads each message's message/text body. */
-export function validateWhatsappFabricationPatterns(messages: RawWhatsappMessageFields[]): FabricationCheckResult {
+// ─── Phase F Sprint 2 — WhatsApp fabrication catalog parity (LB-W2 + LB-W4) ──
+//
+// Mirrors the email Sprint 2 catalog architecture. Brings WhatsApp to parity
+// with the hardened offer + email validators: pricing currency, anchor ranges,
+// bonus values, guarantee timeframe, refund mechanic, cohort dates, cohort
+// limits, programme duration, archetypal-composite-in-body.
+//
+// Critical scoping (mirror of email's scoping):
+//   - These patterns fire ONLY via validateWhatsappFabricationPatterns when a
+//     WhatsappSuppliedData is provided. Email + LP testimonial paths continue
+//     to use only the legacy shared FABRICATION_PATTERNS catalog.
+//   - The detector primitives are the SAME functions used by the offer + email
+//     validators (detectInventedCurrencyAmounts / AnchorRange / BonusValue /
+//     TotalValue / CohortLimit / CohortDate / ProgrammeDuration /
+//     GuaranteeTimeframe / RefundMechanic). Zero duplication, exact regex
+//     parity, USER-SUPPLIED cross-check semantics preserved.
+
+/** Operator-supplied fields the WhatsApp validator cross-checks against.
+ * Mirrors `EmailSuppliedData` exactly — same shape, same testimonial-name
+ * array for archetypal-in-body cross-check. */
+export interface WhatsappSuppliedData {
+  price?: string | null;
+  guaranteeType?: string | null;
+  guaranteeDuration?: string | null;
+  deliveryDuration?: string | null;
+  bonuses?: string | null;
+  testimonialNames?: (string | null | undefined)[];
+}
+
+const WHATSAPP_TOKEN_OVERRIDES: Record<string, string[]> = {
+  // Multi-value categories — no field-level override; per-match cross-check
+  // (against supplied.price/bonuses) filters USER-SUPPLIED matches per-match.
+  whatsapp_invented_currency:           [],
+  whatsapp_invented_anchor_range:       [],
+  whatsapp_invented_bonus_value:        [],
+  whatsapp_invented_total_value:        [],
+  // Single-value categories — field-level override on the matching canonical
+  // token. Mirrors email's WhatsApp-applicable allow-list from the WA sales
+  // prompt builder (server/whatsappSequenceGenerator.ts:337+ documents
+  // [INSERT_COHORT_CLOSE_DATE] / [INSERT_DEADLINE] etc. as canonical anchors).
+  whatsapp_invented_cohort_limit:       ["[INSERT_COHORT_LIMIT]"],
+  whatsapp_invented_programme_duration: ["[INSERT_PROGRAMME_DURATION]"],
+  whatsapp_invented_guarantee_timeframe:["[INSERT_GUARANTEE_TERMS]"],
+  whatsapp_invented_refund_mechanic:    ["[INSERT_GUARANTEE_TERMS]"],
+  whatsapp_invented_cohort_date:        ["[INSERT_COHORT_CLOSE_DATE]", "[INSERT_CART_CLOSE_DATE]", "[INSERT_DEADLINE]", "[INSERT_PROGRAMME_START_DATE]"],
+  whatsapp_archetypal_in_body:          [],
+};
+
+/** Archetypal-composite-in-body regex. Same envelope as the email Sprint 2
+ * pattern — "A [Title] at [a/an/the] [Descriptor]" forms inside narrative
+ * proof messages. Defensive port for LB-W4 (v1 measured 0 MI; defensive
+ * inclusion against future generation drift). */
+const WHATSAPP_ARCHETYPAL_BODY_PATTERN = /\b(?:A|An)\s+(?:Senior|Chief|Head|Director|VP|CEO|CTO|CFO|COO|Founder|Owner|Manager|Lead|Partner|Principal|Executive|Strategist)(?:\s+(?:of|for))?(?:\s+[A-Za-z][A-Za-z\s]*?)?\s+at\s+(?:a|an|the)\s+[A-Za-z][^.!?\n]{2,80}/g;
+
+function fieldHasWhatsappOverrideToken(fieldValue: string, classId: string): boolean {
+  const overrides = WHATSAPP_TOKEN_OVERRIDES[classId];
+  if (!overrides || overrides.length === 0) return false;
+  return overrides.some(tok => fieldValue.includes(tok));
+}
+
+function detectWhatsappFabricationsInField(
+  fieldName: string,
+  value: string,
+  supplied: WhatsappSuppliedData,
+  suppliedPriceNumeric: number | null,
+): FabricationHit[] {
+  if (!value || typeof value !== "string") return [];
+  const hits: FabricationHit[] = [];
+  const push = (classId: FabricationClass, description: string, matched: string) => {
+    if (fieldHasWhatsappOverrideToken(value, classId)) return;
+    hits.push({ classId, description, matched: matched.substring(0, 200), location: fieldName });
+  };
+
+  // Currency amounts — applies to message body. WhatsApp's `cta` field is
+  // intentionally NOT scanned for currency: cta values are short directive
+  // strings (CTA copy) and canonical URL tokens; pricing fabrication appears
+  // exclusively in the message body per baseline-v1 evidence.
+  for (const m of detectInventedCurrencyAmounts(value, suppliedPriceNumeric)) {
+    push("whatsapp_invented_currency",
+      "Invented currency amount with no operator-supplied price. Emit `[INSERT_PRICE]` verbatim when no service.price is supplied.",
+      m[0]);
+  }
+  for (const m of detectInventedAnchorRange(value)) {
+    push("whatsapp_invented_anchor_range",
+      "Invented anchor price range. WhatsApp anchor pricing must be operator-supplied; do not invent £X-£Y comparisons.",
+      m[0]);
+  }
+  for (const m of detectInventedBonusValue(value, supplied.bonuses ?? null)) {
+    push("whatsapp_invented_bonus_value",
+      "Invented (£X value) bonus value. Each bonus must emit `[INSERT_BONUS_VALUE]` when no operator-supplied bonus is provided.",
+      m[0]);
+  }
+  for (const m of detectInventedTotalValue(value)) {
+    push("whatsapp_invented_total_value",
+      "Invented total bonus value summation. Do not emit 'total value: £X' framings without operator-supplied bonuses.",
+      m[0]);
+  }
+  for (const m of detectInventedCohortLimit(value)) {
+    push("whatsapp_invented_cohort_limit",
+      "Invented cohort size. Emit `[INSERT_COHORT_LIMIT]` verbatim when no operator-supplied cohort size exists.",
+      m[0]);
+  }
+  for (const m of detectInventedCohortDate(value)) {
+    push("whatsapp_invented_cohort_date",
+      "Invented cohort opening/closing date. Emit `[INSERT_COHORT_CLOSE_DATE]`, `[INSERT_CART_CLOSE_DATE]`, or `[INSERT_DEADLINE]` verbatim.",
+      m[0]);
+  }
+  for (const m of detectInventedProgrammeDuration(value, supplied.deliveryDuration ?? null)) {
+    push("whatsapp_invented_programme_duration",
+      "Invented programme duration. Emit `[INSERT_PROGRAMME_DURATION]` verbatim when no operator-supplied service.deliveryDuration exists.",
+      m[0]);
+  }
+  for (const m of detectInventedGuaranteeTimeframe(value, supplied.guaranteeDuration ?? null)) {
+    push("whatsapp_invented_guarantee_timeframe",
+      "Invented guarantee timeframe. Emit `[INSERT_GUARANTEE_TERMS]` verbatim when no operator-supplied service.guaranteeDuration exists.",
+      m[0]);
+  }
+  for (const m of detectInventedRefundMechanic(value, supplied.guaranteeType ?? null)) {
+    push("whatsapp_invented_refund_mechanic",
+      "Invented refund mechanic phrasing (e.g. 'money-back', 'pay nothing', 'risk-free'). Emit `[INSERT_GUARANTEE_TERMS]` verbatim when no operator-supplied guarantee type exists.",
+      m[0]);
+  }
+
+  // Archetypal-composite-in-body — Phase F Sprint 2 LB-W4 defensive port.
+  for (const m of Array.from(value.matchAll(WHATSAPP_ARCHETYPAL_BODY_PATTERN))) {
+    const matchedNorm = m[0].toLowerCase();
+    const realNames = (supplied.testimonialNames ?? []).filter((n): n is string => typeof n === "string" && n.trim().length > 0);
+    if (realNames.some(n => matchedNorm.includes(n.toLowerCase()))) continue;
+    push("whatsapp_archetypal_in_body",
+      "Archetypal composite-with-location envelope ('A VP of X at a Y firm') in WhatsApp narrative. Anonymised composites must anchor on role + situation only; do not invent location/firm descriptors. Use only operator-supplied real testimonial names.",
+      m[0]);
+  }
+
+  return hits;
+}
+
+/**
+ * WhatsApp-sequence fabrication check. Reads each message's message/text body.
+ *
+ * Phase F Sprint 2 extension: when `supplied` is provided, additionally runs
+ * the WhatsApp-specific catalog (pricing / cohort / guarantee / refund /
+ * programme-duration / archetypal-in-body) with operator-context cross-check.
+ * Backward-compatible: calls without `supplied` get only the legacy shared
+ * FABRICATION_PATTERNS catalog (preserves email + LP comparability).
+ */
+export function validateWhatsappFabricationPatterns(
+  messages: RawWhatsappMessageFields[],
+  supplied?: WhatsappSuppliedData,
+): FabricationCheckResult {
   const allHits: FabricationHit[] = [];
+  const suppliedPriceNumeric = supplied?.price ? parseFloat(supplied.price) : null;
+
   for (let i = 0; i < messages.length; i++) {
     const m = messages[i];
     const body = m.message || m.text || "";
-    if (body) allHits.push(...detectFabricationsInBody(body, `message[${i}]`));
+    if (!body) continue;
+
+    // Legacy shared catalog — family / partner / employer / tenure / research
+    // / demographics / archetypal (testimonial-shaped). Always runs.
+    const legacyHits: FabricationHit[] = [];
+    legacyHits.push(...detectFabricationsInBody(body, `message[${i}]`));
+
+    // Phase F Sprint 2 — apply operator-context cross-check to the legacy
+    // catalog's `programme_duration_drift` hits when WhatsApp supplies a
+    // deliveryDuration. Mirrors email Sprint 2 LB-E2 filtering. Scoped to
+    // WhatsApp validator only — legacy catalog behaviour for email + LP
+    // unchanged.
+    const filteredLegacyHits = supplied?.deliveryDuration
+      ? legacyHits.filter(h => {
+          if (h.classId !== "programme_duration_drift") return true;
+          const dur = h.matched.match(/\d+[-\s]?(?:minute|hour|day|week|month)s?/i);
+          if (!dur) return true;
+          const durNorm = dur[0].toLowerCase().replace(/[\s-]/g, "").replace(/(minute|hour|day|week|month)s\b/g, "$1");
+          const sup = supplied.deliveryDuration!.toLowerCase().replace(/[\s,]/g, "").replace(/(minute|hour|day|week|month)s\b/g, "$1");
+          return !(sup.includes(durNorm) || durNorm.includes(sup));
+        })
+      : legacyHits;
+    allHits.push(...filteredLegacyHits);
+
+    // Phase F Sprint 2 WhatsApp catalog — pricing / cohort / guarantee / etc.
+    // Only when operator-supplied data is provided (production call site
+    // always provides it post-Sprint-2; backward-compatible callers do not).
+    if (supplied) {
+      allHits.push(...detectWhatsappFabricationsInField(`message[${i}]`, body, supplied, suppliedPriceNumeric));
+    }
   }
   if (allHits.length === 0) return { ok: true };
   return { ok: false, hits: allHits, failContext: buildFabricationFailContext(allHits) };
