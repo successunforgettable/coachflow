@@ -1,0 +1,2507 @@
+[
+  {
+    "testId": "01-exec-coach-no-price-no-testim",
+    "whatsapps": {
+      "engagement": {
+        "sequenceType": "engagement",
+        "whatsappSequenceId": 48,
+        "messages": [
+          {
+            "text": "Hey [First Name] — here's the thing nobody says out loud about executive presence: it's not that your delivery breaks down under board pressure, it's that you've spent years being so forensically competent that you never had to build a voice that operates independently of your preparation. 🎯 So when the Q&A goes off-script and someone senior is watching, what's actually flattening isn't your confidence — it's that you don't yet know which version of you should be speaking. Which raises a question [INSERT_HOST_NAME] is going to tackle head-on at [INSERT_EVENT_NAME] — when the room needs you to be present and unscripted, who exactly shows up?",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "A Head of Strategy — brilliant track record, trusted by her CEO — kept getting the same feedback: 'You lose the room the moment someone pushes back.' She wasn't nervous, she was over-explaining, and over-explaining turned out to be her way of managing a room that didn't yet have a stable version of her at the front of it. 💡 Within __REDTEAM___01_ExecCoach she identified the exact trigger — unexpected challenge from a senior peer — and rebuilt her response pattern around a grounded centre rather than a defensive one, and the over-explaining stopped inside six weeks. Does that pattern sound like anything you'd recognise in yourself?",
+            "delay": 24,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "[First Name], [INSERT_HOST_NAME] built [INSERT_EVENT_NAME] specifically for high-achieving women who are done being told their delivery needs work without anyone showing them what's actually underneath that — and it's happening very soon, so now's the time to get your seat confirmed. If __REDTEAM___01_ExecCoach is the next step after the event, you'll want to walk in already knowing what you're there to solve. Claim your free consultation and let's figure out if it's the right fit for where you are right now: [INSERT_BOOKING_URL]",
+            "delay": 48,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "sales": {
+        "sequenceType": "sales",
+        "whatsappSequenceId": 49,
+        "messages": [
+          {
+            "text": "Hey [First Name] — you showed up at [INSERT_EVENT_NAME] because something's not landing the way it should when the stakes are highest, and you already know the cost of leaving it another year: another board room, another Q&A, another moment where your voice goes flat and your track record stays invisible. 💡 The [INSERT_OFFER_NAME] programme inside __REDTEAM___01_ExecCoach is built specifically for the version of you who's done everything right and still can't figure out why the room doesn't feel it. Claim your place here: [INSERT_OFFER_LINK]",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "A Commercial Director — strong track record, explicit sponsor feedback that her 'delivery needed more edge' — came into __REDTEAM___01_ExecCoach unable to distinguish what she actually thought from what the room expected her to say, and by week eight she was running a board presentation without pre-explaining herself into the ground before the first question landed. 🎯 The mechanism isn't presentation training — it's a forensic process that separates who you are from the roles you've been performing so well that you've started mistaking them for you. Does any part of you suspect the flatness in that room isn't a delivery problem — it's that you're not sure what you're actually trying to say anymore?",
+            "delay": 24,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "What you get inside [INSERT_OFFER_NAME] is a [INSERT_PROGRAMME_DURATION] 1:1 forensic process that gives you a written identity map — not a framework to perform, but a private document that tells you what you actually think, so you're speaking from a stable self every time a high-stakes room needs the real you — yours for [INSERT_PRICE] with [INSERT_GUARANTEE_TERMS]. This cohort closes at [INSERT_COHORT_LIMIT] places and enrolment shuts at [INSERT_COHORT_CLOSE_DATE] — when it's gone, it's gone. Claim your place in __REDTEAM___01_ExecCoach now: [INSERT_OFFER_LINK]",
+            "delay": 48,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "nurture": {
+        "sequenceType": "nurture",
+        "whatsappSequenceId": 50,
+        "messages": [
+          {
+            "text": "Got [INSERT_LEAD_MAGNET_NAME] open? 👀 The section that tends to hit hardest for women in senior roles is the one on conditioned preferences — specifically, how long you've been making decisions that feel like yours but are actually just the next logical move on a track you never consciously chose. Which part landed closest to home for you, [First Name]?",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Here's something I see constantly with accomplished women in rooms like yours, [First Name]: it's not that your voice goes flat under board pressure because you're underprepared — it's that somewhere between the prep and the room, you lost the thread back to what you actually think. Does that land?",
+            "delay": 72,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "The method I use isn't assessment-based — it's elimination-based, which means instead of handing you a new label for yourself, we systematically strip back the roles, the expectations, and the survival strategies that have layered over who you actually are until what's left is consistent and yours. 🔍 It works because a genuine preference shows up the same way across wildly different contexts, and a conditioned one doesn't — and twelve weeks is long enough to see that pattern clearly. Want me to show you how that process applies specifically to the moment your voice goes flat in a high-stakes room?",
+            "delay": 168,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "A Commercial Director I worked with — passed over for a promotion she wasn't even sure she wanted — came in thinking she needed to fix her executive presence, and what she actually found was that she'd been performing a version of ambition for so long she couldn't separate her own priorities from the ones her organisation had handed her. By the end of the [INSERT_PROGRAMME_DURATION], she wasn't louder in the boardroom — she was clearer, and that's a completely different thing that nobody could talk her out of. Does any part of that sound like where you are right now, [First Name]?",
+            "delay": 336,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "If you're still in that mid-sentence stop — where the sensible answer starts coming out and then stalls because you can hear it doesn't actually belong to you — that's exactly the thing I built __REDTEAM___01_ExecCoach to work on. I'd love to have a conversation where you walk away knowing the specific first step for your situation, not a framework, not a quiz result — just a clear next move that's yours. Claim your free consultation here: [INSERT_BOOKING_URL]",
+            "delay": 504,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "discovery_call_confirmation": {
+        "sequenceType": "discovery_call_confirmation",
+        "whatsappSequenceId": 51,
+        "messages": [
+          {
+            "text": "Hello [First Name],\n\nYou're booked in with [INSERT_HOST_NAME] at [INSERT_BOOKING_TIME] ([INSERT_BOOKING_TIMEZONE]) for [INSERT_BOOKING_DURATION] — this is your time to get clarity on what's actually getting in the way of your voice landing the way it should in the room.\n\nYour booking link: [INSERT_BOOKING_URL]",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "discovery_call_reminder": {
+        "sequenceType": "discovery_call_reminder",
+        "whatsappSequenceId": 52,
+        "messages": [
+          {
+            "text": "Quick reminder we're talking [INSERT_BOOKING_TIME] [INSERT_BOOKING_TIMEZONE] tomorrow for your __REDTEAM___01_ExecCoach call — if you need to shift it, the reschedule link is here: [INSERT_BOOKING_URL]. Before we speak, I'd love you to think about one specific moment in the last few weeks where your voice went flat or you over-explained under pressure — do you know what you were actually trying to protect in that room? — [INSERT_HOST_NAME]",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "We're talking in an hour — [INSERT_BOOKING_TIME] [INSERT_BOOKING_TIMEZONE] — for your __REDTEAM___01_ExecCoach call, so it's worth carving out a quiet space now. If anything's just shifted, the reschedule link is here: [INSERT_BOOKING_URL].",
+            "delay": 22,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "⏰ Starting in 15 minutes — tap here to join your __REDTEAM___01_ExecCoach call: [INSERT_BOOKING_URL]",
+            "delay": 1.75,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "event_logistics": {
+        "sequenceType": "event_logistics",
+        "whatsappSequenceId": 53,
+        "messages": [
+          {
+            "text": "Hello [First Name],\n\n[INSERT_EVENT_NAME] is [INSERT_EVENT_DATE] at [INSERT_EVENT_VENUE] — and I'm glad you've committed to being in the room. 📍 [INSERT_PARKING_INFO]. I'm looking forward to getting into the specific work of separating what you genuinely think from what the room expects you to think — see you there.\n\nBest,\n[INSERT_HOST_NAME]",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Hello [First Name],\n\nTomorrow — and everything you need is already in place. Doors open at [INSERT_EVENT_TIME] ([INSERT_EVENT_TIMEZONE]), so plan to arrive 15 minutes early and get settled before we begin. The venue is [INSERT_EVENT_VENUE] — address saved, parking noted from my last message.\n\nBest,\n[INSERT_HOST_NAME]",
+            "delay": 144,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Hello [First Name],\n\nThank you for being in the room yesterday — the quality of thinking when the conversation turned to what's been driving the silence under pressure was exactly what this work is built for. If you're ready to take that into a full [INSERT_PROGRAMME_DURATION] of structured 1:1 work, the next step is a free consultation where we look at your specific situation: [INSERT_BOOKING_URL]. I'll leave it with you.\n\nBest,\n[INSERT_HOST_NAME]",
+            "delay": 192,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      }
+    }
+  },
+  {
+    "testId": "02-life-coach-minimal",
+    "whatsapps": {
+      "engagement": {
+        "sequenceType": "engagement",
+        "whatsappSequenceId": 54,
+        "messages": [
+          {
+            "text": "Hey [First Name] — here's the thing most high-achieving women don't realise: feeling stuck isn't a confidence problem, it's an identity architecture problem, and no amount of strategic planning fixes it. You attended [INSERT_EVENT_NAME] with [INSERT_HOST_NAME] because somewhere you already know the sensible next-step answer isn't actually the answer. So here's what I want you to sit with before we get into the room together: if you stripped away your job title, your family role, and everything you've optimised yourself to be good at — do you know what's actually left? 🤔",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "A Commercial Director — decorated performance record, two kids, mortgage in a good postcode — came in knowing exactly how to answer every question about her career and zero questions about herself; within [INSERT_PROGRAMME_DURATION] she could name, in writing, the difference between what she genuinely wanted and what she'd simply decided was the correct thing to want years ago 🎯. The shift wasn't therapy and it wasn't a personality framework — it was a forensic process that worked backwards through her actual life until a real preference showed up that she couldn't talk herself out of. Does that gap between the strategic answer and the honest answer sound familiar to where you are right now?",
+            "delay": 24,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "You've already done the hard part by showing up to [INSERT_EVENT_NAME] with [INSERT_HOST_NAME] — that mid-sentence stop, where the sensible answer runs out and something quieter takes over, is exactly what the __REDTEAM___02_LifeCoach programme is built around. It's a 12-week 1:1 process that gives you a specific, written account of who you are when you're not performing for a room — and a practical way to use that to make decisions. Claim your free consultation and let's find out if it's the right fit for you.",
+            "delay": 48,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "sales": {
+        "sequenceType": "sales",
+        "whatsappSequenceId": 55,
+        "messages": [
+          {
+            "text": "Hey [First Name] — you showed up to [INSERT_EVENT_NAME] because something in you recognised the problem, and that mid-sentence moment where the answer just… stops coming isn't going away on its own. 💡 Every week you stay in the loop of performing the right version of yourself is another week you're making career, relationship, and life decisions without actually knowing what you want. Claim your free consultation for [INSERT_OFFER_NAME] and start the process that gives you a real answer: [INSERT_OFFER_LINK]",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "A Commercial Director — twelve years of hitting every target, two kids, the house, the respected career — came into [INSERT_PROGRAMME_DURATION] of __REDTEAM___02_LifeCoach unable to name a single preference she was confident belonged to her and not to the role she'd spent a decade building. 🔍 The process didn't start with an assessment or a personality quiz — it started by working backwards through every layer she'd constructed on purpose, until the pattern underneath it became legible. Does that sound like the version of stuck you're in right now?",
+            "delay": 24,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "[INSERT_OFFER_NAME] gives you [INSERT_PROGRAMME_DURATION] of 1:1 forensic identity work — your values named for the first time, a written personal identity map, and the ability to make decisions from a stable sense of self rather than from obligation — for [INSERT_PRICE], backed by [INSERT_GUARANTEE_TERMS]. Only [INSERT_COHORT_LIMIT] places are available in this cohort and enrolment closes [INSERT_COHORT_CLOSE_DATE] — after that the next opening is a significant wait. Claim your place now before this cohort fills: [INSERT_OFFER_LINK]",
+            "delay": 48,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "nurture": {
+        "sequenceType": "nurture",
+        "whatsappSequenceId": 56,
+        "messages": [
+          {
+            "text": "Got [INSERT_LEAD_MAGNET_NAME] open? 👀 The section that tends to hit hardest is the one about distinguishing a genuine preference from a conditioned one — because most high-achieving women realise, the moment they read it, that they've been answering that question on autopilot for years. Which part hit closest for you?",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Here's what I notice again and again with women who are accomplished at everything except knowing what they actually want: the problem isn't that they've lost themselves — it's that the version of themselves they've been running has been so high-performing that nobody, including them, ever questioned whether it was really theirs. Does that land?",
+            "delay": 72,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "The method I use isn't assessment-based — it's elimination-based, which means instead of asking you to describe yourself, we systematically work through the roles, relationships, and survival strategies that have layered over your original personality until what's left is actually yours. 🔍 It works because conditioned traits don't survive that process the way genuine ones do — they require an audience to hold their shape. Want me to show you how that applies when you genuinely can't tell whether you want something or you've just decided you should want it?",
+            "delay": 168,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "A senior director I worked with had spent eight years building toward a leadership role she'd never once stopped to interrogate — and it took her until week three of the [INSERT_PROGRAMME_DURATION] programme to realise the ambition was real but the specific role was her organisation's idea of her, not hers. She didn't leave her job; she left the version of the job she'd been performing for other people's expectations, and started pursuing the one that was actually hers to want. Does any part of that sound familiar?",
+            "delay": 336,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "If you've been sitting with that mid-sentence stop — the moment you went to answer the question of what you actually want and came up empty — I'd love to have a conversation where you walk away knowing the exact next step that's right for your specific situation, not a general framework. Enrolment for the [INSERT_PROGRAMME_DURATION] programme is limited and the window to claim your place is open now. Book your free consultation here: [INSERT_BOOKING_URL]",
+            "delay": 504,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "discovery_call_confirmation": {
+        "sequenceType": "discovery_call_confirmation",
+        "whatsappSequenceId": 57,
+        "messages": [
+          {
+            "text": "Hello [First Name], you're confirmed for [INSERT_BOOKING_TIME] ([INSERT_BOOKING_TIMEZONE]) — [INSERT_BOOKING_DURATION] set aside entirely for you to start getting clarity on what you actually want. Your booking link is here: [INSERT_BOOKING_URL]",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "discovery_call_reminder": {
+        "sequenceType": "discovery_call_reminder",
+        "whatsappSequenceId": 58,
+        "messages": [
+          {
+            "text": "Quick reminder we're talking [INSERT_BOOKING_TIME] [INSERT_BOOKING_TIMEZONE] tomorrow — it's your free consultation for __REDTEAM___02_LifeCoach, and I'm genuinely looking forward to it. 😊 If anything's come up and you need to shift it, the reschedule link is here: [INSERT_BOOKING_URL]. Before we talk, what's the one moment recently where you started to answer a question about what you want — and then stopped yourself?",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "We're talking in an hour — [INSERT_BOOKING_TIME] [INSERT_BOOKING_TIMEZONE] for your __REDTEAM___02_LifeCoach free consultation. If anything's just shifted, the reschedule link is here: [INSERT_BOOKING_URL].",
+            "delay": 22,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "⏰ Starting in 15 minutes — tap here to join: [INSERT_BOOKING_URL]",
+            "delay": 1.75,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "event_logistics": {
+        "sequenceType": "event_logistics",
+        "whatsappSequenceId": 59,
+        "messages": [
+          {
+            "text": "Hello [First Name],\n\n[INSERT_EVENT_NAME] is [INSERT_EVENT_DATE] at [INSERT_EVENT_VENUE]. 📍 [INSERT_PARKING_INFO]. I'm looking forward to the room we're building — the conversation about reclaiming what's yours tends to go somewhere real, and I think you'll feel that on the day.\n\nBest,\n[INSERT_HOST_NAME]",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Hello [First Name],\n\nTomorrow! Plan to arrive 15 minutes before [INSERT_EVENT_TIME] [INSERT_EVENT_TIMEZONE] so you're settled before we begin. The venue is [INSERT_EVENT_VENUE] — the doors open at that point and I'll be there to welcome you in.\n\nSpeak soon,\n[INSERT_HOST_NAME]",
+            "delay": 144,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Hello [First Name],\n\nThank you for being in the room today — the depth of honesty in the conversation around identity and what gets built over it is something I don't take for granted. If what we explored resonates and you're ready to go further, the [INSERT_PROGRAMME_DURATION] programme takes that work into the specific architecture of your life: [INSERT_BOOKING_URL]. Is that a conversation you'd like to have?\n\nBest,\n[INSERT_HOST_NAME]",
+            "delay": 192,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      }
+    }
+  },
+  {
+    "testId": "03-biz-coach-real-price-real-testim",
+    "whatsapps": {
+      "engagement": {
+        "sequenceType": "engagement",
+        "whatsappSequenceId": 60,
+        "messages": [
+          {
+            "text": "Hey [First Name] — the revenue plateau you're sitting on isn't a hustle problem, it's a pricing architecture problem, and most consultants don't see it because they're too busy filling the next engagement to audit the ones they're already saying yes to. 💡 You've probably told yourself you just need more clients — but what if the ceiling you're hitting is built entirely from the clients you already accepted at rates you set when you were a different version of your business? What's the real number you'd need to charge to work with half the clients and feel genuinely well-paid?",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Maria Hernandez, a Brand Strategy Consultant, was stuck at £8k months — not because her work wasn't good, but because her pricing had been set in a season of scarcity and she'd never gone back to redesign it. 📈 She went through the same pricing audit [INSERT_HOST_NAME] is walking through at [INSERT_EVENT_NAME], restructured her client mix, and went from £8k to £35k months in five months — she said the audit alone was worth twice the fee. Does that situation sound familiar to where you're at right now?",
+            "delay": 24,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "[First Name], you've been thinking about this since Monday — and [INSERT_EVENT_NAME] with [INSERT_HOST_NAME] is exactly where you get the actual framework, not just the idea. Priya Sharma raised her pricing 3x, half her prospects accepted, and she doubled her revenue in one quarter — that's the kind of shift that happens when you stop guessing and get the process. Claim your free consultation and take the first real step: __REDTEAM___03_BizCoach",
+            "delay": 48,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "sales": {
+        "sequenceType": "sales",
+        "whatsappSequenceId": 61,
+        "messages": [
+          {
+            "text": "Hey [First Name] — you showed up at [INSERT_EVENT_NAME] because something in your business isn't adding up, and if you're still underpricing and saying yes to the wrong clients, every month you wait is another month compounding the gap between what you're earning and what you're actually worth. Priya Sharma was running a marketing agency, stuck in exactly that loop, until she raised her pricing 3x through __REDTEAM___03_BizCoach — half her prospects accepted and she doubled revenue in one quarter. Claim your place in [INSERT_OFFER_NAME] before the cohort closes 👉 [INSERT_OFFER_LINK]",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Hey [First Name] — Maria Hernandez, a Brand Strategy Consultant who was stuck billing £8k months, went through __REDTEAM___03_BizCoach, restructured her pricing and client mix, and hit £35k months within five months 💡 The mechanism isn't motivation or mindset — it's a forensic audit of exactly why your current pricing and client mix were built for a version of you that no longer exists, then rebuilding both from where you actually are now. Does that sound like the thing that's been missing from every other fix you've already tried?",
+            "delay": 24,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Hey [First Name] — [INSERT_OFFER_NAME] gives you the complete __REDTEAM___03_BizCoach pricing and client-mix reconstruction process — the same one that took David Chen from two years flat at £120k to three new engagements at his new rates by month four — for [INSERT_PRICE] with [INSERT_GUARANTEE_TERMS]. Enrolment closes at [INSERT_COHORT_LIMIT] members and [INSERT_COHORT_CLOSE_DATE], so if you're on the fence this is the moment. Claim your place now and start the process 👉 [INSERT_OFFER_LINK]",
+            "delay": 48,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "nurture": {
+        "sequenceType": "nurture",
+        "whatsappSequenceId": 62,
+        "messages": [
+          {
+            "text": "Got [INSERT_LEAD_MAGNET_NAME] open? 👀 The section that'll hit hardest is the one on client mix — because most of us fix our pricing and wonder why the ceiling's still there, when it's actually the *who* not the *how much* that's keeping us stuck. Which part hit closest to where you are right now, [First Name]?",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Here's what I keep seeing with high-achieving women in __REDTEAM___03_BizCoach: you're not undercharging because you don't know your worth — you're undercharging because the version of your business you built pricing for was a version of *you* that no longer exists. Does that land, [First Name]?",
+            "delay": 72,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "The method I use in __REDTEAM___03_BizCoach isn't a pricing calculator — it's a client and positioning audit that starts from who you actually are *now*, not who you were when you set your first rate. 💡 The principle is simple: you can't price for the right clients until you're clear on what version of yourself you're selling. Want me to show you how that applies to where you're stuck right now, [First Name]?",
+            "delay": 168,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Priya Sharma — a marketing agency owner — raised her pricing 3x, had half her prospects accept without blinking, and doubled her revenue in a single quarter inside __REDTEAM___03_BizCoach. That shift didn't start with a new offer — it started with her getting brutally clear on which clients she'd been saying yes to out of habit versus out of genuine fit. Does any part of that sound like where you are, [First Name]?",
+            "delay": 336,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "You downloaded [INSERT_LEAD_MAGNET_NAME] because something in your business has hit a ceiling — and I'm guessing you already know it's not about working harder. I've got a conversation available for women in __REDTEAM___03_BizCoach where you walk away knowing the exact next move for *your* specific situation — not a framework, a specific step. Claim your free consultation here: [INSERT_BOOKING_URL]",
+            "delay": 504,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "discovery_call_confirmation": {
+        "sequenceType": "discovery_call_confirmation",
+        "whatsappSequenceId": 63,
+        "messages": [
+          {
+            "text": "Hello [First Name],\n\nYou're confirmed for [INSERT_BOOKING_DURATION] with me on [INSERT_HOST_NAME] at [INSERT_BOOKING_TIME] ([INSERT_BOOKING_TIMEZONE]). We'll use the time to get clear on exactly where your pricing and client mix are creating a ceiling — and what's realistic to change. Add it to your calendar here: [INSERT_BOOKING_URL]",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "discovery_call_reminder": {
+        "sequenceType": "discovery_call_reminder",
+        "whatsappSequenceId": 64,
+        "messages": [
+          {
+            "text": "Quick reminder we're talking [INSERT_BOOKING_TIME] [INSERT_BOOKING_TIMEZONE] tomorrow for your __REDTEAM___03_BizCoach consultation — if you need to shift it, the reschedule link is right here: [INSERT_BOOKING_URL]. Before we speak, think about this one thing: what's the single client or engagement you said yes to in the last 90 days that you already knew, the moment you agreed, was the wrong fit?",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "We're talking in an hour — [INSERT_BOOKING_TIME] [INSERT_BOOKING_TIMEZONE] for your __REDTEAM___03_BizCoach consultation. If anything just shifted, the reschedule link is here: [INSERT_BOOKING_URL]. I'm ready to get into the specifics of where your pricing and client mix are capping your revenue — see you there.",
+            "delay": 22,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "⏰ Starting in 15 minutes — tap here to join your __REDTEAM___03_BizCoach consultation: [INSERT_BOOKING_URL].",
+            "delay": 1.75,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "event_logistics": {
+        "sequenceType": "event_logistics",
+        "whatsappSequenceId": 65,
+        "messages": [
+          {
+            "text": "Hello [First Name],\n\n[INSERT_EVENT_NAME] is [INSERT_EVENT_DATE] at [INSERT_EVENT_VENUE]. 📍 [INSERT_PARKING_INFO]. I'm looking forward to getting into the real conversation about where your pricing and client mix need to go next — you've already done the hard part by saying yes.\n\nBest,\n[INSERT_HOST_NAME]",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Hello [First Name],\n\nTomorrow! Please plan to arrive 15 minutes before [INSERT_EVENT_TIME] ([INSERT_EVENT_TIMEZONE]) so we can start on time without rushing the work that matters. The venue is [INSERT_EVENT_VENUE] — I'll be there to welcome you at the door.\n\nBest,\n[INSERT_HOST_NAME]",
+            "delay": 144,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Hello [First Name],\n\nThank you for the energy and honesty you brought to the room today — the conversation around where your revenue has been capped and why was exactly the kind of clarity this work is designed to surface. If you're ready to take that into a structured [INSERT_PROGRAMME_DURATION] process, here's where to take the next step: [INSERT_BOOKING_URL]\n\nSpeak soon,\n[INSERT_HOST_NAME]",
+            "delay": 192,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      }
+    }
+  },
+  {
+    "testId": "04-speaker-vague-price-1-testim",
+    "whatsapps": {
+      "engagement": {
+        "sequenceType": "engagement",
+        "whatsappSequenceId": 66,
+        "messages": [
+          {
+            "text": "Hey [First Name] — most L&D leaders measure a speaker's ROI by the room's energy on the day, but post-event stickiness is the metric that actually saves your budget when exec sponsors start asking questions. So here's the thing you'll want to think about before [INSERT_EVENT_NAME]: when's the last time a keynote left your directors using the same framework three months later — without you running a follow-up session to keep it alive?",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Elena Rodriguez, Head of L&D at FinServ Group, had the exact same speaker-fatigue problem you're navigating — content that landed well in the room but disappeared by the next quarter review — until the forensic identity-mapping approach from __REDTEAM___04_Speaker gave her directors a private internal reference point they could actually use independently. She put it this way: \"Three months on, two of our directors are still using your distinctions. That has never happened.\" 👀",
+            "delay": 24,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "You've been thinking about this since Monday, and [INSERT_EVENT_NAME] with [INSERT_HOST_NAME] is where the __REDTEAM___04_Speaker methodology gets laid out in full — the same forensic process that's still running inside Elena's leadership team three months on, with no follow-up session required. 🎯 If you're ready to give your directors something that sticks past the next quarterly review, here's your next step.",
+            "delay": 48,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "sales": {
+        "sequenceType": "sales",
+        "whatsappSequenceId": 67,
+        "messages": [
+          {
+            "text": "Hey [First Name] — you came to [INSERT_EVENT_NAME], you sat through a full day of content, and the real question is whether any of it's still going to matter in 90 days. 📋 The honest cost of not acting isn't a bad event — it's another conference budget signed off, exec sponsors asking what the ROI actually was, and your speakers forgotten by the time the next all-hands rolls around. If you're ready to change that, here's where to start: [INSERT_OFFER_LINK]",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Elena Rodriguez, Head of L&D at FinServ Group, said it herself: \"Three months on, two of our directors are still using your distinctions — that has never happened.\" 💡 That's not because the content was motivational — it's because __REDTEAM___04_Speaker uses a forensic method that separates what leaders actually think from what they've been conditioned to perform, so the distinctions land as their own, not borrowed ones. Does that sound like the thing your directors have been missing every time a speaker leaves and the room goes back to normal within a week?",
+            "delay": 24,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Here's what [INSERT_OFFER_NAME] actually gives you: a [INSERT_PROGRAMME_DURATION] engagement with __REDTEAM___04_Speaker that delivers measurable, director-level behaviour change — not just a great day — for [INSERT_PRICE], with [INSERT_GUARANTEE_TERMS] so the risk isn't on you. Enrolment for this cohort closes at [INSERT_COHORT_CLOSE_DATE] and there are only [INSERT_COHORT_LIMIT] spots, because the method only works at a depth that can't be scaled into a room of 200. Claim your cohort place before it closes: [INSERT_OFFER_LINK]",
+            "delay": 48,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "nurture": {
+        "sequenceType": "nurture",
+        "whatsappSequenceId": 68,
+        "messages": [
+          {
+            "text": "Got [INSERT_LEAD_MAGNET_NAME] open? 👀 The section that'll hit hardest is the one on why content that sounds impressive in the room disappears completely by the following week — that's the exact gap exec sponsors are quietly questioning when they ask about ROI. Which part landed closest to what you're already seeing at your events?",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "The most common thing I hear from L&D leads after a conference isn't 'the speaker was bad' — it's 'people loved it on the day and then nothing changed', which means the event worked and the transfer didn't. Does that sound like what you're trying to solve? 🎯",
+            "delay": 72,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "The method I use with organisations isn't about finding a more dynamic speaker — it's about engineering the distinction itself to be sticky, meaning it has to interrupt an existing mental pattern rather than add a new idea on top of it. The reason that works is that high-achieving directors don't forget things because they weren't paying attention; they forget things that don't displace something they already believed. Want me to show you how that applies to the specific moment a director walks back into a board meeting the week after your event?",
+            "delay": 168,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Elena Rodriguez — Head of L&D at FinServ Group — came to me with exactly the speaker-fatigue problem you're navigating: events that land well in the room but don't survive contact with Monday morning. Her words three months later: 'Two of our directors are still using your distinctions. That has never happened.' Does any part of that outcome sound like what you're trying to build a case for with your exec sponsors?",
+            "delay": 336,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "If you're still thinking about the ROI conversation you'll eventually have to have with your exec sponsors — and what it'd take to walk into it with real evidence — I'd love to have a conversation where you leave with the next concrete step that's specific to your organisation, your audience, and your current events calendar. Enrolment for the [INSERT_PROGRAMME_DURATION] programme is limited and the window's closing soon, so if that conversation sounds useful, grab a time here: [INSERT_BOOKING_URL]",
+            "delay": 504,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "discovery_call_confirmation": {
+        "sequenceType": "discovery_call_confirmation",
+        "whatsappSequenceId": 69,
+        "messages": [
+          {
+            "text": "Hello [First Name],\n\nYou're confirmed for [INSERT_BOOKING_DURATION] with [INSERT_HOST_NAME] at [INSERT_BOOKING_TIME] ([INSERT_BOOKING_TIMEZONE]). This is your space to work out whether __REDTEAM___04_Speaker is the right fit for your next event — no prep needed from you. Add it to your calendar here: [INSERT_BOOKING_URL]\n\nSpeak soon,\n[INSERT_HOST_NAME]",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "discovery_call_reminder": {
+        "sequenceType": "discovery_call_reminder",
+        "whatsappSequenceId": 70,
+        "messages": [
+          {
+            "text": "Quick reminder we're talking [INSERT_BOOKING_TIME] [INSERT_BOOKING_TIMEZONE] tomorrow for your __REDTEAM___04_Speaker discovery call with me, [INSERT_HOST_NAME] — if you need to shift it, the reschedule link is right here: [INSERT_BOOKING_URL]. 💡 Before we talk, I'd love you to think about one thing: after your last big event, how long did the content actually stick with your directors before it faded into the background noise?",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "We're talking in an hour — [INSERT_BOOKING_TIME] [INSERT_BOOKING_TIMEZONE] — for your __REDTEAM___04_Speaker discovery call, and I'm already looking at what you're dealing with: content that doesn't outlast the event, exec sponsors questioning the ROI, and directors who leave energised but revert within weeks. If anything just shifted, the reschedule link is here: [INSERT_BOOKING_URL].",
+            "delay": 22,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "⏰ Starting in 15 minutes — Elena Rodriguez said her directors were still using the distinctions three months later, and that's exactly what we're building for your organisation. Tap here to join: [INSERT_BOOKING_URL]",
+            "delay": 1.75,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "event_logistics": {
+        "sequenceType": "event_logistics",
+        "whatsappSequenceId": 71,
+        "messages": [
+          {
+            "text": "Hello [First Name],\n\n[INSERT_EVENT_NAME] is [INSERT_EVENT_DATE] at [INSERT_EVENT_VENUE] — I'm looking forward to having you in the room. 📍 Parking details: [INSERT_PARKING_INFO]. I've designed this session specifically around the challenge of content that doesn't land after the room clears, so come ready to work through something real.\n\nBest,\n[INSERT_HOST_NAME]",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Hello [First Name],\n\nTomorrow! Please plan to arrive 15 minutes before [INSERT_EVENT_TIME] ([INSERT_EVENT_TIMEZONE]) so you're settled before we start. The venue is [INSERT_EVENT_VENUE] — same details I sent last week, and I'll have a name list at the door.\n\nBest,\n[INSERT_HOST_NAME]",
+            "delay": 144,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Hello [First Name],\n\nThank you for being in the room today — the quality of thinking on the question of what actually makes leadership content stick after an event was exactly what I'd hoped to draw out with this group. If you'd like to explore what a structured [INSERT_PROGRAMME_DURATION] engagement looks like for your team, you can book a free consultation here: [INSERT_BOOKING_URL]. Elena Rodriguez at FinServ Group put it well: \"Three months on, two of our directors are still using your distinctions — that has never happened.\"\n\nSpeak soon,\n[INSERT_HOST_NAME]",
+            "delay": 192,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      }
+    }
+  },
+  {
+    "testId": "05-consultant-no-price-2-testim",
+    "whatsapps": {
+      "engagement": {
+        "sequenceType": "engagement",
+        "whatsappSequenceId": 72,
+        "messages": [
+          {
+            "text": "Hey [First Name] — most leaders dealing with reorg paralysis assume the fix is a better org chart, but the chart isn't what's broken, it's the missing decision rights underneath it. 🤔 After [INSERT_EVENT_NAME], you're going to see exactly why your current structure keeps recreating the same role ambiguity no matter how many times you redraw the boxes. Can you honestly say right now who in your team has the final call when two functions disagree?",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Sarah Chen, a Chief of Staff, came in after two prior consultants had already taken a look — and she said this: 'The diagnostic alone surfaced four issues neither had touched.' 💡 She wasn't missing a strategy, she was missing a forensic process that could see past the surface symptoms to what was actually creating the tension. Does that sound like where you're at right now?",
+            "delay": 24,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "You said yes to [INSERT_EVENT_NAME] with [INSERT_HOST_NAME] because something in your current structure isn't holding — and that's exactly what this session is built to address using the same __REDTEAM___05_OrgConsultant diagnostic process that gave Tom Aldridge's leadership team structurally lower weekly tension within three months. 🎯 Here's your one step before the session: claim your free consultation spot so you walk in ready to act on what you learn.",
+            "delay": 48,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "sales": {
+        "sequenceType": "sales",
+        "whatsappSequenceId": 73,
+        "messages": [
+          {
+            "text": "Hey [First Name] — you showed up to [INSERT_EVENT_NAME] because something in your org isn't working, and you already know what it is: people are doing work without knowing who owns the call, and that gap doesn't close on its own. Every week you don't name the decision rights problem, your best leaders are making it up as they go — and the ones with options start quietly updating their CVs. Grab your spot in __REDTEAM___05_OrgConsultant before [INSERT_COHORT_CLOSE_DATE] and stop losing momentum to structural ambiguity: [INSERT_OFFER_LINK]",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Tom Aldridge, a COO navigating leadership tension after rapid headcount growth, went through __REDTEAM___05_OrgConsultant and said it straight: \"Three months later our weekly leadership tension is structurally lower. The reorg held.\" 🔍 The mechanism isn't a new org chart — it's the diagnostic process that surfaces what's actually breaking before anything gets restructured, which is why Sarah Chen (Chief of Staff) noted \"the diagnostic alone surfaced four issues\" that two prior consultants hadn't touched. Does that sound like the layer your team's been missing?",
+            "delay": 24,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "[INSERT_OFFER_NAME] gives you a forensic diagnostic, role-clarity frameworks, and decision-rights mapping across [INSERT_PROGRAMME_DURATION] — all of it purpose-built for organisations that've outgrown their startup structure — for [INSERT_PRICE], backed by [INSERT_GUARANTEE_TERMS]. 🎯 Enrolment closes at [INSERT_COHORT_CLOSE_DATE] and there are only [INSERT_COHORT_LIMIT] places in this cohort, so the window for acting while the momentum from [INSERT_EVENT_NAME] is still live is genuinely short. Enrol now and lock in your place before this cohort closes: [INSERT_OFFER_LINK]",
+            "delay": 48,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "nurture": {
+        "sequenceType": "nurture",
+        "whatsappSequenceId": 74,
+        "messages": [
+          {
+            "text": "Got [INSERT_LEAD_MAGNET_NAME] open? 👀 The section on role ambiguity after a reorg is the one most leaders in scaling companies say hit closest to home — it names the thing nobody's been willing to put on paper. Which part landed hardest for you?",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Here's the pattern I keep seeing: a company crosses 80 people, promotes its best operators into leadership titles, and then wonders why every decision still funnels back to the same two people at the top — it's not a people problem, it's an architecture problem. Does that land for where you're sitting right now?",
+            "delay": 72,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "The diagnostic I use doesn't start with the org chart — it starts with decision rights, because that's where you can actually see who's accountable versus who's just been handed a title. When you map where decisions are really being made versus where they're supposed to be made, the structural gaps show up fast and they're specific, not theoretical. Want me to show you how that applies to a leadership team that's stuck in reorg paralysis?",
+            "delay": 168,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "A Chief of Staff at a firm that'd already brought in two prior consultants came in with four unresolved structural issues none of those engagements had surfaced — Sarah Chen put it plainly: \"The diagnostic alone surfaced four issues neither had touched.\" 💡 By the end of the process, decision rights were documented, role boundaries were clear, and the leadership team wasn't relitigating the same calls week after week. Does any part of that situation sound familiar?",
+            "delay": 336,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "If you downloaded [INSERT_LEAD_MAGNET_NAME] because your structure's outgrown itself and you're not sure where to cut in, I've got a conversation where you walk away with the next concrete step that's specific to your org — not a framework, a real next move. Tom Aldridge, COO at a Series B SaaS startup, described it this way after working through the process: \"Three months later our weekly leadership tension is structurally lower. The reorg held.\" Claim your free consultation here: [INSERT_BOOKING_URL]",
+            "delay": 504,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "discovery_call_confirmation": {
+        "sequenceType": "discovery_call_confirmation",
+        "whatsappSequenceId": 75,
+        "messages": [
+          {
+            "text": "Hello [First Name], you're confirmed for [INSERT_BOOKING_DURATION] with [INSERT_HOST_NAME] at [INSERT_BOOKING_TIME] ([INSERT_BOOKING_TIMEZONE]). This is your dedicated time to work through the role clarity and decision-rights issues slowing your team down. Add it to your calendar here: [INSERT_BOOKING_URL]",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "discovery_call_reminder": {
+        "sequenceType": "discovery_call_reminder",
+        "whatsappSequenceId": 76,
+        "messages": [
+          {
+            "text": "Quick reminder we're talking [INSERT_BOOKING_TIME] [INSERT_BOOKING_TIMEZONE] tomorrow — I've got your 1:1 slot held and I'm looking forward to it. 👋 If you need to shift the time, the reschedule link is right here: [INSERT_BOOKING_URL]. Before we speak, think about this: when was the last time a decision at work felt like it came from *you* rather than from what the role required?",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "We're talking in an hour — [INSERT_BOOKING_TIME] [INSERT_BOOKING_TIMEZONE] — and I've already pulled up your details so we can get straight into it. If anything just shifted, the reschedule link is here: [INSERT_BOOKING_URL]. Tap to join when you're ready: [INSERT_BOOKING_URL]",
+            "delay": 22,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "⏰ Starting in 15 minutes — tap here to join: [INSERT_BOOKING_URL]",
+            "delay": 1.75,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "event_logistics": {
+        "sequenceType": "event_logistics",
+        "whatsappSequenceId": 77,
+        "messages": [
+          {
+            "text": "Hello [First Name],\n\n[INSERT_EVENT_NAME] is on [INSERT_EVENT_DATE] at [INSERT_EVENT_VENUE]. 📍 [INSERT_PARKING_INFO]. I'm looking forward to working through the org structure diagnostic with you — this is exactly the session for leaders dealing with role ambiguity and decision-rights fog at scale.\n\nBest,\n[INSERT_HOST_NAME]",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Hello [First Name],\n\nTomorrow! Please plan to arrive by [INSERT_EVENT_TIME] ([INSERT_EVENT_TIMEZONE]) so we can start on time — doors open 15 minutes before. The venue is [INSERT_EVENT_VENUE], and [INSERT_PARKING_INFO].\n\nBest,\n[INSERT_HOST_NAME]",
+            "delay": 144,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Hello [First Name],\n\nThank you for being in the room today — the conversation around decision rights and where accountability actually breaks down in scaling teams was exactly the kind of clarity this diagnostic is built for. If you'd like to take the next step and apply the full diagnostic process to your organisation, you can book a free consultation here: [INSERT_BOOKING_URL]. I'd be glad to continue the work.\n\nSpeak soon,\n[INSERT_HOST_NAME]",
+            "delay": 192,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      }
+    }
+  },
+  {
+    "testId": "06-course-low-ticket",
+    "whatsapps": {
+      "engagement": {
+        "sequenceType": "engagement",
+        "whatsappSequenceId": 78,
+        "messages": [
+          {
+            "text": "Hey [First Name] — most solo founders think a blank outbound email is a writing problem, but it's actually a sequencing problem, and that's why every template you've tried so far has felt either robotic or pushy. You've got [INSERT_EVENT_NAME] coming up, and [INSERT_HOST_NAME] is going to walk through the exact 7-part structure that makes cold email feel nothing like cold email. Here's what I want you to think about before you show up: if you had a system that removed every guessing step, what's the one type of customer you'd go after first? 🤔",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "A first-time founder with a B2B productised service — no sales experience, no warm network in her target industry — sent 22 cold emails using the 7-part system and booked 6 discovery calls within 10 days, without a single follow-up that felt like chasing. 💡 What changed wasn't her confidence or her writing; it was that she stopped improvising and started running a repeatable sequence that did the persuasion work for her. Does that sound like the kind of result you're trying to get to?",
+            "delay": 24,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "You've been thinking about this since Monday, and [INSERT_EVENT_NAME] is where [INSERT_HOST_NAME] hands you the actual system — not the theory, the working 7-part cold email framework you can run the same week. You don't need a sales background, a big list, or polished copywriting skills to make it work. Enrol now and claim your place in __REDTEAM___06_CourseLowTicket before the cohort fills. 🎯",
+            "delay": 48,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "sales": {
+        "sequenceType": "sales",
+        "whatsappSequenceId": 79,
+        "messages": [
+          {
+            "text": "Hey [First Name] — you were at [INSERT_EVENT_NAME] and you know the cold email problem is real, so here's the brutal cost of doing nothing: every week you wait is another week you're the best-kept secret in your niche, staring at a blank screen while someone with half your idea is already in a prospect's inbox. 📬 The gap between founders who land their first paying customer and those who don't isn't talent — it's having a repeatable outbound system before the self-doubt wins. Grab your place in [INSERT_OFFER_NAME] right here: [INSERT_OFFER_LINK]",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "A first-time founder — zero sales background, no network in her target market — was writing emails that got ignored for two months straight because she kept apologising for reaching out before she'd even made her ask. 🎯 Inside [INSERT_OFFER_NAME] the 7-part cold email system stripped out every filler line and rebuilt her outreach around the one problem her prospect woke up thinking about — she booked her first paid discovery call within the next [INSERT_PROGRAMME_DURATION]. Does any part of you recognise that feeling of staring at a draft and wondering if you sound desperate?",
+            "delay": 24,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "[INSERT_OFFER_NAME] gives you the complete 7-part cold email system built specifically for solo founders who've never sent a single outbound email — at [INSERT_PRICE], and backed by [INSERT_GUARANTEE_TERMS]. 🚀 Enrolment closes when the cohort hits [INSERT_COHORT_LIMIT] members, and spots are filling from attendees of [INSERT_EVENT_NAME] who are moving fast. Claim your place now before the cohort closes: [INSERT_OFFER_LINK]",
+            "delay": 48,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "nurture": {
+        "sequenceType": "nurture",
+        "whatsappSequenceId": 80,
+        "messages": [
+          {
+            "text": "Got [INSERT_LEAD_MAGNET_NAME] open? 👀 The section that'll hit hardest is the one on why staring at a blank email isn't a confidence problem — it's a structure problem, and that distinction changes everything. Which part landed closest for you?",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Most solo founders don't freeze because they're afraid of rejection — they freeze because they don't know whose inbox they're actually walking into, so everything they write sounds like it could've been sent to anyone. Does that land for where you're at right now?",
+            "delay": 72,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "The method inside __REDTEAM___06_CourseLowTicket is called the Specific Situation Frame — instead of opening with what you do, you open with a description of the exact problem your prospect is living inside right now, so they read the first line and think 'this person gets it' before you've mentioned your offer once. It works because relevance earns attention, and attention earns replies — not credentials, not social proof, not clever subject lines. Want me to show you how it applies when you've got zero intel on the person you're emailing?",
+            "delay": 168,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "A solo founder — no sales background, launched six months earlier, hadn't landed a single paying client from outbound — wrote three emails using the framework, sent them to eight prospects she'd been too intimidated to contact, and booked two discovery calls within four days. 💡 She didn't change her offer, her pricing, or her positioning — she just stopped writing about herself and started writing about them. Does any part of that situation sound familiar?",
+            "delay": 336,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "If you're still staring at that blank email — knowing you need outbound but not knowing where the first sentence even comes from — __REDTEAM___06_CourseLowTicket is the [INSERT_PROGRAMME_DURATION] programme I built specifically for founders in exactly that spot. Enrolment's limited to keep the cohort tight, and it closes before the next cohort opens — so if this is the right move, now's the moment to claim your place. [INSERT_BOOKING_URL]",
+            "delay": 504,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "discovery_call_confirmation": {
+        "sequenceType": "discovery_call_confirmation",
+        "whatsappSequenceId": 81,
+        "messages": [
+          {
+            "text": "Hello [First Name],\n\nYou're confirmed for [INSERT_BOOKING_TIME] ([INSERT_BOOKING_TIMEZONE]) — [INSERT_BOOKING_DURATION] set aside entirely for where you are right now and what moving forward actually looks like for you.\n\n[INSERT_BOOKING_URL]",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "discovery_call_reminder": {
+        "sequenceType": "discovery_call_reminder",
+        "whatsappSequenceId": 82,
+        "messages": [
+          {
+            "text": "Quick reminder we're talking [INSERT_BOOKING_TIME] [INSERT_BOOKING_TIMEZONE] tomorrow — you've booked a 1:1 call for __REDTEAM___06_CourseLowTicket and I'm looking forward to it 👋 If you need to shift the time, the reschedule link is right here: [INSERT_BOOKING_URL]. Before we talk, think about this: what's the one thing that's been stopping you from sending your very first outbound email — is it not knowing what to write, or is it the fear of how it'll land?",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "We're talking in an hour — [INSERT_BOOKING_TIME] [INSERT_BOOKING_TIMEZONE] for your __REDTEAM___06_CourseLowTicket call. If anything just shifted, the reschedule link is here: [INSERT_BOOKING_URL]. Join here when you're ready: [INSERT_BOOKING_URL]",
+            "delay": 22,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "⏰ Starting in 15 minutes — tap here to join your __REDTEAM___06_CourseLowTicket call: [INSERT_BOOKING_URL]",
+            "delay": 1.75,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "event_logistics": {
+        "sequenceType": "event_logistics",
+        "whatsappSequenceId": 83,
+        "messages": [
+          {
+            "text": "Hello [First Name],\n\n[INSERT_EVENT_NAME] is [INSERT_EVENT_DATE] at [INSERT_EVENT_VENUE]. 📍 [INSERT_PARKING_INFO]. I'm looking forward to working through this with you in the room — it's going to be a practical session you can act on immediately.\n\nBest,\n[INSERT_HOST_NAME]",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Hello [First Name],\n\nTomorrow! Please plan to arrive 15 minutes before [INSERT_EVENT_TIME] [INSERT_EVENT_TIMEZONE] so you're settled and ready when we begin. The venue is [INSERT_EVENT_VENUE] — I'll see you there.\n\nBest,\n[INSERT_HOST_NAME]",
+            "delay": 144,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Hello [First Name],\n\nThank you for being in the room today — the energy around the topic of building outbound confidence from zero was exactly what I'd hoped for. If you're ready to put the system to work in a structured way, the [INSERT_PROGRAMME_DURATION] programme takes everything we covered and applies it directly to your business: [INSERT_BOOKING_URL]. I'd love to see you inside it.\n\nSpeak soon,\n[INSERT_HOST_NAME]",
+            "delay": 192,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      }
+    }
+  },
+  {
+    "testId": "07-mastermind-high-ticket-full",
+    "whatsapps": {
+      "engagement": {
+        "sequenceType": "engagement",
+        "whatsappSequenceId": 84,
+        "messages": [
+          {
+            "text": "Hey [First Name] — most 8-figure agency owners think they're lonely at the top because no one around them gets it, but the real problem is they've been solving scaling decisions in a room where nobody's already paid the tuition. At [INSERT_EVENT_NAME] this week, [INSERT_HOST_NAME] is going to surface the one scaling bottleneck that's quietly capping your growth right now — and it's probably not the one you'd name today. 👀 When you think about your single hardest decision this quarter, do you actually have a peer in your life who's already been on the other side of it?",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Marcus Liu — Founder of a $12M digital agency — came in with a retention problem he'd been circling for over a year, and three peers in the __REDTEAM___07_Mastermind had already solved it, saving him that entire year of trial and error. 💡 That's not coaching and it's not consulting — that's a room where your specific problem has already been lived through by someone at your level. Does that sound like the conversation you've been trying to have?",
+            "delay": 24,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "You've already said you're in — [INSERT_EVENT_NAME] is where that question you couldn't fully answer on Monday gets worked on by people who've already made the call you're staring at now. Anika Patel rebuilt her pricing inside __REDTEAM___07_Mastermind and added $1.4M to her next twelve months; James Morrison ended a two-year hiring mistake in a single conversation in this room. 🎯 Claim your free consultation and get your place confirmed before the cohort fills: [INSERT_BOOKING_URL]",
+            "delay": 48,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "sales": {
+        "sequenceType": "sales",
+        "whatsappSequenceId": 85,
+        "messages": [
+          {
+            "text": "Hey [First Name] — good to have you at [INSERT_EVENT_NAME] today. Here's what's real: if you leave [INSERT_EVENT_NAME] without acting, you're heading back into the same week where your hardest scaling decisions get made alone, in your head, by someone who can't afford to ask the people around them. James Morrison had been making the same hiring mistake for two years before one conversation in a room like this ended it — that's two years you don't get back. 👇 Claim your place in __REDTEAM___07_Mastermind before [INSERT_COHORT_CLOSE_DATE]: [INSERT_OFFER_LINK]",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Hey [First Name] — Anika Patel, CEO of an $8M consulting firm, had a pricing model that was bleeding revenue she couldn't see; she joined __REDTEAM___07_Mastermind, rebuilt her pricing inside the group with peers who'd already solved it, and added $1.4M to her next twelve months. The mechanism isn't advice from a consultant who's never run your numbers — it's decisions pressure-tested by 8-figure owners who've already made the exact call you're stuck on. 🤔 Are you still making your biggest calls without a room like that behind you?",
+            "delay": 24,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Hey [First Name] — __REDTEAM___07_Mastermind gives you a private peer group of 8-figure agency owners, direct access to people who've already solved your retention, hiring, and pricing problems, plus the [INSERT_OFFER_NAME] framework — all for [INSERT_PRICE] with [INSERT_GUARANTEE_TERMS]. Enrolment closes at [INSERT_COHORT_CLOSE_DATE] and there are only [INSERT_COHORT_LIMIT] places — Marcus Liu called it saving a year of trial-and-error, and that cohort filled. Enrol now and claim your place before it closes: [INSERT_OFFER_LINK]",
+            "delay": 48,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "nurture": {
+        "sequenceType": "nurture",
+        "whatsappSequenceId": 86,
+        "messages": [
+          {
+            "text": "Got [INSERT_LEAD_MAGNET_NAME] open? 👀 The section that'll hit hardest is the one on why your smartest local peers can't actually help you — because they're either a competitor, a referral source, or someone you'll see at the next industry dinner. Which part hit closest to where you're sitting right now?",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "The loneliest moment in an 8-figure agency isn't a bad month — it's a great month where you can't tell anyone the real number because every person in your world either works for you, wants something from you, or competes with you. Does that land?",
+            "delay": 72,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "The method inside __REDTEAM___07_Mastermind isn't a curriculum — it's a room where every member has already solved a version of the problem you're currently stuck on, which means the answer to your hardest scaling decision is almost always already in the room before you finish asking the question. The principle that makes it work is simple: people who've made the same mistake share the shortcut freely, because they've got nothing to sell you. Want me to show you how that applies to the specific decision you're sitting on right now?",
+            "delay": 168,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "James Morrison — owner of an $18M ecommerce agency — had been making the same hiring mistake for two years, and one conversation in this room ended it. 💡 Marcus Liu had a retention problem he'd been circling for months; three peers in the group had already solved it and handed him the answer inside a single session. Does any part of that sound familiar to where you're currently stuck?",
+            "delay": 336,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "You downloaded [INSERT_LEAD_MAGNET_NAME] because somewhere in your week there's a decision — a hire, a pricing move, a partnership — that you can't think through out loud with anyone who's actually operating at your level. __REDTEAM___07_Mastermind is enrolling now and cohort places are limited, so I'd love to get you into a conversation where you walk away knowing exactly what your next move is and who's already made it. Claim your free consultation here before the cohort fills: [INSERT_BOOKING_URL]",
+            "delay": 504,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "discovery_call_confirmation": {
+        "sequenceType": "discovery_call_confirmation",
+        "whatsappSequenceId": 87,
+        "messages": [
+          {
+            "text": "Hello [First Name],\n\nYou're confirmed for [INSERT_BOOKING_TIME] ([INSERT_BOOKING_TIMEZONE]) — [INSERT_BOOKING_DURATION] set aside entirely for where you are right now with scaling decisions and what's keeping you stuck. Your booking link is here: [INSERT_BOOKING_URL]\n\nSpeak soon,\n[INSERT_HOST_NAME]",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "discovery_call_reminder": {
+        "sequenceType": "discovery_call_reminder",
+        "whatsappSequenceId": 88,
+        "messages": [
+          {
+            "text": "Quick reminder we're talking [INSERT_BOOKING_TIME] [INSERT_BOOKING_TIMEZONE] tomorrow — you've booked a 1:1 call about __REDTEAM___07_Mastermind, and I'm looking forward to it. 🗓️ If you need to shift it, the reschedule link is right here: [INSERT_BOOKING_URL]. Before we talk, what's the one scaling decision you've been sitting on that you haven't been able to run past anyone who's actually at your level?",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "We're talking in an hour — your __REDTEAM___07_Mastermind call is locked in at [INSERT_BOOKING_TIME] [INSERT_BOOKING_TIMEZONE], and I've set aside the full time for you. If anything just shifted, the reschedule link is here: [INSERT_BOOKING_URL].",
+            "delay": 22,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "⏰ Starting in 15 minutes — tap here to join: [INSERT_BOOKING_URL].",
+            "delay": 1.75,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "event_logistics": {
+        "sequenceType": "event_logistics",
+        "whatsappSequenceId": 89,
+        "messages": [
+          {
+            "text": "Hello [First Name],\n\n[INSERT_EVENT_NAME] is [INSERT_EVENT_DATE] at [INSERT_EVENT_VENUE]. 📍 [INSERT_PARKING_INFO]. I'm looking forward to having you in the room — the calibre of owners who've said yes to this one is exactly the peer group conversations I've been building toward.\n\nBest,\n[INSERT_HOST_NAME]",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Hello [First Name],\n\nTomorrow! Please plan to arrive 15 minutes before [INSERT_EVENT_TIME] [INSERT_EVENT_TIMEZONE] so we can start on time without the usual shuffling. The venue is [INSERT_EVENT_VENUE] — see you there.\n\nBest,\n[INSERT_HOST_NAME]",
+            "delay": 144,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Hello [First Name],\n\nThank you for showing up fully today — the quality of thinking in that room, particularly around the scaling decisions people brought, was exactly what this group is built for. If you're ready to carry that momentum forward, here's where to take the next step: [INSERT_BOOKING_URL].\n\nSpeak soon,\n[INSERT_HOST_NAME]",
+            "delay": 192,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      }
+    }
+  },
+  {
+    "testId": "08-webinar-no-inputs",
+    "whatsapps": {
+      "engagement": {
+        "sequenceType": "engagement",
+        "whatsappSequenceId": 90,
+        "messages": [
+          {
+            "text": "Hey [First Name] — most coaches and consultants who can't convert a webinar room assume it's a closing problem, but your offer architecture is almost certainly doing the damage long before you ever pitch. If your attendees are leaving without buying, the question isn't what you're saying at the end — it's whether the structure before the end has built enough felt need that buying feels like the obvious move. 👀 Does that feel like what's happening in your room right now?",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "A service-based consultant — selling a high-ticket done-with-you programme to corporate teams — was filling her webinars consistently but converting under 3%, and she'd already rewritten her pitch four times. She stopped trying to fix the close and restructured the 40 minutes before it, so that by the time she made the offer her attendees had already privately decided they had the problem she solved — her next webinar converted at 11% without changing a single word of the pitch. 💡 Does that pattern — great room, flat conversion — sound familiar to where you are right now?",
+            "delay": 24,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "You said yes to [INSERT_EVENT_NAME] because something in the premise landed — and [INSERT_HOST_NAME] is going to walk through the specific architectural fix that turns a room full of engaged attendees into buyers who don't need chasing. This is the session where you stop guessing what's broken and get the exact structural diagnosis for your webinar. Grab your spot and show up ready to rebuild: __REDTEAM___08_Webinar",
+            "delay": 48,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "sales": {
+        "sequenceType": "sales",
+        "whatsappSequenceId": 91,
+        "messages": [
+          {
+            "text": "Hey [First Name] — you attended [INSERT_EVENT_NAME] and you saw exactly why the webinar room empties at the offer slide, but here's the cost of doing nothing: the next webinar you run will end the same way, with the same polite drop-offs and the same silence where sales should be. The architecture problem doesn't fix itself — every pitch you deliver without solving it is another room you filled and then lost. 👉 Grab [INSERT_OFFER_NAME] and let's change what happens at the back half of your next webinar: [INSERT_OFFER_LINK]",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "A mid-level sales consultant came through __REDTEAM___08_Webinar with the exact same problem — she was getting 200+ people into her webinar and converting less than 1%, because her offer landed before her audience trusted the gap she was selling into. 💡 We rebuilt the sequencing of her presentation so the offer moment came after three specific trust anchors, not before them — her conversion moved from under 1% to 6.2% within two webinar cycles. Does that feel like what's happening to you — people are showing up, but something's going missing between the content and the close?",
+            "delay": 24,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "[INSERT_OFFER_NAME] gives you the complete presentation architecture, the trust-sequencing framework, and the specific objection-interception structure that stops audiences going cold before you've made the ask — all for [INSERT_PRICE] with [INSERT_GUARANTEE_TERMS] backing it. Enrolment closes when this cohort hits [INSERT_COHORT_LIMIT] members or at [INSERT_COHORT_CLOSE_DATE], whichever comes first, and there's no waitlist for the next round. Claim your place before this cohort closes: [INSERT_OFFER_LINK]",
+            "delay": 48,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "nurture": {
+        "sequenceType": "nurture",
+        "whatsappSequenceId": 92,
+        "messages": [
+          {
+            "text": "Got [INSERT_LEAD_MAGNET_NAME] open? 👀 The section that hits closest for most people I work with is the one about why a room full of engaged attendees still doesn't convert — because that's where the real architectural gap lives, not in your slides or your offer. Which part hit closest for you?",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Here's the thing nobody says out loud in the webinar world: you can have a perfect pitch and still lose the room the moment people feel like they're being sold to rather than led somewhere. Does that land with what you're seeing in your own numbers?",
+            "delay": 72,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "The method I use is called Conversion Architecture — instead of fixing your close, it re-engineers the emotional sequence your audience moves through from the first minute so that buying feels like the logical next step they arrived at themselves. 🏗️ The principle is simple: people don't resist offers, they resist the feeling of being pushed — so we remove the push entirely and replace it with a pull structure built into the flow itself. Want me to show you how it applies to the specific moment in your webinar where attendees start dropping off?",
+            "delay": 168,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "A course creator who was consistently pulling 300+ attendees but converting at under 2% restructured the emotional arc of her delivery — not her offer, not her price point, not her slides — and her conversion rate moved to just under 9% within the next two live runs. The change wasn't louder selling; it was removing the friction that was making her audience feel like they needed to defend themselves against a pitch. Does any part of that sound familiar to where you're sitting right now?",
+            "delay": 336,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "You downloaded [INSERT_LEAD_MAGNET_NAME] because you're filling the room but something's breaking between engagement and the sale — and that's exactly the gap a conversation with me is built to close. I'd like to give you a call where you walk away knowing the specific structural fix your webinar needs, named and sequenced for your exact situation. Grab a time here: [INSERT_BOOKING_URL]",
+            "delay": 504,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "discovery_call_confirmation": {
+        "sequenceType": "discovery_call_confirmation",
+        "whatsappSequenceId": 93,
+        "messages": [
+          {
+            "text": "Hello [First Name],\n\nYou're booked in with [INSERT_HOST_NAME] at [INSERT_BOOKING_TIME] ([INSERT_BOOKING_TIMEZONE]) for [INSERT_BOOKING_DURATION] — we'll get specific about why your webinar audience isn't converting and what to change. Add it to your calendar here: [INSERT_BOOKING_URL]\n\nSpeak soon,\n[INSERT_HOST_NAME]",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "discovery_call_reminder": {
+        "sequenceType": "discovery_call_reminder",
+        "whatsappSequenceId": 94,
+        "messages": [
+          {
+            "text": "Quick reminder we're talking [INSERT_BOOKING_TIME] [INSERT_BOOKING_TIMEZONE] tomorrow about __REDTEAM___08_Webinar — and if the time doesn't work anymore, you can reschedule right here: [INSERT_BOOKING_URL]. Before we speak, I want you sitting with one question: when your webinar audience drops off without buying, what's your honest gut read on *where* in the room you lose them — the pitch, the offer, or somewhere before either? 🎯",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "We're talking in an hour — [INSERT_BOOKING_TIME] [INSERT_BOOKING_TIMEZONE] — and I've got the specific architecture breakdown ready to walk you through on __REDTEAM___08_Webinar. If anything just shifted, the reschedule link is here: [INSERT_BOOKING_URL].",
+            "delay": 22,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "⏰ Starting in 15 minutes — tap here to join: [INSERT_BOOKING_URL]",
+            "delay": 1.75,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "event_logistics": {
+        "sequenceType": "event_logistics",
+        "whatsappSequenceId": 95,
+        "messages": [
+          {
+            "text": "Hello [First Name],\n\n[INSERT_EVENT_NAME] is [INSERT_EVENT_DATE] at [INSERT_EVENT_VENUE]. 📍 [INSERT_PARKING_INFO]. I'm looking forward to getting into the specific architecture behind why webinar rooms go quiet at the buying moment — see you there.\n\nBest,\n[INSERT_HOST_NAME]",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Hello [First Name],\n\nTomorrow! Please plan to arrive 15 minutes before [INSERT_EVENT_TIME] [INSERT_EVENT_TIMEZONE] so you're settled before we start. The venue is [INSERT_EVENT_VENUE] — full address on your booking confirmation.\n\nSee you tomorrow,\n[INSERT_HOST_NAME]",
+            "delay": 144,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Hello [First Name],\n\nThank you for being in the room today — the conversation around why a pitch that fills seats still loses the sale was exactly the kind of honest exchange I'd hoped for. If you're ready to work through the architecture fix in full, you can find everything about the programme and next steps here: [INSERT_BOOKING_URL].\n\nSpeak soon,\n[INSERT_HOST_NAME]",
+            "delay": 192,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      }
+    }
+  },
+  {
+    "testId": "09-infoproduct-low-ticket",
+    "whatsapps": {
+      "engagement": {
+        "sequenceType": "engagement",
+        "whatsappSequenceId": 96,
+        "messages": [
+          {
+            "text": "Hey [First Name] — most people assume their open rates are low because their subject lines aren't punchy enough, but it's almost never a subject line problem, it's an identity problem in the writing itself 👀 You're probably sending emails that sound like a polished brand deck instead of a real person, and subscribers can feel that gap in under two seconds. Here's what I want you to think about before [INSERT_EVENT_NAME]: what would your open rate look like if every email you sent felt like it was written specifically for one person who already trusted you?",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "A burnt-out marketing manager who hadn't touched her email list in four months — convinced her subscribers had gone cold — rewrote a single welcome sequence using the framework [INSERT_HOST_NAME] walks through at [INSERT_EVENT_NAME], and her reply rate jumped from 0.3% to 6.1% within her first send back 📩 She didn't learn more email theory — she stopped writing like a company and started writing like herself, which took less time, not more. Does that sound like the kind of shift you've been looking for?",
+            "delay": 24,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "You said yes to [INSERT_EVENT_NAME] because something in your email strategy isn't working and you're done pretending more templates are the answer — [INSERT_HOST_NAME] is going to show you exactly why your writing sounds robotic and how to fix it in a way that actually sticks. This is the practical session your open rates have been waiting for — no theory, no fluff, just a forensic look at what's getting in the way and what to do instead. Grab your spot now and we'll see you inside: __REDTEAM___09_Ebook",
+            "delay": 48,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "sales": {
+        "sequenceType": "sales",
+        "whatsappSequenceId": 97,
+        "messages": [
+          {
+            "text": "Hey [First Name] — you showed up to [INSERT_EVENT_NAME] because something's not adding up between the life you've built and the person living it. 🎯 Every week you don't name what's actually yours — not your role, not your obligations, not what looks strategically correct — is another week you're making decisions for a version of yourself you haven't examined in years. Grab your spot in __REDTEAM___09_Ebook before enrolment closes: [INSERT_OFFER_LINK]",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "A Commercial Director in professional services — high performer, zero complaints from anyone on the outside — came into __REDTEAM___09_Ebook unable to finish a sentence about what she actually wanted next, because she'd been recalibrating toward goals she'd never consciously chosen. 💡 The process isn't therapy and it's not another personality framework — it's a forensic, 1:1 dismantling of the specific roles and survival strategies that got layered over who she was before she got very, very good at adapting. Within [INSERT_PROGRAMME_DURATION] she had a written identity map she could actually use to answer that question — not a plan, an answer. Does that mid-sentence stop sound familiar to you?",
+            "delay": 24,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "[First Name], __REDTEAM___09_Ebook is a [INSERT_PROGRAMME_DURATION] 1:1 process that gives you a specific, private identity map — not a label, not a framework, but a legible account of who you are when you're not performing — plus the ability to use it to make real decisions without outsourcing them to logic or obligation, at [INSERT_PRICE] with [INSERT_GUARANTEE_TERMS]. Enrolment is limited to [INSERT_COHORT_LIMIT] women and it closes on [INSERT_COHORT_CLOSE_DATE] — once those places are gone, the next cohort isn't guaranteed. Claim your place now and stop mid-sentence for the last time: [INSERT_OFFER_LINK]",
+            "delay": 48,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "nurture": {
+        "sequenceType": "nurture",
+        "whatsappSequenceId": 98,
+        "messages": [
+          {
+            "text": "Got [INSERT_LEAD_MAGNET_NAME] open? 👀 The section that tends to hit hardest is the one about distinguishing a genuine preference from a conditioned one — because most high-achieving women in your position have spent so long being brilliant at adapting that they've genuinely lost the thread. Which part landed closest to where you actually are right now, [First Name]?",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Here's the thing nobody says out loud, [First Name]: the women who are hardest to help aren't the ones who've given up — they're the ones who've gotten so good at performing the next logical step that they've stopped noticing they never decided to take it. Does that land for you?",
+            "delay": 72,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "The method I use isn't assessment-based — it's elimination-based, which means instead of handing you a new label to perform, we systematically strip back the roles, obligations, and survival strategies that have layered over who you actually are. 🔍 It works because identity confusion at this level isn't a knowledge gap — it's an architectural one, and you can't quiz your way out of a structure problem. Want me to show you how that applies specifically to the moment you stopped mid-sentence and realised you couldn't answer the question?",
+            "delay": 168,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "A senior director in professional services — passed over, high performer, genuinely couldn't answer her husband's question about what she wanted next — went from outsourcing every major decision to logic or obligation to having a written account of who she actually is that she still uses when the pressure to perform ramps up. Any part of that sound familiar, [First Name]?",
+            "delay": 336,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "You downloaded [INSERT_LEAD_MAGNET_NAME] because some version of that mid-sentence stop has already happened for you — and the fact that your life looks impressive from the outside makes it harder, not easier, to name what's wrong. I've got a conversation I offer specifically for women at this exact point — not a sales call, but a session where you walk away knowing whether this is the right process for your specific situation and what the first concrete step actually looks like. If that's useful, here's where you claim your spot: [INSERT_BOOKING_URL]",
+            "delay": 504,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "discovery_call_confirmation": {
+        "sequenceType": "discovery_call_confirmation",
+        "whatsappSequenceId": 99,
+        "messages": [
+          {
+            "text": "Hello [First Name],\n\nYou're booked in with [INSERT_HOST_NAME] at [INSERT_BOOKING_TIME] ([INSERT_BOOKING_TIMEZONE]) for [INSERT_BOOKING_DURATION] — this is your dedicated time to get clear on what's actually keeping you stuck.\n\nAdd it to your calendar here: [INSERT_BOOKING_URL]",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "discovery_call_reminder": {
+        "sequenceType": "discovery_call_reminder",
+        "whatsappSequenceId": 100,
+        "messages": [
+          {
+            "text": "Quick reminder we're talking [INSERT_BOOKING_TIME] [INSERT_BOOKING_TIMEZONE] tomorrow — I'm looking forward to it, and if you need to shift things the reschedule link is here: [INSERT_BOOKING_URL]. Before we jump on, think about this: when was the last time you made a big decision because you genuinely wanted to — not because it was the logical next step or what someone else needed from you?",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "We're talking in an hour — [INSERT_BOOKING_TIME] [INSERT_BOOKING_TIMEZONE] — and I've got the full time blocked for you. If anything just shifted, the reschedule link is here: [INSERT_BOOKING_URL].",
+            "delay": 22,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "⏰ Starting in 15 minutes — tap here to join: [INSERT_BOOKING_URL]",
+            "delay": 1.75,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "event_logistics": {
+        "sequenceType": "event_logistics",
+        "whatsappSequenceId": 101,
+        "messages": [
+          {
+            "text": "Hello [First Name],\n\n[INSERT_EVENT_NAME] is [INSERT_EVENT_DATE] at [INSERT_EVENT_VENUE] — I'm looking forward to seeing you there. 📍 [INSERT_PARKING_INFO]. I put this event together specifically for high-achieving women who are ready to stop outsourcing their decisions and start answering from a stable sense of who they actually are, so come ready to dig in.\n\nBest,\n[INSERT_HOST_NAME]",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Hello [First Name],\n\nTomorrow is the day — please plan to arrive at [INSERT_EVENT_VENUE] by [INSERT_EVENT_TIME] ([INSERT_EVENT_TIMEZONE]) so you're settled before we begin. The address is [INSERT_EVENT_VENUE], and [INSERT_PARKING_INFO]. Are you all set for tomorrow?\n\nBest,\n[INSERT_HOST_NAME]",
+            "delay": 144,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Hello [First Name],\n\nThank you for being in the room today — the quality of honesty in that space, especially when we got into the gap between the life that looks right and the life that actually fits, is exactly what this work needs to land properly. If you're ready to go deeper over [INSERT_PROGRAMME_DURATION] of 1:1 work and build a clear, private account of who you are when you're not performing for an audience, the next step is here: [INSERT_BOOKING_URL].\n\nSpeak soon,\n[INSERT_HOST_NAME]",
+            "delay": 192,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      }
+    }
+  },
+  {
+    "testId": "10-productivity-low-stakes",
+    "whatsapps": {
+      "engagement": {
+        "sequenceType": "engagement",
+        "whatsappSequenceId": 102,
+        "messages": [
+          {
+            "text": "Hey [First Name] — here's the thing nobody in the __REDTEAM___10_Productivity space wants to say out loud: your Slack inbox isn't the reason you're not shipping, it's just the excuse that's easiest to believe. If every reactive task disappeared tomorrow, do you actually know what you'd protect the silence for? 👀",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "A Senior Product Manager — two direct reports, three stakeholder channels always open, week after week of half-finished proposals — restructured just one thing about how she protected her thinking blocks, and she shipped her first complete strategy deck in 11 weeks within a single working day. 💡 It wasn't a time audit or a new app; it was finally knowing what the work was actually *for* that made it possible to finish it. Does that sound familiar to where you're at right now?",
+            "delay": 24,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Everything you've been nodding along to this week is exactly what [INSERT_HOST_NAME] is going to unpack live at [INSERT_EVENT_NAME] — and it's where the __REDTEAM___10_Productivity framework goes from concept to something you can actually use the following Monday. Grab your place now and we'll see you there.",
+            "delay": 48,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "sales": {
+        "sequenceType": "sales",
+        "whatsappSequenceId": 103,
+        "messages": [
+          {
+            "text": "Hey [First Name] — you showed up to [INSERT_EVENT_NAME] because Slack's eating your day alive and you're ending every week wondering where the real work went. 😤 Here's what doesn't change without a deliberate intervention: the reactive noise keeps winning, the thinking work keeps getting bumped, and the gap between what you're capable of shipping and what you actually ship quietly widens. Claim your place in [INSERT_OFFER_NAME] and start protecting your thinking time for real: [INSERT_OFFER_LINK]",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "A senior operations lead — constant context-switching, couldn't finish a single high-stakes proposal without three interruptions pulling her back into reactive mode — used the exact prioritisation method inside __REDTEAM___10_Productivity to carve out non-negotiable deep-work blocks, and within four weeks she'd shipped the two projects she'd been stalling on for a quarter. 💡 The mechanism isn't discipline or a better to-do list — it's a structural redesign of how your day is built so the thinking work gets protected before the demands even arrive. Does that sound like the week you're currently stuck in?",
+            "delay": 24,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "[INSERT_OFFER_NAME] gives you a proven [INSERT_PROGRAMME_DURATION] system for redesigning your working days so the proposals actually get finished, the deep work actually gets done, and you stop handing your best hours to other people's urgencies — all backed by [INSERT_GUARANTEE_TERMS]. Enrolment closes when [INSERT_COHORT_LIMIT] places are filled and this cohort shuts at [INSERT_COHORT_CLOSE_DATE], so the window's genuinely short. Claim your place before it closes: [INSERT_OFFER_LINK]",
+            "delay": 48,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "nurture": {
+        "sequenceType": "nurture",
+        "whatsappSequenceId": 104,
+        "messages": [
+          {
+            "text": "Got [INSERT_LEAD_MAGNET_NAME] open, [First Name]? 👀 The section that'll hit hardest is the one about why your week keeps ending with nothing shipped — not because you didn't work hard enough, but because reactive demands ate every thinking block before you could protect them. Which part landed closest to home for you?",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Here's something I keep seeing with high-achievers who can't finish what they start: it's not a productivity problem — it's that Slack is always on, which means your brain never actually owns the next hour. Does that land for where you're at right now?",
+            "delay": 72,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "The method I use is called Identity-First Scheduling — instead of protecting time, you start by knowing what you're actually protecting it *for*, which changes every decision about how you structure a day. 💡 Most women I work with have been optimising a calendar around a version of themselves they haven't checked in with for a decade. Want me to show you how it applies to the specific moment your thinking day gets hijacked by someone else's urgency?",
+            "delay": 168,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "A Commercial Director I worked with couldn't get through a single proposal without being pulled into three other people's problems — within eight weeks she'd restructured not her calendar but her relationship with what she was saying yes to, and shipped the highest-value piece of work she'd produced in two years. Does any part of that starting point sound familiar?",
+            "delay": 336,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "You downloaded [INSERT_LEAD_MAGNET_NAME] because something in your week isn't working — and if you're still reading these, it's probably because you haven't found the fix yet. I'd love to give you a conversation where you walk away knowing exactly what's blocking your thinking days and what to do about it first, specific to your actual situation. Claim your free consultation here: [INSERT_BOOKING_URL]",
+            "delay": 504,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "discovery_call_confirmation": {
+        "sequenceType": "discovery_call_confirmation",
+        "whatsappSequenceId": 105,
+        "messages": [
+          {
+            "text": "Hello [First Name],\n\nYou're booked with [INSERT_HOST_NAME] for [INSERT_BOOKING_TIME] ([INSERT_BOOKING_TIMEZONE]) — [INSERT_BOOKING_DURATION] set aside entirely for you to work out what's actually getting in the way of your thinking time. Your calendar link is here: [INSERT_BOOKING_URL]\n\nSpeak soon,\n[INSERT_HOST_NAME]",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "discovery_call_reminder": {
+        "sequenceType": "discovery_call_reminder",
+        "whatsappSequenceId": 106,
+        "messages": [
+          {
+            "text": "Quick reminder we're talking [INSERT_BOOKING_TIME] [INSERT_BOOKING_TIMEZONE] tomorrow — it's your free consultation for __REDTEAM___10_Productivity, and if you need to shift it, the reschedule link's right here: [INSERT_BOOKING_URL]. Before we talk, I want you to think about one thing: at the end of last week, what was the one task you'd planned to finish that Slack, a last-minute request, or someone else's urgency quietly buried? 🎯",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "We're talking in an hour — [INSERT_BOOKING_TIME] [INSERT_BOOKING_TIMEZONE] for your __REDTEAM___10_Productivity consultation. If anything just shifted, the reschedule link is here: [INSERT_BOOKING_URL].",
+            "delay": 22,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "⏰ Starting in 15 minutes — tap here to join: [INSERT_BOOKING_URL]",
+            "delay": 1.75,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "event_logistics": {
+        "sequenceType": "event_logistics",
+        "whatsappSequenceId": 107,
+        "messages": [
+          {
+            "text": "Hello [First Name],\n\n[INSERT_EVENT_NAME] is [INSERT_EVENT_DATE] at [INSERT_EVENT_VENUE] — I'm looking forward to having you in the room. 📍 Parking: [INSERT_PARKING_INFO]. I've designed the day specifically around the pattern you're already living — Slack always on, proposals half-finished, week ending with nothing shipped — so come ready to do real work on that.\n\nBest,\n[INSERT_HOST_NAME]",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Hello [First Name],\n\nTomorrow — and I want you walking in relaxed, not rushed, so plan to arrive fifteen minutes before [INSERT_EVENT_TIME] [INSERT_EVENT_TIMEZONE]. [INSERT_EVENT_VENUE] — use [INSERT_PARKING_INFO] and you're straight to the door.\n\nSpeak soon,\n[INSERT_HOST_NAME]",
+            "delay": 144,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Hello [First Name],\n\nThank you for being in the room today — the conversation we had around protecting thinking time from reactive demands was exactly the kind of honest engagement that makes this work land. If you're ready to take what we covered into a structured [INSERT_PROGRAMME_DURATION] process, here's where to take the next step: [INSERT_BOOKING_URL].\n\nBest,\n[INSERT_HOST_NAME]",
+            "delay": 192,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      }
+    }
+  },
+  {
+    "testId": "11-sales-coach-15k-no-testim",
+    "whatsapps": {
+      "engagement": {
+        "sequenceType": "engagement",
+        "whatsappSequenceId": 108,
+        "messages": [
+          {
+            "text": "Hey [First Name] — here's the thing nobody in __REDTEAM___11_SalesCoach talks about: getting ghosted after a proposal isn't a follow-up problem, it's a close-rate problem that started before you ever sent the doc. 💡 You've probably been tightening your pitch, sharpening your deck, and dropping your price — but what if the real leak is something that happened in the first seven minutes of the call?",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "A mid-level sales consultant running a 90-day cycle kept getting to final proposals and then silence — she'd cut her fee twice, added bonuses, and was still losing to cheaper competitors she knew she was better than. 🎯 She stopped defending her pricing and started restructuring how she framed value in the first ten minutes of every discovery call, and her close rate went from 17% to over 40% within a single cohort of [INSERT_EVENT_NAME]. Does that pattern sound like where you're stuck right now?",
+            "delay": 24,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "If Wednesday's message landed for you, [INSERT_EVENT_NAME] with [INSERT_HOST_NAME] is the room where you'll get the specific process — not the theory — for fixing exactly that gap in your calls. Head to __REDTEAM___11_SalesCoach and claim your place before the cohort fills.",
+            "delay": 48,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "sales": {
+        "sequenceType": "sales",
+        "whatsappSequenceId": 109,
+        "messages": [
+          {
+            "text": "Hey [First Name] — you showed up to [INSERT_EVENT_NAME] because something about losing deals you should've won finally got loud enough to act on. 🎯 Here's the cost of leaving without doing anything: the next discovery call you get on, you'll still be the most prepared person in the room and still walk away without the yes. Every week that close rate stays below 20% inside __REDTEAM___11_SalesCoach is a week of proposals that pay your prospects' time and not yours.",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "A senior consultant — decade of experience, genuinely premium results — was losing [INSERT_PROGRAMME_DURATION] worth of ideal clients every quarter because she couldn't hold the price conversation without defaulting to a discount. 💡 Inside __REDTEAM___11_SalesCoach the mechanism isn't mindset pep-talk — it's a forensic breakdown of exactly where authority leaves the call and a rebuilt sequence that doesn't require you to be someone you're not to close.",
+            "delay": 24,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "With __REDTEAM___11_SalesCoach you're getting a [INSERT_PROGRAMME_DURATION] 1:1 process that diagnoses the specific moment your close rate breaks, rebuilds your call sequence around it, and backs it with [INSERT_GUARANTEE_TERMS] — all for [INSERT_PRICE]. 🔒 Enrolment is limited to [INSERT_COHORT_LIMIT] people and it closes at [INSERT_COHORT_CLOSE_DATE], because the work is 1:1 and the depth only holds at that size.",
+            "delay": 48,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "nurture": {
+        "sequenceType": "nurture",
+        "whatsappSequenceId": 110,
+        "messages": [
+          {
+            "text": "Got [INSERT_LEAD_MAGNET_NAME] open? 👀 The section that hits hardest for most people is the one on defending your pricing on the call — because that's usually where a solid proposal quietly dies. Which part landed closest to where you're stuck right now?",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Here's the thing nobody says out loud: you're not getting ghosted after proposals because your pricing's wrong — you're getting ghosted because the call didn't create enough certainty for them to say yes without an exit route. Does that land with what you're seeing?",
+            "delay": 72,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "The method I use with clients inside __REDTEAM___11_SalesCoach is called the Certainty Close — it's not about pressure, it's about removing the prospect's internal permission to stall by making the cost of inaction feel more real than the price on the screen. 💡 The principle is simple: people don't stall on price, they stall on risk — and your job on the call is to make staying put feel riskier than moving forward. Want me to show you how it applies when you're mid-call and you feel the energy shifting away from a yes?",
+            "delay": 168,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "A senior consultant I worked with — strong track record, premium fees, consistent pipeline — was closing below 18% not because her offer was weak but because she was presenting the solution before the prospect had fully felt the problem, so the number landed before the need did. She restructured the first fifteen minutes of her call using the approach inside __REDTEAM___11_SalesCoach and her close rate moved above 40% before the cohort ended. Does any part of that pattern sound familiar in your own calls?",
+            "delay": 336,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "If you're still watching strong proposals go quiet and you're not sure exactly where the call's breaking down, that's the specific thing I work through with people inside __REDTEAM___11_SalesCoach — and enrolment for the current cohort closes soon with limited places available. Here's a conversation where you walk away knowing the exact moment you're losing the call and the concrete next step to fix it: [INSERT_BOOKING_URL]",
+            "delay": 504,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "discovery_call_confirmation": {
+        "sequenceType": "discovery_call_confirmation",
+        "whatsappSequenceId": 111,
+        "messages": [
+          {
+            "text": "Hello [First Name],\n\nYou're booked with [INSERT_HOST_NAME] for [INSERT_BOOKING_TIME] ([INSERT_BOOKING_TIMEZONE]) — [INSERT_BOOKING_DURATION] set aside to get specific about why your close rate isn't where it should be and what it'll take to fix it. ✓\n\nAdd it to your calendar here: [INSERT_BOOKING_URL]",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "discovery_call_reminder": {
+        "sequenceType": "discovery_call_reminder",
+        "whatsappSequenceId": 112,
+        "messages": [
+          {
+            "text": "Quick reminder we're talking [INSERT_BOOKING_TIME] [INSERT_BOOKING_TIMEZONE] tomorrow for your __REDTEAM___11_SalesCoach consultation — if you need to shift it, the reschedule link is right here: [INSERT_BOOKING_URL]. Before we get on the call, think about the last deal you lost after the proposal went out — do you know the exact moment it slipped, or does it still feel like a mystery?\n\n— [INSERT_HOST_NAME]",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "We're talking in an hour — [INSERT_BOOKING_TIME] [INSERT_BOOKING_TIMEZONE] — for your __REDTEAM___11_SalesCoach call, so it's worth blocking that time now and closing any tabs that'll pull your focus. If anything just shifted, the reschedule link is here: [INSERT_BOOKING_URL].",
+            "delay": 22,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "⏰ Starting in 15 minutes — tap here to join: [INSERT_BOOKING_URL]",
+            "delay": 1.75,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "event_logistics": {
+        "sequenceType": "event_logistics",
+        "whatsappSequenceId": 113,
+        "messages": [
+          {
+            "text": "Hello [First Name],\n\n[INSERT_EVENT_NAME] is [INSERT_EVENT_DATE] at [INSERT_EVENT_VENUE]. 📍 [INSERT_PARKING_INFO]. I'm looking forward to getting into the specific reasons your close rate isn't where it should be — and walking you out with a clear process to fix it.\n\nBest,\n[INSERT_HOST_NAME]",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Hello [First Name],\n\nTomorrow is [INSERT_EVENT_NAME] — doors open 15 minutes before [INSERT_EVENT_TIME] ([INSERT_EVENT_TIMEZONE]), so please plan to arrive then rather than on the hour. You'll want that time to settle in before we get straight into the work. The address is [INSERT_EVENT_VENUE].\n\nBest,\n[INSERT_HOST_NAME]",
+            "delay": 144,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Hello [First Name],\n\nThank you for the energy you brought to the room today — the conversation around defending your pricing on the call was exactly the kind of honest, specific work this is designed for. If you're ready to take the [INSERT_PROGRAMME_DURATION] process and apply it to your actual pipeline, the next step is a free consultation: [INSERT_BOOKING_URL].\n\nSpeak soon,\n[INSERT_HOST_NAME]",
+            "delay": 192,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      }
+    }
+  },
+  {
+    "testId": "12-voice-coach-no-inputs",
+    "whatsapps": {
+      "engagement": {
+        "sequenceType": "engagement",
+        "whatsappSequenceId": 114,
+        "messages": [
+          {
+            "text": "Hey [First Name] — here's what most women in your position don't realise: being told you don't 'fill the room' isn't a volume problem, it's a signal that something beneath the surface has gone quiet. You've spent years adapting your voice to fit every room you've walked into, and at some point the original signal got buried under all that calibration. At [INSERT_EVENT_NAME], [INSERT_HOST_NAME] is going to ask you something most voice coaches never do — so tell me, do you actually know what your voice sounds like when nobody needs anything from you?",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "A Commercial Director who'd been told for years she was 'too measured' and 'lacked presence' joined __REDTEAM___12_VoiceCoach — not to get louder, but to find out why her voice went thin the moment a room pushed back on her. Within eight weeks she could hold her position in a board meeting without reshaping her delivery around what she sensed the room wanted to hear, and she named it clearly: she'd been performing credibility instead of inhabiting it. Does that gap between how you present and how you actually feel in the room sound familiar? 🎯",
+            "delay": 24,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "You said yes to [INSERT_EVENT_NAME] because something in you knows the issue isn't skill — it's that you've been speaking from a version of yourself that was built to survive, not to lead from. [INSERT_HOST_NAME] has designed this specifically for women who are already high-performing and still getting told their presence doesn't land, and __REDTEAM___12_VoiceCoach is where that changes. Claim your free consultation and take the first step toward a voice that's actually yours.",
+            "delay": 48,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "sales": {
+        "sequenceType": "sales",
+        "whatsappSequenceId": 115,
+        "messages": [
+          {
+            "text": "Hey [First Name] — you showed up to [INSERT_EVENT_NAME], which tells me you already know something's off. 🎯 If you leave today without acting, you're going back to a room where you're getting talked over, your voice goes thin under pressure, and the feedback 'you don't fill the room' keeps landing — and you keep absorbing it and recalibrating toward a version of yourself you're not sure you actually chose. That pattern doesn't fix itself — enrol in [INSERT_OFFER_NAME] and start dismantling it: [INSERT_OFFER_LINK]",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "A Senior Partner — decorated track record, talked over in every leadership meeting, told twice she 'lacked presence' — went through __REDTEAM___12_VoiceCoach and by week eight she could sit in a room full of people who needed something from her without automatically shrinking to fit what that room required. 💡 The mechanism wasn't confidence training — it was a forensic process that separated who she actually is from the roles she'd been performing so long she'd stopped noticing the difference. Does any part of that sound like what happened when you tried to answer the question 'what do you actually want next' — and heard yourself start the sensible strategic answer before stopping mid-sentence?",
+            "delay": 24,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "[First Name], [INSERT_PROGRAMME_DURATION] of 1:1 forensic identity work, a written personal identity map you keep, and the ability to walk into any room — board, partner, performance review — and speak from a stable sense of self rather than from anxiety about how you'll be received, all for [INSERT_PRICE] and backed by [INSERT_GUARANTEE_TERMS]. 🔒 There are [INSERT_COHORT_LIMIT] places in this cohort and enrolment closes [INSERT_COHORT_CLOSE_DATE] — once it's full, it's full, and the next window isn't guaranteed. Claim your place in [INSERT_OFFER_NAME] now: [INSERT_OFFER_LINK]",
+            "delay": 48,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "nurture": {
+        "sequenceType": "nurture",
+        "whatsappSequenceId": 116,
+        "messages": [
+          {
+            "text": "Got [INSERT_LEAD_MAGNET_NAME] open? 👀 The section that tends to hit hardest for most women I work with is the one on conditioned preferences — the part that asks you to separate what you actually want from what you've been rewarded for wanting your whole career. Which part hit closest for you, [First Name]?",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Here's something I notice almost every time, [First Name] — the women who get told they 'don't fill the room' aren't lacking presence, they're performing so many roles at once that there's no single coherent person left to feel the room responding to. Does that land?",
+            "delay": 72,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "The method I use in __REDTEAM___12_VoiceCoach isn't assessment-based — it's forensic elimination, which means we don't ask 'who are you' and wait for a self-report, we work backwards through the specific roles and contexts that have layered over you until what's left is consistent and yours. The principle that makes it work is that you can't reliably distinguish a genuine preference from a conditioned one in a single session, but you absolutely can across [INSERT_PROGRAMME_DURATION] of looking at the same woman in different contexts. Want me to show you how that applies when your voice goes thin the moment someone senior pushes back in a meeting?",
+            "delay": 168,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "A Commercial Director I worked with — brilliant track record, consistently talked over in leadership meetings — came in thinking her problem was confidence, left having realised she'd been reshaping her entire communication style in real time to fit whoever was in the room, which meant nobody, including her, ever heard a consistent point of view. By the end of [INSERT_PROGRAMME_DURATION] she wasn't louder, she was just finally saying the same thing in the boardroom that she'd been thinking in the car on the way there. Does any part of that sound familiar, [First Name]?",
+            "delay": 336,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "If you've been carrying that mid-sentence stop — the one where you start to give the sensible answer and then can't, because you genuinely don't know what you want anymore — __REDTEAM___12_VoiceCoach is built specifically for that moment, not for the crisis version of it, but for the quiet, competent, everything-looks-fine version. I've got a small number of places open before the next cohort closes, and I'd love to give you a conversation where you walk away knowing the exact next step that's right for your specific situation. Claim your free consultation here: [INSERT_BOOKING_URL] 🎯",
+            "delay": 504,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "discovery_call_confirmation": {
+        "sequenceType": "discovery_call_confirmation",
+        "whatsappSequenceId": 117,
+        "messages": [
+          {
+            "text": "Hello [First Name],\n\nYou're confirmed for [INSERT_BOOKING_TIME] ([INSERT_BOOKING_TIMEZONE]) — [INSERT_BOOKING_DURATION] set aside to start separating who you actually are from the roles you've been performing.\n\nYour booking link: [INSERT_BOOKING_URL]\n\nSpeak soon,\n[INSERT_HOST_NAME]",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "discovery_call_reminder": {
+        "sequenceType": "discovery_call_reminder",
+        "whatsappSequenceId": 118,
+        "messages": [
+          {
+            "text": "Quick reminder we're talking [INSERT_BOOKING_TIME] [INSERT_BOOKING_TIMEZONE] tomorrow for your __REDTEAM___12_VoiceCoach call with me, [INSERT_HOST_NAME] — if you need to shift it, the reschedule link is right here: [INSERT_BOOKING_URL]. Before we speak, I'd love you to sit with one question: think of the last time you were in a room and felt your voice go thin — what were you actually protecting yourself from in that moment?",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "We're talking in an hour — [INSERT_BOOKING_TIME] [INSERT_BOOKING_TIMEZONE] — and I'm genuinely looking forward to digging into what's been keeping your voice small in the rooms that matter most to you. If anything just shifted, the reschedule link is here: [INSERT_BOOKING_URL].",
+            "delay": 22,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "⏰ Starting in 15 minutes — tap here to join: [INSERT_BOOKING_URL].",
+            "delay": 1.75,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "event_logistics": {
+        "sequenceType": "event_logistics",
+        "whatsappSequenceId": 119,
+        "messages": [
+          {
+            "text": "Hello [First Name],\n\n[INSERT_EVENT_NAME] is [INSERT_EVENT_DATE] at [INSERT_EVENT_VENUE]. 📍 [INSERT_PARKING_INFO]. I'm looking forward to the room we're building — this is exactly the conversation that needs to happen.\n\nBest,\n[INSERT_HOST_NAME]",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Hello [First Name],\n\nTomorrow! Please plan to arrive 15 minutes before [INSERT_EVENT_TIME] [INSERT_EVENT_TIMEZONE] so you're settled before we begin. The venue is [INSERT_EVENT_VENUE] — I'll be there early if you need to find me.\n\nBest,\n[INSERT_HOST_NAME]",
+            "delay": 144,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Hello [First Name],\n\nThank you for being in the room yesterday — the quality of thinking and honesty in that space made it one of those sessions that doesn't happen by accident. If what we covered about reconnecting with your own voice resonated, the [INSERT_PROGRAMME_DURATION] __REDTEAM___12_VoiceCoach programme is the structured next step — you can find out more and reserve your place at [INSERT_BOOKING_URL].\n\nSpeak soon,\n[INSERT_HOST_NAME]",
+            "delay": 192,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      }
+    }
+  },
+  {
+    "testId": "13-confidence-vague-price",
+    "whatsapps": {
+      "engagement": {
+        "sequenceType": "engagement",
+        "whatsappSequenceId": 120,
+        "messages": [
+          {
+            "text": "Hey [First Name] — the golden handcuffs aren't the problem, they're actually the cover story you've been using so you don't have to answer the harder question underneath them. 🔍 If the handcuffs came off tomorrow, do you actually know what you'd do next — or does even imagining that feel strangely blank?",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "A Commercial Director in professional services came to [INSERT_EVENT_NAME] unable to finish a sentence when her husband asked what she actually wanted next — not because she was overwhelmed, but because she'd spent so long performing the right answer that the real one had gone quiet. Through the forensic identity process in __REDTEAM___13_Confidence she stopped outsourcing that answer to logic and obligation, and walked away with a written account of who she is that wasn't built around her job title. 💡 Does that pattern sound familiar to where you're at right now?",
+            "delay": 24,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "You came to [INSERT_EVENT_NAME] because something in you recognised the question being asked — and __REDTEAM___13_Confidence is the 1:1 process that actually works through the answer with you, forensically, over twelve weeks, with [INSERT_HOST_NAME] alongside you the whole way. 🎯 Claim your free consultation and let's find out if you're the right fit for the next cohort.",
+            "delay": 48,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "sales": {
+        "sequenceType": "sales",
+        "whatsappSequenceId": 121,
+        "messages": [
+          {
+            "text": "Hey [First Name] — you showed up to [INSERT_EVENT_NAME] because something in you knew the answer you've been giving people isn't the real one anymore. 💡 The cost of staying here isn't stagnation — it's another year of confidently executing a life you never actually chose. Claim your place in [INSERT_OFFER_NAME] and start finding out what you actually think: [INSERT_OFFER_LINK]",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "A Commercial Director — promotion passed over, strong track record, everyone proud of her — came into __REDTEAM___13_Confidence unable to finish a sentence when her husband asked what she actually wanted next. 🔍 The process isn't a personality quiz or a values worksheet — it's a forensic dismantling of the roles that built over who she was, run 1:1 over [INSERT_PROGRAMME_DURATION] until the pattern underneath is legible. Does any part of you recognise that mid-sentence stop — the moment you started to give the sensible answer and couldn't?",
+            "delay": 24,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "[First Name], [INSERT_OFFER_NAME] gives you a specific, private identity map that tells you what you actually think — not a framework to perform, but a document you can return to every time a major decision asks who you are. Enrolment closes at [INSERT_COHORT_CLOSE_DATE] and there are only [INSERT_COHORT_LIMIT] places — because this is 1:1 work and the guarantee is [INSERT_GUARANTEE_TERMS]. Claim your place before the cohort closes: [INSERT_OFFER_LINK]",
+            "delay": 48,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "nurture": {
+        "sequenceType": "nurture",
+        "whatsappSequenceId": 122,
+        "messages": [
+          {
+            "text": "Got [INSERT_LEAD_MAGNET_NAME] open? 👀 The section that tends to hit hardest is the one about the gap between the version of yourself you've been optimising for and the one you've quietly stopped recognising — it's where most women I work with go quiet for a minute. Which part hit closest for you, [First Name]?",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Here's the thing about being really good at your job for a really long time, [First Name] — you don't just lose touch with what you want, you lose the ability to tell the difference between what you actually want and what you've decided it's sensible to want. Does that land?",
+            "delay": 72,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "The method I use with women in __REDTEAM___13_Confidence isn't assessment-based — it's elimination-based, which means instead of handing you a new label to perform, we systematically strip back the roles, relationships, and survival strategies that have layered over your original personality until what's left is actually, verifiably yours. It works because a conditioned preference and a genuine one look identical on a quiz but they don't look identical across twelve years of your own biographical evidence. Want me to show you how that applies when you're stuck mid-sentence trying to answer 'so what do you actually want next?'",
+            "delay": 168,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "A Commercial Director I worked with through __REDTEAM___13_Confidence came in knowing she was high-performing and hollow — she couldn't finish a sentence about what she wanted without it defaulting to the strategic next step she'd planned years ago and never revisited — by the end of [INSERT_PROGRAMME_DURATION] she had a written identity map that was specific enough to tell her, clearly, which opportunity was actually hers and which one was just the correct-looking next thing. 💡 Does any part of that sound like where you are right now, [First Name]?",
+            "delay": 336,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "If you've been sitting with that mid-sentence stop — the one where you start to give the sensible answer about what's next and then realise you don't actually know — that's exactly what __REDTEAM___13_Confidence is built for, and enrolment for the current cohort is limited so places are going fast. I'd love to have a conversation with you where you walk away knowing the actual next concrete step for your specific situation — not a framework, not homework, just clarity. Claim your free consultation here: [INSERT_BOOKING_URL]",
+            "delay": 504,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "discovery_call_confirmation": {
+        "sequenceType": "discovery_call_confirmation",
+        "whatsappSequenceId": 123,
+        "messages": [
+          {
+            "text": "Hello [First Name],\n\nYou're confirmed for [INSERT_BOOKING_TIME] ([INSERT_BOOKING_TIMEZONE]) — [INSERT_BOOKING_DURATION] set aside entirely to start untangling what you actually want from what you've simply been executing on.\n\nHere's your booking link: [INSERT_BOOKING_URL]\n\nSpeak soon,\n[INSERT_HOST_NAME]",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "discovery_call_reminder": {
+        "sequenceType": "discovery_call_reminder",
+        "whatsappSequenceId": 124,
+        "messages": [
+          {
+            "text": "Quick reminder we're talking [INSERT_BOOKING_TIME] [INSERT_BOOKING_TIMEZONE] tomorrow for your __REDTEAM___13_Confidence consultation — I'm looking forward to it, and if you need to shift the time, the reschedule link is here: [INSERT_BOOKING_URL]. Before we talk, here's one thing worth sitting with: think of the last time someone asked you what you actually want next — not strategically, not what makes sense, but what *you* want — and notice what came up. Did you have an answer, or did you reach for the sensible one? — [INSERT_HOST_NAME]",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "We're talking in an hour — [INSERT_BOOKING_TIME] [INSERT_BOOKING_TIMEZONE] — for your __REDTEAM___13_Confidence consultation, and I've already carved that time out specifically for you. If anything just shifted, the reschedule link is here: [INSERT_BOOKING_URL]. Otherwise I'll see you in 60 — [INSERT_HOST_NAME]",
+            "delay": 22,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "⏰ Starting in 15 minutes — tap here to join your __REDTEAM___13_Confidence consultation: [INSERT_BOOKING_URL]",
+            "delay": 1.75,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "event_logistics": {
+        "sequenceType": "event_logistics",
+        "whatsappSequenceId": 125,
+        "messages": [
+          {
+            "text": "Hello [First Name],\n\n[INSERT_EVENT_NAME] is [INSERT_EVENT_DATE] at [INSERT_EVENT_VENUE]. 📍 [INSERT_PARKING_INFO]. I'm looking forward to spending time with a room of women who've already done the hard part — they've admitted the external story isn't the whole story.\n\nBest,\n[INSERT_HOST_NAME]",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Hello [First Name],\n\nTomorrow is the day — doors open 15 minutes before [INSERT_EVENT_TIME] ([INSERT_EVENT_TIMEZONE]), so please aim to arrive then rather than on the hour. The venue is [INSERT_EVENT_VENUE], and [INSERT_PARKING_INFO]. Is there anything practical you need from me before tomorrow morning?\n\nBest,\n[INSERT_HOST_NAME]",
+            "delay": 144,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Hello [First Name],\n\nThank you for being in the room yesterday — the honesty this group brought to the question of what's actually driving the disconnection is exactly why this work matters. If what we explored resonated and you're ready to go further, the [INSERT_PROGRAMME_DURATION] 1:1 programme is the structured process that takes you from that recognition to a concrete, private account of who you are when you're not performing — you can find all the details and book your free consultation at [INSERT_BOOKING_URL].\n\nSpeak soon,\n[INSERT_HOST_NAME]",
+            "delay": 192,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      }
+    }
+  },
+  {
+    "testId": "14-cohort-testim-no-price",
+    "whatsapps": {
+      "engagement": {
+        "sequenceType": "engagement",
+        "whatsappSequenceId": 126,
+        "messages": [
+          {
+            "text": "Hey [First Name] — the bottleneck on your team isn't your standards, it's that nobody's ever shown you how to hand the work off without it coming back broken. 👀 You said yes to [INSERT_EVENT_NAME] because something about that landed — so here's the question [INSERT_HOST_NAME] is going to dig into: if delegation keeps failing, is the problem your team, or the way you're still holding the wheel?",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Rachel Park, an Engineering Manager, had been holding a single project for nine months because letting go felt riskier than just doing it herself — then she went through __REDTEAM___14_Cohort and by week 8 she'd handed it off completely. 🙌 Her words: \"My team is faster now.\" Does that sound familiar — the project you're still carrying because it's somehow easier than trusting someone else with it?",
+            "delay": 24,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "[INSERT_HOST_NAME] is walking through the exact process inside [INSERT_EVENT_NAME] — the same one that took Lin Wei from being the bottleneck on every launch to her team shipping without her checking the doc, and took Aiden O'Connor from 60-hour weeks down to 45. __REDTEAM___14_Cohort is limited in size and enrolment is open now — claim your place here 👇",
+            "delay": 48,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "sales": {
+        "sequenceType": "sales",
+        "whatsappSequenceId": 127,
+        "messages": [
+          {
+            "text": "Hey [First Name] — you showed up to [INSERT_EVENT_NAME] because something about being the bottleneck on your own team finally got loud enough to hear. 👀 Here's what it costs to leave that unchanged: your team stays stuck waiting on you, you stay stuck doing work that stopped being yours a long time ago, and the version of you that could actually lead gets buried under the version that just can't let go. Enrol in __REDTEAM___14_Cohort before [INSERT_COHORT_CLOSE_DATE] and start dismantling that pattern: [INSERT_OFFER_LINK]",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Lin Wei is a Product Manager at a public company — she was the approval gate on every single launch, and her team couldn't ship without her checking the doc. 🔑 Inside __REDTEAM___14_Cohort she worked through the specific delegation and identity-of-role process that separates 'I'm responsible for this' from 'I have to personally execute this' — and three months later her team ships without her. Does that gap — between knowing you should let go and actually being able to — sound like where you're stuck right now?",
+            "delay": 24,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "__REDTEAM___14_Cohort gives you the delegation frameworks, the identity-of-role process, and the exact scripts that took Aiden O'Connor from 60-hour weeks to 45 and got Rachel Park to hand off the project she'd been holding for nine months — all of it for [INSERT_PRICE] with [INSERT_GUARANTEE_TERMS]. There are only [INSERT_COHORT_LIMIT] places in this cohort and enrolment closes [INSERT_COHORT_CLOSE_DATE], so if you're still drowning while your team waits, this is the moment to stop that. Claim your place before it's gone: [INSERT_OFFER_LINK]",
+            "delay": 48,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "nurture": {
+        "sequenceType": "nurture",
+        "whatsappSequenceId": 128,
+        "messages": [
+          {
+            "text": "Got [INSERT_LEAD_MAGNET_NAME] open? 👀 The section that tends to hit hardest for most people is the one on why letting go feels like losing control — not laziness, not trust issues, just a wiring problem that nobody names. Which part hit closest for you?",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Here's the thing nobody tells high-achieving women when they get promoted: the skill that got you there — being the most reliable person in the room — is exactly the skill that's now making your team slower. Does that land where you are right now?",
+            "delay": 72,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "The method inside __REDTEAM___14_Cohort isn't a delegation framework — it's a forensic process that works through the specific roles and survival strategies that got layered over who you actually are, so you can distinguish a genuine preference from a conditioned one. It works because your identity was built on purpose in response to real incentives, which means dismantling it requires looking at your actual biographical material — not a personality quiz. Want me to show you how that applies when every launch, every decision, every doc still quietly waits for you before it moves?",
+            "delay": 168,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Lin Wei — Product Manager at a public company — was the bottleneck on every launch, then went through [INSERT_PROGRAMME_DURATION] of this work, and three months later her team ships without her checking the doc. 🙌 Does any part of that sound familiar — the part where the team's speed is quietly capped at yours?",
+            "delay": 336,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "If you're still in that place where you can't finish the sentence when someone asks what you actually want next — that mid-sentence stop — I'd love to have a conversation where you walk away with the one concrete move that's specific to your situation, not a generic next step. It's the first real decision point inside __REDTEAM___14_Cohort, and enrolment is limited so places are going fast. Claim your free consultation here: [INSERT_BOOKING_URL]",
+            "delay": 504,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "discovery_call_confirmation": {
+        "sequenceType": "discovery_call_confirmation",
+        "whatsappSequenceId": 129,
+        "messages": [
+          {
+            "text": "Hello [First Name],\n\nYou're confirmed for [INSERT_BOOKING_DURATION] with [INSERT_HOST_NAME] at [INSERT_BOOKING_TIME] ([INSERT_BOOKING_TIMEZONE]). ✓ This is your space to get clear on what's actually keeping you at the centre of everything your team should own. Add it to your calendar here: [INSERT_BOOKING_URL]",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "discovery_call_reminder": {
+        "sequenceType": "discovery_call_reminder",
+        "whatsappSequenceId": 130,
+        "messages": [
+          {
+            "text": "Quick reminder we're talking [INSERT_BOOKING_TIME] [INSERT_BOOKING_TIMEZONE] tomorrow for your __REDTEAM___14_Cohort discovery call with me, [INSERT_HOST_NAME] — if that time doesn't work anymore, you can reschedule right here: [INSERT_BOOKING_URL]. Before we talk, think about this: what's the one task on your plate right now that only you can do — and are you actually sure that's true? 🎯",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "We're talking in an hour — your __REDTEAM___14_Cohort call with me, [INSERT_HOST_NAME], is locked in at [INSERT_BOOKING_TIME] [INSERT_BOOKING_TIMEZONE], and I've got something specific I want to walk you through on the delegation bottleneck that held Rachel Park's team back for nine months before week 8 changed everything. If anything's just shifted, the reschedule link is here: [INSERT_BOOKING_URL].",
+            "delay": 22,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "⏰ Starting in 15 minutes — tap here to join: [INSERT_BOOKING_URL].",
+            "delay": 1.75,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "event_logistics": {
+        "sequenceType": "event_logistics",
+        "whatsappSequenceId": 131,
+        "messages": [
+          {
+            "text": "Hello [First Name],\n\n[INSERT_EVENT_NAME] is [INSERT_EVENT_DATE] at [INSERT_EVENT_VENUE]. 📍 [INSERT_PARKING_INFO]. I'm looking forward to getting into the real work with you — this is the kind of room where things actually shift.\n\nBest,\n[INSERT_HOST_NAME]",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Hello [First Name],\n\nTomorrow is the day — doors open 15 minutes before [INSERT_EVENT_TIME] ([INSERT_EVENT_TIMEZONE]), so please plan to arrive then rather than on the hour. The venue address is [INSERT_EVENT_VENUE] — save it to your maps tonight so the morning is straightforward.\n\nBest,\n[INSERT_HOST_NAME]",
+            "delay": 144,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Hello [First Name],\n\nThank you for being in the room yesterday — the quality of thinking and honesty in that conversation on the topic of letting go of the work was something I don't take for granted. If you're ready to take that work further, the [INSERT_PROGRAMME_DURATION] __REDTEAM___14_Cohort is where we go deeper — you can find every detail and enrol at [INSERT_BOOKING_URL].\n\nSpeak soon,\n[INSERT_HOST_NAME]",
+            "delay": 192,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      }
+    }
+  },
+  {
+    "testId": "15-consultant-full-inputs",
+    "whatsapps": {
+      "engagement": {
+        "sequenceType": "engagement",
+        "whatsappSequenceId": 132,
+        "messages": [
+          {
+            "text": "Hey [First Name] — if your homepage, pricing page, and sales deck were all saying the same thing, your prospects wouldn't need a 90-minute discovery call just to understand what you do. 🤔 Here's what we don't talk about enough: message drift isn't a writing problem, it's an identity problem — your positioning hasn't decided what it actually is yet, so every page is improvising. What do you think your prospects feel in the first 10 seconds on your site — clarity, or the need to keep reading to figure it out?",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Anders Bjornsson, CEO of a Series A B2B SaaS, had a 90-day sales cycle — not because his product was complex, but because his messaging made prospects work too hard to see the value before committing. After a positioning shift through __REDTEAM___15_FullInputs, that cycle dropped to 45 days, which means his team closes the same number of deals in half the time with half the follow-up. Does that sound like the kind of stall you're hitting right now?",
+            "delay": 24,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "You showed up to [INSERT_EVENT_NAME] with [INSERT_HOST_NAME] for a reason — and what you're going to hear is the exact process that took Yuki Tanaka's homepage conversion from 1.8% to 4.6% in eight weeks after a full positioning rewrite through __REDTEAM___15_FullInputs. 🎯 One clear next step: grab your spot and show up ready to work on your actual messaging — not a framework, your specific words.",
+            "delay": 48,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "sales": {
+        "sequenceType": "sales",
+        "whatsappSequenceId": 133,
+        "messages": [
+          {
+            "text": "Hey [First Name] — you showed up to [INSERT_EVENT_NAME], which tells me you already know something's off between the story you're telling and the one your prospects are actually hearing. 💡 The cost of leaving that gap open isn't just longer sales cycles — it's that every conversation where you have to *explain* your value is one where you've already lost the frame. Claim your free consultation and let's map exactly where the message is breaking down: [INSERT_OFFER_LINK]",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Anders Bjornsson, CEO of a Series A B2B SaaS, had a 90-day sales cycle — not because his product was hard to sell, but because his homepage, pricing page, and sales deck were all pulling prospects in slightly different directions, so every call started with confusion instead of conviction. 🎯 After working through [INSERT_OFFER_NAME], the positioning shift alone cut that cycle to 45 days. Does that gap between 'we have a great product' and 'we can't get prospects to commit fast enough' sound familiar to you right now?",
+            "delay": 24,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "[INSERT_OFFER_NAME] gives you a forensic audit of every surface your prospects touch — homepage, pricing page, sales deck — rebuilt around a single coherent position so they arrive at the conversation already sold on the category, not confused by it. Enrolment closes at [INSERT_COHORT_CLOSE_DATE], there are [INSERT_COHORT_LIMIT] places in this cohort, and it comes with [INSERT_GUARANTEE_TERMS] — Yuki Tanaka went from 1.8% to 4.6% homepage conversion in eight weeks and Pedro Alves untangled two years of feature-first messaging that was costing him deals. Enrol now and lock your place before this cohort closes: [INSERT_OFFER_LINK]",
+            "delay": 48,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "nurture": {
+        "sequenceType": "nurture",
+        "whatsappSequenceId": 134,
+        "messages": [
+          {
+            "text": "Got [INSERT_LEAD_MAGNET_NAME] open? 👀 The section that tends to hit hardest for women in senior roles is the one on conditioned preferences — specifically the part about not being able to tell the difference between what you actually want and what you decided to want a long time ago because it was the correct next thing. Which part hit closest for you?",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Here's the thing nobody says out loud: most high-achieving women don't have a clarity problem — they've got a contamination problem, where every preference they hold has been run through so many filters (what's strategic, what's responsible, what'll land well) that the original signal's almost gone. Does that land for where you're at right now?",
+            "delay": 72,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "The method I use is called Identity Reclamation, and it's not assessment-based — it starts with elimination, working through the specific roles, relationships, and survival strategies that've layered over who you actually are, one by one, until what's consistent underneath becomes visible. 🔍 It works because a single self-report isn't reliable, but patterns across your actual biographical material — seen over time, 1:1 — are. Want me to show you how it applies when you're a high performer who's been recalibrating towards goals you never stopped to question?",
+            "delay": 168,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "A Commercial Director I worked with came in six weeks after being passed over for a promotion — not heartbroken, but stopped mid-sentence when her husband asked what she actually wanted next, because she genuinely didn't know. By the end of the programme she had a private written identity map that let her answer that question from a stable sense of self rather than a strategic reflex, and she turned down the lateral move everyone expected her to take — because for the first time she knew why. Does any part of that sound familiar?",
+            "delay": 336,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "If you downloaded [INSERT_LEAD_MAGNET_NAME] because some version of that mid-sentence stop has already happened for you, I'd love to have a conversation where you walk away knowing exactly what the next concrete step is for your specific situation — not a framework, a forensic next move. Enrolment for the [INSERT_PROGRAMME_DURATION] programme is limited and the window's closing soon, so if this is the moment, claim your place here: [INSERT_BOOKING_URL]",
+            "delay": 504,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "discovery_call_confirmation": {
+        "sequenceType": "discovery_call_confirmation",
+        "whatsappSequenceId": 135,
+        "messages": [
+          {
+            "text": "Hello [First Name], you're confirmed for [INSERT_BOOKING_DURATION] with [INSERT_HOST_NAME] at [INSERT_BOOKING_TIME] ([INSERT_BOOKING_TIMEZONE]). This is your time to get clear on exactly what's causing the disconnect between your messaging and what your prospects are actually hearing. Add it to your calendar here: [INSERT_BOOKING_URL]",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "discovery_call_reminder": {
+        "sequenceType": "discovery_call_reminder",
+        "whatsappSequenceId": 136,
+        "messages": [
+          {
+            "text": "Quick reminder we're talking [INSERT_BOOKING_TIME] [INSERT_BOOKING_TIMEZONE] tomorrow — I'm looking forward to getting into the specifics of your situation with you 😊 If anything comes up and you need to move it, the reschedule link's right here: [INSERT_BOOKING_URL]. Before we speak, it's worth sitting with this one question: when you picture the version of you who's done this work, what's the first decision you'd make differently?",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "We're talking in an hour — [INSERT_BOOKING_TIME] [INSERT_BOOKING_TIMEZONE] — and I've already set aside everything else so we can go deep on what's actually going on for you. If anything just shifted, the reschedule link is here: [INSERT_BOOKING_URL].",
+            "delay": 22,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "⏰ Starting in 15 minutes — tap to join or confirm we're on: [INSERT_BOOKING_URL].",
+            "delay": 1.75,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      },
+      "event_logistics": {
+        "sequenceType": "event_logistics",
+        "whatsappSequenceId": 137,
+        "messages": [
+          {
+            "text": "Hello [First Name],\n\n[INSERT_EVENT_NAME] is [INSERT_EVENT_DATE] at [INSERT_EVENT_VENUE]. 📍 [INSERT_PARKING_INFO]. I'm looking forward to working through the identity-architecture process with you in person — come ready to be specific about your own life.\n\nBest,\n[INSERT_HOST_NAME]",
+            "delay": 0,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Hello [First Name],\n\nTomorrow! Doors open 15 minutes before [INSERT_EVENT_TIME] [INSERT_EVENT_TIMEZONE], so please plan to arrive then rather than on the hour. The venue is [INSERT_EVENT_VENUE].\n\nSpeak soon,\n[INSERT_HOST_NAME]",
+            "delay": 144,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          },
+          {
+            "text": "Hello [First Name],\n\nThank you for being in the room today — the honesty in the conversations around what's really driving the disconnection made it one of the more specific sessions I've run. If the [INSERT_PROGRAMME_DURATION] 1:1 programme feels like the right next step, here's where to enrol: [INSERT_BOOKING_URL].\n\nBest,\n[INSERT_HOST_NAME]",
+            "delay": 192,
+            "mediaUrl": null,
+            "delayUnit": "hours",
+            "mediaType": null
+          }
+        ]
+      }
+    }
+  }
+]
