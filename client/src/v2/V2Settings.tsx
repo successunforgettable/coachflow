@@ -75,52 +75,54 @@ function IntegrationsSection() {
     { enabled: false },
   );
 
-  if (!snapshotId) return null;
+  // Render when GHL is connected (workflow status detection works
+  // independent of snapshot config). Hide only when not connected at all.
+  if (!ghlConn.data?.connected) return null;
   return (
     <div style={T.card}>
       <SectionHeading>Integrations</SectionHeading>
 
       {/* Workflow status pill + recheck */}
-      {ghlConn.data?.connected && (
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
-          {workflowStatus.isLoading ? (
-            <span style={{ fontSize: 12, color: "#999", fontFamily: T.fontB }}>Checking workflows…</span>
-          ) : workflowStatus.data ? (
-            <WorkflowStatusPill count={workflowStatus.data.count} total={workflowStatus.data.total} />
-          ) : null}
-          <button
-            onClick={() => { recheckWorkflows.refetch(); workflowStatus.refetch(); }}
-            style={{
-              background: "none",
-              border: "none",
-              fontSize: 12,
-              color: T.orange,
-              fontFamily: T.fontB,
-              fontWeight: 600,
-              cursor: "pointer",
-              padding: 0,
-            }}
-          >↻ Recheck</button>
-        </div>
-      )}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+        {workflowStatus.isLoading ? (
+          <span style={{ fontSize: 12, color: "#999", fontFamily: T.fontB }}>Checking workflows…</span>
+        ) : workflowStatus.data ? (
+          <WorkflowStatusPill count={workflowStatus.data.count} total={workflowStatus.data.total} />
+        ) : null}
+        <button
+          onClick={() => { recheckWorkflows.refetch(); workflowStatus.refetch(); }}
+          style={{
+            background: "none",
+            border: "none",
+            fontSize: 12,
+            color: T.orange,
+            fontFamily: T.fontB,
+            fontWeight: 600,
+            cursor: "pointer",
+            padding: 0,
+          }}
+        >↻ Recheck</button>
+      </div>
 
       <p style={{ fontSize: 14, color: "#555", lineHeight: 1.55, margin: "0 0 14px" }}>
         Apply ZAP's Master Snapshot to your GoHighLevel sub-account once — your funnels, email templates, and workflows then auto-render from the Custom Values ZAP pushes on every kit publish. Requires GHL agency-admin permission.
       </p>
-      <button
-        onClick={() => openSnapshotApplyTab(snapshotId)}
-        style={{
-          padding: "10px 20px",
-          background: T.orange,
-          color: "#fff",
-          border: "none",
-          borderRadius: 9999,
-          fontSize: 14,
-          fontWeight: 600,
-          fontFamily: T.fontB,
-          cursor: "pointer",
-        }}
-      >Apply ZAP Master Snapshot →</button>
+      {snapshotId && (
+        <button
+          onClick={() => openSnapshotApplyTab(snapshotId)}
+          style={{
+            padding: "10px 20px",
+            background: T.orange,
+            color: "#fff",
+            border: "none",
+            borderRadius: 9999,
+            fontSize: 14,
+            fontWeight: 600,
+            fontFamily: T.fontB,
+            cursor: "pointer",
+          }}
+        >Apply ZAP Master Snapshot →</button>
+      )}
     </div>
   );
 }
