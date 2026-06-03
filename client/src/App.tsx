@@ -66,6 +66,7 @@ import V2CampaignKit from "./v2/V2CampaignKit";
 import V2AutoModeIntake from "./v2/V2AutoModeIntake";
 import V2AutoModeIntakeConfirm from "./v2/V2AutoModeIntakeConfirm";
 import V2AutoModeProgress from "./v2/V2AutoModeProgress";
+import V2Settings from "./v2/V2Settings";
 import Login from "./pages/Login";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
@@ -143,6 +144,7 @@ function Router() {
       <Route path={"/v2-dashboard/auto-mode/confirm"} component={V2AutoModeIntakeConfirm} />
       <Route path={"/v2-dashboard/auto-mode/progress"} component={V2AutoModeProgress} />
       <Route path={"/v2-dashboard/auto-mode"} component={V2AutoModeIntake} />
+      <Route path={"/v2-dashboard/settings"} component={V2Settings} />
       <Route path={"/v2-dashboard"} component={V2Dashboard} />
       <Route path={"/404"} component={NotFound} />
       {/* Fallback route for 404 */}
