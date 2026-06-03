@@ -202,6 +202,13 @@ export default function PushKitModal({ kitId, kitName, onClose, placeholderRepor
   const publishToMeta = trpc.meta.publishToMeta.useMutation();
   const pushGhl       = trpc.ghl.pushCampaign.useMutation();
 
+  // ─── Workflow status (snapshot detection) ─────────────────────────────────
+  const workflowStatus = trpc.ghl.getWorkflowStatus.useQuery(undefined, {
+    enabled: !!ghlConn.data?.connected,
+  });
+  const snapshotInstalled = !!workflowStatus.data?.installed;
+  const snapshotId = (ghlConn.data as { masterSnapshotId?: string | null } | undefined)?.masterSnapshotId ?? null;
+
   // ─── Derived UI states ─────────────────────────────────────────────────────
   const metaConnected = !!metaConn.data?.connected;
   const ghlConnected  = !!ghlConn.data?.connected;
@@ -214,7 +221,7 @@ export default function PushKitModal({ kitId, kitName, onClose, placeholderRepor
   // destination is the live LP. Without it, Meta push is blocked.
   const lpPublicUrl = (lp.data as { publicUrl?: string | null } | undefined)?.publicUrl || null;
   const metaPushable = metaConnected && !metaNeedsReconnect && !!selectedCreative && !!lpPublicUrl && !!body.trim() && !!campaignName.trim();
-  const ghlPushable  = ghlConnected;
+  const ghlPushable  = ghlConnected && snapshotInstalled;
 
   // ─── Action handlers ───────────────────────────────────────────────────────
   async function handleConnectMeta() {
@@ -520,6 +527,42 @@ export default function PushKitModal({ kitId, kitName, onClose, placeholderRepor
               <p style={{ fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)", fontSize: "13px", color: "#555", margin: 0, lineHeight: 1.5 }}>
                 Pushes the kit's content into your GHL location as Custom Values — offer, lead magnet, mechanism, headlines, ad copy, landing page, plus the email + WhatsApp sequences split per message. Apply ZAP's Master Snapshot once to your sub-account and every push auto-renders functional templates, funnels, and workflows from these values.
               </p>
+              {ghlConnected && !snapshotInstalled && !workflowStatus.isLoading && (
+                <div style={{
+                  marginTop: "12px",
+                  padding: "12px 14px",
+                  borderRadius: "12px",
+                  background: "rgba(220,38,38,0.06)",
+                  border: "1px solid rgba(220,38,38,0.18)",
+                }}>
+                  <p style={{
+                    fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)",
+                    fontSize: "13px",
+                    color: "#B12121",
+                    margin: "0 0 8px",
+                    lineHeight: 1.5,
+                    fontWeight: 600,
+                  }}>
+                    Your GHL location doesn't have ZAP's workflows yet ({workflowStatus.data?.count ?? 0}/{workflowStatus.data?.total ?? 16} detected). Apply the Master Snapshot first — it takes 30 seconds.
+                  </p>
+                  {snapshotId && (
+                    <button
+                      onClick={() => openSnapshotApplyTab(snapshotId)}
+                      style={{
+                        padding: "8px 16px",
+                        borderRadius: 9999,
+                        border: "none",
+                        background: "var(--v2-primary-btn, #FF5B1D)",
+                        color: "#fff",
+                        fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)",
+                        fontWeight: 700,
+                        fontSize: "12px",
+                        cursor: "pointer",
+                      }}
+                    >Apply ZAP Master Snapshot →</button>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* ─── Action buttons ───────────────────────────────────────── */}

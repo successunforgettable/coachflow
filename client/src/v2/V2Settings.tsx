@@ -36,17 +36,74 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
   );
 }
 
+function WorkflowStatusPill({ count, total }: { count: number; total: number }) {
+  const installed = count >= Math.ceil(total * 0.75);
+  const partial = count > 0 && !installed;
+  const tone = installed ? "ok" : partial ? "partial" : "missing";
+  const palette = {
+    ok:      { bg: "rgba(88,204,2,0.14)",  fg: "#2E7D00" },
+    partial: { bg: "rgba(255,180,0,0.18)", fg: "#A06200" },
+    missing: { bg: "rgba(220,38,38,0.14)", fg: "#B12121" },
+  }[tone];
+  const label = installed
+    ? `Snapshot active — ${count}/${total} workflows`
+    : partial
+    ? `Incomplete install — ${count}/${total} workflows`
+    : "Snapshot not applied";
+  return (
+    <span style={{
+      display: "inline-block",
+      padding: "5px 12px",
+      borderRadius: 9999,
+      background: palette.bg,
+      color: palette.fg,
+      fontSize: 12,
+      fontWeight: 700,
+      fontFamily: T.fontB,
+    }}>{installed ? "✓" : partial ? "⚠" : "✗"} {label}</span>
+  );
+}
+
 function IntegrationsSection() {
-  // Phase C C3 follow-on 8 (Phase 1): forever-available link to apply the
-  // ZAP Master Snapshot in GHL. Source of truth = server env var
-  // GHL_MASTER_SNAPSHOT_ID, surfaced via trpc.ghl.getConnectionStatus.
-  // Hides entirely when env var not configured — graceful pre-build window.
   const ghlConn = trpc.ghl.getConnectionStatus.useQuery();
   const snapshotId = (ghlConn.data as { masterSnapshotId?: string | null } | undefined)?.masterSnapshotId ?? null;
+  const workflowStatus = trpc.ghl.getWorkflowStatus.useQuery(undefined, {
+    enabled: !!ghlConn.data?.connected,
+  });
+  const recheckWorkflows = trpc.ghl.getWorkflowStatus.useQuery(
+    { force: true },
+    { enabled: false },
+  );
+
   if (!snapshotId) return null;
   return (
     <div style={T.card}>
       <SectionHeading>Integrations</SectionHeading>
+
+      {/* Workflow status pill + recheck */}
+      {ghlConn.data?.connected && (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+          {workflowStatus.isLoading ? (
+            <span style={{ fontSize: 12, color: "#999", fontFamily: T.fontB }}>Checking workflows…</span>
+          ) : workflowStatus.data ? (
+            <WorkflowStatusPill count={workflowStatus.data.count} total={workflowStatus.data.total} />
+          ) : null}
+          <button
+            onClick={() => { recheckWorkflows.refetch(); workflowStatus.refetch(); }}
+            style={{
+              background: "none",
+              border: "none",
+              fontSize: 12,
+              color: T.orange,
+              fontFamily: T.fontB,
+              fontWeight: 600,
+              cursor: "pointer",
+              padding: 0,
+            }}
+          >↻ Recheck</button>
+        </div>
+      )}
+
       <p style={{ fontSize: 14, color: "#555", lineHeight: 1.55, margin: "0 0 14px" }}>
         Apply ZAP's Master Snapshot to your GoHighLevel sub-account once — your funnels, email templates, and workflows then auto-render from the Custom Values ZAP pushes on every kit publish. Requires GHL agency-admin permission.
       </p>

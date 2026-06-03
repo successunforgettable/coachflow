@@ -19,6 +19,41 @@ import { eq, and } from "drizzle-orm";
 
 const GHL_BASE = "https://services.leadconnectorhq.com";
 
+// ─── Canonical ZAP workflow names (freelancer-built, snapshot-deployed) ────────
+// Used by getWorkflowStatus to detect whether the customer applied the master
+// snapshot. Prefix match /^zap[\s-]/i catches renames like "Zap" vs "ZAP".
+// Threshold: ≥ 75% present = "installed". Update this array if the freelancer
+// adds/renames workflows in future snapshot versions.
+const ZAP_WORKFLOW_NAMES = [
+  // Email (10)
+  "ZAP Welcome Sequence",
+  "ZAP Launch Sequence",
+  "ZAP Nurture Sequence",
+  "ZAP Sales Sequence",
+  "ZAP Discovery Call Reminder",
+  "ZAP Discovery Call Confirmation",
+  "ZAP Engagement Sequence",
+  "ZAP Event Logistics",
+  "ZAP Re-Engagement Sequence",
+  "ZAP Replay For No-Shows",
+  // WhatsApp (6)
+  "ZAP WhatsApp Discovery Call Confirmation",
+  "ZAP WhatsApp Discovery Call Reminder",
+  "ZAP WhatsApp Engagement",
+  "ZAP WhatsApp Event Logistics",
+  "ZAP WhatsApp Nurture",
+  "ZAP WhatsApp Sales",
+] as const;
+
+const ZAP_WORKFLOW_THRESHOLD = Math.ceil(ZAP_WORKFLOW_NAMES.length * 0.75);
+
+// ─── In-memory workflow-status cache (1-hour TTL, keyed by userId) ────────────
+const workflowStatusCache = new Map<number, {
+  data: { installed: boolean; count: number; total: number; checkedAt: string };
+  expiresAt: number;
+}>();
+const WORKFLOW_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+
 // ─── D1 Helper: Upsert Custom Value ───────────────────────────────────────────
 async function upsertCustomValue(
   locationId: string,
@@ -237,6 +272,80 @@ export const ghlRouter = router({
       masterSnapshotId: process.env.GHL_MASTER_SNAPSHOT_ID ?? null,
     };
   }),
+
+  /**
+   * Detect whether the customer's GHL location has ZAP's master-snapshot
+   * workflows installed. Uses workflows.readonly scope to list workflows,
+   * then prefix-matches against the canonical ZAP_WORKFLOW_NAMES list.
+   * In-memory 1-hour cache; pass force=true to bypass.
+   */
+  getWorkflowStatus: protectedProcedure
+    .input(z.object({ force: z.boolean().optional() }).optional())
+    .query(async ({ ctx, input }) => {
+      const force = input?.force ?? false;
+      const userId = ctx.user.id;
+
+      // Check cache (unless force-refresh)
+      if (!force) {
+        const cached = workflowStatusCache.get(userId);
+        if (cached && cached.expiresAt > Date.now()) {
+          return cached.data;
+        }
+      }
+
+      const db = await getDb();
+      if (!db) return { installed: false, count: 0, total: ZAP_WORKFLOW_NAMES.length, checkedAt: new Date().toISOString() };
+
+      const [ghl] = await db.select().from(ghlAccessTokens).where(eq(ghlAccessTokens.userId, userId)).limit(1);
+      if (!ghl || !ghl.locationId || new Date(ghl.tokenExpiresAt) < new Date()) {
+        return { installed: false, count: 0, total: ZAP_WORKFLOW_NAMES.length, checkedAt: new Date().toISOString() };
+      }
+
+      try {
+        const url = `${GHL_BASE}/workflows/?locationId=${ghl.locationId}`;
+        console.log(`[GHL API] getWorkflowStatus GET ${url}`);
+        const res = await fetch(url, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${ghl.accessToken}`,
+            Version: "2021-07-28",
+            Accept: "application/json",
+          },
+        });
+
+        if (!res.ok) {
+          const errText = await res.text();
+          console.warn(`[GHL] getWorkflowStatus failed: HTTP ${res.status} — ${errText.substring(0, 200)}`);
+          return { installed: false, count: 0, total: ZAP_WORKFLOW_NAMES.length, checkedAt: new Date().toISOString() };
+        }
+
+        const data = await res.json() as { workflows?: Array<{ id: string; name: string; status?: string; published?: boolean }> };
+        const workflows = data.workflows || [];
+
+        // Count ZAP workflows via case-insensitive prefix match
+        const zapWorkflows = workflows.filter(wf => /^zap[\s-]/i.test(wf.name));
+        const count = zapWorkflows.length;
+        const installed = count >= ZAP_WORKFLOW_THRESHOLD;
+
+        const result = {
+          installed,
+          count,
+          total: ZAP_WORKFLOW_NAMES.length as number,
+          checkedAt: new Date().toISOString(),
+        };
+
+        // Cache the result
+        workflowStatusCache.set(userId, {
+          data: result,
+          expiresAt: Date.now() + WORKFLOW_CACHE_TTL_MS,
+        });
+
+        return result;
+      } catch (e) {
+        console.warn("[GHL] getWorkflowStatus error:", e);
+        return { installed: false, count: 0, total: ZAP_WORKFLOW_NAMES.length, checkedAt: new Date().toISOString() };
+      }
+    }),
 
   /**
    * Get GHL OAuth URL (includes scopes for D1 + D2 features)

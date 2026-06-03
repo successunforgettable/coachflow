@@ -1404,6 +1404,63 @@ describe("Phase C C3 — Meta + GHL push wire-up", () => {
     expect(src).toMatch(/\[GHL API\] upsertCustomValue (LIST GET|PUT|POST)/);
   });
 
+  // ─── Workflow status detection + push gate ──────────────────────────────────
+
+  it("GHL router exports ZAP_WORKFLOW_NAMES constant with 16 canonical workflow names", () => {
+    const src = readFileSync(join(__dirname, "routers/ghl.ts"), "utf8");
+    expect(src).toMatch(/const ZAP_WORKFLOW_NAMES\s*=/);
+    // All 16 names present
+    for (const name of [
+      "ZAP Welcome Sequence", "ZAP Launch Sequence", "ZAP Nurture Sequence",
+      "ZAP Sales Sequence", "ZAP Discovery Call Reminder", "ZAP Discovery Call Confirmation",
+      "ZAP Engagement Sequence", "ZAP Event Logistics", "ZAP Re-Engagement Sequence",
+      "ZAP Replay For No-Shows",
+      "ZAP WhatsApp Discovery Call Confirmation", "ZAP WhatsApp Discovery Call Reminder",
+      "ZAP WhatsApp Engagement", "ZAP WhatsApp Event Logistics",
+      "ZAP WhatsApp Nurture", "ZAP WhatsApp Sales",
+    ]) {
+      expect(src).toContain(`"${name}"`);
+    }
+  });
+
+  it("GHL router defines getWorkflowStatus query with in-memory cache", () => {
+    const src = readFileSync(join(__dirname, "routers/ghl.ts"), "utf8");
+    expect(src).toMatch(/getWorkflowStatus:\s*protectedProcedure/);
+    expect(src).toMatch(/workflowStatusCache/);
+    expect(src).toMatch(/WORKFLOW_CACHE_TTL_MS/);
+    // Uses workflows.readonly endpoint
+    expect(src).toMatch(/\/workflows\/\?locationId=/);
+    // Prefix match detection
+    expect(src).toMatch(/\/\^zap\[\\s-\]\/i/);
+    // Threshold-based installed check
+    expect(src).toMatch(/ZAP_WORKFLOW_THRESHOLD/);
+  });
+
+  it("PushKitModal gates ghlPushable on snapshotInstalled", () => {
+    const src = readFileSync(
+      join(__dirname, "../client/src/v2/PushKitModal.tsx"),
+      "utf8",
+    );
+    expect(src).toMatch(/ghlPushable\s*=\s*ghlConnected\s*&&\s*snapshotInstalled/);
+    // Snapshot-not-installed warning with workflow count
+    expect(src).toMatch(/doesn't have ZAP's workflows yet/);
+    // Apply Snapshot CTA inside the warning
+    expect(src).toMatch(/Apply ZAP Master Snapshot →/);
+  });
+
+  it("V2Settings IntegrationsSection renders WorkflowStatusPill + Recheck button", () => {
+    const src = readFileSync(
+      join(__dirname, "../client/src/v2/V2Settings.tsx"),
+      "utf8",
+    );
+    expect(src).toMatch(/function WorkflowStatusPill\(/);
+    expect(src).toMatch(/Snapshot active/);
+    expect(src).toMatch(/Incomplete install/);
+    expect(src).toMatch(/Snapshot not applied/);
+    expect(src).toMatch(/↻ Recheck/);
+    expect(src).toMatch(/getWorkflowStatus/);
+  });
+
   it("V2CampaignKit kit page no longer renders the 'Push coming soon' placeholder", () => {
     const src = readFileSync(
       join(__dirname, "../client/src/v2/V2CampaignKit.tsx"),
