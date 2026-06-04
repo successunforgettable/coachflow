@@ -473,13 +473,14 @@ export default function PushKitModal({ kitId, kitName, onClose, placeholderRepor
                   )}
 
                   <label style={labelStyle}>Campaign name</label>
-                  <input type="text" value={campaignName} onChange={e => setCampaignName(e.target.value)} style={{ ...inputStyle, marginBottom: "12px" }} />
+                  <input type="text" value={campaignName} onChange={e => setCampaignName(e.target.value)} placeholder="e.g. Spring Workshop — Discovery Call Funnel" style={{ ...inputStyle, marginBottom: "12px" }} />
 
                   <label style={labelStyle}>Body copy</label>
                   <textarea
                     value={body}
                     onChange={e => { setBody(e.target.value); setBodyDirty(true); }}
                     rows={3}
+                    placeholder="e.g. Most solopreneurs spend 6 months guessing at marketing. This free workshop shows the exact 3-step positioning system to book paying clients in week one"
                     style={{ ...inputStyle, marginBottom: "12px", fontFamily: "inherit", resize: "vertical" }}
                   />
 

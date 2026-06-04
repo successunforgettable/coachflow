@@ -250,7 +250,7 @@ export default function CreateServiceStep({ data, onComplete, onNext }: CreateSe
             </Label>
             <Input
               id="name"
-              placeholder="e.g., Executive Leadership Coaching"
+              placeholder="e.g. The Solopreneur Scaling System"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               required
@@ -263,7 +263,7 @@ export default function CreateServiceStep({ data, onComplete, onNext }: CreateSe
             </Label>
             <Input
               id="targetCustomer"
-              placeholder="e.g., C-suite executives in tech companies"
+              placeholder="e.g. Solopreneurs in their first 1-2 years, earning $2K–$8K/month, drowning in client work"
               value={formData.targetCustomer}
               onChange={(e) => setFormData({ ...formData, targetCustomer: e.target.value })}
               required
@@ -276,7 +276,7 @@ export default function CreateServiceStep({ data, onComplete, onNext }: CreateSe
             </Label>
             <Input
               id="mainBenefit"
-              placeholder="e.g., Increase leadership effectiveness by 40%"
+              placeholder="e.g. From inconsistent $5K months to predictable $15K months within 12 weeks"
               value={formData.mainBenefit}
               onChange={(e) => setFormData({ ...formData, mainBenefit: e.target.value })}
               required
@@ -289,7 +289,7 @@ export default function CreateServiceStep({ data, onComplete, onNext }: CreateSe
             </Label>
             <Textarea
               id="description"
-              placeholder="Describe your service, key benefits, and what makes it unique..."
+              placeholder="e.g. I help solopreneurs hit their first $100K year using a 90-day positioning and outreach system"
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               rows={4}

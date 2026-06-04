@@ -166,7 +166,7 @@ export function Stage1Questions({ onComplete }: Stage1Props) {
           type="text"
           value={programName}
           onChange={(e) => setProgramName(e.target.value)}
-          placeholder="e.g. The Incredible You Coach Training"
+          placeholder="e.g. The Solopreneur Scaling System"
           style={{
             width: "100%",
             borderRadius: "12px",

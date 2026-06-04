@@ -163,7 +163,7 @@ const ADVANCED_FIELDS: Record<WizardStep, AdvancedField[]> = {
   campaignType: [],
   service: [],
   icp: [
-    { key: "name", label: "ICP Name / Label", type: "text", placeholder: "e.g. Mid-Career Professional", sourceNote: "Auto-generated from your service avatar" },
+    { key: "name", label: "ICP Name / Label", type: "text", placeholder: "e.g. Early-Stage Solopreneur", sourceNote: "Auto-generated from your service avatar" },
   ],
   offer: [
     // Order matters: fieldValues default = options[0]. "premium" first so the
@@ -1202,7 +1202,7 @@ function V2ServiceStep({ onBack, onComplete }: { onBack?: () => void; onComplete
                   type="text"
                   value={serviceName}
                   onChange={e => { setServiceName(e.target.value); setZapWrote(false); }}
-                  placeholder="e.g. Meta Ads Mastery for Coaches"
+                  placeholder="e.g. The Solopreneur Scaling System"
                   style={inputStyle}
                   onFocus={handleFocus}
                   onBlur={handleBlur}
@@ -1262,7 +1262,7 @@ function V2ServiceStep({ onBack, onComplete }: { onBack?: () => void; onComplete
                 <textarea
                   value={serviceDescription}
                   onChange={e => setServiceDescription(e.target.value)}
-                  placeholder="e.g. I help coaches fill their programmes with Meta ads without wasting money on the wrong audiences"
+                  placeholder="e.g. I help solopreneurs hit their first $100K year using a 90-day positioning and outreach system, without burning out on constant content creation"
                   rows={3}
                   style={{ ...inputStyle, resize: "vertical" as const }}
                   onFocus={handleFocus}
@@ -1298,7 +1298,7 @@ function V2ServiceStep({ onBack, onComplete }: { onBack?: () => void; onComplete
                   type="text"
                   value={targetCustomer}
                   onChange={e => setTargetCustomer(e.target.value)}
-                  placeholder="e.g. Female coaches aged 35-50 who want to grow their online business"
+                  placeholder="e.g. Solopreneurs in their first 1-2 years, earning $2K–$8K/month, drowning in client work with no time left to grow the business"
                   style={inputStyle}
                   onFocus={handleFocus}
                   onBlur={handleBlur}
@@ -1311,7 +1311,7 @@ function V2ServiceStep({ onBack, onComplete }: { onBack?: () => void; onComplete
                   type="text"
                   value={mainBenefit}
                   onChange={e => setMainBenefit(e.target.value)}
-                  placeholder="e.g. A fully booked coaching practice in 90 days"
+                  placeholder="e.g. From inconsistent $5K months to predictable $15K months within 12 weeks"
                   style={inputStyle}
                   onFocus={handleFocus}
                   onBlur={handleBlur}
@@ -1323,7 +1323,7 @@ function V2ServiceStep({ onBack, onComplete }: { onBack?: () => void; onComplete
                 <textarea
                   value={painPoints}
                   onChange={e => setPainPoints(e.target.value)}
-                  placeholder="e.g. Struggling to get consistent leads, wasting money on ads that don't convert"
+                  placeholder="e.g. Spending entire days on client work, then trying to do marketing at midnight, with nothing consistent to show for the effort"
                   rows={2}
                   style={{ ...inputStyle, resize: "vertical" as const }}
                   onFocus={handleFocus}
@@ -1337,7 +1337,7 @@ function V2ServiceStep({ onBack, onComplete }: { onBack?: () => void; onComplete
                   type="text"
                   value={hvcoTopic}
                   onChange={e => setHvcoTopic(e.target.value)}
-                  placeholder="e.g. Free guide: 5 Meta ad mistakes coaches make"
+                  placeholder="e.g. The Solopreneur Scaling Audit — find the 3 hidden bottlenecks killing your growth"
                   style={inputStyle}
                   onFocus={handleFocus}
                   onBlur={handleBlur}
@@ -1349,7 +1349,7 @@ function V2ServiceStep({ onBack, onComplete }: { onBack?: () => void; onComplete
                 <textarea
                   value={uniqueMechanism}
                   onChange={e => setUniqueMechanism(e.target.value)}
-                  placeholder="e.g. The Heart-Mind Activation System — a neuroscience-backed coaching framework"
+                  placeholder="e.g. The Scaling System — a 3-phase framework that compresses 12 months of growth into 90 days through positioning, productized offers, and async client delivery"
                   rows={2}
                   style={{ ...inputStyle, resize: "vertical" as const }}
                   onFocus={handleFocus}
@@ -2769,7 +2769,7 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
                     type="text"
                     value={icpName}
                     onChange={e => setIcpName(e.target.value)}
-                    placeholder="e.g. Ambitious Executive, Mid-Career Professional"
+                    placeholder="e.g. Early-Stage Solopreneur Stuck Under $10K/Month"
                     style={{
                       width: "100%",
                       fontFamily: "var(--v2-font-body)",

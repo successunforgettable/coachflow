@@ -531,7 +531,7 @@ function HeroSection({ onCampaignSelect: _onCampaignSelect }: { onCampaignSelect
         value={ans1}
         onChange={e => setAns1(e.target.value)}
         onKeyDown={e => e.key === "Enter" && handleStep1()}
-        placeholder="e.g. coaches, executives, mums, dentists"
+        placeholder="e.g. solopreneurs in their first 1-2 years of business"
         style={{ width: "100%", border: "2px solid rgba(26,22,36,0.12)", outline: "none", padding: "14px 20px", fontSize: 15, fontFamily: "'Instrument Sans', sans-serif", background: "#fff", color: INK, borderRadius: 9999, boxShadow: "0 2px 12px rgba(0,0,0,0.06)", marginBottom: 12 }}
       />
       <button
@@ -597,7 +597,7 @@ function HeroSection({ onCampaignSelect: _onCampaignSelect }: { onCampaignSelect
                   value={ans1}
                   onChange={e => setAns1(e.target.value)}
                   onKeyDown={e => e.key === "Enter" && handleStep1()}
-                  placeholder="e.g. coaches, executives, mums, dentists"
+                  placeholder="e.g. solopreneurs in their first 1-2 years of business"
                   autoFocus
                   style={{ flex: 1, border: `2px solid rgba(26,22,36,0.12)`, outline: "none", padding: "14px 20px", fontSize: 15, fontFamily: "'Instrument Sans', sans-serif", background: "#fff", color: INK, borderRadius: 9999, boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}
                 />
@@ -626,7 +626,7 @@ function HeroSection({ onCampaignSelect: _onCampaignSelect }: { onCampaignSelect
                   value={ans2}
                   onChange={e => setAns2(e.target.value)}
                   onKeyDown={e => e.key === "Enter" && handleStep2()}
-                  placeholder="e.g. fully booked practice, consistent leads, 6-figure income"
+                  placeholder="e.g. predictable $15K months within 12 weeks"
                   style={{ flex: 1, border: `2px solid rgba(26,22,36,0.12)`, outline: "none", padding: "14px 20px", fontSize: 15, fontFamily: "'Instrument Sans', sans-serif", background: "#fff", color: INK, borderRadius: 9999, boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}
                 />
                 <button
@@ -654,7 +654,7 @@ function HeroSection({ onCampaignSelect: _onCampaignSelect }: { onCampaignSelect
                   value={ans3}
                   onChange={e => setAns3(e.target.value)}
                   onKeyDown={e => e.key === "Enter" && handleStep3()}
-                  placeholder="e.g. getting consistent leads, charging premium prices, finding time"
+                  placeholder="e.g. client work consuming all their time with no room to grow"
                   style={{ flex: 1, border: `2px solid rgba(26,22,36,0.12)`, outline: "none", padding: "14px 20px", fontSize: 15, fontFamily: "'Instrument Sans', sans-serif", background: "#fff", color: INK, borderRadius: 9999, boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}
                 />
                 <button
