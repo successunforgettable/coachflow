@@ -13,6 +13,7 @@ import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { openSnapshotApplyTab } from "./lib/ghlSnapshot";
+import { WorkflowStatusPill } from "./components/WorkflowStatusPill";
 
 const T = {
   bg: "#F5F1EA",
@@ -33,34 +34,6 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
       color: T.dark,
       margin: "0 0 16px 0",
     }}>{children}</h2>
-  );
-}
-
-function WorkflowStatusPill({ count, total }: { count: number; total: number }) {
-  const installed = count >= Math.ceil(total * 0.75);
-  const partial = count > 0 && !installed;
-  const tone = installed ? "ok" : partial ? "partial" : "missing";
-  const palette = {
-    ok:      { bg: "rgba(88,204,2,0.14)",  fg: "#2E7D00" },
-    partial: { bg: "rgba(255,180,0,0.18)", fg: "#A06200" },
-    missing: { bg: "rgba(220,38,38,0.14)", fg: "#B12121" },
-  }[tone];
-  const label = installed
-    ? `Snapshot active — ${count}/${total} workflows`
-    : partial
-    ? `Incomplete install — ${count}/${total} workflows`
-    : "Snapshot not applied";
-  return (
-    <span style={{
-      display: "inline-block",
-      padding: "5px 12px",
-      borderRadius: 9999,
-      background: palette.bg,
-      color: palette.fg,
-      fontSize: 12,
-      fontWeight: 700,
-      fontFamily: T.fontB,
-    }}>{installed ? "✓" : partial ? "⚠" : "✗"} {label}</span>
   );
 }
 

@@ -34,6 +34,7 @@ import { useEffect, useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { openSnapshotApplyTab } from "./lib/ghlSnapshot";
+import { WorkflowStatusPill } from "./components/WorkflowStatusPill";
 import KitPlaceholderBanner from "./components/KitPlaceholderBanner";
 import type { PlaceholderReport } from "./lib/placeholderDetector";
 
@@ -519,7 +520,13 @@ export default function PushKitModal({ kitId, kitName, onClose, placeholderRepor
                 {ghlConn.isLoading ? (
                   <PillBadge tone="warn">Checking…</PillBadge>
                 ) : ghlConnected ? (
-                  <PillBadge tone="ok">✓ {(ghlConn.data as any)?.locationName || (ghlConn.data as any)?.locationId || "Connected"}</PillBadge>
+                  workflowStatus.isLoading ? (
+                    <PillBadge tone="warn">Checking workflows…</PillBadge>
+                  ) : workflowStatus.data ? (
+                    <WorkflowStatusPill count={workflowStatus.data.count} total={workflowStatus.data.total} />
+                  ) : (
+                    <PillBadge tone="ok">✓ {(ghlConn.data as any)?.locationName || "Connected"}</PillBadge>
+                  )
                 ) : (
                   <button onClick={handleConnectGhl} style={{ ...inputStyle, width: "auto", padding: "6px 12px", cursor: "pointer", background: "var(--v2-primary-btn, #FF5B1D)", border: "none", color: "#fff", fontWeight: 700 }}>Connect GHL</button>
                 )}
@@ -527,40 +534,22 @@ export default function PushKitModal({ kitId, kitName, onClose, placeholderRepor
               <p style={{ fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)", fontSize: "13px", color: "#555", margin: 0, lineHeight: 1.5 }}>
                 Pushes the kit's content into your GHL location as Custom Values — offer, lead magnet, mechanism, headlines, ad copy, landing page, plus the email + WhatsApp sequences split per message. Apply ZAP's Master Snapshot once to your sub-account and every push auto-renders functional templates, funnels, and workflows from these values.
               </p>
-              {ghlConnected && !snapshotInstalled && !workflowStatus.isLoading && (
-                <div style={{
-                  marginTop: "12px",
-                  padding: "12px 14px",
-                  borderRadius: "12px",
-                  background: "rgba(220,38,38,0.06)",
-                  border: "1px solid rgba(220,38,38,0.18)",
-                }}>
-                  <p style={{
-                    fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)",
-                    fontSize: "13px",
-                    color: "#B12121",
-                    margin: "0 0 8px",
-                    lineHeight: 1.5,
-                    fontWeight: 600,
-                  }}>
-                    Your GHL location doesn't have ZAP's workflows yet ({workflowStatus.data?.count ?? 0}/{workflowStatus.data?.total ?? 16} detected). Apply the Master Snapshot first — it takes 30 seconds.
-                  </p>
-                  {snapshotId && (
-                    <button
-                      onClick={() => openSnapshotApplyTab(snapshotId)}
-                      style={{
-                        padding: "8px 16px",
-                        borderRadius: 9999,
-                        border: "none",
-                        background: "var(--v2-primary-btn, #FF5B1D)",
-                        color: "#fff",
-                        fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)",
-                        fontWeight: 700,
-                        fontSize: "12px",
-                        cursor: "pointer",
-                      }}
-                    >Apply ZAP Master Snapshot →</button>
-                  )}
+              {ghlConnected && !snapshotInstalled && !workflowStatus.isLoading && snapshotId && (
+                <div style={{ marginTop: "12px", textAlign: "right" }}>
+                  <button
+                    onClick={() => openSnapshotApplyTab(snapshotId)}
+                    style={{
+                      padding: "8px 16px",
+                      borderRadius: 9999,
+                      border: "none",
+                      background: "var(--v2-primary-btn, #FF5B1D)",
+                      color: "#fff",
+                      fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)",
+                      fontWeight: 700,
+                      fontSize: "12px",
+                      cursor: "pointer",
+                    }}
+                  >Apply ZAP Master Snapshot →</button>
                 </div>
               )}
             </div>

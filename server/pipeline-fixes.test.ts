@@ -1442,9 +1442,9 @@ describe("Phase C C3 — Meta + GHL push wire-up", () => {
       "utf8",
     );
     expect(src).toMatch(/ghlPushable\s*=\s*ghlConnected\s*&&\s*snapshotInstalled/);
-    // Snapshot-not-installed warning with workflow count
-    expect(src).toMatch(/doesn't have ZAP's workflows yet/);
-    // Apply Snapshot CTA inside the warning
+    // WorkflowStatusPill always-visible in GHL section header
+    expect(src).toMatch(/WorkflowStatusPill/);
+    // Apply Snapshot CTA below pill when not installed
     expect(src).toMatch(/Apply ZAP Master Snapshot →/);
   });
 
@@ -1453,10 +1453,8 @@ describe("Phase C C3 — Meta + GHL push wire-up", () => {
       join(__dirname, "../client/src/v2/V2Settings.tsx"),
       "utf8",
     );
-    expect(src).toMatch(/function WorkflowStatusPill\(/);
-    expect(src).toMatch(/Snapshot active/);
-    expect(src).toMatch(/Incomplete install/);
-    expect(src).toMatch(/Snapshot not applied/);
+    // WorkflowStatusPill extracted to shared component, imported here
+    expect(src).toMatch(/import.*WorkflowStatusPill.*from.*components\/WorkflowStatusPill/);
     expect(src).toMatch(/↻ Recheck/);
     expect(src).toMatch(/getWorkflowStatus/);
   });

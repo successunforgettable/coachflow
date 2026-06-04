@@ -21,7 +21,10 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation } from "wouter";
 import Confetti from "react-confetti";
 import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { openSnapshotApplyTab } from "./lib/ghlSnapshot";
+import { WorkflowStatusPill } from "./components/WorkflowStatusPill";
 import V2Layout from "./V2Layout";
 import ZappyMascot from "./ZappyMascot";
 import { type WizardStep, STEP_LABELS, getNextStep } from "./v2-constants";
@@ -2439,6 +2442,144 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
               )}
             </div>
           )}
+          {/* ── NODE 11: GHL Snapshot Status card ── */}
+          {status === "success" && step === "pushToMeta" && (() => {
+            const ghlConn = trpc.ghl.getConnectionStatus.useQuery();
+            const ghlOAuthUrl = trpc.ghl.getOAuthUrl.useQuery(undefined, { enabled: false });
+            const ghlConnected = !!ghlConn.data?.connected;
+            const workflowStatus = trpc.ghl.getWorkflowStatus.useQuery(undefined, {
+              enabled: ghlConnected,
+            });
+            const snapshotInstalled = !!workflowStatus.data?.installed;
+            const snapshotId = (ghlConn.data as { masterSnapshotId?: string | null } | undefined)?.masterSnapshotId ?? null;
+
+            if (ghlConn.isLoading) return null;
+
+            return (
+              <div style={{
+                marginTop: "16px",
+                background: "#fff",
+                border: "1px solid rgba(26,22,36,0.10)",
+                borderRadius: "16px",
+                padding: "20px 24px",
+                textAlign: "center",
+              }}>
+                <div style={{ fontSize: "28px", marginBottom: "8px" }}>
+                  {ghlConnected ? "\uD83D\uDD17" : "\uD83D\uDD0C"}
+                </div>
+                <p style={{
+                  fontFamily: "var(--v2-font-heading)",
+                  fontStyle: "italic",
+                  fontWeight: 900,
+                  fontSize: "18px",
+                  color: "var(--v2-text-color)",
+                  margin: "0 0 6px",
+                }}>
+                  {ghlConnected ? "GoHighLevel Status" : "Connect GoHighLevel"}
+                </p>
+
+                {!ghlConnected ? (
+                  <>
+                    <p style={{
+                      fontFamily: "var(--v2-font-body)",
+                      fontSize: "13px",
+                      color: "#777",
+                      margin: "0 0 16px",
+                      lineHeight: 1.5,
+                    }}>
+                      Connect your GHL sub-account to push campaigns directly — one click deploys your entire kit as live workflows.
+                    </p>
+                    <button
+                      onClick={async () => {
+                        try {
+                          const res = await ghlOAuthUrl.refetch();
+                          const url = (res.data as { url?: string } | undefined)?.url;
+                          if (!url) { toast.error("Couldn't get GHL OAuth URL"); return; }
+                          window.open(url, "_blank", "width=600,height=700,left=200,top=100");
+                        } catch {
+                          toast.error("Couldn't open GHL connect flow");
+                        }
+                      }}
+                      style={{
+                        background: "var(--v2-primary-btn, #FF5B1D)",
+                        color: "#fff",
+                        border: "none",
+                        borderRadius: "9999px",
+                        padding: "12px 28px",
+                        fontFamily: "var(--v2-font-body)",
+                        fontWeight: 700,
+                        fontSize: "14px",
+                        cursor: "pointer",
+                        letterSpacing: "0.01em",
+                      }}
+                    >Connect GHL</button>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ margin: "0 0 12px", display: "flex", justifyContent: "center" }}>
+                      {workflowStatus.isLoading ? (
+                        <span style={{
+                          fontFamily: "var(--v2-font-body)",
+                          fontSize: "12px",
+                          color: "#999",
+                        }}>Checking workflows…</span>
+                      ) : workflowStatus.data ? (
+                        <WorkflowStatusPill count={workflowStatus.data.count} total={workflowStatus.data.total} />
+                      ) : null}
+                    </div>
+
+                    {snapshotInstalled ? (
+                      <a
+                        href="/v2-dashboard"
+                        style={{
+                          display: "inline-block",
+                          background: "#1A1624",
+                          color: "#fff",
+                          border: "none",
+                          borderRadius: "9999px",
+                          padding: "12px 28px",
+                          fontFamily: "var(--v2-font-body)",
+                          fontWeight: 700,
+                          fontSize: "14px",
+                          cursor: "pointer",
+                          letterSpacing: "0.01em",
+                          textDecoration: "none",
+                        }}
+                      >Push to GHL →</a>
+                    ) : snapshotId ? (
+                      <>
+                        <p style={{
+                          fontFamily: "var(--v2-font-body)",
+                          fontSize: "13px",
+                          color: "#777",
+                          margin: "0 0 12px",
+                          lineHeight: 1.5,
+                        }}>
+                          Apply ZAP's Master Snapshot to your sub-account — it takes 30 seconds, then every push auto-renders live workflows.
+                        </p>
+                        <button
+                          onClick={() => openSnapshotApplyTab(snapshotId)}
+                          style={{
+                            background: "var(--v2-primary-btn, #FF5B1D)",
+                            color: "#fff",
+                            border: "none",
+                            borderRadius: "9999px",
+                            padding: "12px 28px",
+                            fontFamily: "var(--v2-font-body)",
+                            fontWeight: 700,
+                            fontSize: "14px",
+                            cursor: "pointer",
+                            letterSpacing: "0.01em",
+                          }}
+                        >Apply ZAP Master Snapshot →</button>
+                      </>
+                    ) : null}
+                  </>
+                )}
+              </div>
+            );
+          })()}
+
           {/* ── R1a: NODE 6 HEADLINES RESULT PANEL ── */}
           {status === "success" && step === "headlines" && latestHeadlineSetId && activeService && (
             <V2HeadlinesResultPanel
