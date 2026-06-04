@@ -532,7 +532,7 @@ function HeroSection({ onCampaignSelect: _onCampaignSelect }: { onCampaignSelect
         onChange={e => setAns1(e.target.value)}
         onKeyDown={e => e.key === "Enter" && handleStep1()}
         placeholder="e.g. solopreneurs in their first 1-2 years of business"
-        style={{ width: "100%", border: "2px solid rgba(26,22,36,0.12)", outline: "none", padding: "14px 20px", fontSize: 15, fontFamily: "'Instrument Sans', sans-serif", background: "#fff", color: INK, borderRadius: 9999, boxShadow: "0 2px 12px rgba(0,0,0,0.06)", marginBottom: 12 }}
+        style={{ width: "100%", border: "2px solid rgba(26,22,36,0.12)", outline: "none", padding: "14px 18px", fontSize: 14, fontFamily: "'Instrument Sans', sans-serif", background: "#fff", color: INK, borderRadius: 9999, boxShadow: "0 2px 12px rgba(0,0,0,0.06)", marginBottom: 12 }}
       />
       <button
         onClick={() => { if (ans1.trim().length >= 3) navigate("/signup"); else handleStep1(); }}
@@ -590,7 +590,7 @@ function HeroSection({ onCampaignSelect: _onCampaignSelect }: { onCampaignSelect
           {step === "step1" && (
             <>
               <h1 style={{ fontFamily: "'Fraunces', serif", fontStyle: "italic", fontWeight: 900, fontSize: "clamp(28px, 5vw, 36px)", color: INK, margin: "0 0 28px", lineHeight: 1.4, animation: "fadeUp 0.5s ease" }}>{"Who do"}<span style={{ display: "inline", background: "#fff", borderRadius: "9999px", padding: "0 12px", marginLeft: 6, marginRight: 0, verticalAlign: "baseline", color: INK }}>{"you"}</span><span style={{ display: "inline", background: "#fff", borderRadius: "9999px", padding: "0 12px", marginLeft: 6, marginRight: 0, verticalAlign: "baseline", color: INK }}>{"help?"}</span></h1>
-              <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 520, margin: "0 auto" }} className="hero-input-row">
+              <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 580, margin: "0 auto" }} className="hero-input-row">
                 <input
                   ref={inputRef1}
                   type="text"
@@ -599,7 +599,7 @@ function HeroSection({ onCampaignSelect: _onCampaignSelect }: { onCampaignSelect
                   onKeyDown={e => e.key === "Enter" && handleStep1()}
                   placeholder="e.g. solopreneurs in their first 1-2 years of business"
                   autoFocus
-                  style={{ flex: 1, border: `2px solid rgba(26,22,36,0.12)`, outline: "none", padding: "14px 20px", fontSize: 15, fontFamily: "'Instrument Sans', sans-serif", background: "#fff", color: INK, borderRadius: 9999, boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}
+                  style={{ flex: 1, border: `2px solid rgba(26,22,36,0.12)`, outline: "none", padding: "14px 18px", fontSize: 14, fontFamily: "'Instrument Sans', sans-serif", background: "#fff", color: INK, borderRadius: 9999, boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}
                 />
                 <button
                   onClick={handleStep1}
@@ -619,7 +619,7 @@ function HeroSection({ onCampaignSelect: _onCampaignSelect }: { onCampaignSelect
               <h1 style={{ fontFamily: "'Fraunces', serif", fontStyle: "italic", fontWeight: 900, fontSize: "clamp(28px, 5vw, 36px)", color: INK, margin: "0 0 28px", lineHeight: 1.2, animation: "fadeUp 0.5s ease" }}>
                 What's the biggest result you give them?
               </h1>
-              <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 520, margin: "0 auto" }} className="hero-input-row">
+              <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 580, margin: "0 auto" }} className="hero-input-row">
                 <input
                   ref={inputRef2}
                   type="text"
@@ -627,7 +627,7 @@ function HeroSection({ onCampaignSelect: _onCampaignSelect }: { onCampaignSelect
                   onChange={e => setAns2(e.target.value)}
                   onKeyDown={e => e.key === "Enter" && handleStep2()}
                   placeholder="e.g. predictable $15K months within 12 weeks"
-                  style={{ flex: 1, border: `2px solid rgba(26,22,36,0.12)`, outline: "none", padding: "14px 20px", fontSize: 15, fontFamily: "'Instrument Sans', sans-serif", background: "#fff", color: INK, borderRadius: 9999, boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}
+                  style={{ flex: 1, border: `2px solid rgba(26,22,36,0.12)`, outline: "none", padding: "14px 18px", fontSize: 14, fontFamily: "'Instrument Sans', sans-serif", background: "#fff", color: INK, borderRadius: 9999, boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}
                 />
                 <button
                   onClick={handleStep2}
@@ -647,7 +647,7 @@ function HeroSection({ onCampaignSelect: _onCampaignSelect }: { onCampaignSelect
               <h1 style={{ fontFamily: "'Fraunces', serif", fontStyle: "italic", fontWeight: 900, fontSize: "clamp(28px, 5vw, 36px)", color: INK, margin: "0 0 28px", lineHeight: 1.2, animation: "fadeUp 0.5s ease" }}>
                 What are they struggling with right now?
               </h1>
-              <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 520, margin: "0 auto" }} className="hero-input-row">
+              <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 580, margin: "0 auto" }} className="hero-input-row">
                 <input
                   ref={inputRef3}
                   type="text"
@@ -655,7 +655,7 @@ function HeroSection({ onCampaignSelect: _onCampaignSelect }: { onCampaignSelect
                   onChange={e => setAns3(e.target.value)}
                   onKeyDown={e => e.key === "Enter" && handleStep3()}
                   placeholder="e.g. client work consuming all their time with no room to grow"
-                  style={{ flex: 1, border: `2px solid rgba(26,22,36,0.12)`, outline: "none", padding: "14px 20px", fontSize: 15, fontFamily: "'Instrument Sans', sans-serif", background: "#fff", color: INK, borderRadius: 9999, boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}
+                  style={{ flex: 1, border: `2px solid rgba(26,22,36,0.12)`, outline: "none", padding: "14px 18px", fontSize: 14, fontFamily: "'Instrument Sans', sans-serif", background: "#fff", color: INK, borderRadius: 9999, boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}
                 />
                 <button
                   onClick={handleStep3}

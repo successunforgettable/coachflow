@@ -8,11 +8,11 @@ import { filterRecord, getGlobalNegativePrompts } from "../lib/complianceFilter"
 import { BANNED_COPYWRITING_WORDS, BANNED_MECHANISM_NAMES } from "../_core/copywritingRules";
 
 const createServiceSchema = z.object({
-  name: z.string().min(1, "Name is required").max(255),
+  name: z.string().max(255),
   category: z.enum(["coaching", "speaking", "consulting"]),
-  description: z.string().min(1, "Description is required"),
-  targetCustomer: z.string().min(1, "Target customer is required").max(500),
-  mainBenefit: z.string().min(1, "Main benefit is required").max(500),
+  description: z.string(),
+  targetCustomer: z.string().max(500),
+  mainBenefit: z.string().max(500),
   price: z.number().optional(),
 });
 

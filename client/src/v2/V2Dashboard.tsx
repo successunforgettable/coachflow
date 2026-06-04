@@ -291,11 +291,11 @@ export default function V2Dashboard() {
   async function handleStartNewCampaign() {
     try {
       const svc = await createService.mutateAsync({
-        name: "New Campaign",
+        name: "",
         category: "coaching",
-        description: "New campaign",
-        targetCustomer: "My ideal client",
-        mainBenefit: "Transform their results",
+        description: "",
+        targetCustomer: "",
+        mainBenefit: "",
       });
       navigate(`/v2-dashboard/wizard/service?serviceId=${svc.id}`);
     } catch {
