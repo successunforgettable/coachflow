@@ -1662,15 +1662,18 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
     serviceId ? { serviceId } : undefined,
     { enabled: !isDemoMissing }
   );
-  const { data: mechanismsList } = trpc.heroMechanisms.list.useQuery(undefined, {
-    enabled: !isDemoMissing,
-  });
-  const { data: hvcoList } = trpc.hvco.list.useQuery(undefined, {
-    enabled: !isDemoMissing,
-  });
-  const { data: headlinesList } = trpc.headlines.list.useQuery(undefined, {
-    enabled: !isDemoMissing,
-  });
+  const { data: mechanismsList } = trpc.heroMechanisms.list.useQuery(
+    serviceId ? { serviceId } : undefined,
+    { enabled: !isDemoMissing }
+  );
+  const { data: hvcoList } = trpc.hvco.list.useQuery(
+    serviceId ? { serviceId } : undefined,
+    { enabled: !isDemoMissing }
+  );
+  const { data: headlinesList } = trpc.headlines.list.useQuery(
+    serviceId ? { serviceId } : undefined,
+    { enabled: !isDemoMissing }
+  );
   const { data: adCopyList } = trpc.adCopy.list.useQuery(
     serviceId ? { serviceId } : undefined,
     { enabled: !isDemoMissing }

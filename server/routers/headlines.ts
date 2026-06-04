@@ -18,9 +18,11 @@ import { runHeadlinesGeneration } from "../headlinesGenerator";
 
 export const headlinesRouter = router({
   // List all headline sets for current user
-  list: protectedProcedure.query(async ({ ctx }) => {
+  list: protectedProcedure
+    .input(z.object({ serviceId: z.number() }).optional())
+    .query(async ({ ctx, input }) => {
     const allHeadlines = await getHeadlinesByUserId(ctx.user.id);
-    
+
     // Group by headlineSetId
     const sets = new Map<string, any>();
     allHeadlines.forEach((headline) => {
@@ -38,10 +40,12 @@ export const headlinesRouter = router({
       const set = sets.get(headline.headlineSetId)!;
       set.count += 1;
     });
-    
-    return Array.from(sets.values()).sort((a, b) =>
+
+    const sorted = Array.from(sets.values()).sort((a, b) =>
       b.createdAt.getTime() - a.createdAt.getTime()
     );
+    if (input?.serviceId == null) return sorted;
+    return sorted.filter((s: any) => s.serviceId === input.serviceId);
   }),
 
   // Get single headline by ID

@@ -90,10 +90,13 @@ export const heroMechanismsRouter = router({
   /**
    * List all mechanism sets for current user
    */
-  list: protectedProcedure.query(async ({ ctx }) => {
-    const sets = await getHeroMechanismSetsByUser(ctx.user.id);
-    return sets;
-  }),
+  list: protectedProcedure
+    .input(z.object({ serviceId: z.number() }).optional())
+    .query(async ({ ctx, input }) => {
+      const sets = await getHeroMechanismSetsByUser(ctx.user.id);
+      if (input?.serviceId == null) return sets;
+      return sets.filter((s: any) => s.serviceId === input.serviceId);
+    }),
 
   // Get single mechanism by ID
   get: protectedProcedure
