@@ -35,7 +35,10 @@ export default function V2GeneratorWizardPage() {
   // Fetch services so we can pass serviceId down to the wizard.
   // Must be called unconditionally (before any early returns) to satisfy React hook rules.
   const { data: servicesData } = trpc.services.list.useQuery();
-  const serviceId = servicesData?.[0]?.id;
+  // Prefer explicit ?serviceId= from URL (set by "Start New Campaign"),
+  // fall back to most-recent service for "Continue Campaign" / direct nav.
+  const urlServiceId = new URLSearchParams(window.location.search).get("serviceId");
+  const serviceId = urlServiceId ? Number(urlServiceId) : servicesData?.[0]?.id;
 
   const step = params.step as WizardStep;
 
