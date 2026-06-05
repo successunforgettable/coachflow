@@ -948,10 +948,16 @@ function V2ServiceStep({ onBack, onComplete }: { onBack?: () => void; onComplete
     if (existingServices && existingServices.length > 0) {
       const svc = existingServices[0];
       // Only pre-fill name if no sessionStorage value was set
-      if (!preFillName) setServiceName(svc.name || "");
-      setServiceDescription(svc.description || "");
-      const isPlaceholderVal = (v: string | null | undefined) =>
-        !v?.trim() || v.trim().toLowerCase() === 'to be defined';
+      const isPlaceholderVal = (v: string | null | undefined) => {
+        if (!v?.trim()) return true;
+        const lower = v.trim().toLowerCase();
+        return lower === 'to be defined'
+          || lower === 'new campaign'
+          || lower === 'my ideal client'
+          || lower === 'transform their results';
+      };
+      if (!preFillName) setServiceName(!isPlaceholderVal(svc.name) ? (svc.name ?? "") : "");
+      setServiceDescription(!isPlaceholderVal(svc.description) ? (svc.description ?? "") : "");
       setTargetCustomer(!isPlaceholderVal(svc.targetCustomer) ? (svc.targetCustomer ?? "") : "");
       setMainBenefit(!isPlaceholderVal(svc.mainBenefit) ? (svc.mainBenefit ?? "") : "");
       setPainPoints(svc.painPoints || "");

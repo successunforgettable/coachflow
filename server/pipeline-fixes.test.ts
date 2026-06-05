@@ -14,6 +14,7 @@
 import { describe, it, expect } from "vitest";
 import { calculateSceneDurations } from "./routers/videos";
 import { buildScriptPrompt, MAX_SCRIPT_WORDS } from "./routers/videoScripts";
+import { sanitizePlaceholder, PLACEHOLDER_DEFAULTS } from "./routers/services";
 
 // ─── Issue 1: Gradient fallback throws ────────────────────────────────────────
 
@@ -2670,5 +2671,36 @@ describe("Phase F Sprint 2 — WhatsApp generator system prompt + supplied wirin
 
   it("fabrication validator call forwards supplied data", () => {
     expect(generatorSrc).toContain("validateWhatsappFabricationPatterns(shapeResult.messages, supplied)");
+  });
+});
+
+// ─── Placeholder sanitization (d38437a defense-in-depth) ──────────────────────
+
+describe("sanitizePlaceholder — server-side defense against stale client defaults", () => {
+  it("strips all known placeholder strings (case-insensitive, trim-tolerant)", () => {
+    for (const placeholder of PLACEHOLDER_DEFAULTS) {
+      expect(sanitizePlaceholder(placeholder)).toBe("");
+      expect(sanitizePlaceholder(placeholder.toUpperCase())).toBe("");
+      expect(sanitizePlaceholder(`  ${placeholder}  `)).toBe("");
+    }
+  });
+
+  it("strips mixed-case variants", () => {
+    expect(sanitizePlaceholder("New Campaign")).toBe("");
+    expect(sanitizePlaceholder("My Ideal Client")).toBe("");
+    expect(sanitizePlaceholder("Transform Their Results")).toBe("");
+    expect(sanitizePlaceholder("To Be Defined")).toBe("");
+  });
+
+  it("passes through real user content unchanged", () => {
+    expect(sanitizePlaceholder("Executive Coaching for CTOs")).toBe("Executive Coaching for CTOs");
+    expect(sanitizePlaceholder("Busy moms aged 30-45")).toBe("Busy moms aged 30-45");
+  });
+
+  it("returns empty string for null, undefined, and empty input", () => {
+    expect(sanitizePlaceholder(null)).toBe("");
+    expect(sanitizePlaceholder(undefined)).toBe("");
+    expect(sanitizePlaceholder("")).toBe("");
+    expect(sanitizePlaceholder("   ")).toBe("");
   });
 });

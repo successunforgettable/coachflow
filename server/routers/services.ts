@@ -16,6 +16,18 @@ const createServiceSchema = z.object({
   price: z.number().optional(),
 });
 
+// Defense-in-depth: strip stale client placeholder strings so they never persist as real data.
+// Covers cached pre-d38437a bundles that still send old defaults.
+export const PLACEHOLDER_DEFAULTS = new Set([
+  "new campaign",
+  "my ideal client",
+  "transform their results",
+  "to be defined",
+]);
+
+export const sanitizePlaceholder = (v: string | null | undefined): string =>
+  !v || !v.trim() || PLACEHOLDER_DEFAULTS.has(v.trim().toLowerCase()) ? "" : v;
+
 const updateServiceSchema = z.object({
   id: z.number(),
   name: z.string().min(1).max(255).optional(),
@@ -96,11 +108,16 @@ export const servicesRouter = router({
       const db = await getDb();
       if (!db) throw new Error("Database not available");
       
-      // Convert price to string for decimal field
+      // Sanitize known placeholder defaults from stale client bundles
       const insertData: any = {
         userId: ctx.user.id,
         ...input,
+        name: sanitizePlaceholder(input.name),
+        description: sanitizePlaceholder(input.description),
+        targetCustomer: sanitizePlaceholder(input.targetCustomer),
+        mainBenefit: sanitizePlaceholder(input.mainBenefit),
       };
+      // Convert price to string for decimal field
       if (insertData.price !== undefined) {
         insertData.price = insertData.price.toString();
       }
