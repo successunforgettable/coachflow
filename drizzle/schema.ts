@@ -286,6 +286,7 @@ export const idealCustomerProfiles = mysqlTable("idealCustomerProfiles", {
   valuesMotivations: text("valuesMotivations"), // Old field, will split to 'values' and 'goals'
   
   rating: int("rating").default(0),
+  source: mysqlEnum("source", ["generated", "imported"]).default("generated").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({
@@ -546,6 +547,7 @@ export const offers = mysqlTable("offers", {
   
   rating: int("rating").default(0),
   selectionScore: decimal("selectionScore", { precision: 5, scale: 2 }),
+  source: mysqlEnum("source", ["generated", "imported"]).default("generated").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({
@@ -627,6 +629,7 @@ export const hvcoTitles = mysqlTable("hvcoTitles", {
   rating: int("rating").default(0), // -1 = thumbs down, 0 = no rating, 1 = thumbs up
   isFavorite: boolean("isFavorite").default(false),
   selectionScore: decimal("selectionScore", { precision: 5, scale: 2 }),
+  source: mysqlEnum("source", ["generated", "imported"]).default("generated").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({
@@ -671,6 +674,7 @@ export const heroMechanisms = mysqlTable("heroMechanisms", {
   rating: int("rating").default(0), // -1 = thumbs down, 0 = no rating, 1 = thumbs up
   isFavorite: boolean("isFavorite").default(false),
   selectionScore: decimal("selectionScore", { precision: 5, scale: 2 }),
+  source: mysqlEnum("source", ["generated", "imported"]).default("generated").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({
