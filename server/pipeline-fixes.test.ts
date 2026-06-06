@@ -17,6 +17,7 @@ import { buildScriptPrompt, MAX_SCRIPT_WORDS } from "./routers/videoScripts";
 import { sanitizePlaceholder, PLACEHOLDER_DEFAULTS } from "./routers/services";
 import { isAutoModeTierAllowed } from "./routers/autoMode";
 import { _hasPlaceholder } from "./_core/cascadeContext";
+import { resolveTokensInText, type ResolvedEntry } from "./routers/placeholders";
 
 // ─── Issue 1: Gradient fallback throws ────────────────────────────────────────
 
@@ -3043,5 +3044,128 @@ describe("adCreatives GHL push — CV name assembly + orphan regex", () => {
     expect(orphanRegex.test("ZAP Ad Creative 4 Headline")).toBe(true);
     expect(orphanRegex.test("ZAP Ad Creative 5 Image")).toBe(true);
     expect(orphanRegex.test("ZAP Ad Creative 3 Image")).toBe(false);
+  });
+});
+
+// ─── Placeholder Editor: resolve + two-pass precedence ────────────────────────
+
+describe("resolveTokensInText — substitutes filled tokens, leaves unfilled intact", () => {
+  it("replaces filled tokens with registry values", () => {
+    const map = new Map<string, ResolvedEntry>([
+      ["[INSERT_PRICE]", { token: "[INSERT_PRICE]", value: "$6,000", source: "campaign" }],
+      ["[INSERT_HOST_NAME]", { token: "[INSERT_HOST_NAME]", value: "Arfeen Khan", source: "default" }],
+    ]);
+    const text = "Investment: [INSERT_PRICE]. Contact [INSERT_HOST_NAME] at [INSERT_CONTACT_EMAIL].";
+    const result = resolveTokensInText(text, map);
+    expect(result).toBe("Investment: $6,000. Contact Arfeen Khan at [INSERT_CONTACT_EMAIL].");
+  });
+
+  it("leaves unfilled tokens intact", () => {
+    const map = new Map<string, ResolvedEntry>();
+    const text = "Price: [INSERT_PRICE], Guarantee: [INSERT_GUARANTEE_TERMS]";
+    const result = resolveTokensInText(text, map);
+    expect(result).toBe(text);
+  });
+
+  it("handles text with no tokens", () => {
+    const map = new Map<string, ResolvedEntry>([
+      ["[INSERT_PRICE]", { token: "[INSERT_PRICE]", value: "$6,000", source: "campaign" }],
+    ]);
+    const result = resolveTokensInText("No placeholders here.", map);
+    expect(result).toBe("No placeholders here.");
+  });
+
+  it("replaces multiple occurrences of the same token", () => {
+    const map = new Map<string, ResolvedEntry>([
+      ["[INSERT_PRICE]", { token: "[INSERT_PRICE]", value: "$6,000", source: "campaign" }],
+    ]);
+    const text = "Only [INSERT_PRICE] today! That's right, [INSERT_PRICE]!";
+    const result = resolveTokensInText(text, map);
+    expect(result).toBe("Only $6,000 today! That's right, $6,000!");
+  });
+});
+
+describe("two-pass precedence — campaign overrides default", () => {
+  it("campaign-specific value wins over account default", () => {
+    // Simulate the two-pass buildResolvedMap logic
+    const rows = [
+      { serviceId: null, token: "[INSERT_PRICE]", value: "$3,000" },      // account default
+      { serviceId: 42, token: "[INSERT_PRICE]", value: "$6,000" },         // campaign override
+      { serviceId: null, token: "[INSERT_HOST_NAME]", value: "Arfeen" },   // default only
+    ];
+    const targetServiceId = 42;
+
+    const map = new Map<string, ResolvedEntry>();
+    // Pass 1: defaults
+    for (const row of rows.filter(r => r.serviceId === null)) {
+      map.set(row.token, { token: row.token, value: row.value, source: "default" });
+    }
+    // Pass 2: campaign overrides
+    for (const row of rows.filter(r => r.serviceId === targetServiceId)) {
+      map.set(row.token, { token: row.token, value: row.value, source: "campaign" });
+    }
+
+    expect(map.get("[INSERT_PRICE]")!.value).toBe("$6,000");
+    expect(map.get("[INSERT_PRICE]")!.source).toBe("campaign");
+    expect(map.get("[INSERT_HOST_NAME]")!.value).toBe("Arfeen");
+    expect(map.get("[INSERT_HOST_NAME]")!.source).toBe("default");
+  });
+
+  it("save to campaign B leaves campaign A rows untouched", () => {
+    // Simulate rows from two campaigns
+    const allRows = [
+      { serviceId: null, token: "[INSERT_PRICE]", value: "$9,000" },   // latest default
+      { serviceId: 10, token: "[INSERT_PRICE]", value: "$6,000" },     // campaign A
+      { serviceId: 20, token: "[INSERT_PRICE]", value: "$9,000" },     // campaign B
+    ];
+
+    // Resolve for campaign A
+    const mapA = new Map<string, ResolvedEntry>();
+    const relevantA = allRows.filter(r => r.serviceId === null || r.serviceId === 10);
+    for (const row of relevantA.filter(r => r.serviceId === null)) {
+      mapA.set(row.token, { token: row.token, value: row.value, source: "default" });
+    }
+    for (const row of relevantA.filter(r => r.serviceId === 10)) {
+      mapA.set(row.token, { token: row.token, value: row.value, source: "campaign" });
+    }
+
+    // Campaign A still shows $6,000 (its own row wins over updated default)
+    expect(mapA.get("[INSERT_PRICE]")!.value).toBe("$6,000");
+    expect(mapA.get("[INSERT_PRICE]")!.source).toBe("campaign");
+
+    // Resolve for campaign B
+    const mapB = new Map<string, ResolvedEntry>();
+    const relevantB = allRows.filter(r => r.serviceId === null || r.serviceId === 20);
+    for (const row of relevantB.filter(r => r.serviceId === null)) {
+      mapB.set(row.token, { token: row.token, value: row.value, source: "default" });
+    }
+    for (const row of relevantB.filter(r => r.serviceId === 20)) {
+      mapB.set(row.token, { token: row.token, value: row.value, source: "campaign" });
+    }
+
+    // Campaign B shows $9,000
+    expect(mapB.get("[INSERT_PRICE]")!.value).toBe("$9,000");
+  });
+
+  it("new campaign with no campaign rows falls back to account defaults", () => {
+    const rows = [
+      { serviceId: null, token: "[INSERT_PRICE]", value: "$6,000" },
+      { serviceId: null, token: "[INSERT_HOST_NAME]", value: "Arfeen" },
+    ];
+    const newServiceId = 99;
+
+    const map = new Map<string, ResolvedEntry>();
+    const relevant = rows.filter(r => r.serviceId === null || r.serviceId === newServiceId);
+    for (const row of relevant.filter(r => r.serviceId === null)) {
+      map.set(row.token, { token: row.token, value: row.value, source: "default" });
+    }
+    for (const row of relevant.filter(r => r.serviceId === newServiceId)) {
+      map.set(row.token, { token: row.token, value: row.value, source: "campaign" });
+    }
+
+    expect(map.get("[INSERT_PRICE]")!.value).toBe("$6,000");
+    expect(map.get("[INSERT_PRICE]")!.source).toBe("default");
+    expect(map.get("[INSERT_HOST_NAME]")!.value).toBe("Arfeen");
+    expect(map.get("[INSERT_HOST_NAME]")!.source).toBe("default");
   });
 });
