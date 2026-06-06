@@ -14,6 +14,7 @@ import {
   heroMechanisms,
   hvcoTitles,
   offers,
+  adCreatives,
 } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 
@@ -513,6 +514,7 @@ export const ghlRouter = router({
         offerPushed: false,
         hvcoTitlePushed: false,
         heroMechanismPushed: false,
+        adCreativesPushed: false,
       };
 
       const headers: Record<string, string> = {
@@ -857,6 +859,65 @@ export const ghlRouter = router({
             );
           }
         } catch (e) { console.warn("[GHL] Hero mechanism push error:", e); }
+      }
+
+      // ─── 9. Ad Creatives ─────────────────────────────────────────────────────
+      // Granular per-variation CVs (follows Email/WhatsApp pattern): push
+      // headline + Cloudinary image URL per variation, plus a count CV.
+      // GHL workflow templates reference {{custom_values.zap_ad_creative_1_image}}
+      // to render the composited ad image inline.
+      if (kit.selectedAdCreativeBatchId) {
+        try {
+          const creatives = await db
+            .select()
+            .from(adCreatives)
+            .where(and(
+              eq(adCreatives.batchId, kit.selectedAdCreativeBatchId),
+              eq(adCreatives.userId, ctx.user.id),
+            ))
+            .orderBy(adCreatives.variationNumber);
+
+          if (creatives.length > 0) {
+            let creativeSlotsOk = 0;
+            for (let i = 0; i < creatives.length; i++) {
+              const c = creatives[i];
+              const okHeadline = await upsertCustomValue(
+                locationId, headers,
+                `ZAP Ad Creative ${i + 1} Headline`,
+                c.headline || "",
+              );
+              const okImage = await upsertCustomValue(
+                locationId, headers,
+                `ZAP Ad Creative ${i + 1} Image`,
+                c.imageUrl || "",
+              );
+              if (okHeadline && okImage) creativeSlotsOk++;
+            }
+
+            const okCount = await upsertCustomValue(
+              locationId, headers,
+              "ZAP Ad Creative Count",
+              String(creatives.length),
+            );
+
+            results.adCreativesPushed =
+              creativeSlotsOk === creatives.length && okCount && creatives.length > 0;
+
+            // Orphan cleanup: DELETE stale `ZAP Ad Creative N (Headline|Image)`
+            // CVs where N > current count (from a prior push with more variations).
+            // Batch is 5 today; match up to 10 defensively.
+            const orphanSlots = Array.from(
+              { length: 10 - creatives.length },
+              (_, k) => k + creatives.length + 1,
+            );
+            if (orphanSlots.length > 0) {
+              await cleanupOrphanCustomValues(
+                locationId, headers,
+                new RegExp(`^ZAP Ad Creative (?:${orphanSlots.join("|")}) (?:Headline|Image)$`),
+              );
+            }
+          }
+        } catch (e) { console.warn("[GHL] Ad creatives push error:", e); }
       }
 
       return results;

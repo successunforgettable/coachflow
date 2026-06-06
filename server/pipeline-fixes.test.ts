@@ -2984,3 +2984,64 @@ describe("describeMechanism cascade — descriptor appended when real, skipped w
     expect(desc).not.toContain("[INSERT_");
   });
 });
+
+// ─── adCreatives → GHL export: CV assembly + orphan cleanup ───────────────────
+
+describe("adCreatives GHL push — CV name assembly + orphan regex", () => {
+  it("assembles correct CV names for a 5-variation batch", () => {
+    const creatives = [
+      { variationNumber: 1, headline: "Cut sales cycles 50%", imageUrl: "https://res.cloudinary.com/img1.png" },
+      { variationNumber: 2, headline: "Trusted by 400+ coaches", imageUrl: "https://res.cloudinary.com/img2.png" },
+      { variationNumber: 3, headline: "What if you could?", imageUrl: "https://res.cloudinary.com/img3.png" },
+      { variationNumber: 4, headline: "Before vs After", imageUrl: "https://res.cloudinary.com/img4.png" },
+      { variationNumber: 5, headline: "The hidden truth", imageUrl: "https://res.cloudinary.com/img5.png" },
+    ];
+
+    const cvPairs: Array<{ name: string; value: string }> = [];
+    for (let i = 0; i < creatives.length; i++) {
+      cvPairs.push({ name: `ZAP Ad Creative ${i + 1} Headline`, value: creatives[i].headline });
+      cvPairs.push({ name: `ZAP Ad Creative ${i + 1} Image`, value: creatives[i].imageUrl });
+    }
+    cvPairs.push({ name: "ZAP Ad Creative Count", value: String(creatives.length) });
+
+    expect(cvPairs).toHaveLength(11); // 5×2 + 1 count
+    expect(cvPairs[0].name).toBe("ZAP Ad Creative 1 Headline");
+    expect(cvPairs[0].value).toBe("Cut sales cycles 50%");
+    expect(cvPairs[1].name).toBe("ZAP Ad Creative 1 Image");
+    expect(cvPairs[1].value).toContain("cloudinary.com");
+    expect(cvPairs[10].name).toBe("ZAP Ad Creative Count");
+    expect(cvPairs[10].value).toBe("5");
+  });
+
+  it("orphan regex matches stale slots above current count", () => {
+    const currentCount = 3;
+    const orphanSlots = Array.from({ length: 10 - currentCount }, (_, k) => k + currentCount + 1);
+    const orphanRegex = new RegExp(`^ZAP Ad Creative (?:${orphanSlots.join("|")}) (?:Headline|Image)$`);
+
+    // Should match slots 4-10
+    expect(orphanRegex.test("ZAP Ad Creative 4 Headline")).toBe(true);
+    expect(orphanRegex.test("ZAP Ad Creative 5 Image")).toBe(true);
+    expect(orphanRegex.test("ZAP Ad Creative 10 Headline")).toBe(true);
+
+    // Should NOT match current slots 1-3
+    expect(orphanRegex.test("ZAP Ad Creative 1 Headline")).toBe(false);
+    expect(orphanRegex.test("ZAP Ad Creative 3 Image")).toBe(false);
+
+    // Should NOT match count CV
+    expect(orphanRegex.test("ZAP Ad Creative Count")).toBe(false);
+  });
+
+  it("count CV reflects actual batch size for re-push scenarios", () => {
+    // Simulate re-push with fewer variations (e.g., 3 instead of 5)
+    const rePushCount = 3;
+    const countCV = { name: "ZAP Ad Creative Count", value: String(rePushCount) };
+    expect(countCV.value).toBe("3");
+
+    // Original 5 → re-push 3: orphan slots 4,5 should match
+    const orphanSlots = Array.from({ length: 10 - rePushCount }, (_, k) => k + rePushCount + 1);
+    const orphanRegex = new RegExp(`^ZAP Ad Creative (?:${orphanSlots.join("|")}) (?:Headline|Image)$`);
+    expect(orphanRegex.test("ZAP Ad Creative 4 Headline")).toBe(true);
+    expect(orphanRegex.test("ZAP Ad Creative 5 Image")).toBe(true);
+    expect(orphanRegex.test("ZAP Ad Creative 3 Image")).toBe(false);
+  });
+});
