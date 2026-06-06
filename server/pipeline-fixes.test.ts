@@ -2910,3 +2910,77 @@ describe("describeOffer cascade string — field assembly logic (unit)", () => {
     expect(desc).not.toContain("Pricing:");
   });
 });
+
+// ─── describeHvco + describeMechanism cascade widening ────────────────────────
+
+describe("describeHvco cascade — hvcoTopic appended when real, skipped when placeholder", () => {
+  it("appends real hvcoTopic to the cascade string", () => {
+    const title = "The Consultant's Playbook";
+    const topic = "How to land your first high-ticket client without cold outreach";
+    let desc = `Selected lead magnet (free opt-in): "${title}".`;
+    if (topic && !_hasPlaceholder(topic)) {
+      desc += ` Topic: "${topic}".`;
+    }
+    expect(desc).toContain('Topic: "How to land your first high-ticket client');
+    expect(desc).toContain(title);
+  });
+
+  it("skips hvcoTopic containing [INSERT_ placeholder", () => {
+    const title = "The Playbook";
+    const topic = "[INSERT_LEAD_MAGNET_NAME] covers the essentials";
+    let desc = `Selected lead magnet (free opt-in): "${title}".`;
+    if (topic && !_hasPlaceholder(topic)) {
+      desc += ` Topic: "${topic}".`;
+    }
+    expect(desc).not.toContain("Topic:");
+    expect(desc).not.toContain("[INSERT_");
+  });
+
+  it("skips null/empty hvcoTopic", () => {
+    const topic: string | null = null;
+    let desc = `Selected lead magnet (free opt-in): "Test".`;
+    if (topic && !_hasPlaceholder(topic)) {
+      desc += ` Topic: "${topic}".`;
+    }
+    expect(desc).not.toContain("Topic:");
+  });
+});
+
+describe("describeMechanism cascade — descriptor appended when real, skipped when absent", () => {
+  it("appends real descriptor to the cascade string", () => {
+    const name = "The Neural Nexus System";
+    const descriptor = "Framework";
+    const description = "A 3-step framework that rewires decision fatigue.";
+    let desc = `Selected hero mechanism: "${name}".`;
+    if (descriptor && !_hasPlaceholder(descriptor)) {
+      desc += ` Type: ${descriptor}.`;
+    }
+    desc += ` Description: "${description}".`;
+    expect(desc).toContain("Type: Framework.");
+    expect(desc).toContain("Neural Nexus System");
+    expect(desc).toContain("Description:");
+  });
+
+  it("skips null descriptor gracefully", () => {
+    const name = "The Method";
+    const descriptor: string | null = null;
+    const description = "A coaching approach.";
+    let desc = `Selected hero mechanism: "${name}".`;
+    if (descriptor && !_hasPlaceholder(descriptor)) {
+      desc += ` Type: ${descriptor}.`;
+    }
+    desc += ` Description: "${description}".`;
+    expect(desc).not.toContain("Type:");
+    expect(desc).toContain("Description:");
+  });
+
+  it("skips descriptor containing [INSERT_ placeholder", () => {
+    const descriptor = "[INSERT_MECHANISM_TYPE]";
+    let desc = `Selected hero mechanism: "Test".`;
+    if (descriptor && !_hasPlaceholder(descriptor)) {
+      desc += ` Type: ${descriptor}.`;
+    }
+    expect(desc).not.toContain("Type:");
+    expect(desc).not.toContain("[INSERT_");
+  });
+});

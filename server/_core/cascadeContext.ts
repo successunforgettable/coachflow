@@ -219,13 +219,22 @@ async function describeMechanism(db: Db, id: number): Promise<string | null> {
   const [m] = await db.select().from(heroMechanisms).where(eq(heroMechanisms.id, id)).limit(1);
   if (!m) return null;
   const description = truncateAtSentence(m.mechanismDescription ?? "", 250);
-  return `Selected hero mechanism: "${m.mechanismName}". Description: "${description}".`;
+  let desc = `Selected hero mechanism: "${m.mechanismName}".`;
+  if (m.descriptor && !hasPlaceholder(m.descriptor)) {
+    desc += ` Type: ${m.descriptor}.`;
+  }
+  desc += ` Description: "${description}".`;
+  return desc;
 }
 
 async function describeHvco(db: Db, id: number): Promise<string | null> {
   const [h] = await db.select().from(hvcoTitles).where(eq(hvcoTitles.id, id)).limit(1);
   if (!h) return null;
-  return `Selected lead magnet (free opt-in): "${h.title}".`;
+  let desc = `Selected lead magnet (free opt-in): "${h.title}".`;
+  if (h.hvcoTopic && !hasPlaceholder(h.hvcoTopic)) {
+    desc += ` Topic: "${truncateAtSentence(h.hvcoTopic, 300)}".`;
+  }
+  return desc;
 }
 
 // Deliberate deviation from the locked spec: the spec rendered the
