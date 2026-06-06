@@ -15,6 +15,7 @@ import { describe, it, expect } from "vitest";
 import { calculateSceneDurations } from "./routers/videos";
 import { buildScriptPrompt, MAX_SCRIPT_WORDS } from "./routers/videoScripts";
 import { sanitizePlaceholder, PLACEHOLDER_DEFAULTS } from "./routers/services";
+import { isAutoModeTierAllowed } from "./routers/autoMode";
 
 // ─── Issue 1: Gradient fallback throws ────────────────────────────────────────
 
@@ -2702,5 +2703,117 @@ describe("sanitizePlaceholder — server-side defense against stale client defau
     expect(sanitizePlaceholder(undefined)).toBe("");
     expect(sanitizePlaceholder("")).toBe("");
     expect(sanitizePlaceholder("   ")).toBe("");
+  });
+});
+
+// ─── Import mutations: tier-gate + schema validation ──────────────────────────
+
+describe("isAutoModeTierAllowed — import mutations share the same gate", () => {
+  it("blocks trial-tier users", () => {
+    const result = isAutoModeTierAllowed({ role: "user", subscriptionTier: "trial" });
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toContain("Pro feature");
+  });
+
+  it("blocks null/missing subscriptionTier", () => {
+    expect(isAutoModeTierAllowed({ role: "user", subscriptionTier: null }).allowed).toBe(false);
+    expect(isAutoModeTierAllowed({ role: "user", subscriptionTier: undefined }).allowed).toBe(false);
+  });
+
+  it("allows pro and agency tiers", () => {
+    expect(isAutoModeTierAllowed({ role: "user", subscriptionTier: "pro" }).allowed).toBe(true);
+    expect(isAutoModeTierAllowed({ role: "user", subscriptionTier: "agency" }).allowed).toBe(true);
+  });
+
+  it("allows superuser and admin regardless of tier", () => {
+    expect(isAutoModeTierAllowed({ role: "superuser", subscriptionTier: "trial" }).allowed).toBe(true);
+    expect(isAutoModeTierAllowed({ role: "admin", subscriptionTier: null }).allowed).toBe(true);
+  });
+});
+
+describe("importAssets input schema — validates per-asset shape", () => {
+  const { z } = require("zod");
+
+  const importAssetsSchema = z.object({
+    serviceId: z.number(),
+    icpId: z.number(),
+    offer: z.object({
+      name: z.string().min(1).max(500),
+      valueProposition: z.string().min(1).max(2000),
+      cta: z.string().min(1).max(500),
+    }).optional(),
+    mechanism: z.object({
+      name: z.string().min(1).max(255),
+      description: z.string().min(1).max(2000),
+    }).optional(),
+    hvco: z.object({
+      title: z.string().min(1).max(500),
+      topic: z.string().min(1).max(2000),
+    }).optional(),
+  });
+
+  it("accepts blank-slate input (no assets)", () => {
+    const result = importAssetsSchema.safeParse({ serviceId: 1, icpId: 1 });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts full import (all 3 assets)", () => {
+    const result = importAssetsSchema.safeParse({
+      serviceId: 1,
+      icpId: 1,
+      offer: { name: "Authority Stack", valueProposition: "Land $10k clients", cta: "Book a Call" },
+      mechanism: { name: "Neural Nexus System", description: "A 3-step framework for clarity" },
+      hvco: { title: "The Consultant's Playbook", topic: "How to land your first high-ticket client" },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects empty offer name", () => {
+    const result = importAssetsSchema.safeParse({
+      serviceId: 1, icpId: 1,
+      offer: { name: "", valueProposition: "x", cta: "x" },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects offer missing required cta field", () => {
+    const result = importAssetsSchema.safeParse({
+      serviceId: 1, icpId: 1,
+      offer: { name: "Test", valueProposition: "Test" },
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("importIcp input schema — validates ICP import shape", () => {
+  const { z } = require("zod");
+
+  const importIcpSchema = z.object({
+    serviceId: z.number(),
+    name: z.string().min(1).max(255),
+    pains: z.string().max(2000).optional(),
+    goals: z.string().max(2000).optional(),
+    implementationBarriers: z.string().max(2000).optional(),
+  });
+
+  it("accepts name-only (minimal import)", () => {
+    const result = importIcpSchema.safeParse({ serviceId: 1, name: "Burned-out CTOs" });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts name + all optional fields", () => {
+    const result = importIcpSchema.safeParse({
+      serviceId: 1,
+      name: "Burned-out CTOs",
+      pains: "No work-life balance",
+      goals: "Sustainable leadership",
+      implementationBarriers: "Time constraints",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects empty name", () => {
+    const result = importIcpSchema.safeParse({ serviceId: 1, name: "" });
+    expect(result.success).toBe(false);
   });
 });

@@ -23,12 +23,14 @@
  */
 import { z } from "zod";
 import { randomUUID } from "crypto";
+import { nanoid } from "nanoid";
 import { TRPCError } from "@trpc/server";
 import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
-import { jobs } from "../../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { jobs, idealCustomerProfiles, offers, heroMechanisms, hvcoTitles, services } from "../../drizzle/schema";
+import { eq, and } from "drizzle-orm";
 import { runOrchestration } from "../_core/orchestration";
+import { autoSelectBest } from "./campaignKits";
 
 /**
  * Phase C C0: Auto Mode tier gate.
@@ -152,5 +154,155 @@ export const autoModeRouter = router({
       });
 
       return { jobId };
+    }),
+
+  /**
+   * importIcp — synchronous ICP import for existing-assets users.
+   *
+   * Inserts a single ICP row with user-supplied fields and returns icpId
+   * immediately (no job/polling). The Confirm screen calls this instead of
+   * icps.generateAsync when the user toggles "I Have One" on the ICP card.
+   *
+   * Required: name. Optional: pains, goals, implementationBarriers.
+   * All 14 remaining Kong tabs are left null — acceptable v1 tradeoff
+   * (generators that read those tabs produce less personalised output,
+   * but the cascade still runs end-to-end).
+   */
+  importIcp: protectedProcedure
+    .input(z.object({
+      serviceId: z.number(),
+      name: z.string().min(1).max(255),
+      pains: z.string().max(2000).optional(),
+      goals: z.string().max(2000).optional(),
+      implementationBarriers: z.string().max(2000).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const tierCheck = isAutoModeTierAllowed(ctx.user);
+      if (!tierCheck.allowed) {
+        throw new TRPCError({ code: "FORBIDDEN", message: tierCheck.reason! });
+      }
+
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const result: any = await db.insert(idealCustomerProfiles).values({
+        userId: ctx.user.id,
+        serviceId: input.serviceId,
+        name: input.name,
+        pains: input.pains || null,
+        goals: input.goals || null,
+        implementationBarriers: input.implementationBarriers || null,
+        source: "imported",
+      });
+
+      return { icpId: result[0].insertId as number };
+    }),
+
+  /**
+   * importAssets — pre-populate kit slots for user-imported assets.
+   *
+   * Called between icpId-resolve and orchestrate on the Confirm screen.
+   * For each provided asset (offer, mechanism, hvco), inserts one row
+   * into the target table with source='imported', then calls
+   * autoSelectBest to write the kit slot. The orchestrator's
+   * skip-already-populated logic (orchestration.ts:191-196) then skips
+   * these steps on the first cascade run.
+   *
+   * All three asset fields are optional — only populated for assets
+   * where the user toggled "I Have One". Blank-slate users skip this
+   * call entirely (or call with no assets — both work).
+   */
+  importAssets: protectedProcedure
+    .input(z.object({
+      serviceId: z.number(),
+      icpId: z.number(),
+      offer: z.object({
+        name: z.string().min(1).max(500),
+        valueProposition: z.string().min(1).max(2000),
+        cta: z.string().min(1).max(500),
+      }).optional(),
+      mechanism: z.object({
+        name: z.string().min(1).max(255),
+        description: z.string().min(1).max(2000),
+      }).optional(),
+      hvco: z.object({
+        title: z.string().min(1).max(500),
+        topic: z.string().min(1).max(2000),
+      }).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const tierCheck = isAutoModeTierAllowed(ctx.user);
+      if (!tierCheck.allowed) {
+        throw new TRPCError({ code: "FORBIDDEN", message: tierCheck.reason! });
+      }
+
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      // Fetch service for auto-populating context fields
+      const [svc] = await db.select().from(services)
+        .where(and(eq(services.id, input.serviceId), eq(services.userId, ctx.user.id)))
+        .limit(1);
+      const targetMarket = svc?.targetCustomer || "";
+
+      // --- Offer ---
+      if (input.offer) {
+        const offerResult: any = await db.insert(offers).values({
+          userId: ctx.user.id,
+          serviceId: input.serviceId,
+          productName: input.offer.name,
+          activeAngle: "godfather",
+          godfatherAngle: {
+            offerName: input.offer.name,
+            valueProposition: input.offer.valueProposition,
+            cta: input.offer.cta,
+            pricing: "",
+            bonuses: "",
+            guarantee: "",
+            urgency: "",
+          },
+          source: "imported",
+        });
+        await autoSelectBest(ctx.user.id, input.icpId, "selectedOfferId", offerResult[0].insertId);
+      }
+
+      // --- Mechanism ---
+      if (input.mechanism) {
+        const mechResult: any = await db.insert(heroMechanisms).values({
+          userId: ctx.user.id,
+          serviceId: input.serviceId,
+          mechanismSetId: nanoid(),
+          tabType: "hero_mechanisms",
+          mechanismName: input.mechanism.name,
+          mechanismDescription: input.mechanism.description,
+          targetMarket,
+          pressingProblem: "",
+          whyProblem: "",
+          whatTried: "",
+          whyExistingNotWork: "",
+          desiredOutcome: "",
+          credibility: "",
+          socialProof: "",
+          source: "imported",
+        });
+        await autoSelectBest(ctx.user.id, input.icpId, "selectedMechanismId", mechResult[0].insertId);
+      }
+
+      // --- HVCO (lead magnet / free opt-in) ---
+      if (input.hvco) {
+        const hvcoResult: any = await db.insert(hvcoTitles).values({
+          userId: ctx.user.id,
+          serviceId: input.serviceId,
+          hvcoSetId: nanoid(),
+          tabType: "long",
+          title: input.hvco.title,
+          targetMarket,
+          hvcoTopic: input.hvco.topic,
+          source: "imported",
+        });
+        await autoSelectBest(ctx.user.id, input.icpId, "selectedHvcoId", hvcoResult[0].insertId);
+      }
+
+      return { success: true };
     }),
 });
