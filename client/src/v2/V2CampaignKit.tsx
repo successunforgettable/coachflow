@@ -655,6 +655,31 @@ export default function V2CampaignKit() {
           }}>
             {(icpData as any)?.name || "Loading ICP..."} · {filledCount} of {TOTAL_KIT_ASSETS} selected
           </p>
+          {(fullPlaceholderReport.allUniqueTokens?.length ?? 0) > 0 && (
+            <button
+              onClick={() => setShowPlaceholderEditor(true)}
+              style={{
+                marginTop: 10,
+                padding: "7px 18px",
+                borderRadius: "var(--v2-border-radius-pill, 9999px)",
+                border: "1px solid rgba(26,22,36,0.15)",
+                background: "transparent",
+                color: "var(--v2-text-color)",
+                fontFamily: "var(--v2-font-body)",
+                fontWeight: 600,
+                fontSize: 13,
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                transition: "border-color 0.15s ease",
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(26,22,36,0.35)"; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(26,22,36,0.15)"; }}
+            >
+              Edit Campaign Details
+            </button>
+          )}
         </div>
 
         {/* Phase D Sprint 3: kit-level placeholder banner. Self-hides when
