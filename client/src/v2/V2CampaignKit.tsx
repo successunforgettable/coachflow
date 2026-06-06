@@ -9,6 +9,7 @@ import V2Layout from "./V2Layout";
 import ZappyMascot from "./ZappyMascot";
 import PushKitModal from "./PushKitModal";
 import KitPlaceholderBanner from "./components/KitPlaceholderBanner";
+import PlaceholderEditor from "./components/PlaceholderEditor";
 import { detectPlaceholders } from "./lib/placeholderDetector";
 import { trpc } from "@/lib/trpc";
 import { downloadCampaignBrief } from "./lib/exportUtils";
@@ -256,6 +257,7 @@ function AssetSection({ sectionKey, label, step, selectedId, angle, navigate }: 
 
 // ─── Main page component ───────────────────────────────────────────────────────
 export default function V2CampaignKit() {
+  const utils = trpc.useUtils();
   const [, navigate] = useLocation();
   const params = useParams<{ kitId: string }>();
   const kitId = params.kitId ? Number(params.kitId) : null;
@@ -303,6 +305,20 @@ export default function V2CampaignKit() {
   // V2AutoModeProgress fires on cascade complete). localStorage key persists
   // the dismissal so the overlay does not reappear on subsequent visits.
   const [showOverlay, setShowOverlay] = useState(false);
+  const [showPlaceholderEditor, setShowPlaceholderEditor] = useState(false);
+
+  // Placeholder registry: resolve serviceId from ICP data
+  const serviceId = (icpData as any)?.serviceId as number | undefined;
+  const { data: placeholderEntries } = trpc.placeholders.list.useQuery(
+    { serviceId: serviceId! },
+    { enabled: !!serviceId },
+  );
+  const resolvedMap = useMemo(() => {
+    if (!placeholderEntries) return undefined;
+    const m: Record<string, string> = {};
+    for (const e of placeholderEntries) m[e.token] = e.value;
+    return m;
+  }, [placeholderEntries]);
 
   useEffect(() => {
     if (!kit || kitId == null) return;
@@ -327,6 +343,19 @@ export default function V2CampaignKit() {
   // PushKitModal (compact warning). Memoized on the loaded brief data so the
   // detector doesn't re-scan on unrelated re-renders.
   const placeholderReport = useMemo(() => detectPlaceholders({
+    offer: briefOffer,
+    lp: briefLP,
+    email: briefEmail,
+    whatsapp: briefWa,
+    headlines: briefHeadline,
+    adCopy: briefAdCopy,
+    hvco: briefHvco,
+    heroMechanism: briefMech,
+    adCreatives: briefAdCreatives,
+  }, resolvedMap), [briefOffer, briefLP, briefEmail, briefWa, briefHeadline, briefAdCopy, briefHvco, briefMech, briefAdCreatives, resolvedMap]);
+
+  // Full report (without resolvedMap subtraction) for the editor to show all tokens
+  const fullPlaceholderReport = useMemo(() => detectPlaceholders({
     offer: briefOffer,
     lp: briefLP,
     email: briefEmail,
@@ -634,27 +663,7 @@ export default function V2CampaignKit() {
             CTA that scrolls to the first affected asset section. */}
         <KitPlaceholderBanner
           report={placeholderReport}
-          onReviewClick={() => {
-            // Scroll to the asset card for the highest-count affected asset.
-            // Asset-key to SECTIONS.key mapping mirrors the detector's assetKey
-            // strings exactly; falls back to scrolling to first section if no
-            // match (shouldn't happen in practice).
-            const firstAsset = Object.keys(placeholderReport.byAsset)[0];
-            const keyMap: Record<string, string> = {
-              "Offer": "selectedOfferId",
-              "Hero Mechanism": "selectedMechanismId",
-              "Lead Magnet": "selectedHvcoId",
-              "Headlines": "selectedHeadlineId",
-              "Ad Copy": "selectedAdCopyId",
-              "Landing Page": "selectedLandingPageId",
-              "Email Sequence": "selectedEmailSequenceId",
-              "WhatsApp Sequence": "selectedWhatsAppSequenceId",
-              "Ad Creatives": "selectedAdCreativeBatchId",
-            };
-            const target = keyMap[firstAsset];
-            const el = target ? document.querySelector(`[data-section-key="${target}"]`) : null;
-            if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-          }}
+          onReviewClick={() => setShowPlaceholderEditor(true)}
         />
 
         {/* Asset sections */}
@@ -733,13 +742,30 @@ export default function V2CampaignKit() {
           placeholderReport={placeholderReport}
           onReviewPlaceholdersFromModal={() => {
             setShowPushModal(false);
-            // Allow modal close animation, then scroll to banner anchor.
-            requestAnimationFrame(() => {
-              const banner = document.querySelector('[aria-label="Placeholders need review"]');
-              if (banner) banner.scrollIntoView({ behavior: "smooth", block: "start" });
-            });
+            setShowPlaceholderEditor(true);
           }}
         />
+      )}
+
+      {/* Placeholder Editor modal overlay */}
+      {showPlaceholderEditor && serviceId && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 9999,
+          background: "rgba(0,0,0,0.5)", display: "flex",
+          alignItems: "center", justifyContent: "center",
+          padding: 16,
+        }}>
+          <PlaceholderEditor
+            serviceId={serviceId}
+            report={fullPlaceholderReport}
+            onClose={() => setShowPlaceholderEditor(false)}
+            onSaved={() => {
+              // Invalidate the placeholder list so resolvedMap updates,
+              // which triggers banner re-count via the memoized detectPlaceholders.
+              utils.placeholders.list.invalidate({ serviceId });
+            }}
+          />
+        </div>
       )}
     </V2Layout>
   );

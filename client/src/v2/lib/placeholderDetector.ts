@@ -26,12 +26,13 @@ export type PlaceholderFinding = {
 };
 
 export type PlaceholderReport = {
-  total: number;                              // Sum of all `count` across findings
-  uniqueTokenCount: number;                   // Distinct token names
-  uniqueTokens: string[];                     // Distinct token names (sorted)
-  byAsset: Record<string, number>;            // Asset label → token occurrence count
-  byToken: Record<string, number>;            // Token name → occurrence count
-  findings: PlaceholderFinding[];             // Full per-field findings
+  total: number;                              // Sum of all `count` across UNFILLED findings
+  uniqueTokenCount: number;                   // Distinct UNFILLED token names
+  uniqueTokens: string[];                     // Distinct UNFILLED token names (sorted)
+  byAsset: Record<string, number>;            // Asset label → UNFILLED token occurrence count
+  byToken: Record<string, number>;            // Token name → UNFILLED occurrence count
+  findings: PlaceholderFinding[];             // Per-field findings (unfilled only)
+  allUniqueTokens?: string[];                 // ALL tokens (filled + unfilled) — for editor
 };
 
 /**
@@ -118,7 +119,7 @@ export function detectPlaceholders(kitData: {
   hvco?: unknown;           // hvco.get result (lead magnet)
   heroMechanism?: unknown;
   adCreatives?: unknown;    // adCreatives.getBatch result
-}): PlaceholderReport {
+}, resolvedMap?: Record<string, string>): PlaceholderReport {
   const findings: PlaceholderFinding[] = [];
 
   if (kitData.offer) scanFields("offer", "Offer", kitData.offer, "", findings);
@@ -131,14 +132,28 @@ export function detectPlaceholders(kitData: {
   if (kitData.heroMechanism) scanFields("heroMechanism", "Hero Mechanism", kitData.heroMechanism, "", findings);
   if (kitData.adCreatives) scanFields("adCreatives", "Ad Creatives", kitData.adCreatives, "", findings);
 
-  const total = findings.reduce((sum, f) => sum + f.count, 0);
+  // If a resolvedMap is provided, subtract tokens that have a registry value.
+  // These are "filled" — the token exists in the raw text but the user has
+  // provided a value in the placeholder registry. The banner should count only
+  // unfilled tokens so it self-hides when everything's filled.
+  const unfilledFindings = resolvedMap
+    ? findings.filter(f => !resolvedMap[f.placeholderToken])
+    : findings;
+
+  const total = unfilledFindings.reduce((sum, f) => sum + f.count, 0);
   const byAsset: Record<string, number> = {};
   const byToken: Record<string, number> = {};
-  for (const f of findings) {
+  for (const f of unfilledFindings) {
     byAsset[f.asset] = (byAsset[f.asset] ?? 0) + f.count;
     byToken[f.placeholderToken] = (byToken[f.placeholderToken] ?? 0) + f.count;
   }
   const uniqueTokens = Object.keys(byToken).sort();
+
+  // Also expose ALL tokens (including filled) for the editor to render
+  const allTokens: Record<string, number> = {};
+  for (const f of findings) {
+    allTokens[f.placeholderToken] = (allTokens[f.placeholderToken] ?? 0) + f.count;
+  }
 
   return {
     total,
@@ -146,7 +161,8 @@ export function detectPlaceholders(kitData: {
     uniqueTokens,
     byAsset,
     byToken,
-    findings,
+    findings: unfilledFindings,
+    allUniqueTokens: Object.keys(allTokens).sort(),
   };
 }
 
