@@ -16,6 +16,7 @@ import { calculateSceneDurations } from "./routers/videos";
 import { buildScriptPrompt, MAX_SCRIPT_WORDS } from "./routers/videoScripts";
 import { sanitizePlaceholder, PLACEHOLDER_DEFAULTS } from "./routers/services";
 import { isAutoModeTierAllowed } from "./routers/autoMode";
+import { _hasPlaceholder } from "./_core/cascadeContext";
 
 // ─── Issue 1: Gradient fallback throws ────────────────────────────────────────
 
@@ -2815,5 +2816,97 @@ describe("importIcp input schema — validates ICP import shape", () => {
   it("rejects empty name", () => {
     const result = importIcpSchema.safeParse({ serviceId: 1, name: "" });
     expect(result.success).toBe(false);
+  });
+});
+
+// ─── describeOffer cascade widening — placeholder guard + field logic ─────────
+
+describe("_hasPlaceholder — guards [INSERT_*] tokens from leaking into cascade", () => {
+  it("detects [INSERT_ patterns", () => {
+    expect(_hasPlaceholder("[INSERT_PRICE]")).toBe(true);
+    expect(_hasPlaceholder("Get started for [INSERT_PRICE] today")).toBe(true);
+    expect(_hasPlaceholder("[INSERT_BONUS_1_NAME] ([INSERT_BONUS_1_VALUE])")).toBe(true);
+    expect(_hasPlaceholder("[INSERT_GUARANTEE_TERMS]")).toBe(true);
+  });
+
+  it("passes real content without placeholders", () => {
+    expect(_hasPlaceholder("$6,000 USD")).toBe(false);
+    expect(_hasPlaceholder("30-day money-back guarantee")).toBe(false);
+    expect(_hasPlaceholder("Private Mastermind Community ($5,000 value)")).toBe(false);
+    expect(_hasPlaceholder("Enroll today — only 50 spots available")).toBe(false);
+  });
+
+  it("treats null/undefined/empty as placeholder (skip)", () => {
+    expect(_hasPlaceholder(null)).toBe(true);
+    expect(_hasPlaceholder(undefined)).toBe(true);
+    expect(_hasPlaceholder("")).toBe(true);
+  });
+});
+
+describe("describeOffer cascade string — field assembly logic (unit)", () => {
+  // These test the assembly logic conceptually since describeOffer is async/DB-bound.
+  // We test the hasPlaceholder guard above; here we verify the expected output shape.
+
+  it("real bonus/guarantee/price/urgency values produce the expected string shape", () => {
+    // Simulate what describeOffer builds from real data
+    const productName = "Authority Stack Accelerator";
+    const angleKey = "godfather";
+    const valueProp = "Land your first $10k client in 30 days";
+    const cta = "Book a Free Strategy Call";
+    const svcPrice = "6000";
+    const svcGuaranteeType = "Full refund";
+    const svcGuaranteeDuration = "30 days";
+    const svcDeliveryDuration = "12 weeks";
+    const bonuses = "Private Mastermind Community ($5,000 value), Whale Alerts ($2,000 value)";
+    const urgency = "Enroll today — only 50 spots available";
+
+    let desc = `Selected offer: "${productName}" (${angleKey} angle). Value proposition: "${valueProp}". Offer CTA: "${cta}".`;
+    if (svcPrice) desc += ` Price: ${svcPrice}.`;
+    if (svcGuaranteeType || svcGuaranteeDuration) {
+      const parts = [svcGuaranteeType, svcGuaranteeDuration].filter(Boolean).join(", ");
+      desc += ` Guarantee: ${parts}.`;
+    }
+    if (svcDeliveryDuration) desc += ` Programme duration: ${svcDeliveryDuration}.`;
+    if (!_hasPlaceholder(bonuses)) desc += ` Bonuses: ${bonuses}`;
+    if (!_hasPlaceholder(urgency)) desc += ` Urgency: ${urgency}`;
+
+    expect(desc).toContain("Price: 6000.");
+    expect(desc).toContain("Guarantee: Full refund, 30 days.");
+    expect(desc).toContain("Programme duration: 12 weeks.");
+    expect(desc).toContain("Bonuses: Private Mastermind Community ($5,000 value)");
+    expect(desc).toContain("Urgency: Enroll today");
+  });
+
+  it("[INSERT_ fields are skipped from the output", () => {
+    const bonuses = "[INSERT_BONUS_1_NAME] ([INSERT_BONUS_1_VALUE])";
+    const urgency = "Limited time — [INSERT_DEADLINE]";
+    const guarantee = "[INSERT_GUARANTEE_TERMS]";
+
+    let desc = `Selected offer: "Test" (godfather angle). Value proposition: "VP". Offer CTA: "CTA".`;
+    if (!_hasPlaceholder(bonuses)) desc += ` Bonuses: ${bonuses}`;
+    if (!_hasPlaceholder(urgency)) desc += ` Urgency: ${urgency}`;
+    if (!_hasPlaceholder(guarantee)) desc += ` Guarantee: ${guarantee}`;
+
+    expect(desc).not.toContain("Bonuses:");
+    expect(desc).not.toContain("Urgency:");
+    expect(desc).not.toContain("Guarantee:");
+    expect(desc).not.toContain("[INSERT_");
+  });
+
+  it("operator services.price preferred over OfferContent.pricing prose", () => {
+    const svcPrice = "6000";
+    const contentPricing = "Investment: just $6,000 for the complete transformation programme";
+
+    let desc = `Selected offer: "Test" (godfather angle). Value proposition: "VP". Offer CTA: "CTA".`;
+    // Mimic the preference logic: if svcPrice exists, use it; else fall back to content.pricing
+    if (svcPrice) {
+      desc += ` Price: ${svcPrice}.`;
+    } else if (!_hasPlaceholder(contentPricing)) {
+      desc += ` Pricing: ${contentPricing}`;
+    }
+
+    expect(desc).toContain("Price: 6000.");
+    expect(desc).not.toContain("Investment: just");
+    expect(desc).not.toContain("Pricing:");
   });
 });

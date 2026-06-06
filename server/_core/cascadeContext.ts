@@ -57,6 +57,7 @@ import { getDb } from "../db";
 import {
   campaignKits,
   offers,
+  services,
   heroMechanisms,
   hvcoTitles,
   headlines,
@@ -140,6 +141,14 @@ function truncateAtBoundary(text: string, lookRange: number, hardMax: number): s
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 
+// Placeholder guard: skip any field containing [INSERT_ tokens so raw
+// placeholders never leak into downstream generator context.
+const hasPlaceholder = (v: string | null | undefined): boolean =>
+  !v || v.includes("[INSERT_");
+
+// Exported for testing.
+export { hasPlaceholder as _hasPlaceholder };
+
 async function describeOffer(db: Db, id: number): Promise<string | null> {
   const [offer] = await db.select().from(offers).where(eq(offers.id, id)).limit(1);
   if (!offer) return null;
@@ -150,11 +159,60 @@ async function describeOffer(db: Db, id: number): Promise<string | null> {
                             offer.godfatherAngle;
   const content = typeof rawAngle === "string"
     ? (() => { try { return JSON.parse(rawAngle); } catch { return null; } })()
-    : (rawAngle as { valueProposition?: string; cta?: string } | null);
+    : (rawAngle as Record<string, string | undefined> | null);
   if (!content) return null;
+
+  // Core fields (always included when present)
   const valueProp = content.valueProposition ?? "";
   const cta = content.cta ?? "";
-  return `Selected offer: "${offer.productName}" (${angleKey} angle). Value proposition: "${valueProp}". Offer CTA: "${cta}".`;
+  let desc = `Selected offer: "${offer.productName}" (${angleKey} angle). Value proposition: "${valueProp}". Offer CTA: "${cta}".`;
+
+  // Fetch authoritative operator facts from services table via offer.serviceId
+  let svcPrice: string | null = null;
+  let svcGuaranteeType: string | null = null;
+  let svcGuaranteeDuration: string | null = null;
+  let svcDeliveryDuration: string | null = null;
+  if (offer.serviceId) {
+    const [svc] = await db.select().from(services).where(eq(services.id, offer.serviceId)).limit(1);
+    if (svc) {
+      svcPrice = svc.price ?? null;
+      svcGuaranteeType = svc.guaranteeType ?? null;
+      svcGuaranteeDuration = svc.guaranteeDuration ?? null;
+      svcDeliveryDuration = svc.deliveryDuration ?? null;
+    }
+  }
+
+  // Pricing: prefer operator fact over LLM prose
+  if (svcPrice) {
+    desc += ` Price: ${svcPrice}.`;
+  } else if (!hasPlaceholder(content.pricing)) {
+    desc += ` Pricing: ${content.pricing}`;
+  }
+
+  // Guarantee: prefer operator facts, fall back to LLM prose
+  if (svcGuaranteeType || svcGuaranteeDuration) {
+    const parts = [svcGuaranteeType, svcGuaranteeDuration].filter(Boolean).join(", ");
+    desc += ` Guarantee: ${parts}.`;
+  } else if (!hasPlaceholder(content.guarantee)) {
+    desc += ` Guarantee: ${content.guarantee}`;
+  }
+
+  // Delivery duration from operator
+  if (svcDeliveryDuration) {
+    desc += ` Programme duration: ${svcDeliveryDuration}.`;
+  }
+
+  // Bonuses from OfferContent (LLM-generated with real values)
+  if (!hasPlaceholder(content.bonuses)) {
+    desc += ` Bonuses: ${content.bonuses}`;
+  }
+
+  // Urgency from OfferContent
+  if (!hasPlaceholder(content.urgency)) {
+    desc += ` Urgency: ${content.urgency}`;
+  }
+
+  return desc;
 }
 
 async function describeMechanism(db: Db, id: number): Promise<string | null> {
