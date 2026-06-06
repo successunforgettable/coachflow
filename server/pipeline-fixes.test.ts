@@ -3217,3 +3217,56 @@ describe("resolveTokensInText — resolves through synonym map", () => {
     expect(result).toBe("Investment: $6,000. Starts 1 July.");
   });
 });
+
+// ─── Offer validator: widened field-scoping (S3) ──────────────────────────────
+
+describe("S3 — invented currency detected in ALL 7 offer fields (not just pricing/bonuses)", () => {
+  const cleanBase: RawOfferFields = {
+    offerName: "The Clarity Sprint",
+    valueProposition: "Move from stuck to clear.",
+    pricing: "Investment: [INSERT_PRICE].",
+    bonuses: "BONUS #1: [INSERT_BONUS_1_NAME] ([INSERT_BONUS_1_VALUE]).",
+    guarantee: "[INSERT_GUARANTEE_TERMS].",
+    urgency: "Limited to [INSERT_COHORT_LIMIT].",
+    cta: "Book a call.",
+  };
+
+  const fieldsToTest = ["valueProposition", "guarantee", "urgency", "cta"] as const;
+
+  for (const field of fieldsToTest) {
+    it(`flags invented currency in ${field} when no price supplied`, () => {
+      const offer: RawOfferFields = { ...cleanBase, [field]: `Invest just £497 for the full programme.` };
+      const result = validateOfferFabricationPatterns(offer, {});
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.hits.some(h => h.classId === "offer_invented_currency" && h.location === field)).toBe(true);
+      }
+    });
+
+    it(`does NOT flag user-supplied price in ${field}`, () => {
+      const offer: RawOfferFields = { ...cleanBase, [field]: `Invest just £497 for the full programme.` };
+      const supplied: OfferSuppliedData = { price: "497" };
+      const result = validateOfferFabricationPatterns(offer, supplied);
+      const currencyHits = result.ok ? [] : result.hits.filter(h => h.classId === "offer_invented_currency" && h.location === field);
+      expect(currencyHits.length).toBe(0);
+    });
+  }
+
+  it("flags invented cohort limit in valueProposition (not just urgency)", () => {
+    const offer: RawOfferFields = { ...cleanBase, valueProposition: "Only 8 spots available for this cohort." };
+    const result = validateOfferFabricationPatterns(offer, {});
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.hits.some(h => h.classId === "offer_invented_cohort_limit")).toBe(true);
+    }
+  });
+
+  it("flags invented programme duration in cta (not just pricing/guarantee)", () => {
+    const offer: RawOfferFields = { ...cleanBase, cta: "Start your 12-week programme today." };
+    const result = validateOfferFabricationPatterns(offer, {});
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.hits.some(h => h.classId === "offer_invented_programme_duration")).toBe(true);
+    }
+  });
+});

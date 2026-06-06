@@ -1455,67 +1455,57 @@ function detectOfferFabricationsInField(
     hits.push({ classId, description, matched: matched.substring(0, 200), location: fieldName });
   };
 
-  // Currency amounts — applies to pricing + bonuses
-  if (fieldName === "pricing" || fieldName === "bonuses") {
-    for (const m of detectInventedCurrencyAmounts(value, suppliedPriceNumeric)) {
-      push("offer_invented_currency",
-        "Invented currency amount with no operator-supplied price. Emit `[INSERT_PRICE]` (and `[INSERT_BONUS_N_VALUE]` for bonuses) verbatim when no service.price is supplied.",
-        m[0]);
-    }
+  // Currency amounts — all 7 fields (LLM leaks prices into valueProposition,
+  // guarantee, urgency, cta — not just pricing/bonuses).
+  for (const m of detectInventedCurrencyAmounts(value, suppliedPriceNumeric)) {
+    push("offer_invented_currency",
+      "Invented currency amount with no operator-supplied price. Emit `[INSERT_PRICE]` (and `[INSERT_BONUS_N_VALUE]` for bonuses) verbatim when no service.price is supplied.",
+      m[0]);
   }
-  // Anchor ranges — applies to pricing
-  if (fieldName === "pricing") {
-    for (const m of detectInventedAnchorRange(value)) {
-      push("offer_invented_anchor_range",
-        "Invented anchor price range. Anchor pricing must be operator-supplied; do not invent £X-£Y comparisons.",
-        m[0]);
-    }
+  // Anchor ranges — all fields
+  for (const m of detectInventedAnchorRange(value)) {
+    push("offer_invented_anchor_range",
+      "Invented anchor price range. Anchor pricing must be operator-supplied; do not invent £X-£Y comparisons.",
+      m[0]);
   }
-  // Bonus values
-  if (fieldName === "bonuses") {
-    for (const m of detectInventedBonusValue(value, supplied.bonuses ?? null)) {
-      push("offer_invented_bonus_value",
-        "Invented (£X value) bonus pricing. Each bonus must emit `[INSERT_BONUS_N_VALUE]` when no operator-supplied bonus is provided.",
-        m[0]);
-    }
-    for (const m of detectInventedTotalValue(value)) {
-      push("offer_invented_total_value",
-        "Invented total bonus value summation. Total bonus value is operator-supplied or not stated at all.",
-        m[0]);
-    }
+  // Bonus values — all fields
+  for (const m of detectInventedBonusValue(value, supplied.bonuses ?? null)) {
+    push("offer_invented_bonus_value",
+      "Invented (£X value) bonus pricing. Each bonus must emit `[INSERT_BONUS_N_VALUE]` when no operator-supplied bonus is provided.",
+      m[0]);
   }
-  // Cohort limits + dates — applies to urgency
-  if (fieldName === "urgency") {
-    for (const m of detectInventedCohortLimit(value)) {
-      push("offer_invented_cohort_limit",
-        "Invented cohort size. Emit `[INSERT_COHORT_LIMIT]` verbatim when no operator-supplied cohort size exists.",
-        m[0]);
-    }
-    for (const m of detectInventedCohortDate(value)) {
-      push("offer_invented_cohort_date",
-        "Invented cohort opening/closing date. Emit `[INSERT_COHORT_CLOSE_DATE]` or `[INSERT_PROGRAMME_START_DATE]` verbatim; do not invent timeframes.",
-        m[0]);
-    }
+  for (const m of detectInventedTotalValue(value)) {
+    push("offer_invented_total_value",
+      "Invented total bonus value summation. Total bonus value is operator-supplied or not stated at all.",
+      m[0]);
   }
-  // Programme duration + guarantee timeframe + refund mechanic — applies to pricing + guarantee
-  if (fieldName === "pricing" || fieldName === "guarantee") {
-    for (const m of detectInventedProgrammeDuration(value, supplied.deliveryDuration ?? null)) {
-      push("offer_invented_programme_duration",
-        "Invented programme duration. Emit `[INSERT_PROGRAMME_DURATION]` verbatim when no operator-supplied service.deliveryDuration exists.",
-        m[0]);
-    }
+  // Cohort limits + dates — all fields
+  for (const m of detectInventedCohortLimit(value)) {
+    push("offer_invented_cohort_limit",
+      "Invented cohort size. Emit `[INSERT_COHORT_LIMIT]` verbatim when no operator-supplied cohort size exists.",
+      m[0]);
   }
-  if (fieldName === "guarantee") {
-    for (const m of detectInventedGuaranteeTimeframe(value, supplied.guaranteeDuration ?? null)) {
-      push("offer_invented_guarantee_timeframe",
-        "Invented guarantee timeframe. Emit `[INSERT_GUARANTEE_TERMS]` verbatim when no operator-supplied service.guaranteeDuration exists.",
-        m[0]);
-    }
-    for (const m of detectInventedRefundMechanic(value, supplied.guaranteeType ?? null)) {
-      push("offer_invented_refund_mechanic",
-        "Invented refund mechanic. Emit `[INSERT_GUARANTEE_TERMS]` verbatim when no operator-supplied service.guaranteeType exists.",
-        m[0]);
-    }
+  for (const m of detectInventedCohortDate(value)) {
+    push("offer_invented_cohort_date",
+      "Invented cohort opening/closing date. Emit `[INSERT_COHORT_CLOSE_DATE]` or `[INSERT_PROGRAMME_START_DATE]` verbatim; do not invent timeframes.",
+      m[0]);
+  }
+  // Programme duration — all fields
+  for (const m of detectInventedProgrammeDuration(value, supplied.deliveryDuration ?? null)) {
+    push("offer_invented_programme_duration",
+      "Invented programme duration. Emit `[INSERT_PROGRAMME_DURATION]` verbatim when no operator-supplied service.deliveryDuration exists.",
+      m[0]);
+  }
+  // Guarantee timeframe + refund mechanic — all fields
+  for (const m of detectInventedGuaranteeTimeframe(value, supplied.guaranteeDuration ?? null)) {
+    push("offer_invented_guarantee_timeframe",
+      "Invented guarantee timeframe. Emit `[INSERT_GUARANTEE_TERMS]` verbatim when no operator-supplied service.guaranteeDuration exists.",
+      m[0]);
+  }
+  for (const m of detectInventedRefundMechanic(value, supplied.guaranteeType ?? null)) {
+    push("offer_invented_refund_mechanic",
+      "Invented refund mechanic. Emit `[INSERT_GUARANTEE_TERMS]` verbatim when no operator-supplied service.guaranteeType exists.",
+      m[0]);
   }
   // Banned placeholders — applies to every field (never overridden)
   for (const m of detectBannedPlaceholders(value)) {
