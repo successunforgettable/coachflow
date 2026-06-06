@@ -117,8 +117,29 @@ export default function V2AutoModeIntakeConfirm() {
   // Mirrors the existing V2GeneratorWizard polling pattern.
   const generateIcpAsync = trpc.icps.generateAsync.useMutation();
   const orchestrate = trpc.autoMode.orchestrate.useMutation();
+  const importIcpMut = trpc.autoMode.importIcp.useMutation();
+  const importAssetsMut = trpc.autoMode.importAssets.useMutation();
 
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // ── Existing-assets import state ────────────────────────────────────────────
+  const [importOpen, setImportOpen] = useState(false);
+  const [importOffer, setImportOffer] = useState(false);
+  const [importIcp, setImportIcp] = useState(false);
+  const [importMethod, setImportMethod] = useState(false);
+  const [importHvco, setImportHvco] = useState(false);
+  // Per-asset field values
+  const [offerName, setOfferName] = useState("");
+  const [offerVP, setOfferVP] = useState("");
+  const [offerCta, setOfferCta] = useState("");
+  const [icpName, setIcpName] = useState("");
+  const [icpPains, setIcpPains] = useState("");
+  const [icpGoals, setIcpGoals] = useState("");
+  const [icpBarriers, setIcpBarriers] = useState("");
+  const [methodName, setMethodName] = useState("");
+  const [methodDesc, setMethodDesc] = useState("");
+  const [hvcoTitle, setHvcoTitle] = useState("");
+  const [hvcoTopic, setHvcoTopic] = useState("");
 
   // No state from intake → bounce back. Avoids broken direct-link state.
   useEffect(() => {
@@ -188,10 +209,16 @@ export default function V2AutoModeIntakeConfirm() {
   }
 
   // Submit gate: required fields non-empty + flagged fields ≥ FIELD_MIN_CHARS.
+  // Import fields add their own required-field checks.
   const requiredKeys: (keyof Extracted)[] = ["serviceName", "serviceCategory", "serviceDescription", "targetCustomer", "mainBenefit"];
   const allRequiredFilled = requiredKeys.every(k => (extracted[k] as string).trim().length > 0);
   const noFlaggedGaps = !requiredKeys.some(k => isFieldFlagged(k));
-  const submitEnabled = allRequiredFilled && noFlaggedGaps && !isSubmitting;
+  const importOfferReady = !importOffer || (offerName.trim() && offerVP.trim() && offerCta.trim());
+  const importIcpReady = !importIcp || icpName.trim();
+  const importMethodReady = !importMethod || (methodName.trim() && methodDesc.trim());
+  const importHvcoReady = !importHvco || (hvcoTitle.trim() && hvcoTopic.trim());
+  const importFieldsReady = importOfferReady && importIcpReady && importMethodReady && importHvcoReady;
+  const submitEnabled = allRequiredFilled && noFlaggedGaps && importFieldsReady && !isSubmitting;
 
   // Poll /api/jobs/<jobId> every 5s until terminal status. Mirrors the
   // V2GeneratorWizard pattern (L1782+) — single source of truth for the
@@ -253,34 +280,62 @@ export default function V2AutoModeIntakeConfirm() {
       // Expand downstream Service fields. If this fails non-fatally, we
       // still proceed — expansion is enhancement, not gating.
       try { await expandProfile.mutateAsync({ serviceId }); } catch { /* surfaced via dashboard if needed */ }
-      // Generate ICP via async job + poll. The sync icps.generate path held
-      // the HTTP request open for the LLM call (~30-120s) which exceeded
-      // Railway's proxy timeout, returning HTML 504 → tRPC JSON.parse fail.
-      // generateIcpAsync returns {jobId} in <100ms; LLM runs server-side
-      // via setImmediate.
+
+      // ── ICP resolve: import (sync) or generate (async poll) ─────────────
       setLoadingPhase("icp");
       let icpId: number;
       try {
-        const { jobId } = await generateIcpAsync.mutateAsync({
-          serviceId,
-          name: extracted.icpDescriptor.trim() || `${extracted.serviceName.trim()} Profile`,
-        });
-        icpId = await pollIcpJob(jobId);
+        if (importIcp) {
+          // Synchronous import — returns icpId immediately, no polling.
+          const result = await importIcpMut.mutateAsync({
+            serviceId,
+            name: icpName.trim(),
+            pains: icpPains.trim() || undefined,
+            goals: icpGoals.trim() || undefined,
+            implementationBarriers: icpBarriers.trim() || undefined,
+          });
+          icpId = result.icpId;
+        } else {
+          // Generate ICP via async job + poll. generateIcpAsync returns
+          // {jobId} in <100ms; LLM runs server-side via setImmediate.
+          const { jobId } = await generateIcpAsync.mutateAsync({
+            serviceId,
+            name: extracted.icpDescriptor.trim() || `${extracted.serviceName.trim()} Profile`,
+          });
+          icpId = await pollIcpJob(jobId);
+        }
       } catch (icpErr) {
-        const msg = icpErr instanceof Error ? icpErr.message : "Could not generate your ICP. You can retry from the dashboard.";
+        const msg = icpErr instanceof Error ? icpErr.message : "Could not set up your ICP. You can retry from the dashboard.";
         setSubmitError(msg);
         setIsSubmitting(false);
         setLoadingPhase(null);
         return;
       }
-      // Kick Auto Mode orchestration — server-side job; client polls progress.
+
+      // ── Import assets: pre-populate kit slots for toggled assets ────────
+      const hasAnyImport = importOffer || importMethod || importHvco;
+      if (hasAnyImport) {
+        try {
+          await importAssetsMut.mutateAsync({
+            serviceId,
+            icpId,
+            offer: importOffer ? { name: offerName.trim(), valueProposition: offerVP.trim(), cta: offerCta.trim() } : undefined,
+            mechanism: importMethod ? { name: methodName.trim(), description: methodDesc.trim() } : undefined,
+            hvco: importHvco ? { title: hvcoTitle.trim(), topic: hvcoTopic.trim() } : undefined,
+          });
+        } catch (importErr) {
+          const msg = importErr instanceof Error ? importErr.message : "Could not import your assets. You can retry from the dashboard.";
+          setSubmitError(msg);
+          setIsSubmitting(false);
+          setLoadingPhase(null);
+          return;
+        }
+      }
+
+      // ── Kick Auto Mode orchestration — skip-already-populated honors
+      // the pre-populated kit slots from importAssets above. ───────────────
       try {
-        const { jobId } = await orchestrate.mutateAsync({
-          serviceId,
-          icpId,
-          // campaignType undefined per locked B3 spec — orchestrator falls
-          // back to runX defaults (course_launch in cascade map).
-        });
+        const { jobId } = await orchestrate.mutateAsync({ serviceId, icpId });
         navigate(`/v2-dashboard/auto-mode/progress?jobId=${jobId}`);
       } catch (orchestrateErr) {
         const msg = orchestrateErr instanceof Error ? orchestrateErr.message : "Could not start Auto Mode. You can pick up generation manually from the dashboard.";
@@ -404,19 +459,90 @@ export default function V2AutoModeIntakeConfirm() {
               style={inputStyleFor("mainBenefit")}
             />
           </FieldBlock>
-          <FieldBlock
-            label="Ideal Customer Descriptor"
-            note="One-line snapshot of your ideal customer — feeds the ICP generator."
-            flagged={isFieldFlagged("icpDescriptor")}
-          >
-            <input
-              type="text"
-              value={extracted.icpDescriptor}
-              onChange={(e) => setField("icpDescriptor", e.target.value)}
-              placeholder="e.g. Early-stage consultants, 0-2 clients in, frustrated by inconsistent outreach results"
-              style={inputStyleFor("icpDescriptor")}
-            />
-          </FieldBlock>
+          <div style={{ opacity: importIcp ? 0.4 : 1, pointerEvents: importIcp ? "none" : "auto", transition: "opacity 0.2s ease" }}>
+            <FieldBlock
+              label="Ideal Customer Descriptor"
+              note={importIcp ? "Overridden by your imported ICP below." : "One-line snapshot of your ideal customer — feeds the ICP generator."}
+              flagged={!importIcp && isFieldFlagged("icpDescriptor")}
+            >
+              <input
+                type="text"
+                value={extracted.icpDescriptor}
+                onChange={(e) => setField("icpDescriptor", e.target.value)}
+                placeholder="e.g. Early-stage consultants, 0-2 clients in, frustrated by inconsistent outreach results"
+                style={inputStyleFor("icpDescriptor")}
+                tabIndex={importIcp ? -1 : 0}
+              />
+            </FieldBlock>
+          </div>
+
+          {/* ── Existing-assets import section ───────────────────────────── */}
+          <div style={{ marginTop: "8px", marginBottom: "18px" }}>
+            <button
+              type="button"
+              onClick={() => setImportOpen(!importOpen)}
+              style={{
+                fontFamily: "var(--v2-font-body)", fontSize: "13px", color: "#999",
+                background: "none", border: "none", cursor: "pointer", padding: "0",
+                display: "flex", alignItems: "center", gap: "6px",
+              }}
+            >
+              <span style={{ transform: importOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.15s ease", display: "inline-block" }}>▸</span>
+              Already have marketing assets? Bring your own
+            </button>
+            {importOpen && (
+              <div style={{ marginTop: "16px", display: "flex", flexDirection: "column", gap: "14px" }}>
+                <ImportCard label="Offer" active={importOffer} onToggle={setImportOffer}>
+                  <FieldBlock label="Offer Name" note="What you call this offer." flagged={false}>
+                    <input type="text" value={offerName} onChange={e => setOfferName(e.target.value)} placeholder="e.g. Authority Stack Accelerator" style={inputBaseStyleClean} />
+                  </FieldBlock>
+                  <FieldBlock label="Value Proposition" note="The core promise — what the customer gets." flagged={false}>
+                    <textarea value={offerVP} onChange={e => setOfferVP(e.target.value)} rows={2} placeholder="e.g. Land your first $10k client in 30 days" style={{ ...inputBaseStyleClean, resize: "vertical", minHeight: "50px" }} />
+                  </FieldBlock>
+                  <FieldBlock label="Call to Action" note="Button text or next step." flagged={false}>
+                    <input type="text" value={offerCta} onChange={e => setOfferCta(e.target.value)} placeholder="e.g. Book a Free Strategy Call" style={inputBaseStyleClean} />
+                  </FieldBlock>
+                </ImportCard>
+
+                <ImportCard label="Ideal Customer Profile" active={importIcp} onToggle={setImportIcp}>
+                  <FieldBlock label="ICP Name" note="Who this profile describes." flagged={false}>
+                    <input type="text" value={icpName} onChange={e => setIcpName(e.target.value)} placeholder="e.g. Burned-out CTOs looking for work-life balance" style={inputBaseStyleClean} />
+                  </FieldBlock>
+                  <FieldBlock label="Pain Points" note="What keeps them up at night. (optional)" flagged={false}>
+                    <textarea value={icpPains} onChange={e => setIcpPains(e.target.value)} rows={2} placeholder="e.g. No time, constant firefighting, team depends on them for everything" style={{ ...inputBaseStyleClean, resize: "vertical", minHeight: "50px" }} />
+                  </FieldBlock>
+                  <FieldBlock label="Goals" note="What they want to achieve. (optional)" flagged={false}>
+                    <textarea value={icpGoals} onChange={e => setIcpGoals(e.target.value)} rows={2} placeholder="e.g. Sustainable leadership without burnout" style={{ ...inputBaseStyleClean, resize: "vertical", minHeight: "50px" }} />
+                  </FieldBlock>
+                  <FieldBlock label="Barriers" note="What stops them from taking action. (optional)" flagged={false}>
+                    <textarea value={icpBarriers} onChange={e => setIcpBarriers(e.target.value)} rows={2} placeholder="e.g. Fear of losing control, time constraints, scepticism" style={{ ...inputBaseStyleClean, resize: "vertical", minHeight: "50px" }} />
+                  </FieldBlock>
+                  <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "11px", color: "#999", margin: "0", lineHeight: 1.5, fontStyle: "italic" }}>
+                    The more detail you add, the sharper your campaign.
+                  </p>
+                </ImportCard>
+
+                <ImportCard label="Signature Method" active={importMethod} onToggle={setImportMethod}>
+                  <FieldBlock label="Method Name" note="Your proprietary framework or system." flagged={false}>
+                    <input type="text" value={methodName} onChange={e => setMethodName(e.target.value)} placeholder="e.g. The Neural Nexus System" style={inputBaseStyleClean} />
+                  </FieldBlock>
+                  <FieldBlock label="Description" note="What it is and how it works — one paragraph." flagged={false}>
+                    <textarea value={methodDesc} onChange={e => setMethodDesc(e.target.value)} rows={2} placeholder="e.g. A 3-step framework that rewires decision fatigue into strategic clarity" style={{ ...inputBaseStyleClean, resize: "vertical", minHeight: "50px" }} />
+                  </FieldBlock>
+                </ImportCard>
+
+                <ImportCard label="Lead Magnet" active={importHvco} onToggle={setImportHvco}>
+                  <FieldBlock label="Title" note="The name of your free opt-in." flagged={false}>
+                    <input type="text" value={hvcoTitle} onChange={e => setHvcoTitle(e.target.value)} placeholder="e.g. The Consultant's Playbook" style={inputBaseStyleClean} />
+                  </FieldBlock>
+                  <FieldBlock label="Topic" note="What it covers — one sentence." flagged={false}>
+                    <textarea value={hvcoTopic} onChange={e => setHvcoTopic(e.target.value)} rows={2} placeholder="e.g. How to land your first high-ticket client without cold outreach" style={{ ...inputBaseStyleClean, resize: "vertical", minHeight: "50px" }} />
+                  </FieldBlock>
+                </ImportCard>
+              </div>
+            )}
+          </div>
+
           {submitError && (
             <div style={{ background: "rgba(255,91,29,0.06)", border: "1px solid rgba(255,91,29,0.20)", borderRadius: "12px", padding: "12px 16px", marginTop: "8px", marginBottom: "16px", fontFamily: "var(--v2-font-body)", fontSize: "13px", color: "#B5421A" }}>
               {submitError}
@@ -453,6 +579,11 @@ export default function V2AutoModeIntakeConfirm() {
   );
 }
 
+const inputBaseStyleClean: React.CSSProperties = {
+  ...inputBaseStyle,
+  border: "1px solid rgba(26,22,36,0.15)",
+};
+
 function FieldBlock({
   label,
   note,
@@ -476,6 +607,73 @@ function FieldBlock({
       </div>
       <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "11px", color: "#777", margin: "0 0 6px", lineHeight: 1.5 }}>{note}</p>
       {children}
+    </div>
+  );
+}
+
+function ImportCard({
+  label,
+  active,
+  onToggle,
+  children,
+}: {
+  label: string;
+  active: boolean;
+  onToggle: (v: boolean) => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div style={{
+      border: active ? "1px solid rgba(255,91,29,0.30)" : "1px solid rgba(26,22,36,0.10)",
+      borderRadius: "16px",
+      padding: "16px 20px",
+      background: active ? "rgba(255,91,29,0.02)" : "#FAFAF8",
+      transition: "border-color 0.15s ease, background 0.15s ease",
+    }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: active ? "14px" : "0" }}>
+        <span style={{ fontFamily: "var(--v2-font-body)", fontWeight: 600, fontSize: "14px", color: "var(--v2-text-color)" }}>
+          {label}
+        </span>
+        <TogglePill active={active} onToggle={onToggle} />
+      </div>
+      {active && children}
+    </div>
+  );
+}
+
+function TogglePill({ active, onToggle }: { active: boolean; onToggle: (v: boolean) => void }) {
+  return (
+    <div style={{
+      display: "flex", borderRadius: "9999px", overflow: "hidden",
+      border: "1px solid rgba(26,22,36,0.12)", fontSize: "11px",
+      fontFamily: "var(--v2-font-body)", fontWeight: 600, cursor: "pointer",
+    }}>
+      <button
+        type="button"
+        onClick={() => onToggle(false)}
+        style={{
+          padding: "5px 12px", border: "none", cursor: "pointer",
+          fontFamily: "var(--v2-font-body)", fontSize: "11px", fontWeight: 600,
+          background: !active ? "var(--v2-text-color)" : "transparent",
+          color: !active ? "#fff" : "#999",
+          transition: "background 0.15s ease, color 0.15s ease",
+        }}
+      >
+        Let Zappy Build
+      </button>
+      <button
+        type="button"
+        onClick={() => onToggle(true)}
+        style={{
+          padding: "5px 12px", border: "none", cursor: "pointer",
+          fontFamily: "var(--v2-font-body)", fontSize: "11px", fontWeight: 600,
+          background: active ? "var(--v2-primary-btn)" : "transparent",
+          color: active ? "#fff" : "#999",
+          transition: "background 0.15s ease, color 0.15s ease",
+        }}
+      >
+        I Have One
+      </button>
     </div>
   );
 }
