@@ -1425,3 +1425,24 @@ export const complianceRewrites = mysqlTable("complianceRewrites", {
 }));
 export type ComplianceRewrite = typeof complianceRewrites.$inferSelect;
 export type InsertComplianceRewrite = typeof complianceRewrites.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// Placeholder Values — two-level registry for operator-fillable [INSERT_*] tokens.
+// serviceId IS NULL = account-level default (remembered across campaigns).
+// serviceId = N     = per-campaign override (frozen at save time).
+// Uniqueness enforced at app level, not via DB constraint (MySQL NULL != NULL).
+// ---------------------------------------------------------------------------
+export const placeholderValues = mysqlTable("placeholderValues", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  serviceId: int("serviceId").references(() => services.id, { onDelete: "cascade" }),
+  token: varchar("token", { length: 100 }).notNull(),
+  value: text("value").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  userServiceTokenIdx: index("idx_pv_user_service_token").on(table.userId, table.serviceId, table.token),
+  userDefaultsIdx: index("idx_pv_user_defaults").on(table.userId, table.token),
+}));
+export type PlaceholderValue = typeof placeholderValues.$inferSelect;
+export type InsertPlaceholderValue = typeof placeholderValues.$inferInsert;
