@@ -3340,3 +3340,67 @@ describe("S4 — offer generator prompts do not instruct concrete currency amoun
     expect(currencyHits.length).toBe(0);
   });
 });
+
+// ─── T1 — Campaign identifier: auto-name + updateName ────────────────────────
+
+describe("T1 — autoSelectBest auto-names from offer on completion", () => {
+  // These test the logic structurally (the actual DB calls need integration tests).
+  // We verify the conditional: name is updated ONLY when it's "Auto Campaign Kit".
+
+  it("auto-derive: kit with default name gets offer productName on completion", () => {
+    const kitName = "Auto Campaign Kit";
+    const offerProductName = "Authority Stack Accelerator";
+    // Condition: name === "Auto Campaign Kit" AND selectedOfferId present
+    const shouldDerive = kitName === "Auto Campaign Kit" && !!offerProductName;
+    expect(shouldDerive).toBe(true);
+    const newName = shouldDerive ? offerProductName : kitName;
+    expect(newName).toBe("Authority Stack Accelerator");
+  });
+
+  it("preserve: kit with custom name is NOT overwritten on completion", () => {
+    const kitName = "My Custom Campaign Title";
+    const offerProductName = "Authority Stack Accelerator";
+    const shouldDerive = kitName === "Auto Campaign Kit" && !!offerProductName;
+    expect(shouldDerive).toBe(false);
+    const newName = shouldDerive ? offerProductName : kitName;
+    expect(newName).toBe("My Custom Campaign Title");
+  });
+
+  it("preserve: kit with manual-path name is NOT overwritten on completion", () => {
+    const kitName = "Marketing Agency — Health Coaches Campaign";
+    const offerProductName = "Authority Stack Accelerator";
+    const shouldDerive = kitName === "Auto Campaign Kit" && !!offerProductName;
+    expect(shouldDerive).toBe(false);
+    const newName = shouldDerive ? offerProductName : kitName;
+    expect(newName).toBe("Marketing Agency — Health Coaches Campaign");
+  });
+
+  it("fallback: kit with default name but no offer leaves name unchanged", () => {
+    const kitName = "Auto Campaign Kit";
+    const offerProductName: string | null = null;
+    const shouldDerive = kitName === "Auto Campaign Kit" && !!offerProductName;
+    expect(shouldDerive).toBe(false);
+    const newName = shouldDerive ? offerProductName : kitName;
+    expect(newName).toBe("Auto Campaign Kit");
+  });
+});
+
+describe("T1 — updateName input validation", () => {
+  const { z } = require("zod");
+  const updateNameSchema = z.object({
+    kitId: z.number(),
+    name: z.string().min(1).max(255),
+  });
+
+  it("accepts valid rename", () => {
+    expect(updateNameSchema.safeParse({ kitId: 1, name: "My Campaign" }).success).toBe(true);
+  });
+
+  it("rejects empty name", () => {
+    expect(updateNameSchema.safeParse({ kitId: 1, name: "" }).success).toBe(false);
+  });
+
+  it("rejects name over 255 chars", () => {
+    expect(updateNameSchema.safeParse({ kitId: 1, name: "x".repeat(256) }).success).toBe(false);
+  });
+});

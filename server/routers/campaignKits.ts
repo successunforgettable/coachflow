@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
-import { campaignKits, idealCustomerProfiles, services } from "../../drizzle/schema";
+import { campaignKits, idealCustomerProfiles, services, offers } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
@@ -70,7 +70,19 @@ export async function autoSelectBest(
       updated.selectedAdCreativeBatchId != null;
 
     if (isComplete && updated.status === "draft") {
-      await db.update(campaignKits).set({ status: "complete", updatedAt: new Date() } as any).where(eq(campaignKits.id, kitId));
+      const completionUpdate: Record<string, unknown> = { status: "complete", updatedAt: new Date() };
+
+      // Auto-derive title from offer's productName — but only if name is
+      // still the generic "Auto Campaign Kit" default. Never overwrite a
+      // manual/custom title or the "{Service} — {ICP} Campaign" name.
+      if (updated.name === "Auto Campaign Kit" && updated.selectedOfferId) {
+        const [offer] = await db.select().from(offers).where(eq(offers.id, updated.selectedOfferId)).limit(1);
+        if (offer?.productName) {
+          completionUpdate.name = offer.productName;
+        }
+      }
+
+      await db.update(campaignKits).set(completionUpdate as any).where(eq(campaignKits.id, kitId));
     }
   }
 }
@@ -308,5 +320,37 @@ export const campaignKitsRouter = router({
         .where(and(eq(campaignKits.userId, ctx.user.id), eq(campaignKits.status, "complete")))
         .limit(1);
       return !!kit;
+    }),
+
+  /**
+   * updateName — rename a campaign kit. Owner-scoped: only the kit owner
+   * can rename it. Persists the user's custom title so it survives
+   * regeneration (autoSelectBest never overwrites a non-default name).
+   */
+  updateName: protectedProcedure
+    .input(z.object({
+      kitId: z.number(),
+      name: z.string().min(1).max(255),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const [kit] = await db
+        .select()
+        .from(campaignKits)
+        .where(and(eq(campaignKits.id, input.kitId), eq(campaignKits.userId, ctx.user.id)))
+        .limit(1);
+
+      if (!kit) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Campaign kit not found" });
+      }
+
+      await db
+        .update(campaignKits)
+        .set({ name: input.name, updatedAt: new Date() } as any)
+        .where(eq(campaignKits.id, input.kitId));
+
+      return { success: true };
     }),
 });
