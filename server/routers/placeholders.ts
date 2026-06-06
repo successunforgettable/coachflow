@@ -67,7 +67,35 @@ export async function buildResolvedMap(
 }
 
 /**
+ * Synonym normalization map: LLM-invented variants → canonical token.
+ * Applied at resolution time so the registry keys on canonical names
+ * regardless of which variant the LLM emitted. Fixes existing campaigns
+ * at runtime with no DB migration.
+ */
+export const TOKEN_SYNONYMS: Record<string, string> = {
+  "[INSERT_CART_CLOSE]":       "[INSERT_COHORT_CLOSE_DATE]",
+  "[INSERT_NEXT_COHORT_DATE]": "[INSERT_COHORT_CLOSE_DATE]",
+  "[INSERT_REMAINING_SPOTS]":  "[INSERT_COHORT_LIMIT]",
+  "[INSERT_SPOTS_REMAINING]":  "[INSERT_COHORT_LIMIT]",
+  "[INSERT_AVAILABLE_SPOTS]":  "[INSERT_COHORT_LIMIT]",
+  "[INSERT_SUPPORT_EMAIL]":    "[INSERT_CONTACT_EMAIL]",
+  "[INSERT_REFUND_EMAIL]":     "[INSERT_CONTACT_EMAIL]",
+  "[INSERT_BOOKING_LINK]":     "[INSERT_BOOKING_URL]",
+  "[INSERT_START_DATE]":       "[INSERT_PROGRAMME_START_DATE]",
+  "[INSERT_NEXT_LAUNCH_DATE]": "[INSERT_PROGRAMME_START_DATE]",
+  "[INSERT_NEXT_OPEN_DATE]":   "[INSERT_PROGRAMME_START_DATE]",
+  "[INSERT_LAUNCH_DATE]":      "[INSERT_DEADLINE]",
+};
+
+/** Normalize a token through the synonym map. */
+export function normalizeToken(token: string): string {
+  return TOKEN_SYNONYMS[token] ?? token;
+}
+
+/**
  * Substitute [INSERT_*] tokens in text using the resolved map.
+ * Normalizes through synonym map before lookup so registry values
+ * resolve regardless of which token variant the LLM emitted.
  * Tokens with no registry value are left intact.
  */
 export function resolveTokensInText(
@@ -75,7 +103,8 @@ export function resolveTokensInText(
   resolvedMap: Map<string, ResolvedEntry>,
 ): string {
   return text.replace(/\[INSERT_[A-Z][A-Z0-9_]*\]/g, (match) => {
-    const entry = resolvedMap.get(match);
+    const canonical = normalizeToken(match);
+    const entry = resolvedMap.get(canonical) ?? resolvedMap.get(match);
     return entry ? entry.value : match;
   });
 }

@@ -12,18 +12,38 @@ import { useState, useEffect, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import type { PlaceholderReport } from "../lib/placeholderDetector";
 
-/** Human-readable labels for canonical tokens. */
+/** Owner-locked plain-language labels for canonical tokens. */
 const TOKEN_LABELS: Record<string, string> = {
+  // Identity
   "[INSERT_HOST_NAME]": "Your Name",
   "[INSERT_CONTACT_EMAIL]": "Support Email",
-  "[INSERT_OFFER_NAME]": "Offer Name",
   "[INSERT_OFFER_LINK]": "Offer / Checkout URL",
-  "[INSERT_PRICE]": "Price",
-  "[INSERT_DEADLINE]": "Sales Deadline",
   "[INSERT_BOOKING_URL]": "Booking / Calendar URL",
-  "[INSERT_BOOKING_TIME]": "Booking Call Time",
-  "[INSERT_BOOKING_TIMEZONE]": "Booking Timezone",
-  "[INSERT_BOOKING_DURATION]": "Booking Call Duration",
+  // Programme
+  "[INSERT_OFFER_NAME]": "Offer Name",
+  "[INSERT_PRICE]": "Price",
+  "[INSERT_PROGRAMME_DURATION]": "Programme Duration",
+  "[INSERT_PROGRAMME_START_DATE]": "Programme Start Date",
+  "[INSERT_GUARANTEE_TERMS]": "Guarantee Terms",
+  "[INSERT_COHORT_LIMIT]": "Spots Remaining",
+  "[INSERT_COHORT_CLOSE_DATE]": "Offer Close Date",
+  "[INSERT_DEADLINE]": "Offer Close Date",
+  "[INSERT_CART_CLOSE_DATE]": "Offer Close Date",
+  "[INSERT_FIRST_RESULT_TIMEFRAME]": "How Soon They See Results",
+  "[INSERT_LEAD_MAGNET_NAME]": "Lead Magnet Name",
+  // Bonuses
+  "[INSERT_BONUS_1_NAME]": "Bonus 1 — Name",
+  "[INSERT_BONUS_1_VALUE]": "Bonus 1 — Value",
+  "[INSERT_BONUS_2_NAME]": "Bonus 2 — Name",
+  "[INSERT_BONUS_2_VALUE]": "Bonus 2 — Value",
+  "[INSERT_BONUS_3_NAME]": "Bonus 3 — Name",
+  "[INSERT_BONUS_3_VALUE]": "Bonus 3 — Value",
+  "[INSERT_BONUS_4_NAME]": "Bonus 4 — Name",
+  "[INSERT_BONUS_4_VALUE]": "Bonus 4 — Value",
+  "[INSERT_BONUS_5_NAME]": "Bonus 5 — Name",
+  "[INSERT_BONUS_5_VALUE]": "Bonus 5 — Value",
+  "[INSERT_BONUS_VALUE]": "Bonus Value",
+  // Event
   "[INSERT_EVENT_NAME]": "Event Name",
   "[INSERT_EVENT_DATE]": "Event Date",
   "[INSERT_EVENT_TIME]": "Event Time",
@@ -31,45 +51,63 @@ const TOKEN_LABELS: Record<string, string> = {
   "[INSERT_EVENT_DURATION]": "Event Duration",
   "[INSERT_EVENT_VENUE]": "Event Venue",
   "[INSERT_EVENT_AGENDA]": "Event Agenda",
-  "[INSERT_LEAD_MAGNET_NAME]": "Lead Magnet Name",
-  "[INSERT_PROGRAMME_DURATION]": "Programme Duration",
-  "[INSERT_GUARANTEE_TERMS]": "Guarantee Terms",
-  "[INSERT_COHORT_LIMIT]": "Cohort Size Limit",
-  "[INSERT_COHORT_CLOSE_DATE]": "Enrolment Close Date",
-  "[INSERT_PROGRAMME_START_DATE]": "Programme Start Date",
-  "[INSERT_FIRST_RESULT_TIMEFRAME]": "First-Result Timeframe",
-  "[INSERT_BONUS_1_NAME]": "Bonus 1 Name",
-  "[INSERT_BONUS_1_VALUE]": "Bonus 1 Value",
-  "[INSERT_BONUS_2_NAME]": "Bonus 2 Name",
-  "[INSERT_BONUS_2_VALUE]": "Bonus 2 Value",
-  "[INSERT_BONUS_3_NAME]": "Bonus 3 Name",
-  "[INSERT_BONUS_3_VALUE]": "Bonus 3 Value",
-  "[INSERT_BONUS_4_NAME]": "Bonus 4 Name",
-  "[INSERT_BONUS_4_VALUE]": "Bonus 4 Value",
-  "[INSERT_BONUS_5_NAME]": "Bonus 5 Name",
-  "[INSERT_BONUS_5_VALUE]": "Bonus 5 Value",
-  "[INSERT_CART_OPEN_DATE]": "Cart Open Date",
-  "[INSERT_CART_CLOSE_DATE]": "Cart Close Date",
+  // Booking / discovery call
+  "[INSERT_BOOKING_TIME]": "Call Time",
+  "[INSERT_BOOKING_TIMEZONE]": "Call Timezone",
+  "[INSERT_BOOKING_DURATION]": "Call Duration",
+  // Product launch
+  "[INSERT_LAUNCH_PRODUCT_NAME]": "Product Name",
+  "[INSERT_CART_OPEN_DATE]": "Cart Opens",
   "[INSERT_CART_CLOSE_TIME]": "Cart Close Time",
-  "[INSERT_REPLAY_URL]": "Replay URL",
-  "[INSERT_REPLAY_EXPIRY]": "Replay Expiry",
-  "[INSERT_REPLAY_AVAILABILITY]": "Replay Availability",
-  "[INSERT_LAUNCH_PRODUCT_NAME]": "Launch Product Name",
-  "[INSERT_BONUS_VALUE]": "Bonus Value",
-  "[INSERT_LAST_ENGAGEMENT_TIMEFRAME]": "Last Engagement Timeframe",
-  "[INSERT_INCENTIVE]": "Re-engagement Incentive",
-  "[INSERT_PARKING_INFO]": "Parking Info",
+  // Replay / post-event
+  "[INSERT_REPLAY_URL]": "Replay Link",
+  "[INSERT_REPLAY_EXPIRY]": "Replay Available Until",
+  "[INSERT_REPLAY_AVAILABILITY]": "Who Can Watch the Replay",
+  // Re-engagement
+  "[INSERT_LAST_ENGAGEMENT_TIMEFRAME]": "Time Since Last Activity",
+  "[INSERT_INCENTIVE]": "Come-Back Offer",
+  // Event logistics
+  "[INSERT_PARKING_INFO]": "Parking Details",
   "[INSERT_DRESS_CODE]": "Dress Code",
   "[INSERT_WHAT_TO_BRING]": "What to Bring",
-  "[INSERT_ROOM_OR_FLOOR_INFO]": "Room / Floor Info",
+  "[INSERT_ROOM_OR_FLOOR_INFO]": "Room / Floor",
   "[INSERT_DIETARY_NOTES]": "Dietary Notes",
-  "[INSERT_COACH_CREDENTIAL]": "Your Credential / Certification",
-  "[INSERT_AUTHORITY_TITLE]": "Your Title / Role",
-  "[INSERT_FEATURED_IN]": "Featured In (Media / Press)",
+  // Authority / credibility
+  "[INSERT_COACH_CREDENTIAL]": "Your Qualification",
+  "[INSERT_AUTHORITY_TITLE]": "Your Title",
+  "[INSERT_FEATURED_IN]": "Featured In (Press / Media)",
+};
+
+/** Hint text shown under fields that benefit from explanation. */
+const TOKEN_HINTS: Record<string, string> = {
+  "[INSERT_GUARANTEE_TERMS]": "Your guarantee — e.g. '30-day money-back if you complete the programme'",
+  "[INSERT_COHORT_CLOSE_DATE]": "When enrolment closes — e.g. 'Friday 20 June at midnight'",
+  "[INSERT_DEADLINE]": "When the offer expires — e.g. 'Friday 20 June at midnight'",
+  "[INSERT_CART_CLOSE_DATE]": "When the cart closes — e.g. 'Friday 20 June at midnight'",
+  "[INSERT_COHORT_LIMIT]": "How many spots are available — e.g. '20 spots'",
+  "[INSERT_FIRST_RESULT_TIMEFRAME]": "How soon clients see results — e.g. 'within the first 30 days'",
+  "[INSERT_PROGRAMME_DURATION]": "How long the programme runs — e.g. '12 weeks' or '6 months'",
+  "[INSERT_PROGRAMME_START_DATE]": "When the next cohort begins — e.g. '1 July 2026'",
+  "[INSERT_OFFER_LINK]": "The URL where people sign up or pay — e.g. 'https://yoursite.com/enroll'",
+  "[INSERT_BOOKING_URL]": "Your calendar link — e.g. 'https://cal.com/yourname'",
+  "[INSERT_REPLAY_AVAILABILITY]": "Who's allowed to watch it and for how long — e.g. 'registrants only, 48 hours'",
+  "[INSERT_REPLAY_EXPIRY]": "When the replay stops being available — e.g. '72 hours after the live event'",
+  "[INSERT_INCENTIVE]": "An offer for people who haven't bought yet — e.g. '20% off if you enrol this week'",
+  "[INSERT_LAST_ENGAGEMENT_TIMEFRAME]": "How long since they were last active — e.g. '30 days'",
+  "[INSERT_LEAD_MAGNET_NAME]": "The name of your free resource — e.g. 'The Consultant's Playbook'",
+  "[INSERT_LAUNCH_PRODUCT_NAME]": "The product you're launching — e.g. 'Authority Stack Accelerator'",
+  "[INSERT_EVENT_AGENDA]": "What happens at the event — e.g. 'Keynote, Q&A, networking lunch'",
+  "[INSERT_BONUS_VALUE]": "The perceived dollar value of the bonus — e.g. '$497'",
+  "[INSERT_COACH_CREDENTIAL]": "Your relevant qualification — e.g. 'ICF-certified coach'",
+  "[INSERT_FEATURED_IN]": "Where you've been featured — e.g. 'Forbes, Entrepreneur, TEDx'",
 };
 
 function labelForToken(token: string): string {
   return TOKEN_LABELS[token] ?? token.replace(/^\[INSERT_/, "").replace(/\]$/, "").replace(/_/g, " ").toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function hintForToken(token: string): string | undefined {
+  return TOKEN_HINTS[token];
 }
 
 type Props = {
@@ -175,6 +213,7 @@ export default function PlaceholderEditor({ serviceId, report, onClose, onSaved 
             const val = values[token] ?? "";
             const source = sourceMap[token];
             const isFilled = val.trim().length > 0;
+            const hint = hintForToken(token);
             return (
               <div key={token}>
                 <div style={{
@@ -205,11 +244,16 @@ export default function PlaceholderEditor({ serviceId, report, onClose, onSaved 
                     </span>
                   )}
                 </div>
+                {hint && (
+                  <p style={{ fontSize: 11, color: "#999", margin: "0 0 4px", lineHeight: 1.4 }}>
+                    {hint}
+                  </p>
+                )}
                 <input
                   type="text"
                   value={val}
                   onChange={e => setValues(prev => ({ ...prev, [token]: e.target.value }))}
-                  placeholder={token}
+                  placeholder={hint ? hint.split(" — e.g. ")[1]?.replace(/^'|'$/g, "") ?? token : token}
                   style={{
                     width: "100%",
                     boxSizing: "border-box",

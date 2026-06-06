@@ -44,15 +44,41 @@ export type PlaceholderReport = {
 const TOKEN_PATTERN = /\[INSERT_[A-Z_0-9]+\]/g;
 
 /**
+ * Synonym normalization: LLM-invented variants → canonical token.
+ * Mirrors server/routers/placeholders.ts TOKEN_SYNONYMS.
+ */
+const TOKEN_SYNONYMS: Record<string, string> = {
+  "[INSERT_CART_CLOSE]":       "[INSERT_COHORT_CLOSE_DATE]",
+  "[INSERT_NEXT_COHORT_DATE]": "[INSERT_COHORT_CLOSE_DATE]",
+  "[INSERT_REMAINING_SPOTS]":  "[INSERT_COHORT_LIMIT]",
+  "[INSERT_SPOTS_REMAINING]":  "[INSERT_COHORT_LIMIT]",
+  "[INSERT_AVAILABLE_SPOTS]":  "[INSERT_COHORT_LIMIT]",
+  "[INSERT_SUPPORT_EMAIL]":    "[INSERT_CONTACT_EMAIL]",
+  "[INSERT_REFUND_EMAIL]":     "[INSERT_CONTACT_EMAIL]",
+  "[INSERT_BOOKING_LINK]":     "[INSERT_BOOKING_URL]",
+  "[INSERT_START_DATE]":       "[INSERT_PROGRAMME_START_DATE]",
+  "[INSERT_NEXT_LAUNCH_DATE]": "[INSERT_PROGRAMME_START_DATE]",
+  "[INSERT_NEXT_OPEN_DATE]":   "[INSERT_PROGRAMME_START_DATE]",
+  "[INSERT_LAUNCH_DATE]":      "[INSERT_DEADLINE]",
+};
+
+function normalizeToken(token: string): string {
+  return TOKEN_SYNONYMS[token] ?? token;
+}
+
+/**
  * Detect placeholder tokens in a single text body. Returns per-token count
- * aggregations. Pure function — no DOM, no I/O — suitable for unit tests.
+ * aggregations. Normalizes through synonym map so variants group together.
  */
 export function detectPlaceholdersInText(text: string): { token: string; count: number }[] {
   if (!text || typeof text !== "string") return [];
   const matches = text.match(TOKEN_PATTERN);
   if (!matches) return [];
   const counts: Record<string, number> = {};
-  for (const m of matches) counts[m] = (counts[m] ?? 0) + 1;
+  for (const m of matches) {
+    const canonical = normalizeToken(m);
+    counts[canonical] = (counts[canonical] ?? 0) + 1;
+  }
   return Object.entries(counts).map(([token, count]) => ({ token, count }));
 }
 

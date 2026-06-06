@@ -17,7 +17,7 @@ import { buildScriptPrompt, MAX_SCRIPT_WORDS } from "./routers/videoScripts";
 import { sanitizePlaceholder, PLACEHOLDER_DEFAULTS } from "./routers/services";
 import { isAutoModeTierAllowed } from "./routers/autoMode";
 import { _hasPlaceholder } from "./_core/cascadeContext";
-import { resolveTokensInText, type ResolvedEntry } from "./routers/placeholders";
+import { resolveTokensInText, normalizeToken, TOKEN_SYNONYMS, type ResolvedEntry } from "./routers/placeholders";
 
 // ─── Issue 1: Gradient fallback throws ────────────────────────────────────────
 
@@ -3167,5 +3167,53 @@ describe("two-pass precedence — campaign overrides default", () => {
     expect(map.get("[INSERT_PRICE]")!.source).toBe("default");
     expect(map.get("[INSERT_HOST_NAME]")!.value).toBe("Arfeen");
     expect(map.get("[INSERT_HOST_NAME]")!.source).toBe("default");
+  });
+});
+
+// ─── Token synonym normalization ──────────────────────────────────────────────
+
+describe("normalizeToken — maps LLM-invented variants to canonical tokens", () => {
+  it("normalizes all known synonyms", () => {
+    expect(normalizeToken("[INSERT_CART_CLOSE]")).toBe("[INSERT_COHORT_CLOSE_DATE]");
+    expect(normalizeToken("[INSERT_NEXT_COHORT_DATE]")).toBe("[INSERT_COHORT_CLOSE_DATE]");
+    expect(normalizeToken("[INSERT_REMAINING_SPOTS]")).toBe("[INSERT_COHORT_LIMIT]");
+    expect(normalizeToken("[INSERT_SPOTS_REMAINING]")).toBe("[INSERT_COHORT_LIMIT]");
+    expect(normalizeToken("[INSERT_AVAILABLE_SPOTS]")).toBe("[INSERT_COHORT_LIMIT]");
+    expect(normalizeToken("[INSERT_SUPPORT_EMAIL]")).toBe("[INSERT_CONTACT_EMAIL]");
+    expect(normalizeToken("[INSERT_REFUND_EMAIL]")).toBe("[INSERT_CONTACT_EMAIL]");
+    expect(normalizeToken("[INSERT_BOOKING_LINK]")).toBe("[INSERT_BOOKING_URL]");
+    expect(normalizeToken("[INSERT_START_DATE]")).toBe("[INSERT_PROGRAMME_START_DATE]");
+    expect(normalizeToken("[INSERT_NEXT_LAUNCH_DATE]")).toBe("[INSERT_PROGRAMME_START_DATE]");
+    expect(normalizeToken("[INSERT_NEXT_OPEN_DATE]")).toBe("[INSERT_PROGRAMME_START_DATE]");
+    expect(normalizeToken("[INSERT_LAUNCH_DATE]")).toBe("[INSERT_DEADLINE]");
+  });
+
+  it("passes canonical tokens through unchanged", () => {
+    expect(normalizeToken("[INSERT_PRICE]")).toBe("[INSERT_PRICE]");
+    expect(normalizeToken("[INSERT_HOST_NAME]")).toBe("[INSERT_HOST_NAME]");
+    expect(normalizeToken("[INSERT_COHORT_CLOSE_DATE]")).toBe("[INSERT_COHORT_CLOSE_DATE]");
+  });
+});
+
+describe("resolveTokensInText — resolves through synonym map", () => {
+  it("resolves off-canonical tokens via synonym lookup", () => {
+    const map = new Map<string, ResolvedEntry>([
+      ["[INSERT_COHORT_CLOSE_DATE]", { token: "[INSERT_COHORT_CLOSE_DATE]", value: "June 30", source: "campaign" }],
+      ["[INSERT_COHORT_LIMIT]", { token: "[INSERT_COHORT_LIMIT]", value: "20 spots", source: "default" }],
+      ["[INSERT_CONTACT_EMAIL]", { token: "[INSERT_CONTACT_EMAIL]", value: "help@coach.com", source: "default" }],
+    ]);
+    const text = "Closes [INSERT_CART_CLOSE]. Only [INSERT_REMAINING_SPOTS] left. Contact [INSERT_SUPPORT_EMAIL].";
+    const result = resolveTokensInText(text, map);
+    expect(result).toBe("Closes June 30. Only 20 spots left. Contact help@coach.com.");
+  });
+
+  it("resolves mix of canonical and off-canonical in same text", () => {
+    const map = new Map<string, ResolvedEntry>([
+      ["[INSERT_PRICE]", { token: "[INSERT_PRICE]", value: "$6,000", source: "campaign" }],
+      ["[INSERT_PROGRAMME_START_DATE]", { token: "[INSERT_PROGRAMME_START_DATE]", value: "1 July", source: "default" }],
+    ]);
+    const text = "Investment: [INSERT_PRICE]. Starts [INSERT_START_DATE].";
+    const result = resolveTokensInText(text, map);
+    expect(result).toBe("Investment: $6,000. Starts 1 July.");
   });
 });
