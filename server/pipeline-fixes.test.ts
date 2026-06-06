@@ -3270,3 +3270,73 @@ describe("S3 — invented currency detected in ALL 7 offer fields (not just pric
     }
   });
 });
+
+// ─── S4 — Offer ANGLE_PROMPTS no longer instruct concrete prices ─────────────
+
+describe("S4 — offer generator prompts do not instruct concrete currency amounts", () => {
+  const offerSrc = readFileSync(join(__dirname, "offersGenerator.ts"), "utf8");
+
+  it("godfather angle does not instruct 'specific £/$ value' for bonuses in the prompt", () => {
+    // The old prompt said "each with real name and specific £/$ value"
+    // The string still exists in a comment documenting the root cause — that's fine.
+    // The ANGLE_PROMPTS section must not contain it as an instruction.
+    const angleStart = offerSrc.indexOf("const ANGLE_PROMPTS");
+    const angleEnd = offerSrc.indexOf("};", angleStart);
+    const angleBlock = offerSrc.slice(angleStart, angleEnd);
+    expect(angleBlock).not.toContain("specific £/$ value");
+  });
+
+  it("godfather angle does not use £8,000/month as a concrete example", () => {
+    expect(offerSrc).not.toContain("£8,000/month");
+  });
+
+  it("dollar angle does not instruct 'state that number explicitly' for cost-of-problem", () => {
+    expect(offerSrc).not.toContain("state that number explicitly");
+  });
+
+  it("pricing section header does not say 'clear price with anchoring'", () => {
+    expect(offerSrc).not.toContain("clear price with anchoring");
+  });
+
+  it("godfather angle references [INSERT_BONUS_N_VALUE] placeholder for unsupplied bonuses", () => {
+    expect(offerSrc).toContain("[INSERT_BONUS_N_VALUE] placeholder when none is supplied");
+  });
+
+  it("dollar angle references [INSERT_PRICE] placeholder for unsupplied price", () => {
+    // Dollar angle's cost-of-problem framing now uses placeholder
+    expect(offerSrc).toContain("operator-supplied price or [INSERT_PRICE] placeholder");
+  });
+
+  it("validator still catches invented price in pricing field when no price supplied", () => {
+    const offer: RawOfferFields = {
+      offerName: "Test",
+      valueProposition: "Test",
+      pricing: "Investment: £297 for the full programme.",
+      bonuses: "[INSERT_BONUS_1_NAME] ([INSERT_BONUS_1_VALUE])",
+      guarantee: "[INSERT_GUARANTEE_TERMS]",
+      urgency: "[INSERT_COHORT_LIMIT]",
+      cta: "Book a call.",
+    };
+    const result = validateOfferFabricationPatterns(offer, {});
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.hits.some(h => h.classId === "offer_invented_currency")).toBe(true);
+    }
+  });
+
+  it("supplied price passes without false positive", () => {
+    const offer: RawOfferFields = {
+      offerName: "Test",
+      valueProposition: "Get results worth every penny of your £297 investment.",
+      pricing: "Investment: £297 for the full programme.",
+      bonuses: "[INSERT_BONUS_1_NAME] ([INSERT_BONUS_1_VALUE])",
+      guarantee: "[INSERT_GUARANTEE_TERMS]",
+      urgency: "[INSERT_COHORT_LIMIT]",
+      cta: "Get started for £297.",
+    };
+    const supplied: OfferSuppliedData = { price: "297" };
+    const result = validateOfferFabricationPatterns(offer, supplied);
+    const currencyHits = result.ok ? [] : result.hits.filter(h => h.classId === "offer_invented_currency");
+    expect(currencyHits.length).toBe(0);
+  });
+});

@@ -14,11 +14,11 @@ const ANGLE_PROMPTS = {
 Generate an IRRESISTIBLE GODFATHER OFFER using the Hormozi value equation: Dream Outcome × Perceived Likelihood of Achievement ÷ Time Delay × Effort and Sacrifice. Every element of the offer must increase the numerator or decrease the denominator.
 
 STRUCTURE:
-1. Name the dream outcome in one specific sentence — not a category, a situation. Not "financial freedom" — "replacing your £8,000/month salary within 90 days."
+1. Name the dream outcome in one specific sentence — not a category, a situation. Not "financial freedom" — "replacing your current salary within [INSERT_FIRST_RESULT_TIMEFRAME]." Use niche-specific language for specificity, never invented currency amounts.
 2. State the likelihood of achievement using social proof — specific client numbers from the data provided, or "hundreds of clients" minimum if none available.
 3. Reduce perceived time delay — name the specific first result the customer sees in the first 7 days, not just the end result.
 4. Reduce perceived effort — name the one thing they do NOT have to do that they assumed they would have to do.
-5. Stack the offer: core programme + bonuses (each with real name and specific £/$ value) + guarantee that removes all financial risk.
+5. Stack the offer: core programme + bonuses (each with a real name and the operator-supplied value or [INSERT_BONUS_N_VALUE] placeholder when none is supplied) + guarantee that removes all financial risk.
 6. The guarantee must make keeping the money feel riskier than giving it back — name exactly what they keep if they refund (all materials, all recordings, all bonus resources). The reader must feel that requesting a refund still leaves them better off than before.
 
 Risk reversal: state "or you don't pay" as a specific condition, not a slogan. Name the result that must happen for payment to be earned.
@@ -40,7 +40,7 @@ Generate a FREE OFFER that feels like the full value being given away — not a 
 
 STRUCTURE:
 1. Name the specific deliverable from the free session — a personalised gap analysis, a three-step roadmap, a custom action plan — not "valuable insights" or "clarity." The deliverable must be something the client can act on immediately after the session ends.
-2. Name the monetary value of that deliverable if the client had paid for it, and explain why it has that value — what it includes that makes it worth that amount.
+2. Name the perceived value of that deliverable if the client had paid for it — use operator-supplied price data or [INSERT_PRICE] placeholder when no price is supplied. Explain why it has that value — what it includes that makes it worth that amount.
 3. Name who this free offer is NOT for — this increases perceived exclusivity and pre-qualifies leads. Be specific: "This is not for people who are just curious. This is for [specific situation with specific qualifying criteria]."
 4. Name the one thing that will happen in the session that the client cannot get anywhere else — the proprietary analysis, framework, or insight that makes this session unique to this provider.
 
@@ -59,14 +59,14 @@ BANNED FREE OFFER PHRASES (overused — trigger skepticism, do not use):
 Generate a DOLLAR OFFER that anchors against the cost of the problem, not against the cost of a higher-tier programme. The price must feel like the obvious rational choice compared to what staying stuck costs per month.
 
 STRUCTURE:
-1. Calculate the monthly cost of the problem — if the customer is losing £X/month by not solving this, state that number explicitly. The dollar price must be shown as a fraction of that monthly cost. Example: "$7 is less than 1% of what this problem costs you every month."
+1. Frame the cost of the problem — describe what staying stuck costs the customer in concrete terms (time, missed opportunities, ongoing frustration) without inventing specific currency amounts. Use operator-supplied price or [INSERT_PRICE] placeholder for the offer price. The price must feel like the obvious rational choice compared to the cost of inaction.
 2. Name what the customer gets access to immediately on payment — not what they get "over the programme" — what lands in their inbox or account in the next 10 minutes.
 3. Use the tripwire frame: this is not the full programme. This is the specific tool that solves the single most painful problem. Name that specific problem and name that specific tool.
 4. Show the value ladder transparently: name that this low-price entry leads to the full programme. Be open about it — transparency increases conversion because it removes the hidden agenda suspicion.
 
-Offer Name pattern: "The [Specific Tool Name] for [Niche Avatar] — [Price]"
-CTA: "Get Instant Access for $[Price]"
-Price anchoring: state the anchor (full programme value or monthly cost of problem) before revealing the dollar price.
+Offer Name pattern: "The [Specific Tool Name] for [Niche Avatar] — [INSERT_PRICE]"
+CTA: "Get Instant Access for [INSERT_PRICE]"
+Price anchoring: frame the anchor using the cost of the problem (without inventing currency amounts) before presenting the operator-supplied price or [INSERT_PRICE] placeholder.
 
 BANNED DOLLAR PHRASES (do not use):
 - "incredible value"
@@ -225,8 +225,8 @@ Generate a complete offer with 7 sections:
 2. **Value Proposition** (20-30 words)
    State the specific functional outcome (number, timeframe, or named situation) the customer gets. Then immediately name what it costs them if they stay where they are. Not a feeling — a situation.
 
-3. **Pricing** (clear price with anchoring, 30-50 words)
-   Use operator-supplied price OR [INSERT_PRICE] placeholder verbatim. Do NOT invent a price or anchor range. Include the guarantee duration only if operator-supplied; otherwise reference the [INSERT_GUARANTEE_TERMS] placeholder.
+3. **Pricing** (price section, 30-50 words)
+   Use operator-supplied price OR [INSERT_PRICE] placeholder verbatim. Do NOT invent a price, anchor range, or cost comparison with a fabricated number. Include the guarantee duration only if operator-supplied; otherwise reference the [INSERT_GUARANTEE_TERMS] placeholder.
 
 4. **Bonuses** (3-5 bonuses, 150-200 words total)
    Every bonus must: have a real name (or [INSERT_BONUS_N_NAME] placeholder), the operator-supplied value or [INSERT_BONUS_N_VALUE] placeholder, and one sentence explaining exactly what it does for the customer.
