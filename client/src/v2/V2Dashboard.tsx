@@ -1199,7 +1199,14 @@ export default function V2Dashboard() {
                 gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(260px, 1fr))",
                 gap: "12px",
               }}>
-                {campaignKitsList!.map((k: any) => {
+                {(() => {
+                // Derive per-account sequential numbers: sort by createdAt asc, position+1
+                const sorted = [...campaignKitsList!].sort((a: any, b: any) =>
+                  new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+                );
+                const seqMap = new Map<number, number>();
+                sorted.forEach((kit: any, i: number) => seqMap.set(kit.id, i + 1));
+                return campaignKitsList!.map((k: any) => {
                   const KIT_FIELDS_ALL = [
                     "selectedOfferId", "selectedMechanismId", "selectedHvcoId",
                     "selectedHeadlineId", "selectedAdCopyId", "selectedLandingPageId",
@@ -1209,6 +1216,8 @@ export default function V2Dashboard() {
                   const totalCount = KIT_FIELDS_ALL.length;
                   const pctVal = Math.round((filledCount / totalCount) * 100);
                   const isCompleteCard = filledCount === totalCount;
+                  const seqNum = seqMap.get(k.id) ?? k.id;
+                  const dateStr = k.createdAt ? new Date(k.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "";
                   return (
                     <a
                       key={k.id}
@@ -1230,12 +1239,10 @@ export default function V2Dashboard() {
                         fontFamily: "var(--v2-font-body)",
                         fontSize: "11px",
                         fontWeight: 700,
-                        color: "#777",
-                        textTransform: "uppercase",
-                        letterSpacing: "0.04em",
+                        color: "#999",
                         marginBottom: "4px",
                       }}>
-                        {k.icpName || `ICP #${k.icpId}`}
+                        Campaign #{seqNum} · {dateStr}
                       </div>
                       <div style={{
                         fontFamily: "var(--v2-font-heading, 'Fraunces', serif)",
@@ -1267,7 +1274,8 @@ export default function V2Dashboard() {
                       </div>
                     </a>
                   );
-                })}
+                });
+              })()}
               </div>
             </section>
           )}

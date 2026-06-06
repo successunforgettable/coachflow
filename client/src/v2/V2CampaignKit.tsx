@@ -307,6 +307,25 @@ export default function V2CampaignKit() {
   const [showOverlay, setShowOverlay] = useState(false);
   const [showPlaceholderEditor, setShowPlaceholderEditor] = useState(false);
 
+  // T2: all user kits for sequential number derivation
+  const { data: allUserKits } = trpc.campaignKits.getByUser.useQuery(undefined, { staleTime: 30_000 });
+  const campaignSeqNum = useMemo(() => {
+    if (!allUserKits || !kitId) return null;
+    const sorted = [...allUserKits].sort((a: any, b: any) =>
+      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+    const idx = sorted.findIndex((k: any) => k.id === kitId);
+    return idx >= 0 ? idx + 1 : null;
+  }, [allUserKits, kitId]);
+  const campaignDateStr = kit?.createdAt
+    ? new Date(kit.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+    : "";
+
+  // T2: inline rename
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [renameValue, setRenameValue] = useState("");
+  const renameMut = trpc.campaignKits.updateName.useMutation();
+
   // Placeholder registry: resolve serviceId from ICP data
   const serviceId = (icpData as any)?.serviceId as number | undefined;
   const { data: placeholderEntries } = trpc.placeholders.list.useQuery(
@@ -623,17 +642,91 @@ export default function V2CampaignKit() {
 
         {/* Header */}
         <div style={{ marginBottom: "32px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-            <h1 style={{
-              fontFamily: "var(--v2-font-heading, 'Fraunces', serif)",
-              fontStyle: "italic",
-              fontWeight: 900,
-              fontSize: "28px",
-              color: "var(--v2-text-dark, #1A1624)",
-              margin: 0,
+          {/* Campaign number + date */}
+          {campaignSeqNum && (
+            <div style={{
+              fontFamily: "var(--v2-font-body)",
+              fontSize: "12px",
+              fontWeight: 600,
+              color: "#999",
+              marginBottom: "6px",
             }}>
-              {kit.name || "Campaign Kit"}
-            </h1>
+              Campaign #{campaignSeqNum} · {campaignDateStr}
+            </div>
+          )}
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+            {isRenaming ? (
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (!renameValue.trim() || !kitId) return;
+                  await renameMut.mutateAsync({ kitId, name: renameValue.trim() });
+                  utils.campaignKits.getById.invalidate({ kitId });
+                  utils.campaignKits.getByUser.invalidate();
+                  setIsRenaming(false);
+                }}
+                style={{ display: "flex", alignItems: "center", gap: 8 }}
+              >
+                <input
+                  type="text"
+                  value={renameValue}
+                  onChange={e => setRenameValue(e.target.value)}
+                  autoFocus
+                  style={{
+                    fontFamily: "var(--v2-font-heading, 'Fraunces', serif)",
+                    fontStyle: "italic",
+                    fontWeight: 900,
+                    fontSize: "28px",
+                    color: "var(--v2-text-dark, #1A1624)",
+                    border: "none",
+                    borderBottom: "2px solid var(--v2-primary-btn, #FF5B1D)",
+                    outline: "none",
+                    background: "transparent",
+                    padding: "0 0 2px",
+                    width: "100%",
+                    maxWidth: "400px",
+                  }}
+                  onKeyDown={e => { if (e.key === "Escape") setIsRenaming(false); }}
+                />
+                <button type="submit" disabled={renameMut.isPending} style={{
+                  background: "var(--v2-primary-btn)", color: "#fff", border: "none",
+                  borderRadius: 9999, padding: "6px 14px", fontSize: 12, fontWeight: 700,
+                  fontFamily: "var(--v2-font-body)", cursor: "pointer",
+                }}>
+                  {renameMut.isPending ? "..." : "Save"}
+                </button>
+                <button type="button" onClick={() => setIsRenaming(false)} style={{
+                  background: "none", border: "none", fontSize: 12, color: "#999",
+                  fontFamily: "var(--v2-font-body)", cursor: "pointer",
+                }}>
+                  Cancel
+                </button>
+              </form>
+            ) : (
+              <>
+                <h1 style={{
+                  fontFamily: "var(--v2-font-heading, 'Fraunces', serif)",
+                  fontStyle: "italic",
+                  fontWeight: 900,
+                  fontSize: "28px",
+                  color: "var(--v2-text-dark, #1A1624)",
+                  margin: 0,
+                }}>
+                  {kit.name || "Campaign Kit"}
+                </h1>
+                <button
+                  onClick={() => { setRenameValue(kit.name || ""); setIsRenaming(true); }}
+                  title="Rename campaign"
+                  style={{
+                    background: "none", border: "none", cursor: "pointer",
+                    fontSize: 16, color: "#999", padding: "4px", lineHeight: 1,
+                    display: "inline-flex", alignItems: "center",
+                  }}
+                >
+                  ✎
+                </button>
+              </>
+            )}
             <span style={{
               display: "inline-block",
               padding: "4px 12px",
