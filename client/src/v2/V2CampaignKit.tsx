@@ -152,13 +152,14 @@ const previewMuted: React.CSSProperties = {
 };
 
 // ─── Asset content fetcher component ───────────────────────────────────────────
-function AssetSection({ sectionKey, label, step, selectedId, angle, navigate }: {
+function AssetSection({ sectionKey, label, step, selectedId, angle, navigate, serviceId }: {
   sectionKey: string;
   label: string;
   step: string;
   selectedId: number | null;
   angle?: string;
   navigate: (path: string) => void;
+  serviceId?: number;
 }) {
   // Fetch the actual content for each selected asset
   const offerQuery = trpc.offers.get.useQuery({ id: selectedId! }, { enabled: sectionKey === "selectedOfferId" && !!selectedId });
@@ -233,7 +234,7 @@ function AssetSection({ sectionKey, label, step, selectedId, angle, navigate }: 
           {sectionKey === "selectedWhatsAppSequenceId" && <WhatsAppPreview data={waQuery.data} />}
 
           <button
-            onClick={() => navigate(`/v2-dashboard/wizard/${step}`)}
+            onClick={() => navigate(`/v2-dashboard/wizard/${step}${serviceId ? `?serviceId=${serviceId}` : ""}`)}
             style={{
               marginTop: "12px",
               background: "transparent",
@@ -794,6 +795,7 @@ export default function V2CampaignKit() {
             selectedId={kit[section.key as keyof typeof kit] as number | null}
             angle={section.key === "selectedLandingPageId" ? (kit.selectedLandingPageAngle || "original") : undefined}
             navigate={navigate}
+            serviceId={serviceId}
           />
         ))}
       </div>

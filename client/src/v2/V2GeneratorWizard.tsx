@@ -1715,35 +1715,35 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
   // in each effect prevents the DB read from clobbering a just-completed ID.
   const { data: offersList } = trpc.offers.list.useQuery(
     serviceId ? { serviceId } : undefined,
-    { enabled: !isDemoMissing }
+    { enabled: !isDemoMissing && !!serviceId }
   );
   const { data: mechanismsList } = trpc.heroMechanisms.list.useQuery(
     serviceId ? { serviceId } : undefined,
-    { enabled: !isDemoMissing }
+    { enabled: !isDemoMissing && !!serviceId }
   );
   const { data: hvcoList } = trpc.hvco.list.useQuery(
     serviceId ? { serviceId } : undefined,
-    { enabled: !isDemoMissing }
+    { enabled: !isDemoMissing && !!serviceId }
   );
   const { data: headlinesList } = trpc.headlines.list.useQuery(
     serviceId ? { serviceId } : undefined,
-    { enabled: !isDemoMissing }
+    { enabled: !isDemoMissing && !!serviceId }
   );
   const { data: adCopyList } = trpc.adCopy.list.useQuery(
     serviceId ? { serviceId } : undefined,
-    { enabled: !isDemoMissing }
+    { enabled: !isDemoMissing && !!serviceId }
   );
   const { data: landingPagesList } = trpc.landingPages.list.useQuery(
     serviceId ? { serviceId } : undefined,
-    { enabled: !isDemoMissing }
+    { enabled: !isDemoMissing && !!serviceId }
   );
   const { data: emailSeqList } = trpc.emailSequences.list.useQuery(
     serviceId ? { serviceId } : undefined,
-    { enabled: !isDemoMissing }
+    { enabled: !isDemoMissing && !!serviceId }
   );
   const { data: whatsappSeqList } = trpc.whatsappSequences.list.useQuery(
     serviceId ? { serviceId } : undefined,
-    { enabled: !isDemoMissing }
+    { enabled: !isDemoMissing && !!serviceId }
   );
   // ── Commit 7: campaign kit query for campaignType cascade ──
   // Drives Step 0 picker, landingPage pageType cascade, and adCopy CTA
@@ -1850,61 +1850,61 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
     }
   }, [icpData, latestIcpId, status]);
   useEffect(() => {
-    if (status === "loading") return;
+    if (status === "loading" || !serviceId) return;
     if (!latestOfferId && offersList?.[0]?.id) {
       setLatestOfferId(offersList[0].id);
       setStatus("success");
     }
-  }, [offersList, latestOfferId, status]);
+  }, [offersList, latestOfferId, status, serviceId]);
   useEffect(() => {
-    if (status === "loading") return;
+    if (status === "loading" || !serviceId) return;
     if (!latestMechanismSetId && mechanismsList?.[0]?.mechanismSetId) {
       setLatestMechanismSetId(mechanismsList[0].mechanismSetId);
       setStatus("success");
     }
-  }, [mechanismsList, latestMechanismSetId, status]);
+  }, [mechanismsList, latestMechanismSetId, status, serviceId]);
   useEffect(() => {
-    if (status === "loading") return;
+    if (status === "loading" || !serviceId) return;
     if (!latestHvcoSetId && hvcoList?.[0]?.hvcoSetId) {
       setLatestHvcoSetId(hvcoList[0].hvcoSetId);
       setStatus("success");
     }
-  }, [hvcoList, latestHvcoSetId, status]);
+  }, [hvcoList, latestHvcoSetId, status, serviceId]);
   useEffect(() => {
-    if (status === "loading") return;
+    if (status === "loading" || !serviceId) return;
     if (!latestHeadlineSetId && headlinesList?.[0]?.headlineSetId) {
       setLatestHeadlineSetId(headlinesList[0].headlineSetId);
       setStatus("success");
     }
-  }, [headlinesList, latestHeadlineSetId, status]);
+  }, [headlinesList, latestHeadlineSetId, status, serviceId]);
   useEffect(() => {
-    if (status === "loading") return;
+    if (status === "loading" || !serviceId) return;
     if (!latestAdSetId && adCopyList?.[0]?.adSetId) {
       setLatestAdSetId(adCopyList[0].adSetId);
       setStatus("success");
     }
-  }, [adCopyList, latestAdSetId, status]);
+  }, [adCopyList, latestAdSetId, status, serviceId]);
   useEffect(() => {
-    if (status === "loading") return;
+    if (status === "loading" || !serviceId) return;
     if (!latestLandingPageId && landingPagesList?.[0]?.id) {
       setLatestLandingPageId(landingPagesList[0].id);
       setStatus("success");
     }
-  }, [landingPagesList, latestLandingPageId, status]);
+  }, [landingPagesList, latestLandingPageId, status, serviceId]);
   useEffect(() => {
-    if (status === "loading") return;
+    if (status === "loading" || !serviceId) return;
     if (!latestEmailSequenceId && emailSeqList?.[0]?.id) {
       setLatestEmailSequenceId(emailSeqList[0].id);
       setStatus("success");
     }
-  }, [emailSeqList, latestEmailSequenceId, status]);
+  }, [emailSeqList, latestEmailSequenceId, status, serviceId]);
   useEffect(() => {
-    if (status === "loading") return;
+    if (status === "loading" || !serviceId) return;
     if (!latestWhatsappSequenceId && whatsappSeqList?.[0]?.id) {
       setLatestWhatsappSequenceId(whatsappSeqList[0].id);
       setStatus("success");
     }
-  }, [whatsappSeqList, latestWhatsappSequenceId, status]);
+  }, [whatsappSeqList, latestWhatsappSequenceId, status, serviceId]);
 
   // ── Commit 7.2 (Bug 1): seed pageType field from cascade ──
   // The dispatcher cascade fires at GENERATION time (Item 5) — pageType is
