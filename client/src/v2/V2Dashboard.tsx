@@ -1218,6 +1218,7 @@ export default function V2Dashboard() {
                   const isCompleteCard = filledCount === totalCount;
                   const seqNum = seqMap.get(k.id) ?? k.id;
                   const dateStr = k.createdAt ? new Date(k.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "";
+                  const icpName = icpList?.find((i: any) => i.id === k.icpId)?.name || "";
                   return (
                     <a
                       key={k.id}
@@ -1250,10 +1251,20 @@ export default function V2Dashboard() {
                         fontWeight: 900,
                         fontSize: "16px",
                         color: "var(--v2-text-dark, #1A1624)",
-                        marginBottom: "10px",
+                        marginBottom: icpName ? "4px" : "10px",
                       }}>
                         {k.name || "Untitled Kit"}
                       </div>
+                      {icpName && (
+                        <div style={{
+                          fontFamily: "var(--v2-font-body)",
+                          fontSize: "13px",
+                          color: "#666",
+                          marginBottom: "8px",
+                        }}>
+                          {icpName}
+                        </div>
+                      )}
                       <div style={{
                         fontFamily: "var(--v2-font-body)",
                         fontSize: "12px",
