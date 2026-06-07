@@ -1584,6 +1584,55 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
   // updateSelection (campaignKits.ts:140) — accepts campaignType nullable
   // optional per the commit-7 comment at L152-154.
   const updateKitMutation = trpc.campaignKits.updateSelection.useMutation();
+
+  // ── Selection persistence helper ──────────────────────────────────────────
+  // After each node's generation completes, persist the generated asset's ID
+  // to the campaign kit so the kit tracks completion state. For set-based nodes
+  // (mechanism, hvco, headlines, adCopy) we resolve the setId → first row ID
+  // using the existing getBySetId queries.
+  const persistSelection = async (
+    nodeStep: string,
+    generatedId: number | string,
+  ) => {
+    if (!activeKit) return;
+    try {
+      let selectionPayload: Record<string, unknown> = { kitId: activeKit.id };
+      if (nodeStep === "offer") {
+        selectionPayload.selectedOfferId = generatedId as number;
+      } else if (nodeStep === "uniqueMethod") {
+        const items = await utils.heroMechanisms.getBySetId.fetch({ mechanismSetId: generatedId as string });
+        if (items?.[0]?.id) selectionPayload.selectedMechanismId = items[0].id;
+        else return;
+      } else if (nodeStep === "freeOptIn") {
+        const items = await utils.hvco.getBySetId.fetch({ hvcoSetId: generatedId as string });
+        if (items?.[0]?.id) selectionPayload.selectedHvcoId = items[0].id;
+        else return;
+      } else if (nodeStep === "headlines") {
+        const data: any = await utils.headlines.getBySetId.fetch({ headlineSetId: generatedId as string });
+        const allHeadlines = Object.values(data?.headlines ?? {}).flat() as { id?: number }[];
+        if (allHeadlines[0]?.id) selectionPayload.selectedHeadlineId = allHeadlines[0].id;
+        else return;
+      } else if (nodeStep === "adCopy") {
+        const data: any = await utils.adCopy.getByAdSetId.fetch({ adSetId: generatedId as string });
+        const firstAd = (data?.headlines ?? data?.bodies ?? [])[0];
+        if (firstAd?.id) selectionPayload.selectedAdCopyId = firstAd.id;
+        else return;
+      } else if (nodeStep === "landingPage") {
+        selectionPayload.selectedLandingPageId = generatedId as number;
+      } else if (nodeStep === "emailSequence") {
+        selectionPayload.selectedEmailSequenceId = generatedId as number;
+      } else if (nodeStep === "whatsappSequence") {
+        selectionPayload.selectedWhatsAppSequenceId = generatedId as number;
+      } else {
+        return;
+      }
+      await updateKitMutation.mutateAsync(selectionPayload as any);
+      utils.campaignKits.getByUser.invalidate();
+    } catch (e) {
+      console.warn("[persistSelection] failed:", e);
+    }
+  };
+
   // Polling interval ref for background jobs
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -1990,7 +2039,10 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
           offerType: advOfferType ?? "premium",
         });
         const offerResult = await pollJob(jobId);
-        if (typeof offerResult.offerId === 'number') setLatestOfferId(offerResult.offerId);
+        if (typeof offerResult.offerId === 'number') {
+          setLatestOfferId(offerResult.offerId);
+          persistSelection("offer", offerResult.offerId);
+        }
       } else if (step === "uniqueMethod") {
         // Path B wire: read user-supplied application + descriptor from Advanced.
         // application: empty/whitespace → undefined → server falls back to
@@ -2020,7 +2072,10 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
           descriptor: advDescriptor ?? "System",
         });
         const mechResult = await pollJob(jobId);
-        if (typeof mechResult.mechanismSetId === 'string') setLatestMechanismSetId(mechResult.mechanismSetId);
+        if (typeof mechResult.mechanismSetId === 'string') {
+          setLatestMechanismSetId(mechResult.mechanismSetId);
+          persistSelection("uniqueMethod", mechResult.mechanismSetId);
+        }
         if (typeof mechResult.generationWarning === 'string' && mechResult.generationWarning) setLatestMechWarning(mechResult.generationWarning);
         else setLatestMechWarning(undefined);
       } else if (step === "freeOptIn") {
@@ -2033,7 +2088,10 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
           hvcoTopic: advHvcoTopic || svc?.hvcoTopic || svc?.mainBenefit || "",
         });
         const hvcoResult = await pollJob(jobId);
-        if (typeof hvcoResult.hvcoSetId === 'string') setLatestHvcoSetId(hvcoResult.hvcoSetId);
+        if (typeof hvcoResult.hvcoSetId === 'string') {
+          setLatestHvcoSetId(hvcoResult.hvcoSetId);
+          persistSelection("freeOptIn", hvcoResult.hvcoSetId);
+        }
       } else if (step === "headlines") {
         // Path B + Choice 1: UI shows friendly labels and an "All styles"
         // sentinel; map back to server keys here. The lookup table
@@ -2061,6 +2119,7 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
         const headlineResult = await pollJob(jobId);
         if (headlineResult.headlineSetId) {
           setLatestHeadlineSetId(headlineResult.headlineSetId);
+          persistSelection("headlines", headlineResult.headlineSetId);
         }
       } else if (step === "adCopy") {
         // Commit 7: derive CTA from activeKit?.campaignType per locked spec
@@ -2095,6 +2154,7 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
         const adCopyResult = await pollJob(jobId);
         if (adCopyResult.adSetId) {
           setLatestAdSetId(adCopyResult.adSetId);
+          persistSelection("adCopy", adCopyResult.adSetId);
         }
       } else if (step === "landingPage") {
         // Commit 7: read user-selected pageType from Advanced accordion.
@@ -2136,7 +2196,10 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
         });
         // Pass onProgress so the LoadingState shows "Generating angle X of 4…" in real time
         const lpResult = await pollJob(jobId, (label) => setProgressLabel(label));
-        if (typeof lpResult.id === 'number') setLatestLandingPageId(lpResult.id);
+        if (typeof lpResult.id === 'number') {
+          setLatestLandingPageId(lpResult.id);
+          persistSelection("landingPage", lpResult.id);
+        }
       } else if (step === "emailSequence") {
         // Path B: UI shows friendly labels; map back to server keys here.
         // Commit 7 expands to all 10 server enum values
@@ -2190,7 +2253,10 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
           name: `${svc?.name || "My Service"} — ${SEQUENCE_TYPE_NAME[sequenceType]}`,
         });
         const emailResult = await pollJob(jobId);
-        if (typeof emailResult.id === 'number') setLatestEmailSequenceId(emailResult.id);
+        if (typeof emailResult.id === 'number') {
+          setLatestEmailSequenceId(emailResult.id);
+          persistSelection("emailSequence", emailResult.id);
+        }
       } else if (step === "whatsappSequence") {
         // Path C: read user-selected tone + sequenceLength + sequenceType from
         // Advanced accordion. Schema enums match UI options exactly. If user
@@ -2237,7 +2303,10 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
           sequenceLength: advLength,
         });
         const waResult = await pollJob(jobId);
-        if (typeof waResult.id === 'number') setLatestWhatsappSequenceId(waResult.id);
+        if (typeof waResult.id === 'number') {
+          setLatestWhatsappSequenceId(waResult.id);
+          persistSelection("whatsappSequence", waResult.id);
+        }
       } else if (step === "pushToMeta") {
         // No generation needed — just show instructions
       }
