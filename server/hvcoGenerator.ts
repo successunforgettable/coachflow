@@ -347,5 +347,19 @@ Return ONLY a JSON array of 20 subheadline strings, nothing else.`;
   await createHvcoTitles(allTitles);
   await incrementHvcoCount(input.userId);
 
+  // Auto-select first HVCO into campaign kit (creates kit if needed)
+  try {
+    if (icp?.id) {
+      const { hvcoTitles } = await import("../drizzle/schema");
+      const { asc } = await import("drizzle-orm");
+      const [firstRow] = await db.select({ id: hvcoTitles.id }).from(hvcoTitles)
+        .where(eq(hvcoTitles.hvcoSetId, hvcoSetId)).orderBy(asc(hvcoTitles.id)).limit(1);
+      if (firstRow) {
+        const { autoSelectBest } = await import("./routers/campaignKits");
+        await autoSelectBest(input.userId, icp.id, "selectedHvcoId", firstRow.id);
+      }
+    }
+  } catch (e) { console.warn("[auto-select] hvco failed:", e); }
+
   return { hvcoSetId };
 }

@@ -292,6 +292,7 @@ export async function runHeadlinesGeneration(input: {
   let cascadeContext = '';
   let campaignTypeContext = '';
   let serviceCategory: string | null = null;
+  let resolvedIcpId: number | undefined;
 
   if (input.serviceId) {
     const db = await getDb();
@@ -325,6 +326,7 @@ export async function runHeadlinesGeneration(input: {
       [icp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
     }
     if (icp) {
+      resolvedIcpId = icp.id;
       icpContext = [
         'IDEAL CUSTOMER PROFILE — use this to make every line of copy specific and targeted:',
         icp.pains ? `Their daily pains: ${icp.pains}` : '',
@@ -528,6 +530,22 @@ Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES
     headlineSetId,
     serviceCategory,
   );
+
+  // Auto-select first headline into campaign kit (creates kit if needed)
+  try {
+    if (resolvedIcpId) {
+      const db2 = await getDb();
+      if (db2) {
+        const { asc } = await import("drizzle-orm");
+        const [firstRow] = await db2.select({ id: headlines.id }).from(headlines)
+          .where(eq(headlines.headlineSetId, headlineSetId)).orderBy(asc(headlines.id)).limit(1);
+        if (firstRow) {
+          const { autoSelectBest } = await import("./routers/campaignKits");
+          await autoSelectBest(input.userId, resolvedIcpId, "selectedHeadlineId", firstRow.id);
+        }
+      }
+    }
+  } catch (e) { console.warn("[auto-select] headlines failed:", e); }
 
   return {
     headlineSetId,

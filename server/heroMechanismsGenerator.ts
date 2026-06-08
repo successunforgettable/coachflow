@@ -343,5 +343,19 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
   await createHeroMechanisms(allMechanisms);
   await incrementHeroMechanismCount(input.userId);
 
+  // Auto-select first mechanism into campaign kit (creates kit if needed)
+  try {
+    if (icp?.id) {
+      const { heroMechanisms } = await import("../drizzle/schema");
+      const { asc } = await import("drizzle-orm");
+      const [firstRow] = await db.select({ id: heroMechanisms.id }).from(heroMechanisms)
+        .where(eq(heroMechanisms.mechanismSetId, mechanismSetId)).orderBy(asc(heroMechanisms.id)).limit(1);
+      if (firstRow) {
+        const { autoSelectBest } = await import("./routers/campaignKits");
+        await autoSelectBest(input.userId, icp.id, "selectedMechanismId", firstRow.id);
+      }
+    }
+  } catch (e) { console.warn("[auto-select] mechanism failed:", e); }
+
   return { mechanismSetId, generationWarning };
 }

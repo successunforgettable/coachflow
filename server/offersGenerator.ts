@@ -511,6 +511,15 @@ export async function runOfferGeneration(input: {
     activeAngle: "godfather",
     rating: 0,
   });
+  const offerId = insertResult[0].insertId;
 
-  return { offerId: insertResult[0].insertId };
+  // Auto-select into campaign kit (creates kit if needed) — mirrors orchestrator pattern
+  try {
+    if (icp?.id) {
+      const { autoSelectBest } = await import("./routers/campaignKits");
+      await autoSelectBest(input.userId, icp.id, "selectedOfferId", offerId);
+    }
+  } catch (e) { console.warn("[auto-select] offer failed:", e); }
+
+  return { offerId };
 }
