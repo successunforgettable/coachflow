@@ -8,6 +8,7 @@ import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 import { runAdCopyGeneration } from "../adCopyGenerator";
+import { invokeLLM } from "../_core/llm";
 
 const generateAdCopySchema = z.object({
   serviceId: z.coerce.number(),
@@ -442,5 +443,48 @@ export const adCopyRouter = router({
         bodies:    ads.filter(a => a.contentType === "body"),
         links:     ads.filter(a => a.contentType === "link"),
       };
+    }),
+
+  regenerateSingle: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      promptOverride: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const [row] = await db
+        .select()
+        .from(adCopy)
+        .where(and(eq(adCopy.id, input.id), eq(adCopy.userId, ctx.user.id)))
+        .limit(1);
+
+      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Ad copy not found" });
+
+      const userInstruction = input.promptOverride?.trim()
+        ? ` User instruction: ${input.promptOverride.trim()}.`
+        : "";
+
+      const prompt = `Rewrite this ad ${row.contentType} for a coaching/consulting offer. Current value: ${row.content}.${userInstruction} Return ONLY the rewritten text. No JSON, no markdown, no explanation.`;
+
+      const response = await invokeLLM({
+        messages: [
+          { role: "system", content: "You are a direct-response copywriter for high-ticket coaching offers." },
+          { role: "user", content: prompt },
+        ],
+      });
+
+      const content = response.choices[0].message.content;
+      if (typeof content !== "string") throw new Error("Invalid response from AI");
+
+      const cleaned = content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
+
+      await db
+        .update(adCopy)
+        .set({ content: cleaned, updatedAt: new Date() })
+        .where(eq(adCopy.id, input.id));
+
+      return { content: cleaned };
     }),
 });

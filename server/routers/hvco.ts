@@ -15,6 +15,7 @@ import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 import { runHvcoGeneration } from "../hvcoGenerator";
+import { invokeLLM } from "../_core/llm";
 
 /**
  * HVCO Titles Router - Industry Standard
@@ -207,5 +208,48 @@ export const hvcoRouter = router({
     .mutation(async ({ ctx, input }) => {
       await deleteHvcoSet(input.hvcoSetId, ctx.user.id);
       return { success: true };
+    }),
+
+  regenerateSingle: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      promptOverride: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const [row] = await db
+        .select()
+        .from(hvcoTitles)
+        .where(and(eq(hvcoTitles.id, input.id), eq(hvcoTitles.userId, ctx.user.id)))
+        .limit(1);
+
+      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "HVCO title not found" });
+
+      const userInstruction = input.promptOverride?.trim()
+        ? ` User instruction: ${input.promptOverride.trim()}.`
+        : "";
+
+      const prompt = `Rewrite this lead magnet title for a coaching/consulting offer about "${row.hvcoTopic || "lead magnet"}". Current title: ${row.title}.${userInstruction} Return ONLY the rewritten title text. No JSON, no markdown, no explanation.`;
+
+      const response = await invokeLLM({
+        messages: [
+          { role: "system", content: "You are a direct-response copywriter for high-ticket coaching offers." },
+          { role: "user", content: prompt },
+        ],
+      });
+
+      const content = response.choices[0].message.content;
+      if (typeof content !== "string") throw new Error("Invalid response from AI");
+
+      const cleaned = content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
+
+      await db
+        .update(hvcoTitles)
+        .set({ title: cleaned })
+        .where(eq(hvcoTitles.id, input.id));
+
+      return { title: cleaned };
     }),
 });

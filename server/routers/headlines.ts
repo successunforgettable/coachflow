@@ -13,6 +13,7 @@ import { eq, and } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 import { runHeadlinesGeneration } from "../headlinesGenerator";
+import { invokeLLM } from "../_core/llm";
 
 // Helper to strip markdown code blocks from LLM responses
 
@@ -324,5 +325,72 @@ export const headlinesRouter = router({
           createdAt: rows[0].createdAt,
         },
       };
+    }),
+
+  regenerateSingle: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      promptOverride: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const [row] = await db
+        .select()
+        .from(headlines)
+        .where(and(eq(headlines.id, input.id), eq(headlines.userId, ctx.user.id)))
+        .limit(1);
+
+      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Headline not found" });
+
+      const userInstruction = input.promptOverride?.trim()
+        ? ` User instruction: ${input.promptOverride.trim()}.`
+        : "";
+
+      const hasSubheadline = row.formulaType === "eyebrow" || row.formulaType === "authority";
+      const currentText = hasSubheadline && row.subheadline
+        ? `Headline: ${row.headline}\nSubheadline: ${row.subheadline}`
+        : row.headline;
+
+      const formatInstruction = hasSubheadline
+        ? `Return ONLY valid JSON: {"headline":"...","subheadline":"..."} — no markdown, no explanation.`
+        : `Return ONLY the rewritten headline text. No JSON, no markdown, no explanation.`;
+
+      const prompt = `Rewrite this ${row.formulaType} headline for a coaching/consulting offer. Current value: ${currentText}.${userInstruction} ${formatInstruction}`;
+
+      const response = await invokeLLM({
+        messages: [
+          { role: "system", content: "You are a direct-response copywriter for high-ticket coaching offers." },
+          { role: "user", content: prompt },
+        ],
+      });
+
+      const content = response.choices[0].message.content;
+      if (typeof content !== "string") throw new Error("Invalid response from AI");
+
+      const cleaned = content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
+
+      let newHeadline: string;
+      let newSubheadline: string | null = null;
+
+      if (hasSubheadline) {
+        try {
+          const parsed = JSON.parse(cleaned);
+          newHeadline = parsed.headline || cleaned;
+          newSubheadline = parsed.subheadline || null;
+        } catch {
+          newHeadline = cleaned;
+        }
+      } else {
+        newHeadline = cleaned;
+      }
+
+      await db
+        .update(headlines)
+        .set({ headline: newHeadline, subheadline: newSubheadline, updatedAt: new Date() })
+        .where(eq(headlines.id, input.id));
+
+      return { headline: newHeadline, subheadline: newSubheadline };
     }),
 });
