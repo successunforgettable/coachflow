@@ -449,4 +449,56 @@ export const icpsRouter = router({
 
       return { success: true };
     }),
+
+  regenerateSection: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      sectionKey: z.enum([
+        "introduction", "fears", "hopesDreams", "demographics", "psychographics",
+        "pains", "frustrations", "goals", "values", "objections", "buyingTriggers",
+        "mediaConsumption", "influencers", "communicationStyle", "decisionMaking",
+        "successMetrics", "implementationBarriers",
+      ]),
+      promptOverride: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const [row] = await db
+        .select()
+        .from(idealCustomerProfiles)
+        .where(and(eq(idealCustomerProfiles.id, input.id), eq(idealCustomerProfiles.userId, ctx.user.id)))
+        .limit(1);
+
+      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "ICP not found" });
+
+      const currentValue = (row as Record<string, unknown>)[input.sectionKey];
+      const serialized = typeof currentValue === "string" ? currentValue : JSON.stringify(currentValue);
+
+      const userInstruction = input.promptOverride?.trim()
+        ? ` User instruction: ${input.promptOverride.trim()}.`
+        : "";
+
+      const prompt = `Rewrite the "${input.sectionKey}" section for this ideal customer profile. Current value: ${serialized}.${userInstruction} Return ONLY the rewritten text. No JSON, no markdown, no explanation.`;
+
+      const response = await invokeLLM({
+        messages: [
+          { role: "system", content: "You are an expert marketing strategist specializing in ideal customer profile development for coaches and consultants." },
+          { role: "user", content: prompt },
+        ],
+      });
+
+      const content = response.choices[0].message.content;
+      if (typeof content !== "string") throw new Error("Invalid response from AI");
+
+      const cleaned = content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
+
+      await db
+        .update(idealCustomerProfiles)
+        .set({ [input.sectionKey]: cleaned })
+        .where(eq(idealCustomerProfiles.id, input.id));
+
+      return { value: cleaned };
+    }),
 });

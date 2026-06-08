@@ -5,6 +5,7 @@ import { getDb } from "../db";
 import { offers, jobs } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { runOfferGeneration } from "../offersGenerator";
+import { invokeLLM } from "../_core/llm";
 import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
@@ -267,5 +268,72 @@ export const offersRouter = router({
       await db.delete(offers).where(eq(offers.id, input.id));
 
       return { success: true };
+    }),
+
+  regenerateSection: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      angle: z.enum(["godfather", "free", "dollar"]),
+      sectionKey: z.enum(["offerName", "valueProposition", "pricing", "bonuses", "guarantee", "urgency", "cta"]),
+      promptOverride: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const [row] = await db
+        .select()
+        .from(offers)
+        .where(and(eq(offers.id, input.id), eq(offers.userId, ctx.user.id)))
+        .limit(1);
+
+      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Offer not found" });
+
+      const angleColMap = { godfather: "godfatherAngle", free: "freeAngle", dollar: "dollarAngle" } as const;
+      const angleCol = angleColMap[input.angle];
+      const rawAngle = row[angleCol];
+      const angleData: Record<string, unknown> = typeof rawAngle === "string" ? JSON.parse(rawAngle) : (rawAngle as Record<string, unknown>) ?? {};
+
+      const currentValue = angleData[input.sectionKey];
+      const serialized = typeof currentValue === "string" ? currentValue : JSON.stringify(currentValue);
+
+      const userInstruction = input.promptOverride?.trim()
+        ? ` User instruction: ${input.promptOverride.trim()}.`
+        : "";
+
+      const isStringSection = typeof currentValue === "string";
+      const formatInstruction = isStringSection
+        ? "Return ONLY the rewritten text. No JSON, no markdown, no explanation."
+        : "Return ONLY valid JSON — no markdown, no explanation, no wrapping text.";
+
+      const prompt = `Rewrite the ${input.sectionKey} section for this ${input.angle} offer angle. Current value: ${serialized}.${userInstruction} ${formatInstruction}`;
+
+      const response = await invokeLLM({
+        messages: [
+          { role: "system", content: "You are a direct-response copywriter for high-ticket coaching offers." },
+          { role: "user", content: prompt },
+        ],
+      });
+
+      const content = response.choices[0].message.content;
+      if (typeof content !== "string") throw new Error("Invalid response from AI");
+
+      const cleaned = content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
+
+      let newValue: unknown;
+      if (isStringSection) {
+        newValue = cleaned;
+      } else {
+        try { newValue = JSON.parse(cleaned); } catch { newValue = cleaned; }
+      }
+
+      angleData[input.sectionKey] = newValue;
+
+      await db
+        .update(offers)
+        .set({ [angleCol]: JSON.stringify(angleData), updatedAt: new Date() })
+        .where(eq(offers.id, input.id));
+
+      return { value: typeof newValue === "string" ? newValue : JSON.stringify(newValue) };
     }),
 });
