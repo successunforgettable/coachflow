@@ -295,7 +295,7 @@ const ADVANCED_FIELDS: Record<WizardStep, AdvancedField[]> = {
     // matches the server's default — users who don't touch Advanced get
     // identical output to today.
     { key: "sequenceLength", label: "Number of Messages", type: "select", options: ["3", "5", "7"], sourceNote: "Number of messages. Defaults to 3 — industry standard for WhatsApp event reminders." },
-    { key: "tone", label: "Tone", type: "select", options: ["conversational", "professional", "urgent"], sourceNote: "Voice and energy of the messages. Defaults to conversational." },
+    { key: "tone", label: "Tone", type: "select", options: ["conversational", "professional", "urgent", "authoritative"], sourceNote: "Voice and energy of the messages. Defaults to conversational." },
   ],
   // pushToMeta also hidden — Platform select doesn't reach generation
   // (this step shows instructions, no mutation runs). Same fake-knob
@@ -2316,6 +2316,7 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
           | "conversational"
           | "professional"
           | "urgent"
+          | "authoritative"
           | undefined;
         const advLengthRaw = (payload.advancedOverrides as Record<string, string> | undefined)?.sequenceLength;
         const advLength: 3 | 5 | 7 = advLengthRaw === "5" ? 5 : advLengthRaw === "7" ? 7 : 3;

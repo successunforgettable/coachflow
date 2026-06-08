@@ -23,7 +23,7 @@ const generateWhatsAppSequenceSchema = z.object({
   // Length × tone (commit 2 of WhatsApp wire sprint).
   // Optional with defaults so callsites that omit them get the
   // canonical pre-wire behavior (length=3, tone=conversational).
-  tone: z.enum(["conversational", "professional", "urgent"]).optional().default("conversational"),
+  tone: z.enum(["conversational", "professional", "urgent", "authoritative"]).optional().default("conversational"),
   sequenceLength: z.union([z.literal(3), z.literal(5), z.literal(7)]).optional().default(3),
   eventDetails: z
     .object({

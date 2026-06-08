@@ -409,7 +409,7 @@ export const whatsappSequences = mysqlTable("whatsappSequences", {
   sequenceType: mysqlEnum("sequenceType", ["engagement", "sales", "discovery_call_confirmation", "discovery_call_reminder", "nurture", "event_logistics"]),
   // Migration 0064 — user-selected tone for the generated sequence.
   // NULLable: rows generated before the tone wire (commit 2) carry NULL.
-  tone: mysqlEnum("tone", ["conversational", "professional", "urgent"]),
+  tone: mysqlEnum("tone", ["conversational", "professional", "urgent", "authoritative"]),
   name: varchar("name", { length: 255 }).notNull(),
   messages: json("messages").$type<Array<{ day: number; message: string; timing: string; emojis: string[] }>>().notNull(),
   automationEnabled: boolean("automationEnabled").default(false),

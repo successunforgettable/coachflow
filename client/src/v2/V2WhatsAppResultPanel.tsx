@@ -369,7 +369,7 @@ export default function V2WhatsAppResultPanel({
           onChange={e => setTone(e.target.value)}
           style={{ fontFamily: "Inter, system-ui, sans-serif", fontSize: 13, padding: "6px 12px", borderRadius: 8, border: "1.5px solid #E5E7EB", background: "#fff", color: "#1A1624", outline: "none" }}
         >
-          {["Professional", "Conversational", "Urgent", "Friendly", "Authoritative"].map(t => (
+          {["Conversational", "Professional", "Urgent", "Authoritative"].map(t => (
             <option key={t} value={t}>{t}</option>
           ))}
         </select>

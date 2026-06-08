@@ -36,7 +36,7 @@ function stripMarkdownJson(content: string): string {
 // (length=3, tone="conversational") so callsites that don't pass them get
 // behavior identical to the pre-wire path. Schema parse provides the same
 // defaults at the tRPC boundary; this is the secondary defense.
-type WhatsappTone = "conversational" | "professional" | "urgent";
+type WhatsappTone = "conversational" | "professional" | "urgent" | "authoritative";
 type WhatsappSequenceLength = 3 | 5 | 7;
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -148,6 +148,34 @@ OPENER CONVENTION: "[First Name] — [time window]" / "Quick one — [deadline]"
 CLOSER CONVENTION: Hard CTA only — no question. The action is the close.
 
 INTEGRITY RULE: Never invent a deadline that doesn't exist. Never invent scarcity that isn't real. If no genuine deadline, price increase, or spot limit exists, use social-proof scarcity grounded in psychology — "People who acted within 48 hours got [specific outcome]" — not fabricated countdown timers.
+
+PLACEHOLDER RULES: Use [First Name] (NOT {{Name}}). Use actual service name "${serviceName}". Write actual timing (not {{Date}} or {{Time}}).`;
+  }
+
+  if (tone === "authoritative") {
+    return `WHATSAPP COPY RULES — non-negotiable for every message:
+
+LENGTH: Maximum 3 sentences per message. WhatsApp is read on mobile in seconds — not emails, not articles.
+
+LANGUAGE: Expert register. Declarative statements backed by experience or evidence. Avoid hedging ("maybe", "might", "could"). Use confident, direct language. The reader is seeking guidance from someone who knows.
+
+CONTRACTIONS: Use sparingly. "you're", "it's", "don't" are fine in key moments. Prefer full forms in assertions. Spell out "by the way", "tomorrow".
+
+CREDIBILITY SIGNAL — one per message, mandatory. Use ONE of:
+- Track record: "In [N] years of [field], here's what I've learned..."
+- Research: "Research shows..." (with specific source or context)
+- Method: "[Specific methodology/framework name] proves..."
+- Results: "I've seen [specific outcome] across [N clients/students]..."
+
+SPECIFIC SITUATION: Reference something specific about where they are right now — the event they attended, the thing they said yes to, the proven problem they're trying to solve. Never write a generic message.
+
+ENDING RULE — every message must end with EITHER a direct yes/no question OR a specific action with a link. NEVER both. NEVER neither.
+
+EMOJI RULES: Maximum 1 emoji per message. Only expertise markers (✓ 📊 📈 🎯). Never casual warmth (😊 🙌 💕). When in doubt, omit.
+
+OPENER CONVENTION: "[First Name], [expert observation]" / "[First Name] — [research claim]" / "[First Name], here's what [N] [group] did differently..."
+
+CLOSER CONVENTION: "That's why..." / "Here's how..." / Clear action with authority backing.
 
 PLACEHOLDER RULES: Use [First Name] (NOT {{Name}}). Use actual service name "${serviceName}". Write actual timing (not {{Date}} or {{Time}}).`;
   }
