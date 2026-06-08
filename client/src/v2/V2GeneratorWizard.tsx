@@ -1821,6 +1821,32 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
     }
   }, [isDemoLoading, isDemoSuccess, isDemoConcerned, isDemoTimeout, isDemoError, isDemoOffline, demoProgressAngle]);
 
+  // ── Reset wizard state on step change (Fix G, relocated by Fix H) ──
+  // MUST run BEFORE the hydration effects below in source order. React fires
+  // effects in registration order within the same commit. Reset queues
+  // status="idle" + latestXxxId=null first; then each hydration effect queues
+  // its cached value + status="success" second — last write wins, so hydration
+  // takes precedence when data exists. If no data, only reset applies and the
+  // node correctly shows "Generate Now".
+  useEffect(() => {
+    setStatus("idle");
+    setLatestIcpId(null);
+    setLatestOfferId(null);
+    setLatestMechanismSetId(null);
+    setLatestMechWarning(undefined);
+    setLatestHvcoSetId(null);
+    setLatestHeadlineSetId(null);
+    setLatestAdSetId(null);
+    setLatestLandingPageId(null);
+    setLatestEmailSequenceId(null);
+    setLatestWhatsappSequenceId(null);
+    setComplianceScore(100);
+    setComplianceViolations([]);
+    setProgressLabel(null);
+    setErrorMsg("");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
+
   // ── DB-fallback hydration: populate `latestX` from the most recent DB row
   // when the component mounts with no in-memory state, and flip `status` to
   // "success" so the result-panel render gate matches. Mirrors the URL-override
@@ -1958,31 +1984,6 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
     };
   }, []);
 
-  // ── Reset wizard state on step change (Fix G) ──
-  // Client-side navigate() keeps this component alive across steps. Without a
-  // reset, useState values (status, latestXxxId, etc.) carry over from the
-  // previous step, causing stale/empty display. This reproduces the clean-mount
-  // state that a full page reload used to provide, while preserving the warm
-  // React Query cache (no cold re-fetch). The step-aware hydration effects
-  // (Fix D, lines 1850-1912) then fire and populate existing content from cache.
-  useEffect(() => {
-    setStatus("idle");
-    setLatestIcpId(null);
-    setLatestOfferId(null);
-    setLatestMechanismSetId(null);
-    setLatestMechWarning(undefined);
-    setLatestHvcoSetId(null);
-    setLatestHeadlineSetId(null);
-    setLatestAdSetId(null);
-    setLatestLandingPageId(null);
-    setLatestEmailSequenceId(null);
-    setLatestWhatsappSequenceId(null);
-    setComplianceScore(100);
-    setComplianceViolations([]);
-    setProgressLabel(null);
-    setErrorMsg("");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step]);
 
   // ── Core generation logic — real tRPC mutations for all 11 steps ──
   const runGeneration = useCallback(async (payload: Record<string, unknown>) => {
