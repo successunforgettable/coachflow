@@ -564,10 +564,11 @@ function LoadingState({ step: _step, progressLabel }: { step?: string; progressL
 }
 
 // ─── Success State: Zappy cheering + confetti ─────────────────────────────────
-function SuccessState({ score, nextStepUrl, isLastStep }: {
+function SuccessState({ score, nextStepUrl, isLastStep, navigate }: {
   score: number;
   nextStepUrl?: string | null;
   isLastStep?: boolean;
+  navigate: (path: string) => void;
 }) {
   const [windowSize, setWindowSize] = useState({ width: window.innerWidth, height: window.innerHeight });
 
@@ -624,43 +625,47 @@ function SuccessState({ score, nextStepUrl, isLastStep }: {
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "14px", width: "100%" }}>
             {isLastStep ? (
-              <a
-                href="/v2-dashboard"
+              <button
+                onClick={() => navigate("/v2-dashboard")}
                 style={{
                   display: "block",
+                  width: "100%",
                   background: "#58CC02",
                   color: "#fff",
+                  border: "none",
                   borderRadius: "var(--v2-border-radius-pill)",
                   padding: "12px 28px",
                   fontFamily: "var(--v2-font-body)",
                   fontWeight: 700,
                   fontSize: "15px",
-                  textDecoration: "none",
+                  cursor: "pointer",
                   letterSpacing: "0.01em",
                   textAlign: "center",
                 }}
               >
                 🎉 Campaign Complete — View Dashboard
-              </a>
+              </button>
             ) : nextStepUrl ? (
-              <a
-                href={nextStepUrl}
+              <button
+                onClick={() => navigate(nextStepUrl)}
                 style={{
                   display: "block",
+                  width: "100%",
                   background: "var(--v2-primary-btn)",
                   color: "#fff",
+                  border: "none",
                   borderRadius: "var(--v2-border-radius-pill)",
                   padding: "12px 28px",
                   fontFamily: "var(--v2-font-body)",
                   fontWeight: 700,
                   fontSize: "15px",
-                  textDecoration: "none",
+                  cursor: "pointer",
                   letterSpacing: "0.01em",
                   textAlign: "center",
                 }}
               >
                 Continue to Next Step →
-              </a>
+              </button>
             ) : null}
 
           </div>
@@ -2582,6 +2587,7 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
               score={complianceScore}
               nextStepUrl={(() => { const next = getNextStep(step); return next ? `/v2-dashboard/wizard/${next}` : null; })()}
               isLastStep={step === "pushToMeta"}
+              navigate={navigate}
             />
           )}
 
