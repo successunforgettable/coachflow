@@ -1958,11 +1958,29 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
     };
   }, []);
 
-  // ── Clear mechanism generation warning on step change ──
-  // latestMechWarning is only relevant while on the uniqueMethod step. Clearing it on
-  // step change prevents stale warnings appearing if the user navigates away and returns.
+  // ── Reset wizard state on step change (Fix G) ──
+  // Client-side navigate() keeps this component alive across steps. Without a
+  // reset, useState values (status, latestXxxId, etc.) carry over from the
+  // previous step, causing stale/empty display. This reproduces the clean-mount
+  // state that a full page reload used to provide, while preserving the warm
+  // React Query cache (no cold re-fetch). The step-aware hydration effects
+  // (Fix D, lines 1850-1912) then fire and populate existing content from cache.
   useEffect(() => {
-    if (latestMechWarning !== undefined) setLatestMechWarning(undefined);
+    setStatus("idle");
+    setLatestIcpId(null);
+    setLatestOfferId(null);
+    setLatestMechanismSetId(null);
+    setLatestMechWarning(undefined);
+    setLatestHvcoSetId(null);
+    setLatestHeadlineSetId(null);
+    setLatestAdSetId(null);
+    setLatestLandingPageId(null);
+    setLatestEmailSequenceId(null);
+    setLatestWhatsappSequenceId(null);
+    setComplianceScore(100);
+    setComplianceViolations([]);
+    setProgressLabel(null);
+    setErrorMsg("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
