@@ -1702,7 +1702,7 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
   // ── Fetch ICPs (real data, not mock) ──
   const { data: icpData } = trpc.icps.list.useQuery(
     serviceId ? { serviceId } : undefined,
-    { enabled: !isDemoMissing }
+    { enabled: !isDemoMissing && !!serviceId }
   );
 
   // ── Fetch latest sets/items per node for DB-fallback hydration on remount ──
@@ -1843,68 +1843,68 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
   // because we only flip after `data?.[0]?.id` is truthy, which requires the
   // list query (Drizzle SELECT) to have returned at least one row.
   useEffect(() => {
-    if (status === "loading") return;
+    if (status === "loading" || !serviceId || step !== "icp") return;
     if (!latestIcpId && icpData?.[0]?.id) {
       setLatestIcpId(icpData[0].id);
       setStatus("success");
     }
-  }, [icpData, latestIcpId, status]);
+  }, [icpData, latestIcpId, status, serviceId, step]);
   useEffect(() => {
-    if (status === "loading" || !serviceId) return;
+    if (status === "loading" || !serviceId || step !== "offer") return;
     if (!latestOfferId && offersList?.[0]?.id) {
       setLatestOfferId(offersList[0].id);
       setStatus("success");
     }
-  }, [offersList, latestOfferId, status, serviceId]);
+  }, [offersList, latestOfferId, status, serviceId, step]);
   useEffect(() => {
-    if (status === "loading" || !serviceId) return;
+    if (status === "loading" || !serviceId || step !== "uniqueMethod") return;
     if (!latestMechanismSetId && mechanismsList?.[0]?.mechanismSetId) {
       setLatestMechanismSetId(mechanismsList[0].mechanismSetId);
       setStatus("success");
     }
-  }, [mechanismsList, latestMechanismSetId, status, serviceId]);
+  }, [mechanismsList, latestMechanismSetId, status, serviceId, step]);
   useEffect(() => {
-    if (status === "loading" || !serviceId) return;
+    if (status === "loading" || !serviceId || step !== "freeOptIn") return;
     if (!latestHvcoSetId && hvcoList?.[0]?.hvcoSetId) {
       setLatestHvcoSetId(hvcoList[0].hvcoSetId);
       setStatus("success");
     }
-  }, [hvcoList, latestHvcoSetId, status, serviceId]);
+  }, [hvcoList, latestHvcoSetId, status, serviceId, step]);
   useEffect(() => {
-    if (status === "loading" || !serviceId) return;
+    if (status === "loading" || !serviceId || step !== "headlines") return;
     if (!latestHeadlineSetId && headlinesList?.[0]?.headlineSetId) {
       setLatestHeadlineSetId(headlinesList[0].headlineSetId);
       setStatus("success");
     }
-  }, [headlinesList, latestHeadlineSetId, status, serviceId]);
+  }, [headlinesList, latestHeadlineSetId, status, serviceId, step]);
   useEffect(() => {
-    if (status === "loading" || !serviceId) return;
+    if (status === "loading" || !serviceId || step !== "adCopy") return;
     if (!latestAdSetId && adCopyList?.[0]?.adSetId) {
       setLatestAdSetId(adCopyList[0].adSetId);
       setStatus("success");
     }
-  }, [adCopyList, latestAdSetId, status, serviceId]);
+  }, [adCopyList, latestAdSetId, status, serviceId, step]);
   useEffect(() => {
-    if (status === "loading" || !serviceId) return;
+    if (status === "loading" || !serviceId || step !== "landingPage") return;
     if (!latestLandingPageId && landingPagesList?.[0]?.id) {
       setLatestLandingPageId(landingPagesList[0].id);
       setStatus("success");
     }
-  }, [landingPagesList, latestLandingPageId, status, serviceId]);
+  }, [landingPagesList, latestLandingPageId, status, serviceId, step]);
   useEffect(() => {
-    if (status === "loading" || !serviceId) return;
+    if (status === "loading" || !serviceId || step !== "emailSequence") return;
     if (!latestEmailSequenceId && emailSeqList?.[0]?.id) {
       setLatestEmailSequenceId(emailSeqList[0].id);
       setStatus("success");
     }
-  }, [emailSeqList, latestEmailSequenceId, status, serviceId]);
+  }, [emailSeqList, latestEmailSequenceId, status, serviceId, step]);
   useEffect(() => {
-    if (status === "loading" || !serviceId) return;
+    if (status === "loading" || !serviceId || step !== "whatsappSequence") return;
     if (!latestWhatsappSequenceId && whatsappSeqList?.[0]?.id) {
       setLatestWhatsappSequenceId(whatsappSeqList[0].id);
       setStatus("success");
     }
-  }, [whatsappSeqList, latestWhatsappSequenceId, status, serviceId]);
+  }, [whatsappSeqList, latestWhatsappSequenceId, status, serviceId, step]);
 
   // ── Commit 7.2 (Bug 1): seed pageType field from cascade ──
   // The dispatcher cascade fires at GENERATION time (Item 5) — pageType is
