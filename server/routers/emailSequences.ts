@@ -8,6 +8,7 @@ import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 import { runEmailSequenceGeneration } from "../emailSequenceGenerator";
+import { invokeLLM } from "../_core/llm";
 
 // ---------------------------------------------------------------------------
 
@@ -274,5 +275,70 @@ export const emailSequencesRouter = router({
         .where(eq(emailSequences.id, input.id));
 
       return { success: true };
+    }),
+
+  regenerateSingle: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      index: z.number().int().min(0),
+      promptOverride: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const [row] = await db
+        .select()
+        .from(emailSequences)
+        .where(and(eq(emailSequences.id, input.id), eq(emailSequences.userId, ctx.user.id)))
+        .limit(1);
+
+      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Email sequence not found" });
+
+      const emails: Array<{ day: number; subject: string; body: string; timing: string }> =
+        typeof row.emails === "string" ? JSON.parse(row.emails) : (row.emails as any) ?? [];
+
+      if (input.index >= emails.length) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: `Index ${input.index} out of range (${emails.length} emails)` });
+      }
+
+      const email = emails[input.index];
+      const userInstruction = input.promptOverride?.trim()
+        ? ` User instruction: ${input.promptOverride.trim()}.`
+        : "";
+
+      const prompt = `Rewrite this email (email #${input.index + 1} in a ${row.sequenceType || "marketing"} sequence). Current subject: ${email.subject}. Current body: ${email.body}.${userInstruction} Return ONLY valid JSON: {"subject":"...","body":"..."} — no markdown, no explanation.`;
+
+      const response = await invokeLLM({
+        messages: [
+          { role: "system", content: "You are a direct-response email copywriter for high-ticket coaching offers." },
+          { role: "user", content: prompt },
+        ],
+      });
+
+      const content = response.choices[0].message.content;
+      if (typeof content !== "string") throw new Error("Invalid response from AI");
+
+      const cleaned = content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
+
+      let newSubject: string;
+      let newBody: string;
+      try {
+        const parsed = JSON.parse(cleaned);
+        newSubject = parsed.subject || email.subject;
+        newBody = parsed.body || email.body;
+      } catch {
+        newSubject = email.subject;
+        newBody = cleaned;
+      }
+
+      emails[input.index] = { ...email, subject: newSubject, body: newBody };
+
+      await db
+        .update(emailSequences)
+        .set({ emails: JSON.stringify(emails) })
+        .where(eq(emailSequences.id, input.id));
+
+      return { subject: newSubject, body: newBody };
     }),
 });
