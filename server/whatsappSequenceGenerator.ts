@@ -100,7 +100,7 @@ interface WhatsappPromptParams {
 // Conversational tone preserves the pre-refactor rule string verbatim — same
 // content, same order, identical bytes when no tone is supplied. Professional
 // and urgent are net-new variants per the locked research-report rules.
-function buildWhatsappRules(serviceName: string, tone: WhatsappTone = "conversational"): string {
+export function buildWhatsappRules(serviceName: string, tone: WhatsappTone = "conversational"): string {
   if (tone === "professional") {
     return `WHATSAPP COPY RULES — non-negotiable for every message:
 

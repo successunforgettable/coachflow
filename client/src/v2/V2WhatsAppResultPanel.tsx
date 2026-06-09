@@ -292,7 +292,8 @@ export default function V2WhatsAppResultPanel({
 }) {
   const [tone, setTone] = useState("Conversational");
   const [toneRegenLoading, setToneRegenLoading] = useState(false);
-  const toneRegenMutation = trpc.whatsappSequences.regenerateSingle.useMutation();
+  const retoneSequenceMutation = trpc.whatsappSequences.retoneSequence.useMutation();
+  const utils = trpc.useUtils();
   const { isFavourited, toggle: toggleFav } = useFavourites("whatsapp");
   const { data, isLoading, isError } = trpc.whatsappSequences.get.useQuery(
     { id: whatsappSequenceId },
@@ -376,13 +377,15 @@ export default function V2WhatsAppResultPanel({
         <button
           onClick={async () => {
             if (toneRegenLoading) return;
+            const count = messages.length;
+            if (!window.confirm(`This will rewrite all ${count} message${count !== 1 ? "s" : ""} in ${tone} tone. Continue?`)) return;
             setToneRegenLoading(true);
             try {
-              await toneRegenMutation.mutateAsync({
+              await retoneSequenceMutation.mutateAsync({
                 id: whatsappSequenceId,
-                index: 0,
-                promptOverride: `[${tone} tone] Please rewrite this message with a ${tone} tone.`,
+                tone: tone.toLowerCase() as "conversational" | "professional" | "urgent" | "authoritative",
               });
+              utils.whatsappSequences.get.invalidate({ id: whatsappSequenceId });
             } catch { /* ignore */ } finally {
               setToneRegenLoading(false);
             }

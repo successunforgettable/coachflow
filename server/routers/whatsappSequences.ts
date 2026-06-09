@@ -7,8 +7,9 @@ import { eq, and, desc } from "drizzle-orm";
 import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
-import { runWhatsappSequenceGeneration } from "../whatsappSequenceGenerator";
+import { runWhatsappSequenceGeneration, buildWhatsappRules } from "../whatsappSequenceGenerator";
 import { invokeLLM } from "../_core/llm";
+import { services } from "../../drizzle/schema";
 
 const generateWhatsAppSequenceSchema = z.object({
   serviceId: z.number(),
@@ -299,7 +300,7 @@ export const whatsappSequencesRouter = router({
 
       if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "WhatsApp sequence not found" });
 
-      const messages: Array<{ day?: number; message?: string; timing?: string; emojis?: string[] }> =
+      const messages: Array<{ day?: number; text?: string; message?: string; timing?: string; emojis?: string[]; delay?: number; delayUnit?: string; mediaUrl?: string | null; mediaType?: string | null }> =
         typeof row.messages === "string" ? JSON.parse(row.messages) : (row.messages as any) ?? [];
 
       if (input.index >= messages.length) {
@@ -307,11 +308,12 @@ export const whatsappSequencesRouter = router({
       }
 
       const msg = messages[input.index];
+      const currentText = msg.text ?? msg.message ?? "";
       const userInstruction = input.promptOverride?.trim()
         ? ` User instruction: ${input.promptOverride.trim()}.`
         : "";
 
-      const prompt = `Rewrite this WhatsApp message (message #${input.index + 1} in a ${row.sequenceType || "marketing"} sequence, tone: ${row.tone || "conversational"}). Current message: ${msg.message || ""}.${userInstruction} Return ONLY the rewritten message text. No JSON, no markdown, no explanation.`;
+      const prompt = `Rewrite this WhatsApp message (message #${input.index + 1} in a ${row.sequenceType || "marketing"} sequence, tone: ${row.tone || "conversational"}). Current message: ${currentText}.${userInstruction} Return ONLY the rewritten message text. No JSON, no markdown, no explanation.`;
 
       const response = await invokeLLM({
         messages: [
@@ -325,13 +327,78 @@ export const whatsappSequencesRouter = router({
 
       const cleaned = content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
 
-      messages[input.index] = { ...msg, message: cleaned };
+      messages[input.index] = { ...msg, text: cleaned };
 
       await db
         .update(whatsappSequences)
-        .set({ messages: JSON.stringify(messages) })
+        .set({ messages: messages as any })
         .where(eq(whatsappSequences.id, input.id));
 
       return { text: cleaned };
+    }),
+
+  retoneSequence: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      tone: z.enum(["conversational", "professional", "urgent", "authoritative"]),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const [row] = await db
+        .select()
+        .from(whatsappSequences)
+        .where(and(eq(whatsappSequences.id, input.id), eq(whatsappSequences.userId, ctx.user.id)))
+        .limit(1);
+
+      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "WhatsApp sequence not found" });
+
+      // Fetch service name for tone rules
+      let serviceName = "My Service";
+      if (row.serviceId) {
+        const [svc] = await db
+          .select({ name: services.name })
+          .from(services)
+          .where(eq(services.id, row.serviceId))
+          .limit(1);
+        if (svc?.name) serviceName = svc.name;
+      }
+
+      const toneRules = buildWhatsappRules(serviceName, input.tone);
+
+      const messages: Array<{ day?: number; text?: string; message?: string; timing?: string; emojis?: string[]; delay?: number; delayUnit?: string; mediaUrl?: string | null; mediaType?: string | null }> =
+        typeof row.messages === "string" ? JSON.parse(row.messages) : (row.messages as any) ?? [];
+
+      // Rewrite each message sequentially; save progress after each so
+      // already-rewritten messages survive if a later call fails.
+      for (let i = 0; i < messages.length; i++) {
+        const msg = messages[i];
+        const currentText = msg.text ?? msg.message ?? "";
+        if (!currentText.trim()) continue;
+
+        const prompt = `Rewrite this WhatsApp message in ${input.tone} tone. Apply these rules:\n\n${toneRules}\n\nCurrent message: ${currentText}\n\nReturn ONLY the rewritten message text. No JSON, no markdown, no explanation.`;
+
+        const response = await invokeLLM({
+          messages: [
+            { role: "system", content: "You are a direct-response WhatsApp copywriter for high-ticket coaching offers." },
+            { role: "user", content: prompt },
+          ],
+        });
+
+        const content = response.choices[0].message.content;
+        if (typeof content !== "string") continue;
+
+        const cleaned = content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
+        messages[i] = { ...msg, text: cleaned };
+
+        // Save after each message so progress is durable
+        await db
+          .update(whatsappSequences)
+          .set({ messages: messages as any, tone: input.tone })
+          .where(eq(whatsappSequences.id, input.id));
+      }
+
+      return { messages, tone: input.tone };
     }),
 });
