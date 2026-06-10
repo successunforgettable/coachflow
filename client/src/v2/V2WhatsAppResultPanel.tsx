@@ -6,7 +6,7 @@
  * per-item Regenerate via AI.
  * Uses msg.text per confirmed live DB field name (not msg.message).
  */
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { trpc } from "../lib/trpc";
 import ZappyMascot from "./ZappyMascot";
 import UpgradePrompt from "./components/UpgradePrompt";
@@ -299,6 +299,10 @@ export default function V2WhatsAppResultPanel({
     { id: whatsappSequenceId },
     { enabled: !!whatsappSequenceId, staleTime: 60_000 }
   );
+  const storedTone = (data as any)?.tone as string | undefined;
+  useEffect(() => {
+    if (storedTone) setTone(storedTone.charAt(0).toUpperCase() + storedTone.slice(1));
+  }, [storedTone]);
 
   if (isLoading) {
     return (
