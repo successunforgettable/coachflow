@@ -1632,7 +1632,7 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
         return;
       }
       await updateKitMutation.mutateAsync(selectionPayload as any);
-      utils.campaignKits.getByUser.invalidate();
+      await utils.campaignKits.getByUser.refetch();
     } catch (e) {
       console.warn("[persistSelection] failed:", e);
     }
