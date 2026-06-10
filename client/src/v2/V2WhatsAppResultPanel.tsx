@@ -386,7 +386,9 @@ export default function V2WhatsAppResultPanel({
                 tone: tone.toLowerCase() as "conversational" | "professional" | "urgent" | "authoritative",
               });
               utils.whatsappSequences.get.invalidate({ id: whatsappSequenceId });
-            } catch { /* ignore */ } finally {
+            } catch (err) {
+              setError(err instanceof Error ? err.message : "Re-tone failed");
+            } finally {
               setToneRegenLoading(false);
             }
           }}

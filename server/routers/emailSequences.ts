@@ -336,7 +336,7 @@ export const emailSequencesRouter = router({
 
       await db
         .update(emailSequences)
-        .set({ emails: JSON.stringify(emails) })
+        .set({ emails: emails as any })
         .where(eq(emailSequences.id, input.id));
 
       return { subject: newSubject, body: newBody };
