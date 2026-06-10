@@ -9,6 +9,7 @@ import { storagePut } from "../storage";
 import { compositeHeadline } from "../_core/compositeHeadline";
 import { randomBytes, randomUUID } from "crypto";
 import { runAdCreativesGeneration } from "../adCreativesGenerator";
+import { validateCascadePrereqs } from "../_core/cascadeContext";
 
 // Meta-prohibited phrases for compliance checking
 const PROHIBITED_PHRASES = [
@@ -268,6 +269,9 @@ export const adCreativesRouter = router({
   generate: protectedProcedure
     .input(generateAdCreativesSchema)
     .mutation(async ({ ctx, input }) => {
+      const prereqs = await validateCascadePrereqs(ctx.user.id, input.serviceId, "adCopy");
+      if (!prereqs.ok) throw new TRPCError({ code: "PRECONDITION_FAILED", message: prereqs.message });
+
       const { batchId } = await runAdCreativesGeneration({
         userId: ctx.user.id,
         serviceId: input.serviceId,

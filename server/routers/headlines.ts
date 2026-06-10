@@ -13,6 +13,7 @@ import { eq, and } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 import { runHeadlinesGeneration } from "../headlinesGenerator";
+import { validateCascadePrereqs } from "../_core/cascadeContext";
 import { invokeLLM } from "../_core/llm";
 
 // Helper to strip markdown code blocks from LLM responses
@@ -134,6 +135,9 @@ export const headlinesRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      const prereqs = await validateCascadePrereqs(ctx.user.id, input.serviceId, "headlines");
+      if (!prereqs.ok) throw new TRPCError({ code: "PRECONDITION_FAILED", message: prereqs.message });
+
       await checkAndResetQuotaIfNeeded(ctx.user.id);
 
       if (ctx.user.role !== "superuser") {

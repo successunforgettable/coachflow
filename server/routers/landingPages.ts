@@ -8,7 +8,7 @@ import { getDb } from "../db";
 import { landingPages, services, users, campaigns, idealCustomerProfiles, sourceOfTruth, jobs, campaignKits, offers, heroMechanisms, hvcoTitles, coachAssets, complianceRewrites } from "../../drizzle/schema";
 import { eq, and, desc, like } from "drizzle-orm";
 import { generateAllAngles, runLandingPageGeneration } from "../landingPageGenerator";
-import { getCascadeContext } from "../_core/cascadeContext";
+import { getCascadeContext, validateCascadePrereqs } from "../_core/cascadeContext";
 import { invokeLLM } from "../_core/llm";
 import { enforceQuota, incrementQuotaCount } from "../lib/quotaEnforcement";
 import { checkCompliance } from "../lib/complianceChecker";
@@ -340,6 +340,9 @@ export const landingPagesRouter = router({
   generate: protectedProcedure
     .input(generateLandingPageSchema)
     .mutation(async ({ ctx, input }) => {
+      const prereqs = await validateCascadePrereqs(ctx.user.id, input.serviceId, "landingPage");
+      if (!prereqs.ok) throw new TRPCError({ code: "PRECONDITION_FAILED", message: prereqs.message });
+
       await enforceQuota(ctx.user.id, "landingPages");
       await checkAndResetQuotaIfNeeded(ctx.user.id);
 

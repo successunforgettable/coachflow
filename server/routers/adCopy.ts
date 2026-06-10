@@ -8,6 +8,7 @@ import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 import { runAdCopyGeneration } from "../adCopyGenerator";
+import { validateCascadePrereqs } from "../_core/cascadeContext";
 import { invokeLLM } from "../_core/llm";
 
 const generateAdCopySchema = z.object({
@@ -199,6 +200,9 @@ export const adCopyRouter = router({
   generate: protectedProcedure
     .input(generateAdCopySchema)
     .mutation(async ({ ctx, input }) => {
+      const prereqs = await validateCascadePrereqs(ctx.user.id, input.serviceId, "adCopy");
+      if (!prereqs.ok) throw new TRPCError({ code: "PRECONDITION_FAILED", message: prereqs.message });
+
       await checkAndResetQuotaIfNeeded(ctx.user.id);
 
       if (ctx.user.role !== "superuser") {

@@ -1963,6 +1963,42 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
     setFieldValues(prev => ({ ...prev, pageType: cascadeLabel }));
   }, [step, activeKit?.campaignType]);
 
+  // ── Cascade prereqs guard — redirect URL-nav to earliest incomplete step ──
+  // Mirrors the DASHBOARD_GATES enforcement from V2Dashboard: if a user
+  // navigates directly to a downstream wizard step via URL but hasn't
+  // completed the required upstream nodes, redirect them to the first
+  // missing step instead of letting them generate degraded output.
+  useEffect(() => {
+    const STEP_PREREQS: Partial<Record<WizardStep, string[]>> = {
+      headlines:         ["selectedOfferId", "selectedMechanismId", "selectedHvcoId"],
+      adCopy:            ["selectedOfferId", "selectedMechanismId", "selectedHvcoId", "selectedHeadlineId"],
+      landingPage:       ["selectedOfferId", "selectedMechanismId", "selectedHvcoId", "selectedHeadlineId", "selectedAdCopyId"],
+      emailSequence:     ["selectedOfferId", "selectedMechanismId", "selectedHvcoId", "selectedLandingPageId"],
+      whatsappSequence:  ["selectedOfferId", "selectedMechanismId", "selectedHvcoId", "selectedHeadlineId", "selectedAdCopyId", "selectedLandingPageId", "selectedEmailSequenceId"],
+    };
+    const KIT_FIELD_TO_STEP: Record<string, WizardStep> = {
+      selectedOfferId:          "offer",
+      selectedMechanismId:      "uniqueMethod",
+      selectedHvcoId:           "freeOptIn",
+      selectedHeadlineId:       "headlines",
+      selectedAdCopyId:         "adCopy",
+      selectedLandingPageId:    "landingPage",
+      selectedEmailSequenceId:  "emailSequence",
+    };
+    const required = STEP_PREREQS[step];
+    if (!required || !activeKit) return;
+    const kit = activeKit as Record<string, unknown>;
+    for (const field of required) {
+      if (kit[field] == null) {
+        const redirectStep = KIT_FIELD_TO_STEP[field];
+        if (redirectStep) {
+          navigate(`/v2-dashboard/wizard/${redirectStep}`);
+          return;
+        }
+      }
+    }
+  }, [step, activeKit, navigate]);
+
   // ── Network loss listener (only active during generation) ──
   useEffect(() => {
     if (status !== "loading" && status !== "waiting") return;

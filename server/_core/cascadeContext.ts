@@ -64,6 +64,7 @@ import {
   adCopy,
   landingPages,
   emailSequences,
+  idealCustomerProfiles,
 } from "../../drizzle/schema";
 
 export type CascadeNode =
@@ -91,6 +92,86 @@ const UPSTREAM: Record<CascadeNode, CascadeNode[]> = {
   email:       ["offer", "mechanism", "hvco", "landingPage"],
   whatsapp:    ["offer", "mechanism", "hvco", "headlines", "adCopy", "landingPage", "email"],
 };
+
+// ─── Cascade node → Campaign Kit field mapping ──────────────────────
+// Single source of truth for which campaignKits column tracks the
+// selection for each CascadeNode. Used by validateCascadePrereqs to
+// check whether required upstream selections exist.
+
+const CASCADE_NODE_TO_KIT_FIELD: Record<CascadeNode, string> = {
+  offer:       "selectedOfferId",
+  mechanism:   "selectedMechanismId",
+  hvco:        "selectedHvcoId",
+  headlines:   "selectedHeadlineId",
+  adCopy:      "selectedAdCopyId",
+  landingPage: "selectedLandingPageId",
+  email:       "selectedEmailSequenceId",
+  whatsapp:    "selectedEmailSequenceId", // not referenced as upstream, but kept for completeness
+};
+
+const CASCADE_NODE_LABEL: Record<CascadeNode, string> = {
+  offer:       "Offer",
+  mechanism:   "Method",
+  hvco:        "Lead Magnet",
+  headlines:   "Headlines",
+  adCopy:      "Ad Copy",
+  landingPage: "Landing Page",
+  email:       "Email Sequence",
+  whatsapp:    "WhatsApp Sequence",
+};
+
+// ─── Cascade prereq validation ──────────────────────────────────────
+// Called by each downstream generator before doing work. Returns ok if
+// all required upstream selections exist in the Campaign Kit, or the
+// list of missing nodes otherwise. Passes through (ok:true) when
+// serviceId is absent, ICP doesn't exist, or no kit row exists — same
+// graceful-fallback as getCascadeContext itself.
+
+export async function validateCascadePrereqs(
+  userId: number,
+  serviceId: number | null | undefined,
+  forNode: CascadeNode,
+): Promise<{ ok: true } | { ok: false; missingNodes: CascadeNode[]; message: string }> {
+  const required = UPSTREAM[forNode];
+  if (!required || required.length === 0) return { ok: true };
+  if (!serviceId) return { ok: true };
+
+  const db = await getDb();
+  if (!db) return { ok: true };
+
+  const [icp] = await db
+    .select({ id: idealCustomerProfiles.id })
+    .from(idealCustomerProfiles)
+    .where(eq(idealCustomerProfiles.serviceId, serviceId))
+    .limit(1);
+  if (!icp) return { ok: true };
+
+  const [kit] = await db
+    .select()
+    .from(campaignKits)
+    .where(and(eq(campaignKits.userId, userId), eq(campaignKits.icpId, icp.id)))
+    .limit(1);
+  if (!kit) return { ok: true };
+
+  const missing: CascadeNode[] = [];
+  for (const node of required) {
+    const field = CASCADE_NODE_TO_KIT_FIELD[node];
+    if (field && (kit as Record<string, unknown>)[field] == null) {
+      missing.push(node);
+    }
+  }
+
+  if (missing.length === 0) return { ok: true };
+
+  const labels = missing.map((n) => CASCADE_NODE_LABEL[n]);
+  const list = labels.length === 1
+    ? labels[0]
+    : labels.slice(0, -1).join(", ") + " and " + labels[labels.length - 1];
+  const targetLabel = CASCADE_NODE_LABEL[forNode];
+  const message = `Complete your ${list} first \u2014 ${missing.length === 1 ? "it provides" : "they provide"} the context your ${targetLabel} ${missing.length === 1 ? "needs" : "need"}.`;
+
+  return { ok: false, missingNodes: missing, message };
+}
 
 // ─── Truncation utilities ─────────────────────────────────────────────
 

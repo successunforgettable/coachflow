@@ -8,6 +8,7 @@ import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 import { runWhatsappSequenceGeneration, buildWhatsappRules } from "../whatsappSequenceGenerator";
+import { validateCascadePrereqs } from "../_core/cascadeContext";
 import { invokeLLM } from "../_core/llm";
 import { services } from "../../drizzle/schema";
 
@@ -118,6 +119,9 @@ export const whatsappSequencesRouter = router({
   generate: protectedProcedure
     .input(generateWhatsAppSequenceSchema)
     .mutation(async ({ ctx, input }) => {
+      const prereqs = await validateCascadePrereqs(ctx.user.id, input.serviceId, "whatsapp");
+      if (!prereqs.ok) throw new TRPCError({ code: "PRECONDITION_FAILED", message: prereqs.message });
+
       await checkAndResetQuotaIfNeeded(ctx.user.id);
 
       if (ctx.user.role !== "superuser") {

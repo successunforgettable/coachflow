@@ -8,6 +8,7 @@ import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 import { runEmailSequenceGeneration } from "../emailSequenceGenerator";
+import { validateCascadePrereqs } from "../_core/cascadeContext";
 import { invokeLLM } from "../_core/llm";
 
 // ---------------------------------------------------------------------------
@@ -117,6 +118,9 @@ export const emailSequencesRouter = router({
   generate: protectedProcedure
     .input(generateEmailSequenceSchema)
     .mutation(async ({ ctx, input }) => {
+      const prereqs = await validateCascadePrereqs(ctx.user.id, input.serviceId, "email");
+      if (!prereqs.ok) throw new TRPCError({ code: "PRECONDITION_FAILED", message: prereqs.message });
+
       await checkAndResetQuotaIfNeeded(ctx.user.id);
 
       if (ctx.user.role !== "superuser") {
