@@ -67,6 +67,7 @@ import V2AutoModeIntake from "./v2/V2AutoModeIntake";
 import V2AutoModeIntakeConfirm from "./v2/V2AutoModeIntakeConfirm";
 import V2AutoModeProgress from "./v2/V2AutoModeProgress";
 import V2Settings from "./v2/V2Settings";
+import TrailBarDemo from "./v2/TrailBarDemo";
 import Login from "./pages/Login";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
@@ -138,6 +139,7 @@ function Router() {
       <Route path={"/forgot-password"} component={ForgotPassword} />
       <Route path={"/reset-password"} component={ResetPassword} />
       {/* V2 Sandbox — isolated, does not affect any existing route */}
+      <Route path={"/v2-dashboard/trail-demo"} component={TrailBarDemo} />
       <Route path={"/v2-dashboard/asset-library"} component={V2AssetLibrary} />
       <Route path={"/v2-dashboard/wizard/:step"} component={V2GeneratorWizardPage} />
       <Route path={"/v2-dashboard/campaign-kit/:kitId"} component={V2CampaignKit} />
