@@ -395,8 +395,7 @@ export default function ChatThread({ messages, onChipTap, onDeckSelect, nodeRefM
   const bottomRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
   const [showNewPill, setShowNewPill] = useState(false);
-  const lastMsgCount = useRef(messages.length);
-  const userScrolledUp = useRef(false);
+  const lastMsgIds = useRef(new Set(messages.map(m => m.id)));
 
   const reducedMotion = typeof window !== "undefined"
     ? window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false
@@ -410,24 +409,23 @@ export default function ChatThread({ messages, onChipTap, onDeckSelect, nodeRefM
     if (atBottom) {
       setAutoScroll(true);
       setShowNewPill(false);
-      userScrolledUp.current = false;
     } else {
-      userScrolledUp.current = true;
       setAutoScroll(false);
     }
   }, []);
 
-  // Auto-scroll on new messages
+  // Auto-scroll on new messages (tracks by ID set, not length)
   useEffect(() => {
-    if (messages.length > lastMsgCount.current) {
+    const hasNew = messages.some(m => !lastMsgIds.current.has(m.id));
+    if (hasNew) {
       if (autoScroll) {
         bottomRef.current?.scrollIntoView({ behavior: reducedMotion ? "instant" : "smooth" });
       } else {
         setShowNewPill(true);
       }
     }
-    lastMsgCount.current = messages.length;
-  }, [messages.length, autoScroll, reducedMotion]);
+    lastMsgIds.current = new Set(messages.map(m => m.id));
+  }, [messages, autoScroll, reducedMotion]);
 
   const scrollToBottom = () => {
     bottomRef.current?.scrollIntoView({ behavior: reducedMotion ? "instant" : "smooth" });

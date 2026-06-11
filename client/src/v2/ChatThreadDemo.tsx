@@ -85,6 +85,16 @@ export default function ChatThreadDemo() {
     if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
+  // Test helper: add a message without removing anything (for scroll pill testing)
+  const addTestMessage = () => {
+    setMessages(prev => [...prev, {
+      id: `test-${Date.now()}`,
+      type: "zappy-bubble" as const,
+      text: "Worth the wait, promise.",
+      mood: "thinking" as const,
+    }]);
+  };
+
   return (
     <V2Layout>
       <div style={{
@@ -95,6 +105,21 @@ export default function ChatThreadDemo() {
         flexDirection: "column",
         padding: "16px 12px 0",
       }}>
+        {/* Test helper button */}
+        <button
+          id="add-test-msg"
+          onClick={addTestMessage}
+          style={{
+            position: "fixed", bottom: 12, right: 12, zIndex: 999,
+            background: "#8B5CF6", color: "white", border: "none",
+            borderRadius: 9999, padding: "6px 14px", fontSize: 11,
+            fontFamily: "'Instrument Sans', system-ui, sans-serif",
+            cursor: "pointer", fontWeight: 600,
+          }}
+        >
+          + Add test msg
+        </button>
+
         {/* TrailBar pinned at top */}
         <div style={{ flexShrink: 0, marginBottom: 12 }}>
           <TrailBar stops={TRAIL_STOPS} onStopClick={handleStopClick} />
