@@ -84,7 +84,7 @@ Always audit `INFORMATION_SCHEMA` before assuming Drizzle key == DB column. Comm
 ## 10. DB + Log Access Pattern
 
 - CC runs read-only DB queries + Railway log fetches directly via `railway run --environment production --service coachflow sh -c '... mysql ...'` (DATABASE_URL injected, no password exposure)
-- ALL prod-table writes — including schema-only ALTERs and migrations — route through Arfeen for go-ahead BEFORE execution. No exceptions for "low-risk" or "done it before." This applies to any `ALTER TABLE`, `INSERT`, `UPDATE`, `DELETE`, or migration SQL run against the production database.
+- **HARD GATE — ALL prod-table writes** (INSERT, UPDATE, DELETE, ALTER TABLE, migrations, backfills) require Arfeen's explicit "execute" or "go ahead" in the **immediately preceding message** before the write is run. Showing the prepared statement and holding for approval is the ONLY correct pattern. Running a write without that explicit approval — regardless of how safe, how small, or how obviously correct — is a violation. If a session is interrupted, approval is ambiguous, or the prior message didn't contain an unambiguous go-ahead, **default to NOT writing**. No exceptions for low-risk, test accounts, schema-only, or "done it before."
 - DB-first investigation: inspect DB type/structure (JSON_TYPE, JSON_KEYS) BEFORE proposing code-side mechanisms
 
 ## 11. GHL Deployment Architecture (locked)
