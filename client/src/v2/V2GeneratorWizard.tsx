@@ -1633,8 +1633,86 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
       }
       await updateKitMutation.mutateAsync(selectionPayload as any);
       await utils.campaignKits.getByUser.refetch();
+      // Fire node_completed analytics event
+      trackWizardEvent.mutate({
+        eventType: "node_completed",
+        metadata: { node: nodeStep, serviceId: activeService?.id },
+      });
     } catch (e) {
       console.warn("[persistSelection] failed:", e);
+    }
+  };
+
+  // ── Crown selection: change which option is selected for a node ──────────
+  const trackWizardEvent = trpc.campaignKits.trackWizardEvent.useMutation();
+  const [staleNodes, setStaleNodes] = useState<Set<string>>(new Set());
+
+  // Fire campaign_started once on mount
+  const startedRef = useRef(false);
+  useEffect(() => {
+    if (!startedRef.current && activeService?.id) {
+      startedRef.current = true;
+      trackWizardEvent.mutate({
+        eventType: "campaign_started",
+        metadata: { serviceId: activeService.id },
+      });
+    }
+  }, [activeService?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Map wizard step name to the campaignKits field it writes to
+  const STEP_TO_KIT_FIELD: Record<string, string> = {
+    uniqueMethod: "selectedMechanismId",
+    freeOptIn: "selectedHvcoId",
+    headlines: "selectedHeadlineId",
+    adCopy: "selectedAdCopyId",
+  };
+
+  // Map wizard step name to downstream steps that depend on it
+  const STEP_DOWNSTREAM: Record<string, string[]> = {
+    uniqueMethod: ["freeOptIn", "headlines", "adCopy", "landingPage", "emailSequence", "whatsappSequence"],
+    freeOptIn: ["headlines", "adCopy", "landingPage", "emailSequence", "whatsappSequence"],
+    headlines: ["adCopy", "landingPage", "whatsappSequence"],
+    adCopy: ["landingPage", "whatsappSequence"],
+  };
+
+  const handleChangeSelection = async (nodeStep: string, newId: number) => {
+    if (!activeKit) return;
+    const field = STEP_TO_KIT_FIELD[nodeStep];
+    if (!field) return;
+
+    const oldId = (activeKit as Record<string, unknown>)[field] as number | null;
+    if (oldId === newId) return;
+
+    try {
+      await updateKitMutation.mutateAsync({ kitId: activeKit.id, [field]: newId } as any);
+      await utils.campaignKits.getByUser.refetch();
+
+      // Fire analytics event
+      trackWizardEvent.mutate({
+        eventType: "option_recrowned",
+        metadata: { node: nodeStep, fromId: oldId, toId: newId },
+      });
+
+      // Check downstream stale: mark any downstream step that has a selection as stale
+      const downstream = STEP_DOWNSTREAM[nodeStep] ?? [];
+      const DOWNSTREAM_KIT_FIELDS: Record<string, string> = {
+        freeOptIn: "selectedHvcoId",
+        headlines: "selectedHeadlineId",
+        adCopy: "selectedAdCopyId",
+        landingPage: "selectedLandingPageId",
+        emailSequence: "selectedEmailSequenceId",
+        whatsappSequence: "selectedWhatsAppSequenceId",
+      };
+      const newStale = new Set(staleNodes);
+      for (const ds of downstream) {
+        const dsField = DOWNSTREAM_KIT_FIELDS[ds];
+        if (dsField && (activeKit as Record<string, unknown>)[dsField] != null) {
+          newStale.add(ds);
+        }
+      }
+      setStaleNodes(newStale);
+    } catch (e) {
+      console.warn("[handleChangeSelection] failed:", e);
     }
   };
 
@@ -2732,6 +2810,9 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
                 const next = getNextStep(step);
                 if (next) navigate(`/v2-dashboard/wizard/${next}`);
               }}
+              selectedId={activeKit?.selectedHeadlineId}
+              onChangeSelection={(id) => handleChangeSelection("headlines", id)}
+              isStale={staleNodes.has("headlines")}
             />
           )}
           {/* ── R1a: NODE 7 AD COPY RESULT PANEL ── */}
@@ -2743,6 +2824,9 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
                 const next = getNextStep(step);
                 if (next) navigate(`/v2-dashboard/wizard/${next}`);
               }}
+              selectedId={activeKit?.selectedAdCopyId}
+              onChangeSelection={(id) => handleChangeSelection("adCopy", id)}
+              isStale={staleNodes.has("adCopy")}
             />
           )}
           {/* ── R1b: NODE 2 ICP RESULT PANEL ── */}
@@ -2774,6 +2858,9 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
                 if (next) navigate(`/v2-dashboard/wizard/${next}`);
               }}
               generationWarning={latestMechWarning}
+              selectedId={activeKit?.selectedMechanismId}
+              onChangeSelection={(id) => handleChangeSelection("uniqueMethod", id)}
+              isStale={staleNodes.has("uniqueMethod")}
               onRetry={() => {
                 // Retry path analysis:
                 // (1) lastPayloadRef holds the uniqueMethod inputs from runGeneration — still correct here.
@@ -2796,6 +2883,9 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
                 const next = getNextStep(step);
                 if (next) navigate(`/v2-dashboard/wizard/${next}`);
               }}
+              selectedId={activeKit?.selectedHvcoId}
+              onChangeSelection={(id) => handleChangeSelection("freeOptIn", id)}
+              isStale={staleNodes.has("freeOptIn")}
             />
           )}
           {/* ── R1b: NODE 8 LANDING PAGE RESULT PANEL ── */}

@@ -151,8 +151,6 @@ function EmailCard({ email, index, sequenceId, isFreeTier, onUpgradeClick, isFav
   const [copiedSubj, setCopiedSubj] = useState(false);
   const [copiedBody, setCopiedBody] = useState(false);
   const thumbUp = !!isFav;
-  const [thumbDown, setThumbDown] = useState(false);
-  const [starred, setStarred]     = useState(false);
   const [regenOpen, setRegenOpen] = useState(false);
 
   function handleCopySubject() {
@@ -290,27 +288,11 @@ function EmailCard({ email, index, sequenceId, isFreeTier, onUpgradeClick, isFav
         </button>
         {/* Thumbs Up */}
         <button
-          onClick={() => { onToggleFav?.(); if (!thumbUp) setThumbDown(false); }}
+          onClick={() => { onToggleFav?.(); }}
           style={{ ...iconBtn, background: thumbUp ? "rgba(255,91,29,0.12)" : undefined, borderColor: thumbUp ? "rgba(255,91,29,0.40)" : undefined }}
           title="Thumbs up"
         >
           👍
-        </button>
-        {/* Thumbs Down */}
-        <button
-          onClick={() => { setThumbDown(p => !p); if (!thumbDown) setThumbUp(false); }}
-          style={{ ...iconBtn, background: thumbDown ? "rgba(220,38,38,0.10)" : undefined, borderColor: thumbDown ? "rgba(220,38,38,0.35)" : undefined }}
-          title="Thumbs down"
-        >
-          👎
-        </button>
-        {/* Star */}
-        <button
-          onClick={() => setStarred(p => !p)}
-          style={{ ...iconBtn, background: starred ? "rgba(255,165,0,0.12)" : undefined, borderColor: starred ? "rgba(255,165,0,0.45)" : undefined, color: starred ? "#D97706" : undefined }}
-          title="Star"
-        >
-          {starred ? "★" : "☆"}
         </button>
         {/* Regenerate */}
         {isFreeTier ? (

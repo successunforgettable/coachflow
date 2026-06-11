@@ -238,6 +238,11 @@ export const campaignKitsRouter = router({
           .update(campaignKits)
           .set({ status: "complete", updatedAt: new Date() } as any)
           .where(eq(campaignKits.id, input.kitId));
+        // Fire campaign_completed event
+        try {
+          const { trackEvent: te } = await import("../lib/productEvents");
+          await te(ctx.user.id, "campaign_completed", { kitId: input.kitId });
+        } catch (_) {}
       } else if (!isComplete && updated.status === "complete") {
         // If a selection is removed, revert to draft
         await db
@@ -352,5 +357,19 @@ export const campaignKitsRouter = router({
         .where(eq(campaignKits.id, input.kitId));
 
       return { success: true };
+    }),
+
+  // ── Wizard event tracking (client → product_events) ──
+  trackWizardEvent: protectedProcedure
+    .input(
+      z.object({
+        eventType: z.string(),
+        metadata: z.record(z.unknown()).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { trackEvent } = await import("../lib/productEvents");
+      await trackEvent(ctx.user.id, input.eventType, input.metadata);
+      return { ok: true };
     }),
 });

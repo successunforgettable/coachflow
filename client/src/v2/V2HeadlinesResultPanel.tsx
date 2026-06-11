@@ -171,14 +171,12 @@ type CardRewrite = {
   userDismissed: boolean;
 };
 
-function HeadlineCard({ headline, isFreeTier, index, isFav, onToggleFav, complianceRewritesEnabled, rewritesForCard, onRewritesChanged }: { headline: HeadlineRow; isFreeTier?: boolean; index: number; isFav: boolean; onToggleFav: () => void; complianceRewritesEnabled: boolean; rewritesForCard: CardRewrite[]; onRewritesChanged: () => void }) {
+function HeadlineCard({ headline, isFreeTier, index, isFav, onToggleFav, complianceRewritesEnabled, rewritesForCard, onRewritesChanged, isSelected, onSelect }: { headline: HeadlineRow; isFreeTier?: boolean; index: number; isFav: boolean; onToggleFav: () => void; complianceRewritesEnabled: boolean; rewritesForCard: CardRewrite[]; onRewritesChanged: () => void; isSelected?: boolean; onSelect?: () => void }) {
   const copyLocked = isFreeTier && index >= 10;
   const [headlineText, setHeadlineText] = useState(headline.headline);
   const [subheadlineText, setSubheadlineText] = useState(headline.subheadline);
   const [copied, setCopied]     = useState(false);
   const thumbUp = isFav;
-  const [thumbDown, setThumbDown] = useState(false);
-  const [starred, setStarred]   = useState(false);
   const [regenOpen, setRegenOpen] = useState(false);
   const [upgradeFeature, setUpgradeFeature] = useState<string | null>(null);
 
@@ -193,11 +191,22 @@ function HeadlineCard({ headline, isFreeTier, index, isFav, onToggleFav, complia
   return (
     <div style={{
       background: "#FFFFFF",
-      border: "1px solid rgba(26,22,36,0.10)",
+      border: isSelected ? "2px solid #8B5CF6" : "1px solid rgba(26,22,36,0.10)",
       borderRadius: "16px",
       padding: "18px 20px",
       marginBottom: "12px",
     }}>
+      {isSelected && (
+        <span style={{
+          display: "inline-flex", alignItems: "center", gap: "4px",
+          background: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.40)",
+          borderRadius: "9999px", padding: "3px 12px", fontSize: "11px",
+          fontFamily: "var(--v2-font-body)", fontWeight: 700, color: "#7C3AED",
+          letterSpacing: "0.02em", marginBottom: "10px",
+        }}>
+          ✓ Selected
+        </span>
+      )}
       {/* Eyebrow */}
       {headline.eyebrow && (
         <p style={{
@@ -282,9 +291,15 @@ function HeadlineCard({ headline, isFreeTier, index, isFav, onToggleFav, complia
         ) : (
           <button onClick={handleCopy} style={{ ...iconBtn, background: copied ? "rgba(88,204,2,0.12)" : undefined, borderColor: copied ? "rgba(88,204,2,0.40)" : undefined }} title="Copy to clipboard">{copied ? "✓" : "⎘"}</button>
         )}
-        <button onClick={() => { onToggleFav(); if (!thumbUp) setThumbDown(false); }} style={{ ...iconBtn, background: thumbUp ? "rgba(88,204,2,0.12)" : undefined, borderColor: thumbUp ? "rgba(88,204,2,0.40)" : undefined }} title="Thumbs up">👍</button>
-        <button onClick={() => { setThumbDown(p => !p); if (!thumbDown) setThumbUp(false); }} style={{ ...iconBtn, background: thumbDown ? "rgba(220,38,38,0.10)" : undefined, borderColor: thumbDown ? "rgba(220,38,38,0.35)" : undefined }} title="Thumbs down">👎</button>
-        <button onClick={() => setStarred(p => !p)} style={{ ...iconBtn, background: starred ? "rgba(255,165,0,0.12)" : undefined, borderColor: starred ? "rgba(255,165,0,0.45)" : undefined, color: starred ? "#D97706" : undefined }} title="Star">{starred ? "★" : "☆"}</button>
+        <button onClick={() => { onToggleFav(); }} style={{ ...iconBtn, background: thumbUp ? "rgba(88,204,2,0.12)" : undefined, borderColor: thumbUp ? "rgba(88,204,2,0.40)" : undefined }} title="Thumbs up">👍</button>
+        {!isSelected && onSelect && (
+          <button onClick={onSelect} style={{
+            background: "#8B5CF6", color: "#fff", border: "none",
+            borderRadius: "9999px", padding: "6px 16px",
+            fontFamily: "var(--v2-font-body)", fontWeight: 700,
+            fontSize: "12px", cursor: "pointer", letterSpacing: "0.01em",
+          }} title="Use this one">Use this one</button>
+        )}
         {isFreeTier ? (
           <button onClick={() => setUpgradeFeature("Per-Item Regeneration")} style={{ ...iconBtn, opacity: 0.4, cursor: "not-allowed" }} title="Upgrade to Pro to regenerate">↺</button>
         ) : (
@@ -335,10 +350,16 @@ export default function V2HeadlinesResultPanel({
   headlineSetId,
   serviceId: _serviceId,
   isFreeTier,
+  selectedId,
+  onChangeSelection,
+  isStale,
 }: {
   headlineSetId: string;
   serviceId: number;
   isFreeTier?: boolean;
+  selectedId?: number | null;
+  onChangeSelection?: (id: number) => void;
+  isStale?: boolean;
 }) {
   const [activeTab, setActiveTab] = useState<FormulaTab>("story");
   const [searchQuery, setSearchQuery] = useState("");
@@ -433,6 +454,17 @@ export default function V2HeadlinesResultPanel({
       marginTop: "24px",
       position: "relative",
     }}>
+      {/* ── Stale note ── */}
+      {isStale && (
+        <div style={{
+          background: "rgba(245,158,11,0.10)", border: "1px solid rgba(245,158,11,0.40)",
+          borderRadius: "12px", padding: "10px 14px", marginBottom: "16px",
+          fontFamily: "var(--v2-font-body)", fontSize: "13px", color: "#92400E",
+        }}>
+          Built with your previous selection — regenerate to update.
+        </div>
+      )}
+
       {/* ── Header ── */}
       <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "20px" }}>
         <ZappyMascot state="cheering" size={56} />
@@ -509,7 +541,7 @@ export default function V2HeadlinesResultPanel({
             No {activeTab} headlines in this set.
           </p>
         ) : (
-          filteredHeadlines.map((h, i) => <HeadlineCard key={h.id} headline={h} isFreeTier={isFreeTier} index={i} isFav={isFavourited(h.id)} onToggleFav={() => toggleFav(h.id, h.headline)} complianceRewritesEnabled={complianceRewritesEnabled} rewritesForCard={rewritesByHeadlineId.get(h.id) ?? []} onRewritesChanged={refetchRewrites} />)
+          filteredHeadlines.map((h, i) => <HeadlineCard key={h.id} headline={h} isFreeTier={isFreeTier} index={i} isFav={isFavourited(h.id)} onToggleFav={() => toggleFav(h.id, h.headline)} complianceRewritesEnabled={complianceRewritesEnabled} rewritesForCard={rewritesByHeadlineId.get(h.id) ?? []} onRewritesChanged={refetchRewrites} isSelected={selectedId === h.id} onSelect={onChangeSelection ? () => onChangeSelection(h.id) : undefined} />)
         )}
       </div>
       <ExportButtons content={formatHeadlinesTxt(data)} serviceName="Headlines" nodeName="Headlines" showPdf={true} isFreeTier={isFreeTier} />

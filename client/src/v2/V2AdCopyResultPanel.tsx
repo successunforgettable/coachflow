@@ -303,12 +303,11 @@ function RegenPanel({
 }
 
 // ─── Headline item card ───────────────────────────────────────────────────────
-function HeadlineItem({ item, index, isFreeTier, onUpgradeClick, isFav, onToggleFav, complianceRewritesEnabled, rewritesForCard, onRewritesChanged }: { item: AdRow; index: number; isFreeTier?: boolean; onUpgradeClick?: (feature?: string) => void; isFav?: boolean; onToggleFav?: () => void; complianceRewritesEnabled: boolean; rewritesForCard: CardRewrite[]; onRewritesChanged: () => void }) {
+function HeadlineItem({ item, index, isFreeTier, onUpgradeClick, isFav, onToggleFav, complianceRewritesEnabled, rewritesForCard, onRewritesChanged, isSelected, onSelect }: { item: AdRow; index: number; isFreeTier?: boolean; onUpgradeClick?: (feature?: string) => void; isFav?: boolean; onToggleFav?: () => void; complianceRewritesEnabled: boolean; rewritesForCard: CardRewrite[]; onRewritesChanged: () => void; isSelected?: boolean; onSelect?: () => void }) {
   const copyLocked = isFreeTier && index >= 3;
   const [content, setContent]   = useState(item.content);
   const [copied, setCopied]     = useState(false);
   const thumbUp = !!isFav;
-  const [thumbDown, setThumbDown] = useState(false);
   const [regenOpen, setRegenOpen] = useState(false);
 
   function handleCopy() {
@@ -320,11 +319,22 @@ function HeadlineItem({ item, index, isFreeTier, onUpgradeClick, isFav, onToggle
   return (
     <div style={{
       background: "#FFFFFF",
-      border: "1px solid rgba(26,22,36,0.10)",
+      border: isSelected ? "2px solid #8B5CF6" : "1px solid rgba(26,22,36,0.10)",
       borderRadius: "16px",
       padding: "16px 18px",
       marginBottom: "10px",
     }}>
+      {isSelected && (
+        <span style={{
+          display: "inline-flex", alignItems: "center", gap: "4px",
+          background: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.40)",
+          borderRadius: "9999px", padding: "3px 12px", fontSize: "11px",
+          fontFamily: "var(--v2-font-body)", fontWeight: 700, color: "#7C3AED",
+          letterSpacing: "0.02em", marginBottom: "10px",
+        }}>
+          ✓ Selected
+        </span>
+      )}
       <p style={{
         fontFamily: "var(--v2-font-body)",
         fontSize: "11px",
@@ -357,15 +367,18 @@ function HeadlineItem({ item, index, isFreeTier, onUpgradeClick, isFav, onToggle
           <button onClick={handleCopy} style={{ ...iconBtn, background: copied ? "rgba(88,204,2,0.12)" : undefined, borderColor: copied ? "rgba(88,204,2,0.40)" : undefined }} title="Copy">{copied ? "✓" : "⎘"}</button>
         )}
         <button
-          onClick={() => { onToggleFav?.(); if (!thumbUp) setThumbDown(false); }}
+          onClick={() => { onToggleFav?.(); }}
           style={{ ...iconBtn, background: thumbUp ? "rgba(88,204,2,0.12)" : undefined, borderColor: thumbUp ? "rgba(88,204,2,0.40)" : undefined }}
           title="Thumbs up"
         >👍</button>
-        <button
-          onClick={() => { setThumbDown(p => !p); if (!thumbDown) setThumbUp(false); }}
-          style={{ ...iconBtn, background: thumbDown ? "rgba(220,38,38,0.10)" : undefined, borderColor: thumbDown ? "rgba(220,38,38,0.35)" : undefined }}
-          title="Thumbs down"
-        >👎</button>
+        {!isSelected && onSelect && (
+          <button onClick={onSelect} style={{
+            background: "#8B5CF6", color: "#fff", border: "none",
+            borderRadius: "9999px", padding: "6px 16px",
+            fontFamily: "var(--v2-font-body)", fontWeight: 700,
+            fontSize: "12px", cursor: "pointer", letterSpacing: "0.01em",
+          }} title="Use this one">Use this one</button>
+        )}
         {isFreeTier ? (
           <button
             onClick={() => onUpgradeClick?.("Per-Item Regeneration")}
@@ -401,12 +414,11 @@ function HeadlineItem({ item, index, isFreeTier, onUpgradeClick, isFav, onToggle
 }
 
 // ─── Body copy item card ──────────────────────────────────────────────────────
-function BodyItem({ item, index, isFreeTier, onUpgradeClick, isFav, onToggleFav, complianceRewritesEnabled, rewritesForCard, onRewritesChanged }: { item: AdRow; index: number; isFreeTier?: boolean; onUpgradeClick?: (feature?: string) => void; isFav?: boolean; onToggleFav?: () => void; complianceRewritesEnabled: boolean; rewritesForCard: CardRewrite[]; onRewritesChanged: () => void }) {
+function BodyItem({ item, index, isFreeTier, onUpgradeClick, isFav, onToggleFav, complianceRewritesEnabled, rewritesForCard, onRewritesChanged, isSelected, onSelect }: { item: AdRow; index: number; isFreeTier?: boolean; onUpgradeClick?: (feature?: string) => void; isFav?: boolean; onToggleFav?: () => void; complianceRewritesEnabled: boolean; rewritesForCard: CardRewrite[]; onRewritesChanged: () => void; isSelected?: boolean; onSelect?: () => void }) {
   const copyLocked = isFreeTier && index >= 3;
   const [content, setContent]   = useState(item.content);
   const [copied, setCopied]     = useState(false);
   const thumbUp = !!isFav;
-  const [thumbDown, setThumbDown] = useState(false);
   const [regenOpen, setRegenOpen] = useState(false);
 
   function handleCopy() {
@@ -441,11 +453,22 @@ function BodyItem({ item, index, isFreeTier, onUpgradeClick, isFav, onToggleFav,
   return (
     <div style={{
       background: "#FFFFFF",
-      border: "1px solid rgba(26,22,36,0.10)",
+      border: isSelected ? "2px solid #8B5CF6" : "1px solid rgba(26,22,36,0.10)",
       borderRadius: "16px",
       padding: "18px 20px",
       marginBottom: "12px",
     }}>
+      {isSelected && (
+        <span style={{
+          display: "inline-flex", alignItems: "center", gap: "4px",
+          background: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.40)",
+          borderRadius: "9999px", padding: "3px 12px", fontSize: "11px",
+          fontFamily: "var(--v2-font-body)", fontWeight: 700, color: "#7C3AED",
+          letterSpacing: "0.02em", marginBottom: "10px",
+        }}>
+          ✓ Selected
+        </span>
+      )}
       {/* Header row: index + angle pill */}
       <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px", flexWrap: "wrap" }}>
         <span style={{
@@ -484,15 +507,18 @@ function BodyItem({ item, index, isFreeTier, onUpgradeClick, isFav, onToggleFav,
           <button onClick={handleCopy} style={{ ...iconBtn, background: copied ? "rgba(88,204,2,0.12)" : undefined, borderColor: copied ? "rgba(88,204,2,0.40)" : undefined }} title="Copy">{copied ? "✓" : "⎘"}</button>
         )}
         <button
-          onClick={() => { onToggleFav?.(); if (!thumbUp) setThumbDown(false); }}
+          onClick={() => { onToggleFav?.(); }}
           style={{ ...iconBtn, background: thumbUp ? "rgba(88,204,2,0.12)" : undefined, borderColor: thumbUp ? "rgba(88,204,2,0.40)" : undefined }}
           title="Thumbs up"
         >👍</button>
-        <button
-          onClick={() => { setThumbDown(p => !p); if (!thumbDown) setThumbUp(false); }}
-          style={{ ...iconBtn, background: thumbDown ? "rgba(220,38,38,0.10)" : undefined, borderColor: thumbDown ? "rgba(220,38,38,0.35)" : undefined }}
-          title="Thumbs down"
-        >👎</button>
+        {!isSelected && onSelect && (
+          <button onClick={onSelect} style={{
+            background: "#8B5CF6", color: "#fff", border: "none",
+            borderRadius: "9999px", padding: "6px 16px",
+            fontFamily: "var(--v2-font-body)", fontWeight: 700,
+            fontSize: "12px", cursor: "pointer", letterSpacing: "0.01em",
+          }} title="Use this one">Use this one</button>
+        )}
         {isFreeTier ? (
           <button
             onClick={() => onUpgradeClick?.("Per-Item Regeneration")}
@@ -547,12 +573,11 @@ function BodyItem({ item, index, isFreeTier, onUpgradeClick, isFav, onToggleFav,
 }
 
 // ─── Link item card ───────────────────────────────────────────────────────────
-function LinkItem({ item, index, isFreeTier, onUpgradeClick, isFav, onToggleFav, complianceRewritesEnabled, rewritesForCard, onRewritesChanged }: { item: AdRow; index: number; isFreeTier?: boolean; onUpgradeClick?: (feature?: string) => void; isFav?: boolean; onToggleFav?: () => void; complianceRewritesEnabled: boolean; rewritesForCard: CardRewrite[]; onRewritesChanged: () => void }) {
+function LinkItem({ item, index, isFreeTier, onUpgradeClick, isFav, onToggleFav, complianceRewritesEnabled, rewritesForCard, onRewritesChanged, isSelected, onSelect }: { item: AdRow; index: number; isFreeTier?: boolean; onUpgradeClick?: (feature?: string) => void; isFav?: boolean; onToggleFav?: () => void; complianceRewritesEnabled: boolean; rewritesForCard: CardRewrite[]; onRewritesChanged: () => void; isSelected?: boolean; onSelect?: () => void }) {
   const copyLocked = isFreeTier && index >= 3;
   const [content, setContent]   = useState(item.content);
   const [copied, setCopied]     = useState(false);
   const thumbUp = !!isFav;
-  const [thumbDown, setThumbDown] = useState(false);
   const [regenOpen, setRegenOpen] = useState(false);
 
   function handleCopy() {
@@ -564,11 +589,22 @@ function LinkItem({ item, index, isFreeTier, onUpgradeClick, isFav, onToggleFav,
   return (
     <div style={{
       background: "#FFFFFF",
-      border: "1px solid rgba(26,22,36,0.10)",
+      border: isSelected ? "2px solid #8B5CF6" : "1px solid rgba(26,22,36,0.10)",
       borderRadius: "16px",
       padding: "14px 18px",
       marginBottom: "10px",
     }}>
+      {isSelected && (
+        <span style={{
+          display: "inline-flex", alignItems: "center", gap: "4px",
+          background: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.40)",
+          borderRadius: "9999px", padding: "3px 12px", fontSize: "11px",
+          fontFamily: "var(--v2-font-body)", fontWeight: 700, color: "#7C3AED",
+          letterSpacing: "0.02em", marginBottom: "10px",
+        }}>
+          ✓ Selected
+        </span>
+      )}
       <p style={{
         fontFamily: "var(--v2-font-body)",
         fontSize: "11px",
@@ -599,15 +635,18 @@ function LinkItem({ item, index, isFreeTier, onUpgradeClick, isFav, onToggleFav,
           <button onClick={handleCopy} style={{ ...iconBtn, background: copied ? "rgba(88,204,2,0.12)" : undefined, borderColor: copied ? "rgba(88,204,2,0.40)" : undefined }} title="Copy">{copied ? "✓" : "⎘"}</button>
         )}
         <button
-          onClick={() => { onToggleFav?.(); if (!thumbUp) setThumbDown(false); }}
+          onClick={() => { onToggleFav?.(); }}
           style={{ ...iconBtn, background: thumbUp ? "rgba(88,204,2,0.12)" : undefined, borderColor: thumbUp ? "rgba(88,204,2,0.40)" : undefined }}
           title="Thumbs up"
         >👍</button>
-        <button
-          onClick={() => { setThumbDown(p => !p); if (!thumbDown) setThumbUp(false); }}
-          style={{ ...iconBtn, background: thumbDown ? "rgba(220,38,38,0.10)" : undefined, borderColor: thumbDown ? "rgba(220,38,38,0.35)" : undefined }}
-          title="Thumbs down"
-        >👎</button>
+        {!isSelected && onSelect && (
+          <button onClick={onSelect} style={{
+            background: "#8B5CF6", color: "#fff", border: "none",
+            borderRadius: "9999px", padding: "6px 16px",
+            fontFamily: "var(--v2-font-body)", fontWeight: 700,
+            fontSize: "12px", cursor: "pointer", letterSpacing: "0.01em",
+          }} title="Use this one">Use this one</button>
+        )}
         {isFreeTier ? (
           <button
             onClick={() => onUpgradeClick?.("Per-Item Regeneration")}
@@ -674,10 +713,16 @@ export default function V2AdCopyResultPanel({
   adSetId,
   serviceId: _serviceId,
   isFreeTier,
+  selectedId,
+  onChangeSelection,
+  isStale,
 }: {
   adSetId: string;
   serviceId: number;
   isFreeTier?: boolean;
+  selectedId?: number | null;
+  onChangeSelection?: (id: number) => void;
+  isStale?: boolean;
 }) {
   type TopTab = "copy" | "images" | "video";
   const [topTab, setTopTab] = useState<TopTab>("copy");
@@ -756,6 +801,17 @@ export default function V2AdCopyResultPanel({
       marginTop: "24px",
       position: "relative",
     }}>
+      {/* ── Stale note ── */}
+      {isStale && (
+        <div style={{
+          background: "rgba(245,158,11,0.10)", border: "1px solid rgba(245,158,11,0.40)",
+          borderRadius: "12px", padding: "10px 14px", marginBottom: "16px",
+          fontFamily: "var(--v2-font-body)", fontSize: "13px", color: "#92400E",
+        }}>
+          Built with your previous selection — regenerate to update.
+        </div>
+      )}
+
       {/* ── Header ── */}
       <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "20px" }}>
         <ZappyMascot state="cheering" size={56} />
@@ -863,21 +919,21 @@ export default function V2AdCopyResultPanel({
               const filtered = searchQuery ? sorted.filter(h => h.content.toLowerCase().includes(searchQuery.toLowerCase())) : sorted;
               return filtered.length === 0
                 ? <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#888", textAlign: "center", padding: "24px 0" }}>No headlines found.</p>
-                : filtered.map((h, i) => <HeadlineItem key={h.id} item={h} index={i} isFreeTier={isFreeTier} onUpgradeClick={(f) => setUpgradeFeature(f || "Per-Item Regeneration")} isFav={isAdFav(h.id)} onToggleFav={() => toggleAdFav(h.id, h.content)} complianceRewritesEnabled={complianceRewritesEnabled} rewritesForCard={rewritesByAdCopyId.get(h.id) ?? []} onRewritesChanged={refetchRewrites} />);
+                : filtered.map((h, i) => <HeadlineItem key={h.id} item={h} index={i} isFreeTier={isFreeTier} onUpgradeClick={(f) => setUpgradeFeature(f || "Per-Item Regeneration")} isFav={isAdFav(h.id)} onToggleFav={() => toggleAdFav(h.id, h.content)} complianceRewritesEnabled={complianceRewritesEnabled} rewritesForCard={rewritesByAdCopyId.get(h.id) ?? []} onRewritesChanged={refetchRewrites} isSelected={selectedId === h.id} onSelect={onChangeSelection ? () => onChangeSelection(h.id) : undefined} />);
             })()}
             {activeTab === "body" && (() => {
               const sorted = [...bodies].sort((a, b) => parseFloat(b.selectionScore ?? '0') - parseFloat(a.selectionScore ?? '0'));
               const filtered = searchQuery ? sorted.filter(b => b.content.toLowerCase().includes(searchQuery.toLowerCase())) : sorted;
               return filtered.length === 0
                 ? <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#888", textAlign: "center", padding: "24px 0" }}>No body copy found.</p>
-                : filtered.map((b, i) => <BodyItem key={b.id} item={b} index={i} isFreeTier={isFreeTier} onUpgradeClick={(f) => setUpgradeFeature(f || "Per-Item Regeneration")} isFav={isAdFav(b.id)} onToggleFav={() => toggleAdFav(b.id, b.content)} complianceRewritesEnabled={complianceRewritesEnabled} rewritesForCard={rewritesByAdCopyId.get(b.id) ?? []} onRewritesChanged={refetchRewrites} />);
+                : filtered.map((b, i) => <BodyItem key={b.id} item={b} index={i} isFreeTier={isFreeTier} onUpgradeClick={(f) => setUpgradeFeature(f || "Per-Item Regeneration")} isFav={isAdFav(b.id)} onToggleFav={() => toggleAdFav(b.id, b.content)} complianceRewritesEnabled={complianceRewritesEnabled} rewritesForCard={rewritesByAdCopyId.get(b.id) ?? []} onRewritesChanged={refetchRewrites} isSelected={selectedId === b.id} onSelect={onChangeSelection ? () => onChangeSelection(b.id) : undefined} />);
             })()}
             {activeTab === "links" && (() => {
               const sorted = [...links].sort((a, b) => parseFloat(b.selectionScore ?? '0') - parseFloat(a.selectionScore ?? '0'));
               const filtered = searchQuery ? sorted.filter(l => l.content.toLowerCase().includes(searchQuery.toLowerCase())) : sorted;
               return filtered.length === 0
                 ? <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#888", textAlign: "center", padding: "24px 0" }}>No links found.</p>
-                : filtered.map((l, i) => <LinkItem key={l.id} item={l} index={i} isFreeTier={isFreeTier} onUpgradeClick={(f) => setUpgradeFeature(f || "Per-Item Regeneration")} isFav={isAdFav(l.id)} onToggleFav={() => toggleAdFav(l.id, l.content)} complianceRewritesEnabled={complianceRewritesEnabled} rewritesForCard={rewritesByAdCopyId.get(l.id) ?? []} onRewritesChanged={refetchRewrites} />);
+                : filtered.map((l, i) => <LinkItem key={l.id} item={l} index={i} isFreeTier={isFreeTier} onUpgradeClick={(f) => setUpgradeFeature(f || "Per-Item Regeneration")} isFav={isAdFav(l.id)} onToggleFav={() => toggleAdFav(l.id, l.content)} complianceRewritesEnabled={complianceRewritesEnabled} rewritesForCard={rewritesByAdCopyId.get(l.id) ?? []} onRewritesChanged={refetchRewrites} isSelected={selectedId === l.id} onSelect={onChangeSelection ? () => onChangeSelection(l.id) : undefined} />);
             })()}
           </div>
         </>

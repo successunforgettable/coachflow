@@ -92,12 +92,10 @@ function HvcoRegenPanel({
 }
 
 // ─── Title card ───────────────────────────────────────────────────────────────
-function TitleCard({ hvco, isFreeTier, onUpgradeClick, isFav, onToggleFav }: { hvco: HvcoRow; isFreeTier?: boolean; onUpgradeClick?: () => void; isFav?: boolean; onToggleFav?: () => void }) {
+function TitleCard({ hvco, isFreeTier, onUpgradeClick, isFav, onToggleFav, isSelected, onSelect }: { hvco: HvcoRow; isFreeTier?: boolean; onUpgradeClick?: () => void; isFav?: boolean; onToggleFav?: () => void; isSelected?: boolean; onSelect?: () => void }) {
   const [title, setTitle]           = useState(hvco.title);
   const [copied, setCopied]         = useState(false);
   const thumbUp = !!isFav;
-  const [thumbDown, setThumbDown]   = useState(false);
-  const [starred, setStarred]       = useState(false);
   const [regenOpen, setRegenOpen]   = useState(false);
 
   function handleCopy() {
@@ -109,11 +107,22 @@ function TitleCard({ hvco, isFreeTier, onUpgradeClick, isFav, onToggleFav }: { h
   return (
     <div style={{
       background: "#FFFFFF",
-      border: "1px solid rgba(26,22,36,0.10)",
+      border: isSelected ? "2px solid #8B5CF6" : "1px solid rgba(26,22,36,0.10)",
       borderRadius: "16px",
       padding: "16px 20px",
       marginBottom: "10px",
     }}>
+      {isSelected && (
+        <span style={{
+          display: "inline-flex", alignItems: "center", gap: "4px",
+          background: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.40)",
+          borderRadius: "9999px", padding: "3px 12px", fontSize: "11px",
+          fontFamily: "var(--v2-font-body)", fontWeight: 700, color: "#7C3AED",
+          letterSpacing: "0.02em", marginBottom: "10px",
+        }}>
+          ✓ Selected
+        </span>
+      )}
       <p style={{
         fontFamily: "var(--v2-font-heading)",
         fontStyle: "italic",
@@ -127,9 +136,15 @@ function TitleCard({ hvco, isFreeTier, onUpgradeClick, isFav, onToggleFav }: { h
       </p>
       <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
         <button onClick={handleCopy} style={{ ...iconBtn, background: copied ? "rgba(88,204,2,0.12)" : undefined, borderColor: copied ? "rgba(88,204,2,0.40)" : undefined }} title="Copy">{copied ? "✓" : "⎘"}</button>
-        <button onClick={() => { onToggleFav?.(); if (!thumbUp) setThumbDown(false); }} style={{ ...iconBtn, background: thumbUp ? "rgba(88,204,2,0.12)" : undefined, borderColor: thumbUp ? "rgba(88,204,2,0.40)" : undefined }} title="Thumbs up">👍</button>
-        <button onClick={() => { setThumbDown(p => !p); if (!thumbDown) setThumbUp(false); }} style={{ ...iconBtn, background: thumbDown ? "rgba(220,38,38,0.10)" : undefined, borderColor: thumbDown ? "rgba(220,38,38,0.35)" : undefined }} title="Thumbs down">👎</button>
-        <button onClick={() => setStarred(p => !p)} style={{ ...iconBtn, background: starred ? "rgba(255,165,0,0.12)" : undefined, borderColor: starred ? "rgba(255,165,0,0.45)" : undefined, color: starred ? "#D97706" : undefined }} title="Star">{starred ? "★" : "☆"}</button>
+        <button onClick={() => { onToggleFav?.(); }} style={{ ...iconBtn, background: thumbUp ? "rgba(88,204,2,0.12)" : undefined, borderColor: thumbUp ? "rgba(88,204,2,0.40)" : undefined }} title="Thumbs up">👍</button>
+        {!isSelected && onSelect && (
+          <button onClick={onSelect} style={{
+            background: "#8B5CF6", color: "#fff", border: "none",
+            borderRadius: "9999px", padding: "6px 16px",
+            fontFamily: "var(--v2-font-body)", fontWeight: 700,
+            fontSize: "12px", cursor: "pointer", letterSpacing: "0.01em",
+          }} title="Use this one">Use this one</button>
+        )}
         {isFreeTier ? (
           <button onClick={() => onUpgradeClick?.()} style={{ ...iconBtn, opacity: 0.4, cursor: "not-allowed" }} title="Upgrade to Pro to regenerate">↺</button>
         ) : (
@@ -176,9 +191,15 @@ function TabPill({ label, count, active, onClick }: { label: string; count: numb
 export default function V2FreeOptInResultPanel({
   hvcoSetId,
   isFreeTier,
+  selectedId,
+  onChangeSelection,
+  isStale,
 }: {
   hvcoSetId: string;
   isFreeTier?: boolean;
+  selectedId?: number | null;
+  onChangeSelection?: (id: number) => void;
+  isStale?: boolean;
 }) {
   const [activeTab, setActiveTab] = useState<TabType>("long");
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -222,6 +243,17 @@ export default function V2FreeOptInResultPanel({
       marginTop: "24px",
       position: "relative",
     }}>
+      {/* ── Stale note ── */}
+      {isStale && (
+        <div style={{
+          background: "rgba(245,158,11,0.10)", border: "1px solid rgba(245,158,11,0.40)",
+          borderRadius: "12px", padding: "10px 14px", marginBottom: "16px",
+          fontFamily: "var(--v2-font-body)", fontSize: "13px", color: "#92400E",
+        }}>
+          Built with your previous selection — regenerate to update.
+        </div>
+      )}
+
       {/* ── Header ── */}
       <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "20px" }}>
         <ZappyMascot state="cheering" size={56} />
@@ -285,7 +317,7 @@ export default function V2FreeOptInResultPanel({
       {byTab[activeTab]
         .filter(t => t.title.toLowerCase().includes(searchQuery.toLowerCase()))
         .map(t => (
-        <TitleCard key={t.id} hvco={t} isFreeTier={isFreeTier} onUpgradeClick={() => setShowUpgradeModal(true)} isFav={isFavourited(t.id)} onToggleFav={() => toggleFav(t.id, t.title)} />
+        <TitleCard key={t.id} hvco={t} isFreeTier={isFreeTier} onUpgradeClick={() => setShowUpgradeModal(true)} isFav={isFavourited(t.id)} onToggleFav={() => toggleFav(t.id, t.title)} isSelected={selectedId === t.id} onSelect={onChangeSelection ? () => onChangeSelection(t.id) : undefined} />
       ))}
       {byTab[activeTab].filter(t => t.title.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && (
         <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#999", textAlign: "center", padding: "24px 0" }}>

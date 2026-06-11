@@ -45,11 +45,8 @@ const iconBtn: React.CSSProperties = {
 };
 
 // ─── Mechanism card ───────────────────────────────────────────────────────────
-function MechanismCard({ mechanism }: { mechanism: MechanismRow }) {
-  const [copied, setCopied]       = useState(false);
-  const [thumbUp, setThumbUp]     = useState(false);
-  const [thumbDown, setThumbDown] = useState(false);
-  const [starred, setStarred]     = useState(false);
+function MechanismCard({ mechanism, isSelected, onSelect }: { mechanism: MechanismRow; isSelected: boolean; onSelect?: () => void }) {
+  const [copied, setCopied] = useState(false);
 
   function handleCopy() {
     const text = `${mechanism.mechanismName}\n\n${mechanism.mechanismDescription}`;
@@ -61,11 +58,23 @@ function MechanismCard({ mechanism }: { mechanism: MechanismRow }) {
   return (
     <div style={{
       background: "#FFFFFF",
-      border: "1px solid rgba(26,22,36,0.10)",
+      border: isSelected ? "2px solid #8B5CF6" : "1px solid rgba(26,22,36,0.10)",
       borderRadius: "16px",
       padding: "18px 20px",
       marginBottom: "12px",
+      position: "relative",
     }}>
+      {isSelected && (
+        <span style={{
+          display: "inline-flex", alignItems: "center", gap: "4px",
+          background: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.40)",
+          borderRadius: "9999px", padding: "3px 12px", fontSize: "11px",
+          fontFamily: "var(--v2-font-body)", fontWeight: 700, color: "#7C3AED",
+          letterSpacing: "0.02em", marginBottom: "10px",
+        }}>
+          ✓ Selected
+        </span>
+      )}
       <p style={{
         fontFamily: "var(--v2-font-heading)",
         fontStyle: "italic",
@@ -95,27 +104,21 @@ function MechanismCard({ mechanism }: { mechanism: MechanismRow }) {
         >
           {copied ? "✓" : "⎘"}
         </button>
-        <button
-          onClick={() => { setThumbUp(p => !p); if (!thumbUp) setThumbDown(false); }}
-          style={{ ...iconBtn, background: thumbUp ? "rgba(88,204,2,0.12)" : undefined, borderColor: thumbUp ? "rgba(88,204,2,0.40)" : undefined }}
-          title="Thumbs up"
-        >
-          👍
-        </button>
-        <button
-          onClick={() => { setThumbDown(p => !p); if (!thumbDown) setThumbUp(false); }}
-          style={{ ...iconBtn, background: thumbDown ? "rgba(220,38,38,0.10)" : undefined, borderColor: thumbDown ? "rgba(220,38,38,0.35)" : undefined }}
-          title="Thumbs down"
-        >
-          👎
-        </button>
-        <button
-          onClick={() => setStarred(p => !p)}
-          style={{ ...iconBtn, background: starred ? "rgba(255,165,0,0.12)" : undefined, borderColor: starred ? "rgba(255,165,0,0.45)" : undefined, color: starred ? "#D97706" : undefined }}
-          title="Star"
-        >
-          {starred ? "★" : "☆"}
-        </button>
+        {!isSelected && onSelect && (
+          <button
+            onClick={onSelect}
+            style={{
+              background: "#8B5CF6", color: "#fff", border: "none",
+              borderRadius: "9999px", padding: "6px 16px",
+              fontFamily: "var(--v2-font-body)", fontWeight: 700,
+              fontSize: "12px", cursor: "pointer", letterSpacing: "0.01em",
+              transition: "opacity 0.15s",
+            }}
+            title="Use this one"
+          >
+            Use this one
+          </button>
+        )}
       </div>
     </div>
   );
@@ -152,11 +155,17 @@ export default function V2UniqueMethodResultPanel({
   onContinue,
   generationWarning,
   onRetry,
+  selectedId,
+  onChangeSelection,
+  isStale,
 }: {
   mechanismSetId: string;
   onContinue: () => void;
   generationWarning?: string;
   onRetry?: () => void;
+  selectedId?: number | null;
+  onChangeSelection?: (id: number) => void;
+  isStale?: boolean;
 }) {
   const [activeTab, setActiveTab] = useState<TabType>("hero_mechanisms");
 
@@ -196,28 +205,16 @@ export default function V2UniqueMethodResultPanel({
       marginTop: "24px",
       position: "relative",
     }}>
-      {/* ── Fixed top-right Continue button ── */}
-      <div style={{ position: "absolute", top: "20px", right: "20px", zIndex: 10 }}>
-        <button
-          onClick={onContinue}
-          style={{
-            background: "#8B5CF6",
-            color: "#fff",
-            border: "none",
-            borderRadius: "9999px",
-            padding: "10px 22px",
-            fontFamily: "var(--v2-font-body)",
-            fontWeight: 700,
-            fontSize: "13px",
-            cursor: "pointer",
-            letterSpacing: "0.01em",
-            whiteSpace: "nowrap",
-            boxShadow: "0 2px 8px rgba(139,92,246,0.30)",
-          }}
-        >
-          Continue to Next Step →
-        </button>
-      </div>
+      {/* ── Stale note ── */}
+      {isStale && (
+        <div style={{
+          background: "rgba(245,158,11,0.10)", border: "1px solid rgba(245,158,11,0.40)",
+          borderRadius: "12px", padding: "10px 14px", marginBottom: "16px",
+          fontFamily: "var(--v2-font-body)", fontSize: "13px", color: "#92400E",
+        }}>
+          Built with your previous selection — regenerate to update.
+        </div>
+      )}
 
       {/* ── Header ── */}
       <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "20px", paddingRight: "180px" }}>
@@ -262,7 +259,12 @@ export default function V2UniqueMethodResultPanel({
 
       {/* ── Cards ── */}
       {byTab[activeTab].map(m => (
-        <MechanismCard key={m.id} mechanism={m} />
+        <MechanismCard
+          key={m.id}
+          mechanism={m}
+          isSelected={selectedId === m.id}
+          onSelect={onChangeSelection ? () => onChangeSelection(m.id) : undefined}
+        />
       ))}
       {byTab[activeTab].length === 0 && (
         <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#999", textAlign: "center", padding: "24px 0" }}>

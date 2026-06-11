@@ -155,8 +155,6 @@ function MessageCard({ msg, index, sequenceId, isFreeTier, isFav, onToggleFav }:
   const [messageText, setMessageText] = useState(msg.text ?? msg.message ?? "");
   const [copied, setCopied]       = useState(false);
   const thumbUp = !!isFav;
-  const [thumbDown, setThumbDown] = useState(false);
-  const [starred, setStarred]     = useState(false);
   const [regenOpen, setRegenOpen] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
@@ -231,25 +229,11 @@ function MessageCard({ msg, index, sequenceId, isFreeTier, isFav, onToggleFav }:
           {copied ? "✓" : "⎘"}
         </button>
         <button
-          onClick={() => { onToggleFav?.(); if (!thumbUp) setThumbDown(false); }}
+          onClick={() => { onToggleFav?.(); }}
           style={{ ...iconBtn, background: thumbUp ? "rgba(88,204,2,0.12)" : undefined, borderColor: thumbUp ? "rgba(88,204,2,0.40)" : undefined }}
           title="Thumbs up"
         >
           👍
-        </button>
-        <button
-          onClick={() => { setThumbDown(p => !p); if (!thumbDown) setThumbUp(false); }}
-          style={{ ...iconBtn, background: thumbDown ? "rgba(220,38,38,0.10)" : undefined, borderColor: thumbDown ? "rgba(220,38,38,0.35)" : undefined }}
-          title="Thumbs down"
-        >
-          👎
-        </button>
-        <button
-          onClick={() => setStarred(p => !p)}
-          style={{ ...iconBtn, background: starred ? "rgba(255,165,0,0.12)" : undefined, borderColor: starred ? "rgba(255,165,0,0.45)" : undefined, color: starred ? "#D97706" : undefined }}
-          title="Star"
-        >
-          {starred ? "★" : "☆"}
         </button>
         {isFreeTier ? (
           <button
