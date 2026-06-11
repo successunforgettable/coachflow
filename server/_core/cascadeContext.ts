@@ -106,7 +106,7 @@ const CASCADE_NODE_TO_KIT_FIELD: Record<CascadeNode, string> = {
   adCopy:      "selectedAdCopyId",
   landingPage: "selectedLandingPageId",
   email:       "selectedEmailSequenceId",
-  whatsapp:    "selectedEmailSequenceId", // not referenced as upstream, but kept for completeness
+  whatsapp:    "selectedWhatsAppSequenceId",
 };
 
 const CASCADE_NODE_LABEL: Record<CascadeNode, string> = {
@@ -229,6 +229,7 @@ const hasPlaceholder = (v: string | null | undefined): boolean =>
 
 // Exported for testing.
 export { hasPlaceholder as _hasPlaceholder };
+export { CASCADE_NODE_TO_KIT_FIELD as _CASCADE_NODE_TO_KIT_FIELD };
 
 async function describeOffer(db: Db, id: number): Promise<string | null> {
   const [offer] = await db.select().from(offers).where(eq(offers.id, id)).limit(1);

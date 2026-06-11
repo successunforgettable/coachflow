@@ -16,7 +16,7 @@ import { calculateSceneDurations } from "./routers/videos";
 import { buildScriptPrompt, MAX_SCRIPT_WORDS } from "./routers/videoScripts";
 import { sanitizePlaceholder, PLACEHOLDER_DEFAULTS } from "./routers/services";
 import { isAutoModeTierAllowed } from "./routers/autoMode";
-import { _hasPlaceholder } from "./_core/cascadeContext";
+import { _hasPlaceholder, _CASCADE_NODE_TO_KIT_FIELD } from "./_core/cascadeContext";
 import { resolveTokensInText, normalizeToken, TOKEN_SYNONYMS, type ResolvedEntry } from "./routers/placeholders";
 
 // ─── Issue 1: Gradient fallback throws ────────────────────────────────────────
@@ -3402,5 +3402,38 @@ describe("T1 — updateName input validation", () => {
 
   it("rejects name over 255 chars", () => {
     expect(updateNameSchema.safeParse({ kitId: 1, name: "x".repeat(256) }).success).toBe(false);
+  });
+});
+
+// ─── CASCADE_NODE_TO_KIT_FIELD mapping integrity ─────────────────────────────
+
+describe("CASCADE_NODE_TO_KIT_FIELD — each node maps to its own selected column", () => {
+  const EXPECTED: Record<string, string> = {
+    offer:       "selectedOfferId",
+    mechanism:   "selectedMechanismId",
+    hvco:        "selectedHvcoId",
+    headlines:   "selectedHeadlineId",
+    adCopy:      "selectedAdCopyId",
+    landingPage: "selectedLandingPageId",
+    email:       "selectedEmailSequenceId",
+    whatsapp:    "selectedWhatsAppSequenceId",
+  };
+
+  for (const [node, field] of Object.entries(EXPECTED)) {
+    it(`${node} → ${field}`, () => {
+      expect(_CASCADE_NODE_TO_KIT_FIELD[node]).toBe(field);
+    });
+  }
+
+  it("no two nodes share the same column", () => {
+    const values = Object.values(_CASCADE_NODE_TO_KIT_FIELD);
+    expect(new Set(values).size).toBe(values.length);
+  });
+
+  it("every CascadeNode has a mapping", () => {
+    const nodes = ["offer", "mechanism", "hvco", "headlines", "adCopy", "landingPage", "email", "whatsapp"];
+    for (const n of nodes) {
+      expect(_CASCADE_NODE_TO_KIT_FIELD).toHaveProperty(n);
+    }
   });
 });
