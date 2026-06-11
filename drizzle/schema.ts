@@ -1319,11 +1319,46 @@ export const campaignKits = mysqlTable("campaignKits", {
   // new Auto Mode runs (autoSelectBest's isComplete check at
   // server/routers/campaignKits.ts L51-59 includes this field).
   selectedAdCreativeBatchId: varchar("selectedAdCreativeBatchId", { length: 100 }),
+  // Trail Sprint 1 (migration 0076): which entry path the user chose.
+  // Nullable: pre-Trail kits have no path. Mutable: users can switch mid-campaign.
+  path: mysqlEnum("path", ["auto", "manual", "has_assets"]),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 export type CampaignKit = typeof campaignKits.$inferSelect;
 export type InsertCampaignKit = typeof campaignKits.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// Node Statuses — explicit status per node per campaign kit (Trail Sprint 1)
+// Completion was previously inferred from selected*Id != null on campaignKits.
+// That inference is UNCHANGED — this table adds imported/stale tracking only.
+// ---------------------------------------------------------------------------
+export const nodeStatuses = mysqlTable("nodeStatuses", {
+  id: int("id").autoincrement().primaryKey(),
+  campaignKitId: int("campaignKitId").notNull(),
+  nodeType: varchar("nodeType", { length: 30 }).notNull(),
+  status: mysqlEnum("status", ["generated", "imported", "stale"]).notNull().default("generated"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  uniqueKitNode: uniqueIndex("nodeStatuses_kitId_nodeType_unique").on(table.campaignKitId, table.nodeType),
+}));
+export type NodeStatus = typeof nodeStatuses.$inferSelect;
+export type InsertNodeStatus = typeof nodeStatuses.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// Chat Transcripts — persisted chat message list per campaign kit (Trail Sprint 1)
+// Read only by the Trail's ChatThread on mount/resume. Write-only-new.
+// ---------------------------------------------------------------------------
+export const chatTranscripts = mysqlTable("chatTranscripts", {
+  id: int("id").autoincrement().primaryKey(),
+  campaignKitId: int("campaignKitId").notNull(),
+  messages: json("messages").notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  uniqueKit: uniqueIndex("chatTranscripts_kitId_unique").on(table.campaignKitId),
+}));
+export type ChatTranscript = typeof chatTranscripts.$inferSelect;
+export type InsertChatTranscript = typeof chatTranscripts.$inferInsert;
 
 // ---------------------------------------------------------------------------
 // Favourites — persisted thumbs-up state per user per node item
