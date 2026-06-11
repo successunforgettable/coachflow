@@ -1647,18 +1647,6 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
   const trackWizardEvent = trpc.campaignKits.trackWizardEvent.useMutation();
   const [staleNodes, setStaleNodes] = useState<Set<string>>(new Set());
 
-  // Fire campaign_started once on mount
-  const startedRef = useRef(false);
-  useEffect(() => {
-    if (!startedRef.current && activeService?.id) {
-      startedRef.current = true;
-      trackWizardEvent.mutate({
-        eventType: "campaign_started",
-        metadata: { serviceId: activeService.id },
-      });
-    }
-  }, [activeService?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
   // Map wizard step name to the campaignKits field it writes to
   const STEP_TO_KIT_FIELD: Record<string, string> = {
     uniqueMethod: "selectedMechanismId",
@@ -1867,6 +1855,18 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
   const activeKit = activeIcp && campaignKitsList
     ? campaignKitsList.find((k: { icpId: number; id: number; campaignType: string | null }) => k.icpId === activeIcp.id)
     : undefined;
+
+  // Fire campaign_started once on mount (must be after activeService declaration)
+  const startedRef = useRef(false);
+  useEffect(() => {
+    if (!startedRef.current && activeService?.id) {
+      startedRef.current = true;
+      trackWizardEvent.mutate({
+        eventType: "campaign_started",
+        metadata: { serviceId: activeService.id },
+      });
+    }
+  }, [activeService?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Demo state triggers (for screenshots) ──
   useEffect(() => {
