@@ -469,6 +469,17 @@ export default function V2Dashboard() {
     whatsappSequence: "selectedEmailSequenceId",
   };
 
+  // Reverse map: which step PRODUCES a given kit field
+  const FIELD_TO_PRODUCER: Record<string, string> = {
+    selectedOfferId: "offer",
+    selectedMechanismId: "uniqueMethod",
+    selectedHvcoId: "freeOptIn",
+    selectedHeadlineId: "headlines",
+    selectedAdCopyId: "adCopy",
+    selectedLandingPageId: "landingPage",
+    selectedEmailSequenceId: "emailSequence",
+  };
+
   function handleNodeClick(node: PathNode) {
     const step = NODE_STEP_MAP[node.id];
     if (!step) return;
@@ -481,12 +492,15 @@ export default function V2Dashboard() {
         ? campaignKitsList?.find((k: any) => k.icpId === currentIcpId)
         : null;
       if (activeKit && activeKit[gateField] == null) {
-        // Find which step is actually needed
+        // Redirect to the earliest step that PRODUCES the missing field
         const gateEntries = Object.entries(DASHBOARD_GATES);
-        for (const [gatedStep, field] of gateEntries) {
+        for (const [, field] of gateEntries) {
           if (activeKit[field] == null) {
-            navigate(`/v2-dashboard/wizard/${gatedStep}`);
-            return;
+            const producerStep = FIELD_TO_PRODUCER[field];
+            if (producerStep) {
+              navigate(`/v2-dashboard/wizard/${producerStep}`);
+              return;
+            }
           }
         }
       }
