@@ -71,7 +71,12 @@ const AUTO_STEPS: {
   { step: "headlines",        field: "selectedHeadlineId",         stopKey: "headlines",        revealLabel: "Headline",       tweakable: true, scored: true },
   { step: "adCopy",           field: "selectedAdCopyId",           stopKey: "adCopy",           revealLabel: "Ad Copy",        tweakable: true, scored: true,
     milestone: { name: "MAGNET READY", line: "You now attract attention on purpose.", insight: "goals" } },
-  { step: "landingPage",      field: "selectedLandingPageId",      stopKey: "landingPage",      revealLabel: "Landing Page",   tweakable: true, scored: true },
+  // landingPage: NOT scored — the landingPages table carries no
+  // complianceScore column (verified against Drizzle + INFORMATION_SCHEMA
+  // during C4). Showing a dial over a node with no real score to land
+  // would violate the honesty rule. Page-level LP scoring is engine work
+  // for a future slot; W5 per-section rewrites remain available in the Kit.
+  { step: "landingPage",      field: "selectedLandingPageId",      stopKey: "landingPage",      revealLabel: "Landing Page",   tweakable: true },
   { step: "emailSequence",    field: "selectedEmailSequenceId",    stopKey: "emailSequence",    revealLabel: "Email Sequence", tweakable: true },
   { step: "whatsappSequence", field: "selectedWhatsAppSequenceId", stopKey: "whatsappSequence", revealLabel: "WhatsApp",       tweakable: true,
     milestone: { name: "CONVERSION ENGINE ON", line: "Clicks now have somewhere to become clients.", insight: "pains" } },
@@ -81,10 +86,9 @@ const AUTO_STEPS: {
 ];
 
 // C4: scored-node mapping into the W5 complianceRewrites surface.
-const REWRITE_SOURCE: Partial<Record<AutoStepName, { sourceTable: "headlines" | "adCopy" | "landingPages"; sourceSubKey?: string }>> = {
+const REWRITE_SOURCE: Partial<Record<AutoStepName, { sourceTable: "headlines" | "adCopy"; sourceSubKey?: string }>> = {
   headlines: { sourceTable: "headlines" },
   adCopy: { sourceTable: "adCopy" },
-  landingPage: { sourceTable: "landingPages", sourceSubKey: "mainHeadline" },
 };
 
 // ── Sprint 3 C3: §12.2 narration (line1 / line2 / line3-tease) ──
@@ -312,7 +316,6 @@ export default function V2Trail() {
             eyebrow: "YOUR LANDING PAGE",
             title: String(angle?.mainHeadline ?? "Your Landing Page"),
             preview: String(angle?.subheadline ?? "").slice(0, 220) || "Published and ready — preview in your Kit.",
-            score: typeof lp?.complianceScore === "number" ? lp.complianceScore : undefined,
           };
         }
         case "emailSequence": {
