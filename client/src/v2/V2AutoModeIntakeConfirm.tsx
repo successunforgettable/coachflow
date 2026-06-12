@@ -91,12 +91,18 @@ export default function V2AutoModeIntakeConfirm() {
         && authUser.subscriptionTier !== "agency");
 
   // wouter passes location state via history.state (set on navigate(_, {state}))
+  // Trail Sprint 2 additions (both optional — legacy entries unaffected):
+  //   existingServiceId: the Trail intake already created the Service row;
+  //     submit UPDATES it instead of creating a duplicate.
+  //   trailPath: fork choice to write onto the kit once the ICP exists.
   const incomingState = (typeof window !== "undefined" ? (window.history.state ?? null) : null) as
-    | { extracted?: Extracted; rawText?: string }
+    | { extracted?: Extracted; rawText?: string; existingServiceId?: number; trailPath?: "auto" | "has_assets" }
     | null;
 
   const [extracted, setExtracted] = useState<Extracted | null>(incomingState?.extracted ?? null);
   const [rawText] = useState<string>(incomingState?.rawText ?? "");
+  const [existingServiceId] = useState<number | undefined>(incomingState?.existingServiceId);
+  const [trailPath] = useState<"auto" | "has_assets" | undefined>(incomingState?.trailPath);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   // B3.3 hotfix: split loading phase so the button label can rotate
@@ -106,6 +112,8 @@ export default function V2AutoModeIntakeConfirm() {
   const [loadingPhase, setLoadingPhase] = useState<"saving" | "icp" | null>(null);
 
   const createService = trpc.services.create.useMutation();
+  const updateService = trpc.services.update.useMutation();
+  const getOrCreateKit = trpc.campaignKits.getOrCreate.useMutation();
   const expandProfile = trpc.services.expandProfile.useMutation();
   // B3.3 hotfix: reverted from icps.generate (sync, blocks HTTP request for
   // the LLM call duration → Railway proxy timeout at ~3min → HTML 504 →
@@ -269,14 +277,24 @@ export default function V2AutoModeIntakeConfirm() {
     setIsSubmitting(true);
     setLoadingPhase("saving");
     try {
-      const created = await createService.mutateAsync({
+      const serviceFields = {
         name: extracted.serviceName.trim(),
         category: extracted.serviceCategory,
         description: extracted.serviceDescription.trim(),
         targetCustomer: extracted.targetCustomer.trim(),
         mainBenefit: extracted.mainBenefit.trim(),
-      });
-      const serviceId = (created as { id: number }).id;
+      };
+      // Trail Sprint 2: the Trail intake already created the Service row —
+      // update it (carrying any edits made on this screen) instead of
+      // creating a duplicate. Legacy entries keep the create path.
+      let serviceId: number;
+      if (existingServiceId) {
+        await updateService.mutateAsync({ id: existingServiceId, ...serviceFields });
+        serviceId = existingServiceId;
+      } else {
+        const created = await createService.mutateAsync(serviceFields);
+        serviceId = (created as { id: number }).id;
+      }
       // Expand downstream Service fields. If this fails non-fatally, we
       // still proceed — expansion is enhancement, not gating.
       try { await expandProfile.mutateAsync({ serviceId }); } catch { /* surfaced via dashboard if needed */ }
@@ -310,6 +328,13 @@ export default function V2AutoModeIntakeConfirm() {
         setIsSubmitting(false);
         setLoadingPhase(null);
         return;
+      }
+
+      // ── Trail Sprint 2: record the fork choice on the kit. This is the
+      // first moment an icpId exists, so the kit row can be created/fetched.
+      // Non-fatal: the choice is also in product_events from the fork beat.
+      if (trailPath) {
+        try { await getOrCreateKit.mutateAsync({ icpId, path: trailPath }); } catch { /* non-fatal */ }
       }
 
       // ── Import assets: pre-populate kit slots for toggled assets ────────

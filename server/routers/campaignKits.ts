@@ -103,6 +103,9 @@ export const campaignKitsRouter = router({
         "webinar", "challenge", "course_launch", "product_launch",
         "discovery_call", "lead_magnet", "in_person_event",
       ]).optional(),
+      // Trail Sprint 2 — optional entry path (migration 0076 column). When
+      // omitted, behaviour is unchanged and the column stays NULL.
+      path: z.enum(["auto", "manual", "has_assets"]).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
@@ -115,7 +118,18 @@ export const campaignKitsRouter = router({
         .where(and(eq(campaignKits.userId, ctx.user.id), eq(campaignKits.icpId, input.icpId)))
         .limit(1);
 
-      if (existing) return existing;
+      if (existing) {
+        // Trail Sprint 2: record/refresh the entry path when supplied
+        // (path is mutable by design — users can switch mid-campaign).
+        if (input.path && existing.path !== input.path) {
+          await db
+            .update(campaignKits)
+            .set({ path: input.path, updatedAt: new Date() } as any)
+            .where(eq(campaignKits.id, existing.id));
+          return { ...existing, path: input.path };
+        }
+        return existing;
+      }
 
       // Fetch ICP and service for name generation
       const [icp] = await db
@@ -145,6 +159,8 @@ export const campaignKitsRouter = router({
         // Workstream commit 2.5b — write campaignType when supplied; null
         // otherwise. Generators default to course_launch when null.
         campaignType: input.campaignType ?? null,
+        // Trail Sprint 2 — entry path when supplied; NULL otherwise.
+        path: input.path ?? null,
       });
 
       const [newKit] = await db

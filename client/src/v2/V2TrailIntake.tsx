@@ -13,6 +13,7 @@
  * The fork chips are Commit 2; the script ends cleanly after creation.
  */
 import { useState, useEffect, useRef } from "react";
+import { useLocation } from "wouter";
 import V2Layout from "./V2Layout";
 import TrailBar, { type TrailStop } from "./components/TrailBar";
 import ChatThread, { type ChatMessage } from "./components/ChatThread";
@@ -30,7 +31,8 @@ type Phase =
   | "correction"   // waiting for "what did I get wrong" free text
   | "tweakbox"     // field-edit fallback after loops maxed
   | "creating"     // services.create in flight
-  | "done";        // service created, fork placeholder posted
+  | "fork"         // Beat 5: path chips live
+  | "routing";     // fork chip tapped, navigating out
 
 interface Extraction {
   serviceName: string;
@@ -57,7 +59,15 @@ const INTAKE_STOPS: TrailStop[] = [
   { key: "adCreatives",      label: "Ad Images",    state: "pending" },
 ];
 
+// Beat 5 fork chips → campaignKits.path values
+const FORK_CHIPS: Record<string, "auto" | "manual" | "has_assets"> = {
+  "Build it for me ⚡": "auto",
+  "I'll pick as we go": "manual",
+  "I already have some pieces": "has_assets",
+};
+
 export default function V2TrailIntake() {
+  const [, navigate] = useLocation();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [phase, setPhase] = useState<Phase>("greeting");
   const [serviceCreated, setServiceCreated] = useState(false);
@@ -68,11 +78,13 @@ export default function V2TrailIntake() {
   const notQuiteCount = useRef(0);
   const extraction = useRef<Extraction | null>(null);
   const pendingFields = useRef<TweakBoxFields | null>(null);
+  const createdServiceId = useRef<number | null>(null);
   const msgCounter = useRef(0);
   const didInit = useRef(false);
 
   const extractMutation = trpc.services.extractFromText.useMutation();
   const createMutation = trpc.services.create.useMutation();
+  const trackEventMutation = trpc.campaignKits.trackWizardEvent.useMutation();
 
   const addMsg = (msg: Omit<ChatMessage, "id">) => {
     msgCounter.current += 1;
@@ -144,21 +156,25 @@ export default function V2TrailIntake() {
     setPhase("creating");
     addMsg({ type: "zappy-bubble", mood: "thinking", text: "Locking that in…" });
     try {
-      await createMutation.mutateAsync({
+      const created = await createMutation.mutateAsync({
         name: fields.serviceName,
         category: fields.serviceCategory,
         description: fields.serviceDescription,
         targetCustomer: fields.targetCustomer,
         mainBenefit: fields.mainBenefit,
       });
+      createdServiceId.current = (created as { id: number }).id;
       setServiceCreated(true);
       addMsg({ type: "system-divider", text: "Service profile created" });
       addMsg({
         type: "zappy-bubble",
         mood: "celebrating",
-        text: `Done — ${fields.serviceName || "your service"} is on the board. 🦊 Next up: how you want to build this campaign. That choice lands here in the next release.`,
+        text: `Done — ${fields.serviceName || "your service"} is on the board. 🦊`,
       });
-      setPhase("done");
+      // ── Beat 5: the fork ──
+      addMsg({ type: "zappy-bubble", mood: "idle", text: "How do you want to do this?" });
+      addMsg({ type: "chip-row", chips: Object.keys(FORK_CHIPS) });
+      setPhase("fork");
     } catch {
       addMsg({ type: "zappy-bubble", mood: "idle", text: "Hm — that save fizzled. Want me to try again?" });
       addMsg({ type: "chip-row", chips: ["Try again"] });
@@ -191,12 +207,63 @@ export default function V2TrailIntake() {
     }
   };
 
+  // ── Beat 5: fork routing ──
+  const assembledRawText = () =>
+    (baseText.current + corrections.current.map(c => `\n\nUser correction: ${c}`).join("")).slice(0, 4000);
+
+  const buildExtractedState = () => {
+    const f = pendingFields.current!;
+    return {
+      serviceName: f.serviceName,
+      serviceCategory: f.serviceCategory,
+      serviceDescription: f.serviceDescription,
+      targetCustomer: f.targetCustomer,
+      mainBenefit: f.mainBenefit,
+      icpDescriptor: extraction.current?.icpDescriptor ?? "",
+      confidence: "high" as const,
+      lowConfidenceFields: [] as string[],
+    };
+  };
+
+  const handleFork = async (chip: string) => {
+    const path = FORK_CHIPS[chip];
+    const serviceId = createdServiceId.current;
+    setPhase("routing");
+    // Analytics FIRST — the choice is recorded before any navigation.
+    try {
+      await trackEventMutation.mutateAsync({
+        eventType: "trail_fork_selected",
+        metadata: { path, serviceId },
+      });
+    } catch { /* never block routing on analytics */ }
+
+    if (path === "manual") {
+      // Interim: existing wizard, service pre-created. Kit path stays NULL
+      // (it's a wizard campaign). Destination swaps when Sprint 4 lands.
+      navigate(`/v2-dashboard/wizard/service?serviceId=${serviceId}`);
+    } else {
+      // auto / has_assets — existing confirm screen pre-filled. It updates
+      // the Trail-created service (existingServiceId) and writes kit.path
+      // (trailPath) once the ICP exists. Sprint 3 retires this screen.
+      navigate("/v2-dashboard/auto-mode/confirm", {
+        state: {
+          extracted: buildExtractedState(),
+          rawText: assembledRawText(),
+          existingServiceId: serviceId,
+          trailPath: path,
+        },
+      });
+    }
+  };
+
   // ── Chips ──
   const handleChipTap = (messageId: string, chip: string) => {
     setMessages(prev => prev.filter(m => m.id !== messageId));
     addMsg({ type: "user-bubble", text: chip });
 
-    if (chip === "That's me") {
+    if (FORK_CHIPS[chip]) {
+      handleFork(chip);
+    } else if (chip === "That's me") {
       if (extraction.current) createService(extractionToFields(extraction.current));
     } else if (chip === "Try again") {
       if (pendingFields.current) createService(pendingFields.current);
@@ -218,6 +285,8 @@ export default function V2TrailIntake() {
   };
 
   const inputActive = phase === "describe" || phase === "correction";
+  // Hide the bar entirely on chips-only beats — no dead input (Commit 2 fix).
+  const showInput = phase === "greeting" || phase === "describe" || phase === "correction" || phase === "extracting";
   const stops: TrailStop[] = INTAKE_STOPS.map(s =>
     s.key === "service" && serviceCreated ? { ...s, state: "done" } : s
   );
@@ -261,11 +330,9 @@ export default function V2TrailIntake() {
             <ChatThread
               messages={messages}
               onChipTap={handleChipTap}
-              onSendText={handleSendText}
+              onSendText={showInput ? handleSendText : undefined}
               inputPlaceholder={
-                phase === "correction" ? "What did I get wrong?"
-                : phase === "done" ? "Path choice coming next…"
-                : "Tell me about your business…"
+                phase === "correction" ? "What did I get wrong?" : "Tell me about your business…"
               }
               inputDisabled={!inputActive}
             />
