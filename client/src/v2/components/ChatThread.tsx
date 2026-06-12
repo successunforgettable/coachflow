@@ -59,6 +59,13 @@ export interface ChatThreadProps {
   onDeckSelect?: (messageId: string, cardId: number) => void;
   /** Ref map for TrailBar scroll-to-node */
   nodeRefMap?: React.MutableRefObject<Map<string, HTMLDivElement>>;
+  /**
+   * Free-text input bar (Trail Sprint 2). Rendered only when provided —
+   * existing chip-only surfaces are unaffected.
+   */
+  onSendText?: (text: string) => void;
+  inputPlaceholder?: string;
+  inputDisabled?: boolean;
 }
 
 // ─── Zappy Chat Avatar (reuses existing SVGs, spec 2.3 motion states) ─────────
@@ -390,11 +397,12 @@ function SystemDivider({ msg }: { msg: ChatMessage }) {
 }
 
 // ─── Main ChatThread ──────────────────────────────────────────────────────────
-export default function ChatThread({ messages, onChipTap, onDeckSelect, nodeRefMap }: ChatThreadProps) {
+export default function ChatThread({ messages, onChipTap, onDeckSelect, nodeRefMap, onSendText, inputPlaceholder, inputDisabled }: ChatThreadProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
   const [showNewPill, setShowNewPill] = useState(false);
+  const [draft, setDraft] = useState("");
   const lastMsgIds = useRef(new Set(messages.map(m => m.id)));
 
   const reducedMotion = typeof window !== "undefined"
@@ -497,13 +505,72 @@ export default function ChatThread({ messages, onChipTap, onDeckSelect, nodeRefM
           <div ref={bottomRef} />
         </div>
 
+        {/* Free-text input bar (rendered only when onSendText provided) */}
+        {onSendText && (
+          <div style={{
+            flexShrink: 0,
+            display: "flex",
+            gap: 8,
+            padding: "10px 12px 14px",
+          }}>
+            <input
+              value={draft}
+              onChange={e => setDraft(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === "Enter" && draft.trim() && !inputDisabled) {
+                  onSendText(draft.trim());
+                  setDraft("");
+                }
+              }}
+              placeholder={inputPlaceholder ?? "Type here…"}
+              disabled={inputDisabled}
+              autoFocus
+              style={{
+                flex: 1,
+                border: "1.5px solid #D1D5DB",
+                borderRadius: 9999,
+                padding: "11px 18px",
+                fontFamily: FONT_BODY,
+                fontSize: 14,
+                color: TEXT_COLOR,
+                background: "white",
+                outline: "none",
+                opacity: inputDisabled ? 0.5 : 1,
+              }}
+            />
+            <button
+              onClick={() => {
+                if (draft.trim() && !inputDisabled) {
+                  onSendText(draft.trim());
+                  setDraft("");
+                }
+              }}
+              disabled={inputDisabled}
+              style={{
+                background: BRAND_PRIMARY,
+                color: "white",
+                border: "none",
+                borderRadius: 9999,
+                padding: "11px 22px",
+                fontFamily: FONT_BODY,
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: inputDisabled ? "not-allowed" : "pointer",
+                opacity: inputDisabled ? 0.5 : 1,
+              }}
+            >
+              Send
+            </button>
+          </div>
+        )}
+
         {/* "↓ New" pill */}
         {showNewPill && (
           <button
             onClick={scrollToBottom}
             style={{
               position: "absolute",
-              bottom: 16,
+              bottom: onSendText ? 76 : 16,
               left: "50%",
               transform: "translateX(-50%)",
               background: BRAND_PRIMARY,
