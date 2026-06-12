@@ -287,20 +287,12 @@ export default function V2Dashboard() {
     { serviceId: currentServiceId },
     { enabled: currentServiceId > 0 }
   );
-  const createService = trpc.services.create.useMutation();
-  async function handleStartNewCampaign() {
-    try {
-      const svc = await createService.mutateAsync({
-        name: "",
-        category: "coaching",
-        description: "",
-        targetCustomer: "",
-        mainBenefit: "",
-      });
-      navigate(`/v2-dashboard/wizard/service?serviceId=${svc.id}`);
-    } catch {
-      toast.error("Couldn't create campaign. Please try again.");
-    }
+  // Sprint 2 Commit 4 — the Trail is the front door. The Service row is now
+  // created at the intake's "That's me" confirmation, so no empty-service
+  // row is created on click anymore. Manual users reach the wizard via the
+  // fork's "I'll pick as we go" chip.
+  function handleStartNewCampaign() {
+    navigate("/v2-dashboard/trail/new");
   }
 
   const skippedSet = new Set(skippedNodesData ?? []);
@@ -614,7 +606,6 @@ export default function V2Dashboard() {
                   {/* Start New Campaign */}
                   <button
                     onClick={() => { setMenuOpen(false); handleStartNewCampaign(); }}
-                    disabled={createService.isPending}
                     style={{
                       display: "flex",
                       alignItems: "center",
@@ -626,17 +617,16 @@ export default function V2Dashboard() {
                       border: "none",
                       width: "100%",
                       textAlign: "left",
-                      cursor: createService.isPending ? "not-allowed" : "pointer",
+                      cursor: "pointer",
                       transition: "background 0.1s",
                       fontFamily: "var(--v2-font-body)",
                       fontWeight: 600,
-                      opacity: createService.isPending ? 0.6 : 1,
                     }}
                     onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,91,29,0.06)")}
                     onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                    {createService.isPending ? "Creating…" : "Start New Campaign"}
+                    Start New Campaign
                   </button>
                   {/* Sign out */}
                   <button
@@ -746,7 +736,6 @@ export default function V2Dashboard() {
             </p>
             <button
               onClick={() => handleStartNewCampaign()}
-              disabled={createService.isPending}
               style={{
                 background: "transparent",
                 color: "var(--v2-text-color)",
@@ -756,15 +745,14 @@ export default function V2Dashboard() {
                 fontFamily: "var(--v2-font-body)",
                 fontWeight: 600,
                 fontSize: "15px",
-                cursor: createService.isPending ? "not-allowed" : "pointer",
+                cursor: "pointer",
                 marginBottom: "10px",
                 transition: "border-color 0.15s ease",
-                opacity: createService.isPending ? 0.6 : 1,
               }}
               onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(26,22,36,0.35)"; }}
               onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(26,22,36,0.15)"; }}
             >
-              {createService.isPending ? "Creating…" : "Set Up Manually"}
+              Set Up Manually
             </button>
             <p style={{
               fontFamily: "var(--v2-font-body)",

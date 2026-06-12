@@ -422,6 +422,17 @@ export default function ChatThread({ messages, onChipTap, onDeckSelect, nodeRefM
     }
   }, []);
 
+  // Open pinned to the bottom — standard chat behaviour: the newest message
+  // (e.g. the welcome-back bubble on a restored transcript) is what matters.
+  // Fires once, on the first render that has messages.
+  const didInitialPin = useRef(false);
+  useEffect(() => {
+    if (didInitialPin.current || messages.length === 0) return;
+    didInitialPin.current = true;
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [messages]);
+
   // Auto-scroll on new messages (tracks by ID set, not length)
   useEffect(() => {
     const hasNew = messages.some(m => !lastMsgIds.current.has(m.id));
