@@ -95,14 +95,16 @@ export default function V2AutoModeIntakeConfirm() {
   //   existingServiceId: the Trail intake already created the Service row;
   //     submit UPDATES it instead of creating a duplicate.
   //   trailPath: fork choice to write onto the kit once the ICP exists.
+  type TrailCampaignType = "webinar" | "challenge" | "course_launch" | "product_launch" | "discovery_call" | "lead_magnet" | "in_person_event";
   const incomingState = (typeof window !== "undefined" ? (window.history.state ?? null) : null) as
-    | { extracted?: Extracted; rawText?: string; existingServiceId?: number; trailPath?: "auto" | "has_assets" }
+    | { extracted?: Extracted; rawText?: string; existingServiceId?: number; trailPath?: "auto" | "has_assets"; trailCampaignType?: TrailCampaignType }
     | null;
 
   const [extracted, setExtracted] = useState<Extracted | null>(incomingState?.extracted ?? null);
   const [rawText] = useState<string>(incomingState?.rawText ?? "");
   const [existingServiceId] = useState<number | undefined>(incomingState?.existingServiceId);
   const [trailPath] = useState<"auto" | "has_assets" | undefined>(incomingState?.trailPath);
+  const [trailCampaignType] = useState<TrailCampaignType | undefined>(incomingState?.trailCampaignType);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   // B3.3 hotfix: split loading phase so the button label can rotate
@@ -336,7 +338,7 @@ export default function V2AutoModeIntakeConfirm() {
       // Non-fatal: the choice is also in product_events from the fork beat.
       if (trailPath) {
         try {
-          const kit = await getOrCreateKit.mutateAsync({ icpId, path: trailPath });
+          const kit = await getOrCreateKit.mutateAsync({ icpId, path: trailPath, campaignType: trailCampaignType });
           // Commit 3: flush the intake conversation (held in sessionStorage
           // since the fork — the kit didn't exist then) to chatTranscripts.
           const kitId = (kit as { id?: number } | null)?.id;
@@ -377,7 +379,7 @@ export default function V2AutoModeIntakeConfirm() {
       // ── Kick Auto Mode orchestration — skip-already-populated honors
       // the pre-populated kit slots from importAssets above. ───────────────
       try {
-        const { jobId } = await orchestrate.mutateAsync({ serviceId, icpId });
+        const { jobId } = await orchestrate.mutateAsync({ serviceId, icpId, campaignType: trailCampaignType });
         navigate(`/v2-dashboard/auto-mode/progress?jobId=${jobId}`);
       } catch (orchestrateErr) {
         const msg = orchestrateErr instanceof Error ? orchestrateErr.message : "Could not start Auto Mode. You can pick up generation manually from the dashboard.";

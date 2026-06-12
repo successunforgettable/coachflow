@@ -19,6 +19,7 @@ import TrailBar, { type TrailStop } from "./components/TrailBar";
 import ChatThread, { type ChatMessage } from "./components/ChatThread";
 import TweakBox, { type TweakBoxFields } from "./components/TweakBox";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 const MIN_DESCRIPTION_CHARS = 120; // mirrors services.extractFromText z.min(120)
 const MAX_NOT_QUITE_LOOPS = 2;
@@ -31,7 +32,9 @@ type Phase =
   | "correction"   // waiting for "what did I get wrong" free text
   | "tweakbox"     // field-edit fallback after loops maxed
   | "creating"     // services.create in flight
+  | "campaignType" // Sprint 3 C2: "What are you inviting people to?" chips live
   | "fork"         // Beat 5: path chips live
+  | "autorun"      // Sprint 3 C2: in-chat auto path — ICP gen + kit creation
   | "routing";     // fork chip tapped, navigating out
 
 interface Extraction {
@@ -66,6 +69,35 @@ const FORK_CHIPS: Record<string, "auto" | "manual" | "has_assets"> = {
   "I already have some pieces": "has_assets",
 };
 
+// Sprint 3 C2: campaign-type beat — all 7 enum values are fully wired
+// (6 generators read kit.campaignType; LP pageType + adCopy CTA dispatch).
+export type CampaignTypeValue =
+  | "webinar" | "challenge" | "course_launch" | "product_launch"
+  | "discovery_call" | "lead_magnet" | "in_person_event";
+
+const CAMPAIGN_TYPE_CHIPS: Record<string, CampaignTypeValue> = {
+  "Webinar": "webinar",
+  "Challenge": "challenge",
+  "Course": "course_launch",
+  "Product launch": "product_launch",
+  "Free call": "discovery_call",
+  "Lead magnet": "lead_magnet",
+  "Live event": "in_person_event",
+};
+
+/** Polls /api/jobs/{jobId} until terminal status. 5s cadence, 300s ceiling. */
+async function pollJob(jobId: string): Promise<{ status: string; result: Record<string, unknown> | null; error?: string }> {
+  const start = Date.now();
+  for (;;) {
+    await new Promise(r => setTimeout(r, 5_000));
+    const res = await fetch(`/api/jobs/${jobId}`);
+    if (!res.ok) throw new Error(`Job poll failed (${res.status})`);
+    const data = await res.json() as { status: string; result: Record<string, unknown> | null; error?: string };
+    if (data.status === "complete" || data.status === "failed") return data;
+    if (Date.now() - start > 300_000) throw new Error("Generation timed out after 300 seconds");
+  }
+}
+
 export default function V2TrailIntake() {
   const [, navigate] = useLocation();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -85,11 +117,33 @@ export default function V2TrailIntake() {
   const extractMutation = trpc.services.extractFromText.useMutation();
   const createMutation = trpc.services.create.useMutation();
   const trackEventMutation = trpc.campaignKits.trackWizardEvent.useMutation();
+  // Sprint 3 C2: in-chat auto path
+  const expandProfileMutation = trpc.services.expandProfile.useMutation();
+  const generateIcpMutation = trpc.icps.generateAsync.useMutation();
+  const getOrCreateKitMutation = trpc.campaignKits.getOrCreate.useMutation();
+  const appendMessagesMutation = trpc.trail.appendMessages.useMutation();
+  const utils = trpc.useUtils();
+  const campaignType = useRef<CampaignTypeValue | null>(null);
+  // Snapshot of the thread for the direct flush — kept by a ref so async
+  // beats (ICP poll) read the latest without stale closures.
+  const messagesRef = useRef<ChatMessage[]>([]);
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
+
+  // Tier mirror — server gate at autoMode.ts isAutoModeTierAllowed stays
+  // ground truth; this only produces the friendly in-chat message.
+  const { user: authUser } = useAuth();
+  const isFreeTier = !authUser
+    || (authUser.role !== "superuser"
+        && authUser.role !== "admin"
+        && authUser.subscriptionTier !== "pro"
+        && authUser.subscriptionTier !== "agency");
 
   const addMsg = (msg: Omit<ChatMessage, "id">) => {
     msgCounter.current += 1;
-    const id = `intake-${msgCounter.current}`;
-    setMessages(prev => [...prev, { ...msg, id }]);
+    const full = { ...msg, id: `intake-${msgCounter.current}` };
+    // Keep the ref synchronously true — async beats read it between renders.
+    messagesRef.current = [...messagesRef.current, full];
+    setMessages(prev => [...prev, full]);
   };
 
   // ── Beats 1–2: greeting ──
@@ -171,10 +225,10 @@ export default function V2TrailIntake() {
         mood: "celebrating",
         text: `Done — ${fields.serviceName || "your service"} is on the board. 🦊`,
       });
-      // ── Beat 5: the fork ──
-      addMsg({ type: "zappy-bubble", mood: "idle", text: "How do you want to do this?" });
-      addMsg({ type: "chip-row", chips: Object.keys(FORK_CHIPS) });
-      setPhase("fork");
+      // ── Sprint 3 C2: campaign-type beat (before the fork) ──
+      addMsg({ type: "zappy-bubble", mood: "idle", text: "What are you inviting people to?" });
+      addMsg({ type: "chip-row", chips: Object.keys(CAMPAIGN_TYPE_CHIPS) });
+      setPhase("campaignType");
     } catch {
       addMsg({ type: "zappy-bubble", mood: "idle", text: "Hm — that save fizzled. Want me to try again?" });
       addMsg({ type: "chip-row", chips: ["Try again"] });
@@ -228,19 +282,25 @@ export default function V2TrailIntake() {
   const handleFork = async (chip: string, threadAtTap: ChatMessage[]) => {
     const path = FORK_CHIPS[chip];
     const serviceId = createdServiceId.current;
-    setPhase("routing");
 
-    // Carry the intake conversation across the navigation: the kit doesn't
-    // exist yet (it's created in the confirm screen's handleConfirm), so the
-    // thread is held in sessionStorage keyed by serviceId and flushed to
-    // chatTranscripts there. Chip-rows are consumed UI — not persisted.
+    // Sprint 3 C2: tier mirror for the auto path — friendly in-chat message,
+    // fork stays live so the user can pick another route. Server gate
+    // remains ground truth.
+    if (path === "auto" && isFreeTier) {
+      addMsg({ type: "zappy-bubble", mood: "idle", text: "Building it for you is a Pro feature — upgrade and I'll handle the whole campaign. Or pick a path below and we'll do it together." });
+      addMsg({ type: "chip-row", chips: Object.keys(FORK_CHIPS) });
+      return;
+    }
+
+    setPhase(path === "auto" ? "autorun" : "routing");
+
+    // has_assets still navigates to the confirm screen — carry the thread
+    // in sessionStorage as before (the kit doesn't exist yet there).
     // Manual-path intakes are accepted-lost by design (wizard has no thread).
-    if (path !== "manual" && serviceId != null) {
+    if (path === "has_assets" && serviceId != null) {
       try {
-        const transcript = [
-          ...threadAtTap.filter(m => m.type !== "chip-row"),
-          { id: "intake-fork-echo", type: "user-bubble" as const, text: chip },
-        ];
+        // threadAtTap (messagesRef) already includes the fork-chip echo.
+        const transcript = threadAtTap.filter(m => m.type !== "chip-row");
         sessionStorage.setItem(`zapTrailIntake:${serviceId}`, JSON.stringify(transcript));
       } catch { /* quota/private-mode — transcript is a nice-to-have */ }
     }
@@ -248,7 +308,7 @@ export default function V2TrailIntake() {
     try {
       await trackEventMutation.mutateAsync({
         eventType: "trail_fork_selected",
-        metadata: { path, serviceId },
+        metadata: { path, serviceId, campaignType: campaignType.current },
       });
     } catch { /* never block routing on analytics */ }
 
@@ -256,30 +316,104 @@ export default function V2TrailIntake() {
       // Interim: existing wizard, service pre-created. Kit path stays NULL
       // (it's a wizard campaign). Destination swaps when Sprint 4 lands.
       navigate(`/v2-dashboard/wizard/service?serviceId=${serviceId}`);
-    } else {
-      // auto / has_assets — existing confirm screen pre-filled. It updates
-      // the Trail-created service (existingServiceId) and writes kit.path
-      // (trailPath) once the ICP exists. Sprint 3 retires this screen.
+    } else if (path === "has_assets") {
+      // Existing confirm screen pre-filled — import toggles live there
+      // until Sprint 5. Carries the campaign-type choice through.
       navigate("/v2-dashboard/auto-mode/confirm", {
         state: {
           extracted: buildExtractedState(),
           rawText: assembledRawText(),
           existingServiceId: serviceId,
           trailPath: path,
+          trailCampaignType: campaignType.current ?? undefined,
         },
       });
+    } else {
+      // ── Sprint 3 C2: the auto path runs IN the chat ──
+      runAutoInChat();
+    }
+  };
+
+  /**
+   * Sprint 3 C2 — in-chat auto path. Replaces the confirm-screen handoff:
+   * expandProfile → narrated ICP generation (node 2) → getOrCreate with
+   * path + campaignType → direct transcript flush → /trail/{kitId}, where
+   * V2Trail's step-loop driver runs the remaining 9 nodes (and resumes
+   * them on any future open).
+   */
+  const runAutoInChat = async () => {
+    const serviceId = createdServiceId.current;
+    if (serviceId == null) return;
+    try {
+      // Enrichment — non-fatal, fire-and-forget semantics like the screen had.
+      try { await expandProfileMutation.mutateAsync({ serviceId }); } catch { /* non-fatal */ }
+
+      // ── Node 2: ICP, narrated ──
+      addMsg({ type: "zappy-bubble", mood: "thinking", text: "Studying the people you help…" });
+      const icpName = extraction.current?.icpDescriptor?.trim()
+        || `${pendingFields.current?.serviceName?.trim() || "My Service"} Profile`;
+      const { jobId } = await generateIcpMutation.mutateAsync({ serviceId, name: icpName });
+      const job = await pollJob(jobId);
+      if (job.status === "failed" || typeof job.result?.icpId !== "number") {
+        throw new Error(job.error || "ICP generation failed.");
+      }
+      const icpId = job.result.icpId as number;
+
+      // ICP reveal (simple C2 form — full reveal format lands in C3).
+      const icp = await utils.icps.get.fetch({ id: icpId });
+      addMsg({ type: "system-divider", text: "ICP generated" });
+      addMsg({
+        type: "asset-reveal-card",
+        nodeKey: "icp",
+        reveal: {
+          eyebrow: "YOUR IDEAL CUSTOMER",
+          title: (icp as { name?: string } | null)?.name || "Your Ideal Customer",
+          preview: ((icp as { introduction?: string | null } | null)?.introduction || "").split("\n")[0].slice(0, 220) || "Profile generated — full detail in your Kit.",
+        },
+      });
+
+      // ── Kit row: path + campaignType recorded at the first icpId moment ──
+      const kit = await getOrCreateKitMutation.mutateAsync({
+        icpId,
+        path: "auto",
+        campaignType: campaignType.current ?? undefined,
+      });
+      const kitId = (kit as { id: number }).id;
+
+      // ── Direct transcript flush (no sessionStorage carry needed in-chat) ──
+      addMsg({ type: "zappy-bubble", mood: "celebrating", text: "Foundation set. Building the rest now — watch the trail fill in." });
+      try {
+        type FlushMessages = Parameters<typeof appendMessagesMutation.mutateAsync>[0]["messages"];
+        const flush = messagesRef.current.filter(m => m.type !== "chip-row") as unknown as FlushMessages;
+        if (flush.length > 0) {
+          await appendMessagesMutation.mutateAsync({ campaignKitId: kitId, messages: flush });
+        }
+      } catch { /* transcript is a nice-to-have */ }
+
+      navigate(`/v2-dashboard/trail/${kitId}`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Could not set up your campaign.";
+      addMsg({ type: "zappy-bubble", mood: "idle", text: `Hm — that one fizzled (${msg}). One more go?` });
+      addMsg({ type: "chip-row", chips: ["Build it for me ⚡"] });
+      setPhase("fork");
     }
   };
 
   // ── Chips ──
   const handleChipTap = (messageId: string, chip: string) => {
     setMessages(prev => prev.filter(m => m.id !== messageId));
+    messagesRef.current = messagesRef.current.filter(m => m.id !== messageId);
     addMsg({ type: "user-bubble", text: chip });
 
-    if (FORK_CHIPS[chip]) {
-      // `messages` here is the pre-tap thread from this render's closure —
-      // exactly what should persist (the echo is appended inside handleFork).
-      handleFork(chip, messages);
+    if (CAMPAIGN_TYPE_CHIPS[chip] && phase === "campaignType") {
+      // ── Sprint 3 C2: campaign-type chosen → Beat 5 fork ──
+      campaignType.current = CAMPAIGN_TYPE_CHIPS[chip];
+      addMsg({ type: "zappy-bubble", mood: "idle", text: "How do you want to do this?" });
+      addMsg({ type: "chip-row", chips: Object.keys(FORK_CHIPS) });
+      setPhase("fork");
+    } else if (FORK_CHIPS[chip] && (phase === "fork")) {
+      // messagesRef is synchronously true (includes the echo just added).
+      handleFork(chip, messagesRef.current);
     } else if (chip === "That's me") {
       if (extraction.current) createService(extractionToFields(extraction.current));
     } else if (chip === "Try again") {
