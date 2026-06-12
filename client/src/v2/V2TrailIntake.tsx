@@ -225,10 +225,25 @@ export default function V2TrailIntake() {
     };
   };
 
-  const handleFork = async (chip: string) => {
+  const handleFork = async (chip: string, threadAtTap: ChatMessage[]) => {
     const path = FORK_CHIPS[chip];
     const serviceId = createdServiceId.current;
     setPhase("routing");
+
+    // Carry the intake conversation across the navigation: the kit doesn't
+    // exist yet (it's created in the confirm screen's handleConfirm), so the
+    // thread is held in sessionStorage keyed by serviceId and flushed to
+    // chatTranscripts there. Chip-rows are consumed UI — not persisted.
+    // Manual-path intakes are accepted-lost by design (wizard has no thread).
+    if (path !== "manual" && serviceId != null) {
+      try {
+        const transcript = [
+          ...threadAtTap.filter(m => m.type !== "chip-row"),
+          { id: "intake-fork-echo", type: "user-bubble" as const, text: chip },
+        ];
+        sessionStorage.setItem(`zapTrailIntake:${serviceId}`, JSON.stringify(transcript));
+      } catch { /* quota/private-mode — transcript is a nice-to-have */ }
+    }
     // Analytics FIRST — the choice is recorded before any navigation.
     try {
       await trackEventMutation.mutateAsync({
@@ -262,7 +277,9 @@ export default function V2TrailIntake() {
     addMsg({ type: "user-bubble", text: chip });
 
     if (FORK_CHIPS[chip]) {
-      handleFork(chip);
+      // `messages` here is the pre-tap thread from this render's closure —
+      // exactly what should persist (the echo is appended inside handleFork).
+      handleFork(chip, messages);
     } else if (chip === "That's me") {
       if (extraction.current) createService(extractionToFields(extraction.current));
     } else if (chip === "Try again") {

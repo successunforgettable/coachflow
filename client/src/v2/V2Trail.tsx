@@ -38,18 +38,19 @@ const STOP_DEFS: { key: string; label: string; field?: string }[] = [
   { key: "adCreatives",      label: "Ad Images",    field: "selectedAdCreativeBatchId" },
 ];
 
-const WELCOME_BUBBLE: ChatMessage = {
-  id: "trail-welcome",
-  type: "zappy-bubble",
-  mood: "idle",
-  text: "Hey! This is your Campaign Trail — the map above shows exactly where this campaign stands. The full guided chat lands here soon.",
-};
-
-const WELCOME_CHIPS: ChatMessage = {
-  id: "trail-welcome-chips",
-  type: "chip-row",
-  chips: ["Say hi to Zappy 👋"],
-};
+// §10.4 resume beat — built from real kit state, no history required.
+function welcomeBackBubble(stops: TrailStop[]): ChatMessage {
+  const doneCount = stops.filter(s => s.state === "done" || s.state === "imported" || s.state === "stale").length;
+  const next = stops.find(s => s.state === "pending");
+  return {
+    id: "trail-welcome-back",
+    type: "zappy-bubble",
+    mood: "idle",
+    text: next
+      ? `Welcome back. We're ${doneCount} of ${stops.length} — ${next.label} is up next.`
+      : `Welcome back — all ${stops.length} pieces are done. This campaign is complete.`,
+  };
+}
 
 export default function V2Trail() {
   const params = useParams<{ campaignKitId: string }>();
@@ -64,10 +65,7 @@ export default function V2Trail() {
     { campaignKitId: campaignKitId! },
     { enabled: validId },
   );
-  const appendMessages = trpc.trail.appendMessages.useMutation();
-
-  // Persisted messages, hydrated once from the transcript query, then
-  // appended to locally (optimistic) alongside the server write.
+  // Persisted messages, hydrated once from the transcript query.
   const [persisted, setPersisted] = useState<ChatMessage[] | null>(null);
   useEffect(() => {
     if (transcript.data !== undefined && persisted === null) {
@@ -101,31 +99,13 @@ export default function V2Trail() {
     });
   }, [trailState.data]);
 
-  // ── Thread = welcome bubble + persisted messages (+ chip while empty) ──
+  // ── Thread: restored transcript + welcome-back bubble, or (no transcript —
+  // legacy/wizard kits) the synthesized state-only welcome. The welcome-back
+  // bubble is display-only: never written to chatTranscripts.
   const messages: ChatMessage[] = useMemo(() => {
     const saved = persisted ?? [];
-    return saved.length === 0
-      ? [WELCOME_BUBBLE, WELCOME_CHIPS]
-      : [WELCOME_BUBBLE, ...saved];
-  }, [persisted]);
-
-  const handleChipTap = (_messageId: string, chip: string) => {
-    if (!validId) return;
-    const stamp = Date.now();
-    // Inferred (not ChatMessage[]) so the array keeps an implicit index
-    // signature and assigns to the tRPC passthrough input type.
-    const newMsgs = [
-      { id: `u-${stamp}`, type: "user-bubble" as const, text: chip },
-      {
-        id: `z-${stamp}`,
-        type: "zappy-bubble" as const,
-        mood: "celebrating" as const,
-        text: "Saved! Refresh the page — this conversation persists with your campaign now.",
-      },
-    ];
-    setPersisted(prev => [...(prev ?? []), ...newMsgs]);
-    appendMessages.mutate({ campaignKitId: campaignKitId!, messages: newMsgs });
-  };
+    return [...saved, welcomeBackBubble(stops)];
+  }, [persisted, stops]);
 
   const handleStopClick = (key: string) => {
     const el = nodeRefMap.current.get(key);
@@ -199,7 +179,6 @@ export default function V2Trail() {
         }}>
           <ChatThread
             messages={messages}
-            onChipTap={handleChipTap}
             nodeRefMap={nodeRefMap}
           />
         </div>

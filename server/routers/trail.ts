@@ -107,7 +107,8 @@ export const trailRouter = router({
   appendMessages: protectedProcedure
     .input(z.object({
       campaignKitId: z.number(),
-      messages: z.array(chatMessageSchema).min(1).max(10),
+      // 50: intake transcripts flush in one call (typically 10–20 messages).
+      messages: z.array(chatMessageSchema).min(1).max(50),
     }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();

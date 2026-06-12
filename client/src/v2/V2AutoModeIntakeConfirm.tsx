@@ -114,6 +114,7 @@ export default function V2AutoModeIntakeConfirm() {
   const createService = trpc.services.create.useMutation();
   const updateService = trpc.services.update.useMutation();
   const getOrCreateKit = trpc.campaignKits.getOrCreate.useMutation();
+  const flushTranscript = trpc.trail.appendMessages.useMutation();
   const expandProfile = trpc.services.expandProfile.useMutation();
   // B3.3 hotfix: reverted from icps.generate (sync, blocks HTTP request for
   // the LLM call duration → Railway proxy timeout at ~3min → HTML 504 →
@@ -334,7 +335,23 @@ export default function V2AutoModeIntakeConfirm() {
       // first moment an icpId exists, so the kit row can be created/fetched.
       // Non-fatal: the choice is also in product_events from the fork beat.
       if (trailPath) {
-        try { await getOrCreateKit.mutateAsync({ icpId, path: trailPath }); } catch { /* non-fatal */ }
+        try {
+          const kit = await getOrCreateKit.mutateAsync({ icpId, path: trailPath });
+          // Commit 3: flush the intake conversation (held in sessionStorage
+          // since the fork — the kit didn't exist then) to chatTranscripts.
+          const kitId = (kit as { id?: number } | null)?.id;
+          if (kitId && existingServiceId) {
+            const storageKey = `zapTrailIntake:${existingServiceId}`;
+            const raw = sessionStorage.getItem(storageKey);
+            if (raw) {
+              const held = JSON.parse(raw);
+              if (Array.isArray(held) && held.length > 0) {
+                await flushTranscript.mutateAsync({ campaignKitId: kitId, messages: held });
+              }
+              sessionStorage.removeItem(storageKey);
+            }
+          }
+        } catch { /* non-fatal — path is in product_events; transcript is a nice-to-have */ }
       }
 
       // ── Import assets: pre-populate kit slots for toggled assets ────────
