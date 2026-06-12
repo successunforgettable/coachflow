@@ -15,6 +15,7 @@ import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 import { runHeroMechanismGeneration } from "../heroMechanismsGenerator";
+import { invokeLLM } from "../_core/llm";
 
 /**
  * Hero Mechanisms Router - Industry Standard
@@ -250,5 +251,67 @@ export const heroMechanismsRouter = router({
       });
 
       return { jobId };
+    }),
+
+  /**
+   * regenerateSingle — Trail Sprint 3 C1: rewrite one mechanism in place.
+   * Follows the proven S5 pattern (hvco.regenerateSingle): fetch row +
+   * ownership, rewrite with optional user instruction, update in place.
+   * Closes the Tweak-mapping gap for the Method node in the Trail's Auto
+   * loop (every other node type already had a regenerate surface).
+   */
+  regenerateSingle: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      promptOverride: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const [row] = await db
+        .select()
+        .from(heroMechanisms)
+        .where(and(eq(heroMechanisms.id, input.id), eq(heroMechanisms.userId, ctx.user.id)))
+        .limit(1);
+
+      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Mechanism not found" });
+
+      const userInstruction = input.promptOverride?.trim()
+        ? ` User instruction: ${input.promptOverride.trim()}.`
+        : "";
+
+      const prompt = `Rewrite this unique-method (mechanism) name and description for a coaching/consulting offer targeting "${row.targetMarket || "their ideal customers"}". Current name: ${row.mechanismName}. Current description: ${row.mechanismDescription}.${userInstruction} The name is a memorable branded method name (e.g. "The Pipeline Drought Protocol"); the description is one full paragraph covering the outcome, timeframe, and emotional transformation. Return JSON with exactly two keys: {"mechanismName": "...", "mechanismDescription": "..."}. No markdown, no explanation.`;
+
+      const response = await invokeLLM({
+        messages: [
+          { role: "system", content: "You are a direct-response copywriter for high-ticket coaching offers. You return strictly valid JSON." },
+          { role: "user", content: prompt },
+        ],
+      });
+
+      const content = response.choices[0].message.content;
+      if (typeof content !== "string") throw new Error("Invalid response from AI");
+
+      const cleaned = content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
+      let parsed: { mechanismName?: string; mechanismDescription?: string };
+      try {
+        parsed = JSON.parse(cleaned);
+      } catch {
+        throw new Error("Mechanism rewrite returned invalid JSON. Please try again.");
+      }
+      if (!parsed.mechanismName?.trim() || !parsed.mechanismDescription?.trim()) {
+        throw new Error("Mechanism rewrite was incomplete. Please try again.");
+      }
+
+      const mechanismName = parsed.mechanismName.trim().slice(0, 255);
+      const mechanismDescription = parsed.mechanismDescription.trim();
+
+      await db
+        .update(heroMechanisms)
+        .set({ mechanismName, mechanismDescription })
+        .where(eq(heroMechanisms.id, input.id));
+
+      return { mechanismName, mechanismDescription };
     }),
 });

@@ -3437,3 +3437,34 @@ describe("CASCADE_NODE_TO_KIT_FIELD — each node maps to its own selected colum
     }
   });
 });
+
+// ─── Trail Sprint 3 C1: single-step orchestration executor (structural) ──────
+// runOrchestrationStep is extracted from the legacy runOrchestration loop so
+// autoMode.orchestrateStep can run one node per job for the chat-paced Trail
+// loop. The gen-cores are too I/O-heavy to run here; coverage is structural:
+// the step-name catalog is exported in cascade order, every name has a label,
+// and the executor is callable. End-to-end behaviour is verified by the
+// post-deploy prod probe (single-step run + full legacy run non-regression).
+
+import { ORCHESTRATION_STEP_NAMES, runOrchestrationStep } from "./_core/orchestration";
+
+describe("Trail Sprint 3 C1 — runOrchestrationStep extraction", () => {
+  it("exports the 9 step names in cascade order", () => {
+    expect(ORCHESTRATION_STEP_NAMES).toEqual([
+      "offer", "mechanism", "hvco", "headlines", "adCopy",
+      "landingPage", "emailSequence", "whatsappSequence", "adCreatives",
+    ]);
+  });
+
+  it("every step name has a user-facing label in the catalog", () => {
+    for (const name of ORCHESTRATION_STEP_NAMES) {
+      expect(ORCHESTRATION_STEP_LABELS).toHaveProperty(name);
+      expect(typeof ORCHESTRATION_STEP_LABELS[name]).toBe("string");
+      expect(ORCHESTRATION_STEP_LABELS[name].length).toBeGreaterThan(0);
+    }
+  });
+
+  it("runOrchestrationStep is an exported async executor", () => {
+    expect(typeof runOrchestrationStep).toBe("function");
+  });
+});

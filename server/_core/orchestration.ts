@@ -16,6 +16,11 @@
  *   - campaignType handling: input.campaignType (optional) is set on the kit
  *     on the FIRST step (offer) so all downstream cascade reads see it
  *
+ * Trail Sprint 3 C1: the per-step body is extracted into runOrchestrationStep
+ * so the chat-paced Trail loop can run one node per job
+ * (autoMode.orchestrateStep). The legacy full-run runOrchestration loops over
+ * the same function — single source of truth for step execution.
+ *
  * Reaper Option α (per locked decision): stranded `running` jobs after
  * process death require manual cleanup. Reaper at server/_core/index.ts:67
  * filters on status='pending' only — `running` is immune. Defer Option β/γ
@@ -101,43 +106,51 @@ export type OrchestrationInput = {
     | "discovery_call" | "lead_magnet" | "in_person_event";
 };
 
-export async function runOrchestration(input: OrchestrationInput): Promise<void> {
+// ─── Trail Sprint 3 C1: single-step executor ───────────────────────────────
+export type OrchestrationStepName = (typeof ORCHESTRATION_STEPS)[number]["name"];
+
+export const ORCHESTRATION_STEP_NAMES = ORCHESTRATION_STEPS.map(s => s.name) as OrchestrationStepName[];
+
+export type OrchestrationStepRunResult = {
+  skipped: boolean;
+  generatedId: number | string | null;
+  kitField: string;
+};
+
+/**
+ * Runs ONE cascade node: skip-already-populated guard, the node's runX
+ * gen-core, then autoSelectBest. Extracted verbatim from the legacy loop
+ * body — runOrchestration loops over this; autoMode.orchestrateStep runs it
+ * job-per-node for the chat-paced Trail loop.
+ *
+ * onProgress receives the human label updates (including the landingPage
+ * sub-progress lines). Errors in onProgress are swallowed — progress is
+ * never allowed to fail a generation.
+ */
+export async function runOrchestrationStep(
+  input: {
+    userId: number;
+    serviceId: number;
+    icpId: number;
+    campaignType?: OrchestrationInput["campaignType"];
+  },
+  stepName: OrchestrationStepName,
+  onProgress?: (label: string) => Promise<void> | void,
+): Promise<OrchestrationStepRunResult> {
   const { getDb } = await import("../db");
-  const { jobs, campaignKits, idealCustomerProfiles, services, heroMechanisms, hvcoTitles, headlines, adCopy } =
+  const { users, campaignKits, services, heroMechanisms, hvcoTitles, headlines, adCopy } =
     await import("../../drizzle/schema");
   const { eq, and, asc } = await import("drizzle-orm");
   const { autoSelectBest } = await import("../routers/campaignKits");
 
   const db = await getDb();
-  if (!db) throw new Error("Database not available in orchestration");
+  if (!db) throw new Error("Database not available in orchestration step");
 
-  // ── Status transition: pending → running ────────────────────────────────
-  // CRITICAL: must happen BEFORE the first LLM call so the reaper (which
-  // sweeps pending older than 5 min) doesn't kill the orchestration job
-  // mid-flight. `running` is immune per Phase 0 enum.
-  await db.update(jobs)
-    .set({ status: "running", progress: JSON.stringify({ step: 0, total: TOTAL_STEPS, label: ORCHESTRATION_STEP_LABELS.init }) })
-    .where(eq(jobs.id, input.jobId));
+  const step = ORCHESTRATION_STEPS.find(s => s.name === stepName);
+  if (!step) throw new Error(`Unknown orchestration step: ${stepName}`);
 
-  // ── campaignType seeding ────────────────────────────────────────────────
-  // If caller supplied campaignType, write it to the kit BEFORE the first
-  // runX so downstream generators see it via the cascade. The kit may not
-  // exist yet (autoSelectBest creates it on first call) — write only if it
-  // already exists; otherwise rely on autoSelectBest's first call to create
-  // it (the campaignType update happens at the next step).
-  if (input.campaignType) {
-    await db.update(campaignKits)
-      .set({ campaignType: input.campaignType })
-      .where(and(eq(campaignKits.userId, input.userId), eq(campaignKits.icpId, input.icpId)));
-  }
-
-  // ── Helper: write progress to job record ────────────────────────────────
-  const writeProgress = async (stepIdx: number, label: string) => {
-    try {
-      await db.update(jobs)
-        .set({ progress: JSON.stringify({ step: stepIdx, total: TOTAL_STEPS, label }) })
-        .where(eq(jobs.id, input.jobId));
-    } catch { /* non-fatal */ }
+  const progress = async (label: string) => {
+    try { await onProgress?.(label); } catch { /* non-fatal */ }
   };
 
   // ── Helper: read kit's current selected*Id state for skip-already-populated ──
@@ -179,296 +192,353 @@ export async function runOrchestration(input: OrchestrationInput): Promise<void>
   // ── Resolve user tier/role for compliance precompute caps (headlines/adCopy) ──
   // runHeadlinesGeneration + runAdCopyGeneration accept optional userSubscriptionTier
   // and userRole that flow into precompute helpers' free-tier rewrite caps.
-  // Orchestrator queries the user table once and passes through.
-  const { users } = await import("../../drizzle/schema");
   const [user] = await db.select().from(users).where(eq(users.id, input.userId)).limit(1);
   if (!user) throw new Error("User not found in orchestration");
   const userTier = user.subscriptionTier ?? null;
   const userRole = user.role ?? null;
 
-  // ── Step loop ───────────────────────────────────────────────────────────
+  // ── Skip-already-populated guard ─────────────────────────────────────────
+  const kit = await getKit();
+  const currentValue = kit ? (kit as Record<string, unknown>)[step.kitField] : null;
+  if (currentValue != null) {
+    return { skipped: true, generatedId: null, kitField: step.kitField };
+  }
+
+  await progress(ORCHESTRATION_STEP_LABELS[step.name]);
+
+  // Widened to string|number: 8 text steps return numeric IDs; Phase C C1's
+  // adCreatives step returns a varchar batchId. autoSelectBest signature
+  // widened in parallel (campaignKits.ts) to accept either shape.
+  let generatedId: number | string | null = null;
+  // landingPage runs autoSelectBest internally — skip the step-level call.
+  let skipAutoSelect = false;
+  switch (step.name) {
+    case "offer": {
+      const { offerId } = await runOfferGeneration({
+        userId: input.userId,
+        serviceId: input.serviceId,
+        offerType: "premium", // matches V2 wizard ADVANCED default at L168
+      });
+      generatedId = offerId;
+      break;
+    }
+    case "mechanism": {
+      // heroMechanism inputs are derived from service record; pass empty
+      // strings for the form-overridable fields so runX falls back to
+      // service-record values via the resolved* fallback chain.
+      const { mechanismSetId } = await runHeroMechanismGeneration({
+        userId: input.userId,
+        serviceId: input.serviceId,
+        targetMarket: "",
+        pressingProblem: "",
+        whyProblem: "",
+        whatTried: "",
+        whyExistingNotWork: "",
+        desiredOutcome: "",
+        credibility: "",
+        socialProof: "",
+      });
+      generatedId = await pickFirstFromHeroMechanismSet(mechanismSetId);
+      break;
+    }
+    case "hvco": {
+      const { hvcoSetId } = await runHvcoGeneration({
+        userId: input.userId,
+        serviceId: input.serviceId,
+        targetMarket: "",
+        hvcoTopic: "",
+      });
+      generatedId = await pickFirstFromHvcoSet(hvcoSetId);
+      break;
+    }
+    case "headlines": {
+      const { headlineSetId } = await runHeadlinesGeneration({
+        userId: input.userId,
+        serviceId: input.serviceId,
+        targetMarket: "",
+        pressingProblem: "",
+        desiredOutcome: "",
+        uniqueMechanism: "",
+        userSubscriptionTier: userTier,
+        userRole: userRole,
+      });
+      generatedId = await pickFirstFromHeadlineSet(headlineSetId);
+      break;
+    }
+    case "adCopy": {
+      // CTA defaults to "Book a Free Call" (matches V2 wizard pre-7.2
+      // hardcode) when campaignType is not set; cascade map at
+      // V2GeneratorWizard.tsx is wizard-side, runX itself uses input.
+      // Auto Mode uses the campaignType-aware mapping inline here so the
+      // generated ad copy aligns with the user's locked Q-C table.
+      const CAMPAIGN_TO_CTA: Record<string, string> = {
+        discovery_call: "Book a Free Call",
+        webinar: "Save My Seat",
+        challenge: "Join the Challenge",
+        lead_magnet: "Download Now",
+        course_launch: "Enroll Now",
+        product_launch: "Get Instant Access",
+        in_person_event: "Reserve My Spot",
+      };
+      const adCallToAction = input.campaignType
+        ? (CAMPAIGN_TO_CTA[input.campaignType] ?? "Book a Free Call")
+        : "Book a Free Call";
+
+      const [svc] = await db.select().from(services).where(eq(services.id, input.serviceId)).limit(1);
+      const { adSetId } = await runAdCopyGeneration({
+        userId: input.userId,
+        serviceId: input.serviceId,
+        adType: "lead_gen",
+        adStyle: "conversational",
+        adCallToAction,
+        targetMarket: svc?.targetCustomer ?? "",
+        productCategory: svc?.category ?? "coaching",
+        specificProductName: svc?.name ?? "",
+        pressingProblem: svc?.painPoints ?? "",
+        desiredOutcome: svc?.mainBenefit ?? "",
+        userSubscriptionTier: userTier,
+        userRole: userRole,
+      });
+      generatedId = await pickFirstFromAdSet(adSetId);
+      break;
+    }
+    case "landingPage": {
+      // Cascade pageType from kit.campaignType per Q-D table (mirrors
+      // V2GeneratorWizard's landingPage dispatch). runX itself doesn't
+      // do this mapping — the wizard does. For Auto Mode, orchestrator
+      // does it inline before calling runX.
+      const CAMPAIGN_TO_PAGE_TYPE: Record<string, "sales_page" | "webinar_registration" | "discovery_call_booking" | "lead_magnet_download" | "event_registration"> = {
+        webinar: "webinar_registration",
+        discovery_call: "discovery_call_booking",
+        lead_magnet: "lead_magnet_download",
+        in_person_event: "event_registration",
+        course_launch: "sales_page",
+        product_launch: "sales_page",
+        challenge: "sales_page",
+      };
+      const pageType = input.campaignType
+        ? (CAMPAIGN_TO_PAGE_TYPE[input.campaignType] ?? "sales_page")
+        : "sales_page";
+
+      const { landingPageId } = await runLandingPageGeneration({
+        userId: input.userId,
+        serviceId: input.serviceId,
+        pageType,
+        // onProgress: surfaces per-angle "Generating angle X of 4…" labels
+        // up to the orchestration job's progress field. Replaces the
+        // {N} token in the locked B-2 landingPage label.
+        onProgress: async (completed, total) => {
+          const label = completed < total
+            ? `Generating angle ${completed + 1} of ${total} for your landing page…`
+            : "Finalising your landing page…";
+          await progress(label);
+        },
+      });
+      generatedId = landingPageId;
+      // runLandingPageGeneration calls autoSelectBest internally already.
+      // Skip the step-level call below (idempotent but redundant).
+      skipAutoSelect = true;
+
+      // Phase C C2: auto-publish the landing page to Cloudflare Workers KV
+      // so the user has a live public URL the moment the cascade completes.
+      // Visual style mode by default — Auto Mode runs are paid-tier per
+      // Phase C C0 gate; branded full-fidelity is the right default.
+      // Original angle by default — matches the LP generator's default
+      // output and publishToCloudflare's fallback when activeAngle=NULL.
+      //
+      // Non-fatal: try/catch wrapper. If Cloudflare KV write or worker
+      // deploy hiccups, log warning + continue cascade. LP content is
+      // already in DB; user can re-publish via the wizard. Better than
+      // failing the entire cascade on a transient Cloudflare API issue.
+      try {
+        await progress(`Publishing your landing page…`);
+        const { publicUrl, slug } = await runLandingPagePublish({
+          userId: input.userId,
+          landingPageId,
+          styleMode: "visual",
+        });
+        console.log(`[orchestration] LP published to ${publicUrl} (slug=${slug})`);
+
+        // Set kit.selectedLandingPageAngle so the kit page renders the
+        // angle that was just published. Default 'original' matches what
+        // runLandingPagePublish picked (activeAngle was NULL, fell back).
+        const [postPublishKit] = await db
+          .select()
+          .from(campaignKits)
+          .where(and(eq(campaignKits.userId, input.userId), eq(campaignKits.icpId, input.icpId)))
+          .limit(1);
+        if (postPublishKit) {
+          await db
+            .update(campaignKits)
+            .set({ selectedLandingPageAngle: "original", updatedAt: new Date() })
+            .where(eq(campaignKits.id, postPublishKit.id));
+        }
+      } catch (publishErr) {
+        const errorMessage = publishErr instanceof Error ? publishErr.message : String(publishErr);
+        console.warn(
+          `[orchestration] LP publish to Cloudflare failed for landingPageId=${landingPageId}: ${errorMessage}. ` +
+            `Cascade continues; user can re-publish via wizard.`,
+        );
+      }
+
+      await progress(`Finalising your landing page…`);
+      break;
+    }
+    case "emailSequence": {
+      // Default sequenceType = "welcome" (matches V2 wizard default at
+      // V2GeneratorWizard.tsx:2036). Per locked B-2 spec: do not commit
+      // to "nurture" — wizard's pre-existing default IS welcome.
+      const [svc] = await db.select().from(services).where(eq(services.id, input.serviceId)).limit(1);
+      const { id } = await runEmailSequenceGeneration({
+        userId: input.userId,
+        serviceId: input.serviceId,
+        sequenceType: "welcome",
+        name: `${svc?.name ?? "My Service"} — Welcome Sequence`,
+      });
+      generatedId = id;
+      break;
+    }
+    case "whatsappSequence": {
+      // Defaults match WA Zod schema: engagement / conversational / 3.
+      const [svc] = await db.select().from(services).where(eq(services.id, input.serviceId)).limit(1);
+      const { id } = await runWhatsappSequenceGeneration({
+        userId: input.userId,
+        serviceId: input.serviceId,
+        sequenceType: "engagement",
+        name: `${svc?.name ?? "My Service"} — Engagement Sequence`,
+        tone: "conversational",
+        sequenceLength: 3,
+      });
+      generatedId = id;
+      break;
+    }
+    case "adCreatives": {
+      // Phase C C1: 5 ad image variations generated via Replicate Flux,
+      // composited with server-trusted headlines. Inputs derived from
+      // service + the kit's selected mechanism (looked up via the kit
+      // we already read above for skip-already-populated check).
+      const [svc] = await db.select().from(services).where(eq(services.id, input.serviceId)).limit(1);
+      if (!svc) throw new Error("Service not found for adCreatives step");
+      // Look up the selected mechanism's name from the kit's
+      // selectedMechanismId pointer (populated by step 2 earlier in the
+      // cascade). Falls back to "System" if absent (shouldn't happen in
+      // a fresh cascade but possible on partial-resume).
+      let mechanismName = "System";
+      if (kit?.selectedMechanismId) {
+        const [m] = await db.select({ name: heroMechanisms.mechanismName })
+          .from(heroMechanisms)
+          .where(eq(heroMechanisms.id, kit.selectedMechanismId))
+          .limit(1);
+        if (m?.name) mechanismName = m.name;
+      }
+      // Niche derivation: targetCustomer is the most niche-specific
+      // operator-supplied field (e.g. "SaaS founders at $500k-$3M ARR")
+      // — better visual-prompting flavor than service.category which is
+      // a coarse 3-value enum (coaching/speaking/consulting). Truncated
+      // to fit varchar(255) niche column on adCreatives.
+      const niche = (svc.targetCustomer ?? svc.category ?? "coaching").slice(0, 200);
+      const pressingProblem = svc.painPoints ?? svc.description ?? "";
+      // Phase C C1.1: generate 5 Meta-compliant ≤38-char headlines via
+      // a small LLM call instead of relying on HEADLINE_FORMULAS template-
+      // fill (which produced over-40-char headlines for every variation
+      // in C1's first kit 13 run — generic templates collide with the
+      // long niche/mechanism strings the cascade derives). The contextual
+      // headlines validator + retry-with-fail-context ensures the 5
+      // strings are all ≤38 chars; throws on retry exhaust so the kit
+      // does not ship compliance-flagged headlines.
+      const headlines = await generateContextualAdHeadlines({
+        productName: svc.name,
+        mainBenefit: svc.mainBenefit ?? "",
+        targetAudience: svc.targetCustomer ?? "",
+        uniqueMechanism: mechanismName,
+        pressingProblem,
+      });
+      const { batchId } = await runAdCreativesGeneration({
+        userId: input.userId,
+        serviceId: input.serviceId,
+        niche,
+        productName: svc.name,
+        uniqueMechanism: mechanismName,
+        targetAudience: svc.targetCustomer ?? "",
+        mainBenefit: svc.mainBenefit ?? "",
+        pressingProblem,
+        adType: "lead_gen",
+        headlines,
+      });
+      generatedId = batchId;
+      break;
+    }
+  }
+
+  // autoSelectBest: update the kit's selected*Id slot for this step.
+  // landingPage already does this internally — skipAutoSelect set above.
+  if (generatedId != null && !skipAutoSelect) {
+    await autoSelectBest(input.userId, input.icpId, step.kitField, generatedId);
+  }
+
+  return { skipped: false, generatedId, kitField: step.kitField };
+}
+
+export async function runOrchestration(input: OrchestrationInput): Promise<void> {
+  const { getDb } = await import("../db");
+  const { jobs, campaignKits } = await import("../../drizzle/schema");
+  const { eq, and } = await import("drizzle-orm");
+
+  const db = await getDb();
+  if (!db) throw new Error("Database not available in orchestration");
+
+  // ── Status transition: pending → running ────────────────────────────────
+  // CRITICAL: must happen BEFORE the first LLM call so the reaper (which
+  // sweeps pending older than 5 min) doesn't kill the orchestration job
+  // mid-flight. `running` is immune per Phase 0 enum.
+  await db.update(jobs)
+    .set({ status: "running", progress: JSON.stringify({ step: 0, total: TOTAL_STEPS, label: ORCHESTRATION_STEP_LABELS.init }) })
+    .where(eq(jobs.id, input.jobId));
+
+  // ── campaignType seeding ────────────────────────────────────────────────
+  // If caller supplied campaignType, write it to the kit BEFORE the first
+  // runX so downstream generators see it via the cascade. The kit may not
+  // exist yet (autoSelectBest creates it on first call) — write only if it
+  // already exists; otherwise rely on autoSelectBest's first call to create
+  // it (the campaignType update happens at the next step).
+  if (input.campaignType) {
+    await db.update(campaignKits)
+      .set({ campaignType: input.campaignType })
+      .where(and(eq(campaignKits.userId, input.userId), eq(campaignKits.icpId, input.icpId)));
+  }
+
+  // ── Helper: write progress to job record ────────────────────────────────
+  const writeProgress = async (stepIdx: number, label: string) => {
+    try {
+      await db.update(jobs)
+        .set({ progress: JSON.stringify({ step: stepIdx, total: TOTAL_STEPS, label }) })
+        .where(eq(jobs.id, input.jobId));
+    } catch { /* non-fatal */ }
+  };
+
+  // ── Step loop — delegates to the extracted single-step executor ─────────
   for (const step of ORCHESTRATION_STEPS) {
-    const kit = await getKit();
-    const currentValue = kit ? (kit as Record<string, unknown>)[step.kitField] : null;
-    if (currentValue != null) {
+    const result = await runOrchestrationStep(
+      {
+        userId: input.userId,
+        serviceId: input.serviceId,
+        icpId: input.icpId,
+        campaignType: input.campaignType,
+      },
+      step.name,
+      (label) => writeProgress(step.index, label),
+    );
+    if (result.skipped) {
       await writeProgress(step.index, `Skipping ${ORCHESTRATION_STEP_LABELS[step.name]} — already done`);
-      continue;
-    }
-
-    await writeProgress(step.index, ORCHESTRATION_STEP_LABELS[step.name]);
-
-    // Widened to string|number: 8 text steps return numeric IDs; Phase C C1's
-    // adCreatives step returns a varchar batchId. autoSelectBest signature
-    // widened in parallel (campaignKits.ts) to accept either shape.
-    let generatedId: number | string | null = null;
-    switch (step.name) {
-      case "offer": {
-        const { offerId } = await runOfferGeneration({
-          userId: input.userId,
-          serviceId: input.serviceId,
-          offerType: "premium", // matches V2 wizard ADVANCED default at L168
-        });
-        generatedId = offerId;
-        break;
-      }
-      case "mechanism": {
-        // heroMechanism inputs are derived from service record; pass empty
-        // strings for the form-overridable fields so runX falls back to
-        // service-record values via the resolved* fallback chain.
-        const { mechanismSetId } = await runHeroMechanismGeneration({
-          userId: input.userId,
-          serviceId: input.serviceId,
-          targetMarket: "",
-          pressingProblem: "",
-          whyProblem: "",
-          whatTried: "",
-          whyExistingNotWork: "",
-          desiredOutcome: "",
-          credibility: "",
-          socialProof: "",
-        });
-        generatedId = await pickFirstFromHeroMechanismSet(mechanismSetId);
-        break;
-      }
-      case "hvco": {
-        const { hvcoSetId } = await runHvcoGeneration({
-          userId: input.userId,
-          serviceId: input.serviceId,
-          targetMarket: "",
-          hvcoTopic: "",
-        });
-        generatedId = await pickFirstFromHvcoSet(hvcoSetId);
-        break;
-      }
-      case "headlines": {
-        const { headlineSetId } = await runHeadlinesGeneration({
-          userId: input.userId,
-          serviceId: input.serviceId,
-          targetMarket: "",
-          pressingProblem: "",
-          desiredOutcome: "",
-          uniqueMechanism: "",
-          userSubscriptionTier: userTier,
-          userRole: userRole,
-        });
-        generatedId = await pickFirstFromHeadlineSet(headlineSetId);
-        break;
-      }
-      case "adCopy": {
-        // CTA defaults to "Book a Free Call" (matches V2 wizard pre-7.2
-        // hardcode) when campaignType is not set; cascade map at
-        // V2GeneratorWizard.tsx is wizard-side, runX itself uses input.
-        // Auto Mode uses the campaignType-aware mapping inline here so the
-        // generated ad copy aligns with the user's locked Q-C table.
-        const CAMPAIGN_TO_CTA: Record<string, string> = {
-          discovery_call: "Book a Free Call",
-          webinar: "Save My Seat",
-          challenge: "Join the Challenge",
-          lead_magnet: "Download Now",
-          course_launch: "Enroll Now",
-          product_launch: "Get Instant Access",
-          in_person_event: "Reserve My Spot",
-        };
-        const adCallToAction = input.campaignType
-          ? (CAMPAIGN_TO_CTA[input.campaignType] ?? "Book a Free Call")
-          : "Book a Free Call";
-
-        const [svc] = await db.select().from(services).where(eq(services.id, input.serviceId)).limit(1);
-        const { adSetId } = await runAdCopyGeneration({
-          userId: input.userId,
-          serviceId: input.serviceId,
-          adType: "lead_gen",
-          adStyle: "conversational",
-          adCallToAction,
-          targetMarket: svc?.targetCustomer ?? "",
-          productCategory: svc?.category ?? "coaching",
-          specificProductName: svc?.name ?? "",
-          pressingProblem: svc?.painPoints ?? "",
-          desiredOutcome: svc?.mainBenefit ?? "",
-          userSubscriptionTier: userTier,
-          userRole: userRole,
-        });
-        generatedId = await pickFirstFromAdSet(adSetId);
-        break;
-      }
-      case "landingPage": {
-        // Cascade pageType from kit.campaignType per Q-D table (mirrors
-        // V2GeneratorWizard's landingPage dispatch). runX itself doesn't
-        // do this mapping — the wizard does. For Auto Mode, orchestrator
-        // does it inline before calling runX.
-        const CAMPAIGN_TO_PAGE_TYPE: Record<string, "sales_page" | "webinar_registration" | "discovery_call_booking" | "lead_magnet_download" | "event_registration"> = {
-          webinar: "webinar_registration",
-          discovery_call: "discovery_call_booking",
-          lead_magnet: "lead_magnet_download",
-          in_person_event: "event_registration",
-          course_launch: "sales_page",
-          product_launch: "sales_page",
-          challenge: "sales_page",
-        };
-        const pageType = input.campaignType
-          ? (CAMPAIGN_TO_PAGE_TYPE[input.campaignType] ?? "sales_page")
-          : "sales_page";
-
-        const { landingPageId } = await runLandingPageGeneration({
-          userId: input.userId,
-          serviceId: input.serviceId,
-          pageType,
-          // onProgress: surfaces per-angle "Generating angle X of 4…" labels
-          // up to the orchestration job's progress field. Replaces the
-          // {N} token in the locked B-2 landingPage label.
-          onProgress: async (completed, total) => {
-            const label = completed < total
-              ? `Generating angle ${completed + 1} of ${total} for your landing page…`
-              : "Finalising your landing page…";
-            await writeProgress(step.index, label);
-          },
-        });
-        generatedId = landingPageId;
-        // runLandingPageGeneration calls autoSelectBest internally already.
-        // Skip the orchestrator-level call below (idempotent but redundant).
-
-        // Phase C C2: auto-publish the landing page to Cloudflare Workers KV
-        // so the user has a live public URL the moment the cascade completes.
-        // Visual style mode by default — Auto Mode runs are paid-tier per
-        // Phase C C0 gate; branded full-fidelity is the right default.
-        // Original angle by default — matches the LP generator's default
-        // output and publishToCloudflare's fallback when activeAngle=NULL.
-        //
-        // Non-fatal: try/catch wrapper. If Cloudflare KV write or worker
-        // deploy hiccups, log warning + continue cascade. LP content is
-        // already in DB; user can re-publish via the wizard. Better than
-        // failing the entire cascade on a transient Cloudflare API issue.
-        try {
-          await writeProgress(step.index, `Publishing your landing page…`);
-          const { publicUrl, slug } = await runLandingPagePublish({
-            userId: input.userId,
-            landingPageId,
-            styleMode: "visual",
-          });
-          console.log(`[orchestration] LP published to ${publicUrl} (slug=${slug})`);
-
-          // Set kit.selectedLandingPageAngle so the kit page renders the
-          // angle that was just published. Default 'original' matches what
-          // runLandingPagePublish picked (activeAngle was NULL, fell back).
-          const [postPublishKit] = await db
-            .select()
-            .from(campaignKits)
-            .where(and(eq(campaignKits.userId, input.userId), eq(campaignKits.icpId, input.icpId)))
-            .limit(1);
-          if (postPublishKit) {
-            await db
-              .update(campaignKits)
-              .set({ selectedLandingPageAngle: "original", updatedAt: new Date() })
-              .where(eq(campaignKits.id, postPublishKit.id));
-          }
-        } catch (publishErr) {
-          const errorMessage = publishErr instanceof Error ? publishErr.message : String(publishErr);
-          console.warn(
-            `[orchestration] LP publish to Cloudflare failed for landingPageId=${landingPageId}: ${errorMessage}. ` +
-              `Cascade continues; user can re-publish via wizard.`,
-          );
-        }
-
-        await writeProgress(step.index, `Finalising your landing page…`);
-        continue;
-      }
-      case "emailSequence": {
-        // Default sequenceType = "welcome" (matches V2 wizard default at
-        // V2GeneratorWizard.tsx:2036). Per locked B-2 spec: do not commit
-        // to "nurture" — wizard's pre-existing default IS welcome.
-        const [svc] = await db.select().from(services).where(eq(services.id, input.serviceId)).limit(1);
-        const { id } = await runEmailSequenceGeneration({
-          userId: input.userId,
-          serviceId: input.serviceId,
-          sequenceType: "welcome",
-          name: `${svc?.name ?? "My Service"} — Welcome Sequence`,
-        });
-        generatedId = id;
-        break;
-      }
-      case "whatsappSequence": {
-        // Defaults match WA Zod schema: engagement / conversational / 3.
-        const [svc] = await db.select().from(services).where(eq(services.id, input.serviceId)).limit(1);
-        const { id } = await runWhatsappSequenceGeneration({
-          userId: input.userId,
-          serviceId: input.serviceId,
-          sequenceType: "engagement",
-          name: `${svc?.name ?? "My Service"} — Engagement Sequence`,
-          tone: "conversational",
-          sequenceLength: 3,
-        });
-        generatedId = id;
-        break;
-      }
-      case "adCreatives": {
-        // Phase C C1: 5 ad image variations generated via Replicate Flux,
-        // composited with server-trusted headlines. Inputs derived from
-        // service + the kit's selected mechanism (looked up via the kit
-        // we already read above for skip-already-populated check).
-        const [svc] = await db.select().from(services).where(eq(services.id, input.serviceId)).limit(1);
-        if (!svc) throw new Error("Service not found for adCreatives step");
-        // Look up the selected mechanism's name from the kit's
-        // selectedMechanismId pointer (populated by step 2 earlier in the
-        // cascade). Falls back to "System" if absent (shouldn't happen in
-        // a fresh cascade but possible on partial-resume).
-        let mechanismName = "System";
-        if (kit?.selectedMechanismId) {
-          const [m] = await db.select({ name: heroMechanisms.mechanismName })
-            .from(heroMechanisms)
-            .where(eq(heroMechanisms.id, kit.selectedMechanismId))
-            .limit(1);
-          if (m?.name) mechanismName = m.name;
-        }
-        // Niche derivation: targetCustomer is the most niche-specific
-        // operator-supplied field (e.g. "SaaS founders at $500k-$3M ARR")
-        // — better visual-prompting flavor than service.category which is
-        // a coarse 3-value enum (coaching/speaking/consulting). Truncated
-        // to fit varchar(255) niche column on adCreatives.
-        const niche = (svc.targetCustomer ?? svc.category ?? "coaching").slice(0, 200);
-        const pressingProblem = svc.painPoints ?? svc.description ?? "";
-        // Phase C C1.1: generate 5 Meta-compliant ≤38-char headlines via
-        // a small LLM call instead of relying on HEADLINE_FORMULAS template-
-        // fill (which produced over-40-char headlines for every variation
-        // in C1's first kit 13 run — generic templates collide with the
-        // long niche/mechanism strings the cascade derives). The contextual
-        // headlines validator + retry-with-fail-context ensures the 5
-        // strings are all ≤38 chars; throws on retry exhaust so the kit
-        // does not ship compliance-flagged headlines.
-        const headlines = await generateContextualAdHeadlines({
-          productName: svc.name,
-          mainBenefit: svc.mainBenefit ?? "",
-          targetAudience: svc.targetCustomer ?? "",
-          uniqueMechanism: mechanismName,
-          pressingProblem,
-        });
-        const { batchId } = await runAdCreativesGeneration({
-          userId: input.userId,
-          serviceId: input.serviceId,
-          niche,
-          productName: svc.name,
-          uniqueMechanism: mechanismName,
-          targetAudience: svc.targetCustomer ?? "",
-          mainBenefit: svc.mainBenefit ?? "",
-          pressingProblem,
-          adType: "lead_gen",
-          headlines,
-        });
-        generatedId = batchId;
-        break;
-      }
-    }
-
-    // autoSelectBest: update the kit's selected*Id slot for this step.
-    // landingPage already does this internally — we `continue`d above.
-    if (generatedId != null) {
-      await autoSelectBest(input.userId, input.icpId, step.kitField, generatedId);
     }
   }
 
   // ── Finalize ────────────────────────────────────────────────────────────
   await writeProgress(TOTAL_STEPS, ORCHESTRATION_STEP_LABELS.finalize);
   // Resolve final kit for result payload.
-  const finalKit = await getKit();
+  const [finalKit] = await db.select().from(campaignKits)
+    .where(and(eq(campaignKits.userId, input.userId), eq(campaignKits.icpId, input.icpId)))
+    .limit(1);
   await db.update(jobs)
     .set({
       status: "complete",

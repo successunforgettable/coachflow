@@ -29,7 +29,7 @@ import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { jobs, idealCustomerProfiles, offers, heroMechanisms, hvcoTitles, services } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
-import { runOrchestration } from "../_core/orchestration";
+import { runOrchestration, runOrchestrationStep, ORCHESTRATION_STEP_NAMES, type OrchestrationStepName } from "../_core/orchestration";
 import { autoSelectBest } from "./campaignKits";
 
 /**
@@ -144,6 +144,105 @@ export const autoModeRouter = router({
           console.error(`[autoMode.orchestrate] Job ${jobId} failed:`, errorMessage);
           try {
             const bgDb = await getDb();
+            if (bgDb) {
+              await bgDb.update(jobs)
+                .set({ status: "failed", error: errorMessage.slice(0, 1024) })
+                .where(eq(jobs.id, jobId));
+            }
+          } catch { /* ignore */ }
+        }
+      });
+
+      return { jobId };
+    }),
+
+  /**
+   * orchestrateStep — Trail Sprint 3 C1: run ONE cascade node as its own job.
+   *
+   * The chat-paced Trail loop (spec §5.1) drives the cascade node by node:
+   * reveal → chips → next step request. Same tier ground-truth gate as
+   * orchestrate; same jobs/poll pattern (a synchronous step mutation would
+   * re-create the B3.3 Railway proxy-timeout failure for 30-120s LLM calls).
+   *
+   * Job result payload: { stepName, skipped, generatedId, kitField } —
+   * the client reveals from kit.selected*Id (committed by autoSelectBest
+   * inside the step, before the job flips complete).
+   */
+  orchestrateStep: protectedProcedure
+    .input(z.object({
+      serviceId: z.number(),
+      icpId: z.number(),
+      step: z.enum(ORCHESTRATION_STEP_NAMES as [OrchestrationStepName, ...OrchestrationStepName[]]),
+      campaignType: z
+        .enum(["webinar", "challenge", "course_launch", "product_launch", "discovery_call", "lead_magnet", "in_person_event"])
+        .optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const tierCheck = isAutoModeTierAllowed(ctx.user);
+      if (!tierCheck.allowed) {
+        throw new TRPCError({ code: "FORBIDDEN", message: tierCheck.reason! });
+      }
+
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const capturedInput = { ...input };
+      const capturedUserId = ctx.user.id;
+      const stepIndex = ORCHESTRATION_STEP_NAMES.indexOf(input.step) + 1;
+      const totalSteps = ORCHESTRATION_STEP_NAMES.length;
+
+      const jobId = randomUUID();
+      await db.insert(jobs).values({
+        id: jobId,
+        userId: String(capturedUserId),
+        status: "pending",
+      });
+
+      setImmediate(async () => {
+        const bgDb = await getDb();
+        try {
+          // pending → running before the LLM call (reaper immunity, same
+          // ordering rule as runOrchestration).
+          if (bgDb) {
+            await bgDb.update(jobs)
+              .set({ status: "running", progress: JSON.stringify({ step: stepIndex, total: totalSteps, label: `Starting ${capturedInput.step}…` }) })
+              .where(eq(jobs.id, jobId));
+          }
+
+          const result = await runOrchestrationStep(
+            {
+              userId: capturedUserId,
+              serviceId: capturedInput.serviceId,
+              icpId: capturedInput.icpId,
+              campaignType: capturedInput.campaignType,
+            },
+            capturedInput.step,
+            async (label) => {
+              if (!bgDb) return;
+              await bgDb.update(jobs)
+                .set({ progress: JSON.stringify({ step: stepIndex, total: totalSteps, label }) })
+                .where(eq(jobs.id, jobId));
+            },
+          );
+
+          if (bgDb) {
+            await bgDb.update(jobs)
+              .set({
+                status: "complete",
+                result: JSON.stringify({
+                  stepName: capturedInput.step,
+                  skipped: result.skipped,
+                  generatedId: result.generatedId,
+                  kitField: result.kitField,
+                }),
+              })
+              .where(eq(jobs.id, jobId));
+          }
+          console.log(`[autoMode.orchestrateStep] Job ${jobId} (${capturedInput.step}) completed.`);
+        } catch (err: unknown) {
+          const errorMessage = err instanceof Error ? err.message : String(err);
+          console.error(`[autoMode.orchestrateStep] Job ${jobId} (${capturedInput.step}) failed:`, errorMessage);
+          try {
             if (bgDb) {
               await bgDb.update(jobs)
                 .set({ status: "failed", error: errorMessage.slice(0, 1024) })

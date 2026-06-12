@@ -428,13 +428,28 @@ export default function V2Dashboard() {
   const completedCount = nodes.filter(n => n.state === "completed").length;
   const totalCount = nodes.length;
 
+  // Sprint 3 C1 side-fix: resolve the ACTIVE selection (kit-combobox choice,
+  // falling back like the sidebar does) so path-node links open the wizard on
+  // the selected service, not the default/newest one. Mirrors the sidebar's
+  // effectiveIcpId resolution at the Campaign Kit IIFE below.
+  const activeIcpForNav = (() => {
+    const firstIcpWithKit = icpList && campaignKitsList
+      ? icpList.find((i: any) => campaignKitsList.some((k: any) => k.icpId === i.id))
+      : undefined;
+    const effectiveIcpId = selectedIcpId ?? firstIcpWithKit?.id ?? icpList?.[0]?.id;
+    return effectiveIcpId ? icpList?.find((i: any) => i.id === effectiveIcpId) : undefined;
+  })();
+  const activeNavServiceId: number | undefined =
+    (activeIcpForNav as any)?.serviceId ?? servicesData?.[0]?.id;
+  const wizardQuery = activeNavServiceId ? `?serviceId=${activeNavServiceId}` : "";
+
   function handleGuide() {
     setShowModal(false);
     setForkDismissed(true);
     localStorage.setItem("v2_fork_dismissed", "true");
     // Navigate to the first non-completed node that has a wizard step
     const nextNode = nodes.find(n => (n.state === "active" || n.state === "locked") && NODE_STEP_MAP[n.id]);
-    navigate(`/v2-dashboard/wizard/${nextNode ? NODE_STEP_MAP[nextNode.id] : "offer"}`);
+    navigate(`/v2-dashboard/wizard/${nextNode ? NODE_STEP_MAP[nextNode.id] : "offer"}${wizardQuery}`);
   }
 
   function handleJump() {
@@ -479,7 +494,8 @@ export default function V2Dashboard() {
     // Check Campaign Kit gate — block navigation if upstream selection is missing
     const gateField = DASHBOARD_GATES[step];
     if (gateField) {
-      const currentIcpId = icpList?.[0]?.id;
+      // Sprint 3 C1 side-fix: gate against the ACTIVE selection, not icpList[0].
+      const currentIcpId = activeIcpForNav?.id ?? icpList?.[0]?.id;
       const activeKit = currentIcpId
         ? campaignKitsList?.find((k: any) => k.icpId === currentIcpId)
         : null;
@@ -490,14 +506,14 @@ export default function V2Dashboard() {
           if (activeKit[field] == null) {
             const producerStep = FIELD_TO_PRODUCER[field];
             if (producerStep) {
-              navigate(`/v2-dashboard/wizard/${producerStep}`);
+              navigate(`/v2-dashboard/wizard/${producerStep}${wizardQuery}`);
               return;
             }
           }
         }
       }
     }
-    navigate(`/v2-dashboard/wizard/${step}`);
+    navigate(`/v2-dashboard/wizard/${step}${wizardQuery}`);
   }
 
   return (
@@ -972,7 +988,7 @@ export default function V2Dashboard() {
               className="v2-btn v2-btn-primary"
               onClick={() => {
                 const nextNode = nodes.find(n => n.state === "active" && NODE_STEP_MAP[n.id]);
-                if (nextNode) navigate(`/v2-dashboard/wizard/${NODE_STEP_MAP[nextNode.id]}`);
+                if (nextNode) navigate(`/v2-dashboard/wizard/${NODE_STEP_MAP[nextNode.id]}${wizardQuery}`);
               }}
             >
               Continue Campaign
