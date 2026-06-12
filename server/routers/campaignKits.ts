@@ -380,7 +380,9 @@ export const campaignKitsRouter = router({
     .input(
       z.object({
         eventType: z.string(),
-        metadata: z.record(z.unknown()).optional(),
+        // zod v4 requires explicit key schema — z.record(z.unknown()) parses
+        // with an undefined value schema and 400s every call ("_zod" TypeError).
+        metadata: z.record(z.string(), z.unknown()).optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
