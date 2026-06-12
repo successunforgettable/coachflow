@@ -484,11 +484,16 @@ export const adCopyRouter = router({
 
       const cleaned = content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
 
+      // Sprint 3 C3: compliance-safe tweak — re-score the rewritten copy so
+      // no un-scored asset ever lands on a scored node.
+      const { checkCompliance } = await import("../lib/complianceChecker");
+      const compliance = await checkCompliance(cleaned);
+
       await db
         .update(adCopy)
-        .set({ content: cleaned, updatedAt: new Date() })
+        .set({ content: cleaned, complianceScore: compliance.score, updatedAt: new Date() })
         .where(eq(adCopy.id, input.id));
 
-      return { content: cleaned };
+      return { content: cleaned, complianceScore: compliance.score };
     }),
 });

@@ -390,11 +390,19 @@ export const headlinesRouter = router({
         newHeadline = cleaned;
       }
 
+      // Sprint 3 C3: compliance-safe tweak — re-score the rewritten text so
+      // no un-scored asset ever lands on a scored node. Same checker the
+      // generation-time precompute and W5 rewrites use.
+      const { checkCompliance } = await import("../lib/complianceChecker");
+      const compliance = await checkCompliance(
+        newSubheadline ? `${newHeadline}\n${newSubheadline}` : newHeadline,
+      );
+
       await db
         .update(headlines)
-        .set({ headline: newHeadline, subheadline: newSubheadline, updatedAt: new Date() })
+        .set({ headline: newHeadline, subheadline: newSubheadline, complianceScore: compliance.score, updatedAt: new Date() })
         .where(eq(headlines.id, input.id));
 
-      return { headline: newHeadline, subheadline: newSubheadline };
+      return { headline: newHeadline, subheadline: newSubheadline, complianceScore: compliance.score };
     }),
 });

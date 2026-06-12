@@ -4,16 +4,20 @@
  *
  * Sprint 1: TrailBar + ChatThread on real kit data, transcript persistence.
  * Sprint 2: welcome-back resume beat (§10.4), transcript restore.
- * Sprint 3 C2: the AUTO-LOOP DRIVER — for kits with path='auto' and pending
- * nodes, runs the cascade client-paced: one autoMode.orchestrateStep job per
- * node, poll, reveal the auto-selected asset, persist, next. Because the
- * driver keys purely off kit state, RESUME is structural: reopening
- * /trail/{kitId} mid-cascade continues from the first pending node.
- * (Narrator voice + Love it/Tweak chips are C3 — C2 reveals are simple.)
+ * Sprint 3 C2: auto-loop driver — orchestrateStep job per node, reveal,
+ *   persist; resume is structural (driver keys off kit state).
+ * Sprint 3 C3: GenerationNarrator (§12.2 cadence 0/4/8s, patience >14s,
+ *   long-wait >30s — all client timers, templated, no streaming),
+ *   Love it / Tweak chips with silence-proceeds semantics (spec 5.1.4),
+ *   tweak queue (regenerate THAT node between cascade nodes, re-reveal),
+ *   fresh-handoff welcome-back suppression.
  *
- * TrailBar stop states derive from REAL kit data:
- *   selected*Id → done; nodeStatuses → imported/stale; running step →
- *   generating; otherwise pending.
+ * TRANSCRIPT-WORTHINESS RULE: persisted = each node's opening narration
+ * line, the divider + reveal card, tweak conversations (request, instruction,
+ * updated reveal), Love-it echo + reaction, completion bubble. Ephemeral
+ * (display-only, never persisted) = narration lines 2/3, patience and
+ * long-wait reassurance, chip rows. A resumed thread reads as a clean
+ * story without repeated-spam.
  */
 import { useMemo, useRef, useState, useEffect } from "react";
 import { useParams } from "wouter";
@@ -52,18 +56,37 @@ const AUTO_STEPS: {
   field: string;
   stopKey: string;
   revealLabel: string;
-  workingLine: string;
+  /** true when an instruction-shaped tweak surface exists (C3 mapping table) */
+  tweakable: boolean;
 }[] = [
-  { step: "offer",            field: "selectedOfferId",            stopKey: "offer",            revealLabel: "Offer",         workingLine: "Crafting your premium offer angles…" },
-  { step: "mechanism",        field: "selectedMechanismId",        stopKey: "uniqueMethod",     revealLabel: "Unique Method", workingLine: "Naming your unique method…" },
-  { step: "hvco",             field: "selectedHvcoId",             stopKey: "freeOptIn",        revealLabel: "Lead Magnet",   workingLine: "Building your free opt-in title…" },
-  { step: "headlines",        field: "selectedHeadlineId",         stopKey: "headlines",        revealLabel: "Headline",      workingLine: "Writing 100 headlines across 5 formulas…" },
-  { step: "adCopy",           field: "selectedAdCopyId",           stopKey: "adCopy",           revealLabel: "Ad Copy",       workingLine: "Drafting your Meta-compliant ad sets…" },
-  { step: "landingPage",      field: "selectedLandingPageId",      stopKey: "landingPage",      revealLabel: "Landing Page",  workingLine: "Building your landing page, angle by angle…" },
-  { step: "emailSequence",    field: "selectedEmailSequenceId",    stopKey: "emailSequence",    revealLabel: "Email Sequence", workingLine: "Composing your email sequence…" },
-  { step: "whatsappSequence", field: "selectedWhatsAppSequenceId", stopKey: "whatsappSequence", revealLabel: "WhatsApp",      workingLine: "Adding your WhatsApp follow-up…" },
-  { step: "adCreatives",      field: "selectedAdCreativeBatchId",  stopKey: "adCreatives",      revealLabel: "Ad Images",     workingLine: "Generating 5 ad creative variations…" },
+  { step: "offer",            field: "selectedOfferId",            stopKey: "offer",            revealLabel: "Offer",          tweakable: true },
+  { step: "mechanism",        field: "selectedMechanismId",        stopKey: "uniqueMethod",     revealLabel: "Unique Method",  tweakable: true },
+  { step: "hvco",             field: "selectedHvcoId",             stopKey: "freeOptIn",        revealLabel: "Lead Magnet",    tweakable: true },
+  { step: "headlines",        field: "selectedHeadlineId",         stopKey: "headlines",        revealLabel: "Headline",       tweakable: true },
+  { step: "adCopy",           field: "selectedAdCopyId",           stopKey: "adCopy",           revealLabel: "Ad Copy",        tweakable: true },
+  { step: "landingPage",      field: "selectedLandingPageId",      stopKey: "landingPage",      revealLabel: "Landing Page",   tweakable: true },
+  { step: "emailSequence",    field: "selectedEmailSequenceId",    stopKey: "emailSequence",    revealLabel: "Email Sequence", tweakable: true },
+  { step: "whatsappSequence", field: "selectedWhatsAppSequenceId", stopKey: "whatsappSequence", revealLabel: "WhatsApp",       tweakable: true },
+  // adCreatives' regenerate surface is image-shaped (headlineOverrideId), not
+  // instruction-shaped — no Tweak chip in C3 (honest gap, flagged).
+  { step: "adCreatives",      field: "selectedAdCreativeBatchId",  stopKey: "adCreatives",      revealLabel: "Ad Images",      tweakable: false },
 ];
+
+// ── Sprint 3 C3: §12.2 narration (line1 / line2 / line3-tease) ──
+const NARRATION: Record<AutoStepName, [string, string, string]> = {
+  offer:            ["Building your offer now.", "Stacking value until no is harder than yes.", "Pricing it. Guarantee going on top…"],
+  mechanism:        ["Every great coach has a named method. Naming yours.", "Testing names against your customer's ears…", "It's going to be called something like 'The ___'…"],
+  hvco:             ["Now the free thing that pulls people in.", "It has to be worth paying for — that's the bar.", "Title's landing… almost there."],
+  headlines:        ["Headline time. First impressions, fifteen ways.", "Each one aims at what keeps your customer up at night.", "Dealing them as they land 🎴"],
+  adCopy:           ["Writing the words under those headlines.", "Hook, story, offer — in your voice.", "Meta's rules are being checked line by line…"],
+  landingPage:      ["Building the page that turns clicks into bookings.", "Headline above the fold, proof below it.", "Wiring every section back to your offer…"],
+  emailSequence:    ["Now the follow-up emails.", "Each touch a different angle.", "Subject lines getting their final polish…"],
+  whatsappSequence: ["WhatsApp messages next — short, human, no essay-texting.", "Matching the rhythm people actually reply to.", "Last message links it all back to your page…"],
+  adCreatives:      ["Final stretch: the visuals.", "Composing images that match your message.", "Rendering… these take a few extra breaths 🦊"],
+};
+const PATIENCE_LINES = ["Still cooking — good things, slow oven.", "Worth the wait, promise.", "Polishing the edges…"];
+const LONG_WAIT_LINE = "Taking longer than usual — still on it, nothing's stuck.";
+const LOVE_REACTIONS = ["Knew it.", "That's the one.", "Good eye.", "Locked. 🦊", "On we go."];
 
 /** Polls /api/jobs/{jobId} until terminal. 5s cadence, 600s ceiling (adCreatives runs long). */
 async function pollJob(jobId: string): Promise<{ status: string; result: Record<string, unknown> | null; error?: string }> {
@@ -116,6 +139,16 @@ export default function V2Trail() {
   const appendMessages = trpc.trail.appendMessages.useMutation();
   const utils = trpc.useUtils();
 
+  // C3 tweak surfaces (mapping table from the Sprint 3 pre-flight)
+  const regenMechanism = trpc.heroMechanisms.regenerateSingle.useMutation();
+  const regenHvco = trpc.hvco.regenerateSingle.useMutation();
+  const regenHeadline = trpc.headlines.regenerateSingle.useMutation();
+  const regenAdCopy = trpc.adCopy.regenerateSingle.useMutation();
+  const regenOfferSection = trpc.offers.regenerateSection.useMutation();
+  const regenLpSection = trpc.landingPages.regenerateSection.useMutation();
+  const regenEmail = trpc.emailSequences.regenerateSingle.useMutation();
+  const regenWhatsapp = trpc.whatsappSequences.regenerateSingle.useMutation();
+
   // Persisted messages, hydrated once from the transcript query.
   const [persisted, setPersisted] = useState<ChatMessage[] | null>(null);
   useEffect(() => {
@@ -124,7 +157,17 @@ export default function V2Trail() {
     }
   }, [transcript.data, persisted]);
 
-  // ── Sprint 3 C2: live driver messages (this session) + generating stop ──
+  // ── C3: fresh-handoff detection — welcome-back only on genuine resume ──
+  const freshHandoff = useRef<boolean | null>(null);
+  if (freshHandoff.current === null && validId) {
+    try {
+      const key = `zapTrailFreshHandoff:${campaignKitId}`;
+      freshHandoff.current = sessionStorage.getItem(key) === "1";
+      sessionStorage.removeItem(key);
+    } catch { freshHandoff.current = false; }
+  }
+
+  // ── Live driver messages (this session) + generating stop ──
   const [live, setLive] = useState<ChatMessage[]>([]);
   const [generatingKey, setGeneratingKey] = useState<string | null>(null);
   const liveCounter = useRef(0);
@@ -134,6 +177,7 @@ export default function V2Trail() {
     setLive(prev => [...prev, full]);
     return full;
   };
+  const removeLive = (id: string) => setLive(prev => prev.filter(m => m.id !== id));
   const persistMsgs = async (msgs: ChatMessage[]) => {
     try {
       type FlushMessages = Parameters<typeof appendMessages.mutateAsync>[0]["messages"];
@@ -163,12 +207,34 @@ export default function V2Trail() {
           state = "done";
         }
       }
-      if (state === "pending" && def.key === generatingKey) state = "generating";
+      if (def.key === generatingKey) state = "generating";
       return { key: def.key, label: def.label, state };
     });
   }, [trailState.data, generatingKey]);
 
-  // ── Sprint 3 C2: reveal builder — existing per-asset reads, simple form ──
+  // ── C3: GenerationNarrator — templated cadence, all client timers ──
+  // 0s line1 (persist-worthy, returned), 4s line2, 8s line3, then patience
+  // at 14/22s, long-wait at 30s, patience every 12s after — nothing static
+  // longer than ~4-8s while generating (§8). Lines 2+ are ephemeral.
+  const startNarration = (step: AutoStepName): { line1: ChatMessage; stop: () => void } => {
+    const [l1, l2, l3] = NARRATION[step];
+    const line1 = addLive({ type: "zappy-bubble", mood: "thinking", text: l1 });
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    const at = (ms: number, text: string) =>
+      timers.push(setTimeout(() => addLive({ type: "zappy-bubble", mood: "thinking", text }), ms));
+    at(4_000, l2);
+    at(8_000, l3);
+    at(14_000, PATIENCE_LINES[0]);
+    at(22_000, PATIENCE_LINES[1]);
+    at(30_000, LONG_WAIT_LINE);
+    at(42_000, PATIENCE_LINES[2]);
+    at(54_000, PATIENCE_LINES[0]);
+    at(70_000, PATIENCE_LINES[1]);
+    at(90_000, LONG_WAIT_LINE);
+    return { line1, stop: () => timers.forEach(clearTimeout) };
+  };
+
+  // ── Reveal builder — existing per-asset reads ──
   const buildReveal = async (stepDef: (typeof AUTO_STEPS)[number], kit: Record<string, unknown>) => {
     const fallback = { eyebrow: stepDef.revealLabel.toUpperCase(), title: `${stepDef.revealLabel} ready`, preview: "Built — full detail in your Campaign Kit." };
     try {
@@ -187,7 +253,7 @@ export default function V2Trail() {
         case "mechanism": {
           const m = await utils.heroMechanisms.get.fetch({ id: idVal as number }) as Record<string, unknown> | null;
           return {
-            eyebrow: "YOUR UNIQUE METHOD",
+            eyebrow: "YOUR METHOD",
             title: String(m?.mechanismName ?? "Your Method"),
             preview: String(m?.mechanismDescription ?? "").slice(0, 220),
           };
@@ -243,7 +309,7 @@ export default function V2Trail() {
           const first = list[0];
           const firstText = typeof first === "string" ? first : String((first as Record<string, unknown>)?.message ?? (first as Record<string, unknown>)?.text ?? "");
           return {
-            eyebrow: "YOUR WHATSAPP FOLLOW-UP",
+            eyebrow: "YOUR WHATSAPP SEQUENCE",
             title: `${list.length || "Your"} messages queued`,
             preview: firstText.slice(0, 220) || "Sequence in your Kit.",
           };
@@ -254,7 +320,7 @@ export default function V2Trail() {
             : Array.isArray((batch as Record<string, unknown>)?.creatives) ? ((batch as Record<string, unknown>).creatives as unknown[]).length
             : 5;
           return {
-            eyebrow: "YOUR AD IMAGES",
+            eyebrow: "YOUR AD CREATIVES",
             title: `${count} ad creatives, composited and ready`,
             preview: "Thumbnails and downloads in your Campaign Kit.",
           };
@@ -264,7 +330,132 @@ export default function V2Trail() {
     return fallback;
   };
 
-  // ── Sprint 3 C2: the auto-loop driver ──
+  // ── C3: Love it / Tweak chips with silence-proceeds (spec 5.1.4) ──
+  // Chips live on the newest reveal only; when the next reveal arrives the
+  // previous row quietly collapses (removed — the persisted card remains).
+  const activeChips = useRef<{ msgId: string; step: AutoStepName } | null>(null);
+  const lastReaction = useRef<number>(-1);
+  const [tweakMode, setTweakMode] = useState<AutoStepName | null>(null);
+  const tweakQueue = useRef<{ step: AutoStepName; instruction: string }[]>([]);
+  const driverBusy = useRef(false);
+
+  const collapsePreviousChips = () => {
+    if (activeChips.current) {
+      removeLive(activeChips.current.msgId);
+      activeChips.current = null;
+    }
+  };
+
+  const offerChips = (step: AutoStepName, tweakable: boolean) => {
+    collapsePreviousChips();
+    const chips = tweakable ? ["Love it ✓", "Tweak"] : ["Love it ✓"];
+    const row = addLive({ type: "chip-row", nodeKey: step, chips });
+    activeChips.current = { msgId: row.id, step };
+  };
+
+  const pickReaction = () => {
+    let i = Math.floor(Math.random() * LOVE_REACTIONS.length);
+    if (i === lastReaction.current) i = (i + 1) % LOVE_REACTIONS.length;
+    lastReaction.current = i;
+    return LOVE_REACTIONS[i];
+  };
+
+  const handleChipTap = (messageId: string, chip: string) => {
+    const target = activeChips.current?.msgId === messageId ? activeChips.current.step : null;
+    removeLive(messageId);
+    if (activeChips.current?.msgId === messageId) activeChips.current = null;
+    if (!target) return;
+
+    if (chip === "Love it ✓") {
+      const echo = addLive({ type: "user-bubble", text: "Love it ✓" });
+      const reaction = addLive({ type: "zappy-bubble", mood: "celebrating", text: pickReaction() });
+      persistMsgs([echo, reaction]);
+    } else if (chip === "Tweak") {
+      const echo = addLive({ type: "user-bubble", text: "Tweak" });
+      const ask = addLive({ type: "zappy-bubble", mood: "idle", text: "What should change? Tell me straight." });
+      persistMsgs([echo, ask]);
+      setTweakMode(target);
+    }
+  };
+
+  // The tweak mapping table (Sprint 3 pre-flight item 3).
+  const executeTweak = async (step: AutoStepName, instruction: string) => {
+    const kit = (await trailState.refetch()).data?.kit as Record<string, unknown>;
+    const stepDef = AUTO_STEPS.find(s => s.step === step)!;
+    const id = kit[stepDef.field] as number;
+    switch (step) {
+      case "offer":
+        // Section-shaped: apply the instruction to the offer's core sections.
+        await regenOfferSection.mutateAsync({ id, angle: "godfather", sectionKey: "offerName", promptOverride: instruction });
+        await regenOfferSection.mutateAsync({ id, angle: "godfather", sectionKey: "valueProposition", promptOverride: instruction });
+        break;
+      case "mechanism":
+        await regenMechanism.mutateAsync({ id, promptOverride: instruction });
+        break;
+      case "hvco":
+        await regenHvco.mutateAsync({ id, promptOverride: instruction });
+        break;
+      case "headlines":
+        await regenHeadline.mutateAsync({ id, promptOverride: instruction });
+        break;
+      case "adCopy":
+        await regenAdCopy.mutateAsync({ id, promptOverride: instruction });
+        break;
+      case "landingPage":
+        await regenLpSection.mutateAsync({ landingPageId: id, angle: "original", sectionKey: "mainHeadline", userPrompt: instruction });
+        break;
+      case "emailSequence":
+        await regenEmail.mutateAsync({ id, index: 0, promptOverride: instruction });
+        break;
+      case "whatsappSequence":
+        await regenWhatsapp.mutateAsync({ id, index: 0, promptOverride: instruction });
+        break;
+      case "adCreatives":
+        break; // not tweakable in C3
+    }
+  };
+
+  const processTweakQueue = async () => {
+    while (tweakQueue.current.length > 0) {
+      const { step, instruction } = tweakQueue.current.shift()!;
+      const stepDef = AUTO_STEPS.find(s => s.step === step)!;
+      const working = startNarration(step);
+      // Replace the opener with a tweak-specific line (keep cadence timers).
+      removeLive(working.line1.id);
+      const opener = addLive({ type: "zappy-bubble", mood: "thinking", text: `On it — reworking your ${stepDef.revealLabel.toLowerCase()}…` });
+      try {
+        await executeTweak(step, instruction);
+        working.stop();
+        const refreshed = await trailState.refetch();
+        const kit = (refreshed.data?.kit ?? {}) as Record<string, unknown>;
+        const reveal = await buildReveal(stepDef, kit);
+        const divider = addLive({ type: "system-divider", text: `${stepDef.revealLabel} updated` });
+        const card = addLive({ type: "asset-reveal-card", nodeKey: stepDef.stopKey, reveal });
+        offerChips(step, stepDef.tweakable);
+        await persistMsgs([opener, divider, card]);
+      } catch (err) {
+        working.stop();
+        const msg = err instanceof Error ? err.message : "rewrite failed";
+        addLive({ type: "zappy-bubble", mood: "idle", text: `Hm — that rework fizzled (${msg}). Tap Tweak on the card to try again.` });
+      }
+    }
+  };
+
+  const handleTweakInstruction = async (text: string) => {
+    const step = tweakMode;
+    if (!step) return;
+    setTweakMode(null);
+    const echo = addLive({ type: "user-bubble", text });
+    persistMsgs([echo]);
+    tweakQueue.current.push({ step, instruction: text });
+    if (driverBusy.current) {
+      addLive({ type: "zappy-bubble", mood: "idle", text: "Got it — I'll rework that the moment I finish this piece." });
+    } else {
+      await processTweakQueue();
+    }
+  };
+
+  // ── The auto-loop driver ──
   const driverStarted = useRef(false);
   const cancelled = useRef(false);
   useEffect(() => () => { cancelled.current = true; }, []);
@@ -281,10 +472,16 @@ export default function V2Trail() {
 
     for (const stepDef of AUTO_STEPS) {
       if (cancelled.current) return;
+      // Tweaks queued during the previous node run between nodes —
+      // downstream of the tweaked node hasn't started, by construction.
+      driverBusy.current = false;
+      await processTweakQueue();
+      driverBusy.current = true;
+      if (cancelled.current) return;
       if (kit[stepDef.field] != null) continue;
 
       setGeneratingKey(stepDef.stopKey);
-      addLive({ type: "zappy-bubble", mood: "thinking", text: stepDef.workingLine });
+      const narration = startNarration(stepDef.step);
 
       // One silent-ish retry per node (spec §11), then honest stop.
       let ok = false;
@@ -304,10 +501,12 @@ export default function V2Trail() {
           }
         }
       }
+      narration.stop();
       if (cancelled.current) return;
       if (!ok) {
         addLive({ type: "zappy-bubble", mood: "idle", text: `Still stuck on ${stepDef.revealLabel} (${lastError}). Reload this page and I'll pick it up right here.` });
         setGeneratingKey(null);
+        driverBusy.current = false;
         return;
       }
 
@@ -318,10 +517,13 @@ export default function V2Trail() {
       const reveal = await buildReveal(stepDef, kit);
       const divider = addLive({ type: "system-divider", text: `${stepDef.revealLabel} ready` });
       const card = addLive({ type: "asset-reveal-card", nodeKey: stepDef.stopKey, reveal });
+      offerChips(stepDef.step, stepDef.tweakable);
       setGeneratingKey(null);
-      await persistMsgs([divider, card]);
+      await persistMsgs([narration.line1, divider, card]);
     }
 
+    driverBusy.current = false;
+    await processTweakQueue();
     if (cancelled.current) return;
     const done = addLive({
       type: "zappy-bubble",
@@ -343,10 +545,11 @@ export default function V2Trail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trailState.data, persisted]);
 
-  // ── Thread: restored transcript + welcome-back bubble + live driver beats ──
+  // ── Thread: restored transcript (+ welcome-back on genuine resume) + live ──
   const messages: ChatMessage[] = useMemo(() => {
     const saved = persisted ?? [];
-    return [...saved, welcomeBackBubble(stops), ...live];
+    const withWelcome = freshHandoff.current ? saved : [...saved, welcomeBackBubble(stops)];
+    return [...withWelcome, ...live];
   }, [persisted, stops, live]);
 
   const handleStopClick = (key: string) => {
@@ -422,6 +625,10 @@ export default function V2Trail() {
           <ChatThread
             messages={messages}
             nodeRefMap={nodeRefMap}
+            onChipTap={handleChipTap}
+            onSendText={tweakMode ? handleTweakInstruction : undefined}
+            inputPlaceholder="What should change?"
+            inputDisabled={!tweakMode}
           />
         </div>
       </div>

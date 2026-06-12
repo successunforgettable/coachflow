@@ -390,6 +390,9 @@ export default function V2TrailIntake() {
         }
       } catch { /* transcript is a nice-to-have */ }
 
+      // C3: mark this as a fresh handoff so the Trail skips the
+      // welcome-back bubble — it only plays on genuine resume.
+      try { sessionStorage.setItem(`zapTrailFreshHandoff:${kitId}`, "1"); } catch { /* fine */ }
       navigate(`/v2-dashboard/trail/${kitId}`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Could not set up your campaign.";
