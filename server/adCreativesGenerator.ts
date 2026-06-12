@@ -83,7 +83,12 @@ export type RunAdCreativesGenerationInput = {
 // no `headlines` arg, runAdCreativesGeneration falls back to HEADLINE_FORMULAS
 // (which works fine for wizard-typed short niche + mechanism inputs).
 
-const AD_HEADLINES_RETRY_MAX_ATTEMPTS = 3;
+// Sprint 3 C4 side-fix: 3→5. Long-named niches (kit 128: "shift-working
+// nurses who can't switch off after night shifts…") exhausted 3 attempts
+// twice in the wild. The ≤38-char validator is untouched — more attempts +
+// saner inputs (truncation in buildAdHeadlinesUserPrompt) fix the inputs,
+// never the gate.
+const AD_HEADLINES_RETRY_MAX_ATTEMPTS = 5;
 
 const AD_HEADLINES_SYSTEM_PROMPT =
   "You are a senior Meta ads copywriter. You write punchy, scroll-stopping ad headlines that fit Meta's 40-character recommendation. You use active verbs, ICP-recognising language, and no buzzwords. You never use exclamation points. You count characters before finalising each line.";
@@ -149,13 +154,24 @@ export type GenerateContextualAdHeadlinesInput = {
  * constructed prompt.
  */
 export function buildAdHeadlinesUserPrompt(input: GenerateContextualAdHeadlinesInput): string {
+  // Sprint 3 C4 side-fix: cascade-derived inputs can be full sentences
+  // (ICP descriptors, mechanism paragraphs). Long inputs drag the model
+  // toward long headlines and exhaust the ≤38-char validator's retries.
+  // The prompt only needs the gist — truncate at word boundaries.
+  const gist = (s: string, max: number): string => {
+    const t = (s ?? "").trim();
+    if (t.length <= max) return t;
+    const cut = t.slice(0, max);
+    const lastSpace = cut.lastIndexOf(" ");
+    return `${cut.slice(0, lastSpace > max * 0.6 ? lastSpace : max)}…`;
+  };
   return `Write 5 Meta-compliant ad headlines for this service.
 
-Service: ${input.productName}
-Audience: ${input.targetAudience}
-Main benefit: ${input.mainBenefit}
-Mechanism: ${input.uniqueMechanism}
-Pressing problem: ${input.pressingProblem}
+Service: ${gist(input.productName, 60)}
+Audience: ${gist(input.targetAudience, 90)}
+Main benefit: ${gist(input.mainBenefit, 110)}
+Mechanism: ${gist(input.uniqueMechanism, 60)}
+Pressing problem: ${gist(input.pressingProblem, 120)}
 
 LENGTH RULE (READ TWICE):
 - Each headline MUST be ≤ 38 characters. This is a HARD LIMIT — Meta-compliance gate.

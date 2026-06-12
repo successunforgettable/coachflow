@@ -20,10 +20,11 @@
  * story without repeated-spam.
  */
 import { useMemo, useRef, useState, useEffect } from "react";
-import { useParams } from "wouter";
+import { useParams, useLocation } from "wouter";
 import V2Layout from "./V2Layout";
 import TrailBar, { type TrailStop, type StopState } from "./components/TrailBar";
 import ChatThread, { type ChatMessage } from "./components/ChatThread";
+import ComplianceDial from "./components/ComplianceDial";
 import { trpc } from "@/lib/trpc";
 
 const FONT_BODY = "'Instrument Sans', system-ui, sans-serif";
@@ -58,19 +59,33 @@ const AUTO_STEPS: {
   revealLabel: string;
   /** true when an instruction-shaped tweak surface exists (C3 mapping table) */
   tweakable: boolean;
+  /** C4: one of the 3 compliance-scored nodes (dial + real-score chip) */
+  scored?: boolean;
+  /** C4: milestone badge dropped after this node completes its grouping */
+  milestone?: { name: string; line: string; insight: "fears" | "goals" | "pains" };
 }[] = [
   { step: "offer",            field: "selectedOfferId",            stopKey: "offer",            revealLabel: "Offer",          tweakable: true },
-  { step: "mechanism",        field: "selectedMechanismId",        stopKey: "uniqueMethod",     revealLabel: "Unique Method",  tweakable: true },
+  { step: "mechanism",        field: "selectedMechanismId",        stopKey: "uniqueMethod",     revealLabel: "Unique Method",  tweakable: true,
+    milestone: { name: "FOUNDATION LOCKED", line: "The hard thinking is done. Everything from here builds on this.", insight: "fears" } },
   { step: "hvco",             field: "selectedHvcoId",             stopKey: "freeOptIn",        revealLabel: "Lead Magnet",    tweakable: true },
-  { step: "headlines",        field: "selectedHeadlineId",         stopKey: "headlines",        revealLabel: "Headline",       tweakable: true },
-  { step: "adCopy",           field: "selectedAdCopyId",           stopKey: "adCopy",           revealLabel: "Ad Copy",        tweakable: true },
-  { step: "landingPage",      field: "selectedLandingPageId",      stopKey: "landingPage",      revealLabel: "Landing Page",   tweakable: true },
+  { step: "headlines",        field: "selectedHeadlineId",         stopKey: "headlines",        revealLabel: "Headline",       tweakable: true, scored: true },
+  { step: "adCopy",           field: "selectedAdCopyId",           stopKey: "adCopy",           revealLabel: "Ad Copy",        tweakable: true, scored: true,
+    milestone: { name: "MAGNET READY", line: "You now attract attention on purpose.", insight: "goals" } },
+  { step: "landingPage",      field: "selectedLandingPageId",      stopKey: "landingPage",      revealLabel: "Landing Page",   tweakable: true, scored: true },
   { step: "emailSequence",    field: "selectedEmailSequenceId",    stopKey: "emailSequence",    revealLabel: "Email Sequence", tweakable: true },
-  { step: "whatsappSequence", field: "selectedWhatsAppSequenceId", stopKey: "whatsappSequence", revealLabel: "WhatsApp",       tweakable: true },
+  { step: "whatsappSequence", field: "selectedWhatsAppSequenceId", stopKey: "whatsappSequence", revealLabel: "WhatsApp",       tweakable: true,
+    milestone: { name: "CONVERSION ENGINE ON", line: "Clicks now have somewhere to become clients.", insight: "pains" } },
   // adCreatives' regenerate surface is image-shaped (headlineOverrideId), not
   // instruction-shaped — no Tweak chip in C3 (honest gap, flagged).
   { step: "adCreatives",      field: "selectedAdCreativeBatchId",  stopKey: "adCreatives",      revealLabel: "Ad Images",      tweakable: false },
 ];
+
+// C4: scored-node mapping into the W5 complianceRewrites surface.
+const REWRITE_SOURCE: Partial<Record<AutoStepName, { sourceTable: "headlines" | "adCopy" | "landingPages"; sourceSubKey?: string }>> = {
+  headlines: { sourceTable: "headlines" },
+  adCopy: { sourceTable: "adCopy" },
+  landingPage: { sourceTable: "landingPages", sourceSubKey: "mainHeadline" },
+};
 
 // ── Sprint 3 C3: §12.2 narration (line1 / line2 / line3-tease) ──
 const NARRATION: Record<AutoStepName, [string, string, string]> = {
@@ -123,6 +138,7 @@ function welcomeBackBubble(stops: TrailStop[]): ChatMessage {
 }
 
 export default function V2Trail() {
+  const [, navigate] = useLocation();
   const params = useParams<{ campaignKitId: string }>();
   const campaignKitId = params.campaignKitId ? Number(params.campaignKitId) : null;
   const validId = campaignKitId != null && !isNaN(campaignKitId);
@@ -148,6 +164,9 @@ export default function V2Trail() {
   const regenLpSection = trpc.landingPages.regenerateSection.useMutation();
   const regenEmail = trpc.emailSequences.regenerateSingle.useMutation();
   const regenWhatsapp = trpc.whatsappSequences.regenerateSingle.useMutation();
+  // C4: sub-100 "rewrite it safe" via the W5 compliance surface (quota-aware)
+  const rewriteGenerateMore = trpc.complianceRewrites.generateMore.useMutation();
+  const rewriteAccept = trpc.complianceRewrites.accept.useMutation();
 
   // Persisted messages, hydrated once from the transcript query.
   const [persisted, setPersisted] = useState<ChatMessage[] | null>(null);
@@ -272,6 +291,8 @@ export default function V2Trail() {
             eyebrow: "YOUR HEADLINE",
             title: String(h?.headline ?? "Your Headline"),
             preview: String(h?.subheadline ?? "") || "+ more in your Kit.",
+            // C4 honesty rule: the REAL persisted score, never a fabricated 100.
+            score: typeof h?.complianceScore === "number" ? h.complianceScore : undefined,
           };
         }
         case "adCopy": {
@@ -281,6 +302,7 @@ export default function V2Trail() {
             eyebrow: "YOUR AD COPY",
             title: content.split("\n")[0].slice(0, 80) || "Your Ad",
             preview: content.split("\n").slice(1, 4).join(" ").slice(0, 220),
+            score: typeof a?.complianceScore === "number" ? a.complianceScore : undefined,
           };
         }
         case "landingPage": {
@@ -290,6 +312,7 @@ export default function V2Trail() {
             eyebrow: "YOUR LANDING PAGE",
             title: String(angle?.mainHeadline ?? "Your Landing Page"),
             preview: String(angle?.subheadline ?? "").slice(0, 220) || "Published and ready — preview in your Kit.",
+            score: typeof lp?.complianceScore === "number" ? lp.complianceScore : undefined,
           };
         }
         case "emailSequence": {
@@ -360,10 +383,47 @@ export default function V2Trail() {
     return LOVE_REACTIONS[i];
   };
 
+  // ── C4: sub-100 "rewrite it safe" via W5 generateMore → accept best ──
+  const rewriteSafe = async (step: AutoStepName) => {
+    const stepDef = AUTO_STEPS.find(s => s.step === step)!;
+    const src = REWRITE_SOURCE[step];
+    if (!src) return;
+    const working = addLive({ type: "zappy-bubble", mood: "thinking", text: "Rewriting it safe — same punch, none of the flags…" });
+    try {
+      const kit = (await trailState.refetch()).data?.kit as Record<string, unknown>;
+      const sourceId = kit[stepDef.field] as number;
+      const rows = await rewriteGenerateMore.mutateAsync({ ...src, sourceId, count: 1 }) as { id: number; complianceScore: number }[];
+      if (!rows?.length) throw new Error("No compliant rewrite came back");
+      const best = [...rows].sort((a, b) => b.complianceScore - a.complianceScore)[0];
+      await rewriteAccept.mutateAsync({ rewriteId: best.id });
+      const refreshed = await trailState.refetch();
+      const reveal = await buildReveal(stepDef, (refreshed.data?.kit ?? {}) as Record<string, unknown>);
+      const divider = addLive({ type: "system-divider", text: `${stepDef.revealLabel} rewritten safe` });
+      const card = addLive({ type: "asset-reveal-card", nodeKey: stepDef.stopKey, reveal });
+      offerChips(step, stepDef.tweakable);
+      await persistMsgs([working, divider, card]);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "rewrite failed";
+      addLive({ type: "zappy-bubble", mood: "idle", text: `Couldn't get a safe rewrite through (${msg}). Your wording stays — you can revisit it in the Kit.` });
+      offerChips(step, AUTO_STEPS.find(s => s.step === step)!.tweakable);
+    }
+  };
+
   const handleChipTap = (messageId: string, chip: string) => {
     const target = activeChips.current?.msgId === messageId ? activeChips.current.step : null;
     removeLive(messageId);
     if (activeChips.current?.msgId === messageId) activeChips.current = null;
+
+    // C4: completion chips (not tied to a node)
+    if (chip === "Open my Campaign Kit") {
+      navigate(`/v2-dashboard/campaign-kit/${campaignKitId}`);
+      return;
+    }
+    if (chip === "Review piece by piece") {
+      const first = nodeRefMap.current.get("offer") ?? nodeRefMap.current.get("icp");
+      if (first) first.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
     if (!target) return;
 
     if (chip === "Love it ✓") {
@@ -375,6 +435,15 @@ export default function V2Trail() {
       const ask = addLive({ type: "zappy-bubble", mood: "idle", text: "What should change? Tell me straight." });
       persistMsgs([echo, ask]);
       setTweakMode(target);
+    } else if (chip === "Rewrite it safe") {
+      const echo = addLive({ type: "user-bubble", text: "Rewrite it safe" });
+      persistMsgs([echo]);
+      rewriteSafe(target);
+    } else if (chip === "Keep your wording") {
+      const echo = addLive({ type: "user-bubble", text: "Keep your wording" });
+      const ack = addLive({ type: "zappy-bubble", mood: "idle", text: "Your call — keeping it as written." });
+      persistMsgs([echo, ack]);
+      offerChips(target, AUTO_STEPS.find(s => s.step === target)!.tweakable);
     }
   };
 
@@ -517,20 +586,86 @@ export default function V2Trail() {
       const reveal = await buildReveal(stepDef, kit);
       const divider = addLive({ type: "system-divider", text: `${stepDef.revealLabel} ready` });
       const card = addLive({ type: "asset-reveal-card", nodeKey: stepDef.stopKey, reveal });
-      offerChips(stepDef.step, stepDef.tweakable);
       setGeneratingKey(null);
-      await persistMsgs([narration.line1, divider, card]);
+      const toPersist: ChatMessage[] = [narration.line1, divider, card];
+
+      // C4: sub-100 honesty on scored nodes — surface it, offer the W5
+      // rewrite or keep-wording choice. Never fake a 100.
+      const realScore = (reveal as { score?: number }).score;
+      if (stepDef.scored && typeof realScore === "number" && realScore < 100) {
+        const honest = addLive({
+          type: "zappy-bubble",
+          mood: "idle",
+          text: `This one's at ${realScore} — Meta may push back. Want me to rewrite it safe, or keep your wording?`,
+        });
+        toPersist.push(honest);
+        collapsePreviousChips();
+        const row = addLive({ type: "chip-row", nodeKey: stepDef.step, chips: ["Rewrite it safe", "Keep your wording"] });
+        activeChips.current = { msgId: row.id, step: stepDef.step };
+      } else {
+        offerChips(stepDef.step, stepDef.tweakable);
+      }
+
+      // C4: milestone badge (Tier 2) + one "while I work" insight per
+      // milestone, drawn from the user's REAL generated ICP — persisted
+      // per the C3 transcript rule (real, specific, one per milestone).
+      if (stepDef.milestone) {
+        const badge = addLive({
+          type: "milestone-badge",
+          milestone: { name: stepDef.milestone.name, line: stepDef.milestone.line },
+        });
+        toPersist.push(badge);
+        const insightText = await buildInsight(kit, stepDef.milestone.insight);
+        if (insightText) {
+          const insight = addLive({ type: "zappy-bubble", mood: "idle", text: insightText });
+          toPersist.push(insight);
+        }
+      }
+
+      await persistMsgs(toPersist);
     }
 
     driverBusy.current = false;
     await processTweakQueue();
     if (cancelled.current) return;
-    const done = addLive({
+
+    // ── C4: Tier 3 — the §5.3 completion beat + Campaign Kit handoff ──
+    const doneBadge = addLive({
+      type: "milestone-badge",
+      milestone: { name: "CAMPAIGN COMPLETE", line: "11 of 11 — every piece built and accounted for." },
+    });
+    const done1 = addLive({
       type: "zappy-bubble",
       mood: "celebrating",
-      text: "Done — every piece is built and singing the same song. It's all in your Campaign Kit.",
+      text: "Done. Eleven pieces, all singing the same song.",
     });
-    await persistMsgs([done]);
+    const done2 = addLive({
+      type: "zappy-bubble",
+      mood: "celebrating",
+      text: "Every piece matches your offer, your method, your voice.",
+    });
+    collapsePreviousChips();
+    const row = addLive({ type: "chip-row", chips: ["Open my Campaign Kit", "Review piece by piece"] });
+    activeChips.current = null; // completion chips handled by name, not node
+    void row;
+    await persistMsgs([doneBadge, done1, done2]);
+  };
+
+  // C4: one real-ICP insight per milestone. Pulls the first line of the
+  // matching ICP field — generated data, never canned tips.
+  const insightUsed = useRef<Set<string>>(new Set());
+  const buildInsight = async (kit: Record<string, unknown>, kind: "fears" | "goals" | "pains"): Promise<string | null> => {
+    if (insightUsed.current.has(kind)) return null;
+    insightUsed.current.add(kind);
+    try {
+      const icp = await utils.icps.get.fetch({ id: kit.icpId as number }) as Record<string, unknown> | null;
+      const raw = String(icp?.[kind] ?? "").split("\n").map(s => s.trim()).filter(Boolean)[0] ?? "";
+      const line = raw.replace(/^[-•*\d.\s]+/, "").slice(0, 140);
+      if (!line) return null;
+      if (kind === "fears") return `By the way — "${line}" is the fear we'll hammer in your ads. It's the one that moves people.`;
+      if (kind === "goals") return `Notice the thread so far: everything points at "${line}". That's deliberate.`;
+      return `Your follow-ups all press on "${line}" — that's what gets replies.`;
+    } catch { return null; }
   };
 
   useEffect(() => {
@@ -612,6 +747,14 @@ export default function V2Trail() {
         {/* TrailBar pinned at top */}
         <div style={{ flexShrink: 0, marginBottom: 12 }}>
           <TrailBar stops={stops} onStopClick={handleStopClick} />
+          {/* C4: ComplianceDial — only while a SCORED node generates.
+              Climb caps at 90; the real score lands on the reveal card. */}
+          {(() => {
+            const generating = AUTO_STEPS.find(s => s.stopKey === generatingKey);
+            return generating?.scored
+              ? <ComplianceDial label={generating.revealLabel.toLowerCase()} />
+              : null;
+          })()}
         </div>
 
         {/* ChatThread fills remaining space */}
