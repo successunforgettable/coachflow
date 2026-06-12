@@ -42,6 +42,7 @@ import { nodeSkipsRouter } from "./routers/nodeSkips";
 import { complianceRewritesRouter } from "./routers/complianceRewrites";
 import { autoModeRouter } from "./routers/autoMode";
 import { placeholdersRouter } from "./routers/placeholders";
+import { trailRouter } from "./routers/trail";
 import { getQuotaLimit } from "./quotaLimits";
 
 export const appRouter = router({
@@ -164,6 +165,7 @@ export const appRouter = router({
   complianceRewrites: complianceRewritesRouter,
   autoMode: autoModeRouter,
   placeholders: placeholdersRouter,
+  trail: trailRouter,
 });
 
 export type AppRouter = typeof appRouter;

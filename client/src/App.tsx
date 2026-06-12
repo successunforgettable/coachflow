@@ -69,6 +69,7 @@ import V2AutoModeProgress from "./v2/V2AutoModeProgress";
 import V2Settings from "./v2/V2Settings";
 import TrailBarDemo from "./v2/TrailBarDemo";
 import ChatThreadDemo from "./v2/ChatThreadDemo";
+import V2Trail from "./v2/V2Trail";
 import Login from "./pages/Login";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
@@ -142,6 +143,9 @@ function Router() {
       {/* V2 Sandbox — isolated, does not affect any existing route */}
       <Route path={"/v2-dashboard/trail-demo"} component={TrailBarDemo} />
       <Route path={"/v2-dashboard/chat-demo"} component={ChatThreadDemo} />
+      {/* Trail Sprint 1 — direct-URL-only until Sprint 2 intake ships.
+          handleStartNewCampaign deliberately NOT flipped (banked decision). */}
+      <Route path={"/v2-dashboard/trail/:campaignKitId"} component={V2Trail} />
       <Route path={"/v2-dashboard/asset-library"} component={V2AssetLibrary} />
       <Route path={"/v2-dashboard/wizard/:step"} component={V2GeneratorWizardPage} />
       <Route path={"/v2-dashboard/campaign-kit/:kitId"} component={V2CampaignKit} />
