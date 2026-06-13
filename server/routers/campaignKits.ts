@@ -188,6 +188,9 @@ export const campaignKitsRouter = router({
       selectedLandingPageAngle: z.string().nullable().optional(),
       selectedEmailSequenceId: z.number().nullable().optional(),
       selectedWhatsAppSequenceId: z.number().nullable().optional(),
+      // Sprint 4 C3: mid-campaign path switching. Mutable by design (spec §4
+      // line 134). Existing callers that omit it leave the column unchanged.
+      path: z.enum(["auto", "manual", "has_assets"]).optional(),
       // Workstream commit 2.5b — optional funnel-type update. Lets the kit
       // owner change campaignType post-creation (used by commit 7's UI).
       // Nullable so callers can clear the field; existing callsites that

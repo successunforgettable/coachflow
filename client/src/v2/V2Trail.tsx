@@ -191,6 +191,8 @@ export default function V2Trail() {
   const appendMessages = trpc.trail.appendMessages.useMutation();
   // Sprint 4 C1: manual crown write (the proven wizard mutation)
   const updateSelection = trpc.campaignKits.updateSelection.useMutation();
+  // Sprint 4 C3: quota status for deal-more chips
+  const quotaStatus = trpc.trail.getQuotaStatus.useQuery();
   const utils = trpc.useUtils();
 
   // C3 tweak surfaces (mapping table from the Sprint 3 pre-flight)
@@ -409,6 +411,9 @@ export default function V2Trail() {
   const offerChips = (step: AutoStepName, tweakable: boolean) => {
     collapsePreviousChips();
     const chips = tweakable ? ["Love it ✓", "Tweak"] : ["Love it ✓"];
+    // Sprint 4 C3: path switch chip — only in auto mode (switch to manual)
+    const kit = (trailState.data?.kit ?? {}) as Record<string, unknown>;
+    if (kit.path === "auto") chips.push("Let me pick from here");
     const row = addLive({ type: "chip-row", nodeKey: step, chips });
     activeChips.current = { msgId: row.id, step };
   };
@@ -446,7 +451,7 @@ export default function V2Trail() {
     }
   };
 
-  const handleChipTap = (messageId: string, chip: string) => {
+  const handleChipTap = async (messageId: string, chip: string) => {
     const target = activeChips.current?.msgId === messageId ? activeChips.current.step : null;
     removeLive(messageId);
     if (activeChips.current?.msgId === messageId) activeChips.current = null;
@@ -463,11 +468,27 @@ export default function V2Trail() {
     }
     if (!target) return;
 
-    // Sprint 4 C1: manual-mode chips that resolve the crown wait
-    if (chip === "Deal me options 🎴" || chip === "Lock it in →") {
+    // Sprint 4 C1+C3: manual-mode chips that resolve the crown/deal wait
+    if (chip === "Deal me options 🎴" || chip === "Lock it in →" || chip.startsWith("Deal a fresh set")) {
       const echo = addLive({ type: "user-bubble", text: chip });
       persistMsgs([echo]);
+      dealMoreChipChoice.current = chip.startsWith("Deal a fresh set") ? "deal" : "lock";
       if (manualResolve.current) { manualResolve.current(); manualResolve.current = null; }
+      return;
+    }
+    // Sprint 4 C3: mid-campaign path switching
+    if (chip === "Let me pick from here" || chip === "Let Zappy take over") {
+      const newPath = chip === "Let Zappy take over" ? "auto" : "manual";
+      const echo = addLive({ type: "user-bubble", text: chip });
+      const ack = addLive({ type: "zappy-bubble", mood: newPath === "auto" ? "celebrating" : "idle",
+        text: newPath === "auto" ? "Taking over — I'll handle the rest." : "Your turn — I'll deal options for each piece from here." });
+      persistMsgs([echo, ack]);
+      const kit = (trailState.data?.kit ?? {}) as Record<string, unknown>;
+      const kitId = kit.id as number | undefined;
+      if (kitId) {
+        try { await updateSelection.mutateAsync({ kitId, path: newPath } as any); } catch { /* non-fatal */ }
+        trailState.refetch();
+      }
       return;
     }
     if (chip === "Love it ✓") {
@@ -789,6 +810,11 @@ export default function V2Trail() {
       }
 
       await persistMsgs(toPersist);
+
+      // Sprint 4 C3: check if path was switched mid-run
+      const autoPathCheck = await trailState.refetch();
+      const autoCurrentPath = ((autoPathCheck.data?.kit ?? {}) as Record<string, unknown>).path;
+      if (autoCurrentPath !== "auto") return; // let the unified loop re-enter with manual
     }
 
     driverBusy.current = false;
@@ -838,6 +864,9 @@ export default function V2Trail() {
   // user taps "Lock it in →" (or a card in the deck) ──
   const manualResolve = useRef<(() => void) | null>(null);
   const waitForManualProceed = () => new Promise<void>(r => { manualResolve.current = r; });
+  // Sprint 4 C3: distinguishes Lock-it-in from Deal-a-fresh-set in the same
+  // chip row. Both resolve the manual proceed promise; the loop checks which.
+  const dealMoreChipChoice = useRef<"lock" | "deal" | null>(null);
 
   // ── Sprint 4 C1: fetch the dealable set and build card-deck cards ──
   const fetchDeckCards = async (
@@ -1057,12 +1086,79 @@ export default function V2Trail() {
         }));
       }
 
-      // "Lock it in →" chip — user crowns + proceeds
-      collapsePreviousChips();
-      const lockChip = addLive({ type: "chip-row", nodeKey: stepDef.step, chips: ["Lock it in →"] });
-      activeChips.current = { msgId: lockChip.id, step: stepDef.step };
-      await waitForManualProceed();
+      // "Lock it in →" + optional "Deal a fresh set · {n} left" chips.
+      // The deal-more loop: user can tap "Deal a fresh set" to regenerate
+      // (new set replaces the deck), or "Lock it in" to proceed.
+      let dealMoreLoop = true;
+      while (dealMoreLoop) {
+        collapsePreviousChips();
+        const quota = (quotaStatus.data ?? []).find(q => q.step === stepDef.step);
+        const remaining = quota?.remaining ?? 0;
+        const unlimited = quota?.unlimited ?? false;
+        const chips: string[] = ["Lock it in →"];
+        if (remaining > 0 || unlimited) {
+          const label = unlimited ? "Deal a fresh set" : `Deal a fresh set · ${remaining} left`;
+          chips.push(label);
+        }
+        chips.push("Let Zappy take over");
+        const chipRow = addLive({ type: "chip-row", nodeKey: stepDef.step, chips });
+        activeChips.current = { msgId: chipRow.id, step: stepDef.step };
+        // Wait for chip tap (resolved by handleChipTap for Lock/Deal)
+        dealMoreChipChoice.current = null;
+        await waitForManualProceed();
+        if (cancelled.current) return;
+        if (dealMoreChipChoice.current === "deal") {
+          // Check quota honestly
+          const freshQuota = await quotaStatus.refetch();
+          const freshQ = (freshQuota.data ?? []).find(q => q.step === stepDef.step);
+          if (freshQ && !freshQ.unlimited && freshQ.remaining <= 0) {
+            addLive({ type: "zappy-bubble", mood: "idle", text: `You've used all your ${stepDef.revealLabel.toLowerCase()} generations for this period. Pick from what's here — they're good.` });
+            continue;
+          }
+          // NULL the current selection so orchestrateStep re-generates
+          try { await updateSelection.mutateAsync({ kitId, [stepDef.field]: null } as any); } catch { /* non-fatal */ }
+          setGeneratingKey(stepDef.stopKey);
+          const narration2 = startNarration(stepDef.step);
+          let ok2 = false;
+          let jr2: Record<string, unknown> | null = null;
+          try {
+            const { jobId: jid } = await orchestrateStep.mutateAsync({
+              serviceId, icpId, step: stepDef.step, campaignType: kitCampaignType,
+            });
+            const job2 = await pollJob(jid);
+            if (job2.status === "failed") throw new Error(job2.error || "failed");
+            jr2 = job2.result;
+            ok2 = true;
+          } catch { /* handled below */ }
+          narration2.stop();
+          if (!ok2 || !jr2) {
+            addLive({ type: "zappy-bubble", mood: "idle", text: "Couldn't generate a fresh set. Pick from the current options." });
+            setGeneratingKey(null);
+            continue;
+          }
+          const refreshed2 = await trailState.refetch();
+          kit = (refreshed2.data?.kit ?? kit) as Record<string, unknown>;
+          setGeneratingKey(null);
+          // Re-deal with new cards
+          const newCards = await fetchDeckCards(stepDef, serviceId, jr2);
+          // Replace the deck in the live messages
+          setLive(prev => prev.map(m => {
+            if (m.id !== deckMsg.id || !m.deck) return m;
+            const updated: ChatMessage = { ...m, deck: { cards: newCards } };
+            return updated;
+          }));
+          await quotaStatus.refetch();
+          continue;
+        }
+        // "Lock it in →" tapped — exit the deal-more loop
+        dealMoreLoop = false;
+      }
       if (cancelled.current) return;
+
+      // Sprint 4 C3: check if path was switched mid-run
+      const pathCheck = await trailState.refetch();
+      const currentPath = ((pathCheck.data?.kit ?? {}) as Record<string, unknown>).path;
+      if (currentPath !== "manual") return; // let the unified loop re-enter
 
       await persistMsgs([divider]);
       if (stepDef.milestone) {
@@ -1088,6 +1184,31 @@ export default function V2Trail() {
     await persistMsgs([doneBadge, done1, done2]);
   };
 
+  // ── Sprint 4 C3: unified driver with per-node path check for mid-run switching ──
+  const runUnifiedLoop = async () => {
+    while (true) {
+      const state = await trailState.refetch();
+      const kit = (state.data?.kit ?? {}) as Record<string, unknown>;
+      const path = kit.path as string | null;
+      if (path !== "auto" && path !== "manual") return;
+      const hasPending = AUTO_STEPS.some(s => kit[s.field] == null);
+      if (!hasPending) break;
+      if (cancelled.current) return;
+      if (path === "manual") {
+        await runManualLoop();
+      } else {
+        await runAutoLoop();
+      }
+      // After a loop exits (possibly due to a path switch), re-check
+      if (cancelled.current) return;
+      const recheck = await trailState.refetch();
+      const recheckKit = (recheck.data?.kit ?? {}) as Record<string, unknown>;
+      const stillPending = AUTO_STEPS.some(s => recheckKit[s.field] == null);
+      if (!stillPending) break;
+      // If path changed, the while loop re-enters with the new mode
+    }
+  };
+
   useEffect(() => {
     if (driverStarted.current) return;
     if (!trailState.data || persisted === null) return;
@@ -1097,7 +1218,7 @@ export default function V2Trail() {
     const hasPending = AUTO_STEPS.some(s => kit[s.field] == null);
     if (!hasPending) return;
     driverStarted.current = true;
-    if (path === "manual") runManualLoop(); else runAutoLoop();
+    runUnifiedLoop();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trailState.data, persisted]);
 

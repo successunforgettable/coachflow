@@ -54,6 +54,16 @@ async function clearStaleNode(db: NonNullable<Awaited<ReturnType<typeof getDb>>>
   );
 }
 
+/** Sprint 4 C3: quota status for deal-more chips. */
+const DEALABLE_GENERATORS: { step: string; generatorType: string; countField: string }[] = [
+  { step: "offer",     generatorType: "offers",          countField: "offerGeneratedCount" },
+  { step: "mechanism", generatorType: "heroMechanisms",   countField: "heroMechanismGeneratedCount" },
+  { step: "hvco",      generatorType: "hvco",             countField: "hvcoGeneratedCount" },
+  { step: "headlines", generatorType: "headlines",         countField: "headlineGeneratedCount" },
+  { step: "adCopy",    generatorType: "adCopy",            countField: "adCopyGeneratedCount" },
+  { step: "landingPage", generatorType: "landingPages",    countField: "landingPageGeneratedCount" },
+];
+
 export const trailRouter = router({
   /**
    * getTrailState — everything the Trail page needs to derive the 11 stop
@@ -143,6 +153,27 @@ export const trailRouter = router({
       }
 
       return { ok: true };
+    }),
+
+  /**
+   * getQuotaStatus — remaining generation count per dealable node.
+   * Used by the "Deal a fresh set · {n} left" chip in the manual loop.
+   */
+  getQuotaStatus: protectedProcedure
+    .query(async ({ ctx }) => {
+      const { getQuotaLimit } = await import("../quotaLimits");
+      const user = ctx.user as Record<string, unknown>;
+      const tier = (user.subscriptionTier ?? "trial") as "trial" | "pro" | "agency";
+      const role = String(user.role ?? "user");
+      return DEALABLE_GENERATORS.map(dg => {
+        const limit = getQuotaLimit(tier, dg.generatorType as any, role);
+        const used = Number(user[dg.countField] ?? 0);
+        return {
+          step: dg.step,
+          remaining: limit === Infinity ? 999 : Math.max(0, limit - used),
+          unlimited: limit === Infinity,
+        };
+      });
     }),
 
   /**
