@@ -52,6 +52,30 @@ type AutoStepName =
   | "offer" | "mechanism" | "hvco" | "headlines" | "adCopy"
   | "landingPage" | "emailSequence" | "whatsappSequence" | "adCreatives";
 
+// Sprint 4 C1: §12.3 manual-mode node intros (one line each).
+const MANUAL_INTROS: Record<AutoStepName, string> = {
+  offer:            "Time to build an offer they can't shrug off.",
+  mechanism:        "Your method needs a name people remember.",
+  hvco:             "What's the irresistible free thing?",
+  headlines:        "Fifteen ways to stop the scroll. Ready?",
+  adCopy:           "Words that earn the click.",
+  landingPage:      "The page that does the convincing.",
+  emailSequence:    "The follow-up that does the selling.",
+  whatsappSequence: "Short messages, big results.",
+  adCreatives:      "Let's make it look as good as it reads.",
+};
+
+// Sprint 4 C1: which nodes are dealable (multi-item set from the generator)
+// vs single-item (auto-style reveal, no deck). Offer = 1 row w/ 3 JSON
+// angles dealt as cards; LP = 1 row w/ 4 JSON angles; email/wa/adCreatives =
+// single items; mechanism/hvco/headlines/adCopy = true set-based dealing.
+type DealableConfig = {
+  /** tRPC path to fetch the set items (e.g. "heroMechanisms.getBySetId") */
+  fetchSet: "mechanism" | "hvco" | "headlines" | "adCopy" | "offerAngles" | "lpAngles";
+  /** Which generators have a toggleFavorite surface — only show hearts on those */
+  hasFavourite: boolean;
+};
+
 const AUTO_STEPS: {
   step: AutoStepName;
   field: string;
@@ -63,20 +87,28 @@ const AUTO_STEPS: {
   scored?: boolean;
   /** C4: milestone badge dropped after this node completes its grouping */
   milestone?: { name: string; line: string; insight: "fears" | "goals" | "pains" };
+  /** Sprint 4 C1: dealable = show CardDeck in manual mode; null = auto-style reveal */
+  dealable?: DealableConfig;
 }[] = [
-  { step: "offer",            field: "selectedOfferId",            stopKey: "offer",            revealLabel: "Offer",          tweakable: true },
+  { step: "offer",            field: "selectedOfferId",            stopKey: "offer",            revealLabel: "Offer",          tweakable: true,
+    dealable: { fetchSet: "offerAngles", hasFavourite: false } },
   { step: "mechanism",        field: "selectedMechanismId",        stopKey: "uniqueMethod",     revealLabel: "Unique Method",  tweakable: true,
+    dealable: { fetchSet: "mechanism", hasFavourite: true },
     milestone: { name: "FOUNDATION LOCKED", line: "The hard thinking is done. Everything from here builds on this.", insight: "fears" } },
-  { step: "hvco",             field: "selectedHvcoId",             stopKey: "freeOptIn",        revealLabel: "Lead Magnet",    tweakable: true },
-  { step: "headlines",        field: "selectedHeadlineId",         stopKey: "headlines",        revealLabel: "Headline",       tweakable: true, scored: true },
+  { step: "hvco",             field: "selectedHvcoId",             stopKey: "freeOptIn",        revealLabel: "Lead Magnet",    tweakable: true,
+    dealable: { fetchSet: "hvco", hasFavourite: true } },
+  { step: "headlines",        field: "selectedHeadlineId",         stopKey: "headlines",        revealLabel: "Headline",       tweakable: true, scored: true,
+    dealable: { fetchSet: "headlines", hasFavourite: true } },
   { step: "adCopy",           field: "selectedAdCopyId",           stopKey: "adCopy",           revealLabel: "Ad Copy",        tweakable: true, scored: true,
+    dealable: { fetchSet: "adCopy", hasFavourite: true },
     milestone: { name: "MAGNET READY", line: "You now attract attention on purpose.", insight: "goals" } },
   // landingPage: NOT scored — the landingPages table carries no
   // complianceScore column (verified against Drizzle + INFORMATION_SCHEMA
   // during C4). Showing a dial over a node with no real score to land
   // would violate the honesty rule. Page-level LP scoring is engine work
   // for a future slot; W5 per-section rewrites remain available in the Kit.
-  { step: "landingPage",      field: "selectedLandingPageId",      stopKey: "landingPage",      revealLabel: "Landing Page",   tweakable: true },
+  { step: "landingPage",      field: "selectedLandingPageId",      stopKey: "landingPage",      revealLabel: "Landing Page",   tweakable: true,
+    dealable: { fetchSet: "lpAngles", hasFavourite: false } },
   { step: "emailSequence",    field: "selectedEmailSequenceId",    stopKey: "emailSequence",    revealLabel: "Email Sequence", tweakable: true },
   { step: "whatsappSequence", field: "selectedWhatsAppSequenceId", stopKey: "whatsappSequence", revealLabel: "WhatsApp",       tweakable: true,
     milestone: { name: "CONVERSION ENGINE ON", line: "Clicks now have somewhere to become clients.", insight: "pains" } },
@@ -157,6 +189,8 @@ export default function V2Trail() {
   );
   const orchestrateStep = trpc.autoMode.orchestrateStep.useMutation();
   const appendMessages = trpc.trail.appendMessages.useMutation();
+  // Sprint 4 C1: manual crown write (the proven wizard mutation)
+  const updateSelection = trpc.campaignKits.updateSelection.useMutation();
   const utils = trpc.useUtils();
 
   // C3 tweak surfaces (mapping table from the Sprint 3 pre-flight)
@@ -429,6 +463,13 @@ export default function V2Trail() {
     }
     if (!target) return;
 
+    // Sprint 4 C1: manual-mode chips that resolve the crown wait
+    if (chip === "Deal me options 🎴" || chip === "Lock it in →") {
+      const echo = addLive({ type: "user-bubble", text: chip });
+      persistMsgs([echo]);
+      if (manualResolve.current) { manualResolve.current(); manualResolve.current = null; }
+      return;
+    }
     if (chip === "Love it ✓") {
       const echo = addLive({ type: "user-bubble", text: "Love it ✓" });
       const reaction = addLive({ type: "zappy-bubble", mood: "celebrating", text: pickReaction() });
@@ -448,6 +489,36 @@ export default function V2Trail() {
       persistMsgs([echo, ack]);
       offerChips(target, AUTO_STEPS.find(s => s.step === target)!.tweakable);
     }
+  };
+
+  // Sprint 4 C1: crown a card in the manual-mode deck. Updates the kit's
+  // selected*Id via the proven wizard mutation, then visually marks the
+  // card as selected in the live deck message.
+  const handleDeckSelect = async (messageId: string, cardId: number) => {
+    // Find which step this deck belongs to via nodeKey
+    const deckMsg = live.find(m => m.id === messageId);
+    const nodeKey = deckMsg?.nodeKey;
+    const stepDef = nodeKey ? AUTO_STEPS.find(s => s.stopKey === nodeKey) : null;
+    if (!stepDef) return;
+
+    const kit = (trailState.data?.kit ?? {}) as Record<string, unknown>;
+    const kitId = kit.id as number | undefined;
+    if (!kitId) return;
+
+    // Write the crown
+    try {
+      await updateSelection.mutateAsync({ kitId, [stepDef.field]: cardId } as any);
+    } catch (err) {
+      console.warn("[handleDeckSelect] crown write failed:", err);
+      return;
+    }
+
+    // Visually mark the crowned card (update the deck in live messages)
+    setLive(prev => prev.map(m =>
+      m.id === messageId && m.deck
+        ? { ...m, deck: { cards: m.deck.cards.map(c => ({ ...c, selected: c.id === cardId })) } }
+        : m,
+    ));
   };
 
   // The tweak mapping table (Sprint 3 pre-flight item 3).
@@ -671,15 +742,258 @@ export default function V2Trail() {
     } catch { return null; }
   };
 
+  // ── Sprint 4 C1: manual crown wait — a promise that resolves when the
+  // user taps "Lock it in →" (or a card in the deck) ──
+  const manualResolve = useRef<(() => void) | null>(null);
+  const waitForManualProceed = () => new Promise<void>(r => { manualResolve.current = r; });
+
+  // ── Sprint 4 C1: fetch the dealable set and build card-deck cards ──
+  const fetchDeckCards = async (
+    stepDef: (typeof AUTO_STEPS)[number],
+    serviceId: number,
+    jobResult: Record<string, unknown>,
+  ): Promise<{ id: number; title: string; preview: string; selected?: boolean }[]> => {
+    const ds = stepDef.dealable!;
+    switch (ds.fetchSet) {
+      case "mechanism": {
+        const setId = String(jobResult.generatedId ?? jobResult.mechanismSetId ?? "");
+        const items = await utils.heroMechanisms.getBySetId.fetch({ mechanismSetId: setId }) as { id: number; mechanismName: string; mechanismDescription: string; tabType: string }[];
+        // Only hero_mechanisms tab (the primary 5)
+        return items.filter(m => m.tabType === "hero_mechanisms").map((m, i) => ({
+          id: m.id, title: m.mechanismName, preview: (m.mechanismDescription ?? "").slice(0, 120), selected: i === 0,
+        }));
+      }
+      case "hvco": {
+        const setId = String(jobResult.generatedId ?? jobResult.hvcoSetId ?? "");
+        const items = await utils.hvco.getBySetId.fetch({ hvcoSetId: setId }) as { id: number; title: string; tabType: string }[];
+        const long = items.filter(i => i.tabType === "long_titles");
+        return long.map((h, i) => ({ id: h.id, title: h.title, preview: "", selected: i === 0 }));
+      }
+      case "headlines": {
+        const setId = String(jobResult.generatedId ?? jobResult.headlineSetId ?? "");
+        const items = await utils.headlines.getBySetId.fetch({ headlineSetId: setId }) as unknown as { id: number; headline: string; subheadline?: string; formulaType: string }[];
+        // Show first 5 (one per formula)
+        const seen = new Set<string>();
+        const picks: typeof items = [];
+        for (const h of items) { if (!seen.has(h.formulaType)) { seen.add(h.formulaType); picks.push(h); } if (picks.length >= 5) break; }
+        return picks.map((h, i) => ({ id: h.id, title: h.headline, preview: h.subheadline ?? "", selected: i === 0 }));
+      }
+      case "adCopy": {
+        // generatedId is a row id (pickFirstFromAdSet), not the setId.
+        // Fetch the row to get adSetId, then list all body rows from the set.
+        const rowId = Number(jobResult.generatedId);
+        const row = await utils.adCopy.get.fetch({ id: rowId }) as Record<string, unknown> | null;
+        const setId = String(row?.adSetId ?? "");
+        if (!setId) return [{ id: rowId, title: "Your Ad Copy", preview: "", selected: true }];
+        // adCopy has no getBySetId — use list filtered by serviceId and
+        // filter by adSetId client-side.
+        const all = await utils.adCopy.list.fetch({ serviceId }) as { id: number; content: string; contentType: string; adSetId: string }[];
+        const bodies = all.filter(a => a.adSetId === setId && a.contentType === "body");
+        return bodies.slice(0, 5).map((a, i) => ({
+          id: a.id, title: a.content.split("\n")[0].slice(0, 80), preview: a.content.split("\n").slice(1, 3).join(" ").slice(0, 120), selected: i === 0,
+        }));
+      }
+      case "offerAngles": {
+        const offerId = Number(jobResult.generatedId ?? jobResult.offerId);
+        const o = await utils.offers.get.fetch({ id: offerId }) as Record<string, unknown> | null;
+        if (!o) return [{ id: offerId, title: "Your Offer", preview: "", selected: true }];
+        const angles: { key: string; label: string }[] = [
+          { key: "godfatherAngle", label: "Godfather" },
+          { key: "freeAngle", label: "Free" },
+          { key: "dollarAngle", label: "Dollar" },
+        ];
+        return angles.filter(a => o[a.key] != null).map((a, i) => {
+          const angle = parseMaybeJson(o[a.key]);
+          return { id: offerId, title: `${a.label}: ${String(angle?.offerName ?? "Offer")}`, preview: String(angle?.valueProposition ?? "").slice(0, 120), selected: i === 0 };
+        });
+      }
+      case "lpAngles": {
+        const lpId = Number(jobResult.generatedId ?? jobResult.landingPageId);
+        const lp = await utils.landingPages.get.fetch({ id: lpId }) as Record<string, unknown> | null;
+        if (!lp) return [{ id: lpId, title: "Your Landing Page", preview: "", selected: true }];
+        const angles: { key: string; label: string }[] = [
+          { key: "originalAngle", label: "Original" },
+          { key: "godfatherAngle", label: "Godfather" },
+          { key: "freeAngle", label: "Free" },
+          { key: "dollarAngle", label: "Dollar" },
+        ];
+        return angles.filter(a => lp[a.key] != null).map((a, i) => {
+          const angle = parseMaybeJson(lp[a.key]);
+          return { id: lpId, title: `${a.label}: ${String(angle?.mainHeadline ?? "Landing Page")}`, preview: String(angle?.subheadline ?? "").slice(0, 120), selected: i === 0 };
+        });
+      }
+    }
+  };
+
+  // ── Sprint 4 C1: the manual-mode loop ──
+  // Same structure as runAutoLoop: iterate steps, generate, BUT instead of
+  // auto-select → reveal, it deals cards → waits for crown → proceeds.
+  // Non-dealable nodes (ICP/email/whatsapp/adCreatives) use auto-style reveal.
+  // The auto loop is UNTOUCHED — the driver entry chooses which to run.
+  const runManualLoop = async () => {
+    const state = trailState.data!;
+    const serviceId = state.serviceId!;
+    const kit0 = state.kit as Record<string, unknown>;
+    const icpId = kit0.icpId as number;
+    const kitId = kit0.id as number;
+    const kitCampaignType = (kit0.campaignType ?? undefined) as
+      | "webinar" | "challenge" | "course_launch" | "product_launch"
+      | "discovery_call" | "lead_magnet" | "in_person_event" | undefined;
+    let kit = kit0;
+
+    for (const stepDef of AUTO_STEPS) {
+      if (cancelled.current) return;
+      if (kit[stepDef.field] != null) continue;
+
+      // ── Manual intro + "Deal me options 🎴" chip ──
+      const intro = MANUAL_INTROS[stepDef.step];
+      addLive({ type: "zappy-bubble", mood: "idle", text: intro });
+
+      // For non-dealable nodes, skip the deal chip — generate + reveal like auto.
+      if (!stepDef.dealable) {
+        setGeneratingKey(stepDef.stopKey);
+        const narration = startNarration(stepDef.step);
+        let ok = false;
+        let lastError = "";
+        for (let attempt = 1; attempt <= 2 && !ok; attempt++) {
+          try {
+            const { jobId } = await orchestrateStep.mutateAsync({
+              serviceId, icpId, step: stepDef.step, campaignType: kitCampaignType,
+            });
+            const job = await pollJob(jobId);
+            if (job.status === "failed") throw new Error(job.error || "Generation failed");
+            ok = true;
+          } catch (err) {
+            lastError = err instanceof Error ? err.message : String(err);
+            if (attempt === 1 && !cancelled.current)
+              addLive({ type: "zappy-bubble", mood: "idle", text: "Hm — that one fizzled. Let me try again." });
+          }
+        }
+        narration.stop();
+        if (cancelled.current) return;
+        if (!ok) {
+          addLive({ type: "zappy-bubble", mood: "idle", text: `Still stuck on ${stepDef.revealLabel} (${lastError}). Reload to pick it up here.` });
+          setGeneratingKey(null);
+          return;
+        }
+        const refreshed = await trailState.refetch();
+        kit = (refreshed.data?.kit ?? kit) as Record<string, unknown>;
+        const reveal = await buildReveal(stepDef, kit);
+        const divider = addLive({ type: "system-divider", text: `${stepDef.revealLabel} ready` });
+        const card = addLive({ type: "asset-reveal-card", nodeKey: stepDef.stopKey, reveal });
+        setGeneratingKey(null);
+        const toPersist: ChatMessage[] = [divider, card];
+        if (stepDef.milestone) {
+          const badge = addLive({ type: "milestone-badge", milestone: { name: stepDef.milestone.name, line: stepDef.milestone.line } });
+          toPersist.push(badge);
+          const insightText = await buildInsight(kit, stepDef.milestone.insight);
+          if (insightText) { const insight = addLive({ type: "zappy-bubble", mood: "idle", text: insightText }); toPersist.push(insight); }
+        }
+        await persistMsgs(toPersist);
+        continue;
+      }
+
+      // ── Dealable node: "Deal me options 🎴" chip → generate → deal cards ──
+      collapsePreviousChips();
+      const dealChip = addLive({ type: "chip-row", nodeKey: stepDef.step, chips: ["Deal me options 🎴"] });
+      activeChips.current = { msgId: dealChip.id, step: stepDef.step };
+      // Wait for the user to tap "Deal me options 🎴"
+      await waitForManualProceed();
+      if (cancelled.current) return;
+
+      setGeneratingKey(stepDef.stopKey);
+      const narration = startNarration(stepDef.step);
+      let jobResult: Record<string, unknown> | null = null;
+      let ok = false;
+      let lastError = "";
+      for (let attempt = 1; attempt <= 2 && !ok; attempt++) {
+        try {
+          const { jobId } = await orchestrateStep.mutateAsync({
+            serviceId, icpId, step: stepDef.step, campaignType: kitCampaignType,
+          });
+          const job = await pollJob(jobId);
+          if (job.status === "failed") throw new Error(job.error || "Generation failed");
+          jobResult = job.result;
+          ok = true;
+        } catch (err) {
+          lastError = err instanceof Error ? err.message : String(err);
+          if (attempt === 1 && !cancelled.current)
+            addLive({ type: "zappy-bubble", mood: "idle", text: "Hm — that one fizzled. Let me try again." });
+        }
+      }
+      narration.stop();
+      if (cancelled.current) return;
+      if (!ok || !jobResult) {
+        addLive({ type: "zappy-bubble", mood: "idle", text: `Still stuck on ${stepDef.revealLabel} (${lastError}). Reload to pick it up here.` });
+        setGeneratingKey(null);
+        return;
+      }
+
+      // Refresh kit so we know the auto-selected id
+      const refreshed = await trailState.refetch();
+      kit = (refreshed.data?.kit ?? kit) as Record<string, unknown>;
+      setGeneratingKey(null);
+
+      // Fetch set → deal cards (350ms simulated dealing from the completed batch)
+      const cards = await fetchDeckCards(stepDef, serviceId, jobResult);
+      const divider = addLive({ type: "system-divider", text: `${stepDef.revealLabel} ready — pick your favourite` });
+      const deckMsg = addLive({
+        type: "card-deck",
+        nodeKey: stepDef.stopKey,
+        deck: { cards: [] },
+      });
+      // Simulated dealing: add cards one at a time at ~350ms
+      for (let i = 0; i < cards.length; i++) {
+        await new Promise(r => setTimeout(r, 350));
+        if (cancelled.current) return;
+        setLive(prev => prev.map(m => {
+          if (m.id !== deckMsg.id || !m.deck) return m;
+          const updated: ChatMessage = { ...m, deck: { cards: [...m.deck.cards, cards[i]] } };
+          return updated;
+        }));
+      }
+
+      // "Lock it in →" chip — user crowns + proceeds
+      collapsePreviousChips();
+      const lockChip = addLive({ type: "chip-row", nodeKey: stepDef.step, chips: ["Lock it in →"] });
+      activeChips.current = { msgId: lockChip.id, step: stepDef.step };
+      await waitForManualProceed();
+      if (cancelled.current) return;
+
+      await persistMsgs([divider]);
+      if (stepDef.milestone) {
+        const badge = addLive({ type: "milestone-badge", milestone: { name: stepDef.milestone.name, line: stepDef.milestone.line } });
+        const toPersist: ChatMessage[] = [badge];
+        const insightText = await buildInsight(kit, stepDef.milestone.insight);
+        if (insightText) { const insight = addLive({ type: "zappy-bubble", mood: "idle", text: insightText }); toPersist.push(insight); }
+        await persistMsgs(toPersist);
+      }
+    }
+
+    if (cancelled.current) return;
+    // ── Completion beat — identical to auto ──
+    const doneBadge = addLive({
+      type: "milestone-badge",
+      milestone: { name: "CAMPAIGN COMPLETE", line: "11 of 11 — every piece built and accounted for." },
+    });
+    const done1 = addLive({ type: "zappy-bubble", mood: "celebrating", text: "Done. Eleven pieces, all singing the same song." });
+    const done2 = addLive({ type: "zappy-bubble", mood: "celebrating", text: "Every piece matches your offer, your method, your voice." });
+    collapsePreviousChips();
+    addLive({ type: "chip-row", chips: ["Open my Campaign Kit", "Review piece by piece"] });
+    activeChips.current = null;
+    await persistMsgs([doneBadge, done1, done2]);
+  };
+
   useEffect(() => {
     if (driverStarted.current) return;
     if (!trailState.data || persisted === null) return;
     const kit = trailState.data.kit as Record<string, unknown>;
-    if (kit.path !== "auto") return;
+    const path = kit.path as string | null;
+    if (path !== "auto" && path !== "manual") return;
     const hasPending = AUTO_STEPS.some(s => kit[s.field] == null);
     if (!hasPending) return;
     driverStarted.current = true;
-    runAutoLoop();
+    if (path === "manual") runManualLoop(); else runAutoLoop();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trailState.data, persisted]);
 
@@ -772,6 +1086,7 @@ export default function V2Trail() {
             messages={messages}
             nodeRefMap={nodeRefMap}
             onChipTap={handleChipTap}
+            onDeckSelect={handleDeckSelect}
             onSendText={tweakMode ? handleTweakInstruction : undefined}
             inputPlaceholder="What should change?"
             inputDisabled={!tweakMode}

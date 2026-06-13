@@ -313,9 +313,10 @@ export default function V2TrailIntake() {
     } catch { /* never block routing on analytics */ }
 
     if (path === "manual") {
-      // Interim: existing wizard, service pre-created. Kit path stays NULL
-      // (it's a wizard campaign). Destination swaps when Sprint 4 lands.
-      navigate(`/v2-dashboard/wizard/service?serviceId=${serviceId}`);
+      // Sprint 4 C1: manual fork now runs in-chat, same as auto —
+      // ICP narrated beat, getOrCreate({icpId, path:'manual'}), then
+      // the manual loop in V2Trail. Kit path='manual' is finally written.
+      runManualInChat();
     } else if (path === "has_assets") {
       // Existing confirm screen pre-filled — import toggles live there
       // until Sprint 5. Carries the campaign-type choice through.
@@ -398,6 +399,60 @@ export default function V2TrailIntake() {
       const msg = err instanceof Error ? err.message : "Could not set up your campaign.";
       addMsg({ type: "zappy-bubble", mood: "idle", text: `Hm — that one fizzled (${msg}). One more go?` });
       addMsg({ type: "chip-row", chips: ["Build it for me ⚡"] });
+      setPhase("fork");
+    }
+  };
+
+  /**
+   * Sprint 4 C1 — in-chat manual path. Same shape as runAutoInChat but
+   * creates the kit with path='manual'. The manual loop in V2Trail takes
+   * over once we navigate to /trail/{kitId}.
+   */
+  const runManualInChat = async () => {
+    const serviceId = createdServiceId.current;
+    if (serviceId == null) return;
+    try {
+      try { await expandProfileMutation.mutateAsync({ serviceId }); } catch { /* non-fatal */ }
+      addMsg({ type: "zappy-bubble", mood: "thinking", text: "Studying the people you help…" });
+      const icpName = extraction.current?.icpDescriptor?.trim()
+        || `${pendingFields.current?.serviceName?.trim() || "My Service"} Profile`;
+      const { jobId } = await generateIcpMutation.mutateAsync({ serviceId, name: icpName });
+      const job = await pollJob(jobId);
+      if (job.status === "failed" || typeof job.result?.icpId !== "number") {
+        throw new Error(job.error || "ICP generation failed.");
+      }
+      const icpId = job.result.icpId as number;
+      const icp = await utils.icps.get.fetch({ id: icpId });
+      addMsg({ type: "system-divider", text: "ICP generated" });
+      addMsg({
+        type: "asset-reveal-card",
+        nodeKey: "icp",
+        reveal: {
+          eyebrow: "YOUR IDEAL CUSTOMER",
+          title: (icp as { name?: string } | null)?.name || "Your Ideal Customer",
+          preview: ((icp as { introduction?: string | null } | null)?.introduction || "").split("\n")[0].slice(0, 220) || "Profile generated — full detail in your Kit.",
+        },
+      });
+      const kit = await getOrCreateKitMutation.mutateAsync({
+        icpId,
+        path: "manual",
+        campaignType: campaignType.current ?? undefined,
+      });
+      const kitId = (kit as { id: number }).id;
+      addMsg({ type: "zappy-bubble", mood: "celebrating", text: "Foundation set. Now let's pick each piece together." });
+      try {
+        type FlushMessages = Parameters<typeof appendMessagesMutation.mutateAsync>[0]["messages"];
+        const flush = messagesRef.current.filter(m => m.type !== "chip-row") as unknown as FlushMessages;
+        if (flush.length > 0) {
+          await appendMessagesMutation.mutateAsync({ campaignKitId: kitId, messages: flush });
+        }
+      } catch { /* nice-to-have */ }
+      try { sessionStorage.setItem(`zapTrailFreshHandoff:${kitId}`, "1"); } catch { /* fine */ }
+      navigate(`/v2-dashboard/trail/${kitId}`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Could not set up your campaign.";
+      addMsg({ type: "zappy-bubble", mood: "idle", text: `Hm — that one fizzled (${msg}). One more go?` });
+      addMsg({ type: "chip-row", chips: ["I'll pick as we go"] });
       setPhase("fork");
     }
   };
