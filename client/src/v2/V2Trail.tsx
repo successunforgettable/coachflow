@@ -756,27 +756,39 @@ export default function V2Trail() {
     const ds = stepDef.dealable!;
     switch (ds.fetchSet) {
       case "mechanism": {
-        const setId = String(jobResult.generatedId ?? jobResult.mechanismSetId ?? "");
+        // generatedId is a row ID (from pickFirstFromHeroMechanismSet).
+        // Look up the row's mechanismSetId, then fetch the full set.
+        const rowId = Number(jobResult.generatedId);
+        const row = await utils.heroMechanisms.get.fetch({ id: rowId }) as Record<string, unknown> | null;
+        const setId = String(row?.mechanismSetId ?? "");
+        if (!setId) return [{ id: rowId, title: "Your Method", preview: "", selected: true }];
         const items = await utils.heroMechanisms.getBySetId.fetch({ mechanismSetId: setId }) as { id: number; mechanismName: string; mechanismDescription: string; tabType: string }[];
-        // Only hero_mechanisms tab (the primary 5)
         return items.filter(m => m.tabType === "hero_mechanisms").map((m, i) => ({
-          id: m.id, title: m.mechanismName, preview: (m.mechanismDescription ?? "").slice(0, 120), selected: i === 0,
+          id: m.id, title: m.mechanismName, preview: (m.mechanismDescription ?? "").slice(0, 120), selected: m.id === rowId,
         }));
       }
       case "hvco": {
-        const setId = String(jobResult.generatedId ?? jobResult.hvcoSetId ?? "");
+        // generatedId is a row ID. Look up the row's hvcoSetId.
+        const rowId = Number(jobResult.generatedId);
+        const row = await utils.hvco.get.fetch({ id: rowId }) as Record<string, unknown> | null;
+        const setId = String(row?.hvcoSetId ?? "");
+        if (!setId) return [{ id: rowId, title: "Your Lead Magnet", preview: "", selected: true }];
         const items = await utils.hvco.getBySetId.fetch({ hvcoSetId: setId }) as { id: number; title: string; tabType: string }[];
         const long = items.filter(i => i.tabType === "long_titles");
-        return long.map((h, i) => ({ id: h.id, title: h.title, preview: "", selected: i === 0 }));
+        return long.map((h, i) => ({ id: h.id, title: h.title, preview: "", selected: h.id === rowId }));
       }
       case "headlines": {
-        const setId = String(jobResult.generatedId ?? jobResult.headlineSetId ?? "");
+        // generatedId is a row ID. Look up the row's headlineSetId.
+        const rowId = Number(jobResult.generatedId);
+        const row = await utils.headlines.get.fetch({ id: rowId }) as Record<string, unknown> | null;
+        const setId = String(row?.headlineSetId ?? "");
+        if (!setId) return [{ id: rowId, title: "Your Headline", preview: "", selected: true }];
         const items = await utils.headlines.getBySetId.fetch({ headlineSetId: setId }) as unknown as { id: number; headline: string; subheadline?: string; formulaType: string }[];
         // Show first 5 (one per formula)
         const seen = new Set<string>();
         const picks: typeof items = [];
         for (const h of items) { if (!seen.has(h.formulaType)) { seen.add(h.formulaType); picks.push(h); } if (picks.length >= 5) break; }
-        return picks.map((h, i) => ({ id: h.id, title: h.headline, preview: h.subheadline ?? "", selected: i === 0 }));
+        return picks.map((h) => ({ id: h.id, title: h.headline, preview: h.subheadline ?? "", selected: h.id === rowId }));
       }
       case "adCopy": {
         // generatedId is a row id (pickFirstFromAdSet), not the setId.
