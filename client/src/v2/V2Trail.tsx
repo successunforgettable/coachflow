@@ -98,9 +98,9 @@ const AUTO_STEPS: {
   { step: "hvco",             field: "selectedHvcoId",             stopKey: "freeOptIn",        revealLabel: "Lead Magnet",    tweakable: true,
     dealable: { fetchSet: "hvco", hasFavourite: true } },
   { step: "headlines",        field: "selectedHeadlineId",         stopKey: "headlines",        revealLabel: "Headline",       tweakable: true, scored: true,
-    dealable: { fetchSet: "headlines", hasFavourite: true } },
+    dealable: { fetchSet: "headlines", hasFavourite: false } },
   { step: "adCopy",           field: "selectedAdCopyId",           stopKey: "adCopy",           revealLabel: "Ad Copy",        tweakable: true, scored: true,
-    dealable: { fetchSet: "adCopy", hasFavourite: true },
+    dealable: { fetchSet: "adCopy", hasFavourite: false },
     milestone: { name: "MAGNET READY", line: "You now attract attention on purpose.", insight: "goals" } },
   // landingPage: NOT scored — the landingPages table carries no
   // complianceScore column (verified against Drizzle + INFORMATION_SCHEMA
@@ -193,6 +193,11 @@ export default function V2Trail() {
   const updateSelection = trpc.campaignKits.updateSelection.useMutation();
   // Sprint 4 C3: quota status for deal-more chips
   const quotaStatus = trpc.trail.getQuotaStatus.useQuery();
+  // Sprint 4 C4: skip/import
+  const skipNodeMutation = trpc.nodeSkips.skip.useMutation();
+  // Sprint 4 C4: favourites — only mechanism + hvco have toggleFavorite
+  const toggleMechanismFav = trpc.heroMechanisms.toggleFavorite.useMutation();
+  const toggleHvcoFav = trpc.hvco.toggleFavorite.useMutation();
   const utils = trpc.useUtils();
 
   // C3 tweak surfaces (mapping table from the Sprint 3 pre-flight)
@@ -228,6 +233,8 @@ export default function V2Trail() {
 
   // ── Live driver messages (this session) + generating stop ──
   const [live, setLive] = useState<ChatMessage[]>([]);
+  const liveRef = useRef<ChatMessage[]>([]);
+  useEffect(() => { liveRef.current = live; }, [live]);
   const [generatingKey, setGeneratingKey] = useState<string | null>(null);
   const liveCounter = useRef(0);
   const addLive = (m: Omit<ChatMessage, "id">): ChatMessage => {
@@ -469,10 +476,11 @@ export default function V2Trail() {
     if (!target) return;
 
     // Sprint 4 C1+C3: manual-mode chips that resolve the crown/deal wait
-    if (chip === "Deal me options 🎴" || chip === "Lock it in →" || chip.startsWith("Deal a fresh set")) {
+    if (chip === "Deal me options 🎴" || chip === "Lock it in →" || chip.startsWith("Deal a fresh set") || chip === "Skip — I already have this") {
       const echo = addLive({ type: "user-bubble", text: chip });
       persistMsgs([echo]);
-      dealMoreChipChoice.current = chip.startsWith("Deal a fresh set") ? "deal" : "lock";
+      dealMoreChipChoice.current = chip.startsWith("Deal a fresh set") ? "deal"
+        : chip === "Skip — I already have this" ? "skip" : "lock";
       if (manualResolve.current) { manualResolve.current(); manualResolve.current = null; }
       return;
     }
@@ -582,7 +590,10 @@ export default function V2Trail() {
   };
 
   const handleDeckSelect = async (messageId: string, cardId: number) => {
-    const deckMsg = live.find(m => m.id === messageId);
+    // Sprint 4 C4: search merged array so RESTORED decks (from persisted
+    // transcript) are interactive, not just live-session decks.
+    const allMsgs = [...(persisted ?? []), ...liveRef.current];
+    const deckMsg = allMsgs.find(m => m.id === messageId);
     const nodeKey = deckMsg?.nodeKey;
     const stepDef = nodeKey ? AUTO_STEPS.find(s => s.stopKey === nodeKey) : null;
     if (!stepDef) return;
@@ -601,12 +612,13 @@ export default function V2Trail() {
       return;
     }
 
-    // Visually mark the crowned card
-    setLive(prev => prev.map(m =>
+    // Visually mark the crowned card — works in both live AND persisted
+    const markCrown = (m: ChatMessage): ChatMessage =>
       m.id === messageId && m.deck
         ? { ...m, deck: { cards: m.deck.cards.map(c => ({ ...c, selected: c.id === cardId })) } }
-        : m,
-    ));
+        : m;
+    setLive(prev => prev.map(markCrown));
+    setPersisted(prev => prev ? prev.map(markCrown) : prev);
 
     // ── Sprint 4 C2: detect re-crown → stale propagation ──
     // Server has already written stale rows via updateSelection. Refetch
@@ -632,6 +644,32 @@ export default function V2Trail() {
         persistMsgs([warn, confirmWarn]);
       }
     }
+  };
+
+  // Sprint 4 C4: toggle favourite on a card (mechanism/hvco only).
+  const handleDeckHeart = async (messageId: string, cardId: number) => {
+    const allMsgs = [...(persisted ?? []), ...liveRef.current];
+    const deckMsg = allMsgs.find(m => m.id === messageId);
+    const nodeKey = deckMsg?.nodeKey;
+    const stepDef = nodeKey ? AUTO_STEPS.find(s => s.stopKey === nodeKey) : null;
+    if (!stepDef?.dealable?.hasFavourite) return;
+    try {
+      // Find the current favourited state from the card
+      const card = deckMsg?.deck?.cards?.find(c => c.id === cardId);
+      const newFav = !(card?.favourited);
+      if (stepDef.step === "mechanism") {
+        await toggleMechanismFav.mutateAsync({ mechanismId: cardId, isFavorite: newFav });
+      } else if (stepDef.step === "hvco") {
+        await toggleHvcoFav.mutateAsync({ titleId: cardId, isFavorite: newFav });
+      }
+    } catch { /* non-fatal */ }
+    // Visually toggle the heart in the card
+    const toggleHeart = (m: ChatMessage): ChatMessage =>
+      m.id === messageId && m.deck
+        ? { ...m, deck: { cards: m.deck.cards.map(c => c.id === cardId ? { ...c, favourited: !c.favourited } : c) } }
+        : m;
+    setLive(prev => prev.map(toggleHeart));
+    setPersisted(prev => prev ? prev.map(toggleHeart) : prev);
   };
 
   // The tweak mapping table (Sprint 3 pre-flight item 3).
@@ -866,7 +904,7 @@ export default function V2Trail() {
   const waitForManualProceed = () => new Promise<void>(r => { manualResolve.current = r; });
   // Sprint 4 C3: distinguishes Lock-it-in from Deal-a-fresh-set in the same
   // chip row. Both resolve the manual proceed promise; the loop checks which.
-  const dealMoreChipChoice = useRef<"lock" | "deal" | null>(null);
+  const dealMoreChipChoice = useRef<"lock" | "deal" | "skip" | null>(null);
 
   // ── Sprint 4 C1: fetch the dealable set and build card-deck cards ──
   const fetchDeckCards = async (
@@ -883,9 +921,10 @@ export default function V2Trail() {
         const row = await utils.heroMechanisms.get.fetch({ id: rowId }) as Record<string, unknown> | null;
         const setId = String(row?.mechanismSetId ?? "");
         if (!setId) return [{ id: rowId, title: "Your Method", preview: "", selected: true }];
-        const items = await utils.heroMechanisms.getBySetId.fetch({ mechanismSetId: setId }) as { id: number; mechanismName: string; mechanismDescription: string; tabType: string }[];
-        return items.filter(m => m.tabType === "hero_mechanisms").map((m, i) => ({
+        const items = await utils.heroMechanisms.getBySetId.fetch({ mechanismSetId: setId }) as { id: number; mechanismName: string; mechanismDescription: string; tabType: string; isFavorite?: boolean }[];
+        return items.filter(m => m.tabType === "hero_mechanisms").map((m) => ({
           id: m.id, title: m.mechanismName, preview: (m.mechanismDescription ?? "").slice(0, 120), selected: m.id === rowId,
+          favouritable: true, favourited: !!m.isFavorite,
         }));
       }
       case "hvco": {
@@ -895,8 +934,10 @@ export default function V2Trail() {
         const setId = String(row?.hvcoSetId ?? "");
         if (!setId) return [{ id: rowId, title: "Your Lead Magnet", preview: "", selected: true }];
         const items = await utils.hvco.getBySetId.fetch({ hvcoSetId: setId }) as { id: number; title: string; tabType: string }[];
-        const long = items.filter(i => i.tabType === "long_titles");
-        return long.map((h, i) => ({ id: h.id, title: h.title, preview: "", selected: h.id === rowId }));
+        const long = items.filter(i => i.tabType === "long_titles") as { id: number; title: string; tabType: string; isFavorite?: boolean }[];
+        return long.map((h) => ({ id: h.id, title: h.title, preview: "", selected: h.id === rowId,
+          favouritable: true, favourited: !!h.isFavorite,
+        }));
       }
       case "headlines": {
         // generatedId is a row ID. Look up the row's headlineSetId.
@@ -1026,13 +1067,27 @@ export default function V2Trail() {
         continue;
       }
 
-      // ── Dealable node: "Deal me options 🎴" chip → generate → deal cards ──
+      // ── Dealable node: "Deal me options 🎴" + "Skip" ──
       collapsePreviousChips();
-      const dealChip = addLive({ type: "chip-row", nodeKey: stepDef.step, chips: ["Deal me options 🎴"] });
+      const dealChip = addLive({ type: "chip-row", nodeKey: stepDef.step, chips: ["Deal me options 🎴", "Skip — I already have this"] });
       activeChips.current = { msgId: dealChip.id, step: stepDef.step };
-      // Wait for the user to tap "Deal me options 🎴"
+      dealMoreChipChoice.current = null;
       await waitForManualProceed();
       if (cancelled.current) return;
+      // Sprint 4 C4: skip → mark imported, proceed to next
+      if (dealMoreChipChoice.current === "skip") {
+        try {
+          const kitId = kit.id as number;
+          // Mark as imported in nodeStatuses
+          await clearStaleMutation.mutateAsync({ campaignKitId: kitId, nodeType: stepDef.stopKey });
+          // Upsert imported status (reuse the clearStale pattern — insert imported)
+          // Actually we need a dedicated write. Use the existing nodeSkips mutation.
+          await skipNodeMutation.mutateAsync({ serviceId, nodeType: stepDef.stopKey });
+          addLive({ type: "system-divider", text: `${stepDef.revealLabel} — skipped (imported)` });
+        } catch { /* non-fatal */ }
+        await trailState.refetch();
+        continue;
+      }
 
       setGeneratingKey(stepDef.stopKey);
       const narration = startNarration(stepDef.step);
@@ -1160,7 +1215,11 @@ export default function V2Trail() {
       const currentPath = ((pathCheck.data?.kit ?? {}) as Record<string, unknown>).path;
       if (currentPath !== "manual") return; // let the unified loop re-enter
 
-      await persistMsgs([divider]);
+      // Sprint 4 C4: persist the deck so a returning user can re-pick.
+      // deckMsg ref holds the initial empty object; liveRef has the current
+      // populated version (including deal-more replacements + crowns).
+      const finalDeck = liveRef.current.find(m => m.id === deckMsg.id) ?? deckMsg;
+      await persistMsgs([divider, finalDeck]);
       if (stepDef.milestone) {
         const badge = addLive({ type: "milestone-badge", milestone: { name: stepDef.milestone.name, line: stepDef.milestone.line } });
         const toPersist: ChatMessage[] = [badge];
@@ -1312,6 +1371,7 @@ export default function V2Trail() {
             nodeRefMap={nodeRefMap}
             onChipTap={handleChipTap}
             onDeckSelect={handleDeckSelect}
+            onDeckHeart={handleDeckHeart}
             onSendText={tweakMode ? handleTweakInstruction : undefined}
             inputPlaceholder="What should change?"
             inputDisabled={!tweakMode}

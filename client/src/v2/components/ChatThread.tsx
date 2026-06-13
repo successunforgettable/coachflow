@@ -48,7 +48,7 @@ export interface ChatMessage {
   /** Asset reveal card data (structural shell) */
   reveal?: { eyebrow: string; title: string; preview: string; score?: number };
   /** Card deck data (structural shell) */
-  deck?: { cards: { id: number; title: string; preview: string; selected?: boolean }[] };
+  deck?: { cards: { id: number; title: string; preview: string; selected?: boolean; favouritable?: boolean; favourited?: boolean }[] };
   /** Milestone badge data */
   milestone?: { name: string; line: string };
 }
@@ -57,6 +57,7 @@ export interface ChatThreadProps {
   messages: ChatMessage[];
   onChipTap?: (messageId: string, chip: string) => void;
   onDeckSelect?: (messageId: string, cardId: number) => void;
+  onDeckHeart?: (messageId: string, cardId: number) => void;
   /** Ref map for TrailBar scroll-to-node */
   nodeRefMap?: React.MutableRefObject<Map<string, HTMLDivElement>>;
   /**
@@ -249,7 +250,7 @@ function AssetRevealCard({ msg }: { msg: ChatMessage }) {
   );
 }
 
-function CardDeck({ msg, onSelect }: { msg: ChatMessage; onSelect?: (cardId: number) => void }) {
+function CardDeck({ msg, onSelect, onHeart }: { msg: ChatMessage; onSelect?: (cardId: number) => void; onHeart?: (cardId: number) => void }) {
   if (!msg.deck?.cards?.length) return null;
   return (
     <div style={{ paddingLeft: 44 }}>
@@ -310,25 +311,43 @@ function CardDeck({ msg, onSelect }: { msg: ChatMessage; onSelect?: (cardId: num
             }}>
               {card.preview}
             </div>
-            {!card.selected && (
-              <button
-                onClick={() => onSelect?.(card.id)}
-                style={{
-                  width: "100%",
-                  background: BRAND_PRIMARY,
-                  color: "white",
-                  border: "none",
-                  borderRadius: 9999,
-                  padding: "8px 0",
-                  fontFamily: FONT_BODY,
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                }}
-              >
-                Use this one
-              </button>
-            )}
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              {!card.selected && (
+                <button
+                  onClick={() => onSelect?.(card.id)}
+                  style={{
+                    flex: 1,
+                    background: BRAND_PRIMARY,
+                    color: "white",
+                    border: "none",
+                    borderRadius: 9999,
+                    padding: "8px 0",
+                    fontFamily: FONT_BODY,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  Use this one
+                </button>
+              )}
+              {card.favouritable && (
+                <button
+                  onClick={() => onHeart?.(card.id)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    fontSize: 18,
+                    cursor: "pointer",
+                    padding: "4px 6px",
+                    opacity: card.favourited ? 1 : 0.4,
+                  }}
+                  title={card.favourited ? "Remove favourite" : "Save as favourite"}
+                >
+                  {card.favourited ? "❤️" : "🤍"}
+                </button>
+              )}
+            </div>
           </div>
         ))}
       </div>
@@ -397,7 +416,7 @@ function SystemDivider({ msg }: { msg: ChatMessage }) {
 }
 
 // ─── Main ChatThread ──────────────────────────────────────────────────────────
-export default function ChatThread({ messages, onChipTap, onDeckSelect, nodeRefMap, onSendText, inputPlaceholder, inputDisabled }: ChatThreadProps) {
+export default function ChatThread({ messages, onChipTap, onDeckSelect, onDeckHeart, nodeRefMap, onSendText, inputPlaceholder, inputDisabled }: ChatThreadProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
@@ -507,7 +526,7 @@ export default function ChatThread({ messages, onChipTap, onDeckSelect, nodeRefM
                 {msg.type === "user-bubble" && <UserBubble msg={msg} />}
                 {msg.type === "chip-row" && <ChipRow msg={msg} onTap={(chip) => onChipTap?.(msg.id, chip)} />}
                 {msg.type === "asset-reveal-card" && <AssetRevealCard msg={msg} />}
-                {msg.type === "card-deck" && <CardDeck msg={msg} onSelect={(cardId) => onDeckSelect?.(msg.id, cardId)} />}
+                {msg.type === "card-deck" && <CardDeck msg={msg} onSelect={(cardId) => onDeckSelect?.(msg.id, cardId)} onHeart={(cardId) => onDeckHeart?.(msg.id, cardId)} />}
                 {msg.type === "milestone-badge" && <MilestoneBadge msg={msg} />}
                 {msg.type === "system-divider" && <SystemDivider msg={msg} />}
               </div>
