@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
-import { campaignKits, idealCustomerProfiles, services, offers } from "../../drizzle/schema";
+import { campaignKits, idealCustomerProfiles, services, offers, nodeStatuses } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
@@ -230,6 +230,76 @@ export const campaignKitsRouter = router({
         const nodeField = Object.keys(fields).find(k => k.startsWith("selected") && (fields as any)[k] != null);
         if (nodeField) await trackEvent(ctx.user.id, "node_completed", { node: nodeField, kitId: input.kitId });
       } catch (_) { /* ignore */ }
+
+      // ── Sprint 4 C2: server-side stale propagation ──────────────────────
+      // On a RE-CROWN (a selected*Id field changes from one non-null value to
+      // another), every DOWNSTREAM step that currently has a non-null
+      // selected*Id gets marked stale in nodeStatuses. This fires for BOTH
+      // the Trail and the wizard — one truth, both surfaces.
+      const FIELD_TO_NODE: Record<string, string> = {
+        selectedOfferId: "offer",
+        selectedMechanismId: "uniqueMethod",
+        selectedHvcoId: "freeOptIn",
+        selectedHeadlineId: "headlines",
+        selectedAdCopyId: "adCopy",
+        selectedLandingPageId: "landingPage",
+        selectedEmailSequenceId: "emailSequence",
+        selectedWhatsAppSequenceId: "whatsappSequence",
+        selectedAdCreativeBatchId: "adCreatives",
+      };
+      const NODE_DOWNSTREAM: Record<string, string[]> = {
+        offer: ["uniqueMethod", "freeOptIn", "headlines", "adCopy", "landingPage", "emailSequence", "whatsappSequence", "adCreatives"],
+        uniqueMethod: ["freeOptIn", "headlines", "adCopy", "landingPage", "emailSequence", "whatsappSequence", "adCreatives"],
+        freeOptIn: ["headlines", "adCopy", "landingPage", "emailSequence", "whatsappSequence", "adCreatives"],
+        headlines: ["adCopy", "landingPage", "emailSequence", "whatsappSequence", "adCreatives"],
+        adCopy: ["landingPage", "emailSequence", "whatsappSequence", "adCreatives"],
+        landingPage: ["emailSequence", "whatsappSequence", "adCreatives"],
+        emailSequence: ["whatsappSequence", "adCreatives"],
+        whatsappSequence: ["adCreatives"],
+      };
+      const NODE_TO_FIELD: Record<string, string> = Object.fromEntries(
+        Object.entries(FIELD_TO_NODE).map(([f, n]) => [n, f]),
+      );
+      try {
+        // Identify which node was changed
+        const changedField = Object.keys(fields).find(k =>
+          k.startsWith("selected") && (fields as any)[k] != null && k !== "selectedLandingPageAngle" && k !== "campaignType",
+        );
+        if (changedField) {
+          const changedNode = FIELD_TO_NODE[changedField];
+          const oldValue = (kit as Record<string, unknown>)[changedField];
+          const newValue = (fields as any)[changedField];
+          // Only on a RE-CROWN (old was non-null, new differs)
+          if (changedNode && oldValue != null && oldValue !== newValue) {
+            const downstream = NODE_DOWNSTREAM[changedNode] ?? [];
+            // Read the UPDATED kit (already fetched above as `updated`)
+            const [freshKit] = await db.select().from(campaignKits).where(eq(campaignKits.id, input.kitId)).limit(1);
+            const staleNodes: string[] = [];
+            for (const dsNode of downstream) {
+              const dsField = NODE_TO_FIELD[dsNode];
+              if (dsField && (freshKit as Record<string, unknown>)[dsField] != null) {
+                staleNodes.push(dsNode);
+              }
+            }
+            // Upsert stale rows — ON DUPLICATE KEY UPDATE status='stale'
+            for (const nodeType of staleNodes) {
+              await db.insert(nodeStatuses).values({
+                campaignKitId: input.kitId,
+                nodeType,
+                status: "stale",
+              }).onDuplicateKeyUpdate({ set: { status: "stale", updatedAt: new Date() } });
+            }
+            // Clear stale on the CHANGED node itself (it was just crowned fresh)
+            if (changedNode) {
+              await db.delete(nodeStatuses).where(
+                and(eq(nodeStatuses.campaignKitId, input.kitId), eq(nodeStatuses.nodeType, changedNode)),
+              );
+            }
+          }
+        }
+      } catch (staleErr) {
+        console.warn("[updateSelection] stale propagation failed:", staleErr instanceof Error ? staleErr.message : staleErr);
+      }
 
       // Fetch updated row and check completeness
       const [updated] = await db

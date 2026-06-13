@@ -488,14 +488,79 @@ export default function V2Trail() {
       const ack = addLive({ type: "zappy-bubble", mood: "idle", text: "Your call — keeping it as written." });
       persistMsgs([echo, ack]);
       offerChips(target, AUTO_STEPS.find(s => s.step === target)!.tweakable);
+    } else if (chip === "Update the rest") {
+      const echo = addLive({ type: "user-bubble", text: "Update the rest" });
+      persistMsgs([echo]);
+      runUpdateTheRest();
+    } else if (chip === "Keep them as they are") {
+      const echo = addLive({ type: "user-bubble", text: "Keep them as they are" });
+      const ack = addLive({ type: "zappy-bubble", mood: "idle", text: "Your call — keeping them as they are. The amber flags stay so you can revisit." });
+      persistMsgs([echo, ack]);
     }
   };
 
-  // Sprint 4 C1: crown a card in the manual-mode deck. Updates the kit's
-  // selected*Id via the proven wizard mutation, then visually marks the
-  // card as selected in the live deck message.
+  // Sprint 4 C1+C2: crown a card in the manual-mode deck + stale detection.
+  const clearStaleMutation = trpc.trail.clearStale.useMutation();
+
+  // ── Sprint 4 C2: "Update the rest" — regenerate stale nodes with warning ──
+  const runUpdateTheRest = async () => {
+    const state = trailState.data!;
+    const serviceId = state.serviceId!;
+    const kit0 = state.kit as Record<string, unknown>;
+    const icpId = kit0.icpId as number;
+    const kitId = kit0.id as number;
+    const kitCampaignType = (kit0.campaignType ?? undefined) as
+      | "webinar" | "challenge" | "course_launch" | "product_launch"
+      | "discovery_call" | "lead_magnet" | "in_person_event" | undefined;
+    const staleSteps = AUTO_STEPS.filter(s => {
+      const st = (trailState.data?.statuses ?? []).find(x => x.nodeType === s.stopKey);
+      return st?.status === "stale";
+    });
+    for (const stepDef of staleSteps) {
+      if (cancelled.current) return;
+      // NULL the old selection so the skip-already-populated guard lets the
+      // step re-run (it checks selected*Id != null before generation).
+      try {
+        await updateSelection.mutateAsync({ kitId, [stepDef.field]: null } as any);
+      } catch { /* non-fatal — the step will skip, which is safe */ }
+      setGeneratingKey(stepDef.stopKey);
+      const narration = startNarration(stepDef.step);
+      let ok = false;
+      let lastError = "";
+      for (let attempt = 1; attempt <= 2 && !ok; attempt++) {
+        try {
+          const { jobId } = await orchestrateStep.mutateAsync({
+            serviceId, icpId, step: stepDef.step, campaignType: kitCampaignType,
+          });
+          const job = await pollJob(jobId);
+          if (job.status === "failed") throw new Error(job.error || "Generation failed");
+          ok = true;
+        } catch (err) {
+          lastError = err instanceof Error ? err.message : String(err);
+          if (attempt === 1 && !cancelled.current)
+            addLive({ type: "zappy-bubble", mood: "idle", text: "Hm — that one fizzled. Let me try again." });
+        }
+      }
+      narration.stop();
+      if (!ok) {
+        addLive({ type: "zappy-bubble", mood: "idle", text: `Still stuck on ${stepDef.revealLabel} (${lastError}). Reload to pick it up.` });
+        setGeneratingKey(null);
+        return;
+      }
+      // Clear stale + refresh
+      try { await clearStaleMutation.mutateAsync({ campaignKitId: kitId, nodeType: stepDef.stopKey }); } catch { /* non-fatal */ }
+      const refreshed = await trailState.refetch();
+      const kit = (refreshed.data?.kit ?? {}) as Record<string, unknown>;
+      const reveal = await buildReveal(stepDef, kit);
+      const divider = addLive({ type: "system-divider", text: `${stepDef.revealLabel} refreshed` });
+      const card = addLive({ type: "asset-reveal-card", nodeKey: stepDef.stopKey, reveal });
+      setGeneratingKey(null);
+      await persistMsgs([divider, card]);
+    }
+    addLive({ type: "zappy-bubble", mood: "celebrating", text: "All refreshed — everything downstream matches your new pick." });
+  };
+
   const handleDeckSelect = async (messageId: string, cardId: number) => {
-    // Find which step this deck belongs to via nodeKey
     const deckMsg = live.find(m => m.id === messageId);
     const nodeKey = deckMsg?.nodeKey;
     const stepDef = nodeKey ? AUTO_STEPS.find(s => s.stopKey === nodeKey) : null;
@@ -505,6 +570,8 @@ export default function V2Trail() {
     const kitId = kit.id as number | undefined;
     if (!kitId) return;
 
+    const oldValue = kit[stepDef.field];
+
     // Write the crown
     try {
       await updateSelection.mutateAsync({ kitId, [stepDef.field]: cardId } as any);
@@ -513,12 +580,37 @@ export default function V2Trail() {
       return;
     }
 
-    // Visually mark the crowned card (update the deck in live messages)
+    // Visually mark the crowned card
     setLive(prev => prev.map(m =>
       m.id === messageId && m.deck
         ? { ...m, deck: { cards: m.deck.cards.map(c => ({ ...c, selected: c.id === cardId })) } }
         : m,
     ));
+
+    // ── Sprint 4 C2: detect re-crown → stale propagation ──
+    // Server has already written stale rows via updateSelection. Refetch
+    // trail state to get the fresh statuses, then post the warning.
+    if (oldValue != null && oldValue !== cardId) {
+      const refreshed = await trailState.refetch();
+      const staleCount = (refreshed.data?.statuses ?? []).filter(s => s.status === "stale").length;
+      if (staleCount > 0) {
+        collapsePreviousChips();
+        const warn = addLive({
+          type: "zappy-bubble",
+          mood: "idle",
+          text: `New pick! ${staleCount} piece${staleCount > 1 ? "s" : ""} below ${staleCount > 1 ? "were" : "was"} built on the old one. Want me to update ${staleCount > 1 ? "them" : "it"}?`,
+        });
+        // Warning: name what will be rebuilt + that edits will be replaced
+        const confirmWarn = addLive({
+          type: "zappy-bubble",
+          mood: "idle",
+          text: `Rebuild ${staleCount} piece${staleCount > 1 ? "s" : ""}? Anything you hand-edited in them will be redone.`,
+        });
+        const row = addLive({ type: "chip-row", chips: ["Update the rest", "Keep them as they are"] });
+        activeChips.current = { msgId: row.id, step: stepDef.step };
+        persistMsgs([warn, confirmWarn]);
+      }
+    }
   };
 
   // The tweak mapping table (Sprint 3 pre-flight item 3).
