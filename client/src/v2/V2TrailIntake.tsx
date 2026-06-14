@@ -35,6 +35,7 @@ type Phase =
   | "campaignType" // Sprint 3 C2: "What are you inviting people to?" chips live
   | "fork"         // Beat 5: path chips live
   | "autorun"      // Sprint 3 C2: in-chat auto path — ICP gen + kit creation
+  | "hasAssets"    // Sprint 5 C1: has-assets flow — chip grid + forms + import
   | "routing";     // fork chip tapped, navigating out
 
 interface Extraction {
@@ -117,6 +118,10 @@ export default function V2TrailIntake() {
   const extractMutation = trpc.services.extractFromText.useMutation();
   const createMutation = trpc.services.create.useMutation();
   const trackEventMutation = trpc.campaignKits.trackWizardEvent.useMutation();
+  // Sprint 5 C1: has-assets import mutations
+  const importIcpMutation = trpc.autoMode.importIcp.useMutation();
+  const importAssetsMutation = trpc.autoMode.importAssets.useMutation();
+  const markImportedMutation = trpc.trail.markImported.useMutation();
   // Sprint 3 C2: in-chat auto path
   const expandProfileMutation = trpc.services.expandProfile.useMutation();
   const generateIcpMutation = trpc.icps.generateAsync.useMutation();
@@ -246,6 +251,11 @@ export default function V2TrailIntake() {
 
   // ── Free-text input ──
   const handleSendText = (text: string) => {
+    if (phase === "hasAssets" && importTextResolve.current) {
+      importTextResolve.current(text);
+      importTextResolve.current = null;
+      return;
+    }
     if (phase === "describe") {
       addMsg({ type: "user-bubble", text });
       baseText.current = baseText.current ? `${baseText.current}\n${text}` : text;
@@ -292,18 +302,7 @@ export default function V2TrailIntake() {
       return;
     }
 
-    setPhase(path === "auto" ? "autorun" : "routing");
-
-    // has_assets still navigates to the confirm screen — carry the thread
-    // in sessionStorage as before (the kit doesn't exist yet there).
-    // Manual-path intakes are accepted-lost by design (wizard has no thread).
-    if (path === "has_assets" && serviceId != null) {
-      try {
-        // threadAtTap (messagesRef) already includes the fork-chip echo.
-        const transcript = threadAtTap.filter(m => m.type !== "chip-row");
-        sessionStorage.setItem(`zapTrailIntake:${serviceId}`, JSON.stringify(transcript));
-      } catch { /* quota/private-mode — transcript is a nice-to-have */ }
-    }
+    setPhase(path === "auto" ? "autorun" : path === "has_assets" ? "hasAssets" : "routing");
     // Analytics FIRST — the choice is recorded before any navigation.
     try {
       await trackEventMutation.mutateAsync({
@@ -313,22 +312,10 @@ export default function V2TrailIntake() {
     } catch { /* never block routing on analytics */ }
 
     if (path === "manual") {
-      // Sprint 4 C1: manual fork now runs in-chat, same as auto —
-      // ICP narrated beat, getOrCreate({icpId, path:'manual'}), then
-      // the manual loop in V2Trail. Kit path='manual' is finally written.
       runManualInChat();
     } else if (path === "has_assets") {
-      // Existing confirm screen pre-filled — import toggles live there
-      // until Sprint 5. Carries the campaign-type choice through.
-      navigate("/v2-dashboard/auto-mode/confirm", {
-        state: {
-          extracted: buildExtractedState(),
-          rawText: assembledRawText(),
-          existingServiceId: serviceId,
-          trailPath: path,
-          trailCampaignType: campaignType.current ?? undefined,
-        },
-      });
+      // Sprint 5 C1: has-assets now runs in-chat — no more confirm screen.
+      runHasAssetsInChat();
     } else {
       // ── Sprint 3 C2: the auto path runs IN the chat ──
       runAutoInChat();
@@ -403,6 +390,233 @@ export default function V2TrailIntake() {
     }
   };
 
+  // ── Sprint 5 C1: importable asset definitions ──
+  const IMPORTABLE_ASSETS = [
+    { key: "icp", label: "My Ideal Customer", stopKey: "icp" },
+    { key: "offer", label: "My Offer", stopKey: "offer" },
+    { key: "mechanism", label: "My Method / Mechanism", stopKey: "uniqueMethod" },
+    { key: "hvco", label: "My Lead Magnet", stopKey: "freeOptIn" },
+  ] as const;
+
+  // Sprint 5 C1: state for the has-assets import flow
+  const selectedImports = useRef<Set<string>>(new Set());
+  const importedData = useRef<Record<string, Record<string, string>>>({});
+
+  /**
+   * Sprint 5 C1 — has-assets in-chat flow. The user picks which of the 4
+   * importable assets they have, fills a mini form for each, confirms via
+   * echo card, then the mutations fire. Gap nodes run in the Trail driver.
+   */
+  const runHasAssetsInChat = async () => {
+    const serviceId = createdServiceId.current;
+    if (serviceId == null) return;
+    setPhase("hasAssets");
+    try {
+      // Enrichment
+      try { await expandProfileMutation.mutateAsync({ serviceId }); } catch { /* non-fatal */ }
+
+      // ── Chip-grid: "What have you got?" ──
+      addMsg({ type: "zappy-bubble", mood: "idle", text: "Nice — what have you got? Tap everything you already have, then tap Done." });
+
+      // Show chips for the 4 importable assets + "Done choosing"
+      // The user taps multiple, then Done. We handle this with a promise
+      // that resolves when "Done choosing" is tapped.
+      const gridChips = [...IMPORTABLE_ASSETS.map(a => a.label), "Done choosing"];
+      selectedImports.current = new Set();
+
+      // We need a custom multi-select pattern: tapping an asset toggles it
+      // (visually echoed), tapping "Done choosing" resolves. Implementation:
+      // use chip-row + handleChipTap; track toggles in selectedImports ref.
+      addMsg({ type: "chip-row", chips: gridChips });
+      // Wait for "Done choosing" — the chip handler sets the flag
+      await new Promise<void>(r => { gridDoneResolve.current = r; });
+
+      const chosen = Array.from(selectedImports.current);
+      if (chosen.length === 0) {
+        addMsg({ type: "zappy-bubble", mood: "idle", text: "No worries — I'll build everything from scratch." });
+      } else {
+        addMsg({ type: "zappy-bubble", mood: "idle", text: `Got it — you have ${chosen.length} piece${chosen.length > 1 ? "s" : ""}. Let me get the details for each.` });
+      }
+
+      // ── Per-asset mini form + echo-confirm ──
+      const confirmedAssets: Record<string, Record<string, string>> = {};
+      for (const key of chosen) {
+        const asset = IMPORTABLE_ASSETS.find(a => a.label === key);
+        if (!asset) continue;
+
+        let confirmed = false;
+        let fields: Record<string, string> = importedData.current[asset.key] ?? {};
+        while (!confirmed) {
+          // Show the mini form as a Zappy prompt
+          let prompt = "";
+          if (asset.key === "icp") {
+            prompt = "Tell me about your ideal customer. What's their name/title, what pains them, and what are their goals?";
+          } else if (asset.key === "offer") {
+            prompt = "Paste your offer — what's it called, what's the promise, and what's the CTA?";
+          } else if (asset.key === "mechanism") {
+            prompt = "What's your method called, and how would you describe it in a sentence?";
+          } else if (asset.key === "hvco") {
+            prompt = "What's your lead magnet called, and what topic does it cover?";
+          }
+          addMsg({ type: "zappy-bubble", mood: "idle", text: prompt });
+
+          // Wait for the user to type (free-text input active during hasAssets)
+          setPhase("hasAssets");
+          const userText = await new Promise<string>(r => { importTextResolve.current = r; });
+          addMsg({ type: "user-bubble", text: userText });
+
+          // Parse the free text into structured fields (simple split, not LLM)
+          if (asset.key === "icp") {
+            fields = { name: userText.split(",")[0]?.trim() || userText.slice(0, 100), pains: userText };
+          } else if (asset.key === "offer") {
+            fields = { name: userText.split(",")[0]?.trim() || userText.slice(0, 100), valueProposition: userText, cta: "Book a Free Call" };
+          } else if (asset.key === "mechanism") {
+            const parts = userText.split(/[—\-,]/);
+            fields = { name: parts[0]?.trim() || userText.slice(0, 100), description: userText };
+          } else if (asset.key === "hvco") {
+            const parts = userText.split(/[—\-,]/);
+            fields = { title: parts[0]?.trim() || userText.slice(0, 100), topic: userText };
+          }
+
+          // Echo-confirm
+          const echoTitle = asset.key === "icp" ? fields.name
+            : asset.key === "offer" ? fields.name
+            : asset.key === "mechanism" ? fields.name
+            : fields.title;
+          const echoPreview = asset.key === "icp" ? (fields.pains || "")
+            : asset.key === "offer" ? (fields.valueProposition || "")
+            : asset.key === "mechanism" ? (fields.description || "")
+            : (fields.topic || "");
+          addMsg({
+            type: "asset-reveal-card",
+            nodeKey: asset.stopKey,
+            reveal: {
+              eyebrow: `YOUR ${asset.label.replace("My ", "").toUpperCase()}`,
+              title: echoTitle || asset.label,
+              preview: echoPreview.slice(0, 220),
+            },
+          });
+          addMsg({ type: "zappy-bubble", mood: "idle", text: "Look right?" });
+          addMsg({ type: "chip-row", chips: ["Correct", "Fix something"] });
+
+          const choice = await new Promise<string>(r => { importConfirmResolve.current = r; });
+          if (choice === "Correct") {
+            confirmed = true;
+            confirmedAssets[asset.key] = fields;
+          }
+          // "Fix something" loops back
+        }
+      }
+
+      // ── ICP: import or generate ──
+      addMsg({ type: "zappy-bubble", mood: "thinking", text: "Studying the people you help…" });
+      let icpId: number;
+      if (confirmedAssets.icp) {
+        const result = await importIcpMutation.mutateAsync({
+          serviceId,
+          name: confirmedAssets.icp.name,
+          pains: confirmedAssets.icp.pains || undefined,
+          goals: confirmedAssets.icp.goals || undefined,
+        });
+        icpId = result.icpId;
+        addMsg({ type: "system-divider", text: "ICP imported" });
+      } else {
+        const icpName = extraction.current?.icpDescriptor?.trim()
+          || `${pendingFields.current?.serviceName?.trim() || "My Service"} Profile`;
+        const { jobId } = await generateIcpMutation.mutateAsync({ serviceId, name: icpName });
+        const job = await pollJob(jobId);
+        if (job.status === "failed" || typeof job.result?.icpId !== "number") {
+          throw new Error(job.error || "ICP generation failed.");
+        }
+        icpId = job.result.icpId as number;
+        addMsg({ type: "system-divider", text: "ICP generated" });
+      }
+
+      // ICP reveal
+      const icp = await utils.icps.get.fetch({ id: icpId });
+      addMsg({
+        type: "asset-reveal-card",
+        nodeKey: "icp",
+        reveal: {
+          eyebrow: "YOUR IDEAL CUSTOMER",
+          title: (icp as { name?: string } | null)?.name || "Your Ideal Customer",
+          preview: ((icp as { introduction?: string | null } | null)?.introduction || "").split("\n")[0].slice(0, 220) || "Profile ready.",
+        },
+      });
+
+      // ── Kit creation ──
+      const kit = await getOrCreateKitMutation.mutateAsync({
+        icpId,
+        path: "has_assets",
+        campaignType: campaignType.current ?? undefined,
+      });
+      const kitId = (kit as { id: number }).id;
+
+      // ── Import remaining confirmed assets (offer/mechanism/hvco) ──
+      const hasOffer = !!confirmedAssets.offer;
+      const hasMechanism = !!confirmedAssets.mechanism;
+      const hasHvco = !!confirmedAssets.hvco;
+      if (hasOffer || hasMechanism || hasHvco) {
+        await importAssetsMutation.mutateAsync({
+          serviceId,
+          icpId,
+          offer: hasOffer ? {
+            name: confirmedAssets.offer.name,
+            valueProposition: confirmedAssets.offer.valueProposition,
+            cta: confirmedAssets.offer.cta || "Book a Free Call",
+          } : undefined,
+          mechanism: hasMechanism ? {
+            name: confirmedAssets.mechanism.name,
+            description: confirmedAssets.mechanism.description,
+          } : undefined,
+          hvco: hasHvco ? {
+            title: confirmedAssets.hvco.title,
+            topic: confirmedAssets.hvco.topic,
+          } : undefined,
+        });
+      }
+
+      // ── Mark imported nodes in nodeStatuses ──
+      const importedNodes: string[] = [];
+      if (confirmedAssets.icp) importedNodes.push("icp");
+      if (confirmedAssets.offer) importedNodes.push("offer");
+      if (confirmedAssets.mechanism) importedNodes.push("uniqueMethod");
+      if (confirmedAssets.hvco) importedNodes.push("freeOptIn");
+      for (const nodeType of importedNodes) {
+        try { await markImportedMutation.mutateAsync({ campaignKitId: kitId, nodeType }); } catch { /* non-fatal */ }
+      }
+
+      // ── Transcript flush + navigate ──
+      const importCount = importedNodes.length;
+      addMsg({ type: "zappy-bubble", mood: "celebrating",
+        text: importCount > 0
+          ? `You're already ${importCount + 2} of 11 done. I'll build the missing pieces so they match what you have.`
+          : "Foundation set. Building the rest now — watch the trail fill in.",
+      });
+
+      try {
+        type FlushMessages = Parameters<typeof appendMessagesMutation.mutateAsync>[0]["messages"];
+        const flush = messagesRef.current.filter(m => m.type !== "chip-row") as unknown as FlushMessages;
+        if (flush.length > 0) {
+          await appendMessagesMutation.mutateAsync({ campaignKitId: kitId, messages: flush });
+        }
+      } catch { /* nice-to-have */ }
+
+      try { sessionStorage.setItem(`zapTrailFreshHandoff:${kitId}`, "1"); } catch { /* fine */ }
+      navigate(`/v2-dashboard/trail/${kitId}`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Could not set up your campaign.";
+      addMsg({ type: "zappy-bubble", mood: "idle", text: `Hm — that one fizzled (${msg}). One more go?` });
+      addMsg({ type: "chip-row", chips: ["I already have some pieces"] });
+      setPhase("fork");
+    }
+  };
+
+  // Sprint 5 C1: promise resolvers for the has-assets flow
+  const gridDoneResolve = useRef<(() => void) | null>(null);
+  const importTextResolve = useRef<((text: string) => void) | null>(null);
+  const importConfirmResolve = useRef<((choice: string) => void) | null>(null);
+
   /**
    * Sprint 4 C1 — in-chat manual path. Same shape as runAutoInChat but
    * creates the kit with path='manual'. The manual loop in V2Trail takes
@@ -463,6 +677,26 @@ export default function V2TrailIntake() {
     messagesRef.current = messagesRef.current.filter(m => m.id !== messageId);
     addMsg({ type: "user-bubble", text: chip });
 
+    // Sprint 5 C1: has-assets chip-grid multi-select + confirm
+    const importableLabels: string[] = IMPORTABLE_ASSETS.map(a => a.label);
+    if (importableLabels.includes(chip) && phase === "hasAssets") {
+      // Toggle selection — echo without removing the chip row
+      if (selectedImports.current.has(chip)) {
+        selectedImports.current.delete(chip);
+      } else {
+        selectedImports.current.add(chip);
+      }
+      // Don't remove the chip-row; just echo the toggle
+      return;
+    }
+    if (chip === "Done choosing" && phase === "hasAssets") {
+      if (gridDoneResolve.current) { gridDoneResolve.current(); gridDoneResolve.current = null; }
+      return;
+    }
+    if ((chip === "Correct" || chip === "Fix something") && phase === "hasAssets") {
+      if (importConfirmResolve.current) { importConfirmResolve.current(chip); importConfirmResolve.current = null; }
+      return;
+    }
     if (CAMPAIGN_TYPE_CHIPS[chip] && phase === "campaignType") {
       // ── Sprint 3 C2: campaign-type chosen → Beat 5 fork ──
       campaignType.current = CAMPAIGN_TYPE_CHIPS[chip];
@@ -493,9 +727,9 @@ export default function V2TrailIntake() {
     createService(fields);
   };
 
-  const inputActive = phase === "describe" || phase === "correction";
+  const inputActive = phase === "describe" || phase === "correction" || phase === "hasAssets";
   // Hide the bar entirely on chips-only beats — no dead input (Commit 2 fix).
-  const showInput = phase === "greeting" || phase === "describe" || phase === "correction" || phase === "extracting";
+  const showInput = phase === "greeting" || phase === "describe" || phase === "correction" || phase === "extracting" || phase === "hasAssets";
   const stops: TrailStop[] = INTAKE_STOPS.map(s =>
     s.key === "service" && serviceCreated ? { ...s, state: "done" } : s
   );
