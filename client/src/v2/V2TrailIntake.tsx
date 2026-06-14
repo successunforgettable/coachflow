@@ -20,6 +20,7 @@ import ChatThread, { type ChatMessage } from "./components/ChatThread";
 import TweakBox, { type TweakBoxFields } from "./components/TweakBox";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { patienceGuard } from "./lib/patienceGuard";
 
 const MIN_DESCRIPTION_CHARS = 120; // mirrors services.extractFromText z.min(120)
 const MAX_NOT_QUITE_LOOPS = 2;
@@ -341,7 +342,7 @@ export default function V2TrailIntake() {
       const icpName = extraction.current?.icpDescriptor?.trim()
         || `${pendingFields.current?.serviceName?.trim() || "My Service"} Profile`;
       const { jobId } = await generateIcpMutation.mutateAsync({ serviceId, name: icpName });
-      const job = await pollJob(jobId);
+      const job = await patienceGuard(pollJob(jobId), addMsg);
       if (job.status === "failed" || typeof job.result?.icpId !== "number") {
         throw new Error(job.error || "ICP generation failed.");
       }
@@ -524,7 +525,7 @@ export default function V2TrailIntake() {
         const icpName = extraction.current?.icpDescriptor?.trim()
           || `${pendingFields.current?.serviceName?.trim() || "My Service"} Profile`;
         const { jobId } = await generateIcpMutation.mutateAsync({ serviceId, name: icpName });
-        const job = await pollJob(jobId);
+        const job = await patienceGuard(pollJob(jobId), addMsg);
         if (job.status === "failed" || typeof job.result?.icpId !== "number") {
           throw new Error(job.error || "ICP generation failed.");
         }
@@ -631,7 +632,7 @@ export default function V2TrailIntake() {
       const icpName = extraction.current?.icpDescriptor?.trim()
         || `${pendingFields.current?.serviceName?.trim() || "My Service"} Profile`;
       const { jobId } = await generateIcpMutation.mutateAsync({ serviceId, name: icpName });
-      const job = await pollJob(jobId);
+      const job = await patienceGuard(pollJob(jobId), addMsg);
       if (job.status === "failed" || typeof job.result?.icpId !== "number") {
         throw new Error(job.error || "ICP generation failed.");
       }

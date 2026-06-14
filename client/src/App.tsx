@@ -63,9 +63,15 @@ import V2Dashboard from "./v2/V2Dashboard";
 import V2GeneratorWizardPage from "./v2/V2GeneratorWizardPage";
 import V2AssetLibrary from "./v2/V2AssetLibrary";
 import V2CampaignKit from "./v2/V2CampaignKit";
-import V2AutoModeIntake from "./v2/V2AutoModeIntake";
-import V2AutoModeIntakeConfirm from "./v2/V2AutoModeIntakeConfirm";
-import V2AutoModeProgress from "./v2/V2AutoModeProgress";
+// Legacy auto-mode components — routes redirect to /trail/new (red-team B2 fix).
+// Files kept for Sprint 6 deletion ceremony; imports replaced with redirects.
+import { useEffect } from "react";
+import { useLocation } from "wouter";
+function LegacyRedirect() {
+  const [, navigate] = useLocation();
+  useEffect(() => { navigate("/v2-dashboard/trail/new", { replace: true }); }, [navigate]);
+  return null;
+}
 import V2Settings from "./v2/V2Settings";
 import TrailBarDemo from "./v2/TrailBarDemo";
 import ChatThreadDemo from "./v2/ChatThreadDemo";
@@ -152,9 +158,10 @@ function Router() {
       <Route path={"/v2-dashboard/asset-library"} component={V2AssetLibrary} />
       <Route path={"/v2-dashboard/wizard/:step"} component={V2GeneratorWizardPage} />
       <Route path={"/v2-dashboard/campaign-kit/:kitId"} component={V2CampaignKit} />
-      <Route path={"/v2-dashboard/auto-mode/confirm"} component={V2AutoModeIntakeConfirm} />
-      <Route path={"/v2-dashboard/auto-mode/progress"} component={V2AutoModeProgress} />
-      <Route path={"/v2-dashboard/auto-mode"} component={V2AutoModeIntake} />
+      {/* Legacy auto-mode routes — redirect to Trail intake (red-team B2) */}
+      <Route path={"/v2-dashboard/auto-mode/confirm"} component={LegacyRedirect} />
+      <Route path={"/v2-dashboard/auto-mode/progress"} component={LegacyRedirect} />
+      <Route path={"/v2-dashboard/auto-mode"} component={LegacyRedirect} />
       <Route path={"/v2-dashboard/settings"} component={V2Settings} />
       <Route path={"/v2-dashboard"} component={V2Dashboard} />
       <Route path={"/404"} component={NotFound} />

@@ -704,7 +704,7 @@ export default function V2Dashboard() {
                 everything from a paragraph; secondary = walk through the
                 wizard manually with full control. */}
             <button
-              onClick={() => navigate("/v2-dashboard/auto-mode")}
+              onClick={() => handleStartNewCampaign()}
               style={{
                 background: "var(--v2-primary-btn, #FF5B1D)",
                 color: "#fff",
