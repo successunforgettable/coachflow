@@ -673,30 +673,35 @@ export default function V2TrailIntake() {
 
   // ── Chips ──
   const handleChipTap = (messageId: string, chip: string) => {
-    setMessages(prev => prev.filter(m => m.id !== messageId));
-    messagesRef.current = messagesRef.current.filter(m => m.id !== messageId);
-    addMsg({ type: "user-bubble", text: chip });
-
-    // Sprint 5 C1: has-assets chip-grid multi-select + confirm
+    // Sprint 5 C1: multi-select grid — toggle without removing the chip row
     const importableLabels: string[] = IMPORTABLE_ASSETS.map(a => a.label);
     if (importableLabels.includes(chip) && phase === "hasAssets") {
-      // Toggle selection — echo without removing the chip row
       if (selectedImports.current.has(chip)) {
         selectedImports.current.delete(chip);
       } else {
         selectedImports.current.add(chip);
       }
-      // Don't remove the chip-row; just echo the toggle
-      return;
+      return; // don't remove chip-row, don't echo — toggle is visual only
     }
     if (chip === "Done choosing" && phase === "hasAssets") {
+      setMessages(prev => prev.filter(m => m.id !== messageId));
+      messagesRef.current = messagesRef.current.filter(m => m.id !== messageId);
+      addMsg({ type: "user-bubble", text: chip });
       if (gridDoneResolve.current) { gridDoneResolve.current(); gridDoneResolve.current = null; }
       return;
     }
     if ((chip === "Correct" || chip === "Fix something") && phase === "hasAssets") {
+      setMessages(prev => prev.filter(m => m.id !== messageId));
+      messagesRef.current = messagesRef.current.filter(m => m.id !== messageId);
+      addMsg({ type: "user-bubble", text: chip });
       if (importConfirmResolve.current) { importConfirmResolve.current(chip); importConfirmResolve.current = null; }
       return;
     }
+    // Standard chip handling: remove the row + echo for all other chips
+    setMessages(prev => prev.filter(m => m.id !== messageId));
+    messagesRef.current = messagesRef.current.filter(m => m.id !== messageId);
+    addMsg({ type: "user-bubble", text: chip });
+
     if (CAMPAIGN_TYPE_CHIPS[chip] && phase === "campaignType") {
       // ── Sprint 3 C2: campaign-type chosen → Beat 5 fork ──
       campaignType.current = CAMPAIGN_TYPE_CHIPS[chip];
