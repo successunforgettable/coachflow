@@ -764,6 +764,18 @@ export default function V2Trail() {
       | "discovery_call" | "lead_magnet" | "in_person_event" | undefined;
     let kit = kit0;
 
+    // Sprint 5 C2: bridge line for has-assets kits — shows once at the
+    // start of the first gap-fill run. Counts imported+done nodes honestly.
+    if (kit0.path === "has_assets") {
+      const doneCount = AUTO_STEPS.filter(s => kit0[s.field] != null).length + 2; // +service+icp
+      const gapCount = 11 - doneCount;
+      if (gapCount > 0) {
+        addLive({ type: "zappy-bubble", mood: "idle",
+          text: `You're already ${doneCount} of 11 done. I'll build the missing ${gapCount} so they match what you have.`,
+        });
+      }
+    }
+
     for (const stepDef of AUTO_STEPS) {
       if (cancelled.current) return;
       // Tweaks queued during the previous node run between nodes —
@@ -1249,13 +1261,15 @@ export default function V2Trail() {
       const state = await trailState.refetch();
       const kit = (state.data?.kit ?? {}) as Record<string, unknown>;
       const path = kit.path as string | null;
-      if (path !== "auto" && path !== "manual") return;
+      if (path !== "auto" && path !== "manual" && path !== "has_assets") return;
       const hasPending = AUTO_STEPS.some(s => kit[s.field] == null);
       if (!hasPending) break;
       if (cancelled.current) return;
       if (path === "manual") {
         await runManualLoop();
       } else {
+        // auto AND has_assets both run the auto loop — imported nodes
+        // skipped structurally (selected*Id populated).
         await runAutoLoop();
       }
       // After a loop exits (possibly due to a path switch), re-check
@@ -1273,7 +1287,7 @@ export default function V2Trail() {
     if (!trailState.data || persisted === null) return;
     const kit = trailState.data.kit as Record<string, unknown>;
     const path = kit.path as string | null;
-    if (path !== "auto" && path !== "manual") return;
+    if (path !== "auto" && path !== "manual" && path !== "has_assets") return;
     const hasPending = AUTO_STEPS.some(s => kit[s.field] == null);
     if (!hasPending) return;
     driverStarted.current = true;
