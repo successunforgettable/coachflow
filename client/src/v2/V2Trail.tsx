@@ -765,8 +765,9 @@ export default function V2Trail() {
     let kit = kit0;
 
     // Sprint 5 C2: bridge line for has-assets kits — shows once at the
-    // start of the first gap-fill run. Counts imported+done nodes honestly.
-    if (kit0.path === "has_assets") {
+    // start of the first gap-fill run. Suppressed on fresh handoff (the
+    // intake already posted it before navigating here).
+    if (kit0.path === "has_assets" && !freshHandoff.current) {
       const doneCount = AUTO_STEPS.filter(s => kit0[s.field] != null).length + 2; // +service+icp
       const gapCount = 11 - doneCount;
       if (gapCount > 0) {
