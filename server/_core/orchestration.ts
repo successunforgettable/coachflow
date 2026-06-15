@@ -393,7 +393,7 @@ export async function runOrchestrationStep(
         userId: input.userId,
         serviceId: input.serviceId,
         sequenceType: "welcome",
-        name: `${svc?.name ?? "My Service"} — Welcome Sequence`,
+        name: svc?.name ? `${svc.name} — Welcome Sequence` : "Welcome Sequence",
       });
       generatedId = id;
       break;
@@ -405,7 +405,7 @@ export async function runOrchestrationStep(
         userId: input.userId,
         serviceId: input.serviceId,
         sequenceType: "engagement",
-        name: `${svc?.name ?? "My Service"} — Engagement Sequence`,
+        name: svc?.name ? `${svc.name} — Engagement Sequence` : "Engagement Sequence",
         tone: "conversational",
         sequenceLength: 3,
       });

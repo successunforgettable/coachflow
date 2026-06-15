@@ -113,7 +113,9 @@ export async function runLandingPagePublish(
   // and survives slug regeneration. URL never changes for a given LP.
   const slug =
     lp.publicSlug ||
-    `${serviceName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}-${lp.id}`;
+    (serviceName
+      ? `${serviceName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}-${lp.id}`
+      : `campaign-${lp.id}`);
 
   // 6. Build HTML for the picked angle + style mode.
   const { buildTextStyleHtml, buildVisualStyleHtml } = await import("./lib/landingPageHtml");

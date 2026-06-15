@@ -229,7 +229,9 @@ export default function V2TrailIntake() {
       addMsg({
         type: "zappy-bubble",
         mood: "celebrating",
-        text: `Done — ${fields.serviceName || "your service"} is on the board. 🦊`,
+        text: fields.serviceName
+          ? `Done — ${fields.serviceName} is on the board. 🦊`
+          : "Done — your campaign is on the board. 🦊",
       });
       // ── Sprint 3 C2: campaign-type beat (before the fork) ──
       addMsg({ type: "zappy-bubble", mood: "idle", text: "What are you inviting people to?" });

@@ -987,8 +987,15 @@ export default function V2Dashboard() {
             <button
               className="v2-btn v2-btn-primary"
               onClick={() => {
-                const nextNode = nodes.find(n => n.state === "active" && NODE_STEP_MAP[n.id]);
-                if (nextNode) navigate(`/v2-dashboard/wizard/${NODE_STEP_MAP[nextNode.id]}${wizardQuery}`);
+                // M3: Trail kits route to trail view; legacy kits use wizard
+                const activeIcpId = icpList?.[0]?.id;
+                const activeKit = activeIcpId ? campaignKitsList?.find((k: any) => k.icpId === activeIcpId) : null;
+                if (activeKit?.path) {
+                  navigate(`/trail/${activeKit.id}`);
+                } else {
+                  const nextNode = nodes.find(n => n.state === "active" && NODE_STEP_MAP[n.id]);
+                  if (nextNode) navigate(`/v2-dashboard/wizard/${NODE_STEP_MAP[nextNode.id]}${wizardQuery}`);
+                }
               }}
             >
               Continue Campaign

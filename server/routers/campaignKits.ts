@@ -150,7 +150,9 @@ export const campaignKitsRouter = router({
         if (svc) serviceName = svc.name;
       }
 
-      const name = `${serviceName} — ${icp.name} Campaign`;
+      const name = serviceName
+        ? `${serviceName} — ${icp.name} Campaign`
+        : `${icp.name} Campaign`;
 
       const result: any = await db.insert(campaignKits).values({
         userId: ctx.user.id,
