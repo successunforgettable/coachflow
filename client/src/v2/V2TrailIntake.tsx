@@ -684,6 +684,14 @@ export default function V2TrailIntake() {
       } else {
         selectedImports.current.add(chip);
       }
+      // m4: update selectedChips on the chip-row message so it re-renders filled
+      const sel = Array.from(selectedImports.current);
+      setMessages(prev => prev.map(m =>
+        m.id === messageId ? { ...m, selectedChips: sel } : m
+      ));
+      messagesRef.current = messagesRef.current.map(m =>
+        m.id === messageId ? { ...m, selectedChips: sel } : m
+      );
       return; // don't remove chip-row, don't echo — toggle is visual only
     }
     if (chip === "Done choosing" && phase === "hasAssets") {
@@ -783,7 +791,9 @@ export default function V2TrailIntake() {
               onChipTap={handleChipTap}
               onSendText={showInput ? handleSendText : undefined}
               inputPlaceholder={
-                phase === "correction" ? "What did I get wrong?" : "Tell me about your business…"
+                phase === "hasAssets" ? "Paste it here…"
+                  : phase === "correction" ? "What did I get wrong?"
+                  : "Tell me about your business…"
               }
               inputDisabled={!inputActive}
             />

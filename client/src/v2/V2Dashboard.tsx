@@ -988,13 +988,14 @@ export default function V2Dashboard() {
               className="v2-btn v2-btn-primary"
               onClick={() => {
                 // M3: Trail kits route to trail view; legacy kits use wizard
-                const activeIcpId = icpList?.[0]?.id;
-                const activeKit = activeIcpId ? campaignKitsList?.find((k: any) => k.icpId === activeIcpId) : null;
+                const activeKit = activeIcpForNav
+                  ? campaignKitsList?.find((k: any) => k.icpId === activeIcpForNav.id)
+                  : null;
                 if (activeKit?.path) {
                   navigate(`/v2-dashboard/trail/${activeKit.id}`);
                 } else {
-                  const nextNode = nodes.find(n => n.state === "active" && NODE_STEP_MAP[n.id]);
-                  if (nextNode) navigate(`/v2-dashboard/wizard/${NODE_STEP_MAP[nextNode.id]}${wizardQuery}`);
+                  const nextNode = nodes.find(n => (n.state === "active" || n.state === "locked") && NODE_STEP_MAP[n.id]);
+                  navigate(`/v2-dashboard/wizard/${nextNode ? NODE_STEP_MAP[nextNode.id] : "offer"}${wizardQuery}`);
                 }
               }}
             >

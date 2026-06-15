@@ -51,6 +51,8 @@ export interface ChatMessage {
   deck?: { cards: { id: number; title: string; preview: string; selected?: boolean; favouritable?: boolean; favourited?: boolean }[] };
   /** Milestone badge data */
   milestone?: { name: string; line: string };
+  /** Currently selected chips in a multi-select chip-row */
+  selectedChips?: string[];
 }
 
 export interface ChatThreadProps {
@@ -152,36 +154,44 @@ function UserBubble({ msg }: { msg: ChatMessage }) {
 
 function ChipRow({ msg, onTap }: { msg: ChatMessage; onTap: (chip: string) => void }) {
   if (!msg.chips?.length) return null;
+  const selected = new Set(msg.selectedChips ?? []);
   return (
     <div style={{ display: "flex", flexWrap: "wrap", gap: 8, paddingLeft: 44 }}>
-      {msg.chips.map(chip => (
-        <button
-          key={chip}
-          onClick={() => onTap(chip)}
-          style={{
-            background: "white",
-            border: `1.5px solid ${BRAND_PRIMARY}`,
-            borderRadius: 9999,
-            padding: "8px 18px",
-            fontFamily: FONT_BODY,
-            fontSize: 13,
-            fontWeight: 600,
-            color: BRAND_PRIMARY,
-            cursor: "pointer",
-            transition: "all 0.15s ease",
-          }}
-          onMouseEnter={e => {
-            (e.target as HTMLButtonElement).style.background = BRAND_PRIMARY;
-            (e.target as HTMLButtonElement).style.color = "white";
-          }}
-          onMouseLeave={e => {
-            (e.target as HTMLButtonElement).style.background = "white";
-            (e.target as HTMLButtonElement).style.color = BRAND_PRIMARY;
-          }}
-        >
-          {chip}
-        </button>
-      ))}
+      {msg.chips.map(chip => {
+        const isSelected = selected.has(chip);
+        return (
+          <button
+            key={chip}
+            onClick={() => onTap(chip)}
+            style={{
+              background: isSelected ? BRAND_PRIMARY : "white",
+              border: `1.5px solid ${BRAND_PRIMARY}`,
+              borderRadius: 9999,
+              padding: "8px 18px",
+              fontFamily: FONT_BODY,
+              fontSize: 13,
+              fontWeight: 600,
+              color: isSelected ? "white" : BRAND_PRIMARY,
+              cursor: "pointer",
+              transition: "all 0.15s ease",
+            }}
+            onMouseEnter={e => {
+              if (!isSelected) {
+                (e.target as HTMLButtonElement).style.background = BRAND_PRIMARY;
+                (e.target as HTMLButtonElement).style.color = "white";
+              }
+            }}
+            onMouseLeave={e => {
+              if (!isSelected) {
+                (e.target as HTMLButtonElement).style.background = "white";
+                (e.target as HTMLButtonElement).style.color = BRAND_PRIMARY;
+              }
+            }}
+          >
+            {chip}
+          </button>
+        );
+      })}
     </div>
   );
 }

@@ -769,14 +769,20 @@ export default function V2Trail() {
 
     // Sprint 5 C2: bridge line for has-assets kits — shows once at the
     // start of the first gap-fill run. Suppressed on fresh handoff (the
-    // intake already posted it before navigating here).
+    // intake already posted it before navigating here) AND on genuine
+    // resume if the persisted transcript already contains the bridge line.
     if (kit0.path === "has_assets" && !freshHandoff.current) {
-      const doneCount = AUTO_STEPS.filter(s => kit0[s.field] != null).length + 2; // +service+icp
-      const gapCount = 11 - doneCount;
-      if (gapCount > 0) {
-        addLive({ type: "zappy-bubble", mood: "idle",
-          text: `You're already ${doneCount} of 11 done. I'll build the missing ${gapCount} so they match what you have.`,
-        });
+      const bridgeAlreadyInTranscript = (persisted ?? []).some(
+        m => m.type === "zappy-bubble" && /already \d+ of 11 done/.test(m.text ?? "")
+      );
+      if (!bridgeAlreadyInTranscript) {
+        const doneCount = AUTO_STEPS.filter(s => kit0[s.field] != null).length + 2; // +service+icp
+        const gapCount = 11 - doneCount;
+        if (gapCount > 0) {
+          addLive({ type: "zappy-bubble", mood: "idle",
+            text: `You're already ${doneCount} of 11 done. I'll build the missing ${gapCount} so they match what you have.`,
+          });
+        }
       }
     }
 
