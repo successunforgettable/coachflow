@@ -210,6 +210,7 @@ export default function V2Trail() {
   const regenLpSection = trpc.landingPages.regenerateSection.useMutation();
   const regenEmail = trpc.emailSequences.regenerateSingle.useMutation();
   const regenWhatsapp = trpc.whatsappSequences.regenerateSingle.useMutation();
+  const markTweakStale = trpc.campaignKits.markTweakStale.useMutation();
   // C4: sub-100 "rewrite it safe" via the W5 compliance surface (quota-aware)
   const rewriteGenerateMore = trpc.complianceRewrites.generateMore.useMutation();
   const rewriteAccept = trpc.complianceRewrites.accept.useMutation();
@@ -712,6 +713,15 @@ export default function V2Trail() {
     }
   };
 
+  const TWEAK_CATCHUP_LINES = [
+    (node: string, n: number) =>
+      `Nice tweak. Since I changed your ${node}, the ${n} piece${n > 1 ? "s" : ""} built on it ${n > 1 ? "are" : "is"} now a step behind — want me to catch ${n > 1 ? "them" : "it"} up, or leave ${n > 1 ? "them" : "it"} for now?`,
+    (node: string, n: number) =>
+      `Updated your ${node}. The ${n} piece${n > 1 ? "s" : ""} below ${n > 1 ? "were" : "was"} built on the old version — I can bring ${n > 1 ? "them" : "it"} in line whenever you're ready, or you can keep ${n > 1 ? "them" : "it"} as ${n > 1 ? "they are" : "it is"}.`,
+  ];
+  const TWEAK_CATCHUP_SINGLE = (node: string) =>
+    `Done. Your ${node}'s changed, so the one piece built on it is a step behind — catch it up, or leave it?`;
+
   const processTweakQueue = async () => {
     while (tweakQueue.current.length > 0) {
       const { step, instruction } = tweakQueue.current.shift()!;
@@ -728,8 +738,41 @@ export default function V2Trail() {
         const reveal = await buildReveal(stepDef, kit);
         const divider = addLive({ type: "system-divider", text: `${stepDef.revealLabel} updated` });
         const card = addLive({ type: "asset-reveal-card", nodeKey: stepDef.stopKey, reveal });
-        offerChips(step, stepDef.tweakable);
-        await persistMsgs([opener, divider, card]);
+
+        // ── Tweak-stale propagation: mark downstream nodes stale ──
+        const kitId = kit.id as number | undefined;
+        if (kitId) {
+          try {
+            const { staleCount } = await markTweakStale.mutateAsync({ kitId, tweakedNode: stepDef.stopKey });
+            if (staleCount > 0) {
+              await trailState.refetch();
+              collapsePreviousChips();
+              const nodeName = stepDef.revealLabel.toLowerCase();
+              const catchupText = staleCount === 1
+                ? TWEAK_CATCHUP_SINGLE(nodeName)
+                : TWEAK_CATCHUP_LINES[Math.floor(Math.random() * TWEAK_CATCHUP_LINES.length)](nodeName, staleCount);
+              const warn = addLive({ type: "zappy-bubble", mood: "idle", text: catchupText });
+              const confirmWarn = addLive({
+                type: "zappy-bubble",
+                mood: "idle",
+                text: `Rebuild ${staleCount} piece${staleCount > 1 ? "s" : ""}? Anything you hand-edited in them will be redone.`,
+              });
+              const row = addLive({ type: "chip-row", chips: ["Update the rest", "Keep them as they are"] });
+              activeChips.current = { msgId: row.id, step: stepDef.step };
+              persistMsgs([opener, divider, card, warn, confirmWarn]);
+            } else {
+              offerChips(step, stepDef.tweakable);
+              await persistMsgs([opener, divider, card]);
+            }
+          } catch {
+            // Non-fatal: stale propagation failed, still show the tweak result
+            offerChips(step, stepDef.tweakable);
+            await persistMsgs([opener, divider, card]);
+          }
+        } else {
+          offerChips(step, stepDef.tweakable);
+          await persistMsgs([opener, divider, card]);
+        }
       } catch (err) {
         working.stop();
         const msg = err instanceof Error ? err.message : "rewrite failed";

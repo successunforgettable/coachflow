@@ -5,6 +5,33 @@ import { campaignKits, idealCustomerProfiles, services, offers, nodeStatuses } f
 import { eq, and } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
+// Shared downstream maps — used by both updateSelection (re-crown) and
+// markTweakStale (in-place edit) to propagate staleness consistently.
+const STALE_FIELD_TO_NODE: Record<string, string> = {
+  selectedOfferId: "offer",
+  selectedMechanismId: "uniqueMethod",
+  selectedHvcoId: "freeOptIn",
+  selectedHeadlineId: "headlines",
+  selectedAdCopyId: "adCopy",
+  selectedLandingPageId: "landingPage",
+  selectedEmailSequenceId: "emailSequence",
+  selectedWhatsAppSequenceId: "whatsappSequence",
+  selectedAdCreativeBatchId: "adCreatives",
+};
+const STALE_NODE_DOWNSTREAM: Record<string, string[]> = {
+  offer: ["uniqueMethod", "freeOptIn", "headlines", "adCopy", "landingPage", "emailSequence", "whatsappSequence", "adCreatives"],
+  uniqueMethod: ["freeOptIn", "headlines", "adCopy", "landingPage", "emailSequence", "whatsappSequence", "adCreatives"],
+  freeOptIn: ["headlines", "adCopy", "landingPage", "emailSequence", "whatsappSequence", "adCreatives"],
+  headlines: ["adCopy", "landingPage", "emailSequence", "whatsappSequence", "adCreatives"],
+  adCopy: ["landingPage", "emailSequence", "whatsappSequence", "adCreatives"],
+  landingPage: ["emailSequence", "whatsappSequence", "adCreatives"],
+  emailSequence: ["whatsappSequence", "adCreatives"],
+  whatsappSequence: ["adCreatives"],
+};
+const STALE_NODE_TO_FIELD: Record<string, string> = Object.fromEntries(
+  Object.entries(STALE_FIELD_TO_NODE).map(([f, n]) => [n, f]),
+);
+
 export async function autoSelectBest(
   userId: number,
   icpId: number,
@@ -241,30 +268,9 @@ export const campaignKitsRouter = router({
       // another), every DOWNSTREAM step that currently has a non-null
       // selected*Id gets marked stale in nodeStatuses. This fires for BOTH
       // the Trail and the wizard — one truth, both surfaces.
-      const FIELD_TO_NODE: Record<string, string> = {
-        selectedOfferId: "offer",
-        selectedMechanismId: "uniqueMethod",
-        selectedHvcoId: "freeOptIn",
-        selectedHeadlineId: "headlines",
-        selectedAdCopyId: "adCopy",
-        selectedLandingPageId: "landingPage",
-        selectedEmailSequenceId: "emailSequence",
-        selectedWhatsAppSequenceId: "whatsappSequence",
-        selectedAdCreativeBatchId: "adCreatives",
-      };
-      const NODE_DOWNSTREAM: Record<string, string[]> = {
-        offer: ["uniqueMethod", "freeOptIn", "headlines", "adCopy", "landingPage", "emailSequence", "whatsappSequence", "adCreatives"],
-        uniqueMethod: ["freeOptIn", "headlines", "adCopy", "landingPage", "emailSequence", "whatsappSequence", "adCreatives"],
-        freeOptIn: ["headlines", "adCopy", "landingPage", "emailSequence", "whatsappSequence", "adCreatives"],
-        headlines: ["adCopy", "landingPage", "emailSequence", "whatsappSequence", "adCreatives"],
-        adCopy: ["landingPage", "emailSequence", "whatsappSequence", "adCreatives"],
-        landingPage: ["emailSequence", "whatsappSequence", "adCreatives"],
-        emailSequence: ["whatsappSequence", "adCreatives"],
-        whatsappSequence: ["adCreatives"],
-      };
-      const NODE_TO_FIELD: Record<string, string> = Object.fromEntries(
-        Object.entries(FIELD_TO_NODE).map(([f, n]) => [n, f]),
-      );
+      const FIELD_TO_NODE = STALE_FIELD_TO_NODE;
+      const NODE_DOWNSTREAM = STALE_NODE_DOWNSTREAM;
+      const NODE_TO_FIELD = STALE_NODE_TO_FIELD;
       try {
         // Identify which node was changed
         const changedField = Object.keys(fields).find(k =>
@@ -350,6 +356,43 @@ export const campaignKitsRouter = router({
         .limit(1);
 
       return final;
+    }),
+
+  /**
+   * markTweakStale — after an in-place tweak (content edit without ID change),
+   * propagate staleness to all downstream nodes. Same logic as re-crown but
+   * triggered explicitly by the client after a successful tweak.
+   */
+  markTweakStale: protectedProcedure
+    .input(z.object({ kitId: z.number(), tweakedNode: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      // Verify ownership
+      const [kit] = await db
+        .select()
+        .from(campaignKits)
+        .where(and(eq(campaignKits.id, input.kitId), eq(campaignKits.userId, ctx.user.id)))
+        .limit(1);
+      if (!kit) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const downstream = STALE_NODE_DOWNSTREAM[input.tweakedNode] ?? [];
+      const staleNodes: string[] = [];
+      for (const dsNode of downstream) {
+        const dsField = STALE_NODE_TO_FIELD[dsNode];
+        if (dsField && (kit as Record<string, unknown>)[dsField] != null) {
+          staleNodes.push(dsNode);
+        }
+      }
+      for (const nodeType of staleNodes) {
+        await db.insert(nodeStatuses).values({
+          campaignKitId: input.kitId,
+          nodeType,
+          status: "stale",
+        }).onDuplicateKeyUpdate({ set: { status: "stale", updatedAt: new Date() } });
+      }
+      return { staleCount: staleNodes.length };
     }),
 
   /**
