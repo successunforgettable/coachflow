@@ -991,7 +991,7 @@ export default function V2Dashboard() {
                 const activeIcpId = icpList?.[0]?.id;
                 const activeKit = activeIcpId ? campaignKitsList?.find((k: any) => k.icpId === activeIcpId) : null;
                 if (activeKit?.path) {
-                  navigate(`/trail/${activeKit.id}`);
+                  navigate(`/v2-dashboard/trail/${activeKit.id}`);
                 } else {
                   const nextNode = nodes.find(n => n.state === "active" && NODE_STEP_MAP[n.id]);
                   if (nextNode) navigate(`/v2-dashboard/wizard/${NODE_STEP_MAP[nextNode.id]}${wizardQuery}`);
