@@ -254,8 +254,8 @@ export default function V2Trail() {
       let state: StopState = "pending";
       if (kit) {
         const override = statusMap.get(def.key);
-        if (override === "imported" || override === "stale") {
-          state = override;
+        if (override === "imported" || override === "stale" || override === "dismissed") {
+          state = override === "dismissed" ? "stale" : override; // dismissed shows as amber (stale) on trail bar
         } else if (def.key === "icp") {
           state = "done"; // a kit always has its ICP
         } else if (def.key === "service") {
@@ -519,6 +519,13 @@ export default function V2Trail() {
       const echo = addLive({ type: "user-bubble", text: "Keep them as they are" });
       const ack = addLive({ type: "zappy-bubble", mood: "idle", text: "Your call — keeping them as they are. The amber flags stay so you can revisit." });
       persistMsgs([echo, ack]);
+      // Flip stale→dismissed so return-visit chips don't re-nag.
+      // Amber persists (trail bar reads stale OR dismissed). Re-tweak resets to stale.
+      const kitId = (trailState.data?.kit as Record<string, unknown> | undefined)?.id as number | undefined;
+      if (kitId) {
+        try { await dismissStaleMutation.mutateAsync({ campaignKitId: kitId }); } catch { /* non-fatal */ }
+        trailState.refetch();
+      }
     } else if (chip === "Regenerate images") {
       const echo = addLive({ type: "user-bubble", text: "Regenerate images" });
       persistMsgs([echo]);
@@ -582,6 +589,7 @@ export default function V2Trail() {
 
   // Sprint 4 C1+C2: crown a card in the manual-mode deck + stale detection.
   const clearStaleMutation = trpc.trail.clearStale.useMutation();
+  const dismissStaleMutation = trpc.trail.dismissStale.useMutation();
 
   // ── Sprint 4 C2: "Update the rest" — regenerate stale nodes with warning ──
   const runUpdateTheRest = async () => {

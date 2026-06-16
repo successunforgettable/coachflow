@@ -213,4 +213,24 @@ export const trailRouter = router({
       await clearStaleNode(db, input.campaignKitId, input.nodeType);
       return { ok: true };
     }),
+
+  /**
+   * dismissStale — flips all stale rows to 'dismissed' for a kit.
+   * Amber flags persist on the trail bar, but return-visit chips stop re-offering.
+   * A re-tweak naturally flips dismissed→stale via the markTweakStale upsert.
+   */
+  dismissStale: protectedProcedure
+    .input(z.object({ campaignKitId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      await getOwnedKit(db, input.campaignKitId, ctx.user.id);
+      await db.update(nodeStatuses)
+        .set({ status: "dismissed" })
+        .where(and(
+          eq(nodeStatuses.campaignKitId, input.campaignKitId),
+          eq(nodeStatuses.status, "stale"),
+        ));
+      return { ok: true };
+    }),
 });
