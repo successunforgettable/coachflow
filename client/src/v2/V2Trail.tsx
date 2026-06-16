@@ -567,6 +567,7 @@ export default function V2Trail() {
           });
           const job = await pollJob(jobId);
           if (job.status === "failed") throw new Error(job.error || "Generation failed");
+          if (job.result?.skipped) throw new Error("Step was skipped — field not cleared");
           ok = true;
         } catch (err) {
           lastError = err instanceof Error ? err.message : String(err);
