@@ -27,6 +27,7 @@ import ChatThread, { type ChatMessage } from "./components/ChatThread";
 import ComplianceDial from "./components/ComplianceDial";
 import { trpc } from "@/lib/trpc";
 import { getNodePatience } from "./lib/patienceGuard";
+import { getEarlyLines, getRevealLine, resetBuild } from "./lib/zappyWaitLines";
 
 const FONT_BODY = "'Instrument Sans', system-ui, sans-serif";
 const FONT_HEADING = "'Fraunces', Georgia, serif";
@@ -125,18 +126,7 @@ const REWRITE_SOURCE: Partial<Record<AutoStepName, { sourceTable: "headlines" | 
 };
 
 // ── Sprint 3 C3: §12.2 narration (line1 / line2 / line3-tease) ──
-const NARRATION: Record<AutoStepName, [string, string, string]> = {
-  offer:            ["Building your offer now.", "Stacking value until no is harder than yes.", "Pricing it. Guarantee going on top…"],
-  mechanism:        ["Every great coach has a named method. Naming yours.", "Testing names against your customer's ears…", "It's going to be called something like 'The ___'…"],
-  hvco:             ["Now the free thing that pulls people in.", "It has to be worth paying for — that's the bar.", "Title's landing… almost there."],
-  headlines:        ["Headline time. First impressions, fifteen ways.", "Each one aims at what keeps your customer up at night.", "Dealing them as they land 🎴"],
-  adCopy:           ["Writing the words under those headlines.", "Hook, story, offer — in your voice.", "Meta's rules are being checked line by line…"],
-  landingPage:      ["Building the page that turns clicks into bookings.", "Headline above the fold, proof below it.", "Wiring every section back to your offer…"],
-  emailSequence:    ["Now the follow-up emails.", "Each touch a different angle.", "Subject lines getting their final polish…"],
-  whatsappSequence: ["WhatsApp messages next — short, human, no essay-texting.", "Matching the rhythm people actually reply to.", "Last message links it all back to your page…"],
-  adCreatives:      ["Final stretch: the visuals.", "Composing images that match your message.", "Rendering… these take a few extra breaths 🦊"],
-};
-// Patience lines live in patienceGuard.ts — node-aware via getNodePatience.
+// Narration + patience lines come from zappyWaitLines.ts (single source).
 const LOVE_REACTIONS = ["Knew it.", "That's the one.", "Good eye.", "Locked. 🦊", "On we go."];
 
 /** Polls /api/jobs/{jobId} until terminal. 5s cadence, 600s ceiling (adCreatives runs long). */
@@ -286,15 +276,15 @@ export default function V2Trail() {
   // Narration: 0s/4s/8s are step-specific lines, then the long-wait portion
   // uses node-aware patience lines from patienceGuard via getNodePatience.
   const startNarration = (step: AutoStepName): { line1: ChatMessage; stop: () => void } => {
-    const [l1, l2, l3] = NARRATION[step];
-    const line1 = addLive({ type: "zappy-bubble", mood: "thinking", text: l1 });
+    const early = getEarlyLines(step);
+    const line1 = addLive({ type: "zappy-bubble", mood: "thinking", text: early[0] });
     const timers: ReturnType<typeof setTimeout>[] = [];
     const at = (ms: number, text: string) =>
       timers.push(setTimeout(() => addLive({ type: "zappy-bubble", mood: "thinking", text }), ms));
-    // Step-specific lines at 4s and 8s
-    at(4_000, l2);
-    at(8_000, l3);
-    // Long-wait: node-specific patience lines from patienceGuard
+    // Early lines at 4s intervals (variable count: 2 or 3)
+    const earlyGap = early.length >= 3 ? 4_000 : 6_000;
+    for (let i = 1; i < early.length; i++) at(i * earlyGap, early[i]);
+    // Long-wait: node-specific patience lines from zappyWaitLines
     for (const [ms, text] of getNodePatience(step)) {
       at(ms, text);
     }
@@ -449,6 +439,8 @@ export default function V2Trail() {
       await rewriteAccept.mutateAsync({ rewriteId: best.id });
       const refreshed = await trailState.refetch();
       const reveal = await buildReveal(stepDef, (refreshed.data?.kit ?? {}) as Record<string, unknown>);
+      const safeReveal = getRevealLine(step);
+      if (safeReveal) addLive({ type: "zappy-bubble", mood: "celebrating", text: safeReveal });
       const divider = addLive({ type: "system-divider", text: `${stepDef.revealLabel} rewritten safe` });
       const card = addLive({ type: "asset-reveal-card", nodeKey: stepDef.stopKey, reveal });
       offerChips(step, stepDef.tweakable);
@@ -536,6 +528,7 @@ export default function V2Trail() {
 
   // ── Part B: standalone ad-image regeneration (no upstream change) ──
   const regenerateImages = async () => {
+    resetBuild(); // fresh rotation for regen
     const state = trailState.data!;
     const serviceId = state.serviceId!;
     const kit0 = state.kit as Record<string, unknown>;
@@ -577,6 +570,8 @@ export default function V2Trail() {
     const refreshed = await trailState.refetch();
     const kit = (refreshed.data?.kit ?? {}) as Record<string, unknown>;
     const reveal = await buildReveal(stepDef, kit);
+    const revealLine = getRevealLine("adCreatives");
+    if (revealLine) addLive({ type: "zappy-bubble", mood: "celebrating", text: revealLine });
     const divider = addLive({ type: "system-divider", text: "Ad Images refreshed" });
     const card = addLive({ type: "asset-reveal-card", nodeKey: "adCreatives", reveal });
     setGeneratingKey(null);
@@ -638,6 +633,8 @@ export default function V2Trail() {
       const refreshed = await trailState.refetch();
       const kit = (refreshed.data?.kit ?? {}) as Record<string, unknown>;
       const reveal = await buildReveal(stepDef, kit);
+      const rl = getRevealLine(stepDef.step);
+      if (rl) addLive({ type: "zappy-bubble", mood: "celebrating", text: rl });
       const divider = addLive({ type: "system-divider", text: `${stepDef.revealLabel} refreshed` });
       const card = addLive({ type: "asset-reveal-card", nodeKey: stepDef.stopKey, reveal });
       setGeneratingKey(null);
@@ -789,6 +786,8 @@ export default function V2Trail() {
         const refreshed = await trailState.refetch();
         const kit = (refreshed.data?.kit ?? {}) as Record<string, unknown>;
         const reveal = await buildReveal(stepDef, kit);
+        const tweakReveal = getRevealLine(step);
+        if (tweakReveal) addLive({ type: "zappy-bubble", mood: "celebrating", text: tweakReveal });
         const divider = addLive({ type: "system-divider", text: `${stepDef.revealLabel} updated` });
         const card = addLive({ type: "asset-reveal-card", nodeKey: stepDef.stopKey, reveal });
 
@@ -854,6 +853,7 @@ export default function V2Trail() {
   useEffect(() => () => { cancelled.current = true; }, []);
 
   const runAutoLoop = async () => {
+    resetBuild(); // fresh rotation for this cascade run
     const state = trailState.data!;
     const serviceId = state.serviceId!;
     const kit0 = state.kit as Record<string, unknown>;
@@ -927,6 +927,8 @@ export default function V2Trail() {
       kit = (refreshed.data?.kit ?? kit) as Record<string, unknown>;
 
       const reveal = await buildReveal(stepDef, kit);
+      const revealLine = getRevealLine(stepDef.step);
+      if (revealLine) addLive({ type: "zappy-bubble", mood: "celebrating", text: revealLine });
       const divider = addLive({ type: "system-divider", text: `${stepDef.revealLabel} ready` });
       const card = addLive({ type: "asset-reveal-card", nodeKey: stepDef.stopKey, reveal });
       setGeneratingKey(null);
@@ -1123,6 +1125,7 @@ export default function V2Trail() {
   // Non-dealable nodes (ICP/email/whatsapp/adCreatives) use auto-style reveal.
   // The auto loop is UNTOUCHED — the driver entry chooses which to run.
   const runManualLoop = async () => {
+    resetBuild(); // fresh rotation for this cascade run
     const state = trailState.data!;
     const serviceId = state.serviceId!;
     const kit0 = state.kit as Record<string, unknown>;
@@ -1171,6 +1174,8 @@ export default function V2Trail() {
         const refreshed = await trailState.refetch();
         kit = (refreshed.data?.kit ?? kit) as Record<string, unknown>;
         const reveal = await buildReveal(stepDef, kit);
+        const manReveal = getRevealLine(stepDef.step);
+        if (manReveal) addLive({ type: "zappy-bubble", mood: "celebrating", text: manReveal });
         const divider = addLive({ type: "system-divider", text: `${stepDef.revealLabel} ready` });
         const card = addLive({ type: "asset-reveal-card", nodeKey: stepDef.stopKey, reveal });
         setGeneratingKey(null);
@@ -1242,6 +1247,8 @@ export default function V2Trail() {
 
       // Fetch set → deal cards (350ms simulated dealing from the completed batch)
       const cards = await fetchDeckCards(stepDef, serviceId, jobResult);
+      const deckReveal = getRevealLine(stepDef.step);
+      if (deckReveal) addLive({ type: "zappy-bubble", mood: "celebrating", text: deckReveal });
       const divider = addLive({ type: "system-divider", text: `${stepDef.revealLabel} ready — pick your favourite` });
       const deckMsg = addLive({
         type: "card-deck",
@@ -1313,6 +1320,8 @@ export default function V2Trail() {
           kit = (refreshed2.data?.kit ?? kit) as Record<string, unknown>;
           setGeneratingKey(null);
           // Re-deal with new cards
+          const redealReveal = getRevealLine(stepDef.step);
+          if (redealReveal) addLive({ type: "zappy-bubble", mood: "celebrating", text: redealReveal });
           const newCards = await fetchDeckCards(stepDef, serviceId, jr2);
           // Replace the deck in the live messages
           setLive(prev => prev.map(m => {
