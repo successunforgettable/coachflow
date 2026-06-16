@@ -422,6 +422,7 @@ export default function V2Trail() {
   const offerChips = (step: AutoStepName, tweakable: boolean) => {
     collapsePreviousChips();
     const chips = tweakable ? ["Love it ✓", "Tweak"] : ["Love it ✓"];
+    if (step === "adCreatives") chips.push("Regenerate images");
     // Sprint 4 C3: path switch chip — only in auto mode (switch to manual)
     const kit = (trailState.data?.kit ?? {}) as Record<string, unknown>;
     if (kit.path === "auto") chips.push("Let me pick from here");
@@ -529,7 +530,61 @@ export default function V2Trail() {
       const echo = addLive({ type: "user-bubble", text: "Keep them as they are" });
       const ack = addLive({ type: "zappy-bubble", mood: "idle", text: "Your call — keeping them as they are. The amber flags stay so you can revisit." });
       persistMsgs([echo, ack]);
+    } else if (chip === "Regenerate images") {
+      const echo = addLive({ type: "user-bubble", text: "Regenerate images" });
+      persistMsgs([echo]);
+      regenerateImages();
     }
+  };
+
+  // ── Part B: standalone ad-image regeneration (no upstream change) ──
+  const regenerateImages = async () => {
+    const state = trailState.data!;
+    const serviceId = state.serviceId!;
+    const kit0 = state.kit as Record<string, unknown>;
+    const kitId = kit0.id as number;
+    const icpId = kit0.icpId as number;
+    const kitCampaignType = (kit0.campaignType ?? undefined) as
+      | "webinar" | "challenge" | "course_launch" | "product_launch"
+      | "discovery_call" | "lead_magnet" | "in_person_event" | undefined;
+    const stepDef = AUTO_STEPS.find(s => s.step === "adCreatives")!;
+    // Null the old batch so the skip-already-populated guard passes
+    try {
+      await updateSelection.mutateAsync({ kitId, selectedAdCreativeBatchId: null } as any);
+    } catch { /* non-fatal */ }
+    setGeneratingKey("adCreatives");
+    const narration = startNarration("adCreatives");
+    let ok = false;
+    let lastError = "";
+    for (let attempt = 1; attempt <= 2 && !ok; attempt++) {
+      try {
+        const { jobId } = await orchestrateStep.mutateAsync({
+          serviceId, icpId, step: "adCreatives", campaignType: kitCampaignType,
+        });
+        const job = await pollJob(jobId);
+        if (job.status === "failed") throw new Error(job.error || "Generation failed");
+        if (job.result?.skipped) throw new Error("Step was skipped — field not cleared");
+        ok = true;
+      } catch (err) {
+        lastError = err instanceof Error ? err.message : String(err);
+        if (attempt === 1)
+          addLive({ type: "zappy-bubble", mood: "idle", text: "Hm — that one fizzled. Let me try again." });
+      }
+    }
+    narration.stop();
+    if (!ok) {
+      addLive({ type: "zappy-bubble", mood: "idle", text: `Still stuck on images (${lastError}). Reload to pick it up.` });
+      setGeneratingKey(null);
+      return;
+    }
+    const refreshed = await trailState.refetch();
+    const kit = (refreshed.data?.kit ?? {}) as Record<string, unknown>;
+    const reveal = await buildReveal(stepDef, kit);
+    const divider = addLive({ type: "system-divider", text: "Ad Images refreshed" });
+    const card = addLive({ type: "asset-reveal-card", nodeKey: "adCreatives", reveal });
+    setGeneratingKey(null);
+    offerChips("adCreatives", false);
+    await persistMsgs([divider, card]);
   };
 
   // Sprint 4 C1+C2: crown a card in the manual-mode deck + stale detection.
