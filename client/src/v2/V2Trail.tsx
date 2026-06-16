@@ -26,7 +26,7 @@ import TrailBar, { type TrailStop, type StopState } from "./components/TrailBar"
 import ChatThread, { type ChatMessage } from "./components/ChatThread";
 import ComplianceDial from "./components/ComplianceDial";
 import { trpc } from "@/lib/trpc";
-import { GENERIC_PATIENCE } from "./lib/patienceGuard";
+import { getNodePatience } from "./lib/patienceGuard";
 
 const FONT_BODY = "'Instrument Sans', system-ui, sans-serif";
 const FONT_HEADING = "'Fraunces', Georgia, serif";
@@ -136,8 +136,7 @@ const NARRATION: Record<AutoStepName, [string, string, string]> = {
   whatsappSequence: ["WhatsApp messages next — short, human, no essay-texting.", "Matching the rhythm people actually reply to.", "Last message links it all back to your page…"],
   adCreatives:      ["Final stretch: the visuals.", "Composing images that match your message.", "Rendering… these take a few extra breaths 🦊"],
 };
-// Patience lines now live in the shared patienceGuard utility
-// (client/src/v2/lib/patienceGuard.ts) — GENERIC_PATIENCE imported above.
+// Patience lines live in patienceGuard.ts — node-aware via getNodePatience.
 const LOVE_REACTIONS = ["Knew it.", "That's the one.", "Good eye.", "Locked. 🦊", "On we go."];
 
 /** Polls /api/jobs/{jobId} until terminal. 5s cadence, 600s ceiling (adCreatives runs long). */
@@ -285,8 +284,7 @@ export default function V2Trail() {
   // at 14/22s, long-wait at 30s, patience every 12s after — nothing static
   // longer than ~4-8s while generating (§8). Lines 2+ are ephemeral.
   // Narration: 0s/4s/8s are step-specific lines, then the long-wait portion
-  // uses the shared GENERIC_PATIENCE schedule from patienceGuard — so both
-  // V2Trail and V2TrailIntake run dead-air protection through one source.
+  // uses node-aware patience lines from patienceGuard via getNodePatience.
   const startNarration = (step: AutoStepName): { line1: ChatMessage; stop: () => void } => {
     const [l1, l2, l3] = NARRATION[step];
     const line1 = addLive({ type: "zappy-bubble", mood: "thinking", text: l1 });
@@ -296,9 +294,8 @@ export default function V2Trail() {
     // Step-specific lines at 4s and 8s
     at(4_000, l2);
     at(8_000, l3);
-    // Long-wait: shared schedule from patienceGuard (the single source of
-    // truth for dead-air protection timing)
-    for (const [ms, text] of GENERIC_PATIENCE) {
+    // Long-wait: node-specific patience lines from patienceGuard
+    for (const [ms, text] of getNodePatience(step)) {
       at(ms, text);
     }
     return { line1, stop: () => timers.forEach(clearTimeout) };
