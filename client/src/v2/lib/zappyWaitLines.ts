@@ -245,8 +245,9 @@ export const ZAPPY_LINES: Record<string, NodeLines> = {
 
 // ── Rotation picker ──
 
-// Session-level: tracks jokes already shown (survives across builds).
-const usedJokesThisSession = new Set<string>();
+// Joke tracker: prevents repeating a joke within a single build.
+// Reset per-build so jokes return on fresh campaigns/regens.
+let usedJokesThisBuild = new Set<string>();
 
 // Build-level: tracks all lines shown in the current generation run.
 let buildUsed = new Set<string>();
@@ -254,6 +255,7 @@ let buildUsed = new Set<string>();
 /** Call at the start of each new generation run (auto-cascade, regen, etc). */
 export function resetBuild(): void {
   buildUsed = new Set();
+  usedJokesThisBuild = new Set();
 }
 
 /** Pick a random line from a pool, respecting rotation rules. */
@@ -266,13 +268,13 @@ function pickFrom(
     .filter(l => {
       if (buildUsed.has(l.text)) return false;
       if (l.isJoke && opts.noJokes) return false;
-      if (l.isJoke && usedJokesThisSession.has(l.text)) return false;
+      if (l.isJoke && usedJokesThisBuild.has(l.text)) return false;
       return true;
     });
   if (candidates.length === 0) return null;
   const pick = candidates[Math.floor(Math.random() * candidates.length)];
   buildUsed.add(pick.text);
-  if (pick.isJoke) usedJokesThisSession.add(pick.text);
+  if (pick.isJoke) usedJokesThisBuild.add(pick.text);
   return pick.text;
 }
 
