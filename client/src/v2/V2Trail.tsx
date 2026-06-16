@@ -1432,6 +1432,23 @@ export default function V2Trail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trailState.data, persisted]);
 
+  // ── Return-visit "Regenerate images" chip: always available on completed campaigns ──
+  const regenChipOffered = useRef(false);
+  useEffect(() => {
+    if (regenChipOffered.current) return;
+    if (freshHandoff.current) return;
+    if (!trailState.data || persisted === null) return;
+    if (driverStarted.current) return;
+    const kit = trailState.data.kit as Record<string, unknown>;
+    if (kit.selectedAdCreativeBatchId == null) return; // no images yet
+    const staleCount = (trailState.data.statuses ?? []).filter(s => s.status === "stale").length;
+    if (staleCount > 0) return; // stale chips handle this case
+    regenChipOffered.current = true;
+    const row = addLive({ type: "chip-row", nodeKey: "adCreatives", chips: ["Regenerate images"] });
+    activeChips.current = { msgId: row.id, step: "adCreatives" };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trailState.data, persisted]);
+
   // ── Thread: restored transcript (+ welcome-back on genuine resume) + live ──
   const messages: ChatMessage[] = useMemo(() => {
     const saved = persisted ?? [];
