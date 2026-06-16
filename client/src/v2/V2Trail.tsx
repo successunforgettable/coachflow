@@ -1437,17 +1437,23 @@ export default function V2Trail() {
     if (freshHandoff.current) return; // fresh handoff from dashboard, not a return
     if (!trailState.data || persisted === null) return;
     if (driverStarted.current) return; // cascade is running, live chips handle it
-    const staleCount = (trailState.data.statuses ?? []).filter(s => s.status === "stale").length;
+    const staleStatuses = (trailState.data.statuses ?? []).filter(s => s.status === "stale");
+    const staleCount = staleStatuses.length;
     if (staleCount === 0) return;
     staleChipsOffered.current = true;
+    // Node-aware naming for singular case (e.g. "Ad Images" not "one piece")
+    const singleLabel = staleCount === 1 && staleStatuses[0]
+      ? (AUTO_STEPS.find(s => s.stopKey === staleStatuses[0].nodeType)?.revealLabel ?? "one piece")
+      : "";
     const framing = staleCount === 1
-      ? "Welcome back — one piece is a step behind your latest changes. Want me to catch it up, or leave it for now?"
+      ? `Welcome back — your ${singleLabel} ${singleLabel === "Ad Images" ? "are" : "is"} a step behind your latest changes. Want me to catch ${singleLabel === "Ad Images" ? "them" : "it"} up, or leave ${singleLabel === "Ad Images" ? "them" : "it"} for now?`
       : `Welcome back — ${staleCount} pieces are a step behind your latest changes. Want me to catch them up, or leave them as they are?`;
     const warn = addLive({ type: "zappy-bubble", mood: "idle", text: framing });
+    const confirmLabel = staleCount === 1 ? singleLabel : `${staleCount} pieces`;
     const confirmWarn = addLive({
       type: "zappy-bubble",
       mood: "idle",
-      text: `Rebuild ${staleCount} piece${staleCount > 1 ? "s" : ""}? Anything you hand-edited in them will be redone.`,
+      text: `Rebuild ${confirmLabel}? Anything you hand-edited in ${staleCount > 1 ? "them" : "it"} will be redone.`,
     });
     const row = addLive({ type: "chip-row", chips: ["Update the rest", "Keep them as they are"] });
     activeChips.current = { msgId: row.id, step: AUTO_STEPS[0].step };
