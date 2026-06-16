@@ -528,6 +528,7 @@ export default function V2Trail() {
 
   // ── Part B: standalone ad-image regeneration (no upstream change) ──
   const regenerateImages = async () => {
+    if (generatingKey) return; // guard: prevent double-invocation on fast double-tap
     resetBuild(); // fresh rotation for regen
     const state = trailState.data!;
     const serviceId = state.serviceId!;
@@ -584,6 +585,7 @@ export default function V2Trail() {
 
   // ── Sprint 4 C2: "Update the rest" — regenerate stale nodes with warning ──
   const runUpdateTheRest = async () => {
+    resetBuild(); // fresh patience-line pool for stale-node refresh
     const state = trailState.data!;
     const serviceId = state.serviceId!;
     const kit0 = state.kit as Record<string, unknown>;
@@ -769,10 +771,11 @@ export default function V2Trail() {
     (node: string, n: number) =>
       `Updated your ${node}. The ${n} piece${n > 1 ? "s" : ""} below ${n > 1 ? "were" : "was"} built on the old version — I can bring ${n > 1 ? "them" : "it"} in line whenever you're ready, or you can keep ${n > 1 ? "them" : "it"} as ${n > 1 ? "they are" : "it is"}.`,
   ];
-  const TWEAK_CATCHUP_SINGLE = (node: string) =>
-    `Done. Your ${node}'s changed, so the one piece built on it is a step behind — catch it up, or leave it?`;
+  const TWEAK_CATCHUP_SINGLE = (node: string, downstream: string) =>
+    `Done. Your ${node}'s changed, so your ${downstream} ${downstream === "Ad Images" ? "are" : "is"} a step behind — catch ${downstream === "Ad Images" ? "them" : "it"} up, or leave ${downstream === "Ad Images" ? "them" : "it"}?`;
 
   const processTweakQueue = async () => {
+    resetBuild(); // fresh patience-line pool for reworked nodes
     while (tweakQueue.current.length > 0) {
       const { step, instruction } = tweakQueue.current.shift()!;
       const stepDef = AUTO_STEPS.find(s => s.step === step)!;
@@ -800,14 +803,20 @@ export default function V2Trail() {
               await trailState.refetch();
               collapsePreviousChips();
               const nodeName = stepDef.revealLabel.toLowerCase();
+              // Find the single stale downstream node's name for singular framing
+              const staleStatuses = (trailState.data?.statuses ?? []).filter(s => s.status === "stale");
+              const singleStaleLabel = staleCount === 1 && staleStatuses[0]
+                ? (AUTO_STEPS.find(s => s.stopKey === staleStatuses[0].nodeType)?.revealLabel ?? "piece")
+                : "piece";
               const catchupText = staleCount === 1
-                ? TWEAK_CATCHUP_SINGLE(nodeName)
+                ? TWEAK_CATCHUP_SINGLE(nodeName, singleStaleLabel)
                 : TWEAK_CATCHUP_LINES[Math.floor(Math.random() * TWEAK_CATCHUP_LINES.length)](nodeName, staleCount);
               const warn = addLive({ type: "zappy-bubble", mood: "idle", text: catchupText });
+              const confirmLabel = staleCount === 1 ? singleStaleLabel : `${staleCount} pieces`;
               const confirmWarn = addLive({
                 type: "zappy-bubble",
                 mood: "idle",
-                text: `Rebuild ${staleCount} piece${staleCount > 1 ? "s" : ""}? Anything you hand-edited in them will be redone.`,
+                text: `Rebuild ${confirmLabel}? Anything you hand-edited in ${staleCount > 1 ? "them" : "it"} will be redone.`,
               });
               const row = addLive({ type: "chip-row", chips: ["Update the rest", "Keep them as they are"] });
               activeChips.current = { msgId: row.id, step: stepDef.step };

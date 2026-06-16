@@ -316,13 +316,13 @@ export function getNodePatienceSchedule(
   const longTimings = opts.reducedMotion
     ? [14_000, 30_000, 50_000, 70_000, 90_000, 110_000, 130_000]
     : [42_000, 60_000, 80_000, 100_000, 120_000, 140_000];
+  let longCycleIdx = 0;
   for (const ms of longTimings) {
-    // Pick from long; if exhausted, cycle (reset build-used for long lines only)
+    // Pick from long; if exhausted, cycle (calm lines are safe to repeat)
     let line = pickFrom(node.long);
     if (!line) {
-      // Pool exhausted — cycle through long lines again (they're calm, safe to repeat)
-      const idx = schedule.filter(([t]) => t >= 42_000).length % node.long.length;
-      line = node.long[idx];
+      line = node.long[longCycleIdx % node.long.length];
+      longCycleIdx++;
     }
     if (line) schedule.push([ms, line]);
   }
