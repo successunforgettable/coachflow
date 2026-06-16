@@ -1348,6 +1348,34 @@ export default function V2Trail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trailState.data, persisted]);
 
+  // ── Return-visit stale chips: re-offer "Update the rest" when stale rows exist ──
+  // Guard: useRef resets on every mount (page load / navigation), so chips are
+  // offered once per return-session. Next visit → ref resets → chips re-appear
+  // (stale rows persist until explicitly updated). Not re-offered on refetch.
+  const staleChipsOffered = useRef(false);
+  useEffect(() => {
+    if (staleChipsOffered.current) return;
+    if (freshHandoff.current) return; // fresh handoff from dashboard, not a return
+    if (!trailState.data || persisted === null) return;
+    if (driverStarted.current) return; // cascade is running, live chips handle it
+    const staleCount = (trailState.data.statuses ?? []).filter(s => s.status === "stale").length;
+    if (staleCount === 0) return;
+    staleChipsOffered.current = true;
+    const framing = staleCount === 1
+      ? "Welcome back — one piece is a step behind your latest changes. Want me to catch it up, or leave it for now?"
+      : `Welcome back — ${staleCount} pieces are a step behind your latest changes. Want me to catch them up, or leave them as they are?`;
+    const warn = addLive({ type: "zappy-bubble", mood: "idle", text: framing });
+    const confirmWarn = addLive({
+      type: "zappy-bubble",
+      mood: "idle",
+      text: `Rebuild ${staleCount} piece${staleCount > 1 ? "s" : ""}? Anything you hand-edited in them will be redone.`,
+    });
+    const row = addLive({ type: "chip-row", chips: ["Update the rest", "Keep them as they are"] });
+    activeChips.current = { msgId: row.id, step: AUTO_STEPS[0].step };
+    persistMsgs([warn, confirmWarn]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trailState.data, persisted]);
+
   // ── Thread: restored transcript (+ welcome-back on genuine resume) + live ──
   const messages: ChatMessage[] = useMemo(() => {
     const saved = persisted ?? [];
