@@ -909,6 +909,27 @@ export default function V2Trail() {
       if (cancelled.current) return;
       if (kit[stepDef.field] != null) continue;
 
+      // ── Style chooser: pause before adCreatives to let user pick style ──
+      if (stepDef.step === "adCreatives" && !(kit as Record<string, unknown>).adImageStyle) {
+        driverBusy.current = false;
+        addLive({ type: "zappy-bubble", mood: "idle", text: "Last step — your ad images. Pick a style:" });
+        // Get headline text for the live preview
+        let headlineText = "Your headline here";
+        try {
+          const hId = kit.selectedHeadlineId as number | undefined;
+          if (hId) {
+            const h = await utils.headlines.get.fetch({ id: hId });
+            if (h?.headline) headlineText = h.headline;
+          }
+        } catch { /* fallback is fine */ }
+        addLive({ type: "style-chooser", styleChooserHeadline: headlineText });
+        const chosenStyle = await waitForStyleChoice();
+        if (cancelled.current) return;
+        // Persist the choice
+        try { await updateSelection.mutateAsync({ kitId, adImageStyle: chosenStyle } as any); } catch { /* non-fatal */ }
+        driverBusy.current = true;
+      }
+
       setGeneratingKey(stepDef.stopKey);
       const narration = startNarration(stepDef.step);
 
@@ -1033,6 +1054,17 @@ export default function V2Trail() {
       if (kind === "goals") return `Notice the thread so far: everything points at "${line}". That's deliberate.`;
       return `Your follow-ups all press on "${line}" — that's what gets replies.`;
     } catch { return null; }
+  };
+
+  // ── Style chooser wait — resolves when user picks a style ──
+  const styleResolve = useRef<((style: string) => void) | null>(null);
+  const waitForStyleChoice = () => new Promise<string>(r => { styleResolve.current = r; });
+  const handleStyleChoose = (messageId: string, style: string) => {
+    removeLive(messageId);
+    const echo = addLive({ type: "user-bubble", text: style.startsWith("quote_card") ? "Quote Card" : "Photo Ad" });
+    persistMsgs([echo]);
+    styleResolve.current?.(style);
+    styleResolve.current = null;
   };
 
   // ── Sprint 4 C1: manual crown wait — a promise that resolves when the
@@ -1163,6 +1195,22 @@ export default function V2Trail() {
 
       // For non-dealable nodes, skip the deal chip — generate + reveal like auto.
       if (!stepDef.dealable) {
+        // Style chooser for adCreatives in manual mode
+        if (stepDef.step === "adCreatives" && !kit.adImageStyle) {
+          let headlineText = "Your headline here";
+          try {
+            const hId = kit.selectedHeadlineId as number | undefined;
+            if (hId) {
+              const h = await utils.headlines.get.fetch({ id: hId });
+              if (h?.headline) headlineText = h.headline;
+            }
+          } catch { /* fallback */ }
+          addLive({ type: "style-chooser", styleChooserHeadline: headlineText });
+          const chosenStyle = await waitForStyleChoice();
+          if (cancelled.current) return;
+          try { await updateSelection.mutateAsync({ kitId, adImageStyle: chosenStyle } as any); } catch { /* non-fatal */ }
+          kit = { ...kit, adImageStyle: chosenStyle };
+        }
         setGeneratingKey(stepDef.stopKey);
         const narration = startNarration(stepDef.step);
         let ok = false;
@@ -1569,6 +1617,7 @@ export default function V2Trail() {
             onChipTap={handleChipTap}
             onDeckSelect={handleDeckSelect}
             onDeckHeart={handleDeckHeart}
+            onStyleChoose={handleStyleChoose}
             onSendText={tweakMode ? handleTweakInstruction : undefined}
             inputPlaceholder="What should change?"
             inputDisabled={!tweakMode}

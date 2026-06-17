@@ -499,11 +499,11 @@ export default function V2Dashboard() {
       const activeKit = currentIcpId
         ? campaignKitsList?.find((k: any) => k.icpId === currentIcpId)
         : null;
-      if (activeKit && activeKit[gateField] == null) {
+      if (activeKit && (activeKit as Record<string, unknown>)[gateField] == null) {
         // Redirect to the earliest step that PRODUCES the missing field
         const gateEntries = Object.entries(DASHBOARD_GATES);
         for (const [, field] of gateEntries) {
-          if (activeKit[field] == null) {
+          if ((activeKit as Record<string, unknown>)[field] == null) {
             const producerStep = FIELD_TO_PRODUCER[field];
             if (producerStep) {
               navigate(`/v2-dashboard/wizard/${producerStep}${wizardQuery}`);

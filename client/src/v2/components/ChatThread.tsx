@@ -10,7 +10,9 @@
  * Scroll: auto-scrolls to newest; pauses on user scroll-up; "↓ New" pill.
  * Chips: disappear after tap, echo as user-bubble.
  */
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, lazy, Suspense } from "react";
+
+const StyleChooser = lazy(() => import("./StyleChooser"));
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const BRAND_PRIMARY = "#FF5B1D";
@@ -32,7 +34,8 @@ export type ChatMessageType =
   | "asset-reveal-card"
   | "card-deck"
   | "milestone-badge"
-  | "system-divider";
+  | "system-divider"
+  | "style-chooser";
 
 export interface ChatMessage {
   id: string;
@@ -53,13 +56,18 @@ export interface ChatMessage {
   milestone?: { name: string; line: string };
   /** Currently selected chips in a multi-select chip-row */
   selectedChips?: string[];
+  /** Style chooser: headline text for live preview */
+  styleChooserHeadline?: string;
 }
+
+export type StyleChooseCallback = (messageId: string, style: string) => void;
 
 export interface ChatThreadProps {
   messages: ChatMessage[];
   onChipTap?: (messageId: string, chip: string) => void;
   onDeckSelect?: (messageId: string, cardId: number) => void;
   onDeckHeart?: (messageId: string, cardId: number) => void;
+  onStyleChoose?: StyleChooseCallback;
   /** Ref map for TrailBar scroll-to-node */
   nodeRefMap?: React.MutableRefObject<Map<string, HTMLDivElement>>;
   /**
@@ -426,7 +434,7 @@ function SystemDivider({ msg }: { msg: ChatMessage }) {
 }
 
 // ─── Main ChatThread ──────────────────────────────────────────────────────────
-export default function ChatThread({ messages, onChipTap, onDeckSelect, onDeckHeart, nodeRefMap, onSendText, inputPlaceholder, inputDisabled }: ChatThreadProps) {
+export default function ChatThread({ messages, onChipTap, onDeckSelect, onDeckHeart, onStyleChoose, nodeRefMap, onSendText, inputPlaceholder, inputDisabled }: ChatThreadProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
@@ -539,6 +547,14 @@ export default function ChatThread({ messages, onChipTap, onDeckSelect, onDeckHe
                 {msg.type === "card-deck" && <CardDeck msg={msg} onSelect={(cardId) => onDeckSelect?.(msg.id, cardId)} onHeart={(cardId) => onDeckHeart?.(msg.id, cardId)} />}
                 {msg.type === "milestone-badge" && <MilestoneBadge msg={msg} />}
                 {msg.type === "system-divider" && <SystemDivider msg={msg} />}
+                {msg.type === "style-chooser" && (
+                  <Suspense fallback={null}>
+                    <StyleChooser
+                      headline={msg.styleChooserHeadline || "Your headline here"}
+                      onChoose={({ style }) => onStyleChoose?.(msg.id, style)}
+                    />
+                  </Suspense>
+                )}
               </div>
             );
           })}

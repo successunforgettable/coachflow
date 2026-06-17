@@ -45,6 +45,8 @@ import { runLandingPageGeneration } from "../landingPageGenerator";
 import { runEmailSequenceGeneration } from "../emailSequenceGenerator";
 import { runWhatsappSequenceGeneration } from "../whatsappSequenceGenerator";
 import { runAdCreativesGeneration, generateContextualAdHeadlines } from "../adCreativesGenerator";
+import { renderQuoteCard, QUOTE_CARD_PALETTES } from "./renderQuoteCard";
+import { storagePut } from "../storage";
 import { runLandingPagePublish } from "../landingPagePublisher";
 
 // ─── Locked B-2 Zappy script labels ────────────────────────────────────────
@@ -413,16 +415,9 @@ export async function runOrchestrationStep(
       break;
     }
     case "adCreatives": {
-      // Phase C C1: 5 ad image variations generated via Replicate Flux,
-      // composited with server-trusted headlines. Inputs derived from
-      // service + the kit's selected mechanism (looked up via the kit
-      // we already read above for skip-already-populated check).
       const [svc] = await db.select().from(services).where(eq(services.id, input.serviceId)).limit(1);
       if (!svc) throw new Error("Service not found for adCreatives step");
-      // Look up the selected mechanism's name from the kit's
-      // selectedMechanismId pointer (populated by step 2 earlier in the
-      // cascade). Falls back to "System" if absent (shouldn't happen in
-      // a fresh cascade but possible on partial-resume).
+
       let mechanismName = "System";
       if (kit?.selectedMechanismId) {
         const [m] = await db.select({ name: heroMechanisms.mechanismName })
@@ -431,21 +426,11 @@ export async function runOrchestrationStep(
           .limit(1);
         if (m?.name) mechanismName = m.name;
       }
-      // Niche derivation: targetCustomer is the most niche-specific
-      // operator-supplied field (e.g. "SaaS founders at $500k-$3M ARR")
-      // — better visual-prompting flavor than service.category which is
-      // a coarse 3-value enum (coaching/speaking/consulting). Truncated
-      // to fit varchar(255) niche column on adCreatives.
+
       const niche = (svc.targetCustomer ?? svc.category ?? "coaching").slice(0, 200);
       const pressingProblem = svc.painPoints ?? svc.description ?? "";
-      // Phase C C1.1: generate 5 Meta-compliant ≤38-char headlines via
-      // a small LLM call instead of relying on HEADLINE_FORMULAS template-
-      // fill (which produced over-40-char headlines for every variation
-      // in C1's first kit 13 run — generic templates collide with the
-      // long niche/mechanism strings the cascade derives). The contextual
-      // headlines validator + retry-with-fail-context ensures the 5
-      // strings are all ≤38 chars; throws on retry exhaust so the kit
-      // does not ship compliance-flagged headlines.
+
+      // Generate contextual headlines (shared by both styles)
       const headlines = await generateContextualAdHeadlines({
         productName: svc.name,
         mainBenefit: svc.mainBenefit ?? "",
@@ -453,19 +438,65 @@ export async function runOrchestrationStep(
         uniqueMechanism: mechanismName,
         pressingProblem,
       });
-      const { batchId } = await runAdCreativesGeneration({
-        userId: input.userId,
-        serviceId: input.serviceId,
-        niche,
-        productName: svc.name,
-        uniqueMechanism: mechanismName,
-        targetAudience: svc.targetCustomer ?? "",
-        mainBenefit: svc.mainBenefit ?? "",
-        pressingProblem,
-        adType: "lead_gen",
-        headlines,
-      });
-      generatedId = batchId;
+
+      // Style routing: read adImageStyle from the kit
+      const adImageStyle = (kit as Record<string, unknown>)?.adImageStyle as string | null;
+      const isQuoteCard = adImageStyle?.startsWith("quote_card");
+
+      if (isQuoteCard) {
+        // ── Quote-card path: pure typography, no Flux, $0/image, <5s ──
+        const { adCreatives: adCreativesTable } = await import("../../drizzle/schema");
+        const { randomBytes: rb } = await import("crypto");
+        const palette = adImageStyle?.split(":")[1] || "charcoal";
+        const batchId = `batch-${Date.now()}-${rb(4).toString("hex")}`;
+        const attribution = svc.name;
+
+        for (let i = 0; i < 5; i++) {
+          const headline = headlines[i];
+          const pngBuffer = await renderQuoteCard({ headline, attribution, palette });
+          const fileKey = `ad-creatives/${input.userId}/${batchId}/quote-${i + 1}.png`;
+          const { url: imageUrl } = await storagePut(fileKey, pngBuffer, "image/png");
+
+          await db.insert(adCreativesTable).values({
+            userId: input.userId,
+            serviceId: input.serviceId,
+            niche,
+            productName: svc.name,
+            uniqueMechanism: mechanismName,
+            targetAudience: svc.targetCustomer ?? "",
+            mainBenefit: svc.mainBenefit ?? "",
+            pressingProblem,
+            adType: "lead_gen",
+            styleType: "tabloid",
+            designStyle: "person_shocked",
+            headlineFormula: (["benefit", "social_proof", "curiosity", "contrast", "challenge"] as const)[i],
+            headline,
+            imageUrl,
+            rawImageUrl: imageUrl, // no separate raw for quote cards
+            imageFormat: "1080x1080",
+            complianceChecked: true,
+            complianceIssues: null,
+            batchId,
+            variationNumber: i + 1,
+          } as any);
+        }
+        generatedId = batchId;
+      } else {
+        // ── Photo-ad path: existing Flux pipeline, UNTOUCHED ──
+        const { batchId } = await runAdCreativesGeneration({
+          userId: input.userId,
+          serviceId: input.serviceId,
+          niche,
+          productName: svc.name,
+          uniqueMechanism: mechanismName,
+          targetAudience: svc.targetCustomer ?? "",
+          mainBenefit: svc.mainBenefit ?? "",
+          pressingProblem,
+          adType: "lead_gen",
+          headlines,
+        });
+        generatedId = batchId;
+      }
       break;
     }
   }
