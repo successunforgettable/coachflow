@@ -1322,6 +1322,9 @@ export const campaignKits = mysqlTable("campaignKits", {
   // Trail Sprint 1 (migration 0076): which entry path the user chose.
   // Nullable: pre-Trail kits have no path. Mutable: users can switch mid-campaign.
   path: mysqlEnum("path", ["auto", "manual", "has_assets"]),
+  // Style options (migration 0078): user's chosen ad-image style.
+  // NULL = photo_ad (existing Flux pipeline). "quote_card:navy" etc for quote cards.
+  adImageStyle: varchar("adImageStyle", { length: 50 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
