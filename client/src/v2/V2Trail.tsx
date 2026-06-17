@@ -913,7 +913,6 @@ export default function V2Trail() {
       if (stepDef.step === "adCreatives" && !(kit as Record<string, unknown>).adImageStyle) {
         driverBusy.current = false;
         addLive({ type: "zappy-bubble", mood: "idle", text: "Last step — your ad images. Pick a style:" });
-        // Get headline text for the live preview
         let headlineText = "Your headline here";
         try {
           const hId = kit.selectedHeadlineId as number | undefined;
@@ -925,8 +924,11 @@ export default function V2Trail() {
         addLive({ type: "style-chooser", styleChooserHeadline: headlineText });
         const chosenStyle = await waitForStyleChoice();
         if (cancelled.current) return;
-        // Persist the choice
-        try { await updateSelection.mutateAsync({ kitId, adImageStyle: chosenStyle } as any); } catch { /* non-fatal */ }
+        const autoKitId = kit0.id as number;
+        try { await updateSelection.mutateAsync({ kitId: autoKitId, adImageStyle: chosenStyle } as any); } catch { /* non-fatal */ }
+        // Refresh kit so orchestrator reads the style
+        const refreshedState = await trailState.refetch();
+        kit = (refreshedState.data?.kit ?? kit) as Record<string, unknown>;
         driverBusy.current = true;
       }
 

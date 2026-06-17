@@ -415,11 +415,13 @@ export async function runOrchestrationStep(
       break;
     }
     case "adCreatives": {
+      // Re-read kit to pick up adImageStyle saved by the client just before this call
+      const freshKit = await getKit();
       const [svc] = await db.select().from(services).where(eq(services.id, input.serviceId)).limit(1);
       if (!svc) throw new Error("Service not found for adCreatives step");
 
       let mechanismName = "System";
-      if (kit?.selectedMechanismId) {
+      if (freshKit?.selectedMechanismId) {
         const [m] = await db.select({ name: heroMechanisms.mechanismName })
           .from(heroMechanisms)
           .where(eq(heroMechanisms.id, kit.selectedMechanismId))
@@ -439,8 +441,8 @@ export async function runOrchestrationStep(
         pressingProblem,
       });
 
-      // Style routing: read adImageStyle from the kit
-      const adImageStyle = (kit as Record<string, unknown>)?.adImageStyle as string | null;
+      // Style routing: read adImageStyle from the freshly-read kit
+      const adImageStyle = (freshKit as Record<string, unknown>)?.adImageStyle as string | null;
       const isQuoteCard = adImageStyle?.startsWith("quote_card");
 
       if (isQuoteCard) {
