@@ -1266,6 +1266,24 @@ export type CoachAsset = typeof coachAssets.$inferSelect;
 export type InsertCoachAsset = typeof coachAssets.$inferInsert;
 
 // ---------------------------------------------------------------------------
+// Testimonial Library — persistent, reusable testimonials across campaigns
+// ---------------------------------------------------------------------------
+export const testimonials = mysqlTable("testimonials", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  serviceId: int("serviceId"),
+  name: varchar("name", { length: 255 }).notNull(),
+  title: varchar("title", { length: 255 }),
+  quote: text("quote").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  userIdIdx: index("idx_testimonials_userId").on(table.userId),
+  serviceIdIdx: index("idx_testimonials_serviceId").on(table.serviceId),
+}));
+export type Testimonial = typeof testimonials.$inferSelect;
+export type InsertTestimonial = typeof testimonials.$inferInsert;
+
+// ---------------------------------------------------------------------------
 // Background job queue table for async AI generation polling
 // ---------------------------------------------------------------------------
 export const jobs = mysqlTable("jobs", {
