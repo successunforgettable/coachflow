@@ -933,14 +933,20 @@ export default function V2Trail() {
         driverBusy.current = false;
         addLive({ type: "zappy-bubble", mood: "idle", text: "Last step — your ad images. Pick a style:" });
         let headlineText = "Your headline here";
+        let testimonialForChooser: { quote: string; name: string; title?: string } | null = null;
         try {
           const hId = kit.selectedHeadlineId as number | undefined;
           if (hId) {
             const h = await utils.headlines.get.fetch({ id: hId });
             if (h?.headline) headlineText = h.headline;
           }
+          // Fetch testimonial data for the testimonial card preview
+          const svcData = await utils.services.get.fetch({ id: serviceId }) as Record<string, unknown> | null;
+          if (svcData?.testimonial1Name && svcData?.testimonial1Quote) {
+            testimonialForChooser = { quote: String(svcData.testimonial1Quote), name: String(svcData.testimonial1Name), title: svcData.testimonial1Title ? String(svcData.testimonial1Title) : undefined };
+          }
         } catch { /* fallback is fine */ }
-        addLive({ type: "style-chooser", styleChooserHeadline: headlineText });
+        addLive({ type: "style-chooser", styleChooserHeadline: headlineText, styleChooserTestimonial: testimonialForChooser });
         const chosenStyle = await waitForStyleChoice();
         if (cancelled.current) return;
         const autoKitId = kit0.id as number;
@@ -1249,14 +1255,19 @@ export default function V2Trail() {
         // Style chooser for adCreatives in manual mode
         if (stepDef.step === "adCreatives" && !kit.adImageStyle) {
           let headlineText = "Your headline here";
+          let manualTestimonial: { quote: string; name: string; title?: string } | null = null;
           try {
             const hId = kit.selectedHeadlineId as number | undefined;
             if (hId) {
               const h = await utils.headlines.get.fetch({ id: hId });
               if (h?.headline) headlineText = h.headline;
             }
+            const svcData = await utils.services.get.fetch({ id: serviceId }) as Record<string, unknown> | null;
+            if (svcData?.testimonial1Name && svcData?.testimonial1Quote) {
+              manualTestimonial = { quote: String(svcData.testimonial1Quote), name: String(svcData.testimonial1Name), title: svcData.testimonial1Title ? String(svcData.testimonial1Title) : undefined };
+            }
           } catch { /* fallback */ }
-          addLive({ type: "style-chooser", styleChooserHeadline: headlineText });
+          addLive({ type: "style-chooser", styleChooserHeadline: headlineText, styleChooserTestimonial: manualTestimonial });
           const chosenStyle = await waitForStyleChoice();
           if (cancelled.current) return;
           try { await updateSelection.mutateAsync({ kitId, adImageStyle: chosenStyle } as any); } catch { /* non-fatal */ }

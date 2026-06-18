@@ -60,6 +60,8 @@ export interface ChatMessage {
   selectedChips?: string[];
   /** Style chooser: headline text for live preview */
   styleChooserHeadline?: string;
+  /** Style chooser: testimonial data for testimonial card preview (null = no testimonials, card hidden) */
+  styleChooserTestimonial?: { quote: string; name: string; title?: string } | null;
   /** Testimonial picker: serviceId + mode */
   testimonialPicker?: { serviceId: number; mode: "campaign" | "standalone" };
 }
@@ -573,6 +575,7 @@ export default function ChatThread({ messages, campaignStatus, onChipTap, onDeck
                   <Suspense fallback={null}>
                     <StyleChooser
                       headline={msg.styleChooserHeadline || "Your headline here"}
+                      testimonialQuote={msg.styleChooserTestimonial}
                       onChoose={({ style }) => onStyleChoose?.(msg.id, style)}
                     />
                   </Suspense>

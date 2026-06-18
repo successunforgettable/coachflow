@@ -47,6 +47,7 @@ import { runWhatsappSequenceGeneration } from "../whatsappSequenceGenerator";
 import { runAdCreativesGeneration, generateContextualAdHeadlines } from "../adCreativesGenerator";
 import { renderQuoteCard } from "./renderQuoteCard";
 import { renderNotificationMockup } from "./renderNotificationMockup";
+import { renderTestimonialCard } from "./renderTestimonialCard";
 import { storagePut } from "../storage";
 import { runLandingPagePublish } from "../landingPagePublisher";
 
@@ -444,7 +445,7 @@ export async function runOrchestrationStep(
 
       // Style routing: read adImageStyle from the freshly-read kit
       const adImageStyle = (freshKit as Record<string, unknown>)?.adImageStyle as string | null;
-      const isTemplate = adImageStyle?.startsWith("quote_card") || adImageStyle?.startsWith("notification");
+      const isTemplate = adImageStyle?.startsWith("quote_card") || adImageStyle?.startsWith("notification") || adImageStyle?.startsWith("testimonial");
 
       if (isTemplate) {
         // ── Template path: pure typography/layout, no Flux, $0/image, <5s ──
@@ -454,11 +455,33 @@ export async function runOrchestrationStep(
         const palette = adImageStyle!.split(":")[1] || "charcoal";
         const batchId = `batch-${Date.now()}-${rb(4).toString("hex")}`;
 
+        // Build testimonials array for testimonial style (verbatim from services columns)
+        const svcTestimonials = styleKey === "testimonial" ? [
+          svc.testimonial1Name ? { name: svc.testimonial1Name, title: svc.testimonial1Title || "", quote: svc.testimonial1Quote || "" } : null,
+          svc.testimonial2Name ? { name: svc.testimonial2Name, title: svc.testimonial2Title || "", quote: svc.testimonial2Quote || "" } : null,
+          svc.testimonial3Name ? { name: svc.testimonial3Name, title: svc.testimonial3Title || "", quote: svc.testimonial3Quote || "" } : null,
+        ].filter(Boolean) as { name: string; title: string; quote: string }[] : [];
+
         for (let i = 0; i < 5; i++) {
-          const headline = headlines[i];
-          const pngBuffer = styleKey === "notification"
-            ? await renderNotificationMockup({ headline, appName: svc.name, palette })
-            : await renderQuoteCard({ headline, attribution: svc.name, palette });
+          let headline: string;
+          let pngBuffer: Buffer;
+
+          if (styleKey === "testimonial" && i < svcTestimonials.length) {
+            // Testimonial card — verbatim quote from the user's real data
+            const t = svcTestimonials[i];
+            pngBuffer = await renderTestimonialCard({ quote: t.quote, clientName: t.name, clientTitle: t.title || undefined, palette });
+            headline = t.quote.slice(0, 250); // store quote snippet in headline column for display
+          } else if (styleKey === "testimonial") {
+            // Remaining slots after testimonials: headline cards as quote-card style
+            headline = headlines[i - svcTestimonials.length];
+            pngBuffer = await renderQuoteCard({ headline, attribution: svc.name, palette });
+          } else if (styleKey === "notification") {
+            headline = headlines[i];
+            pngBuffer = await renderNotificationMockup({ headline, appName: svc.name, palette });
+          } else {
+            headline = headlines[i];
+            pngBuffer = await renderQuoteCard({ headline, attribution: svc.name, palette });
+          }
           const fileKey = `ad-creatives/${input.userId}/${batchId}/${styleKey}-${i + 1}.png`;
           const { url: imageUrl } = await storagePut(fileKey, pngBuffer, "image/png");
 

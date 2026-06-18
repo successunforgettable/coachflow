@@ -188,12 +188,74 @@ export interface StyleChoice {
 
 interface StyleChooserProps {
   headline: string;
+  /** Real testimonial quote for the testimonial card preview. Null = no testimonials, card hidden. */
+  testimonialQuote?: { quote: string; name: string; title?: string } | null;
   onChoose: (choice: StyleChoice) => void;
 }
 
-export default function StyleChooser({ headline, onChoose }: StyleChooserProps) {
+// ── Live canvas preview for testimonial card ──
+
+function TestimonialPreview({ quote, name, bg, accent }: { quote: string; name: string; bg: string; accent: string }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const W = 200;
+    const H = 200;
+    canvas.width = W;
+    canvas.height = H;
+
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+
+    // Quote text — centered, white, italic feel via curly quotes
+    ctx.fillStyle = "rgba(255,255,255,0.9)";
+    ctx.textAlign = "center";
+    ctx.font = "bold 11px sans-serif";
+
+    const text = `\u201C${quote}\u201D`;
+    const maxWidth = W - 28;
+    const words = text.split(/\s+/);
+    const lines: string[] = [];
+    let line = "";
+    for (const word of words) {
+      const test = line ? `${line} ${word}` : word;
+      if (ctx.measureText(test).width > maxWidth && line) { lines.push(line); line = word; }
+      else { line = test; }
+    }
+    if (line) lines.push(line);
+
+    const lineHeight = 14;
+    const blockH = Math.min(lines.length, 6) * lineHeight;
+    const startY = (H - blockH - 30) / 2;
+
+    lines.slice(0, 6).forEach((l, i) => {
+      ctx.fillText(l, W / 2, startY + lineHeight * (i + 0.5), maxWidth);
+    });
+
+    // Divider
+    ctx.fillStyle = accent;
+    ctx.globalAlpha = 0.5;
+    ctx.fillRect(W * 0.3, startY + blockH + 6, W * 0.4, 1.5);
+    ctx.globalAlpha = 1;
+
+    // Name
+    ctx.fillStyle = "#fff";
+    ctx.font = "bold 10px sans-serif";
+    ctx.fillText(name, W / 2, startY + blockH + 22);
+  }, [quote, name, bg, accent]);
+
+  return <canvas ref={canvasRef} style={{ width: 200, height: 200, borderRadius: 12 }} />;
+}
+
+export default function StyleChooser({ headline, testimonialQuote, onChoose }: StyleChooserProps) {
   const [selectedPalette, setSelectedPalette] = useState(PALETTES[0]);
   const [notifPalette, setNotifPalette] = useState(PALETTES[1]); // default Navy for notification
+  const [testimonialPalette, setTestimonialPalette] = useState(PALETTES[4]); // default Burgundy
   const [hoveredStyle, setHoveredStyle] = useState<string | null>(null);
 
   const cardBase: React.CSSProperties = {
@@ -351,6 +413,53 @@ export default function StyleChooser({ headline, onChoose }: StyleChooserProps) 
             Choose
           </button>
         </div>
+
+        {/* Testimonial Card — only shown when real testimonials exist */}
+        {testimonialQuote && (
+        <div
+          style={{ ...cardBase, ...(hoveredStyle === "testimonial" ? cardHover : {}) }}
+          onMouseEnter={() => setHoveredStyle("testimonial")}
+          onMouseLeave={() => setHoveredStyle(null)}
+          onClick={() => onChoose({ style: `testimonial:${testimonialPalette.key}` })}
+        >
+          <TestimonialPreview quote={testimonialQuote.quote} name={testimonialQuote.name} bg={testimonialPalette.bg} accent={testimonialPalette.accent} />
+          <div style={{ fontFamily: "Instrument Sans, sans-serif", fontWeight: 600, fontSize: 15 }}>
+            Testimonial
+          </div>
+          <div style={{ fontFamily: "Instrument Sans, sans-serif", fontSize: 12, color: "#666", textAlign: "center" }}>
+            Your client's words as the ad
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+            <span style={{ fontFamily: "Instrument Sans, sans-serif", fontSize: 11, color: "#999", fontWeight: 500 }}>
+              Background: {testimonialPalette.label}
+            </span>
+            <div style={{ display: "flex", gap: 6 }}>
+              {PALETTES.map(p => (
+                <div
+                  key={p.key}
+                  onClick={(e) => { e.stopPropagation(); setTestimonialPalette(p); }}
+                  style={{
+                    width: 24, height: 24, borderRadius: "50%",
+                    background: p.bg, cursor: "pointer",
+                    border: p.key === testimonialPalette.key ? "2px solid #FF5B1D" : "2px solid transparent",
+                    transition: "border-color 0.15s",
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+          <button
+            onClick={(e) => { e.stopPropagation(); onChoose({ style: `testimonial:${testimonialPalette.key}` }); }}
+            style={{
+              background: "#FF5B1D", color: "#fff", border: "none",
+              borderRadius: 9999, padding: "8px 24px", cursor: "pointer",
+              fontFamily: "Instrument Sans, sans-serif", fontWeight: 600, fontSize: 14,
+            }}
+          >
+            Choose
+          </button>
+        </div>
+        )}
       </div>
       <p style={{ fontFamily: "Instrument Sans, sans-serif", fontSize: 11, color: "#999", margin: 0, textAlign: "center" }}>
         These are previews — your final images will be full-size and high quality.
