@@ -899,6 +899,26 @@ export default function V2Trail() {
       }
     }
 
+    // ── Testimonial prompt: offer before the cascade if no testimonials exist ──
+    // Only on the first run (not resume with partially-generated nodes).
+    const firstPending = AUTO_STEPS.find(s => kit[s.field] == null);
+    if (firstPending?.step === "offer" && serviceId) {
+      // Check if service already has testimonials
+      try {
+        const svcCheck = await utils.services.get.fetch({ id: serviceId }) as Record<string, unknown> | null;
+        const hasTestimonials = svcCheck?.testimonial1Name || svcCheck?.testimonial2Name;
+        if (!hasTestimonials) {
+          addLive({ type: "zappy-bubble", mood: "idle", text: "Got any client testimonials? Real quotes make your ads, emails, and landing page more convincing." });
+          addLive({ type: "testimonial-picker", testimonialPicker: { serviceId, mode: "campaign" } });
+          const testimonialAction = await waitForTestimonialDone();
+          if (cancelled.current) return;
+          if (testimonialAction === "use") {
+            addLive({ type: "zappy-bubble", mood: "celebrating", text: "Nice — real social proof makes everything hit harder. Let's build." });
+          }
+        }
+      } catch { /* non-fatal — skip testimonial prompt if lookup fails */ }
+    }
+
     for (const stepDef of AUTO_STEPS) {
       if (cancelled.current) return;
       // Tweaks queued during the previous node run between nodes —
@@ -1058,12 +1078,24 @@ export default function V2Trail() {
     } catch { return null; }
   };
 
+  // ── Testimonial picker wait — resolves when user taps Use/Skip ──
+  const testimonialResolve = useRef<((action: "use" | "skip") => void) | null>(null);
+  const waitForTestimonialDone = () => new Promise<"use" | "skip">(r => { testimonialResolve.current = r; });
+  const handleTestimonialDone = (messageId: string, action: "use" | "skip") => {
+    removeLive(messageId);
+    const echo = addLive({ type: "user-bubble", text: action === "use" ? "Use these testimonials" : "Skip — no testimonials" });
+    persistMsgs([echo]);
+    testimonialResolve.current?.(action);
+    testimonialResolve.current = null;
+  };
+
   // ── Style chooser wait — resolves when user picks a style ──
   const styleResolve = useRef<((style: string) => void) | null>(null);
   const waitForStyleChoice = () => new Promise<string>(r => { styleResolve.current = r; });
   const handleStyleChoose = (messageId: string, style: string) => {
     removeLive(messageId);
-    const echo = addLive({ type: "user-bubble", text: style.startsWith("quote_card") ? "Quote Card" : "Photo Ad" });
+    const styleName = style.startsWith("quote_card") ? "Quote Card" : style.startsWith("notification") ? "Notification" : "Photo Ad";
+    const echo = addLive({ type: "user-bubble", text: styleName });
     persistMsgs([echo]);
     styleResolve.current?.(style);
     styleResolve.current = null;
@@ -1620,6 +1652,7 @@ export default function V2Trail() {
             onDeckSelect={handleDeckSelect}
             onDeckHeart={handleDeckHeart}
             onStyleChoose={handleStyleChoose}
+            onTestimonialDone={handleTestimonialDone}
             onSendText={tweakMode ? handleTweakInstruction : undefined}
             inputPlaceholder="What should change?"
             inputDisabled={!tweakMode}

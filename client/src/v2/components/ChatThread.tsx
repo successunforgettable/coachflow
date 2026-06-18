@@ -13,6 +13,7 @@
 import { useState, useEffect, useRef, useCallback, lazy, Suspense } from "react";
 
 const StyleChooser = lazy(() => import("./StyleChooser"));
+const TestimonialPicker = lazy(() => import("./TestimonialPicker"));
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const BRAND_PRIMARY = "#FF5B1D";
@@ -35,7 +36,8 @@ export type ChatMessageType =
   | "card-deck"
   | "milestone-badge"
   | "system-divider"
-  | "style-chooser";
+  | "style-chooser"
+  | "testimonial-picker";
 
 export interface ChatMessage {
   id: string;
@@ -58,6 +60,8 @@ export interface ChatMessage {
   selectedChips?: string[];
   /** Style chooser: headline text for live preview */
   styleChooserHeadline?: string;
+  /** Testimonial picker: serviceId + mode */
+  testimonialPicker?: { serviceId: number; mode: "campaign" | "standalone" };
 }
 
 export type StyleChooseCallback = (messageId: string, style: string) => void;
@@ -68,6 +72,7 @@ export interface ChatThreadProps {
   onDeckSelect?: (messageId: string, cardId: number) => void;
   onDeckHeart?: (messageId: string, cardId: number) => void;
   onStyleChoose?: StyleChooseCallback;
+  onTestimonialDone?: (messageId: string, action: "use" | "skip") => void;
   /** Ref map for TrailBar scroll-to-node */
   nodeRefMap?: React.MutableRefObject<Map<string, HTMLDivElement>>;
   /**
@@ -434,7 +439,7 @@ function SystemDivider({ msg }: { msg: ChatMessage }) {
 }
 
 // ─── Main ChatThread ──────────────────────────────────────────────────────────
-export default function ChatThread({ messages, onChipTap, onDeckSelect, onDeckHeart, onStyleChoose, nodeRefMap, onSendText, inputPlaceholder, inputDisabled }: ChatThreadProps) {
+export default function ChatThread({ messages, onChipTap, onDeckSelect, onDeckHeart, onStyleChoose, onTestimonialDone, nodeRefMap, onSendText, inputPlaceholder, inputDisabled }: ChatThreadProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
@@ -552,6 +557,15 @@ export default function ChatThread({ messages, onChipTap, onDeckSelect, onDeckHe
                     <StyleChooser
                       headline={msg.styleChooserHeadline || "Your headline here"}
                       onChoose={({ style }) => onStyleChoose?.(msg.id, style)}
+                    />
+                  </Suspense>
+                )}
+                {msg.type === "testimonial-picker" && msg.testimonialPicker && (
+                  <Suspense fallback={null}>
+                    <TestimonialPicker
+                      serviceId={msg.testimonialPicker.serviceId}
+                      mode={msg.testimonialPicker.mode}
+                      onDone={(action) => onTestimonialDone?.(msg.id, action)}
                     />
                   </Suspense>
                 )}
