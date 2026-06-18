@@ -16,8 +16,8 @@ const PALETTES = [
 ];
 
 // ── Fixed sample for photo-ad style ──
-// A hand-picked representative example uploaded to Cloudinary
-const PHOTO_AD_SAMPLE = "https://res.cloudinary.com/dunshei0y/image/upload/v1718710000/ad-style-sample-photo-ad.png";
+// A real generated photo-ad from the production pipeline (kit 140, variation 1)
+const PHOTO_AD_SAMPLE = "https://res.cloudinary.com/dunshei0y/image/upload/v1781629783/ad-creatives_1_batch-1781629772360-327f2ba7_variation-1.png.png";
 
 // ── Live canvas preview for quote card ──
 
@@ -275,21 +275,25 @@ export default function StyleChooser({ headline, onChoose }: StyleChooserProps) 
           <div style={{ fontFamily: "Instrument Sans, sans-serif", fontSize: 12, color: "#666", textAlign: "center" }}>
             Clean text on branded background
           </div>
-          {/* Palette swatches */}
-          <div style={{ display: "flex", gap: 6 }}>
-            {PALETTES.map(p => (
-              <div
-                key={p.key}
-                title={p.label}
-                onClick={(e) => { e.stopPropagation(); setSelectedPalette(p); }}
-                style={{
-                  width: 24, height: 24, borderRadius: "50%",
-                  background: p.bg, cursor: "pointer",
-                  border: p.key === selectedPalette.key ? "2px solid #FF5B1D" : "2px solid transparent",
-                  transition: "border-color 0.15s",
-                }}
-              />
-            ))}
+          {/* Palette picker */}
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+            <span style={{ fontFamily: "Instrument Sans, sans-serif", fontSize: 11, color: "#999", fontWeight: 500 }}>
+              Background: {selectedPalette.label}
+            </span>
+            <div style={{ display: "flex", gap: 6 }}>
+              {PALETTES.map(p => (
+                <div
+                  key={p.key}
+                  onClick={(e) => { e.stopPropagation(); setSelectedPalette(p); }}
+                  style={{
+                    width: 24, height: 24, borderRadius: "50%",
+                    background: p.bg, cursor: "pointer",
+                    border: p.key === selectedPalette.key ? "2px solid #FF5B1D" : "2px solid transparent",
+                    transition: "border-color 0.15s",
+                  }}
+                />
+              ))}
+            </div>
           </div>
           <button
             onClick={(e) => { e.stopPropagation(); onChoose({ style: `quote_card:${selectedPalette.key}` }); }}
@@ -317,20 +321,24 @@ export default function StyleChooser({ headline, onChoose }: StyleChooserProps) 
           <div style={{ fontFamily: "Instrument Sans, sans-serif", fontSize: 12, color: "#666", textAlign: "center" }}>
             Looks like a real phone alert
           </div>
-          <div style={{ display: "flex", gap: 6 }}>
-            {PALETTES.map(p => (
-              <div
-                key={p.key}
-                title={p.label}
-                onClick={(e) => { e.stopPropagation(); setNotifPalette(p); }}
-                style={{
-                  width: 24, height: 24, borderRadius: "50%",
-                  background: p.bg, cursor: "pointer",
-                  border: p.key === notifPalette.key ? "2px solid #FF5B1D" : "2px solid transparent",
-                  transition: "border-color 0.15s",
-                }}
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+            <span style={{ fontFamily: "Instrument Sans, sans-serif", fontSize: 11, color: "#999", fontWeight: 500 }}>
+              Background: {notifPalette.label}
+            </span>
+            <div style={{ display: "flex", gap: 6 }}>
+              {PALETTES.map(p => (
+                <div
+                  key={p.key}
+                  onClick={(e) => { e.stopPropagation(); setNotifPalette(p); }}
+                  style={{
+                    width: 24, height: 24, borderRadius: "50%",
+                    background: p.bg, cursor: "pointer",
+                    border: p.key === notifPalette.key ? "2px solid #FF5B1D" : "2px solid transparent",
+                    transition: "border-color 0.15s",
+                  }}
               />
             ))}
+            </div>
           </div>
           <button
             onClick={(e) => { e.stopPropagation(); onChoose({ style: `notification:${notifPalette.key}` }); }}
