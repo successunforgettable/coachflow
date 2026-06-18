@@ -1014,6 +1014,13 @@ export default function V2Dashboard() {
             >
               📚 Asset Library
             </button>
+            <button
+              className="v2-btn v2-btn-secondary"
+              onClick={() => handleStartNewCampaign()}
+              style={{ display: "flex", alignItems: "center", gap: 6 }}
+            >
+              + New Campaign
+            </button>
           </div>
         )}
 
