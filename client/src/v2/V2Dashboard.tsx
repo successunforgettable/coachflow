@@ -917,7 +917,8 @@ export default function V2Dashboard() {
               boxShadow: activeTab === "guided" ? "0 1px 6px rgba(26,22,36,0.10)" : "none",
             }}
           >
-            Guided Campaign
+            <span>Guided Campaign</span>
+            <span style={{ display: "block", fontSize: "10px", fontWeight: 400, opacity: 0.6, marginTop: 2 }}>Your full 11-step campaign path</span>
           </button>
           <button
             onClick={handleTabTools}
@@ -935,7 +936,8 @@ export default function V2Dashboard() {
               boxShadow: activeTab === "tools" ? "0 1px 6px rgba(26,22,36,0.10)" : "none",
             }}
           >
-            Tool Library
+            <span>Tool Library</span>
+            <span style={{ display: "block", fontSize: "10px", fontWeight: 400, opacity: 0.6, marginTop: 2 }}>Generate one piece at a time</span>
           </button>
         </div>
 
@@ -1005,7 +1007,7 @@ export default function V2Dashboard() {
               className="v2-btn v2-btn-secondary"
               onClick={() => setActiveTab("tools")}
             >
-              Use a Generator
+              Build a single piece
             </button>
             <button
               className="v2-btn v2-btn-secondary"
@@ -1029,6 +1031,7 @@ export default function V2Dashboard() {
         {/* ── COMPONENT 2: 11-Step Winding Path (Guided) OR Tool Library ── */}
         {activeTab === "guided" ? (
           <>
+          <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "12px", fontWeight: 600, color: "rgba(26,22,36,0.40)", letterSpacing: "0.04em", margin: "0 0 8px", textTransform: "uppercase" }}>Your campaign — 11 steps</p>
           <div style={{ display: "flex", gap: "0", alignItems: "flex-start", position: "relative" }}>
             <div className="v2-path-wrapper" style={{ flex: 1 }}>
               {nodes.map((node, idx) => {

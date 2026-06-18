@@ -239,7 +239,7 @@ export default function StyleChooser({ headline, onChoose }: StyleChooserProps) 
                 // Fallback if sample image not uploaded yet
                 (e.target as HTMLImageElement).style.display = "none";
                 (e.target as HTMLImageElement).parentElement!.innerHTML =
-                  '<div style="color:#fff;font-size:13px;text-align:center;padding:20px">AI-generated photo<br/>+ headline overlay</div>';
+                  '<div style="color:#fff;font-size:13px;text-align:center;padding:20px">Photo scene with<br/>your headline on it</div>';
               }}
             />
           </div>
@@ -247,7 +247,7 @@ export default function StyleChooser({ headline, onChoose }: StyleChooserProps) 
             Photo Ad
           </div>
           <div style={{ fontFamily: "Instrument Sans, sans-serif", fontSize: 12, color: "#666", textAlign: "center" }}>
-            AI-generated scene with headline overlay
+            A real-looking photo with your headline on it
           </div>
           <button
             onClick={(e) => { e.stopPropagation(); onChoose({ style: "photo_ad" }); }}
@@ -352,6 +352,9 @@ export default function StyleChooser({ headline, onChoose }: StyleChooserProps) 
           </button>
         </div>
       </div>
+      <p style={{ fontFamily: "Instrument Sans, sans-serif", fontSize: 11, color: "#999", margin: 0, textAlign: "center" }}>
+        These are previews — your final images will be full-size and high quality.
+      </p>
     </div>
   );
 }

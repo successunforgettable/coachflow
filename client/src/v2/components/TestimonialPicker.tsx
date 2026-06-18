@@ -188,7 +188,7 @@ export default function TestimonialPicker({ serviceId, mode, onDone }: Testimoni
           <div style={{ position: "relative" }}>
             <textarea
               style={S.textarea}
-              placeholder="Their testimonial — paste their real words"
+              placeholder="e.g. 'Within 3 weeks, my sales pipeline doubled and I stopped guessing what to post.' — keep it under a few sentences"
               value={formQuote}
               onChange={e => setFormQuote(e.target.value.slice(0, 1000))}
               maxLength={1000}
@@ -220,11 +220,11 @@ export default function TestimonialPicker({ serviceId, mode, onDone }: Testimoni
       {mode === "campaign" && (
         <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
           <button
-            style={{ ...S.btn, opacity: selected.size === 0 && items.length > 0 ? 0.5 : 1 }}
+            style={{ ...S.btn, opacity: selected.size === 0 ? 0.5 : 1 }}
             onClick={handleUse}
-            disabled={saving || (selected.size === 0 && items.length > 0)}
+            disabled={saving || selected.size === 0}
           >
-            {saving ? "Saving..." : `Use ${selected.size > 0 ? `these ${selected.size}` : "selected"}`}
+            {saving ? "Saving..." : selected.size > 0 ? `Use these ${selected.size}` : "Select testimonials above"}
           </button>
           <button style={S.btnOutline} onClick={handleSkip}>
             Skip — I don't have testimonials
@@ -234,7 +234,7 @@ export default function TestimonialPicker({ serviceId, mode, onDone }: Testimoni
 
       {mode === "campaign" && selected.size > 0 && (
         <p style={{ fontFamily: "Instrument Sans, sans-serif", fontSize: 12, color: "#6b7280", margin: 0 }}>
-          {selected.size} of 3 slots used. These will appear in your landing page, emails, and ads.
+          Using {selected.size} of 3. These will appear in your landing page, emails, and ads.
         </p>
       )}
     </div>

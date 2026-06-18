@@ -470,10 +470,10 @@ export default function V2Trail() {
     if (!target) return;
 
     // Sprint 4 C1+C3: manual-mode chips that resolve the crown/deal wait
-    if (chip === "Deal me options 🎴" || chip === "Lock it in →" || chip.startsWith("Deal a fresh set") || chip === "Skip — I already have this") {
+    if (chip === "Show me options" || chip === "Lock it in →" || chip.startsWith("Show me new options") || chip === "Skip — I already have this") {
       const echo = addLive({ type: "user-bubble", text: chip });
       persistMsgs([echo]);
-      dealMoreChipChoice.current = chip.startsWith("Deal a fresh set") ? "deal"
+      dealMoreChipChoice.current = chip.startsWith("Show me new options") ? "deal"
         : chip === "Skip — I already have this" ? "skip" : "lock";
       if (manualResolve.current) { manualResolve.current(); manualResolve.current = null; }
       return;
@@ -1240,7 +1240,7 @@ export default function V2Trail() {
       if (cancelled.current) return;
       if (kit[stepDef.field] != null) continue;
 
-      // ── Manual intro + "Deal me options 🎴" chip ──
+      // ── Manual intro + "Show me options" chip ──
       const intro = MANUAL_INTROS[stepDef.step];
       addLive({ type: "zappy-bubble", mood: "idle", text: intro });
 
@@ -1306,9 +1306,9 @@ export default function V2Trail() {
         continue;
       }
 
-      // ── Dealable node: "Deal me options 🎴" + "Skip" ──
+      // ── Dealable node: "Show me options" + "Skip" ──
       collapsePreviousChips();
-      const dealChip = addLive({ type: "chip-row", nodeKey: stepDef.step, chips: ["Deal me options 🎴", "Skip — I already have this"] });
+      const dealChip = addLive({ type: "chip-row", nodeKey: stepDef.step, chips: ["Show me options", "Skip — I already have this"] });
       activeChips.current = { msgId: dealChip.id, step: stepDef.step };
       dealMoreChipChoice.current = null;
       await waitForManualProceed();
@@ -1382,8 +1382,8 @@ export default function V2Trail() {
         }));
       }
 
-      // "Lock it in →" + optional "Deal a fresh set · {n} left" chips.
-      // The deal-more loop: user can tap "Deal a fresh set" to regenerate
+      // "Lock it in →" + optional "Show me new options · {n} left" chips.
+      // The deal-more loop: user can tap "Show me new options" to regenerate
       // (new set replaces the deck), or "Lock it in" to proceed.
       let dealMoreLoop = true;
       while (dealMoreLoop) {
@@ -1393,7 +1393,7 @@ export default function V2Trail() {
         const unlimited = quota?.unlimited ?? false;
         const chips: string[] = ["Lock it in →"];
         if (remaining > 0 || unlimited) {
-          const label = unlimited ? "Deal a fresh set" : `Deal a fresh set · ${remaining} left`;
+          const label = unlimited ? "Show me new options" : `Show me new options · ${remaining} left`;
           chips.push(label);
         }
         chips.push("Let Zappy take over");
@@ -1664,6 +1664,7 @@ export default function V2Trail() {
         }}>
           <ChatThread
             messages={messages}
+            campaignStatus={`Campaign: ${stops.filter(s => s.state === "done" || s.state === "imported" || s.state === "stale").length} of ${stops.length} complete`}
             nodeRefMap={nodeRefMap}
             onChipTap={handleChipTap}
             onDeckSelect={handleDeckSelect}

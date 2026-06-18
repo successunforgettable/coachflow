@@ -68,6 +68,8 @@ export type StyleChooseCallback = (messageId: string, style: string) => void;
 
 export interface ChatThreadProps {
   messages: ChatMessage[];
+  /** Persistent status line at top of chat — "Campaign: X of 11 complete" */
+  campaignStatus?: string;
   onChipTap?: (messageId: string, chip: string) => void;
   onDeckSelect?: (messageId: string, cardId: number) => void;
   onDeckHeart?: (messageId: string, cardId: number) => void;
@@ -439,7 +441,7 @@ function SystemDivider({ msg }: { msg: ChatMessage }) {
 }
 
 // ─── Main ChatThread ──────────────────────────────────────────────────────────
-export default function ChatThread({ messages, onChipTap, onDeckSelect, onDeckHeart, onStyleChoose, onTestimonialDone, nodeRefMap, onSendText, inputPlaceholder, inputDisabled }: ChatThreadProps) {
+export default function ChatThread({ messages, campaignStatus, onChipTap, onDeckSelect, onDeckHeart, onStyleChoose, onTestimonialDone, nodeRefMap, onSendText, inputPlaceholder, inputDisabled }: ChatThreadProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
@@ -525,6 +527,21 @@ export default function ChatThread({ messages, onChipTap, onDeckSelect, onDeckHe
         height: "100%",
         position: "relative",
       }}>
+        {/* Persistent campaign status line */}
+        {campaignStatus && (
+          <div style={{
+            padding: "6px 16px",
+            fontFamily: "Instrument Sans, sans-serif",
+            fontSize: 12,
+            fontWeight: 600,
+            color: "rgba(26,22,36,0.40)",
+            textAlign: "center",
+            borderBottom: "1px solid rgba(26,22,36,0.06)",
+            flexShrink: 0,
+          }}>
+            {campaignStatus}
+          </div>
+        )}
         {/* Scrollable message area */}
         <div
           ref={scrollRef}
