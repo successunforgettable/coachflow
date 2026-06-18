@@ -776,6 +776,22 @@ export default function V2LandingPageResultPanel({
   // Load coach profile for authority section
   const { data: coachProfile } = trpc.user.getCoachProfile.useQuery();
 
+  // Real testimonials — bypass LLM-generated quotes with the user's actual words
+  const lpServiceId = (data as Record<string, unknown> | undefined)?.serviceId as number | undefined;
+  const { data: svcData } = trpc.services.get.useQuery(
+    { id: lpServiceId! },
+    { enabled: !!lpServiceId },
+  );
+  const realTestimonials = (() => {
+    if (!svcData) return undefined;
+    const s = svcData as Record<string, unknown>;
+    const out: Array<{ name: string; title?: string; quote: string }> = [];
+    if (s.testimonial1Name && s.testimonial1Quote) out.push({ name: String(s.testimonial1Name), title: s.testimonial1Title ? String(s.testimonial1Title) : undefined, quote: String(s.testimonial1Quote) });
+    if (s.testimonial2Name && s.testimonial2Quote) out.push({ name: String(s.testimonial2Name), title: s.testimonial2Title ? String(s.testimonial2Title) : undefined, quote: String(s.testimonial2Quote) });
+    if (s.testimonial3Name && s.testimonial3Quote) out.push({ name: String(s.testimonial3Name), title: s.testimonial3Title ? String(s.testimonial3Title) : undefined, quote: String(s.testimonial3Quote) });
+    return out.length > 0 ? out : undefined;
+  })();
+
   // Load saved assets on mount
   const { data: savedAssets } = trpc.user.getCoachAssets.useQuery();
   useEffect(() => {
@@ -1161,6 +1177,7 @@ export default function V2LandingPageResultPanel({
               coachName={coachProfile?.coachName || undefined}
               coachBackground={coachProfile?.coachBackground || undefined}
               serviceDescription={(data as any)?.productDescription || undefined}
+              realTestimonials={realTestimonials}
               primaryColor="#FE4500"
               offerAngle={resolvedTab === "original" ? undefined : resolvedTab}
             />

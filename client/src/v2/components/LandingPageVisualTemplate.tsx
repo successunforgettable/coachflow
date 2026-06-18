@@ -26,6 +26,9 @@ interface VisualTemplateProps {
   hvcoType?: string;
   campaignType?: string;
   offerAngle?: string;
+  /** Real testimonials from services table — bypasses LLM-generated quotes.
+   *  When present and non-empty, these render verbatim instead of angleData.testimonials. */
+  realTestimonials?: Array<{ name: string; title?: string; quote: string }>;
 }
 
 // ─── Design tokens from reference page ─────────────────────────────────────
@@ -128,7 +131,12 @@ export default function LandingPageVisualTemplate(props: VisualTemplateProps) {
   const gradient = `linear-gradient(90deg, ${A} 35%, #000 100%)`;
   let ctaIdx = 0;
 
-  const testimonials = jp<Array<{ headline?: string; quote?: string; name?: string; location?: string }>>(c.testimonials, []);
+  // Real testimonials (from services table) always win over LLM-generated ones.
+  // The LLM fabricates quotes — real testimonials bypass LLM output entirely.
+  const testimonials: Array<{ headline?: string; quote?: string; name?: string; location?: string }> =
+    props.realTestimonials && props.realTestimonials.length > 0
+      ? props.realTestimonials.map(t => ({ quote: t.quote, name: t.name, location: t.title || "" }))
+      : jp<Array<{ headline?: string; quote?: string; name?: string; location?: string }>>(c.testimonials, []);
   const outline = jp<Array<{ title?: string; description?: string }>>(c.consultationOutline, []);
   const faqRaw = jp<Array<{ question?: string; answer?: string; q?: string; a?: string }>>(c.faq, []);
   const faqItems = faqRaw.map(f => ({ q: f.question || f.q || "", a: f.answer || f.a || "" })).filter(f => f.q);
