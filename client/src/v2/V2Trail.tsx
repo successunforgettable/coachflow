@@ -511,13 +511,13 @@ export default function V2Trail() {
       const ack = addLive({ type: "zappy-bubble", mood: "idle", text: "Your call — keeping it as written." });
       persistMsgs([echo, ack]);
       offerChips(target, AUTO_STEPS.find(s => s.step === target)!.tweakable);
-    } else if (chip === "Update the rest") {
-      const echo = addLive({ type: "user-bubble", text: "Update the rest" });
+    } else if (chip === "Rebuild to match") {
+      const echo = addLive({ type: "user-bubble", text: "Rebuild to match" });
       persistMsgs([echo]);
       runUpdateTheRest();
-    } else if (chip === "Keep them as they are") {
-      const echo = addLive({ type: "user-bubble", text: "Keep them as they are" });
-      const ack = addLive({ type: "zappy-bubble", mood: "idle", text: "Your call — keeping them as they are. The amber flags stay so you can revisit." });
+    } else if (chip === "Leave them — they still work") {
+      const echo = addLive({ type: "user-bubble", text: "Leave them — they still work" });
+      const ack = addLive({ type: "zappy-bubble", mood: "idle", text: "No problem — everything still works. You can always rebuild later if you change your mind." });
       persistMsgs([echo, ack]);
       // Flip stale→dismissed so return-visit chips don't re-nag.
       // Amber persists (trail bar reads stale OR dismissed). Re-tweak resets to stale.
@@ -695,15 +695,14 @@ export default function V2Trail() {
         const warn = addLive({
           type: "zappy-bubble",
           mood: "idle",
-          text: `New pick! ${staleCount} piece${staleCount > 1 ? "s" : ""} below ${staleCount > 1 ? "were" : "was"} built on the old one. Want me to update ${staleCount > 1 ? "them" : "it"}?`,
+          text: `New pick! ${staleCount} piece${staleCount > 1 ? "s" : ""} I built from the old one ${staleCount > 1 ? "are" : "is"} still on the old version — want me to rebuild ${staleCount > 1 ? "them" : "it"} to match?`,
         });
-        // Warning: name what will be rebuilt + that edits will be replaced
         const confirmWarn = addLive({
           type: "zappy-bubble",
           mood: "idle",
-          text: `Rebuild ${staleCount} piece${staleCount > 1 ? "s" : ""}? Anything you hand-edited in them will be redone.`,
+          text: `Rebuild ${staleCount} piece${staleCount > 1 ? "s" : ""}? They'll be freshly generated to match your changes. Any edits you made by hand will be replaced.`,
         });
-        const row = addLive({ type: "chip-row", chips: ["Update the rest", "Keep them as they are"] });
+        const row = addLive({ type: "chip-row", chips: ["Rebuild to match", "Leave them — they still work"] });
         activeChips.current = { msgId: row.id, step: stepDef.step };
         persistMsgs([warn, confirmWarn]);
       }
@@ -775,12 +774,12 @@ export default function V2Trail() {
 
   const TWEAK_CATCHUP_LINES = [
     (node: string, n: number) =>
-      `Nice tweak. Since I changed your ${node}, the ${n} piece${n > 1 ? "s" : ""} built on it ${n > 1 ? "are" : "is"} now a step behind — want me to catch ${n > 1 ? "them" : "it"} up, or leave ${n > 1 ? "them" : "it"} for now?`,
+      `Nice tweak. Since your ${node} changed, the ${n} piece${n > 1 ? "s" : ""} I built using it ${n > 1 ? "are" : "is"} still on the old version — want me to rebuild ${n > 1 ? "them" : "it"} to match, or leave ${n > 1 ? "them" : "it"} as ${n > 1 ? "they are" : "it is"}?`,
     (node: string, n: number) =>
-      `Updated your ${node}. The ${n} piece${n > 1 ? "s" : ""} below ${n > 1 ? "were" : "was"} built on the old version — I can bring ${n > 1 ? "them" : "it"} in line whenever you're ready, or you can keep ${n > 1 ? "them" : "it"} as ${n > 1 ? "they are" : "it is"}.`,
+      `Updated your ${node}. The ${n} piece${n > 1 ? "s" : ""} I built from it ${n > 1 ? "are" : "is"} still on the old version — want me to rebuild ${n > 1 ? "them" : "it"} to match, or leave ${n > 1 ? "them" : "it"} as ${n > 1 ? "they are" : "it is"}?`,
   ];
   const TWEAK_CATCHUP_SINGLE = (node: string, downstream: string) =>
-    `Done. Your ${node}'s changed, so your ${downstream} ${downstream === "Ad Images" ? "are" : "is"} a step behind — catch ${downstream === "Ad Images" ? "them" : "it"} up, or leave ${downstream === "Ad Images" ? "them" : "it"}?`;
+    `Done. Your ${node} changed, so your ${downstream} ${downstream === "Ad Images" ? "were" : "was"} built on the old version — want me to rebuild ${downstream === "Ad Images" ? "them" : "it"} to match, or leave ${downstream === "Ad Images" ? "them" : "it"} as ${downstream === "Ad Images" ? "they are" : "it is"}?`;
 
   const processTweakQueue = async () => {
     resetBuild(); // fresh patience-line pool for reworked nodes
@@ -824,9 +823,9 @@ export default function V2Trail() {
               const confirmWarn = addLive({
                 type: "zappy-bubble",
                 mood: "idle",
-                text: `Rebuild ${confirmLabel}? Anything you hand-edited in ${staleCount > 1 ? "them" : "it"} will be redone.`,
+                text: `Rebuild ${confirmLabel}? They'll be freshly generated to match your changes. Any edits you made to ${staleCount > 1 ? "those pieces" : "it"} by hand will be replaced.`,
               });
-              const row = addLive({ type: "chip-row", chips: ["Update the rest", "Keep them as they are"] });
+              const row = addLive({ type: "chip-row", chips: ["Rebuild to match", "Leave them — they still work"] });
               activeChips.current = { msgId: row.id, step: stepDef.step };
               persistMsgs([opener, divider, card, warn, confirmWarn]);
             } else {
@@ -1546,16 +1545,16 @@ export default function V2Trail() {
       ? (AUTO_STEPS.find(s => s.stopKey === staleStatuses[0].nodeType)?.revealLabel ?? "one piece")
       : "";
     const framing = staleCount === 1
-      ? `Welcome back — your ${singleLabel} ${singleLabel === "Ad Images" ? "are" : "is"} a step behind your latest changes. Want me to catch ${singleLabel === "Ad Images" ? "them" : "it"} up, or leave ${singleLabel === "Ad Images" ? "them" : "it"} for now?`
-      : `Welcome back — ${staleCount} pieces are a step behind your latest changes. Want me to catch them up, or leave them as they are?`;
+      ? `Welcome back — your ${singleLabel} ${singleLabel === "Ad Images" ? "were" : "was"} built before your latest changes and ${singleLabel === "Ad Images" ? "don't" : "doesn't"} reflect them yet. Want me to rebuild ${singleLabel === "Ad Images" ? "them" : "it"} to match, or leave ${singleLabel === "Ad Images" ? "them" : "it"} as ${singleLabel === "Ad Images" ? "they are" : "it is"}?`
+      : `Welcome back — ${staleCount} pieces were built before your latest changes and don't reflect them yet. Want me to rebuild them to match, or leave them as they are?`;
     const warn = addLive({ type: "zappy-bubble", mood: "idle", text: framing });
     const confirmLabel = staleCount === 1 ? singleLabel : `${staleCount} pieces`;
     const confirmWarn = addLive({
       type: "zappy-bubble",
       mood: "idle",
-      text: `Rebuild ${confirmLabel}? Anything you hand-edited in ${staleCount > 1 ? "them" : "it"} will be redone.`,
+      text: `Rebuild ${confirmLabel}? They'll be freshly generated to match your changes. Any edits you made to ${staleCount > 1 ? "those pieces" : "it"} by hand will be replaced.`,
     });
-    const row = addLive({ type: "chip-row", chips: ["Update the rest", "Keep them as they are"] });
+    const row = addLive({ type: "chip-row", chips: ["Rebuild to match", "Leave them — they still work"] });
     activeChips.current = { msgId: row.id, step: AUTO_STEPS[0].step };
     persistMsgs([warn, confirmWarn]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
