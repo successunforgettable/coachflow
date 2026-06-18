@@ -1219,6 +1219,24 @@ export default function V2Trail() {
       | "discovery_call" | "lead_magnet" | "in_person_event" | undefined;
     let kit = kit0;
 
+    // ── Testimonial prompt (same as auto-loop) ──
+    const manualFirstPending = AUTO_STEPS.find(s => kit[s.field] == null);
+    if (manualFirstPending?.step === "offer" && serviceId) {
+      try {
+        const svcCheck = await utils.services.get.fetch({ id: serviceId }) as Record<string, unknown> | null;
+        const hasTestimonials = svcCheck?.testimonial1Name || svcCheck?.testimonial2Name;
+        if (!hasTestimonials) {
+          addLive({ type: "zappy-bubble", mood: "idle", text: "Got any client testimonials? Real quotes make your ads, emails, and landing page more convincing." });
+          addLive({ type: "testimonial-picker", testimonialPicker: { serviceId, mode: "campaign" } });
+          const testimonialAction = await waitForTestimonialDone();
+          if (cancelled.current) return;
+          if (testimonialAction === "use") {
+            addLive({ type: "zappy-bubble", mood: "celebrating", text: "Nice — real social proof makes everything hit harder. Let's build." });
+          }
+        }
+      } catch { /* non-fatal */ }
+    }
+
     for (const stepDef of AUTO_STEPS) {
       if (cancelled.current) return;
       if (kit[stepDef.field] != null) continue;
