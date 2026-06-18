@@ -65,7 +65,7 @@
 
 ## 8. Test Gates
 
-- **Type-check baseline:** 53 errors (`npx tsc --noEmit 2>&1 | grep -c "error TS"`) — must not regress
+- **Type-check baseline:** 36 errors (`npx tsc --noEmit 2>&1 | grep -c "error TS"`) — must not regress (re-baselined 2026-06-19: was 53→39→36 via opentype.js declaration fix across 4 renderers)
 - **Test suite:** `npx vitest run server/pipeline-fixes.test.ts` — report pass count (251 as of June 4, 2026)
 - Never use global vitest output (dominated by pre-existing infrastructure failures)
 - Verify-before-commit: TS baseline holds, vitest passes, atomic commits
