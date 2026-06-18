@@ -89,6 +89,97 @@ function QuoteCardPreview({ headline, bg, accent }: { headline: string; bg: stri
   return <canvas ref={canvasRef} style={{ width: 200, height: 200, borderRadius: 12 }} />;
 }
 
+// ── Live canvas preview for notification mockup ──
+
+function NotificationPreview({ headline, bg, accent }: { headline: string; bg: string; accent: string }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const W = 200;
+    const H = 200;
+    canvas.width = W;
+    canvas.height = H;
+
+    // Dark background
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+
+    // Status bar
+    ctx.fillStyle = "rgba(255,255,255,0.6)";
+    ctx.font = "bold 10px sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText("9:41", 12, 16);
+    // Battery
+    ctx.strokeStyle = "rgba(255,255,255,0.5)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(W - 28, 8, 16, 8);
+    ctx.fillRect(W - 26, 10, 10, 4);
+
+    // Notification card
+    const cardX = 14;
+    const cardY = 38;
+    const cardW = W - 28;
+    const cardR = 12;
+    ctx.fillStyle = "rgba(255,255,255,0.1)";
+    ctx.beginPath();
+    ctx.roundRect(cardX, cardY, cardW, 130, cardR);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,0.15)";
+    ctx.lineWidth = 0.5;
+    ctx.stroke();
+
+    // App icon circle
+    ctx.fillStyle = accent;
+    ctx.beginPath();
+    ctx.arc(cardX + 18, cardY + 18, 8, 0, Math.PI * 2);
+    ctx.fill();
+
+    // App name + "now"
+    ctx.fillStyle = "rgba(255,255,255,0.5)";
+    ctx.font = "bold 8px sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText("NOTES", cardX + 32, cardY + 16);
+    ctx.fillStyle = "rgba(255,255,255,0.3)";
+    ctx.font = "7px sans-serif";
+    ctx.fillText("now", cardX + 32, cardY + 26);
+
+    // Headline text
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 12px sans-serif";
+    const maxWidth = cardW - 24;
+    const words = headline.split(/\s+/);
+    const lines: string[] = [];
+    let line = "";
+    for (const word of words) {
+      const test = line ? `${line} ${word}` : word;
+      if (ctx.measureText(test).width > maxWidth && line) {
+        lines.push(line);
+        line = word;
+      } else {
+        line = test;
+      }
+    }
+    if (line) lines.push(line);
+
+    lines.slice(0, 4).forEach((l, i) => {
+      ctx.fillText(l, cardX + 12, cardY + 48 + i * 16, maxWidth);
+    });
+
+    // Home bar
+    ctx.fillStyle = "rgba(255,255,255,0.2)";
+    ctx.beginPath();
+    ctx.roundRect(W / 2 - 20, H - 10, 40, 3, 1.5);
+    ctx.fill();
+  }, [headline, bg, accent]);
+
+  return <canvas ref={canvasRef} style={{ width: 200, height: 200, borderRadius: 12 }} />;
+}
+
 // ── Main chooser ──
 
 export interface StyleChoice {
@@ -102,6 +193,7 @@ interface StyleChooserProps {
 
 export default function StyleChooser({ headline, onChoose }: StyleChooserProps) {
   const [selectedPalette, setSelectedPalette] = useState(PALETTES[0]);
+  const [notifPalette, setNotifPalette] = useState(PALETTES[1]); // default Navy for notification
   const [hoveredStyle, setHoveredStyle] = useState<string | null>(null);
 
   const cardBase: React.CSSProperties = {
@@ -201,6 +293,47 @@ export default function StyleChooser({ headline, onChoose }: StyleChooserProps) 
           </div>
           <button
             onClick={(e) => { e.stopPropagation(); onChoose({ style: `quote_card:${selectedPalette.key}` }); }}
+            style={{
+              background: "#FF5B1D", color: "#fff", border: "none",
+              borderRadius: 9999, padding: "8px 24px", cursor: "pointer",
+              fontFamily: "Instrument Sans, sans-serif", fontWeight: 600, fontSize: 14,
+            }}
+          >
+            Choose
+          </button>
+        </div>
+
+        {/* Notification Mockup */}
+        <div
+          style={{ ...cardBase, ...(hoveredStyle === "notification" ? cardHover : {}) }}
+          onMouseEnter={() => setHoveredStyle("notification")}
+          onMouseLeave={() => setHoveredStyle(null)}
+          onClick={() => onChoose({ style: `notification:${notifPalette.key}` })}
+        >
+          <NotificationPreview headline={headline || "Your headline here"} bg={notifPalette.bg} accent={notifPalette.accent} />
+          <div style={{ fontFamily: "Instrument Sans, sans-serif", fontWeight: 600, fontSize: 15 }}>
+            Notification
+          </div>
+          <div style={{ fontFamily: "Instrument Sans, sans-serif", fontSize: 12, color: "#666", textAlign: "center" }}>
+            Looks like a real phone alert
+          </div>
+          <div style={{ display: "flex", gap: 6 }}>
+            {PALETTES.map(p => (
+              <div
+                key={p.key}
+                title={p.label}
+                onClick={(e) => { e.stopPropagation(); setNotifPalette(p); }}
+                style={{
+                  width: 24, height: 24, borderRadius: "50%",
+                  background: p.bg, cursor: "pointer",
+                  border: p.key === notifPalette.key ? "2px solid #FF5B1D" : "2px solid transparent",
+                  transition: "border-color 0.15s",
+                }}
+              />
+            ))}
+          </div>
+          <button
+            onClick={(e) => { e.stopPropagation(); onChoose({ style: `notification:${notifPalette.key}` }); }}
             style={{
               background: "#FF5B1D", color: "#fff", border: "none",
               borderRadius: 9999, padding: "8px 24px", cursor: "pointer",

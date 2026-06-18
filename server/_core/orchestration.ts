@@ -45,7 +45,8 @@ import { runLandingPageGeneration } from "../landingPageGenerator";
 import { runEmailSequenceGeneration } from "../emailSequenceGenerator";
 import { runWhatsappSequenceGeneration } from "../whatsappSequenceGenerator";
 import { runAdCreativesGeneration, generateContextualAdHeadlines } from "../adCreativesGenerator";
-import { renderQuoteCard, QUOTE_CARD_PALETTES } from "./renderQuoteCard";
+import { renderQuoteCard } from "./renderQuoteCard";
+import { renderNotificationMockup } from "./renderNotificationMockup";
 import { storagePut } from "../storage";
 import { runLandingPagePublish } from "../landingPagePublisher";
 
@@ -424,7 +425,7 @@ export async function runOrchestrationStep(
       if (freshKit?.selectedMechanismId) {
         const [m] = await db.select({ name: heroMechanisms.mechanismName })
           .from(heroMechanisms)
-          .where(eq(heroMechanisms.id, kit.selectedMechanismId))
+          .where(eq(heroMechanisms.id, freshKit.selectedMechanismId))
           .limit(1);
         if (m?.name) mechanismName = m.name;
       }
@@ -443,20 +444,22 @@ export async function runOrchestrationStep(
 
       // Style routing: read adImageStyle from the freshly-read kit
       const adImageStyle = (freshKit as Record<string, unknown>)?.adImageStyle as string | null;
-      const isQuoteCard = adImageStyle?.startsWith("quote_card");
+      const isTemplate = adImageStyle?.startsWith("quote_card") || adImageStyle?.startsWith("notification");
 
-      if (isQuoteCard) {
-        // ── Quote-card path: pure typography, no Flux, $0/image, <5s ──
+      if (isTemplate) {
+        // ── Template path: pure typography/layout, no Flux, $0/image, <5s ──
         const { adCreatives: adCreativesTable } = await import("../../drizzle/schema");
         const { randomBytes: rb } = await import("crypto");
-        const palette = adImageStyle?.split(":")[1] || "charcoal";
+        const styleKey = adImageStyle!.split(":")[0]; // "quote_card" or "notification"
+        const palette = adImageStyle!.split(":")[1] || "charcoal";
         const batchId = `batch-${Date.now()}-${rb(4).toString("hex")}`;
-        const attribution = svc.name;
 
         for (let i = 0; i < 5; i++) {
           const headline = headlines[i];
-          const pngBuffer = await renderQuoteCard({ headline, attribution, palette });
-          const fileKey = `ad-creatives/${input.userId}/${batchId}/quote-${i + 1}.png`;
+          const pngBuffer = styleKey === "notification"
+            ? await renderNotificationMockup({ headline, appName: svc.name, palette })
+            : await renderQuoteCard({ headline, attribution: svc.name, palette });
+          const fileKey = `ad-creatives/${input.userId}/${batchId}/${styleKey}-${i + 1}.png`;
           const { url: imageUrl } = await storagePut(fileKey, pngBuffer, "image/png");
 
           await db.insert(adCreativesTable).values({
@@ -474,7 +477,7 @@ export async function runOrchestrationStep(
             headlineFormula: (["benefit", "social_proof", "curiosity", "contrast", "challenge"] as const)[i],
             headline,
             imageUrl,
-            rawImageUrl: imageUrl, // no separate raw for quote cards
+            rawImageUrl: imageUrl,
             imageFormat: "1080x1080",
             complianceChecked: true,
             complianceIssues: null,
