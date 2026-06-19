@@ -1503,7 +1503,7 @@ export default function V2Trail() {
       const state = await trailState.refetch();
       const kit = (state.data?.kit ?? {}) as Record<string, unknown>;
       const path = kit.path as string | null;
-      if (path !== "auto" && path !== "manual" && path !== "has_assets") return;
+      if (path !== null && path !== "auto" && path !== "manual" && path !== "has_assets") return;
       const hasPending = AUTO_STEPS.some(s => kit[s.field] == null);
       if (!hasPending) break;
       if (cancelled.current) return;
@@ -1529,7 +1529,7 @@ export default function V2Trail() {
     if (!trailState.data || persisted === null) return;
     const kit = trailState.data.kit as Record<string, unknown>;
     const path = kit.path as string | null;
-    if (path !== "auto" && path !== "manual" && path !== "has_assets") return;
+    if (path !== null && path !== "auto" && path !== "manual" && path !== "has_assets") return;
     const hasPending = AUTO_STEPS.some(s => kit[s.field] == null);
     if (!hasPending) return;
     driverStarted.current = true;
