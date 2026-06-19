@@ -63,6 +63,20 @@ import V2Dashboard from "./v2/V2Dashboard";
 import V2GeneratorWizardPage from "./v2/V2GeneratorWizardPage";
 import V2AssetLibrary from "./v2/V2AssetLibrary";
 import V2CampaignKit from "./v2/V2CampaignKit";
+import { lazy, Suspense } from "react";
+const TestimonialPickerLazy = lazy(() => import("./v2/components/TestimonialPicker"));
+function V2TestimonialsPage() {
+  return (
+    <Suspense fallback={null}>
+      <div style={{ maxWidth: 600, margin: "40px auto", padding: "0 20px" }}>
+        <a href="/v2-dashboard" style={{ fontFamily: "Instrument Sans, sans-serif", fontSize: 13, color: "#888", textDecoration: "none", display: "inline-block", marginBottom: 16 }}>← Back to Dashboard</a>
+        <h1 style={{ fontFamily: "'Fraunces', serif", fontStyle: "italic", fontWeight: 900, fontSize: 28, color: "#1A1624", margin: "0 0 8px" }}>Your Testimonials</h1>
+        <p style={{ fontFamily: "Instrument Sans, sans-serif", fontSize: 14, color: "#666", margin: "0 0 20px" }}>Client testimonials make your ads, emails, and landing pages more convincing. Add your clients' real words here — they'll be available in every campaign.</p>
+        <TestimonialPickerLazy mode="standalone" />
+      </div>
+    </Suspense>
+  );
+}
 // Legacy auto-mode components — routes redirect to /trail/new (red-team B2 fix).
 // Files kept for Sprint 6 deletion ceremony; imports replaced with redirects.
 import { useEffect } from "react";
@@ -156,6 +170,7 @@ function Router() {
       <Route path={"/v2-dashboard/trail/new"} component={V2TrailIntake} />
       <Route path={"/v2-dashboard/trail/:campaignKitId"} component={V2Trail} />
       <Route path={"/v2-dashboard/asset-library"} component={V2AssetLibrary} />
+      <Route path={"/v2-dashboard/testimonials"} component={V2TestimonialsPage} />
       <Route path={"/v2-dashboard/wizard/:step"} component={V2GeneratorWizardPage} />
       <Route path={"/v2-dashboard/campaign-kit/:kitId"} component={V2CampaignKit} />
       {/* Legacy auto-mode routes — redirect to Trail intake (red-team B2) */}

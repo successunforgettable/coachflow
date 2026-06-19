@@ -66,9 +66,9 @@ const INTAKE_STOPS: TrailStop[] = [
 
 // Beat 5 fork chips → campaignKits.path values
 const FORK_CHIPS: Record<string, "auto" | "manual" | "has_assets"> = {
-  "Build it for me ⚡": "auto",
+  "Build it all for me ⚡": "auto",
   "I'll pick as we go": "manual",
-  "I already have some pieces": "has_assets",
+  "I have some — use mine": "has_assets",
 };
 
 // Sprint 3 C2: campaign-type beat — all 7 enum values are fully wired
@@ -388,7 +388,7 @@ export default function V2TrailIntake() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Could not set up your campaign.";
       addMsg({ type: "zappy-bubble", mood: "idle", text: `Hm — that one fizzled (${msg}). One more go?` });
-      addMsg({ type: "chip-row", chips: ["Build it for me ⚡"] });
+      addMsg({ type: "chip-row", chips: ["Build it all for me ⚡"] });
       setPhase("fork");
     }
   };
@@ -610,7 +610,7 @@ export default function V2TrailIntake() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Could not set up your campaign.";
       addMsg({ type: "zappy-bubble", mood: "idle", text: `Hm — that one fizzled (${msg}). One more go?` });
-      addMsg({ type: "chip-row", chips: ["I already have some pieces"] });
+      addMsg({ type: "chip-row", chips: ["I have some — use mine"] });
       setPhase("fork");
     }
   };
@@ -716,7 +716,7 @@ export default function V2TrailIntake() {
     if (CAMPAIGN_TYPE_CHIPS[chip] && phase === "campaignType") {
       // ── Sprint 3 C2: campaign-type chosen → Beat 5 fork ──
       campaignType.current = CAMPAIGN_TYPE_CHIPS[chip];
-      addMsg({ type: "zappy-bubble", mood: "idle", text: "How do you want to do this?" });
+      addMsg({ type: "zappy-bubble", mood: "idle", text: "One thing before we start — do you already have your own offer, method, or lead magnet? If you do, I'll use yours. If not, I'll build everything from scratch." });
       addMsg({ type: "chip-row", chips: Object.keys(FORK_CHIPS) });
       setPhase("fork");
     } else if (FORK_CHIPS[chip] && (phase === "fork")) {

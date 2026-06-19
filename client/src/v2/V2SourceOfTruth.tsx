@@ -144,7 +144,7 @@ export default function V2SourceOfTruth() {
         {!hasSOT && (
           <div style={{ textAlign: "center" }}>
             <img src="/zappy-waiting.svg" alt="Zappy" style={{ width: "80px", height: "80px", margin: "0 auto 20px" }} />
-            <h1 style={{ fontFamily: "var(--v2-font-heading)", fontStyle: "italic", fontWeight: 900, fontSize: "32px", color: "#1A1624", margin: "0 0 10px" }}>Your Source of Truth</h1>
+            <h1 style={{ fontFamily: "var(--v2-font-heading)", fontStyle: "italic", fontWeight: 900, fontSize: "32px", color: "#1A1624", margin: "0 0 10px" }}>Your Business Profile</h1>
             <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "15px", color: "#888", maxWidth: "28rem", margin: "0 auto 32px" }}>
               This is the foundation of everything ZAP generates. Fill it in once — every generator uses it automatically.
             </p>
@@ -189,7 +189,7 @@ export default function V2SourceOfTruth() {
                   marginTop: "8px",
                 }}
               >
-                {generating ? "Generating..." : "Generate My Source of Truth"}
+                {generating ? "Generating..." : "Generate My Business Profile"}
               </button>
               {error && <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#DC2626", margin: "12px 0 0", textAlign: "center" }}>{error}</p>}
             </div>
@@ -209,7 +209,7 @@ export default function V2SourceOfTruth() {
             {/* Header */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "32px", flexWrap: "wrap", gap: "12px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                <h1 style={{ fontFamily: "var(--v2-font-heading)", fontStyle: "italic", fontWeight: 900, fontSize: "32px", color: "#1A1624", margin: 0 }}>Your Source of Truth</h1>
+                <h1 style={{ fontFamily: "var(--v2-font-heading)", fontStyle: "italic", fontWeight: 900, fontSize: "32px", color: "#1A1624", margin: 0 }}>Your Business Profile</h1>
                 <span style={{ background: "rgba(88,204,2,0.12)", color: "#2E7D00", border: "1px solid rgba(88,204,2,0.30)", borderRadius: "9999px", padding: "3px 12px", fontFamily: "var(--v2-font-body)", fontSize: "11px", fontWeight: 600 }}>Active</span>
               </div>
               <button

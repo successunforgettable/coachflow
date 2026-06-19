@@ -599,51 +599,22 @@ export default function V2Dashboard() {
                     <div style={{ fontSize: "13px", fontWeight: 600, color: "#1a1a1a", marginBottom: "2px" }}>{user?.name}</div>
                     <div style={{ fontSize: "11px", color: "#888", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user?.email}</div>
                   </div>
+                  {/* My Business Profile */}
+                  <a href="/v2-dashboard/source-of-truth" onClick={() => setMenuOpen(false)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", fontSize: 13, color: "#333", textDecoration: "none", transition: "background 0.1s" }} onMouseEnter={e => (e.currentTarget.style.background = "#f5f5f5")} onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+                    My Business Profile
+                  </a>
+                  {/* Asset Library */}
+                  <a href="/v2-dashboard/asset-library" onClick={() => setMenuOpen(false)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", fontSize: 13, color: "#333", textDecoration: "none", transition: "background 0.1s" }} onMouseEnter={e => (e.currentTarget.style.background = "#f5f5f5")} onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+                    Asset Library
+                  </a>
+                  {/* Testimonials */}
+                  <a href="/v2-dashboard/testimonials" onClick={() => setMenuOpen(false)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", fontSize: 13, color: "#333", textDecoration: "none", transition: "background 0.1s" }} onMouseEnter={e => (e.currentTarget.style.background = "#f5f5f5")} onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+                    Testimonials
+                  </a>
                   {/* Settings */}
-                  <a
-                    href="/v2-dashboard/settings"
-                    onClick={() => setMenuOpen(false)}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "10px",
-                      padding: "10px 16px",
-                      fontSize: "13px",
-                      color: "#333",
-                      textDecoration: "none",
-                      transition: "background 0.1s",
-                    }}
-                    onMouseEnter={e => (e.currentTarget.style.background = "#f5f5f5")}
-                    onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                  <a href="/v2-dashboard/settings" onClick={() => setMenuOpen(false)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", fontSize: 13, color: "#333", textDecoration: "none", transition: "background 0.1s" }} onMouseEnter={e => (e.currentTarget.style.background = "#f5f5f5")} onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
                     Settings
                   </a>
-                  {/* Start New Campaign */}
-                  <button
-                    onClick={() => { setMenuOpen(false); handleStartNewCampaign(); }}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "10px",
-                      padding: "10px 16px",
-                      fontSize: "13px",
-                      color: "#FF5B1D",
-                      background: "none",
-                      border: "none",
-                      width: "100%",
-                      textAlign: "left",
-                      cursor: "pointer",
-                      transition: "background 0.1s",
-                      fontFamily: "var(--v2-font-body)",
-                      fontWeight: 600,
-                    }}
-                    onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,91,29,0.06)")}
-                    onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                    Start New Campaign
-                  </button>
                   {/* Sign out */}
                   <button
                     onClick={() => { setMenuOpen(false); logout(); }}
@@ -785,548 +756,87 @@ export default function V2Dashboard() {
 
         {!isFirstTime && (
         <>
-        {/* ── Source of Truth card ── */}
-        <div
-          onClick={() => navigate("/v2-dashboard/source-of-truth")}
-          style={{
-            background: "#fff",
-            borderRadius: "16px",
-            border: "1px solid rgba(26,22,36,0.08)",
-            padding: "14px 20px",
-            marginBottom: "24px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            cursor: "pointer",
-            transition: "box-shadow 0.15s",
-          }}
-          onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 2px 12px rgba(26,22,36,0.08)")}
-          onMouseLeave={e => (e.currentTarget.style.boxShadow = "none")}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <img src="/zappy-waiting.svg" alt="" style={{ width: "28px", height: "28px" }} />
-            <span style={{ fontFamily: "var(--v2-font-body)", fontWeight: 700, fontSize: "14px", color: "#1A1624" }}>Source of Truth</span>
-          </div>
-          {sotLoading ? (
-            <span style={{ fontFamily: "var(--v2-font-body)", fontSize: "11px", color: "#999", fontWeight: 500 }}>Checking...</span>
-          ) : sotData ? (
-            <span style={{ background: "rgba(88,204,2,0.12)", color: "#2E7D00", border: "1px solid rgba(88,204,2,0.30)", borderRadius: "9999px", padding: "3px 12px", fontFamily: "var(--v2-font-body)", fontSize: "11px", fontWeight: 600 }}>Active</span>
-          ) : (
-            <span style={{ background: "rgba(255,91,29,0.10)", color: "#FF5B1D", border: "1px solid rgba(255,91,29,0.25)", borderRadius: "9999px", padding: "3px 12px", fontFamily: "var(--v2-font-body)", fontSize: "11px", fontWeight: 600 }}>Set Up Now</span>
-          )}
-        </div>
+        {/* ── CAMPAIGN PICKER — clean Duolingo-style campaign list ── */}
+        {/* Piece 2: replaces dense dashboard with focused picker */}
+        <div style={{ maxWidth: 640, margin: "0 auto" }}>
+          {/* Hero: + New Campaign */}
+          <button
+            onClick={() => handleStartNewCampaign()}
+            style={{
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+              width: "100%", padding: "16px 0", marginBottom: 28,
+              background: "var(--v2-primary-btn, #FF5B1D)", color: "#fff", border: "none",
+              borderRadius: "var(--v2-border-radius-pill, 999px)",
+              fontFamily: "var(--v2-font-body)", fontWeight: 700, fontSize: 16,
+              cursor: "pointer", boxShadow: "0 4px 20px rgba(255,91,29,0.25)",
+              transition: "transform 0.15s, box-shadow 0.15s",
+            }}
+            onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 28px rgba(255,91,29,0.35)"; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = "0 4px 20px rgba(255,91,29,0.25)"; }}
+          >
+            + New Campaign
+          </button>
 
-        {/* ── Stats row ── */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px", marginBottom: "24px" }}>
-          {/* Assets Generated */}
-          <div style={{ background: "#fff", borderRadius: "16px", padding: "18px 20px", textAlign: "center" }}>
-            <p style={{ fontFamily: "var(--v2-font-heading)", fontStyle: "italic", fontWeight: 900, fontSize: "32px", color: "var(--v2-text-color)", margin: 0, lineHeight: 1 }}>
-              {totalAssetsGenerated}
-            </p>
-            <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "12px", fontWeight: 600, color: "rgba(26,22,36,0.50)", margin: "6px 0 0", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-              Assets Generated
-            </p>
-          </div>
-          {/* Campaign Progress */}
-          <div style={{ background: "#fff", borderRadius: "16px", padding: "18px 20px", textAlign: "center" }}>
-            <p style={{ fontFamily: "var(--v2-font-heading)", fontStyle: "italic", fontWeight: 900, fontSize: "32px", color: "#58CC02", margin: 0, lineHeight: 1 }}>
-              {progressPct}%
-            </p>
-            <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "12px", fontWeight: 600, color: "rgba(26,22,36,0.50)", margin: "6px 0 0", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-              Campaign Progress
-            </p>
-          </div>
-          {/* Active ICP + Campaign Kit link */}
-          <div style={{ background: "#fff", borderRadius: "16px", padding: "18px 20px", textAlign: "center", overflow: "hidden" }}>
-            <p style={{ fontFamily: "var(--v2-font-heading)", fontStyle: "italic", fontWeight: 900, fontSize: "16px", color: "var(--v2-text-color)", margin: 0, lineHeight: 1.3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-              {activeIcpName}
-            </p>
-            <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "12px", fontWeight: 600, color: "rgba(26,22,36,0.50)", margin: "6px 0 0", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-              Active ICP
-            </p>
+          {/* Campaign list */}
+          <p style={{ fontFamily: "var(--v2-font-body)", fontSize: 12, fontWeight: 600, color: "rgba(26,22,36,0.40)", letterSpacing: "0.04em", margin: "0 0 12px", textTransform: "uppercase" }}>
+            Your Campaigns
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {(() => {
-              const activeIcpId = icpList?.[0]?.id;
-              const matchedKit = activeIcpId ? campaignKitsList?.find((k: any) => k.icpId === activeIcpId) : null;
-              if (!matchedKit) return null;
-              return (
-                <a
-                  href={`/v2-dashboard/campaign-kit/${matchedKit.id}`}
-                  style={{
-                    display: "inline-block",
-                    marginTop: "8px",
-                    fontFamily: "var(--v2-font-body)",
-                    fontSize: "12px",
-                    fontWeight: 700,
-                    color: "var(--v2-primary-btn, #FF5B1D)",
-                    textDecoration: "none",
-                  }}
-                >
-                  View Campaign Kit →
-                </a>
-              );
-            })()}
-          </div>
-        </div>
-
-        {/* ── Recent Activity ── */}
-        {progressData?.milestones?.some((m: { completed: boolean }) => m.completed) && (
-          <div style={{ marginBottom: "24px" }}>
-            <p style={{ fontFamily: "var(--v2-font-body)", fontWeight: 700, fontSize: "13px", color: "var(--v2-text-color)", marginBottom: "10px" }}>
-              Recent Activity
-            </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-              {progressData.milestones
-                .filter((m: { completed: boolean }) => m.completed)
-                .slice(0, 5)
-                .map((m: { id: string; completed: boolean }) => {
-                  const info = MILESTONE_LABELS[m.id] || { emoji: "✅", label: m.id };
-                  return (
-                    <div key={m.id} style={{ display: "flex", alignItems: "center", gap: "10px", background: "#fff", borderRadius: "10px", padding: "10px 14px" }}>
-                      <span style={{ fontSize: "16px" }}>{info.emoji}</span>
-                      <span style={{ fontFamily: "var(--v2-font-body)", fontSize: "13px", color: "var(--v2-text-color)", fontWeight: 500, flex: 1 }}>{info.label}</span>
-                      <span style={{ fontFamily: "var(--v2-font-body)", fontSize: "11px", color: "#999", fontWeight: 500 }}>Completed</span>
-                    </div>
-                  );
-                })}
-            </div>
-          </div>
-        )}
-
-        {/* ── COMPONENT 1: Nav Tabs ── */}
-        <div style={{
-          display: "inline-flex",
-          background: "rgba(26,22,36,0.07)",
-          borderRadius: "var(--v2-border-radius-pill)",
-          padding: "4px",
-          marginBottom: "32px",
-          gap: "4px",
-        }}>
-          <button
-            onClick={() => setActiveTab("guided")}
-            style={{
-              borderRadius: "var(--v2-border-radius-pill)",
-              padding: "10px 22px",
-              fontFamily: "var(--v2-font-body)",
-              fontWeight: 600,
-              fontSize: "14px",
-              border: "none",
-              cursor: "pointer",
-              transition: "all 0.18s ease",
-              background: activeTab === "guided" ? "#fff" : "transparent",
-              color: activeTab === "guided" ? "var(--v2-text-color)" : "rgba(26,22,36,0.50)",
-              boxShadow: activeTab === "guided" ? "0 1px 6px rgba(26,22,36,0.10)" : "none",
-            }}
-          >
-            <span>Guided Campaign</span>
-            <span style={{ display: "block", fontSize: "10px", fontWeight: 400, opacity: 0.6, marginTop: 2 }}>Your full 11-step campaign path</span>
-          </button>
-          <button
-            onClick={handleTabTools}
-            style={{
-              borderRadius: "var(--v2-border-radius-pill)",
-              padding: "10px 22px",
-              fontFamily: "var(--v2-font-body)",
-              fontWeight: 600,
-              fontSize: "14px",
-              border: "none",
-              cursor: "pointer",
-              transition: "all 0.18s ease",
-              background: activeTab === "tools" ? "#fff" : "transparent",
-              color: activeTab === "tools" ? "var(--v2-text-color)" : "rgba(26,22,36,0.50)",
-              boxShadow: activeTab === "tools" ? "0 1px 6px rgba(26,22,36,0.10)" : "none",
-            }}
-          >
-            <span>Tool Library</span>
-            <span style={{ display: "block", fontSize: "10px", fontWeight: 400, opacity: 0.6, marginTop: 2 }}>Generate one piece at a time</span>
-          </button>
-        </div>
-
-        {/* ── COMPONENT 3: Progress Bar ── */}
-        <div style={{ marginBottom: "12px" }}>
-          <div style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "8px",
-          }}>
-            <span style={{
-              fontFamily: "var(--v2-font-body)",
-              fontWeight: 600,
-              fontSize: "14px",
-              color: "var(--v2-text-color)",
-            }}>
-              Campaign Kit: {completedCount} of {totalCount} Assets Completed
-            </span>
-            <span style={{
-              fontFamily: "var(--v2-font-body)",
-              fontWeight: 700,
-              fontSize: "14px",
-              color: "#58CC02",
-            }}>
-              {progressPct}%
-            </span>
-          </div>
-          <div style={{
-            width: "100%",
-            height: "10px",
-            background: "rgba(26,22,36,0.10)",
-            borderRadius: "var(--v2-border-radius-pill)",
-            overflow: "hidden",
-          }}>
-            <div style={{
-              height: "100%",
-              width: `${progressPct}%`,
-              background: "linear-gradient(90deg, #58CC02, #7BE82A)",
-              borderRadius: "var(--v2-border-radius-pill)",
-              transition: "width 0.5s ease",
-            }} />
-          </div>
-        </div>
-
-        {/* ── COMPONENT 4 (persistent): Fork Buttons — shown after modal dismissed, guided tab only ── */}
-        {forkDismissed && activeTab === "guided" && (
-          <div className="v2-fork-persistent" style={{ marginBottom: "32px" }}>
-            <button
-              className="v2-btn v2-btn-primary"
-              onClick={() => {
-                // All kits route to trail — legacy kits (path=NULL) treated as auto
-                const activeKit = activeIcpForNav
-                  ? campaignKitsList?.find((k: any) => k.icpId === activeIcpForNav.id)
-                  : null;
-                const kitId = activeKit?.id;
-                navigate(kitId ? `/v2-dashboard/trail/${kitId}` : "/v2-dashboard/trail/new");
-              }}
-            >
-              Continue Campaign
-            </button>
-            <button
-              className="v2-btn v2-btn-secondary"
-              onClick={() => setActiveTab("tools")}
-            >
-              Build a single piece
-            </button>
-            <button
-              className="v2-btn v2-btn-secondary"
-              onClick={() => navigate("/v2-dashboard/asset-library")}
-              style={{ display: "flex", alignItems: "center", gap: 6 }}
-            >
-              📚 Asset Library
-            </button>
-            <button
-              className="v2-btn v2-btn-secondary"
-              onClick={() => handleStartNewCampaign()}
-              style={{ display: "flex", alignItems: "center", gap: 6 }}
-            >
-              + New Campaign
-            </button>
-          </div>
-        )}
-
-
-
-        {/* ── COMPONENT 2: 11-Step Winding Path (Guided) OR Tool Library ── */}
-        {activeTab === "guided" ? (
-          <>
-          <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "12px", fontWeight: 600, color: "rgba(26,22,36,0.40)", letterSpacing: "0.04em", margin: "0 0 8px", textTransform: "uppercase" }}>Your campaign — 11 steps</p>
-          <div style={{ display: "flex", gap: "0", alignItems: "flex-start", position: "relative" }}>
-            <div className="v2-path-wrapper" style={{ flex: 1 }}>
-              {nodes.map((node, idx) => {
-                const milestoneId = Object.keys(MILESTONE_TO_NODE).find(k => MILESTONE_TO_NODE[k] === idx);
-                const isSkipped = milestoneId ? skippedSet.has(milestoneId) : false;
+              if (!campaignKitsList || campaignKitsList.length === 0) {
+                return <p style={{ fontFamily: "var(--v2-font-body)", fontSize: 14, color: "#999" }}>No campaigns yet. Start your first one above.</p>;
+              }
+              const KIT_FIELDS = ["selectedOfferId","selectedMechanismId","selectedHvcoId","selectedHeadlineId","selectedAdCopyId","selectedLandingPageId","selectedEmailSequenceId","selectedWhatsAppSequenceId"];
+              const sorted = [...campaignKitsList].sort((a: any, b: any) => {
+                const aComplete = KIT_FIELDS.every(f => a[f] != null);
+                const bComplete = KIT_FIELDS.every(f => b[f] != null);
+                if (aComplete !== bComplete) return aComplete ? 1 : -1;
+                return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+              });
+              const seqMap = new Map<number, number>();
+              [...campaignKitsList].sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+                .forEach((k: any, i: number) => seqMap.set(k.id, i + 1));
+              return sorted.map((k: any) => {
+                const filled = KIT_FIELDS.filter(f => k[f] != null).length;
+                const total = KIT_FIELDS.length;
+                const isComplete = filled === total;
+                const dateStr = k.createdAt ? new Date(k.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "";
+                const seqNum = seqMap.get(k.id) ?? k.id;
                 return (
-                  <div key={node.id} className="v2-path-column">
-                    {/* Connector above (except first node) */}
-                    {idx > 0 && (
-                      <Connector fromCompleted={nodes[idx - 1].state === "completed"} />
-                    )}
-                    <PathNode node={node} isMobile={isMobile} onNodeClick={handleNodeClick} isSkipped={isSkipped} />
-                  </div>
-                );
-              })}
-            </div>
-            {/* Campaign Kit sidebar on dashboard */}
-            {(() => {
-              // Commit 7 (Item 7b) + 7.1 hotfix: resolve effective ICP via
-              // (1) explicit user selection (selectedIcpId), then
-              // (2) first ICP that has a kit attached (covers multi-ICP
-              //     accounts where the newest ICP isn't the one with a kit;
-              //     pre-7.1 this fallback hardcoded icpList[0] and the
-              //     sidebar hid silently when ids didn't match), then
-              // (3) first ICP unconditionally (preserves prior single-ICP UX).
-              const firstIcpWithKit = icpList && campaignKitsList
-                ? icpList.find((i: any) => campaignKitsList.some((k: any) => k.icpId === i.id))
-                : undefined;
-              const effectiveIcpId = selectedIcpId ?? firstIcpWithKit?.id ?? icpList?.[0]?.id;
-              const activeIcp = effectiveIcpId ? icpList?.find((i: any) => i.id === effectiveIcpId) : undefined;
-              const kit = activeIcp ? campaignKitsList?.find((k: any) => k.icpId === activeIcp.id) : null;
-              const hasMultipleIcps = (icpList?.length ?? 0) > 1;
-              if (!kit) return null;
-              const KIT_FIELDS = [
-                { label: "Offer", field: "selectedOfferId", num: 3 },
-                { label: "Method", field: "selectedMechanismId", num: 4 },
-                { label: "Lead Magnet", field: "selectedHvcoId", num: 5 },
-                { label: "Headline", field: "selectedHeadlineId", num: 6 },
-                { label: "Ad Copy", field: "selectedAdCopyId", num: 7 },
-                { label: "Landing Page", field: "selectedLandingPageId", num: 8 },
-                { label: "Email Sequence", field: "selectedEmailSequenceId", num: 9 },
-                { label: "WhatsApp", field: "selectedWhatsAppSequenceId", num: 10 },
-              ];
-              const filled = KIT_FIELDS.filter(f => (kit as any)[f.field] != null).length;
-              const total = KIT_FIELDS.length;
-              const pct = Math.round((filled / total) * 100);
-              const isComplete = filled === total;
-              return (
-                <aside style={{
-                  width: 220,
-                  background: "#fff",
-                  borderLeft: "1px solid #e5e0d8",
-                  padding: "20px",
-                  position: "fixed",
-                  right: 0,
-                  top: 60,
-                  bottom: 0,
-                  overflowY: "auto",
-                  zIndex: 50,
-                  display: isMobile ? "none" : "flex",
-                  flexDirection: "column",
-                  gap: "14px",
-                }}>
-                  <h3 style={{
-                    fontFamily: "var(--v2-font-heading, 'Fraunces', serif)",
-                    fontStyle: "italic",
-                    fontWeight: 900,
-                    fontSize: "16px",
-                    color: "var(--v2-text-dark, #1A1624)",
-                    margin: 0,
-                  }}>
-                    🎯 Campaign Kit
-                  </h3>
-                  {/* Commit 7 (Item 7b): ICP switcher — only renders for
-                      multi-ICP users; single-ICP users see no UI change. */}
-                  {hasMultipleIcps && (
-                    <select
-                      value={effectiveIcpId ?? ""}
-                      onChange={(e) => setSelectedIcpId(Number(e.target.value))}
-                      style={{
-                        width: "100%",
-                        padding: "6px 10px",
-                        fontSize: "12px",
-                        fontFamily: "var(--v2-font-body)",
-                        border: "1px solid #e5e0d8",
-                        borderRadius: "8px",
-                        background: "#fff",
-                        color: "var(--v2-text-dark, #1A1624)",
-                        cursor: "pointer",
-                      }}
-                    >
-                      {icpList!.map((i: any) => (
-                        <option key={i.id} value={i.id}>{i.name || `ICP #${i.id}`}</option>
-                      ))}
-                    </select>
-                  )}
-                  <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                    {KIT_FIELDS.map(f => {
-                      const isFilled = (kit as any)[f.field] != null;
-                      return (
-                        <div key={f.field} style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "8px",
-                          padding: "5px 8px",
-                          borderRadius: "8px",
-                          background: isFilled ? "rgba(88,204,2,0.06)" : "transparent",
-                        }}>
-                          <span style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            width: 22,
-                            height: 22,
-                            borderRadius: "50%",
-                            fontSize: "10px",
-                            fontWeight: 700,
-                            fontFamily: "var(--v2-font-body)",
-                            background: isFilled ? "#58CC02" : "#e5e0d8",
-                            color: isFilled ? "#fff" : "#999",
-                            flexShrink: 0,
-                          }}>
-                            {isFilled ? "✓" : f.num}
-                          </span>
-                          <span style={{
-                            fontFamily: "var(--v2-font-body)",
-                            fontSize: "12px",
-                            fontWeight: isFilled ? 600 : 400,
-                            color: isFilled ? "var(--v2-text-dark, #1A1624)" : "#999",
-                          }}>
-                            {f.label}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  {/* Progress */}
-                  <div>
-                    <p style={{
-                      fontFamily: "var(--v2-font-body)",
-                      fontSize: "11px",
-                      fontWeight: 600,
-                      color: "var(--v2-text-dark, #1A1624)",
-                      margin: "0 0 4px",
-                    }}>
-                      {filled} of {total} selected
-                    </p>
-                    <div style={{ height: 5, borderRadius: 3, background: "#e5e0d8", overflow: "hidden" }}>
-                      <div style={{
-                        height: "100%",
-                        width: `${pct}%`,
-                        borderRadius: 3,
-                        background: isComplete ? "#58CC02" : "var(--v2-primary-btn, #FF5B1D)",
-                        transition: "width 0.3s ease",
-                      }} />
+                  <div
+                    key={k.id}
+                    onClick={() => navigate(`/v2-dashboard/trail/${k.id}`)}
+                    style={{
+                      display: "flex", alignItems: "center", justifyContent: "space-between",
+                      padding: "16px 20px", background: "#fff", border: "1px solid #e5e0d8",
+                      borderRadius: 14, cursor: "pointer", transition: "border-color 0.15s, box-shadow 0.15s",
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = "#FF5B1D"; e.currentTarget.style.boxShadow = "0 2px 12px rgba(255,91,29,0.08)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = "#e5e0d8"; e.currentTarget.style.boxShadow = "none"; }}
+                  >
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontFamily: "var(--v2-font-heading)", fontStyle: "italic", fontWeight: 900, fontSize: 16, color: "#1A1624", marginBottom: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {k.name || `Campaign #${seqNum}`}
+                      </div>
+                      <div style={{ fontFamily: "var(--v2-font-body)", fontSize: 13, color: "#888", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {k.icpName || ""}
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", flexShrink: 0, marginLeft: 16 }}>
+                      <div style={{ fontFamily: "var(--v2-font-body)", fontWeight: 700, fontSize: 14, color: isComplete ? "#2E7D00" : "#FF5B1D" }}>
+                        {filled}/{total} {isComplete ? "✓" : "◉"}
+                      </div>
+                      <div style={{ fontFamily: "var(--v2-font-body)", fontSize: 11, color: "#aaa", marginTop: 2 }}>
+                        {dateStr}
+                      </div>
                     </div>
                   </div>
-                  {/* View kit button */}
-                  <a
-                    href={isComplete ? `/v2-dashboard/campaign-kit/${kit.id}` : undefined}
-                    onClick={e => { if (!isComplete) e.preventDefault(); }}
-                    style={{
-                      display: "block",
-                      textAlign: "center",
-                      padding: "8px 14px",
-                      borderRadius: "9999px",
-                      background: isComplete ? "var(--v2-primary-btn, #FF5B1D)" : "#e5e0d8",
-                      color: isComplete ? "#fff" : "#999",
-                      fontFamily: "var(--v2-font-body)",
-                      fontWeight: 700,
-                      fontSize: "12px",
-                      textDecoration: "none",
-                      cursor: isComplete ? "pointer" : "default",
-                    }}
-                  >
-                    {isComplete ? "View Campaign Kit" : `${total - filled} remaining`}
-                  </a>
-                </aside>
-              );
+                );
+              });
             })()}
           </div>
-          {/* ── Commit 7 (Item 7c): All-my-kits inline section ──
-              Renders below the path, lists every campaign kit across all
-              ICPs the user owns. Existing campaignKits.getByUser query
-              (line 280) returns rows joined with ICP name, so no new query
-              needed. Empty state hidden when user has zero kits. */}
-          {(campaignKitsList?.length ?? 0) > 0 && (
-            <section style={{ marginTop: "32px", marginRight: isMobile ? 0 : 240 }}>
-              <h3 style={{
-                fontFamily: "var(--v2-font-heading, 'Fraunces', serif)",
-                fontStyle: "italic",
-                fontWeight: 900,
-                fontSize: "20px",
-                color: "var(--v2-text-dark, #1A1624)",
-                margin: "0 0 16px",
-              }}>
-                All My Campaign Kits
-              </h3>
-              <div style={{
-                display: "grid",
-                gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(260px, 1fr))",
-                gap: "12px",
-              }}>
-                {(() => {
-                // Derive per-account sequential numbers: sort by createdAt asc, position+1
-                const sorted = [...campaignKitsList!].sort((a: any, b: any) =>
-                  new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-                );
-                const seqMap = new Map<number, number>();
-                sorted.forEach((kit: any, i: number) => seqMap.set(kit.id, i + 1));
-                return campaignKitsList!.map((k: any) => {
-                  const KIT_FIELDS_ALL = [
-                    "selectedOfferId", "selectedMechanismId", "selectedHvcoId",
-                    "selectedHeadlineId", "selectedAdCopyId", "selectedLandingPageId",
-                    "selectedEmailSequenceId", "selectedWhatsAppSequenceId",
-                  ];
-                  const filledCount = KIT_FIELDS_ALL.filter(f => k[f] != null).length;
-                  const totalCount = KIT_FIELDS_ALL.length;
-                  const pctVal = Math.round((filledCount / totalCount) * 100);
-                  const isCompleteCard = filledCount === totalCount;
-                  const seqNum = seqMap.get(k.id) ?? k.id;
-                  const dateStr = k.createdAt ? new Date(k.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "";
-                  const icpName = icpList?.find((i: any) => i.id === k.icpId)?.name || "";
-                  return (
-                    <a
-                      key={k.id}
-                      href={`/v2-dashboard/campaign-kit/${k.id}`}
-                      style={{
-                        display: "block",
-                        padding: "16px 18px",
-                        background: "#fff",
-                        border: "1px solid #e5e0d8",
-                        borderRadius: "12px",
-                        textDecoration: "none",
-                        color: "inherit",
-                        transition: "border-color 0.15s ease, transform 0.12s ease",
-                      }}
-                      onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "var(--v2-primary-btn, #FF5B1D)"; }}
-                      onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "#e5e0d8"; }}
-                    >
-                      <div style={{
-                        fontFamily: "var(--v2-font-body)",
-                        fontSize: "11px",
-                        fontWeight: 700,
-                        color: "#999",
-                        marginBottom: "4px",
-                      }}>
-                        Campaign #{seqNum} · {dateStr}
-                      </div>
-                      <div style={{
-                        fontFamily: "var(--v2-font-heading, 'Fraunces', serif)",
-                        fontStyle: "italic",
-                        fontWeight: 900,
-                        fontSize: "16px",
-                        color: "var(--v2-text-dark, #1A1624)",
-                        marginBottom: icpName ? "4px" : "10px",
-                      }}>
-                        {k.name || "Untitled Kit"}
-                      </div>
-                      {icpName && (
-                        <div style={{
-                          fontFamily: "var(--v2-font-body)",
-                          fontSize: "13px",
-                          color: "#666",
-                          marginBottom: "8px",
-                        }}>
-                          {icpName}
-                        </div>
-                      )}
-                      <div style={{
-                        fontFamily: "var(--v2-font-body)",
-                        fontSize: "12px",
-                        color: "#555",
-                        marginBottom: "8px",
-                      }}>
-                        {k.campaignType ? k.campaignType.replace(/_/g, " ") : "Campaign type not set"}
-                        {" · "}
-                        {filledCount}/{totalCount} steps
-                      </div>
-                      <div style={{ height: 4, borderRadius: 2, background: "#e5e0d8", overflow: "hidden" }}>
-                        <div style={{
-                          height: "100%",
-                          width: `${pctVal}%`,
-                          background: isCompleteCard ? "#58CC02" : "var(--v2-primary-btn, #FF5B1D)",
-                          transition: "width 0.3s ease",
-                        }} />
-                      </div>
-                    </a>
-                  );
-                });
-              })()}
-              </div>
-            </section>
-          )}
-          </>
-        ) : (
-          <V2ToolLibrary />
-        )}
-
+        </div>
+        {/* END CAMPAIGN PICKER */}
         </>
         )}
 
