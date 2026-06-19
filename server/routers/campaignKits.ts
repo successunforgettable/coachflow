@@ -5,6 +5,31 @@ import { campaignKits, idealCustomerProfiles, services, offers, nodeStatuses } f
 import { eq, and } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
+const MAX_KIT_NAME = 255;
+
+/** Build a kit name from service + ICP, length-guarded to fit varchar(255).
+ *  Keeps service name intact, elides ICP at a word boundary when needed. */
+function buildKitName(serviceName: string | null | undefined, icpName: string | null | undefined): string {
+  const svc = (serviceName ?? "").trim();
+  const icp = (icpName ?? "").trim();
+  if (!svc && !icp) return "Campaign";
+  if (!svc) return icp.length <= MAX_KIT_NAME ? icp : `${icp.slice(0, MAX_KIT_NAME - 1)}…`;
+
+  const suffix = " Campaign";
+  const separator = " — ";
+  // Service-only fallback when no ICP
+  if (!icp) return `${svc}${suffix}`.slice(0, MAX_KIT_NAME);
+
+  const full = `${svc}${separator}${icp}${suffix}`;
+  if (full.length <= MAX_KIT_NAME) return full;
+
+  // Truncate ICP portion at a word boundary
+  const budget = MAX_KIT_NAME - svc.length - separator.length - suffix.length - 1; // -1 for "…"
+  if (budget <= 10) return `${svc}${suffix}`.slice(0, MAX_KIT_NAME);
+  const trimmed = icp.slice(0, budget).replace(/\s+\S*$/, "");
+  return `${svc}${separator}${trimmed || icp.slice(0, budget)}…${suffix}`;
+}
+
 // Shared downstream maps — used by both updateSelection (re-crown) and
 // markTweakStale (in-place edit) to propagate staleness consistently.
 const STALE_FIELD_TO_NODE: Record<string, string> = {
@@ -57,11 +82,18 @@ export async function autoSelectBest(
   if (existing) {
     kitId = existing.id;
   } else {
-    // Auto-create with generic name
+    // Fetch ICP + service to build a rich name
+    const [icp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.id, icpId)).limit(1);
+    let serviceName: string | null = null;
+    if (icp?.serviceId) {
+      const [svc] = await db.select().from(services).where(eq(services.id, icp.serviceId)).limit(1);
+      if (svc) serviceName = svc.name;
+    }
+    const name = buildKitName(serviceName, icp?.name);
     const result: any = await db.insert(campaignKits).values({
       userId,
       icpId,
-      name: "Auto Campaign Kit",
+      name,
     });
     kitId = result[0].insertId;
   }
@@ -99,15 +131,8 @@ export async function autoSelectBest(
     if (isComplete && updated.status === "draft") {
       const completionUpdate: Record<string, unknown> = { status: "complete", updatedAt: new Date() };
 
-      // Auto-derive title from offer's productName — but only if name is
-      // still the generic "Auto Campaign Kit" default. Never overwrite a
-      // manual/custom title or the "{Service} — {ICP} Campaign" name.
-      if (updated.name === "Auto Campaign Kit" && updated.selectedOfferId) {
-        const [offer] = await db.select().from(offers).where(eq(offers.id, updated.selectedOfferId)).limit(1);
-        if (offer?.productName) {
-          completionUpdate.name = offer.productName;
-        }
-      }
+      // Names are now rich from creation. No completion rename needed —
+      // the buildKitName pattern is the final name.
 
       await db.update(campaignKits).set(completionUpdate as any).where(eq(campaignKits.id, kitId));
     }
@@ -167,7 +192,7 @@ export const campaignKitsRouter = router({
 
       if (!icp) throw new TRPCError({ code: "NOT_FOUND", message: "ICP not found" });
 
-      let serviceName = "My Service";
+      let serviceName: string | null = null;
       if (icp.serviceId) {
         const [svc] = await db
           .select()
@@ -177,9 +202,7 @@ export const campaignKitsRouter = router({
         if (svc) serviceName = svc.name;
       }
 
-      const name = serviceName
-        ? `${serviceName} — ${icp.name} Campaign`
-        : `${icp.name} Campaign`;
+      const name = buildKitName(serviceName, icp.name);
 
       const result: any = await db.insert(campaignKits).values({
         userId: ctx.user.id,

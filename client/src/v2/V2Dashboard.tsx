@@ -279,6 +279,7 @@ export default function V2Dashboard() {
   const { data: icpList } = trpc.icps.list.useQuery(undefined, { staleTime: 30_000 });
   // ── Campaign kits for "View Campaign Kit" link ──
   const { data: campaignKitsList } = trpc.campaignKits.getByUser.useQuery(undefined, { staleTime: 30_000 });
+  const [campaignSearch, setCampaignSearch] = useState("");
 
   // ── Service quality score for Node 1 pill ──
   const { data: servicesData } = trpc.services.list.useQuery();
@@ -777,64 +778,109 @@ export default function V2Dashboard() {
             + New Campaign
           </button>
 
-          {/* Campaign list */}
-          <p style={{ fontFamily: "var(--v2-font-body)", fontSize: 12, fontWeight: 600, color: "rgba(26,22,36,0.40)", letterSpacing: "0.04em", margin: "0 0 12px", textTransform: "uppercase" }}>
-            Your Campaigns
-          </p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {(() => {
-              if (!campaignKitsList || campaignKitsList.length === 0) {
-                return <p style={{ fontFamily: "var(--v2-font-body)", fontSize: 14, color: "#999" }}>No campaigns yet. Start your first one above.</p>;
-              }
-              const KIT_FIELDS = ["selectedOfferId","selectedMechanismId","selectedHvcoId","selectedHeadlineId","selectedAdCopyId","selectedLandingPageId","selectedEmailSequenceId","selectedWhatsAppSequenceId"];
-              const sorted = [...campaignKitsList].sort((a: any, b: any) => {
-                const aComplete = KIT_FIELDS.every(f => a[f] != null);
-                const bComplete = KIT_FIELDS.every(f => b[f] != null);
-                if (aComplete !== bComplete) return aComplete ? 1 : -1;
-                return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-              });
-              const seqMap = new Map<number, number>();
-              [...campaignKitsList].sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-                .forEach((k: any, i: number) => seqMap.set(k.id, i + 1));
-              return sorted.map((k: any) => {
-                const filled = KIT_FIELDS.filter(f => k[f] != null).length;
-                const total = KIT_FIELDS.length;
-                const isComplete = filled === total;
-                const dateStr = k.createdAt ? new Date(k.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "";
-                const seqNum = seqMap.get(k.id) ?? k.id;
-                return (
-                  <div
-                    key={k.id}
-                    onClick={() => navigate(`/v2-dashboard/trail/${k.id}`)}
-                    style={{
-                      display: "flex", alignItems: "center", justifyContent: "space-between",
-                      padding: "16px 20px", background: "#fff", border: "1px solid #e5e0d8",
-                      borderRadius: 14, cursor: "pointer", transition: "border-color 0.15s, box-shadow 0.15s",
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor = "#FF5B1D"; e.currentTarget.style.boxShadow = "0 2px 12px rgba(255,91,29,0.08)"; }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = "#e5e0d8"; e.currentTarget.style.boxShadow = "none"; }}
-                  >
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontFamily: "var(--v2-font-heading)", fontStyle: "italic", fontWeight: 900, fontSize: 16, color: "#1A1624", marginBottom: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {k.name || `Campaign #${seqNum}`}
-                      </div>
-                      <div style={{ fontFamily: "var(--v2-font-body)", fontSize: 13, color: "#888", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {k.icpName || ""}
-                      </div>
+          {/* Campaign list with search + grouping */}
+          {(() => {
+            if (!campaignKitsList || campaignKitsList.length === 0) {
+              return (
+                <>
+                  <p style={{ fontFamily: "var(--v2-font-body)", fontSize: 12, fontWeight: 600, color: "rgba(26,22,36,0.40)", letterSpacing: "0.04em", margin: "0 0 12px", textTransform: "uppercase" }}>Your Campaigns</p>
+                  <p style={{ fontFamily: "var(--v2-font-body)", fontSize: 14, color: "#999" }}>No campaigns yet. Start your first one above.</p>
+                </>
+              );
+            }
+
+            const KIT_FIELDS = ["selectedOfferId","selectedMechanismId","selectedHvcoId","selectedHeadlineId","selectedAdCopyId","selectedLandingPageId","selectedEmailSequenceId","selectedWhatsAppSequenceId"];
+            const q = campaignSearch.toLowerCase();
+            const filtered = campaignKitsList.filter((k: any) => {
+              if (!q) return true;
+              return (k.name ?? "").toLowerCase().includes(q) || (k.icpName ?? "").toLowerCase().includes(q);
+            });
+            const inProgress = filtered.filter((k: any) => !KIT_FIELDS.every(f => k[f] != null))
+              .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            const completed = filtered.filter((k: any) => KIT_FIELDS.every(f => k[f] != null))
+              .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+            const renderCard = (k: any) => {
+              const filled = KIT_FIELDS.filter(f => k[f] != null).length;
+              const total = KIT_FIELDS.length;
+              const isComplete = filled === total;
+              const dateStr = k.createdAt ? new Date(k.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "";
+              return (
+                <div
+                  key={k.id}
+                  onClick={() => navigate(`/v2-dashboard/trail/${k.id}`)}
+                  style={{
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                    padding: "16px 20px", background: "#fff", border: "1px solid #e5e0d8",
+                    borderRadius: 14, cursor: "pointer", transition: "border-color 0.15s, box-shadow 0.15s",
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = "#FF5B1D"; e.currentTarget.style.boxShadow = "0 2px 12px rgba(255,91,29,0.08)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = "#e5e0d8"; e.currentTarget.style.boxShadow = "none"; }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontFamily: "var(--v2-font-heading)", fontStyle: "italic", fontWeight: 900, fontSize: 16, color: "#1A1624", marginBottom: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {k.name || "Campaign"}
                     </div>
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", flexShrink: 0, marginLeft: 16 }}>
-                      <div style={{ fontFamily: "var(--v2-font-body)", fontWeight: 700, fontSize: 14, color: isComplete ? "#2E7D00" : "#FF5B1D" }}>
-                        {filled}/{total} {isComplete ? "✓" : "◉"}
-                      </div>
-                      <div style={{ fontFamily: "var(--v2-font-body)", fontSize: 11, color: "#aaa", marginTop: 2 }}>
-                        {dateStr}
-                      </div>
+                    <div style={{ fontFamily: "var(--v2-font-body)", fontSize: 13, color: "#888", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {k.icpName || ""}
                     </div>
                   </div>
-                );
-              });
-            })()}
-          </div>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", flexShrink: 0, marginLeft: 16 }}>
+                    <div style={{ fontFamily: "var(--v2-font-body)", fontWeight: 700, fontSize: 14, color: isComplete ? "#2E7D00" : "#FF5B1D" }}>
+                      {filled}/{total} {isComplete ? "✓" : "◉"}
+                    </div>
+                    <div style={{ fontFamily: "var(--v2-font-body)", fontSize: 11, color: "#aaa", marginTop: 2 }}>
+                      {dateStr}
+                    </div>
+                  </div>
+                </div>
+              );
+            };
+
+            const sectionLabel = (label: string, count: number) => (
+              <p style={{ fontFamily: "var(--v2-font-body)", fontSize: 12, fontWeight: 600, color: "rgba(26,22,36,0.40)", letterSpacing: "0.04em", margin: "20px 0 10px", textTransform: "uppercase" }}>
+                {label} ({count})
+              </p>
+            );
+
+            return (
+              <>
+                {/* Search */}
+                {campaignKitsList.length > 2 && (
+                  <input
+                    type="text"
+                    placeholder="Search campaigns…"
+                    value={campaignSearch}
+                    onChange={e => setCampaignSearch(e.target.value)}
+                    style={{
+                      width: "100%", padding: "10px 14px", marginBottom: 16, border: "1px solid #e5e0d8",
+                      borderRadius: 10, fontFamily: "var(--v2-font-body)", fontSize: 14, color: "#1A1624",
+                      background: "#fff", outline: "none", boxSizing: "border-box",
+                    }}
+                  />
+                )}
+                {filtered.length === 0 && q && (
+                  <p style={{ fontFamily: "var(--v2-font-body)", fontSize: 14, color: "#999" }}>No campaigns match "{campaignSearch}".</p>
+                )}
+                {inProgress.length > 0 && (
+                  <>
+                    {sectionLabel("In Progress", inProgress.length)}
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                      {inProgress.map(renderCard)}
+                    </div>
+                  </>
+                )}
+                {completed.length > 0 && (
+                  <>
+                    {sectionLabel("Completed", completed.length)}
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                      {completed.map(renderCard)}
+                    </div>
+                  </>
+                )}
+              </>
+            );
+          })()}
         </div>
         {/* END CAMPAIGN PICKER */}
         </>
