@@ -202,7 +202,7 @@ export default function V2TrailIntake() {
       reveal: {
         eyebrow: "WHAT I HEARD",
         title: ex.serviceName || "Your Business",
-        preview: `${ex.serviceDescription || "—"} Helping: ${icpShort}. The win: ${ex.mainBenefit || "—"}`,
+        preview: ex.serviceDescription || `Helping: ${icpShort}. The win: ${ex.mainBenefit || "—"}`,
       },
     });
     addMsg({ type: "zappy-bubble", mood: "idle", text: `So: you're a ${categoryNoun} helping ${icpShort.charAt(0).toLowerCase()}${icpShort.slice(1)}. Right?` });
