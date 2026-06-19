@@ -63,6 +63,7 @@ import V2Dashboard from "./v2/V2Dashboard";
 import V2GeneratorWizardPage from "./v2/V2GeneratorWizardPage";
 import V2AssetLibrary from "./v2/V2AssetLibrary";
 import V2CampaignKit from "./v2/V2CampaignKit";
+import V2SourceOfTruth from "./v2/V2SourceOfTruth";
 import { lazy, Suspense } from "react";
 const TestimonialPickerLazy = lazy(() => import("./v2/components/TestimonialPicker"));
 function V2TestimonialsPage() {
@@ -169,6 +170,7 @@ function Router() {
       {/* /trail/new must precede /trail/:campaignKitId so "new" isn't read as a kit ID */}
       <Route path={"/v2-dashboard/trail/new"} component={V2TrailIntake} />
       <Route path={"/v2-dashboard/trail/:campaignKitId"} component={V2Trail} />
+      <Route path={"/v2-dashboard/source-of-truth"} component={V2SourceOfTruth} />
       <Route path={"/v2-dashboard/asset-library"} component={V2AssetLibrary} />
       <Route path={"/v2-dashboard/testimonials"} component={V2TestimonialsPage} />
       <Route path={"/v2-dashboard/wizard/:step"} component={V2GeneratorWizardPage} />
