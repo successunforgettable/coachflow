@@ -251,6 +251,7 @@ export async function runOrchestrationStep(
         serviceId: input.serviceId,
         targetMarket: "",
         hvcoTopic: "",
+        liteMode: true,
       });
       generatedId = await pickFirstFromHvcoSet(hvcoSetId);
       break;
@@ -265,6 +266,7 @@ export async function runOrchestrationStep(
         uniqueMechanism: "",
         userSubscriptionTier: userTier,
         userRole: userRole,
+        liteMode: true,
       });
       generatedId = await pickFirstFromHeadlineSet(headlineSetId);
       break;
@@ -302,6 +304,7 @@ export async function runOrchestrationStep(
         desiredOutcome: svc?.mainBenefit ?? "",
         userSubscriptionTier: userTier,
         userRole: userRole,
+        liteMode: true,
       });
       generatedId = await pickFirstFromAdSet(adSetId);
       break;

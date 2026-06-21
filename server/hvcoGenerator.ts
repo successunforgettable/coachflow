@@ -29,13 +29,14 @@ export async function runHvcoGeneration(input: {
   targetMarket: string;
   hvcoTopic: string;
   powerMode?: boolean;
+  liteMode?: boolean;
 }): Promise<{ hvcoSetId: string }> {
   const { getDb, createHvcoTitles, incrementHvcoCount } = await import("./db");
   const { services, idealCustomerProfiles, sourceOfTruth, campaigns, campaignKits } = await import("../drizzle/schema");
   const { eq, and } = await import("drizzle-orm");
   const { getCascadeContext } = await import("./_core/cascadeContext");
 
-  const countMultiplier = input.powerMode ? 3 : 1;
+  const countMultiplier = input.liteMode ? 0.25 : input.powerMode ? 3 : 1;
 
   const db = await getDb();
   if (!db) throw new Error("Database not available");

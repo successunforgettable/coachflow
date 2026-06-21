@@ -274,6 +274,7 @@ export async function runHeadlinesGeneration(input: {
   desiredOutcome: string;
   uniqueMechanism: string;
   powerMode?: boolean;
+  liteMode?: boolean;
   headlineStyle?: "story" | "eyebrow" | "question" | "authority" | "urgency";
   // Caller-provided user tier/role for compliance-rewrite free-tier cap.
   userSubscriptionTier?: string | null;
@@ -379,7 +380,7 @@ The headline must signal physical presence — city, venue, date. Reference the 
 
   const headlineSetId = nanoid();
   const allHeadlines: Array<typeof headlinesTable.$inferInsert> = [];
-  const countMultiplier = input.powerMode ? 3 : 1;
+  const countMultiplier = input.liteMode ? 0.4 : input.powerMode ? 3 : 1;
 
   // 5 formulas in parallel via tool-use; per-formula filter respects
   // input.headlineStyle (undefined = all 5; specific enum = 1).

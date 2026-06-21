@@ -205,6 +205,7 @@ export async function runAdCopyGeneration(input: {
   totalCustomers?: string;
   testimonials?: string;
   powerMode?: boolean;
+  liteMode?: boolean;
   userSubscriptionTier?: string | null;
   userRole?: string | null;
 }): Promise<{ adSetId: string; count: number; headlineCount: number; bodyCount: number; linkCount: number }> {
@@ -329,7 +330,7 @@ ${icp.communicationStyle ? `How they communicate: ${icp.communicationStyle}` : '
   };
 
   const adSetId = nanoid();
-  const count = input.powerMode ? 30 : 15;
+  const count = input.liteMode ? 3 : input.powerMode ? 30 : 15;
 
   const adTypeContext = input.adType === "lead_gen"
     ? "Lead Generation (free webinar, consultation, download)"
@@ -426,7 +427,7 @@ Format as JSON array:
 
   // ── Body angles in parallel (sync fuller prompt with PAS structure) ────────
   const { ALL_BODY_ANGLES, BODY_ANGLE_PROMPTS } = await import('./adCopyAngles');
-  const selectedAngles = [...ALL_BODY_ANGLES];
+  const selectedAngles = input.liteMode ? ALL_BODY_ANGLES.slice(0, 3) : [...ALL_BODY_ANGLES];
   const bodyPromises = selectedAngles.map(async (angle) => {
     const anglePrompt = BODY_ANGLE_PROMPTS[angle];
     const bodyPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ONE high-converting ad BODY COPY using the ${angle.replace('_', ' ')} angle:
