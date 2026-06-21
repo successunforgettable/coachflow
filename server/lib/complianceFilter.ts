@@ -43,14 +43,19 @@ const REJECTED_PATTERNS: Array<{ pattern: RegExp; label: string }> = [
     pattern: /\b(cure|diagnose|treat)\s+(cancer|diabetes|hiv|aids|covid|alzheimer|depression|anxiety disorder|disease|illness|condition)\b/gi,
     label: "medical misinformation",
   },
-  // Guaranteed income with specific dollar amounts AND timeframes
+  // Guaranteed income with specific amounts AND timeframes (any currency)
   {
-    pattern: /earn\s+\$[\d,]+\s+in\s+\d+\s+days?\s+guaranteed/gi,
-    label: "guaranteed income claim with specific dollar amount and timeframe",
+    pattern: /earn\s+(?:\$|₹|£|€)[\d,.]+[kKlLmM]?\s+in\s+\d+\s+days?\s+guaranteed/gi,
+    label: "guaranteed income claim with specific amount and timeframe",
   },
   {
-    pattern: /make\s+\$[\d,]+\s+(in\s+\d+\s+days?|this\s+weekend|overnight)\s+guaranteed/gi,
-    label: "guaranteed income claim with specific dollar amount and timeframe",
+    pattern: /make\s+(?:\$|₹|£|€)[\d,.]+[kKlLmM]?\s+(?:in\s+\d+\s+days?|this\s+weekend|overnight)\s+guaranteed/gi,
+    label: "guaranteed income claim with specific amount and timeframe",
+  },
+  // Also catch "lakhs/crore" written out with guaranteed
+  {
+    pattern: /(earn|make)\s+[\d,.]+\s*(lakhs?|crore|cr)\s+.*?\s+guaranteed/gi,
+    label: "guaranteed income claim with specific amount and timeframe",
   },
   // Second-person personal attribute targeting (Meta discriminatory ad policy)
   {
@@ -69,10 +74,16 @@ interface PivotRule {
 }
 
 const PIVOT_RULES: PivotRule[] = [
-  // 1. Make/Earn $X in X days
+  // 1. Make/Earn [amount] in X days (any currency symbol)
   {
     id: "1",
-    pattern: /(make|earn)\s+\$[\d,.]+\s+in\s+\d+\s+days?/gi,
+    pattern: /(make|earn)\s+(?:\$|₹|£|€)[\d,.]+[kKlLmM]?\s*(?:\/\w+\s+)?(?:in|within)\s+\d+\s+(?:days?|weeks?|months?)/gi,
+    pivot: () => "Learn the framework professionals use to build sustainable revenue",
+  },
+  // 1b. Make/Earn X lakhs/crore in Y days (written-out Indian denominations, optional currency symbol)
+  {
+    id: "1b",
+    pattern: /(make|earn)\s+(?:₹)?[\d,.]+\s*(?:lakhs?|lacs?|crore|cr)\s*(?:(?:\/\w+|per\s+\w+)\s+)?(?:in|within)\s+\d+\s+(?:days?|weeks?|months?)/gi,
     pivot: () => "Learn the framework professionals use to build sustainable revenue",
   },
   // 2. Guaranteed results / 100% success rate / guaranteed
@@ -105,6 +116,18 @@ const PIVOT_RULES: PivotRule[] = [
     pattern: /\b(last\s+chance|doors?\s+closing\s+forever|never\s+available\s+again)\b/gi,
     pivot: () => "Limited-time access to this offer",
   },
+  // 6b. Gone forever / pricing dies / offer expires tonight — hard deadline scarcity
+  {
+    id: "6b",
+    pattern: /\b(gone\s+forever|pricing\s+dies|offer\s+expires?\s*(tonight|today|now)|price\s+(?:goes\s+up|increases?|doubles?)\s+(tonight|today|at\s+midnight))\b/gi,
+    pivot: () => "Limited-time access to this offer",
+  },
+  // 6c. Expires today / ends today / closes today / deadline tonight
+  {
+    id: "6c",
+    pattern: /\b(expires?\s+today|ends?\s+today|closes?\s+today|deadline\s+tonight|offer\s+ends?\s+today)\b/gi,
+    pivot: () => "Limited-time access to this offer",
+  },
   // 7. Everyone is getting rich but you / you're falling behind
   {
     id: "7",
@@ -123,10 +146,10 @@ const PIVOT_RULES: PivotRule[] = [
     pattern: /\b(i\s+stole\s+this\s+secret|they\s+don'?t\s+want\s+you\s+to\s+know)\b/gi,
     pivot: () => "The one ingredient your process is missing",
   },
-  // 10. From $0 to $1M in X days / overnight success
+  // 10. From $0/$₹0 to $XM/₹X lakhs in X days / overnight success
   {
     id: "10",
-    pattern: /\b(from\s+\$0\s+to\s+\$[\d,.]+\s+in\s+\d+\s+days?|overnight\s+success)\b/gi,
+    pattern: /\b(from\s+(?:\$|₹|£|€)0\s+to\s+(?:\$|₹|£|€)[\d,.]+[kKlLmM]?\s+in\s+\d+\s+days?|overnight\s+success)\b/gi,
     pivot: () => "The 30-day shift that transformed my approach",
   },
   // 11. Click here to see the secret
@@ -153,10 +176,10 @@ const PIVOT_RULES: PivotRule[] = [
     pattern: /\bare\s+you\s+a\s+(struggling\s+)?\w[\w\s-]*\?/gi,
     pivot: () => "For those navigating this scenario while building toward their goal",
   },
-  // 15. Make $10k this weekend
+  // 15. Make $10k/₹X lakhs this weekend
   {
     id: "15",
-    pattern: /\bmake\s+\$[\d,.]+\s+this\s+weekend\b/gi,
+    pattern: /(make|earn)\s+(?:\$|₹|£|€)[\d,.]+[kKlLmM]?\s+this\s+weekend/gi,
     pivot: () => "The framework coaches use to stabilise and grow monthly revenue",
   },
   // 16. Passive income secrets / make money while you sleep guaranteed
@@ -172,8 +195,12 @@ const PIVOT_RULES: PivotRule[] = [
 // ---------------------------------------------------------------------------
 const SOFT_FLAG_PATTERNS: Array<{ pattern: RegExp; label: string }> = [
   {
-    pattern: /\$[\d,.]+\s*(per\s+(month|week|day|year)|\/mo|\/yr|\/wk)?/gi,
-    label: "income claim with specific dollar amount",
+    pattern: /(?:\$|₹|£|€)[\d,.]+[kKlLmM]?\s*(?:per\s+(?:month|week|day|year)|\/mo|\/yr|\/wk)?/gi,
+    label: "income claim with specific amount",
+  },
+  {
+    pattern: /[\d,.]+\s*(?:lakhs?|lacs?|crore|cr)\s*(?:per\s+(?:month|week|day|year)|\/mo|\/yr|\/wk)?/gi,
+    label: "income claim with specific amount (INR denomination)",
   },
   {
     pattern: /before\s+and\s+after|before\/after/gi,
