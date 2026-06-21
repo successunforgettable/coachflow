@@ -31,6 +31,7 @@ import { jobs, idealCustomerProfiles, offers, heroMechanisms, hvcoTitles, servic
 import { eq, and } from "drizzle-orm";
 import { runOrchestration, runOrchestrationStep, ORCHESTRATION_STEP_NAMES, type OrchestrationStepName } from "../_core/orchestration";
 import { autoSelectBest } from "./campaignKits";
+import { complianceFilter, filterRecord } from "../lib/complianceFilter";
 
 /**
  * Phase C C0: Auto Mode tier gate.
@@ -284,17 +285,34 @@ export const autoModeRouter = router({
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
+      // Compliance gate — filter imported ICP fields before DB write
+      const icpFields = { name: input.name, pains: input.pains || "", goals: input.goals || "", implementationBarriers: input.implementationBarriers || "" };
+      const { cleaned: cleanedIcp, classification: icpClassification, allFlaggedTerms: icpFlaggedTerms } = filterRecord(
+        icpFields,
+        ["name", "pains", "goals", "implementationBarriers"]
+      );
+      if (icpClassification === "REJECTED") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Your ICP description contains language that Meta's ad policies prohibit: ${icpFlaggedTerms.join("; ")}. Please rephrase and try again.`,
+        });
+      }
+
       const result: any = await db.insert(idealCustomerProfiles).values({
         userId: ctx.user.id,
         serviceId: input.serviceId,
-        name: input.name,
-        pains: input.pains || null,
-        goals: input.goals || null,
-        implementationBarriers: input.implementationBarriers || null,
+        name: cleanedIcp.name,
+        pains: cleanedIcp.pains || null,
+        goals: cleanedIcp.goals || null,
+        implementationBarriers: cleanedIcp.implementationBarriers || null,
         source: "imported",
       });
 
-      return { icpId: result[0].insertId as number };
+      return {
+        icpId: result[0].insertId as number,
+        complianceApplied: icpClassification === "PIVOT_REQUIRED",
+        flaggedTerms: icpFlaggedTerms,
+      };
     }),
 
   /**
@@ -344,17 +362,38 @@ export const autoModeRouter = router({
         .limit(1);
       const targetMarket = svc?.targetCustomer || "";
 
+      let allFlaggedTerms: string[] = [];
+      let anyComplianceApplied = false;
+
       // --- Offer ---
       if (input.offer) {
+        const offerFields = {
+          name: input.offer.name,
+          valueProposition: input.offer.valueProposition,
+          cta: input.offer.cta,
+        };
+        const { cleaned: cleanedOffer, classification: offerClass, allFlaggedTerms: offerFlags } = filterRecord(
+          offerFields,
+          ["name", "valueProposition", "cta"]
+        );
+        if (offerClass === "REJECTED") {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Your offer contains language that Meta's ad policies prohibit: ${offerFlags.join("; ")}. Please rephrase the flagged phrases.`,
+          });
+        }
+        allFlaggedTerms.push(...offerFlags);
+        if (offerClass === "PIVOT_REQUIRED") anyComplianceApplied = true;
+
         const offerResult: any = await db.insert(offers).values({
           userId: ctx.user.id,
           serviceId: input.serviceId,
-          productName: input.offer.name,
+          productName: cleanedOffer.name,
           activeAngle: "godfather",
           godfatherAngle: {
-            offerName: input.offer.name,
-            valueProposition: input.offer.valueProposition,
-            cta: input.offer.cta,
+            offerName: cleanedOffer.name,
+            valueProposition: cleanedOffer.valueProposition,
+            cta: cleanedOffer.cta,
             pricing: "",
             bonuses: "",
             guarantee: "",
@@ -367,13 +406,25 @@ export const autoModeRouter = router({
 
       // --- Mechanism ---
       if (input.mechanism) {
+        const mechFields = { name: input.mechanism.name, description: input.mechanism.description };
+        const { cleaned: cleanedMech, classification: mechClass, allFlaggedTerms: mechFlags } = filterRecord(
+          mechFields, ["name", "description"]
+        );
+        if (mechClass === "REJECTED") {
+          throw new TRPCError({ code: "BAD_REQUEST",
+            message: `Your method description contains prohibited language: ${mechFlags.join("; ")}. Please rephrase.`,
+          });
+        }
+        allFlaggedTerms.push(...mechFlags);
+        if (mechClass === "PIVOT_REQUIRED") anyComplianceApplied = true;
+
         const mechResult: any = await db.insert(heroMechanisms).values({
           userId: ctx.user.id,
           serviceId: input.serviceId,
           mechanismSetId: nanoid(),
           tabType: "hero_mechanisms",
-          mechanismName: input.mechanism.name,
-          mechanismDescription: input.mechanism.description,
+          mechanismName: cleanedMech.name,
+          mechanismDescription: cleanedMech.description,
           targetMarket,
           pressingProblem: "",
           whyProblem: "",
@@ -389,19 +440,35 @@ export const autoModeRouter = router({
 
       // --- HVCO (lead magnet / free opt-in) ---
       if (input.hvco) {
+        const hvcoFields = { title: input.hvco.title, topic: input.hvco.topic };
+        const { cleaned: cleanedHvco, classification: hvcoClass, allFlaggedTerms: hvcoFlags } = filterRecord(
+          hvcoFields, ["title", "topic"]
+        );
+        if (hvcoClass === "REJECTED") {
+          throw new TRPCError({ code: "BAD_REQUEST",
+            message: `Your lead magnet description contains prohibited language: ${hvcoFlags.join("; ")}. Please rephrase.`,
+          });
+        }
+        allFlaggedTerms.push(...hvcoFlags);
+        if (hvcoClass === "PIVOT_REQUIRED") anyComplianceApplied = true;
+
         const hvcoResult: any = await db.insert(hvcoTitles).values({
           userId: ctx.user.id,
           serviceId: input.serviceId,
           hvcoSetId: nanoid(),
           tabType: "long",
-          title: input.hvco.title,
+          title: cleanedHvco.title,
           targetMarket,
-          hvcoTopic: input.hvco.topic,
+          hvcoTopic: cleanedHvco.topic,
           source: "imported",
         });
         await autoSelectBest(ctx.user.id, input.icpId, "selectedHvcoId", hvcoResult[0].insertId);
       }
 
-      return { success: true };
+      return {
+        success: true,
+        complianceApplied: anyComplianceApplied,
+        flaggedTerms: allFlaggedTerms,
+      };
     }),
 });
