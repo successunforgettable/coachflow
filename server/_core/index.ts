@@ -5,6 +5,9 @@ import net from "net";
 import * as fs from "fs";
 import * as path from "path";
 import { fileURLToPath } from "url";
+import multer from "multer";
+import pdfParse from "pdf-parse";
+import mammoth from "mammoth";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { registerMetaOAuthRoutes } from "./metaOAuth";
@@ -373,6 +376,104 @@ async function startServer() {
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
+
+  // ── Document upload for has-assets extraction ─────────────────────────────
+  const docUpload = multer({
+    dest: path.join(process.cwd(), "tmp-uploads"),
+    limits: { fileSize: 10 * 1024 * 1024, files: 5 },
+    fileFilter: (_req, file, cb) => {
+      const allowed = [
+        "application/pdf",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/msword",
+        "text/plain",
+      ];
+      if (allowed.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error(`Unsupported file type: ${file.mimetype}. Upload PDF, DOCX, or TXT files.`));
+      }
+    },
+  });
+
+  app.post("/api/extract-documents", docUpload.array("files", 5), async (req, res) => {
+    try {
+      // Authenticate
+      let user: { id: number | string } | null = null;
+      try {
+        user = await sdk.authenticateRequest(req);
+      } catch {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+      if (!user) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+
+      const files = req.files as Express.Multer.File[];
+      if (!files || files.length === 0) {
+        res.status(400).json({ error: "No files uploaded." });
+        return;
+      }
+
+      const textParts: string[] = [];
+      const warnings: string[] = [];
+
+      for (const file of files) {
+        try {
+          let text = "";
+
+          if (file.mimetype === "application/pdf") {
+            const buffer = fs.readFileSync(file.path);
+            const parsed = await pdfParse(buffer);
+            text = parsed.text?.trim() || "";
+            if (text.length < 50 && parsed.numpages > 1) {
+              warnings.push(`"${file.originalname}" appears to be a scanned/image PDF — I couldn't read the text. Try pasting the content instead.`);
+              continue;
+            }
+          } else if (
+            file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+            file.mimetype === "application/msword"
+          ) {
+            const buffer = fs.readFileSync(file.path);
+            const result = await mammoth.extractRawText({ buffer });
+            text = result.value?.trim() || "";
+          } else if (file.mimetype === "text/plain") {
+            text = fs.readFileSync(file.path, "utf-8").trim();
+          }
+
+          if (text.length > 0) {
+            textParts.push(`--- ${file.originalname} ---\n${text}`);
+          } else {
+            warnings.push(`"${file.originalname}" contained no readable text.`);
+          }
+        } finally {
+          try { fs.unlinkSync(file.path); } catch { /* ignore cleanup errors */ }
+        }
+      }
+
+      const combinedText = textParts.join("\n\n");
+
+      if (combinedText.length === 0) {
+        res.status(400).json({
+          error: "No readable text found in any uploaded file.",
+          warnings,
+        });
+        return;
+      }
+
+      res.json({
+        text: combinedText,
+        fileCount: textParts.length,
+        warnings,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Upload processing failed.";
+      res.status(500).json({ error: msg });
+    }
+  });
+
   // OAuth callback under /api/oauth/callback (Manus OAuth — kept for existing users)
   registerOAuthRoutes(app);
   // Meta OAuth callback under /api/meta/callback

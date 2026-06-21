@@ -105,6 +105,7 @@ jspm_packages/
 # Temporary folders
 tmp/
 temp/
+tmp-uploads/
 
 # Database
 *.db
