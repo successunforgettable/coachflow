@@ -1037,7 +1037,7 @@ export default function V2Trail() {
       // Sprint 4 C3: check if path was switched mid-run
       const autoPathCheck = await trailState.refetch();
       const autoCurrentPath = ((autoPathCheck.data?.kit ?? {}) as Record<string, unknown>).path;
-      if (autoCurrentPath !== "auto") return; // let the unified loop re-enter with manual
+      if (autoCurrentPath !== "auto" && autoCurrentPath !== "has_assets") return; // let the unified loop re-enter with manual
     }
 
     driverBusy.current = false;
