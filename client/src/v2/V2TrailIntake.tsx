@@ -523,7 +523,7 @@ export default function V2TrailIntake() {
             reveal: {
               eyebrow: `FOUND — YOUR ${cat.label}${confidenceNote}`,
               title: data[cat.nameField] || cat.label,
-              preview: (data[cat.previewField] || "").slice(0, 220),
+              preview: data[cat.previewField] || "",
             },
           });
           addMsg({ type: "zappy-bubble", mood: "idle", text: "Look right?" });
@@ -555,7 +555,7 @@ export default function V2TrailIntake() {
             reveal: {
               eyebrow: `TESTIMONIAL — ${t.name}`,
               title: t.name + (t.title ? ` (${t.title})` : ""),
-              preview: `"${t.quote.slice(0, 200)}"`,
+              preview: `"${t.quote}"`,
             },
           });
         }

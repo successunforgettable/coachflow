@@ -269,7 +269,11 @@ function FileUploadButton({ msg, onSelect }: { msg: ChatMessage; onSelect?: (msg
 }
 
 function AssetRevealCard({ msg }: { msg: ChatMessage }) {
+  const [expanded, setExpanded] = useState(false);
   if (!msg.reveal) return null;
+  const preview = msg.reveal.preview || "";
+  const isLong = preview.length > 220;
+  const displayText = isLong && !expanded ? preview.slice(0, 220) + "…" : preview;
   return (
     <div style={{ paddingLeft: 44 }}>
       <div style={{
@@ -307,9 +311,28 @@ function AssetRevealCard({ msg }: { msg: ChatMessage }) {
           color: TEXT_COLOR,
           opacity: 0.7,
           lineHeight: 1.5,
+          maxHeight: expanded ? "none" : undefined,
         }}>
-          {msg.reveal.preview}
+          {displayText}
         </div>
+        {isLong && (
+          <button
+            onClick={() => setExpanded(!expanded)}
+            style={{
+              background: "none",
+              border: "none",
+              padding: "4px 0",
+              fontFamily: FONT_BODY,
+              fontSize: 12,
+              fontWeight: 600,
+              color: BRAND_PRIMARY,
+              cursor: "pointer",
+              marginTop: 4,
+            }}
+          >
+            {expanded ? "Show less" : "Show more"}
+          </button>
+        )}
         {msg.reveal.score != null && (
           <div style={{
             marginTop: 10,
