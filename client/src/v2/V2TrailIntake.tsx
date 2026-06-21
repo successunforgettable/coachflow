@@ -36,7 +36,8 @@ type Phase =
   | "campaignType" // Sprint 3 C2: "What are you inviting people to?" chips live
   | "fork"         // Beat 5: path chips live
   | "autorun"      // Sprint 3 C2: in-chat auto path — ICP gen + kit creation
-  | "hasAssets"    // Sprint 5 C1: has-assets flow — chip grid + forms + import
+  | "hasAssetsChoice" // waiting for upload/paste choice — chips visible, text input hidden
+  | "hasAssets"    // Sprint 5 C1: has-assets flow — paste input active
   | "routing";     // fork chip tapped, navigating out
 
 interface Extraction {
@@ -255,9 +256,14 @@ export default function V2TrailIntake() {
 
   // ── Free-text input ──
   const handleSendText = (text: string) => {
-    if (phase === "hasAssets" && importTextResolve.current) {
-      importTextResolve.current(text);
-      importTextResolve.current = null;
+    if (phase === "hasAssets") {
+      if (importTextResolve.current) {
+        importTextResolve.current(text);
+        importTextResolve.current = null;
+      }
+      // Guard: if resolver isn't ready yet, the text input shouldn't be active
+      // during hasAssetsChoice. If it somehow fires, ignore silently (input is
+      // hidden during choice phase so this shouldn't happen in practice).
       return;
     }
     if (phase === "describe") {
@@ -306,7 +312,7 @@ export default function V2TrailIntake() {
       return;
     }
 
-    setPhase(path === "auto" ? "autorun" : path === "has_assets" ? "hasAssets" : "routing");
+    setPhase(path === "auto" ? "autorun" : path === "has_assets" ? "hasAssetsChoice" : "routing");
     // Analytics FIRST — the choice is recorded before any navigation.
     try {
       await trackEventMutation.mutateAsync({
@@ -401,15 +407,17 @@ export default function V2TrailIntake() {
   const runHasAssetsInChat = async () => {
     const serviceId = createdServiceId.current;
     if (serviceId == null) return;
-    setPhase("hasAssets");
+    // Show the upload/paste choice FIRST — before expand, before paste input.
+    // Phase stays "hasAssetsChoice" (set by handleFork) so the text input is hidden.
     try {
-      // Enrichment (non-fatal)
-      try { await expandProfileMutation.mutateAsync({ serviceId }); } catch { /* non-fatal */ }
-
       // ── Step A: Collect material (upload or paste) ──
       addMsg({ type: "zappy-bubble", mood: "idle",
         text: "Upload your documents (PDF, Word, or text files) or paste your material below. I'll read everything and pull out what I need." });
       addMsg({ type: "chip-row", chips: ["Upload files", "I'll paste instead"] });
+
+      // Enrichment runs in parallel — doesn't block the choice
+      const expandPromise = expandProfileMutation.mutateAsync({ serviceId }).catch(() => { /* non-fatal */ });
+
       const entryChoice = await new Promise<string>(r => { importConfirmResolve.current = r; });
 
       let rawText = "";
@@ -580,6 +588,8 @@ export default function V2TrailIntake() {
       }
 
       // ── Step E: ICP import or generate ──
+      // Ensure enrichment finished before ICP work
+      await expandPromise;
       addMsg({ type: "zappy-bubble", mood: "thinking", text: "Studying the people you help..." });
       let icpId: number;
       if (confirmedAssets.icp) {
@@ -748,7 +758,7 @@ export default function V2TrailIntake() {
   const HAS_ASSETS_CHIPS = ["Upload files", "I'll paste instead", "Looks right", "Fix something", "I'll describe it", "Create one for me"];
   const handleChipTap = (messageId: string, chip: string) => {
     // Has-assets flow chips — all resolve through importConfirmResolve
-    if (HAS_ASSETS_CHIPS.includes(chip) && phase === "hasAssets") {
+    if (HAS_ASSETS_CHIPS.includes(chip) && (phase === "hasAssets" || phase === "hasAssetsChoice")) {
       setMessages(prev => prev.filter(m => m.id !== messageId));
       messagesRef.current = messagesRef.current.filter(m => m.id !== messageId);
       addMsg({ type: "user-bubble", text: chip });
