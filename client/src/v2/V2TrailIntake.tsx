@@ -415,25 +415,15 @@ export default function V2TrailIntake() {
       let rawText = "";
 
       if (entryChoice === "Upload files") {
-        addMsg({ type: "zappy-bubble", mood: "idle", text: "Pick your files — I can read PDFs, Word docs, and text files." });
+        // Show a real file input button in the chat — direct user click opens
+        // the OS picker (programmatic .click() gets blocked by browsers).
+        addMsg({ type: "file-upload" });
 
-        const input = document.createElement("input");
-        input.type = "file";
-        input.multiple = true;
-        input.accept = ".pdf,.docx,.doc,.txt";
-
-        const filePromise = new Promise<FileList | null>(resolve => {
-          input.onchange = () => resolve(input.files);
-          // Handle cancel — resolve null after timeout
-          const cancelCheck = setInterval(() => {
-            if (document.body.contains(input)) return;
-            clearInterval(cancelCheck);
-          }, 500);
-          setTimeout(() => { clearInterval(cancelCheck); resolve(null); }, 120000);
+        const files = await new Promise<FileList | null>(resolve => {
+          fileSelectResolve.current = (f) => resolve(f);
+          // Cancel fallback — if user doesn't pick within 5 min, resolve null
+          setTimeout(() => { if (fileSelectResolve.current) { fileSelectResolve.current = null; resolve(null); } }, 300000);
         });
-        input.click();
-
-        const files = await filePromise;
         if (!files || files.length === 0) {
           addMsg({ type: "zappy-bubble", mood: "idle", text: "No files selected. You can paste your material instead." });
           setPhase("hasAssets");
@@ -698,6 +688,7 @@ export default function V2TrailIntake() {
   // Promise resolvers for the has-assets flow
   const importTextResolve = useRef<((text: string) => void) | null>(null);
   const importConfirmResolve = useRef<((choice: string) => void) | null>(null);
+  const fileSelectResolve = useRef<((files: FileList) => void) | null>(null);
 
   /**
    * Sprint 4 C1 — in-chat manual path. Same shape as runAutoInChat but
@@ -845,6 +836,13 @@ export default function V2TrailIntake() {
             <ChatThread
               messages={messages}
               onChipTap={handleChipTap}
+              onFileSelect={(msgId, files) => {
+                // Remove the file-upload message after selection
+                setMessages(prev => prev.filter(m => m.id !== msgId));
+                messagesRef.current = messagesRef.current.filter(m => m.id !== msgId);
+                addMsg({ type: "user-bubble", text: `${files.length} file${files.length > 1 ? "s" : ""} selected` });
+                if (fileSelectResolve.current) { fileSelectResolve.current(files); fileSelectResolve.current = null; }
+              }}
               onSendText={showInput ? handleSendText : undefined}
               inputPlaceholder={
                 phase === "hasAssets" ? "Paste it here…"

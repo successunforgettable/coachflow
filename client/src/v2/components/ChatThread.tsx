@@ -37,7 +37,8 @@ export type ChatMessageType =
   | "milestone-badge"
   | "system-divider"
   | "style-chooser"
-  | "testimonial-picker";
+  | "testimonial-picker"
+  | "file-upload";
 
 export interface ChatMessage {
   id: string;
@@ -77,6 +78,8 @@ export interface ChatThreadProps {
   onDeckHeart?: (messageId: string, cardId: number) => void;
   onStyleChoose?: StyleChooseCallback;
   onTestimonialDone?: (messageId: string, action: "use" | "skip") => void;
+  /** File upload handler — called when user selects files from the file-upload message */
+  onFileSelect?: (messageId: string, files: FileList) => void;
   /** Ref map for TrailBar scroll-to-node */
   nodeRefMap?: React.MutableRefObject<Map<string, HTMLDivElement>>;
   /**
@@ -209,6 +212,58 @@ function ChipRow({ msg, onTap }: { msg: ChatMessage; onTap: (chip: string) => vo
           </button>
         );
       })}
+    </div>
+  );
+}
+
+function FileUploadButton({ msg, onSelect }: { msg: ChatMessage; onSelect?: (msgId: string, files: FileList) => void }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  return (
+    <div style={{ paddingLeft: 44, display: "flex", flexDirection: "column", gap: 8 }}>
+      <label
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 8,
+          background: BRAND_PRIMARY,
+          color: "white",
+          border: "none",
+          borderRadius: 9999,
+          padding: "12px 28px",
+          fontFamily: FONT_BODY,
+          fontSize: 14,
+          fontWeight: 600,
+          cursor: "pointer",
+          transition: "all 0.15s ease",
+          alignSelf: "flex-start",
+        }}
+        onMouseEnter={e => { (e.currentTarget as HTMLLabelElement).style.opacity = "0.9"; }}
+        onMouseLeave={e => { (e.currentTarget as HTMLLabelElement).style.opacity = "1"; }}
+      >
+        <span style={{ fontSize: 18 }}>+</span>
+        Choose files (PDF, Word, or TXT)
+        <input
+          ref={inputRef}
+          type="file"
+          multiple
+          accept=".pdf,.docx,.doc,.txt"
+          style={{ display: "none" }}
+          onChange={(e) => {
+            const files = e.target.files;
+            if (files && files.length > 0 && onSelect) {
+              onSelect(msg.id, files);
+            }
+          }}
+        />
+      </label>
+      <span style={{
+        fontFamily: FONT_BODY,
+        fontSize: 12,
+        color: "#6B7280",
+        paddingLeft: 4,
+      }}>
+        Up to 5 files, 10 MB each
+      </span>
     </div>
   );
 }
@@ -443,7 +498,7 @@ function SystemDivider({ msg }: { msg: ChatMessage }) {
 }
 
 // ─── Main ChatThread ──────────────────────────────────────────────────────────
-export default function ChatThread({ messages, campaignStatus, onChipTap, onDeckSelect, onDeckHeart, onStyleChoose, onTestimonialDone, nodeRefMap, onSendText, inputPlaceholder, inputDisabled }: ChatThreadProps) {
+export default function ChatThread({ messages, campaignStatus, onChipTap, onDeckSelect, onDeckHeart, onStyleChoose, onTestimonialDone, onFileSelect, nodeRefMap, onSendText, inputPlaceholder, inputDisabled }: ChatThreadProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
@@ -571,6 +626,7 @@ export default function ChatThread({ messages, campaignStatus, onChipTap, onDeck
                 {msg.type === "card-deck" && <CardDeck msg={msg} onSelect={(cardId) => onDeckSelect?.(msg.id, cardId)} onHeart={(cardId) => onDeckHeart?.(msg.id, cardId)} />}
                 {msg.type === "milestone-badge" && <MilestoneBadge msg={msg} />}
                 {msg.type === "system-divider" && <SystemDivider msg={msg} />}
+                {msg.type === "file-upload" && <FileUploadButton msg={msg} onSelect={onFileSelect} />}
                 {msg.type === "style-chooser" && (
                   <Suspense fallback={null}>
                     <StyleChooser
