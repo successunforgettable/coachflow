@@ -43,13 +43,17 @@ export const ZAPPY_LINES: Record<string, NodeLines> = {
     ],
     mid: [
       { text: "Just making sure I've really got you. No half-jobs here." },
+      { text: "Every good campaign starts with knowing the business inside out." },
+      { text: "Building the base layer — everything sits on top of this." },
     ],
     long: [
       "Still with you — I like to get the ground floor right.",
+      "Nearly there. A solid foundation means everything after clicks.",
     ],
     reveal: [
       "\u2026locked in. Let's build.",
       "\u2026got it. Onward.",
+      "\u2026and we're off. Watch this come together.",
     ],
   },
 
@@ -64,6 +68,8 @@ export const ZAPPY_LINES: Record<string, NodeLines> = {
       { text: "Your people are tired of generic advice — we're going to use that." },
       { text: "Want a joke while I dig? Why did the marketer get lost? \u2026 They couldn't find their target audience. \uD83E\uDD8A", isJoke: true },
       { text: "Profiling your perfect buyer. Honestly? I already like them." },
+      { text: "Finding the exact words they use when they talk about this problem." },
+      { text: "Getting specific. Not 'business owners' — the ones who lie awake at 2am about this." },
     ],
     long: [
       "Still digging deep — this is the most important part of the whole campaign, so I'm being thorough.",
@@ -72,6 +78,8 @@ export const ZAPPY_LINES: Record<string, NodeLines> = {
     reveal: [
       "\u2026and done. Meet your ideal customer.",
       "\u2026there they are. Now I know exactly who we're talking to.",
+      "\u2026got them. Every asset from here is written *for* this person.",
+      "\u2026profiled. This is who your whole campaign speaks to now.",
     ],
   },
 
@@ -85,6 +93,8 @@ export const ZAPPY_LINES: Record<string, NodeLines> = {
       { text: "Adding the guarantee on top. We're taking all the risk off their plate." },
       { text: "Ooh, I'd buy this. And I'm a fox with no wallet." },
       { text: "Want a joke? Why are sales offers like elevators? \u2026 The good ones don't drop you halfway. I'll stop. \uD83E\uDD8A", isJoke: true },
+      { text: "Making the value so obvious they don't need convincing." },
+      { text: "Your ideal customer is going to read this and feel like it was written just for them. Because it was." },
     ],
     long: [
       "Still cooking. An offer this good is worth the extra few seconds — trust me.",
@@ -93,6 +103,8 @@ export const ZAPPY_LINES: Record<string, NodeLines> = {
     reveal: [
       "\u2026and there it is. The no-brainer.",
       "\u2026done. Try saying no to that. I'll wait.",
+      "\u2026built to match your customer's exact pain points. That's intentional.",
+      "\u2026stacked. Your offer now speaks directly to what keeps them up at night.",
     ],
   },
 
@@ -105,13 +117,19 @@ export const ZAPPY_LINES: Record<string, NodeLines> = {
     mid: [
       { text: "Throwing out the boring names. We want one that sticks in their head for a week." },
       { text: "Ooh, wait till you see what I'm calling this." },
+      { text: "This is what separates you from everyone else in their inbox. Making it count." },
+      { text: "A good method name does half the selling before you even open your mouth." },
+      { text: "Testing it against your ICP — does it land with *them*? That's the bar." },
     ],
     long: [
       "Still shaping it. A signature method worth its name takes a minute of real thought.",
+      "Almost there. Your method is going to tie your whole campaign together.",
     ],
     reveal: [
       "\u2026boom. Your signature method, named and ready.",
       "\u2026there. That's *yours* now.",
+      "\u2026and this is what makes your offer different from everyone else's.",
+      "\u2026done. Your ICP hears this name and thinks 'that's what I need.'",
     ],
   },
 
@@ -119,17 +137,24 @@ export const ZAPPY_LINES: Record<string, NodeLines> = {
     early: [
       "Building the freebie that gets them raising their hands.",
       "Crafting the hook. The good kind of bait.",
+      "Creating the free thing that makes them trust you before they buy.",
     ],
     mid: [
       { text: "Making this so good they'll feel like they're getting away with something." },
       { text: "Free, but make it irresistible. That's the trick." },
+      { text: "Your lead magnet needs to prove you know their problem better than they do." },
+      { text: "Building this to connect directly to your offer — the freebie is the first step of the journey." },
+      { text: "Want a joke? Why did the lead magnet go to therapy? \u2026 Attachment issues. \uD83E\uDD8A", isJoke: true },
     ],
     long: [
       "Polishing the titles — I want maximum hands-in-the-air on this one.",
+      "Still crafting. A great lead magnet opens the door your offer walks through.",
     ],
     reveal: [
       "\u2026all set. Here's your magnet.",
       "\u2026done. Try scrolling past that.",
+      "\u2026and it ties right back to your offer. See the connection?",
+      "\u2026built to attract exactly the kind of person your offer is for.",
     ],
   },
 
@@ -137,18 +162,24 @@ export const ZAPPY_LINES: Record<string, NodeLines> = {
     early: [
       "Writing the lines that stop the scroll. Being picky on your behalf.",
       "Hunting for the perfect hook. Throwing back the small ones.",
+      "Every headline speaks to your ICP's exact situation. That's non-negotiable.",
     ],
     mid: [
       { text: "Ooh, this one's going to make your reader feel slightly attacked — in the good way." },
       { text: "Binning the boring ones. Only keeping gold." },
       { text: "Want a joke? What's a copywriter's favourite exercise? \u2026 Running headlines. Moving on. \uD83E\uDD8A", isJoke: true },
+      { text: "Testing each one against your ICP's fears and desires. If it doesn't land, it's gone." },
+      { text: "Built these from your offer and method — see how they all connect." },
     ],
     long: [
-      "Still writing. Good hooks take a few tries, and I'm writing a *lot* of them for you.",
+      "Still writing. Good hooks take a few tries, and I'm being thorough.",
+      "Nearly there. Each headline is built on your ICP's actual language.",
     ],
     reveal: [
       "\u2026and we've got our hooks. Take a look.",
       "\u2026done. Go on, try not to click those.",
+      "\u2026built from your offer stack. See how they match?",
+      "\u2026each one speaks directly to your ideal customer's situation.",
     ],
   },
 
@@ -156,17 +187,24 @@ export const ZAPPY_LINES: Record<string, NodeLines> = {
     early: [
       "Making the case so they can't *not* click.",
       "Building the argument. This one's going to convert.",
+      "Weaving your headlines into a full pitch now.",
     ],
     mid: [
       { text: "Weaving your method right into the pitch. They won't see it coming." },
       { text: "Adding just the right pinch of urgency. Ooh, I like where this is going." },
+      { text: "Your ad copy uses the same words your ICP uses when they describe their problem." },
+      { text: "Connecting the headline to the offer — the whole thing should feel like one conversation." },
+      { text: "Making sure this stays Meta-safe while it persuades. Both at once." },
     ],
     long: [
       "Still refining — I'm making sure this persuades *and* stays clean for the ad police.",
+      "Nearly done. Copy this tight takes a moment to get right.",
     ],
     reveal: [
       "\u2026and there we go. Copy that converts.",
       "\u2026done. That's a closer.",
+      "\u2026wove your method right into the pitch. See how it flows from the headline?",
+      "\u2026built on everything upstream. Offer, method, ICP — it's all in there.",
     ],
   },
 
@@ -174,17 +212,24 @@ export const ZAPPY_LINES: Record<string, NodeLines> = {
     early: [
       "Laying out the page that turns 'maybe' into 'yes'.",
       "Building the room where the sale actually happens.",
+      "Your ad sends them here. This page finishes the job.",
     ],
     mid: [
       { text: "Placing the proof so they trust you in about four seconds flat." },
       { text: "Setting the page up so the eye goes exactly where we want it." },
+      { text: "Matching the page to your ad copy — same voice, same promise, deeper detail." },
+      { text: "Adding your offer, your method, your proof. All in the right order." },
+      { text: "The page picks up exactly where the ad left off. No disconnects." },
     ],
     long: [
       "Still laying bricks. A page that converts is a proper build — nearly there.",
+      "Almost done. Every section on this page earns the next scroll.",
     ],
     reveal: [
       "\u2026done. Welcome to your new landing page.",
       "\u2026there it is. That page has one job, and it's good at it.",
+      "\u2026published. Ad clicks land here now, and the page does the rest.",
+      "\u2026and it matches your ad copy perfectly. One seamless journey.",
     ],
   },
 
@@ -192,17 +237,24 @@ export const ZAPPY_LINES: Record<string, NodeLines> = {
     early: [
       "Writing the emails that do the following-up so you don't have to.",
       "Warming them up, one message at a time.",
+      "Building the sequence that turns 'interested' into 'I'm in.'",
     ],
     mid: [
       { text: "Building the story so it flows from day one to the 'okay, I'm in'." },
       { text: "Want a joke while I write? Why did the email break up with the inbox? \u2026 Too much spam in the relationship. \uD83E\uDD8A", isJoke: true },
+      { text: "Each email picks up where the last one left off. No orphan messages." },
+      { text: "Using the same voice as your ads and landing page — they'll recognise you." },
+      { text: "Threading your offer through the whole sequence. Soft, then firm." },
     ],
     long: [
       "A full sequence takes a minute — I'm making sure each one earns the next open.",
+      "Nearly there. Good email sequences feel like a conversation, not a broadcast.",
     ],
     reveal: [
       "\u2026and it's ready to send. Your sequence is built.",
       "\u2026done. That'll do the chasing for you.",
+      "\u2026each email builds on the last. They'll open every one.",
+      "\u2026tied to your landing page and offer. Same voice, same journey.",
     ],
   },
 
@@ -210,17 +262,24 @@ export const ZAPPY_LINES: Record<string, NodeLines> = {
     early: [
       "Writing the messages that land right in their pocket.",
       "Keeping it punchy. Nobody wants a novel in their texts.",
+      "Short messages, big results. Building your text sequence.",
     ],
     mid: [
       { text: "Making us sound like a friend texting, not a brand broadcasting." },
       { text: "Short, warm, hard to ignore. That's the brief." },
+      { text: "These messages match the tone of your emails — same person, different channel." },
+      { text: "Each message has one job. Read, reply, or click. That's it." },
+      { text: "Texting is intimate. Getting the warmth right without being pushy." },
     ],
     long: [
       "Still typing — getting the casual tone *exactly* right takes a sec.",
+      "Nearly done. These land in their pocket alongside messages from friends. Has to feel right.",
     ],
     reveal: [
       "\u2026ping. Your messages are ready.",
       "\u2026done. Straight to their pocket.",
+      "\u2026same voice as your emails, but punchier. One-two punch.",
+      "\u2026and your campaign now reaches them on two channels. That's coverage.",
     ],
   },
 
@@ -228,17 +287,24 @@ export const ZAPPY_LINES: Record<string, NodeLines> = {
     early: [
       "Making it look as good as it sounds.",
       "Adding the visual that stops the thumb mid-scroll.",
+      "Your words are ready. Now let's make them look unmissable.",
     ],
     mid: [
       { text: "Getting the colours loud enough to interrupt a feed." },
       { text: "Almost there — the part where it all starts looking like a *real* campaign." },
+      { text: "Matching the visual to your headline — they need to hit as a pair." },
+      { text: "These images use your actual headline text. What you see is what runs." },
+      { text: "Want a joke? Why did the ad creative go viral? \u2026 It had the right frame of mind. \uD83E\uDD8A", isJoke: true },
     ],
     long: [
       "Last stretch. Good design's worth the few extra seconds — you'll see.",
+      "Rendering the final images. Your whole campaign is about to be complete.",
     ],
     reveal: [
       "\u2026and we've got visuals. Your campaign's complete. \uD83E\uDD8A",
       "\u2026done. Look at what we just built.",
+      "\u2026images ready. Headlines, copy, page, emails, messages, visuals — all connected.",
+      "\u2026and that's everything. A full campaign, built from one conversation.",
     ],
   },
 };

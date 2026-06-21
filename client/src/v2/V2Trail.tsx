@@ -304,7 +304,7 @@ export default function V2Trail() {
           return {
             eyebrow: "YOUR OFFER",
             title: String(angle?.offerName ?? o?.productName ?? "Your Offer"),
-            preview: String(angle?.valueProposition ?? "").slice(0, 220) || "Full offer stack in your Kit.",
+            preview: String(angle?.valueProposition ?? "") || "Full offer stack in your Kit.",
           };
         }
         case "mechanism": {
@@ -312,7 +312,7 @@ export default function V2Trail() {
           return {
             eyebrow: "YOUR METHOD",
             title: String(m?.mechanismName ?? "Your Method"),
-            preview: String(m?.mechanismDescription ?? "").slice(0, 220),
+            preview: String(m?.mechanismDescription ?? ""),
           };
         }
         case "hvco": {
@@ -320,7 +320,7 @@ export default function V2Trail() {
           return {
             eyebrow: "YOUR LEAD MAGNET",
             title: String(h?.title ?? "Your Lead Magnet"),
-            preview: "The free thing that pulls people in — worth paying for, that's the bar.",
+            preview: String(h?.hvcoTopic ?? "") || "The free thing that pulls people in.",
           };
         }
         case "headlines": {
@@ -328,8 +328,7 @@ export default function V2Trail() {
           return {
             eyebrow: "YOUR HEADLINE",
             title: String(h?.headline ?? "Your Headline"),
-            preview: String(h?.subheadline ?? "") || "+ more in your Kit.",
-            // C4 honesty rule: the REAL persisted score, never a fabricated 100.
+            preview: String(h?.subheadline ?? ""),
             score: typeof h?.complianceScore === "number" ? h.complianceScore : undefined,
           };
         }
@@ -338,8 +337,8 @@ export default function V2Trail() {
           const content = String(a?.content ?? "");
           return {
             eyebrow: "YOUR AD COPY",
-            title: content.split("\n")[0].slice(0, 80) || "Your Ad",
-            preview: content.split("\n").slice(1, 4).join(" ").slice(0, 220),
+            title: content.split("\n")[0] || "Your Ad",
+            preview: content.split("\n").slice(1).join("\n"),
             score: typeof a?.complianceScore === "number" ? a.complianceScore : undefined,
           };
         }
@@ -349,7 +348,7 @@ export default function V2Trail() {
           return {
             eyebrow: "YOUR LANDING PAGE",
             title: String(angle?.mainHeadline ?? "Your Landing Page"),
-            preview: String(angle?.subheadline ?? "").slice(0, 220) || "Published and ready — preview in your Kit.",
+            preview: [angle?.subheadline, angle?.primaryCta ? `CTA: ${angle.primaryCta}` : ""].filter(Boolean).join("\n") || "Published and ready — preview in your Kit.",
           };
         }
         case "emailSequence": {
@@ -359,30 +358,36 @@ export default function V2Trail() {
           return {
             eyebrow: "YOUR EMAIL SEQUENCE",
             title: `${list.length || "Your"} emails, ready to send`,
-            preview: list[0]?.subject ? `Email 1: "${String(list[0].subject)}"` : "Sequence in your Kit.",
+            preview: list.map((em: Record<string, unknown>, i: number) => `Email ${i + 1}: "${String(em?.subject ?? "")}"`)
+              .filter((s: string) => s.includes('"') && !s.includes('""'))
+              .join("\n") || "Sequence in your Kit.",
           };
         }
         case "whatsappSequence": {
           const w = await utils.whatsappSequences.get.fetch({ id: idVal as number }) as Record<string, unknown> | null;
           const msgs = parseMaybeJson(w?.messages) as unknown;
           const list = Array.isArray(msgs) ? msgs : [];
-          const first = list[0];
-          const firstText = typeof first === "string" ? first : String((first as Record<string, unknown>)?.message ?? (first as Record<string, unknown>)?.text ?? "");
           return {
             eyebrow: "YOUR WHATSAPP SEQUENCE",
             title: `${list.length || "Your"} messages queued`,
-            preview: firstText.slice(0, 220) || "Sequence in your Kit.",
+            preview: list.map((m: unknown, i: number) => {
+              const text = typeof m === "string" ? m : String((m as Record<string, unknown>)?.message ?? (m as Record<string, unknown>)?.text ?? "");
+              return `Message ${i + 1}: ${text.split("\n")[0]}`;
+            }).join("\n") || "Sequence in your Kit.",
           };
         }
         case "adCreatives": {
           const batch = await utils.adCreatives.getBatch.fetch({ batchId: String(idVal) }) as unknown;
-          const count = Array.isArray(batch) ? batch.length
-            : Array.isArray((batch as Record<string, unknown>)?.creatives) ? ((batch as Record<string, unknown>).creatives as unknown[]).length
-            : 5;
+          const items = Array.isArray(batch) ? batch
+            : Array.isArray((batch as Record<string, unknown>)?.creatives) ? (batch as Record<string, unknown>).creatives as unknown[]
+            : [];
+          const imageUrls = (items as Record<string, unknown>[])
+            .map(c => String(c?.imageUrl ?? ""))
+            .filter(u => u.startsWith("http"));
           return {
             eyebrow: "YOUR AD CREATIVES",
-            title: `${count} ad creatives, composited and ready`,
-            preview: "Thumbnails and downloads in your Campaign Kit.",
+            title: `${imageUrls.length || 5} ad images, ready to use`,
+            preview: imageUrls.length > 0 ? `__IMAGES__${imageUrls.join("|")}` : "Thumbnails in your Campaign Kit.",
           };
         }
       }

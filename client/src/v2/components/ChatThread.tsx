@@ -272,7 +272,12 @@ function AssetRevealCard({ msg }: { msg: ChatMessage }) {
   const [expanded, setExpanded] = useState(false);
   if (!msg.reveal) return null;
   const preview = msg.reveal.preview || "";
-  const isLong = preview.length > 220;
+
+  // Detect image URLs (ad creatives use __IMAGES__ prefix)
+  const isImagePreview = preview.startsWith("__IMAGES__");
+  const imageUrls = isImagePreview ? preview.replace("__IMAGES__", "").split("|").filter(Boolean) : [];
+
+  const isLong = !isImagePreview && preview.length > 220;
   const displayText = isLong && !expanded ? preview.slice(0, 220) + "…" : preview;
   return (
     <div style={{ paddingLeft: 44 }}>
@@ -305,16 +310,42 @@ function AssetRevealCard({ msg }: { msg: ChatMessage }) {
         }}>
           {msg.reveal.title}
         </div>
-        <div style={{
-          fontFamily: FONT_BODY,
-          fontSize: 13,
-          color: TEXT_COLOR,
-          opacity: 0.7,
-          lineHeight: 1.5,
-          maxHeight: expanded ? "none" : undefined,
-        }}>
-          {displayText}
-        </div>
+        {isImagePreview ? (
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(80px, 1fr))",
+            gap: 8,
+            marginTop: 4,
+          }}>
+            {imageUrls.map((url, i) => (
+              <img
+                key={i}
+                src={url}
+                alt={`Ad creative ${i + 1}`}
+                style={{
+                  width: "100%",
+                  borderRadius: 8,
+                  aspectRatio: "1 / 1",
+                  objectFit: "cover",
+                  background: "#F3F4F6",
+                }}
+                loading="lazy"
+              />
+            ))}
+          </div>
+        ) : (
+          <div style={{
+            fontFamily: FONT_BODY,
+            fontSize: 13,
+            color: TEXT_COLOR,
+            opacity: 0.7,
+            lineHeight: 1.5,
+            whiteSpace: "pre-wrap",
+            maxHeight: expanded ? "none" : undefined,
+          }}>
+            {displayText}
+          </div>
+        )}
         {isLong && (
           <button
             onClick={() => setExpanded(!expanded)}
