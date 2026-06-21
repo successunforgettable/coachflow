@@ -59,6 +59,17 @@ describe("complianceFilter — international currency", () => {
     expect(r.wasModified).toBe(true);
   });
 
+  // ── Overlapping scarcity collapse ──
+  it("collapses overlapping scarcity pivots into single clean output", () => {
+    const r = complianceFilter("Pricing dies tonight — gone forever");
+    expect(r.classification).toBe("PIVOT_REQUIRED");
+    expect(r.wasModified).toBe(true);
+    // Should NOT contain the pivot phrase twice
+    const pivotPhrase = "Limited-time access to this offer";
+    const count = r.cleanedText.split(pivotPhrase).length - 1;
+    expect(count).toBe(1);
+  });
+
   // ── Existing USD patterns still work ──
   it("still pivots USD income guarantee", () => {
     const r = complianceFilter("make $10,000 in 30 days");

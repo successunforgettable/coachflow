@@ -119,7 +119,7 @@ const PIVOT_RULES: PivotRule[] = [
   // 6b. Gone forever / pricing dies / offer expires tonight — hard deadline scarcity
   {
     id: "6b",
-    pattern: /\b(gone\s+forever|pricing\s+dies|offer\s+expires?\s*(tonight|today|now)|price\s+(?:goes\s+up|increases?|doubles?)\s+(tonight|today|at\s+midnight))\b/gi,
+    pattern: /\b(gone\s+forever|pricing\s+dies\s*(?:tonight|today|now)?|offer\s+expires?\s*(tonight|today|now)|price\s+(?:goes\s+up|increases?|doubles?)\s+(tonight|today|at\s+midnight))\b/gi,
     pivot: () => "Limited-time access to this offer",
   },
   // 6c. Expires today / ends today / closes today / deadline tonight
@@ -264,6 +264,21 @@ export function complianceFilter(text: string, _context?: string): ComplianceRes
   }
 
   if (wasModified) {
+    // Collapse overlapping pivot outputs: when multiple scarcity patterns match
+    // the same string, the same pivot phrase can appear multiple times.
+    // Deduplicate by collapsing repeated pivot phrases separated by punctuation/whitespace.
+    const pivotPhrases = PIVOT_RULES.map(r => r.pivot(""));
+    for (const phrase of pivotPhrases) {
+      // Match the phrase appearing 2+ times separated by any non-alphanumeric chars
+      const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const dupePattern = new RegExp(`(${escaped})([^a-zA-Z0-9]*)(${escaped})`, "gi");
+      while (dupePattern.test(cleanedText)) {
+        cleanedText = cleanedText.replace(dupePattern, "$1");
+      }
+    }
+    // Clean up leftover dangling punctuation/whitespace from collapsed duplicates
+    cleanedText = cleanedText.replace(/\s*[—–\-]\s*$/g, "").replace(/\s{2,}/g, " ").trim();
+
     // Collect soft flags on cleaned text
     for (const { pattern, label } of SOFT_FLAG_PATTERNS) {
       const matches = cleanedText.match(pattern);
