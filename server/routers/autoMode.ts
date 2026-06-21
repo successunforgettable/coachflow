@@ -32,6 +32,7 @@ import { eq, and } from "drizzle-orm";
 import { runOrchestration, runOrchestrationStep, ORCHESTRATION_STEP_NAMES, type OrchestrationStepName } from "../_core/orchestration";
 import { autoSelectBest } from "./campaignKits";
 import { complianceFilter, filterRecord } from "../lib/complianceFilter";
+import { invokeLLM } from "../_core/llm";
 
 /**
  * Phase C C0: Auto Mode tier gate.
@@ -470,5 +471,177 @@ export const autoModeRouter = router({
         complianceApplied: anyComplianceApplied,
         flaggedTerms: allFlaggedTerms,
       };
+    }),
+
+  extractFromAssets: protectedProcedure
+    .input(z.object({
+      rawText: z.string().min(50, "Need at least 50 characters to extract useful assets.").max(30000),
+    }))
+    .mutation(async ({ input }) => {
+      const systemPrompt = `You extract structured marketing assets from raw material provided by coaches, speakers, and consultants. The user has uploaded or pasted their existing business documents — sales pages, course outlines, offer descriptions, testimonials, or any combination.
+
+Your job: identify and extract every recognisable marketing asset from the text. The user will review your extraction on a confirmation screen and correct anything wrong. Accuracy about what IS present matters more than completeness — an empty field the user fills in is always better than an invented field the user must delete.
+
+ASSET CATEGORIES TO EXTRACT:
+
+1. ICP (Ideal Customer Profile)
+   - name: one-line descriptor of who they serve, in the user's own language (verbatim from source, ≤ 120 chars)
+   - pains: what problems/frustrations/fears the ICP faces, as described in the source material
+   - goals: what outcomes/desires the ICP wants
+   - demographics: any age, profession, location, or life-stage details mentioned
+   - implementationBarriers: what has stopped the ICP from solving this before
+
+2. OFFER
+   - name: the product/programme name exactly as it appears in the source (verbatim, ≤ 120 chars). If the source uses a pronoun ("my X programme"), extract the actual programme name without the pronoun and without adding the creator's name. "my 10-Week Incredible You System" becomes "The 10-Week Incredible You System", NOT "Arfeen Khan's 10-Week Incredible You System".
+   - valueProposition: what the offer delivers, in the user's own framing (≤ 500 chars)
+   - pricing: any pricing information mentioned (exact figures, payment plans, currency — verbatim from source)
+   - bonuses: any bonuses, extras, or included items beyond the core offer
+   - guarantee: any guarantee, risk-reversal, or support promise mentioned (verbatim from source)
+   - urgency: any urgency/scarcity language present (verbatim from source)
+   - duration: programme length or delivery timeline
+   - cta: the primary call-to-action if one is stated; otherwise empty string
+
+3. MECHANISM (Method / Framework / System)
+   - name: the method name exactly as it appears in the source (verbatim, ≤ 120 chars). Use the name from the text without adding the creator's name. If the source says "my 10-Week System", extract "The 10-Week System" — do not prepend anyone's name unless it is part of the method name in the source text itself.
+   - description: how the method works — steps, phases, modules, components (≤ 500 chars)
+
+4. HVCO (High-Value Content Offer / Lead Magnet / Free Opt-In)
+   - title: the lead magnet name exactly as it appears (verbatim, ≤ 120 chars)
+   - topic: what it covers and why it appeals to the ICP (≤ 300 chars)
+
+5. TESTIMONIALS — array of objects, each with:
+   - name: the person's real name as given (verbatim)
+   - quote: their exact words (verbatim — character-for-character from the source. NEVER paraphrase, summarise, clean up, or improve testimonial text. If the quote contains specific income figures, timelines, or health claims, preserve them exactly as written.)
+   - title: any role, location, or descriptor given (verbatim)
+
+EXTRACTION RULES:
+
+- VERBATIM INTEGRITY: Programme names, method names, testimonial quotes, pricing figures, and guarantee language are extracted character-for-character from the source. You identify and extract; you never rephrase, improve, or paraphrase.
+
+- GROUNDING RULE: If a category is not present or clearly implied in the source text, return null for that entire category. Within a category, leave individual fields as empty string ("") when the information is not present.
+
+- ONE EXTRACTION, NOT FOUR: The user may paste everything in one block. A single paragraph might contain offer details, ICP hints, and method references interleaved. Extract across the full text holistically.
+
+- CONFIDENCE SCORING: For each top-level category, report perFieldConfidence with:
+  - "high": clearly and explicitly stated in the source text
+  - "medium": reasonably inferred from context
+  - "low": weak inference, possibly wrong
+  - "missing": not present in the source at all`;
+
+      const userPrompt = `RAW MATERIAL (uploaded/pasted by user):
+
+"""
+${input.rawText}
+"""
+
+Extract all marketing assets you can identify. Return JSON matching the schema.`;
+
+      const response = await invokeLLM({
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "extract_from_assets",
+            strict: true,
+            schema: {
+              type: "object",
+              properties: {
+                icp: {
+                  type: ["object", "null"],
+                  properties: {
+                    name: { type: "string" },
+                    pains: { type: "string" },
+                    goals: { type: "string" },
+                    demographics: { type: "string" },
+                    implementationBarriers: { type: "string" },
+                  },
+                  required: ["name", "pains", "goals", "demographics", "implementationBarriers"],
+                },
+                offer: {
+                  type: ["object", "null"],
+                  properties: {
+                    name: { type: "string" },
+                    valueProposition: { type: "string" },
+                    pricing: { type: "string" },
+                    bonuses: { type: "string" },
+                    guarantee: { type: "string" },
+                    urgency: { type: "string" },
+                    duration: { type: "string" },
+                    cta: { type: "string" },
+                  },
+                  required: ["name", "valueProposition", "pricing", "bonuses", "guarantee", "urgency", "duration", "cta"],
+                },
+                mechanism: {
+                  type: ["object", "null"],
+                  properties: {
+                    name: { type: "string" },
+                    description: { type: "string" },
+                  },
+                  required: ["name", "description"],
+                },
+                hvco: {
+                  type: ["object", "null"],
+                  properties: {
+                    title: { type: "string" },
+                    topic: { type: "string" },
+                  },
+                  required: ["title", "topic"],
+                },
+                testimonials: {
+                  type: ["array", "null"],
+                  items: {
+                    type: "object",
+                    properties: {
+                      name: { type: "string" },
+                      quote: { type: "string" },
+                      title: { type: "string" },
+                    },
+                    required: ["name", "quote", "title"],
+                  },
+                },
+                perFieldConfidence: {
+                  type: "object",
+                  properties: {
+                    icp: { type: "string", enum: ["high", "medium", "low", "missing"] },
+                    offer: { type: "string", enum: ["high", "medium", "low", "missing"] },
+                    mechanism: { type: "string", enum: ["high", "medium", "low", "missing"] },
+                    hvco: { type: "string", enum: ["high", "medium", "low", "missing"] },
+                    testimonials: { type: "string", enum: ["high", "medium", "low", "missing"] },
+                  },
+                  required: ["icp", "offer", "mechanism", "hvco", "testimonials"],
+                },
+              },
+              required: ["icp", "offer", "mechanism", "hvco", "testimonials", "perFieldConfidence"],
+              additionalProperties: false,
+            },
+          },
+        },
+      });
+
+      // Handle both string and pre-parsed response shapes (same as extractFromText)
+      const rawContent = response.choices[0].message.content;
+      type ExtractionResult = {
+        icp: { name: string; pains: string; goals: string; demographics: string; implementationBarriers: string } | null;
+        offer: { name: string; valueProposition: string; pricing: string; bonuses: string; guarantee: string; urgency: string; duration: string; cta: string } | null;
+        mechanism: { name: string; description: string } | null;
+        hvco: { title: string; topic: string } | null;
+        testimonials: Array<{ name: string; quote: string; title: string }> | null;
+        perFieldConfidence: Record<string, "high" | "medium" | "low" | "missing">;
+      };
+
+      let extracted: ExtractionResult;
+      if (typeof rawContent !== "string") {
+        extracted = rawContent as unknown as ExtractionResult;
+      } else {
+        try {
+          extracted = JSON.parse(rawContent);
+        } catch {
+          throw new Error("Asset extraction returned invalid JSON. Please try again.");
+        }
+      }
+      return extracted;
     }),
 });
