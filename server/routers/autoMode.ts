@@ -276,6 +276,7 @@ export const autoModeRouter = router({
       pains: z.string().max(2000).optional(),
       goals: z.string().max(2000).optional(),
       implementationBarriers: z.string().max(2000).optional(),
+      demographics: z.string().max(2000).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const tierCheck = isAutoModeTierAllowed(ctx.user);
@@ -287,10 +288,10 @@ export const autoModeRouter = router({
       if (!db) throw new Error("Database not available");
 
       // Compliance gate — filter imported ICP fields before DB write
-      const icpFields = { name: input.name, pains: input.pains || "", goals: input.goals || "", implementationBarriers: input.implementationBarriers || "" };
+      const icpFields = { name: input.name, pains: input.pains || "", goals: input.goals || "", implementationBarriers: input.implementationBarriers || "", demographics: input.demographics || "" };
       const { cleaned: cleanedIcp, classification: icpClassification, allFlaggedTerms: icpFlaggedTerms } = filterRecord(
         icpFields,
-        ["name", "pains", "goals", "implementationBarriers"]
+        ["name", "pains", "goals", "implementationBarriers", "demographics"]
       );
       if (icpClassification === "REJECTED") {
         throw new TRPCError({
@@ -306,6 +307,7 @@ export const autoModeRouter = router({
         pains: cleanedIcp.pains || null,
         goals: cleanedIcp.goals || null,
         implementationBarriers: cleanedIcp.implementationBarriers || null,
+        demographics: cleanedIcp.demographics ? { ageRange: cleanedIcp.demographics } : null,
         source: "imported",
       });
 
