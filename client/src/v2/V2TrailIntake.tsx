@@ -122,6 +122,7 @@ export default function V2TrailIntake() {
   // Sprint 5 C1: has-assets import mutations
   const importIcpMutation = trpc.autoMode.importIcp.useMutation();
   const importAssetsMutation = trpc.autoMode.importAssets.useMutation();
+  const extractFromAssetsMutation = trpc.autoMode.extractFromAssets.useMutation();
   const markImportedMutation = trpc.trail.markImported.useMutation();
   // Sprint 3 C2: in-chat auto path
   const expandProfileMutation = trpc.services.expandProfile.useMutation();
@@ -393,126 +394,203 @@ export default function V2TrailIntake() {
     }
   };
 
-  // ── Sprint 5 C1: importable asset definitions ──
-  const IMPORTABLE_ASSETS = [
-    { key: "icp", label: "My Ideal Customer", stopKey: "icp" },
-    { key: "offer", label: "My Offer", stopKey: "offer" },
-    { key: "mechanism", label: "My Method / Mechanism", stopKey: "uniqueMethod" },
-    { key: "hvco", label: "My Lead Magnet", stopKey: "freeOptIn" },
-  ] as const;
-
-  // Sprint 5 C1: state for the has-assets import flow
-  const selectedImports = useRef<Set<string>>(new Set());
-  const importedData = useRef<Record<string, Record<string, string>>>({});
-
   /**
-   * Sprint 5 C1 — has-assets in-chat flow. The user picks which of the 4
-   * importable assets they have, fills a mini form for each, confirms via
-   * echo card, then the mutations fire. Gap nodes run in the Trail driver.
+   * Has-assets in-chat flow — extract-then-confirm-then-gaps.
+   * Upload or paste → LLM extraction → confirm cards → gap-only questions → import.
    */
   const runHasAssetsInChat = async () => {
     const serviceId = createdServiceId.current;
     if (serviceId == null) return;
     setPhase("hasAssets");
     try {
-      // Enrichment
+      // Enrichment (non-fatal)
       try { await expandProfileMutation.mutateAsync({ serviceId }); } catch { /* non-fatal */ }
 
-      // ── Chip-grid: "What have you got?" ──
-      addMsg({ type: "zappy-bubble", mood: "idle", text: "Nice — what have you got? Tap everything you already have, then tap Done." });
+      // ── Step A: Collect material (upload or paste) ──
+      addMsg({ type: "zappy-bubble", mood: "idle",
+        text: "Upload your documents (PDF, Word, or text files) or paste your material below. I'll read everything and pull out what I need." });
+      addMsg({ type: "chip-row", chips: ["Upload files", "I'll paste instead"] });
+      const entryChoice = await new Promise<string>(r => { importConfirmResolve.current = r; });
 
-      // Show chips for the 4 importable assets + "Done choosing"
-      // The user taps multiple, then Done. We handle this with a promise
-      // that resolves when "Done choosing" is tapped.
-      const gridChips = [...IMPORTABLE_ASSETS.map(a => a.label), "Done choosing"];
-      selectedImports.current = new Set();
+      let rawText = "";
 
-      // We need a custom multi-select pattern: tapping an asset toggles it
-      // (visually echoed), tapping "Done choosing" resolves. Implementation:
-      // use chip-row + handleChipTap; track toggles in selectedImports ref.
-      addMsg({ type: "chip-row", chips: gridChips });
-      // Wait for "Done choosing" — the chip handler sets the flag
-      await new Promise<void>(r => { gridDoneResolve.current = r; });
+      if (entryChoice === "Upload files") {
+        addMsg({ type: "zappy-bubble", mood: "idle", text: "Pick your files — I can read PDFs, Word docs, and text files." });
 
-      const chosen = Array.from(selectedImports.current);
-      if (chosen.length === 0) {
-        addMsg({ type: "zappy-bubble", mood: "idle", text: "No worries — I'll build everything from scratch." });
+        const input = document.createElement("input");
+        input.type = "file";
+        input.multiple = true;
+        input.accept = ".pdf,.docx,.doc,.txt";
+
+        const filePromise = new Promise<FileList | null>(resolve => {
+          input.onchange = () => resolve(input.files);
+          // Handle cancel — resolve null after timeout
+          const cancelCheck = setInterval(() => {
+            if (document.body.contains(input)) return;
+            clearInterval(cancelCheck);
+          }, 500);
+          setTimeout(() => { clearInterval(cancelCheck); resolve(null); }, 120000);
+        });
+        input.click();
+
+        const files = await filePromise;
+        if (!files || files.length === 0) {
+          addMsg({ type: "zappy-bubble", mood: "idle", text: "No files selected. You can paste your material instead." });
+          setPhase("hasAssets");
+          rawText = await new Promise<string>(r => { importTextResolve.current = r; });
+          addMsg({ type: "user-bubble", text: rawText.slice(0, 200) + (rawText.length > 200 ? "..." : "") });
+        } else {
+          addMsg({ type: "zappy-bubble", mood: "thinking", text: `Reading ${files.length} file${files.length > 1 ? "s" : ""}...` });
+          const formData = new FormData();
+          for (let i = 0; i < files.length; i++) {
+            formData.append("files", files[i]);
+          }
+
+          const resp = await fetch("/api/extract-documents", {
+            method: "POST",
+            body: formData,
+            credentials: "include",
+          });
+          const result = await resp.json();
+
+          if (!resp.ok || !result.text) {
+            const warnings = result.warnings?.join(" ") || "";
+            addMsg({ type: "zappy-bubble", mood: "idle",
+              text: `I couldn't read those files. ${warnings} Try pasting your material instead.` });
+            setPhase("hasAssets");
+            rawText = await new Promise<string>(r => { importTextResolve.current = r; });
+            addMsg({ type: "user-bubble", text: rawText.slice(0, 200) + (rawText.length > 200 ? "..." : "") });
+          } else {
+            rawText = result.text;
+            if (result.warnings?.length > 0) {
+              addMsg({ type: "zappy-bubble", mood: "idle", text: result.warnings.join(" ") });
+            }
+            addMsg({ type: "system-divider", text: `${result.fileCount} file${result.fileCount > 1 ? "s" : ""} read` });
+          }
+        }
       } else {
-        addMsg({ type: "zappy-bubble", mood: "idle", text: `Got it — you have ${chosen.length} piece${chosen.length > 1 ? "s" : ""}. Let me get the details for each.` });
+        // Paste path
+        addMsg({ type: "zappy-bubble", mood: "idle", text: "Paste everything you've got — your offer, method, ICP, testimonials, whatever you have. I'll sort through it." });
+        setPhase("hasAssets");
+        rawText = await new Promise<string>(r => { importTextResolve.current = r; });
+        addMsg({ type: "user-bubble", text: rawText.slice(0, 200) + (rawText.length > 200 ? "..." : "") });
       }
 
-      // ── Per-asset mini form + echo-confirm ──
+      if (rawText.length < 50) {
+        addMsg({ type: "zappy-bubble", mood: "idle", text: "That's a bit short for me to work with. Tell me more about your business, offer, and who you help." });
+        setPhase("hasAssets");
+        const more = await new Promise<string>(r => { importTextResolve.current = r; });
+        addMsg({ type: "user-bubble", text: more.slice(0, 200) + (more.length > 200 ? "..." : "") });
+        rawText = rawText + "\n\n" + more;
+      }
+
+      // ── Step B: LLM extraction ──
+      addMsg({ type: "zappy-bubble", mood: "thinking", text: "Reading through your material and pulling out what I find..." });
+      const extracted = await extractFromAssetsMutation.mutateAsync({ rawText });
+
+      // ── Step C: Show what was found — confirm cards ──
       const confirmedAssets: Record<string, Record<string, string>> = {};
-      for (const key of chosen) {
-        const asset = IMPORTABLE_ASSETS.find(a => a.label === key);
-        if (!asset) continue;
+      const categories = [
+        { key: "icp", label: "IDEAL CUSTOMER", stopKey: "icp", nameField: "name", previewField: "pains" },
+        { key: "offer", label: "OFFER", stopKey: "offer", nameField: "name", previewField: "valueProposition" },
+        { key: "mechanism", label: "METHOD", stopKey: "uniqueMethod", nameField: "name", previewField: "description" },
+        { key: "hvco", label: "LEAD MAGNET", stopKey: "freeOptIn", nameField: "title", previewField: "topic" },
+      ] as const;
 
-        let confirmed = false;
-        let fields: Record<string, string> = importedData.current[asset.key] ?? {};
-        while (!confirmed) {
-          // Show the mini form as a Zappy prompt
-          let prompt = "";
-          if (asset.key === "icp") {
-            prompt = "Tell me about your ideal customer. What's their name/title, what pains them, and what are their goals?";
-          } else if (asset.key === "offer") {
-            prompt = "Paste your offer — what's it called, what's the promise, and what's the CTA?";
-          } else if (asset.key === "mechanism") {
-            prompt = "What's your method called, and how would you describe it in a sentence?";
-          } else if (asset.key === "hvco") {
-            prompt = "What's your lead magnet called, and what topic does it cover?";
-          }
-          addMsg({ type: "zappy-bubble", mood: "idle", text: prompt });
+      const foundCategories: string[] = [];
+      const missingCategories: string[] = [];
 
-          // Wait for the user to type (free-text input active during hasAssets)
-          setPhase("hasAssets");
-          const userText = await new Promise<string>(r => { importTextResolve.current = r; });
-          addMsg({ type: "user-bubble", text: userText });
+      for (const cat of categories) {
+        const data = extracted[cat.key as keyof typeof extracted] as Record<string, string> | null;
+        const confidence = extracted.perFieldConfidence?.[cat.key as keyof typeof extracted.perFieldConfidence];
 
-          // Parse the free text into structured fields (simple split, not LLM)
-          if (asset.key === "icp") {
-            fields = { name: userText.split(",")[0]?.trim() || userText.slice(0, 100), pains: userText };
-          } else if (asset.key === "offer") {
-            fields = { name: userText.split(",")[0]?.trim() || userText.slice(0, 100), valueProposition: userText, cta: "Book a Free Call" };
-          } else if (asset.key === "mechanism") {
-            const parts = userText.split(/[—\-,]/);
-            fields = { name: parts[0]?.trim() || userText.slice(0, 100), description: userText };
-          } else if (asset.key === "hvco") {
-            const parts = userText.split(/[—\-,]/);
-            fields = { title: parts[0]?.trim() || userText.slice(0, 100), topic: userText };
-          }
+        if (data && data[cat.nameField]) {
+          foundCategories.push(cat.key);
+          const confidenceNote = confidence === "low" ? " (I wasn't fully sure about this one)" : "";
 
-          // Echo-confirm
-          const echoTitle = asset.key === "icp" ? fields.name
-            : asset.key === "offer" ? fields.name
-            : asset.key === "mechanism" ? fields.name
-            : fields.title;
-          const echoPreview = asset.key === "icp" ? (fields.pains || "")
-            : asset.key === "offer" ? (fields.valueProposition || "")
-            : asset.key === "mechanism" ? (fields.description || "")
-            : (fields.topic || "");
           addMsg({
             type: "asset-reveal-card",
-            nodeKey: asset.stopKey,
+            nodeKey: cat.stopKey,
             reveal: {
-              eyebrow: `YOUR ${asset.label.replace("My ", "").toUpperCase()}`,
-              title: echoTitle || asset.label,
-              preview: echoPreview.slice(0, 220),
+              eyebrow: `FOUND — YOUR ${cat.label}${confidenceNote}`,
+              title: data[cat.nameField] || cat.label,
+              preview: (data[cat.previewField] || "").slice(0, 220),
             },
           });
           addMsg({ type: "zappy-bubble", mood: "idle", text: "Look right?" });
-          addMsg({ type: "chip-row", chips: ["Correct", "Fix something"] });
+          addMsg({ type: "chip-row", chips: ["Looks right", "Fix something"] });
 
           const choice = await new Promise<string>(r => { importConfirmResolve.current = r; });
-          if (choice === "Correct") {
-            confirmed = true;
-            confirmedAssets[asset.key] = fields;
+          if (choice === "Looks right") {
+            confirmedAssets[cat.key] = data;
+          } else {
+            addMsg({ type: "zappy-bubble", mood: "idle", text: `Tell me what's different about your ${cat.label.toLowerCase()}.` });
+            setPhase("hasAssets");
+            const correction = await new Promise<string>(r => { importTextResolve.current = r; });
+            addMsg({ type: "user-bubble", text: correction });
+            confirmedAssets[cat.key] = { ...data, [cat.nameField]: correction.split(/[,—\-]/)[0]?.trim() || correction.slice(0, 120), [cat.previewField]: correction };
           }
-          // "Fix something" loops back
+        } else {
+          missingCategories.push(cat.key);
         }
       }
 
-      // ── ICP: import or generate ──
-      addMsg({ type: "zappy-bubble", mood: "thinking", text: "Studying the people you help…" });
+      // Handle testimonials separately (display only — wiring to services.testimonial columns is future work)
+      if (extracted.testimonials && extracted.testimonials.length > 0) {
+        addMsg({ type: "zappy-bubble", mood: "celebrating",
+          text: `Found ${extracted.testimonials.length} testimonial${extracted.testimonials.length > 1 ? "s" : ""} — I'll keep them exactly as your clients said them.` });
+        for (const t of extracted.testimonials) {
+          addMsg({
+            type: "asset-reveal-card",
+            nodeKey: "service",
+            reveal: {
+              eyebrow: `TESTIMONIAL — ${t.name}`,
+              title: t.name + (t.title ? ` (${t.title})` : ""),
+              preview: `"${t.quote.slice(0, 200)}"`,
+            },
+          });
+        }
+      }
+
+      // ── Step D: Ask only about gaps ──
+      if (missingCategories.length > 0) {
+        const gapNames = missingCategories.map(k => {
+          const cat = categories.find(c => c.key === k);
+          return cat?.label.toLowerCase() || k;
+        });
+        addMsg({ type: "zappy-bubble", mood: "idle",
+          text: `I found your ${foundCategories.map(k => categories.find(c => c.key === k)?.label.toLowerCase()).join(", ")}. I didn't find ${gapNames.length === 1 ? `a ${gapNames[0]}` : gapNames.join(" or ")} in your material.` });
+
+        for (const gapKey of missingCategories) {
+          const cat = categories.find(c => c.key === gapKey)!;
+          addMsg({ type: "zappy-bubble", mood: "idle",
+            text: `Do you have ${cat.label === "IDEAL CUSTOMER" ? "an ideal customer profile" : `a ${cat.label.toLowerCase()}`}? Tell me about it, or I can create one for you.` });
+          addMsg({ type: "chip-row", chips: ["I'll describe it", "Create one for me"] });
+
+          const gapChoice = await new Promise<string>(r => { importConfirmResolve.current = r; });
+          if (gapChoice === "I'll describe it") {
+            setPhase("hasAssets");
+            const gapText = await new Promise<string>(r => { importTextResolve.current = r; });
+            addMsg({ type: "user-bubble", text: gapText });
+
+            if (gapKey === "icp") {
+              confirmedAssets.icp = { name: gapText.split(",")[0]?.trim() || gapText.slice(0, 120), pains: gapText, goals: "", demographics: "", implementationBarriers: "" };
+            } else if (gapKey === "offer") {
+              confirmedAssets.offer = { name: gapText.split(",")[0]?.trim() || gapText.slice(0, 120), valueProposition: gapText, pricing: "", bonuses: "", guarantee: "", urgency: "", duration: "", cta: "Book a Free Call" };
+            } else if (gapKey === "mechanism") {
+              confirmedAssets.mechanism = { name: gapText.split(/[,—\-]/)[0]?.trim() || gapText.slice(0, 120), description: gapText };
+            } else if (gapKey === "hvco") {
+              confirmedAssets.hvco = { title: gapText.split(/[,—\-]/)[0]?.trim() || gapText.slice(0, 120), topic: gapText };
+            }
+          }
+          // "Create one for me" — leave it out, cascade generates it
+        }
+      } else {
+        addMsg({ type: "zappy-bubble", mood: "celebrating", text: "Got it all from your material — no extra questions needed." });
+      }
+
+      // ── Step E: ICP import or generate ──
+      addMsg({ type: "zappy-bubble", mood: "thinking", text: "Studying the people you help..." });
       let icpId: number;
       if (confirmedAssets.icp) {
         const result = await importIcpMutation.mutateAsync({
@@ -520,6 +598,7 @@ export default function V2TrailIntake() {
           name: confirmedAssets.icp.name,
           pains: confirmedAssets.icp.pains || undefined,
           goals: confirmedAssets.icp.goals || undefined,
+          implementationBarriers: confirmedAssets.icp.implementationBarriers || undefined,
         });
         icpId = result.icpId;
         addMsg({ type: "system-divider", text: "ICP imported" });
@@ -547,7 +626,7 @@ export default function V2TrailIntake() {
         },
       });
 
-      // ── Kit creation ──
+      // ── Step F: Kit creation ──
       const kit = await getOrCreateKitMutation.mutateAsync({
         icpId,
         path: "has_assets",
@@ -555,7 +634,7 @@ export default function V2TrailIntake() {
       });
       const kitId = (kit as { id: number }).id;
 
-      // ── Import remaining confirmed assets (offer/mechanism/hvco) ──
+      // ── Step G: Import remaining confirmed assets ──
       const hasOffer = !!confirmedAssets.offer;
       const hasMechanism = !!confirmedAssets.mechanism;
       const hasHvco = !!confirmedAssets.hvco;
@@ -579,7 +658,7 @@ export default function V2TrailIntake() {
         });
       }
 
-      // ── Mark imported nodes in nodeStatuses ──
+      // ── Step H: Mark imported nodes ──
       const importedNodes: string[] = [];
       if (confirmedAssets.icp) importedNodes.push("icp");
       if (confirmedAssets.offer) importedNodes.push("offer");
@@ -589,7 +668,7 @@ export default function V2TrailIntake() {
         try { await markImportedMutation.mutateAsync({ campaignKitId: kitId, nodeType }); } catch { /* non-fatal */ }
       }
 
-      // ── Transcript flush + navigate ──
+      // ── Step I: Navigate to trail ──
       const importCount = importedNodes.length;
       addMsg({ type: "zappy-bubble", mood: "celebrating",
         text: importCount > 0
@@ -615,8 +694,7 @@ export default function V2TrailIntake() {
     }
   };
 
-  // Sprint 5 C1: promise resolvers for the has-assets flow
-  const gridDoneResolve = useRef<(() => void) | null>(null);
+  // Promise resolvers for the has-assets flow
   const importTextResolve = useRef<((text: string) => void) | null>(null);
   const importConfirmResolve = useRef<((choice: string) => void) | null>(null);
 
@@ -675,33 +753,10 @@ export default function V2TrailIntake() {
   };
 
   // ── Chips ──
+  const HAS_ASSETS_CHIPS = ["Upload files", "I'll paste instead", "Looks right", "Fix something", "I'll describe it", "Create one for me"];
   const handleChipTap = (messageId: string, chip: string) => {
-    // Sprint 5 C1: multi-select grid — toggle without removing the chip row
-    const importableLabels: string[] = IMPORTABLE_ASSETS.map(a => a.label);
-    if (importableLabels.includes(chip) && phase === "hasAssets") {
-      if (selectedImports.current.has(chip)) {
-        selectedImports.current.delete(chip);
-      } else {
-        selectedImports.current.add(chip);
-      }
-      // m4: update selectedChips on the chip-row message so it re-renders filled
-      const sel = Array.from(selectedImports.current);
-      setMessages(prev => prev.map(m =>
-        m.id === messageId ? { ...m, selectedChips: sel } : m
-      ));
-      messagesRef.current = messagesRef.current.map(m =>
-        m.id === messageId ? { ...m, selectedChips: sel } : m
-      );
-      return; // don't remove chip-row, don't echo — toggle is visual only
-    }
-    if (chip === "Done choosing" && phase === "hasAssets") {
-      setMessages(prev => prev.filter(m => m.id !== messageId));
-      messagesRef.current = messagesRef.current.filter(m => m.id !== messageId);
-      addMsg({ type: "user-bubble", text: chip });
-      if (gridDoneResolve.current) { gridDoneResolve.current(); gridDoneResolve.current = null; }
-      return;
-    }
-    if ((chip === "Correct" || chip === "Fix something") && phase === "hasAssets") {
+    // Has-assets flow chips — all resolve through importConfirmResolve
+    if (HAS_ASSETS_CHIPS.includes(chip) && phase === "hasAssets") {
       setMessages(prev => prev.filter(m => m.id !== messageId));
       messagesRef.current = messagesRef.current.filter(m => m.id !== messageId);
       addMsg({ type: "user-bubble", text: chip });
