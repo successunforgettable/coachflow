@@ -151,6 +151,87 @@ const previewMuted: React.CSSProperties = {
   margin: 0,
 };
 
+// ─── Ad Creatives section (image thumbnails) ─────────────────────────────────
+function AdCreativesSection({ batchId }: { batchId: string }) {
+  const batchQuery = trpc.adCreatives.getBatch.useQuery({ batchId }, { enabled: !!batchId });
+  const items = Array.isArray(batchQuery.data)
+    ? batchQuery.data
+    : Array.isArray((batchQuery.data as any)?.creatives)
+      ? (batchQuery.data as any).creatives
+      : [];
+  const imageUrls = (items as any[]).map((c: any) => c?.imageUrl).filter((u: string) => u?.startsWith("http"));
+
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <div style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: 8,
+      }}>
+        <span style={{
+          fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)",
+          fontSize: 13,
+          fontWeight: 700,
+          color: "var(--v2-text-dark, #1A1624)",
+        }}>
+          Ad Images
+        </span>
+        {imageUrls.length > 0 && (
+          <span style={{
+            fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)",
+            fontSize: 11,
+            color: "#999",
+          }}>
+            {imageUrls.length} images
+          </span>
+        )}
+      </div>
+      {imageUrls.length > 0 ? (
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))",
+          gap: 10,
+          background: "#fff",
+          borderRadius: 16,
+          padding: 16,
+          border: "1px solid rgba(0,0,0,0.06)",
+        }}>
+          {imageUrls.map((url: string, i: number) => (
+            <a key={i} href={url} target="_blank" rel="noopener noreferrer" style={{ display: "block" }}>
+              <img
+                src={url}
+                alt={`Ad creative ${i + 1}`}
+                style={{
+                  width: "100%",
+                  borderRadius: 8,
+                  aspectRatio: "1 / 1",
+                  objectFit: "cover",
+                  background: "#F3F4F6",
+                  cursor: "pointer",
+                }}
+                loading="lazy"
+              />
+            </a>
+          ))}
+        </div>
+      ) : (
+        <div style={{
+          background: "#fff",
+          borderRadius: 16,
+          padding: "20px",
+          border: "1px solid rgba(0,0,0,0.06)",
+          textAlign: "center",
+        }}>
+          <p style={previewMuted}>
+            {batchQuery.isLoading ? "Loading images..." : "No images generated yet."}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Asset content fetcher component ───────────────────────────────────────────
 function AssetSection({ sectionKey, label, step, selectedId, angle, navigate, serviceId }: {
   sectionKey: string;
@@ -798,6 +879,11 @@ export default function V2CampaignKit() {
             serviceId={serviceId}
           />
         ))}
+
+        {/* Ad Creatives section */}
+        {kit.selectedAdCreativeBatchId && (
+          <AdCreativesSection batchId={kit.selectedAdCreativeBatchId as string} />
+        )}
       </div>
 
       {/* Floating action bar */}
