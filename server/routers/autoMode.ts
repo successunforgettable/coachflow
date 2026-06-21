@@ -477,9 +477,24 @@ export const autoModeRouter = router({
 
   extractFromAssets: protectedProcedure
     .input(z.object({
-      rawText: z.string().min(50, "Need at least 50 characters to extract useful assets.").max(30000),
+      rawText: z.string().min(50, "Need at least 50 characters to extract useful assets.").max(150000, "Your material is very large. Try uploading fewer files or the most important one — I work best with focused content."),
     }))
     .mutation(async ({ input }) => {
+      // Intelligent truncation: if text exceeds 100k chars, truncate at a
+      // sentence boundary. Real coaching docs rarely exceed this, but
+      // concatenated multi-file uploads might. The LLM extracts from whatever
+      // is present — truncation loses tail content but the most important
+      // material (offer, method, ICP) is typically at the start.
+      const MAX_EXTRACT_CHARS = 100_000;
+      let rawText = input.rawText;
+      if (rawText.length > MAX_EXTRACT_CHARS) {
+        const truncated = rawText.slice(0, MAX_EXTRACT_CHARS);
+        const lastSentence = truncated.lastIndexOf(".");
+        rawText = lastSentence > MAX_EXTRACT_CHARS * 0.8
+          ? truncated.slice(0, lastSentence + 1)
+          : truncated;
+      }
+
       const systemPrompt = `You extract structured marketing assets from raw material provided by coaches, speakers, and consultants. The user has uploaded or pasted their existing business documents — sales pages, course outlines, offer descriptions, testimonials, or any combination.
 
 Your job: identify and extract every recognisable marketing asset from the text. The user will review your extraction on a confirmation screen and correct anything wrong. Accuracy about what IS present matters more than completeness — an empty field the user fills in is always better than an invented field the user must delete.
@@ -533,7 +548,7 @@ EXTRACTION RULES:
       const userPrompt = `RAW MATERIAL (uploaded/pasted by user):
 
 """
-${input.rawText}
+${rawText}
 """
 
 Extract all marketing assets you can identify. Return JSON matching the schema.`;

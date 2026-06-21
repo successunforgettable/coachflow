@@ -483,7 +483,18 @@ export default function V2TrailIntake() {
       }
 
       // ── Step B: LLM extraction ──
-      addMsg({ type: "zappy-bubble", mood: "thinking", text: "Reading through your material and pulling out what I find..." });
+      // Client-side size guard — friendly message instead of raw Zod error
+      if (rawText.length > 150000) {
+        addMsg({ type: "zappy-bubble", mood: "idle",
+          text: "That's a lot of material! Try uploading just your most important file, or paste the key sections (your offer, method, and who you help). I work best with focused content." });
+        setPhase("hasAssets");
+        rawText = await new Promise<string>(r => { importTextResolve.current = r; });
+        addMsg({ type: "user-bubble", text: rawText.slice(0, 200) + (rawText.length > 200 ? "..." : "") });
+      }
+
+      addMsg({ type: "zappy-bubble", mood: "thinking", text: rawText.length > 50000
+        ? "That's a big document — reading through it now. This might take a moment..."
+        : "Reading through your material and pulling out what I find..." });
       const extracted = await extractFromAssetsMutation.mutateAsync({ rawText });
 
       // ── Step C: Show what was found — confirm cards ──
