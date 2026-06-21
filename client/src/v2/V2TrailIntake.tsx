@@ -599,6 +599,7 @@ export default function V2TrailIntake() {
           pains: confirmedAssets.icp.pains || undefined,
           goals: confirmedAssets.icp.goals || undefined,
           implementationBarriers: confirmedAssets.icp.implementationBarriers || undefined,
+          demographics: confirmedAssets.icp.demographics || undefined,
         });
         icpId = result.icpId;
         addMsg({ type: "system-divider", text: "ICP imported" });
