@@ -76,7 +76,36 @@ export const adminRouter = router({
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
 
-    const allUsers = await db.select().from(users);
+    // Exclude auth secrets: passwordHash, openId. Admin needs profile,
+    // subscription (including Stripe IDs for billing management), and quota data.
+    const allUsers = await db.select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      role: users.role,
+      loginMethod: users.loginMethod,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt,
+      lastSignedIn: users.lastSignedIn,
+      stripeCustomerId: users.stripeCustomerId,
+      stripeSubscriptionId: users.stripeSubscriptionId,
+      subscriptionTier: users.subscriptionTier,
+      subscriptionStatus: users.subscriptionStatus,
+      trialEndsAt: users.trialEndsAt,
+      subscriptionEndsAt: users.subscriptionEndsAt,
+      icpGeneratedCount: users.icpGeneratedCount,
+      adCopyGeneratedCount: users.adCopyGeneratedCount,
+      emailSeqGeneratedCount: users.emailSeqGeneratedCount,
+      whatsappSeqGeneratedCount: users.whatsappSeqGeneratedCount,
+      landingPageGeneratedCount: users.landingPageGeneratedCount,
+      offerGeneratedCount: users.offerGeneratedCount,
+      headlineGeneratedCount: users.headlineGeneratedCount,
+      hvcoGeneratedCount: users.hvcoGeneratedCount,
+      heroMechanismGeneratedCount: users.heroMechanismGeneratedCount,
+      usageResetAt: users.usageResetAt,
+      powerMode: users.powerMode,
+      onboardingComplete: users.onboardingComplete,
+    }).from(users);
     return allUsers;
   }),
 
@@ -609,59 +638,33 @@ export const adminRouter = router({
 
       const offset = (input.page - 1) * input.limit;
 
-      // Build WHERE clause
-      let whereClause = "WHERE 1=1";
-      const params: any[] = [];
+      // Build parameterized WHERE conditions via Drizzle sql`` template tag.
+      // Each condition is a separate sql fragment joined with AND.
+      const conditions: ReturnType<typeof sql>[] = [];
+      if (input.actionType) conditions.push(sql`aal.action_type = ${input.actionType}`);
+      if (input.adminUserId) conditions.push(sql`aal.admin_user_id = ${input.adminUserId}`);
+      if (input.startDate) conditions.push(sql`aal.created_at >= ${input.startDate}`);
+      if (input.endDate) conditions.push(sql`aal.created_at <= ${input.endDate}`);
 
-      if (input.actionType) {
-        whereClause += " AND aal.action_type = ?";
-        params.push(input.actionType);
-      }
+      const whereFragment = conditions.length > 0
+        ? sql`WHERE ${sql.join(conditions, sql` AND `)}`
+        : sql``;
 
-      if (input.adminUserId) {
-        whereClause += " AND aal.admin_user_id = ?";
-        params.push(input.adminUserId);
-      }
-
-      if (input.startDate) {
-        whereClause += " AND aal.created_at >= ?";
-        params.push(input.startDate);
-      }
-
-      if (input.endDate) {
-        whereClause += " AND aal.created_at <= ?";
-        params.push(input.endDate);
-      }
-
-      // Fetch audit logs with user names
-      const query = `
-        SELECT 
-          aal.id,
-          aal.admin_user_id,
-          aal.action_type,
-          aal.target_user_id,
-          aal.details,
-          aal.ip_address,
-          aal.user_agent,
-          aal.created_at,
-          admin.name as admin_name,
-          admin.email as admin_email,
-          target.name as target_user_name,
-          target.email as target_user_email
+      const result: any = await db.execute(sql`
+        SELECT
+          aal.id, aal.admin_user_id, aal.action_type, aal.target_user_id,
+          aal.details, aal.ip_address, aal.user_agent, aal.created_at,
+          admin.name as admin_name, admin.email as admin_email,
+          target.name as target_user_name, target.email as target_user_email
         FROM admin_audit_log aal
         LEFT JOIN users admin ON aal.admin_user_id = admin.id
         LEFT JOIN users target ON aal.target_user_id = target.id
-        ${whereClause}
+        ${whereFragment}
         ORDER BY aal.created_at DESC
-        LIMIT ? OFFSET ?
-      `;
-
-      params.push(input.limit, offset);
-
-      const result: any = await db.execute(sql.raw(query + " -- params: " + JSON.stringify(params)));
+        LIMIT ${input.limit} OFFSET ${offset}
+      `);
       const logs = result[0] || [];
 
-      // Get total count (approximate)
       const allLogs: any = await db.execute(sql`SELECT COUNT(*) as total FROM admin_audit_log`);
       const total = allLogs[0]?.[0]?.total || 0;
 
@@ -684,25 +687,16 @@ export const adminRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
 
-      const query = `
-        SELECT 
-          aal.id,
-          aal.admin_user_id,
-          aal.action_type,
-          aal.target_user_id,
-          aal.details,
-          aal.ip_address,
-          aal.user_agent,
-          aal.created_at,
-          admin.name as admin_name,
-          admin.email as admin_email
+      const result: any = await db.execute(sql`
+        SELECT
+          aal.id, aal.admin_user_id, aal.action_type, aal.target_user_id,
+          aal.details, aal.ip_address, aal.user_agent, aal.created_at,
+          admin.name as admin_name, admin.email as admin_email
         FROM admin_audit_log aal
         LEFT JOIN users admin ON aal.admin_user_id = admin.id
-        WHERE aal.target_user_id = ?
+        WHERE aal.target_user_id = ${input.userId}
         ORDER BY aal.created_at DESC
-      `;
-
-      const result: any = await db.execute(sql.raw(query + " -- userId: " + input.userId));
+      `);
       return result[0] || [];
     }),
 
@@ -828,21 +822,15 @@ export const adminRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
 
-      const query = `
-        SELECT 
-          un.id,
-          un.user_id,
-          un.admin_user_id,
-          un.note,
-          un.created_at,
+      const result: any = await db.execute(sql`
+        SELECT
+          un.id, un.user_id, un.admin_user_id, un.note, un.created_at,
           admin.name as admin_name
         FROM user_notes un
         LEFT JOIN users admin ON un.admin_user_id = admin.id
-        WHERE un.user_id = ?
+        WHERE un.user_id = ${input.userId}
         ORDER BY un.created_at DESC
-      `;
-
-      const result: any = await db.execute(sql.raw(query + " -- userId: " + input.userId));
+      `);
       return result[0] || [];
     }),
 
@@ -900,8 +888,10 @@ export const adminRouter = router({
       const currentCount = (user as any)[field] || 0;
       const newCount = Math.max(0, currentCount - input.amount);
 
+      // field comes from the hardcoded fieldMap allowlist above (safe as
+      // a raw identifier). Values are parameterized via sql`` template.
       await db.execute(
-        sql.raw(`UPDATE users SET ${field} = ${newCount} WHERE id = ${input.userId}`)
+        sql`UPDATE users SET ${sql.raw(field)} = ${newCount} WHERE id = ${input.userId}`
       );
 
       return { success: true };
@@ -974,7 +964,10 @@ export const adminRouter = router({
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
 
-    const superusers = await db.select().from(users).where(eq(users.role, "superuser"));
+    const superusers = await db.select({
+      id: users.id, name: users.name, email: users.email, role: users.role,
+      createdAt: users.createdAt, subscriptionTier: users.subscriptionTier,
+    }).from(users).where(eq(users.role, "superuser"));
     return superusers;
   }),
 
@@ -1357,7 +1350,7 @@ export const adminRouter = router({
   }),
 
   // ── Part 4: Extend Trial ──
-  extendTrial: adminProcedure.input(z.object({ userId: z.number() })).mutation(async ({ input }) => {
+  extendTrial: auditedAdminProcedure.input(z.object({ userId: z.number() })).mutation(async ({ input }) => {
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
     const [user] = await db.select().from(users).where(eq(users.id, input.userId)).limit(1);
@@ -1369,7 +1362,7 @@ export const adminRouter = router({
   }),
 
   // ── Part 4: Send Magic Link ──
-  sendMagicLink: adminProcedure.input(z.object({ email: z.string() })).mutation(async ({ input }) => {
+  sendMagicLink: auditedAdminProcedure.input(z.object({ email: z.string() })).mutation(async ({ input }) => {
     // Trigger the magic link request flow via internal HTTP call
     const { Resend } = await import("resend");
     const resend = new Resend(process.env.RESEND_API_KEY);
@@ -1409,7 +1402,7 @@ export const adminRouter = router({
   }),
 
   // ── Part 4: Update User Notes ──
-  updateUserNotes: adminProcedure.input(z.object({ userId: z.number(), notes: z.string() })).mutation(async ({ input }) => {
+  updateUserNotes: auditedAdminProcedure.input(z.object({ userId: z.number(), notes: z.string() })).mutation(async ({ input }) => {
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
     await db.update(users).set({ notes: input.notes } as any).where(eq(users.id, input.userId));
@@ -1417,12 +1410,15 @@ export const adminRouter = router({
   }),
 
   // ── Part 5: Impersonate User ──
-  impersonateUser: adminProcedure.input(z.object({ userId: z.number() })).mutation(async ({ ctx, input }) => {
+  impersonateUser: auditedAdminProcedure.input(z.object({ userId: z.number() })).mutation(async ({ ctx, input }) => {
     if (ctx.user.email !== "arfeen@arfeenkhan.com") throw new TRPCError({ code: "FORBIDDEN" });
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
     const [target] = await db.select().from(users).where(eq(users.id, input.userId)).limit(1);
     if (!target) throw new TRPCError({ code: "NOT_FOUND" });
+    // Audit trail: log who was impersonated
+    (ctx as any).auditTargetUserId = input.userId;
+    (ctx as any).auditDetails = { targetEmail: target.email };
     const { sdk } = await import("../_core/sdk");
     const token = await sdk.createSessionToken(target.openId, { name: target.name || "" });
     return { token, email: target.email, name: target.name };
