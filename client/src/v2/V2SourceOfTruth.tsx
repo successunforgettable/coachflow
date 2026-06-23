@@ -137,8 +137,7 @@ export default function V2SourceOfTruth() {
     <V2Layout>
       <div style={{ maxWidth: "56rem", margin: "0 auto", padding: "40px 24px 80px" }}>
 
-        {/* Back link */}
-        <a href="/v2-dashboard" style={{ fontFamily: "var(--v2-font-body)", fontSize: "13px", color: "#888", textDecoration: "none", display: "inline-block", marginBottom: "24px" }}>← Back to Campaign Hub</a>
+        {/* Back link provided by V2Layout */}
 
         {/* ── EMPTY STATE ── */}
         {!hasSOT && (

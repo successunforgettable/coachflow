@@ -518,7 +518,7 @@ export default function V2Dashboard() {
   }
 
   return (
-    <V2Layout>
+    <V2Layout backHref={null}>
       {/* Fork Modal */}
       {showModal && <ForkModal onGuide={handleGuide} onJump={handleJump} />}
 

@@ -13,6 +13,7 @@ import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { openSnapshotApplyTab } from "./lib/ghlSnapshot";
+import V2Layout from "./V2Layout";
 import { WorkflowStatusPill } from "./components/WorkflowStatusPill";
 
 const T = {
@@ -155,28 +156,9 @@ export default function V2Settings() {
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
-    <div style={{ minHeight: "100vh", background: T.bg, fontFamily: T.fontB, color: T.dark }}>
-      {/* Top bar */}
+    <V2Layout>
+      {/* Top bar — back link provided by V2Layout */}
       <div style={{ padding: "24px 32px 0", maxWidth: 760, margin: "0 auto" }}>
-        <a
-          href="/v2-dashboard"
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 8,
-            fontSize: 14,
-            color: T.orange,
-            textDecoration: "none",
-            fontWeight: 600,
-            marginBottom: 28,
-          }}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="15 18 9 12 15 6" />
-          </svg>
-          Back to Dashboard
-        </a>
-
         <h1 style={{
           fontFamily: T.fontH,
           fontStyle: "italic",
@@ -573,6 +555,6 @@ export default function V2Settings() {
           </div>
         </div>
       )}
-    </div>
+    </V2Layout>
   );
 }

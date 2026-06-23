@@ -583,7 +583,7 @@ export default function V2CampaignKit() {
   const isComplete = kit.status === "complete";
 
   return (
-    <V2Layout>
+    <V2Layout backLabel="Campaign Trail" backHref={`/v2-dashboard/trail/${kitId}`}>
       {showOverlay && (
         <div
           role="dialog"
@@ -707,21 +707,6 @@ export default function V2CampaignKit() {
         maxWidth: 720,
         margin: "0 auto",
       }}>
-        {/* Back link */}
-        <a
-          href="/v2-dashboard"
-          style={{
-            fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)",
-            fontSize: "13px",
-            color: "#999",
-            textDecoration: "none",
-            display: "inline-block",
-            marginBottom: "24px",
-          }}
-        >
-          ← Back to Dashboard
-        </a>
-
         {/* Header */}
         <div style={{ marginBottom: "32px" }}>
           {/* Campaign number + date */}

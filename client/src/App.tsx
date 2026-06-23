@@ -65,17 +65,19 @@ import V2AssetLibrary from "./v2/V2AssetLibrary";
 import V2CampaignKit from "./v2/V2CampaignKit";
 import V2SourceOfTruth from "./v2/V2SourceOfTruth";
 import { lazy, Suspense } from "react";
+import V2Layout from "./v2/V2Layout";
 const TestimonialPickerLazy = lazy(() => import("./v2/components/TestimonialPicker"));
 function V2TestimonialsPage() {
   return (
-    <Suspense fallback={null}>
-      <div style={{ maxWidth: 600, margin: "40px auto", padding: "0 20px" }}>
-        <a href="/v2-dashboard" style={{ fontFamily: "Instrument Sans, sans-serif", fontSize: 13, color: "#888", textDecoration: "none", display: "inline-block", marginBottom: 16 }}>← Back to Dashboard</a>
-        <h1 style={{ fontFamily: "'Fraunces', serif", fontStyle: "italic", fontWeight: 900, fontSize: 28, color: "#1A1624", margin: "0 0 8px" }}>Your Testimonials</h1>
-        <p style={{ fontFamily: "Instrument Sans, sans-serif", fontSize: 14, color: "#666", margin: "0 0 20px" }}>Client testimonials make your ads, emails, and landing pages more convincing. Add your clients' real words here — they'll be available in every campaign.</p>
-        <TestimonialPickerLazy mode="standalone" />
-      </div>
-    </Suspense>
+    <V2Layout>
+      <Suspense fallback={null}>
+        <div style={{ maxWidth: 600, margin: "0 auto", padding: "24px 20px" }}>
+          <h1 style={{ fontFamily: "'Fraunces', serif", fontStyle: "italic", fontWeight: 900, fontSize: 28, color: "#1A1624", margin: "0 0 8px" }}>Your Testimonials</h1>
+          <p style={{ fontFamily: "Instrument Sans, sans-serif", fontSize: 14, color: "#666", margin: "0 0 20px" }}>Client testimonials make your ads, emails, and landing pages more convincing. Add your clients' real words here — they'll be available in every campaign.</p>
+          <TestimonialPickerLazy mode="standalone" />
+        </div>
+      </Suspense>
+    </V2Layout>
   );
 }
 // Legacy auto-mode components — routes redirect to /trail/new (red-team B2 fix).
