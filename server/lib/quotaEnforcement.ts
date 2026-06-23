@@ -24,6 +24,20 @@ export async function enforceQuota(
 
   const tier: SubscriptionTier = (user.subscriptionTier as SubscriptionTier) || "trial";
   const role = userRole ?? user.role ?? undefined;
+
+  // Trial expiry gate: if the user is on the trial tier and their trial
+  // has ended, block ALL generation. Paid users (pro/agency) and
+  // superusers/admins are unaffected. The client already shows upgrade
+  // prompts for expired trials — this is the server-side enforcement.
+  if (tier === "trial" && role !== "superuser" && role !== "admin") {
+    if (user.trialEndsAt && new Date() > new Date(user.trialEndsAt)) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: JSON.stringify({ message: "trial_expired", generator: generatorType }),
+      });
+    }
+  }
+
   const limit = getQuotaLimit(tier, generatorType, role ?? undefined);
 
   // Infinity means unlimited — skip the count check entirely
