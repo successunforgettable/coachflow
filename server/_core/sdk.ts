@@ -6,6 +6,7 @@ import { SignJWT, jwtVerify } from "jose";
 import type { User } from "../../drizzle/schema";
 import * as db from "../db";
 import { ENV } from "./env";
+import { sql } from "drizzle-orm";
 
 // Utility function
 const isNonEmptyString = (value: unknown): value is string =>
@@ -15,6 +16,8 @@ export type SessionPayload = {
   openId: string;
   appId: string;
   name: string;
+  /** Token version for session revocation. Missing = 0 (pre-migration compat). */
+  tv?: number;
 };
 
 class SDKServer {
@@ -39,13 +42,14 @@ class SDKServer {
    */
   async createSessionToken(
     openId: string,
-    options: { expiresInMs?: number; name?: string } = {}
+    options: { expiresInMs?: number; name?: string; tokenVersion?: number } = {}
   ): Promise<string> {
     return this.signSession(
       {
         openId,
         appId: ENV.appId,
         name: options.name || "",
+        tv: options.tokenVersion ?? 0,
       },
       options
     );
@@ -64,6 +68,7 @@ class SDKServer {
       openId: payload.openId,
       appId: payload.appId,
       name: payload.name,
+      tv: payload.tv ?? 0,
     })
       .setProtectedHeader({ alg: "HS256", typ: "JWT" })
       .setExpirationTime(expirationSeconds)
@@ -72,7 +77,7 @@ class SDKServer {
 
   async verifySession(
     cookieValue: string | undefined | null
-  ): Promise<{ openId: string; appId: string; name: string } | null> {
+  ): Promise<{ openId: string; appId: string; name: string; tv: number } | null> {
     if (!cookieValue) {
       console.warn("[Auth] Missing session cookie");
       return null;
@@ -83,7 +88,7 @@ class SDKServer {
       const { payload } = await jwtVerify(cookieValue, secretKey, {
         algorithms: ["HS256"],
       });
-      const { openId, appId, name } = payload as Record<string, unknown>;
+      const { openId, appId, name, tv } = payload as Record<string, unknown>;
 
       if (
         !isNonEmptyString(openId) ||
@@ -98,10 +103,37 @@ class SDKServer {
         openId,
         appId,
         name,
+        // Pre-migration JWTs have no tv field → treat as 0.
+        // This matches the DB default (0) so existing sessions remain valid.
+        // FOLLOW-UP: retire this fallback after 30 days post-deploy (all live
+        // tokens will carry explicit tv by then). Target: 2026-07-25.
+        tv: typeof tv === "number" ? tv : 0,
       };
     } catch (error) {
       console.warn("[Auth] Session verification failed", String(error));
       return null;
+    }
+  }
+
+  /**
+   * Read tokenVersion from the users table via raw SQL.
+   * NOT in the Drizzle schema to avoid breaking `select().from(users)` if
+   * the migration hasn't run yet. Returns 0 if the column doesn't exist
+   * (pre-migration) or on any query error — fail-open so a missing column
+   * doesn't lock out all users.
+   */
+  private async getTokenVersion(userId: number): Promise<number> {
+    try {
+      const database = await db.getDb();
+      if (!database) return 0;
+      const result: any = await database.execute(
+        sql`SELECT tokenVersion FROM users WHERE id = ${userId} LIMIT 1`
+      );
+      const row = result?.[0]?.[0] ?? result?.[0];
+      return typeof row?.tokenVersion === "number" ? row.tokenVersion : 0;
+    } catch {
+      // Column doesn't exist yet (pre-migration) or other DB error → fail-open
+      return 0;
     }
   }
 
@@ -120,6 +152,13 @@ class SDKServer {
 
     if (!user) {
       throw ForbiddenError("User not found");
+    }
+
+    // Token version check: compare JWT's tv against the DB value.
+    // If they differ, the session has been revoked (password reset, etc.).
+    const dbVersion = await this.getTokenVersion(user.id);
+    if (session.tv !== dbVersion) {
+      throw ForbiddenError("Session revoked");
     }
 
     await db.upsertUser({

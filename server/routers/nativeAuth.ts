@@ -17,6 +17,7 @@ import { sdk } from "../_core/sdk";
 import { notifyOwner } from "../_core/notification";
 import { sendPasswordResetEmail, sendWelcomeEmail } from "../email";
 import { isRateLimited, getClientIp } from "../_core/rateLimit";
+import { incrementTokenVersion } from "../_core/tokenVersion";
 
 /** 30-day session expiry — replaces the previous 1-year default. */
 const SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
@@ -314,13 +315,16 @@ export const nativeAuthRouter = router({
         .set({ passwordHash, updatedAt: new Date() })
         .where(eq(users.id, resetRecord.userId));
 
+      // Revoke all existing sessions by incrementing tokenVersion
+      const newVersion = await incrementTokenVersion(resetRecord.userId);
+
       // Mark token as used
       await db
         .update(passwordResetTokens)
         .set({ used: true })
         .where(eq(passwordResetTokens.id, resetRecord.id));
 
-      // Fetch user for auto-login
+      // Fetch user for auto-login with the NEW token version
       const [user] = await db
         .select({ openId: users.openId, name: users.name })
         .from(users)
@@ -331,6 +335,7 @@ export const nativeAuthRouter = router({
         const sessionToken = await sdk.createSessionToken(user.openId, {
           name: user.name || "",
           expiresInMs: SESSION_MAX_AGE_MS,
+          tokenVersion: newVersion ?? 0,
         });
         const cookieOptions = getSessionCookieOptions(ctx.req);
         ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: SESSION_MAX_AGE_MS });
@@ -374,6 +379,16 @@ export const nativeAuthRouter = router({
 
       const newHash = await bcrypt.hash(input.newPassword, BCRYPT_ROUNDS);
       await db.update(users).set({ passwordHash: newHash, updatedAt: new Date() }).where(eq(users.id, ctx.user.id));
+
+      // Revoke all existing sessions, then issue a fresh one for this device
+      const newVersion = await incrementTokenVersion(ctx.user.id);
+      const sessionToken = await sdk.createSessionToken(user.openId, {
+        name: user.name || "",
+        expiresInMs: SESSION_MAX_AGE_MS,
+        tokenVersion: newVersion ?? 0,
+      });
+      const cookieOptions = getSessionCookieOptions(ctx.req);
+      ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: SESSION_MAX_AGE_MS });
 
       return { success: true, message: "Password changed successfully." };
     }),
