@@ -1,11 +1,12 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router } from "./_core/trpc";
+import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import { getDb } from "./db";
 import { users } from "../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
 import { servicesRouter } from "./routers/services";
 import { icpsRouter } from "./routers/icps";
 import { adCopyRouter } from "./routers/adCopy";
@@ -50,7 +51,12 @@ export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
   auth: router({
-    me: publicProcedure.query(opts => opts.ctx.user),
+    me: publicProcedure.query(opts => {
+      if (!opts.ctx.user) return null;
+      // Strip passwordHash (auth secret) and add hasPassword boolean
+      const { passwordHash, ...safeUser } = opts.ctx.user;
+      return { ...safeUser, hasPassword: !!passwordHash };
+    }),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
@@ -118,14 +124,84 @@ export const appRouter = router({
           })
           .where(eq(users.id, ctx.user.id));
         
-        return { 
-          success: true, 
-          user: { 
-            ...ctx.user, 
-            name: input.name, 
-            email: input.email 
-          } 
+        return {
+          success: true,
+          user: {
+            ...ctx.user,
+            name: input.name,
+            email: input.email
+          }
         };
+      }),
+
+    /**
+     * Delete account — self-serve with billing guard (Option C).
+     *
+     * Order of operations:
+     * 1. Check for active Stripe subscription → block if present
+     * 2. NULL foreign keys in NO-ACTION tables (admin_audit_log, user_notes, content_flags)
+     * 3. Delete the user row (CASCADE handles 32 other tables)
+     * 4. Clear session cookie
+     *
+     * Known cleanup debt (not handled):
+     * - Cloudinary ad-creative images at ad-creatives/{userId}/ → orphaned
+     * - Cloudflare Workers KV landing pages at /p/{slug} → orphaned
+     * - Meta/GHL OAuth tokens → not revoked remotely (rows cascade-deleted)
+     * - Active JWTs → valid until expiry (30 days, no revocation mechanism)
+     */
+    deleteAccount: protectedProcedure
+      .input(z.object({ confirmation: z.literal("DELETE") }))
+      .mutation(async ({ ctx }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+        // Guard: admin accounts cannot be self-deleted
+        if (ctx.user.role === "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin accounts cannot be deleted through self-serve." });
+        }
+
+        const [user] = await db.select().from(users).where(eq(users.id, ctx.user.id)).limit(1);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+
+        // Step 1: Billing guard — block if active Stripe subscription (READ-ONLY check)
+        if (user.stripeSubscriptionId) {
+          try {
+            const Stripe = (await import("stripe")).default;
+            const stripe = new Stripe((process.env.CUSTOM_STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY)!, { apiVersion: "2026-01-28.clover" as any });
+            const sub = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
+            if (sub.status === "active" || sub.status === "trialing" || sub.status === "past_due") {
+              throw new TRPCError({
+                code: "PRECONDITION_FAILED",
+                message: "Please cancel your subscription before deleting your account. Go to Settings → Subscription → Cancel.",
+              });
+            }
+          } catch (err) {
+            if (err instanceof TRPCError) throw err;
+            console.error("[deleteAccount] Stripe check failed:", err);
+            throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Could not verify subscription status. Please try again." });
+          }
+        }
+
+        // Steps 2-3: FK cleanup + user deletion in a single transaction.
+        // If any step fails, the entire operation rolls back — no partially
+        // scrubbed account left behind.
+        await db.transaction(async (tx) => {
+          // NO-ACTION FK tables: clean up before the CASCADE delete
+          await tx.execute(sql`UPDATE admin_audit_log SET target_user_id = NULL WHERE target_user_id = ${ctx.user.id}`);
+          await tx.execute(sql`DELETE FROM admin_audit_log WHERE admin_user_id = ${ctx.user.id}`);
+          await tx.execute(sql`DELETE FROM user_notes WHERE user_id = ${ctx.user.id} OR admin_user_id = ${ctx.user.id}`);
+          await tx.execute(sql`UPDATE content_flags SET resolved_by = NULL WHERE resolved_by = ${ctx.user.id}`);
+          await tx.execute(sql`DELETE FROM content_flags WHERE user_id = ${ctx.user.id}`);
+
+          // Delete user row — CASCADE handles all other 32 FK tables
+          await tx.delete(users).where(eq(users.id, ctx.user.id));
+        });
+
+        // Clear session cookie (outside transaction — cookie is non-transactional)
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
+
+        return { success: true, message: "Account deleted." };
       }),
   }),
 

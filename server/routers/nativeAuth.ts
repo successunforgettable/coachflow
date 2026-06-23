@@ -8,7 +8,7 @@ import { eq, and } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { TRPCError } from "@trpc/server";
-import { publicProcedure, router } from "../_core/trpc";
+import { publicProcedure, protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { users, emailVerificationTokens, passwordResetTokens } from "../../drizzle/schema";
 import { COOKIE_NAME } from "@shared/const";
@@ -340,5 +340,41 @@ export const nativeAuthRouter = router({
         success: true,
         message: "Password reset successfully. You are now logged in.",
       };
+    }),
+
+  /**
+   * Change password for a logged-in user who has an existing password.
+   * Verifies current password before accepting the new one.
+   */
+  changePassword: protectedProcedure
+    .input(
+      z.object({
+        currentPassword: z.string().min(1, "Current password is required"),
+        newPassword: z.string().min(8, "New password must be at least 8 characters").max(128),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const ip = getClientIp(ctx.req);
+      if (isRateLimited(`changepw:${ip}`, 5)) {
+        throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many attempts. Please wait a few minutes." });
+      }
+
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const [user] = await db.select().from(users).where(eq(users.id, ctx.user.id)).limit(1);
+      if (!user || !user.passwordHash) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "This account does not have a password set." });
+      }
+
+      const match = await bcrypt.compare(input.currentPassword, user.passwordHash);
+      if (!match) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Current password is incorrect." });
+      }
+
+      const newHash = await bcrypt.hash(input.newPassword, BCRYPT_ROUNDS);
+      await db.update(users).set({ passwordHash: newHash, updatedAt: new Date() }).where(eq(users.id, ctx.user.id));
+
+      return { success: true, message: "Password changed successfully." };
     }),
 });

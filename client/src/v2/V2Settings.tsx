@@ -38,65 +38,98 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
   );
 }
 
-function IntegrationsSection() {
-  const ghlConn = trpc.ghl.getConnectionStatus.useQuery();
-  const snapshotId = (ghlConn.data as { masterSnapshotId?: string | null } | undefined)?.masterSnapshotId ?? null;
-  const workflowStatus = trpc.ghl.getWorkflowStatus.useQuery(undefined, {
-    enabled: !!ghlConn.data?.connected,
-  });
-  const recheckWorkflows = trpc.ghl.getWorkflowStatus.useQuery(
-    { force: true },
-    { enabled: false },
-  );
+const pillBtn = (active: boolean): React.CSSProperties => ({
+  padding: "6px 16px", borderRadius: 9999, fontSize: 12, fontWeight: 600, fontFamily: T.fontB, cursor: "pointer", border: "none",
+  background: active ? "#D1FAE5" : "#FFE8DF", color: active ? "#065F46" : "#92400E",
+});
 
-  // Render when GHL is connected (workflow status detection works
-  // independent of snapshot config). Hide only when not connected at all.
-  if (!ghlConn.data?.connected) return null;
+function IntegrationsSection() {
+  // ── Meta ──
+  const metaConn = trpc.meta.getConnectionStatus.useQuery();
+  const metaOAuthUrl = trpc.meta.getOAuthUrl.useQuery(undefined, { enabled: false });
+  const metaDisconnect = trpc.meta.disconnectMeta.useMutation({ onSuccess: () => metaConn.refetch() });
+  const metaConnected = !!metaConn.data?.connected;
+
+  const handleMetaConnect = async () => {
+    const result = await metaOAuthUrl.refetch();
+    if (result.data?.url) window.open(result.data.url, "_blank", "width=600,height=700,scrollbars=yes");
+  };
+
+  // ── GHL ──
+  const ghlConn = trpc.ghl.getConnectionStatus.useQuery();
+  const ghlOAuthUrl = trpc.ghl.getOAuthUrl.useQuery(undefined, { enabled: false });
+  const ghlDisconnect = trpc.ghl.disconnect.useMutation({ onSuccess: () => ghlConn.refetch() });
+  const ghlConnected = !!ghlConn.data?.connected;
+  const snapshotId = (ghlConn.data as { masterSnapshotId?: string | null } | undefined)?.masterSnapshotId ?? null;
+  const workflowStatus = trpc.ghl.getWorkflowStatus.useQuery(undefined, { enabled: ghlConnected });
+
+  const handleGhlConnect = async () => {
+    const result = await ghlOAuthUrl.refetch();
+    if (result.data?.url) window.open(result.data.url, "_blank", "width=600,height=700,scrollbars=yes");
+  };
+
+  // Refetch on window focus (OAuth popup return)
+  const [, forceUpdate] = useState(0);
+  const focusHandler = () => { metaConn.refetch(); ghlConn.refetch(); forceUpdate(n => n + 1); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useState(() => { window.addEventListener("focus", focusHandler); return () => window.removeEventListener("focus", focusHandler); });
+
   return (
     <div style={T.card}>
       <SectionHeading>Integrations</SectionHeading>
 
-      {/* Workflow status pill + recheck */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
-        {workflowStatus.isLoading ? (
-          <span style={{ fontSize: 12, color: "#999", fontFamily: T.fontB }}>Checking workflows…</span>
-        ) : workflowStatus.data ? (
-          <WorkflowStatusPill count={workflowStatus.data.count} total={workflowStatus.data.total} />
-        ) : null}
-        <button
-          onClick={() => { recheckWorkflows.refetch(); workflowStatus.refetch(); }}
-          style={{
-            background: "none",
-            border: "none",
-            fontSize: 12,
-            color: T.orange,
-            fontFamily: T.fontB,
-            fontWeight: 600,
-            cursor: "pointer",
-            padding: 0,
-          }}
-        >↻ Recheck</button>
+      {/* Meta Ads */}
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+          <span style={{ fontSize: 14, fontWeight: 600, color: T.dark }}>Meta Ads</span>
+          <span style={pillBtn(metaConnected)}>{metaConnected ? "Connected" : "Not connected"}</span>
+        </div>
+        {metaConnected ? (
+          <div style={{ fontSize: 13, color: "#555" }}>
+            <span>Ad account: {(metaConn.data as any)?.adAccountName || (metaConn.data as any)?.adAccountId || "—"}</span>
+            <button onClick={() => metaDisconnect.mutate()} disabled={metaDisconnect.isPending}
+              style={{ marginLeft: 12, background: "none", border: "none", fontSize: 12, color: "#EF4444", fontFamily: T.fontB, fontWeight: 600, cursor: "pointer", padding: 0 }}>
+              Disconnect
+            </button>
+          </div>
+        ) : (
+          <button onClick={handleMetaConnect} style={{ padding: "8px 18px", background: T.orange, color: "#fff", border: "none", borderRadius: 9999, fontSize: 13, fontWeight: 600, fontFamily: T.fontB, cursor: "pointer" }}>
+            Connect Meta Ads
+          </button>
+        )}
       </div>
 
-      <p style={{ fontSize: 14, color: "#555", lineHeight: 1.55, margin: "0 0 14px" }}>
-        Apply ZAP's Master Snapshot to your GoHighLevel sub-account once — your funnels, email templates, and workflows then auto-render from the Custom Values ZAP pushes on every kit publish. Requires GHL agency-admin permission.
-      </p>
-      {snapshotId && (
-        <button
-          onClick={() => openSnapshotApplyTab(snapshotId)}
-          style={{
-            padding: "10px 20px",
-            background: T.orange,
-            color: "#fff",
-            border: "none",
-            borderRadius: 9999,
-            fontSize: 14,
-            fontWeight: 600,
-            fontFamily: T.fontB,
-            cursor: "pointer",
-          }}
-        >Apply ZAP Master Snapshot →</button>
-      )}
+      {/* GoHighLevel */}
+      <div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+          <span style={{ fontSize: 14, fontWeight: 600, color: T.dark }}>GoHighLevel</span>
+          <span style={pillBtn(ghlConnected)}>{ghlConnected ? "Connected" : "Not connected"}</span>
+        </div>
+        {ghlConnected ? (
+          <>
+            <div style={{ fontSize: 13, color: "#555", marginBottom: 8 }}>
+              <span>Location: {(ghlConn.data as any)?.locationName || (ghlConn.data as any)?.locationId || "—"}</span>
+              <button onClick={() => ghlDisconnect.mutate()} disabled={ghlDisconnect.isPending}
+                style={{ marginLeft: 12, background: "none", border: "none", fontSize: 12, color: "#EF4444", fontFamily: T.fontB, fontWeight: 600, cursor: "pointer", padding: 0 }}>
+                Disconnect
+              </button>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
+              {workflowStatus.data && <WorkflowStatusPill count={workflowStatus.data.count} total={workflowStatus.data.total} />}
+              <button onClick={() => workflowStatus.refetch()} style={{ background: "none", border: "none", fontSize: 12, color: T.orange, fontFamily: T.fontB, fontWeight: 600, cursor: "pointer", padding: 0 }}>↻ Recheck</button>
+            </div>
+            {snapshotId && (
+              <button onClick={() => openSnapshotApplyTab(snapshotId)} style={{ padding: "8px 18px", background: T.orange, color: "#fff", border: "none", borderRadius: 9999, fontSize: 13, fontWeight: 600, fontFamily: T.fontB, cursor: "pointer" }}>
+                Apply ZAP Master Snapshot →
+              </button>
+            )}
+          </>
+        ) : (
+          <button onClick={handleGhlConnect} style={{ padding: "8px 18px", background: T.orange, color: "#fff", border: "none", borderRadius: 9999, fontSize: 13, fontWeight: 600, fontFamily: T.fontB, cursor: "pointer" }}>
+            Connect GoHighLevel
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -120,6 +153,24 @@ export default function V2Settings() {
     if (!user?.email) return;
     updateProfile.mutate({ name: nameValue, email: user.email });
   }
+
+  // ── Section 1.5: Password change (only for accounts with a password) ────
+  const hasPassword = (user as any)?.hasPassword ?? false;
+  const [currentPw, setCurrentPw] = useState("");
+  const [newPw, setNewPw] = useState("");
+  const [pwSaved, setPwSaved] = useState(false);
+  const [pwError, setPwError] = useState("");
+  const changePw = trpc.nativeAuth.changePassword.useMutation({
+    onSuccess: () => { setPwSaved(true); setCurrentPw(""); setNewPw(""); setPwError(""); setTimeout(() => setPwSaved(false), 3000); },
+    onError: (err) => setPwError(err.message),
+  });
+
+  // ── Section 1.6: Delete account ────────────────────────────────────────
+  const deleteAccount = trpc.auth.deleteAccount.useMutation({
+    onSuccess: () => { window.location.href = "/"; },
+    onError: (err) => setDeleteError(err.message),
+  });
+  const [deleteError, setDeleteError] = useState("");
 
   // ── Section 2: Usage Stats ───────────────────────────────────────────────
   const { data: servicesData } = trpc.services.list.useQuery();
@@ -247,6 +298,26 @@ export default function V2Settings() {
               }}
             />
           </div>
+
+          {/* Password change — only for accounts with a password */}
+          {hasPassword && (
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#666", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                Change Password
+              </label>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <input type="password" placeholder="Current password" value={currentPw} onChange={e => { setCurrentPw(e.target.value); setPwError(""); }}
+                  style={{ flex: 1, minWidth: 140, padding: "10px 14px", border: "1.5px solid #E5E0D8", borderRadius: 12, fontSize: 14, fontFamily: T.fontB, color: T.dark, background: "#FAFAF8", outline: "none", boxSizing: "border-box" }} />
+                <input type="password" placeholder="New password (8+ chars)" value={newPw} onChange={e => { setNewPw(e.target.value); setPwError(""); }}
+                  style={{ flex: 1, minWidth: 140, padding: "10px 14px", border: "1.5px solid #E5E0D8", borderRadius: 12, fontSize: 14, fontFamily: T.fontB, color: T.dark, background: "#FAFAF8", outline: "none", boxSizing: "border-box" }} />
+                <button onClick={() => changePw.mutate({ currentPassword: currentPw, newPassword: newPw })} disabled={changePw.isPending || !currentPw || newPw.length < 8}
+                  style={{ padding: "10px 20px", background: pwSaved ? "#10B981" : T.orange, color: "#fff", border: "none", borderRadius: 9999, fontSize: 14, fontWeight: 600, fontFamily: T.fontB, cursor: changePw.isPending || !currentPw || newPw.length < 8 ? "not-allowed" : "pointer", opacity: changePw.isPending || !currentPw || newPw.length < 8 ? 0.6 : 1, whiteSpace: "nowrap" }}>
+                  {pwSaved ? "Changed!" : changePw.isPending ? "Saving…" : "Update Password"}
+                </button>
+              </div>
+              {pwError && <p style={{ fontSize: 12, color: "#EF4444", margin: "6px 0 0" }}>{pwError}</p>}
+            </div>
+          )}
 
           {/* Tier badge */}
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -450,108 +521,51 @@ export default function V2Settings() {
               Delete Account
             </h2>
 
-            {deleteConfirmed ? (
-              <div>
-                <p style={{ fontSize: 14, color: "#444", lineHeight: 1.6, margin: "0 0 16px 0" }}>
-                  To delete your account, please contact support:
-                </p>
-                <a
-                  href="mailto:arfeen@arfeenkhan.com"
-                  style={{
-                    display: "inline-block",
-                    padding: "10px 20px",
-                    background: T.orange,
-                    color: "#fff",
-                    borderRadius: 9999,
-                    fontSize: 14,
-                    fontWeight: 600,
-                    fontFamily: T.fontB,
-                    textDecoration: "none",
-                  }}
-                >
-                  Email arfeen@arfeenkhan.com
-                </a>
+            <div>
+              <p style={{ fontSize: 14, color: "#444", lineHeight: 1.6, margin: "0 0 20px 0" }}>
+                This action is permanent and cannot be undone. All your campaigns, assets, and data will be deleted.
+              </p>
+              {deleteError && <p style={{ fontSize: 13, color: "#EF4444", margin: "0 0 12px", lineHeight: 1.5 }}>{deleteError}</p>}
+              <input
+                type="text"
+                value={deleteInput}
+                onChange={e => { setDeleteInput(e.target.value); setDeleteError(""); }}
+                placeholder='Type DELETE to confirm'
+                style={{
+                  width: "100%",
+                  padding: "10px 14px",
+                  border: "1.5px solid #E5E0D8",
+                  borderRadius: 12,
+                  fontSize: 14,
+                  fontFamily: T.fontB,
+                  color: T.dark,
+                  background: "#FAFAF8",
+                  outline: "none",
+                  marginBottom: 16,
+                  boxSizing: "border-box",
+                }}
+              />
+              <div style={{ display: "flex", gap: 10 }}>
                 <button
-                  onClick={() => { setShowDeleteModal(false); setDeleteInput(""); setDeleteConfirmed(false); }}
+                  onClick={() => { setShowDeleteModal(false); setDeleteInput(""); setDeleteError(""); }}
+                  style={{ flex: 1, padding: "10px 0", background: "#F5F5F5", color: "#666", border: "none", borderRadius: 9999, fontSize: 14, fontWeight: 600, fontFamily: T.fontB, cursor: "pointer" }}>
+                  Cancel
+                </button>
+                <button
+                  onClick={() => deleteAccount.mutate({ confirmation: "DELETE" as const })}
+                  disabled={deleteInput !== "DELETE" || deleteAccount.isPending}
                   style={{
-                    display: "block",
-                    marginTop: 12,
-                    background: "none",
-                    border: "none",
-                    fontSize: 13,
-                    color: "#999",
-                    fontFamily: T.fontB,
-                    cursor: "pointer",
-                    padding: 0,
-                  }}
-                >
-                  Close
+                    flex: 1, padding: "10px 0",
+                    background: deleteInput === "DELETE" ? "#EF4444" : "#F0EDE8",
+                    color: deleteInput === "DELETE" ? "#fff" : "#BBB",
+                    border: "none", borderRadius: 9999, fontSize: 14, fontWeight: 600, fontFamily: T.fontB,
+                    cursor: deleteInput === "DELETE" && !deleteAccount.isPending ? "pointer" : "not-allowed",
+                    transition: "background 0.2s, color 0.2s",
+                  }}>
+                  {deleteAccount.isPending ? "Deleting…" : "Confirm Delete"}
                 </button>
               </div>
-            ) : (
-              <div>
-                <p style={{ fontSize: 14, color: "#444", lineHeight: 1.6, margin: "0 0 20px 0" }}>
-                  This action is permanent and cannot be undone. All your campaigns, assets, and data will be lost forever.
-                </p>
-                <input
-                  type="text"
-                  value={deleteInput}
-                  onChange={e => setDeleteInput(e.target.value)}
-                  placeholder='Type DELETE to confirm'
-                  style={{
-                    width: "100%",
-                    padding: "10px 14px",
-                    border: "1.5px solid #E5E0D8",
-                    borderRadius: 12,
-                    fontSize: 14,
-                    fontFamily: T.fontB,
-                    color: T.dark,
-                    background: "#FAFAF8",
-                    outline: "none",
-                    marginBottom: 16,
-                    boxSizing: "border-box",
-                  }}
-                />
-                <div style={{ display: "flex", gap: 10 }}>
-                  <button
-                    onClick={() => { setShowDeleteModal(false); setDeleteInput(""); }}
-                    style={{
-                      flex: 1,
-                      padding: "10px 0",
-                      background: "#F5F5F5",
-                      color: "#666",
-                      border: "none",
-                      borderRadius: 9999,
-                      fontSize: 14,
-                      fontWeight: 600,
-                      fontFamily: T.fontB,
-                      cursor: "pointer",
-                    }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleDeleteConfirm}
-                    disabled={deleteInput !== "DELETE"}
-                    style={{
-                      flex: 1,
-                      padding: "10px 0",
-                      background: deleteInput === "DELETE" ? "#EF4444" : "#F0EDE8",
-                      color: deleteInput === "DELETE" ? "#fff" : "#BBB",
-                      border: "none",
-                      borderRadius: 9999,
-                      fontSize: 14,
-                      fontWeight: 600,
-                      fontFamily: T.fontB,
-                      cursor: deleteInput === "DELETE" ? "pointer" : "not-allowed",
-                      transition: "background 0.2s, color 0.2s",
-                    }}
-                  >
-                    Confirm Delete
-                  </button>
-                </div>
-              </div>
-            )}
+            </div>
           </div>
         </div>
       )}

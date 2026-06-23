@@ -868,8 +868,29 @@ export default function V2CampaignKit() {
         ))}
 
         {/* Ad Creatives section */}
-        {kit.selectedAdCreativeBatchId && (
+        {kit.selectedAdCreativeBatchId ? (
           <AdCreativesSection batchId={kit.selectedAdCreativeBatchId as string} />
+        ) : (
+          <div style={{ marginBottom: 28 }}>
+            <p style={{
+              fontFamily: "var(--v2-font-heading, 'Fraunces', serif)",
+              fontStyle: "italic",
+              fontWeight: 900,
+              fontSize: 18,
+              color: "#1A1624",
+              margin: "0 0 8px",
+            }}>
+              Ad Images
+            </p>
+            <div style={{
+              border: "2px dashed #ddd",
+              borderRadius: "16px",
+              padding: "24px",
+              textAlign: "center",
+            }}>
+              <p style={{ fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)", fontSize: 14, color: "#999", margin: 0 }}>Not generated yet</p>
+            </div>
+          </div>
         )}
       </div>
 
