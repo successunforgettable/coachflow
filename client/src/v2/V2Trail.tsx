@@ -1696,14 +1696,79 @@ export default function V2Trail() {
 
     driverStarted.current = true;
     (async () => {
-      // Perform the swap NULL if requested
+      // ── Swap-with-coherence-choice ──────────────────────────────────────
+      // When the user taps "Swap" on a node from the kit page, present a
+      // choice BEFORE any generation fires:
+      //   "Just change the [X]" → NULL only the target field
+      //   "Change everything to match" → NULL target + all downstream fields
+      // For nodes with no populated downstream, skip the choice and swap directly.
       if (stepDef && needsSwap) {
         const kitId = kit.id as number;
+
+        // Downstream dependency map (same as server's STALE_NODE_DOWNSTREAM)
+        const DOWNSTREAM: Record<string, string[]> = {
+          offer: ["uniqueMethod", "freeOptIn", "headlines", "adCopy", "landingPage", "emailSequence", "whatsappSequence", "adCreatives"],
+          uniqueMethod: ["freeOptIn", "headlines", "adCopy", "landingPage", "emailSequence", "whatsappSequence", "adCreatives"],
+          freeOptIn: ["headlines", "adCopy", "landingPage", "emailSequence", "whatsappSequence", "adCreatives"],
+          headlines: ["adCopy", "landingPage", "emailSequence", "whatsappSequence", "adCreatives"],
+          adCopy: ["landingPage", "emailSequence", "whatsappSequence", "adCreatives"],
+          landingPage: ["emailSequence", "whatsappSequence", "adCreatives"],
+          emailSequence: ["whatsappSequence", "adCreatives"],
+          whatsappSequence: ["adCreatives"],
+        };
+
+        const downstreamStopKeys = DOWNSTREAM[stepDef.step] ?? [];
+        const populatedDownstream = downstreamStopKeys
+          .map(sk => AUTO_STEPS.find(s => s.stopKey === sk))
+          .filter((s): s is typeof AUTO_STEPS[number] => !!s && kit[s.field] != null);
+
+        let nullDownstreamToo = false;
+
+        if (populatedDownstream.length > 0) {
+          // Present the choice — user decides before anything regenerates
+          const downstreamNames = populatedDownstream.map(s => s.revealLabel.toLowerCase()).join(", ");
+          addLive({ type: "zappy-bubble", mood: "idle",
+            text: `Swapping your ${stepDef.revealLabel.toLowerCase()}. Your ${downstreamNames} ${populatedDownstream.length === 1 ? "was" : "were"} built from the current one — want me to rebuild ${populatedDownstream.length === 1 ? "it" : "them"} to match, or leave ${populatedDownstream.length === 1 ? "it" : "them"} as ${populatedDownstream.length === 1 ? "it is" : "they are"}?` });
+          collapsePreviousChips();
+          const choiceChip = addLive({ type: "chip-row", nodeKey: stepDef.step,
+            chips: [`Just change the ${stepDef.revealLabel.toLowerCase()}`, "Change everything to match"] });
+          activeChips.current = { msgId: choiceChip.id, step: stepDef.step };
+          dealMoreChipChoice.current = null;
+          await waitForManualProceed();
+          if (cancelled.current) return;
+          // dealMoreChipChoice is "lock" for the first chip, "lock" for the second
+          // We need to distinguish — check which chip text was tapped
+          // The chip handler sets dealMoreChipChoice to "lock" for both (neither is "deal" or "skip")
+          // So we need a different signal. Let's use the chip text via a ref.
+        }
+
+        // Since both chips map to "lock" in the handler, I need to detect which
+        // was tapped. The simplest way: check if the last user-bubble text matches.
+        if (populatedDownstream.length > 0) {
+          const lastUserBubble = liveRef.current.filter(m => m.type === "user-bubble").pop();
+          nullDownstreamToo = lastUserBubble?.text === "Change everything to match";
+        }
+
+        // NULL the target field
         try {
           await updateSelection.mutateAsync({ kitId, [stepDef.field]: null } as any);
-          await trailState.refetch(); // refresh kit so the loop sees the nulled field
-        } catch { /* non-fatal — the step will skip if field wasn't cleared */ }
-        addLive({ type: "zappy-bubble", mood: "idle", text: `Swapping your ${stepDef.revealLabel.toLowerCase()} — building a fresh one now.` });
+        } catch { /* non-fatal */ }
+
+        // If "change everything" — NULL all populated downstream fields too
+        if (nullDownstreamToo) {
+          for (const ds of populatedDownstream) {
+            try {
+              await updateSelection.mutateAsync({ kitId, [ds.field]: null } as any);
+            } catch { /* non-fatal */ }
+          }
+          addLive({ type: "zappy-bubble", mood: "idle",
+            text: `Rebuilding your ${stepDef.revealLabel.toLowerCase()} and everything downstream. This takes a minute.` });
+        } else {
+          addLive({ type: "zappy-bubble", mood: "idle",
+            text: `Swapping your ${stepDef.revealLabel.toLowerCase()} — building a fresh one now.` });
+        }
+
+        await trailState.refetch();
       }
       await runUnifiedLoop();
     })();
