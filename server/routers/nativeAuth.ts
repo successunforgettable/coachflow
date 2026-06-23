@@ -7,14 +7,19 @@ import { z } from "zod";
 import { eq, and } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
+import { TRPCError } from "@trpc/server";
 import { publicProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { users, emailVerificationTokens, passwordResetTokens } from "../../drizzle/schema";
-import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
+import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "../_core/cookies";
 import { sdk } from "../_core/sdk";
 import { notifyOwner } from "../_core/notification";
 import { sendPasswordResetEmail, sendWelcomeEmail } from "../email";
+import { isRateLimited, getClientIp } from "../_core/rateLimit";
+
+/** 30-day session expiry — replaces the previous 1-year default. */
+const SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 
 const BCRYPT_ROUNDS = 12;
 const TOKEN_EXPIRY_HOURS = 24;
@@ -46,6 +51,12 @@ export const nativeAuthRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      // Rate limit: 5 registrations per IP per 15 minutes
+      const ip = getClientIp(ctx.req);
+      if (isRateLimited(`register:${ip}`, 5)) {
+        throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many registration attempts. Please wait a few minutes and try again." });
+      }
+
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -109,13 +120,13 @@ export const nativeAuthRouter = router({
         // Non-critical — don't fail registration
       }
 
-      // Auto-login: create session cookie
+      // Auto-login: create session cookie (30-day expiry)
       const sessionToken = await sdk.createSessionToken(openId, {
         name: input.name,
-        expiresInMs: ONE_YEAR_MS,
+        expiresInMs: SESSION_MAX_AGE_MS,
       });
       const cookieOptions = getSessionCookieOptions(ctx.req);
-      ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+      ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: SESSION_MAX_AGE_MS });
 
       return {
         success: true,
@@ -135,6 +146,12 @@ export const nativeAuthRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      // Rate limit: 10 login attempts per IP per 15 minutes
+      const ip = getClientIp(ctx.req);
+      if (isRateLimited(`login:${ip}`, 10)) {
+        throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many login attempts. Please wait a few minutes and try again." });
+      }
+
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -164,13 +181,13 @@ export const nativeAuthRouter = router({
         .set({ lastSignedIn: new Date() })
         .where(eq(users.id, user.id));
 
-      // Set session cookie
+      // Set session cookie (30-day expiry)
       const sessionToken = await sdk.createSessionToken(user.openId, {
         name: user.name || "",
-        expiresInMs: ONE_YEAR_MS,
+        expiresInMs: SESSION_MAX_AGE_MS,
       });
       const cookieOptions = getSessionCookieOptions(ctx.req);
-      ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+      ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: SESSION_MAX_AGE_MS });
 
       return {
         success: true,
@@ -186,10 +203,22 @@ export const nativeAuthRouter = router({
     .input(
       z.object({
         email: z.string().trim().email("Invalid email address").toLowerCase(),
-        origin: z.string().url("Invalid origin"),
+        // origin field kept for backwards compatibility but IGNORED —
+        // reset URL is built from the server's APP_URL to prevent phishing.
+        origin: z.string().optional(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      // Rate limit: 5 password reset requests per IP per 15 minutes
+      const ip = getClientIp(ctx.req);
+      if (isRateLimited(`forgot:${ip}`, 5)) {
+        // Still return success shape to prevent enumeration
+        return {
+          success: true,
+          message: "If an account exists with that email, you will receive a password reset link shortly.",
+        };
+      }
+
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -222,7 +251,9 @@ export const nativeAuthRouter = router({
         used: false,
       });
 
-      const resetUrl = `${input.origin}/reset-password?token=${resetToken}`;
+      // Server-side origin — never use client-supplied origin (phishing vector)
+      const baseUrl = (process.env.APP_URL || "https://zapcampaigns.com").replace(/\/$/, "");
+      const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
 
       // Send password reset email via Resend
       try {
@@ -299,10 +330,10 @@ export const nativeAuthRouter = router({
       if (user) {
         const sessionToken = await sdk.createSessionToken(user.openId, {
           name: user.name || "",
-          expiresInMs: ONE_YEAR_MS,
+          expiresInMs: SESSION_MAX_AGE_MS,
         });
         const cookieOptions = getSessionCookieOptions(ctx.req);
-        ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+        ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: SESSION_MAX_AGE_MS });
       }
 
       return {

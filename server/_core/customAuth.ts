@@ -20,6 +20,7 @@ import { sdk } from "./sdk";
 import { ENV } from "./env";
 import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import { Resend } from "resend";
+import { isRateLimited, getClientIp } from "./rateLimit";
 
 const resend = new Resend(ENV.resendApiKey);
 const FROM_EMAIL = "ZAP <noreply@zapcampaigns.com>";
@@ -245,7 +246,8 @@ export function registerCustomAuthRoutes(app: Express) {
       if (stateRaw) {
         try {
           const state = JSON.parse(Buffer.from(stateRaw, "base64url").toString());
-          if (state.returnTo && typeof state.returnTo === "string") {
+          // Only accept relative paths (starts with /) to prevent open redirect
+          if (state.returnTo && typeof state.returnTo === "string" && state.returnTo.startsWith("/") && !state.returnTo.startsWith("//")) {
             returnTo = state.returnTo;
           }
         } catch { /* ignore */ }
@@ -265,6 +267,13 @@ export function registerCustomAuthRoutes(app: Express) {
 
     if (!email || !email.includes("@")) {
       res.status(400).json({ error: "Valid email required" });
+      return;
+    }
+
+    // Rate limit: 5 magic-link requests per IP per 15 minutes
+    const ip = getClientIp(req);
+    if (isRateLimited(`magic:${ip}`, 5)) {
+      res.status(429).json({ error: "Too many requests. Please wait a few minutes." });
       return;
     }
 
