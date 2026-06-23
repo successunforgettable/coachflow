@@ -912,12 +912,16 @@ export default function V2Trail() {
         const svcCheck = await utils.services.get.fetch({ id: serviceId }) as Record<string, unknown> | null;
         const hasTestimonials = svcCheck?.testimonial1Name || svcCheck?.testimonial2Name;
         if (!hasTestimonials) {
-          addLive({ type: "zappy-bubble", mood: "idle", text: "Got any client testimonials? Real quotes make your ads, emails, and landing page more convincing." });
-          addLive({ type: "testimonial-picker", testimonialPicker: { serviceId, mode: "campaign" } });
+          addLive({ type: "zappy-bubble", mood: "idle", text: "Got any client testimonials? Real quotes make your ads, emails, and landing page more convincing. Tap Use or Skip below." });
+          const pickerMsg = addLive({ type: "testimonial-picker", testimonialPicker: { serviceId, mode: "campaign" } });
           const testimonialAction = await waitForTestimonialDone();
           if (cancelled.current) return;
           if (testimonialAction === "use") {
             addLive({ type: "zappy-bubble", mood: "celebrating", text: "Nice — real social proof makes everything hit harder. Let's build." });
+          } else {
+            // Remove picker (may have timed out or user skipped)
+            removeLive(pickerMsg.id);
+            addLive({ type: "zappy-bubble", mood: "idle", text: "No worries — skipping testimonials. You can add them later from Settings." });
           }
         }
       } catch { /* non-fatal — skip testimonial prompt if lookup fails */ }
@@ -1089,8 +1093,13 @@ export default function V2Trail() {
   };
 
   // ── Testimonial picker wait — resolves when user taps Use/Skip ──
+  // 90s safety timeout: if the picker fails to load (lazy chunk error) or
+  // the user doesn't interact, auto-skip so the trail never hangs.
   const testimonialResolve = useRef<((action: "use" | "skip") => void) | null>(null);
-  const waitForTestimonialDone = () => new Promise<"use" | "skip">(r => { testimonialResolve.current = r; });
+  const waitForTestimonialDone = (): Promise<"use" | "skip"> => new Promise(r => {
+    testimonialResolve.current = r;
+    setTimeout(() => { if (testimonialResolve.current === r) { testimonialResolve.current = null; r("skip"); } }, 90_000);
+  });
   const handleTestimonialDone = (messageId: string, action: "use" | "skip") => {
     removeLive(messageId);
     const echo = addLive({ type: "user-bubble", text: action === "use" ? "Use these testimonials" : "Skip — no testimonials" });
@@ -1100,8 +1109,12 @@ export default function V2Trail() {
   };
 
   // ── Style chooser wait — resolves when user picks a style ──
+  // 90s safety timeout: auto-pick "photo_ad" if the chooser stalls.
   const styleResolve = useRef<((style: string) => void) | null>(null);
-  const waitForStyleChoice = () => new Promise<string>(r => { styleResolve.current = r; });
+  const waitForStyleChoice = (): Promise<string> => new Promise(r => {
+    styleResolve.current = r;
+    setTimeout(() => { if (styleResolve.current === r) { styleResolve.current = null; r("photo_ad"); } }, 90_000);
+  });
   const handleStyleChoose = (messageId: string, style: string) => {
     removeLive(messageId);
     const styleName = style.startsWith("quote_card") ? "Quote Card" : style.startsWith("notification") ? "Notification" : "Photo Ad";
@@ -1236,12 +1249,15 @@ export default function V2Trail() {
         const svcCheck = await utils.services.get.fetch({ id: serviceId }) as Record<string, unknown> | null;
         const hasTestimonials = svcCheck?.testimonial1Name || svcCheck?.testimonial2Name;
         if (!hasTestimonials) {
-          addLive({ type: "zappy-bubble", mood: "idle", text: "Got any client testimonials? Real quotes make your ads, emails, and landing page more convincing." });
-          addLive({ type: "testimonial-picker", testimonialPicker: { serviceId, mode: "campaign" } });
+          addLive({ type: "zappy-bubble", mood: "idle", text: "Got any client testimonials? Real quotes make your ads, emails, and landing page more convincing. Tap Use or Skip below." });
+          const pickerMsg2 = addLive({ type: "testimonial-picker", testimonialPicker: { serviceId, mode: "campaign" } });
           const testimonialAction = await waitForTestimonialDone();
           if (cancelled.current) return;
           if (testimonialAction === "use") {
             addLive({ type: "zappy-bubble", mood: "celebrating", text: "Nice — real social proof makes everything hit harder. Let's build." });
+          } else {
+            removeLive(pickerMsg2.id);
+            addLive({ type: "zappy-bubble", mood: "idle", text: "No worries — skipping testimonials. You can add them later from Settings." });
           }
         }
       } catch { /* non-fatal */ }

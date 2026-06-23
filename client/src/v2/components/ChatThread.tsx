@@ -25,6 +25,33 @@ const TEXT_COLOR = "#1A1624";
 const FONT_BODY = "'Instrument Sans', system-ui, sans-serif";
 const FONT_HEADING = "'Fraunces', Georgia, serif";
 
+// ─── Suspense fallback — visible loading state so lazy-load failures never
+// silently hang the trail. Shows a "Loading…" message with a skip button that
+// resolves the parent promise, preventing the infinite-stall scenario. ──────
+function SuspenseFallback({ label, onSkip }: { label: string; onSkip: () => void }) {
+  return (
+    <div style={{ padding: "16px 0", fontFamily: FONT_BODY, fontSize: 14, color: "#888" }}>
+      <span>Loading {label}…</span>
+      <button
+        onClick={onSkip}
+        style={{
+          marginLeft: 12,
+          background: "none",
+          border: "1px solid #d1d5db",
+          borderRadius: 9999,
+          padding: "4px 14px",
+          fontSize: 13,
+          fontFamily: FONT_BODY,
+          color: "#666",
+          cursor: "pointer",
+        }}
+      >
+        Skip
+      </button>
+    </div>
+  );
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 export type ZappyChatMood = "idle" | "thinking" | "celebrating";
 
@@ -682,7 +709,7 @@ export default function ChatThread({ messages, campaignStatus, onChipTap, onDeck
                 {msg.type === "system-divider" && <SystemDivider msg={msg} />}
                 {msg.type === "file-upload" && <FileUploadButton msg={msg} onSelect={onFileSelect} />}
                 {msg.type === "style-chooser" && (
-                  <Suspense fallback={null}>
+                  <Suspense fallback={<SuspenseFallback label="style picker" onSkip={() => onStyleChoose?.(msg.id, "photo_ad")} />}>
                     <StyleChooser
                       headline={msg.styleChooserHeadline || "Your headline here"}
                       testimonialQuote={msg.styleChooserTestimonial}
@@ -691,7 +718,7 @@ export default function ChatThread({ messages, campaignStatus, onChipTap, onDeck
                   </Suspense>
                 )}
                 {msg.type === "testimonial-picker" && msg.testimonialPicker && (
-                  <Suspense fallback={null}>
+                  <Suspense fallback={<SuspenseFallback label="testimonials" onSkip={() => onTestimonialDone?.(msg.id, "skip")} />}>
                     <TestimonialPicker
                       serviceId={msg.testimonialPicker.serviceId}
                       mode={msg.testimonialPicker.mode}
