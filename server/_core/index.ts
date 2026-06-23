@@ -164,6 +164,27 @@ async function startServer() {
 
   // Image proxy — fetches private S3/Cloudinary image URLs server-side and streams to client
   // Avoids 403 errors when the browser tries to load private URLs directly
+  // SSRF-safe domain allowlist for the image proxy. Only these hosts can
+  // be fetched — blocks internal networks, cloud metadata, localhost.
+  const IMAGE_PROXY_ALLOWED_HOSTS = new Set([
+    "res.cloudinary.com",          // Cloudinary CDN
+    "images.unsplash.com",         // Unsplash images
+    "upload.wikimedia.org",        // Wikimedia
+    "cdn.creatomate.com",          // Creatomate video thumbnails
+    "creatomate.com",
+    "graph.facebook.com",          // Meta API images
+    "scontent.xx.fbcdn.net",       // Facebook CDN (dynamic subdomains)
+    "platform-lookaside.fbsbx.com", // Facebook avatar CDN
+  ]);
+
+  function isAllowedImageHost(hostname: string): boolean {
+    if (IMAGE_PROXY_ALLOWED_HOSTS.has(hostname)) return true;
+    // Allow *.cloudinary.com and *.fbcdn.net subdomains
+    if (hostname.endsWith(".cloudinary.com")) return true;
+    if (hostname.endsWith(".fbcdn.net")) return true;
+    return false;
+  }
+
   app.get("/api/image-proxy", async (req, res) => {
     try {
       let user: { id: number | string } | null = null;
@@ -184,6 +205,10 @@ async function startServer() {
         const parsed = new URL(decoded);
         if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
           res.status(400).json({ error: "Invalid URL scheme" }); return;
+        }
+        // SSRF protection: only allow known image CDN hosts
+        if (!isAllowedImageHost(parsed.hostname)) {
+          res.status(403).json({ error: "Host not allowed" }); return;
         }
       } catch {
         res.status(400).json({ error: "Invalid URL" }); return;

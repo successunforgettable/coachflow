@@ -1,12 +1,21 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { publicProcedure, router } from "../_core/trpc";
 import { invokeLLM } from "../_core/llm";
 import { BANNED_COPYWRITING_WORDS, META_COMPLIANCE_NOTES } from "../_core/copywritingRules";
+import { isRateLimited, getClientIp } from "../_core/rateLimit";
 
 export const landingRouter = router({
   generatePreviewAssets: publicProcedure
     .input(z.object({ serviceSentence: z.string().min(5).max(500) }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      // Rate limit: 5 preview generations per IP per 15 minutes.
+      // Public endpoint (powers the landing page demo) — rate limit
+      // prevents budget drain without breaking the demo UX.
+      const ip = getClientIp(ctx.req);
+      if (isRateLimited(`preview:${ip}`, 5)) {
+        throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many preview requests. Please wait a few minutes." });
+      }
       const { serviceSentence } = input;
 
       const response = await invokeLLM({

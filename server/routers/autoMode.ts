@@ -28,7 +28,7 @@ import { TRPCError } from "@trpc/server";
 import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { jobs, idealCustomerProfiles, offers, heroMechanisms, hvcoTitles, services } from "../../drizzle/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, or, sql } from "drizzle-orm";
 import { runOrchestration, runOrchestrationStep, ORCHESTRATION_STEP_NAMES, type OrchestrationStepName } from "../_core/orchestration";
 import { autoSelectBest } from "./campaignKits";
 import { complianceFilter, filterRecord } from "../lib/complianceFilter";
@@ -87,6 +87,23 @@ export function isAutoModeTierAllowed(user: {
   };
 }
 
+/** Max concurrent active jobs (pending + running) per user. Normal trail
+ *  use fires one orchestrateStep at a time; 3 is generous for legitimate
+ *  use but blocks automated cost-amplification attacks. */
+const MAX_CONCURRENT_JOBS_PER_USER = 3;
+
+async function enforceJobConcurrency(userId: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return; // fail-open if DB unavailable (job will still be created)
+  const activeJobs: { count: number }[] = await db.execute(
+    sql`SELECT COUNT(*) as count FROM jobs WHERE userId = ${String(userId)} AND status IN ('pending', 'running')`
+  ) as any;
+  const count = (activeJobs as any)?.[0]?.[0]?.count ?? (activeJobs as any)?.[0]?.count ?? 0;
+  if (Number(count) >= MAX_CONCURRENT_JOBS_PER_USER) {
+    throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many active jobs. Please wait for current generations to finish." });
+  }
+}
+
 const orchestrateSchema = z.object({
   serviceId: z.number(),
   icpId: z.number(),
@@ -117,6 +134,8 @@ export const autoModeRouter = router({
       if (!tierCheck.allowed) {
         throw new TRPCError({ code: "FORBIDDEN", message: tierCheck.reason! });
       }
+
+      await enforceJobConcurrency(ctx.user.id);
 
       const db = await getDb();
       if (!db) throw new Error("Database not available");
@@ -184,6 +203,8 @@ export const autoModeRouter = router({
       if (!tierCheck.allowed) {
         throw new TRPCError({ code: "FORBIDDEN", message: tierCheck.reason! });
       }
+
+      await enforceJobConcurrency(ctx.user.id);
 
       const db = await getDb();
       if (!db) throw new Error("Database not available");
