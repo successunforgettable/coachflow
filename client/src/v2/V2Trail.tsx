@@ -498,11 +498,12 @@ export default function V2Trail() {
     if (!target) return;
 
     // Sprint 4 C1+C3: manual-mode chips that resolve the crown/deal wait
-    if (chip === "Show me options" || chip === "Lock it in →" || chip.startsWith("Show me new options") || chip === "Skip — I already have this") {
+    if (chip === "Show me options" || chip === "Lock it in →" || chip.startsWith("Show me new options") || chip === "Skip — I already have this" || chip === "Try again") {
       const echo = addLive({ type: "user-bubble", text: chip });
       persistMsgs([echo]);
       dealMoreChipChoice.current = chip.startsWith("Show me new options") ? "deal"
-        : chip === "Skip — I already have this" ? "skip" : "lock";
+        : chip === "Skip — I already have this" ? "skip"
+        : chip === "Try again" ? "lock" : "lock"; // "Try again" resolves the same promise
       if (manualResolve.current) { manualResolve.current(); manualResolve.current = null; }
       return;
     }
@@ -598,10 +599,31 @@ export default function V2Trail() {
       }
     }
     narration.stop();
-    if (!ok) {
-      addLive({ type: "zappy-bubble", mood: "idle", text: `Still stuck on images (${lastError}). Reload to pick it up.` });
+    while (!ok) {
       setGeneratingKey(null);
-      return;
+      addLive({ type: "zappy-bubble", mood: "idle", text: `Still stuck on images (${lastError}). Want to try again?` });
+      collapsePreviousChips();
+      const retryChipImg = addLive({ type: "chip-row", nodeKey: "adCreatives", chips: ["Try again"] });
+      activeChips.current = { msgId: retryChipImg.id, step: "adCreatives" };
+      dealMoreChipChoice.current = null;
+      await waitForManualProceed();
+      if (cancelled.current) return;
+      try { await updateSelection.mutateAsync({ kitId, selectedAdCreativeBatchId: null } as any); } catch { /* non-fatal */ }
+      setGeneratingKey("adCreatives");
+      const retryNarImg = startNarration("adCreatives");
+      for (let ra = 1; ra <= 2 && !ok; ra++) {
+        try {
+          const { jobId: rjid } = await orchestrateStep.mutateAsync({ serviceId, icpId, step: "adCreatives", campaignType: kitCampaignType });
+          const rj = await pollJob(rjid);
+          if (rj.status === "failed") throw new Error(rj.error || "Generation failed");
+          if (rj.result?.skipped) throw new Error("Step was skipped — field not cleared");
+          ok = true;
+        } catch (re) {
+          lastError = re instanceof Error ? re.message : String(re);
+          if (ra === 1) addLive({ type: "zappy-bubble", mood: "idle", text: "Hm — that one fizzled. Let me try again." });
+        }
+      }
+      retryNarImg.stop();
     }
     const refreshed = await trailState.refetch();
     const kit = (refreshed.data?.kit ?? {}) as Record<string, unknown>;
@@ -661,10 +683,32 @@ export default function V2Trail() {
         }
       }
       narration.stop();
-      if (!ok) {
-        addLive({ type: "zappy-bubble", mood: "idle", text: `Still stuck on ${stepDef.revealLabel} (${lastError}). Reload to pick it up.` });
+      while (!ok) {
         setGeneratingKey(null);
-        return;
+        addLive({ type: "zappy-bubble", mood: "idle", text: `Still stuck on ${stepDef.revealLabel} (${lastError}). Want to try again?` });
+        collapsePreviousChips();
+        const retryChipS = addLive({ type: "chip-row", nodeKey: stepDef.step, chips: ["Try again"] });
+        activeChips.current = { msgId: retryChipS.id, step: stepDef.step };
+        dealMoreChipChoice.current = null;
+        await waitForManualProceed();
+        if (cancelled.current) return;
+        try { await updateSelection.mutateAsync({ kitId, [stepDef.field]: null } as any); } catch { /* non-fatal */ }
+        setGeneratingKey(stepDef.stopKey);
+        const retryNarS = startNarration(stepDef.step);
+        for (let ra = 1; ra <= 2 && !ok; ra++) {
+          try {
+            const { jobId: rjid } = await orchestrateStep.mutateAsync({ serviceId, icpId, step: stepDef.step, campaignType: kitCampaignType });
+            const rj = await pollJob(rjid);
+            if (rj.status === "failed") throw new Error(rj.error || "Generation failed");
+            if (rj.result?.skipped) throw new Error("Step was skipped — field not cleared");
+            ok = true;
+          } catch (re) {
+            lastError = re instanceof Error ? re.message : String(re);
+            if (ra === 1 && !cancelled.current) addLive({ type: "zappy-bubble", mood: "idle", text: "Hm — that one fizzled. Let me try again." });
+          }
+        }
+        retryNarS.stop();
+        if (cancelled.current) return;
       }
       // Clear stale + refresh
       try { await clearStaleMutation.mutateAsync({ campaignKitId: kitId, nodeType: stepDef.stopKey }); } catch { /* non-fatal */ }
@@ -1012,11 +1056,33 @@ export default function V2Trail() {
       }
       narration.stop();
       if (cancelled.current) return;
-      if (!ok) {
-        addLive({ type: "zappy-bubble", mood: "idle", text: `Still stuck on ${stepDef.revealLabel} (${lastError}). Reload this page and I'll pick it up right here.` });
+      while (!ok) {
         setGeneratingKey(null);
-        driverBusy.current = false;
-        return;
+        addLive({ type: "zappy-bubble", mood: "idle", text: `Still stuck on ${stepDef.revealLabel} (${lastError}). Want to try again?` });
+        collapsePreviousChips();
+        const retryChip = addLive({ type: "chip-row", nodeKey: stepDef.step, chips: ["Try again"] });
+        activeChips.current = { msgId: retryChip.id, step: stepDef.step };
+        dealMoreChipChoice.current = null;
+        await waitForManualProceed();
+        if (cancelled.current) return;
+        setGeneratingKey(stepDef.stopKey);
+        const retryNarration = startNarration(stepDef.step);
+        for (let retryAttempt = 1; retryAttempt <= 2 && !ok; retryAttempt++) {
+          try {
+            const { jobId: retryJobId } = await orchestrateStep.mutateAsync({
+              serviceId, icpId, step: stepDef.step, campaignType: kitCampaignType,
+            });
+            const retryJob = await pollJob(retryJobId);
+            if (retryJob.status === "failed") throw new Error(retryJob.error || "Generation failed");
+            ok = true;
+          } catch (retryErr) {
+            lastError = retryErr instanceof Error ? retryErr.message : String(retryErr);
+            if (retryAttempt === 1 && !cancelled.current)
+              addLive({ type: "zappy-bubble", mood: "idle", text: "Hm — that one fizzled. Let me try again." });
+          }
+        }
+        retryNarration.stop();
+        if (cancelled.current) return;
       }
 
       // Refresh real state — selected*Id is committed before the job completes.
@@ -1337,10 +1403,30 @@ export default function V2Trail() {
         }
         narration.stop();
         if (cancelled.current) return;
-        if (!ok) {
-          addLive({ type: "zappy-bubble", mood: "idle", text: `Still stuck on ${stepDef.revealLabel} (${lastError}). Reload to pick it up here.` });
+        while (!ok) {
           setGeneratingKey(null);
-          return;
+          addLive({ type: "zappy-bubble", mood: "idle", text: `Still stuck on ${stepDef.revealLabel} (${lastError}). Want to try again?` });
+          collapsePreviousChips();
+          const retryChipM = addLive({ type: "chip-row", nodeKey: stepDef.step, chips: ["Try again"] });
+          activeChips.current = { msgId: retryChipM.id, step: stepDef.step };
+          dealMoreChipChoice.current = null;
+          await waitForManualProceed();
+          if (cancelled.current) return;
+          setGeneratingKey(stepDef.stopKey);
+          const retryNarM = startNarration(stepDef.step);
+          for (let ra = 1; ra <= 2 && !ok; ra++) {
+            try {
+              const { jobId: rjid } = await orchestrateStep.mutateAsync({ serviceId, icpId, step: stepDef.step, campaignType: kitCampaignType });
+              const rj = await pollJob(rjid);
+              if (rj.status === "failed") throw new Error(rj.error || "Generation failed");
+              ok = true;
+            } catch (re) {
+              lastError = re instanceof Error ? re.message : String(re);
+              if (ra === 1 && !cancelled.current) addLive({ type: "zappy-bubble", mood: "idle", text: "Hm — that one fizzled. Let me try again." });
+            }
+          }
+          retryNarM.stop();
+          if (cancelled.current) return;
         }
         const refreshed = await trailState.refetch();
         kit = (refreshed.data?.kit ?? kit) as Record<string, unknown>;
@@ -1405,10 +1491,31 @@ export default function V2Trail() {
       }
       narration.stop();
       if (cancelled.current) return;
-      if (!ok || !jobResult) {
-        addLive({ type: "zappy-bubble", mood: "idle", text: `Still stuck on ${stepDef.revealLabel} (${lastError}). Reload to pick it up here.` });
+      while (!ok || !jobResult) {
         setGeneratingKey(null);
-        return;
+        addLive({ type: "zappy-bubble", mood: "idle", text: `Still stuck on ${stepDef.revealLabel} (${lastError}). Want to try again?` });
+        collapsePreviousChips();
+        const retryChipD = addLive({ type: "chip-row", nodeKey: stepDef.step, chips: ["Try again"] });
+        activeChips.current = { msgId: retryChipD.id, step: stepDef.step };
+        dealMoreChipChoice.current = null;
+        await waitForManualProceed();
+        if (cancelled.current) return;
+        setGeneratingKey(stepDef.stopKey);
+        const retryNarD = startNarration(stepDef.step);
+        for (let ra = 1; ra <= 2 && !ok; ra++) {
+          try {
+            const { jobId: rjid } = await orchestrateStep.mutateAsync({ serviceId, icpId, step: stepDef.step, campaignType: kitCampaignType });
+            const rj = await pollJob(rjid);
+            if (rj.status === "failed") throw new Error(rj.error || "Generation failed");
+            jobResult = rj.result;
+            ok = true;
+          } catch (re) {
+            lastError = re instanceof Error ? re.message : String(re);
+            if (ra === 1 && !cancelled.current) addLive({ type: "zappy-bubble", mood: "idle", text: "Hm — that one fizzled. Let me try again." });
+          }
+        }
+        retryNarD.stop();
+        if (cancelled.current) return;
       }
 
       // Refresh kit so we know the auto-selected id
