@@ -1,5 +1,9 @@
 import { z } from "zod";
 import { router, publicProcedure, protectedProcedure } from "../_core/trpc";
+import { TRPCError } from "@trpc/server";
+import { getDb } from "../db";
+import { campaigns } from "../../drizzle/schema";
+import { eq, and } from "drizzle-orm";
 import {
   trackAnalyticsEvent,
   getCampaignMetrics,
@@ -8,9 +12,30 @@ import {
   getAssetPerformance,
 } from "../db";
 
+/**
+ * Verify the authenticated user owns the campaign. Throws NOT_FOUND if
+ * the campaign doesn't exist or belongs to another user — consistent
+ * with the ownership pattern used across all resource routers.
+ */
+async function verifyOwnsCampaign(campaignId: number, userId: number): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+  const [row] = await db
+    .select({ id: campaigns.id })
+    .from(campaigns)
+    .where(and(eq(campaigns.id, campaignId), eq(campaigns.userId, userId)))
+    .limit(1);
+  if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Campaign not found" });
+}
+
 export const analyticsRouter = router({
   /**
-   * Track analytics event (public for webhooks/tracking pixels)
+   * Track analytics event (public for webhooks/tracking pixels).
+   *
+   * Kept as publicProcedure because tracking pixels fire from email
+   * clients and external systems without ZAP auth. Validates that the
+   * campaignId references an existing campaign to prevent injection
+   * of events for nonexistent campaigns.
    */
   trackEvent: publicProcedure
     .input(
@@ -25,22 +50,33 @@ export const analyticsRouter = router({
       })
     )
     .mutation(async ({ input }) => {
+      // Verify campaign exists (not ownership — public endpoint)
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const [campaign] = await db
+        .select({ id: campaigns.id })
+        .from(campaigns)
+        .where(eq(campaigns.id, input.campaignId))
+        .limit(1);
+      if (!campaign) throw new TRPCError({ code: "NOT_FOUND", message: "Campaign not found" });
+
       const eventId = await trackAnalyticsEvent(input);
       return { eventId };
     }),
 
   /**
-   * Get campaign metrics for date range
+   * Get campaign metrics for date range — ownership verified.
    */
   getCampaignMetrics: protectedProcedure
     .input(
       z.object({
         campaignId: z.number(),
-        startDate: z.string(), // ISO date string
+        startDate: z.string(),
         endDate: z.string(),
       })
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
+      await verifyOwnsCampaign(input.campaignId, ctx.user.id);
       const metrics = await getCampaignMetrics(
         input.campaignId,
         new Date(input.startDate),
@@ -50,7 +86,7 @@ export const analyticsRouter = router({
     }),
 
   /**
-   * Get overall dashboard metrics
+   * Get overall dashboard metrics — already scoped by userId.
    */
   getOverallMetrics: protectedProcedure
     .input(
@@ -69,7 +105,7 @@ export const analyticsRouter = router({
     }),
 
   /**
-   * Calculate ROI for campaign
+   * Calculate ROI for campaign — ownership verified.
    */
   calculateROI: protectedProcedure
     .input(
@@ -79,7 +115,8 @@ export const analyticsRouter = router({
         endDate: z.string(),
       })
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
+      await verifyOwnsCampaign(input.campaignId, ctx.user.id);
       const roi = await calculateCampaignROI(
         input.campaignId,
         new Date(input.startDate),
@@ -89,7 +126,7 @@ export const analyticsRouter = router({
     }),
 
   /**
-   * Get asset performance within campaign
+   * Get asset performance within campaign — ownership verified.
    */
   getAssetPerformance: protectedProcedure
     .input(
@@ -99,7 +136,8 @@ export const analyticsRouter = router({
         endDate: z.string(),
       })
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
+      await verifyOwnsCampaign(input.campaignId, ctx.user.id);
       const performance = await getAssetPerformance(
         input.campaignId,
         new Date(input.startDate),
