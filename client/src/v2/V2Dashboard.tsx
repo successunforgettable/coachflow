@@ -808,7 +808,7 @@ export default function V2Dashboard() {
               return (
                 <div
                   key={k.id}
-                  onClick={() => navigate(`/v2-dashboard/trail/${k.id}`)}
+                  onClick={() => navigate(isComplete ? `/v2-dashboard/campaign-kit/${k.id}` : `/v2-dashboard/trail/${k.id}`)}
                   style={{
                     display: "flex", alignItems: "center", justifyContent: "space-between",
                     padding: "16px 20px", background: "#fff", border: "1px solid #e5e0d8",
