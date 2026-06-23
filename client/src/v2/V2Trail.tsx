@@ -222,6 +222,29 @@ export default function V2Trail() {
     } catch { freshHandoff.current = false; }
   }
 
+  // ── Land-on-node: read ?node=<stopKey>&action=swap from URL ──
+  // Read once on mount, clear from URL so refresh doesn't re-trigger.
+  // Used by Campaign Kit "Select Now" (generate empty node) and "Swap"
+  // (NULL existing selection + regenerate). The driver loop uses the
+  // existing skip-already-populated guard to fast-forward to the target.
+  const landOnNode = useRef<{ stopKey: string; action: "swap" | "generate" } | null>(null);
+  if (landOnNode.current === null && validId) {
+    try {
+      const url = new URL(window.location.href);
+      const nodeParam = url.searchParams.get("node");
+      const actionParam = url.searchParams.get("action");
+      if (nodeParam && AUTO_STEPS.some(s => s.stopKey === nodeParam)) {
+        landOnNode.current = { stopKey: nodeParam, action: actionParam === "swap" ? "swap" : "generate" };
+        // Clear query params from URL without triggering navigation
+        url.searchParams.delete("node");
+        url.searchParams.delete("action");
+        window.history.replaceState({}, "", url.pathname + url.hash);
+      } else {
+        landOnNode.current = { stopKey: "", action: "generate" }; // sentinel: no target
+      }
+    } catch { landOnNode.current = { stopKey: "", action: "generate" }; }
+  }
+
   // ── Live driver messages (this session) + generating stop ──
   const [live, setLive] = useState<ChatMessage[]>([]);
   const liveRef = useRef<ChatMessage[]>([]);
@@ -1551,10 +1574,32 @@ export default function V2Trail() {
     const kit = trailState.data.kit as Record<string, unknown>;
     const path = kit.path as string | null;
     if (path !== null && path !== "auto" && path !== "manual" && path !== "has_assets") return;
-    const hasPending = AUTO_STEPS.some(s => kit[s.field] == null);
-    if (!hasPending) return;
+
+    // Land-on-node: if ?action=swap was requested, NULL the target field
+    // BEFORE evaluating hasPending. This makes the target node pending so
+    // the loop naturally reaches it. The NULL mutation is async, so we
+    // wrap the startup in an async IIFE.
+    const target = landOnNode.current;
+    const needsSwap = target?.stopKey && target.action === "swap";
+    const stepDef = needsSwap ? AUTO_STEPS.find(s => s.stopKey === target.stopKey) : null;
+
+    const hasPendingNow = AUTO_STEPS.some(s => kit[s.field] == null);
+    // If no pending nodes AND no swap target, nothing to do
+    if (!hasPendingNow && !needsSwap) return;
+
     driverStarted.current = true;
-    runUnifiedLoop();
+    (async () => {
+      // Perform the swap NULL if requested
+      if (stepDef && needsSwap) {
+        const kitId = kit.id as number;
+        try {
+          await updateSelection.mutateAsync({ kitId, [stepDef.field]: null } as any);
+          await trailState.refetch(); // refresh kit so the loop sees the nulled field
+        } catch { /* non-fatal — the step will skip if field wasn't cleared */ }
+        addLive({ type: "zappy-bubble", mood: "idle", text: `Swapping your ${stepDef.revealLabel.toLowerCase()} — building a fresh one now.` });
+      }
+      await runUnifiedLoop();
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trailState.data, persisted]);
 
