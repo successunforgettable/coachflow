@@ -233,7 +233,7 @@ function AdCreativesSection({ batchId }: { batchId: string }) {
 }
 
 // ─── Asset content fetcher component ───────────────────────────────────────────
-function AssetSection({ sectionKey, label, step, selectedId, angle, navigate, serviceId, kitId }: {
+function AssetSection({ sectionKey, label, step, selectedId, angle, navigate, serviceId }: {
   sectionKey: string;
   label: string;
   step: string;
@@ -241,7 +241,6 @@ function AssetSection({ sectionKey, label, step, selectedId, angle, navigate, se
   angle?: string;
   navigate: (path: string) => void;
   serviceId?: number;
-  kitId: number;
 }) {
   // Fetch the actual content for each selected asset
   const offerQuery = trpc.offers.get.useQuery({ id: selectedId! }, { enabled: sectionKey === "selectedOfferId" && !!selectedId });
@@ -282,7 +281,7 @@ function AssetSection({ sectionKey, label, step, selectedId, angle, navigate, se
         }}>
           <p style={{ ...previewMuted, marginBottom: "12px" }}>Not selected yet</p>
           <button
-            onClick={() => navigate(`/v2-dashboard/trail/${kitId}?node=${step}`)}
+            onClick={() => navigate(`/v2-dashboard/wizard/${step}`)}
             style={{
               background: "transparent",
               border: "2px solid var(--v2-primary-btn, #FF5B1D)",
@@ -316,7 +315,7 @@ function AssetSection({ sectionKey, label, step, selectedId, angle, navigate, se
           {sectionKey === "selectedWhatsAppSequenceId" && <WhatsAppPreview data={waQuery.data} />}
 
           <button
-            onClick={() => navigate(`/v2-dashboard/trail/${kitId}?node=${step}&action=swap`)}
+            onClick={() => navigate(`/v2-dashboard/wizard/${step}${serviceId ? `?serviceId=${serviceId}` : ""}`)}
             style={{
               marginTop: "12px",
               background: "transparent",
@@ -863,7 +862,6 @@ export default function V2CampaignKit() {
             angle={section.key === "selectedLandingPageId" ? (kit.selectedLandingPageAngle || "original") : undefined}
             navigate={navigate}
             serviceId={serviceId}
-            kitId={kit.id}
           />
         ))}
 
