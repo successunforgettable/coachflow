@@ -4,6 +4,7 @@ import { TRPCError } from "@trpc/server";
 import { getDb } from "../db";
 import { metaAccessTokens } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
+import { encryptToken, decryptToken } from "../_core/tokenCrypto";
 
 /**
  * Meta Ads Manager Integration Router
@@ -170,7 +171,7 @@ export const metaRouter = router({
     tokenUrl.searchParams.set("grant_type", "fb_exchange_token");
     tokenUrl.searchParams.set("client_id", appId);
     tokenUrl.searchParams.set("client_secret", appSecret);
-    tokenUrl.searchParams.set("fb_exchange_token", connection.accessToken);
+    tokenUrl.searchParams.set("fb_exchange_token", decryptToken(connection.accessToken));
 
     const response = await fetch(tokenUrl.toString());
     const data = await response.json();
@@ -189,7 +190,7 @@ export const metaRouter = router({
     await db
       .update(metaAccessTokens)
       .set({
-        accessToken: data.access_token,
+        accessToken: encryptToken(data.access_token),
         tokenExpiresAt: expiresAt,
         lastRefreshedAt: new Date(),
       })
@@ -526,7 +527,7 @@ export const metaRouter = router({
 
     for (const ad of publishedAds) {
       try {
-        const status = await getCampaignStatus(connection.accessToken, ad.metaCampaignId);
+        const status = await getCampaignStatus(decryptToken(connection.accessToken), ad.metaCampaignId);
         
         // Update local database with latest status
         await db

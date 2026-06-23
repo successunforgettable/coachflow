@@ -3,6 +3,7 @@ import { getDb } from "../db";
 import { ghlAccessTokens } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { verifyOAuthState } from "./oauthState";
+import { encryptToken } from "./tokenCrypto";
 
 /**
  * GoHighLevel OAuth Callback Handler — Phase C C3 follow-on 3
@@ -153,8 +154,8 @@ export function registerGhlOAuthRoutes(app: Express) {
       await db.delete(ghlAccessTokens).where(eq(ghlAccessTokens.userId, userId));
       await db.insert(ghlAccessTokens).values({
         userId,
-        accessToken,
-        refreshToken,
+        accessToken: encryptToken(accessToken),
+        refreshToken: refreshToken ? encryptToken(refreshToken) : null,
         tokenExpiresAt: expiresAt,
         locationId,
         locationName,

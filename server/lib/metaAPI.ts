@@ -1,6 +1,7 @@
 import { getDb } from "../db";
 import { metaAccessTokens } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
+import { decryptToken } from "../_core/tokenCrypto";
 
 /**
  * Meta Marketing API Client
@@ -80,7 +81,7 @@ async function getMetaToken(userId: number): Promise<string | null> {
     return null;
   }
 
-  return token.accessToken;
+  return decryptToken(token.accessToken);
 }
 
 /**

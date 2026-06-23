@@ -3,6 +3,7 @@ import { getDb } from "../db";
 import { metaAccessTokens } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { verifyOAuthState } from "./oauthState";
+import { encryptToken } from "./tokenCrypto";
 
 /**
  * Meta OAuth Callback Handler
@@ -144,6 +145,8 @@ export function registerMetaOAuthRoutes(app: Express) {
         .where(eq(metaAccessTokens.userId, userId))
         .limit(1);
 
+      const encryptedToken = encryptToken(accessToken);
+
       if (existing) {
         // Update existing connection — overwrites pageId on reconnect so a
         // user reconnecting after C3 picks up the captured Page even when
@@ -151,7 +154,7 @@ export function registerMetaOAuthRoutes(app: Express) {
         await db
           .update(metaAccessTokens)
           .set({
-            accessToken,
+            accessToken: encryptedToken,
             tokenExpiresAt: expiresAt,
             adAccountId,
             adAccountName,
@@ -163,7 +166,7 @@ export function registerMetaOAuthRoutes(app: Express) {
         // Create new connection
         await db.insert(metaAccessTokens).values({
           userId,
-          accessToken,
+          accessToken: encryptedToken,
           tokenExpiresAt: expiresAt,
           adAccountId,
           adAccountName,

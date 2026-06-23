@@ -17,6 +17,7 @@ import {
   adCreatives,
 } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
+import { encryptToken, decryptToken } from "../_core/tokenCrypto";
 
 const GHL_BASE = "https://services.leadconnectorhq.com";
 
@@ -308,7 +309,7 @@ export const ghlRouter = router({
         const res = await fetch(url, {
           method: "GET",
           headers: {
-            Authorization: `Bearer ${ghl.accessToken}`,
+            Authorization: `Bearer ${decryptToken(ghl.accessToken)}`,
             Version: "2021-07-28",
             Accept: "application/json",
           },
@@ -447,10 +448,11 @@ export const ghlRouter = router({
       const expiresAt = new Date(Date.now() + (tokenData.expires_in || 86400) * 1000);
 
       await db.delete(ghlAccessTokens).where(eq(ghlAccessTokens.userId, ctx.user.id));
+      const rawRefresh = tokenData.refresh_token || null;
       await db.insert(ghlAccessTokens).values({
         userId: ctx.user.id,
-        accessToken: tokenData.access_token,
-        refreshToken: tokenData.refresh_token || null,
+        accessToken: encryptToken(tokenData.access_token),
+        refreshToken: rawRefresh ? encryptToken(rawRefresh) : null,
         tokenExpiresAt: expiresAt,
         locationId: tokenData.locationId || null,
         locationName: null,
@@ -520,7 +522,7 @@ export const ghlRouter = router({
       };
 
       const headers: Record<string, string> = {
-        Authorization: `Bearer ${ghl.accessToken}`,
+        Authorization: `Bearer ${decryptToken(ghl.accessToken)}`,
         "Content-Type": "application/json",
         Version: "2021-07-28",
       };
