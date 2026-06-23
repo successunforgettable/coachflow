@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { getDb } from "../db";
 import { metaAccessTokens } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
+import { verifyOAuthState } from "./oauthState";
 
 /**
  * Meta OAuth Callback Handler
@@ -23,9 +24,10 @@ export function registerMetaOAuthRoutes(app: Express) {
         return res.redirect("/settings/integrations?meta_error=missing_params");
       }
 
-      const userId = parseInt(state as string, 10);
-      if (isNaN(userId)) {
-        console.error("[Meta OAuth] Invalid user ID in state");
+      // Verify HMAC-signed state token to prevent OAuth CSRF attacks
+      const userId = verifyOAuthState(state as string);
+      if (userId === null) {
+        console.error("[Meta OAuth] Invalid or expired state token");
         return res.redirect("/settings/integrations?meta_error=invalid_state");
       }
 

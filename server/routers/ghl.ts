@@ -398,7 +398,9 @@ export const ghlRouter = router({
       "funnels/redirect.write",
       "workflows.readonly",
     ].join(" ");
-    const state = String(ctx.user.id);
+    // HMAC-signed state token — prevents OAuth CSRF / token-binding attacks.
+    const { signOAuthState } = await import("../_core/oauthState");
+    const state = signOAuthState(ctx.user.id);
 
     const versionId = process.env.GHL_APP_VERSION_ID || "69af3395095745d484bc1b18";
     const url = `https://marketplace.gohighlevel.com/oauth/chooselocation?response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&client_id=${clientId}&scope=${encodeURIComponent(scopes)}&state=${state}&version_id=${versionId}`;

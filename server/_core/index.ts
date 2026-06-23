@@ -891,25 +891,9 @@ Never return IDs that don't exist in the provided list.`,
     }
   });
 
-  // Temporary debug: save ZIP to disk (remove after evidence capture)
-  app.post("/api/debug-save-zip", async (req, res) => {
-    try {
-      const chunks: Buffer[] = [];
-      req.on("data", (c) => chunks.push(c));
-      req.on("end", () => {
-        const body = JSON.parse(Buffer.concat(chunks).toString());
-        const buf = Buffer.from(body.data, "base64");
-        const fsSync = require("fs");
-        fsSync.writeFileSync("/tmp/campaign-debug-export.zip", buf);
-        res.json({ ok: true, size: buf.length });
-      });
-    } catch (e: any) {
-      res.status(500).json({ error: e.message });
-    }
-  });
-
-  // TEMP: E2E test login endpoint (dev/preview only — not in production)
-  if (process.env.NODE_ENV !== "production") {
+  // E2E test login endpoint — development only (positive check: must be
+  // exactly "development", not a negative check against "production").
+  if (process.env.NODE_ENV === "development") {
     app.get("/api/test-login/:openId", async (req, res) => {
       try {
         const { COOKIE_NAME, ONE_YEAR_MS } = await import("../../shared/const");

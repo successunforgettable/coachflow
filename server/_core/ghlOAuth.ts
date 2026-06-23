@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { getDb } from "../db";
 import { ghlAccessTokens } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
+import { verifyOAuthState } from "./oauthState";
 
 /**
  * GoHighLevel OAuth Callback Handler — Phase C C3 follow-on 3
@@ -62,9 +63,10 @@ export function registerGhlOAuthRoutes(app: Express) {
         return res.redirect(errorRedirectUrl("missing_params"));
       }
 
-      const userId = parseInt(state as string, 10);
-      if (isNaN(userId)) {
-        console.error("[GHL OAuth] Invalid user ID in state");
+      // Verify HMAC-signed state token to prevent OAuth CSRF attacks
+      const userId = verifyOAuthState(state as string);
+      if (userId === null) {
+        console.error("[GHL OAuth] Invalid or expired state token");
         return res.redirect(errorRedirectUrl("invalid_state"));
       }
 

@@ -71,7 +71,10 @@ export const metaRouter = router({
     // pages_manage_ads deliberately omitted — Page-as-creative-author works
     // with ads_management + the user's existing admin role on the Page.
     oauthUrl.searchParams.set("scope", "ads_management,ads_read,business_management,pages_show_list,pages_read_engagement");
-    oauthUrl.searchParams.set("state", ctx.user.id.toString()); // Pass user ID for callback
+    // HMAC-signed state token — prevents OAuth CSRF / token-binding attacks.
+    // The callback verifies the signature before trusting the userId.
+    const { signOAuthState } = await import("../_core/oauthState");
+    oauthUrl.searchParams.set("state", signOAuthState(ctx.user.id));
     oauthUrl.searchParams.set("response_type", "code");
 
     return { url: oauthUrl.toString() };
