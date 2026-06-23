@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 const navLinks = [
   { label: "Dashboard", href: "/admin", exact: true },
@@ -16,7 +17,24 @@ interface AdminLayoutProps {
 }
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
-  const [path] = useLocation();
+  const [path, navigate] = useLocation();
+  const { user, loading } = useAuth();
+
+  // Auth + role guard: gate the ENTIRE admin subtree.
+  // - While loading: render nothing (no sidebar, no content, no queries fire)
+  // - Resolved with no user: redirect to /login
+  // - Resolved with non-admin user: redirect to /v2-dashboard
+  // - Resolved with admin user: render normally
+  // Signal: loading===false && (!user || user.role!=="admin")
+  if (loading) return null;
+  if (!user) {
+    window.location.href = "/login";
+    return null;
+  }
+  if (user.role !== "admin") {
+    navigate("/v2-dashboard", { replace: true });
+    return null;
+  }
 
   const isActive = (href: string, exact?: boolean) => {
     if (exact) return path === href;

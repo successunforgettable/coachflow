@@ -1,5 +1,5 @@
 /**
- * V2Layout — Sprint 1 (updated Sprint 5, nav added Sprint 7 red-team)
+ * V2Layout — Sprint 1 (updated Sprint 5, nav Sprint 7, auth guard Sprint 7)
  *
  * ISOLATION CONTRACT:
  * - Imports v2-theme.css ONLY here. No other file imports it.
@@ -8,6 +8,17 @@
  * - Renders children inside a full-screen cream container.
  * - On mount, overrides html/body background to cream to prevent dark theme bleed.
  * - On unmount, restores original html/body background.
+ *
+ * AUTH GUARD:
+ * - Calls useAuth() and gates the entire subtree on auth resolution.
+ * - While auth.me is loading: renders a minimal loading indicator. Children
+ *   are NOT mounted, so no page-level tRPC queries fire (they live inside
+ *   the page components which are {children} — unmounted = no hooks run).
+ * - If auth resolves with no user (loading=false, user=null): redirects to
+ *   /login. Children never mount, no data leaks, no broken error screens.
+ * - If auth resolves with a user: renders children normally.
+ * - Signal: `loading === false && user === null` — keyed off the definite
+ *   resolved-and-empty state, never the transient loading state.
  *
  * NAVIGATION:
  * - Renders a persistent back link at top-left of every V2 page.
@@ -18,6 +29,7 @@
  */
 import { useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
+import { useAuth } from "@/_core/hooks/useAuth";
 import "./v2-theme.css";
 
 interface V2LayoutProps {
@@ -33,6 +45,7 @@ const FONT_BODY = "'Instrument Sans', sans-serif";
 
 export default function V2Layout({ children, backLabel = "Dashboard", backHref = "/v2-dashboard" }: V2LayoutProps) {
   const [, navigate] = useLocation();
+  const { user, loading } = useAuth();
 
   useEffect(() => {
     const prevHtmlBg = document.documentElement.style.backgroundColor;
@@ -53,10 +66,41 @@ export default function V2Layout({ children, backLabel = "Dashboard", backHref =
     };
   }, []);
 
+  // Auth redirect: only on definite resolved-and-empty, never on loading.
+  useEffect(() => {
+    if (loading) return; // still resolving — do nothing
+    if (!user) {
+      window.location.href = "/login";
+    }
+  }, [loading, user]);
+
   const handleBack = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     if (backHref) navigate(backHref);
   }, [backHref, navigate]);
+
+  // Gate: while auth is loading or user is absent, do NOT render children.
+  // This prevents page-level tRPC queries from firing (hooks inside children
+  // don't run when children aren't mounted) and prevents content flash.
+  if (loading || !user) {
+    return (
+      <div
+        data-v2=""
+        style={{
+          minHeight: "100vh",
+          width: "100%",
+          backgroundColor: V2_BG,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <span style={{ fontFamily: FONT_BODY, fontSize: 14, color: "#999", opacity: 0.6 }}>
+          Loading…
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div
