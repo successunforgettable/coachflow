@@ -186,15 +186,28 @@ export const appRouter = router({
         // If any step fails, the entire operation rolls back — no partially
         // scrubbed account left behind.
         await db.transaction(async (tx) => {
+          const uid = ctx.user.id;
           // NO-ACTION FK tables: clean up before the CASCADE delete
-          await tx.execute(sql`UPDATE admin_audit_log SET target_user_id = NULL WHERE target_user_id = ${ctx.user.id}`);
-          await tx.execute(sql`DELETE FROM admin_audit_log WHERE admin_user_id = ${ctx.user.id}`);
-          await tx.execute(sql`DELETE FROM user_notes WHERE user_id = ${ctx.user.id} OR admin_user_id = ${ctx.user.id}`);
-          await tx.execute(sql`UPDATE content_flags SET resolved_by = NULL WHERE resolved_by = ${ctx.user.id}`);
-          await tx.execute(sql`DELETE FROM content_flags WHERE user_id = ${ctx.user.id}`);
+          await tx.execute(sql`UPDATE admin_audit_log SET target_user_id = NULL WHERE target_user_id = ${uid}`);
+          await tx.execute(sql`DELETE FROM admin_audit_log WHERE admin_user_id = ${uid}`);
+          await tx.execute(sql`DELETE FROM user_notes WHERE user_id = ${uid} OR admin_user_id = ${uid}`);
+          await tx.execute(sql`UPDATE content_flags SET resolved_by = NULL WHERE resolved_by = ${uid}`);
+          await tx.execute(sql`DELETE FROM content_flags WHERE user_id = ${uid}`);
 
-          // Delete user row — CASCADE handles all other 32 FK tables
-          await tx.delete(users).where(eq(users.id, ctx.user.id));
+          // Tables with userId column but NO FK constraint in the actual DB
+          // (Drizzle schema declares them but migrations never added the FK).
+          // Must delete explicitly — CASCADE won't reach these.
+          await tx.execute(sql`DELETE FROM campaignKits WHERE userId = ${uid}`);
+          await tx.execute(sql`DELETE FROM coachAssets WHERE userId = ${uid}`);
+          await tx.execute(sql`DELETE FROM ghl_access_tokens WHERE userId = ${uid}`);
+          await tx.execute(sql`DELETE FROM meta_access_tokens WHERE userId = ${uid}`);
+          await tx.execute(sql`DELETE FROM jobs WHERE userId = ${String(uid)}`);
+          await tx.execute(sql`DELETE FROM testimonials WHERE userId = ${uid}`);
+          await tx.execute(sql`DELETE FROM product_events WHERE userId = ${uid}`);
+          await tx.execute(sql`DELETE FROM phrase_usage_stats WHERE userId = ${uid}`);
+
+          // Delete user row — CASCADE handles remaining FK-constrained tables
+          await tx.delete(users).where(eq(users.id, uid));
         });
 
         // Clear session cookie (outside transaction — cookie is non-transactional)
