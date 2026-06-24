@@ -507,6 +507,15 @@ export default function V2Trail() {
       if (manualResolve.current) { manualResolve.current(); manualResolve.current = null; }
       return;
     }
+    // B2 fix: swap-coherence chips ("Just change the offer", "Change everything to match")
+    // Both resolve the manual-proceed promise; the driver distinguishes via user-bubble text.
+    if (chip.startsWith("Just change the") || chip === "Change everything to match") {
+      const echo = addLive({ type: "user-bubble", text: chip });
+      persistMsgs([echo]);
+      dealMoreChipChoice.current = "lock";
+      if (manualResolve.current) { manualResolve.current(); manualResolve.current = null; }
+      return;
+    }
     // Sprint 4 C3: mid-campaign path switching
     if (chip === "Let me pick from here" || chip === "Let Zappy take over") {
       const newPath = chip === "Let Zappy take over" ? "auto" : "manual";
