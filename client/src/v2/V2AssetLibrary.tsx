@@ -7,6 +7,7 @@ import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
+import V2Layout from "./V2Layout";
 
 // ─── Campaign Kit download helper ────────────────────────────────────────────
 function triggerZipDownload(base64: string, filename: string) {
@@ -278,14 +279,8 @@ export default function V2AssetLibrary() {
   }, [zappyQuery, filteredImages, filteredVideos, copyAssets]);
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: T.bg, overflowY: "auto", zIndex: 1 }}>
+    <V2Layout backLabel="Dashboard" backHref="/v2-dashboard">
     <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 24px 80px" }}>
-      {/* Back link */}
-      <a href="/v2-dashboard" onClick={e => { e.preventDefault(); navigate("/v2-dashboard"); }}
-        style={{ fontFamily: T.fontB, fontSize: 13, color: T.muted, textDecoration: "none", display: "block", marginBottom: 12 }}>
-        ← Back to Dashboard
-      </a>
-
       {/* Header */}
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ fontFamily: T.fontH, fontStyle: "italic", fontWeight: 900, fontSize: 28, color: T.dark, margin: 0 }}>Asset Library</h1>
@@ -605,6 +600,6 @@ export default function V2AssetLibrary() {
         </>
       )}
     </div>
-    </div>
+    </V2Layout>
   );
 }

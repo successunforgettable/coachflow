@@ -18,7 +18,7 @@ import { users, emailVerificationTokens } from "../../drizzle/schema";
 import { getSessionCookieOptions } from "./cookies";
 import { sdk } from "./sdk";
 import { ENV } from "./env";
-import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
+import { COOKIE_NAME } from "@shared/const";
 import { Resend } from "resend";
 import { isRateLimited, getClientIp } from "./rateLimit";
 
@@ -40,13 +40,16 @@ function getBaseUrl(): string {
   return (ENV.appUrl || "https://zapcampaigns.com").replace(/\/$/, "");
 }
 
+/** 30-day session expiry — aligned with native auth (F6 policy). */
+const SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+
 async function createSession(req: Request, res: Response, openId: string, name: string) {
   const sessionToken = await sdk.createSessionToken(openId, {
     name,
-    expiresInMs: ONE_YEAR_MS,
+    expiresInMs: SESSION_MAX_AGE_MS,
   });
   const cookieOptions = getSessionCookieOptions(req);
-  res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+  res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: SESSION_MAX_AGE_MS });
 }
 
 async function upsertUserByEmail(

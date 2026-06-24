@@ -8,6 +8,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { publicProcedure, protectedProcedure, router } from "../_core/trpc";
+import { isRateLimited, getClientIp } from "../_core/rateLimit";
 import { getDb } from "../db";
 import { videos, videoScripts, videoCredits, videoCreditTransactions } from "../../drizzle/schema";
 import { eq, desc, and } from "drizzle-orm";
@@ -73,6 +74,10 @@ export const videosRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      const ip = getClientIp(ctx.req);
+      if (isRateLimited(`video-generate:${ip}`, 5)) {
+        throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many render requests. Please wait a few minutes." });
+      }
       console.log(`[Video Render] Received — visualStyle: ${input.visualStyle}, duration: ${input.duration ?? "not sent"}, brandColor: ${input.brandColor}, scriptId: ${input.scriptId}`);
 
       const db = await getDb();
