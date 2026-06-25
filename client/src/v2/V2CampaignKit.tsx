@@ -316,7 +316,10 @@ function AssetSection({ sectionKey, label, step, selectedId, angle, navigate, se
           {sectionKey === "selectedWhatsAppSequenceId" && <WhatsAppPreview data={waQuery.data} />}
 
           <button
-            onClick={() => navigate(`/v2-dashboard/trail/${kitId}?node=${step}&action=swap`)}
+            onClick={() => {
+              if (!window.confirm(`Swap your ${label.toLowerCase()}? This will take you to the trail to pick a new one.`)) return;
+              navigate(`/v2-dashboard/trail/${kitId}?node=${step}&action=swap`);
+            }}
             style={{
               marginTop: "12px",
               background: "transparent",

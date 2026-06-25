@@ -131,6 +131,15 @@ export async function runLandingPagePublish(
       })
     : buildTextStyleHtml(content, serviceName);
 
+  // 6b. B5 hard publish gate: block publish if unfilled placeholders remain.
+  const unfilledTokens = html.match(/\[INSERT_[A-Z_0-9]+\]/g);
+  if (unfilledTokens && unfilledTokens.length > 0) {
+    const unique = Array.from(new Set(unfilledTokens));
+    throw new Error(
+      `Landing page has ${unique.length} unfilled placeholder${unique.length === 1 ? "" : "s"}: ${unique.slice(0, 5).join(", ")}${unique.length > 5 ? ` and ${unique.length - 5} more` : ""}. Fill them in the Campaign Kit before publishing.`
+    );
+  }
+
   // 7. Cloudflare KV write + worker deploy. Both calls can throw on
   // transient errors (network, Cloudflare API quota, KV unavailable);
   // caller decides whether to retry or treat as non-fatal.

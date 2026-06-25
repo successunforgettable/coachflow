@@ -981,8 +981,10 @@ export default function V2Trail() {
 
     // ── Testimonial prompt: offer before the cascade if no testimonials exist ──
     // Only on the first run (not resume with partially-generated nodes).
+    // B8: skip on swap — the testimonial prompt is for fresh campaigns, not regen.
+    const isSwapRegen = landOnNode.current?.action === "swap";
     const firstPending = AUTO_STEPS.find(s => kit[s.field] == null);
-    if (firstPending?.step === "offer" && serviceId) {
+    if (firstPending?.step === "offer" && serviceId && !isSwapRegen) {
       // Check if service already has testimonials
       try {
         const svcCheck = await utils.services.get.fetch({ id: serviceId }) as Record<string, unknown> | null;
@@ -1341,8 +1343,10 @@ export default function V2Trail() {
     let kit = kit0;
 
     // ── Testimonial prompt (same as auto-loop) ──
+    // B8: skip on swap — testimonial prompt is for fresh campaigns only.
+    const manualIsSwapRegen = landOnNode.current?.action === "swap";
     const manualFirstPending = AUTO_STEPS.find(s => kit[s.field] == null);
-    if (manualFirstPending?.step === "offer" && serviceId) {
+    if (manualFirstPending?.step === "offer" && serviceId && !manualIsSwapRegen) {
       try {
         const svcCheck = await utils.services.get.fetch({ id: serviceId }) as Record<string, unknown> | null;
         const hasTestimonials = svcCheck?.testimonial1Name || svcCheck?.testimonial2Name;

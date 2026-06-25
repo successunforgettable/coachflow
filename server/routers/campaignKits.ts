@@ -436,7 +436,7 @@ export const campaignKitsRouter = router({
         .where(and(eq(campaignKits.id, input.kitId), eq(campaignKits.userId, ctx.user.id)))
         .limit(1);
 
-      if (!kit) throw new TRPCError({ code: "NOT_FOUND", message: `Campaign kit ${input.kitId} not found for user ${ctx.user.id}` });
+      if (!kit) throw new TRPCError({ code: "NOT_FOUND", message: "Campaign kit not found" });
 
       return kit;
     }),

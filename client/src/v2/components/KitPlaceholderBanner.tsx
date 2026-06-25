@@ -85,7 +85,7 @@ export default function KitPlaceholderBanner({ report, onReviewClick, compact = 
         Some content still needs your details before publishing
       </p>
       <p style={{ fontSize: 14, color: "#555", margin: "0 0 14px", lineHeight: 1.55 }}>
-        ZAP generated <strong>{report.total} placeholder{report.total === 1 ? "" : "s"}</strong> {exampleTokens.length > 0 && <>(like <code style={{ background: "#F5F1EA", padding: "1px 6px", borderRadius: 4, fontSize: 12 }}>{exampleTokens.join("</code>, <code style={{ background: '#F5F1EA', padding: '1px 6px', borderRadius: 4, fontSize: 12 }}>")}</code>) </>}
+        ZAP generated <strong>{report.total} placeholder{report.total === 1 ? "" : "s"}</strong> {exampleTokens.length > 0 && <>(like {exampleTokens.map((token, i) => (<span key={i}>{i > 0 && ", "}<code style={{ background: "#F5F1EA", padding: "1px 6px", borderRadius: 4, fontSize: 12 }}>{token}</code></span>))}) </>}
         across <strong>{assetEntries.length} asset{assetEntries.length === 1 ? "" : "s"}</strong>. These are intentional — ZAP does not invent your pricing, guarantee terms, cohort dates, or programme duration. Fill them in before pushing to Meta, GHL, or sending to leads.
       </p>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
