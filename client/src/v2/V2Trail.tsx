@@ -469,10 +469,10 @@ export default function V2Trail() {
       const reveal = await buildReveal(stepDef, (refreshed.data?.kit ?? {}) as Record<string, unknown>);
       const safeReveal = getRevealLine(step);
       if (safeReveal) addLive({ type: "zappy-bubble", mood: "celebrating", text: safeReveal });
-      const divider = addLive({ type: "system-divider", text: `${stepDef.revealLabel} rewritten safe` });
+      const divider = addLive({ type: "system-divider", nodeKey: stepDef.stopKey, text: `${stepDef.revealLabel} rewritten safe` });
       const card = addLive({ type: "asset-reveal-card", nodeKey: stepDef.stopKey, reveal });
       offerChips(step, stepDef.tweakable);
-      await persistMsgs([working, divider, card]);
+      await persistMsgs([divider, card]);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "rewrite failed";
       addLive({ type: "zappy-bubble", mood: "idle", text: `Couldn't get a safe rewrite through (${msg}). Your wording stays — you can revisit it in the Kit.` });
@@ -639,7 +639,7 @@ export default function V2Trail() {
     const reveal = await buildReveal(stepDef, kit);
     const revealLine = getRevealLine("adCreatives");
     if (revealLine) addLive({ type: "zappy-bubble", mood: "celebrating", text: revealLine });
-    const divider = addLive({ type: "system-divider", text: "Ad Images refreshed" });
+    const divider = addLive({ type: "system-divider", nodeKey: "adCreatives", text: "Ad Images refreshed" });
     const card = addLive({ type: "asset-reveal-card", nodeKey: "adCreatives", reveal });
     setGeneratingKey(null);
     offerChips("adCreatives", false);
@@ -726,7 +726,7 @@ export default function V2Trail() {
       const reveal = await buildReveal(stepDef, kit);
       const rl = getRevealLine(stepDef.step);
       if (rl) addLive({ type: "zappy-bubble", mood: "celebrating", text: rl });
-      const divider = addLive({ type: "system-divider", text: `${stepDef.revealLabel} refreshed` });
+      const divider = addLive({ type: "system-divider", nodeKey: stepDef.stopKey, text: `${stepDef.revealLabel} refreshed` });
       const card = addLive({ type: "asset-reveal-card", nodeKey: stepDef.stopKey, reveal });
       setGeneratingKey(null);
       await persistMsgs([divider, card]);
@@ -879,7 +879,7 @@ export default function V2Trail() {
         const reveal = await buildReveal(stepDef, kit);
         const tweakReveal = getRevealLine(step);
         if (tweakReveal) addLive({ type: "zappy-bubble", mood: "celebrating", text: tweakReveal });
-        const divider = addLive({ type: "system-divider", text: `${stepDef.revealLabel} updated` });
+        const divider = addLive({ type: "system-divider", nodeKey: stepDef.stopKey, text: `${stepDef.revealLabel} updated` });
         const card = addLive({ type: "asset-reveal-card", nodeKey: stepDef.stopKey, reveal });
 
         // ── Tweak-stale propagation: mark downstream nodes stale ──
@@ -908,19 +908,19 @@ export default function V2Trail() {
               });
               const row = addLive({ type: "chip-row", chips: ["Rebuild to match", "Leave them — they still work"] });
               activeChips.current = { msgId: row.id, step: stepDef.step };
-              persistMsgs([opener, divider, card, warn, confirmWarn]);
+              persistMsgs([divider, card, warn, confirmWarn]);
             } else {
               offerChips(step, stepDef.tweakable);
-              await persistMsgs([opener, divider, card]);
+              await persistMsgs([divider, card]);
             }
           } catch {
             // Non-fatal: stale propagation failed, still show the tweak result
             offerChips(step, stepDef.tweakable);
-            await persistMsgs([opener, divider, card]);
+            await persistMsgs([divider, card]);
           }
         } else {
           offerChips(step, stepDef.tweakable);
-          await persistMsgs([opener, divider, card]);
+          await persistMsgs([divider, card]);
         }
       } catch (err) {
         working.stop();
@@ -1103,10 +1103,14 @@ export default function V2Trail() {
       const reveal = await buildReveal(stepDef, kit);
       const revealLine = getRevealLine(stepDef.step);
       if (revealLine) addLive({ type: "zappy-bubble", mood: "celebrating", text: revealLine });
-      const divider = addLive({ type: "system-divider", text: `${stepDef.revealLabel} ready` });
+      const divider = addLive({ type: "system-divider", nodeKey: stepDef.stopKey, text: `${stepDef.revealLabel} ready` });
       const card = addLive({ type: "asset-reveal-card", nodeKey: stepDef.stopKey, reveal });
       setGeneratingKey(null);
-      const toPersist: ChatMessage[] = [narration.line1, divider, card];
+      // B6: only persist narration on first generation, not regen/swap
+      const hasExistingCard = (persisted ?? []).some(
+        m => m.type === "asset-reveal-card" && m.nodeKey === stepDef.stopKey
+      );
+      const toPersist: ChatMessage[] = hasExistingCard ? [divider, card] : [narration.line1, divider, card];
 
       // C4: sub-100 honesty on scored nodes — surface it, offer the W5
       // rewrite or keep-wording choice. Never fake a 100.
@@ -1172,7 +1176,12 @@ export default function V2Trail() {
     const row = addLive({ type: "chip-row", chips: ["Open my Campaign Kit", "Review piece by piece"] });
     activeChips.current = null; // completion chips handled by name, not node
     void row;
-    await persistMsgs([doneBadge, done1, done2]);
+    // B6: server dedup replaces old CAMPAIGN COMPLETE badge; done1/done2 only
+    // persist on first completion (subsequent completions show in live only).
+    const hasCompletionAlready = (persisted ?? []).some(
+      m => m.type === "milestone-badge" && m.milestone?.name === "CAMPAIGN COMPLETE"
+    );
+    await persistMsgs(hasCompletionAlready ? [doneBadge] : [doneBadge, done1, done2]);
   };
 
   // C4: one real-ICP insight per milestone. Pulls the first line of the
@@ -1446,7 +1455,7 @@ export default function V2Trail() {
         const reveal = await buildReveal(stepDef, kit);
         const manReveal = getRevealLine(stepDef.step);
         if (manReveal) addLive({ type: "zappy-bubble", mood: "celebrating", text: manReveal });
-        const divider = addLive({ type: "system-divider", text: `${stepDef.revealLabel} ready` });
+        const divider = addLive({ type: "system-divider", nodeKey: stepDef.stopKey, text: `${stepDef.revealLabel} ready` });
         const card = addLive({ type: "asset-reveal-card", nodeKey: stepDef.stopKey, reveal });
         setGeneratingKey(null);
         const toPersist: ChatMessage[] = [divider, card];
@@ -1540,7 +1549,7 @@ export default function V2Trail() {
       const cards = await fetchDeckCards(stepDef, serviceId, jobResult);
       const deckReveal = getRevealLine(stepDef.step);
       if (deckReveal) addLive({ type: "zappy-bubble", mood: "celebrating", text: deckReveal });
-      const divider = addLive({ type: "system-divider", text: `${stepDef.revealLabel} ready — pick your favourite` });
+      const divider = addLive({ type: "system-divider", nodeKey: stepDef.stopKey, text: `${stepDef.revealLabel} ready — pick your favourite` });
       const deckMsg = addLive({
         type: "card-deck",
         nodeKey: stepDef.stopKey,
@@ -1658,7 +1667,11 @@ export default function V2Trail() {
     collapsePreviousChips();
     addLive({ type: "chip-row", chips: ["Open my Campaign Kit", "Review piece by piece"] });
     activeChips.current = null;
-    await persistMsgs([doneBadge, done1, done2]);
+    // B6: same completion dedup as auto loop
+    const hasCompletionAlreadyM = (persisted ?? []).some(
+      m => m.type === "milestone-badge" && m.milestone?.name === "CAMPAIGN COMPLETE"
+    );
+    await persistMsgs(hasCompletionAlreadyM ? [doneBadge] : [doneBadge, done1, done2]);
   };
 
   // ── Sprint 4 C3: unified driver with per-node path check for mid-run switching ──

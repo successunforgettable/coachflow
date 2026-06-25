@@ -141,9 +141,27 @@ export const trailRouter = router({
 
       if (existing) {
         const current = Array.isArray(existing.messages) ? existing.messages as unknown[] : [];
+        // B6: deduplicate divider+card per nodeKey — incoming replaces old
+        const incoming = input.messages as Array<Record<string, unknown>>;
+        const replaceKeys = new Set<string>();
+        for (const m of incoming) {
+          if (m.nodeKey && (m.type === "system-divider" || m.type === "asset-reveal-card")) {
+            replaceKeys.add(`${m.type}:${m.nodeKey}`);
+          }
+          if (m.type === "milestone-badge" && (m as any).milestone?.name === "CAMPAIGN COMPLETE") {
+            replaceKeys.add("milestone-badge:CAMPAIGN_COMPLETE");
+          }
+        }
+        const dedupedCurrent = replaceKeys.size > 0
+          ? current.filter((m: any) => {
+              if (m.nodeKey && replaceKeys.has(`${m.type}:${m.nodeKey}`)) return false;
+              if (m.type === "milestone-badge" && m.milestone?.name === "CAMPAIGN COMPLETE" && replaceKeys.has("milestone-badge:CAMPAIGN_COMPLETE")) return false;
+              return true;
+            })
+          : current;
         await db
           .update(chatTranscripts)
-          .set({ messages: [...current, ...input.messages] })
+          .set({ messages: [...dedupedCurrent, ...incoming] })
           .where(eq(chatTranscripts.id, existing.id));
       } else {
         await db.insert(chatTranscripts).values({
