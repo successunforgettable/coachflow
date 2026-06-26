@@ -20,7 +20,9 @@ export type SectionKey =
 export interface CoachAssetOptions {
   headshotUrl?: string | null;
   logoUrl?: string | null;
+  heroImageUrl?: string | null;
   socialProofUrls?: string[];
+  pressLogoUrls?: string[];
   coachName?: string | null;
   coachBackground?: string | null;
 }

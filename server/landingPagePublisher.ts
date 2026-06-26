@@ -33,7 +33,7 @@
  */
 import { getDb } from "./db";
 import { landingPages, services, users, coachAssets } from "../drizzle/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, or, isNull } from "drizzle-orm";
 
 export type RunLandingPagePublishInput = {
   userId: number;
@@ -100,13 +100,22 @@ export async function runLandingPagePublish(
     .limit(1);
   const coachName = coachProfileRow?.coachName ?? null;
   const coachBackground = coachProfileRow?.coachBackground ?? null;
+  // Fetch per-user assets (landingPageId IS NULL) + per-LP assets (landingPageId = this LP)
   const assetRows = await db
     .select({ assetType: coachAssets.assetType, url: coachAssets.url })
     .from(coachAssets)
-    .where(eq(coachAssets.userId, input.userId));
+    .where(and(
+      eq(coachAssets.userId, input.userId),
+      or(
+        isNull(coachAssets.landingPageId),
+        eq(coachAssets.landingPageId, input.landingPageId),
+      ),
+    ));
   const headshotUrl = assetRows.find(a => a.assetType === "headshot")?.url ?? null;
   const logoUrl = assetRows.find(a => a.assetType === "logo")?.url ?? null;
+  const heroImageUrl = assetRows.find(a => a.assetType === "hero_image")?.url ?? null;
   const socialProofUrls = assetRows.filter(a => a.assetType === "social_proof").map(a => a.url);
+  const pressLogoUrls = assetRows.filter(a => a.assetType === "press_logo").map(a => a.url);
 
   // 5. Slug: re-use existing if already published, else generate stable.
   // ${serviceName-lowercased-hyphenated}-${lpId} is deterministic per LP
@@ -130,7 +139,9 @@ export async function runLandingPagePublish(
     html = renderTemplate(content, template, {
       headshotUrl,
       logoUrl,
+      heroImageUrl,
       socialProofUrls,
+      pressLogoUrls,
       coachName,
       coachBackground,
     }, lpPageType);

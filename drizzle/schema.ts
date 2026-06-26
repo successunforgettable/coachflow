@@ -1259,10 +1259,15 @@ export type InsertSystemHealthMetric = typeof systemHealthMetrics.$inferInsert;
 export const coachAssets = mysqlTable("coachAssets", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
-  assetType: varchar("assetType", { length: 50 }).notNull(), // 'headshot', 'logo', 'social_proof'
+  // Per-LP scoping: NULL = per-user (headshot, logo, press_logo, social_proof),
+  // set = per-landing-page (hero_image). Migration 0082.
+  landingPageId: int("landingPageId").references(() => landingPages.id, { onDelete: "cascade" }),
+  assetType: varchar("assetType", { length: 50 }).notNull(), // 'headshot', 'logo', 'social_proof', 'hero_image', 'press_logo'
   url: text("url").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => ({
+  landingPageIdIdx: index("idx_coachAssets_landingPageId").on(table.landingPageId),
+}));
 export type CoachAsset = typeof coachAssets.$inferSelect;
 export type InsertCoachAsset = typeof coachAssets.$inferInsert;
 

@@ -402,6 +402,43 @@ async function startServer() {
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
+  // ── Coach asset upload (Cloudinary) ────────────────────────────────────────
+  // Regression fix: endpoint deleted in commit 605909f (B0 port, April 2026).
+  // Client (AssetUploadPanel) POSTs FormData to /api/upload-asset; this handler
+  // accepts the file via multer memoryStorage, uploads to Cloudinary via
+  // storagePut, and returns { url: cloudinarySecureUrl }.
+  {
+    const assetUpload = multer({
+      storage: multer.memoryStorage(),
+      limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
+      fileFilter: (_req: any, file: any, cb: any) => {
+        const allowed = ["image/jpeg", "image/png", "image/webp"];
+        if (allowed.includes(file.mimetype)) cb(null, true);
+        else cb(new Error("Only JPEG, PNG, and WebP images are allowed"));
+      },
+    });
+
+    app.post("/api/upload-asset", assetUpload.single("file"), async (req, res) => {
+      try {
+        let user: { id: number | string } | null = null;
+        try { user = await sdk.authenticateRequest(req); } catch { /* */ }
+        if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+        const file = (req as any).file;
+        if (!file) { res.status(400).json({ error: "No file provided" }); return; }
+
+        const { storagePut } = await import("../storage");
+        const key = `coach-assets/${user.id}/${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+        const { url } = await storagePut(key, file.buffer, file.mimetype);
+        res.json({ url });
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error("[upload-asset] Error:", msg);
+        res.status(400).json({ error: msg });
+      }
+    });
+  }
+
   // ── Document upload for has-assets extraction ─────────────────────────────
   const docUpload = multer({
     dest: path.join(process.cwd(), "tmp-uploads"),

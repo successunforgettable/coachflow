@@ -83,26 +83,38 @@ export const userRouter = router({
   }),
 
   /**
-   * Save a coach asset (headshot, logo, social_proof)
+   * Save a coach asset (headshot, logo, social_proof, hero_image, press_logo)
+   * Singular types (headshot, logo, hero_image) replace existing on save.
+   * Plural types (social_proof, press_logo) accumulate.
+   * Per-LP assets (hero_image) require landingPageId.
    */
   saveCoachAsset: protectedProcedure
     .input(z.object({
-      assetType: z.enum(["headshot", "logo", "social_proof"]),
+      assetType: z.enum(["headshot", "logo", "social_proof", "hero_image", "press_logo"]),
       url: z.string().url(),
+      landingPageId: z.number().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
-      // For headshot and logo, replace existing (only one allowed)
-      if (input.assetType === "headshot" || input.assetType === "logo") {
-        await db.delete(coachAssets).where(
-          and(eq(coachAssets.userId, ctx.user.id), eq(coachAssets.assetType, input.assetType))
-        );
+      // Singular types: replace existing (only one allowed per scope)
+      const singularTypes = ["headshot", "logo", "hero_image"];
+      if (singularTypes.includes(input.assetType)) {
+        const conditions = [
+          eq(coachAssets.userId, ctx.user.id),
+          eq(coachAssets.assetType, input.assetType),
+        ];
+        // hero_image is per-LP; headshot/logo are per-user
+        if (input.assetType === "hero_image" && input.landingPageId) {
+          conditions.push(eq(coachAssets.landingPageId, input.landingPageId));
+        }
+        await db.delete(coachAssets).where(and(...conditions));
       }
 
       const result: any = await db.insert(coachAssets).values({
         userId: ctx.user.id,
+        landingPageId: input.landingPageId ?? null,
         assetType: input.assetType,
         url: input.url,
       });
