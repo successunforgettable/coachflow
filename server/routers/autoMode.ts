@@ -332,8 +332,22 @@ export const autoModeRouter = router({
         source: "imported",
       });
 
+      const icpId = result[0].insertId as number;
+
+      // Enrich the imported ICP with the full 17-tab generator (BLOCKING).
+      // Must complete before returning icpId — downstream cascade nodes read
+      // the ICP row, and running on a thin ICP reproduces the exact quality
+      // bug this fix addresses. If enrichment fails, the ICP stays thin but
+      // the cascade still runs end-to-end (non-fatal).
+      try {
+        const { enrichImportedIcp } = await import("../_core/icpEnrichment");
+        await enrichImportedIcp(icpId);
+      } catch (err) {
+        console.warn("[importIcp] Enrichment failed, continuing with thin ICP:", err instanceof Error ? err.message : String(err));
+      }
+
       return {
-        icpId: result[0].insertId as number,
+        icpId,
         complianceApplied: icpClassification === "PIVOT_REQUIRED",
         flaggedTerms: icpFlaggedTerms,
       };
@@ -426,6 +440,41 @@ export const autoModeRouter = router({
           source: "imported",
         });
         await autoSelectBest(ctx.user.id, input.icpId, "selectedOfferId", offerResult[0].insertId);
+
+        // Enrich: generate missing offer angles from the imported godfather (non-blocking).
+        // The selected offer is already set via autoSelectBest — cascade can proceed.
+        // Missing angles become available for "Show Me More" browsing later.
+        const enrichOfferId = offerResult[0].insertId;
+        setImmediate(async () => {
+          try {
+            const bgDb = await getDb();
+            if (!bgDb) return;
+            const [bgSvc] = await bgDb.select().from(services).where(eq(services.id, input.serviceId)).limit(1);
+            if (!bgSvc) return;
+
+            const { generateOfferAngle } = await import("../offersGenerator");
+            const godfather = cleanedOffer;
+            const seedContext = `\n\nEXISTING OFFER (user-provided, use as basis for generating alternative angles):\nName: ${godfather.name || ""}\nValue Proposition: ${godfather.valueProposition || ""}\nCTA: ${godfather.cta || ""}`;
+
+            const [freeAngle, dollarAngle] = await Promise.all([
+              generateOfferAngle(
+                bgSvc.name, bgSvc.description || "", bgSvc.targetCustomer || "",
+                bgSvc.mainBenefit || "", "free", "standard", { hasTestimonials: false, hasCustomers: false, hasPress: false },
+                seedContext,
+              ),
+              generateOfferAngle(
+                bgSvc.name, bgSvc.description || "", bgSvc.targetCustomer || "",
+                bgSvc.mainBenefit || "", "dollar", "standard", { hasTestimonials: false, hasCustomers: false, hasPress: false },
+                seedContext,
+              ),
+            ]);
+
+            await bgDb.update(offers).set({ freeAngle, dollarAngle }).where(eq(offers.id, enrichOfferId));
+            console.log(`[importAssets] Enriched offer ${enrichOfferId}: generated free + dollar angles`);
+          } catch (err) {
+            console.warn("[importAssets] Offer enrichment failed:", err instanceof Error ? err.message : String(err));
+          }
+        });
       }
 
       // --- Mechanism ---
@@ -499,6 +548,10 @@ export const autoModeRouter = router({
   extractFromAssets: protectedProcedure
     .input(z.object({
       rawText: z.string().min(50, "Need at least 50 characters to extract useful assets.").max(150000, "Your material is very large. Try uploading fewer files or the most important one — I work best with focused content."),
+      images: z.array(z.object({
+        filename: z.string(),
+        dataUrl: z.string(),
+      })).optional(),
     }))
     .mutation(async ({ input }) => {
       // Intelligent truncation: if text exceeds 100k chars, truncate at a
@@ -574,10 +627,21 @@ ${rawText}
 
 Extract all marketing assets you can identify. Return JSON matching the schema.`;
 
+      // Build multimodal user content if images present
+      const userContent: any = input.images && input.images.length > 0
+        ? [
+            { type: "text" as const, text: userPrompt },
+            ...input.images.map(img => ({
+              type: "image_url" as const,
+              image_url: { url: img.dataUrl, detail: "high" as const },
+            })),
+          ]
+        : userPrompt;
+
       const response = await invokeLLM({
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
+          { role: "user", content: userContent },
         ],
         response_format: {
           type: "json_schema",

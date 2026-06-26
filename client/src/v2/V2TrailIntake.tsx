@@ -410,6 +410,20 @@ export default function V2TrailIntake() {
     // Show the upload/paste choice FIRST — before expand, before paste input.
     // Phase stays "hasAssetsChoice" (set by handleFork) so the text input is hidden.
     try {
+      // ── Plain-language gate: explain what helps, let user self-select ──
+      addMsg({ type: "zappy-bubble", mood: "idle",
+        text: "Great! Here's what helps me build the best campaign for you:\n\n• Something that describes your offer or program — what you sell, who it's for, what they get\n• Information about your ideal client — who they are, what they struggle with, what they want\n• Your unique approach or method — what makes the way you do it different\n\nThis could be a document, a sales page, a slide deck, notes — anything you have. I'll read through it and pull out what I need." });
+      addMsg({ type: "chip-row", chips: ["I have stuff like that", "Actually, build it for me"] });
+
+      const gateChoice = await new Promise<string>(r => { importConfirmResolve.current = r; });
+
+      if (gateChoice === "Actually, build it for me") {
+        // Cleanly hand off to the auto path — same as tapping "Build it all for me ⚡" at the fork.
+        setPhase("autorun");
+        await runAutoInChat();
+        return;
+      }
+
       // ── Step A: Collect material (upload or paste) ──
       addMsg({ type: "zappy-bubble", mood: "idle",
         text: "Upload your documents (PDF, Word, or text files) or paste your material below. I'll read everything and pull out what I need." });
@@ -421,6 +435,7 @@ export default function V2TrailIntake() {
       const entryChoice = await new Promise<string>(r => { importConfirmResolve.current = r; });
 
       let rawText = "";
+      let uploadedImages: { filename: string; dataUrl: string }[] = [];
 
       if (entryChoice === "Upload files") {
         // Show a real file input button in the chat — direct user click opens
@@ -460,6 +475,7 @@ export default function V2TrailIntake() {
             addMsg({ type: "user-bubble", text: rawText.slice(0, 200) + (rawText.length > 200 ? "..." : "") });
           } else {
             rawText = result.text;
+            uploadedImages = result.images || [];
             if (result.warnings?.length > 0) {
               addMsg({ type: "zappy-bubble", mood: "idle", text: result.warnings.join(" ") });
             }
@@ -495,7 +511,7 @@ export default function V2TrailIntake() {
       addMsg({ type: "zappy-bubble", mood: "thinking", text: rawText.length > 50000
         ? "That's a big document — reading through it now. This might take a moment..."
         : "Reading through your material and pulling out what I find..." });
-      const extracted = await extractFromAssetsMutation.mutateAsync({ rawText });
+      const extracted = await extractFromAssetsMutation.mutateAsync({ rawText, images: uploadedImages });
 
       // ── Step C: Show what was found — confirm cards ──
       const confirmedAssets: Record<string, Record<string, string>> = {};
@@ -766,7 +782,7 @@ export default function V2TrailIntake() {
   };
 
   // ── Chips ──
-  const HAS_ASSETS_CHIPS = ["Upload files", "I'll paste instead", "Looks right", "Fix something", "I'll describe it", "Create one for me"];
+  const HAS_ASSETS_CHIPS = ["Upload files", "I'll paste instead", "Looks right", "Fix something", "I'll describe it", "Create one for me", "I have stuff like that", "Actually, build it for me"];
   const handleChipTap = (messageId: string, chip: string) => {
     // Has-assets flow chips — all resolve through importConfirmResolve
     if (HAS_ASSETS_CHIPS.includes(chip) && (phase === "hasAssets" || phase === "hasAssetsChoice")) {

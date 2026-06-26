@@ -448,12 +448,16 @@ async function startServer() {
         "application/pdf",
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         "application/msword",
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "image/jpeg",
+        "image/png",
+        "image/webp",
         "text/plain",
       ];
       if (allowed.includes(file.mimetype)) {
         cb(null, true);
       } else {
-        cb(new Error(`Unsupported file type: ${file.mimetype}. Upload PDF, DOCX, or TXT files.`));
+        cb(new Error(`Unsupported file type: ${file.mimetype}. Upload PDF, DOCX, PPTX, TXT, or image files.`));
       }
     },
   });
@@ -501,6 +505,20 @@ async function startServer() {
             const buffer = fs.readFileSync(file.path);
             const result = await mammoth.extractRawText({ buffer });
             text = result.value?.trim() || "";
+          } else if (
+            file.mimetype === "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+          ) {
+            const { OfficeParser } = await import("officeparser");
+            const ast = await OfficeParser.parseOffice(file.path);
+            text = ast.toText().trim();
+          } else if (file.mimetype.startsWith("image/")) {
+            // Images: read as base64 data URL for Claude vision analysis
+            const buffer = fs.readFileSync(file.path);
+            const base64 = buffer.toString("base64");
+            const dataUrl = `data:${file.mimetype};base64,${base64}`;
+            if (!(req as any)._imageDataUrls) (req as any)._imageDataUrls = [];
+            (req as any)._imageDataUrls.push({ filename: file.originalname, dataUrl });
+            textParts.push(`[IMAGE: ${file.originalname} — included for visual analysis]`);
           } else if (file.mimetype === "text/plain") {
             text = fs.readFileSync(file.path, "utf-8").trim();
           }
@@ -529,6 +547,7 @@ async function startServer() {
         text: combinedText,
         fileCount: textParts.length,
         warnings,
+        images: (req as any)._imageDataUrls || [],
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Upload processing failed.";

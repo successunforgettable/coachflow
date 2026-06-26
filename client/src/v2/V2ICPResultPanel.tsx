@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import ZappyMascot from "./ZappyMascot";
 import UpgradePrompt from "./components/UpgradePrompt";
 import ExportButtons from "./components/ExportButtons";
-import { formatWhatsAppTxt, formatHeadlinesTxt, formatAdCopyTxt, formatOfferTxt, formatMechanismsTxt, formatHvcoTxt, formatIcpTxt, formatLandingPageTxt } from "./lib/exportUtils";
+import { formatWhatsAppTxt, formatHeadlinesTxt, formatAdCopyTxt, formatOfferTxt, formatMechanismsTxt, formatHvcoTxt, formatIcpTxt, formatLandingPageTxt, downloadPdf } from "./lib/exportUtils";
 
 // ─── Shared icon-button style ─────────────────────────────────────────────────
 const iconBtn: React.CSSProperties = {
@@ -487,7 +487,7 @@ export default function V2ICPResultPanel({
           </button>
         ) : (
           <button
-            onClick={() => toast.info("PDF export coming in Phase L")}
+            onClick={() => downloadPdf(formatIcpTxt(data), (data as Record<string, unknown>)?.name as string | undefined ? ((data as Record<string, unknown>).name as string).slice(0, 30) : "ICP", "ICP")}
             style={{
               background: "#1A1624",
               color: "#F5F1EA",

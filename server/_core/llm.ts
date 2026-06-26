@@ -286,10 +286,44 @@ async function invokeClaudeAPI(params: InvokeParams): Promise<InvokeResult> {
     // else json_object with no schema: keep permissive default
   }
 
-  const anthropicMessages = conversationMessages.map(m => ({
-    role: m.role === "assistant" ? "assistant" : "user",
-    content: typeof m.content === "string" ? m.content : JSON.stringify(m.content),
-  }));
+  const anthropicMessages = conversationMessages.map(m => {
+    const role = m.role === "assistant" ? "assistant" as const : "user" as const;
+    if (typeof m.content === "string") {
+      return { role, content: m.content };
+    }
+    // Convert content parts to Anthropic's native multimodal format
+    const parts = ensureArray(m.content).map(normalizeContentPart);
+    const anthropicParts: any[] = parts.map(part => {
+      if (part.type === "text") {
+        return { type: "text", text: part.text };
+      }
+      if (part.type === "image_url") {
+        const url = (part as ImageContent).image_url.url;
+        // Data URL (base64-encoded image)
+        if (url.startsWith("data:")) {
+          const match = url.match(/^data:(image\/[^;]+);base64,([\s\S]+)$/);
+          if (match) {
+            return {
+              type: "image",
+              source: { type: "base64", media_type: match[1], data: match[2] },
+            };
+          }
+        }
+        // HTTP URL — pass as URL source (Anthropic supports this)
+        return {
+          type: "image",
+          source: { type: "url", url },
+        };
+      }
+      // Fallback: stringify other types (file_url etc.)
+      return { type: "text", text: JSON.stringify(part) };
+    });
+    // Single text part: collapse for backward compatibility
+    if (anthropicParts.length === 1 && anthropicParts[0].type === "text") {
+      return { role, content: anthropicParts[0].text as string };
+    }
+    return { role, content: anthropicParts };
+  });
 
   // Use latest Claude models — updated April 2026
   const DEFAULT_MODELS = [

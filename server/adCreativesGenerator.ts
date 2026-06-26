@@ -118,6 +118,10 @@ export type GenerateContextualAdHeadlinesInput = {
   targetAudience: string;
   uniqueMechanism: string;
   pressingProblem: string;
+  icpPains?: string;
+  icpFears?: string;
+  icpObjections?: string;
+  icpBuyingTriggers?: string;
 };
 
 /**
@@ -171,7 +175,7 @@ Service: ${gist(input.productName, 60)}
 Audience: ${gist(input.targetAudience, 90)}
 Main benefit: ${gist(input.mainBenefit, 110)}
 Mechanism: ${gist(input.uniqueMechanism, 60)}
-Pressing problem: ${gist(input.pressingProblem, 120)}
+Pressing problem: ${gist(input.pressingProblem, 120)}${input.icpPains ? `\nAudience daily pains: ${gist(input.icpPains, 200)}` : ""}${input.icpFears ? `\nAudience deep fears: ${gist(input.icpFears, 200)}` : ""}${input.icpObjections ? `\nAudience objections to buying: ${gist(input.icpObjections, 150)}` : ""}${input.icpBuyingTriggers ? `\nWhat triggers them to buy: ${gist(input.icpBuyingTriggers, 150)}` : ""}
 
 LENGTH RULE (READ TWICE):
 - Each headline MUST be ≤ 38 characters. This is a HARD LIMIT — Meta-compliance gate.

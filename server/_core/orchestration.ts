@@ -142,7 +142,7 @@ export async function runOrchestrationStep(
   onProgress?: (label: string) => Promise<void> | void,
 ): Promise<OrchestrationStepRunResult> {
   const { getDb } = await import("../db");
-  const { users, campaignKits, services, heroMechanisms, hvcoTitles, headlines, adCopy } =
+  const { users, campaignKits, services, heroMechanisms, hvcoTitles, headlines, adCopy, idealCustomerProfiles } =
     await import("../../drizzle/schema");
   const { eq, and, asc } = await import("drizzle-orm");
   const { autoSelectBest } = await import("../routers/campaignKits");
@@ -437,6 +437,10 @@ export async function runOrchestrationStep(
       const niche = (svc.targetCustomer ?? svc.category ?? "coaching").slice(0, 200);
       const pressingProblem = svc.painPoints ?? svc.description ?? "";
 
+      // Load ICP for audience-signal enrichment of the headlines prompt
+      const [icp] = await db.select().from(idealCustomerProfiles)
+        .where(eq(idealCustomerProfiles.id, input.icpId)).limit(1);
+
       // Generate contextual headlines (shared by both styles)
       const headlines = await generateContextualAdHeadlines({
         productName: svc.name,
@@ -444,6 +448,10 @@ export async function runOrchestrationStep(
         targetAudience: svc.targetCustomer ?? "",
         uniqueMechanism: mechanismName,
         pressingProblem,
+        icpPains: icp?.pains || undefined,
+        icpFears: icp?.fears || undefined,
+        icpObjections: icp?.objections || undefined,
+        icpBuyingTriggers: icp?.buyingTriggers || undefined,
       });
 
       // Style routing: read adImageStyle from the freshly-read kit

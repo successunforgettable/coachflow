@@ -3665,3 +3665,53 @@ describe("Landing Page Template System", () => {
     });
   });
 });
+
+// ─── Import-Then-Enrich — structural assertions ───────────────────────────
+import { enrichImportedIcp } from "./_core/icpEnrichment";
+
+describe("Import-Then-Enrich", () => {
+  it("enrichImportedIcp is exported as a function taking icpId", () => {
+    expect(typeof enrichImportedIcp).toBe("function");
+    expect(enrichImportedIcp.length).toBe(1);
+  });
+});
+
+// ─── Ad-Creatives ICP Wiring — structural assertions ──────────────────────
+import { buildAdHeadlinesUserPrompt } from "./adCreativesGenerator";
+
+describe("Ad-Creatives ICP Wiring", () => {
+  it("buildAdHeadlinesUserPrompt includes ICP context when provided", () => {
+    const prompt = buildAdHeadlinesUserPrompt({
+      productName: "Test Product",
+      mainBenefit: "Test benefit",
+      targetAudience: "Test audience",
+      uniqueMechanism: "Test mechanism",
+      pressingProblem: "Test problem",
+      icpPains: "They struggle with getting clients consistently",
+      icpFears: "They fear running out of money",
+      icpObjections: "They think it is too expensive",
+      icpBuyingTriggers: "They see a competitor succeed",
+    });
+    expect(prompt).toContain("Audience daily pains:");
+    expect(prompt).toContain("getting clients consistently");
+    expect(prompt).toContain("Audience deep fears:");
+    expect(prompt).toContain("running out of money");
+    expect(prompt).toContain("Audience objections to buying:");
+    expect(prompt).toContain("too expensive");
+    expect(prompt).toContain("What triggers them to buy:");
+    expect(prompt).toContain("competitor succeed");
+  });
+
+  it("buildAdHeadlinesUserPrompt works without ICP context (backward compat)", () => {
+    const prompt = buildAdHeadlinesUserPrompt({
+      productName: "Test Product",
+      mainBenefit: "Test benefit",
+      targetAudience: "Test audience",
+      uniqueMechanism: "Test mechanism",
+      pressingProblem: "Test problem",
+    });
+    expect(prompt).toContain("Test Product");
+    expect(prompt).not.toContain("Audience daily pains:");
+    expect(prompt).not.toContain("Audience deep fears:");
+  });
+});
