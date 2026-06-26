@@ -362,7 +362,7 @@ export async function runOrchestrationStep(
         const { publicUrl, slug } = await runLandingPagePublish({
           userId: input.userId,
           landingPageId,
-          styleMode: "visual",
+          styleMode: "energetic",
         });
         console.log(`[orchestration] LP published to ${publicUrl} (slug=${slug})`);
 

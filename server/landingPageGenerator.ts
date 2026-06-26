@@ -116,7 +116,7 @@ landing pages generated pre-commit-5b).
 SECTIONS TO POPULATE: ALL 16 sections — eyebrowHeadline, mainHeadline,
 subheadline, primaryCta, asSeenIn, quizSection, problemAgitation,
 solutionIntro, whyOldFail, uniqueMechanism, testimonials, insiderAdvantages,
-scarcityUrgency, shockingStat, timeSavingBenefit, consultationOutline, faq.
+scarcityUrgency, shockingStat, timeSavingBenefit, consultationOutline, faq, guarantee.
 
 Follow the EMOTIONAL ARC structure below in full.
 
@@ -144,6 +144,7 @@ SECTIONS TO POPULATE (fill substantively):
 - testimonials — 2-3 short-form quotes from past attendees if available.
 - timeSavingBenefit — re-purposed as "Why attend live (not just the replay)" —
   one specific reason live attendance matters.
+- faq — 2-3 FAQ items about the webinar (when is it, how to access, replay availability).
 
 SECTIONS TO LEAVE EMPTY (return as empty string ""):
 - problemAgitation: ""
@@ -153,7 +154,7 @@ SECTIONS TO LEAVE EMPTY (return as empty string ""):
 - shockingStat: ""
 - insiderAdvantages: ""
 - quizSection: { question: "", options: [], answer: "" }
-- faq: []
+- guarantee: ""
 - asSeenIn: [] (or 1-2 entries if real)
 
 VOICE CONVENTION LOCK: First-person singular throughout. The host is "I" /
@@ -191,6 +192,7 @@ SECTIONS TO POPULATE (fill substantively):
   3-bullet list of specific topics the call addresses. Use [INSERT_
   BOOKING_DURATION] if duration not supplied; never invent durations.
 - testimonials — 1-2 short quotes from past clients if available.
+- faq — 2-3 FAQ items about the call (duration, what to prepare, is it a sales call).
 
 SECTIONS TO LEAVE EMPTY (return as empty string ""):
 - problemAgitation: ""
@@ -202,7 +204,7 @@ SECTIONS TO LEAVE EMPTY (return as empty string ""):
 - timeSavingBenefit: ""
 - consultationOutline: []
 - quizSection: { question: "", options: [], answer: "" }
-- faq: []
+- guarantee: ""
 - asSeenIn: []
 
 VOICE CONVENTION LOCK: First-person singular throughout. The host is "I" /
@@ -249,6 +251,7 @@ SECTIONS TO POPULATE (fill substantively):
 - problemAgitation — one short paragraph naming the specific situation the
   reader is in that this asset addresses. Concrete + niche-specific.
 - testimonials — 1-2 short quotes from past readers if available.
+- faq — 2-3 FAQ items about the download (format, how to access, what is included).
 
 SECTIONS TO LEAVE EMPTY (return as empty string ""):
 - scarcityUrgency: "" (CRITICAL — see banned phrases below)
@@ -260,7 +263,7 @@ SECTIONS TO LEAVE EMPTY (return as empty string ""):
 - timeSavingBenefit: ""
 - consultationOutline: []
 - quizSection: { question: "", options: [], answer: "" }
-- faq: []
+- guarantee: ""
 - asSeenIn: []
 
 VOICE CONVENTION LOCK: First-person singular throughout. The host is "I" /
@@ -308,6 +311,7 @@ SECTIONS TO POPULATE (fill substantively):
   supplied; never invent agenda items.
 - insiderAdvantages — "Why this is worth being in the room for" — 2-3
   reasons attending in person beats watching recordings.
+- faq — 2-3 FAQ items about the event (parking, what to bring, dress code).
 
 SECTIONS TO LEAVE EMPTY (return as empty string ""):
 - problemAgitation: ""
@@ -318,7 +322,7 @@ SECTIONS TO LEAVE EMPTY (return as empty string ""):
 - timeSavingBenefit: ""
 - testimonials: [] (or 1-2 entries if real)
 - quizSection: { question: "", options: [], answer: "" }
-- faq: []
+- guarantee: ""
 - asSeenIn: []
 
 VOICE CONVENTION LOCK: First-person singular throughout. The host is "I" /
@@ -365,11 +369,11 @@ ${socialProof.hasTestimonials ? `- Real testimonials:\n${socialProof.testimonial
 ${socialProof.hasPress ? `- Press features: ${socialProof.press}` : ''}
 
 You MUST use these exact numbers and real testimonials. Do not fabricate or inflate.`
-    : `NO SOCIAL PROOF DATA PROVIDED:
-- For testimonials section: Use outcome-based quotes WITHOUT specific names ("A marketing agency owner" instead of "John Smith")
-- For "As Seen In" section: OMIT entirely or use "Trusted by [audience] in 30+ countries"
-- DO NOT fabricate customer counts, ratings, or press mentions
-- Focus on benefit claims and transformation stories instead`;
+    : `NO SOCIAL PROOF DATA PROVIDED — SUPPRESS ALL FABRICATED PROOF:
+- Set "testimonials" to an EMPTY ARRAY []. Do not generate fictional testimonials, fictional names, or fictional quotes of any kind.
+- Set "asSeenIn" to an EMPTY ARRAY []. Do not fabricate publication names.
+- The renderer will gracefully omit these sections when empty.
+- Focus the remaining sections on benefit claims and transformation stories.`;
   
   const prompt = `
 You are a world-class direct response copywriter specializing in high-converting landing pages.
@@ -449,6 +453,12 @@ Generate a complete landing page with 16 sections following this structure:
 
 16. **Consultation Outline** (10 numbered items, each with a specific title and a deliverable-focused description)
     The consultation outline must feel like a genuine agenda, not a marketing list. Each item must name the specific deliverable the client will have at the end of that segment — what they have after that step that they did not have before it. BANNED consultation outline patterns (do not use as titles or descriptions): "Introduction and welcome", "Q&A", "Next steps", "Strategy overview", "Getting to know you" — these are placeholders, not deliverables. Every item must name a specific analysis, assessment, calculation, or output. Example: "Revenue Gap Analysis — At the end of this segment you will have a precise number: the exact monthly gap between your current income and your target, and the three specific levers available to close it."
+
+17. **FAQ** (5-7 frequently asked questions with answers)
+    Generate 5-7 FAQ items that address: common objections to buying, logistics questions (how it works, what is included, how long it takes), guarantee details, and one question about who this is NOT for. Each item has a "question" and "answer". Answers should be 2-3 sentences, conversational, and reassuring.
+
+18. **Guarantee** (dedicated guarantee statement, 100-200 words)
+    Write a dedicated risk-reversal guarantee section. Format as: first line is the guarantee headline (e.g., "Our 90-Day Money-Back Guarantee"), remaining lines are the guarantee body explaining terms and building confidence. If the operator provided a specific guarantee type or duration in the cascade context above, use it exactly. If not, write a results-oriented satisfaction guarantee appropriate to the offer type. Frame positively — what the customer gets, not what they lose.
 
 SPECIFICITY CHECK — apply this before returning the JSON:
 For every section, ask: does this section contain at least one phrase that could only appear on a landing page for THIS specific service in THIS specific niche? If any section contains only generic direct response language that could apply to any coaching programme, rewrite that section before returning. The test: mentally swap the product name for a different coaching product in a different niche. If the section still makes sense without any changes, it is not specific enough. Rewrite until it only makes sense for this product, this avatar, and this outcome.
@@ -545,13 +555,27 @@ Use direct response copywriting principles: pain agitation, unique mechanism, so
                 required: ["title", "description"],
                 additionalProperties: false
               }
-            }
+            },
+            faq: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  question: { type: "string" },
+                  answer: { type: "string" }
+                },
+                required: ["question", "answer"],
+                additionalProperties: false
+              }
+            },
+            guarantee: { type: "string" },
           },
           required: [
             "eyebrowHeadline", "mainHeadline", "subheadline", "primaryCta",
             "asSeenIn", "quizSection", "problemAgitation", "solutionIntro",
             "whyOldFail", "uniqueMechanism", "testimonials", "insiderAdvantages",
-            "scarcityUrgency", "shockingStat", "timeSavingBenefit", "consultationOutline"
+            "scarcityUrgency", "shockingStat", "timeSavingBenefit", "consultationOutline",
+            "faq", "guarantee"
           ],
           additionalProperties: false
         }

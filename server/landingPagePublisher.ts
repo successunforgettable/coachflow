@@ -38,7 +38,7 @@ import { eq, and } from "drizzle-orm";
 export type RunLandingPagePublishInput = {
   userId: number;
   landingPageId: number;
-  styleMode: "text" | "visual";
+  styleMode: "text" | "visual" | "executive" | "energetic" | "clinical" | "warm" | "bold";
 };
 
 export type RunLandingPagePublishResult = {
@@ -118,18 +118,35 @@ export async function runLandingPagePublish(
       : `campaign-${lp.id}`);
 
   // 6. Build HTML for the picked angle + style mode.
-  const { buildTextStyleHtml, buildVisualStyleHtml } = await import("./lib/landingPageHtml");
   const { ensureKvNamespace, writeKvPage, deployWorker } = await import("./lib/cloudflare");
 
-  const html = input.styleMode === "visual"
-    ? buildVisualStyleHtml(content, serviceName, {
-        headshotUrl,
-        logoUrl,
-        socialProofUrls,
-        coachName,
-        coachBackground,
-      })
-    : buildTextStyleHtml(content, serviceName);
+  let html: string;
+  const templateStyleIds = ["executive", "energetic", "clinical", "warm", "bold"] as const;
+  if (templateStyleIds.includes(input.styleMode as any)) {
+    const { renderTemplate } = await import("./lib/templates/renderTemplate");
+    const { getTemplate } = await import("./lib/templates/registry");
+    const template = getTemplate(input.styleMode as typeof templateStyleIds[number]);
+    const lpPageType = (lp as any).pageType || "sales_page";
+    html = renderTemplate(content, template, {
+      headshotUrl,
+      logoUrl,
+      socialProofUrls,
+      coachName,
+      coachBackground,
+    }, lpPageType);
+  } else {
+    // Legacy path for "text" / "visual" — existing published pages
+    const { buildTextStyleHtml, buildVisualStyleHtml } = await import("./lib/landingPageHtml");
+    html = input.styleMode === "visual"
+      ? buildVisualStyleHtml(content, serviceName, {
+          headshotUrl,
+          logoUrl,
+          socialProofUrls,
+          coachName,
+          coachBackground,
+        })
+      : buildTextStyleHtml(content, serviceName);
+  }
 
   // 6b. B5 hard publish gate: block publish if unfilled placeholders remain.
   const unfilledTokens = html.match(/\[INSERT_[A-Z_0-9]+\]/g);

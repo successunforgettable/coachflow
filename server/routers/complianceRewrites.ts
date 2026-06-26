@@ -299,7 +299,7 @@ async function republishLandingPageToKv(
     : lp.originalAngle;
   if (!content) return;
 
-  const styleMode: "text" | "visual" = lp.publishedStyle === "visual" ? "visual" : "text";
+  const styleMode = lp.publishedStyle || "text";
 
   const [coachProfileRow] = await db
     .select({ coachName: users.coachName, coachBackground: users.coachBackground })
@@ -317,12 +317,24 @@ async function republishLandingPageToKv(
   const logoUrl = assetRows.find(a => a.assetType === "logo")?.url ?? null;
   const socialProofUrls = assetRows.filter(a => a.assetType === "social_proof").map(a => a.url);
 
-  const { buildTextStyleHtml, buildVisualStyleHtml } = await import("../lib/landingPageHtml");
   const { ensureKvNamespace, writeKvPage } = await import("../lib/cloudflare");
 
-  const html = styleMode === "visual"
-    ? buildVisualStyleHtml(content, serviceName, { headshotUrl, logoUrl, socialProofUrls, coachName, coachBackground })
-    : buildTextStyleHtml(content, serviceName);
+  let html: string;
+  const templateStyleIds = ["executive", "energetic", "clinical", "warm", "bold"] as const;
+  if (templateStyleIds.includes(styleMode as any)) {
+    const { renderTemplate } = await import("../lib/templates/renderTemplate");
+    const { getTemplate } = await import("../lib/templates/registry");
+    const template = getTemplate(styleMode as typeof templateStyleIds[number]);
+    const lpPageType = (lp as any).pageType || "sales_page";
+    html = renderTemplate(content, template, {
+      headshotUrl, logoUrl, socialProofUrls, coachName, coachBackground,
+    }, lpPageType);
+  } else {
+    const { buildTextStyleHtml, buildVisualStyleHtml } = await import("../lib/landingPageHtml");
+    html = styleMode === "visual"
+      ? buildVisualStyleHtml(content, serviceName, { headshotUrl, logoUrl, socialProofUrls, coachName, coachBackground })
+      : buildTextStyleHtml(content, serviceName);
+  }
   const namespaceId = await ensureKvNamespace();
   await writeKvPage(namespaceId, lp.publicSlug, html);
 }

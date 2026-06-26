@@ -458,10 +458,11 @@ export type LandingPageContent = {
     title: string;
     description: string;
   }>;
-  faq?: Array<{
+  faq: Array<{
     question: string;
     answer: string;
   }>;
+  guarantee: string;
 };
 
 export const landingPages = mysqlTable("landingPages", {
@@ -499,7 +500,7 @@ export const landingPages = mysqlTable("landingPages", {
   // D4: Cloudflare Workers public URL
   publicSlug: varchar("publicSlug", { length: 255 }).unique(),
   publicUrl: varchar("publicUrl", { length: 500 }),
-  publishedStyle: mysqlEnum("publishedStyle", ["text", "visual"]).default("text"),
+  publishedStyle: mysqlEnum("publishedStyle", ["text", "visual", "executive", "energetic", "clinical", "warm", "bold"]).default("text"),
 
   rating: int("rating").default(0),
   selectionScore: decimal("selectionScore", { precision: 5, scale: 2 }),

@@ -814,7 +814,7 @@ export const landingPagesRouter = router({
   // it directly. This mutation is now a thin wrapper preserving the
   // TRPCError code translations the wizard-side callers expect.
   publishToCloudflare: protectedProcedure
-    .input(z.object({ landingPageId: z.number(), styleMode: z.enum(["text", "visual"]).default("text") }))
+    .input(z.object({ landingPageId: z.number(), styleMode: z.enum(["text", "visual", "executive", "energetic", "clinical", "warm", "bold"]).default("text") }))
     .mutation(async ({ ctx, input }) => {
       const { runLandingPagePublish } = await import("../landingPagePublisher");
       try {

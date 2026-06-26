@@ -3468,3 +3468,200 @@ describe("Trail Sprint 3 C1 — runOrchestrationStep extraction", () => {
     expect(typeof runOrchestrationStep).toBe("function");
   });
 });
+
+// ─── Landing Page Template System — structural assertions ──────────────────
+import { renderTemplate } from "./lib/templates/renderTemplate";
+import { getTemplate, isTemplateStyleId, TEMPLATES } from "./lib/templates/registry";
+import { ENERGETIC } from "./lib/templates/energetic";
+import type { LandingPageContent } from "../drizzle/schema";
+import type { LpPageType, TemplateStyleId } from "./lib/templates/types";
+import { CTA_BY_PAGE_TYPE } from "./lib/templates/types";
+import { ctaLabel, ok, esc, hb } from "./lib/templates/shared";
+
+// Minimal valid content for rendering tests
+const SAMPLE_CONTENT: LandingPageContent = {
+  eyebrowHeadline: "FOR COACHES WHO WANT MORE CLIENTS",
+  mainHeadline: "Stop Guessing — Start Getting Clients With A Proven System",
+  subheadline: "The exact method 200+ coaches use to fill their calendar in 90 days.",
+  primaryCta: "Book Your Free Strategy Call",
+  asSeenIn: [],
+  quizSection: { question: "", options: [], answer: "" },
+  problemAgitation: "Still Struggling to Get Clients?\nYou post on social media daily but hear crickets.\nYou've tried ads but burned money with nothing to show.",
+  solutionIntro: "",
+  whyOldFail: "",
+  uniqueMechanism: "",
+  testimonials: [],
+  insiderAdvantages: "What Makes This Different\nWe focus on warm outreach, not cold ads.\nOur system works in 30 days, not 6 months.",
+  scarcityUrgency: "Limited Spots Available\nWe only take 10 new clients per month to maintain quality.",
+  shockingStat: "",
+  timeSavingBenefit: "Save 6 Months of Trial and Error\nOur blueprint gives you the shortcut.",
+  consultationOutline: [
+    { title: "Revenue Gap Analysis", description: "Find the exact gap between current and target income." },
+    { title: "Client Acquisition Audit", description: "Identify which channels are working and which are wasting time." },
+  ],
+  faq: [
+    { question: "How long does it take to see results?", answer: "Most clients see their first new booking within 30 days." },
+    { question: "Is this a sales call?", answer: "No — it is a genuine strategy session. We will map out your plan whether you work with us or not." },
+  ],
+  guarantee: "Our 90-Day Results Guarantee\nIf you do not see measurable improvement in your client pipeline within 90 days, we will work with you for free until you do. No questions asked.",
+};
+
+describe("Landing Page Template System", () => {
+  describe("Registry", () => {
+    it("getTemplate returns ENERGETIC config for 'energetic'", () => {
+      const config = getTemplate("energetic");
+      expect(config.id).toBe("energetic");
+      expect(config.headingFont).toContain("Sora");
+      expect(config.colors.accent).toBe("#FF5C00");
+    });
+
+    it("isTemplateStyleId correctly identifies valid IDs", () => {
+      expect(isTemplateStyleId("energetic")).toBe(true);
+      expect(isTemplateStyleId("executive")).toBe(true);
+      expect(isTemplateStyleId("text")).toBe(false);
+      expect(isTemplateStyleId("visual")).toBe(false);
+      expect(isTemplateStyleId("unknown")).toBe(false);
+    });
+
+    it("all 5 template IDs are registered", () => {
+      const ids: TemplateStyleId[] = ["executive", "energetic", "clinical", "warm", "bold"];
+      for (const id of ids) {
+        expect(getTemplate(id)).toBeDefined();
+        expect(getTemplate(id).id).toBeDefined();
+      }
+    });
+  });
+
+  describe("Energetic config", () => {
+    it("has sectionMap for all 5 page types", () => {
+      const pageTypes: LpPageType[] = [
+        "sales_page", "webinar_registration", "discovery_call_booking",
+        "lead_magnet_download", "event_registration",
+      ];
+      for (const pt of pageTypes) {
+        expect(ENERGETIC.sectionMap[pt]).toBeDefined();
+        expect(ENERGETIC.sectionMap[pt].order.length).toBeGreaterThan(0);
+        expect(ENERGETIC.sectionMap[pt].heroLayout).toBeDefined();
+      }
+    });
+
+    it("sales_page has the most sections (full page)", () => {
+      const salesCount = ENERGETIC.sectionMap.sales_page.order.length;
+      const webinarCount = ENERGETIC.sectionMap.webinar_registration.order.length;
+      const discoveryCount = ENERGETIC.sectionMap.discovery_call_booking.order.length;
+      expect(salesCount).toBeGreaterThan(webinarCount);
+      expect(salesCount).toBeGreaterThan(discoveryCount);
+    });
+
+    it("webinar and event pages have eventStrip type-specific section", () => {
+      expect(ENERGETIC.sectionMap.webinar_registration.typeSpecificSections?.eventStrip).toBe(true);
+      expect(ENERGETIC.sectionMap.event_registration.typeSpecificSections?.eventStrip).toBe(true);
+    });
+
+    it("discovery page has bookingCue, lead_magnet has downloadBadge", () => {
+      expect(ENERGETIC.sectionMap.discovery_call_booking.typeSpecificSections?.bookingCue).toBe(true);
+      expect(ENERGETIC.sectionMap.lead_magnet_download.typeSpecificSections?.downloadBadge).toBe(true);
+    });
+  });
+
+  describe("CTA routing", () => {
+    it("first CTA uses primaryCta from content", () => {
+      const label = ctaLabel(SAMPLE_CONTENT, "sales_page", 0);
+      expect(label).toBe("Book Your Free Strategy Call");
+    });
+
+    it("subsequent CTAs use page-type-specific labels", () => {
+      const webinarLabel = ctaLabel(SAMPLE_CONTENT, "webinar_registration", 1);
+      expect(CTA_BY_PAGE_TYPE.webinar_registration).toContain(webinarLabel);
+
+      const discoveryLabel = ctaLabel(SAMPLE_CONTENT, "discovery_call_booking", 1);
+      expect(CTA_BY_PAGE_TYPE.discovery_call_booking).toContain(discoveryLabel);
+    });
+  });
+
+  describe("Shared helpers", () => {
+    it("esc escapes HTML entities", () => {
+      expect(esc('<script>"alert"</script>')).toBe("&lt;script&gt;&quot;alert&quot;&lt;/script&gt;");
+    });
+
+    it("ok returns false for empty/null/undefined", () => {
+      expect(ok(null)).toBe(false);
+      expect(ok("")).toBe(false);
+      expect(ok([])).toBe(false);
+      expect(ok("[Generation incomplete")).toBe(false);
+    });
+
+    it("ok returns true for populated values", () => {
+      expect(ok("hello")).toBe(true);
+      expect(ok(["a"])).toBe(true);
+    });
+
+    it("hb splits heading and body", () => {
+      const result = hb("Title\nLine 1\nLine 2");
+      expect(result).toEqual({ heading: "Title", body: ["Line 1", "Line 2"] });
+    });
+  });
+
+  describe("renderTemplate", () => {
+    it("renders sales_page with Energetic config without throwing", () => {
+      const html = renderTemplate(SAMPLE_CONTENT, ENERGETIC, {}, "sales_page");
+      expect(html).toContain("<!DOCTYPE html>");
+      expect(html).toContain("Sora");
+      expect(html).toContain("#FF5C00");
+      expect(html).toContain(SAMPLE_CONTENT.mainHeadline);
+    });
+
+    it("renders webinar_registration — shorter page, has event strip", () => {
+      const html = renderTemplate(SAMPLE_CONTENT, ENERGETIC, {}, "webinar_registration");
+      expect(html).toContain("<!DOCTYPE html>");
+      expect(html).toContain("DATE");
+      expect(html).toContain("Live session");
+    });
+
+    it("renders discovery_call_booking with booking cue", () => {
+      const html = renderTemplate(SAMPLE_CONTENT, ENERGETIC, {}, "discovery_call_booking");
+      expect(html).toContain("<!DOCTYPE html>");
+      expect(html).toContain("Free 1:1 call");
+    });
+
+    it("renders lead_magnet_download with download badge", () => {
+      const html = renderTemplate(SAMPLE_CONTENT, ENERGETIC, {}, "lead_magnet_download");
+      expect(html).toContain("<!DOCTYPE html>");
+      expect(html).toContain("Instant access");
+    });
+
+    it("includes guarantee section for sales_page", () => {
+      const html = renderTemplate(SAMPLE_CONTENT, ENERGETIC, {}, "sales_page");
+      expect(html).toContain("90-Day Results Guarantee");
+    });
+
+    it("includes FAQ section when faq array is populated", () => {
+      const html = renderTemplate(SAMPLE_CONTENT, ENERGETIC, {}, "sales_page");
+      expect(html).toContain("Frequently Asked Questions");
+      expect(html).toContain("How long does it take");
+    });
+
+    it("suppressed proof: empty testimonials array produces no testimonials section", () => {
+      const html = renderTemplate(SAMPLE_CONTENT, ENERGETIC, {}, "sales_page");
+      expect(html).not.toContain("What Our Clients Say");
+    });
+
+    it("suppressed proof: empty asSeenIn array produces no As Seen In section", () => {
+      const html = renderTemplate(SAMPLE_CONTENT, ENERGETIC, {}, "sales_page");
+      expect(html).not.toContain("As Seen In");
+    });
+
+    it("includes coach authority when headshot provided", () => {
+      const html = renderTemplate(SAMPLE_CONTENT, ENERGETIC, {
+        headshotUrl: "https://example.com/photo.jpg",
+        coachName: "Test Coach",
+      }, "sales_page");
+      expect(html).toContain("Test Coach");
+    });
+
+    it("webinar page does NOT include problemAgitation even when content has it", () => {
+      const html = renderTemplate(SAMPLE_CONTENT, ENERGETIC, {}, "webinar_registration");
+      expect(html).not.toContain("Still Struggling to Get Clients");
+    });
+  });
+});

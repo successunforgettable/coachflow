@@ -16,6 +16,8 @@ import UpgradePrompt from "./components/UpgradePrompt";
 import ExportButtons from "./components/ExportButtons";
 import { formatWhatsAppTxt, formatHeadlinesTxt, formatAdCopyTxt, formatOfferTxt, formatMechanismsTxt, formatHvcoTxt, formatIcpTxt, formatLandingPageTxt } from "./lib/exportUtils";
 import LandingPageVisualTemplate from "./components/LandingPageVisualTemplate";
+import TemplateRenderer from "./components/templates/TemplateRenderer";
+import { ENERGETIC_CLIENT } from "./components/templates/templateConfigs";
 import CoachIdentityModal from "./components/CoachIdentityModal";
 import PlaceholderBanner from "./components/PlaceholderBanner";
 
@@ -1169,17 +1171,16 @@ export default function V2LandingPageResultPanel({
             <LandingPageVisualRenderer angleData={angles[resolvedTab]} theme={previewTheme} assets={coachAssets} />
           )}
           {styleMode === "visual" && (
-            <LandingPageVisualTemplate
+            <TemplateRenderer
+              config={ENERGETIC_CLIENT}
               angleData={angles[resolvedTab]}
+              pageType={(data as any)?.pageType || "sales_page"}
               headshot={coachAssets.headshot}
               logo={coachAssets.logo}
-              socialProof={coachAssets.socialProof}
+              socialProof={coachAssets.socialProof || []}
               coachName={coachProfile?.coachName || undefined}
               coachBackground={coachProfile?.coachBackground || undefined}
-              serviceDescription={(data as any)?.productDescription || undefined}
               realTestimonials={realTestimonials}
-              primaryColor="#FE4500"
-              offerAngle={resolvedTab === "original" ? undefined : resolvedTab}
             />
           )}
         </div>
