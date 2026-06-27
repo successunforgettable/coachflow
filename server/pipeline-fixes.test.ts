@@ -18,6 +18,7 @@ import { sanitizePlaceholder, PLACEHOLDER_DEFAULTS } from "./routers/services";
 import { isAutoModeTierAllowed } from "./routers/autoMode";
 import { _hasPlaceholder, _CASCADE_NODE_TO_KIT_FIELD } from "./_core/cascadeContext";
 import { resolveTokensInText, normalizeToken, TOKEN_SYNONYMS, type ResolvedEntry } from "./routers/placeholders";
+import { ICP_CONTENT_FIELDS, buildNullOnlyUpdates } from "./_core/icpEnrichment";
 
 // ─── Issue 1: Gradient fallback throws ────────────────────────────────────────
 
@@ -3713,5 +3714,134 @@ describe("Ad-Creatives ICP Wiring", () => {
     expect(prompt).toContain("Test Product");
     expect(prompt).not.toContain("Audience daily pains:");
     expect(prompt).not.toContain("Audience deep fears:");
+  });
+});
+
+// ─── ICP Enrichment — NULL-only write protection ────────────────────────────
+
+describe("ICP Enrichment — NULL-only write protection", () => {
+  it("ICP_CONTENT_FIELDS covers all 16 enrichable text fields", () => {
+    expect(ICP_CONTENT_FIELDS).toHaveLength(16);
+    expect(ICP_CONTENT_FIELDS).toContain("fears");
+    expect(ICP_CONTENT_FIELDS).toContain("objections");
+    expect(ICP_CONTENT_FIELDS).toContain("buyingTriggers");
+    expect(ICP_CONTENT_FIELDS).toContain("psychographics");
+    expect(ICP_CONTENT_FIELDS).toContain("communicationStyle");
+    expect(ICP_CONTENT_FIELDS).toContain("introduction");
+    expect(ICP_CONTENT_FIELDS).toContain("hopesDreams");
+    expect(ICP_CONTENT_FIELDS).toContain("pains");
+    expect(ICP_CONTENT_FIELDS).toContain("frustrations");
+    expect(ICP_CONTENT_FIELDS).toContain("goals");
+    expect(ICP_CONTENT_FIELDS).toContain("values");
+    expect(ICP_CONTENT_FIELDS).toContain("mediaConsumption");
+    expect(ICP_CONTENT_FIELDS).toContain("influencers");
+    expect(ICP_CONTENT_FIELDS).toContain("decisionMaking");
+    expect(ICP_CONTENT_FIELDS).toContain("successMetrics");
+    expect(ICP_CONTENT_FIELDS).toContain("implementationBarriers");
+  });
+
+  it("buildNullOnlyUpdates writes ONLY to NULL fields — user-provided fields never overwritten", () => {
+    const icp = {
+      name: "Crypto beginners",
+      pains: "User-provided pains about scams",
+      goals: "User-provided goals about financial freedom",
+      fears: null,
+      objections: null,
+      buyingTriggers: null,
+      psychographics: null,
+      communicationStyle: null,
+      introduction: null,
+      hopesDreams: null,
+      frustrations: null,
+      values: null,
+      mediaConsumption: null,
+      influencers: null,
+      decisionMaking: null,
+      successMetrics: null,
+      implementationBarriers: null,
+      demographics: null,
+      painPoints: null,
+      desiredOutcomes: null,
+      valuesMotivations: null,
+    };
+    const generated = {
+      pains: "LLM-generated pains (should NOT overwrite)",
+      goals: "LLM-generated goals (should NOT overwrite)",
+      fears: "LLM-generated fears",
+      objections: "LLM-generated objections",
+      buyingTriggers: "LLM-generated buying triggers",
+      psychographics: "LLM-generated psychographics",
+      communicationStyle: "LLM-generated communication style",
+      introduction: "LLM-generated intro",
+      hopesDreams: "LLM-generated hopes",
+      frustrations: "LLM-generated frustrations",
+      values: "LLM-generated values",
+      mediaConsumption: "LLM-generated media",
+      influencers: "LLM-generated influencers",
+      decisionMaking: "LLM-generated decision",
+      successMetrics: "LLM-generated metrics",
+      implementationBarriers: "LLM-generated barriers",
+      demographics: { age_range: "25-55" },
+    };
+
+    const updates = buildNullOnlyUpdates(icp, generated);
+
+    // User-provided pains and goals must NOT be in updates
+    expect(updates).not.toHaveProperty("pains");
+    expect(updates).not.toHaveProperty("goals");
+
+    // NULL fields must be filled
+    expect(updates.fears).toBe("LLM-generated fears");
+    expect(updates.objections).toBe("LLM-generated objections");
+    expect(updates.buyingTriggers).toBe("LLM-generated buying triggers");
+    expect(updates.psychographics).toBe("LLM-generated psychographics");
+    expect(updates.communicationStyle).toBe("LLM-generated communication style");
+    expect(updates.introduction).toBe("LLM-generated intro");
+    expect(updates.demographics).toEqual({ age_range: "25-55" });
+
+    // Mirror fields: painPoints, desiredOutcomes, valuesMotivations
+    expect(updates).not.toHaveProperty("painPoints"); // pains wasn't updated
+    expect(updates).not.toHaveProperty("desiredOutcomes"); // goals wasn't updated
+    expect(updates.valuesMotivations).toBe("LLM-generated values"); // values was NULL → filled
+  });
+
+  it("buildNullOnlyUpdates returns empty object when all fields already populated", () => {
+    const fullyPopulated: Record<string, unknown> = { demographics: {} };
+    for (const field of ICP_CONTENT_FIELDS) {
+      fullyPopulated[field] = "existing content";
+    }
+    fullyPopulated.painPoints = "existing";
+    fullyPopulated.desiredOutcomes = "existing";
+    fullyPopulated.valuesMotivations = "existing";
+
+    const generated: Record<string, unknown> = { demographics: { age_range: "25-55" } };
+    for (const field of ICP_CONTENT_FIELDS) {
+      generated[field] = "LLM output that should be ignored";
+    }
+
+    const updates = buildNullOnlyUpdates(fullyPopulated, generated);
+    expect(Object.keys(updates)).toHaveLength(0);
+  });
+
+  it("correction appended to pains preserves original content", () => {
+    // Simulates the client-side correction logic (Bug 1 fix)
+    const originalData = {
+      name: "Financial strugglers aged 25-55",
+      pains: "Trapped in paycheck-to-paycheck cycles, desperate for crypto",
+    };
+    const correction = "it's also business owners too";
+
+    // Bug 1 fix: append correction as labeled context, preserve original name
+    const corrected = {
+      ...originalData,
+      pains: (originalData.pains || "") + "\n\nUser correction: " + correction,
+    };
+
+    // Original name preserved
+    expect(corrected.name).toBe("Financial strugglers aged 25-55");
+    // Original pains content preserved
+    expect(corrected.pains).toContain("Trapped in paycheck-to-paycheck cycles");
+    // Correction appended with label
+    expect(corrected.pains).toContain("User correction: it's also business owners too");
   });
 });

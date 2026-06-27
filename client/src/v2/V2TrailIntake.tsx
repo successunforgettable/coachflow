@@ -553,7 +553,12 @@ export default function V2TrailIntake() {
             setPhase("hasAssets");
             const correction = await new Promise<string>(r => { importTextResolve.current = r; });
             addMsg({ type: "user-bubble", text: correction });
-            confirmedAssets[cat.key] = { ...data, [cat.nameField]: correction.split(/[,—\-]/)[0]?.trim() || correction.slice(0, 120), [cat.previewField]: correction };
+            // Append correction as labeled context — preserve original name and extracted content
+            confirmedAssets[cat.key] = {
+              ...data,
+              [cat.previewField]: (data[cat.previewField] || "") + "\n\nUser correction: " + correction,
+            };
+            addMsg({ type: "zappy-bubble", mood: "idle", text: "Got it \u2014 I'll factor that in." });
           }
         } else {
           missingCategories.push(cat.key);
@@ -620,14 +625,19 @@ export default function V2TrailIntake() {
       addMsg({ type: "zappy-bubble", mood: "thinking", text: "Studying the people you help..." });
       let icpId: number;
       if (confirmedAssets.icp) {
-        const result = await importIcpMutation.mutateAsync({
-          serviceId,
-          name: confirmedAssets.icp.name,
-          pains: confirmedAssets.icp.pains || undefined,
-          goals: confirmedAssets.icp.goals || undefined,
-          implementationBarriers: confirmedAssets.icp.implementationBarriers || undefined,
-          demographics: confirmedAssets.icp.demographics || undefined,
-        });
+        // Import + enrichment is blocking (~30-60s) — wrap in patienceGuard
+        // so the user sees progress messages instead of dead air.
+        const result = await patienceGuard(
+          importIcpMutation.mutateAsync({
+            serviceId,
+            name: confirmedAssets.icp.name,
+            pains: confirmedAssets.icp.pains || undefined,
+            goals: confirmedAssets.icp.goals || undefined,
+            implementationBarriers: confirmedAssets.icp.implementationBarriers || undefined,
+            demographics: confirmedAssets.icp.demographics || undefined,
+          }),
+          addMsg,
+        );
         icpId = result.icpId;
         addMsg({ type: "system-divider", text: "ICP imported" });
       } else {

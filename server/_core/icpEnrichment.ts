@@ -15,13 +15,36 @@ import { idealCustomerProfiles, services } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { filterRecord } from "../lib/complianceFilter";
 
-const ICP_CONTENT_FIELDS = [
+export const ICP_CONTENT_FIELDS = [
   "introduction", "fears", "hopesDreams", "psychographics",
   "pains", "frustrations", "goals", "values", "objections",
   "buyingTriggers", "mediaConsumption", "influencers",
   "communicationStyle", "decisionMaking", "successMetrics",
   "implementationBarriers",
 ] as const;
+
+/**
+ * Pure function: builds the set of updates to apply, writing ONLY to NULL fields.
+ * Exported for testing — the enrichImportedIcp function uses this internally.
+ */
+export function buildNullOnlyUpdates(
+  icp: Record<string, unknown>,
+  generated: Record<string, unknown>,
+): Record<string, unknown> {
+  const updates: Record<string, unknown> = {};
+  for (const field of ICP_CONTENT_FIELDS) {
+    if (icp[field] == null && generated[field]) {
+      updates[field] = generated[field];
+    }
+  }
+  if (icp.demographics == null && generated.demographics) {
+    updates.demographics = generated.demographics;
+  }
+  if (updates.pains && !icp.painPoints) updates.painPoints = updates.pains;
+  if (updates.goals && !icp.desiredOutcomes) updates.desiredOutcomes = updates.goals;
+  if (updates.values && !icp.valuesMotivations) updates.valuesMotivations = updates.values;
+  return updates;
+}
 
 export async function enrichImportedIcp(icpId: number): Promise<void> {
   const db = await getDb();
@@ -135,18 +158,10 @@ export async function enrichImportedIcp(icpId: number): Promise<void> {
       textFields as unknown as string[],
     );
 
-    const updates: Record<string, unknown> = {};
-    for (const field of ICP_CONTENT_FIELDS) {
-      if ((icp as any)[field] == null && compliant[field]) {
-        updates[field] = compliant[field];
-      }
-    }
-    if (icp.demographics == null && generated.demographics) {
-      updates.demographics = generated.demographics;
-    }
-    if (updates.pains && !icp.painPoints) updates.painPoints = updates.pains;
-    if (updates.goals && !icp.desiredOutcomes) updates.desiredOutcomes = updates.goals;
-    if (updates.values && !(icp as any).valuesMotivations) updates.valuesMotivations = updates.values;
+    const updates = buildNullOnlyUpdates(
+      icp as Record<string, unknown>,
+      { ...compliant, demographics: generated.demographics },
+    );
 
     if (Object.keys(updates).length === 0) return;
 

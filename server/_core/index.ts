@@ -1013,6 +1013,13 @@ Never return IDs that don't exist in the provided list.`,
     console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
   }
 
+  // ICP enrichment blocks importIcp for ~30-60s. Ensure no Node.js
+  // timeout kills the request before the response is sent.
+  // headersTimeout: time to receive request headers (default 60s — safe, but raise for margin)
+  // requestTimeout: total request lifetime (default 300s — already generous)
+  server.headersTimeout = 120_000;   // 120s (was 60s default)
+  server.requestTimeout = 300_000;   // 300s (explicit, matches Node default)
+
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
   });
