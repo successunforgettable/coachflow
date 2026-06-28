@@ -556,4 +556,54 @@ Extract the structured business profile. Return JSON matching the schema.`;
       }
       return extracted;
     }),
+
+  /**
+   * updateFromExtraction — updates service row with richer content from a
+   * has-assets document extraction. Only overwrites a field if the new value
+   * is substantive (>10 chars) — never blanks a decent greeting-derived field.
+   */
+  updateFromExtraction: protectedProcedure
+    .input(z.object({
+      serviceId: z.number(),
+      name: z.string().max(255).optional(),
+      description: z.string().max(2000).optional(),
+      targetCustomer: z.string().max(500).optional(),
+      mainBenefit: z.string().max(500).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      // Ownership check
+      const [existing] = await db.select().from(services)
+        .where(and(eq(services.id, input.serviceId), eq(services.userId, ctx.user.id)))
+        .limit(1);
+      if (!existing) return { updated: false };
+
+      const MIN_SUBSTANTIVE = 10;
+      const updates: Record<string, string> = {};
+
+      // Only overwrite if extracted value is substantive AND richer than existing
+      if (input.name && input.name.trim().length >= MIN_SUBSTANTIVE) {
+        updates.name = input.name.trim();
+      }
+      if (input.description && input.description.trim().length >= MIN_SUBSTANTIVE &&
+          input.description.trim().length > (existing.description?.length ?? 0)) {
+        updates.description = input.description.trim();
+      }
+      if (input.targetCustomer && input.targetCustomer.trim().length >= MIN_SUBSTANTIVE) {
+        updates.targetCustomer = input.targetCustomer.trim();
+      }
+      if (input.mainBenefit && input.mainBenefit.trim().length >= MIN_SUBSTANTIVE) {
+        updates.mainBenefit = input.mainBenefit.trim();
+      }
+
+      if (Object.keys(updates).length === 0) return { updated: false };
+
+      await db.update(services)
+        .set({ ...updates, updatedAt: new Date() } as any)
+        .where(eq(services.id, input.serviceId));
+
+      return { updated: true };
+    }),
 });

@@ -131,6 +131,8 @@ export default function V2TrailIntake() {
   const generateIcpMutation = trpc.icps.generateAsync.useMutation();
   const getOrCreateKitMutation = trpc.campaignKits.getOrCreate.useMutation();
   const appendMessagesMutation = trpc.trail.appendMessages.useMutation();
+  const checkCoherenceMutation = trpc.autoMode.checkCoherence.useMutation();
+  const updateServiceFromExtractionMutation = trpc.services.updateFromExtraction.useMutation();
   const utils = trpc.useUtils();
   const campaignType = useRef<CampaignTypeValue | null>(null);
   // Snapshot of the thread for the direct flush — kept by a ref so async
@@ -425,94 +427,140 @@ export default function V2TrailIntake() {
         return;
       }
 
-      // ── Step A: Collect material (upload or paste) ──
-      addMsg({ type: "zappy-bubble", mood: "idle",
-        text: "Upload your documents (PDF, Word, or text files) or paste your material below. I'll read everything and pull out what I need." });
-      addMsg({ type: "chip-row", chips: ["Upload files", "I'll paste instead"] });
-
       // Enrichment runs in parallel — doesn't block the choice
       const expandPromise = expandProfileMutation.mutateAsync({ serviceId }).catch(() => { /* non-fatal */ });
 
-      const entryChoice = await new Promise<string>(r => { importConfirmResolve.current = r; });
+      // ── Steps A+B wrapped in a loop: collect material → extract → coherence check.
+      // "Let me upload the right file" loops back here; normal flow runs once.
+      let extracted: Awaited<ReturnType<typeof extractFromAssetsMutation.mutateAsync>>;
+      let isReupload = false;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        // ── Step A: Collect material (upload or paste) ──
+        addMsg({ type: "zappy-bubble", mood: "idle",
+          text: isReupload
+            ? "No problem — upload or paste the right material and I'll start fresh."
+            : "Upload your documents (PDF, Word, or text files) or paste your material below. I'll read everything and pull out what I need." });
+        addMsg({ type: "chip-row", chips: ["Upload files", "I'll paste instead"] });
 
-      let rawText = "";
-      let uploadedImages: { filename: string; dataUrl: string }[] = [];
+        const entryChoice = await new Promise<string>(r => { importConfirmResolve.current = r; });
 
-      if (entryChoice === "Upload files") {
-        // Show a real file input button in the chat — direct user click opens
-        // the OS picker (programmatic .click() gets blocked by browsers).
-        addMsg({ type: "file-upload" });
+        let rawText = "";
+        let uploadedImages: { filename: string; dataUrl: string }[] = [];
 
-        const files = await new Promise<FileList | null>(resolve => {
-          fileSelectResolve.current = (f) => resolve(f);
-          // Cancel fallback — if user doesn't pick within 5 min, resolve null
-          setTimeout(() => { if (fileSelectResolve.current) { fileSelectResolve.current = null; resolve(null); } }, 300000);
-        });
-        if (!files || files.length === 0) {
-          addMsg({ type: "zappy-bubble", mood: "idle", text: "No files selected. You can paste your material instead." });
-          setPhase("hasAssets");
-          rawText = await new Promise<string>(r => { importTextResolve.current = r; });
-          addMsg({ type: "user-bubble", text: rawText.slice(0, 200) + (rawText.length > 200 ? "..." : "") });
-        } else {
-          addMsg({ type: "zappy-bubble", mood: "thinking", text: `Reading ${files.length} file${files.length > 1 ? "s" : ""}...` });
-          const formData = new FormData();
-          for (let i = 0; i < files.length; i++) {
-            formData.append("files", files[i]);
-          }
-
-          const resp = await fetch("/api/extract-documents", {
-            method: "POST",
-            body: formData,
-            credentials: "include",
+        if (entryChoice === "Upload files") {
+          addMsg({ type: "file-upload" });
+          const files = await new Promise<FileList | null>(resolve => {
+            fileSelectResolve.current = (f) => resolve(f);
+            setTimeout(() => { if (fileSelectResolve.current) { fileSelectResolve.current = null; resolve(null); } }, 300000);
           });
-          const result = await resp.json();
-
-          if (!resp.ok || !result.text) {
-            const warnings = result.warnings?.join(" ") || "";
-            addMsg({ type: "zappy-bubble", mood: "idle",
-              text: `I couldn't read those files. ${warnings} Try pasting your material instead.` });
+          if (!files || files.length === 0) {
+            addMsg({ type: "zappy-bubble", mood: "idle", text: "No files selected. You can paste your material instead." });
             setPhase("hasAssets");
             rawText = await new Promise<string>(r => { importTextResolve.current = r; });
             addMsg({ type: "user-bubble", text: rawText.slice(0, 200) + (rawText.length > 200 ? "..." : "") });
           } else {
-            rawText = result.text;
-            uploadedImages = result.images || [];
-            if (result.warnings?.length > 0) {
-              addMsg({ type: "zappy-bubble", mood: "idle", text: result.warnings.join(" ") });
+            addMsg({ type: "zappy-bubble", mood: "thinking", text: `Reading ${files.length} file${files.length > 1 ? "s" : ""}...` });
+            const formData = new FormData();
+            for (let i = 0; i < files.length; i++) formData.append("files", files[i]);
+            const resp = await fetch("/api/extract-documents", { method: "POST", body: formData, credentials: "include" });
+            const result = await resp.json();
+            if (!resp.ok || !result.text) {
+              const warnings = result.warnings?.join(" ") || "";
+              addMsg({ type: "zappy-bubble", mood: "idle", text: `I couldn't read those files. ${warnings} Try pasting your material instead.` });
+              setPhase("hasAssets");
+              rawText = await new Promise<string>(r => { importTextResolve.current = r; });
+              addMsg({ type: "user-bubble", text: rawText.slice(0, 200) + (rawText.length > 200 ? "..." : "") });
+            } else {
+              rawText = result.text;
+              uploadedImages = result.images || [];
+              if (result.warnings?.length > 0) addMsg({ type: "zappy-bubble", mood: "idle", text: result.warnings.join(" ") });
+              addMsg({ type: "system-divider", text: `${result.fileCount} file${result.fileCount > 1 ? "s" : ""} read` });
             }
-            addMsg({ type: "system-divider", text: `${result.fileCount} file${result.fileCount > 1 ? "s" : ""} read` });
+          }
+        } else {
+          addMsg({ type: "zappy-bubble", mood: "idle", text: "Paste everything you've got — your offer, method, ICP, testimonials, whatever you have. I'll sort through it." });
+          setPhase("hasAssets");
+          rawText = await new Promise<string>(r => { importTextResolve.current = r; });
+          addMsg({ type: "user-bubble", text: rawText.slice(0, 200) + (rawText.length > 200 ? "..." : "") });
+        }
+
+        if (rawText.length < 50) {
+          addMsg({ type: "zappy-bubble", mood: "idle", text: "That's a bit short for me to work with. Tell me more about your business, offer, and who you help." });
+          setPhase("hasAssets");
+          const more = await new Promise<string>(r => { importTextResolve.current = r; });
+          addMsg({ type: "user-bubble", text: more.slice(0, 200) + (more.length > 200 ? "..." : "") });
+          rawText = rawText + "\n\n" + more;
+        }
+
+        if (rawText.length > 150000) {
+          addMsg({ type: "zappy-bubble", mood: "idle",
+            text: "That's a lot of material! Try uploading just your most important file, or paste the key sections (your offer, method, and who you help). I work best with focused content." });
+          setPhase("hasAssets");
+          rawText = await new Promise<string>(r => { importTextResolve.current = r; });
+          addMsg({ type: "user-bubble", text: rawText.slice(0, 200) + (rawText.length > 200 ? "..." : "") });
+        }
+
+        // ── Step B: LLM extraction ──
+        addMsg({ type: "zappy-bubble", mood: "thinking", text: rawText.length > 50000
+          ? "That's a big document — reading through it now. This might take a moment..."
+          : "Reading through your material and pulling out what I find..." });
+        extracted = await extractFromAssetsMutation.mutateAsync({ rawText, images: uploadedImages });
+
+        // ── Step B2: Coherence check — does the doc match the greeting? ──
+        const svcName = pendingFields.current?.serviceName || "";
+        const svcDesc = pendingFields.current?.serviceDescription || "";
+        const svcTarget = pendingFields.current?.targetCustomer || "";
+        const docOffer = extracted.offer?.name || "";
+        const docOfferVal = extracted.offer?.valueProposition || "";
+        const docIcp = extracted.icp?.name || "";
+
+        // Only check if both sides have enough content to compare
+        if ((svcName || svcDesc) && (docOffer || docIcp)) {
+          try {
+            const coherence = await checkCoherenceMutation.mutateAsync({
+              serviceName: svcName,
+              serviceDescription: svcDesc,
+              serviceTargetCustomer: svcTarget,
+              docOfferName: docOffer,
+              docOfferValue: docOfferVal,
+              docIcpName: docIcp,
+            });
+
+            if (coherence.diverges) {
+              addMsg({ type: "zappy-bubble", mood: "idle",
+                text: `Heads up \u2014 you mentioned \u201C${svcName}\u201D earlier, but this document looks like \u201C${coherence.docSummary}\u201D. Want me to build around this document, or did you upload the wrong file?` });
+              addMsg({ type: "chip-row", chips: ["Use this document", "Let me upload the right file"] });
+              setPhase("hasAssetsChoice");
+
+              const divergeChoice = await new Promise<string>(r => { importConfirmResolve.current = r; });
+              if (divergeChoice === "Let me upload the right file") {
+                isReupload = true;
+                continue; // loop back to Step A
+              }
+              // "Use this document" — fall through to service update below
+            }
+          } catch {
+            // Coherence check failed — proceed silently (never block the flow)
           }
         }
-      } else {
-        // Paste path
-        addMsg({ type: "zappy-bubble", mood: "idle", text: "Paste everything you've got — your offer, method, ICP, testimonials, whatever you have. I'll sort through it." });
-        setPhase("hasAssets");
-        rawText = await new Promise<string>(r => { importTextResolve.current = r; });
-        addMsg({ type: "user-bubble", text: rawText.slice(0, 200) + (rawText.length > 200 ? "..." : "") });
-      }
 
-      if (rawText.length < 50) {
-        addMsg({ type: "zappy-bubble", mood: "idle", text: "That's a bit short for me to work with. Tell me more about your business, offer, and who you help." });
-        setPhase("hasAssets");
-        const more = await new Promise<string>(r => { importTextResolve.current = r; });
-        addMsg({ type: "user-bubble", text: more.slice(0, 200) + (more.length > 200 ? "..." : "") });
-        rawText = rawText + "\n\n" + more;
-      }
+        // ── Service update from extracted content (both SAME and DIFFERENT paths) ──
+        // Only overwrites fields where the extracted value is substantive (>10 chars).
+        try {
+          await updateServiceFromExtractionMutation.mutateAsync({
+            serviceId,
+            name: docOffer || undefined,
+            description: docOfferVal || undefined,
+            targetCustomer: docIcp || undefined,
+            mainBenefit: docOfferVal ? docOfferVal.split(/[.!?]/)[0]?.trim() || undefined : undefined,
+          });
+        } catch {
+          // Non-fatal — service stays as-is from greeting
+        }
 
-      // ── Step B: LLM extraction ──
-      // Client-side size guard — friendly message instead of raw Zod error
-      if (rawText.length > 150000) {
-        addMsg({ type: "zappy-bubble", mood: "idle",
-          text: "That's a lot of material! Try uploading just your most important file, or paste the key sections (your offer, method, and who you help). I work best with focused content." });
-        setPhase("hasAssets");
-        rawText = await new Promise<string>(r => { importTextResolve.current = r; });
-        addMsg({ type: "user-bubble", text: rawText.slice(0, 200) + (rawText.length > 200 ? "..." : "") });
+        break; // normal exit — proceed to confirm cards
       }
-
-      addMsg({ type: "zappy-bubble", mood: "thinking", text: rawText.length > 50000
-        ? "That's a big document — reading through it now. This might take a moment..."
-        : "Reading through your material and pulling out what I find..." });
-      const extracted = await extractFromAssetsMutation.mutateAsync({ rawText, images: uploadedImages });
 
       // ── Step C: Show what was found — confirm cards ──
       const confirmedAssets: Record<string, Record<string, string>> = {};

@@ -772,4 +772,46 @@ Extract all marketing assets you can identify. Return JSON matching the schema.`
       }
       return extracted;
     }),
+
+  /**
+   * checkCoherence — fast semantic check: does the greeting-derived service
+   * match the uploaded document's content, or are they different businesses?
+   * Returns { diverges, docSummary }. On LLM failure, returns { diverges: false }
+   * (never blocks the flow).
+   */
+  checkCoherence: protectedProcedure
+    .input(z.object({
+      serviceName: z.string(),
+      serviceDescription: z.string(),
+      serviceTargetCustomer: z.string(),
+      docOfferName: z.string(),
+      docOfferValue: z.string(),
+      docIcpName: z.string(),
+    }))
+    .mutation(async ({ input }) => {
+      try {
+        const response = await invokeLLM({
+          messages: [
+            { role: "user", content: `Are these describing the SAME business, or DIFFERENT businesses?
+
+What the user said earlier: "${input.serviceName}" — ${input.serviceDescription}. Serves: ${input.serviceTargetCustomer}
+What the uploaded document describes: "${input.docOfferName}" — ${input.docOfferValue}. For: ${input.docIcpName}
+
+If the document is simply a more detailed version of the same business, respond SAME.
+If they describe genuinely different niches, audiences, or offers, respond DIFFERENT.
+
+Respond with ONLY the word SAME or DIFFERENT.` },
+          ],
+          model: "claude-haiku-4-5-20251001",
+        });
+
+        const answer = (response.choices[0]?.message?.content ?? "").trim().toUpperCase();
+        const diverges = answer.includes("DIFFERENT");
+        const docSummary = input.docOfferName || input.docIcpName || "a different business";
+        return { diverges, docSummary };
+      } catch (err) {
+        console.warn("[checkCoherence] LLM check failed, proceeding silently:", err instanceof Error ? err.message : String(err));
+        return { diverges: false, docSummary: "" };
+      }
+    }),
 });
