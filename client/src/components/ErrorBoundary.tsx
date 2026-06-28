@@ -21,6 +21,24 @@ class ErrorBoundary extends Component<Props, State> {
     return { hasError: true, error };
   }
 
+  componentDidCatch(error: Error) {
+    // Stale-bundle auto-reload: after a deploy, the browser may cache the old
+    // main bundle which references chunk filenames that no longer exist on the
+    // server. Detect this and reload once (cache-busted) so the user gets the
+    // new bundle seamlessly instead of a crash screen.
+    const isChunkError =
+      error.message?.includes("dynamically imported module") ||
+      error.message?.includes("Failed to fetch") ||
+      error.message?.includes("Loading chunk");
+    if (isChunkError && !sessionStorage.getItem("zap-chunk-reload")) {
+      sessionStorage.setItem("zap-chunk-reload", "1");
+      window.location.reload();
+      return;
+    }
+    // Clear the flag on non-chunk errors so a future deploy can retry
+    sessionStorage.removeItem("zap-chunk-reload");
+  }
+
   render() {
     if (this.state.hasError) {
       return (
