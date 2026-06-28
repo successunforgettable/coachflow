@@ -629,20 +629,35 @@ export default function V2TrailIntake() {
       addMsg({ type: "zappy-bubble", mood: "thinking", text: "Studying the people you help..." });
       let icpId: number;
       if (confirmedAssets.icp) {
-        // Import + enrichment is blocking (~30-60s) — wrap in patienceGuard
-        // so the user sees progress messages instead of dead air.
-        const result = await patienceGuard(
-          importIcpMutation.mutateAsync({
-            serviceId,
-            name: confirmedAssets.icp.name,
-            pains: confirmedAssets.icp.pains || undefined,
-            goals: confirmedAssets.icp.goals || undefined,
-            implementationBarriers: confirmedAssets.icp.implementationBarriers || undefined,
-            demographics: confirmedAssets.icp.demographics || undefined,
-          }),
-          addMsg,
-        );
-        icpId = result.icpId;
+        // Step 1: Import ICP row (fast, <2s — returns immediately).
+        const importResult = await importIcpMutation.mutateAsync({
+          serviceId,
+          name: confirmedAssets.icp.name,
+          pains: confirmedAssets.icp.pains || undefined,
+          goals: confirmedAssets.icp.goals || undefined,
+          implementationBarriers: confirmedAssets.icp.implementationBarriers || undefined,
+          demographics: confirmedAssets.icp.demographics || undefined,
+        });
+        icpId = importResult.icpId;
+
+        // Step 2: Poll enrichment job until complete — this is the gate that
+        // guarantees the cascade never fires on a thin/unenriched ICP.
+        // patienceGuard shows progress messages during the 30-60s wait.
+        // Each poll is a fast HTTP request (<1s), so no proxy timeout risk.
+        if (importResult.enrichmentJobId) {
+          const enrichJob = await patienceGuard(
+            pollJob(importResult.enrichmentJobId),
+            addMsg,
+          );
+          if (enrichJob.status === "failed") {
+            // Enrichment failed (real LLM error, not transport) — proceed with
+            // thin ICP rather than dead-ending. The cascade will produce less
+            // personalised output but still runs end-to-end.
+            addMsg({ type: "zappy-bubble", mood: "idle",
+              text: "Couldn't build the full profile this time — I'll work with what I have." });
+          }
+        }
+
         setConfirmedStopKeys(prev => new Set(prev).add("icp"));
         addMsg({ type: "system-divider", text: "ICP imported" });
       } else {

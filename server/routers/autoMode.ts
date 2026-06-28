@@ -334,20 +334,46 @@ export const autoModeRouter = router({
 
       const icpId = result[0].insertId as number;
 
-      // Enrich the imported ICP with the full 17-tab generator (BLOCKING).
-      // Must complete before returning icpId — downstream cascade nodes read
-      // the ICP row, and running on a thin ICP reproduces the exact quality
-      // bug this fix addresses. If enrichment fails, the ICP stays thin but
-      // the cascade still runs end-to-end (non-fatal).
-      try {
-        const { enrichImportedIcp } = await import("../_core/icpEnrichment");
-        await enrichImportedIcp(icpId);
-      } catch (err) {
-        console.warn("[importIcp] Enrichment failed, continuing with thin ICP:", err instanceof Error ? err.message : String(err));
-      }
+      // Enrich as a background job — returns immediately so the HTTP response
+      // completes in <2s. The client polls the job before proceeding to kit
+      // creation, guaranteeing the cascade never fires on a thin ICP.
+      // Previous approach (blocking await) caused Railway proxy timeouts:
+      // the 30-60s enrichment outlived the proxy, which returned HTML, and
+      // the client's tRPC JSON parser threw "Unexpected token '<'".
+      const enrichmentJobId = randomUUID();
+      await db.insert(jobs).values({
+        id: enrichmentJobId,
+        userId: String(ctx.user.id),
+        status: "pending",
+      });
+
+      setImmediate(async () => {
+        try {
+          const { enrichImportedIcp } = await import("../_core/icpEnrichment");
+          await enrichImportedIcp(icpId);
+          const bgDb = await getDb();
+          if (bgDb) {
+            await bgDb.update(jobs)
+              .set({ status: "complete", result: JSON.stringify({ icpId }) })
+              .where(eq(jobs.id, enrichmentJobId));
+          }
+        } catch (err) {
+          const errorMessage = err instanceof Error ? err.message : String(err);
+          console.warn("[importIcp] Enrichment failed, ICP stays thin:", errorMessage);
+          try {
+            const bgDb = await getDb();
+            if (bgDb) {
+              await bgDb.update(jobs)
+                .set({ status: "failed", error: errorMessage.slice(0, 1024) })
+                .where(eq(jobs.id, enrichmentJobId));
+            }
+          } catch { /* ignore */ }
+        }
+      });
 
       return {
         icpId,
+        enrichmentJobId,
         complianceApplied: icpClassification === "PIVOT_REQUIRED",
         flaggedTerms: icpFlaggedTerms,
       };
