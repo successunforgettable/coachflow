@@ -28,6 +28,9 @@ import ComplianceDial from "./components/ComplianceDial";
 import { trpc } from "@/lib/trpc";
 import { getNodePatience } from "./lib/patienceGuard";
 import { getEarlyLines, getRevealLine, resetBuild } from "./lib/zappyWaitLines";
+import { lazy, Suspense } from "react";
+
+const V2ICPResultPanel = lazy(() => import("./V2ICPResultPanel"));
 
 const FONT_BODY = "'Instrument Sans', system-ui, sans-serif";
 const FONT_HEADING = "'Fraunces', Georgia, serif";
@@ -1859,7 +1862,14 @@ export default function V2Trail() {
     return [...withWelcome, ...live];
   }, [persisted, stops, live]);
 
+  const [icpPanelOpen, setIcpPanelOpen] = useState(false);
+
   const handleStopClick = (key: string) => {
+    if (key === "icp") {
+      setIcpPanelOpen(prev => !prev);
+      return;
+    }
+    setIcpPanelOpen(false); // close ICP panel when clicking other nodes
     const el = nodeRefMap.current.get(key);
     if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
   };
@@ -1929,6 +1939,25 @@ export default function V2Trail() {
           })()}
         </div>
 
+        {/* ICP panel — toggles on ICP node click in trail bar */}
+        {icpPanelOpen && trailState.data?.kit && (
+          <div style={{
+            flex: 1,
+            minHeight: 0,
+            background: "white",
+            borderRadius: "20px 20px 0 0",
+            overflow: "auto",
+            padding: "16px 12px",
+          }}>
+            <Suspense fallback={<div style={{ padding: 20, fontFamily: FONT_BODY, color: TEXT_COLOR, opacity: 0.5 }}>Loading ICP...</div>}>
+              <V2ICPResultPanel
+                icpId={(trailState.data.kit as { icpId: number }).icpId}
+                onContinue={() => setIcpPanelOpen(false)}
+              />
+            </Suspense>
+          </div>
+        )}
+
         {/* ChatThread fills remaining space */}
         <div style={{
           flex: 1,
@@ -1936,6 +1965,7 @@ export default function V2Trail() {
           background: "rgba(255,255,255,0.3)",
           borderRadius: "20px 20px 0 0",
           overflow: "hidden",
+          display: icpPanelOpen ? "none" : undefined,
         }}>
           <ChatThread
             messages={messages}

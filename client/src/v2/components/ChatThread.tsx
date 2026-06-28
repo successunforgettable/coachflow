@@ -79,7 +79,7 @@ export interface ChatMessage {
   /** Node key for scroll-to targeting from TrailBar */
   nodeKey?: string;
   /** Asset reveal card data (structural shell) */
-  reveal?: { eyebrow: string; title: string; preview: string; score?: number };
+  reveal?: { eyebrow: string; title: string; preview: string; score?: number; sections?: { label: string; content: string }[] };
   /** Card deck data (structural shell) */
   deck?: { cards: { id: number; title: string; preview: string; selected?: boolean; favouritable?: boolean; favourited?: boolean }[] };
   /** Milestone badge data */
@@ -360,6 +360,35 @@ function AssetRevealCard({ msg }: { msg: ChatMessage }) {
               />
             ))}
           </div>
+        ) : msg.reveal.sections && msg.reveal.sections.length > 0 ? (
+          <div style={{ marginTop: 4 }}>
+            {msg.reveal.sections.map((sec, i) => (
+              <div key={i} style={{ marginBottom: i < msg.reveal!.sections!.length - 1 ? 10 : 0 }}>
+                <div style={{
+                  fontFamily: FONT_BODY,
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase" as const,
+                  color: TEXT_COLOR,
+                  opacity: 0.45,
+                  marginBottom: 3,
+                }}>
+                  {sec.label}
+                </div>
+                <div style={{
+                  fontFamily: FONT_BODY,
+                  fontSize: 13,
+                  color: TEXT_COLOR,
+                  opacity: 0.7,
+                  lineHeight: 1.5,
+                  whiteSpace: "pre-wrap",
+                }}>
+                  {sec.content}
+                </div>
+              </div>
+            ))}
+          </div>
         ) : (
           <div style={{
             fontFamily: FONT_BODY,
@@ -373,7 +402,7 @@ function AssetRevealCard({ msg }: { msg: ChatMessage }) {
             {displayText}
           </div>
         )}
-        {isLong && (
+        {isLong && !msg.reveal.sections && (
           <button
             onClick={() => setExpanded(!expanded)}
             style={{

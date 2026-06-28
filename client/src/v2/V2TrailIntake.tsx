@@ -571,6 +571,43 @@ export default function V2TrailIntake() {
         { key: "hvco", label: "LEAD MAGNET", stopKey: "freeOptIn", nameField: "title", previewField: "topic" },
       ] as const;
 
+      // Full-artifact section builders for foundational categories (has-assets only).
+      // These show ALL extracted fields so the expert user reviews the real artifact.
+      const buildSections = (key: string, data: Record<string, string>): { label: string; content: string }[] | undefined => {
+        const s = (field: string) => data[field]?.trim();
+        if (key === "icp") {
+          const sections: { label: string; content: string }[] = [];
+          if (s("demographics")) sections.push({ label: "Who they are", content: s("demographics")! });
+          if (s("pains")) sections.push({ label: "What hurts", content: s("pains")! });
+          if (s("goals")) sections.push({ label: "What they want", content: s("goals")! });
+          if (s("implementationBarriers")) sections.push({ label: "What\u2019s stopped them", content: s("implementationBarriers")! });
+          return sections.length > 0 ? sections : undefined;
+        }
+        if (key === "offer") {
+          const sections: { label: string; content: string }[] = [];
+          if (s("valueProposition")) sections.push({ label: "What it delivers", content: s("valueProposition")! });
+          if (s("pricing")) sections.push({ label: "Pricing", content: s("pricing")! });
+          if (s("duration")) sections.push({ label: "Duration", content: s("duration")! });
+          if (s("bonuses")) sections.push({ label: "Bonuses", content: s("bonuses")! });
+          if (s("guarantee")) sections.push({ label: "Guarantee", content: s("guarantee")! });
+          if (s("cta")) sections.push({ label: "Call to action", content: s("cta")! });
+          return sections.length > 0 ? sections : undefined;
+        }
+        if (key === "mechanism") {
+          const sections: { label: string; content: string }[] = [];
+          if (s("description")) sections.push({ label: "How it works", content: s("description")! });
+          return sections.length > 0 ? sections : undefined;
+        }
+        return undefined; // hvco: thin card, no sections needed
+      };
+
+      // Confirmation copy per category — warmer, expert-respecting
+      const CONFIRM_COPY: Record<string, { prompt: string; confirmChip: string; adjustChip: string }> = {
+        icp: { prompt: "Here\u2019s the full picture of your ideal customer \u2014 does this capture them? Anything you\u2019d sharpen?", confirmChip: "That\u2019s them", adjustChip: "I\u2019d adjust something" },
+        offer: { prompt: "Here\u2019s your offer as I understood it \u2014 anything to refine?", confirmChip: "That\u2019s right", adjustChip: "I\u2019d adjust something" },
+        mechanism: { prompt: "Here\u2019s your method \u2014 does this capture what makes you different?", confirmChip: "That\u2019s it", adjustChip: "I\u2019d adjust something" },
+      };
+
       const foundCategories: string[] = [];
       const missingCategories: string[] = [];
 
@@ -581,6 +618,8 @@ export default function V2TrailIntake() {
         if (data && data[cat.nameField]) {
           foundCategories.push(cat.key);
           const confidenceNote = confidence === "low" ? " (I wasn't fully sure about this one)" : "";
+          const sections = buildSections(cat.key, data);
+          const copy = CONFIRM_COPY[cat.key];
 
           addMsg({
             type: "asset-reveal-card",
@@ -588,14 +627,17 @@ export default function V2TrailIntake() {
             reveal: {
               eyebrow: `FOUND — YOUR ${cat.label}${confidenceNote}`,
               title: data[cat.nameField] || cat.label,
-              preview: data[cat.previewField] || "",
+              preview: sections ? "" : (data[cat.previewField] || ""),
+              sections,
             },
           });
-          addMsg({ type: "zappy-bubble", mood: "idle", text: "Look right?" });
-          addMsg({ type: "chip-row", chips: ["Looks right", "Fix something"] });
+          const confirmChip = copy?.confirmChip || "Looks right";
+          const adjustChip = copy?.adjustChip || "Fix something";
+          addMsg({ type: "zappy-bubble", mood: "idle", text: copy?.prompt || "Look right?" });
+          addMsg({ type: "chip-row", chips: [confirmChip, adjustChip] });
 
           const choice = await new Promise<string>(r => { importConfirmResolve.current = r; });
-          if (choice === "Looks right") {
+          if (choice === confirmChip) {
             confirmedAssets[cat.key] = data;
             setConfirmedStopKeys(prev => new Set(prev).add(cat.stopKey));
           } else {
@@ -861,7 +903,7 @@ export default function V2TrailIntake() {
   };
 
   // ── Chips ──
-  const HAS_ASSETS_CHIPS = ["Upload files", "I'll paste instead", "Looks right", "Fix something", "I'll describe it", "Create one for me", "I have stuff like that", "Actually, build it for me", "Use this document", "Let me upload the right file"];
+  const HAS_ASSETS_CHIPS = ["Upload files", "I'll paste instead", "Looks right", "Fix something", "I'll describe it", "Create one for me", "I have stuff like that", "Actually, build it for me", "Use this document", "Let me upload the right file", "That\u2019s them", "That\u2019s right", "That\u2019s it", "I\u2019d adjust something"];
   const handleChipTap = (messageId: string, chip: string) => {
     // Has-assets flow chips — all resolve through importConfirmResolve
     if (HAS_ASSETS_CHIPS.includes(chip) && (phase === "hasAssets" || phase === "hasAssetsChoice")) {
