@@ -861,7 +861,7 @@ export default function V2TrailIntake() {
   };
 
   // ── Chips ──
-  const HAS_ASSETS_CHIPS = ["Upload files", "I'll paste instead", "Looks right", "Fix something", "I'll describe it", "Create one for me", "I have stuff like that", "Actually, build it for me"];
+  const HAS_ASSETS_CHIPS = ["Upload files", "I'll paste instead", "Looks right", "Fix something", "I'll describe it", "Create one for me", "I have stuff like that", "Actually, build it for me", "Use this document", "Let me upload the right file"];
   const handleChipTap = (messageId: string, chip: string) => {
     // Has-assets flow chips — all resolve through importConfirmResolve
     if (HAS_ASSETS_CHIPS.includes(chip) && (phase === "hasAssets" || phase === "hasAssetsChoice")) {
