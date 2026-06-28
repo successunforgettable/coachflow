@@ -106,6 +106,7 @@ export default function V2TrailIntake() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [phase, setPhase] = useState<Phase>("greeting");
   const [serviceCreated, setServiceCreated] = useState(false);
+  const [confirmedStopKeys, setConfirmedStopKeys] = useState<Set<string>>(new Set());
 
   // Script state kept in refs — these drive the machine, not renders.
   const baseText = useRef("");
@@ -548,6 +549,7 @@ export default function V2TrailIntake() {
           const choice = await new Promise<string>(r => { importConfirmResolve.current = r; });
           if (choice === "Looks right") {
             confirmedAssets[cat.key] = data;
+            setConfirmedStopKeys(prev => new Set(prev).add(cat.stopKey));
           } else {
             addMsg({ type: "zappy-bubble", mood: "idle", text: `Tell me what's different about your ${cat.label.toLowerCase()}.` });
             setPhase("hasAssets");
@@ -559,6 +561,7 @@ export default function V2TrailIntake() {
               [cat.previewField]: (data[cat.previewField] || "") + "\n\nUser correction: " + correction,
             };
             addMsg({ type: "zappy-bubble", mood: "idle", text: "Got it \u2014 I'll factor that in." });
+            setConfirmedStopKeys(prev => new Set(prev).add(cat.stopKey));
           }
         } else {
           missingCategories.push(cat.key);
@@ -612,6 +615,7 @@ export default function V2TrailIntake() {
             } else if (gapKey === "hvco") {
               confirmedAssets.hvco = { title: gapText.split(/[,—\-]/)[0]?.trim() || gapText.slice(0, 120), topic: gapText };
             }
+            setConfirmedStopKeys(prev => new Set(prev).add(cat.stopKey));
           }
           // "Create one for me" — leave it out, cascade generates it
         }
@@ -639,6 +643,7 @@ export default function V2TrailIntake() {
           addMsg,
         );
         icpId = result.icpId;
+        setConfirmedStopKeys(prev => new Set(prev).add("icp"));
         addMsg({ type: "system-divider", text: "ICP imported" });
       } else {
         const icpName = extraction.current?.icpDescriptor?.trim()
@@ -649,6 +654,7 @@ export default function V2TrailIntake() {
           throw new Error(job.error || "ICP generation failed.");
         }
         icpId = job.result.icpId as number;
+        setConfirmedStopKeys(prev => new Set(prev).add("icp"));
         addMsg({ type: "system-divider", text: "ICP generated" });
       }
 
@@ -840,9 +846,11 @@ export default function V2TrailIntake() {
   const inputActive = phase === "describe" || phase === "correction" || phase === "hasAssets";
   // Hide the bar entirely on chips-only beats — no dead input (Commit 2 fix).
   const showInput = phase === "greeting" || phase === "describe" || phase === "correction" || phase === "extracting" || phase === "hasAssets";
-  const stops: TrailStop[] = INTAKE_STOPS.map(s =>
-    s.key === "service" && serviceCreated ? { ...s, state: "done" } : s
-  );
+  const stops: TrailStop[] = INTAKE_STOPS.map(s => {
+    if (s.key === "service" && serviceCreated) return { ...s, state: "done" as const };
+    if (confirmedStopKeys.has(s.key)) return { ...s, state: "imported" as const };
+    return s;
+  });
 
   return (
     <V2Layout>

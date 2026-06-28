@@ -147,10 +147,21 @@ export async function enrichImportedIcp(icpId: number): Promise<void> {
     });
 
     if (!response?.choices?.[0]?.message?.content) return;
-    const content = response.choices[0].message.content;
-    const cleaned = (typeof content === "string" ? content : "")
-      .replace(/^```json\s*|^```\s*|\s*```$/gm, "").trim();
-    const generated = JSON.parse(cleaned);
+    const rawContent = response.choices[0].message.content;
+
+    // Tool-use responses arrive as JSON strings; parse robustly.
+    // Guard against HTML error pages (proxy/CDN) and pre-parsed objects.
+    let generated: Record<string, unknown>;
+    if (typeof rawContent !== "string") {
+      generated = rawContent as Record<string, unknown>;
+    } else {
+      const trimmed = rawContent.trim();
+      if (trimmed.startsWith("<")) {
+        console.warn(`[icpEnrichment] Received HTML instead of JSON (first 200 chars): ${trimmed.slice(0, 200)}`);
+        return;
+      }
+      generated = JSON.parse(trimmed.replace(/^```json\s*|^```\s*|\s*```$/gm, "").trim());
+    }
 
     const textFields = ICP_CONTENT_FIELDS.filter(f => typeof generated[f] === "string");
     const { cleaned: compliant } = filterRecord(
