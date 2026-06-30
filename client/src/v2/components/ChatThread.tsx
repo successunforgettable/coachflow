@@ -14,6 +14,7 @@ import { useState, useEffect, useRef, useCallback, lazy, Suspense } from "react"
 
 const StyleChooser = lazy(() => import("./StyleChooser"));
 const TestimonialPicker = lazy(() => import("./TestimonialPicker"));
+const QuickFillChatCard = lazy(() => import("./QuickFillChatCard"));
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const BRAND_PRIMARY = "#FF5B1D";
@@ -65,6 +66,7 @@ export type ChatMessageType =
   | "system-divider"
   | "style-chooser"
   | "testimonial-picker"
+  | "quick-fill-card"
   | "file-upload";
 
 export interface ChatMessage {
@@ -92,6 +94,8 @@ export interface ChatMessage {
   styleChooserTestimonial?: { quote: string; name: string; title?: string } | null;
   /** Testimonial picker: serviceId + mode */
   testimonialPicker?: { serviceId: number; mode: "campaign" | "standalone" };
+  /** Quick-fill card: serviceId + campaign type (drives the conversion-link label) */
+  quickFill?: { serviceId: number; campaignType?: string };
 }
 
 export type StyleChooseCallback = (messageId: string, style: string) => void;
@@ -105,6 +109,8 @@ export interface ChatThreadProps {
   onDeckHeart?: (messageId: string, cardId: number) => void;
   onStyleChoose?: StyleChooseCallback;
   onTestimonialDone?: (messageId: string, action: "use" | "skip") => void;
+  /** Quick-fill card handler — called when the user saves or skips the Tier-1 card */
+  onQuickFillDone?: (messageId: string, action: "saved" | "skip") => void;
   /** File upload handler — called when user selects files from the file-upload message */
   onFileSelect?: (messageId: string, files: FileList) => void;
   /** Ref map for TrailBar scroll-to-node */
@@ -608,7 +614,7 @@ function SystemDivider({ msg }: { msg: ChatMessage }) {
 }
 
 // ─── Main ChatThread ──────────────────────────────────────────────────────────
-export default function ChatThread({ messages, campaignStatus, onChipTap, onDeckSelect, onDeckHeart, onStyleChoose, onTestimonialDone, onFileSelect, nodeRefMap, onSendText, inputPlaceholder, inputDisabled }: ChatThreadProps) {
+export default function ChatThread({ messages, campaignStatus, onChipTap, onDeckSelect, onDeckHeart, onStyleChoose, onTestimonialDone, onQuickFillDone, onFileSelect, nodeRefMap, onSendText, inputPlaceholder, inputDisabled }: ChatThreadProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
@@ -752,6 +758,15 @@ export default function ChatThread({ messages, campaignStatus, onChipTap, onDeck
                       serviceId={msg.testimonialPicker.serviceId}
                       mode={msg.testimonialPicker.mode}
                       onDone={(action) => onTestimonialDone?.(msg.id, action)}
+                    />
+                  </Suspense>
+                )}
+                {msg.type === "quick-fill-card" && msg.quickFill && (
+                  <Suspense fallback={<SuspenseFallback label="quick details" onSkip={() => onQuickFillDone?.(msg.id, "skip")} />}>
+                    <QuickFillChatCard
+                      serviceId={msg.quickFill.serviceId}
+                      campaignType={msg.quickFill.campaignType}
+                      onDone={(action) => onQuickFillDone?.(msg.id, action)}
                     />
                   </Suspense>
                 )}

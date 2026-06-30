@@ -713,6 +713,18 @@ export default function V2TrailIntake() {
         addMsg({ type: "zappy-bubble", mood: "celebrating", text: "Got it all from your material — no extra questions needed." });
       }
 
+      // ── Step D.5: Tier-1 quick-fill (Fix A Phase 2, has-assets) ──
+      // Sits AFTER the confirm cards + gap questions and BEFORE any ICP /
+      // enrichment / cascade work — the last interactive beat, never
+      // overlapping the awaited enrichment poll below. Every field optional;
+      // blank stays a fill-in-later placeholder. Filled values save via
+      // placeholders.save and flow through the live Phase 1 rails into assets.
+      addMsg({ type: "zappy-bubble", mood: "idle",
+        text: "A few quick details and your campaign's ready to publish — add what you've got handy, skip the rest." });
+      addMsg({ type: "quick-fill-card", quickFill: { serviceId, campaignType: campaignType.current ?? undefined } });
+      const quickFillAction = await new Promise<"saved" | "skip">(r => { quickFillResolve.current = r; });
+      addMsg({ type: "user-bubble", text: quickFillAction === "saved" ? "Added those details" : "I'll add those later" });
+
       // ── Step E: ICP import or generate ──
       // Ensure enrichment finished before ICP work
       await expandPromise;
@@ -847,6 +859,7 @@ export default function V2TrailIntake() {
   const importTextResolve = useRef<((text: string) => void) | null>(null);
   const importConfirmResolve = useRef<((choice: string) => void) | null>(null);
   const fileSelectResolve = useRef<((files: FileList) => void) | null>(null);
+  const quickFillResolve = useRef<((action: "saved" | "skip") => void) | null>(null);
 
   /**
    * Sprint 4 C1 — in-chat manual path. Same shape as runAutoInChat but
@@ -1002,6 +1015,9 @@ export default function V2TrailIntake() {
                 messagesRef.current = messagesRef.current.filter(m => m.id !== msgId);
                 addMsg({ type: "user-bubble", text: `${files.length} file${files.length > 1 ? "s" : ""} selected` });
                 if (fileSelectResolve.current) { fileSelectResolve.current(files); fileSelectResolve.current = null; }
+              }}
+              onQuickFillDone={(_msgId, action) => {
+                if (quickFillResolve.current) { quickFillResolve.current(action); quickFillResolve.current = null; }
               }}
               onSendText={showInput ? handleSendText : undefined}
               inputPlaceholder={
