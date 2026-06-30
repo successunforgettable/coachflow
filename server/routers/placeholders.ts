@@ -14,100 +14,23 @@ import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { placeholderValues } from "../../drizzle/schema";
 import { eq, and, isNull } from "drizzle-orm";
+import {
+  buildResolvedMap,
+  resolveTokensInText,
+  type ResolvedEntry,
+} from "../lib/placeholderResolver";
 
-export type ResolvedEntry = {
-  token: string;
-  value: string;
-  source: "campaign" | "default";
-};
-
-/**
- * Build the resolved map for a given user + service.
- * Precedence: campaign-specific (serviceId = N) > account default (serviceId IS NULL) > absent.
- */
-export async function buildResolvedMap(
-  userId: number,
-  serviceId: number,
-): Promise<Map<string, ResolvedEntry>> {
-  const db = await getDb();
-  if (!db) return new Map();
-
-  const rows = await db
-    .select()
-    .from(placeholderValues)
-    .where(
-      and(
-        eq(placeholderValues.userId, userId),
-        // Drizzle doesn't have OR for nullable, so fetch all for user and filter in-app
-      ),
-    );
-
-  // Filter to relevant rows: account defaults + this campaign
-  const relevant = rows.filter(
-    (r) => r.serviceId === null || r.serviceId === serviceId,
-  );
-
-  const map = new Map<string, ResolvedEntry>();
-
-  // Pass 1: account defaults
-  for (const row of relevant) {
-    if (row.serviceId === null) {
-      map.set(row.token, { token: row.token, value: row.value, source: "default" });
-    }
-  }
-
-  // Pass 2: campaign-specific overrides
-  for (const row of relevant) {
-    if (row.serviceId === serviceId) {
-      map.set(row.token, { token: row.token, value: row.value, source: "campaign" });
-    }
-  }
-
-  return map;
-}
-
-/**
- * Synonym normalization map: LLM-invented variants → canonical token.
- * Applied at resolution time so the registry keys on canonical names
- * regardless of which variant the LLM emitted. Fixes existing campaigns
- * at runtime with no DB migration.
- */
-export const TOKEN_SYNONYMS: Record<string, string> = {
-  "[INSERT_CART_CLOSE]":       "[INSERT_COHORT_CLOSE_DATE]",
-  "[INSERT_NEXT_COHORT_DATE]": "[INSERT_COHORT_CLOSE_DATE]",
-  "[INSERT_REMAINING_SPOTS]":  "[INSERT_COHORT_LIMIT]",
-  "[INSERT_SPOTS_REMAINING]":  "[INSERT_COHORT_LIMIT]",
-  "[INSERT_AVAILABLE_SPOTS]":  "[INSERT_COHORT_LIMIT]",
-  "[INSERT_SUPPORT_EMAIL]":    "[INSERT_CONTACT_EMAIL]",
-  "[INSERT_REFUND_EMAIL]":     "[INSERT_CONTACT_EMAIL]",
-  "[INSERT_BOOKING_LINK]":     "[INSERT_BOOKING_URL]",
-  "[INSERT_START_DATE]":       "[INSERT_PROGRAMME_START_DATE]",
-  "[INSERT_NEXT_LAUNCH_DATE]": "[INSERT_PROGRAMME_START_DATE]",
-  "[INSERT_NEXT_OPEN_DATE]":   "[INSERT_PROGRAMME_START_DATE]",
-  "[INSERT_LAUNCH_DATE]":      "[INSERT_DEADLINE]",
-};
-
-/** Normalize a token through the synonym map. */
-export function normalizeToken(token: string): string {
-  return TOKEN_SYNONYMS[token] ?? token;
-}
-
-/**
- * Substitute [INSERT_*] tokens in text using the resolved map.
- * Normalizes through synonym map before lookup so registry values
- * resolve regardless of which token variant the LLM emitted.
- * Tokens with no registry value are left intact.
- */
-export function resolveTokensInText(
-  text: string,
-  resolvedMap: Map<string, ResolvedEntry>,
-): string {
-  return text.replace(/\[INSERT_[A-Z][A-Z0-9_]*\]/g, (match) => {
-    const canonical = normalizeToken(match);
-    const entry = resolvedMap.get(canonical) ?? resolvedMap.get(match);
-    return entry ? entry.value : match;
-  });
-}
+// Re-export the shared resolver surface so existing importers of this router
+// (and its test suite) keep resolving these symbols from here. Canonical
+// definitions live in ../lib/placeholderResolver.
+export {
+  buildResolvedMap,
+  resolveTokensInText,
+  resolveTokensInObject,
+  normalizeToken,
+  TOKEN_SYNONYMS,
+  type ResolvedEntry,
+} from "../lib/placeholderResolver";
 
 export const placeholdersRouter = router({
   /**

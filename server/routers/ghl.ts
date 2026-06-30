@@ -18,6 +18,7 @@ import {
 } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { encryptToken, decryptToken } from "../_core/tokenCrypto";
+import { buildResolvedMap, resolveTokensInText, type ResolvedEntry } from "../lib/placeholderResolver";
 
 const GHL_BASE = "https://services.leadconnectorhq.com";
 
@@ -501,6 +502,26 @@ export const ghlRouter = router({
       const kitName = kit.name || "Campaign";
       const locationId = ghl.locationId!;
 
+      // Resolve [INSERT_*] tokens to their filled registry values before each
+      // Custom Value is written to GHL. The registry is keyed (userId, serviceId);
+      // campaignKits has no serviceId column, so derive it from the kit's ICP.
+      // serviceId is nullable on the ICP — when absent (or no rows), buildResolvedMap
+      // returns campaign-scoped + account-default rows it can, and resolveTokensInText
+      // is a no-op for any unmatched token, so the push degrades gracefully (tokens
+      // left raw) rather than failing.
+      const [kitIcp] = kit.icpId
+        ? await db
+            .select({ serviceId: idealCustomerProfiles.serviceId })
+            .from(idealCustomerProfiles)
+            .where(eq(idealCustomerProfiles.id, kit.icpId))
+            .limit(1)
+        : [];
+      const resolvedMap: Map<string, ResolvedEntry> =
+        kitIcp?.serviceId != null
+          ? await buildResolvedMap(ctx.user.id, kitIcp.serviceId)
+          : new Map();
+      const rt = (v: string): string => resolveTokensInText(v, resolvedMap);
+
       const results: Record<string, boolean> = {
         // D1 (Custom Values — all 8 kit asset slots, all valid in v2 OAuth
         // via locations/customValues.write). C3 f-o 7 removed the D2 native-
@@ -557,8 +578,8 @@ export const ghlRouter = router({
             let emailSlotsOk = 0;
             for (let i = 0; i < emailCount; i++) {
               const em = emails[i] as { subject?: string; body?: string };
-              const okSubj = await upsertCustomValue(locationId, headers, `ZAP Email ${i + 1} Subject`, em.subject || "");
-              const okBody = await upsertCustomValue(locationId, headers, `ZAP Email ${i + 1} Body`, em.body || "");
+              const okSubj = await upsertCustomValue(locationId, headers, `ZAP Email ${i + 1} Subject`, rt(em.subject || ""));
+              const okBody = await upsertCustomValue(locationId, headers, `ZAP Email ${i + 1} Body`, rt(em.body || ""));
               if (okSubj && okBody) emailSlotsOk++;
             }
 
@@ -614,7 +635,7 @@ export const ghlRouter = router({
             let waSlotsOk = 0;
             for (let i = 0; i < whatsappCount; i++) {
               const m = messages[i] as { text?: string; message?: string };
-              const ok = await upsertCustomValue(locationId, headers, `ZAP WhatsApp ${i + 1}`, m.text || m.message || "");
+              const ok = await upsertCustomValue(locationId, headers, `ZAP WhatsApp ${i + 1}`, rt(m.text || m.message || ""));
               if (ok) waSlotsOk++;
             }
 
@@ -699,7 +720,7 @@ export const ghlRouter = router({
             results.landingPagePushed = await upsertCustomValue(
               locationId, headers,
               `ZAP Landing Page`,
-              lpText
+              rt(lpText)
             );
 
             // D2 — GHL Funnel creation: REMOVED in C3 f-o 7.
@@ -738,7 +759,7 @@ export const ghlRouter = router({
             results.headlinesPushed = await upsertCustomValue(
               locationId, headers,
               `ZAP Headlines`,
-              hlText
+              rt(hlText)
             );
           }
         } catch (e) { console.warn("[GHL] Headlines push error:", e); }
@@ -772,7 +793,7 @@ export const ghlRouter = router({
             results.adCopyPushed = await upsertCustomValue(
               locationId, headers,
               `ZAP Ad Copy`,
-              sections.join("\n\n") || "No ad copy"
+              rt(sections.join("\n\n") || "No ad copy")
             );
           }
         } catch (e) { console.warn("[GHL] Ad copy push error:", e); }
@@ -812,7 +833,7 @@ export const ghlRouter = router({
             results.offerPushed = await upsertCustomValue(
               locationId, headers,
               `ZAP Offer Copy`,
-              offerText
+              rt(offerText)
             );
           }
         } catch (e) { console.warn("[GHL] Offer push error:", e); }
@@ -835,7 +856,7 @@ export const ghlRouter = router({
             results.hvcoTitlePushed = await upsertCustomValue(
               locationId, headers,
               `ZAP Lead Magnet`,
-              hvcoText
+              rt(hvcoText)
             );
           }
         } catch (e) { console.warn("[GHL] HVCO push error:", e); }
@@ -859,7 +880,7 @@ export const ghlRouter = router({
             results.heroMechanismPushed = await upsertCustomValue(
               locationId, headers,
               `ZAP Hero Mechanism`,
-              mechText
+              rt(mechText)
             );
           }
         } catch (e) { console.warn("[GHL] Hero mechanism push error:", e); }
@@ -888,7 +909,7 @@ export const ghlRouter = router({
               const okHeadline = await upsertCustomValue(
                 locationId, headers,
                 `ZAP Ad Creative ${i + 1} Headline`,
-                c.headline || "",
+                rt(c.headline || ""),
               );
               const okImage = await upsertCustomValue(
                 locationId, headers,

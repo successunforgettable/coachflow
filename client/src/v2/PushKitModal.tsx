@@ -41,6 +41,10 @@ import type { PlaceholderReport } from "./lib/placeholderDetector";
 type Props = {
   kitId: number;
   kitName: string;
+  /** Placeholder registry key — passed to publishToMeta so the server resolves
+   * [INSERT_*] tokens in the ad copy before publishing. GHL derives its own
+   * serviceId from kitId server-side, so this is Meta-only. */
+  serviceId?: number;
   onClose: () => void;
   /** Phase D Sprint 3 — kit-level placeholder report from V2CampaignKit.
    * Optional (defaults to empty report) so existing call sites don't break. */
@@ -141,7 +145,7 @@ function PillBadge({ tone, children }: { tone: "ok" | "warn" | "err"; children: 
   );
 }
 
-export default function PushKitModal({ kitId, kitName, onClose, placeholderReport, onReviewPlaceholdersFromModal }: Props) {
+export default function PushKitModal({ kitId, kitName, serviceId, onClose, placeholderReport, onReviewPlaceholdersFromModal }: Props) {
   // ─── Connection status (both platforms) ────────────────────────────────────
   const metaConn = trpc.meta.getConnectionStatus.useQuery();
   const ghlConn  = trpc.ghl.getConnectionStatus.useQuery();
@@ -262,6 +266,7 @@ export default function PushKitModal({ kitId, kitName, onClose, placeholderRepor
       imageUrl: (selectedCreative.imageUrl as string) || undefined,
       callToAction: "LEARN_MORE",
       campaignName: campaignName.trim(),
+      serviceId,
       objective,
       dailyBudget,
       targeting: { countries: countryList.length ? countryList : ["US"] },

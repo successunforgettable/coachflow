@@ -5,6 +5,7 @@ import { getDb } from "../db";
 import { metaAccessTokens } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { encryptToken, decryptToken } from "../_core/tokenCrypto";
+import { buildResolvedMap, resolveTokensInText } from "../lib/placeholderResolver";
 
 /**
  * Meta Ads Manager Integration Router
@@ -212,6 +213,10 @@ export const metaRouter = router({
         linkUrl: z.string().url(),
         imageUrl: z.string().url().optional(),
         callToAction: z.string().optional(),
+        // Placeholder registry key — lets the server resolve [INSERT_*] tokens
+        // in the ad copy to their filled values before publishing. Optional so
+        // callers without a registry context still publish (tokens left raw).
+        serviceId: z.number().optional(),
         // Campaign settings
         campaignName: z.string().min(1),
         objective: z.enum(["OUTCOME_AWARENESS", "OUTCOME_ENGAGEMENT", "OUTCOME_LEADS", "OUTCOME_SALES", "OUTCOME_TRAFFIC"]),
@@ -232,6 +237,19 @@ export const metaRouter = router({
     .mutation(async ({ ctx, input }) => {
       const { createCampaign, createAdSet, createAdCreative, createAd } = await import("../lib/metaAPI");
 
+      // Resolve [INSERT_*] tokens in the ad copy to their filled registry
+      // values before they reach Meta. Only the free-text fields can carry
+      // tokens; linkUrl/imageUrl are URL-validated upstream so they can't.
+      const resolvedMap = input.serviceId != null
+        ? await buildResolvedMap(ctx.user.id, input.serviceId)
+        : null;
+      const rt = (s: string | undefined): string | undefined =>
+        resolvedMap && s ? resolveTokensInText(s, resolvedMap) : s;
+      const headline = rt(input.headline)!;
+      const body = rt(input.body)!;
+      const callToAction = rt(input.callToAction);
+      const campaignName = rt(input.campaignName)!;
+
       try {
         // Step 1: Create campaign — budget intentionally NOT passed here.
         // Phase C C3 follow-on 5: passing daily_budget at the campaign
@@ -247,7 +265,7 @@ export const metaRouter = router({
         // the strategies requiring bid_amount, but NOT
         // LOWEST_COST_WITHOUT_CAP — proving CBO was overriding our value.
         const campaign = await createCampaign(ctx.user.id, {
-          name: input.campaignName,
+          name: campaignName,
           objective: input.objective,
           status: input.status,
         });
@@ -262,7 +280,7 @@ export const metaRouter = router({
         // Step 2: Create ad set
         const adSet = await createAdSet(ctx.user.id, {
           campaignId: campaign.id,
-          name: `${input.campaignName} - Ad Set`,
+          name: `${campaignName} - Ad Set`,
           status: input.status,
           dailyBudget: input.dailyBudget,
           lifetimeBudget: input.lifetimeBudget,
@@ -285,12 +303,12 @@ export const metaRouter = router({
 
         // Step 3: Create ad creative
         const creative = await createAdCreative(ctx.user.id, {
-          name: `${input.campaignName} - Creative`,
-          headline: input.headline,
-          body: input.body,
+          name: `${campaignName} - Creative`,
+          headline,
+          body,
           linkUrl: input.linkUrl,
           imageUrl: input.imageUrl,
-          callToAction: input.callToAction,
+          callToAction,
         });
 
         if (!creative) {
@@ -302,7 +320,7 @@ export const metaRouter = router({
 
         // Step 4: Create ad
         const ad = await createAd(ctx.user.id, {
-          name: input.campaignName,
+          name: campaignName,
           adSetId: adSet.id,
           creativeId: creative.id,
           status: input.status,
@@ -327,7 +345,7 @@ export const metaRouter = router({
             metaAdSetId: adSet.id,
             metaAdId: ad.id,
             metaCreativeId: creative.id,
-            campaignName: input.campaignName,
+            campaignName,
             status: input.status,
             objective: input.objective,
             dailyBudget: input.dailyBudget?.toString(),

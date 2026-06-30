@@ -18,6 +18,7 @@ import { sanitizePlaceholder, PLACEHOLDER_DEFAULTS } from "./routers/services";
 import { isAutoModeTierAllowed } from "./routers/autoMode";
 import { _hasPlaceholder, _CASCADE_NODE_TO_KIT_FIELD } from "./_core/cascadeContext";
 import { resolveTokensInText, normalizeToken, TOKEN_SYNONYMS, type ResolvedEntry } from "./routers/placeholders";
+import { resolveTokensInObject } from "./lib/placeholderResolver";
 import { ICP_CONTENT_FIELDS, buildNullOnlyUpdates } from "./_core/icpEnrichment";
 
 // ─── Issue 1: Gradient fallback throws ────────────────────────────────────────
@@ -3083,6 +3084,67 @@ describe("resolveTokensInText — substitutes filled tokens, leaves unfilled int
     const text = "Only [INSERT_PRICE] today! That's right, [INSERT_PRICE]!";
     const result = resolveTokensInText(text, map);
     expect(result).toBe("Only $6,000 today! That's right, $6,000!");
+  });
+});
+
+describe("resolveTokensInObject — recursive substitution across nested JSON", () => {
+  const map = new Map<string, ResolvedEntry>([
+    ["[INSERT_PRICE]", { token: "[INSERT_PRICE]", value: "£1,500", source: "campaign" }],
+    ["[INSERT_CONTACT_EMAIL]", { token: "[INSERT_CONTACT_EMAIL]", value: "hi@zap.com", source: "default" }],
+  ]);
+
+  it("substitutes tokens in nested object string leaves", () => {
+    const input = {
+      headline: "Join for [INSERT_PRICE]",
+      cta: { label: "Email [INSERT_CONTACT_EMAIL]", url: "https://book.me" },
+    };
+    const result = resolveTokensInObject(input, map);
+    expect(result).toEqual({
+      headline: "Join for £1,500",
+      cta: { label: "Email hi@zap.com", url: "https://book.me" },
+    });
+  });
+
+  it("substitutes tokens inside arrays of objects", () => {
+    const input = {
+      emails: [
+        { subject: "Doors open — [INSERT_PRICE]", body: "Reply to [INSERT_CONTACT_EMAIL]" },
+        { subject: "No tokens here", body: "Plain body" },
+      ],
+    };
+    const result = resolveTokensInObject(input, map);
+    expect(result.emails[0].subject).toBe("Doors open — £1,500");
+    expect(result.emails[0].body).toBe("Reply to hi@zap.com");
+    expect(result.emails[1].subject).toBe("No tokens here");
+  });
+
+  it("leaves non-string leaves (number, boolean, null) untouched", () => {
+    const input = { price: 1500, active: true, note: null, label: "[INSERT_PRICE]" };
+    const result = resolveTokensInObject(input, map);
+    expect(result).toEqual({ price: 1500, active: true, note: null, label: "£1,500" });
+  });
+
+  it("leaves unfilled tokens intact within the structure", () => {
+    const input = { a: "[INSERT_PRICE]", b: "[INSERT_GUARANTEE_TERMS]" };
+    const result = resolveTokensInObject(input, map);
+    expect(result).toEqual({ a: "£1,500", b: "[INSERT_GUARANTEE_TERMS]" });
+  });
+
+  it("applies the synonym map to nested tokens", () => {
+    // [INSERT_SUPPORT_EMAIL] normalizes to [INSERT_CONTACT_EMAIL]
+    const input = { footer: "Questions? [INSERT_SUPPORT_EMAIL]" };
+    const result = resolveTokensInObject(input, map);
+    expect(result.footer).toBe("Questions? hi@zap.com");
+  });
+
+  it("does not mutate the input object", () => {
+    const input = { headline: "Join for [INSERT_PRICE]" };
+    resolveTokensInObject(input, map);
+    expect(input.headline).toBe("Join for [INSERT_PRICE]");
+  });
+
+  it("resolves a top-level string", () => {
+    expect(resolveTokensInObject("Pay [INSERT_PRICE]", map)).toBe("Pay £1,500");
   });
 });
 

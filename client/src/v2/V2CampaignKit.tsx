@@ -11,6 +11,7 @@ import PushKitModal from "./PushKitModal";
 import KitPlaceholderBanner from "./components/KitPlaceholderBanner";
 import PlaceholderEditor from "./components/PlaceholderEditor";
 import { detectPlaceholders } from "./lib/placeholderDetector";
+import { resolveTokensInObject, resolveTokensInText } from "./lib/resolveTokens";
 import { trpc } from "@/lib/trpc";
 import { downloadCampaignBrief } from "./lib/exportUtils";
 
@@ -233,7 +234,7 @@ function AdCreativesSection({ batchId }: { batchId: string }) {
 }
 
 // ─── Asset content fetcher component ───────────────────────────────────────────
-function AssetSection({ sectionKey, label, step, selectedId, angle, navigate, serviceId, kitId }: {
+function AssetSection({ sectionKey, label, step, selectedId, angle, navigate, serviceId, kitId, resolvedMap }: {
   sectionKey: string;
   label: string;
   step: string;
@@ -242,6 +243,7 @@ function AssetSection({ sectionKey, label, step, selectedId, angle, navigate, se
   navigate: (path: string) => void;
   serviceId?: number;
   kitId: number;
+  resolvedMap?: Record<string, string>;
 }) {
   // Fetch the actual content for each selected asset
   const offerQuery = trpc.offers.get.useQuery({ id: selectedId! }, { enabled: sectionKey === "selectedOfferId" && !!selectedId });
@@ -306,14 +308,17 @@ function AssetSection({ sectionKey, label, step, selectedId, angle, navigate, se
           padding: "20px",
           border: "1px solid rgba(0,0,0,0.06)",
         }}>
-          {sectionKey === "selectedOfferId" && <OfferPreview data={offerQuery.data} />}
-          {sectionKey === "selectedMechanismId" && <MechanismPreview data={mechQuery.data} />}
-          {sectionKey === "selectedHvcoId" && <HvcoPreview data={hvcoQuery.data} />}
-          {sectionKey === "selectedHeadlineId" && <HeadlinePreview data={headlineQuery.data} />}
-          {sectionKey === "selectedAdCopyId" && <AdCopyPreview data={adCopyQuery.data} />}
-          {sectionKey === "selectedLandingPageId" && <LandingPagePreview data={lpQuery.data} angle={angle} />}
-          {sectionKey === "selectedEmailSequenceId" && <EmailPreview data={emailQuery.data} />}
-          {sectionKey === "selectedWhatsAppSequenceId" && <WhatsAppPreview data={waQuery.data} />}
+          {/* Resolve [INSERT_*] tokens at render so filled registry values
+              (e.g. price=£1,500) appear in the kit preview instead of the raw
+              token. resolveTokensInObject is a no-op when resolvedMap is absent. */}
+          {sectionKey === "selectedOfferId" && <OfferPreview data={resolveTokensInObject(offerQuery.data, resolvedMap)} />}
+          {sectionKey === "selectedMechanismId" && <MechanismPreview data={resolveTokensInObject(mechQuery.data, resolvedMap)} />}
+          {sectionKey === "selectedHvcoId" && <HvcoPreview data={resolveTokensInObject(hvcoQuery.data, resolvedMap)} />}
+          {sectionKey === "selectedHeadlineId" && <HeadlinePreview data={resolveTokensInObject(headlineQuery.data, resolvedMap)} />}
+          {sectionKey === "selectedAdCopyId" && <AdCopyPreview data={resolveTokensInObject(adCopyQuery.data, resolvedMap)} />}
+          {sectionKey === "selectedLandingPageId" && <LandingPagePreview data={resolveTokensInObject(lpQuery.data, resolvedMap)} angle={angle} />}
+          {sectionKey === "selectedEmailSequenceId" && <EmailPreview data={resolveTokensInObject(emailQuery.data, resolvedMap)} />}
+          {sectionKey === "selectedWhatsAppSequenceId" && <WhatsAppPreview data={resolveTokensInObject(waQuery.data, resolvedMap)} />}
 
           <button
             onClick={() => {
@@ -517,16 +522,20 @@ export default function V2CampaignKit() {
     const emails = email?.emails ? (typeof email.emails === "string" ? JSON.parse(email.emails) : email.emails) : [];
     const email1Subject = Array.isArray(emails) && emails.length > 0 ? emails[0].subject || "" : "";
 
+    // Resolve [INSERT_*] tokens to their filled registry values before export,
+    // so the downloaded brief carries e.g. "£1,500" rather than "[INSERT_PRICE]".
+    // No-op when resolvedMap is absent (still loading / no serviceId).
+    const r = (s: string) => resolveTokensInText(s, resolvedMap);
     downloadCampaignBrief({
       serviceName: kit?.name || "Campaign",
-      icpSummary: icpSummary ? `• ${icpSummary}` : "",
-      offerName,
-      mechanismName,
-      hvcoTitle,
-      headline: headlineText,
-      adHook,
-      landingPageHeadline: lpHeadline,
-      email1Subject,
+      icpSummary: icpSummary ? `• ${r(icpSummary)}` : "",
+      offerName: r(offerName),
+      mechanismName: r(mechanismName),
+      hvcoTitle: r(hvcoTitle),
+      headline: r(headlineText),
+      adHook: r(adHook),
+      landingPageHeadline: r(lpHeadline),
+      email1Subject: r(email1Subject),
     });
   };
 
@@ -867,6 +876,7 @@ export default function V2CampaignKit() {
             navigate={navigate}
             serviceId={serviceId}
             kitId={kit.id}
+            resolvedMap={resolvedMap}
           />
         ))}
 
@@ -955,6 +965,7 @@ export default function V2CampaignKit() {
         <PushKitModal
           kitId={kitId}
           kitName={kit.name || "Campaign"}
+          serviceId={serviceId}
           onClose={() => setShowPushModal(false)}
           placeholderReport={placeholderReport}
           onReviewPlaceholdersFromModal={() => {
