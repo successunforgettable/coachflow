@@ -307,7 +307,11 @@ export default function V2AutoModeIntakeConfirm() {
       let icpId: number;
       try {
         if (importIcp) {
-          // Synchronous import — returns icpId immediately, no polling.
+          // Import inserts a THIN ICP immediately and fires enrichment in the
+          // background (setImmediate), returning an enrichmentJobId. We MUST
+          // wait for enrichment to finish before cascading: ad copy + ad
+          // creatives read the enriched fields (fears/objections/buyingTriggers),
+          // so orchestrating against the thin ICP yields generic hooks.
           const result = await importIcpMut.mutateAsync({
             serviceId,
             name: icpName.trim(),
@@ -316,6 +320,17 @@ export default function V2AutoModeIntakeConfirm() {
             implementationBarriers: icpBarriers.trim() || undefined,
           });
           icpId = result.icpId;
+          // Poll enrichment to completion before proceeding — mirrors the
+          // generate branch's poll, using the existing job/poll mechanism (not
+          // a long blocking request). Graceful degradation: if enrichment
+          // fails or times out, cascade with the thin ICP anyway — it's still
+          // usable; enrichment is enhancement, not gating. (Only the import
+          // mutation failing aborts, via the outer catch.)
+          if (result.enrichmentJobId) {
+            try {
+              await pollIcpJob(result.enrichmentJobId);
+            } catch { /* enrichment failed/timed out — proceed with thin ICP */ }
+          }
         } else {
           // Generate ICP via async job + poll. generateIcpAsync returns
           // {jobId} in <100ms; LLM runs server-side via setImmediate.
