@@ -22,6 +22,7 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import V2Layout from "./V2Layout";
 import UpgradePrompt from "./components/UpgradePrompt";
+import QuickFillCard from "./components/QuickFillCard";
 
 type ServiceCategory = "coaching" | "speaking" | "consulting";
 
@@ -112,6 +113,10 @@ export default function V2AutoModeIntakeConfirm() {
   // during the ICP poll). Two distinct states better than one ambiguous
   // "Saving…" for 30-120s during ICP generation.
   const [loadingPhase, setLoadingPhase] = useState<"saving" | "icp" | null>(null);
+  // Fix A Phase 2: quick-fill card sits between the confirm cards and
+  // handleConfirm (has-assets only). Set true when the user confirms; the
+  // card then drives handleConfirm on Build / Skip-all.
+  const [showQuickFill, setShowQuickFill] = useState(false);
 
   const createService = trpc.services.create.useMutation();
   const updateService = trpc.services.update.useMutation();
@@ -274,6 +279,19 @@ export default function V2AutoModeIntakeConfirm() {
     });
   }
 
+  // Confirm-button handler. On the has-assets path (serviceId already exists
+  // from the Trail intake), route through the Tier-1 quick-fill card BEFORE the
+  // heavy lifting — it sits entirely before handleConfirm's Fix B enrichment
+  // wait, never overlapping it. Auto / manual paths build immediately.
+  function handleProceed() {
+    if (!submitEnabled || !extracted) return;
+    if (trailPath === "has_assets" && existingServiceId) {
+      setShowQuickFill(true);
+    } else {
+      void handleConfirm();
+    }
+  }
+
   async function handleConfirm() {
     if (!submitEnabled || !extracted) return;
     setSubmitError(null);
@@ -416,6 +434,24 @@ export default function V2AutoModeIntakeConfirm() {
   }
 
   const showLowBanner = extracted.confidence === "low";
+
+  // Fix A Phase 2: quick-fill card view (has-assets only). Swaps in after the
+  // user confirms, before handleConfirm's heavy lifting. The card owns its
+  // placeholders.save and then calls handleConfirm via onProceed; we pass the
+  // submit lifecycle down so its build button mirrors the same label rotation.
+  if (showQuickFill && existingServiceId) {
+    return (
+      <V2Layout>
+        <QuickFillCard
+          serviceId={existingServiceId}
+          campaignType={trailCampaignType}
+          submitting={isSubmitting}
+          loadingPhase={loadingPhase}
+          onProceed={() => void handleConfirm()}
+        />
+      </V2Layout>
+    );
+  }
 
   return (
     <V2Layout>
@@ -608,7 +644,7 @@ export default function V2AutoModeIntakeConfirm() {
             </div>
           )}
           <button
-            onClick={handleConfirm}
+            onClick={handleProceed}
             disabled={!submitEnabled}
             title={submitEnabled ? undefined : "Fill the highlighted fields first"}
             style={{
