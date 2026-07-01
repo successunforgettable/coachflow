@@ -3,7 +3,7 @@
  * Route: /v2-dashboard/campaign-kit/:kitId
  * Shows all selected assets in one scrollable page with export actions.
  */
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { useParams, useLocation } from "wouter";
 import V2Layout from "./V2Layout";
 import ZappyMascot from "./ZappyMascot";
@@ -13,7 +13,11 @@ import PlaceholderEditor from "./components/PlaceholderEditor";
 import { detectPlaceholders } from "./lib/placeholderDetector";
 import { resolveTokensInObject, resolveTokensInText } from "./lib/resolveTokens";
 import { trpc } from "@/lib/trpc";
-import { downloadCampaignBrief } from "./lib/exportUtils";
+import { downloadCampaignBrief, formatIcpTxt, downloadPdf } from "./lib/exportUtils";
+import { isIcpRich } from "./lib/icpRichness";
+
+// Lazy — the full 17-section reader is only mounted when the user opens the modal.
+const V2ICPResultPanel = lazy(() => import("./V2ICPResultPanel"));
 
 // ─── Asset section config ──────────────────────────────────────────────────────
 const SECTIONS = [
@@ -397,6 +401,8 @@ export default function V2CampaignKit() {
   // the dismissal so the overlay does not reappear on subsequent visits.
   const [showOverlay, setShowOverlay] = useState(false);
   const [showPlaceholderEditor, setShowPlaceholderEditor] = useState(false);
+  // Sprint 2: Dream Buyer Profile discoverability — read-only modal on the kit page.
+  const [showIcpModal, setShowIcpModal] = useState(false);
 
   // T2: all user kits for sequential number derivation
   const { data: allUserKits } = trpc.campaignKits.getByUser.useQuery(undefined, { staleTime: 30_000 });
@@ -594,6 +600,21 @@ export default function V2CampaignKit() {
     SECTIONS.filter(s => kit[s.key as keyof typeof kit] != null).length +
     (kit.selectedAdCreativeBatchId != null ? 1 : 0);
   const isComplete = kit.status === "complete";
+
+  // Sprint 2: Dream Buyer Profile card gating. Keyed purely off profile richness
+  // (not kit status), so it surfaces as soon as a rich ICP exists and never touches
+  // TOTAL_KIT_ASSETS / filledCount / completion math above. Plain consts (not hooks)
+  // as this runs after the loading/error early-returns.
+  const icpIsRich = isIcpRich(icpData);
+  const icpTeaser = (() => {
+    const intro = (icpData as any)?.introduction as string | undefined;
+    if (intro && intro.trim()) {
+      const firstSentence = intro.trim().split(/(?<=[.!?])\s/)[0];
+      return firstSentence.length > 160 ? firstSentence.slice(0, 157) + "…" : firstSentence;
+    }
+    return "17 sections — fears, hopes, pains, objections, buying triggers & more.";
+  })();
+  const icpName = ((icpData as any)?.name as string | undefined) || "Your ideal customer";
 
   return (
     <V2Layout backLabel="Campaign Trail" backHref={`/v2-dashboard/trail/${kitId}`}>
@@ -855,6 +876,93 @@ export default function V2CampaignKit() {
           )}
         </div>
 
+        {/* Sprint 2: Dream Buyer Profile — surfaced deliverable card. Bespoke insert
+            (NOT part of SECTIONS.map / the 9-asset counter). Gated on profile richness
+            so thin imported profiles never render a broken/empty card. Placed high so
+            it reads as a headline deliverable, not a buried record. */}
+        {icpData && icpIsRich && (
+          <div style={{ marginBottom: 20 }}>
+            <p style={{
+              fontSize: 11,
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              color: "var(--v2-primary-btn, #FF5B1D)",
+              margin: "0 0 8px",
+              fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)",
+            }}>
+              Dream Buyer Profile
+            </p>
+            <div style={{
+              background: "#fff",
+              borderRadius: 16,
+              padding: 20,
+              border: "1px solid rgba(0,0,0,0.06)",
+              display: "flex",
+              alignItems: "flex-start",
+              gap: 16,
+              flexWrap: "wrap",
+            }}>
+              <ZappyMascot state="cheering" size={44} />
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <p style={{
+                  fontFamily: "var(--v2-font-heading, 'Fraunces', serif)",
+                  fontStyle: "italic",
+                  fontWeight: 900,
+                  fontSize: 18,
+                  color: "var(--v2-text-dark, #1A1624)",
+                  margin: "0 0 4px",
+                }}>
+                  {icpName}
+                </p>
+                <p style={{
+                  fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)",
+                  fontSize: 14,
+                  lineHeight: 1.5,
+                  color: "#555",
+                  margin: 0,
+                }}>
+                  {icpTeaser} <span style={{ color: "#999" }}>· 17 sections</span>
+                </p>
+              </div>
+              <div style={{ display: "flex", gap: 10, flexShrink: 0, flexWrap: "wrap" }}>
+                <button
+                  onClick={() => setShowIcpModal(true)}
+                  style={{
+                    background: "var(--v2-primary-btn, #FF5B1D)",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "var(--v2-border-radius-pill, 9999px)",
+                    padding: "10px 22px",
+                    fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)",
+                    fontWeight: 700,
+                    fontSize: 13,
+                    cursor: "pointer",
+                  }}
+                >
+                  Read profile
+                </button>
+                <button
+                  onClick={() => downloadPdf(formatIcpTxt(icpData), icpName.slice(0, 30), "ICP")}
+                  style={{
+                    background: "none",
+                    color: "var(--v2-text-dark, #1A1624)",
+                    border: "1px solid rgba(26,22,36,0.15)",
+                    borderRadius: "var(--v2-border-radius-pill, 9999px)",
+                    padding: "10px 20px",
+                    fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)",
+                    fontWeight: 700,
+                    fontSize: 13,
+                    cursor: "pointer",
+                  }}
+                >
+                  ↓ Download PDF
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Phase D Sprint 3: kit-level placeholder banner. Self-hides when
             placeholderReport.total === 0 (clean kit). When placeholders exist,
             shows aggregate count + per-asset breakdown + "Review & Complete"
@@ -993,6 +1101,34 @@ export default function V2CampaignKit() {
               utils.placeholders.list.invalidate({ serviceId });
             }}
           />
+        </div>
+      )}
+
+      {/* Sprint 2: Dream Buyer Profile read-only modal — reuses V2ICPResultPanel in
+          read-only mode (Delete hidden, editing/regen off, close × shown) so the user
+          reads the full 17 sections without leaving the kit page. */}
+      {showIcpModal && kit.icpId && (
+        <div
+          style={{
+            position: "fixed", inset: 0, zIndex: 9999,
+            background: "rgba(0,0,0,0.5)", display: "flex",
+            alignItems: "flex-start", justifyContent: "center",
+            padding: 16, overflowY: "auto",
+          }}
+          onClick={() => setShowIcpModal(false)}
+        >
+          <div
+            style={{ width: "100%", maxWidth: 660, margin: "24px 0" }}
+            onClick={e => e.stopPropagation()}
+          >
+            <Suspense fallback={<div style={{ padding: 40, textAlign: "center", fontFamily: "var(--v2-font-body)", color: "#F5F1EA" }}>Loading your Dream Buyer Profile…</div>}>
+              <V2ICPResultPanel
+                icpId={kit.icpId}
+                readOnly
+                onClose={() => setShowIcpModal(false)}
+              />
+            </Suspense>
+          </div>
         </div>
       )}
     </V2Layout>

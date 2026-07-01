@@ -498,6 +498,11 @@ export default function V2Trail() {
       if (first) first.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
+    // Sprint 2: completion callout — open the Dream Buyer Profile via the existing ICP panel toggle.
+    if (chip === "Meet your Dream Buyer") {
+      setIcpPanelOpen(true);
+      return;
+    }
     if (!target) return;
 
     // Sprint 4 C1+C3: manual-mode chips that resolve the crown/deal wait
@@ -1176,7 +1181,7 @@ export default function V2Trail() {
       text: "Every piece matches your offer, your method, your voice.",
     });
     collapsePreviousChips();
-    const row = addLive({ type: "chip-row", chips: ["Open my Campaign Kit", "Review piece by piece"] });
+    const row = addLive({ type: "chip-row", chips: ["Open my Campaign Kit", "Review piece by piece", "Meet your Dream Buyer"] });
     activeChips.current = null; // completion chips handled by name, not node
     void row;
     // B6: server dedup replaces old CAMPAIGN COMPLETE badge; done1/done2 only
@@ -1668,7 +1673,7 @@ export default function V2Trail() {
     const done1 = addLive({ type: "zappy-bubble", mood: "celebrating", text: "Done. Eleven pieces, all singing the same song." });
     const done2 = addLive({ type: "zappy-bubble", mood: "celebrating", text: "Every piece matches your offer, your method, your voice." });
     collapsePreviousChips();
-    addLive({ type: "chip-row", chips: ["Open my Campaign Kit", "Review piece by piece"] });
+    addLive({ type: "chip-row", chips: ["Open my Campaign Kit", "Review piece by piece", "Meet your Dream Buyer"] });
     activeChips.current = null;
     // B6: same completion dedup as auto loop
     const hasCompletionAlreadyM = (persisted ?? []).some(

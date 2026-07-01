@@ -148,6 +148,7 @@ function AccordionSection({
   defaultOpen,
   icpId,
   isFreeTier,
+  readOnly,
 }: {
   label: string;
   sectionKey: SectionKey;
@@ -155,6 +156,7 @@ function AccordionSection({
   defaultOpen: boolean;
   icpId: number;
   isFreeTier?: boolean;
+  readOnly?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const [copied, setCopied] = useState(false);
@@ -220,7 +222,7 @@ function AccordionSection({
         <div style={{ padding: "0 18px 16px" }}>
           {isDemographics ? (
             <DemographicsContent raw={content} />
-          ) : editing ? (
+          ) : (!readOnly && editing) ? (
             <textarea
               autoFocus
               value={value}
@@ -245,7 +247,7 @@ function AccordionSection({
             />
           ) : (
             <p
-              onClick={() => setEditing(true)}
+              onClick={readOnly ? undefined : () => setEditing(true)}
               style={{
                 fontFamily: "var(--v2-font-body)",
                 fontSize: "14px",
@@ -253,9 +255,9 @@ function AccordionSection({
                 lineHeight: 1.65,
                 margin: "0 0 12px",
                 whiteSpace: "pre-wrap",
-                cursor: "text",
+                cursor: readOnly ? "default" : "text",
               }}
-              title="Click to edit"
+              title={readOnly ? undefined : "Click to edit"}
             >
               {value || <span style={{ color: "#aaa" }}>—</span>}
             </p>
@@ -269,7 +271,7 @@ function AccordionSection({
             >
               {copied ? "✓" : "⎘"}
             </button>
-            {!isDemographics && (
+            {!isDemographics && !readOnly && (
               isFreeTier ? (
                 <button
                   onClick={() => setShowUpgradeModal(true)}
@@ -289,7 +291,7 @@ function AccordionSection({
               )
             )}
           </div>
-          {regenOpen && !isDemographics && !isFreeTier && (
+          {regenOpen && !isDemographics && !isFreeTier && !readOnly && (
             <IcpRegenPanel
               icpId={icpId}
               sectionKey={sectionKey}
@@ -309,10 +311,16 @@ export default function V2ICPResultPanel({
   icpId,
   isFreeTier,
   onDeleted,
+  readOnly,
+  onClose,
 }: {
   icpId: number;
   isFreeTier?: boolean;
   onDeleted?: () => void;
+  /** Read-only mode: hides Delete + inline editing/regeneration (additive; defaults to full editor behaviour). */
+  readOnly?: boolean;
+  /** When provided, renders a close (×) affordance in the header. */
+  onClose?: () => void;
 }) {
   const { data, isLoading, isError } = trpc.icps.get.useQuery(
     { id: icpId },
@@ -372,27 +380,51 @@ export default function V2ICPResultPanel({
             {(icp.name as string) || "Ideal Customer Profile"} — 17 sections
           </p>
         </div>
-        <button
-          onClick={() => setDeleteConfirmOpen(p => !p)}
-          title="Delete this ICP"
-          style={{
-            background: "none",
-            border: "1px solid rgba(239,68,68,0.35)",
-            borderRadius: "9999px",
-            padding: "5px 12px",
-            fontFamily: "var(--v2-font-body)",
-            fontSize: "13px",
-            color: "#EF4444",
-            cursor: "pointer",
-            flexShrink: 0,
-          }}
-        >
-          × Delete
-        </button>
+        {!readOnly && (
+          <button
+            onClick={() => setDeleteConfirmOpen(p => !p)}
+            title="Delete this ICP"
+            style={{
+              background: "none",
+              border: "1px solid rgba(239,68,68,0.35)",
+              borderRadius: "9999px",
+              padding: "5px 12px",
+              fontFamily: "var(--v2-font-body)",
+              fontSize: "13px",
+              color: "#EF4444",
+              cursor: "pointer",
+              flexShrink: 0,
+            }}
+          >
+            × Delete
+          </button>
+        )}
+        {onClose && (
+          <button
+            onClick={onClose}
+            title="Close"
+            aria-label="Close"
+            style={{
+              background: "none",
+              border: "1px solid rgba(26,22,36,0.15)",
+              borderRadius: "9999px",
+              width: "34px",
+              height: "34px",
+              fontFamily: "var(--v2-font-body)",
+              fontSize: "18px",
+              lineHeight: 1,
+              color: "#1A1624",
+              cursor: "pointer",
+              flexShrink: 0,
+            }}
+          >
+            ×
+          </button>
+        )}
       </div>
 
       {/* ── Inline delete confirmation ── */}
-      {deleteConfirmOpen && (
+      {!readOnly && deleteConfirmOpen && (
         <div style={{
           background: "#FFF5F5",
           border: "1px solid rgba(239,68,68,0.30)",
@@ -462,6 +494,7 @@ export default function V2ICPResultPanel({
           defaultOpen={i < 3}
           icpId={icpId}
           isFreeTier={isFreeTier}
+          readOnly={readOnly}
         />
       ))}
 
