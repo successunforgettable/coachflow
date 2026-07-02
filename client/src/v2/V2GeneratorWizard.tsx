@@ -2691,6 +2691,29 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
           </button>
         )}
 
+        {/* ── Back to Trail (return to the campaign hub from any forward-only result panel) ── */}
+        {activeKit && (
+          <button
+            onClick={() => navigate(`/v2-dashboard/trail/${activeKit.id}`)}
+            style={{
+              alignSelf: "flex-start",
+              marginBottom: "24px",
+              fontFamily: "var(--v2-font-body)",
+              fontSize: "14px",
+              color: "#777",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: "0",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+            }}
+          >
+            ← Back to Trail
+          </button>
+        )}
+
         {/* ── PRIMARY CARD ── */}
         <div style={cardStyle}>
 

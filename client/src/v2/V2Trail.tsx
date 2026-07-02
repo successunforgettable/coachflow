@@ -1918,18 +1918,45 @@ export default function V2Trail() {
         flexDirection: "column",
         padding: "16px 12px 0",
       }}>
-        {/* Kit name header */}
-        <h1 style={{
-          fontFamily: FONT_HEADING,
-          fontSize: 20,
-          fontWeight: 700,
-          fontStyle: "italic",
-          color: TEXT_COLOR,
+        {/* Kit name header + standing View Campaign Kit affordance */}
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
           margin: "0 0 12px",
           flexShrink: 0,
         }}>
-          {(trailState.data.kit as { name?: string | null }).name || "Campaign Trail"}
-        </h1>
+          <h1 style={{
+            fontFamily: FONT_HEADING,
+            fontSize: 20,
+            fontWeight: 700,
+            fontStyle: "italic",
+            color: TEXT_COLOR,
+            margin: 0,
+          }}>
+            {(trailState.data.kit as { name?: string | null }).name || "Campaign Trail"}
+          </h1>
+          <button
+            onClick={() => navigate(`/v2-dashboard/campaign-kit/${campaignKitId}`)}
+            style={{
+              flexShrink: 0,
+              background: "var(--v2-primary-btn)",
+              color: "#fff",
+              border: "none",
+              borderRadius: "var(--v2-border-radius-pill)",
+              padding: "8px 18px",
+              fontFamily: FONT_BODY,
+              fontWeight: 700,
+              fontSize: 12,
+              cursor: "pointer",
+              letterSpacing: "0.01em",
+              whiteSpace: "nowrap",
+            }}
+          >
+            View Campaign Kit
+          </button>
+        </div>
 
         {/* TrailBar pinned at top */}
         <div style={{ flexShrink: 0, marginBottom: 12 }}>
@@ -1957,7 +1984,7 @@ export default function V2Trail() {
             <Suspense fallback={<div style={{ padding: 20, fontFamily: FONT_BODY, color: TEXT_COLOR, opacity: 0.5 }}>Loading ICP...</div>}>
               <V2ICPResultPanel
                 icpId={(trailState.data.kit as { icpId: number }).icpId}
-                onContinue={() => setIcpPanelOpen(false)}
+                onClose={() => setIcpPanelOpen(false)}
               />
             </Suspense>
           </div>
