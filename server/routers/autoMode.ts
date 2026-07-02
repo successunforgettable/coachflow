@@ -458,7 +458,15 @@ export const autoModeRouter = router({
             offerName: cleanedOffer.name,
             valueProposition: cleanedOffer.valueProposition,
             cta: cleanedOffer.cta,
-            pricing: "",
+            // Operator-fill seam: the imported offer carries no pricing (it's
+            // not in the import schema — price comes from the quick-fill
+            // registry). Emit the canonical [INSERT_PRICE] token rather than an
+            // empty string so the resolver fills it with the user's entered
+            // price at render/export. An empty string renders as "Pricing: —"
+            // on the kit page and ships blank in the ZIP because there is no
+            // token for the registry to substitute. This is the active
+            // (godfather) angle, so it is the one previewed and published.
+            pricing: "[INSERT_PRICE]",
             bonuses: "",
             guarantee: "",
             urgency: "",
