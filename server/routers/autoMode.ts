@@ -401,6 +401,15 @@ export const autoModeRouter = router({
         name: z.string().min(1).max(500),
         valueProposition: z.string().min(1).max(2000),
         cta: z.string().min(1).max(500),
+        // Carry-through of operator-supplied material extracted from the user's
+        // pasted assets. Optional + additive: absent for build-from-scratch and
+        // for material that didn't mention them. Forwarded so the imported
+        // active offer keeps what the user actually gave us instead of blanking
+        // it. (duration has no offer-angle slot; the user's own duration wording
+        // already lives in valueProposition, so it is not carried here.)
+        bonuses: z.string().max(2000).optional(),
+        guarantee: z.string().max(2000).optional(),
+        urgency: z.string().max(2000).optional(),
       }).optional(),
       mechanism: z.object({
         name: z.string().min(1).max(255),
@@ -435,10 +444,13 @@ export const autoModeRouter = router({
           name: input.offer.name,
           valueProposition: input.offer.valueProposition,
           cta: input.offer.cta,
+          bonuses: input.offer.bonuses ?? "",
+          guarantee: input.offer.guarantee ?? "",
+          urgency: input.offer.urgency ?? "",
         };
         const { cleaned: cleanedOffer, classification: offerClass, allFlaggedTerms: offerFlags } = filterRecord(
           offerFields,
-          ["name", "valueProposition", "cta"]
+          ["name", "valueProposition", "cta", "bonuses", "guarantee", "urgency"]
         );
         if (offerClass === "REJECTED") {
           throw new TRPCError({
@@ -467,9 +479,15 @@ export const autoModeRouter = router({
             // token for the registry to substitute. This is the active
             // (godfather) angle, so it is the one previewed and published.
             pricing: "[INSERT_PRICE]",
-            bonuses: "",
-            guarantee: "",
-            urgency: "",
+            // Recover what the user supplied in their pasted material; fall back
+            // only when they gave nothing. guarantee → canonical
+            // [INSERT_GUARANTEE_TERMS] token (surfaced in the placeholder banner
+            // for manual fill; quick-fill has no guarantee field). bonuses and
+            // urgency are legitimately optional — left empty (and omitted by the
+            // exporters) rather than fabricating copy or emitting bare tokens.
+            bonuses: cleanedOffer.bonuses?.trim() || "",
+            guarantee: cleanedOffer.guarantee?.trim() || "[INSERT_GUARANTEE_TERMS]",
+            urgency: cleanedOffer.urgency?.trim() || "",
           },
           source: "imported",
         });

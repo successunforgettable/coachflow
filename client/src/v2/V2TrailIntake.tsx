@@ -807,6 +807,12 @@ export default function V2TrailIntake() {
             name: confirmedAssets.offer.name,
             valueProposition: confirmedAssets.offer.valueProposition,
             cta: confirmedAssets.offer.cta || "Book a Free Call",
+            // Forward the material ZAP already extracted and showed the user on
+            // the confirm card, so their guarantee/bonuses/urgency survive into
+            // the imported offer instead of being dropped at the mutation.
+            bonuses: confirmedAssets.offer.bonuses || undefined,
+            guarantee: confirmedAssets.offer.guarantee || undefined,
+            urgency: confirmedAssets.offer.urgency || undefined,
           } : undefined,
           mechanism: hasMechanism ? {
             name: confirmedAssets.mechanism.name,
