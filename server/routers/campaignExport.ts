@@ -22,6 +22,7 @@ import {
   heroMechanisms,
 } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
+import { buildResolvedMap, resolveTokensInText } from "../lib/placeholderResolver";
 
 // ─── Deployment headers ────────────────────────────────────────────────────────
 
@@ -287,15 +288,24 @@ export const campaignExportRouter = router({
           db.select().from(heroMechanisms).where(and(eq(heroMechanisms.serviceId, serviceId), eq(heroMechanisms.userId, userId))).orderBy(desc(heroMechanisms.createdAt)),
         ]);
 
+      // Operator-fill resolution — the ZIP is an export surface, so any
+      // [INSERT_*] token still in the asset bodies must be substituted with its
+      // registry value here (mirrors the Meta/GHL push paths). Without this the
+      // download ships raw tokens like [INSERT_PRICE] instead of the price the
+      // user entered. resolve() is applied at build time so the reused Meta/GHL
+      // subfolder copies below inherit the substitution.
+      const resolvedMap = await buildResolvedMap(userId, serviceId);
+      const resolve = (s: string) => resolveTokensInText(s, resolvedMap);
+
       // 3. Build file content strings
-      const adCopyText = buildAdCopyContent(adCopyRows);
-      const headlinesText = buildHeadlinesContent(headlineRows);
-      const landingPageText = buildLandingPageContent(landingPageRows);
-      const emailText = buildEmailSequenceContent(emailRows);
-      const whatsappText = buildWhatsappSequenceContent(whatsappRows);
-      const offerText = buildOfferContent(offerRows);
-      const leadMagnetText = buildLeadMagnetContent(hvcoRows);
-      const heroMechanismText = buildHeroMechanismContent(heroRows);
+      const adCopyText = resolve(buildAdCopyContent(adCopyRows));
+      const headlinesText = resolve(buildHeadlinesContent(headlineRows));
+      const landingPageText = resolve(buildLandingPageContent(landingPageRows));
+      const emailText = resolve(buildEmailSequenceContent(emailRows));
+      const whatsappText = resolve(buildWhatsappSequenceContent(whatsappRows));
+      const offerText = resolve(buildOfferContent(offerRows));
+      const leadMagnetText = resolve(buildLeadMagnetContent(hvcoRows));
+      const heroMechanismText = resolve(buildHeroMechanismContent(heroRows));
 
       // 4. Count assets for Campaign Brief
       const adSetCount = new Set(adCopyRows.filter((a: any) => a.contentType === "body").map((a: any) => a.adSetId)).size;
@@ -322,7 +332,7 @@ export const campaignExportRouter = router({
         `CATEGORY: ${service.category || ""}`,
         `TARGET CUSTOMER: ${service.targetCustomer || ""}`,
         `MAIN BENEFIT: ${service.mainBenefit || ""}`,
-        `PRICE: ${service.price ? `$${service.price}` : "Not set"}`,
+        `PRICE: ${service.price ? String(service.price) : "[INSERT_PRICE]"}`,
         "",
         `UNIQUE METHOD: ${heroMechanismName || "Not generated yet"}`,
         `OFFER: ${offerName || "Not generated yet"}`,
@@ -352,7 +362,7 @@ export const campaignExportRouter = router({
       folder.file("6. Offer Copy.txt", DEPLOY.offerCopy + offerText);
       folder.file("7. Lead Magnet.txt", DEPLOY.leadMagnet + leadMagnetText);
       folder.file("8. Hero Mechanism.txt", DEPLOY.heroMechanism + heroMechanismText);
-      folder.file("Campaign Brief.txt", campaignBrief);
+      folder.file("Campaign Brief.txt", resolve(campaignBrief));
 
       // Meta Ads subfolder
       const metaFolder = folder.folder("Meta Ads");

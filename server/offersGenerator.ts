@@ -20,6 +20,7 @@ STRUCTURE:
 4. Reduce perceived effort — name the one thing they do NOT have to do that they assumed they would have to do.
 5. Stack the offer: core programme + bonuses (each with a real name and the operator-supplied value or [INSERT_BONUS_N_VALUE] placeholder when none is supplied) + guarantee that removes all financial risk.
 6. The guarantee must make keeping the money feel riskier than giving it back — name exactly what they keep if they refund (all materials, all recordings, all bonus resources). The reader must feel that requesting a refund still leaves them better off than before.
+7. State the programme investment as an explicit pricing line — use the operator-supplied price when provided, otherwise emit the [INSERT_PRICE] placeholder verbatim. Always populate the pricing field with this line even when the call-to-action is a booked call, so the offer's price has a clear home.
 
 Risk reversal: state "or you don't pay" as a specific condition, not a slogan. Name the result that must happen for payment to be earned.
 
@@ -304,6 +305,20 @@ Return ONLY valid JSON with these exact keys: offerName, valueProposition, prici
     }
     const stripped = content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
     const parsed = JSON.parse(stripped) as OfferContent;
+
+    // ── Deterministic pricing backstop (Phase D) ────────────────────────────
+    // The schema requires `pricing` but permits an empty string, and the
+    // godfather angle's call-booking narrative sometimes returns pricing="",
+    // leaving neither a literal price nor a fillable token — which renders as
+    // "Pricing: —" on the kit page and ships blank in exports. Guarantee an
+    // operator-fill seam: use the supplied price when present, else emit the
+    // canonical [INSERT_PRICE] token so the registry resolver always has a
+    // target to substitute. Runs before the fabrication check ([INSERT_PRICE]
+    // and the operator-supplied price are both allow-listed).
+    if (!parsed.pricing || !parsed.pricing.trim()) {
+      parsed.pricing = supplied.price ? String(supplied.price) : "[INSERT_PRICE]";
+    }
+
     lastParsed = parsed;
 
     // Fabrication-pattern check against the canonical-token allow-list.
