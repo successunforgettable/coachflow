@@ -45,6 +45,7 @@ import { runLandingPageGeneration } from "../landingPageGenerator";
 import { runEmailSequenceGeneration } from "../emailSequenceGenerator";
 import { runWhatsappSequenceGeneration } from "../whatsappSequenceGenerator";
 import { runAdCreativesGeneration, generateContextualAdHeadlines } from "../adCreativesGenerator";
+import { ctaForCampaignType } from "./campaignCta";
 import { renderQuoteCard } from "./renderQuoteCard";
 import { renderNotificationMockup } from "./renderNotificationMockup";
 import { renderTestimonialCard } from "./renderTestimonialCard";
@@ -277,18 +278,7 @@ export async function runOrchestrationStep(
       // V2GeneratorWizard.tsx is wizard-side, runX itself uses input.
       // Auto Mode uses the campaignType-aware mapping inline here so the
       // generated ad copy aligns with the user's locked Q-C table.
-      const CAMPAIGN_TO_CTA: Record<string, string> = {
-        discovery_call: "Book a Free Call",
-        webinar: "Save My Seat",
-        challenge: "Join the Challenge",
-        lead_magnet: "Download Now",
-        course_launch: "Enroll Now",
-        product_launch: "Get Instant Access",
-        in_person_event: "Reserve My Spot",
-      };
-      const adCallToAction = input.campaignType
-        ? (CAMPAIGN_TO_CTA[input.campaignType] ?? "Book a Free Call")
-        : "Book a Free Call";
+      const adCallToAction = ctaForCampaignType(input.campaignType);
 
       const [svc] = await db.select().from(services).where(eq(services.id, input.serviceId)).limit(1);
       const { adSetId } = await runAdCopyGeneration({
@@ -484,13 +474,13 @@ export async function runOrchestrationStep(
             headline = t.quote.slice(0, 250); // store quote snippet in headline column for display
           } else if (styleKey === "testimonial") {
             // Remaining slots after testimonials: headline cards as quote-card style
-            headline = headlines[i - svcTestimonials.length];
+            headline = headlines[i - svcTestimonials.length].text;
             pngBuffer = await renderQuoteCard({ headline, attribution: svc.name, palette });
           } else if (styleKey === "notification") {
-            headline = headlines[i];
+            headline = headlines[i].text;
             pngBuffer = await renderNotificationMockup({ headline, appName: svc.name, palette });
           } else {
-            headline = headlines[i];
+            headline = headlines[i].text;
             pngBuffer = await renderQuoteCard({ headline, attribution: svc.name, palette });
           }
           const fileKey = `ad-creatives/${input.userId}/${batchId}/${styleKey}-${i + 1}.png`;
@@ -533,6 +523,7 @@ export async function runOrchestrationStep(
           pressingProblem,
           adType: "lead_gen",
           headlines,
+          campaignType: input.campaignType,
         });
         generatedId = batchId;
       }

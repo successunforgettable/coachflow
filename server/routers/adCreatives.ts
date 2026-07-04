@@ -6,7 +6,8 @@ import { eq, and, desc, gte, count } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { generateImage } from "../_core/imageGeneration";
 import { storagePut } from "../storage";
-import { compositeHeadline } from "../_core/compositeHeadline";
+import { renderAdCreative, resolveAdBodyText } from "../_core/compositeHeadline";
+import { resolveCampaignCta } from "../_core/campaignCta";
 import { randomBytes, randomUUID } from "crypto";
 import { runAdCreativesGeneration } from "../adCreativesGenerator";
 import { validateCascadePrereqs } from "../_core/cascadeContext";
@@ -389,6 +390,8 @@ export const adCreativesRouter = router({
       const capturedNiche   = existing.niche;
       const capturedProblem = existing.pressingProblem;
       const capturedHeadline = nextHeadline;
+      const capturedServiceId  = existing.serviceId;
+      const capturedCampaignId = existing.campaignId;
 
       setImmediate(async () => {
         try {
@@ -397,7 +400,8 @@ export const adCreativesRouter = router({
           const { adCreatives: adCreativesTable, jobs: jobsTable } = await import("../../drizzle/schema");
           const { generateImage: genImg }             = await import("../_core/imageGeneration");
           const { storagePut: s3Put }                 = await import("../storage");
-          const { compositeHeadline: doComposite }    = await import("../_core/compositeHeadline");
+          const { renderAdCreative: doRender, resolveAdBodyText: resolveBody } = await import("../_core/compositeHeadline");
+          const { resolveCampaignCta: resolveCta }    = await import("../_core/campaignCta");
           const bgDb = await getDbBg();
           if (!bgDb) throw new Error("Database not available in background job");
 
@@ -414,7 +418,11 @@ export const adCreativesRouter = router({
           // calls start from a clean background.
           const rawKey = `ad-creatives/${capturedUserId}/raw-regen-${capturedId}-${Date.now()}.png`;
           const { url: rawImageUrl } = await s3Put(rawKey, rawBuffer, "image/png");
-          const compositedBuffer = await doComposite(rawBuffer, capturedHeadline, capturedStyle);
+          const [rgCta, rgBody] = await Promise.all([
+            resolveCta(bgDb, { campaignId: capturedCampaignId }),
+            resolveBody(bgDb, capturedUserId, capturedServiceId),
+          ]);
+          const compositedBuffer = await doRender(rawBuffer, { headline: capturedHeadline, bodyText: rgBody, ctaLabel: rgCta });
           const fileKey = `ad-creatives/${capturedUserId}/regen-${capturedId}-${Date.now()}.png`;
           const { url: s3Url } = await s3Put(fileKey, compositedBuffer, "image/png");
 
@@ -511,7 +519,15 @@ export const adCreativesRouter = router({
       }
       const bgBuffer = Buffer.from(await bgResponse.arrayBuffer());
 
-      const compositedBuffer = await compositeHeadline(bgBuffer, newHeadline, existing.designStyle || "person_shocked");
+      const [rcCta, rcBody] = await Promise.all([
+        resolveCampaignCta(db, { campaignId: existing.campaignId }),
+        resolveAdBodyText(db, ctx.user.id, existing.serviceId),
+      ]);
+      const compositedBuffer = await renderAdCreative(bgBuffer, {
+        headline: newHeadline,
+        bodyText: rcBody,
+        ctaLabel: rcCta,
+      });
 
       const fileKey = `ad-creatives/${ctx.user.id}/recomp-${input.id}-${Date.now()}.png`;
       const { url: newImageUrl } = await storagePut(fileKey, compositedBuffer, "image/png");
@@ -636,6 +652,10 @@ export const adCreativesRouter = router({
           const niche = capturedSvc.category || "coaching";
           const batchId = `batch-${Date.now()}-${rb(4).toString("hex")}`;
           const customerCount = capturedSvc.totalCustomers || 0;
+          const { renderAdCreative: doRenderA, resolveAdBodyText: resolveBodyA } = await import("../_core/compositeHeadline");
+          const { resolveCampaignCta: resolveCtaA } = await import("../_core/campaignCta");
+          const gaCta = await resolveCtaA(bgDb, { campaignType: (capturedInput as { campaignType?: string }).campaignType, campaignId: (capturedInput as { campaignId?: number }).campaignId });
+          const gaBody = await resolveBodyA(bgDb, capturedUserId, capturedInput.serviceId);
           const variations = [
             { style: "person_shocked", formula: "benefit" as const },
             { style: "screenshot", formula: "social_proof" as const },
@@ -668,8 +688,7 @@ export const adCreativesRouter = router({
             // rebuild cleanly later; also upload the composited headline PNG.
             const rawKey = `ad-creatives/${capturedUserId}/${batchId}/raw-variation-${i + 1}.png`;
             const { url: rawImageUrl } = await s3Put(rawKey, rawBuffer, "image/png");
-            const { compositeHeadline: doComposite } = await import("../_core/compositeHeadline");
-            const compositedBuffer = await doComposite(rawBuffer, headline, variation.style);
+            const compositedBuffer = await doRenderA(rawBuffer, { headline, bodyText: gaBody, ctaLabel: gaCta });
             const fileKey = `ad-creatives/${capturedUserId}/${batchId}/variation-${i + 1}.png`;
             const { url: s3Url } = await s3Put(fileKey, compositedBuffer, "image/png");
 
@@ -793,6 +812,9 @@ export async function generateAdCreativesBatch(params: {
 
   const generatedCreatives = [];
 
+  const batchCta = await resolveCampaignCta(db, { campaignId: params.campaignId });
+  const batchBody = await resolveAdBodyText(db, params.userId, params.serviceId);
+
   for (let i = 0; i < 5; i++) {
     const variation = variations[i];
     const headline = HEADLINE_FORMULAS[variation.formula](mechanism, params.niche, customerCount);
@@ -810,7 +832,7 @@ export async function generateAdCreativesBatch(params: {
     const rawBuffer = Buffer.from(await imageResponse.arrayBuffer());
     const rawKey = `ad-creatives/${params.userId}/${batchId}/raw-variation-${i + 1}.png`;
     const { url: rawImageUrl } = await storagePut(rawKey, rawBuffer, "image/png");
-    const compositedBuffer = await compositeHeadline(rawBuffer, headline, variation.style);
+    const compositedBuffer = await renderAdCreative(rawBuffer, { headline, bodyText: batchBody, ctaLabel: batchCta });
     const fileKey = `ad-creatives/${params.userId}/${batchId}/variation-${i + 1}.png`;
     const { url: s3Url } = await storagePut(fileKey, compositedBuffer, "image/png");
 

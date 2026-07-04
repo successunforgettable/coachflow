@@ -44,7 +44,8 @@ import { eq } from "drizzle-orm";
 import { invokeLLM } from "./_core/llm";
 import { generateImage } from "./_core/imageGeneration";
 import { storagePut } from "./storage";
-import { compositeHeadline } from "./_core/compositeHeadline";
+import { renderAdCreative, deriveAccent, resolveAdBodyText } from "./_core/compositeHeadline";
+import { ctaForCampaignType } from "./_core/campaignCta";
 import { randomBytes } from "crypto";
 import {
   HEADLINE_FORMULAS,
@@ -67,8 +68,11 @@ export type RunAdCreativesGenerationInput = {
   // generateContextualAdHeadlines (Auto Mode path uses these; wizard path
   // omits and falls back to HEADLINE_FORMULAS for backward compat).
   // Length must be exactly 5; each headline ≤38 chars (enforced by
-  // validateAdHeadlines on the producer side).
-  headlines?: string[];
+  // validateAdHeadlines on the producer side). Stage 2: each carries an
+  // optional accent `emphasis` for the two-tone headline render.
+  headlines?: { text: string; emphasis?: string }[];
+  // Stage 2: drives the render template's CTA pill (CAMPAIGN_TO_CTA).
+  campaignType?: string;
 };
 
 // ─── Phase C C1.1: contextual ad headlines micro-call ────────────────────────
@@ -105,8 +109,14 @@ const AD_HEADLINES_RESPONSE_FORMAT = {
           type: "array",
           items: { type: "string" },
         },
+        // Parallel to headlines: emphases[i] is the single phrase in headlines[i]
+        // to render in the gold accent colour — a verbatim substring, 1-4 words.
+        emphases: {
+          type: "array",
+          items: { type: "string" },
+        },
       },
-      required: ["headlines"],
+      required: ["headlines", "emphases"],
       additionalProperties: false,
     },
   },
@@ -224,7 +234,9 @@ THE 5 HEADLINES — each must match a different ad register, in order:
 5. CHALLENGE — call out the wrong way; provoke action against a counterproductive pattern.
    Example shapes: "Stop chasing dead pipeline." / "Sitting up straight won't hold a room." / "Forecasting fiction isn't strategy."
 
-Output: a JSON object with a "headlines" key containing an array of exactly 5 strings, in the order above (benefit, social_proof, curiosity, contrast, challenge).
+Output: a JSON object with a "headlines" key (array of exactly 5 strings, in the order above: benefit, social_proof, curiosity, contrast, challenge) AND an "emphases" key (array of exactly 5 strings, parallel to headlines).
+
+For each headline, emphases[i] is the single most impactful phrase to highlight in a gold accent colour on the finished ad — the emotional or specific-outcome punch of that line. It MUST be a verbatim substring of headlines[i] (identical characters, same case), 1 to 4 words, never the entire headline. Examples: for "Your one income source has zero backup plan" → "backup plan"; for "30 apps, zero calls back. This worked." → "This worked."; for "Stop blaming price for lost deals" → "lost deals".
 
 Count the characters on each headline before finalising. Anything over 38 forces a rewrite.`;
 }
@@ -249,7 +261,7 @@ type AdHeadlineAttemptRecord = {
 
 export async function generateContextualAdHeadlines(
   input: GenerateContextualAdHeadlinesInput,
-): Promise<string[]> {
+): Promise<{ text: string; emphasis: string }[]> {
   const userPromptBase = buildAdHeadlinesUserPrompt(input);
   let lastFailContext: string | null = null;
   let lastFailureSubCase: string | null = null;
@@ -328,7 +340,17 @@ export async function generateContextualAdHeadlines(
         `[adCreativesGenerator] Contextual ad headlines: ${result.headlines.length} produced, ` +
           `max len = ${Math.max(...result.headlines.map(h => h.length))} chars (attempt ${attempt})`,
       );
-      return result.headlines;
+      // Pair each headline with its accent phrase. The generator's emphasis is
+      // used only when it's a genuine verbatim substring; otherwise the
+      // deterministic heuristic (parity-safe) picks it.
+      const rawEmphases = Array.isArray((parsed as Record<string, unknown>).emphases)
+        ? ((parsed as Record<string, unknown>).emphases as unknown[])
+        : [];
+      return result.headlines.map((text, i) => {
+        const cand = typeof rawEmphases[i] === "string" ? (rawEmphases[i] as string).trim() : "";
+        const valid = cand.length > 0 && text.toUpperCase().includes(cand.toUpperCase());
+        return { text, emphasis: valid ? cand : deriveAccent(text) };
+      });
     }
 
     // Record attempt for exhaust dump; failContext gets recorded AS the
@@ -439,12 +461,18 @@ export async function runAdCreativesGeneration(
     );
   }
 
+  // Stage 2 render-template inputs, resolved once per batch: the CTA pill label
+  // (campaign-type-driven) and the campaign-aligned body copy (reused ad copy).
+  const ctaLabel = ctaForCampaignType(input.campaignType);
+  const bodyText = await resolveAdBodyText(db, input.userId, input.serviceId);
+
   let createdCount = 0;
   for (let i = 0; i < VARIATIONS.length; i++) {
     const variation = VARIATIONS[i];
-    const headline = input.headlines
+    const hl = input.headlines
       ? input.headlines[i]
-      : HEADLINE_FORMULAS[variation.formula](mechanism, input.niche, customerCount);
+      : { text: HEADLINE_FORMULAS[variation.formula](mechanism, input.niche, customerCount), emphasis: undefined as string | undefined };
+    const headline = hl.text;
 
     const complianceIssues = checkCompliance(
       headline,
@@ -480,11 +508,12 @@ export async function runAdCreativesGeneration(
     const rawKey = `ad-creatives/${input.userId}/${batchId}/raw-variation-${i + 1}.png`;
     const { url: rawImageUrl } = await storagePut(rawKey, rawBuffer, "image/png");
 
-    const compositedBuffer = await compositeHeadline(
-      rawBuffer,
+    const compositedBuffer = await renderAdCreative(rawBuffer, {
       headline,
-      variation.style,
-    );
+      emphasis: hl.emphasis,
+      bodyText,
+      ctaLabel,
+    });
     const fileKey = `ad-creatives/${input.userId}/${batchId}/variation-${i + 1}.png`;
     const { url: s3Url } = await storagePut(fileKey, compositedBuffer, "image/png");
 
