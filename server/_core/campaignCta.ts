@@ -7,8 +7,8 @@
  * Not hardcoded per creative: the render template resolves the label from the
  * campaign's campaignType at composite time.
  */
-import { campaigns } from "../../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { campaigns, campaignKits, idealCustomerProfiles } from "../../drizzle/schema";
+import { eq, desc } from "drizzle-orm";
 
 export type CampaignType =
   | "webinar"
@@ -39,12 +39,15 @@ export function ctaForCampaignType(type: string | null | undefined): string {
 
 /**
  * Resolve the CTA label for an ad-creative render. Prefers an in-hand
- * campaignType; otherwise looks the type up from the creative's campaignId.
+ * campaignType (Auto Mode passes it directly); otherwise looks it up from the
+ * creative's campaignId, then from the serviceId's latest campaign kit —
+ * recompositeText / regenerateSingle only have serviceId, and adCreatives.
+ * campaignId is not populated in practice, so serviceId is the reliable path.
  * Falls back to DEFAULT_CTA so a pill always renders.
  */
 export async function resolveCampaignCta(
   db: any,
-  opts: { campaignType?: string | null; campaignId?: number | null },
+  opts: { campaignType?: string | null; campaignId?: number | null; serviceId?: number | null },
 ): Promise<string> {
   if (opts.campaignType) return ctaForCampaignType(opts.campaignType);
   if (opts.campaignId != null) {
@@ -53,6 +56,20 @@ export async function resolveCampaignCta(
         .select({ campaignType: campaigns.campaignType })
         .from(campaigns)
         .where(eq(campaigns.id, opts.campaignId))
+        .limit(1);
+      if (row?.campaignType) return ctaForCampaignType(row.campaignType);
+    } catch {
+      /* fall through */
+    }
+  }
+  if (opts.serviceId != null) {
+    try {
+      const [row] = await db
+        .select({ campaignType: campaignKits.campaignType })
+        .from(campaignKits)
+        .innerJoin(idealCustomerProfiles, eq(campaignKits.icpId, idealCustomerProfiles.id))
+        .where(eq(idealCustomerProfiles.serviceId, opts.serviceId))
+        .orderBy(desc(campaignKits.id))
         .limit(1);
       if (row?.campaignType) return ctaForCampaignType(row.campaignType);
     } catch {

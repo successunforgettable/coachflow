@@ -419,7 +419,7 @@ export const adCreativesRouter = router({
           const rawKey = `ad-creatives/${capturedUserId}/raw-regen-${capturedId}-${Date.now()}.png`;
           const { url: rawImageUrl } = await s3Put(rawKey, rawBuffer, "image/png");
           const [rgCta, rgBody] = await Promise.all([
-            resolveCta(bgDb, { campaignId: capturedCampaignId }),
+            resolveCta(bgDb, { campaignId: capturedCampaignId, serviceId: capturedServiceId }),
             resolveBody(bgDb, capturedUserId, capturedServiceId),
           ]);
           const compositedBuffer = await doRender(rawBuffer, { headline: capturedHeadline, bodyText: rgBody, ctaLabel: rgCta });
@@ -520,7 +520,7 @@ export const adCreativesRouter = router({
       const bgBuffer = Buffer.from(await bgResponse.arrayBuffer());
 
       const [rcCta, rcBody] = await Promise.all([
-        resolveCampaignCta(db, { campaignId: existing.campaignId }),
+        resolveCampaignCta(db, { campaignId: existing.campaignId, serviceId: existing.serviceId }),
         resolveAdBodyText(db, ctx.user.id, existing.serviceId),
       ]);
       const compositedBuffer = await renderAdCreative(bgBuffer, {
@@ -654,7 +654,7 @@ export const adCreativesRouter = router({
           const customerCount = capturedSvc.totalCustomers || 0;
           const { renderAdCreative: doRenderA, resolveAdBodyText: resolveBodyA } = await import("../_core/compositeHeadline");
           const { resolveCampaignCta: resolveCtaA } = await import("../_core/campaignCta");
-          const gaCta = await resolveCtaA(bgDb, { campaignType: (capturedInput as { campaignType?: string }).campaignType, campaignId: (capturedInput as { campaignId?: number }).campaignId });
+          const gaCta = await resolveCtaA(bgDb, { campaignType: (capturedInput as { campaignType?: string }).campaignType, campaignId: (capturedInput as { campaignId?: number }).campaignId, serviceId: capturedInput.serviceId });
           const gaBody = await resolveBodyA(bgDb, capturedUserId, capturedInput.serviceId);
           const variations = [
             { style: "person_shocked", formula: "benefit" as const },
@@ -812,7 +812,7 @@ export async function generateAdCreativesBatch(params: {
 
   const generatedCreatives = [];
 
-  const batchCta = await resolveCampaignCta(db, { campaignId: params.campaignId });
+  const batchCta = await resolveCampaignCta(db, { campaignId: params.campaignId, serviceId: params.serviceId });
   const batchBody = await resolveAdBodyText(db, params.userId, params.serviceId);
 
   for (let i = 0; i < 5; i++) {
