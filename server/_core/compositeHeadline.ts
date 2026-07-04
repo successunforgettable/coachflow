@@ -134,7 +134,8 @@ function trimToLength(s: string, max: number): string {
  */
 export async function resolveAdBodyText(db: any, userId: number, serviceId: number | null | undefined): Promise<string> {
   if (serviceId == null) return "";
-  const stripTokens = (s: string) => s.replace(/\[INSERT_[A-Z0-9_]+\]/g, "").replace(/\s+/g, " ").trim();
+  // Robust to markdown-escaped underscores in stored copy (e.g. "[INSERT\_X]").
+  const stripTokens = (s: string) => s.replace(/\[INSERT[^\]]*\]/gi, "").replace(/\s+/g, " ").trim();
   let body = "";
   try {
     const rows = await db.select({ content: adCopy.content })
