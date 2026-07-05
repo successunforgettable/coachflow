@@ -957,6 +957,14 @@ export const adCreatives = mysqlTable("adCreatives", {
   // the previous headline. Nullable for legacy rows predating this column.
   rawImageUrl: varchar("rawImageUrl", { length: 500 }),
   imageFormat: varchar("imageFormat", { length: 20 }).default("1080x1080").notNull(), // Square format
+  // Editorial scene brief {mode, action, symbolicObject, zone} persisted at feed
+  // batch time so an on-demand 9:16 vertical re-renders flux from the SAME scene
+  // (one shoot with its feed version). NULL for tabloid (prompt is deterministic
+  // from designStyle+niche+problem) and legacy rows.
+  sceneBrief: json("sceneBrief"),
+  // On-demand vertical 9:16 (1080x1920) composited asset — populated by
+  // adCreatives.makeVertical for the concept the user picks. NULL until requested.
+  verticalImageUrl: varchar("verticalImageUrl", { length: 500 }),
   // Meta compliance
   complianceChecked: boolean("complianceChecked").default(true).notNull(),
   complianceIssues: text("complianceIssues"), // JSON array of flagged issues

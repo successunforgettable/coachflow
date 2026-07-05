@@ -212,6 +212,9 @@ export const metaRouter = router({
         body: z.string().min(1),
         linkUrl: z.string().url(),
         imageUrl: z.string().url().optional(),
+        // Optional native 9:16 asset — when present the creative is published
+        // placement-aware (feed → imageUrl, Stories/Reels → verticalImageUrl).
+        verticalImageUrl: z.string().url().optional(),
         callToAction: z.string().optional(),
         // Placeholder registry key — lets the server resolve [INSERT_*] tokens
         // in the ad copy to their filled values before publishing. Optional so
@@ -308,6 +311,7 @@ export const metaRouter = router({
           body,
           linkUrl: input.linkUrl,
           imageUrl: input.imageUrl,
+          verticalImageUrl: input.verticalImageUrl,
           callToAction,
         });
 

@@ -630,6 +630,8 @@ export async function runEditorialAdCreativesGeneration(
       imageUrl: s3Url,
       rawImageUrl,
       imageFormat: "1080x1350",
+      // Persist the exact scene so an on-demand 9:16 re-renders the SAME shoot.
+      sceneBrief: scene,
       complianceChecked: true,
       complianceIssues: complianceIssues.length > 0 ? JSON.stringify(complianceIssues) : null,
       batchId,

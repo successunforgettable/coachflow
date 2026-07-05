@@ -468,6 +468,121 @@ export const adCreativesRouter = router({
     }),
 
   /**
+   * makeVertical — on-demand 9:16 (1080x1920) for the concept the user picks,
+   * for TikTok / Reels / Stories / Shorts. Reuses THIS creative's persisted
+   * scene (editorial) so the vertical is the same art-directed shoot as its feed
+   * version — one flux call at 9:16, template reflowed (safe-zone aware). Tabloid
+   * reconstructs its deterministic photo prompt (no scene needed). Stores the
+   * result in verticalImageUrl; the feed imageUrl is left untouched.
+   */
+  makeVertical: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      await enforceFreeTierAdImageGate(ctx.user.id, ctx.user.subscriptionTier, ctx.user.role);
+
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const [existing] = await db
+        .select()
+        .from(adCreatives)
+        .where(and(eq(adCreatives.id, input.id), eq(adCreatives.userId, ctx.user.id)))
+        .limit(1);
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND", message: "Creative not found" });
+
+      // Editorial verticals need the persisted scene to stay one-shoot with the
+      // feed version. Legacy editorial rows (pre-sceneBrief) can't reproduce the
+      // exact shoot — the UI hides the button for them; guard here too.
+      const isEditorial = existing.styleType === "editorial";
+      if (isEditorial && !existing.sceneBrief) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "This creative predates vertical support — regenerate it first to enable Make Vertical.",
+        });
+      }
+
+      const jobId = randomUUID();
+      await db.insert(jobs).values({ id: jobId, userId: String(ctx.user.id), status: "pending" });
+
+      const capturedUserId    = ctx.user.id;
+      const capturedId        = input.id;
+      const capturedStyle     = existing.designStyle || "person_shocked";
+      const capturedNiche     = existing.niche;
+      const capturedProblem   = existing.pressingProblem;
+      const capturedHeadline  = existing.headline ?? "";
+      const capturedServiceId = existing.serviceId;
+      const capturedCampaignId = existing.campaignId;
+      const capturedScene     = existing.sceneBrief as { zone?: "left" | "bottom" } | null;
+      const capturedIsEditorial = isEditorial;
+
+      setImmediate(async () => {
+        try {
+          const { getDb: getDbBg }       = await import("../db");
+          const { eq: eqBg, and: andBg } = await import("drizzle-orm");
+          const { adCreatives: adCreativesTable, jobs: jobsTable } = await import("../../drizzle/schema");
+          const { generateImage: genImg, generateEditorialImage: genEditorial } = await import("../_core/imageGeneration");
+          const { storagePut: s3Put }    = await import("../storage");
+          const { renderAdCreative: doRender, resolveAdBodyText: resolveBody } = await import("../_core/compositeHeadline");
+          const { resolveCampaignCta: resolveCta } = await import("../_core/campaignCta");
+          const { buildEditorialPrompt } = await import("../_core/editorialPrompt");
+          const bgDb = await getDbBg();
+          if (!bgDb) throw new Error("Database not available in background job");
+
+          console.log(`[adCreatives.makeVertical] Job ${jobId} — vertical for creative ${capturedId} (editorial=${capturedIsEditorial})`);
+
+          // Same scene, taller canvas (editorial); deterministic prompt (tabloid).
+          const imageResult = capturedIsEditorial
+            ? await genEditorial({ prompt: buildEditorialPrompt(capturedScene as any, capturedNiche), aspectRatio: "9:16" })
+            : await genImg({ prompt: generateAdImagePrompt(capturedStyle, capturedNiche, capturedProblem), aspectRatio: "9:16" });
+          if (!imageResult.url) throw new Error("Failed to generate vertical image");
+
+          const rawBuffer = Buffer.from(await (await fetch(imageResult.url)).arrayBuffer());
+          const [vCta, vBody] = await Promise.all([
+            resolveCta(bgDb, { campaignId: capturedCampaignId, serviceId: capturedServiceId }),
+            resolveBody(bgDb, capturedUserId, capturedServiceId),
+          ]);
+          // renderAdCreative auto-detects the vertical canvas (H/W ≥ 1.5) and
+          // reflows into the platform-UI-safe zone. zone = the stored editorial
+          // column (tabloid → undefined = centered).
+          const compositedBuffer = await doRender(rawBuffer, {
+            headline: capturedHeadline, bodyText: vBody, ctaLabel: vCta, zone: capturedScene?.zone,
+          });
+          const fileKey = `ad-creatives/${capturedUserId}/vertical-${capturedId}-${Date.now()}.png`;
+          const { url: s3Url } = await s3Put(fileKey, compositedBuffer, "image/png");
+
+          await bgDb
+            .update(adCreativesTable)
+            .set({ verticalImageUrl: s3Url })
+            .where(andBg(eqBg(adCreativesTable.id, capturedId), eqBg(adCreativesTable.userId, capturedUserId)));
+
+          await bgDb
+            .update(jobsTable)
+            .set({ status: "complete", result: JSON.stringify({ id: capturedId, verticalImageUrl: s3Url }) })
+            .where(eqBg(jobsTable.id, jobId));
+
+          console.log(`[adCreatives.makeVertical] Job ${jobId} complete — vertical URL: ${s3Url}`);
+        } catch (err: unknown) {
+          const errorMessage = err instanceof Error ? err.message : String(err);
+          console.error(`[adCreatives.makeVertical] Job ${jobId} failed:`, errorMessage);
+          try {
+            const { getDb: getDbBg2 } = await import("../db");
+            const { eq: eqBg2 }       = await import("drizzle-orm");
+            const { jobs: jobsTable2 } = await import("../../drizzle/schema");
+            const bgDb2 = await getDbBg2();
+            if (bgDb2) {
+              await bgDb2
+                .update(jobsTable2)
+                .set({ status: "failed", error: errorMessage.slice(0, 1024) })
+                .where(eqBg2(jobsTable2.id, jobId));
+            }
+          } catch { /* ignore */ }
+        }
+      });
+
+      return { jobId };
+    }),
+
+  /**
    * recompositeText — cheap text-only refresh on an existing ad creative.
    *
    * Fetches the current Cloudinary image, composites the new headline onto it,

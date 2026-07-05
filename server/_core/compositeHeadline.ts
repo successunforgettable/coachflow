@@ -177,9 +177,19 @@ export async function renderAdCreative(rawBuffer: Buffer, input: RenderAdCreativ
   const W = meta.width ?? 1080;
   const H = meta.height ?? 1080;
 
+  // Ratio-aware canvas. Tall verticals (9:16, ratio ≥ 1.5) are Stories/Reels/
+  // TikTok/Shorts placements: the platform overlays its own UI over the top ~10%
+  // (profile/username) and bottom ~20% (caption + action buttons). Keep the copy
+  // clear of those bands so it is never obscured — this is the whole reason a
+  // 9:16 is a reflow, not a crop of the feed image. 4:5 and 1:1 keep prior pads
+  // exactly (byte-identical feed behaviour).
+  const vertical = H / W >= 1.5;
+  const uiSafeTop = vertical ? Math.round(H * 0.11) : 0;
+  const uiSafeBottom = vertical ? Math.round(H * 0.20) : 0;
+
   const padX = Math.round(W * 0.06);
-  const padBottom = Math.round(H * 0.055);
-  const padTop = Math.round(H * 0.07);
+  const padBottom = Math.max(Math.round(H * 0.055), uiSafeBottom);
+  const padTop = Math.max(Math.round(H * 0.07), uiSafeTop);
   const contentW = W - padX * 2;
 
   // ── Composition contract: zone drives column, alignment, anchor, scrim.
@@ -188,7 +198,11 @@ export async function renderAdCreative(rawBuffer: Buffer, input: RenderAdCreativ
   //    "left"    = editorial, left-aligned, TOP-anchored, left column, left scrim
   const zone = input.zone;
   const align: "center" | "left" = zone === undefined ? "center" : "left";
-  const anchor: "top" | "bottom" = zone === "left" ? "top" : "bottom";
+  // On a tall vertical the copy always sits in the lower safe zone (above the
+  // bottom UI band, clear of the top one) — the natural vertical-ad anchor and
+  // it keeps the CTA in thumb reach. On feed ratios the "left" zone keeps its
+  // top anchor, everything else bottom (unchanged).
+  const anchor: "top" | "bottom" = vertical ? "bottom" : zone === "left" ? "top" : "bottom";
   const colX = padX;
   const colW = zone === "left" ? Math.round(W * 0.50) : contentW;
   const lineX = (lineW: number) => (align === "center" ? (W - lineW) / 2 : colX);

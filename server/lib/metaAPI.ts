@@ -551,6 +551,59 @@ export async function createAdSet(
 }
 
 /**
+ * Build a placement-aware asset_feed_spec that maps the feed (4:5/1:1) image to
+ * feed positions and the vertical (9:16) image to Stories/Reels positions.
+ *
+ * Pure + exported so the payload can be constructed and inspected without a live
+ * Meta call. On a real fire each image URL is first uploaded to /adimages to get
+ * an image_hash, which replaces `url` here (Meta resolves URL→hash at upload);
+ * the placement→image mapping (asset_customization_rules) is identical either
+ * way — that mapping is what this proves.
+ */
+export function buildPlacementAwareAssetFeedSpec(params: {
+  headline: string;
+  body: string;
+  linkUrl: string;
+  feedImageUrl: string;
+  verticalImageUrl: string;
+  callToAction?: string;
+}): Record<string, any> {
+  const FEED = "zap_feed_img";
+  const VERT = "zap_vertical_img";
+  return {
+    ad_formats: ["SINGLE_IMAGE"],
+    images: [
+      { url: params.feedImageUrl, adlabels: [{ name: FEED }] },
+      { url: params.verticalImageUrl, adlabels: [{ name: VERT }] },
+    ],
+    bodies: [{ text: params.body }],
+    titles: [{ text: params.headline }],
+    link_urls: [{ website_url: params.linkUrl }],
+    ...(params.callToAction ? { call_to_action_types: [params.callToAction] } : {}),
+    asset_customization_rules: [
+      {
+        // Feed & in-stream placements → the 4:5/1:1 feed image.
+        customization_spec: {
+          publisher_platforms: ["facebook", "instagram"],
+          facebook_positions: ["feed"],
+          instagram_positions: ["stream"],
+        },
+        image_label: { name: FEED },
+      },
+      {
+        // Vertical placements (Stories / Reels) → the native 9:16 image.
+        customization_spec: {
+          publisher_platforms: ["facebook", "instagram"],
+          facebook_positions: ["story", "facebook_reels"],
+          instagram_positions: ["story", "reels"],
+        },
+        image_label: { name: VERT },
+      },
+    ],
+  };
+}
+
+/**
  * Create an ad creative
  */
 export async function createAdCreative(
@@ -561,6 +614,7 @@ export async function createAdCreative(
     body: string;
     linkUrl: string;
     imageUrl?: string;
+    verticalImageUrl?: string;
     callToAction?: string;
   }
 ): Promise<{ id: string } | null> {
@@ -583,29 +637,45 @@ export async function createAdCreative(
     url.searchParams.set("access_token", accessToken);
     url.searchParams.set("name", params.name);
 
-    const objectStorySpec: any = {
-      page_id: tokenData.pageId || "", // Will need to add pageId to schema
-      link_data: {
-        message: params.body,
-        link: params.linkUrl,
-        name: params.headline,
-      },
-    };
-
-    if (params.imageUrl) {
-      objectStorySpec.link_data.picture = params.imageUrl;
-    }
-
-    if (params.callToAction) {
-      objectStorySpec.link_data.call_to_action = {
-        type: params.callToAction,
-        value: {
+    // With a vertical asset, publish a placement-aware creative: feed positions
+    // get the 4:5/1:1 image, Stories/Reels get the native 9:16. Without one, the
+    // single-image feed creative is unchanged (byte-identical to before).
+    if (params.verticalImageUrl && params.imageUrl) {
+      const assetFeedSpec = buildPlacementAwareAssetFeedSpec({
+        headline: params.headline,
+        body: params.body,
+        linkUrl: params.linkUrl,
+        feedImageUrl: params.imageUrl,
+        verticalImageUrl: params.verticalImageUrl,
+        callToAction: params.callToAction,
+      });
+      url.searchParams.set("object_story_spec", JSON.stringify({ page_id: tokenData.pageId || "" }));
+      url.searchParams.set("asset_feed_spec", JSON.stringify(assetFeedSpec));
+    } else {
+      const objectStorySpec: any = {
+        page_id: tokenData.pageId || "", // Will need to add pageId to schema
+        link_data: {
+          message: params.body,
           link: params.linkUrl,
+          name: params.headline,
         },
       };
-    }
 
-    url.searchParams.set("object_story_spec", JSON.stringify(objectStorySpec));
+      if (params.imageUrl) {
+        objectStorySpec.link_data.picture = params.imageUrl;
+      }
+
+      if (params.callToAction) {
+        objectStorySpec.link_data.call_to_action = {
+          type: params.callToAction,
+          value: {
+            link: params.linkUrl,
+          },
+        };
+      }
+
+      url.searchParams.set("object_story_spec", JSON.stringify(objectStorySpec));
+    }
 
     // Phase C C3 follow-on 6: symmetric forensic outbound-URL log (token
     // redacted). Mirrors createCampaign + createAdSet observability for

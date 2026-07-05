@@ -110,6 +110,7 @@ type Creative = {
   headline: string;
   imageUrl: string;
   designStyle: string | null;
+  styleType: string | null;
   complianceIssues: string | null;
   serviceId: number | null;
   // Raw Flux background used by recompositeText to avoid ghost pixels on
@@ -117,6 +118,11 @@ type Creative = {
   // gated client-side (Update Text Only disabled) so those users go through
   // New Image + Text to repopulate this field.
   rawImageUrl: string | null;
+  // Editorial scene persisted at batch time — presence means a one-shoot 9:16
+  // vertical can be made. Null for legacy editorial rows (button hidden).
+  sceneBrief: unknown | null;
+  // On-demand 9:16 asset once the user makes it. Null until requested.
+  verticalImageUrl: string | null;
 };
 
 // Node 6 headline shape — matches headlinesRouter.listForServiceId return rows.
@@ -141,7 +147,9 @@ function ImageCard({
   creative,
   onRegenerateWithText,
   onUpdateTextOnly,
+  onMakeVertical,
   busy,
+  verticalBusy,
   isTrialTier,
   regenError,
 }: {
@@ -150,7 +158,9 @@ function ImageCard({
   // resolves id → authoritative text server-side (R2c-contract).
   onRegenerateWithText: (id: number, headlineId: number) => void;
   onUpdateTextOnly: (id: number, headlineId: number) => void;
+  onMakeVertical: (id: number) => void;
   busy: boolean;
+  verticalBusy: boolean;
   isTrialTier: boolean;
   regenError: string | null;
 }) {
@@ -192,6 +202,22 @@ function ImageCard({
     a.rel = "noopener noreferrer";
     a.click();
   }
+
+  function handleDownloadVertical() {
+    if (!creative.verticalImageUrl) return;
+    const a = document.createElement("a");
+    a.href = creative.verticalImageUrl;
+    a.download = `zap-ad-${creative.id}-9x16.png`;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    a.click();
+  }
+
+  // Vertical (9:16) needs the persisted scene to stay one-shoot. Editorial rows
+  // only qualify once sceneBrief exists (post-migration batches); tabloid always
+  // qualifies (its photo prompt is deterministic). Legacy editorial → hidden.
+  const canMakeVertical = creative.styleType !== "editorial" || creative.sceneBrief != null;
+  const hasVertical     = !!creative.verticalImageUrl;
 
   function openEdit() {
     setSelectedHeadlineId(availableHeadlines.find(h => h.text === creative.headline)?.id ?? null);
@@ -355,7 +381,58 @@ function ImageCard({
               {busy ? "…" : "Regenerate"}
             </button>
           </div>
-        ) : (
+        ) : null}
+        {/* Vertical (9:16) — on-demand for TikTok / Reels / Stories / Shorts.
+            Discoverable per-concept beside the primary actions. */}
+        {!editMode && canMakeVertical ? (
+          hasVertical ? (
+            <div style={{ display: "flex", gap: "8px", alignItems: "center", marginTop: "2px" }}>
+              <img
+                src={creative.verticalImageUrl!}
+                alt="9:16 vertical"
+                style={{ width: 34, height: 60, objectFit: "cover", borderRadius: 6, border: `1px solid ${T.dark}22`, flexShrink: 0 }}
+                loading="lazy"
+              />
+              <span style={{ fontFamily: T.fontBody, fontSize: "12px", fontWeight: 700, color: T.dark, flex: 1 }}>
+                9:16 ready
+              </span>
+              <button
+                onClick={handleDownloadVertical}
+                style={{
+                  background: "transparent", color: T.dark, border: `2px solid ${T.dark}`,
+                  borderRadius: T.pill, padding: "8px 14px", fontFamily: T.fontBody,
+                  fontWeight: 700, fontSize: "12px", cursor: "pointer",
+                }}
+              >
+                Download 9:16
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => !verticalBusy && !busy && onMakeVertical(creative.id)}
+              disabled={verticalBusy || busy}
+              style={{
+                width: "100%",
+                background: "transparent",
+                color: T.dark,
+                border: `2px dashed ${T.dark}`,
+                borderRadius: T.pill,
+                padding: "9px 14px",
+                marginTop: "2px",
+                fontFamily: T.fontBody,
+                fontWeight: 700,
+                fontSize: "12px",
+                cursor: verticalBusy || busy ? "not-allowed" : "pointer",
+                opacity: verticalBusy || busy ? 0.55 : 1,
+                transition: "opacity 0.15s",
+              }}
+              title="Generates a native 9:16 version of this concept for TikTok, Reels, Stories & Shorts"
+            >
+              {verticalBusy ? "Making 9:16…" : "↕ Make Vertical (9:16)"}
+            </button>
+          )
+        ) : null}
+        {editMode ? (
           <div
             style={{
               display: "flex",
@@ -550,7 +627,7 @@ function ImageCard({
               Cancel
             </button>
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );
@@ -567,6 +644,7 @@ export default function V2AdImageCreator() {
   const [elapsed, setElapsed]           = useState(0);
   const [msgIdx, setMsgIdx]             = useState(0);
   const [regenIds, setRegenIds]         = useState<Set<number>>(new Set());
+  const [vertIds, setVertIds]           = useState<Set<number>>(new Set());
   const [regenErrors, setRegenErrors]   = useState<Map<number, string>>(new Map());
   const [errorMsg, setErrorMsg]         = useState("");
   const pollRef  = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -611,6 +689,7 @@ export default function V2AdImageCreator() {
   const generateAsync    = trpc.adCreatives.generateAsync.useMutation();
   const regenerateSingle = trpc.adCreatives.regenerateSingle.useMutation();
   const recompositeText  = trpc.adCreatives.recompositeText.useMutation();
+  const makeVertical     = trpc.adCreatives.makeVertical.useMutation();
 
   // ── Polling logic ────────────────────────────────────────────────────────────
   // Hard 180 s cap prevents an infinite spinner if the background handler dies
@@ -759,6 +838,43 @@ export default function V2AdImageCreator() {
       setRegenErrors((prev) => { const m = new Map(prev); m.set(id, msg); return m; });
     }
     setRegenIds((prev) => { const s = new Set(prev); s.delete(id); return s; });
+  }
+
+  // ── Make Vertical (on-demand 9:16 — background Flux job, same poll pattern) ──
+  async function handleMakeVertical(id: number) {
+    setVertIds((prev) => new Set(prev).add(id));
+    setRegenErrors((prev) => { const m = new Map(prev); m.delete(id); return m; });
+    try {
+      const { jobId } = await makeVertical.mutateAsync({ id });
+      const pollStart = performance.now();
+      await new Promise<void>((resolve, reject) => {
+        const interval = setInterval(async () => {
+          try {
+            if (performance.now() - pollStart > POLL_TIMEOUT_MS) {
+              clearInterval(interval);
+              regenIntervalsRef.current.delete(interval);
+              reject(new Error("Vertical took too long — try again"));
+              return;
+            }
+            const res = await fetch(`/api/jobs/${jobId}`);
+            if (!res.ok) return;
+            const data = await res.json();
+            if (data.status === "complete" || data.status === "failed") {
+              clearInterval(interval);
+              regenIntervalsRef.current.delete(interval);
+              if (data.status === "failed") reject(new Error(data.error || "Vertical failed — try again"));
+              else resolve();
+            }
+          } catch { /* keep polling */ }
+        }, 5_000);
+        regenIntervalsRef.current.add(interval);
+      });
+      await refetchBatch();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Vertical failed — try again";
+      setRegenErrors((prev) => { const m = new Map(prev); m.set(id, msg); return m; });
+    }
+    setVertIds((prev) => { const s = new Set(prev); s.delete(id); return s; });
   }
 
   // ── Shared label style ───────────────────────────────────────────────────────
@@ -1101,7 +1217,9 @@ export default function V2AdImageCreator() {
                 creative={creative}
                 onRegenerateWithText={handleRegenerateWithText}
                 onUpdateTextOnly={handleUpdateTextOnly}
+                onMakeVertical={handleMakeVertical}
                 busy={regenIds.has(creative.id)}
+                verticalBusy={vertIds.has(creative.id)}
                 isTrialTier={isTrialTier}
                 regenError={regenErrors.get(creative.id) ?? null}
               />

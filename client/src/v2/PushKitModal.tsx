@@ -264,6 +264,9 @@ export default function PushKitModal({ kitId, kitName, serviceId, onClose, place
       body: body.trim(),
       linkUrl: lpPublicUrl,
       imageUrl: (selectedCreative.imageUrl as string) || undefined,
+      // When this concept has an on-demand 9:16, publish placement-aware
+      // (feed → imageUrl, Stories/Reels → this vertical).
+      verticalImageUrl: (selectedCreative.verticalImageUrl as string) || undefined,
       callToAction: "LEARN_MORE",
       campaignName: campaignName.trim(),
       serviceId,
