@@ -38,38 +38,132 @@ export const EDITORIAL_VARIATIONS: EditorialVariation[] = [
     action: "walking through a glass corporate lobby at dusk, coat on, purposeful stride" },
 ];
 
-/** Short, image-safe gist of the pressing problem — flavours the mood, never quoted. */
-function moodGist(problem: string): string {
-  const t = (problem || "").replace(/^\s*\d+\.\s*/g, "").replace(/["']/g, "").replace(/\s+/g, " ").trim();
-  if (!t) return "";
-  const cut = t.slice(0, 90);
-  const lastSpace = cut.lastIndexOf(" ");
-  return cut.slice(0, lastSpace > 40 ? lastSpace : 90).trim();
+// ─── Headline-driven scene brief (the varying "what's in frame") ─────────────
+// The LLM micro-call returns ONE of these per headline — subject/action/setting/
+// symbolic object + which side the copy zone sits. Everything else (lighting,
+// palette, wardrobe register, camera, zone contract) is fixed by the recipe
+// wrapper below, so scenes vary by headline while the world stays one shoot.
+export type EditorialScene = {
+  mode: "person" | "object";
+  action: string;            // headline-specific mid-action + setting
+  symbolicObject?: string;   // object-led scenes only
+  zone: EditorialZone;       // clean copy-zone side
+};
+
+/** Fallback: a fixed slot variation → a scene (used when the micro-call is unavailable). */
+export function variationToScene(v: EditorialVariation): EditorialScene {
+  return { mode: v.mode, action: v.action, zone: v.zone };
 }
 
 /**
- * Build the editorial flux-2 prompt for one variation. Positive-only. Feeds the
- * niche (no "world" suffix) and a mood gist of the pressing problem into the
- * scene, and declares the clean copy zone the render template will place into.
+ * Wrap a scene brief in the LOCKED gold-on-black recipe. Positive-only. The
+ * scene supplies only what's in frame; lighting/palette/wardrobe/camera and the
+ * copy-zone contract are fixed here so a batch reads as one shoot.
  */
-export function buildEditorialPrompt(v: EditorialVariation, niche: string, problem: string): string {
+export function buildEditorialPrompt(scene: EditorialScene, niche: string): string {
   const cleanNiche = (niche || "professionals").replace(/\s+/g, " ").trim();
-  const gist = moodGist(problem);
-  const subjectLine = v.mode === "person"
-    ? `SUBJECT: one person aged 30-45 dressed sharply for the ${cleanNiche} field, ${v.action}, not looking at the camera.`
-    : `SUBJECT: ${v.action}, styled for the ${cleanNiche} field.`;
-  const zoneLine = v.zone === "left"
+  const obj = scene.symbolicObject?.trim();
+  const subjectLine = scene.mode === "person"
+    ? `SUBJECT: one person aged 30-45 dressed sharply for the ${cleanNiche} field, ${scene.action}, not looking at the camera.`
+    : `SUBJECT: ${obj ? `${obj} — ` : ""}${scene.action}, styled for the ${cleanNiche} field, no person in frame.`;
+  const zoneLine = scene.zone === "left"
     ? `COMPOSITION: place the subject on the RIGHT side of the frame; leave the LEFT third a clean, uncluttered deep-shadow area with no subject or detail, reserved for a text overlay.`
     : `COMPOSITION: keep the subject in the upper two-thirds; leave the LOWER third a clean, uncluttered deep-shadow area with no subject or detail, reserved for a text overlay.`;
 
   return [
     `A premium editorial advertising photograph, cinematic and magazine-grade.`,
     subjectLine,
-    gist ? `MOOD: quietly conveys the tension of ${gist}.` : "",
     `LIGHTING: low-key and moody, a near-black deep-charcoal background, with a warm gold rim and edge light shaping the subject. No flat daylight, no bright white studio.`,
     `CAMERA: 85mm lens, shallow depth of field, shot on a full-frame camera.`,
     `COLOR: deep charcoal and near-black with warm gold highlights.`,
     zoneLine,
     `The scene is entirely free of any text, letters, numbers, words, logos, or graphic overlays.`,
-  ].filter(Boolean).join(" ");
+  ].join(" ");
+}
+
+// ─── The headline→scene micro-call (batch: all headlines at once) ─────────────
+const SCENE_SYSTEM_PROMPT =
+  "You are a cinematic art director for premium gold-on-black editorial advertising. For each ad headline you design ONE scene whose subject, action, setting and symbolic object visually reinforce that headline's specific meaning. Every scene stays inside one consistent world: sharp business wardrobe, corporate settings (glass offices, boardrooms, city towers at dusk, executive desks), professional subjects. You describe only what is in the frame — you never mention lighting or colour, which are fixed. Vary the scenes so the set feels rich, while keeping them one cohesive shoot. Respond with valid JSON.";
+
+const SCENE_RESPONSE_FORMAT = {
+  type: "json_schema" as const,
+  json_schema: {
+    name: "editorial_scenes",
+    strict: true,
+    schema: {
+      type: "object",
+      properties: {
+        scenes: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              mode: { type: "string", enum: ["person", "object"] },
+              action: { type: "string" },
+              symbolicObject: { type: "string" },
+              zone: { type: "string", enum: ["left", "bottom"] },
+            },
+            required: ["mode", "action", "symbolicObject", "zone"],
+            additionalProperties: false,
+          },
+        },
+      },
+      required: ["scenes"],
+      additionalProperties: false,
+    },
+  },
+};
+
+function validateScene(s: unknown): EditorialScene | null {
+  if (!s || typeof s !== "object") return null;
+  const o = s as Record<string, unknown>;
+  const mode = o.mode === "object" ? "object" : o.mode === "person" ? "person" : null;
+  const zone = o.zone === "bottom" ? "bottom" : o.zone === "left" ? "left" : null;
+  const action = typeof o.action === "string" ? o.action.trim() : "";
+  if (!mode || !zone || action.length < 4) return null;
+  const symbolicObject = typeof o.symbolicObject === "string" ? o.symbolicObject.trim() : undefined;
+  return { mode, action, zone, symbolicObject: symbolicObject || undefined };
+}
+
+/**
+ * Micro-call: one scene brief per headline (single batched LLM call). Falls back
+ * per-slot to the fixed rotation for any missing/invalid brief, and for the
+ * whole set on error — so editorial generation never breaks. Always returns a
+ * valid scene for every headline (length === headlines.length).
+ */
+export async function generateEditorialSceneBriefs(headlines: string[], niche: string): Promise<EditorialScene[]> {
+  const fallbackAt = (i: number) => variationToScene(EDITORIAL_VARIATIONS[i % EDITORIAL_VARIATIONS.length]);
+  if (headlines.length === 0) return [];
+  const { invokeLLM } = await import("./llm");
+  const userPrompt = `Niche: ${(niche || "professionals").slice(0, 160)}
+
+Design one scene per headline below. For each, return:
+- mode: "person" for a person-led scene, "object" for an object-led scene with no person.
+- action: the specific mid-action AND setting that reinforces this headline (e.g. "leaving a glass boardroom mid-stride, colleagues blurred behind" or "a single signed contract and a fountain pen on a dark executive desk").
+- symbolicObject: one concrete object that reinforces the headline for object-led scenes; empty string for person-led scenes.
+- zone: "left" or "bottom" — the side kept clear for the text overlay; compose the subject on the opposite side.
+
+Headlines:
+${headlines.map((h, i) => `${i + 1}. ${h}`).join("\n")}
+
+Return JSON: { "scenes": [ { "mode", "action", "symbolicObject", "zone" }, ... ] } with exactly ${headlines.length} scenes, in order.`;
+
+  try {
+    const response = await invokeLLM({
+      messages: [
+        { role: "system", content: SCENE_SYSTEM_PROMPT },
+        { role: "user", content: userPrompt },
+      ],
+      response_format: SCENE_RESPONSE_FORMAT,
+    });
+    const content = response.choices[0].message.content;
+    const parsed = JSON.parse(typeof content === "string" ? content : JSON.stringify(content));
+    const scenes = Array.isArray(parsed?.scenes) ? parsed.scenes : [];
+    const out = headlines.map((_, i) => validateScene(scenes[i]) ?? fallbackAt(i));
+    console.log(`[editorialScene] ${out.length} briefs (${out.filter((_, i) => validateScene(scenes[i])).length} from LLM, rest fallback)`);
+    return out;
+  } catch (err) {
+    console.warn(`[editorialScene] micro-call failed, using slot fallback: ${err instanceof Error ? err.message : String(err)}`);
+    return headlines.map((_, i) => fallbackAt(i));
+  }
 }

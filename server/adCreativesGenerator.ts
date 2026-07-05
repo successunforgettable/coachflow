@@ -43,7 +43,7 @@ import { adCreatives, services } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { invokeLLM } from "./_core/llm";
 import { generateImage, generateEditorialImage } from "./_core/imageGeneration";
-import { buildEditorialPrompt, EDITORIAL_VARIATIONS } from "./_core/editorialPrompt";
+import { buildEditorialPrompt, EDITORIAL_VARIATIONS, generateEditorialSceneBriefs } from "./_core/editorialPrompt";
 import { storagePut } from "./storage";
 import { renderAdCreative, deriveAccent, resolveAdBodyText } from "./_core/compositeHeadline";
 import { ctaForCampaignType } from "./_core/campaignCta";
@@ -579,18 +579,26 @@ export async function runEditorialAdCreativesGeneration(
   const ctaLabel = ctaForCampaignType(input.campaignType);
   const bodyText = await resolveAdBodyText(db, input.userId, input.serviceId);
 
+  // Resolve all 5 headlines up front, then ONE batched micro-call turns them
+  // into headline-driven scene briefs (falls back per-slot internally).
+  const headlineList = EDITORIAL_VARIATIONS.map((variation, i) =>
+    input.headlines
+      ? input.headlines[i]
+      : { text: HEADLINE_FORMULAS[variation.formula](mechanism, input.niche, customerCount), emphasis: undefined as string | undefined },
+  );
+  const scenes = await generateEditorialSceneBriefs(headlineList.map(h => h.text), input.niche);
+
   let createdCount = 0;
   for (let i = 0; i < EDITORIAL_VARIATIONS.length; i++) {
     const variation = EDITORIAL_VARIATIONS[i];
-    const hl = input.headlines
-      ? input.headlines[i]
-      : { text: HEADLINE_FORMULAS[variation.formula](mechanism, input.niche, customerCount), emphasis: undefined as string | undefined };
+    const hl = headlineList[i];
     const headline = hl.text;
+    const scene = scenes[i];
 
     const complianceIssues = checkCompliance(headline, input.mainBenefit, input.pressingProblem);
-    const imagePrompt = buildEditorialPrompt(variation, input.niche, input.pressingProblem);
+    const imagePrompt = buildEditorialPrompt(scene, input.niche);
 
-    console.log(`[editorialGen] variation ${i + 1}/${EDITORIAL_VARIATIONS.length} — ${variation.key} zone=${variation.zone} batchId=${batchId}`);
+    console.log(`[editorialGen] ${i + 1}/${EDITORIAL_VARIATIONS.length} — mode=${scene.mode} zone=${scene.zone} headline="${headline.slice(0, 40)}" batchId=${batchId}`);
 
     const imageResult = await generateEditorialImage({ prompt: imagePrompt, aspectRatio: "4:5" });
     if (!imageResult.url) throw new Error(`Editorial variation ${i + 1} returned no URL (batchId=${batchId})`);
@@ -600,7 +608,7 @@ export async function runEditorialAdCreativesGeneration(
     const { url: rawImageUrl } = await storagePut(rawKey, rawBuffer, "image/png");
 
     const compositedBuffer = await renderAdCreative(rawBuffer, {
-      headline, emphasis: hl.emphasis, bodyText, ctaLabel, zone: variation.zone,
+      headline, emphasis: hl.emphasis, bodyText, ctaLabel, zone: scene.zone,
     });
     const fileKey = `ad-creatives/${input.userId}/${batchId}/variation-${i + 1}.png`;
     const { url: s3Url } = await storagePut(fileKey, compositedBuffer, "image/png");
