@@ -390,6 +390,7 @@ export const adCreativesRouter = router({
       const capturedHeadline = nextHeadline;
       const capturedServiceId  = existing.serviceId;
       const capturedCampaignId = existing.campaignId;
+      const capturedStyleType  = existing.styleType;
 
       setImmediate(async () => {
         try {
@@ -400,13 +401,23 @@ export const adCreativesRouter = router({
           const { storagePut: s3Put }                 = await import("../storage");
           const { renderAdCreative: doRender, resolveAdBodyText: resolveBody } = await import("../_core/compositeHeadline");
           const { resolveCampaignCta: resolveCta }    = await import("../_core/campaignCta");
+          const { generateEditorialImage: genEditorial } = await import("../_core/imageGeneration");
+          const { buildEditorialPrompt, EDITORIAL_VARIATIONS } = await import("../_core/editorialPrompt");
           const bgDb = await getDbBg();
           if (!bgDb) throw new Error("Database not available in background job");
 
-          console.log(`[adCreatives.regenerateSingle] Job ${jobId} — regenerating creative ${capturedId}`);
+          console.log(`[adCreatives.regenerateSingle] Job ${jobId} — regenerating creative ${capturedId} (styleType=${capturedStyleType})`);
 
-          const imagePrompt = generateAdImagePrompt(capturedStyle, capturedNiche, capturedProblem);
-          const imageResult = await genImg({ prompt: imagePrompt });
+          // Editorial-aware: regenerate an editorial creative on the flux-2
+          // gold-on-black recipe + zone, not the tabloid prompt. The variation
+          // is recovered from designStyle (the editorial key).
+          const editorialVar = capturedStyleType === "editorial"
+            ? (EDITORIAL_VARIATIONS.find(v => v.key === capturedStyle) ?? EDITORIAL_VARIATIONS[0])
+            : null;
+
+          const imageResult = editorialVar
+            ? await genEditorial({ prompt: buildEditorialPrompt(editorialVar, capturedNiche, capturedProblem), aspectRatio: "4:5" })
+            : await genImg({ prompt: generateAdImagePrompt(capturedStyle, capturedNiche, capturedProblem) });
           if (!imageResult.url) throw new Error("Failed to generate replacement image");
 
           const imageResponse = await fetch(imageResult.url);
@@ -420,7 +431,7 @@ export const adCreativesRouter = router({
             resolveCta(bgDb, { campaignId: capturedCampaignId, serviceId: capturedServiceId }),
             resolveBody(bgDb, capturedUserId, capturedServiceId),
           ]);
-          const compositedBuffer = await doRender(rawBuffer, { headline: capturedHeadline, bodyText: rgBody, ctaLabel: rgCta });
+          const compositedBuffer = await doRender(rawBuffer, { headline: capturedHeadline, bodyText: rgBody, ctaLabel: rgCta, zone: editorialVar?.zone });
           const fileKey = `ad-creatives/${capturedUserId}/regen-${capturedId}-${Date.now()}.png`;
           const { url: s3Url } = await s3Put(fileKey, compositedBuffer, "image/png");
 
