@@ -42,7 +42,8 @@ import { getDb } from "./db";
 import { adCreatives, services } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { invokeLLM } from "./_core/llm";
-import { generateImage } from "./_core/imageGeneration";
+import { generateImage, generateEditorialImage } from "./_core/imageGeneration";
+import { buildEditorialPrompt, EDITORIAL_VARIATIONS } from "./_core/editorialPrompt";
 import { storagePut } from "./storage";
 import { renderAdCreative, deriveAccent, resolveAdBodyText } from "./_core/compositeHeadline";
 import { ctaForCampaignType } from "./_core/campaignCta";
@@ -546,5 +547,89 @@ export async function runAdCreativesGeneration(
     `[adCreativesGenerator] Batch ${batchId} complete — ${createdCount} variations`,
   );
 
+  return { batchId, creativeCount: createdCount };
+}
+
+// ─── Stage 3: editorial (gold-on-black) ad creatives ─────────────────────────
+// Parallel to runAdCreativesGeneration but on the flux-2-pro editorial recipe
+// (no green-arrow tabloid cues) with zone-aware text placement. Photo prompt is
+// recipe-only (no input_images — provenance-clean, no sample echo). Tabloid path
+// is untouched. Aspect ratio 4:5 (editorial feed standard).
+export async function runEditorialAdCreativesGeneration(
+  input: RunAdCreativesGenerationInput,
+): Promise<RunAdCreativesGenerationResult> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const [serviceRow] = await db.select().from(services).where(eq(services.id, input.serviceId)).limit(1);
+  if (!serviceRow) throw new Error(`Service ${input.serviceId} not found`);
+
+  const customerCount = serviceRow.totalCustomers || 0;
+  const mechanism = input.uniqueMechanism || "System";
+  const adType = input.adType ?? "lead_gen";
+  const batchId = `batch-${Date.now()}-${randomBytes(4).toString("hex")}`;
+
+  if (input.headlines && input.headlines.length !== EDITORIAL_VARIATIONS.length) {
+    throw new Error(
+      `runEditorialAdCreativesGeneration: input.headlines length ${input.headlines.length} ` +
+        `does not match expected ${EDITORIAL_VARIATIONS.length} variations`,
+    );
+  }
+
+  const ctaLabel = ctaForCampaignType(input.campaignType);
+  const bodyText = await resolveAdBodyText(db, input.userId, input.serviceId);
+
+  let createdCount = 0;
+  for (let i = 0; i < EDITORIAL_VARIATIONS.length; i++) {
+    const variation = EDITORIAL_VARIATIONS[i];
+    const hl = input.headlines
+      ? input.headlines[i]
+      : { text: HEADLINE_FORMULAS[variation.formula](mechanism, input.niche, customerCount), emphasis: undefined as string | undefined };
+    const headline = hl.text;
+
+    const complianceIssues = checkCompliance(headline, input.mainBenefit, input.pressingProblem);
+    const imagePrompt = buildEditorialPrompt(variation, input.niche, input.pressingProblem);
+
+    console.log(`[editorialGen] variation ${i + 1}/${EDITORIAL_VARIATIONS.length} — ${variation.key} zone=${variation.zone} batchId=${batchId}`);
+
+    const imageResult = await generateEditorialImage({ prompt: imagePrompt, aspectRatio: "4:5" });
+    if (!imageResult.url) throw new Error(`Editorial variation ${i + 1} returned no URL (batchId=${batchId})`);
+
+    const rawBuffer = Buffer.from(await (await fetch(imageResult.url)).arrayBuffer());
+    const rawKey = `ad-creatives/${input.userId}/${batchId}/raw-variation-${i + 1}.png`;
+    const { url: rawImageUrl } = await storagePut(rawKey, rawBuffer, "image/png");
+
+    const compositedBuffer = await renderAdCreative(rawBuffer, {
+      headline, emphasis: hl.emphasis, bodyText, ctaLabel, zone: variation.zone,
+    });
+    const fileKey = `ad-creatives/${input.userId}/${batchId}/variation-${i + 1}.png`;
+    const { url: s3Url } = await storagePut(fileKey, compositedBuffer, "image/png");
+
+    await db.insert(adCreatives).values({
+      userId: input.userId,
+      serviceId: input.serviceId,
+      niche: input.niche,
+      productName: input.productName,
+      uniqueMechanism: mechanism,
+      targetAudience: input.targetAudience,
+      mainBenefit: input.mainBenefit,
+      pressingProblem: input.pressingProblem,
+      adType,
+      styleType: "editorial",
+      designStyle: variation.key as any,
+      headlineFormula: variation.formula,
+      headline,
+      imageUrl: s3Url,
+      rawImageUrl,
+      imageFormat: "1080x1350",
+      complianceChecked: true,
+      complianceIssues: complianceIssues.length > 0 ? JSON.stringify(complianceIssues) : null,
+      batchId,
+      variationNumber: i + 1,
+    } as any);
+    createdCount += 1;
+  }
+
+  console.log(`[editorialGen] Batch ${batchId} complete — ${createdCount} editorial variations`);
   return { batchId, creativeCount: createdCount };
 }

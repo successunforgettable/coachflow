@@ -162,6 +162,11 @@ export type RenderAdCreativeInput = {
   emphasis?: string;   // verbatim substring to render gold; heuristic fallback
   bodyText?: string;   // ~140-char campaign-aligned body (no price)
   ctaLabel: string;    // CAMPAIGN_TO_CTA[campaignType]
+  // Composition zone (editorial). Undefined = tabloid (centered, bottom band —
+  // unchanged). "left" = text in the reserved left column (subject on the
+  // right); "bottom" = left-aligned lower third. Matches the zone the editorial
+  // photo prompt was told to leave clean.
+  zone?: "left" | "bottom";
 };
 
 export async function renderAdCreative(rawBuffer: Buffer, input: RenderAdCreativeInput): Promise<Buffer> {
@@ -174,38 +179,57 @@ export async function renderAdCreative(rawBuffer: Buffer, input: RenderAdCreativ
 
   const padX = Math.round(W * 0.06);
   const padBottom = Math.round(H * 0.055);
+  const padTop = Math.round(H * 0.07);
   const contentW = W - padX * 2;
 
-  // ── CTA pill (bottom) ──
+  // ── Composition contract: zone drives column, alignment, anchor, scrim.
+  //    undefined = tabloid (centered, bottom-anchored, full-width, bottom scrim)
+  //    "bottom"  = editorial, left-aligned, bottom-anchored, bottom scrim
+  //    "left"    = editorial, left-aligned, TOP-anchored, left column, left scrim
+  const zone = input.zone;
+  const align: "center" | "left" = zone === undefined ? "center" : "left";
+  const anchor: "top" | "bottom" = zone === "left" ? "top" : "bottom";
+  const colX = padX;
+  const colW = zone === "left" ? Math.round(W * 0.50) : contentW;
+  const lineX = (lineW: number) => (align === "center" ? (W - lineW) / 2 : colX);
+
+  // ── Sizes (independent of anchor) ──
   const pillLabel = (input.ctaLabel || "").trim().toUpperCase();
   const pillSize = Math.max(20, Math.round(W / 34));
   const pillLabelW = bodyFont.getAdvanceWidth(pillLabel, pillSize);
   const pillPadX = Math.round(pillSize * 1.15);
   const pillH = Math.round(pillSize * 2.4);
   const pillW = Math.round(pillLabelW + pillPadX * 2);
-  const pillTop = H - padBottom - pillH;
-  const pillLeft = padX;
+  const pillGap = Math.round(pillSize * 1.4);
 
-  // ── Body block (above pill) ──
   const bodyText = (input.bodyText ?? "").trim();
   const bodySize = Math.max(18, Math.round(W / 32));
   const bodyLH = bodySize * 1.32;
-  const bodyLines = bodyText ? fitLines(bodyFont, bodyText, contentW, bodySize, Math.round(bodySize * 0.8), 4).lines : [];
+  const bodyLines = bodyText ? fitLines(bodyFont, bodyText, colW, bodySize, Math.round(bodySize * 0.8), 4).lines : [];
   const bodyBlockH = bodyLines.length * bodyLH;
-  const bodyGap = Math.round(pillSize * 1.4);
-  const bodyBottom = pillTop - bodyGap;
-  const bodyTop = bodyBottom - bodyBlockH;
 
-  // ── Headline (above body) — two-tone Playfair, all caps ──
   const headText = input.headline.trim().toUpperCase();
   const headStart = Math.max(40, Math.min(Math.round(W / 8), Math.round(W / 12)));
   const headMin = Math.max(30, Math.round(W / 20));
-  const { lines: headLines, fontSize: headSize } = fitLines(headFont, headText, contentW, headStart, headMin, 3);
+  const { lines: headLines, fontSize: headSize } = fitLines(headFont, headText, colW, headStart, headMin, 3);
   const headLH = headSize * 1.08;
   const headBlockH = headLines.length * headLH;
   const headGap = Math.round(headSize * 0.5);
-  const headBottom = (bodyLines.length ? bodyTop : pillTop) - headGap;
-  const headTop = headBottom - headBlockH;
+
+  // ── Positions by anchor ──
+  let headTop: number, bodyTop: number, pillTop: number;
+  if (anchor === "bottom") {
+    pillTop = H - padBottom - pillH;
+    const bodyBottom = pillTop - pillGap;
+    bodyTop = bodyBottom - bodyBlockH;
+    const headBottom = (bodyLines.length ? bodyTop : pillTop) - headGap;
+    headTop = headBottom - headBlockH;
+  } else {
+    headTop = padTop;
+    bodyTop = headTop + headBlockH + headGap;
+    pillTop = bodyTop + bodyBlockH + (bodyLines.length ? pillGap : headGap);
+  }
+  const pillLeft = colX;
 
   // ── Accent range over the normalised (line-joined) headline ──
   const normalised = headLines.join(" ");
@@ -224,7 +248,7 @@ export async function renderAdCreative(rawBuffer: Buffer, input: RenderAdCreativ
   for (let li = 0; li < headLines.length; li++) {
     const line = headLines[li];
     const lineW = headFont.getAdvanceWidth(line, headSize);
-    let x = (W - lineW) / 2; // centered
+    let x = lineX(lineW);
     const baseY = headTop + li * headLH + headSize * 0.82;
     for (let ci = 0; ci < line.length; ci++) {
       const ch = line[ci];
@@ -239,14 +263,13 @@ export async function renderAdCreative(rawBuffer: Buffer, input: RenderAdCreativ
     globalIdx += line.length + 1; // +1 for the join space
   }
 
-  // ── Body glyphs (centered, single fill) ──
+  // ── Body glyphs ──
   const bodyPaths: string[] = [];
   for (let li = 0; li < bodyLines.length; li++) {
     const line = bodyLines[li];
     const lineW = bodyFont.getAdvanceWidth(line, bodySize);
-    const x = (W - lineW) / 2;
     const baseY = bodyTop + li * bodyLH + bodySize * 0.8;
-    bodyPaths.push(glyphPath(bodyFont, line, x, baseY, bodySize));
+    bodyPaths.push(glyphPath(bodyFont, line, lineX(lineW), baseY, bodySize));
   }
 
   // ── Pill label glyphs (dark, centered in pill) ──
@@ -254,21 +277,31 @@ export async function renderAdCreative(rawBuffer: Buffer, input: RenderAdCreativ
   const pillLabelY = pillTop + pillH / 2 + pillSize * 0.34;
   const pillLabelPath = glyphPath(bodyFont, pillLabel, pillLabelX, pillLabelY, pillSize);
 
-  // ── Scrim: dark gradient from above the headline to the bottom ──
+  // ── Scrim ──
   const scrimTop = Math.max(0, headTop - Math.round(H * 0.06));
-
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
-  <defs>
-    <linearGradient id="scrim" x1="0" y1="${scrimTop}" x2="0" y2="${H}" gradientUnits="userSpaceOnUse">
+  const scrimDef = zone === "left"
+    ? `<linearGradient id="scrim" x1="0" y1="0" x2="${W}" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0A0A0E" stop-opacity="0.92"/>
+      <stop offset="0.42" stop-color="#0A0A0E" stop-opacity="0.6"/>
+      <stop offset="0.72" stop-color="#0A0A0E" stop-opacity="0"/>
+    </linearGradient>`
+    : `<linearGradient id="scrim" x1="0" y1="${scrimTop}" x2="0" y2="${H}" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#0A0A0E" stop-opacity="0"/>
       <stop offset="0.55" stop-color="#0A0A0E" stop-opacity="0.72"/>
       <stop offset="1" stop-color="#0A0A0E" stop-opacity="0.92"/>
-    </linearGradient>
+    </linearGradient>`;
+  const scrimRect = zone === "left"
+    ? `<rect x="0" y="0" width="${W}" height="${H}" fill="url(#scrim)"/>`
+    : `<rect x="0" y="${scrimTop}" width="${W}" height="${H - scrimTop}" fill="url(#scrim)"/>`;
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
+  <defs>
+    ${scrimDef}
     <filter id="soft" x="-8%" y="-8%" width="116%" height="116%">
       <feDropShadow dx="0" dy="${Math.max(1, Math.round(headSize * 0.03))}" stdDeviation="${Math.max(1, Math.round(headSize * 0.06))}" flood-color="rgba(0,0,0,0.55)"/>
     </filter>
   </defs>
-  <rect x="0" y="${scrimTop}" width="${W}" height="${H - scrimTop}" fill="url(#scrim)"/>
+  ${scrimRect}
   <g filter="url(#soft)">
     <g fill="${WHITE}">${whitePaths.join("")}</g>
     <g fill="${GOLD}">${goldPaths.join("")}</g>

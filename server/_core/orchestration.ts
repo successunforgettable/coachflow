@@ -44,7 +44,7 @@ import { runAdCopyGeneration } from "../adCopyGenerator";
 import { runLandingPageGeneration } from "../landingPageGenerator";
 import { runEmailSequenceGeneration } from "../emailSequenceGenerator";
 import { runWhatsappSequenceGeneration } from "../whatsappSequenceGenerator";
-import { runAdCreativesGeneration, generateContextualAdHeadlines } from "../adCreativesGenerator";
+import { runAdCreativesGeneration, runEditorialAdCreativesGeneration, generateContextualAdHeadlines } from "../adCreativesGenerator";
 import { ctaForCampaignType } from "./campaignCta";
 import { renderQuoteCard } from "./renderQuoteCard";
 import { renderNotificationMockup } from "./renderNotificationMockup";
@@ -447,6 +447,7 @@ export async function runOrchestrationStep(
       // Style routing: read adImageStyle from the freshly-read kit
       const adImageStyle = (freshKit as Record<string, unknown>)?.adImageStyle as string | null;
       const isTemplate = adImageStyle?.startsWith("quote_card") || adImageStyle?.startsWith("notification") || adImageStyle?.startsWith("testimonial");
+      const isEditorial = adImageStyle?.startsWith("editorial");
 
       if (isTemplate) {
         // ── Template path: pure typography/layout, no Flux, $0/image, <5s ──
@@ -510,8 +511,24 @@ export async function runOrchestrationStep(
           } as any);
         }
         generatedId = batchId;
+      } else if (isEditorial) {
+        // ── Editorial path: flux-2-pro gold-on-black + zone-aware text ──
+        const { batchId } = await runEditorialAdCreativesGeneration({
+          userId: input.userId,
+          serviceId: input.serviceId,
+          niche,
+          productName: svc.name,
+          uniqueMechanism: mechanismName,
+          targetAudience: svc.targetCustomer ?? "",
+          mainBenefit: svc.mainBenefit ?? "",
+          pressingProblem,
+          adType: "lead_gen",
+          headlines,
+          campaignType: input.campaignType,
+        });
+        generatedId = batchId;
       } else {
-        // ── Photo-ad path: existing Flux pipeline, UNTOUCHED ──
+        // ── Tabloid photo-ad path: existing flux-1.1-pro pipeline, UNTOUCHED ──
         const { batchId } = await runAdCreativesGeneration({
           userId: input.userId,
           serviceId: input.serviceId,

@@ -363,12 +363,10 @@ export const adCreativesRouter = router({
       // through the approved-Node-6 helper and use the DB's text downstream.
       // Skip entirely when no override — existing.headline was already
       // compliance-checked when the row was generated.
-      let overrideHeadline: string | null = null;
-      if (input.headlineOverrideId != null) {
-        const { headline: approved } =
-          await assertHeadlineIsApproved(db, ctx.user.id, existing.serviceId, input.headlineOverrideId);
-        if (approved !== existing.headline) overrideHeadline = approved;
-      }
+      // Stage 3: ad images always use the campaign's short ad headline — the
+      // long landing-page (Node-6) headline override is retired, so we ignore
+      // input.headlineOverrideId and regenerate on the existing headline.
+      const overrideHeadline: string | null = null;
 
       // Persist the new headline now so it survives even if the background
       // job fails — user's edit is preserved and visible on retry.
@@ -488,12 +486,12 @@ export const adCreativesRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Creative not found" });
       }
 
-      // Compliance gate: headlineId must resolve to a Node 6 headline for this
-      // campaign's service. We composite with the DB's text, not any
-      // client-supplied string — eliminates whole classes of collation /
-      // whitespace / normalization bugs.
-      const { headline: newHeadline } =
-        await assertHeadlineIsApproved(db, ctx.user.id, existing.serviceId, input.headlineId);
+      // Stage 3: ad images ALWAYS use the campaign's own short ad headline —
+      // the long landing-page (Node-6) headline swap is retired. We ignore the
+      // supplied headlineId and re-render with the creative's existing headline.
+      // (assertHeadlineIsApproved retained as an import for the ownership shape;
+      // the picker UI in V2AdImageCreator is now redundant — retire follow-up.)
+      const newHeadline = existing.headline ?? "";
 
       console.log(`[adCreatives.recompositeText] Creative ${input.id} — new headline="${newHeadline.slice(0, 60)}"`);
 

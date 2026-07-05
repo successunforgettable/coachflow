@@ -114,3 +114,57 @@ export async function generateImage(
 
   return { url };
 }
+
+// ─── Stage 3: editorial photo via flux-2-pro ─────────────────────────────────
+// Separate from generateImage (which stays on flux-1.1-pro for the tabloid
+// style, unchanged). flux-2-pro takes a plain-text prompt, aspect_ratio, and an
+// optional input_images array (max 8, image-to-image reference conditioning).
+export type GenerateEditorialOptions = {
+  prompt: string;
+  aspectRatio?: string;      // "1:1" (default), "4:5", "9:16", …
+  inputImages?: string[];    // optional reference URLs (max 8) — image-to-image
+};
+
+export async function generateEditorialImage(
+  options: GenerateEditorialOptions,
+): Promise<GenerateImageResponse> {
+  const apiKey = ENV.replicateApiKey;
+  if (!apiKey) throw new Error("REPLICATE_API_KEY is not configured");
+  const replicate = new Replicate({ auth: apiKey });
+
+  const input: Record<string, unknown> = {
+    prompt: options.prompt,
+    aspect_ratio: options.aspectRatio ?? "1:1",
+    output_format: "png",
+    output_quality: 90,
+    safety_tolerance: 2,
+  };
+  if (options.inputImages && options.inputImages.length > 0) {
+    input.input_images = options.inputImages.slice(0, 8);
+  }
+
+  const output = (await replicate.run("black-forest-labs/flux-2-pro" as any, { input })) as any;
+
+  let imageUrl: string;
+  if (typeof output === "string") {
+    imageUrl = output;
+  } else if (Array.isArray(output)) {
+    const first = output[0];
+    imageUrl = typeof first === "string" ? first : (typeof first?.url === "function" ? first.url() : first?.url);
+  } else if (output && typeof output === "object") {
+    imageUrl = typeof (output as any).url === "function" ? (output as any).url() : (output as any).url;
+  } else {
+    throw new Error("Unexpected output format from Replicate (flux-2-pro)");
+  }
+  if (!imageUrl) throw new Error("flux-2-pro returned no image URL");
+
+  const response = await fetch(imageUrl);
+  if (!response.ok) throw new Error(`Failed to download flux-2 image: ${response.statusText}`);
+  const imageBuffer = Buffer.from(await response.arrayBuffer());
+  const { url } = await storagePut(
+    `generated/editorial-${Date.now()}-${Math.random().toString(36).substring(7)}.png`,
+    imageBuffer,
+    "image/png",
+  );
+  return { url };
+}
