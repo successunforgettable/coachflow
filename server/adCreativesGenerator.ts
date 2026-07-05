@@ -615,8 +615,13 @@ export async function runEditorialAdCreativesGeneration(
       mainBenefit: input.mainBenefit,
       pressingProblem: input.pressingProblem,
       adType,
-      styleType: "editorial",
-      designStyle: variation.key as any,
+      // designStyle/styleType are restricted enums that don't yet include the
+      // editorial keys — a clean-up migration (add "editorial" to styleType +
+      // the 5 editorial keys to designStyle) is the proper follow-up. Until
+      // then: store a VALID existing designStyle (vestigial for editorial —
+      // the editorial path prompts from the variation, not this column) and let
+      // styleType default. Editorial rows are identified by imageFormat 1080x1350.
+      designStyle: (variation.mode === "person" ? "person_intense" : "object") as any,
       headlineFormula: variation.formula,
       headline,
       imageUrl: s3Url,
