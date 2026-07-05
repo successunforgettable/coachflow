@@ -18,6 +18,7 @@ const PALETTES = [
 // ── Fixed sample for photo-ad style ──
 // A real generated photo-ad from the production pipeline (kit 140, variation 1)
 const PHOTO_AD_SAMPLE = "https://res.cloudinary.com/dunshei0y/image/upload/v1781629783/ad-creatives_1_batch-1781629772360-327f2ba7_variation-1.png.png";
+const EDITORIAL_SAMPLE = "https://res.cloudinary.com/dunshei0y/image/upload/v1783272342/comparison_editorial-proof-1783272341278.png.png";
 
 // ── Live canvas preview for quote card ──
 
@@ -313,6 +314,47 @@ export default function StyleChooser({ headline, testimonialQuote, onChoose }: S
           </div>
           <button
             onClick={(e) => { e.stopPropagation(); onChoose({ style: "photo_ad" }); }}
+            style={{
+              background: "#FF5B1D", color: "#fff", border: "none",
+              borderRadius: 9999, padding: "8px 24px", cursor: "pointer",
+              fontFamily: "Instrument Sans, sans-serif", fontWeight: 600, fontSize: 14,
+            }}
+          >
+            Choose
+          </button>
+        </div>
+
+        {/* Editorial Ad card (Stage 3 — gold-on-black flux-2, zone-aware text) */}
+        <div
+          style={{ ...cardBase, ...(hoveredStyle === "editorial" ? cardHover : {}) }}
+          onMouseEnter={() => setHoveredStyle("editorial")}
+          onMouseLeave={() => setHoveredStyle(null)}
+          onClick={() => onChoose({ style: "editorial" })}
+        >
+          <div style={{
+            width: 200, height: 200, borderRadius: 12, overflow: "hidden",
+            background: "#0A0A0E",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            <img
+              src={EDITORIAL_SAMPLE}
+              alt="Editorial ad sample"
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = "none";
+                (e.target as HTMLImageElement).parentElement!.innerHTML =
+                  '<div style="color:#D4A24A;font-size:13px;text-align:center;padding:20px">Cinematic gold-on-black<br/>with your headline</div>';
+              }}
+            />
+          </div>
+          <div style={{ fontFamily: "Instrument Sans, sans-serif", fontWeight: 600, fontSize: 15 }}>
+            Editorial
+          </div>
+          <div style={{ fontFamily: "Instrument Sans, sans-serif", fontSize: 12, color: "#666", textAlign: "center" }}>
+            A cinematic gold-on-black shoot with your headline in a clean zone
+          </div>
+          <button
+            onClick={(e) => { e.stopPropagation(); onChoose({ style: "editorial" }); }}
             style={{
               background: "#FF5B1D", color: "#fff", border: "none",
               borderRadius: 9999, padding: "8px 24px", cursor: "pointer",

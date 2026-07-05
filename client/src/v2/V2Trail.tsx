@@ -1234,7 +1234,7 @@ export default function V2Trail() {
   });
   const handleStyleChoose = (messageId: string, style: string) => {
     removeLive(messageId);
-    const styleName = style.startsWith("quote_card") ? "Quote Card" : style.startsWith("notification") ? "Notification" : "Photo Ad";
+    const styleName = style.startsWith("quote_card") ? "Quote Card" : style.startsWith("notification") ? "Notification" : style.startsWith("editorial") ? "Editorial" : "Photo Ad";
     const echo = addLive({ type: "user-bubble", text: styleName });
     persistMsgs([echo]);
     styleResolve.current?.(style);
