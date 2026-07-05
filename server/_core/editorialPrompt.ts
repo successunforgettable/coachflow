@@ -83,7 +83,7 @@ export function buildEditorialPrompt(scene: EditorialScene, niche: string): stri
 
 // ─── The headline→scene micro-call (batch: all headlines at once) ─────────────
 const SCENE_SYSTEM_PROMPT =
-  "You are a cinematic art director for premium gold-on-black editorial advertising. For each ad headline you design ONE scene whose subject, action, setting and symbolic object visually reinforce that headline's specific meaning. Every scene stays inside one consistent world: sharp business wardrobe, corporate settings (glass offices, boardrooms, city towers at dusk, executive desks), professional subjects. You describe only what is in the frame — you never mention lighting or colour, which are fixed. Vary the scenes so the set feels rich, while keeping them one cohesive shoot. Respond with valid JSON.";
+  "You are a cinematic art director for premium gold-on-black editorial advertising, in the tradition of emotionally-driven brand campaigns. For each ad headline you design ONE scene that captures the emotional truth of that headline as a real, lived human business moment — a person in the grip of the feeling the headline names: the command of owning a room, the quiet sting of a loss, the focus of someone deciding, the tension before a turn. Show the person experiencing the situation, and let their body language, their expression, the other people in the frame, and the setting carry the meaning. Cast professionals in sharp business wardrobe within believable corporate worlds (glass offices, boardrooms, city towers at dusk, executive floors). You describe only what is in the frame and the emotion on it — you never mention lighting or colour, which are fixed. Vary the human moments so the set feels rich and cinematic while staying one cohesive shoot. Respond with valid JSON.";
 
 const SCENE_RESPONSE_FORMAT = {
   type: "json_schema" as const,
@@ -137,10 +137,10 @@ export async function generateEditorialSceneBriefs(headlines: string[], niche: s
   const { invokeLLM } = await import("./llm");
   const userPrompt = `Niche: ${(niche || "professionals").slice(0, 160)}
 
-Design one scene per headline below. For each, return:
-- mode: "person" for a person-led scene, "object" for an object-led scene with no person.
-- action: the specific mid-action AND setting that reinforces this headline (e.g. "leaving a glass boardroom mid-stride, colleagues blurred behind" or "a single signed contract and a fountain pen on a dark executive desk").
-- symbolicObject: one concrete object that reinforces the headline for object-led scenes; empty string for person-led scenes.
+Design one scene per headline below. For each headline, find the emotional truth behind the words and render it as a real human business moment you could photograph. For each, return:
+- mode: choose "person" — a human moment living the headline's feeling is almost always the right answer. Reserve "object" for the rare case where a single evocative object in the scene carries more feeling than a person could.
+- action: the charged human moment that makes this headline's feeling real — what the person is doing, their body language and expression, who else is in frame and how, and the setting (e.g. "standing assured at the head of a boardroom as a deal closes, a rival deflated in the background" or "alone at their desk after hours, the weight of another rejection just landing on their face").
+- symbolicObject: for the rare object-led scene, the one object that carries the emotion; empty string for person-led scenes.
 - zone: "left" or "bottom" — the side kept clear for the text overlay; compose the subject on the opposite side.
 
 Headlines:
