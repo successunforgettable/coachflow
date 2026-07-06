@@ -216,7 +216,13 @@ function ImageCard({
   // Vertical (9:16) needs the persisted scene to stay one-shoot. Editorial rows
   // only qualify once sceneBrief exists (post-migration batches); tabloid always
   // qualifies (its photo prompt is deterministic). Legacy editorial → hidden.
-  const canMakeVertical = creative.styleType !== "editorial" || creative.sceneBrief != null;
+  // Template cards (Quote / Notification / Testimonial) are pure-typography
+  // renders with NO separate Flux background — the generator dual-writes
+  // rawImageUrl === imageUrl. makeVertical has no template renderer yet, so a
+  // "vertical" of a template would come back as an unrelated Flux photo. Exclude
+  // them until a true 9:16 template render exists (Bug A: correct-by-hiding).
+  const isTemplateCard  = creative.rawImageUrl != null && creative.rawImageUrl === creative.imageUrl;
+  const canMakeVertical = !isTemplateCard && (creative.styleType !== "editorial" || creative.sceneBrief != null);
   const hasVertical     = !!creative.verticalImageUrl;
 
   function openEdit() {

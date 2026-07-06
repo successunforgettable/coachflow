@@ -501,6 +501,20 @@ export const adCreativesRouter = router({
         });
       }
 
+      // Template cards (Quote / Notification / Testimonial) are pure-typography
+      // renders with no separate Flux background — the generator dual-writes
+      // rawImageUrl === imageUrl. There is no 9:16 template renderer yet, so a
+      // vertical here would fall through to the deterministic Flux photo path and
+      // return an image unrelated to the chosen card. Refuse (the UI also hides
+      // the button). Bug A: correct-by-hiding until a true template vertical exists.
+      const isTemplateCard = existing.rawImageUrl != null && existing.rawImageUrl === existing.imageUrl;
+      if (isTemplateCard) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Vertical (9:16) isn't available for template card styles yet.",
+        });
+      }
+
       const jobId = randomUUID();
       await db.insert(jobs).values({ id: jobId, userId: String(ctx.user.id), status: "pending" });
 

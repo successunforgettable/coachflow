@@ -25,7 +25,25 @@ Unlocks TikTok / Reels / Stories / Shorts. Feed batch unchanged (4:5/1:1); a per
 1. **Headline→image pairing correct** — headline N gets scene N (not offset/mismatched). Show the loop (`adCreativesGenerator.ts` editorial loop: `headlineList` → `generateEditorialSceneBriefs` → `scenes[i]` paired with `headlineList[i]`).
 2. **Different campaigns → different images** — inputs are campaign-scoped. Show input sourcing (niche/problem/scene all from the service/kit).
 3. **Nothing disconnected** — verify still-intact, list each + status: feed batch, tabloid, headline generator, CTA-by-campaign-type, recomposite/regenerate, kit→creative flow, existing Meta push.
-4. **Full image-option inventory** — styles (tabloid, editorial) × formats (4:5, 9:16); and what's NOT available (comparison cards, endorsements/headshots).
+4. **Full image-option inventory** — see the corrected block below.
+
+## Live image-option inventory (CORRECTED 2026-07-06 — integrity report found the earlier "tabloid, editorial" line undercounted)
+
+The served `StyleChooser.tsx` offers **five** picker styles, not two:
+
+| Picker style (value) | Engine | Feed format | 9:16 today |
+|---|---|---|---|
+| **Photo Ad** (`photo_ad`) | tabloid flux-1.1-pro | 1080×1080 | ✅ deterministic prompt |
+| **Editorial** (`editorial`) | flux-2-pro gold-on-black | 1080×1350 (4:5) | ✅ when `sceneBrief` present |
+| **Quote Card** (`quote_card:<palette>`) | template `renderQuoteCard`, 5 palettes, no Flux | 1080×1080 | ⚠️ Bug A (see below) |
+| **Notification** (`notification:<palette>`) | template `renderNotificationMockup`, 5 palettes | 1080×1080 | ⚠️ Bug A |
+| **Testimonial Card** (`testimonial:<palette>`) | template `renderTestimonialCard`, real testimonials only | 1080×1080 | ⚠️ Bug A |
+
+Palettes (all templates): charcoal / navy / forest / slate / burgundy. **NOT available:** comparison cards (✗/✓ us-vs-them), endorsements/headshots.
+
+**DB-labeling note (important for any future template work):** template creatives are inserted with `styleType:"tabloid"`, `designStyle:"person_shocked"` — indistinguishable from real photo-ads by those columns. The actual template style + palette live only on `campaignKit.adImageStyle`; testimonial name/title live only on the service row. The one reliable per-creative discriminator is **`rawImageUrl === imageUrl`** (templates dual-set them equal; photo-ad/editorial keep a distinct raw flux URL).
+
+**Bug A (template "Make Vertical" returns an unrelated flux photo):** `makeVertical` routes non-editorial → flux photo at 9:16, and `canMakeVertical` shows the button for template rows (they read as `styleType:"tabloid"`). Fix path decided separately (see session memory).
 
 ## NEXT BUILD (only after integrity report reviewed + Arfeen's go)
 **Comparison-card compositor** — an option in BOTH 4:5 and 9:16. No photo — designed ✗/✓ "us vs them" checklist graphic, Playfair + gold, per-ratio reflow (checklist re-stacks for 9:16). **Investigate-first:** propose where the ✗/✓ content is sourced (offer differentiators? ICP pains?) before building. Do NOT start until the integrity report is reviewed.
