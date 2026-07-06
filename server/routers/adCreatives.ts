@@ -501,6 +501,33 @@ export const adCreativesRouter = router({
         });
       }
 
+      // Comparison cards are the ONE template style with genuine 9:16 support:
+      // they persist {palette, pairs}, so the vertical re-renders the SAME card
+      // (pure-render, no Flux) restacked into the tall UI-safe layout. Handle
+      // this here — synchronously, no image job — BEFORE the template-card guard
+      // below (comparison cards also dual-write rawImageUrl === imageUrl).
+      if (existing.comparisonPairs != null) {
+        const { renderComparisonCard } = await import("../_core/renderComparisonCard");
+        const cp = existing.comparisonPairs as { palette?: string; pairs?: { them: string; us: string }[] };
+        if (!cp?.pairs?.length) {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This comparison card can't be made vertical — regenerate it first." });
+        }
+        const vBuf = await renderComparisonCard({
+          method: existing.uniqueMechanism || "our method",
+          pairs: cp.pairs,
+          palette: cp.palette,
+          width: 1080,
+          height: 1920,
+        });
+        const fileKey = `ad-creatives/${ctx.user.id}/vertical-${input.id}-${Date.now()}.png`;
+        const { url: s3Url } = await storagePut(fileKey, vBuf, "image/png");
+        await db
+          .update(adCreatives)
+          .set({ verticalImageUrl: s3Url })
+          .where(and(eq(adCreatives.id, input.id), eq(adCreatives.userId, ctx.user.id)));
+        return { jobId: null as string | null, verticalImageUrl: s3Url };
+      }
+
       // Template cards (Quote / Notification / Testimonial) are pure-typography
       // renders with no separate Flux background — the generator dual-writes
       // rawImageUrl === imageUrl. There is no 9:16 template renderer yet, so a

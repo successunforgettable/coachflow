@@ -965,6 +965,12 @@ export const adCreatives = mysqlTable("adCreatives", {
   // On-demand vertical 9:16 (1080x1920) composited asset — populated by
   // adCreatives.makeVertical for the concept the user picks. NULL until requested.
   verticalImageUrl: varchar("verticalImageUrl", { length: 500 }),
+  // Comparison-card structured ✗/✓ pairs [{them, us}, ...] persisted at batch
+  // time so the pure-render comparison card can reflow at 9:16 on demand — the
+  // vertical re-renders from the SAME pairs (unlike quote/notification/testimonial,
+  // which carry no persisted structured content and can't go vertical). NULL for
+  // every other style and legacy rows.
+  comparisonPairs: json("comparisonPairs"),
   // Meta compliance
   complianceChecked: boolean("complianceChecked").default(true).notNull(),
   complianceIssues: text("complianceIssues"), // JSON array of flagged issues

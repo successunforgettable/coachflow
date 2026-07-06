@@ -49,6 +49,8 @@ import { ctaForCampaignType } from "./campaignCta";
 import { renderQuoteCard } from "./renderQuoteCard";
 import { renderNotificationMockup } from "./renderNotificationMockup";
 import { renderTestimonialCard } from "./renderTestimonialCard";
+import { renderComparisonCard } from "./renderComparisonCard";
+import { generateComparisonPairs, type ComparisonPair } from "./comparisonPairs";
 import { storagePut } from "../storage";
 import { runLandingPagePublish } from "../landingPagePublisher";
 
@@ -446,7 +448,7 @@ export async function runOrchestrationStep(
 
       // Style routing: read adImageStyle from the freshly-read kit
       const adImageStyle = (freshKit as Record<string, unknown>)?.adImageStyle as string | null;
-      const isTemplate = adImageStyle?.startsWith("quote_card") || adImageStyle?.startsWith("notification") || adImageStyle?.startsWith("testimonial");
+      const isTemplate = adImageStyle?.startsWith("quote_card") || adImageStyle?.startsWith("notification") || adImageStyle?.startsWith("testimonial") || adImageStyle?.startsWith("comparison_card");
       const isEditorial = adImageStyle?.startsWith("editorial");
 
       if (isTemplate) {
@@ -464,11 +466,36 @@ export async function runOrchestrationStep(
           svc.testimonial3Name ? { name: svc.testimonial3Name, title: svc.testimonial3Title || "", quote: svc.testimonial3Quote || "" } : null,
         ].filter(Boolean) as { name: string; title: string; quote: string }[] : [];
 
+        // Comparison card: generate the ✗/✓ pairs ONCE (parallel, campaign-specific,
+        // never parsed from prose), then rotate the lead pair per variation. Persisted
+        // per-creative so an on-demand 9:16 re-renders from the SAME pairs.
+        const comparisonPairs: ComparisonPair[] = styleKey === "comparison_card"
+          ? await generateComparisonPairs({
+              niche,
+              mechanismName,
+              mainBenefit: svc.mainBenefit ?? undefined,
+              painPoints: svc.painPoints ?? undefined,
+              failedSolutions: svc.failedSolutions ?? undefined,
+              icpPains: icp?.pains ?? undefined,
+              icpFrustrations: icp?.frustrations ?? undefined,
+              icpObjections: icp?.objections ?? undefined,
+            })
+          : [];
+
         for (let i = 0; i < 5; i++) {
           let headline: string;
           let pngBuffer: Buffer;
+          let variationPairs: ComparisonPair[] | null = null;
 
-          if (styleKey === "testimonial" && i < svcTestimonials.length) {
+          if (styleKey === "comparison_card") {
+            // Rotate so each of the 5 variations leads with a different pair.
+            const off = comparisonPairs.length ? i % comparisonPairs.length : 0;
+            variationPairs = comparisonPairs.slice(off).concat(comparisonPairs.slice(0, off));
+            headline = `The old way vs. ${mechanismName}`;
+            pngBuffer = await renderComparisonCard({
+              method: mechanismName, pairs: variationPairs, palette, width: 1080, height: 1350,
+            });
+          } else if (styleKey === "testimonial" && i < svcTestimonials.length) {
             // Testimonial card — verbatim quote from the user's real data
             const t = svcTestimonials[i];
             pngBuffer = await renderTestimonialCard({ quote: t.quote, clientName: t.name, clientTitle: t.title || undefined, palette });
@@ -503,7 +530,10 @@ export async function runOrchestrationStep(
             headline,
             imageUrl,
             rawImageUrl: imageUrl,
-            imageFormat: "1080x1080",
+            imageFormat: styleKey === "comparison_card" ? "1080x1350" : "1080x1080",
+            // Comparison cards persist {palette, pairs} so makeVertical re-renders
+            // the SAME card (same palette + pairs) at 9:16. NULL for every other style.
+            comparisonPairs: variationPairs ? { palette, pairs: variationPairs } : null,
             complianceChecked: true,
             complianceIssues: null,
             batchId,

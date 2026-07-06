@@ -253,10 +253,64 @@ function TestimonialPreview({ quote, name, bg, accent }: { quote: string; name: 
   return <canvas ref={canvasRef} style={{ width: 200, height: 200, borderRadius: 12 }} />;
 }
 
+// ── Live canvas preview for comparison card (✗/✓ us-vs-them) ──
+
+function ComparisonPreview({ bg }: { bg: string }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const W = 200, H = 200;
+    canvas.width = W; canvas.height = H;
+
+    // Premium dark card (gold-on-dark editorial register)
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = "#D4A24A"; ctx.globalAlpha = 0.85; ctx.fillRect(0, 0, W, 2); ctx.globalAlpha = 1;
+
+    // Two-tier headline: prefix (near-white) + method (gold)
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#F6F1E6";
+    ctx.font = "italic bold 11px Georgia, serif";
+    ctx.fillText("The old way vs.", W / 2, 24);
+    ctx.fillStyle = "#D4A24A";
+    ctx.font = "italic bold 16px Georgia, serif";
+    ctx.fillText("Your Method", W / 2, 42);
+    ctx.fillStyle = "#D4A24A"; ctx.fillRect(W / 2 - 20, 50, 40, 2);
+
+    // Column headers (gold)
+    const hY = 68;
+    ctx.font = "bold 8px sans-serif"; ctx.fillStyle = "#D4A24A";
+    ctx.fillText("OLD WAY", 56, hY); ctx.fillText("WITH YOU", 148, hY);
+    // Gold divider
+    ctx.fillStyle = "#D4A24A"; ctx.globalAlpha = 0.55;
+    ctx.fillRect(W / 2 - 1, hY + 8, 2, 108); ctx.globalAlpha = 1;
+
+    // Rows
+    const rowsY = hY + 24;
+    for (let i = 0; i < 3; i++) {
+      const y = rowsY + i * 34;
+      // ✗ disc left
+      ctx.fillStyle = "#E05A3F"; ctx.beginPath(); ctx.arc(22, y, 9, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(18, y - 4); ctx.lineTo(26, y + 4); ctx.moveTo(26, y - 4); ctx.lineTo(18, y + 4); ctx.stroke();
+      ctx.fillStyle = "#B4AC9C"; ctx.fillRect(36, y - 4, 52, 3); ctx.fillRect(36, y + 2, 34, 3);
+      // ✓ disc right
+      ctx.fillStyle = "#33A867"; ctx.beginPath(); ctx.arc(114, y, 9, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "#fff"; ctx.beginPath(); ctx.moveTo(110, y + 1); ctx.lineTo(113, y + 4); ctx.lineTo(119, y - 3); ctx.stroke();
+      ctx.fillStyle = "#F4EFE4"; ctx.fillRect(128, y - 4, 52, 3); ctx.fillRect(128, y + 2, 34, 3);
+    }
+  }, [bg]);
+  return <canvas ref={canvasRef} style={{ width: 200, height: 200, borderRadius: 12 }} />;
+}
+
 export default function StyleChooser({ headline, testimonialQuote, onChoose }: StyleChooserProps) {
   const [selectedPalette, setSelectedPalette] = useState(PALETTES[0]);
   const [notifPalette, setNotifPalette] = useState(PALETTES[1]); // default Navy for notification
   const [testimonialPalette, setTestimonialPalette] = useState(PALETTES[4]); // default Burgundy
+  const [comparisonPalette, setComparisonPalette] = useState(PALETTES[0]); // default Charcoal (premium near-black)
   const [hoveredStyle, setHoveredStyle] = useState<string | null>(null);
 
   const cardBase: React.CSSProperties = {
@@ -502,6 +556,51 @@ export default function StyleChooser({ headline, testimonialQuote, onChoose }: S
           </button>
         </div>
         )}
+
+        {/* Comparison Card — designed ✗/✓ us-vs-them checklist, no photo */}
+        <div
+          style={{ ...cardBase, ...(hoveredStyle === "comparison_card" ? cardHover : {}) }}
+          onMouseEnter={() => setHoveredStyle("comparison_card")}
+          onMouseLeave={() => setHoveredStyle(null)}
+          onClick={() => onChoose({ style: `comparison_card:${comparisonPalette.key}` })}
+        >
+          <ComparisonPreview bg={comparisonPalette.bg} />
+          <div style={{ fontFamily: "Instrument Sans, sans-serif", fontWeight: 600, fontSize: 15 }}>
+            Comparison
+          </div>
+          <div style={{ fontFamily: "Instrument Sans, sans-serif", fontSize: 12, color: "#666", textAlign: "center" }}>
+            The old way vs. your offer, side by side
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+            <span style={{ fontFamily: "Instrument Sans, sans-serif", fontSize: 11, color: "#999", fontWeight: 500 }}>
+              Header: {comparisonPalette.label}
+            </span>
+            <div style={{ display: "flex", gap: 6 }}>
+              {PALETTES.map(p => (
+                <div
+                  key={p.key}
+                  onClick={(e) => { e.stopPropagation(); setComparisonPalette(p); }}
+                  style={{
+                    width: 24, height: 24, borderRadius: "50%",
+                    background: p.bg, cursor: "pointer",
+                    border: p.key === comparisonPalette.key ? "2px solid #FF5B1D" : "2px solid transparent",
+                    transition: "border-color 0.15s",
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+          <button
+            onClick={(e) => { e.stopPropagation(); onChoose({ style: `comparison_card:${comparisonPalette.key}` }); }}
+            style={{
+              background: "#FF5B1D", color: "#fff", border: "none",
+              borderRadius: 9999, padding: "8px 24px", cursor: "pointer",
+              fontFamily: "Instrument Sans, sans-serif", fontWeight: 600, fontSize: 14,
+            }}
+          >
+            Choose
+          </button>
+        </div>
       </div>
       <p style={{ fontFamily: "Instrument Sans, sans-serif", fontSize: 11, color: "#999", margin: 0, textAlign: "center" }}>
         These are previews — your final images will be full-size and high quality.

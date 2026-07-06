@@ -123,6 +123,9 @@ type Creative = {
   sceneBrief: unknown | null;
   // On-demand 9:16 asset once the user makes it. Null until requested.
   verticalImageUrl: string | null;
+  // Comparison-card {palette, pairs} — presence marks a comparison card, which
+  // CAN go vertical (pure-render restack) despite rawImageUrl === imageUrl.
+  comparisonPairs: unknown | null;
 };
 
 // Node 6 headline shape — matches headlinesRouter.listForServiceId return rows.
@@ -221,8 +224,11 @@ function ImageCard({
   // rawImageUrl === imageUrl. makeVertical has no template renderer yet, so a
   // "vertical" of a template would come back as an unrelated Flux photo. Exclude
   // them until a true 9:16 template render exists (Bug A: correct-by-hiding).
-  const isTemplateCard  = creative.rawImageUrl != null && creative.rawImageUrl === creative.imageUrl;
-  const canMakeVertical = !isTemplateCard && (creative.styleType !== "editorial" || creative.sceneBrief != null);
+  // Comparison cards persist {palette, pairs} → they re-render vertically (no Flux),
+  // so they're the one "template" style that CAN go vertical.
+  const isComparisonCard = creative.comparisonPairs != null;
+  const isTemplateCard  = !isComparisonCard && creative.rawImageUrl != null && creative.rawImageUrl === creative.imageUrl;
+  const canMakeVertical = isComparisonCard || (!isTemplateCard && (creative.styleType !== "editorial" || creative.sceneBrief != null));
   const hasVertical     = !!creative.verticalImageUrl;
 
   function openEdit() {
@@ -852,6 +858,13 @@ export default function V2AdImageCreator() {
     setRegenErrors((prev) => { const m = new Map(prev); m.delete(id); return m; });
     try {
       const { jobId } = await makeVertical.mutateAsync({ id });
+      // Comparison cards render synchronously (pure-render, no Flux job) → jobId
+      // is null and verticalImageUrl is already persisted. Skip polling, refetch.
+      if (!jobId) {
+        await refetchBatch();
+        setVertIds((prev) => { const s = new Set(prev); s.delete(id); return s; });
+        return;
+      }
       const pollStart = performance.now();
       await new Promise<void>((resolve, reject) => {
         const interval = setInterval(async () => {
