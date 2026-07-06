@@ -631,6 +631,11 @@ export const hvcoTitles = mysqlTable("hvcoTitles", {
   isFavorite: boolean("isFavorite").default(false),
   selectionScore: decimal("selectionScore", { precision: 5, scale: 2 }),
   source: mysqlEnum("source", ["generated", "imported"]).default("generated").notNull(),
+  // Generated lead-magnet BODY (the actual deliverable content), stored as
+  // structured JSON {format, title, ...}. Populated only for the SELECTED title
+  // of a lead_magnet_download campaign (sparse — NULL for every other row and for
+  // imported titles). Content only; hosting/PDF/delivery is a follow-on sprint.
+  assetBody: json("assetBody"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({

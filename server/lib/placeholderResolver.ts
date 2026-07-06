@@ -10,8 +10,8 @@
  * lives in buildResolvedMap; resolveTokensInText/resolveTokensInObject apply it.
  */
 import { getDb } from "../db";
-import { placeholderValues } from "../../drizzle/schema";
-import { eq, and } from "drizzle-orm";
+import { placeholderValues, idealCustomerProfiles, campaignKits, hvcoTitles } from "../../drizzle/schema";
+import { eq, and, inArray, isNotNull, desc } from "drizzle-orm";
 
 export type ResolvedEntry = {
   token: string;
@@ -61,7 +61,45 @@ export async function buildResolvedMap(
     }
   }
 
+  // Auto-resolve [INSERT_LEAD_MAGNET_NAME] from the selected HVCO title so the
+  // operator no longer fills it manually. Precedence: an explicit CAMPAIGN-specific
+  // operator value wins; otherwise the auto-derived title beats a stale ACCOUNT
+  // DEFAULT (so an old account-wide value can't shadow this campaign's real magnet).
+  const hasCampaignMagnetOverride = relevant.some(
+    r => r.serviceId === serviceId && r.token === "[INSERT_LEAD_MAGNET_NAME]",
+  );
+  if (!hasCampaignMagnetOverride) {
+    const title = await selectedHvcoTitleForService(db, serviceId);
+    if (title) {
+      map.set("[INSERT_LEAD_MAGNET_NAME]", { token: "[INSERT_LEAD_MAGNET_NAME]", value: title, source: "default" });
+    }
+  }
+
   return map;
+}
+
+/**
+ * The title of the selected lead magnet for a service, via its ICPs → kit's
+ * selectedHvcoId → hvcoTitles.title. Returns null if nothing is selected.
+ * (campaignKits links by icpId, not serviceId — hence the ICP hop.)
+ */
+async function selectedHvcoTitleForService(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  serviceId: number,
+): Promise<string | null> {
+  const icps = await db.select({ id: idealCustomerProfiles.id })
+    .from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, serviceId));
+  const icpIds = icps.map(i => i.id);
+  if (icpIds.length === 0) return null;
+  const [kit] = await db.select({ selectedHvcoId: campaignKits.selectedHvcoId })
+    .from(campaignKits)
+    .where(and(inArray(campaignKits.icpId, icpIds), isNotNull(campaignKits.selectedHvcoId)))
+    .orderBy(desc(campaignKits.id))
+    .limit(1);
+  if (!kit?.selectedHvcoId) return null;
+  const [hvco] = await db.select({ title: hvcoTitles.title })
+    .from(hvcoTitles).where(eq(hvcoTitles.id, kit.selectedHvcoId)).limit(1);
+  return hvco?.title ?? null;
 }
 
 /**

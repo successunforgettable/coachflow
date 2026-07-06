@@ -57,6 +57,23 @@ import { runLandingPagePublish } from "../landingPagePublisher";
 // ─── Locked B-2 Zappy script labels ────────────────────────────────────────
 // 10 labels: init + 8 steps + finalize. V2AutoModeProgress (Phase B3) reads
 // these from progress.label as the orchestrator advances.
+// Campaign type → landing page type. The single chain that also tells us whether
+// a campaign converts on a downloadable (lead_magnet_download) vs a
+// registration/call/purchase. Module-level so both the landingPage step and the
+// hvco step (which gates lead-magnet BODY generation on it) share one source.
+export const CAMPAIGN_TO_PAGE_TYPE: Record<string, "sales_page" | "webinar_registration" | "discovery_call_booking" | "lead_magnet_download" | "event_registration"> = {
+  webinar: "webinar_registration",
+  discovery_call: "discovery_call_booking",
+  lead_magnet: "lead_magnet_download",
+  in_person_event: "event_registration",
+  course_launch: "sales_page",
+  product_launch: "sales_page",
+  challenge: "sales_page",
+};
+export function pageTypeForCampaign(campaignType?: string | null): "sales_page" | "webinar_registration" | "discovery_call_booking" | "lead_magnet_download" | "event_registration" {
+  return campaignType ? (CAMPAIGN_TO_PAGE_TYPE[campaignType] ?? "sales_page") : "sales_page";
+}
+
 export const ORCHESTRATION_STEP_LABELS = {
   init: "Reading your profile and getting Zappy ready…",
   offer: "Crafting your premium offer angles…",
@@ -257,6 +274,34 @@ export async function runOrchestrationStep(
         liteMode: true,
       });
       generatedId = await pickFirstFromHvcoSet(hvcoSetId);
+
+      // Lead-magnet BODY generation — gated to campaigns that actually convert on
+      // a downloadable (lead_magnet_download). The other six campaign types
+      // convert on registration/call/purchase, so no body is made. Titles are
+      // always generated (hard cascade dependency for headlines/adCopy/LP/email/
+      // whatsapp) — only the body is gated. Failure never breaks the cascade.
+      if (generatedId && pageTypeForCampaign(input.campaignType) === "lead_magnet_download") {
+        try {
+          const [sel] = await db.select().from(hvcoTitles).where(eq(hvcoTitles.id, generatedId)).limit(1);
+          // Respect an imported asset (user has their own); never overwrite an
+          // existing body. Only generate for a freshly-generated selected title.
+          if (sel && sel.source === "generated" && sel.assetBody == null) {
+            const { generateLeadMagnetContent } = await import("../leadMagnetContentGenerator");
+            const body = await generateLeadMagnetContent({
+              userId: input.userId,
+              serviceId: input.serviceId,
+              icpId: input.icpId,
+              title: sel.title,
+            });
+            if (body) {
+              await db.update(hvcoTitles).set({ assetBody: body as unknown as object })
+                .where(eq(hvcoTitles.id, generatedId));
+            }
+          }
+        } catch (err) {
+          console.warn(`[orchestration.hvco] lead-magnet body generation skipped: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      }
       break;
     }
     case "headlines": {
@@ -303,21 +348,9 @@ export async function runOrchestrationStep(
     }
     case "landingPage": {
       // Cascade pageType from kit.campaignType per Q-D table (mirrors
-      // V2GeneratorWizard's landingPage dispatch). runX itself doesn't
-      // do this mapping — the wizard does. For Auto Mode, orchestrator
-      // does it inline before calling runX.
-      const CAMPAIGN_TO_PAGE_TYPE: Record<string, "sales_page" | "webinar_registration" | "discovery_call_booking" | "lead_magnet_download" | "event_registration"> = {
-        webinar: "webinar_registration",
-        discovery_call: "discovery_call_booking",
-        lead_magnet: "lead_magnet_download",
-        in_person_event: "event_registration",
-        course_launch: "sales_page",
-        product_launch: "sales_page",
-        challenge: "sales_page",
-      };
-      const pageType = input.campaignType
-        ? (CAMPAIGN_TO_PAGE_TYPE[input.campaignType] ?? "sales_page")
-        : "sales_page";
+      // V2GeneratorWizard's landingPage dispatch). Shared module-level map
+      // (also used by the hvco step to gate lead-magnet body generation).
+      const pageType = pageTypeForCampaign(input.campaignType);
 
       const { landingPageId } = await runLandingPageGeneration({
         userId: input.userId,
