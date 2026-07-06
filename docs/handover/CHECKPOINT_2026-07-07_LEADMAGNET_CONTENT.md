@@ -33,10 +33,18 @@ Node 5 (hvco) previously produced lead-magnet TITLES only. It now generates the 
 ## Outstanding (verification only, non-blocking)
 - Browser proof: run a `lead_magnet` campaign → confirm the generated magnet content appears and `[INSERT_LEAD_MAGNET_NAME]` is consistent in the in-app preview/download and on exports.
 
-## Next / parked
-- **Lead-magnet DELIVERY sprint** (direct follow-on): hosting, PDF/multi-page rendering, form→email/GHL wiring, interactive scored quiz.
-- Ad-track additive: real 9:16 for the other 3 template styles; retire the old LP-headline picker; `generateContextualAdHeadlines` ≤38-char hardening.
-- Bigger: landing-page multi-page; video-quality (paused); ZAP Intelligence / performance-loop (flagship; Meta official Ads MCP tailwind); over-generation "surface a curated few".
+## Next sprint — Lead-Magnet DELIVERY (deferred follow-on, NOT started)
+Content now exists in `hvcoTitles.assetBody`, but there is **no hosted file and no opt-in→delivery wiring — an opt-in currently delivers nothing.** Investigate-first when started (Arfeen pastes the full prompt):
+- Render `assetBody` → a deliverable file: PDF vs hosted HTML (no multi-page document renderer exists yet — new infra either way).
+- Hosting / stable URL.
+- Opt-in → delivery wiring respecting the **LOCKED GHL architecture**: ZAP pushes Custom Values only; workflows are customer-side snapshot-deployed; ZAP does NOT apply tags.
+- Quiz interactivity (scored/playable).
+- What's harder than it looks.
+
+## Roadmap (priority tiers)
+- **Tier 1 (next):** lead-magnet delivery; landing pages (multi-page + design); trial-user upsell (C0.1).
+- **Tier 2 (debt):** start-new-campaign fix; `generateContextualAdHeadlines` ≤38-char flakiness; retire old `V2AdImageCreator` LP-headline picker.
+- **Tier 3+:** real 9:16 for the other 3 template styles; LP design refresh; video-quality (built/paused); ZAP Intelligence / performance-loop (flagship, post-launch; Meta official Ads MCP tailwind); over-generation "surface a curated few"; voice/brand capture; batch campaign creation.
 
 ## Resume protocol
 Load MEMORY.md top + `memory/session_state_2026_07_07_leadmagnet_shipped.md` + this file. Re-verify live before trusting: HEAD `b0fbc45` == origin, bundle `index-Bw9-BR6u.js`, TS 35, vitest 367/367, prod 200. Do NOT push/build on resume — hold for go.
