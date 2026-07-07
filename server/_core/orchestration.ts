@@ -296,6 +296,15 @@ export async function runOrchestrationStep(
             if (body) {
               await db.update(hvcoTitles).set({ assetBody: body as unknown as object })
                 .where(eq(hvcoTitles.id, generatedId));
+              // Delivery layer: render + host the deliverable (HTML page + PDF)
+              // and the opt-in page. Non-fatal — content is already persisted and
+              // is re-publishable; a publish hiccup never breaks the cascade.
+              try {
+                const { publishLeadMagnet } = await import("../leadMagnetPublisher");
+                await publishLeadMagnet({ hvcoId: generatedId });
+              } catch (pubErr) {
+                console.warn(`[orchestration.hvco] lead-magnet publish skipped: ${pubErr instanceof Error ? pubErr.message : String(pubErr)}`);
+              }
             }
           }
         } catch (err) {

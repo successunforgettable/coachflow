@@ -17,40 +17,50 @@ import { services, idealCustomerProfiles, campaignKits, heroMechanisms, sourceOf
 import { eq, and } from "drizzle-orm";
 
 export type LeadMagnetFormat = "guide" | "checklist" | "toolkit" | "quiz";
+export type ToolType = "swipe" | "template" | "sop" | "worksheet" | "script" | "checklist";
 
 // ── Structured body shapes (stored as hvcoTitles.assetBody JSON) ──
+// New bar: usable tools first, ~80% actionable / 20% teaching. Every format
+// opens with a TIGHT two-sentence promise (no prose-heavy intro/takeaways) and
+// closes with a nextStep bridge to the paid programme (no dead end).
+export interface NextStep {
+  heading: string;
+  body: string;
+  ctaLabel: string;
+}
 export interface GuideBody {
   format: "guide";
   title: string;
-  intro: string;
+  promise: string;
+  // Solution-focused, lean (not padded): each section is directly actionable.
   sections: { heading: string; body: string }[];
-  keyTakeaways: string[];
-  cta: string;
+  nextStep: NextStep;
 }
 export interface ChecklistBody {
   format: "checklist";
   title: string;
-  intro: string;
+  promise: string;
   items: { label: string; detail: string }[];
-  cta: string;
+  nextStep: NextStep;
 }
 export interface ToolkitBody {
   format: "toolkit";
   title: string;
-  intro: string;
-  tools: { name: string; purpose: string; content: string }[];
-  cta: string;
+  promise: string;
+  // Right-sized to 3-4 focused, immediately-usable tools (no padding).
+  tools: { name: string; type: ToolType; instructions: string; content: string }[];
+  nextStep: NextStep;
 }
 export interface QuizBody {
   format: "quiz";
   title: string;
-  intro: string;
+  promise: string;
   // Reuses the existing LP quizSection {question, options, answer} shape per item.
   questions: { question: string; options: string[]; answer: string }[];
-  // Score bands — interpretation of the result. Interactive scoring is delivered
-  // by the deferred delivery layer; this is the content it will run on.
+  // Score bands — interpretation of the result. Interactive scoring is the next
+  // sprint; this is the content it will run on.
   scoring: { band: string; meaning: string }[];
-  cta: string;
+  nextStep: NextStep;
 }
 export type LeadMagnetBody = GuideBody | ChecklistBody | ToolkitBody | QuizBody;
 
@@ -88,6 +98,7 @@ export function inferLeadMagnetFormat(title: string): LeadMagnetFormat {
 interface MagnetContext {
   niche: string;
   title: string;
+  programme: string;
   mainBenefit: string;
   mechanism: string;
   offerDescription: string;
@@ -130,6 +141,7 @@ async function gatherContext(userId: number, serviceId: number, icpId: number | 
   return {
     niche: (service.targetCustomer ?? service.category ?? "coaching").slice(0, 200),
     title,
+    programme: (service.name ?? "").slice(0, 120),
     mainBenefit: service.mainBenefit ?? "",
     mechanism: mechanism || "the method",
     offerDescription: (service.description ?? "").slice(0, 400),
@@ -144,6 +156,7 @@ function contextBlock(c: MagnetContext): string {
   return [
     `Lead magnet title (the promise to deliver on): "${c.title}"`,
     `Niche / audience: ${c.niche}`,
+    c.programme ? `Paid programme name (what nextStep bridges to): ${c.programme}` : "",
     c.mainBenefit ? `Main benefit of the paid offer: ${c.mainBenefit}` : "",
     c.mechanism ? `The named method behind it: ${c.mechanism}` : "",
     c.offerDescription ? `Offer context: ${c.offerDescription}` : "",
@@ -155,7 +168,7 @@ function contextBlock(c: MagnetContext): string {
 }
 
 const SYSTEM_PROMPT =
-  "You are a done-for-you content creator who produces genuinely useful, ready-to-deliver lead-magnet content for coaches, consultants and experts. You write specific, concrete, immediately-usable material grounded in the exact niche and audience given — real steps, real examples, real language the reader recognises. Every piece delivers fully on the promise in the title so a reader would feel the free asset alone was worth their email. Respond with valid JSON.";
+  "You produce done-for-you lead-magnet content for coaches, consultants and experts at agency quality. The bar: ~80% immediately-usable tools (swipe copy, fill-in templates, SOPs, scripts, worksheets, checklists the reader uses TODAY) and only ~20% teaching. Useful beats comprehensive — right-size to solve ONE specific problem, never padded. Everything is concrete and specific to the exact niche given, with real fill-in-the-blank content or real swipe copy the reader can copy and use, never generic filler that could belong to any coach. Open with a tight promise (max two sentences: what they can DO after using it). Close with a nextStep that bridges to the paid programme — a clear next action, no dead end. Respond with valid JSON.";
 
 // ── Per-format response schemas (json_schema, strict) ──
 type ResponseFormat = { type: "json_schema"; json_schema: { name: string; strict: boolean; schema: Record<string, unknown> } };
@@ -163,53 +176,60 @@ function schemaFor(format: LeadMagnetFormat): ResponseFormat {
   const s = (name: string, schema: Record<string, unknown>): ResponseFormat => ({ type: "json_schema", json_schema: { name, strict: true, schema } });
   const str = { type: "string" } as const;
   const arr = (items: Record<string, unknown>) => ({ type: "array", items });
+  // Shared nextStep bridge — required on every format.
+  const nextStep = { type: "object", additionalProperties: false, required: ["heading", "body", "ctaLabel"], properties: { heading: str, body: str, ctaLabel: str } };
   if (format === "guide") return s("lead_magnet_guide", {
     type: "object", additionalProperties: false,
-    required: ["intro", "sections", "keyTakeaways", "cta"],
+    required: ["promise", "sections", "nextStep"],
     properties: {
-      intro: str,
+      promise: str,
       sections: arr({ type: "object", additionalProperties: false, required: ["heading", "body"], properties: { heading: str, body: str } }),
-      keyTakeaways: arr(str),
-      cta: str,
+      nextStep,
     },
   });
   if (format === "checklist") return s("lead_magnet_checklist", {
     type: "object", additionalProperties: false,
-    required: ["intro", "items", "cta"],
+    required: ["promise", "items", "nextStep"],
     properties: {
-      intro: str,
+      promise: str,
       items: arr({ type: "object", additionalProperties: false, required: ["label", "detail"], properties: { label: str, detail: str } }),
-      cta: str,
+      nextStep,
     },
   });
   if (format === "toolkit") return s("lead_magnet_toolkit", {
     type: "object", additionalProperties: false,
-    required: ["intro", "tools", "cta"],
+    required: ["promise", "tools", "nextStep"],
     properties: {
-      intro: str,
-      tools: arr({ type: "object", additionalProperties: false, required: ["name", "purpose", "content"], properties: { name: str, purpose: str, content: str } }),
-      cta: str,
+      promise: str,
+      tools: arr({ type: "object", additionalProperties: false, required: ["name", "type", "instructions", "content"], properties: {
+        name: str,
+        type: { type: "string", enum: ["swipe", "template", "sop", "worksheet", "script", "checklist"] },
+        instructions: str,
+        content: str,
+      } }),
+      nextStep,
     },
   });
   return s("lead_magnet_quiz", {
     type: "object", additionalProperties: false,
-    required: ["intro", "questions", "scoring", "cta"],
+    required: ["promise", "questions", "scoring", "nextStep"],
     properties: {
-      intro: str,
+      promise: str,
       questions: arr({ type: "object", additionalProperties: false, required: ["question", "options", "answer"], properties: { question: str, options: arr(str), answer: str } }),
       scoring: arr({ type: "object", additionalProperties: false, required: ["band", "meaning"], properties: { band: str, meaning: str } }),
-      cta: str,
+      nextStep,
     },
   });
 }
 
 function userPromptFor(format: LeadMagnetFormat, c: MagnetContext): string {
   const ctx = contextBlock(c);
-  const common = `Create the full content of this lead magnet, delivering completely on its title. Make everything specific to this exact niche and audience — concrete steps, real examples, the words this audience actually uses. No generic filler that could belong to any coach.\n\n${ctx}\n\n`;
-  if (format === "guide") return `${common}Produce a GUIDE: a short intro that frames why this matters for them; 4-6 sections, each a clear heading and 2-4 substantive paragraphs of genuinely useful teaching; 3-5 key takeaways; and a closing CTA that invites the next step without hard selling.\nReturn JSON: { "intro", "sections":[{"heading","body"}], "keyTakeaways":[...], "cta" }.`;
-  if (format === "checklist") return `${common}Produce a CHECKLIST / cheat-sheet: a one-line intro; 8-12 checklist items, each a short actionable label plus a one-to-two-sentence detail that makes it doable today; and a closing CTA.\nReturn JSON: { "intro", "items":[{"label","detail"}], "cta" }.`;
-  if (format === "toolkit") return `${common}Produce a TOOLKIT: a short intro; 4-6 ready-to-use tools (a template, script, swipe, worksheet or prompt), each with a name, a one-line purpose, and the actual usable content (fill-in-the-blank templates or example scripts they can copy); and a closing CTA.\nReturn JSON: { "intro", "tools":[{"name","purpose","content"}], "cta" }.`;
-  return `${common}Produce a QUIZ / assessment: a short intro explaining what it reveals; 5-8 questions, each with 3-4 options and the option that indicates the strongest position ("answer"); 3-4 score bands interpreting the outcome (band label + what it means + a nudge toward the offer); and a closing CTA. Keep it genuinely diagnostic, not a disguised pitch.\nReturn JSON: { "intro", "questions":[{"question","options":[...],"answer"}], "scoring":[{"band","meaning"}], "cta" }.`;
+  const programme = c.programme || "the paid programme";
+  const common = `Create this lead magnet to the 80/20 bar — usable tools first, minimal teaching, right-sized to solve ONE specific problem. Everything specific to this exact niche and audience — real fill-in content, real swipe copy, the words this audience actually uses. No generic filler, no padding.\n\n${ctx}\n\nOpen with a TIGHT promise: max two sentences on what they can DO after using this (not teaching). End with a nextStep that bridges to "${programme}" — a heading, a short body that connects this free win to the paid outcome, and a concrete ctaLabel (e.g. "Book My Free Call"). No dead end.\n\n`;
+  if (format === "guide") return `${common}Produce a GUIDE: 3-6 solution-focused sections, each a clear heading and lean, directly-actionable content (steps, a mini-framework, an example the reader applies) — not padded prose. Useful beats comprehensive.\nReturn JSON: { "promise", "sections":[{"heading","body"}], "nextStep":{"heading","body","ctaLabel"} }.`;
+  if (format === "checklist") return `${common}Produce a CHECKLIST / cheat-sheet: 7-15 concrete action items, each a short actionable label plus a one-to-two-sentence detail that makes it doable today. Every item is something they DO, not something they learn.\nReturn JSON: { "promise", "items":[{"label","detail"}], "nextStep":{"heading","body","ctaLabel"} }.`;
+  if (format === "toolkit") return `${common}Produce a TOOLKIT: 3-4 focused, immediately-usable tools (no more — lean, not a swipe-file dump). Each tool has a name, a type (one of: swipe, template, sop, worksheet, script, checklist), one-line usage instructions, and the ACTUAL usable content (real fill-in-the-blank templates / swipe copy / step-by-step SOP the reader copies and uses today).\nReturn JSON: { "promise", "tools":[{"name","type","instructions","content"}], "nextStep":{"heading","body","ctaLabel"} }.`;
+  return `${common}Produce a QUIZ / assessment: 5-8 questions, each with 3-4 options and the option that indicates the strongest position ("answer"); 3-4 score bands interpreting the outcome (band label + what it means). Keep it genuinely diagnostic, not a disguised pitch.\nReturn JSON: { "promise", "questions":[{"question","options":[...],"answer"}], "scoring":[{"band","meaning"}], "nextStep":{"heading","body","ctaLabel"} }.`;
 }
 
 /**

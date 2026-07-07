@@ -50,6 +50,49 @@ export async function writeKvPage(namespaceId: string, slug: string, html: strin
   if (!data.success) throw new Error(`KV write failed: ${JSON.stringify(data.errors)}`);
 }
 
+// Render a public URL to PDF via Cloudflare Browser Rendering (/pdf).
+// Reuses the same account/token as KV publishing (needs the Browser Rendering
+// permission on the token + Workers Paid plan). Returns the PDF bytes.
+// waitUntil networkidle0 so webfonts (Fraunces/Instrument Sans) and any images
+// finish loading before the snapshot — otherwise the PDF embeds fallback fonts.
+export async function renderPdfFromUrl(url: string): Promise<Buffer> {
+  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+  const token = process.env.CLOUDFLARE_API_TOKEN;
+  if (!accountId || !token) throw new Error("Cloudflare credentials not set");
+
+  // Page margins are set here (not via CSS @page) so content always clears the
+  // page-number footer. Footer: "Created with ZAP Campaigns · N / M", muted.
+  const footer =
+    '<div style="width:100%;font-size:9px;color:#9a948a;text-align:center;font-family:sans-serif;padding:0 12mm">' +
+    'Created with ZAP Campaigns &nbsp;&middot;&nbsp; <span class="pageNumber"></span> / <span class="totalPages"></span></div>';
+  const res = await fetch(`${CF_API}/accounts/${accountId}/browser-rendering/pdf`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      url,
+      gotoOptions: { waitUntil: "networkidle0", timeout: 30000 },
+      pdfOptions: {
+        printBackground: true,
+        displayHeaderFooter: true,
+        headerTemplate: "<span></span>",
+        footerTemplate: footer,
+        margin: { top: "16mm", bottom: "24mm", left: "20mm", right: "20mm" },
+      },
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Browser Rendering /pdf failed (${res.status}): ${body.slice(0, 300)}`);
+  }
+  const buf = Buffer.from(await res.arrayBuffer());
+  // Success is raw PDF bytes; an error envelope would be JSON. Guard the magic bytes.
+  if (buf.subarray(0, 5).toString("latin1") !== "%PDF-") {
+    throw new Error(`Browser Rendering /pdf returned non-PDF payload: ${buf.subarray(0, 200).toString("utf8")}`);
+  }
+  return buf;
+}
+
 // Deploy or update Workers script with KV binding and zapcampaigns.com/p/* route
 export async function deployWorker(namespaceId: string): Promise<void> {
   const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
