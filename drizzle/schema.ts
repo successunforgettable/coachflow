@@ -636,6 +636,13 @@ export const hvcoTitles = mysqlTable("hvcoTitles", {
   // of a lead_magnet_download campaign (sparse — NULL for every other row and for
   // imported titles). Content only; hosting/PDF/delivery is a follow-on sprint.
   assetBody: json("assetBody"),
+  // Delivery layer (Lead-Magnet Delivery sprint): the published deliverable's
+  // stable URLs. magnetHtmlUrl = branded hosted page on Cloudflare KV (/p/{slug},
+  // the source of truth); magnetPdfUrl = PDF rendered from that same page via
+  // Cloudflare Browser Rendering, stored on Cloudinary. Sparse — populated only
+  // for the selected title of a lead_magnet_download campaign, alongside assetBody.
+  magnetHtmlUrl: varchar("magnetHtmlUrl", { length: 500 }),
+  magnetPdfUrl: varchar("magnetPdfUrl", { length: 500 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({
@@ -646,6 +653,68 @@ export const hvcoTitles = mysqlTable("hvcoTitles", {
 
 export type HvcoTitle = typeof hvcoTitles.$inferSelect;
 export type InsertHvcoTitle = typeof hvcoTitles.$inferInsert;
+
+/**
+ * capturedLeads — ZAP-owned lead capture for the Lead-Magnet Delivery sprint.
+ *
+ * When a visitor opts in on a hosted magnet page, ZAP captures the lead HERE
+ * (its own DB) and delivers the magnet instantly on-page. This holds the locked
+ * GHL line: capture stays in ZAP; contacts.write stays dormant; the customer's
+ * GHL only ever receives the magnet URL as a Custom Value (their follow-up layer).
+ *
+ * Data-handling is first-class (ZAP is now a processor of end-user PII):
+ *  - email/name are ENCRYPTED at rest (AES-256-GCM via server/lib/piiCrypto, its
+ *    own PII_ENCRYPTION_KEY — blast-radius-separate from OAuth token crypto).
+ *  - emailHash is a keyed one-way HMAC used ONLY for dedup/lookup (the encrypted
+ *    email is not queryable); it is never reversible to the address.
+ *  - ipHash is hashed, never the raw IP (abuse/audit only).
+ *  - consentText/privacyPolicyUrl store proof of the exact consent shown.
+ *  - purgeAfter drives a retention reaper (24 months); onDelete cascade from
+ *    users gives per-customer purge on account deletion; per-lead delete +
+ *    per-customer export are exposed via the capturedLeads tRPC router.
+ */
+export const capturedLeads = mysqlTable("capturedLeads", {
+  id: int("id").autoincrement().primaryKey(),
+  // The ZAP customer who owns this lead.
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  // Campaign context (nullable — kept even if the service/campaign is later removed).
+  serviceId: int("serviceId").references(() => services.id, { onDelete: "set null" }),
+  campaignId: int("campaignId").references(() => campaigns.id, { onDelete: "set null" }),
+  hvcoId: int("hvcoId").references(() => hvcoTitles.id, { onDelete: "set null" }),
+  // PII — encrypted at rest ("enc:1:<iv>:<tag>:<ciphertext>").
+  emailEncrypted: varchar("emailEncrypted", { length: 512 }).notNull(),
+  // Keyed HMAC of the normalized email — dedup/lookup only, never reversible.
+  emailHash: varchar("emailHash", { length: 64 }).notNull(),
+  nameEncrypted: varchar("nameEncrypted", { length: 512 }),
+  // Consent proof.
+  consentGiven: boolean("consentGiven").default(false).notNull(),
+  consentText: text("consentText"),
+  privacyPolicyUrl: varchar("privacyPolicyUrl", { length: 500 }),
+  // Provenance / abuse audit.
+  sourceSlug: varchar("sourceSlug", { length: 255 }),
+  ipHash: varchar("ipHash", { length: 64 }),
+  userAgent: varchar("userAgent", { length: 500 }),
+  // What was delivered.
+  magnetHtmlUrl: varchar("magnetHtmlUrl", { length: 500 }),
+  magnetPdfUrl: varchar("magnetPdfUrl", { length: 500 }),
+  // Quiz forward-compat (built now, quiz itself is the next sprint): a quiz
+  // opt-in persists the taken answers + the scored result band here. NULL for the
+  // three static formats. No re-migration needed when quiz ships.
+  submissionData: json("submissionData"),
+  resultBand: varchar("resultBand", { length: 120 }),
+  deliveredAt: timestamp("deliveredAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  // Retention: row is eligible for the purge reaper after this timestamp.
+  purgeAfter: timestamp("purgeAfter"),
+}, (table) => ({
+  ownerIdx: index("idx_capturedLeads_userId").on(table.userId),
+  purgeIdx: index("idx_capturedLeads_purgeAfter").on(table.purgeAfter),
+  // Dedup a repeat opt-in for the same magnet by the same person.
+  dedupUq: uniqueIndex("uq_capturedLeads_dedup").on(table.userId, table.emailHash, table.hvcoId),
+}));
+
+export type CapturedLead = typeof capturedLeads.$inferSelect;
+export type InsertCapturedLead = typeof capturedLeads.$inferInsert;
 
 /**
  * Hero Mechanisms - Kong parity
