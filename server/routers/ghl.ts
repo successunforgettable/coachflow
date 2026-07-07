@@ -858,6 +858,18 @@ export const ghlRouter = router({
               `ZAP Lead Magnet`,
               rt(hvcoText)
             );
+            // Delivery layer: the hosted magnet URL as a Custom Value. This is the
+            // customer's follow-up layer — their GHL workflow injects
+            // {{custom_values.zap_lead_magnet_url}} into their own nurture. Locked
+            // line held: CV only, no contact-write, no tags. Populated only once
+            // the magnet has been published (lead_magnet_download campaigns).
+            if (hvco.magnetHtmlUrl) {
+              results.leadMagnetUrlPushed = await upsertCustomValue(
+                locationId, headers,
+                `ZAP Lead Magnet URL`,
+                hvco.magnetHtmlUrl
+              );
+            }
           }
         } catch (e) { console.warn("[GHL] HVCO push error:", e); }
       }
