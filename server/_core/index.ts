@@ -125,6 +125,18 @@ async function startServer() {
     if (reaped > 0) console.log(`[reapStuckJobs] swept ${reaped} stuck job(s)`);
   }, 60 * 1000);
 
+  // Retention: purge captured leads past their 24-month window. Hourly sweep +
+  // one at boot. Non-fatal; skips cleanly if PII/DB unavailable.
+  {
+    const { reapExpiredLeads } = await import("../leadCapture");
+    const purgedAtBoot = await reapExpiredLeads();
+    if (purgedAtBoot > 0) console.log(`[reapExpiredLeads] purged ${purgedAtBoot} expired lead(s) at boot`);
+    setInterval(async () => {
+      const purged = await reapExpiredLeads();
+      if (purged > 0) console.log(`[reapExpiredLeads] purged ${purged} expired lead(s)`);
+    }, 60 * 60 * 1000);
+  }
+
   const app = express();
   const server = createServer(app);
   
@@ -402,6 +414,16 @@ async function startServer() {
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
+
+  // ── Lead-magnet opt-in capture (public, ZAP-owned) ─────────────────────────
+  // Same-origin POST from the hosted magnet page (zapcampaigns.com/p/*) → this
+  // origin (zapcampaigns.com/api/*), so no CORS needed. Abuse protection
+  // (honeypot + per-IP rate limit + validation) lives in the handler; PII is
+  // encrypted at rest. Holds the locked GHL line — no GHL/contact writes here.
+  {
+    const { handleCaptureLead } = await import("../leadCapture");
+    app.post("/api/capture-lead", (req, res) => { void handleCaptureLead(req, res); });
+  }
 
   // ── Coach asset upload (Cloudinary) ────────────────────────────────────────
   // Regression fix: endpoint deleted in commit 605909f (B0 port, April 2026).
