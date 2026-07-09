@@ -161,6 +161,58 @@ export const hvcoRouter = router({
     }),
 
   /**
+   * Approve a reviewed quiz and publish it live. Also used as "Publish update" to
+   * re-apply a changed logo on an already-live quiz (publish is idempotent).
+   * Owner-scoped. Publishing resolves the coach's logo via the shared resolver, so
+   * an approved quiz comes out branded.
+   */
+  approveQuiz: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      const [row] = await db.select().from(hvcoTitles)
+        .where(and(eq(hvcoTitles.id, input.id), eq(hvcoTitles.userId, ctx.user.id))).limit(1);
+      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Quiz not found" });
+      if ((row.assetBody as { format?: string } | null)?.format !== "quiz") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Not a quiz" });
+      }
+      const { publishLeadMagnet } = await import("../leadMagnetPublisher");
+      const result = await publishLeadMagnet({ hvcoId: input.id });
+      if (!result) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Publish failed" });
+      return { magnetHtmlUrl: result.deliverableUrl };
+    }),
+
+  /**
+   * Regenerate a quiz's scorecard from the same campaign context. Replaces the
+   * assetBody and returns the quiz to UNPUBLISHED (review required) — never
+   * silently live. Owner-scoped. Does not publish.
+   */
+  regenerateQuiz: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      const [row] = await db.select().from(hvcoTitles)
+        .where(and(eq(hvcoTitles.id, input.id), eq(hvcoTitles.userId, ctx.user.id))).limit(1);
+      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Quiz not found" });
+      if (!row.serviceId) throw new TRPCError({ code: "BAD_REQUEST", message: "Quiz has no service context" });
+      const { generateLeadMagnetContent } = await import("../leadMagnetContentGenerator");
+      const body = await generateLeadMagnetContent({
+        userId: ctx.user.id,
+        serviceId: row.serviceId,
+        campaignId: row.campaignId ?? null,
+        title: row.title,
+        formatOverride: "quiz",
+      });
+      if (!body) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Regeneration failed — try again" });
+      await db.update(hvcoTitles)
+        .set({ assetBody: body as unknown as object, magnetHtmlUrl: null, magnetPdfUrl: null })
+        .where(eq(hvcoTitles.id, input.id));
+      return { success: true };
+    }),
+
+  /**
    * Get all titles from a specific HVCO set
    */
   getBySetId: protectedProcedure

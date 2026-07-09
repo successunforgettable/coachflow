@@ -22,6 +22,7 @@ import { eq } from "drizzle-orm";
 import type { LeadMagnetBody } from "./leadMagnetContentGenerator";
 import { renderDeliverableHtml, renderOptInHtml, renderQuizPage } from "./leadMagnetRenderer";
 import { storagePut } from "./storage";
+import { getCoachLogoUrl } from "./lib/coachLogo";
 
 const BASE = "https://zapcampaigns.com";
 
@@ -49,11 +50,11 @@ export async function publishLeadMagnet(input: { hvcoId: number }): Promise<Publ
 
   const body = hvco.assetBody as unknown as LeadMagnetBody;
 
-  // Brand slot for the deliverable + opt-in. The magnet is the coach's asset, so
-  // it carries the coach's logo when one exists — never a ZAP wordmark. brand-capture
-  // (own sprint) will resolve this from coachAssets(userId, assetType='logo'); until
-  // then it is null and the brand slot renders nothing (no ZAP stamp).
-  const coachLogoUrl: string | null = null;
+  // Brand slot for the deliverable + opt-in. The magnet is the coach's asset, so it
+  // carries the coach's own logo when one exists — never a ZAP wordmark. Resolved
+  // from the shared getCoachLogoUrl (coachAssets, assetType='logo'); null when the
+  // coach has no logo, in which case the slot renders nothing (no ZAP stamp).
+  const coachLogoUrl = await getCoachLogoUrl(hvco.userId);
 
   // Service name → readable slug base; testimonial1 → social-proof slot (used by
   // both the quiz page and the static opt-in bridge).

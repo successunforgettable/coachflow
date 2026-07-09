@@ -296,12 +296,27 @@ export async function runOrchestrationStep(
             if (body) {
               await db.update(hvcoTitles).set({ assetBody: body as unknown as object })
                 .where(eq(hvcoTitles.id, generatedId));
-              // Delivery layer: render + host the deliverable (HTML page + PDF)
-              // and the opt-in page. Non-fatal — content is already persisted and
-              // is re-publishable; a publish hiccup never breaks the cascade.
+              // Delivery layer: render + host the deliverable. Non-fatal — content is
+              // already persisted and is re-publishable; a publish hiccup never breaks
+              // the cascade.
+              //
+              // Quiz review gate: a coach's FIRST quiz is a diagnostic instrument that
+              // carries their name, so it must be reviewed before it goes live. Defer
+              // publish (leave magnetHtmlUrl NULL → "review required" on the node)
+              // until they approve it. Every quiz AFTER their first approval publishes
+              // immediately. State is derived (coachHasApprovedQuiz) — no column.
               try {
-                const { publishLeadMagnet } = await import("../leadMagnetPublisher");
-                await publishLeadMagnet({ hvcoId: generatedId });
+                let deferForReview = false;
+                if (body.format === "quiz") {
+                  const { coachHasApprovedQuiz } = await import("../leadMagnetQuizReview");
+                  deferForReview = !(await coachHasApprovedQuiz(input.userId, generatedId));
+                }
+                if (deferForReview) {
+                  console.log(`[orchestration.hvco] quiz hvco ${generatedId} held for coach review (first quiz — not published)`);
+                } else {
+                  const { publishLeadMagnet } = await import("../leadMagnetPublisher");
+                  await publishLeadMagnet({ hvcoId: generatedId });
+                }
               } catch (pubErr) {
                 console.warn(`[orchestration.hvco] lead-magnet publish skipped: ${pubErr instanceof Error ? pubErr.message : String(pubErr)}`);
               }

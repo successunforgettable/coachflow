@@ -372,6 +372,7 @@ export function renderQuizPage(o: QuizPageOpts): string {
   <div class="qz-prog" id="qz_prog"><div class="qz-bar" id="qz_bar"></div></div>
 
   <section class="qz-screen" id="qz_intro">
+    ${brandMark(o.coachLogoUrl)}
     <p class="kick">Scorecard</p>
     <h1>${esc(b.title)}</h1>
     <p class="promise">${esc(b.promise)}</p>

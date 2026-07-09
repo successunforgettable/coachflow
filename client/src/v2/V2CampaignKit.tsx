@@ -8,6 +8,7 @@ import { useParams, useLocation } from "wouter";
 import V2Layout from "./V2Layout";
 import ZappyMascot from "./ZappyMascot";
 import PushKitModal from "./PushKitModal";
+import V2QuizReviewModal from "./V2QuizReviewModal";
 import KitPlaceholderBanner from "./components/KitPlaceholderBanner";
 import PlaceholderEditor from "./components/PlaceholderEditor";
 import { detectPlaceholders } from "./lib/placeholderDetector";
@@ -259,6 +260,15 @@ function AssetSection({ sectionKey, label, step, selectedId, angle, navigate, se
   const emailQuery = trpc.emailSequences.get.useQuery({ id: selectedId! }, { enabled: sectionKey === "selectedEmailSequenceId" && !!selectedId });
   const waQuery = trpc.whatsappSequences.get.useQuery({ id: selectedId! }, { enabled: sectionKey === "selectedWhatsAppSequenceId" && !!selectedId });
 
+  // Quiz review surface — a quiz lead magnet is a diagnostic instrument the coach
+  // reviews (and brands) before it goes live. Derived from the hvco itself: quiz
+  // format + no magnetHtmlUrl = review required (blocking); published = optional
+  // review. Static magnets and non-quiz formats never show this.
+  const [showQuizReview, setShowQuizReview] = useState(false);
+  const hvcoData = hvcoQuery.data as { assetBody?: { format?: string } | null; magnetHtmlUrl?: string | null } | undefined;
+  const isQuiz = sectionKey === "selectedHvcoId" && hvcoData?.assetBody?.format === "quiz";
+  const quizNeedsReview = isQuiz && !hvcoData?.magnetHtmlUrl;
+
   const isEmpty = !selectedId;
   // Phase D Sprint 3: data-section-key anchor for KitPlaceholderBanner's
   // "Review & Complete" CTA scroll-to target. Inert otherwise.
@@ -318,6 +328,32 @@ function AssetSection({ sectionKey, label, step, selectedId, angle, navigate, se
           {sectionKey === "selectedOfferId" && <OfferPreview data={resolveTokensInObject(offerQuery.data, resolvedMap)} />}
           {sectionKey === "selectedMechanismId" && <MechanismPreview data={resolveTokensInObject(mechQuery.data, resolvedMap)} />}
           {sectionKey === "selectedHvcoId" && <HvcoPreview data={resolveTokensInObject(hvcoQuery.data, resolvedMap)} />}
+          {isQuiz && (
+            <div style={{ marginTop: 14, padding: quizNeedsReview ? "14px 16px" : 0, background: quizNeedsReview ? "rgba(255,91,29,0.06)" : "transparent", border: quizNeedsReview ? "1px solid rgba(255,91,29,0.3)" : "none", borderRadius: 12 }}>
+              {quizNeedsReview && (
+                <p style={{ fontFamily: "var(--v2-font-body)", fontSize: 13, fontWeight: 600, color: "#a03c00", margin: "0 0 10px" }}>
+                  Review required — your scorecard isn't live yet. Take a look, add your logo, and publish it.
+                </p>
+              )}
+              <button
+                onClick={() => setShowQuizReview(true)}
+                style={{
+                  background: quizNeedsReview ? "var(--v2-primary-btn, #FF5B1D)" : "transparent",
+                  color: quizNeedsReview ? "#fff" : "#1A1624",
+                  border: quizNeedsReview ? "none" : "1px solid #ddd",
+                  borderRadius: "var(--v2-border-radius-pill, 9999px)",
+                  padding: quizNeedsReview ? "10px 22px" : "6px 16px",
+                  fontFamily: "var(--v2-font-body)", fontWeight: quizNeedsReview ? 700 : 600,
+                  fontSize: 13, cursor: "pointer",
+                }}
+              >
+                {quizNeedsReview ? "Review your scorecard →" : "Review your quiz"}
+              </button>
+            </div>
+          )}
+          {showQuizReview && selectedId && (
+            <V2QuizReviewModal hvcoId={selectedId} onClose={() => { setShowQuizReview(false); hvcoQuery.refetch(); }} />
+          )}
           {sectionKey === "selectedHeadlineId" && <HeadlinePreview data={resolveTokensInObject(headlineQuery.data, resolvedMap)} />}
           {sectionKey === "selectedAdCopyId" && <AdCopyPreview data={resolveTokensInObject(adCopyQuery.data, resolvedMap)} />}
           {sectionKey === "selectedLandingPageId" && <LandingPagePreview data={resolveTokensInObject(lpQuery.data, resolvedMap)} angle={angle} />}
