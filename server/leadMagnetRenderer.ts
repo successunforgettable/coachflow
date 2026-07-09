@@ -20,7 +20,7 @@
  * block + classes; fonts load via the public Google Fonts <link> already used in
  * production so CF Browser Rendering embeds the real faces.
  */
-import type { LeadMagnetBody, GuideBody, ChecklistBody, ToolkitBody, NextStep, LeadMagnetFormat, ToolType } from "./leadMagnetContentGenerator";
+import type { LeadMagnetBody, GuideBody, ChecklistBody, ToolkitBody, QuizBody, NextStep, LeadMagnetFormat, ToolType } from "./leadMagnetContentGenerator";
 
 // ── design tokens (minimalist: warm paper, ink, soft stone accent) ──
 const INK = "#1c1a17";
@@ -286,4 +286,223 @@ export function renderOptInHtml(o: OptInPageOpts): string {
 })();
 </script>`;
   return shell(o.title, inner, css);
+}
+
+// ── quiz page (interactive readiness scorecard, gate-at-result, one KV page) ──
+// Unlike the static formats (separate opt-in + deliverable pages), a quiz is ONE
+// self-contained page: take the scorecard → client-side scoring → teaser → email
+// gate → personalised result. Same premium minimalist bar (shell/baseCss); mobile
+// spec baked in (one question per screen, auto-advance, >=44px targets, 16px
+// inputs, single column, progress bar, back-nav, sessionStorage save-progress).
+export interface QuizPageOpts {
+  body: QuizBody;
+  slug: string;
+  hvcoId: number;
+  privacyPolicyUrl: string;
+  apiBase: string;                       // same-origin fetch base
+  pageUrl: string;                       // this page's own URL (interim CTA target until booking-URL capture)
+  testimonial?: OptInTestimonial | null; // social-proof slot on the result (hidden if absent)
+  coachLogoUrl?: string | null;          // brand slot; omitted (no ZAP stamp) until brand-capture
+}
+
+// Embed data in a <script> safely: JSON with < escaped so a "</script>" inside any
+// generated string can never break out of the script element.
+function jsData(v: unknown): string {
+  return JSON.stringify(v).replace(/</g, "\\u003c");
+}
+
+export function renderQuizPage(o: QuizPageOpts): string {
+  const b = o.body;
+  const maxScore = (b.questions || []).reduce(
+    (s, q) => s + Math.max(0, ...(q.options || []).map(op => op.weight || 0)), 0);
+  const quizData = jsData({
+    questions: (b.questions || []).map(q => ({
+      question: q.question,
+      options: (q.options || []).map(op => ({ label: op.label, weight: op.weight })),
+    })),
+    bands: (b.scoring?.bands || []).map(bd => ({
+      name: bd.name, minPercent: bd.minPercent, maxPercent: bd.maxPercent,
+      teaser: bd.teaser, meaning: bd.meaning, cta: bd.cta,
+    })),
+    max: maxScore,
+  });
+  const cfg = jsData({
+    slug: o.slug, hvcoId: o.hvcoId, endpoint: `${o.apiBase}/api/capture-lead`, pageUrl: o.pageUrl,
+  });
+  const proof = o.testimonial && o.testimonial.quote
+    ? `<figure class="proof"><blockquote>&ldquo;${esc(o.testimonial.quote)}&rdquo;</blockquote>` +
+      `<figcaption>${esc(o.testimonial.name)}${o.testimonial.title ? ` &middot; ${esc(o.testimonial.title)}` : ""}</figcaption></figure>`
+    : "";
+
+  const css = `
+  .wrap{max-width:560px}
+  .qz-screen{animation:qzfade .25s ease}
+  @keyframes qzfade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .qz-prog{height:6px;background:${HAIR};border-radius:9999px;margin:0 0 30px;overflow:hidden;display:none}
+  .qz-bar{height:100%;background:${INK};width:0;transition:width .25s ease}
+  .qz-count{font-weight:600;letter-spacing:.14em;text-transform:uppercase;font-size:12px;color:${ACC};margin:0 0 14px}
+  .qz-q{font-family:${HEAD};font-weight:600;font-size:26px;line-height:1.28;margin:0 0 24px}
+  .qz-opts{display:flex;flex-direction:column;gap:12px}
+  .qz-opt{display:block;width:100%;text-align:left;min-height:56px;padding:16px 18px;font-family:${BODY};font-size:16px;line-height:1.5;color:${INK};background:#fff;border:1.5px solid ${HAIR};border-radius:14px;cursor:pointer;transition:border-color .12s,background .12s}
+  .qz-opt:hover{border-color:${ACC}}
+  .qz-opt.sel{border-color:${INK};background:${PAPER}}
+  .qz-back{margin:22px 0 0;background:none;border:0;color:${ACC};font-family:${BODY};font-weight:600;font-size:15px;cursor:pointer;padding:10px 0;min-height:44px}
+  .btn{width:100%;border:0;cursor:pointer;background:${INK};color:${PAPER};font-family:${BODY};font-weight:600;font-size:17px;padding:16px 20px;border-radius:9999px;min-height:52px;margin:8px 0 0}
+  .btn:disabled{opacity:.6;cursor:default}
+  .form{background:#fff;border:1px solid ${HAIR};border-radius:16px;padding:24px 24px 22px;margin:24px 0 0}
+  .form label.q{display:block;font-weight:600;font-size:15px;margin:0 0 10px}
+  .form input[type=email]{width:100%;padding:14px;font-family:${BODY};font-size:16px;border:1px solid ${HAIR};border-radius:10px;margin:0 0 14px;background:${PAPER};color:${INK}}
+  .consent{display:flex;gap:10px;align-items:flex-start;font-size:13px;color:${SEC};margin:2px 0 16px}
+  .consent input{margin-top:3px;width:18px;height:18px}.consent a{color:${INK}}
+  .err{color:#b02a2a;font-size:14px;margin:12px 0 0;min-height:1px}
+  .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+  .qz-teaserband{font-family:${HEAD};font-weight:600;font-size:30px;line-height:1.15;margin:0 0 10px}
+  .qz-resband{font-family:${HEAD};font-weight:600;font-size:40px;line-height:1.12;letter-spacing:-.01em;margin:0 0 20px}
+  .qz-mean{font-size:18px;line-height:1.7;color:${INK};margin:0 0 8px}
+  .proof{margin:30px 0 0;padding:22px 24px;background:#fff;border:1px solid ${HAIR};border-radius:16px}
+  .proof blockquote{font-family:${HEAD};font-weight:400;font-size:19px;line-height:1.5;margin:0 0 10px;color:${INK}}
+  .proof figcaption{font-size:13px;color:${ACC};font-weight:600;letter-spacing:.02em}
+  .nextcard{margin:26px 0 0;padding:26px 24px;background:${PAPER};border:1px solid ${HAIR};border-radius:16px;text-align:left}
+  .nextcard .kick{color:${ACC};margin:0 0 10px}
+  .nextcard h3{font-family:${HEAD};font-weight:600;font-size:21px;margin:0 0 8px}
+  .nextcard p{color:${SEC};margin:0 0 18px}
+  .dl{display:inline-block;padding:14px 26px;border-radius:9999px;font-weight:600;font-size:16px;text-decoration:none;background:${INK};color:${PAPER}}`;
+
+  const inner = `<div class="wrap">
+  <div class="qz-prog" id="qz_prog"><div class="qz-bar" id="qz_bar"></div></div>
+
+  <section class="qz-screen" id="qz_intro">
+    <p class="kick">Scorecard</p>
+    <h1>${esc(b.title)}</h1>
+    <p class="promise">${esc(b.promise)}</p>
+    <button class="btn" id="qz_start" type="button">Start the scorecard</button>
+  </section>
+
+  <section class="qz-screen" id="qz_qs" style="display:none">
+    <p class="qz-count" id="qz_count"></p>
+    <h2 class="qz-q" id="qz_qtext"></h2>
+    <div class="qz-opts" id="qz_opts"></div>
+    <button class="qz-back" id="qz_back" type="button" style="display:none">&larr; Back</button>
+  </section>
+
+  <section class="qz-screen" id="qz_gate" style="display:none">
+    <p class="kick">Your result</p>
+    <h2 class="qz-teaserband" id="qz_tband"></h2>
+    <p class="promise" id="qz_tteaser"></p>
+    <form class="form" id="qz_form" autocomplete="on">
+      <label class="q" for="qz_email">Enter your email to unlock your full result</label>
+      <input type="email" id="qz_email" name="qz_email" inputmode="email" required placeholder="you@example.com">
+      <div class="hp" aria-hidden="true"><label>Leave empty<input type="text" id="qz_website" tabindex="-1" autocomplete="off"></label></div>
+      <label class="consent"><input type="checkbox" id="qz_consent" required>
+        <span>I agree to receive my result and related emails, and accept the <a href="${esc(o.privacyPolicyUrl)}" target="_blank" rel="noopener">privacy policy</a>.</span></label>
+      <button class="btn" type="submit" id="qz_submit">Show me my full result</button>
+      <p class="err" id="qz_err"></p>
+    </form>
+  </section>
+
+  <section class="qz-screen" id="qz_result" style="display:none">
+    <p class="kick">Your result</p>
+    <h1 class="qz-resband" id="qz_rband"></h1>
+    <p class="qz-mean" id="qz_rmean"></p>
+    <div class="nextcard" id="qz_ncard">
+      <p class="kick">Your next step</p>
+      <h3 id="qz_cta_h"></h3>
+      <p id="qz_cta_b"></p>
+      <a class="dl" id="qz_cta_a" href="#" target="_blank" rel="noopener"></a>
+    </div>
+    ${proof}
+    ${foot(o.coachLogoUrl)}
+  </section>
+</div>
+<script>
+(function(){
+  var QUIZ = ${quizData}; var CFG = ${cfg};
+  var KEY = 'zapQuiz:' + CFG.slug;
+  var answers = []; var idx = 0; var RESULT = null;
+  try { var sv = JSON.parse(sessionStorage.getItem(KEY) || 'null'); if (sv && sv.answers) { answers = sv.answers; idx = sv.idx || 0; } } catch (e) {}
+
+  var $ = function(id){ return document.getElementById(id); };
+  var screens = ['qz_intro','qz_qs','qz_gate','qz_result'];
+  function show(id){ screens.forEach(function(s){ $(s).style.display = s === id ? 'block' : 'none'; }); }
+  function save(){ try { sessionStorage.setItem(KEY, JSON.stringify({ answers: answers, idx: idx })); } catch (e) {} }
+  var prog = $('qz_prog'), bar = $('qz_bar');
+
+  function renderQ(){
+    var q = QUIZ.questions[idx];
+    prog.style.display = 'block';
+    bar.style.width = Math.round(((idx + 1) / QUIZ.questions.length) * 100) + '%';
+    $('qz_count').textContent = 'Question ' + (idx + 1) + ' of ' + QUIZ.questions.length;
+    $('qz_qtext').textContent = q.question;
+    var box = $('qz_opts'); box.innerHTML = '';
+    q.options.forEach(function(op, oi){
+      var el = document.createElement('button');
+      el.type = 'button'; el.className = 'qz-opt' + (answers[idx] && answers[idx].oi === oi ? ' sel' : '');
+      el.textContent = op.label;
+      el.addEventListener('click', function(){ choose(oi); });
+      box.appendChild(el);
+    });
+    $('qz_back').style.display = idx > 0 ? 'inline-block' : 'none';
+    show('qz_qs');
+    window.scrollTo(0, 0);
+  }
+  function choose(oi){
+    var q = QUIZ.questions[idx];
+    answers[idx] = { oi: oi, question: q.question, answer: q.options[oi].label, weight: q.options[oi].weight };
+    save();
+    var btns = $('qz_opts').querySelectorAll('.qz-opt');
+    for (var i = 0; i < btns.length; i++) btns[i].classList.toggle('sel', i === oi);
+    setTimeout(function(){
+      if (idx < QUIZ.questions.length - 1) { idx++; save(); renderQ(); }
+      else { finish(); }
+    }, 220);
+  }
+  function finish(){
+    var sum = 0; for (var i = 0; i < QUIZ.questions.length; i++) { if (answers[i]) sum += answers[i].weight; }
+    var pct = QUIZ.max > 0 ? Math.round((sum / QUIZ.max) * 100) : 0;
+    var band = null;
+    for (var j = 0; j < QUIZ.bands.length; j++) { var bd = QUIZ.bands[j]; if (pct >= bd.minPercent && pct <= bd.maxPercent) { band = bd; break; } }
+    if (!band) band = QUIZ.bands[QUIZ.bands.length - 1];
+    RESULT = { pct: pct, band: band };
+    prog.style.display = 'none';
+    $('qz_tband').textContent = band.name;
+    $('qz_tteaser').textContent = band.teaser;
+    show('qz_gate');
+    window.scrollTo(0, 0);
+  }
+  function reveal(){
+    try { sessionStorage.removeItem(KEY); } catch (e) {}
+    var band = RESULT.band;
+    $('qz_rband').textContent = band.name;
+    $('qz_rmean').textContent = band.meaning;
+    $('qz_cta_h').textContent = band.cta.heading;
+    $('qz_cta_b').textContent = band.cta.body;
+    var a = $('qz_cta_a'); a.textContent = band.cta.ctaLabel || 'Learn more'; a.href = CFG.pageUrl || '#';
+    show('qz_result');
+    window.scrollTo(0, 0);
+  }
+
+  $('qz_start').addEventListener('click', function(){ idx = 0; answers = []; save(); renderQ(); });
+  $('qz_back').addEventListener('click', function(){ if (idx > 0) { idx--; save(); renderQ(); } });
+
+  $('qz_form').addEventListener('submit', function(e){
+    e.preventDefault();
+    var err = $('qz_err'); err.textContent = '';
+    var email = $('qz_email').value.trim(); var consent = $('qz_consent').checked;
+    if (!email) { err.textContent = 'Please enter your email.'; return; }
+    if (!consent) { err.textContent = 'Please accept the privacy policy to continue.'; return; }
+    var btn = $('qz_submit'); btn.disabled = true; btn.textContent = 'Unlocking…';
+    var submission = answers.filter(Boolean).map(function(a){ return { question: a.question, answer: a.answer, weight: a.weight }; });
+    fetch(CFG.endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slug: CFG.slug, hvcoId: CFG.hvcoId, email: email, consent: consent,
+        website: $('qz_website').value, submissionData: submission, resultBand: RESULT.band.name }) })
+      .then(function(r){ return r.json().catch(function(){ return {}; }); })
+      .then(function(){ reveal(); })
+      .catch(function(){ err.textContent = 'Something went wrong. Please try again.'; btn.disabled = false; btn.textContent = 'Show me my full result'; });
+  });
+
+  // Resume mid-quiz on refresh; otherwise the intro shows by default.
+  if (answers.filter(Boolean).length > 0) { renderQ(); }
+})();
+</script>`;
+  return shell(b.title, inner, css);
 }

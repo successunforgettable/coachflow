@@ -11,15 +11,16 @@
  *
  * Locked line held: nothing here touches GHL. The customer's follow-up layer is
  * the `ZAP Lead Magnet URL` Custom Value written at campaign-push (ghl.ts), and
- * ZAP-owned capture lives in capturedLeads. Quiz is skipped (renderDeliverableHtml
- * returns null). Never throws into the orchestration cascade — returns null on any
- * failure and leaves the row unpublished (re-publishable).
+ * ZAP-owned capture lives in capturedLeads. Quiz publishes as ONE interactive page
+ * (renderQuizPage) — client-side scoring, email gate at the result, no separate
+ * opt-in page and no PDF. Never throws into the orchestration cascade — returns
+ * null on any failure and leaves the row unpublished (re-publishable).
  */
 import { getDb } from "./db";
 import { hvcoTitles, services } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import type { LeadMagnetBody } from "./leadMagnetContentGenerator";
-import { renderDeliverableHtml, renderOptInHtml } from "./leadMagnetRenderer";
+import { renderDeliverableHtml, renderOptInHtml, renderQuizPage } from "./leadMagnetRenderer";
 import { storagePut } from "./storage";
 
 const BASE = "https://zapcampaigns.com";
@@ -54,13 +55,8 @@ export async function publishLeadMagnet(input: { hvcoId: number }): Promise<Publ
   // then it is null and the brand slot renders nothing (no ZAP stamp).
   const coachLogoUrl: string | null = null;
 
-  const deliverableHtml = renderDeliverableHtml(body, { coachLogoUrl });
-  if (!deliverableHtml) {
-    console.log(`[leadMagnetPublisher] format "${(body as any)?.format}" not deliverable this sprint (hvco ${input.hvcoId}) — skipped`);
-    return null;
-  }
-
-  // Service name → readable slug base; testimonial1 → bridge social-proof slot.
+  // Service name → readable slug base; testimonial1 → social-proof slot (used by
+  // both the quiz page and the static opt-in bridge).
   let base = "magnet";
   let testimonial: { quote: string; name: string; title: string } | null = null;
   if (hvco.serviceId) {
@@ -78,6 +74,38 @@ export async function publishLeadMagnet(input: { hvcoId: number }): Promise<Publ
 
   const { ensureKvNamespace, writeKvPage, renderPdfFromUrl } = await import("./lib/cloudflare");
   const namespaceId = await ensureKvNamespace();
+
+  // ── QUIZ: ONE self-contained interactive page. Client-side scoring, email gate
+  //    at the result. No separate opt-in page and no PDF (an interactive scorecard
+  //    has no meaningful print snapshot). magnetHtmlUrl points at this single page,
+  //    which is also the promoted/captured URL. Static formats keep their two-page
+  //    + PDF path unchanged below. ──
+  if (body.format === "quiz") {
+    const quizUrl = `${BASE}/p/${deliverableSlug}`;
+    const quizHtml = renderQuizPage({
+      body,
+      slug: deliverableSlug,
+      hvcoId: input.hvcoId,
+      privacyPolicyUrl: `${BASE}/privacy`,
+      apiBase: BASE,
+      pageUrl: quizUrl,
+      testimonial,
+      coachLogoUrl,
+    });
+    await writeKvPage(namespaceId, deliverableSlug, quizHtml);
+    await db.update(hvcoTitles)
+      .set({ magnetHtmlUrl: quizUrl, magnetPdfUrl: null })
+      .where(eq(hvcoTitles.id, input.hvcoId));
+    console.log(`[leadMagnetPublisher] published QUIZ hvco ${input.hvcoId}: ${quizUrl} (one page, no PDF)`);
+    return { optInUrl: quizUrl, deliverableUrl: quizUrl, pdfUrl: "" };
+  }
+
+  // ── static formats (guide / checklist / toolkit): deliverable + opt-in + PDF ──
+  const deliverableHtml = renderDeliverableHtml(body, { coachLogoUrl });
+  if (!deliverableHtml) {
+    console.log(`[leadMagnetPublisher] format "${(body as any)?.format}" not deliverable this sprint (hvco ${input.hvcoId}) — skipped`);
+    return null;
+  }
 
   // 1. deliverable page (source of truth) → KV
   await writeKvPage(namespaceId, deliverableSlug, deliverableHtml);
