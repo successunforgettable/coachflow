@@ -125,3 +125,4 @@ Always audit `INFORMATION_SCHEMA` before assuming Drizzle key == DB column. Comm
 
 - For ALL wire sprints, design decisions, content audits, copy reviews: authorize researching the marketingskills repo (github.com/mysticaltech/marketingskills.git) + web as the PRIMARY industry-grounded reference frame, BY DEFAULT without Arfeen prompting
 - Fall back to general principles only where the repo doesn't cover the asset type
+- **Visual-quality bars live in-repo — load the relevant one before any visual/design work on that asset type, and judge output against it:** ad images → `docs/AD_IMAGE_VISUAL_QUALITY_STANDARD.md` (+ `docs/ad-references/`); landing pages → `LANDING_PAGE_VISUAL_QUALITY_STANDARD.md` (+ `docs/landing-page-references/`)
