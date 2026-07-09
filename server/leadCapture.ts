@@ -36,6 +36,29 @@ function clientIp(req: Request): string {
   return fwd || req.ip || req.socket?.remoteAddress || "unknown";
 }
 
+// Quiz answers (zero-party). Accept only a well-shaped array of
+// {question, answer, weight}; cap the count and per-field length and drop the
+// whole payload if it serialises beyond a sane ceiling — a client cannot bloat
+// the row. Returns null when there's nothing valid (static formats, junk input).
+const SUBMISSION_MAX_ITEMS = 30;
+const SUBMISSION_MAX_BYTES = 20000;
+type QuizAnswer = { question: string; answer: string; weight: number | null };
+function sanitizeSubmission(raw: unknown): QuizAnswer[] | null {
+  if (!Array.isArray(raw) || raw.length === 0) return null;
+  const items: QuizAnswer[] = raw.slice(0, SUBMISSION_MAX_ITEMS).map((it) => {
+    const o = (it ?? {}) as Record<string, unknown>;
+    const w = Number(o.weight);
+    return {
+      question: String(o.question ?? "").slice(0, 500),
+      answer: String(o.answer ?? "").slice(0, 500),
+      weight: Number.isFinite(w) ? w : null,
+    };
+  }).filter((a) => a.question || a.answer);
+  if (items.length === 0) return null;
+  if (JSON.stringify(items).length > SUBMISSION_MAX_BYTES) return null;
+  return items;
+}
+
 export async function handleCaptureLead(req: Request, res: Response): Promise<void> {
   try {
     const body = (req.body ?? {}) as Record<string, unknown>;
@@ -65,6 +88,15 @@ export async function handleCaptureLead(req: Request, res: Response): Promise<vo
     const [hvco] = await db.select().from(hvcoTitles).where(eq(hvcoTitles.id, hvcoId)).limit(1);
     if (!hvco || !hvco.magnetHtmlUrl) { res.status(404).json({ error: "Magnet not found" }); return; }
 
+    // 4b. Quiz zero-party payload (optional — static formats never send these).
+    //     submissionData = the taker's answers; resultBand = their scored band.
+    //     Sanitised + size-capped so a hostile client can't bloat the row.
+    const submissionData = sanitizeSubmission(body.submissionData);
+    const resultBand =
+      typeof body.resultBand === "string" && body.resultBand.trim()
+        ? body.resultBand.trim().slice(0, 120)
+        : null;
+
     // 5. Encrypt + upsert (dedup on userId+emailHash+hvcoId).
     const name = String(body.name ?? "").trim();
     const consentText =
@@ -86,10 +118,18 @@ export async function handleCaptureLead(req: Request, res: Response): Promise<vo
       userAgent: (req.headers["user-agent"] || "").toString().slice(0, 500) || null,
       magnetHtmlUrl: hvco.magnetHtmlUrl,
       magnetPdfUrl: hvco.magnetPdfUrl ?? null,
+      submissionData,
+      resultBand,
       deliveredAt: now,
       purgeAfter: new Date(now.getTime() + RETENTION_MS),
     }).onDuplicateKeyUpdate({
-      set: { deliveredAt: now, consentGiven: true, magnetHtmlUrl: hvco.magnetHtmlUrl, magnetPdfUrl: hvco.magnetPdfUrl ?? null },
+      // Retake overwrites: the new submission is authoritative, so the answers and
+      // band must REPLACE the prior ones (not silently keep the old ones).
+      set: {
+        deliveredAt: now, consentGiven: true,
+        magnetHtmlUrl: hvco.magnetHtmlUrl, magnetPdfUrl: hvco.magnetPdfUrl ?? null,
+        submissionData, resultBand,
+      },
     });
 
     // 6. Deliver on-page (bridge reads these).

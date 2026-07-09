@@ -19,6 +19,20 @@ function csvCell(v: string): string {
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
+// submissionData is a JSON column — mysql2 usually returns it already parsed, but
+// be defensive about a string form too. Returns the answer array or [].
+type QuizAnswer = { question: string; answer: string; weight: number | null };
+function parseAnswers(v: unknown): QuizAnswer[] {
+  let arr: unknown = v;
+  if (typeof v === "string") { try { arr = JSON.parse(v); } catch { return []; } }
+  if (!Array.isArray(arr)) return [];
+  return arr.map((it) => {
+    const o = (it ?? {}) as Record<string, unknown>;
+    const w = Number(o.weight);
+    return { question: String(o.question ?? ""), answer: String(o.answer ?? ""), weight: Number.isFinite(w) ? w : null };
+  });
+}
+
 export const capturedLeadsRouter = router({
   list: protectedProcedure
     .input(z.object({ serviceId: z.number().int().optional() }).optional())
@@ -37,6 +51,10 @@ export const capturedLeadsRouter = router({
         hvcoId: r.hvcoId,
         consentGiven: r.consentGiven,
         capturedAt: r.createdAt,
+        // Quiz zero-party data (null/empty for static magnets): the scored band
+        // and the decoded answers, ready for the manage UI to render.
+        resultBand: r.resultBand ?? null,
+        answers: parseAnswers(r.submissionData),
       }));
     }),
 
@@ -59,16 +77,33 @@ export const capturedLeadsRouter = router({
         ? and(eq(capturedLeads.userId, ctx.user.id), eq(capturedLeads.serviceId, input.serviceId))
         : eq(capturedLeads.userId, ctx.user.id);
       const rows = await db.select().from(capturedLeads).where(where).orderBy(desc(capturedLeads.createdAt));
-      const header = ["email", "name", "serviceId", "hvcoId", "consentGiven", "capturedAt"];
-      const lines = [header.join(",")];
-      for (const r of rows) {
+
+      // Decode each row's answers once, and size the quiz columns to the widest
+      // row so a coach gets one readable column per question (never a raw JSON
+      // blob in a cell). Static-only exports simply carry no Q columns.
+      const decoded = rows.map(r => parseAnswers(r.submissionData));
+      const maxQ = decoded.reduce((m, a) => Math.max(m, a.length), 0);
+      const qHeaders = Array.from({ length: maxQ }, (_, i) => `Q${i + 1}`);
+
+      const header = ["capturedAt", "email", "name", "resultBand", "serviceId", "hvcoId", "consentGiven", ...qHeaders];
+      const lines = [header.map(csvCell).join(",")];
+      for (let i = 0; i < rows.length; i++) {
+        const r = rows[i];
+        const answers = decoded[i];
+        const qCells = qHeaders.map((_, qi) => {
+          const a = answers[qi];
+          // "question — answer" keeps each cell self-contained and readable.
+          return csvCell(a ? (a.question ? `${a.question} — ${a.answer}` : a.answer) : "");
+        });
         lines.push([
+          csvCell(r.createdAt ? new Date(r.createdAt).toISOString() : ""),
           csvCell(safeDecrypt(r.emailEncrypted)),
           csvCell(r.nameEncrypted ? safeDecrypt(r.nameEncrypted) : ""),
+          csvCell(r.resultBand ?? ""),
           csvCell(String(r.serviceId ?? "")),
           csvCell(String(r.hvcoId ?? "")),
           csvCell(r.consentGiven ? "yes" : "no"),
-          csvCell(r.createdAt ? new Date(r.createdAt).toISOString() : ""),
+          ...qCells,
         ].join(","));
       }
       return { csv: lines.join("\n"), count: rows.length };
