@@ -57,11 +57,18 @@ function baseCss(extra = ""): string {
   body{background:${PAPER};color:${INK};font-family:${BODY};font-size:17px;line-height:1.75;-webkit-font-smoothing:antialiased}
   .wrap{max-width:640px;margin:0 auto;padding:80px 40px 88px}
   .kick{font-weight:600;letter-spacing:.22em;text-transform:uppercase;font-size:12px;color:${ACC};margin:0 0 22px}
-  .cover{min-height:74vh;display:flex;flex-direction:column;justify-content:center;page-break-after:always}
+  /* Cover flows naturally and sits a deliberate distance above the first section
+     (no forced viewport-height centering — that stranded content top+bottom and
+     opened a dead void before the first section). page-break-after keeps the PDF
+     cover on its own page; the margin is the designed gap for the online read. */
+  .cover{padding:6px 0 0;margin:0 0 60px;page-break-after:always}
   h1{font-family:${HEAD};font-weight:600;font-size:40px;line-height:1.12;letter-spacing:-.01em;margin:0 0 24px}
   .promise{font-size:19px;line-height:1.65;color:${SEC};margin:0 0 30px;max-width:34em}
   .coverline{width:56px;height:2px;background:${INK};margin:6px 0 0}
-  .mark{font-weight:600;letter-spacing:.04em;font-size:13px;color:${ACC};margin-top:auto;padding-top:40px}
+  /* Brand slot (cover): coach logo when present, otherwise nothing — no ZAP stamp
+     on the coach's asset. brand-capture drops a real logo URL into this slot. */
+  .brandmark{margin:34px 0 0}
+  .brandmark img{display:block;max-height:46px;width:auto}
   h2{font-family:${HEAD};font-weight:600;font-size:25px;line-height:1.2;margin:0 0 12px}
   .p{margin:0 0 16px;color:${INK}}
   .div{border:0;height:1px;background:${HAIR};margin:52px 0}
@@ -78,7 +85,10 @@ function baseCss(extra = ""): string {
   .next h2{margin:0 0 10px}
   .next p{color:${SEC};margin:0 0 20px}
   .cta{display:inline-block;border:1.5px solid ${INK};border-radius:9999px;padding:13px 28px;font-weight:600;font-size:16px;color:${INK};text-decoration:none}
-  .foot{color:${ACC};font-size:12px;text-align:center;margin:72px 0 0;letter-spacing:.03em}
+  /* Footer brand: coach logo when present, otherwise the footer is omitted
+     entirely — the coach's deliverable is never signed with ZAP's name. */
+  .foot{text-align:center;margin:72px 0 0}
+  .foot img{display:inline-block;max-height:30px;width:auto;opacity:.8}
   ${extra}`;
 }
 
@@ -89,44 +99,62 @@ function shell(title: string, inner: string, extraCss = ""): string {
 <style>${baseCss(extraCss)}</style></head><body>${inner}</body></html>`;
 }
 
-function cover(kicker: string, title: string, promise: string): string {
+// Brand slot: a coach logo when one is supplied, otherwise nothing. The magnet is
+// the coach's asset, so it is never stamped with ZAP's name. brand-capture (its own
+// sprint) will populate coachLogoUrl from coachAssets(assetType='logo'); the slot,
+// sizing and layout are ready so a real logo drops in with no re-work.
+function brandMark(coachLogoUrl?: string | null): string {
+  if (!coachLogoUrl) return "";
+  return `<div class="brandmark"><img src="${esc(coachLogoUrl)}" alt=""></div>`;
+}
+function foot(coachLogoUrl?: string | null): string {
+  if (!coachLogoUrl) return "";
+  return `<div class="foot"><img src="${esc(coachLogoUrl)}" alt=""></div>`;
+}
+function cover(kicker: string, title: string, promise: string, coachLogoUrl?: string | null): string {
   return `<div class="cover"><p class="kick">${esc(kicker)}</p><h1>${esc(title)}</h1>` +
-    `<p class="promise">${esc(promise)}</p><div class="coverline"></div><div class="mark">ZAP CAMPAIGNS</div></div>`;
+    `<p class="promise">${esc(promise)}</p><div class="coverline"></div>${brandMark(coachLogoUrl)}</div>`;
 }
 function nextStepBlock(n: NextStep): string {
   if (!n) return "";
   return `<section class="next"><p class="kick">Your next step</p><h2>${esc(n.heading)}</h2>` +
     `<p>${esc(n.body)}</p><a class="cta" href="#">${esc(n.ctaLabel)}</a></section>`;
 }
-const FOOT = `<p class="foot">Created with ZAP Campaigns</p>`;
 
-function renderGuide(b: GuideBody): string {
+function renderGuide(b: GuideBody, logo?: string | null): string {
   const sections = (b.sections || []).map((s, i) =>
     `<section><h2>${esc(s.heading)}</h2>${paras(s.body)}</section>${i < b.sections.length - 1 ? '<hr class="div">' : ""}`).join("");
-  return `<div class="wrap">${cover("Guide", b.title, b.promise)}${sections}${nextStepBlock(b.nextStep)}${FOOT}</div>`;
+  return `<div class="wrap">${cover("Guide", b.title, b.promise, logo)}${sections}${nextStepBlock(b.nextStep)}${foot(logo)}</div>`;
 }
-function renderChecklist(b: ChecklistBody): string {
+function renderChecklist(b: ChecklistBody, logo?: string | null): string {
   const items = (b.items || []).map(i =>
     `<div class="check"><div class="box"></div><div><p class="label">${esc(i.label)}</p><p class="detail">${esc(i.detail)}</p></div></div>`).join("");
-  return `<div class="wrap">${cover("Checklist", b.title, b.promise)}<div>${items}</div>${nextStepBlock(b.nextStep)}${FOOT}</div>`;
+  return `<div class="wrap">${cover("Checklist", b.title, b.promise, logo)}<div>${items}</div>${nextStepBlock(b.nextStep)}${foot(logo)}</div>`;
 }
-function renderToolkit(b: ToolkitBody): string {
+function renderToolkit(b: ToolkitBody, logo?: string | null): string {
   const tools = (b.tools || []).map((t, i) =>
     `<section class="tool"><div class="tag">${esc(TYPE_LABEL[t.type] || t.type)}</div><h2>${esc(t.name)}</h2>` +
     `<p class="inst">${esc(t.instructions)}</p><div class="toolbody"><pre>${esc(t.content)}</pre></div></section>` +
     `${i < b.tools.length - 1 ? '<hr class="div">' : ""}`).join("");
-  return `<div class="wrap">${cover("Toolkit", b.title, b.promise)}${tools}${nextStepBlock(b.nextStep)}${FOOT}</div>`;
+  return `<div class="wrap">${cover("Toolkit", b.title, b.promise, logo)}${tools}${nextStepBlock(b.nextStep)}${foot(logo)}</div>`;
+}
+
+export interface RenderDeliverableOpts {
+  /** Coach logo URL for the brand slot. Absent today (brand-capture not shipped),
+   *  so the wordmark is simply omitted rather than showing ZAP's name. */
+  coachLogoUrl?: string | null;
 }
 
 /**
  * Render the branded deliverable page for a magnet body. Format-dispatch so the
  * quiz renderer plugs in next sprint. Returns null for quiz (out of scope now).
  */
-export function renderDeliverableHtml(body: LeadMagnetBody): string | null {
+export function renderDeliverableHtml(body: LeadMagnetBody, opts: RenderDeliverableOpts = {}): string | null {
+  const logo = opts.coachLogoUrl ?? null;
   switch (body.format) {
-    case "guide": return shell(body.title, renderGuide(body));
-    case "checklist": return shell(body.title, renderChecklist(body));
-    case "toolkit": return shell(body.title, renderToolkit(body));
+    case "guide": return shell(body.title, renderGuide(body, logo));
+    case "checklist": return shell(body.title, renderChecklist(body, logo));
+    case "toolkit": return shell(body.title, renderToolkit(body, logo));
     case "quiz": return null; // next sprint (interactive scored surface)
     default: return null;
   }
@@ -146,6 +174,7 @@ export interface OptInPageOpts {
   apiBase: string;            // same-origin fetch base
   nextStep: NextStep;         // tailored next step on the bridge
   testimonial?: OptInTestimonial | null; // social-proof slot (hidden if absent)
+  coachLogoUrl?: string | null; // brand slot; omitted (no ZAP stamp) until brand-capture
 }
 
 export function renderOptInHtml(o: OptInPageOpts): string {
@@ -219,7 +248,7 @@ export function renderOptInHtml(o: OptInPageOpts): string {
       <a class="dl primary" id="next_cta" href="#" target="_blank" rel="noopener"></a>
     </div>
   </div>
-  <p class="foot">Created with ZAP Campaigns</p></div>
+  ${foot(o.coachLogoUrl)}</div>
 <script>
 (function(){
   var CFG = ${cfg}; var NEXT = ${nextData};

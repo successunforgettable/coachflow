@@ -47,7 +47,14 @@ export async function publishLeadMagnet(input: { hvcoId: number }): Promise<Publ
   if (!hvco || hvco.assetBody == null) return null;
 
   const body = hvco.assetBody as unknown as LeadMagnetBody;
-  const deliverableHtml = renderDeliverableHtml(body);
+
+  // Brand slot for the deliverable + opt-in. The magnet is the coach's asset, so
+  // it carries the coach's logo when one exists — never a ZAP wordmark. brand-capture
+  // (own sprint) will resolve this from coachAssets(userId, assetType='logo'); until
+  // then it is null and the brand slot renders nothing (no ZAP stamp).
+  const coachLogoUrl: string | null = null;
+
+  const deliverableHtml = renderDeliverableHtml(body, { coachLogoUrl });
   if (!deliverableHtml) {
     console.log(`[leadMagnetPublisher] format "${(body as any)?.format}" not deliverable this sprint (hvco ${input.hvcoId}) — skipped`);
     return null;
@@ -100,6 +107,7 @@ export async function publishLeadMagnet(input: { hvcoId: number }): Promise<Publ
     apiBase: BASE,
     nextStep: body.nextStep,
     testimonial,
+    coachLogoUrl,
   });
   await writeKvPage(namespaceId, optInSlug, optInHtml);
   const optInUrl = `${BASE}/p/${optInSlug}`;
