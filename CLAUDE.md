@@ -66,7 +66,7 @@
 ## 8. Test Gates
 
 - **Type-check baseline:** 35 errors (`npx tsc --noEmit 2>&1 | grep -c "error TS"`) — must not regress (re-baselined 2026-07-03: 36→35, Sprint 2 Piece 2 swapped the dead `onContinue` on the Trail ICP panel to a live `onClose`, removing one excess-property error; earlier re-baseline 2026-06-19: 53→39→36 via opentype.js declaration fix across 4 renderers)
-- **Test suite:** `npx vitest run server/pipeline-fixes.test.ts` — report pass count (330 as of June 24, 2026; was 251 June 4). Also: `npx vitest run server/lib/complianceFilter.test.ts` (14/14) and `npx vitest run server/_core/tokenCrypto.test.ts` (10/10)
+- **Test suite:** `npx vitest run server/pipeline-fixes.test.ts` — report pass count (367 as of July 2026; was 330 June 24, 251 June 4). Also: `npx vitest run server/lib/complianceFilter.test.ts` (14/14) and `npx vitest run server/_core/tokenCrypto.test.ts` (10/10)
 - Never use global vitest output (dominated by pre-existing infrastructure failures)
 - Verify-before-commit: TS baseline holds, vitest passes, atomic commits
 - Hold pushes for go-ahead unless explicitly authorized
