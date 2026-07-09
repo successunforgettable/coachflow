@@ -51,16 +51,35 @@ export interface ToolkitBody {
   tools: { name: string; type: ToolType; instructions: string; content: string }[];
   nextStep: NextStep;
 }
+// Quiz = a weighted, single-axis READINESS SCORECARD (not a right/wrong knowledge
+// quiz). Each option carries a weight (higher = more advanced/ready); the taker's
+// weights sum to a % of the max, which falls into exactly one band. Each band is a
+// self-contained diagnostic: a teaser (shown before the email gate), the full
+// meaning, and its own CTA. Scoring runs client-side in the rendered page; this
+// module produces the rubric that scoring runs on.
+export interface QuizOption {
+  label: string;
+  weight: number; // 0..3 — higher = stronger/more-ready position on the axis
+}
+export interface QuizQuestion {
+  question: string;
+  options: QuizOption[]; // 3-4, with at least two distinct weights (must discriminate)
+}
+export interface QuizBand {
+  name: string;
+  minPercent: number; // inclusive, 0..100
+  maxPercent: number; // inclusive, 0..100 — bands partition 0..100 with no gap/overlap
+  teaser: string;     // one-line hook shown BEFORE the email gate
+  meaning: string;    // the full personalised diagnostic shown AFTER the gate
+  cta: NextStep;      // this band's own bridge to the paid programme
+}
 export interface QuizBody {
   format: "quiz";
   title: string;
   promise: string;
-  // Reuses the existing LP quizSection {question, options, answer} shape per item.
-  questions: { question: string; options: string[]; answer: string }[];
-  // Score bands — interpretation of the result. Interactive scoring is the next
-  // sprint; this is the content it will run on.
-  scoring: { band: string; meaning: string }[];
-  nextStep: NextStep;
+  questions: QuizQuestion[];   // ~7
+  scoring: { bands: QuizBand[] }; // 3-4 contiguous bands covering 0..100
+  nextStep: NextStep;          // global fallback bridge (per-band cta takes precedence on the result)
 }
 export type LeadMagnetBody = GuideBody | ChecklistBody | ToolkitBody | QuizBody;
 
@@ -210,13 +229,32 @@ function schemaFor(format: LeadMagnetFormat): ResponseFormat {
       nextStep,
     },
   });
+  const pct = { type: "integer", minimum: 0, maximum: 100 } as const;
   return s("lead_magnet_quiz", {
     type: "object", additionalProperties: false,
     required: ["promise", "questions", "scoring", "nextStep"],
     properties: {
       promise: str,
-      questions: arr({ type: "object", additionalProperties: false, required: ["question", "options", "answer"], properties: { question: str, options: arr(str), answer: str } }),
-      scoring: arr({ type: "object", additionalProperties: false, required: ["band", "meaning"], properties: { band: str, meaning: str } }),
+      questions: arr({
+        type: "object", additionalProperties: false, required: ["question", "options"],
+        properties: {
+          question: str,
+          options: arr({
+            type: "object", additionalProperties: false, required: ["label", "weight"],
+            properties: { label: str, weight: { type: "integer", minimum: 0, maximum: 3 } },
+          }),
+        },
+      }),
+      scoring: {
+        type: "object", additionalProperties: false, required: ["bands"],
+        properties: {
+          bands: arr({
+            type: "object", additionalProperties: false,
+            required: ["name", "minPercent", "maxPercent", "teaser", "meaning", "cta"],
+            properties: { name: str, minPercent: pct, maxPercent: pct, teaser: str, meaning: str, cta: nextStep },
+          }),
+        },
+      },
       nextStep,
     },
   });
@@ -229,7 +267,71 @@ function userPromptFor(format: LeadMagnetFormat, c: MagnetContext): string {
   if (format === "guide") return `${common}Produce a GUIDE: 3-6 solution-focused sections, each a clear heading and lean, directly-actionable content (steps, a mini-framework, an example the reader applies) — not padded prose. Useful beats comprehensive.\nReturn JSON: { "promise", "sections":[{"heading","body"}], "nextStep":{"heading","body","ctaLabel"} }.`;
   if (format === "checklist") return `${common}Produce a CHECKLIST / cheat-sheet: 7-15 concrete action items, each a short actionable label plus a one-to-two-sentence detail that makes it doable today. Every item is something they DO, not something they learn.\nReturn JSON: { "promise", "items":[{"label","detail"}], "nextStep":{"heading","body","ctaLabel"} }.`;
   if (format === "toolkit") return `${common}Produce a TOOLKIT: 3-4 focused, immediately-usable tools (no more — lean, not a swipe-file dump). Each tool has a name, a type (one of: swipe, template, sop, worksheet, script, checklist), one-line usage instructions, and the ACTUAL usable content (real fill-in-the-blank templates / swipe copy / step-by-step SOP the reader copies and uses today).\nReturn JSON: { "promise", "tools":[{"name","type","instructions","content"}], "nextStep":{"heading","body","ctaLabel"} }.`;
-  return `${common}Produce a QUIZ / assessment: 5-8 questions, each with 3-4 options and the option that indicates the strongest position ("answer"); 3-4 score bands interpreting the outcome (band label + what it means). Keep it genuinely diagnostic, not a disguised pitch.\nReturn JSON: { "promise", "questions":[{"question","options":[...],"answer"}], "scoring":[{"band","meaning"}], "nextStep":{"heading","body","ctaLabel"} }.`;
+  return `${common}Produce a READINESS SCORECARD — a weighted, single-axis self-assessment that diagnoses where this prospect stands on their journey toward the outcome "${programme}" delivers. Genuinely diagnostic, never a disguised pitch.
+
+Build it so the scoring is self-consistent and discriminating:
+- 7 questions (6-8 acceptable). Each question probes ONE real dimension of readiness for this niche, in the audience's own words.
+- Each question has 3-4 options laid out from least-ready to most-ready. Give each option a "weight" from 0 to 3: 0 = furthest from the outcome, 3 = strongest/most-ready position. Within each question the options MUST carry at least two different weights, and across the scorecard the full 0-3 range is used — so the total genuinely separates people.
+- The taker's chosen weights sum to a percentage of the maximum possible. Define 3-4 bands that PARTITION 0-100 exactly: the first band starts at 0, the last ends at 100, and each band begins one point above the previous band's end (contiguous, no gaps, no overlaps). Example spans: 0-33, 34-66, 67-100.
+- Each band is a complete diagnostic result: a "name" (the readiness stage, e.g. "Foundations", "Momentum", "Scale-Ready"), a one-line "teaser" (the hook a prospect sees before unlocking), a "meaning" (2-4 sentences reflecting where they are and what to focus on next — speaks to THAT band specifically), and its own "cta" bridging to "${programme}" (heading, short body connecting their result to the paid outcome, concrete ctaLabel). A low-band CTA meets them where they are; a high-band CTA matches their momentum.
+
+Return JSON: { "promise", "questions":[{"question","options":[{"label","weight"}]}], "scoring":{"bands":[{"name","minPercent","maxPercent","teaser","meaning","cta":{"heading","body","ctaLabel"}}]}, "nextStep":{"heading","body","ctaLabel"} }.`;
+}
+
+/**
+ * Rubric validator for a generated quiz body — the sprint's quality gate. A
+ * scorecard that a coach's prospect takes must not misdiagnose them, so this
+ * rejects degenerate output: too few questions, options that don't discriminate
+ * (equal weights within a question, or no weight variation at all), and bands that
+ * leave gaps, overlap, fail to cover 0..100, or are missing name/teaser/meaning/cta.
+ * Returns a reason on failure so the generator logs why it retried.
+ */
+export function validateQuizBody(body: QuizBody): { ok: boolean; reason?: string } {
+  const nonEmpty = (v: unknown): v is string => typeof v === "string" && v.trim().length > 0;
+
+  if (!nonEmpty(body?.promise)) return { ok: false, reason: "blank promise" };
+
+  const qs = body?.questions;
+  if (!Array.isArray(qs) || qs.length < 5) return { ok: false, reason: `need >=5 questions, got ${qs?.length ?? 0}` };
+  if (qs.length > 12) return { ok: false, reason: `too many questions (${qs.length})` };
+  const allWeights = new Set<number>();
+  for (let i = 0; i < qs.length; i++) {
+    if (!nonEmpty(qs[i]?.question)) return { ok: false, reason: `question ${i + 1} blank` };
+    const opts = qs[i]?.options;
+    if (!Array.isArray(opts) || opts.length < 3) return { ok: false, reason: `question ${i + 1} needs >=3 options` };
+    const ws = new Set<number>();
+    for (const o of opts) {
+      if (!nonEmpty(o?.label)) return { ok: false, reason: `question ${i + 1} has a blank option` };
+      if (typeof o?.weight !== "number" || !Number.isFinite(o.weight) || o.weight < 0 || o.weight > 3) {
+        return { ok: false, reason: `question ${i + 1} option weight out of range` };
+      }
+      ws.add(o.weight); allWeights.add(o.weight);
+    }
+    if (ws.size < 2) return { ok: false, reason: `question ${i + 1} options don't discriminate (equal weights)` };
+  }
+  if (allWeights.size < 2) return { ok: false, reason: "no weight variation across the scorecard" };
+
+  const bands = body?.scoring?.bands;
+  if (!Array.isArray(bands) || bands.length < 3) return { ok: false, reason: `need >=3 bands, got ${bands?.length ?? 0}` };
+  if (bands.length > 5) return { ok: false, reason: `too many bands (${bands.length})` };
+  const okInt = (n: unknown) => typeof n === "number" && Number.isInteger(n) && n >= 0 && n <= 100;
+  const sorted = [...bands].sort((a, b) => a.minPercent - b.minPercent);
+  for (let i = 0; i < sorted.length; i++) {
+    const b = sorted[i];
+    if (!okInt(b?.minPercent) || !okInt(b?.maxPercent)) return { ok: false, reason: `band ${i + 1} percent out of range` };
+    if (b.minPercent > b.maxPercent) return { ok: false, reason: `band ${i + 1} min>max` };
+    if (!nonEmpty(b?.name) || !nonEmpty(b?.teaser) || !nonEmpty(b?.meaning)) return { ok: false, reason: `band ${i + 1} missing name/teaser/meaning` };
+    const cta = b?.cta;
+    if (!nonEmpty(cta?.heading) || !nonEmpty(cta?.body) || !nonEmpty(cta?.ctaLabel)) return { ok: false, reason: `band ${i + 1} missing cta` };
+  }
+  if (sorted[0].minPercent !== 0) return { ok: false, reason: "bands must start at 0" };
+  if (sorted[sorted.length - 1].maxPercent !== 100) return { ok: false, reason: "bands must end at 100" };
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i].minPercent !== sorted[i - 1].maxPercent + 1) {
+      return { ok: false, reason: `bands not contiguous (gap/overlap) at band ${i + 1}` };
+    }
+  }
+  return { ok: true };
 }
 
 /**
@@ -265,12 +367,17 @@ export async function generateLeadMagnetContent(input: {
       const content = response.choices[0].message.content;
       const parsed = JSON.parse(typeof content === "string" ? content : JSON.stringify(content));
       const body = { format, title: input.title, ...parsed } as LeadMagnetBody;
-      // Minimal shape guard per format — retry rather than store junk.
+      // Shape guard per format — retry rather than store junk. Quiz runs the full
+      // rubric validator (non-degenerate scoring is this format's whole value).
+      const quizCheck = format === "quiz" ? validateQuizBody(body as QuizBody) : null;
+      if (quizCheck && !quizCheck.ok) {
+        console.warn(`[leadMagnetContent] quiz rubric rejected (attempt ${attempt}) for "${input.title}": ${quizCheck.reason}`);
+      }
       const ok =
         (format === "guide" && Array.isArray((body as GuideBody).sections) && (body as GuideBody).sections.length > 0) ||
         (format === "checklist" && Array.isArray((body as ChecklistBody).items) && (body as ChecklistBody).items.length > 0) ||
         (format === "toolkit" && Array.isArray((body as ToolkitBody).tools) && (body as ToolkitBody).tools.length > 0) ||
-        (format === "quiz" && Array.isArray((body as QuizBody).questions) && (body as QuizBody).questions.length > 0);
+        (format === "quiz" && !!quizCheck?.ok);
       if (ok) {
         console.log(`[leadMagnetContent] generated ${format} body for "${input.title}"${attempt > 1 ? ` (attempt ${attempt})` : ""}`);
         return body;

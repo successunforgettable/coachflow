@@ -20,6 +20,7 @@ import { _hasPlaceholder, _CASCADE_NODE_TO_KIT_FIELD } from "./_core/cascadeCont
 import { resolveTokensInText, normalizeToken, TOKEN_SYNONYMS, type ResolvedEntry } from "./routers/placeholders";
 import { resolveTokensInObject } from "./lib/placeholderResolver";
 import { ICP_CONTENT_FIELDS, buildNullOnlyUpdates } from "./_core/icpEnrichment";
+import { validateQuizBody, type QuizBody } from "./leadMagnetContentGenerator";
 
 // ─── Issue 1: Gradient fallback throws ────────────────────────────────────────
 
@@ -3905,5 +3906,125 @@ describe("ICP Enrichment — NULL-only write protection", () => {
     expect(corrected.pains).toContain("Trapped in paycheck-to-paycheck cycles");
     // Correction appended with label
     expect(corrected.pains).toContain("User correction: it's also business owners too");
+  });
+});
+
+// ─── Quiz Sprint C1: readiness-scorecard rubric validator ─────────────────────
+// validateQuizBody is the sprint's quality gate. A miscalibrated scorecard
+// misdiagnoses a coach's prospect with the coach's name on it, so the validator
+// must reject degenerate rubrics (equal weights, band gaps/overlaps, bands that
+// don't cover 0..100, missing teaser/meaning/cta) and accept only sound ones.
+
+describe("Quiz C1 — validateQuizBody rubric validator", () => {
+  const cta = (n: string) => ({ heading: `${n} next step`, body: `${n} body bridging to the programme`, ctaLabel: "Book My Free Call" });
+  const q = (question: string, weights: number[]) => ({
+    question,
+    options: weights.map((w, i) => ({ label: `option ${i + 1}`, weight: w })),
+  });
+  // A canonical valid readiness scorecard: 7 discriminating questions, 3 contiguous bands covering 0..100.
+  const validBody = (): QuizBody => ({
+    format: "quiz",
+    title: "How Ready Is Your Practice To Scale?",
+    promise: "Find out exactly where your practice stands and the one move that unlocks the next stage.",
+    questions: [
+      q("How predictable is your lead flow?", [0, 1, 2, 3]),
+      q("Do you have a documented sales process?", [0, 1, 3]),
+      q("How much of delivery is systemised?", [0, 2, 3]),
+      q("Is your pricing tied to outcomes?", [0, 1, 2, 3]),
+      q("How strong is your referral engine?", [0, 1, 2]),
+      q("Do you track the numbers weekly?", [0, 2, 3]),
+      q("How much runs without you?", [0, 1, 2, 3]),
+    ],
+    scoring: {
+      bands: [
+        { name: "Foundations", minPercent: 0, maxPercent: 33, teaser: "You're building the base.", meaning: "Your practice is early — focus on predictable lead flow first.", cta: cta("Foundations") },
+        { name: "Momentum", minPercent: 34, maxPercent: 66, teaser: "You've got traction.", meaning: "You have the pieces; systemising delivery is your next unlock.", cta: cta("Momentum") },
+        { name: "Scale-Ready", minPercent: 67, maxPercent: 100, teaser: "You're ready to scale.", meaning: "Your fundamentals are strong — it's time to remove yourself from delivery.", cta: cta("Scale-Ready") },
+      ],
+    },
+    nextStep: cta("Global"),
+  });
+
+  it("accepts a sound weighted scorecard", () => {
+    expect(validateQuizBody(validBody())).toEqual({ ok: true });
+  });
+
+  it("rejects fewer than 5 questions", () => {
+    const b = validBody(); b.questions = b.questions.slice(0, 4);
+    expect(validateQuizBody(b).ok).toBe(false);
+  });
+
+  it("rejects a question whose options all share one weight (no discrimination)", () => {
+    const b = validBody(); b.questions[2] = q("flat question", [2, 2, 2]);
+    const r = validateQuizBody(b);
+    expect(r.ok).toBe(false);
+    expect(r.reason).toMatch(/discriminate/i);
+  });
+
+  it("rejects when there is no weight variation across the whole scorecard", () => {
+    const b = validBody();
+    b.questions = b.questions.map((qq) => ({ ...qq, options: qq.options.map((o) => ({ ...o, weight: 1 })) }));
+    expect(validateQuizBody(b).ok).toBe(false);
+  });
+
+  it("rejects an out-of-range option weight", () => {
+    const b = validBody(); b.questions[0].options[0].weight = 5;
+    expect(validateQuizBody(b).ok).toBe(false);
+  });
+
+  it("rejects a question with fewer than 3 options", () => {
+    const b = validBody(); b.questions[1] = { question: "too few", options: [{ label: "a", weight: 0 }, { label: "b", weight: 3 }] };
+    expect(validateQuizBody(b).ok).toBe(false);
+  });
+
+  it("rejects fewer than 3 bands", () => {
+    const b = validBody(); b.scoring.bands = b.scoring.bands.slice(0, 2);
+    expect(validateQuizBody(b).ok).toBe(false);
+  });
+
+  it("rejects a band gap (does not cover 0..100 contiguously)", () => {
+    const b = validBody(); b.scoring.bands[1].minPercent = 40; // leaves 34..39 uncovered
+    const r = validateQuizBody(b);
+    expect(r.ok).toBe(false);
+    expect(r.reason).toMatch(/contiguous|gap/i);
+  });
+
+  it("rejects overlapping bands", () => {
+    const b = validBody(); b.scoring.bands[1].maxPercent = 70; b.scoring.bands[2].minPercent = 67;
+    expect(validateQuizBody(b).ok).toBe(false);
+  });
+
+  it("rejects bands that do not start at 0", () => {
+    const b = validBody(); b.scoring.bands[0].minPercent = 5;
+    const r = validateQuizBody(b);
+    expect(r.ok).toBe(false);
+    expect(r.reason).toMatch(/start at 0/i);
+  });
+
+  it("rejects bands that do not end at 100", () => {
+    const b = validBody(); b.scoring.bands[2].maxPercent = 95;
+    const r = validateQuizBody(b);
+    expect(r.ok).toBe(false);
+    expect(r.reason).toMatch(/end at 100/i);
+  });
+
+  it("rejects a band missing its teaser", () => {
+    const b = validBody(); b.scoring.bands[1].teaser = "  ";
+    expect(validateQuizBody(b).ok).toBe(false);
+  });
+
+  it("rejects a band missing its meaning", () => {
+    const b = validBody(); b.scoring.bands[0].meaning = "";
+    expect(validateQuizBody(b).ok).toBe(false);
+  });
+
+  it("rejects a band whose CTA is incomplete", () => {
+    const b = validBody(); b.scoring.bands[2].cta = { heading: "x", body: "y", ctaLabel: "" };
+    expect(validateQuizBody(b).ok).toBe(false);
+  });
+
+  it("rejects a blank promise", () => {
+    const b = validBody(); b.promise = "   ";
+    expect(validateQuizBody(b).ok).toBe(false);
   });
 });
