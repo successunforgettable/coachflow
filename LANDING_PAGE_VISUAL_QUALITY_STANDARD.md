@@ -1,5 +1,7 @@
 # ZAP Landing-Page Visual-Quality Standard
 
+> ⚠️ **CORRECTION PENDING (2026-07-10) — READ FIRST.** The governing rule in **§1 / §1a below ("light, not dark") is WRONG and slated for deletion.** "Light" was a reaction to one bad template, not a specification — and both the dark "energetic" template and any "light" instruction are **DEAD INPUTS**. The real rule: **the five selected SwipePages reference pages ARE the bar — replicate each per its campaign type; do not filter them through a colour rule.** The §2 invariants are *observed commonalities*, not a law. This file is being rewritten as a **per-reference replication spec** (next-session task #1). Do not act on §1/§1a. Full record: `docs/handover/CHECKPOINT_2026-07-10_LP_STANDARD_AND_CORRECTION.md`.
+
 **Purpose:** the concrete bar ZAP's generated landing pages must hit. This is the landing-page equivalent of `docs/AD_IMAGE_VISUAL_QUALITY_STANDARD.md` (+ `docs/ad-references/`). It names WHAT makes a professional coach landing page look professional, so a future session can scope HOW from the real pipeline — and judge output against a fixed reference set, every session.
 
 **Why this file exists (root cause it fixes):** ad images have a committed standard + reference set, so they're built against a bar every session. Landing pages had **nothing in the repo** — the design research and blueprint were produced in conversation (~2026-07-01) and never committed. That asymmetry is why landing pages never got good. This file closes it.
