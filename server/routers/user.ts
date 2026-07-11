@@ -83,42 +83,64 @@ export const userRouter = router({
   }),
 
   /**
-   * Save a coach asset (headshot, logo, social_proof, hero_image, press_logo)
-   * Singular types (headshot, logo, hero_image) replace existing on save.
-   * Plural types (social_proof, press_logo) accumulate.
-   * Per-LP assets (hero_image) require landingPageId.
+   * Save a coach asset from an already-uploaded (Cloudinary) URL — the direct
+   * upload path. Routes through the ONE shared ingestion path so direct uploads
+   * and Has-Assets imports behave identically (slot bakes, replace-in-scope).
+   * Singular (headshot, logo, hero_image, value_stack) replace; plural
+   * (social_proof, press_logo) accumulate. hero_image/value_stack are per-LP.
+   * grayscale (trust-logo colour override) and facingFlip (portrait mirror) are
+   * the user-choice bakes.
    */
   saveCoachAsset: protectedProcedure
     .input(z.object({
-      assetType: z.enum(["headshot", "logo", "social_proof", "hero_image", "press_logo"]),
+      assetType: z.enum(["headshot", "logo", "social_proof", "hero_image", "press_logo", "value_stack"]),
       url: z.string().url(),
       landingPageId: z.number().optional(),
+      grayscale: z.boolean().optional(),
+      facingFlip: z.boolean().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
-
-      // Singular types: replace existing (only one allowed per scope)
-      const singularTypes = ["headshot", "logo", "hero_image"];
-      if (singularTypes.includes(input.assetType)) {
-        const conditions = [
-          eq(coachAssets.userId, ctx.user.id),
-          eq(coachAssets.assetType, input.assetType),
-        ];
-        // hero_image is per-LP; headshot/logo are per-user
-        if (input.assetType === "hero_image" && input.landingPageId) {
-          conditions.push(eq(coachAssets.landingPageId, input.landingPageId));
-        }
-        await db.delete(coachAssets).where(and(...conditions));
-      }
-
-      const result: any = await db.insert(coachAssets).values({
+      const { ingestCoachAssetImage } = await import("../lib/images/ingestCoachAssetImage");
+      return ingestCoachAssetImage({
         userId: ctx.user.id,
-        landingPageId: input.landingPageId ?? null,
         assetType: input.assetType,
-        url: input.url,
+        source: { kind: "url", url: input.url },
+        landingPageId: input.landingPageId ?? null,
+        grayscale: input.grayscale,
+        facingFlip: input.facingFlip,
       });
-      return { id: result[0].insertId, url: input.url, assetType: input.assetType };
+    }),
+
+  /**
+   * Import a coach asset image from Has-Assets material — a remote URL found in
+   * imported content or a base64 data URL from multimodal extraction. Same
+   * shared ingestion path as direct upload; the image is re-hosted on Cloudinary
+   * so it can be slot-transformed.
+   */
+  importCoachAssetImage: protectedProcedure
+    .input(z.object({
+      assetType: z.enum(["headshot", "logo", "social_proof", "hero_image", "press_logo", "value_stack"]),
+      remoteUrl: z.string().url().optional(),
+      dataUrl: z.string().optional(),
+      landingPageId: z.number().optional(),
+      grayscale: z.boolean().optional(),
+      facingFlip: z.boolean().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      if (!input.remoteUrl && !input.dataUrl) {
+        throw new Error("Provide remoteUrl or dataUrl");
+      }
+      const { ingestCoachAssetImage } = await import("../lib/images/ingestCoachAssetImage");
+      return ingestCoachAssetImage({
+        userId: ctx.user.id,
+        assetType: input.assetType,
+        source: input.dataUrl
+          ? { kind: "dataUrl", dataUrl: input.dataUrl }
+          : { kind: "url", url: input.remoteUrl! },
+        landingPageId: input.landingPageId ?? null,
+        grayscale: input.grayscale,
+        facingFlip: input.facingFlip,
+      });
     }),
 
   /**
