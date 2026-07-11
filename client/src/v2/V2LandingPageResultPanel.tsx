@@ -616,9 +616,18 @@ function AngleTabContent({ content, landingPageId, angle, onAngleUpdate, isFreeT
 // ─── Asset upload helpers ────────────────────────────────────────────────────
 interface CoachAssets {
   headshot: string | null;
+  headshotId: number | null;
   logo: string | null;
   socialProof: string[];
+  heroImage: string | null;
+  pressLogos: { id: number; url: string }[];
+  valueStack: string | null;
 }
+
+const EMPTY_COACH_ASSETS: CoachAssets = {
+  headshot: null, headshotId: null, logo: null, socialProof: [],
+  heroImage: null, pressLogos: [], valueStack: null,
+};
 
 function UploadSlot({
   label,
@@ -688,11 +697,18 @@ function UploadSlot({
 function AssetUploadPanel({
   assets,
   onUpdate,
+  landingPageId,
 }: {
   assets: CoachAssets;
   onUpdate: (assets: CoachAssets) => void;
+  landingPageId?: number;
 }) {
+  const utils = trpc.useUtils();
   const saveAsset = trpc.user.saveCoachAsset.useMutation();
+  const setOption = trpc.user.setCoachAssetOption.useMutation();
+
+  const isFlipped = (url: string | null) => !!url && url.includes("a_hflip");
+  const isGray = (url: string) => url.includes("e_grayscale");
 
   function handleHeadshot(url: string) {
     saveAsset.mutate({ assetType: "headshot", url });
@@ -707,6 +723,32 @@ function AssetUploadPanel({
     saveAsset.mutate({ assetType: "social_proof", url });
     onUpdate({ ...assets, socialProof: [...assets.socialProof, url] });
   }
+  function handleHero(url: string) {
+    saveAsset.mutate({ assetType: "hero_image", url, landingPageId });
+    onUpdate({ ...assets, heroImage: url });
+  }
+  function handleValueStack(url: string) {
+    saveAsset.mutate({ assetType: "value_stack", url, landingPageId });
+    onUpdate({ ...assets, valueStack: url });
+  }
+  async function handlePressLogo(url: string) {
+    if (assets.pressLogos.length >= 6) { toast.error("Max 6 trust logos"); return; }
+    // press_logo accumulates + bakes grayscale by default; reload to get its id for the colour toggle.
+    await saveAsset.mutateAsync({ assetType: "press_logo", url });
+    await utils.user.getCoachAssets.invalidate();
+  }
+  async function toggleFacing() {
+    if (!assets.headshotId) return;
+    await setOption.mutateAsync({ id: assets.headshotId, facingFlip: !isFlipped(assets.headshot) });
+    await utils.user.getCoachAssets.invalidate();
+  }
+  async function toggleLogoColour(id: number, currentlyGray: boolean) {
+    await setOption.mutateAsync({ id, grayscale: !currentlyGray });
+    await utils.user.getCoachAssets.invalidate();
+  }
+
+  const labelStyle: React.CSSProperties = { fontFamily: "var(--v2-font-body)", fontSize: "11px", fontWeight: 600, color: "#777" };
+  const toggleBtn: React.CSSProperties = { fontFamily: "var(--v2-font-body)", fontSize: "10px", fontWeight: 600, padding: "2px 7px", borderRadius: "9999px", border: "1px solid rgba(26,22,36,0.18)", background: "#fff", color: "#555", cursor: "pointer" };
 
   return (
     <div style={{
@@ -720,13 +762,43 @@ function AssetUploadPanel({
         Upload Your Assets for Visual Preview
       </p>
       <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "12px", color: "#888", margin: "0 0 16px" }}>
-        These appear in the visual landing page preview. Coach photo is required.
+        These appear on your landing page. Coach photo is required; the rest are used where your page design calls for them.
       </p>
       <div style={{ display: "flex", gap: "20px", flexWrap: "wrap", alignItems: "flex-start" }}>
-        <UploadSlot label="Coach Photo *" imageUrl={assets.headshot} onUpload={handleHeadshot} placeholder="👤" size={110} />
+        <UploadSlot label="Hero Visual (16:9)" imageUrl={assets.heroImage} onUpload={handleHero} placeholder="🖼" size={110} />
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "6px" }}>
+          <UploadSlot label="Coach Photo * (2:3)" imageUrl={assets.headshot} onUpload={handleHeadshot} placeholder="👤" size={110} />
+          {assets.headshotId && (
+            <button type="button" style={toggleBtn} onClick={toggleFacing} disabled={setOption.isPending}>
+              {isFlipped(assets.headshot) ? "Facing ▶" : "Facing ◀"} · flip
+            </button>
+          )}
+        </div>
         <UploadSlot label="Logo (optional)" imageUrl={assets.logo} onUpload={handleLogo} placeholder="🏷" size={90} />
+        <UploadSlot label="Value Stack (PNG, 3:2)" imageUrl={assets.valueStack} onUpload={handleValueStack} placeholder="📦" size={110} />
+      </div>
+
+      <div style={{ display: "flex", gap: "28px", flexWrap: "wrap", alignItems: "flex-start", marginTop: "18px" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-          <span style={{ fontFamily: "var(--v2-font-body)", fontSize: "11px", fontWeight: 600, color: "#777" }}>Social Proof (up to 6)</span>
+          <span style={labelStyle}>Trust Logos (up to 6 · grayscale by default)</span>
+          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "flex-start" }}>
+            {assets.pressLogos.map(logo => (
+              <div key={logo.id} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px" }}>
+                <div style={{ width: "72px", height: "44px", borderRadius: "6px", overflow: "hidden", background: "rgba(26,22,36,0.04)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <img src={logo.url} alt="" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />
+                </div>
+                <button type="button" style={toggleBtn} onClick={() => toggleLogoColour(logo.id, isGray(logo.url))} disabled={setOption.isPending}>
+                  {isGray(logo.url) ? "Keep colour" : "Grayscale"}
+                </button>
+              </div>
+            ))}
+            {assets.pressLogos.length < 6 && (
+              <UploadSlot label="" imageUrl={null} onUpload={handlePressLogo} placeholder="+" size={60} />
+            )}
+          </div>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+          <span style={labelStyle}>Social Proof (up to 6)</span>
           <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
             {assets.socialProof.map((url, i) => (
               <div key={i} style={{ width: "60px", height: "60px", borderRadius: "8px", overflow: "hidden" }}>
@@ -772,7 +844,7 @@ export default function V2LandingPageResultPanel({
   const [previewTheme, setPreviewTheme] = useState<ThemeKey>("light");
   const [styleMode, setStyleMode] = useState<"text" | "visual">("text");
   const [exportUpgradeOpen, setExportUpgradeOpen] = useState(false);
-  const [coachAssets, setCoachAssets] = useState<CoachAssets>({ headshot: null, logo: null, socialProof: [] });
+  const [coachAssets, setCoachAssets] = useState<CoachAssets>(EMPTY_COACH_ASSETS);
   const [showCoachModal, setShowCoachModal] = useState(false);
 
   // Load coach profile for authority section
@@ -798,10 +870,17 @@ export default function V2LandingPageResultPanel({
   const { data: savedAssets } = trpc.user.getCoachAssets.useQuery();
   useEffect(() => {
     if (!savedAssets) return;
-    const headshot = savedAssets.find(a => a.assetType === "headshot")?.url ?? null;
+    const headshotRow = savedAssets.find(a => a.assetType === "headshot");
     const logo = savedAssets.find(a => a.assetType === "logo")?.url ?? null;
     const socialProof = savedAssets.filter(a => a.assetType === "social_proof").map(a => a.url);
-    setCoachAssets({ headshot, logo, socialProof });
+    const heroImage = savedAssets.find(a => a.assetType === "hero_image")?.url ?? null;
+    const pressLogos = savedAssets.filter(a => a.assetType === "press_logo").map(a => ({ id: a.id, url: a.url }));
+    const valueStack = savedAssets.find(a => a.assetType === "value_stack")?.url ?? null;
+    setCoachAssets({
+      headshot: headshotRow?.url ?? null,
+      headshotId: headshotRow?.id ?? null,
+      logo, socialProof, heroImage, pressLogos, valueStack,
+    });
   }, [savedAssets]);
 
   function parseAngle(raw: AngleContent | string | undefined): AngleContent {
@@ -993,7 +1072,7 @@ export default function V2LandingPageResultPanel({
           {/* Asset upload panel (Visual Style) */}
           {styleMode === "visual" && (
             <>
-              <AssetUploadPanel assets={coachAssets} onUpdate={setCoachAssets} />
+              <AssetUploadPanel assets={coachAssets} onUpdate={setCoachAssets} landingPageId={landingPageId} />
               {coachProfile?.coachBackground && coachProfile.coachBackground.trim().length > 0 && coachProfile.coachBackground.trim().length < 80 && (
                 <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "12px", color: "#FF5B1D", margin: "0 0 12px" }}>
                   Tip: Add your results and credentials for a stronger bio (aim for 80+ characters)

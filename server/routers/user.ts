@@ -144,6 +144,33 @@ export const userRouter = router({
     }),
 
   /**
+   * Toggle a stored asset's user-choice bakes in place (by id) — trust-logo
+   * colour (grayscale) and presenter facing (flip). Re-derives the url from its
+   * current state and UPDATEs the row, so per-logo overrides don't create
+   * duplicate rows. Uses the same imageSlots token helpers as ingestion.
+   */
+  setCoachAssetOption: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      grayscale: z.boolean().optional(),
+      facingFlip: z.boolean().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      const [row] = await db.select().from(coachAssets)
+        .where(and(eq(coachAssets.id, input.id), eq(coachAssets.userId, ctx.user.id)))
+        .limit(1);
+      if (!row) throw new Error("Asset not found");
+      const { setGrayscale, setFacingFlip } = await import("../lib/images/imageSlots");
+      let url = row.url;
+      if (input.grayscale !== undefined) url = setGrayscale(url, input.grayscale);
+      if (input.facingFlip !== undefined) url = setFacingFlip(url, input.facingFlip);
+      await db.update(coachAssets).set({ url }).where(eq(coachAssets.id, row.id));
+      return { id: row.id, url };
+    }),
+
+  /**
    * Delete a coach asset by id
    */
   deleteCoachAsset: protectedProcedure
