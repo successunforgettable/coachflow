@@ -183,14 +183,14 @@ function gate2Section(content: LandingPageContent): string {
   if (outline.length === 0 && testimonials.length === 0) return "";
 
   const bands = outline.slice(0, 3).map((item) => `
-        <div style="background:${CHARCOAL};border:1px solid ${CHARCOAL_BORDER};border-radius:10px;padding:15px 22px;display:flex;align-items:center;gap:14px;">
+        <div style="background:${CHARCOAL};border:1px solid ${CHARCOAL_BORDER};border-radius:10px;padding:17px 22px;display:flex;align-items:center;gap:14px;">
           ${CHECK}
           <span style="font-family:${B};font-size:15px;font-weight:500;color:${BAND_TEXT};line-height:1.4;">${highlightKeyword(String(item.description ?? ""), String(item.title ?? ""))}</span>
         </div>`).join("");
 
   // Real-or-nothing: render only when the coach actually has testimonials.
   const quotes = testimonials.slice(0, 2).map((t) => `
-        <div style="background:${TESTIMONIAL_BG};border-radius:10px;padding:18px 24px;display:flex;gap:16px;align-items:flex-start;">
+        <div style="background:${TESTIMONIAL_BG};border-radius:10px;padding:22px 26px;display:flex;gap:16px;align-items:flex-start;">
           <div aria-hidden="true" style="flex-shrink:0;width:44px;height:44px;border-radius:50%;background:#475569;display:flex;align-items:center;justify-content:center;font-family:${H};font-weight:700;font-size:16px;color:#E2E8F0;text-transform:uppercase;">${esc(initials(String(t.name ?? "")))}</div>
           <div>
             <p style="font-family:${B};font-size:15px;font-weight:400;color:#E2E8F0;line-height:1.5;margin:0 0 8px;">&ldquo;${esc(t.quote ?? "")}&rdquo;</p>
@@ -199,7 +199,7 @@ function gate2Section(content: LandingPageContent): string {
         </div>`).join("");
 
   return `
-  <section style="background:${NAVY};padding:0 24px 56px;">
+  <section style="background:${NAVY};padding:0 24px 60px;">
     <div style="max-width:1050px;margin:0 auto;display:flex;flex-direction:column;gap:14px;">
       ${bands}
       ${quotes ? `<div style="height:6px;"></div>${quotes}` : ""}
@@ -231,19 +231,19 @@ function gate3Section(content: LandingPageContent, serviceName: string, coach: B
   const tiles = Array.isArray(content.featureHighlights) ? content.featureHighlights.filter(ok).slice(0, 8) : [];
 
   const tileGrid = tiles.length > 0 ? `
-      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;max-width:900px;margin:0 auto 44px;">
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;max-width:900px;margin:0 auto 52px;">
         ${tiles.map((line, i) => `
-        <div style="background:#FFFFFF;border:1px solid ${TILE_BORDER};border-radius:10px;padding:16px 18px;display:flex;align-items:center;gap:14px;box-shadow:0 4px 14px rgba(20,30,45,0.05);">
+        <div style="background:#FFFFFF;border:1px solid ${TILE_BORDER};border-radius:10px;padding:18px 20px;display:flex;align-items:center;gap:14px;box-shadow:0 4px 14px rgba(20,30,45,0.05);">
           <span style="flex-shrink:0;line-height:0;">${TILE_ICONS[i % TILE_ICONS.length]}</span>
           <span style="font-family:${B};font-size:14px;font-weight:500;color:${NAVY};line-height:1.4;">${esc(line)}</span>
         </div>`).join("")}
       </div>` : "";
 
   return `
-  <section style="background:${CREAM};padding:56px 24px 60px;">
+  <section style="background:${CREAM};padding:64px 24px 72px;">
     <div style="max-width:1050px;margin:0 auto;">
       <h2 style="font-family:${H};font-weight:800;font-size:clamp(24px,2.4vw,34px);line-height:1.2;letter-spacing:-0.01em;color:${NAVY};text-align:center;margin:0 auto 12px;max-width:780px;">Everything you need, in one simple <span style="color:${ORANGE};">${esc(magnet)}</span>.</h2>
-      <p style="font-family:${B};font-size:16px;color:#64748B;text-align:center;margin:0 auto 40px;max-width:620px;">Use it every day and stay on track.</p>
+      <p style="font-family:${B};font-size:16px;color:#64748B;text-align:center;margin:0 auto 48px;max-width:620px;">Use it every day and stay on track.</p>
       ${tileGrid}
       <div style="max-width:560px;margin:0 auto;background:#FFFFFF;border:2px solid ${ORANGE};border-radius:14px;padding:28px 28px 26px;box-shadow:0 14px 34px rgba(20,30,45,0.10);">
         <h3 style="font-family:${H};font-weight:800;font-size:22px;color:${NAVY};text-align:center;margin:0 0 16px;">Get Your Free ${esc(magnet)} Now!</h3>
