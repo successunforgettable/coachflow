@@ -4,9 +4,9 @@ Evidence labels used throughout: **OBSERVED**, **LIVE-OBSERVED**, **SOURCE-STATE
 
 ## 1. Evidence and source audit
 
-- **SOURCE-STATED — reference URL:** `https://swipepages.com/landing-page-inspiration/brendon-buchard-productivity-sheet-download/`
-- **OBSERVED — frozen desktop screenshot:** accessible and inspected in full, including top 25%, middle 50%, lower 25%, and exact endpoint. Raster: **1600 × 2318 px**.
-- **OBSERVED — frozen mobile screenshot:** accessible and inspected in full using the same region checks. Raster: **828 × 5842 px**.
+- **SOURCE-STATED — SwipePages listing:** `https://swipepages.com/landing-page-inspiration/brendon-buchard-productivity-sheet-download/` (catalogue commentary only — NOT the visual authority).
+- **LIVE-OBSERVED — canonical reference of record:** clean full-page desktop capture of the live page `https://growthday.com/pdf` (live as of 2026-07-13), committed at `docs/landing-page-references/lead_magnet_download--brendon-burchard--productivity-sheet.png`. Raster: **4480 × 4202 px** (high-DPR; ~2× the CSS layout). This file — not any SwipePages catalogue screenshot — is the visual authority. (An earlier `ref-burchard-leads.png` was a SwipePages catalogue screenshot of a *different* Burchard page and has been discarded.)
+- **UNKNOWN — mobile capture:** no mobile screenshot exists on disk yet. Mobile replication is an explicit follow-up; **Gate 1 and every crop in this report are desktop-first** against the 4480 × 4202 file. Mobile-crop lines below are provisional until a mobile capture is committed.
 - **UNKNOWN — CSS viewport/DPR:** screenshot raster dimensions are image dimensions, **not browser CSS viewport dimensions**.
 - **UNKNOWN — tablet:** no frozen tablet screenshot was supplied.
 - **SOURCE-STATED — SwipePages commentary:** calls this a “Brendon Buchard - Productivity Page,” describes a free “1-Page Productivity Sheet” lead magnet, and mentions the hero, CTA, trust count, benefits, and two testimonials.
@@ -14,7 +14,7 @@ Evidence labels used throughout: **OBSERVED**, **LIVE-OBSERVED**, **SOURCE-STATE
 - **OBSERVED — frozen evidence scope:** both device captures begin at the GrowthDay header/logo and end after the copyright/legal footer. Neither endpoint implies additional visible content.
 - **Conflict:** SwipePages prose gives only a compressed account of the lower page. The screenshots visibly prove a cream lower region with a headline/explainer, eight feature tiles, a separately bordered opt-in panel, and a footer.
 
-**VISUAL AUTHORITY: the complete frozen desktop screenshot (1600 × 2318 raster) and complete frozen mobile screenshot (828 × 5842 raster), interpreted independently.**
+**VISUAL AUTHORITY: the complete desktop capture `lead_magnet_download--brendon-burchard--productivity-sheet.png` (4480 × 4202 raster, from growthday.com/pdf). No mobile capture exists yet — mobile is a desktop-first follow-up.**
 
 ## 2. Literal top-to-bottom visual inventory
 
@@ -100,7 +100,7 @@ Evidence labels used throughout: **OBSERVED**, **LIVE-OBSERVED**, **SOURCE-STATE
 ## 5. Global visual shell
 
 - **OBSERVED:** moderately long on desktop and very long on mobile due to stacking.
-- **DERIVED from raster bands:** desktop is roughly 41% navy upper region, 53% cream lower region, and 6% navy footer; these are screenshot proportions, not CSS heights.
+- **MEASURED from the 4480 × 4202 raster:** navy upper region **y 0–2108** (~50%), cream lower region **y 2108–4068** (~47%), navy footer **y 4068–4202** (~3%); raster-pixel proportions, not CSS heights.
 - **OBSERVED:** full-width navy/cream/navy colour bands; content itself is constrained to a centred maximum-width container.
 - **OBSERVED:** dense upper region with compact gaps; airier cream region with a large headline pause before the tile grid.
 - **OBSERVED repeated motifs:** orange emphasis, rounded rectangles, single-line iconography, white form controls, and centred conversion language.
@@ -291,13 +291,13 @@ Mobile preserves the same order but converts the hero, all eight feature tiles, 
 
 ## 20. First prototype gate
 
-**Permanent equality: highest-risk section = Gate 1.**
+**Permanent equality: highest-risk section = Gate 1.** All crop coordinates below are raster pixels of the committed 4480 × 4202 desktop file, full width **x 0–4480**.
 
-- **GATE 1 desktop crop:** from the top edge of the navy page/logo through the bottom edge of the product composite and trust line, stopping before the first benefit band.
-- **GATE 1 mobile crop:** from the top edge/logo through the bottom edge of the product composite, stopping before the first benefit panel.
+- **GATE 1 desktop crop (canonical): `y 0 → 1110`** — page top / growthday logo through the bottom of the hero form + creator/product composite, stopping in the gap before the first charcoal benefit band. Reference landmarks in this file: product-composite bottom ≈ **y 955**, "Download Free 1 Page Productivity Sheet" button bottom ≈ **y 1074**, first benefit band ("Used by millionaires…") top ≈ **y 1141**. The cut at y 1110 sits cleanly between the button and band one.
+- **GATE 1 mobile crop:** PROVISIONAL — no mobile capture on disk; define once a mobile screenshot is committed. Content intent unchanged: page top/logo through product-composite bottom, before the first benefit panel.
 - **Decision rule:** **PASS** only if column balance, headline wrapping, form widths, trust position, image mass, and mobile order align; **TUNE** for local spacing/type/crop drift; **REWORK** for wrong architecture, ordering, or asset composition.
-- **Gate 2:** from first benefit band through bottom of Chris Sommer testimonial; validate three-versus-two rhythm, colour distinction, portrait placement, and mobile wrapping.
-- **Gate 3:** from the navy/cream transition through the footer; validate lower headline, eight-item count/order, 2×4-to-1×8 transformation, final bordered form, and both endpoints.
+- **Gate 2 desktop crop: `y 1141 → 2108`** — first benefit band top through the bottom of the two testimonials (Natalie Cruz + Chris Sommer), ending at the navy→cream boundary; validate three-versus-two rhythm, colour distinction, portrait placement.
+- **Gate 3 desktop crop: `y 2108 → 4202`** — navy→cream boundary through footer bottom (cream lower region y 2108–4068; navy footer y 4068–4202); validate lower headline, eight-item 2×4 grid count/order, final bordered form, and both endpoints.
 
 ## 21. 70%-replica failure diagnosis
 
@@ -339,10 +339,10 @@ Additional checks:
 
 Required renders: **1440×900**, **1280×800**, **768×1024**, **390×844**.
 
-- **Gate 1 desktop crop:** page top through the pixel row immediately before benefit band one, at 1440 and 1280 widths.
-- **Gate 1 mobile crop:** page top through the product composite bottom, before benefit one, at 390 width.
-- **Gate 2 crop:** benefit one top through Chris Sommer block bottom, desktop and mobile.
-- **Gate 3 crop:** exact navy-to-cream boundary through footer bottom; split into lower-intro/grid and final-panel/footer subcrops when review tooling cannot show the full mobile height legibly.
+- **Gate 1 desktop crop:** `y 0–1110` of the 4480 × 4202 file — page top through the row immediately before benefit band one (band one top ≈ y 1141).
+- **Gate 1 mobile crop:** PROVISIONAL — no mobile capture committed yet (desktop-first).
+- **Gate 2 crop:** `y 1141–2108` — benefit band one top through the testimonial block bottom (navy→cream boundary).
+- **Gate 3 crop:** `y 2108–4202` — navy-to-cream boundary through footer bottom (cream y 2108–4068, navy footer y 4068–4202).
 - **Endpoint verification:** last feature tile top through the absolute bottom edge on each device, confirming panel, cream/navy boundary, legal lines, and no invented content.
 
 Overlay comparison is useful for full-width section boundaries, container edges, hero column split, field/button widths, product-image mass, benefit/testimonial edges, lower-grid gutters, final-panel width, and footer height. Pixel diff is misleading for anti-aliasing, unknown font rasterisation, photographic pixels, responsive text reflow across unverified viewport/DPR, and minor compression differences.
