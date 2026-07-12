@@ -1,0 +1,673 @@
+- generic [ref=e3]:
+  - link "Skip to main content" [ref=e4] [cursor=pointer]:
+    - /url: "#main-content"
+  - generic [ref=e5]:
+    - banner [ref=e6]:
+      - generic [ref=e7]:
+        - link [ref=e10] [cursor=pointer]:
+          - /url: /
+          - img [ref=e11]
+        - navigation "Public navigation" [ref=e13]:
+          - list [ref=e14]:
+            - listitem [ref=e15]:
+              - link "Welcome" [ref=e16] [cursor=pointer]:
+                - /url: "#top"
+            - listitem [ref=e17]:
+              - link "Tools" [ref=e18] [cursor=pointer]:
+                - /url: "#tools"
+            - listitem [ref=e19]:
+              - link "Pricing" [ref=e20] [cursor=pointer]:
+                - /url: "#select-plan"
+        - generic [ref=e21]:
+          - link "Login" [ref=e23] [cursor=pointer]:
+            - /url: https://auth.getkong.ai/authorize?response_type=code&client_id=Q4VrzDyXFcvJvxQ3efHQg9zVtiBozDCr&redirect_uri=https://getkong.ai/api/auth/callback&scope=openid%20profile%20email&state=https://getkong.ai/login/?intent=dashboard||https://getkong.ai/api/auth/callback
+          - img [ref=e27] [cursor=pointer]
+    - main [ref=e28]:
+      - generic [ref=e31]:
+        - paragraph [ref=e32]: 🔥 New Ai Ad Tool Trained By $7.8 Billion In ROAS… 🔥
+        - heading "Slash your CPA and scale Meta ads beyond $10k/day with wild new AI copywriting tool + 1000's of proven ad templates in 30-Days" [level=1] [ref=e33]:
+          - text: Slash your CPA and scale Meta ads beyond $10k/day with wild new AI copywriting tool + 1000's of proven ad templates in
+          - generic [ref=e34]: 30-Days
+        - paragraph [ref=e35]: Let's take a look. 10 seconds after you sign up, you'll be generating 100's of winning ads.
+        - generic [ref=e37] [cursor=pointer]:
+          - img [ref=e38]
+          - text: Play Video
+        - link "Get Started Now" [ref=e43] [cursor=pointer]:
+          - /url: "#select-plan"
+      - generic [ref=e45]:
+        - heading "Say goodbye to ad fatigue, low ROAS, lack of new creatives…and Sh*tty agencies." [level=2] [ref=e46]:
+          - text: Say goodbye to ad fatigue, low ROAS, lack of new creatives…and
+          - generic [ref=e47]: Sh*tty agencies.
+        - paragraph [ref=e48]: Creating winning ads in 2025 is 80% creative and 20% media buying. But it's hard to make good ad creative at scale. And the bottleneck is creative, until now…
+      - generic [ref=e50]:
+        - generic [ref=e52]:
+          - img [ref=e55]
+          - img [ref=e58]
+          - img [ref=e61]
+          - img [ref=e64]
+          - generic [ref=e66]:
+            - img
+          - generic [ref=e68]:
+            - img
+          - generic [ref=e70]:
+            - img
+          - generic [ref=e72]:
+            - img
+          - generic [ref=e74]:
+            - img
+          - img [ref=e77]
+          - img [ref=e80]
+          - img [ref=e83]
+          - img [ref=e86]
+          - img [ref=e89]
+          - generic [ref=e91]:
+            - img
+          - generic [ref=e93]:
+            - img
+          - generic [ref=e95]:
+            - img
+          - generic [ref=e97]:
+            - img
+          - generic [ref=e99]:
+            - img
+          - img [ref=e102]
+        - generic [ref=e104]:
+          - img [ref=e107]
+          - img [ref=e110]
+          - img [ref=e113]
+          - img [ref=e116]
+          - generic [ref=e118]:
+            - img
+          - generic [ref=e120]:
+            - img
+          - generic [ref=e122]:
+            - img
+          - generic [ref=e124]:
+            - img
+          - generic [ref=e126]:
+            - img
+          - generic [ref=e128]:
+            - img
+          - img [ref=e131]
+          - img [ref=e134]
+          - img [ref=e137]
+          - img [ref=e140]
+          - generic [ref=e142]:
+            - img
+          - generic [ref=e144]:
+            - img
+          - generic [ref=e146]:
+            - img
+          - generic [ref=e148]:
+            - img
+          - generic [ref=e150]:
+            - img
+          - generic [ref=e152]:
+            - img
+        - generic [ref=e154]:
+          - img [ref=e157]
+          - img [ref=e160]
+          - img [ref=e163]
+          - img [ref=e166]
+          - generic [ref=e168]:
+            - img
+          - generic [ref=e170]:
+            - img
+          - generic [ref=e172]:
+            - img
+          - generic [ref=e174]:
+            - img
+          - generic [ref=e176]:
+            - img
+          - img [ref=e179]
+          - img [ref=e182]
+          - img [ref=e185]
+          - img [ref=e188]
+          - img [ref=e191]
+          - generic [ref=e193]:
+            - img
+          - generic [ref=e195]:
+            - img
+          - generic [ref=e197]:
+            - img
+          - generic [ref=e199]:
+            - img
+          - generic [ref=e201]:
+            - img
+          - img [ref=e204]
+      - generic [ref=e207]:
+        - generic [ref=e208]:
+          - heading "Increase your ROAS by a minimum of 20% guaranteed" [level=3] [ref=e209]
+          - paragraph [ref=e210]: It's true, chicken nugget… But instead of trying to convince you I'm better than ChatGPT or Claude. For writing ads that get people to buy. I guarantee it. Yep, I'll kick they're ass, take their lunch money…and get you at least a 20% uplift in ROAS or I'm free.
+        - img [ref=e212]
+      - generic [ref=e215]:
+        - generic:
+          - img
+        - generic [ref=e216]:
+          - heading "Cut your cost to get a customer instantly" [level=3] [ref=e217]
+          - paragraph [ref=e218]: In a world where ad costs are only going up. You’re profits are getting squeezed like a teenage pimple. And your margins are getting chomped away quicker than a pack of piranhas on Colombian snow. I’m here to help. And will slash your customer acquisition costs (CAC). Take me for a spin and see for yourself.
+      - generic [ref=e221]:
+        - generic [ref=e222]:
+          - heading "Instantly make your ads more profitable period." [level=3] [ref=e223]
+          - paragraph [ref=e224]:
+            - text: What’s the secret sauce? How can I give ChatGPT a wedgie so bad his cousin Claude feels it? PLUS, make better ads that beat 99% of copywriters? It’s in my proprietary private data set. Lemme explain…
+            - text: AI is only as good as the data sets you give it. And my Daddy (Sabri Suby) runs a digital marketing agency that’s generated over $7.8 billion (with a B) in ROAS. We’ve taken that data and fed it into Kong. Creating a large language model (LLM) on the best-performing ad copy and creatives from over $200m in ad spend.
+        - generic:
+          - img
+      - generic [ref=e226]:
+        - paragraph [ref=e227]: ✨ROAS PRODUCING MAGIC✨
+        - heading "Trained by $7.8 billion ROAS" [level=2] [ref=e228]:
+          - text: Trained by
+          - generic [ref=e229]: $7.8 billion
+          - text: ROAS
+        - paragraph [ref=e230]: My AI uses a proprietary large language model (LLM) algorithm. That uses deep learning to process massive private data sets. From $200m in ad spend and $7.8 billion in ROAS. And generate human-like ad copy that converts like crazy.
+      - generic [ref=e234]:
+        - generic [ref=e236]:
+          - paragraph [ref=e238]:
+            - text: ”
+            - strong [ref=e239]: After only 1 week, my Kong ads have cut my CPL in half.
+            - text: For the past 6 months my ad spend has been at $100 per day and cost per lead has been around $10. Now I'm getting twice the leads for $4.27 per lead! This will pay for itself 10,000x over!!”
+          - generic [ref=e240]:
+            - img [ref=e242]
+            - paragraph [ref=e243]: Gary Bailey
+        - generic [ref=e245]:
+          - paragraph [ref=e247]:
+            - strong [ref=e248]: ”I've been tinkering with Al copywriting like a mad scientist in a lab full of word-bots,
+            - text: and let me tell you, I thought I was close to cracking the code. But your Kong Al? It's like comparing a tricycle to a Tesla.”
+          - generic [ref=e249]:
+            - img [ref=e251]
+            - paragraph [ref=e252]: Krste Kovaceski
+        - generic [ref=e254]:
+          - paragraph [ref=e256]:
+            - strong [ref=e257]: ”I got my Meta Ads rocking using Kong.
+            - text: More leads in the first 1hr than l've ever seen in months 😂😂”
+          - generic [ref=e258]:
+            - img [ref=e260]
+            - paragraph [ref=e261]: Corey Edmonds
+        - generic [ref=e263]:
+          - paragraph [ref=e265]:
+            - strong [ref=e266]: ”Kong is amazing!
+            - text: Just got my Facebook ads website leads down to 49 cents per lead!”
+          - generic [ref=e267]:
+            - img [ref=e269]
+            - paragraph [ref=e270]: Amanda Cullity
+        - generic [ref=e272]:
+          - paragraph [ref=e274]:
+            - strong [ref=e275]: ”Was very skeptical... what can this do that ChatGPT or other Als can't do.
+            - text: signed up. tried it. yup not sceptical any more. I now have a mini sabri suby writer on my team. WATCH OUT!””
+          - generic [ref=e276]:
+            - img [ref=e278]
+            - paragraph [ref=e279]: Waheed Dehedhi
+        - generic [ref=e281]:
+          - paragraph [ref=e283]:
+            - text: ”
+            - strong [ref=e284]: After only 1 week, my Kong ads have cut my CPL in half.
+            - text: For the past 6 months my ad spend has been at $100 per day and cost per lead has been around $10. Now I'm getting twice the leads for $4.27 per lead! This will pay for itself 10,000x over!!”
+          - generic [ref=e285]:
+            - img [ref=e287]
+            - paragraph [ref=e288]: Gary Bailey
+        - generic [ref=e290]:
+          - paragraph [ref=e292]:
+            - strong [ref=e293]: ”I've been tinkering with Al copywriting like a mad scientist in a lab full of word-bots,
+            - text: and let me tell you, I thought I was close to cracking the code. But your Kong Al? It's like comparing a tricycle to a Tesla.”
+          - generic [ref=e294]:
+            - img [ref=e296]
+            - paragraph [ref=e297]: Krste Kovaceski
+        - generic [ref=e299]:
+          - paragraph [ref=e301]:
+            - strong [ref=e302]: ”I got my Meta Ads rocking using Kong.
+            - text: More leads in the first 1hr than l've ever seen in months 😂😂”
+          - generic [ref=e303]:
+            - img [ref=e305]
+            - paragraph [ref=e306]: Corey Edmonds
+        - generic [ref=e308]:
+          - paragraph [ref=e310]:
+            - strong [ref=e311]: ”Kong is amazing!
+            - text: Just got my Facebook ads website leads down to 49 cents per lead!”
+          - generic [ref=e312]:
+            - img [ref=e314]
+            - paragraph [ref=e315]: Amanda Cullity
+        - generic [ref=e317]:
+          - paragraph [ref=e319]:
+            - strong [ref=e320]: ”Was very skeptical... what can this do that ChatGPT or other Als can't do.
+            - text: signed up. tried it. yup not sceptical any more. I now have a mini sabri suby writer on my team. WATCH OUT!””
+          - generic [ref=e321]:
+            - img [ref=e323]
+            - paragraph [ref=e324]: Waheed Dehedhi
+      - generic [ref=e326]:
+        - heading "The cost to advertise on Facebook has almost doubled!" [level=2] [ref=e327]:
+          - text: The cost to advertise on
+          - img "Facebook" [ref=e328]
+          - text: has
+          - generic [ref=e329]: almost doubled!
+        - paragraph [ref=e330]: The cost of traffic is going to keep going up. The businesses that will win are the ones that can get the most leverage from traffic.
+        - img "Facebook"
+        - generic [ref=e331]: "Source: enhencer.com"
+      - generic [ref=e333]:
+        - paragraph [ref=e334]: ✨Live Results✨
+        - heading "Before Kong vs After Kong" [level=2] [ref=e335]
+        - img "Facebook"
+      - list [ref=e342]:
+        - listitem [ref=e343]: Kong requires zero change to your business
+        - listitem [ref=e344]: You paste in some basic info about your business.
+        - listitem [ref=e345]: Kong spits out high-converting ads.
+        - listitem [ref=e346]: You paste them into your ads manager
+        - listitem [ref=e347]: Your ad performance skyrockets.
+        - listitem [ref=e348]: Your ROAS improves.
+        - listitem [ref=e349]: Your ads scale.
+        - listitem [ref=e350]: You make more moolah.
+      - generic [ref=e352]:
+        - heading "Old way vs Kong's New AI method" [level=2] [ref=e353]:
+          - text: Old way vs Kong's
+          - generic [ref=e354]: New AI method
+        - generic [ref=e356]:
+          - generic [ref=e357]:
+            - paragraph [ref=e358]: Old Way
+            - generic [ref=e360]:
+              - img [ref=e362]
+              - text: Spend thousands hiring expensive creators and copywriters.
+            - generic [ref=e364]:
+              - img [ref=e366]
+              - text: Wait days or even weeks to get your ads live.
+            - generic [ref=e368]:
+              - img [ref=e370]
+              - text: Launch ads blindly and pray for results.
+            - generic [ref=e372]:
+              - img [ref=e374]
+              - text: Watch your ROAS flatline and your CPA skyrocket.
+            - generic [ref=e376]:
+              - img [ref=e378]
+              - text: Constantly face ad fatigue and creative burnout.
+            - generic [ref=e380]:
+              - img [ref=e382]
+              - text: Waste precious time and money on sh*tty agencies.
+            - generic [ref=e384]:
+              - img [ref=e386]
+              - paragraph [ref=e388]: 🔥 BURNED CASH AND WASTED TIME
+          - generic [ref=e389]:
+            - paragraph [ref=e390]: Kong's new AI method
+            - generic [ref=e392]:
+              - img [ref=e394]
+              - text: Generate killer ad copy instantly with data from $7.8 billion in ROAS.
+            - generic [ref=e396]:
+              - img [ref=e398]
+              - text: Leverage battle-tested AI frameworks and 1000's of proven templates.
+            - generic [ref=e400]:
+              - img [ref=e402]
+              - text: Launch highly profitable ads in minutes—not weeks.
+            - generic [ref=e404]:
+              - img [ref=e406]
+              - text: Slash CPAs, double your ROAS, and effortlessly scale beyond $10k/day.
+            - generic [ref=e408]:
+              - img [ref=e410]
+              - text: Guaranteed results—20% ROAS boost or it's FREE.
+            - generic [ref=e412]:
+              - img [ref=e414]
+              - paragraph [ref=e416]: 🤑 RECORD-BREAKING MONTHS AND PROFITS
+      - generic [ref=e419]:
+        - generic [ref=e421]:
+          - heading "Get high-converting ads that consistently get lower CPAs" [level=2] [ref=e422]
+          - paragraph [ref=e423]: I act like a forensic detective and collect stalker-level insights into your dream customer. I then use these insights and combine them with $7.8 billion of marketing intel. To spit out Facebook ads that are better than 99% of copywriters. You’ll be making ads that stop the scroll, drive conversions, and dominate the market.
+          - link "Sign Up Now" [ref=e424] [cursor=pointer]:
+            - /url: "#select-plan"
+        - img [ref=e426]
+      - generic [ref=e428]:
+        - heading "3 ways Kong will instantly increase Your ad ROI" [level=2] [ref=e429]:
+          - text: 3 ways Kong will instantly increase
+          - generic [ref=e430]: Your ad ROI
+        - list [ref=e431]:
+          - listitem [ref=e432]:
+            - generic [ref=e433]: "1"
+            - text: Kong unlocks more scale and profit from meta ads by slashing CPAs and increasing ROAS
+          - listitem [ref=e434]:
+            - generic [ref=e435]: "2"
+            - text: Kong instantly eliminates huge waste ad spend in buying traffic on unproven ads and unlocks maximum scale
+          - listitem [ref=e436]:
+            - generic [ref=e437]: "3"
+            - text: Kong generates endless winning creatives instantly, crushing ad fatigue and skyrocketing ad profitability
+      - generic [ref=e439]:
+        - heading "Call me daddy ROAS guarantee" [level=2] [ref=e440]:
+          - img [ref=e441]
+          - generic [ref=e442]:
+            - text: Call me daddy ROAS
+            - generic [ref=e443]: guarantee
+          - img [ref=e444]
+        - paragraph [ref=e445]: If Kong doesn't drop your cost per lead or increase your ROI by at least 20% in the next 30 days. You don't pay a single cent.
+      - generic [ref=e447]:
+        - heading "Better ads. Higher CTRs. Higher ROAS. Cheaper CPAs. Lower CPMs. More ad scale." [level=2] [ref=e448]:
+          - text: Better ads. Higher CTRs.
+          - generic [ref=e449]: Higher ROAS.
+          - text: Cheaper CPAs. Lower CPMs. More ad scale.
+        - generic [ref=e450]:
+          - generic:
+            - generic:
+              - generic:
+                - img
+            - generic:
+              - generic:
+                - img
+            - generic:
+              - generic:
+                - img
+            - generic:
+              - generic:
+                - img
+            - generic:
+              - generic:
+                - img
+            - generic:
+              - generic:
+                - img
+        - generic [ref=e451]:
+          - generic:
+            - generic:
+              - generic:
+                - img
+            - generic:
+              - generic:
+                - img
+            - generic:
+              - generic:
+                - img
+            - generic:
+              - generic:
+                - img
+            - generic:
+              - generic:
+                - img
+            - generic:
+              - generic:
+                - img
+      - generic [ref=e453]:
+        - heading "10x better than 99% of Copywriters" [level=2] [ref=e454]:
+          - text: 10x better than 99% of
+          - generic [ref=e455]: Copywriters
+        - generic [ref=e456]:
+          - generic [ref=e457]:
+            - heading "Dream Buyer Avatars" [level=3] [ref=e458]
+            - list [ref=e459]:
+              - listitem [ref=e460]:
+                - img [ref=e461]
+                - generic [ref=e464]: Create a detailed buyer avatar including their deepest desires, beliefs, fears, pains, relationships, goals and emotions.
+              - listitem [ref=e465]:
+                - img [ref=e466]
+                - generic [ref=e469]: Uncover 'obsessed stalker' level insights to boost conversion rates on ads and funnels.
+              - listitem [ref=e470]:
+                - img [ref=e471]
+                - generic [ref=e474]: Discover Deep Seeded Buying triggers to increase ad ROI from all marketing campaigns.
+              - listitem [ref=e475]:
+                - img [ref=e476]
+                - generic [ref=e479]: Find out EXACTLY what your market wants (so you can sell it to them).
+          - generic [ref=e480]:
+            - heading "Facebook Ads" [level=3] [ref=e481]
+            - list [ref=e482]:
+              - listitem [ref=e483]:
+                - img [ref=e484]
+                - generic [ref=e487]: Generate hundreds of ad variations for lead gen and ecommerce with captivating headlines.
+            - img [ref=e488]
+          - generic [ref=e489]:
+            - heading "Proven High-Converting Headlines" [level=3] [ref=e490]
+            - list [ref=e491]:
+              - listitem [ref=e492]:
+                - img [ref=e493]
+                - generic [ref=e496]: Create powerful headlines, and subheadlines designed to capture attention and drive conversions on your landing pages and funnels.
+              - listitem [ref=e497]:
+                - img [ref=e498]
+                - generic [ref=e501]: Opt-in page Headlines
+              - listitem [ref=e502]:
+                - img [ref=e503]
+                - generic [ref=e506]: Webinar Registristration Pages Headlines
+              - listitem [ref=e507]:
+                - img [ref=e508]
+                - generic [ref=e511]: Landing pages Headlines
+      - generic [ref=e513]:
+        - paragraph [ref=e514]: 🔥 Special Launch Pricing 🔥
+        - heading "Write high-converting copy in seconds. Try it now👇" [level=2] [ref=e515]:
+          - text: Write high-converting copy in seconds.
+          - generic [ref=e516]: Try it now👇
+        - paragraph [ref=e517]:
+          - text: Paid plans grant you
+          - strong [ref=e518]: full access to the platform.
+          - text: The agency plan comes with the
+          - strong [ref=e519]: ability to generate additional resources.
+        - generic [ref=e520]:
+          - generic [ref=e523]: Save up to 30%
+          - generic [ref=e524]:
+            - generic [ref=e525] [cursor=pointer]: Monthly
+            - generic [ref=e526] [cursor=pointer]: Yearly
+        - generic [ref=e528]:
+          - generic [ref=e529]:
+            - generic [ref=e530]:
+              - paragraph [ref=e531]: Basic Plan
+              - paragraph [ref=e532]: Free
+              - paragraph
+              - paragraph [ref=e533]: 7 Days Of Limited Functionality, Perfect for Small Businesses and New Advertisers
+              - generic [ref=e534] [cursor=pointer]: Get Started
+            - generic [ref=e536]:
+              - paragraph [ref=e537]: Facebook Ad (Limited Access)
+              - paragraph [ref=e538]: Generate dozens of ad variations for lead gen or ecommerce with captivating headlines.
+              - list [ref=e539]:
+                - listitem [ref=e540]:
+                  - img [ref=e541]
+                  - generic [ref=e544]: 1 Long Form Facebook Ad
+                - listitem [ref=e545]:
+                  - img [ref=e546]
+                  - generic [ref=e549]: 5 Facebook Ad Headlines
+                - listitem [ref=e550]:
+                  - img [ref=e551]
+                  - generic [ref=e554]: 10 High CTR Link Descriptions
+          - generic [ref=e555]:
+            - generic [ref=e556]:
+              - paragraph [ref=e557]: 🔥 Most Popular 🔥
+              - paragraph [ref=e558]: Agency Plan
+              - paragraph [ref=e559]:
+                - generic [ref=e560]:
+                  - text: $299
+                  - generic [ref=e561]: / month
+              - paragraph [ref=e562]: Billed Yearly*
+              - paragraph [ref=e563]: Best option for people running multiple ad accounts, agencies or anyone wanting to run lots of ad variations.
+              - generic [ref=e564] [cursor=pointer]: Get Started
+            - generic [ref=e565]:
+              - generic [ref=e566]:
+                - paragraph [ref=e567]: 8 Dream Buyer Avatars
+                - paragraph [ref=e568]: Create a detailed buyer persona including their deepest desires, beliefs, fears, pains, relationships, goals and emotions.
+                - list [ref=e569]:
+                  - listitem [ref=e570]:
+                    - img [ref=e571]
+                    - generic [ref=e574]: Uncover ‘obsessed stalker’ level insights to boost conversion rates on ads and funnels
+                  - listitem [ref=e575]:
+                    - img [ref=e576]
+                    - generic [ref=e579]: Discover Deep Seeded Buying triggers to increase ad ROI from all marketing campaigns.
+                  - listitem [ref=e580]:
+                    - img [ref=e581]
+                    - generic [ref=e584]: Find out EXACTLY what your market wants (so you can sell it to them).
+              - generic [ref=e585]:
+                - paragraph [ref=e586]: Facebook Ads
+                - paragraph [ref=e587]: Generate hundreds of ad variations for lead gen and ecommerce with captivating headlines.
+                - list [ref=e588]:
+                  - listitem [ref=e589]:
+                    - img [ref=e590]
+                    - generic [ref=e593]: 16 Long Form Facebook Ads
+                  - listitem [ref=e594]:
+                    - img [ref=e595]
+                    - generic [ref=e598]: 200+ Facebook Ad Headlines
+                  - listitem [ref=e599]:
+                    - img [ref=e600]
+                    - generic [ref=e603]: 30 High CTR Link Descriptions
+                  - listitem [ref=e604]:
+                    - img [ref=e605]
+                    - generic [ref=e608]: 2000+ Ad combinations
+              - generic [ref=e609]:
+                - paragraph [ref=e610]: Direct Response Headlines
+                - paragraph [ref=e611]: Create powerful eyebrow copy, headlines and subheadlines designed to capture attention and drive conversions on your landing pages and funnels.
+                - list [ref=e612]:
+                  - listitem [ref=e613]:
+                    - img [ref=e614]
+                    - generic [ref=e617]: 24 Direct Response Headline Sets
+                  - listitem [ref=e618]:
+                    - img [ref=e619]
+                    - generic [ref=e622]: 250+ Killer Headlines Combinations Per Set
+                  - listitem [ref=e623]:
+                    - img [ref=e624]
+                    - generic [ref=e627]: Opt-in page Headlines
+                  - listitem [ref=e628]:
+                    - img [ref=e629]
+                    - generic [ref=e632]: Webinar Registration Pages Headlines
+                  - listitem [ref=e633]:
+                    - img [ref=e634]
+                    - generic [ref=e637]: Landing pages Headlines
+          - generic [ref=e638]:
+            - generic [ref=e639]:
+              - paragraph [ref=e640]: Pro Plan
+              - paragraph [ref=e641]:
+                - generic [ref=e642]:
+                  - text: $79
+                  - generic [ref=e643]: / month
+              - paragraph [ref=e644]: Billed Yearly*
+              - paragraph [ref=e645]: Best option for people running a single ad account, or small businesses
+              - generic [ref=e646] [cursor=pointer]: Get Started
+            - generic [ref=e647]:
+              - generic [ref=e648]:
+                - paragraph [ref=e649]: 2 Dream Buyer Avatars
+                - paragraph [ref=e650]: Create a detailed buyer persona including their deepest desires, beliefs, fears, pains, relationships, goals and emotions.
+                - list [ref=e651]:
+                  - listitem [ref=e652]:
+                    - img [ref=e653]
+                    - generic [ref=e656]: Uncover ‘obsessed stalker’ level insights to boost conversion rates on ads and funnels
+                  - listitem [ref=e657]:
+                    - img [ref=e658]
+                    - generic [ref=e661]: Discover Deep Seeded Buying triggers to increase ad ROI from all marketing campaigns.
+                  - listitem [ref=e662]:
+                    - img [ref=e663]
+                    - generic [ref=e666]: Find out EXACTLY what your market wants (so you can sell it to them).
+              - generic [ref=e667]:
+                - paragraph [ref=e668]: Facebook Ads
+                - paragraph [ref=e669]: Generate hundreds of ad variations for lead gen and ecommerce with captivating headlines.
+                - list [ref=e670]:
+                  - listitem [ref=e671]:
+                    - img [ref=e672]
+                    - generic [ref=e675]: 4 Long Form Facebook Ads
+                  - listitem [ref=e676]:
+                    - img [ref=e677]
+                    - generic [ref=e680]: 200+ Facebook Ad Headlines
+                  - listitem [ref=e681]:
+                    - img [ref=e682]
+                    - generic [ref=e685]: 30 High CTR Link Descriptions
+                  - listitem [ref=e686]:
+                    - img [ref=e687]
+                    - generic [ref=e690]: 1000+ Ad combinations
+              - generic [ref=e691]:
+                - paragraph [ref=e692]: Direct Response Headlines
+                - paragraph [ref=e693]: Create powerful eyebrow copy, headlines and subheadlines designed to capture attention and drive conversions on your landing pages and funnels.
+                - list [ref=e694]:
+                  - listitem [ref=e695]:
+                    - img [ref=e696]
+                    - generic [ref=e699]: 6 Direct Response Headline Sets
+                  - listitem [ref=e700]:
+                    - img [ref=e701]
+                    - generic [ref=e704]: 250+ Killer Headlines Combinations Per Set
+                  - listitem [ref=e705]:
+                    - img [ref=e706]
+                    - generic [ref=e709]: Opt-in page Headlines
+                  - listitem [ref=e710]:
+                    - img [ref=e711]
+                    - generic [ref=e714]: Webinar Registration Pages Headlines
+                  - listitem [ref=e715]:
+                    - img [ref=e716]
+                    - generic [ref=e719]: Landing pages Headlines
+        - paragraph [ref=e721]:
+          - text: "* Prices in USD"
+          - text: Offer subject to terms of use.
+      - generic [ref=e723]:
+        - paragraph [ref=e724]: ✨ KONG AI ✨
+        - heading "Frequently asked questions" [level=2] [ref=e725]:
+          - text: Frequently asked
+          - generic [ref=e726]: questions
+        - generic [ref=e727]:
+          - generic [ref=e728]:
+            - generic [ref=e729] [cursor=pointer]:
+              - heading "What exactly is Kong AI marketing?" [level=5] [ref=e730]
+              - generic [ref=e731]: +
+            - generic [ref=e732]: Kong AI Marketing is the Chuck Norris of AI writing tools—it doesn’t just write copy; it roundhouse kicks your sales targets into next week. Born from a fiery pit of data analysis and ad spend, Kong isn’t just smart; it’s a genius with an attitude, crafting high-converting copy that could sell ice to Eskimos. This ain’t your grandma’s AI. It’s a beast that learns, adapts, and spits out copy so compelling you’ll want to buy your own product.
+          - generic [ref=e733]:
+            - generic [ref=e734] [cursor=pointer]:
+              - heading "How can AI marketing benefit my business?" [level=5] [ref=e735]
+              - generic [ref=e736]: +
+            - generic [ref=e737]: Imagine having a secret weapon that works 24/7, doesn’t drink your coffee, and writes copy that makes your competitors weep. That’s Kong for you. It’s like injecting rocket fuel into your marketing strategy. Kong dives deep into the psyche of your dream customers, delivering personalized copy that speaks directly to their soul. More conversions, skyrocketing ROAS, and a marketing strategy so on point you’ll think it’s magic. In short, it transforms your business from being just another player to the MVP on the digital battlefield.
+          - generic [ref=e738]:
+            - generic [ref=e739] [cursor=pointer]:
+              - heading "Is my data safe with your AI marketing platform?" [level=5] [ref=e740]
+              - generic [ref=e741]: +
+            - generic [ref=e742]: Safer than a nun in a tank. We guard your data like it’s the last slice of pizza at a frat party. Our platform is built with the Fort Knox of digital security measures, ensuring that your data, insights, and killer marketing strategies are locked up tighter than a hipster’s skinny jeans. We don’t play fast and loose with your information; we protect it with the ferocity of a mother bear. No ifs, ands, or buts. Your data’s safety is our top priority, period.
+          - generic [ref=e743]:
+            - generic [ref=e744] [cursor=pointer]:
+              - heading "Do I need to be a tech expert to use your AI marketing platform?" [level=5] [ref=e745]
+              - generic [ref=e746]: +
+            - generic [ref=e747]: Nope. You don’t need to be a coder, hacker, or even know what “HTML” stands for. If you can operate a toaster, you’re overqualified to use Kong. Our platform is as user-friendly as a puppy. Everything’s designed with the understanding that time is money, and you’ve got neither to waste on a steep learning curve. We’ve made it so easy, even your grandma could whip up high-converting copy between baking cookies. Get ready to create, launch, and dominate—no tech degree required.
+          - generic [ref=e748]:
+            - generic [ref=e749] [cursor=pointer]:
+              - heading "How does the platform handle real-time data?" [level=5] [ref=e750]
+              - generic [ref=e751]: +
+            - generic [ref=e752]: Like a day trader on a double espresso. Kong thrives on real-time data, using it to flex, adapt, and refine your marketing strategy faster than a celebrity changes relationship status. It doesn’t just handle real-time data; it devours it for breakfast, turning fresh insights into even fresher copy that targets your audience with sniper accuracy. Live updates? Trending topics? Kong’s on it, ensuring your copy stays relevant, punchy, and more addictive than that last season of your favorite binge-worthy series.
+          - generic [ref=e753]:
+            - generic [ref=e754] [cursor=pointer]:
+              - heading "What languages does Kong support?" [level=5] [ref=e755]
+              - generic [ref=e756]: +
+            - generic [ref=e757]: Kong only speaks English (for now). Rumour has it he has multiple exotic lovers who are teaching him different languages. Stay tuned for his international escapades.
+      - generic [ref=e759]:
+        - paragraph [ref=e760]: 🔥 What you are waiting for? 🔥
+        - heading "Seriously, Yo" [level=1] [ref=e761]:
+          - text: Seriously,
+          - generic [ref=e762]: Yo
+        - paragraph [ref=e763]: What are you still doing reading at this point? You should just say “f*ck it”, sign up and take this lil' bad boy for a spin.
+        - link "Get Started" [ref=e765] [cursor=pointer]:
+          - /url: "#select-plan"
+    - contentinfo [ref=e766]:
+      - img [ref=e768]
+      - generic [ref=e769]:
+        - link [ref=e770] [cursor=pointer]:
+          - /url: https://facebook.com/kingkongco/
+          - img
+        - link [ref=e771] [cursor=pointer]:
+          - /url: https://www.linkedin.com/company/kingkong/
+          - img
+        - link [ref=e772] [cursor=pointer]:
+          - /url: https://www.instagram.com/getkong.ai/
+          - img
+      - generic [ref=e773]:
+        - paragraph [ref=e774]:
+          - text: Copyright ©
+          - link "King Kong" [ref=e775] [cursor=pointer]:
+            - /url: https://kingkong.co/
+          - text: 2026. All Rights Reserved.
+        - paragraph [ref=e776]:
+          - text: Support
+          - generic [ref=e777]: "|"
+          - link "Terms Of Service" [ref=e778] [cursor=pointer]:
+            - /url: /terms-of-service
+          - generic [ref=e779]: "|"
+          - link "Privacy Policy" [ref=e780] [cursor=pointer]:
+            - /url: /privacy-policy
+        - dialog:
+          - generic:
+            - generic:
+              - generic:
+                - button "Close support form":
+                  - img
+                - generic:
+                  - heading "If you got a problem yo we'll (try to) solve it" [level=2]
+                  - paragraph: Check out the hook while my DJ revolves it.
+                  - generic:
+                    - generic:
+                      - generic: Name
+                      - textbox "Name":
+                        - /placeholder: Your Name
+                    - generic:
+                      - generic: Email
+                      - textbox "Email":
+                        - /placeholder: Your Email Address
+                    - generic:
+                      - generic: Your Message
+                      - textbox "Your Message":
+                        - /placeholder: Your Message Here
+                    - button "Request Support"
