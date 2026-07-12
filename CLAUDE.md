@@ -9,6 +9,16 @@
 - **Repo:** github.com/successunforgettable/coachflow
 - **Working dir:** /Users/arfeenkhan/zap-deploy
 
+## 1a. Current State (2026-07-13) — LP rebuild in progress
+
+- **HEAD = origin/railway-build = `a8242a2`.** Gates: TS 35 / vitest 403 (`server/pipeline-fixes.test.ts` 382 + `imageSlots` 16 + `deckCards` 3 + `placeholderLabels` 2).
+- **Deck skipped-null fix LIVE** (served bundle `index-BFSq2I4L.js`; string "showing your current options" present) — Manual deck renders existing content on resume/re-deal instead of an empty deck.
+- **Burchard Productivity lead-magnet template: COMPLETE at template level** — `server/lib/templates/burchardProductivity.ts`, all 3 gates PASS + whole-page pass (through `475b528`). Hero + 3 charcoal benefit bands + 2 testimonials + cream 2×4 tile grid + bottom CTA + navy footer. Bound to cascade fields; `consultationOutline` (3 benefit bands) + `featureHighlights` (8 qualitative NON-numeric tiles) added additively to `lead_magnet_download` generator. Trust line non-numeric (no fabricated count).
+- **Publish wiring SHIPPED (`a8242a2`):** `pageType lead_magnet_download` → `styleMode "lead_magnet_burchard"` → `buildBurchardProductivityHtml`, on BOTH `landingPagePublisher.ts` AND `complianceRewrites.ts` (family swept) via shared `server/lib/templates/leadMagnetPublish.ts`. Other page types keep their pre-existing (still-broken energetic) path — out of scope.
+- **Prod migration 0084 APPLIED + verified:** `landingPages.publishedStyle` enum on prod = `('text','visual','lead_magnet_burchard')`. **Migration 0081 is SUPERSEDED — must NOT be applied** (would re-enable the old rejected energetic/stub designs across all LPs).
+- **🔴 OPEN — next session starts here (fix BEFORE live proof):** blank-slate composite gap. `compositeCard` still renders FAKE stand-ins in the PRODUCTION path (fabricated pink "sheet" for empty `value_stack`; gray silhouette for empty `headshot`). Blank-slate/Auto coaches would publish pages showing these fakes — honesty + unfinished-look problem. Arfeen decided: FIX NOW. Two-piece sprint, CC to investigate-and-PROPOSE first: (1) auto-derive real magnet cover from existing `magnetPdfUrl` (Cloudflare→Cloudinary PDF page-1→image) into `value_stack`/`productCoverUrl`; fallback order coach-uploaded → PDF-derived → graceful empty. (2) replace fake stand-ins with genuinely graceful empty-states (no fabricated artifacts), removed from prod path. `value_stack` is coach-supplied only today (upload/import); no cover generation exists.
+- **Live proof PENDING** (after gap fix): a real blank-slate `lead_magnet` publish in Arfeen's browser → confirm Burchard renders at `/p/{slug}`, energetic absent, DB `publishedStyle=lead_magnet_burchard`. This is a prod-table write (publish UPDATEs `landingPages`) → needs its own explicit "execute". Full detail: `docs/handovers/ZAP_Handover_July13_2026.md`.
+
 ## 2. Deference Rule (compulsory, locked)
 
 - **Product owner:** Arfeen Khan (non-technical) — owns brand/product/scope calls only
