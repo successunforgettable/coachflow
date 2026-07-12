@@ -28,6 +28,7 @@ import ComplianceDial from "./components/ComplianceDial";
 import { trpc } from "@/lib/trpc";
 import { getNodePatience } from "./lib/patienceGuard";
 import { getEarlyLines, getRevealLine, resetBuild } from "./lib/zappyWaitLines";
+import { pickHvcoLongTitles, flattenHeadlineGroups } from "@shared/deckCards";
 import { lazy, Suspense } from "react";
 
 const V2ICPResultPanel = lazy(() => import("./V2ICPResultPanel"));
@@ -121,6 +122,10 @@ const AUTO_STEPS: {
   // instruction-shaped — no Tweak chip in C3 (honest gap, flagged).
   { step: "adCreatives",      field: "selectedAdCreativeBatchId",  stopKey: "adCreatives",      revealLabel: "Ad Images",      tweakable: false },
 ];
+
+// Dealable nodes deal an option deck (Manual mode) — used to show the
+// "generating your options…" loading state only while an option deck is building.
+const DEALABLE_STOP_KEYS = new Set(AUTO_STEPS.filter(s => s.dealable).map(s => s.stopKey));
 
 // C4: scored-node mapping into the W5 complianceRewrites surface.
 const REWRITE_SOURCE: Partial<Record<AutoStepName, { sourceTable: "headlines" | "adCopy"; sourceSubKey?: string }>> = {
@@ -1276,8 +1281,8 @@ export default function V2Trail() {
         const row = await utils.hvco.get.fetch({ id: rowId }) as Record<string, unknown> | null;
         const setId = String(row?.hvcoSetId ?? "");
         if (!setId) return [{ id: rowId, title: "Your Lead Magnet", preview: "", selected: true }];
-        const items = await utils.hvco.getBySetId.fetch({ hvcoSetId: setId }) as { id: number; title: string; tabType: string }[];
-        const long = items.filter(i => i.tabType === "long_titles") as { id: number; title: string; tabType: string; isFavorite?: boolean }[];
+        const items = await utils.hvco.getBySetId.fetch({ hvcoSetId: setId }) as { id: number; title: string; tabType: string; isFavorite?: boolean }[];
+        const long = pickHvcoLongTitles(items);
         return long.map((h) => ({ id: h.id, title: h.title, preview: "", selected: h.id === rowId,
           favouritable: true, favourited: !!h.isFavorite,
         }));
@@ -1288,11 +1293,10 @@ export default function V2Trail() {
         const row = await utils.headlines.get.fetch({ id: rowId }) as Record<string, unknown> | null;
         const setId = String(row?.headlineSetId ?? "");
         if (!setId) return [{ id: rowId, title: "Your Headline", preview: "", selected: true }];
-        const items = await utils.headlines.getBySetId.fetch({ headlineSetId: setId }) as unknown as { id: number; headline: string; subheadline?: string; formulaType: string }[];
-        // Show first 5 (one per formula)
-        const seen = new Set<string>();
-        const picks: typeof items = [];
-        for (const h of items) { if (!seen.has(h.formulaType)) { seen.add(h.formulaType); picks.push(h); } if (picks.length >= 5) break; }
+        // getBySetId returns a GROUPED object ({ headlines: { story, eyebrow, ... } }),
+        // not a flat array — flatten to the first headline of each formula (max 5).
+        const res = await utils.headlines.getBySetId.fetch({ headlineSetId: setId }) as unknown as { headlines?: Record<string, { id: number; headline: string; subheadline?: string }[]> };
+        const picks = flattenHeadlineGroups(res);
         return picks.map((h) => ({ id: h.id, title: h.headline, preview: h.subheadline ?? "", selected: h.id === rowId }));
       }
       case "adCopy": {
@@ -1551,10 +1555,42 @@ export default function V2Trail() {
       // Refresh kit so we know the auto-selected id
       const refreshed = await trailState.refetch();
       kit = (refreshed.data?.kit ?? kit) as Record<string, unknown>;
+
+      // Fetch set → deal cards (350ms simulated dealing from the completed batch).
+      // generatingKey stays set through the fetch so the loading state covers the
+      // whole window; it clears the moment the real deck (or a retry) is shown.
+      let cards: Awaited<ReturnType<typeof fetchDeckCards>> = [];
+      try {
+        cards = (await fetchDeckCards(stepDef, serviceId, jobResult)) ?? [];
+      } catch (deckErr) {
+        console.error("[trail] fetchDeckCards failed", stepDef.step, deckErr);
+        cards = [];
+      }
       setGeneratingKey(null);
 
-      // Fetch set → deal cards (350ms simulated dealing from the completed batch)
-      const cards = await fetchDeckCards(stepDef, serviceId, jobResult);
+      // Zero cards → the options didn't come through. Never render a "pick your
+      // favourite" deck with nothing in it, and never let the node advance on an
+      // unseen auto-selection. Offer an honest retry (node stays pending; the
+      // unified driver re-enters and regenerates cleanly).
+      if (cards.length === 0) {
+        addLive({ type: "zappy-bubble", mood: "idle", text: `Hm — your ${stepDef.revealLabel.toLowerCase()} options didn't come through. Want me to try again?` });
+        collapsePreviousChips();
+        const zeroRetry = addLive({ type: "chip-row", nodeKey: stepDef.step, chips: ["Try again", "Skip — I already have this"] });
+        activeChips.current = { msgId: zeroRetry.id, step: stepDef.step };
+        dealMoreChipChoice.current = null;
+        await waitForManualProceed();
+        if (cancelled.current) return;
+        if (dealMoreChipChoice.current === "skip") {
+          try {
+            await clearStaleMutation.mutateAsync({ campaignKitId: kitId, nodeType: stepDef.stopKey });
+            await skipNodeMutation.mutateAsync({ serviceId, nodeType: stepDef.stopKey });
+            addLive({ type: "system-divider", text: `${stepDef.revealLabel} — skipped (imported)` });
+          } catch { /* non-fatal */ }
+          await trailState.refetch();
+        }
+        return; // re-enter the manual loop: node is still pending on "Try again"
+      }
+
       const deckReveal = getRevealLine(stepDef.step);
       if (deckReveal) addLive({ type: "zappy-bubble", mood: "celebrating", text: deckReveal });
       const divider = addLive({ type: "system-divider", nodeKey: stepDef.stopKey, text: `${stepDef.revealLabel} ready — pick your favourite` });
@@ -1805,7 +1841,16 @@ export default function V2Trail() {
         await trailState.refetch();
       }
       await runUnifiedLoop();
-    })();
+    })().catch((driverErr) => {
+      // Defense-in-depth: an unhandled throw in the driver used to reject
+      // silently, freezing the trail on wait-lines with no error surfaced.
+      // Surface it and clear the loading state so the user isn't stranded.
+      console.error("[trail] driver loop crashed", driverErr);
+      setGeneratingKey(null);
+      if (!cancelled.current) {
+        addLive({ type: "zappy-bubble", mood: "idle", text: "Something tripped up on my end. Refresh and I'll pick up where we left off." });
+      }
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trailState.data, persisted]);
 
@@ -2001,6 +2046,7 @@ export default function V2Trail() {
         }}>
           <ChatThread
             messages={messages}
+            optionsGenerating={(trailState.data?.kit as Record<string, unknown> | undefined)?.path === "manual" && generatingKey != null && DEALABLE_STOP_KEYS.has(generatingKey)}
             campaignStatus={`Campaign: ${stops.filter(s => s.state === "done" || s.state === "imported" || s.state === "stale").length} of ${stops.length} complete`}
             nodeRefMap={nodeRefMap}
             onChipTap={handleChipTap}

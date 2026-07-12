@@ -122,6 +122,12 @@ export interface ChatThreadProps {
   onSendText?: (text: string) => void;
   inputPlaceholder?: string;
   inputDisabled?: boolean;
+  /**
+   * When true, show a skeleton option-deck + "generating your options…" at the
+   * bottom of the thread, so the 15–40s generation window reads as working
+   * rather than a frozen dead space. Driven by the Manual dealable-node flow.
+   */
+  optionsGenerating?: boolean;
 }
 
 // ─── Zappy Chat Avatar (reuses existing SVGs, spec 2.3 motion states) ─────────
@@ -553,6 +559,60 @@ function CardDeck({ msg, onSelect, onHeart }: { msg: ChatMessage; onSelect?: (ca
   );
 }
 
+// Loading state for the Manual option deck — skeleton cards + label so the
+// 15–40s generation window reads as working, not frozen.
+function GeneratingOptions({ reducedMotion }: { reducedMotion: boolean }) {
+  const shimmer = reducedMotion ? "none" : "chat-skeleton-shimmer 1.4s ease-in-out infinite";
+  return (
+    <div style={{ paddingLeft: 44 }}>
+      <div style={{
+        fontFamily: FONT_BODY,
+        fontSize: 12,
+        fontWeight: 600,
+        color: "rgba(26,22,36,0.45)",
+        marginBottom: 8,
+      }}>
+        Generating your options…
+      </div>
+      <div style={{ display: "flex", gap: 12, overflow: "hidden" }}>
+        {[0, 1, 2].map(i => (
+          <div key={i} style={{
+            background: "white",
+            borderRadius: 16,
+            padding: "14px 16px",
+            minWidth: 240,
+            maxWidth: 280,
+            flexShrink: 0,
+            boxShadow: "0 2px 10px rgba(0,0,0,0.06)",
+            opacity: i === 2 ? 0.5 : 1,
+          }}>
+            {[70, 100, 45].map((w, j) => (
+              <div key={j} style={{
+                height: j === 0 ? 14 : 10,
+                width: `${w}%`,
+                borderRadius: 6,
+                marginBottom: 10,
+                background: "linear-gradient(90deg, #EEE9E0 25%, #F5F1EA 50%, #EEE9E0 75%)",
+                backgroundSize: "200% 100%",
+                animation: shimmer,
+              }} />
+            ))}
+            <div style={{
+              height: 32,
+              width: "100%",
+              borderRadius: 9999,
+              marginTop: 4,
+              background: "linear-gradient(90deg, #EEE9E0 25%, #F5F1EA 50%, #EEE9E0 75%)",
+              backgroundSize: "200% 100%",
+              animation: shimmer,
+            }} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function MilestoneBadge({ msg }: { msg: ChatMessage }) {
   if (!msg.milestone) return null;
   return (
@@ -614,7 +674,7 @@ function SystemDivider({ msg }: { msg: ChatMessage }) {
 }
 
 // ─── Main ChatThread ──────────────────────────────────────────────────────────
-export default function ChatThread({ messages, campaignStatus, onChipTap, onDeckSelect, onDeckHeart, onStyleChoose, onTestimonialDone, onQuickFillDone, onFileSelect, nodeRefMap, onSendText, inputPlaceholder, inputDisabled }: ChatThreadProps) {
+export default function ChatThread({ messages, campaignStatus, onChipTap, onDeckSelect, onDeckHeart, onStyleChoose, onTestimonialDone, onQuickFillDone, onFileSelect, nodeRefMap, onSendText, inputPlaceholder, inputDisabled, optionsGenerating }: ChatThreadProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
@@ -691,6 +751,10 @@ export default function ChatThread({ messages, campaignStatus, onChipTap, onDeck
           0% { transform: rotate(0deg) scale(1); }
           50% { transform: rotate(180deg) scale(1.15); }
           100% { transform: rotate(360deg) scale(1); }
+        }
+        @keyframes chat-skeleton-shimmer {
+          0% { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
         }
       `}</style>
 
@@ -773,6 +837,7 @@ export default function ChatThread({ messages, campaignStatus, onChipTap, onDeck
               </div>
             );
           })}
+          {optionsGenerating && <GeneratingOptions reducedMotion={reducedMotion} />}
           <div ref={bottomRef} />
         </div>
 
