@@ -29,6 +29,8 @@ import { trpc } from "@/lib/trpc";
 import { getNodePatience } from "./lib/patienceGuard";
 import { getEarlyLines, getRevealLine, resetBuild } from "./lib/zappyWaitLines";
 import { pickHvcoLongTitles, flattenHeadlineGroups } from "@shared/deckCards";
+import { humanizeUnresolvedTokens } from "@shared/placeholderLabels";
+import { resolveTokensInText } from "./lib/resolveTokens";
 import { lazy, Suspense } from "react";
 
 const V2ICPResultPanel = lazy(() => import("./V2ICPResultPanel"));
@@ -198,6 +200,23 @@ export default function V2Trail() {
   const toggleHvcoFav = trpc.hvco.toggleFavorite.useMutation();
   const utils = trpc.useUtils();
 
+  // Placeholder resolver map — same source the Kit page uses. Trail cards
+  // resolve every fillable token to its value; humanizeUnresolvedTokens (applied
+  // via cleanText below) turns any still-unfilled token into a human label so a
+  // raw [INSERT_…] never leaks into a finished-looking card. Display-only —
+  // stored rows keep the raw token; the Kit editor is where the real value is set.
+  const tokenServiceId = trailState.data?.serviceId ?? undefined;
+  const { data: placeholderEntries } = trpc.placeholders.list.useQuery(
+    { serviceId: tokenServiceId! },
+    { enabled: tokenServiceId != null },
+  );
+  const resolvedMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const e of placeholderEntries ?? []) m[e.token] = e.value;
+    return m;
+  }, [placeholderEntries]);
+  const cleanText = (s: string): string => humanizeUnresolvedTokens(resolveTokensInText(s, resolvedMap));
+
   // C3 tweak surfaces (mapping table from the Sprint 3 pre-flight)
   const regenMechanism = trpc.heroMechanisms.regenerateSingle.useMutation();
   const regenHvco = trpc.hvco.regenerateSingle.useMutation();
@@ -323,7 +342,7 @@ export default function V2Trail() {
   };
 
   // ── Reveal builder — existing per-asset reads ──
-  const buildReveal = async (stepDef: (typeof AUTO_STEPS)[number], kit: Record<string, unknown>) => {
+  const buildRevealRaw = async (stepDef: (typeof AUTO_STEPS)[number], kit: Record<string, unknown>) => {
     const fallback = { eyebrow: stepDef.revealLabel.toUpperCase(), title: `${stepDef.revealLabel} ready`, preview: "Built — full detail in your Campaign Kit." };
     try {
       const idVal = kit[stepDef.field];
@@ -424,6 +443,12 @@ export default function V2Trail() {
       }
     } catch { /* fall through */ }
     return fallback;
+  };
+
+  // Reveal cards resolve/humanize tokens so no raw [INSERT_…] leaks (display-only).
+  const buildReveal = async (stepDef: (typeof AUTO_STEPS)[number], kit: Record<string, unknown>) => {
+    const r = await buildRevealRaw(stepDef, kit);
+    return { ...r, title: cleanText(r.title), preview: cleanText(r.preview) };
   };
 
   // ── C3: Love it / Tweak chips with silence-proceeds (spec 5.1.4) ──
@@ -1255,7 +1280,7 @@ export default function V2Trail() {
   const dealMoreChipChoice = useRef<"lock" | "deal" | "skip" | null>(null);
 
   // ── Sprint 4 C1: fetch the dealable set and build card-deck cards ──
-  const fetchDeckCards = async (
+  const fetchDeckCardsRaw = async (
     stepDef: (typeof AUTO_STEPS)[number],
     serviceId: number,
     jobResult: Record<string, unknown>,
@@ -1344,6 +1369,17 @@ export default function V2Trail() {
         });
       }
     }
+  };
+
+  // Deck option cards resolve/humanize tokens so no raw [INSERT_…] leaks into a
+  // card the coach picks from (display-only — the stored row keeps the raw token).
+  const fetchDeckCards = async (
+    stepDef: (typeof AUTO_STEPS)[number],
+    serviceId: number,
+    jobResult: Record<string, unknown>,
+  ) => {
+    const cards = await fetchDeckCardsRaw(stepDef, serviceId, jobResult);
+    return cards.map(c => ({ ...c, title: cleanText(c.title), preview: cleanText(c.preview) }));
   };
 
   // ── Sprint 4 C1: the manual-mode loop ──
