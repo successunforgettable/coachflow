@@ -259,6 +259,14 @@ SECTIONS TO POPULATE (fill substantively):
   delivers. Make the three cover distinct angles — a headline outcome, a capability
   gained, and a structure/support benefit. First-person singular voice, niche-specific
   to this asset. Keep each description to one line.
+- featureHighlights — up to EIGHT short "what's inside / how it helps" feature lines,
+  shown as a tile grid. Each is a single short phrase describing something concrete the
+  reader gets or can do with the asset (e.g. "A simple one-page format", "Daily focus
+  prompts", "Print-friendly layout", "A short video walkthrough"). Keep them QUALITATIVE:
+  describe the format, the usefulness, and how it fits into a busy day. Do NOT invent
+  quantities, durations, counts, or statistics — no "X years", no "X prompts", no
+  numeric claims unless a real figure is supplied in the input. Positive, first-person
+  singular voice, niche-specific to this asset.
 
 SECTIONS TO LEAVE EMPTY (return as empty string ""):
 - scarcityUrgency: "" (CRITICAL — see banned phrases below)

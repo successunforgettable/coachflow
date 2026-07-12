@@ -463,6 +463,10 @@ export type LandingPageContent = {
     answer: string;
   }>;
   guarantee: string;
+  // Optional (additive). Lead-magnet "what's inside" feature tiles — up to 8 short,
+  // qualitative, NON-numeric lines. Populated only by the lead_magnet_download cascade;
+  // absent (undefined) for every other page type.
+  featureHighlights?: string[];
 };
 
 export const landingPages = mysqlTable("landingPages", {

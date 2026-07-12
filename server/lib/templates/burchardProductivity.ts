@@ -207,10 +207,66 @@ function gate2Section(content: LandingPageContent): string {
   </section>`;
 }
 
+// ── Gate-3: cream lower section (heading + tile grid + CTA card + footer) ─────
+const CREAM = "#FFF7ED";
+const TILE_BORDER = "#F1E4D3";
+const FOOTER_BG = "#1B2538";
+const FOOTER_TEXT = "#94A3B8";
+
+// Small orange glyphs, cycled per tile for visual variety.
+const TILE_ICONS = [
+  `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="${ORANGE}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>`,
+  `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="${ORANGE}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9"/></svg>`,
+  `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="${ORANGE}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4 14h6l-1 8 9-12h-6z"/></svg>`,
+  `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="${ORANGE}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4" fill="${ORANGE}"/></svg>`,
+  `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="${ORANGE}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9h18M8 3v4M16 3v4"/></svg>`,
+  `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="${ORANGE}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 3 14.5 9 21 9.5 16 13.5 17.5 20 12 16.5 6.5 20 8 13.5 3 9.5 9.5 9"/></svg>`,
+];
+
+function gate3Section(content: LandingPageContent, serviceName: string, coach: BurchardCoachInput): string {
+  const magnet = ok(coach.leadMagnetName) ? coach.leadMagnetName! : "Free Guide";
+  const cta = ok(content.primaryCta) ? esc(content.primaryCta) : `Download Free ${esc(magnet)}`;
+  const brand = ok(coach.coachName) ? esc(coach.coachName) : esc(serviceName || "Your Brand");
+  const year = new Date().getFullYear();
+  const tiles = Array.isArray(content.featureHighlights) ? content.featureHighlights.filter(ok).slice(0, 8) : [];
+
+  const tileGrid = tiles.length > 0 ? `
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;max-width:900px;margin:0 auto 44px;">
+        ${tiles.map((line, i) => `
+        <div style="background:#FFFFFF;border:1px solid ${TILE_BORDER};border-radius:10px;padding:16px 18px;display:flex;align-items:center;gap:14px;box-shadow:0 4px 14px rgba(20,30,45,0.05);">
+          <span style="flex-shrink:0;line-height:0;">${TILE_ICONS[i % TILE_ICONS.length]}</span>
+          <span style="font-family:${B};font-size:14px;font-weight:500;color:${NAVY};line-height:1.4;">${esc(line)}</span>
+        </div>`).join("")}
+      </div>` : "";
+
+  return `
+  <section style="background:${CREAM};padding:56px 24px 60px;">
+    <div style="max-width:1050px;margin:0 auto;">
+      <h2 style="font-family:${H};font-weight:800;font-size:clamp(24px,2.4vw,34px);line-height:1.2;letter-spacing:-0.01em;color:${NAVY};text-align:center;margin:0 auto 12px;max-width:780px;">Everything you need, in one simple <span style="color:${ORANGE};">${esc(magnet)}</span>.</h2>
+      <p style="font-family:${B};font-size:16px;color:#64748B;text-align:center;margin:0 auto 40px;max-width:620px;">Use it every day and stay on track.</p>
+      ${tileGrid}
+      <div style="max-width:560px;margin:0 auto;background:#FFFFFF;border:2px solid ${ORANGE};border-radius:14px;padding:28px 28px 26px;box-shadow:0 14px 34px rgba(20,30,45,0.10);">
+        <h3 style="font-family:${H};font-weight:800;font-size:22px;color:${NAVY};text-align:center;margin:0 0 16px;">Get Your Free ${esc(magnet)} Now!</h3>
+        <form style="margin:0;" onsubmit="return false;">
+          <input type="email" placeholder="Email Address" aria-label="Email Address" style="width:100%;box-sizing:border-box;padding:14px 16px;font-family:${B};font-size:16px;color:${NAVY};background:#FFFFFF;border:1px solid #E2E8F0;border-radius:8px;margin:0 0 10px;outline:none;">
+          <button type="submit" style="width:100%;box-sizing:border-box;padding:15px 20px;font-family:${B};font-weight:700;font-size:15px;color:#FFFFFF;background:${ORANGE};border:none;border-radius:8px;cursor:pointer;" onmouseover="this.style.background='${ORANGE_HOVER}'" onmouseout="this.style.background='${ORANGE}'">${cta}</button>
+        </form>
+      </div>
+    </div>
+  </section>
+  <footer style="background:${FOOTER_BG};padding:22px 24px;text-align:center;">
+    <div style="font-family:${B};font-size:12px;color:${FOOTER_TEXT};line-height:1.7;">
+      &copy; ${year} ${brand}. All rights reserved.<br>
+      <a href="#" style="color:${FOOTER_TEXT};text-decoration:none;">Privacy Policy</a> &middot; <a href="#" style="color:${FOOTER_TEXT};text-decoration:none;">Terms</a>
+    </div>
+  </footer>
+  <!-- Footer legal links are placeholders (#). Wire to the coach's real Privacy/Terms
+       URLs at brand-capture / publish time — carry-forward, not this gate. -->`;
+}
+
 /**
- * Full page builder. GATE-1 + GATE-2: hero + benefit bands + testimonials.
- * Downstream sections (cream tile grid, bottom CTA, footer) deliberately omitted
- * until their own gates.
+ * Full page builder. GATE-1 + GATE-2 + GATE-3: hero + benefit bands + testimonials +
+ * cream tile grid + bottom CTA + footer — the full template.
  */
 export function buildBurchardProductivityHtml(
   content: LandingPageContent,
@@ -231,6 +287,7 @@ export function buildBurchardProductivityHtml(
 <body>
 ${heroSection(content, coach)}
 ${gate2Section(content)}
+${gate3Section(content, serviceName, coach)}
 </body>
 </html>`;
 }
