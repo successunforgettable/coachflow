@@ -252,6 +252,13 @@ SECTIONS TO POPULATE (fill substantively):
   reader is in that this asset addresses. Concrete + niche-specific.
 - testimonials — 1-2 short quotes from past readers if available.
 - faq — 2-3 FAQ items about the download (format, how to access, what is included).
+- consultationOutline — exactly THREE benefit items, shown as three benefit bands.
+  Each item has: title = a 2-4 word capability keyword the reader gains (e.g.
+  "Organize & Maximize", "Discipline & Focus", "Structure & Support"); description =
+  one concrete single-line sentence stating who it is for and the outcome the asset
+  delivers. Make the three cover distinct angles — a headline outcome, a capability
+  gained, and a structure/support benefit. First-person singular voice, niche-specific
+  to this asset. Keep each description to one line.
 
 SECTIONS TO LEAVE EMPTY (return as empty string ""):
 - scarcityUrgency: "" (CRITICAL — see banned phrases below)
@@ -261,7 +268,6 @@ SECTIONS TO LEAVE EMPTY (return as empty string ""):
 - solutionIntro: ""
 - insiderAdvantages: ""
 - timeSavingBenefit: ""
-- consultationOutline: []
 - quizSection: { question: "", options: [], answer: "" }
 - guarantee: ""
 - asSeenIn: []

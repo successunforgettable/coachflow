@@ -126,7 +126,7 @@ function heroSection(content: LandingPageContent, coach: BurchardCoachInput): st
     : `<span style="font-family:${H};font-weight:800;font-size:18px;color:${WHITE};letter-spacing:-0.01em;">${esc(coach.coachName || "yourbrand")}</span>`;
 
   return `
-  <section style="background:${NAVY};padding:40px 24px 64px;">
+  <section style="background:${NAVY};padding:40px 24px 34px;">
     <div style="max-width:1050px;margin:0 auto;">
       <div style="margin:0 0 40px;">${logo}</div>
       <div style="display:flex;flex-wrap:wrap;align-items:flex-start;gap:44px;">
@@ -152,9 +152,65 @@ function heroSection(content: LandingPageContent, coach: BurchardCoachInput): st
   </section>`;
 }
 
+// ── Gate-2: benefit bands + testimonials (navy middle section) ───────────────
+const CHARCOAL = "#343137";
+const CHARCOAL_BORDER = "#3F3B42";
+const TESTIMONIAL_BG = "#303A4A";
+const BAND_TEXT = "#E8EAED";
+
+const CHECK = `<svg aria-hidden="true" viewBox="0 0 24 24" width="24" height="24" style="flex-shrink:0;"><circle cx="12" cy="12" r="10.5" fill="none" stroke="${ORANGE}" stroke-width="1.6"/><path d="M7.5 12.3 l3 3 l6.2 -6.6" fill="none" stroke="${ORANGE}" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+/** Emphasise the benefit keyword (uppercased, orange) where it appears in the sentence. */
+function highlightKeyword(sentence: string, keyword: string): string {
+  const safe = esc(sentence);
+  if (!ok(keyword)) return safe;
+  const k = esc(keyword);
+  const idx = safe.toLowerCase().indexOf(k.toLowerCase());
+  const span = (t: string) => `<span style="color:${ORANGE};font-weight:700;text-transform:uppercase;">${t}</span>`;
+  if (idx < 0) return `${span(k)} — ${safe}`; // keyword not embedded → lead with it
+  return safe.slice(0, idx) + span(safe.slice(idx, idx + k.length)) + safe.slice(idx + k.length);
+}
+
+/** Initials monogram from the real testimonial name — no fabricated photo. */
+function initials(name: string): string {
+  const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+  return (parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "");
+}
+
+function gate2Section(content: LandingPageContent): string {
+  const outline = Array.isArray(content.consultationOutline) ? content.consultationOutline : [];
+  const testimonials = Array.isArray(content.testimonials) ? content.testimonials : [];
+  if (outline.length === 0 && testimonials.length === 0) return "";
+
+  const bands = outline.slice(0, 3).map((item) => `
+        <div style="background:${CHARCOAL};border:1px solid ${CHARCOAL_BORDER};border-radius:10px;padding:15px 22px;display:flex;align-items:center;gap:14px;">
+          ${CHECK}
+          <span style="font-family:${B};font-size:15px;font-weight:500;color:${BAND_TEXT};line-height:1.4;">${highlightKeyword(String(item.description ?? ""), String(item.title ?? ""))}</span>
+        </div>`).join("");
+
+  // Real-or-nothing: render only when the coach actually has testimonials.
+  const quotes = testimonials.slice(0, 2).map((t) => `
+        <div style="background:${TESTIMONIAL_BG};border-radius:10px;padding:18px 24px;display:flex;gap:16px;align-items:flex-start;">
+          <div aria-hidden="true" style="flex-shrink:0;width:44px;height:44px;border-radius:50%;background:#475569;display:flex;align-items:center;justify-content:center;font-family:${H};font-weight:700;font-size:16px;color:#E2E8F0;text-transform:uppercase;">${esc(initials(String(t.name ?? "")))}</div>
+          <div>
+            <p style="font-family:${B};font-size:15px;font-weight:400;color:#E2E8F0;line-height:1.5;margin:0 0 8px;">&ldquo;${esc(t.quote ?? "")}&rdquo;</p>
+            <div style="font-family:${B};font-size:14px;font-weight:700;color:${ORANGE};">${esc(t.name ?? "")}</div>
+          </div>
+        </div>`).join("");
+
+  return `
+  <section style="background:${NAVY};padding:0 24px 56px;">
+    <div style="max-width:1050px;margin:0 auto;display:flex;flex-direction:column;gap:14px;">
+      ${bands}
+      ${quotes ? `<div style="height:6px;"></div>${quotes}` : ""}
+    </div>
+  </section>`;
+}
+
 /**
- * Full page builder. GATE-1: only the hero is rendered; downstream sections are
- * deliberately omitted until their own gates.
+ * Full page builder. GATE-1 + GATE-2: hero + benefit bands + testimonials.
+ * Downstream sections (cream tile grid, bottom CTA, footer) deliberately omitted
+ * until their own gates.
  */
 export function buildBurchardProductivityHtml(
   content: LandingPageContent,
@@ -174,6 +230,7 @@ export function buildBurchardProductivityHtml(
 </head>
 <body>
 ${heroSection(content, coach)}
+${gate2Section(content)}
 </body>
 </html>`;
 }
