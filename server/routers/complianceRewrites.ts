@@ -321,7 +321,12 @@ async function republishLandingPageToKv(
 
   let html: string;
   const templateStyleIds = ["executive", "energetic", "clinical", "warm", "bold"] as const;
-  if (templateStyleIds.includes(styleMode as any)) {
+  if (styleMode === "lead_magnet_burchard") {
+    // Family with landingPagePublisher: re-render the Burchard lead-magnet template via
+    // the SAME shared helper so a compliance rewrite never swaps in a different template.
+    const { renderBurchardLeadMagnet } = await import("../lib/templates/leadMagnetPublish");
+    html = await renderBurchardLeadMagnet({ content, serviceName, coachName, assetRows, serviceId: (lp as any).serviceId ?? null });
+  } else if (templateStyleIds.includes(styleMode as any)) {
     const { renderTemplate } = await import("../lib/templates/renderTemplate");
     const { getTemplate } = await import("../lib/templates/registry");
     const template = getTemplate(styleMode as typeof templateStyleIds[number]);

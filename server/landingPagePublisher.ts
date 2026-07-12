@@ -38,7 +38,7 @@ import { eq, and, or, isNull } from "drizzle-orm";
 export type RunLandingPagePublishInput = {
   userId: number;
   landingPageId: number;
-  styleMode: "text" | "visual" | "executive" | "energetic" | "clinical" | "warm" | "bold";
+  styleMode: "text" | "visual" | "executive" | "energetic" | "clinical" | "warm" | "bold" | "lead_magnet_burchard";
 };
 
 export type RunLandingPagePublishResult = {
@@ -131,7 +131,12 @@ export async function runLandingPagePublish(
 
   let html: string;
   const templateStyleIds = ["executive", "energetic", "clinical", "warm", "bold"] as const;
-  if (templateStyleIds.includes(input.styleMode as any)) {
+  if (input.styleMode === "lead_magnet_burchard") {
+    // Bespoke lead-magnet template (route-by-pageType, set by orchestration). Shared
+    // helper keeps this identical to the complianceRewrites re-render path.
+    const { renderBurchardLeadMagnet } = await import("./lib/templates/leadMagnetPublish");
+    html = await renderBurchardLeadMagnet({ content, serviceName, coachName, assetRows, serviceId: lp.serviceId });
+  } else if (templateStyleIds.includes(input.styleMode as any)) {
     const { renderTemplate } = await import("./lib/templates/renderTemplate");
     const { getTemplate } = await import("./lib/templates/registry");
     const template = getTemplate(input.styleMode as typeof templateStyleIds[number]);

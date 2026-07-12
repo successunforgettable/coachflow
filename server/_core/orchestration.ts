@@ -411,7 +411,11 @@ export async function runOrchestrationStep(
         const { publicUrl, slug } = await runLandingPagePublish({
           userId: input.userId,
           landingPageId,
-          styleMode: "energetic",
+          // lead_magnet_download routes to the bespoke Burchard template; all other
+          // page types keep their existing (pre-existing) path unchanged — out of scope here.
+          styleMode: pageTypeForCampaign(input.campaignType) === "lead_magnet_download"
+            ? "lead_magnet_burchard"
+            : "energetic",
         });
         console.log(`[orchestration] LP published to ${publicUrl} (slug=${slug})`);
 
