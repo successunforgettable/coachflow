@@ -28,7 +28,7 @@ import ComplianceDial from "./components/ComplianceDial";
 import { trpc } from "@/lib/trpc";
 import { getNodePatience } from "./lib/patienceGuard";
 import { getEarlyLines, getRevealLine, resetBuild } from "./lib/zappyWaitLines";
-import { pickHvcoLongTitles, flattenHeadlineGroups } from "@shared/deckCards";
+import { pickHvcoLongTitles, flattenHeadlineGroups, resolveDeckSourceId } from "@shared/deckCards";
 import { humanizeUnresolvedTokens } from "@shared/placeholderLabels";
 import { resolveTokensInText } from "./lib/resolveTokens";
 import { lazy, Suspense } from "react";
@@ -1595,9 +1595,13 @@ export default function V2Trail() {
       // Fetch set → deal cards (350ms simulated dealing from the completed batch).
       // generatingKey stays set through the fetch so the loading state covers the
       // whole window; it clears the moment the real deck (or a retry) is shown.
+      // Skipped-node guard: orchestrateStep returns generatedId:null when the node
+      // was already populated — fall back to the committed selected id (kit is
+      // freshly refetched just above) so the deck renders existing content, not empty.
+      const dealJobResult = { ...jobResult, generatedId: resolveDeckSourceId(jobResult.generatedId, kit[stepDef.field]) };
       let cards: Awaited<ReturnType<typeof fetchDeckCards>> = [];
       try {
-        cards = (await fetchDeckCards(stepDef, serviceId, jobResult)) ?? [];
+        cards = (await fetchDeckCards(stepDef, serviceId, dealJobResult)) ?? [];
       } catch (deckErr) {
         console.error("[trail] fetchDeckCards failed", stepDef.step, deckErr);
         cards = [];
@@ -1675,6 +1679,10 @@ export default function V2Trail() {
             addLive({ type: "zappy-bubble", mood: "idle", text: `You've used all your ${stepDef.revealLabel.toLowerCase()} generations for this period. Pick from what's here — they're good.` });
             continue;
           }
+          // Capture the current selection BEFORE nulling it — if regeneration is
+          // skipped (already-populated race), we fall back to this to render the
+          // existing set instead of emptying the deck.
+          const priorSelectedId = kit[stepDef.field] ?? null;
           // NULL the current selection so orchestrateStep re-generates
           try { await updateSelection.mutateAsync({ kitId, [stepDef.field]: null } as any); } catch { /* non-fatal */ }
           setGeneratingKey(stepDef.stopKey);
@@ -1702,13 +1710,19 @@ export default function V2Trail() {
           // Re-deal with new cards
           const redealReveal = getRevealLine(stepDef.step);
           if (redealReveal) addLive({ type: "zappy-bubble", mood: "celebrating", text: redealReveal });
-          const newCards = await fetchDeckCards(stepDef, serviceId, jr2);
-          // Replace the deck in the live messages
-          setLive(prev => prev.map(m => {
-            if (m.id !== deckMsg.id || !m.deck) return m;
-            const updated: ChatMessage = { ...m, deck: { cards: newCards } };
-            return updated;
-          }));
+          const redealJobResult = { ...jr2, generatedId: resolveDeckSourceId(jr2.generatedId, priorSelectedId) };
+          const newCards = await fetchDeckCards(stepDef, serviceId, redealJobResult);
+          // Never replace the live deck with an empty one. If regeneration was
+          // skipped (already-populated) or produced nothing, keep the current set.
+          if (newCards.length === 0) {
+            addLive({ type: "zappy-bubble", mood: "idle", text: "That's already locked in for now — showing your current options." });
+          } else {
+            setLive(prev => prev.map(m => {
+              if (m.id !== deckMsg.id || !m.deck) return m;
+              const updated: ChatMessage = { ...m, deck: { cards: newCards } };
+              return updated;
+            }));
+          }
           await quotaStatus.refetch();
           continue;
         }

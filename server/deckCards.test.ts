@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { pickHvcoLongTitles, flattenHeadlineGroups } from "../shared/deckCards";
+import { pickHvcoLongTitles, flattenHeadlineGroups, resolveDeckSourceId } from "../shared/deckCards";
 
 // Guards the two Manual-wizard deck contract points that silently broke:
 // hvco tabType "long" (not "long_titles"), and headlines' grouped-object shape.
@@ -19,6 +19,14 @@ describe("trail deck-card transforms", () => {
     expect(rows.filter((r) => r.tabType === "long_titles")).toEqual([]);
     // Tolerates empty / missing input without throwing.
     expect(pickHvcoLongTitles([])).toEqual([]);
+  });
+
+  it("resolveDeckSourceId falls back to the committed selected id when the job was skipped (generatedId null)", () => {
+    expect(resolveDeckSourceId(5289, 195)).toBe(5289);        // fresh generation wins
+    expect(resolveDeckSourceId(null, 195)).toBe(195);         // skipped → render existing content
+    expect(resolveDeckSourceId(undefined, 195)).toBe(195);
+    expect(resolveDeckSourceId("5289", undefined)).toBe(5289); // numeric coercion
+    expect(resolveDeckSourceId(null, null)).toBe(null);       // nothing to show
   });
 
   it("flattenHeadlineGroups reads the grouped object (first per formula), never iterates it as an array", () => {

@@ -12,6 +12,20 @@
  * These helpers encode the correct contract; server/deckCards.test.ts guards them.
  */
 
+/**
+ * Resolve the row id the deck should build from. orchestrateStep returns
+ * generatedId:null when a node is already populated (skipped:true) — in that case
+ * fall back to the committed selected*Id (kit[field]) so the deck renders the
+ * EXISTING content instead of an empty deck. Mirrors what the Auto reveal does.
+ * Returns null only when neither a generated nor a selected id is available.
+ */
+export function resolveDeckSourceId(generatedId: unknown, fallbackId: unknown): number | null {
+  const pick = generatedId ?? fallbackId;
+  if (pick == null) return null;
+  const n = Number(pick);
+  return Number.isFinite(n) ? n : null;
+}
+
 /** Lead-magnet "long" titles for the option deck. DB enum: long | short | beast_mode | subheadlines. */
 export function pickHvcoLongTitles<T extends { tabType: string }>(items: T[]): T[] {
   return (items ?? []).filter((i) => i.tabType === "long");
