@@ -1,5 +1,12 @@
 # Alex Hormozi Scale Business Workshop — Visual Replication Report
 
+> ## ⏹ FROZEN CANONICAL REFERENCE (frozen 2026-07-14 — live-page-is-truth)
+> - **In-repo authority:** `docs/landing-page-references/event_registration--alex-hormozi.png` — **4480 × 14636 px**, complete full page (content scan 92.9%, no lazy-load gap).
+> - **Page:** Acquisition.com — Scaling Workshop, **generic "ARE YOU THE THING LIMITING YOUR BUSINESS?" headline** (LIVE IN-PERSON WORKSHOP · LAS VEGAS). Category: `event_registration` (paid variant).
+> - **Canonical-variant decision:** the generic headline version is canonical. A personalized variant ("WEIGHT LOSS CLINICS: ARE YOU THE BIGGEST RISK…") was also captured and is DEPRECATED — do not replicate the personalized headline.
+> - **Source:** live-page full-page capture (no SwipePages wrapper), supplied by Arfeen 2026-07-14.
+> - **Authority note:** this frozen in-repo capture SUPERSEDES the older SwipePages evidence in the body wherever they differ. Judge builds against the in-repo PNG; deep forensic reconciliation happens at the event-template build.
+
 ## 1. Evidence-recovery log
 
 | Source checked | Type | Access | Desktop | Mobile | Decision |

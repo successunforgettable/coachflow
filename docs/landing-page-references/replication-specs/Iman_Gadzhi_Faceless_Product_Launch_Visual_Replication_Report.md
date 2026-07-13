@@ -1,5 +1,11 @@
 # Iman Gadzhi Faceless Product Launch — Visual Replication Research Report
 
+> ## ⏹ FROZEN CANONICAL REFERENCE (frozen 2026-07-14 — live-page-is-truth)
+> - **In-repo authority:** `docs/landing-page-references/event_registration--iman-gadzhi.png` — **4480 × 13966 px**, complete full page (content scan 85.7%, no lazy-load gap).
+> - **Page:** Iman Gadzhi — "Make Money Online Challenge" (LIVE VIRTUAL EVENT, April 27 – May 1). Category: `event_registration` (free-event default).
+> - **Source:** live-page full-page capture (no SwipePages wrapper), supplied by Arfeen 2026-07-14.
+> - **Authority note:** this frozen in-repo capture SUPERSEDES the older ~1600px SwipePages evidence cited in the body wherever they differ. Judge builds against the in-repo PNG; deep section-by-section forensic reconciliation happens at the event-template build.
+
 ## Evidence notation
 
 - **OBSERVED** — directly visible in the frozen desktop or mobile screenshot.

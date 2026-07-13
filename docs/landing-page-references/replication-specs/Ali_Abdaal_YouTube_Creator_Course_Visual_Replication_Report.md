@@ -1,5 +1,11 @@
 # Ali Abdaal — YouTube Creator Course Visual Replication Report
 
+> ## ⏹ FROZEN CANONICAL REFERENCE (frozen 2026-07-14 — live-page-is-truth)
+> - **In-repo authority:** `docs/landing-page-references/sales_page--ali-abdaal.png` — **4480 × 69468 px**, complete full page (content scan 73.4% over a very tall page, largest blank gap only 2.0% — no lazy-load hole).
+> - **Page:** Ali Abdaal — Part-Time YouTuber Academy, crash-course offer page ("Save $100 When You Buy The Part-Time YouTuber Academy"). Category: `sales_page` (default).
+> - **Source:** live-page full-page capture (no SwipePages wrapper), supplied by Arfeen 2026-07-14.
+> - **Authority note:** this frozen in-repo capture SUPERSEDES the ~1600px SwipePages evidence cited in the body wherever they differ. Judge builds against the in-repo PNG; deep section-by-section forensic reconciliation happens at the sales-template build.
+
 ## 1. Evidence and source audit
 
 - **Reference URL:** https://swipepages.com/landing-page-inspiration/ali-abdaal-youtube-creator-course/

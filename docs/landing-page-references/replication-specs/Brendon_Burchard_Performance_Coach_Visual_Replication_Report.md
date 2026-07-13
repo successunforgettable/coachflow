@@ -1,4 +1,11 @@
 
+> ## ✅ DISCOVERY RESOLUTION (2026-07-14) — NO NEW CAPTURE NEEDED. Build from the locked Burchard design language.
+> The `discovery_call_booking` template is **"Burchard design language applied to a discovery-call / booking flow,"** built on the ALREADY-LOCKED, pixel-verified, shipping-proven **Burchard Productivity** design system (`lead_magnet_download--brendon-burchard-productivity.png`, template #1) — NOT a pixel-replica of the page this dossier describes. Reasons, from this dossier + the locked decisions:
+> 1. The page here is a **newsletter opt-in**, not a discovery-call booking — its conversion mechanism (email capture) must be **authored** into a booking CTA regardless, so pixel-replicating it would not yield a booking page.
+> 2. There is **no clean high-res capture** of this page: the dossier's evidence is the ~1080×2574 SwipePages screenshot (below the 4480px bar — do NOT use the old low-res catalog jpg), brendon.com returned 502, and the current live page is a different, simpler "Progress Mode" newsletter.
+> 3. We already own a frozen, verified Burchard design system (Productivity Sheet). Building discovery on that same design language gives brand-consistent, launch-ready output with **no capture gap blocking launch**.
+> **Therefore:** this dossier is retained as design-language reference only (authority/face-forward photography, endorsement geometry, editorial type). Discovery needs no fresh frozen capture; it reuses the locked Burchard Productivity reference with an authored booking mechanism.
+
 VISUAL REPLICATION RESEARCH REPORT
 Brendon Burchard
 Performance Coach Leads Page

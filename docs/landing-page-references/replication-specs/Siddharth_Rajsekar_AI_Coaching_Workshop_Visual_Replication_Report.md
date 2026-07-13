@@ -1,5 +1,10 @@
 # Siddharth Rajsekar AI Coaching Workshop — Visual Replication Research Dossier
 
+> ## ⛔ CAPTURE REJECTED — NOT FROZEN (2026-07-14). RE-CAPTURE NEEDED before the webinar template can be built.
+> - A print-to-PDF capture was supplied and rendered to PNG at 144 DPI (4480 × 21874). Objective content scan: **only 22.3% of the page height has content, with a single 52%-tall contiguous BLANK gap through the middle** (hero + video + stats render at the top; footer renders at the bottom; the entire body — "Is This You", 3-part framework, success-stories grid, trainer bio, free bonuses, FAQ — is blank).
+> - Cause: lazy-loaded content never rendered before print-to-PDF (the exact failure flagged in the freeze-pass instructions). NOT frozen — a bad capture must not become the reference.
+> - **Re-capture needed:** a COMPLETE full-page capture with all lazy sections forced to load (scroll-to-bottom before capture, or a live full-page screenshot). Target ~4480px wide to match the bar. The `webinar_registration` template stays a review-draft until this lands.
+
 **Reference:** <https://swipepages.com/landing-page-inspiration/siddharth-rajsekar-ai-coaching-workshop/>  
 **Evidence lock date:** 11 July 2026  
 **Scope:** one frozen landing-page reference only  
