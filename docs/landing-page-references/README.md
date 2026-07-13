@@ -30,7 +30,7 @@ the prod enum by migration `0085_lp_templates_2_9_publishedstyle.sql` (**held �
 | `event_registration` (paid) | **Alex Hormozi — Scaling Workshop** (generic headline) | `event_registration--alex-hormozi.png` | 4480×14636 | `event_hormozi` | ✅ reference frozen |
 | `sales_page` | **Ali Abdaal — Part-Time YouTuber Academy** | `sales_page--ali-abdaal.png` | 4480×69468 | `sales_ali_abdaal` | ✅ reference frozen |
 | `discovery_call_booking` | **Burchard design language** (see below — no own capture) | *(reuses Burchard Productivity)* | — | `discovery_burchard_performance` | ✅ resolved — no capture needed |
-| `webinar_registration` | **Siddharth Rajsekar — AI Coaching Workshop** | ⛔ capture REJECTED — re-capture needed | — | `webinar_rajsekar_coaching` | ⛔ blocked on clean capture |
+| `webinar_registration` | **Siddharth Rajsekar — AI Coaching Masterclass** | `webinar_registration--rajsekar.png` | 4480×23788 | `webinar_rajsekar_coaching` | ✅ reference frozen |
 
 ### Discovery resolution (2026-07-14)
 `discovery_call_booking` is **"Burchard design language applied to a booking flow,"** built
@@ -41,17 +41,20 @@ high-res capture (SwipePages ~1080px only; brendon.com 502; live page is now a d
 "Progress Mode" newsletter), and we already own a frozen Burchard design system. Detail in
 `replication-specs/Brendon_Burchard_Performance_Coach_Visual_Replication_Report.md`.
 
-### Rajsekar (webinar) — capture REJECTED (all candidates)
-No clean, complete, uncontaminated Rajsekar capture exists yet:
-- The supplied print-to-PDF ("Turn Your Knowledge Into ₹3L/Month…AI" masterclass) was blank
-  below the fold (content scan 22.3%, one 52%-tall contiguous blank gap — lazy-load failure).
-- Two earlier full-height PNGs were complete but **SwipePages-wrapped** (Swipe Pages nav +
-  "Landing Page Inspirations" breadcrumb at the top) — browser-chrome contaminated; one was
-  a different page (a course-enrollment page, not the AI Coaching Workshop).
+### Rajsekar (webinar) — FROZEN (2026-07-14, from saved HTML)
+Frozen from the live masterclass page saved as "Webpage, Complete" (HTML + `_files`) and
+rendered in headless Chrome at 2240px CSS × 2 DPR over a local HTTP origin, driven via the
+DevTools Protocol (`captureBeyondViewport`, measured height) so all lazy sections painted —
+**no blank gap** (unlike the earlier print-to-PDF, which was 22% content / 52% blank, and two
+SwipePages-wrapper PNGs, which were browser-chrome contaminated). All sections present +
+styled: hero → Wistia video → stats bar → "Is This You" cards → 3-Part AI Framework →
+success-stories grid (Riddhi Deorah ₹24 Cr + 11 more) → System Architect bio → Free Bonuses →
+FAQ → footer.
 
-NOT frozen. `webinar_registration` stays a review-draft until a COMPLETE, wrapper-free
-live capture (all lazy sections forced to load) is supplied. Detail in
-`replication-specs/Siddharth_Rajsekar_AI_Coaching_Workshop_...md`.
+**Known imagery gap (non-compromising):** the 12 circular success-story avatar thumbnails
+didn't resolve (empty outlined circles). The hero presenter photo, bio photo and Wistia video
+poster all loaded; all copy/colour/type/layout is complete, so the success-card design is fully
+replicable. Detail in `replication-specs/Siddharth_Rajsekar_AI_Coaching_Workshop_...md`.
 
 ## Deferred post-launch (out of the launch set)
 
@@ -60,7 +63,7 @@ live capture (all lazy sections forced to load) is supplied. Detail in
 - **Jeff Walker — Audience Monetization Blueprint** (`lead_magnet_download` alt): deferred;
   original page dead. Lead-magnet launches on Burchard Productivity.
 - **Rajsekar AI Marketing Workshop** (`webinar_registration` proof-heavy variant): deferred;
-  webinar launches on the AI Coaching page once re-captured.
+  webinar launches on the AI Coaching masterclass (now frozen).
 - `styleMode` enum values for the deferred variants (`sales_jenna_kutcher`,
   `lead_magnet_jeff_walker`, `webinar_rajsekar_marketing`) remain declared/held so they need
   no future migration, but no builder or reference is planned for launch.
@@ -80,5 +83,6 @@ history only.
   template #1's reference chase).
 - Live-page-is-truth: each frozen in-repo capture is the pixel authority and supersedes the
   older SwipePages evidence in its replication spec wherever they differ.
-- Repo-size note: the three new event/sales PNGs total ~65 MB (very tall full pages at 4480px,
-  no lossless optimizer was available). Consider git-lfs for these binaries if repo size matters.
+- Repo-size note: the four new event/sales/webinar PNGs total ~73 MB (very tall full pages at
+  4480px, no lossless optimizer was available). Consider git-lfs for these binaries if repo size
+  matters.
