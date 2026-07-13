@@ -1,20 +1,70 @@
 # Landing-Page Reference Set
 
-The landing-page equivalent of `docs/ad-references/`. Five real, professional coach landing pages — one per ZAP campaign type — that define the visual-quality bar. Full standard: `/LANDING_PAGE_VISUAL_QUALITY_STANDARD.md`.
+The landing-page equivalent of `docs/ad-references/` — the frozen, pixel-verifiable
+captures that define the visual bar for each per-reference template. Full standard:
+`/LANDING_PAGE_VISUAL_QUALITY_STANDARD.md`. Per-reference replication specs:
+`./replication-specs/*.md`. Locked build decisions: memory
+`project_lp_rebuild_locked_decisions`.
 
-**Captured:** 2026-07-10, from the SwipePages "creator" inspiration gallery (`https://swipepages.com/landing-page-inspiration/industry/creator/`). Each file is SwipePages' own full-page desktop screenshot of the reference page, downsampled to ~1000px wide (`?width=1000&quality=72`) to keep the repo light. All five were reviewed first-hand for the standard.
+## Architecture (locked)
 
-| File | Campaign type | Reference | Source (SwipePages detail page) | Base treatment |
+**Per-reference-per-type.** Each of the 5 ZAP page types gets its own bespoke template
+built as a hand-tuned replica of a specific real page (its "reference"). No generic
+"one style × five layouts" engine. Template #1 (Burchard Productivity lead-magnet) is
+built, wired, and shipping-proven; templates 2–9 are the queue. Selection is
+registry-driven (`server/lib/templates/renderRegistry.ts`): a pageType with a built
+template auto-publishes; a pageType without one stages a **review-draft** (never the
+old energetic design).
+
+## The 9-template mapping (templates 2–9 queue)
+
+| # | pageType | Persona / reference | styleMode (registry + enum) | Status |
 |---|---|---|---|---|
-| `sales_page--jenna-kutcher.jpg` | sales_page | Jenna Kutcher — Course Sales | `/landing-page-inspiration/jenna-kutcher-email-list-growth/` | Light (white + pastel bands) |
-| `webinar_registration--marie-forleo.jpg` | webinar_registration | Marie Forleo — Masterclass Signup | `/landing-page-inspiration/marie-forleo-productivity-masterclass-page/` | Bold cobalt-blue, single screen |
-| `discovery_call_booking--brendon-burchard.jpg` | discovery_call_booking | Brendon Burchard | `/landing-page-inspiration/brendon-buchard-performance-coach-leads/` | Light + one dark accent band |
-| `lead_magnet_download--jeff-walker.jpg` | lead_magnet_download | Jeff Walker — Followers-to-Buyers Blueprint | `/landing-page-inspiration/jeff-walker-audience-monetization-blueprint/` | Editorial-dark (navy) |
-| `event_registration--ecom-mixer.jpg` | event_registration | The Ecom Mixer | `/landing-page-inspiration/the-ecom-mixer-ecommerce-networking-event/` | Alternating light/dark |
+| 1 | `lead_magnet_download` | **Brendon Burchard — Productivity Sheet** | `lead_magnet_burchard` | ✅ built · wired · shipping-proven |
+| 2 | `discovery_call_booking` | **Brendon Burchard — Performance Coach** (design-language only; real mechanism is a newsletter opt-in → booking CTA is AUTHORED) | `discovery_burchard_performance` | ⏳ queued |
+| 3 | `webinar_registration` | **Siddharth Rajsekar — AI Coaching Workshop** (lean default) | `webinar_rajsekar_coaching` | ⏳ queued |
+| 4 | `webinar_registration` | **Siddharth Rajsekar — AI Marketing Workshop** (proof-heavy variant) | `webinar_rajsekar_marketing` | ⏳ queued |
+| 5 | `event_registration` | **Iman Gadzhi — Faceless Product Launch** (free-event default) | `event_iman_gadzhi` | ⏳ queued |
+| 6 | `event_registration` | **Alex Hormozi — Scale Business Workshop** (paid variant) | `event_hormozi` | ⏳ queued |
+| 7 | `sales_page` | **Ali Abdaal — YouTube Creator Course** (default) | `sales_ali_abdaal` | ⏳ queued |
+| 8 | `sales_page` | **Jenna Kutcher / Amy Porterfield — Academy Waitlist** (alt) | `sales_jenna_kutcher` | ⏳ queued |
+| — | `lead_magnet_download` | **Jeff Walker — Audience Monetization Blueprint** (alt) | `lead_magnet_jeff_walker` | ⏳ queued |
 
-## Honest notes on the captures
-- **All five captured successfully.** Nothing was substituted.
-- **These are SwipePages' screenshots, not live-page captures** — they are stable (won't change when the real page does) and are the same artifacts SwipePages curates as inspiration. The live pages may differ over time.
-- **Rajsekar** (the alternate for webinar) was available in the gallery (`Siddharth Rajsekar - Workshop Signup`) but **Marie Forleo** was captured for webinar as the cleaner exemplar of the "one bold brand colour, one screen" pattern. Rajsekar can be added later if wanted.
-- **Contradiction with the "light, not dark" locked input (flagged in the standard §1a):** only Jenna is truly light. Marie is bold-blue, Jeff Walker is dark, Ecom Mixer alternates, Burchard is light+one-dark-band. The real shared invariant is face-forward + single-colour discipline + no gradients + real trust — not literal lightness. See §1a and §2 of the standard.
-- **Brendon Burchard's page goal** is newsletter signup, not a discovery-call booking — mapped for its authority/face-forward design language, not its conversion mechanism.
+The styleMode values are declared in `drizzle/schema.ts` and added to the prod enum by
+migration `0085_lp_templates_2_9_publishedstyle.sql` (**held — not applied**). Legacy
+`executive/energetic/clinical/warm/bold` are render-only and are deliberately NOT a valid
+prod publishedStyle (they would re-ship the rejected energetic design).
+
+## Reference-capture readiness (audited 2026-07-13)
+
+Only template #1's reference is launch-ready. The replication specs were written against
+the locked personas above, but the **frozen captures on disk are an older SwipePages set**
+— most locked personas have no matching high-DPR capture yet.
+
+| Reference | On-disk capture | Resolution | Launch-ready? |
+|---|---|---|---|
+| Burchard Productivity (#1) | `lead_magnet_download--brendon-burchard--productivity-sheet.png` | 4480×4202 | ✅ the bar |
+| Burchard Performance (discovery) | `discovery_call_booking--brendon-burchard.jpg` | 1000×2383 | ⚠️ right persona, too low-res |
+| Jeff Walker (lead-magnet alt) | `lead_magnet_download--jeff-walker.jpg` | 1000×3031 | ⚠️ right persona, too low-res |
+| Rajsekar (webinar ×2) | — | — | ❌ no capture |
+| Iman Gadzhi (event) | — (`event_registration--ecom-mixer.jpg` is a different persona) | — | ❌ no capture |
+| Alex Hormozi (event variant) | — | — | ❌ no capture |
+| Ali Abdaal (sales) | — | — | ❌ no capture |
+| Jenna/Amy (sales alt) | `sales_page--jenna-kutcher*.jpg` | 1000px | ⚠️ wrong Jenna page + low-res |
+| Marie Forleo (`webinar_registration--marie-forleo*.jpg`) | present | 1000px | ⚠️ superseded — not in the locked mapping |
+| Ecom Mixer (`event_registration--ecom-mixer.jpg`) | present | 1000px | ⚠️ superseded — not in the locked mapping |
+
+**Batch-capture needed** (high-DPR ~2×, full-page desktop + mobile) before building each
+template: Rajsekar AI Coaching, Rajsekar AI Marketing, Iman Gadzhi, Alex Hormozi, Ali
+Abdaal, Jenna/Amy DCA waitlist (confirm canonical page first), and recaptures of Burchard
+Performance + Jeff Walker at high-DPR. Source URLs are in each persona's replication spec.
+
+## Honest notes
+
+- The 4480px Burchard PNG is the resolution bar — a template can't be pixel-judged against
+  a 1000px downsample. Reference-first is a hard gate (building before a verified capture is
+  what caused template #1's reference chase).
+- Marie Forleo and Ecom Mixer captures are from the earlier 5-persona set and are **not**
+  in the locked 9-template mapping; kept for history, not used as build targets.
+- Burchard's page goal is newsletter signup, not a discovery-call booking — mapped for its
+  authority/face-forward design language; the booking CTA/mechanism is authored.

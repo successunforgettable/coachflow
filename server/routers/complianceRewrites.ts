@@ -29,7 +29,7 @@
 
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, or, sql } from "drizzle-orm";
 import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import {
@@ -309,37 +309,33 @@ async function republishLandingPageToKv(
   const coachName = coachProfileRow?.coachName ?? null;
   const coachBackground = coachProfileRow?.coachBackground ?? null;
 
+  // Fetch per-user (landingPageId IS NULL) + per-LP assets — IDENTICAL scoping to
+  // landingPagePublisher. (Was user-level only, which dropped a per-LP uploaded
+  // image on a compliance re-render — the two paths must resolve the same assets.)
   const assetRows = await db
     .select({ assetType: coachAssets.assetType, url: coachAssets.url })
     .from(coachAssets)
-    .where(eq(coachAssets.userId, userId));
-  const headshotUrl = assetRows.find(a => a.assetType === "headshot")?.url ?? null;
-  const logoUrl = assetRows.find(a => a.assetType === "logo")?.url ?? null;
-  const socialProofUrls = assetRows.filter(a => a.assetType === "social_proof").map(a => a.url);
+    .where(and(
+      eq(coachAssets.userId, userId),
+      or(
+        isNull(coachAssets.landingPageId),
+        eq(coachAssets.landingPageId, landingPageId),
+      ),
+    ));
 
   const { ensureKvNamespace, writeKvPage } = await import("../lib/cloudflare");
-
-  let html: string;
-  const templateStyleIds = ["executive", "energetic", "clinical", "warm", "bold"] as const;
-  if (styleMode === "lead_magnet_burchard") {
-    // Family with landingPagePublisher: re-render the Burchard lead-magnet template via
-    // the SAME shared helper so a compliance rewrite never swaps in a different template.
-    const { renderBurchardLeadMagnet } = await import("../lib/templates/leadMagnetPublish");
-    html = await renderBurchardLeadMagnet({ content, serviceName, coachName, assetRows, serviceId: (lp as any).serviceId ?? null });
-  } else if (templateStyleIds.includes(styleMode as any)) {
-    const { renderTemplate } = await import("../lib/templates/renderTemplate");
-    const { getTemplate } = await import("../lib/templates/registry");
-    const template = getTemplate(styleMode as typeof templateStyleIds[number]);
-    const lpPageType = (lp as any).pageType || "sales_page";
-    html = renderTemplate(content, template, {
-      headshotUrl, logoUrl, socialProofUrls, coachName, coachBackground,
-    }, lpPageType);
-  } else {
-    const { buildTextStyleHtml, buildVisualStyleHtml } = await import("../lib/landingPageHtml");
-    html = styleMode === "visual"
-      ? buildVisualStyleHtml(content, serviceName, { headshotUrl, logoUrl, socialProofUrls, coachName, coachBackground })
-      : buildTextStyleHtml(content, serviceName);
-  }
+  // Same shared registry dispatch as landingPagePublisher — one source of truth so
+  // a rewrite re-renders through the exact same template selection + asset resolution.
+  const { renderLandingPageHtml } = await import("../lib/templates/renderRegistry");
+  const html = await renderLandingPageHtml(styleMode, {
+    content,
+    serviceName,
+    coachName,
+    coachBackground,
+    assetRows,
+    serviceId: (lp as any).serviceId ?? null,
+    pageType: (lp as any).pageType || "sales_page",
+  });
   const namespaceId = await ensureKvNamespace();
   await writeKvPage(namespaceId, lp.publicSlug, html);
 }

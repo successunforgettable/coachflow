@@ -111,11 +111,6 @@ export async function runLandingPagePublish(
         eq(coachAssets.landingPageId, input.landingPageId),
       ),
     ));
-  const headshotUrl = assetRows.find(a => a.assetType === "headshot")?.url ?? null;
-  const logoUrl = assetRows.find(a => a.assetType === "logo")?.url ?? null;
-  const heroImageUrl = assetRows.find(a => a.assetType === "hero_image")?.url ?? null;
-  const socialProofUrls = assetRows.filter(a => a.assetType === "social_proof").map(a => a.url);
-  const pressLogoUrls = assetRows.filter(a => a.assetType === "press_logo").map(a => a.url);
 
   // 5. Slug: re-use existing if already published, else generate stable.
   // ${serviceName-lowercased-hyphenated}-${lpId} is deterministic per LP
@@ -126,43 +121,20 @@ export async function runLandingPagePublish(
       ? `${serviceName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}-${lp.id}`
       : `campaign-${lp.id}`);
 
-  // 6. Build HTML for the picked angle + style mode.
+  // 6. Build HTML via the shared template registry — ONE dispatch that both this
+  // path and the complianceRewrites re-render path call, so a template can never
+  // be swapped by only one of them (the "family, not leaf" rule).
   const { ensureKvNamespace, writeKvPage, deployWorker } = await import("./lib/cloudflare");
-
-  let html: string;
-  const templateStyleIds = ["executive", "energetic", "clinical", "warm", "bold"] as const;
-  if (input.styleMode === "lead_magnet_burchard") {
-    // Bespoke lead-magnet template (route-by-pageType, set by orchestration). Shared
-    // helper keeps this identical to the complianceRewrites re-render path.
-    const { renderBurchardLeadMagnet } = await import("./lib/templates/leadMagnetPublish");
-    html = await renderBurchardLeadMagnet({ content, serviceName, coachName, assetRows, serviceId: lp.serviceId });
-  } else if (templateStyleIds.includes(input.styleMode as any)) {
-    const { renderTemplate } = await import("./lib/templates/renderTemplate");
-    const { getTemplate } = await import("./lib/templates/registry");
-    const template = getTemplate(input.styleMode as typeof templateStyleIds[number]);
-    const lpPageType = (lp as any).pageType || "sales_page";
-    html = renderTemplate(content, template, {
-      headshotUrl,
-      logoUrl,
-      heroImageUrl,
-      socialProofUrls,
-      pressLogoUrls,
-      coachName,
-      coachBackground,
-    }, lpPageType);
-  } else {
-    // Legacy path for "text" / "visual" — existing published pages
-    const { buildTextStyleHtml, buildVisualStyleHtml } = await import("./lib/landingPageHtml");
-    html = input.styleMode === "visual"
-      ? buildVisualStyleHtml(content, serviceName, {
-          headshotUrl,
-          logoUrl,
-          socialProofUrls,
-          coachName,
-          coachBackground,
-        })
-      : buildTextStyleHtml(content, serviceName);
-  }
+  const { renderLandingPageHtml } = await import("./lib/templates/renderRegistry");
+  const html = await renderLandingPageHtml(input.styleMode, {
+    content,
+    serviceName,
+    coachName,
+    coachBackground,
+    assetRows,
+    serviceId: lp.serviceId,
+    pageType: (lp as any).pageType || "sales_page",
+  });
 
   // 6b. B5 hard publish gate: block publish if unfilled placeholders remain.
   const unfilledTokens = html.match(/\[INSERT_[A-Z_0-9]+\]/g);

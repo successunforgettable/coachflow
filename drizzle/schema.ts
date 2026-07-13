@@ -467,6 +467,25 @@ export type LandingPageContent = {
   // qualitative, NON-numeric lines. Populated only by the lead_magnet_download cascade;
   // absent (undefined) for every other page type.
   featureHighlights?: string[];
+
+  // ── Additive per-reference template fields (templates 2–9) ──────────────────
+  // All OPTIONAL. Each template reads only what it needs and OMITS gracefully when a
+  // field is absent (real-or-nothing — numeric proof and price are NEVER fabricated;
+  // Burchard's `trustCount: null` precedent). Declared here as a stable READ SURFACE so
+  // templates 2–9 never stall a build on a missing field. Structured GENERATION of these
+  // is wired per-template when that template is built and gate-judged (the strict
+  // json_schema in landingPageGenerator.ts is extended alongside each template so
+  // existing lead-magnet generation is not changed under this infra sprint).
+  eventSchedule?: {
+    date?: string; time?: string; timezone?: string;
+    durationMins?: number; endDate?: string; venue?: string; language?: string;
+  };
+  proofMetrics?: Array<{ label: string; value: string; icon?: string }>;
+  caseStudies?: Array<{ name: string; quote: string; metrics?: string[]; portraitUrl?: string; chartUrl?: string }>;
+  curriculum?: Array<{ title: string; emoji?: string }>;
+  bonuses?: Array<{ title: string; description: string; value?: string; coverUrl?: string }>;
+  // Operator-captured REAL price — never LLM-generated/fabricated. Absent → pricing omitted.
+  price?: { amount: string; currency?: string; installments?: string };
 };
 
 export const landingPages = mysqlTable("landingPages", {
@@ -504,7 +523,20 @@ export const landingPages = mysqlTable("landingPages", {
   // D4: Cloudflare Workers public URL
   publicSlug: varchar("publicSlug", { length: 255 }).unique(),
   publicUrl: varchar("publicUrl", { length: 500 }),
-  publishedStyle: mysqlEnum("publishedStyle", ["text", "visual", "executive", "energetic", "clinical", "warm", "bold", "lead_magnet_burchard"]).default("text"),
+  // The 5 legacy render-only styles (executive/energetic/clinical/warm/bold) are kept in
+  // the TS enum as a SUPERSET so the legacy renderTemplate path still type-checks, but they
+  // are intentionally NOT in migration 0085's prod target — they must never persist as a
+  // published style (that would re-ship the rejected energetic design). The 8 per-reference
+  // template styles for templates 2–9 are additive; their builders land per-template.
+  publishedStyle: mysqlEnum("publishedStyle", [
+    "text", "visual", "executive", "energetic", "clinical", "warm", "bold",
+    "lead_magnet_burchard",
+    "discovery_burchard_performance",
+    "webinar_rajsekar_coaching", "webinar_rajsekar_marketing",
+    "event_iman_gadzhi", "event_hormozi",
+    "sales_ali_abdaal", "sales_jenna_kutcher",
+    "lead_magnet_jeff_walker",
+  ]).default("text"),
 
   rating: int("rating").default(0),
   selectionScore: decimal("selectionScore", { precision: 5, scale: 2 }),

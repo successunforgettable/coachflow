@@ -53,6 +53,7 @@ import { renderComparisonCard } from "./renderComparisonCard";
 import { generateComparisonPairs, type ComparisonPair } from "./comparisonPairs";
 import { storagePut } from "../storage";
 import { runLandingPagePublish } from "../landingPagePublisher";
+import { styleForPageType } from "../lib/templates/renderRegistry";
 
 // ─── Locked B-2 Zappy script labels ────────────────────────────────────────
 // 10 labels: init + 8 steps + finalize. V2AutoModeProgress (Phase B3) reads
@@ -406,39 +407,50 @@ export async function runOrchestrationStep(
       // deploy hiccups, log warning + continue cascade. LP content is
       // already in DB; user can re-publish via the wizard. Better than
       // failing the entire cascade on a transient Cloudflare API issue.
-      try {
-        await progress(`Publishing your landing page…`);
-        const { publicUrl, slug } = await runLandingPagePublish({
-          userId: input.userId,
-          landingPageId,
-          // lead_magnet_download routes to the bespoke Burchard template; all other
-          // page types keep their existing (pre-existing) path unchanged — out of scope here.
-          styleMode: pageTypeForCampaign(input.campaignType) === "lead_magnet_download"
-            ? "lead_magnet_burchard"
-            : "energetic",
-        });
-        console.log(`[orchestration] LP published to ${publicUrl} (slug=${slug})`);
-
-        // Set kit.selectedLandingPageAngle so the kit page renders the
-        // angle that was just published. Default 'original' matches what
-        // runLandingPagePublish picked (activeAngle was NULL, fell back).
-        const [postPublishKit] = await db
-          .select()
-          .from(campaignKits)
-          .where(and(eq(campaignKits.userId, input.userId), eq(campaignKits.icpId, input.icpId)))
-          .limit(1);
-        if (postPublishKit) {
-          await db
-            .update(campaignKits)
-            .set({ selectedLandingPageAngle: "original", updatedAt: new Date() })
-            .where(eq(campaignKits.id, postPublishKit.id));
-        }
-      } catch (publishErr) {
-        const errorMessage = publishErr instanceof Error ? publishErr.message : String(publishErr);
-        console.warn(
-          `[orchestration] LP publish to Cloudflare failed for landingPageId=${landingPageId}: ${errorMessage}. ` +
-            `Cascade continues; user can re-publish via wizard.`,
+      // Registry-driven style selection. styleForPageType returns the per-reference
+      // template for this pageType, or null when none is built yet. A null → stage
+      // the LP as a review-draft (do NOT auto-publish): this honors the locked HARD
+      // review gate for Auto/Has-Assets AND keeps the rejected "energetic" design
+      // un-shipped for page types whose real template hasn't landed. Publishing
+      // resumes automatically for a pageType the moment its template is registered.
+      // (webinar/event additionally emit [INSERT_EVENT_*] tokens the publish gate
+      // rejects — draft is the correct home until those fields are captured.)
+      const publishStyle = styleForPageType(pageType);
+      if (!publishStyle) {
+        console.log(
+          `[orchestration] ${pageType} has no per-reference template yet — landingPage ${landingPageId} staged as review-draft (not auto-published).`,
         );
+      } else {
+        try {
+          await progress(`Publishing your landing page…`);
+          const { publicUrl, slug } = await runLandingPagePublish({
+            userId: input.userId,
+            landingPageId,
+            styleMode: publishStyle,
+          });
+          console.log(`[orchestration] LP published to ${publicUrl} (slug=${slug})`);
+
+          // Set kit.selectedLandingPageAngle so the kit page renders the
+          // angle that was just published. Default 'original' matches what
+          // runLandingPagePublish picked (activeAngle was NULL, fell back).
+          const [postPublishKit] = await db
+            .select()
+            .from(campaignKits)
+            .where(and(eq(campaignKits.userId, input.userId), eq(campaignKits.icpId, input.icpId)))
+            .limit(1);
+          if (postPublishKit) {
+            await db
+              .update(campaignKits)
+              .set({ selectedLandingPageAngle: "original", updatedAt: new Date() })
+              .where(eq(campaignKits.id, postPublishKit.id));
+          }
+        } catch (publishErr) {
+          const errorMessage = publishErr instanceof Error ? publishErr.message : String(publishErr);
+          console.warn(
+            `[orchestration] LP publish to Cloudflare failed for landingPageId=${landingPageId}: ${errorMessage}. ` +
+              `Cascade continues; user can re-publish via wizard.`,
+          );
+        }
       }
 
       await progress(`Finalising your landing page…`);

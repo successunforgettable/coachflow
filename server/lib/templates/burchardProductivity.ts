@@ -15,6 +15,10 @@
  * binds to the coach's headshot image slot (2:3). No price anywhere (locked rule).
  */
 import type { LandingPageContent } from "../../../drizzle/schema";
+import {
+  esc, ok, imgOrOmit, sectionOrEmpty, stars, checkCircle, initials,
+  highlightKeyword, highlightTerm, tileIconSet, renderDocument,
+} from "./templatePrimitives";
 
 export interface BurchardCoachInput {
   /** Coach photo — headshot slot (2:3). Composed into the card as the cutout, bottom-left. */
@@ -65,9 +69,11 @@ function compositeCard(coach: BurchardCoachInput, magnet: string): string {
 
   // Coach photo — cutout, bottom-left. An empty slot is omitted entirely (no
   // fabricated silhouette); the product centres to fill the card instead.
-  const coachImg = hasCoach
-    ? `<img src="${esc(coach.headshotUrl)}" alt="${esc(coach.coachName || "Your coach")}" style="position:absolute;left:14px;bottom:0;height:80%;width:auto;max-width:46%;object-fit:cover;object-position:top center;">`
-    : "";
+  const coachImg = imgOrOmit(
+    coach.headshotUrl,
+    coach.coachName || "Your coach",
+    "position:absolute;left:14px;bottom:0;height:80%;width:auto;max-width:46%;object-fit:cover;object-position:top center;",
+  );
 
   return `<div style="position:relative;width:100%;max-width:680px;aspect-ratio:1.42;background:#FFFFFF;border-radius:16px;box-shadow:0 24px 60px rgba(0,0,0,0.45);overflow:hidden;display:flex;flex-direction:column;">
     <div aria-hidden="true" style="position:absolute;top:14px;right:14px;width:54px;height:54px;border-radius:50%;background:${ORANGE};display:flex;align-items:center;justify-content:center;color:#fff;font-family:${H};font-weight:800;font-size:14px;transform:rotate(8deg);box-shadow:0 4px 10px rgba(0,0,0,0.18);z-index:3;">FREE</div>
@@ -93,37 +99,13 @@ const FIELD_PLACEHOLDER = "#94A3B8";
 const H = "'Figtree', system-ui, sans-serif";
 const B = "'Figtree', system-ui, sans-serif";
 
-function esc(s: unknown): string {
-  return String(s ?? "")
-    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-}
-const ok = (s: unknown): s is string => typeof s === "string" && s.trim().length > 0;
-
-/**
- * Wrap the first case-insensitive occurrence of the lead-magnet name in the orange
- * emphasis span (the reference's signature treatment). If the headline doesn't name
- * the magnet, the headline renders unchanged — no forced insertion.
- */
-function highlightMagnet(headline: string, magnetName: string | null | undefined): string {
-  const safe = esc(headline);
-  if (!ok(magnetName)) return safe;
-  const escMagnet = esc(magnetName);
-  const idx = safe.toLowerCase().indexOf(escMagnet.toLowerCase());
-  if (idx < 0) return safe;
-  const before = safe.slice(0, idx);
-  const match = safe.slice(idx, idx + escMagnet.length);
-  const after = safe.slice(idx + escMagnet.length);
-  return `${before}<span style="color:${ORANGE};">${match}</span>${after}`;
-}
-
-const STARS = `<span aria-hidden="true" style="color:${ORANGE};font-size:16px;letter-spacing:2px;line-height:1;">★★★★★</span>`;
+const STARS = stars(ORANGE);
 
 /** Gate-1 hero section only. */
 function heroSection(content: LandingPageContent, coach: BurchardCoachInput): string {
   const magnet = ok(coach.leadMagnetName) ? coach.leadMagnetName! : "Free Guide";
   const headlineRaw = ok(content.mainHeadline) ? content.mainHeadline : `This one ${magnet} changed how I work`;
-  const headline = highlightMagnet(headlineRaw, coach.leadMagnetName);
+  const headline = highlightTerm(headlineRaw, coach.leadMagnetName, ORANGE);
   const sub = ok(content.subheadline)
     ? esc(content.subheadline)
     : `Get instant access to the simple tool that helps you stay on track and get more done.`;
@@ -173,24 +155,7 @@ const CHARCOAL_BORDER = "#3F3B42";
 const TESTIMONIAL_BG = "#303A4A";
 const BAND_TEXT = "#E8EAED";
 
-const CHECK = `<svg aria-hidden="true" viewBox="0 0 24 24" width="24" height="24" style="flex-shrink:0;"><circle cx="12" cy="12" r="10.5" fill="none" stroke="${ORANGE}" stroke-width="1.6"/><path d="M7.5 12.3 l3 3 l6.2 -6.6" fill="none" stroke="${ORANGE}" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-
-/** Emphasise the benefit keyword (uppercased, orange) where it appears in the sentence. */
-function highlightKeyword(sentence: string, keyword: string): string {
-  const safe = esc(sentence);
-  if (!ok(keyword)) return safe;
-  const k = esc(keyword);
-  const idx = safe.toLowerCase().indexOf(k.toLowerCase());
-  const span = (t: string) => `<span style="color:${ORANGE};font-weight:700;text-transform:uppercase;">${t}</span>`;
-  if (idx < 0) return `${span(k)} — ${safe}`; // keyword not embedded → lead with it
-  return safe.slice(0, idx) + span(safe.slice(idx, idx + k.length)) + safe.slice(idx + k.length);
-}
-
-/** Initials monogram from the real testimonial name — no fabricated photo. */
-function initials(name: string): string {
-  const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
-  return (parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "");
-}
+const CHECK = checkCircle(ORANGE);
 
 function gate2Section(content: LandingPageContent): string {
   const outline = Array.isArray(content.consultationOutline) ? content.consultationOutline : [];
@@ -200,7 +165,7 @@ function gate2Section(content: LandingPageContent): string {
   const bands = outline.slice(0, 3).map((item) => `
         <div style="background:${CHARCOAL};border:1px solid ${CHARCOAL_BORDER};border-radius:10px;padding:17px 22px;display:flex;align-items:center;gap:14px;">
           ${CHECK}
-          <span style="font-family:${B};font-size:15px;font-weight:500;color:${BAND_TEXT};line-height:1.4;">${highlightKeyword(String(item.description ?? ""), String(item.title ?? ""))}</span>
+          <span style="font-family:${B};font-size:15px;font-weight:500;color:${BAND_TEXT};line-height:1.4;">${highlightKeyword(String(item.description ?? ""), String(item.title ?? ""), ORANGE)}</span>
         </div>`).join("");
 
   // Real-or-nothing: render only when the coach actually has testimonials.
@@ -229,14 +194,7 @@ const FOOTER_BG = "#1B2538";
 const FOOTER_TEXT = "#94A3B8";
 
 // Small orange glyphs, cycled per tile for visual variety.
-const TILE_ICONS = [
-  `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="${ORANGE}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>`,
-  `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="${ORANGE}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9"/></svg>`,
-  `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="${ORANGE}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4 14h6l-1 8 9-12h-6z"/></svg>`,
-  `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="${ORANGE}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4" fill="${ORANGE}"/></svg>`,
-  `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="${ORANGE}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9h18M8 3v4M16 3v4"/></svg>`,
-  `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="${ORANGE}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 3 14.5 9 21 9.5 16 13.5 17.5 20 12 16.5 6.5 20 8 13.5 3 9.5 9.5 9"/></svg>`,
-];
+const TILE_ICONS = tileIconSet(ORANGE);
 
 function gate3Section(content: LandingPageContent, serviceName: string, coach: BurchardCoachInput): string {
   const magnet = ok(coach.leadMagnetName) ? coach.leadMagnetName! : "Free Guide";
@@ -245,14 +203,14 @@ function gate3Section(content: LandingPageContent, serviceName: string, coach: B
   const year = new Date().getFullYear();
   const tiles = Array.isArray(content.featureHighlights) ? content.featureHighlights.filter(ok).slice(0, 8) : [];
 
-  const tileGrid = tiles.length > 0 ? `
+  const tileGrid = sectionOrEmpty(tiles.length > 0, `
       <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;max-width:900px;margin:0 auto 52px;">
         ${tiles.map((line, i) => `
         <div style="background:#FFFFFF;border:1px solid ${TILE_BORDER};border-radius:10px;padding:18px 20px;display:flex;align-items:center;gap:14px;box-shadow:0 4px 14px rgba(20,30,45,0.05);">
           <span style="flex-shrink:0;line-height:0;">${TILE_ICONS[i % TILE_ICONS.length]}</span>
           <span style="font-family:${B};font-size:14px;font-weight:500;color:${NAVY};line-height:1.4;">${esc(line)}</span>
         </div>`).join("")}
-      </div>` : "";
+      </div>`);
 
   return `
   <section style="background:${CREAM};padding:64px 24px 72px;">
@@ -288,21 +246,14 @@ export function buildBurchardProductivityHtml(
   serviceName: string,
   coach: BurchardCoachInput = {},
 ): string {
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${esc(content.mainHeadline || serviceName)}</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<style>*{box-sizing:border-box;}body{margin:0;background:${NAVY};}</style>
-</head>
-<body>
-${heroSection(content, coach)}
-${gate2Section(content)}
-${gate3Section(content, serviceName, coach)}
-</body>
-</html>`;
+  return renderDocument({
+    title: content.mainHeadline || serviceName,
+    fontHref: "https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap",
+    bodyBg: NAVY,
+    body: [
+      heroSection(content, coach),
+      gate2Section(content),
+      gate3Section(content, serviceName, coach),
+    ].join("\n"),
+  });
 }
