@@ -186,6 +186,43 @@ export function slotImageUrl(url: string | null | undefined, assetType: SlotAsse
   return `${p.head}${chained}/${p.tail}`;
 }
 
+// ── PDF page-1 → cover image (lead-magnet composite) ────────────────────────
+// The lead-magnet delivery layer renders each magnet to a PDF and stores it on
+// Cloudinary (resource_type auto → PDFs are image resources). Cloudinary renders
+// page 1 as a JPEG via a pure URL transform, so the coach's REAL magnet cover can
+// fill the Burchard composite when they haven't uploaded their own — no new API,
+// no render job. Verified live against the prod account (dunshei0y): the derived
+// URL returns 200 image/jpeg. The "Created with ZAP · 1/N" footer on page 1 is
+// accepted as-is (optional later polish: crop it out).
+const PDF_COVER_TRANSFORM = "pg_1,f_jpg,c_fit,w_800";
+
+/**
+ * Given a Cloudinary PDF delivery URL, return the delivery URL for page 1 as a
+ * JPEG cover image. Non-Cloudinary or empty urls return "" (caller falls through
+ * to the next cover source). Any baked user-choice tokens are preserved.
+ */
+export function pdfPageOneCoverUrl(pdfUrl: string | null | undefined): string {
+  if (!isCloudinaryUrl(pdfUrl)) return "";
+  const p = parse(pdfUrl)!;
+  const chained = p.baked ? `${PDF_COVER_TRANSFORM}/${p.baked}` : PDF_COVER_TRANSFORM;
+  return `${p.head}${chained}/${p.tail}`;
+}
+
+/**
+ * Resolve the composite's product-cover URL with the locked fallback order:
+ * coach-uploaded value_stack → PDF-derived magnet cover → null (graceful
+ * empty-state, handled in the template). Pure so the ordering is unit-tested
+ * without a DB.
+ */
+export function resolveProductCoverUrl(
+  uploadedUrl: string | null | undefined,
+  magnetPdfUrl: string | null | undefined,
+): string | null {
+  if (typeof uploadedUrl === "string" && uploadedUrl.trim().length > 0) return uploadedUrl;
+  const derived = pdfPageOneCoverUrl(magnetPdfUrl);
+  return derived || null;
+}
+
 /**
  * Explicit width/height for the rendered <img>, preventing Cumulative Layout
  * Shift (research §6 rule 3). null height = intrinsic (wide logo bar).

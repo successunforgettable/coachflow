@@ -40,19 +40,34 @@ function compositeCard(coach: BurchardCoachInput, magnet: string): string {
   const eyebrow = ok(coach.coachName) ? `${esc(coach.coachName).toUpperCase()}'S` : "YOUR BRAND'S";
   const subtitle = "Free instant download";
 
-  // Product cover (value_stack) — main/right. Stand-in = a marked-up sheet.
-  const product = ok(coach.productCoverUrl)
-    ? `<img src="${esc(coach.productCoverUrl)}" alt="${esc(magnet)} cover" style="position:absolute;top:2%;right:16px;width:60%;height:94%;object-fit:contain;object-position:top right;">`
-    : `<div aria-hidden="true" style="position:absolute;top:3%;right:18px;width:56%;height:90%;background:#FFFFFF;border:1px solid #E5E7EB;border-radius:6px;box-shadow:0 8px 22px rgba(0,0,0,0.10);background-image:repeating-linear-gradient(0deg,transparent 0 15px,#F1C0C8 15px 16px);"></div>`;
+  // A real cover (coach-uploaded value_stack, or page 1 of the coach's own magnet
+  // PDF auto-derived at publish time) arrives as productCoverUrl; a real headshot
+  // arrives as headshotUrl. Both are the coach's genuine material.
+  const hasProduct = ok(coach.productCoverUrl);
+  const hasCoach = ok(coach.headshotUrl);
 
-  // Coach photo (headshot) — cutout, bottom-left, overlapping. Stand-in = head/shoulders silhouette.
-  const coachImg = ok(coach.headshotUrl)
+  // Product sits in the right column beside a coach cutout, or centres when there
+  // is no cutout. When the slot is truly empty (e.g. a quiz with no PDF), it
+  // degrades to a ZAP-designed cover panel (Option A) — plainly branded packaging
+  // for the free download, never posing as the coach's own document.
+  const productBox = hasCoach
+    ? "position:absolute;top:3%;right:18px;width:56%;height:90%;"
+    : "position:absolute;top:4%;left:50%;transform:translateX(-50%);width:66%;height:90%;";
+  const product = hasProduct
+    ? `<img src="${esc(coach.productCoverUrl)}" alt="${esc(magnet)} cover" style="${productBox}object-fit:contain;object-position:${hasCoach ? "top right" : "top center"};">`
+    : `<div aria-hidden="true" style="${productBox}background:${NAVY};border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,0.22);overflow:hidden;display:flex;flex-direction:column;">
+         <div style="height:8px;background:${ORANGE};"></div>
+         <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:16px 18px;">
+           <div style="font-family:${B};font-size:10px;font-weight:700;letter-spacing:0.16em;color:${ORANGE};margin-bottom:10px;">FREE DOWNLOAD</div>
+           <div style="font-family:${H};font-weight:800;font-size:clamp(15px,1.7vw,22px);line-height:1.12;color:${WHITE};">${title}</div>
+         </div>
+       </div>`;
+
+  // Coach photo — cutout, bottom-left. An empty slot is omitted entirely (no
+  // fabricated silhouette); the product centres to fill the card instead.
+  const coachImg = hasCoach
     ? `<img src="${esc(coach.headshotUrl)}" alt="${esc(coach.coachName || "Your coach")}" style="position:absolute;left:14px;bottom:0;height:80%;width:auto;max-width:46%;object-fit:cover;object-position:top center;">`
-    : `<svg aria-hidden="true" viewBox="0 0 150 160" style="position:absolute;left:14px;bottom:0;height:92%;width:auto;">
-         <path d="M14 160 q61 -78 122 0 z" fill="#334155"/>
-         <circle cx="75" cy="52" r="42" fill="#94A3B8"/>
-         <rect x="52" y="86" width="46" height="34" rx="8" fill="#94A3B8"/>
-       </svg>`;
+    : "";
 
   return `<div style="position:relative;width:100%;max-width:680px;aspect-ratio:1.42;background:#FFFFFF;border-radius:16px;box-shadow:0 24px 60px rgba(0,0,0,0.45);overflow:hidden;display:flex;flex-direction:column;">
     <div aria-hidden="true" style="position:absolute;top:14px;right:14px;width:54px;height:54px;border-radius:50%;background:${ORANGE};display:flex;align-items:center;justify-content:center;color:#fff;font-family:${H};font-weight:800;font-size:14px;transform:rotate(8deg);box-shadow:0 4px 10px rgba(0,0,0,0.18);z-index:3;">FREE</div>

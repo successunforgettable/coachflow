@@ -9,9 +9,14 @@ import {
   hasGrayscale,
   setFacingFlip,
   hasFacingFlip,
+  pdfPageOneCoverUrl,
+  resolveProductCoverUrl,
 } from "./imageSlots";
 
 const CLD = "https://res.cloudinary.com/dunshei0y/image/upload/v1783804556/coach-assets_x.png";
+// Real prod magnetPdfUrl shape (double .pdf.pdf: relKey carried the extension,
+// Cloudinary appended the delivery format). Verified live: page-1 transform → 200 image/jpeg.
+const PDF = "https://res.cloudinary.com/dunshei0y/image/upload/v1783629307/lead-magnets_1_5686.pdf.pdf";
 
 describe("imageSlots registry", () => {
   it("has the four active slots with correct ratios", () => {
@@ -112,6 +117,47 @@ describe("baked user-choice tokens (no DB column)", () => {
     const ext = "https://cdn.example.com/logo.png";
     expect(setGrayscale(ext, true)).toBe(ext);
     expect(setFacingFlip(ext, true)).toBe(ext);
+  });
+});
+
+describe("pdfPageOneCoverUrl — real magnet cover from the PDF", () => {
+  it("injects the page-1 JPEG transform after /image/upload/, preserving the tail", () => {
+    expect(pdfPageOneCoverUrl(PDF)).toBe(
+      "https://res.cloudinary.com/dunshei0y/image/upload/pg_1,f_jpg,c_fit,w_800/v1783629307/lead-magnets_1_5686.pdf.pdf",
+    );
+  });
+  it("preserves any baked user-choice tokens", () => {
+    const withBaked =
+      "https://res.cloudinary.com/dunshei0y/image/upload/e_grayscale/v1/lead-magnets_1_9.pdf.pdf";
+    expect(pdfPageOneCoverUrl(withBaked)).toBe(
+      "https://res.cloudinary.com/dunshei0y/image/upload/pg_1,f_jpg,c_fit,w_800/e_grayscale/v1/lead-magnets_1_9.pdf.pdf",
+    );
+  });
+  it("returns empty string for non-Cloudinary / null / empty urls", () => {
+    expect(pdfPageOneCoverUrl(null)).toBe("");
+    expect(pdfPageOneCoverUrl(undefined)).toBe("");
+    expect(pdfPageOneCoverUrl("")).toBe("");
+    expect(pdfPageOneCoverUrl("https://cdn.example.com/x.pdf")).toBe("");
+  });
+});
+
+describe("resolveProductCoverUrl — locked fallback order", () => {
+  const uploaded = "https://res.cloudinary.com/dunshei0y/image/upload/v9/coach-assets_cover.png";
+  it("prefers the coach-uploaded value_stack when present", () => {
+    expect(resolveProductCoverUrl(uploaded, PDF)).toBe(uploaded);
+  });
+  it("falls back to the PDF-derived cover when nothing was uploaded", () => {
+    expect(resolveProductCoverUrl(null, PDF)).toBe(
+      "https://res.cloudinary.com/dunshei0y/image/upload/pg_1,f_jpg,c_fit,w_800/v1783629307/lead-magnets_1_5686.pdf.pdf",
+    );
+  });
+  it("returns null (graceful empty-state) when neither source exists", () => {
+    expect(resolveProductCoverUrl(null, null)).toBeNull();
+    expect(resolveProductCoverUrl("", "")).toBeNull();
+    expect(resolveProductCoverUrl("   ", undefined)).toBeNull();
+  });
+  it("treats a quiz (no PDF) as empty → null, not a broken url", () => {
+    expect(resolveProductCoverUrl(null, null)).toBeNull();
   });
 });
 

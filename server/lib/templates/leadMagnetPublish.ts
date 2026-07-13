@@ -9,6 +9,7 @@ import { and, desc, eq } from "drizzle-orm";
 import type { LandingPageContent } from "../../../drizzle/schema";
 import { hvcoTitles } from "../../../drizzle/schema";
 import { getDb } from "../../db";
+import { resolveProductCoverUrl } from "../images/imageSlots";
 import { buildBurchardProductivityHtml } from "./burchardProductivity";
 
 /** Additive publishedStyle enum value that selects the Burchard lead-magnet template. */
@@ -32,21 +33,29 @@ export async function renderBurchardLeadMagnet(opts: {
 
   const headshotUrl = assetRows.find((a) => a.assetType === "headshot")?.url ?? null;
   const logoUrl = assetRows.find((a) => a.assetType === "logo")?.url ?? null;
-  const productCoverUrl = assetRows.find((a) => a.assetType === "value_stack")?.url ?? null;
+  const uploadedCoverUrl = assetRows.find((a) => a.assetType === "value_stack")?.url ?? null;
 
   // Lead-magnet name for the orange emphasis + CTA + card title: the newest "long"
-  // title for this service (the magnet generated earlier in the same cascade).
+  // title for this service (the magnet generated earlier in the same cascade). The
+  // same row also carries magnetPdfUrl (set at cascade step 3, before this LP
+  // publishes at step 6) — page 1 of that PDF is the coach's REAL magnet cover.
   let leadMagnetName: string | null = null;
+  let magnetPdfUrl: string | null = null;
   const db = await getDb();
   if (db && serviceId != null) {
     const [row] = await db
-      .select({ title: hvcoTitles.title })
+      .select({ title: hvcoTitles.title, magnetPdfUrl: hvcoTitles.magnetPdfUrl })
       .from(hvcoTitles)
       .where(and(eq(hvcoTitles.serviceId, serviceId), eq(hvcoTitles.tabType, "long")))
       .orderBy(desc(hvcoTitles.createdAt))
       .limit(1);
     leadMagnetName = row?.title ?? null;
+    magnetPdfUrl = row?.magnetPdfUrl ?? null;
   }
+
+  // Fallback order: coach-uploaded value_stack → real PDF-derived cover → null
+  // (graceful empty-state in the template — never a fabricated stand-in).
+  const productCoverUrl = resolveProductCoverUrl(uploadedCoverUrl, magnetPdfUrl);
 
   return buildBurchardProductivityHtml(content, serviceName, {
     headshotUrl,
