@@ -38,7 +38,7 @@ import { eq, and, or, isNull } from "drizzle-orm";
 export type RunLandingPagePublishInput = {
   userId: number;
   landingPageId: number;
-  styleMode: "text" | "visual" | "executive" | "energetic" | "clinical" | "warm" | "bold" | "lead_magnet_burchard";
+  styleMode: "text" | "visual" | "executive" | "energetic" | "clinical" | "warm" | "bold" | "lead_magnet_burchard" | "discovery_burchard_performance";
 };
 
 export type RunLandingPagePublishResult = {
@@ -133,6 +133,7 @@ export async function runLandingPagePublish(
     coachBackground,
     assetRows,
     serviceId: lp.serviceId,
+    userId: input.userId,
     pageType: (lp as any).pageType || "sales_page",
   });
 

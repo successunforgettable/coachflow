@@ -24,7 +24,7 @@ import { slotImageUrl, type SlotAssetType } from "../images/imageSlots";
 
 export type LpStyleMode =
   | "text" | "visual" | "executive" | "energetic" | "clinical" | "warm" | "bold"
-  | "lead_magnet_burchard";
+  | "lead_magnet_burchard" | "discovery_burchard_performance";
 
 export type AssetRow = { assetType: string; url: string };
 
@@ -36,6 +36,8 @@ export interface TemplateRenderInput {
   /** Full coach-asset set (all slots) — each template picks what it needs. */
   assetRows: AssetRow[];
   serviceId: number | null;
+  /** Owning coach — templates that resolve per-coach data (e.g. discovery's booking URL). */
+  userId: number;
   /** LpPageType string (drives legacy renderTemplate section order). */
   pageType: string;
 }
@@ -125,12 +127,24 @@ async function renderBurchard(input: TemplateRenderInput): Promise<string> {
   });
 }
 
+async function renderDiscovery(input: TemplateRenderInput): Promise<string> {
+  const { renderDiscoveryBurchard } = await import("./discoveryPublish");
+  return renderDiscoveryBurchard({
+    content: input.content,
+    serviceName: input.serviceName,
+    coachName: input.coachName,
+    assetRows: input.assetRows,
+    userId: input.userId,
+  });
+}
+
 /**
  * The registry. To add template N: add its styleMode entry with its `pageType`
  * (so orchestration auto-selects it) and a `render` that calls its builder.
  */
 export const TEMPLATE_REGISTRY: Record<LpStyleMode, TemplateEntry> = {
   lead_magnet_burchard: { pageType: "lead_magnet_download", render: renderBurchard },
+  discovery_burchard_performance: { pageType: "discovery_call_booking", render: renderDiscovery },
   executive: { pageType: null, render: (i) => renderLegacyTemplate(i, "executive") },
   energetic: { pageType: null, render: (i) => renderLegacyTemplate(i, "energetic") },
   clinical: { pageType: null, render: (i) => renderLegacyTemplate(i, "clinical") },

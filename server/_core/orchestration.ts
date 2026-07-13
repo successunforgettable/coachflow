@@ -54,6 +54,7 @@ import { generateComparisonPairs, type ComparisonPair } from "./comparisonPairs"
 import { storagePut } from "../storage";
 import { runLandingPagePublish } from "../landingPagePublisher";
 import { styleForPageType } from "../lib/templates/renderRegistry";
+import { getCoachBookingUrl } from "../lib/coachBookingUrl";
 
 // ─── Locked B-2 Zappy script labels ────────────────────────────────────────
 // 10 labels: init + 8 steps + finalize. V2AutoModeProgress (Phase B3) reads
@@ -416,9 +417,20 @@ export async function runOrchestrationStep(
       // (webinar/event additionally emit [INSERT_EVENT_*] tokens the publish gate
       // rejects — draft is the correct home until those fields are captured.)
       const publishStyle = styleForPageType(pageType);
-      if (!publishStyle) {
+      // Discovery requires a real per-coach booking URL — its CTA is a live calendar link,
+      // and we never publish a dead "Book a Call" button. Absent → stage a review-draft
+      // (same home as an unbuilt page type); the coach adds their booking URL in review,
+      // then re-publishes. (Defense-in-depth: the template also emits [INSERT_BOOKING_URL]
+      // when absent, which the publish placeholder hard-gate would reject anyway.)
+      const discoveryNeedsBookingUrl =
+        publishStyle === "discovery_burchard_performance" &&
+        !(await getCoachBookingUrl(input.userId));
+      if (!publishStyle || discoveryNeedsBookingUrl) {
+        const reason = !publishStyle
+          ? `${pageType} has no per-reference template yet`
+          : "discovery needs a coach booking URL";
         console.log(
-          `[orchestration] ${pageType} has no per-reference template yet — landingPage ${landingPageId} staged as review-draft (not auto-published).`,
+          `[orchestration] landingPage ${landingPageId} staged as review-draft (${reason}); not auto-published.`,
         );
       } else {
         try {
@@ -461,11 +473,16 @@ export async function runOrchestrationStep(
       // V2GeneratorWizard.tsx:2036). Per locked B-2 spec: do not commit
       // to "nurture" — wizard's pre-existing default IS welcome.
       const [svc] = await db.select().from(services).where(eq(services.id, input.serviceId)).limit(1);
+      // Fill the per-coach booking URL so discovery-call email CTAs resolve instead of
+      // falling back to [INSERT_BOOKING_URL] (the pre-existing gap this closes). Null when
+      // the coach hasn't supplied one → the builder keeps its token, as before.
+      const emailBookingUrl = await getCoachBookingUrl(input.userId);
       const { id } = await runEmailSequenceGeneration({
         userId: input.userId,
         serviceId: input.serviceId,
         sequenceType: "welcome",
         name: svc?.name ? `${svc.name} — Welcome Sequence` : "Welcome Sequence",
+        eventDetails: emailBookingUrl ? { bookingUrl: emailBookingUrl } : undefined,
       });
       generatedId = id;
       break;
@@ -473,6 +490,7 @@ export async function runOrchestrationStep(
     case "whatsappSequence": {
       // Defaults match WA Zod schema: engagement / conversational / 3.
       const [svc] = await db.select().from(services).where(eq(services.id, input.serviceId)).limit(1);
+      const waBookingUrl = await getCoachBookingUrl(input.userId);
       const { id } = await runWhatsappSequenceGeneration({
         userId: input.userId,
         serviceId: input.serviceId,
@@ -480,6 +498,7 @@ export async function runOrchestrationStep(
         name: svc?.name ? `${svc.name} — Engagement Sequence` : "Engagement Sequence",
         tone: "conversational",
         sequenceLength: 3,
+        eventDetails: waBookingUrl ? { bookingUrl: waBookingUrl } : undefined,
       });
       generatedId = id;
       break;

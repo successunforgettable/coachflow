@@ -188,9 +188,12 @@ PAGE TYPE: 1:1 discovery call booking page.
 SECTIONS TO POPULATE (fill substantively):
 - eyebrowHeadline, mainHeadline, subheadline, primaryCta — booking hero.
   CTA: "Book a Discovery Call", "Apply for a Call", "Reserve Your Slot".
-- insiderAdvantages — re-purposed as "What we'll cover in [duration]" —
-  3-bullet list of specific topics the call addresses. Use [INSERT_
-  BOOKING_DURATION] if duration not supplied; never invent durations.
+- consultationOutline — exactly THREE items, shown as three benefit bands, covering
+  what the call addresses. Each item: title = a 2-4 word topic keyword the reader gains
+  clarity on (e.g. "Clarify Your Offer", "Map Your Path", "Spot The Gap"); description =
+  one concrete single-line sentence on what that part of the call covers for the reader.
+  First-person singular voice, niche-specific to this offer. Do NOT invent call durations,
+  dates, cohort windows, or specific outcomes.
 - testimonials — 1-2 short quotes from past clients if available.
 - faq — 2-3 FAQ items about the call (duration, what to prepare, is it a sales call).
 
@@ -202,7 +205,7 @@ SECTIONS TO LEAVE EMPTY (return as empty string ""):
 - uniqueMechanism: ""
 - solutionIntro: ""
 - timeSavingBenefit: ""
-- consultationOutline: []
+- insiderAdvantages: ""
 - quizSection: { question: "", options: [], answer: "" }
 - guarantee: ""
 - asSeenIn: []

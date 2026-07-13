@@ -106,6 +106,16 @@ export function tileIconSet(color: string): string[] {
   ];
 }
 
+/**
+ * A CTA anchor that actually navigates (booking pages link to a real calendar, unlike the
+ * lead-magnet hero's decorative form). `href` is escaped as-is: pass the coach's real URL,
+ * or a literal `[INSERT_BOOKING_URL]` token when absent so the publish placeholder hard-gate
+ * blocks the page (defense-in-depth for the review-draft-when-absent rule).
+ */
+export function ctaLink(href: string, label: string, style: string): string {
+  return `<a href="${esc(href)}" style="${style}">${esc(label)}</a>`;
+}
+
 // ── Document shell ────────────────────────────────────────────────────────────
 
 /**

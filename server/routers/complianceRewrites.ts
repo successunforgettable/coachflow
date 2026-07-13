@@ -334,6 +334,7 @@ async function republishLandingPageToKv(
     coachBackground,
     assetRows,
     serviceId: (lp as any).serviceId ?? null,
+    userId,
     pageType: (lp as any).pageType || "sales_page",
   });
   const namespaceId = await ensureKvNamespace();

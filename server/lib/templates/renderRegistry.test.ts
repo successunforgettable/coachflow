@@ -18,19 +18,20 @@ function inputWith(assetRows: { assetType: string; url: string }[]): TemplateRen
     coachBackground: null,
     assetRows,
     serviceId: null,
+    userId: 1,
     pageType: "sales_page",
   };
 }
 
 describe("styleForPageType — the orchestration publish/draft decision", () => {
-  it("returns the built per-reference template for lead_magnet_download", () => {
+  it("returns the built per-reference templates", () => {
     expect(styleForPageType("lead_magnet_download")).toBe("lead_magnet_burchard");
+    expect(styleForPageType("discovery_call_booking")).toBe("discovery_burchard_performance");
   });
   it("returns null for page types with no template yet → orchestration stages a review-draft", () => {
     expect(styleForPageType("webinar_registration")).toBeNull();
     expect(styleForPageType("event_registration")).toBeNull();
     expect(styleForPageType("sales_page")).toBeNull();
-    expect(styleForPageType("discovery_call_booking")).toBeNull();
   });
   it("never returns the rejected energetic style for a fresh page", () => {
     for (const pt of ["sales_page", "webinar_registration", "event_registration", "discovery_call_booking"]) {
@@ -63,9 +64,11 @@ describe("coachAssetOptionsFrom — slotImageUrl wired for structural slots", ()
 });
 
 describe("registry shape + dispatch", () => {
-  it("only lead_magnet_burchard is a per-reference (auto-selectable) template today", () => {
+  it("lead_magnet_burchard + discovery_burchard_performance are the per-reference (auto-selectable) templates today", () => {
     const withPageType = Object.entries(TEMPLATE_REGISTRY).filter(([, e]) => e.pageType !== null);
-    expect(withPageType.map(([k]) => k)).toEqual(["lead_magnet_burchard"]);
+    expect(withPageType.map(([k]) => k).sort()).toEqual(
+      ["discovery_burchard_performance", "lead_magnet_burchard"],
+    );
   });
   it("renders the text style through the shared dispatch (no DB needed)", async () => {
     const html = await renderLandingPageHtml("text", inputWith([]));
