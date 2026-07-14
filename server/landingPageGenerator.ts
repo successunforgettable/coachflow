@@ -118,6 +118,15 @@ subheadline, primaryCta, asSeenIn, quizSection, problemAgitation,
 solutionIntro, whyOldFail, uniqueMechanism, testimonials, insiderAdvantages,
 scarcityUrgency, shockingStat, timeSavingBenefit, consultationOutline, faq, guarantee.
 
+ALSO POPULATE (sales-page-specific, additive):
+- curriculum — the course module list (8-10 items), each a concise module title
+  plus one leading emoji. Real course STRUCTURE only — module names describing what
+  is taught. Write actual module titles; never fabricate student counts, revenue, or
+  results figures. Example shape: {title: "Find Your Perfect Niche", emoji: "🎯"}.
+- systemTiles — up to EIGHT short, single-line "how it helps" phrases naming the
+  systems/skills the buyer builds (e.g. "A repeatable content system", "An outsourcing
+  playbook"). Qualitative and NON-numeric — no counts, no revenue, no percentages.
+
 Follow the EMOTIONAL ARC structure below in full.
 
 PLACEHOLDER ALLOW-LIST (workstream commit 6 — sprint 3b+4b items #5 + #11
@@ -606,13 +615,35 @@ Use direct response copywriting principles: pain agitation, unique mechanism, so
                 additionalProperties: false
               }
             },
+            // Additive (sales_page). Course module list for the curriculum accordion. Real course
+            // STRUCTURE (titles), never fabricated numbers. Non-sales page types return [].
+            curriculum: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  title: { type: "string" },
+                  emoji: { type: "string" }
+                },
+                required: ["title", "emoji"],
+                additionalProperties: false
+              }
+            },
+            // Additive (sales_page). Up to 8 short, qualitative "how it helps" lines for the
+            // "build systems for" tile grid. NON-numeric. Separate from featureHighlights (which
+            // the Burchard template reads) so this never changes shipped Burchard output.
+            // Non-sales page types return [].
+            systemTiles: {
+              type: "array",
+              items: { type: "string" }
+            },
           },
           required: [
             "eyebrowHeadline", "mainHeadline", "subheadline", "primaryCta",
             "asSeenIn", "quizSection", "problemAgitation", "solutionIntro",
             "whyOldFail", "uniqueMechanism", "testimonials", "insiderAdvantages",
             "scarcityUrgency", "shockingStat", "timeSavingBenefit", "consultationOutline",
-            "faq", "guarantee", "bonuses"
+            "faq", "guarantee", "bonuses", "curriculum", "systemTiles"
           ],
           additionalProperties: false
         }

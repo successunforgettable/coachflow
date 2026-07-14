@@ -25,7 +25,7 @@ import { slotImageUrl, type SlotAssetType } from "../images/imageSlots";
 export type LpStyleMode =
   | "text" | "visual" | "executive" | "energetic" | "clinical" | "warm" | "bold"
   | "lead_magnet_burchard" | "discovery_burchard_performance" | "webinar_rajsekar_coaching"
-  | "event_iman_gadzhi" | "event_hormozi";
+  | "event_iman_gadzhi" | "event_hormozi" | "sales_ali_abdaal";
 
 export type AssetRow = { assetType: string; url: string };
 
@@ -175,6 +175,18 @@ async function renderEventHormoziEntry(input: TemplateRenderInput): Promise<stri
   });
 }
 
+async function renderSales(input: TemplateRenderInput): Promise<string> {
+  const { renderSalesAliAbdaal } = await import("./salesPublish");
+  return renderSalesAliAbdaal({
+    content: input.content,
+    serviceName: input.serviceName,
+    coachName: input.coachName,
+    coachBackground: input.coachBackground,
+    assetRows: input.assetRows,
+    userId: input.userId,
+  });
+}
+
 /**
  * The registry. To add template N: add its styleMode entry with its `pageType`
  * (so orchestration auto-selects it) and a `render` that calls its builder.
@@ -189,6 +201,11 @@ export const TEMPLATE_REGISTRY: Record<LpStyleMode, TemplateEntry> = {
   // is present, at (re)publish time where the content is loaded.
   event_iman_gadzhi: { pageType: "event_registration", render: renderEventIman },
   event_hormozi: { pageType: null, render: renderEventHormoziEntry },
+  // Sales is the DEFAULT pageType (course_launch / product_launch / challenge all map to it via
+  // pageTypeForCampaign). Wiring this flips `styleForPageType('sales_page')` from null (review-draft)
+  // to the real per-reference template — the widest blast radius of any template. Every other page
+  // type keeps its own styleMode, so their publishing is unaffected.
+  sales_ali_abdaal: { pageType: "sales_page", render: renderSales },
   executive: { pageType: null, render: (i) => renderLegacyTemplate(i, "executive") },
   energetic: { pageType: null, render: (i) => renderLegacyTemplate(i, "energetic") },
   clinical: { pageType: null, render: (i) => renderLegacyTemplate(i, "clinical") },

@@ -25,16 +25,17 @@ function inputWith(assetRows: { assetType: string; url: string }[]): TemplateRen
 }
 
 describe("styleForPageType — the orchestration publish/draft decision", () => {
-  it("returns the built per-reference templates", () => {
+  it("returns the built per-reference templates (all 5 campaign types now covered)", () => {
     expect(styleForPageType("lead_magnet_download")).toBe("lead_magnet_burchard");
     expect(styleForPageType("discovery_call_booking")).toBe("discovery_burchard_performance");
     expect(styleForPageType("webinar_registration")).toBe("webinar_rajsekar_coaching");
+    expect(styleForPageType("sales_page")).toBe("sales_ali_abdaal"); // the catch-all default, now built
   });
   it("picks the FREE Iman default for event_registration (paid Hormozi is price-gated, not auto)", () => {
     expect(styleForPageType("event_registration")).toBe("event_iman_gadzhi");
   });
-  it("returns null for page types with no template yet → orchestration stages a review-draft", () => {
-    expect(styleForPageType("sales_page")).toBeNull();
+  it("returns null only for genuinely unknown page types", () => {
+    expect(styleForPageType("not_a_real_page_type")).toBeNull();
   });
   it("never returns the rejected energetic style for a fresh page", () => {
     for (const pt of ["sales_page", "webinar_registration", "event_registration", "discovery_call_booking"]) {
@@ -67,10 +68,10 @@ describe("coachAssetOptionsFrom — slotImageUrl wired for structural slots", ()
 });
 
 describe("registry shape + dispatch", () => {
-  it("the auto-selectable per-reference templates today are burchard + discovery + webinar + iman event", () => {
+  it("all 5 campaign types now have an auto-selectable per-reference template (sales completes the set)", () => {
     const withPageType = Object.entries(TEMPLATE_REGISTRY).filter(([, e]) => e.pageType !== null);
     expect(withPageType.map(([k]) => k).sort()).toEqual(
-      ["discovery_burchard_performance", "event_iman_gadzhi", "lead_magnet_burchard", "webinar_rajsekar_coaching"],
+      ["discovery_burchard_performance", "event_iman_gadzhi", "lead_magnet_burchard", "sales_ali_abdaal", "webinar_rajsekar_coaching"],
     );
   });
   it("Hormozi (paid) is registered but pageType:null — reachable via price, never generic auto-select", () => {

@@ -491,6 +491,11 @@ export type LandingPageContent = {
   proofMetrics?: Array<{ label: string; value: string; icon?: string }>;
   caseStudies?: Array<{ name: string; quote: string; metrics?: string[]; portraitUrl?: string; chartUrl?: string }>;
   curriculum?: Array<{ title: string; emoji?: string }>;
+  // Sales-page "build systems for" tile grid — up to 8 short, qualitative, NON-numeric
+  // "how it helps" lines. Populated only by the sales_page cascade; absent for every other
+  // page type. Deliberately SEPARATE from `featureHighlights` (which the Burchard lead-magnet
+  // template reads) so activating sales generation never changes the shipped Burchard output.
+  systemTiles?: string[];
   bonuses?: Array<{ title: string; description: string; value?: string; coverUrl?: string }>;
   // Operator-captured REAL price — never LLM-generated/fabricated. Absent → pricing omitted.
   price?: { amount: string; currency?: string; installments?: string };
