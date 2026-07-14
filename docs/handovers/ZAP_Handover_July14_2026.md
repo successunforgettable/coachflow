@@ -1,58 +1,57 @@
-# ZAP Handover — 2026-07-14 (webinar shipped)
+# ZAP Handover — 2026-07-14/15 (ALL 5 landing-page templates built + sales craft-polished)
 
 ## State at handoff
-- **HEAD = origin/railway-build = `bb1a7c2`.** In sync. Working tree clean of tracked changes (only pre-existing untracked screenshots/artifacts remain — do NOT sweep).
-- **Gates:** TS floor **35**; vitest **442** (`pipeline-fixes` 382 + `imageSlots` 23 + `deckCards` 3 + `placeholderLabels` 2 + `burchardProductivity` 6 + `renderRegistry` 8 + `discoveryBurchard` 7 + `webinarRajsekar` 11).
+- **HEAD = origin/railway-build = `09fce00`.** In sync, pushed. Working tree clean of tracked changes (only pre-existing untracked screenshots/docs remain — do NOT sweep).
+- **Gates:** TS floor **35**; vitest **478** (`pipeline-fixes` 382 + `imageSlots` 23 + `deckCards` 3 + `placeholderLabels` 2 + `burchardProductivity` 6 + `renderRegistry` 13 + `discoveryBurchard` 7 + `webinarRajsekar` 11 + `eventImanGadzhi` 9 + `eventHormozi` 9 + `salesAliAbdaal` 13).
 - Dev-env: git prefix `DEVELOPER_DIR=/Library/Developer/CommandLineTools`; prod harness `railway run --environment production --service coachflow npx tsx <file>` (DATABASE_URL injected).
+- Local render+screenshot judging: `npx tsx` a scratch builder call → write HTML to /tmp → `python3 -m http.server` (file:// is blocked) → Playwright MCP navigate/screenshot. Colours sampled from the frozen PNG with PIL (`Image.MAX_IMAGE_PIXELS=None`).
 
-## Templates on the pipeline (3 of 5 built)
-- **#1 Burchard lead-magnet — SHIPPING-PROVEN LIVE.** `https://zapcampaigns.com/p/campaign-211` (`publishedStyle=lead_magnet_burchard`, real PDF-derived cover, energetic absent). `server/lib/templates/burchardProductivity.ts` + `leadMagnetPublish.ts`.
-- **#2 Discovery — CODE-COMPLETE, PROD-READY.** `server/lib/templates/discoveryBurchard.ts` + `discoveryPublish.ts`. Real `<a href={bookingUrl}>` CTA, honest "Free Discovery Call" composite, bands bind `consultationOutline`, no tile/FAQ v1. **Review-draft until a coach sets `booking_url`** (none set yet); a live publish needs a coach URL + explicit "execute".
-- **#3 Webinar (Rajsekar) — BUILT + SHIPPED (`a312682` + `bb1a7c2`, 2026-07-14).** `server/lib/templates/webinarRajsekar.ts` + `webinarPublish.ts`; registry entry `webinar_rajsekar_coaching` → `webinar_registration`. NEW design bar (white/coral `#FF5847`/navy `#04113A`, Poppins). Full 10-section page; Gate-1 (hero media + reservation-card composite) + full-page self-judged vs the frozen PNG = PASS.
-  - **Media** = coach's REAL `video_url` (YouTube/Vimeo/file → provider embed) → headshot poster in the 16:9 frame with NO fake play affordance → omit. ZAP never fabricates video.
-  - **Countdown** binds a REAL `eventSchedule.date`; absent → `[INSERT_EVENT_*]` tokens → publish hard-gate → **review-draft until an event date is set**. A parseable (ISO) date shows the timer; unparseable → the timer hides itself (no fake clock).
-  - **"Is This You"** cards bind the coach's EXISTING long ICP (`pains`/`frustrations`/`objections`, first-sentence-trimmed at resolve time in `webinarPublish.ts`) — NOT a fresh generation call. 3-part framework ← `consultationOutline`. Success grid = real `testimonials` only (monogram avatars, no padding to the reference's 12, no invented figures). Bonuses = generated title+description; monetary value renders only when operator-supplied (never a fabricated ₹/$). Numeric stats bar OMITTED (real-or-nothing).
-  - **Reserve-seat** = button-only by default (matches the frozen "no visible fields"), reveals a minimal email+consent capture on click → **webinar mode on `/api/capture-lead`** (email+consent only, no magnet delivery; `hvcoId` nullable → NO migration). Owner resolved from the LP `publicSlug` read from the page URL at runtime.
-  - Build-time reconciliation: the reference's separate hero-photo and Wistia-video blocks are merged into ONE media surface (no redundant empty second video).
+## 🔑 KEY LEARNING — craft ≠ structural PASS (record prominently)
+A template passing the **structural** full-page gate (right sections, right order, honest omits) is **NOT** the same as looking **polished**. The sales page passed structurally but Arfeen previewed it and it read **"tacky."** Root causes, all token-level:
+- **Headline in Inter-800 sans instead of an editorial serif** (Fraunces). This was the single biggest tell — fonts *loaded fine*; they were just used wrong.
+- **Over-saturated colours** — a too-yellow ivory (`#FBF8F1`/`#F5EFE3`) and a bright kelly green (`#16A34A`) vs the reference's barely-warm `#FAF6F3` and muted `#2F9E4E`; orange coral `#FF5A3C` vs soft `#FD6D6D`.
+- **Heavy drop-shadows + coloured button glows** vs the reference's near-flat restraint.
+- **Tight/uneven spacing** vs generous, consistent vertical rhythm.
 
-## Phase 0 infrastructure (LIVE)
-- **Template registry** (`renderRegistry.ts`): `Map<styleMode,{pageType,render}>`; add-template = one-line entry; both publish paths (`landingPagePublisher` + `complianceRewrites`) and orchestration dispatch through it; `styleForPageType(pageType)` → per-reference style or `null` → orchestration stages a review-draft.
-- **Shared primitives** (`templatePrimitives.ts`): esc/ok/imgOrOmit/sectionOrEmpty/stars/checkCircle/initials/highlightKeyword/highlightTerm/tileIconSet/ctaLink/renderDocument. Minimal — NOT a config engine. Legacy `shared.ts` untouched.
-- **Additive read-surface fields** on `LandingPageContent` (eventSchedule/proofMetrics/caseStudies/curriculum/bonuses/price — graceful-omit, never fabricated). Structured generation wired per-template — webinar now generates `bonuses` (title+description; value operator-only) via the shared strict `json_schema`.
-- `landingPagePublisher.styleMode` imports `LpStyleMode` from the registry (no re-listed union) so a new template never drifts the publisher signature again.
+The fix was a **token-level design-craft pass judged critically against the frozen PNG** (sample exact hexes; confirm the display font actually renders, not just loads; match weights; restrain shadows; widen spacing). **Going forward every template needs this craft pass — a structural PASS is necessary but not sufficient. Arfeen's eyes on the actual render are the real design gate.** Use the `frontend-design` skill's rigor (fonts first, then colour/spacing/restraint) for the sweep.
 
-## Prod migrations (APPLIED + verified)
-- **0084** — `landingPages.publishedStyle` += `lead_magnet_burchard`.
-- **0085** — `landingPages.publishedStyle` += the 8 templates-2–9 enum values. Prod enum = **11 values**; legacy excluded.
-- **0086** — `users.booking_url VARCHAR(500) NULL`.
-- **0087** — `users.video_url VARCHAR(500) NULL` (read-first guard: column ABSENT before, additive nullable; 22 rows unchanged, zero loss; verified via INFORMATION_SCHEMA after).
-- **0081 is SUPERSEDED — must NEVER be applied.**
+## Templates on the pipeline (5 of 5 built)
+- **#1 Burchard lead-magnet — SHIPPING-PROVEN LIVE** at `https://zapcampaigns.com/p/campaign-211` (`publishedStyle=lead_magnet_burchard`). `server/lib/templates/burchardProductivity.ts` + `leadMagnetPublish.ts`. Reads `content.featureHighlights` (currently inert — not generated) for its "what's inside" tiles. Live-proven, so likely already reads polished; still worth a craft glance.
+- **#2 Discovery — CODE-COMPLETE, PROD-READY.** `discoveryBurchard.ts` + `discoveryPublish.ts`. Burchard design-language on a booking flow; review-draft until a coach sets `booking_url`. **Craft-unverified — at risk.**
+- **#3 Webinar (Rajsekar) — BUILT + SHIPPED.** `webinarRajsekar.ts` + `webinarPublish.ts` (`webinar_rajsekar_coaching`→`webinar_registration`). White/coral/navy, Poppins. `video_url`→headshot poster→omit; countdown binds a real `eventSchedule.date` (absent → `[INSERT_EVENT_*]` → review-draft); "Is This You" ← existing ICP; reserve-seat → `/api/capture-lead` webinar mode. **Craft-unverified — at risk.**
+- **#4 Event (Iman free + Hormozi paid) — BUILT, both full-page PASS, both TUNEs applied.** TWO bespoke builders (`eventImanGadzhi.ts` + `eventHormozi.ts`) + `eventPublish.ts`; registry `event_iman_gadzhi`→`event_registration` (auto-default), `event_hormozi`→`null` (price-gated). Discriminator = `resolveEventStyle(styleMode, content)` in `renderRegistry.ts` (real `content.price` upgrades Iman→Hormozi at (re)publish in `runLandingPagePublish`, driving both render + persisted `publishedStyle`). Iman = dark cinematic poster (black/green/yellow, Montserrat); no headshot → `[INSERT_PRESENTER_PHOTO]` → review-draft. Hormozi = navy/white/purple objection ladder (Inter); price real-or-omit-section (never his $5k); qualification never his $250k/$1m–$100m; Gate-1 proof = honest monogram cards (disclosed divergence). TUNEs: Iman audience-headroom; Hormozi deepest-fallback headshot at natural aspect (no fake 16:9 box). Reserve (both) → `/api/capture-lead` **event mode**. Enum values already live (0085) → no migration. **Craft-unverified — at risk.**
+- **#5 Sales (Ali Abdaal) — BUILT + full-page PASS + CRAFT-POLISHED.** `salesAliAbdaal.ts` + `salesPublish.ts`; registry `sales_ali_abdaal`→`sales_page`. **WIDEST blast radius: `styleForPageType('sales_page')` flips null→`sales_ali_abdaal`, so `course_launch`/`product_launch`/`challenge` now publish this template; every other page type keeps its own style (verified).** 14 sections: header → serif hero (video_url→headshot natural-aspect→omit) + green CTA → review wall (monogram, gold stars) → founder (coachBackground, no chart) → "simple formula" panel → systems tile grid (`systemTiles`) → deliverable bands (`consultationOutline` 2–6) → **Gate-1 results (honest testimonial monogram cards; structured `caseStudies` only if operator-supplied w/ real metric STRINGS, never charts — disclosed divergence)** → curriculum accordion (`curriculum`) → offer card → bonuses → guarantee → FAQ → footer. Honesty: price operator-or-`[INSERT_PRICE]`→review-draft; CTA → `checkout_url` (guarded reader, col pending 0088) else `/api/capture-lead` **sales mode** (never a dead button); never fabricates Ali's charts/counts/"6,000 creators"/$5.8m/metric trios. **Craft pass done (see learning): Fraunces serif headline; sampled palette `#FAF6F3`/`#1B1624`/green `#2F9E4E`/coral `#FD6D6D`/gold stars; restrained shadows; flat buttons; 92px section rhythm; subtle hero blob; coral header CTA. Fonts proven to render (not fallback) via `document.fonts`.**
 
-## Per-coach typed columns
-- `booking_url` and `video_url` are now **typed Drizzle `users` columns** (`users.bookingUrl` / `users.videoUrl`), promoted from guarded raw queries now 0086/0087 are applied. `getCoachBookingUrl` / `getCoachVideoUrl` read typed. Auth hot path (`getUserByOpenId → select().from(users)`) verified booting on prod with both columns present.
-- `booking_url` also backs the email/whatsapp booking-URL CTAs (systemic `[INSERT_BOOKING_URL]` gap closed via orchestration wiring `getCoachBookingUrl` into both sequences' `eventDetails`).
+## Generator additions (additive, sales-branch only, strict json_schema)
+`curriculum` (module titles + emoji) + NEW `systemTiles` (≤8 "how it helps" lines) added to the strict schema properties+required and instructed in the sales prompt only; other page types return `[]`. **Deliberately NOT `featureHighlights`** — `burchardProductivity.ts:204` reads that field, and activating it in the shared schema would change the shipped, live-proven Burchard output. A separate `systemTiles` field keeps Burchard byte-identical. Pre-existing `landingPageGenerator` TS2769 (the `db.insert(landingPages).values()` overload) is unrelated — line-shifted 928→959 by the additive lines, part of the 35 baseline.
 
-## Reference base — all 5 campaign types FROZEN
-`docs/landing-page-references/` (git-lfs): Burchard lead-magnet · Rajsekar webinar · Iman + Hormozi event · Ali Abdaal sales · discovery = Burchard design-language (no own capture). Deferred post-launch: **Jenna/Amy DCA, Jeff Walker, Rajsekar AI-marketing**.
+## Prod migrations
+- Applied + verified: **0084** (publishedStyle +lead_magnet_burchard), **0085** (8 template enum values), **0086** (`users.booking_url`), **0087** (`users.video_url`).
+- **0088 (`drizzle/0088_users_checkout_url.sql`) — authored as a FILE, HELD. NOT applied. Needs an explicit "execute".** Read out-of-band via `server/lib/coachCheckoutUrl.ts` (guarded raw query) — NOT in the Drizzle `users` schema, so it can't break the auth hot path pre-migration (mirrors 0086/0087 staging).
+- **0081 SUPERSEDED — never apply.**
 
-## 🔒 LOCKED VISION — Operator-Capture = Conversational Intake (NOT a form)
-The scattered operator-captured fields (`booking_url`, `video_url`, `eventSchedule`/date, sales `price`, bonus values, future ones) are collected via a **Zappy-led conversation**, never a big form: one ask at a time, progress-signalled ("2 more and your page's ready"), graceful skip out loud (missing = omit, never a blocker; optional nudge, never forced), same field pool + fallback rules as the in-context/review path. **Three tiers → three user types:** (1) Auto Mode asks NOTHING; (2) Conversational intake asks everything one turn at a time, skippable; (3) In-context / at-review fills each field as its page needs it. **SEPARATE post-template sprint — do NOT build now** (needs the per-template fields to exist first). Memory: `project_operator_capture_conversational_intake.md`.
+## Per-coach columns
+- Typed Drizzle columns: `users.bookingUrl`, `users.videoUrl` (read via `getCoachBookingUrl`/`getCoachVideoUrl`).
+- `checkout_url` pending 0088 — read via the guarded `getCoachCheckoutUrl`; promote to a typed column post-0088.
+
+## Reference base — all 5 campaign types FROZEN (git-lfs)
+`docs/landing-page-references/`: Burchard lead-magnet · Rajsekar webinar · Iman + Hormozi event · Ali Abdaal sales · discovery = Burchard design-language. Replication specs in `docs/landing-page-references/replication-specs/`. Deferred post-launch: **Jenna/Amy DCA, Jeff Walker, Rajsekar AI-marketing, Hormozi paid-variant live-proof**.
 
 ---
 
-## 🟢 RESUME POINT — next session: template #4, Event (Iman/Hormozi)
-References frozen (`event_registration--iman-gadzhi.png`, `event_registration--alex-hormozi.png`), enum `event_iman_gadzhi` + `event_hormozi` live on prod, registry takes one-line entries. **NEW design bar.** Investigate-and-propose FIRST (section-map + field gaps) before building — same discipline that made #1/#2/#3 go clean.
+## 🟢 RESUME POINT — next actions in order
+1. **Execute migration 0088** (`users.checkout_url`) — gated prod write, needs Arfeen's explicit "execute" in the immediately-preceding message. Then promote to a typed Drizzle column + drop the guarded reader.
+2. **Craft-polish sweep of the other 4 templates** (Burchard / discovery / webinar / event) — the same rigorous token-vs-reference pass just done on sales, since they passed the same structural gate *before* the craft-check discipline existed. **Discovery / webinar / event are most at risk; Burchard is live-proven so likely fine.** For each: sample the frozen PNG's exact hexes, confirm the display font renders (not just loads), match weights, restrain shadows, fix spacing rhythm, render + screenshot + judge against the PNG. Hold gates.
+3. **Conversational operator-intake sprint** — the LOCKED vision (`project_operator_capture_conversational_intake.md`): Zappy-led chat, one ask at a time, skippable, three tiers (Auto asks nothing · Conversational asks all · in-context per-page); NOT a form. It lights up the scattered operator fields (`booking_url`, `video_url`, `eventSchedule`/date, `price`, `checkout_url`, bonus values) so pages can leave review-draft and publish.
+4. **Batched LIVE-proof pass** across all 5 types (discovery+webinar+event+sales together) once intake can populate their fields — needs an "execute". Do NOT proof-per-template. (#1 is already live-proven.)
 
-**Key structural question to resolve in the proposal:** two event variants — **free (Iman)** vs **paid (Hormozi)**. Flag whether they are **one builder with variants** (shared section engine, variant flags for free-vs-paid CTA/price/agenda) or **two separate builders** (two enum values, two files). Decide in the proposal, not mid-build. Paid/Hormozi implies a `price` field (operator-captured, never fabricated — same class as booking_url/video_url); free/Iman is a registration capture like the webinar.
-
-## Carry-forward notes
-- **(a) Webinar countdown needs ISO-format dates** from the intake to show the live timer — non-ISO strings hide the timer (honest). Downstream-intake concern, not a template bug.
-- **(b) Batched live-proof pass** — prove discovery + webinar + event + sales LIVE together once the intake sprint can populate their operator fields (booking_url / video_url / event date / price). Do NOT proof-per-template. (Template #1 is already live-proven.)
-- **(c) Queued sprints (after templates):** the conversational operator-intake sprint (locked above); then **Auto Mode orchestration + intake** — the product's core signup→cascade→kit flow.
+## Open minor
+- **Sales hero serif orphan-wrap:** with a long generated headline the serif can leave a short orphan line ("…day / job"). A `text-wrap:balance` (or max-width) guard was OFFERED but **NOT applied** — Arfeen's call. Content-dependent editorial wrapping, not a bug.
 
 ## Standing discipline (carry forward)
-- **Prove-live-not-structure.** Committed ≠ applied ≠ deployed ≠ rendered.
-- **Prod writes gated on Arfeen's explicit "execute"** in the immediately-preceding message (CLAUDE.md §10). 0084/0085/0086/0087 were each executed under that gate.
-- **Fix the family, not the leaf** (both publish paths dispatch through the registry; booking_url fixed LP + email + whatsapp at once; publisher styleMode imports the registry union).
-- **No fabrication** — stats, testimonials, magnet covers, video, price, URLs, dates must be real coach data or a graceful/non-numeric empty-state; never invented.
-- **Investigate-and-propose before building each template** — surface every structural gap up front.
+- **Craft ≠ structural PASS** (this session's lesson) — every template gets a token-level craft pass judged against its frozen PNG; Arfeen's eyes on the real render are the design gate.
+- **Prove-live-not-structure** — committed ≠ applied ≠ deployed ≠ rendered.
+- **Prod writes gated on Arfeen's explicit "execute"** in the immediately-preceding message (CLAUDE.md §10). 0084–0087 were each executed under that gate; 0088 awaits it.
+- **Fix the family, not the leaf** (registry dispatch; blast-radius sweep when touching shared/default paths — e.g. sales flips the `sales_page` default).
+- **No fabrication** — stats, testimonials, magnet covers, video, price, URLs, dates, charts, subscriber counts must be real coach data or a graceful/non-numeric empty-state; never invented.
+- **Investigate-and-propose before building each template.**
