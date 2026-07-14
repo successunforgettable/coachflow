@@ -145,6 +145,10 @@ SECTIONS TO POPULATE (fill substantively):
 - timeSavingBenefit — re-purposed as "Why attend live (not just the replay)" —
   one specific reason live attendance matters.
 - faq — 2-3 FAQ items about the webinar (when is it, how to access, replay availability).
+- bonuses — 2-3 free bonuses attendees receive for showing up LIVE. Each is a
+  concise title plus one specific single-line description of what it is and how it
+  helps. Title + description ONLY. Do NOT include any monetary value or price —
+  bonus values are operator-supplied later; never invent a ₹/$ figure.
 
 SECTIONS TO LEAVE EMPTY (return as empty string ""):
 - problemAgitation: ""
@@ -586,13 +590,29 @@ Use direct response copywriting principles: pain agitation, unique mechanism, so
               }
             },
             guarantee: { type: "string" },
+            // Additive (templates 2–9). Free bonuses attendees/registrants get. Copy only —
+            // title + one-line description. Monetary VALUES are NEVER generated here (operator-
+            // supplied later via the conversational intake; fabricating a ₹/$ figure is forbidden).
+            // Page types that don't use bonuses return [] (like testimonials on event pages).
+            bonuses: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  title: { type: "string" },
+                  description: { type: "string" }
+                },
+                required: ["title", "description"],
+                additionalProperties: false
+              }
+            },
           },
           required: [
             "eyebrowHeadline", "mainHeadline", "subheadline", "primaryCta",
             "asSeenIn", "quizSection", "problemAgitation", "solutionIntro",
             "whyOldFail", "uniqueMechanism", "testimonials", "insiderAdvantages",
             "scarcityUrgency", "shockingStat", "timeSavingBenefit", "consultationOutline",
-            "faq", "guarantee"
+            "faq", "guarantee", "bonuses"
           ],
           additionalProperties: false
         }

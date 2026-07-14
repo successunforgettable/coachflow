@@ -27,9 +27,9 @@ describe("styleForPageType — the orchestration publish/draft decision", () => 
   it("returns the built per-reference templates", () => {
     expect(styleForPageType("lead_magnet_download")).toBe("lead_magnet_burchard");
     expect(styleForPageType("discovery_call_booking")).toBe("discovery_burchard_performance");
+    expect(styleForPageType("webinar_registration")).toBe("webinar_rajsekar_coaching");
   });
   it("returns null for page types with no template yet → orchestration stages a review-draft", () => {
-    expect(styleForPageType("webinar_registration")).toBeNull();
     expect(styleForPageType("event_registration")).toBeNull();
     expect(styleForPageType("sales_page")).toBeNull();
   });
@@ -64,10 +64,10 @@ describe("coachAssetOptionsFrom — slotImageUrl wired for structural slots", ()
 });
 
 describe("registry shape + dispatch", () => {
-  it("lead_magnet_burchard + discovery_burchard_performance are the per-reference (auto-selectable) templates today", () => {
+  it("lead_magnet_burchard + discovery + webinar are the per-reference (auto-selectable) templates today", () => {
     const withPageType = Object.entries(TEMPLATE_REGISTRY).filter(([, e]) => e.pageType !== null);
     expect(withPageType.map(([k]) => k).sort()).toEqual(
-      ["discovery_burchard_performance", "lead_magnet_burchard"],
+      ["discovery_burchard_performance", "lead_magnet_burchard", "webinar_rajsekar_coaching"],
     );
   });
   it("renders the text style through the shared dispatch (no DB needed)", async () => {

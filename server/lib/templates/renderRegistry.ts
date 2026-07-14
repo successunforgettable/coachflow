@@ -24,7 +24,7 @@ import { slotImageUrl, type SlotAssetType } from "../images/imageSlots";
 
 export type LpStyleMode =
   | "text" | "visual" | "executive" | "energetic" | "clinical" | "warm" | "bold"
-  | "lead_magnet_burchard" | "discovery_burchard_performance";
+  | "lead_magnet_burchard" | "discovery_burchard_performance" | "webinar_rajsekar_coaching";
 
 export type AssetRow = { assetType: string; url: string };
 
@@ -138,6 +138,19 @@ async function renderDiscovery(input: TemplateRenderInput): Promise<string> {
   });
 }
 
+async function renderWebinar(input: TemplateRenderInput): Promise<string> {
+  const { renderWebinarRajsekar } = await import("./webinarPublish");
+  return renderWebinarRajsekar({
+    content: input.content,
+    serviceName: input.serviceName,
+    coachName: input.coachName,
+    coachBackground: input.coachBackground,
+    assetRows: input.assetRows,
+    serviceId: input.serviceId,
+    userId: input.userId,
+  });
+}
+
 /**
  * The registry. To add template N: add its styleMode entry with its `pageType`
  * (so orchestration auto-selects it) and a `render` that calls its builder.
@@ -145,6 +158,7 @@ async function renderDiscovery(input: TemplateRenderInput): Promise<string> {
 export const TEMPLATE_REGISTRY: Record<LpStyleMode, TemplateEntry> = {
   lead_magnet_burchard: { pageType: "lead_magnet_download", render: renderBurchard },
   discovery_burchard_performance: { pageType: "discovery_call_booking", render: renderDiscovery },
+  webinar_rajsekar_coaching: { pageType: "webinar_registration", render: renderWebinar },
   executive: { pageType: null, render: (i) => renderLegacyTemplate(i, "executive") },
   energetic: { pageType: null, render: (i) => renderLegacyTemplate(i, "energetic") },
   clinical: { pageType: null, render: (i) => renderLegacyTemplate(i, "clinical") },

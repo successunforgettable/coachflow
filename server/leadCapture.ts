@@ -11,7 +11,7 @@
  */
 import type { Request, Response } from "express";
 import { getDb } from "./db";
-import { capturedLeads, hvcoTitles } from "../drizzle/schema";
+import { capturedLeads, hvcoTitles, landingPages } from "../drizzle/schema";
 import { eq, and, lt } from "drizzle-orm";
 import { encryptPii, hashEmail, hashIp } from "./lib/piiCrypto";
 
@@ -73,16 +73,60 @@ export async function handleCaptureLead(req: Request, res: Response): Promise<vo
     const ipHashed = hashIp(clientIp(req));
     if (rateLimited(ipHashed)) { res.status(429).json({ error: "Too many requests" }); return; }
 
-    // 3. Validate.
+    // 3. Validate (common to every capture mode).
     const email = String(body.email ?? "").trim();
     const consent = body.consent === true;
-    const hvcoId = Number(body.hvcoId);
     if (!EMAIL_RE.test(email)) { res.status(400).json({ error: "A valid email is required" }); return; }
     if (!consent) { res.status(400).json({ error: "Consent is required" }); return; }
-    if (!Number.isInteger(hvcoId) || hvcoId <= 0) { res.status(400).json({ error: "Invalid magnet" }); return; }
 
     const db = await getDb();
     if (!db) { res.status(503).json({ error: "Database not available" }); return; }
+
+    // 3w. Webinar registration mode. A webinar page has NO magnet to deliver — it just
+    // captures the registration (email + consent) against the landing page's owner. The page
+    // posts { mode: "webinar", slug } where slug is the LP's public slug (read from its URL),
+    // so the owner/service/campaign are resolved here. Same PII/consent/retention path as the
+    // lead-magnet opt-in; hvcoId is null (nullable column) and nothing is delivered on-page.
+    if (body.mode === "webinar") {
+      const slug = typeof body.slug === "string" ? body.slug.trim().slice(0, 255) : "";
+      if (!slug) { res.status(400).json({ error: "Invalid registration" }); return; }
+      const [lp] = await db
+        .select({ userId: landingPages.userId, serviceId: landingPages.serviceId, campaignId: landingPages.campaignId })
+        .from(landingPages)
+        .where(eq(landingPages.publicSlug, slug))
+        .limit(1);
+      if (!lp) { res.status(404).json({ error: "Registration page not found" }); return; }
+
+      const wName = String(body.name ?? "").trim();
+      const wNow = new Date();
+      await db.insert(capturedLeads).values({
+        userId: lp.userId,
+        serviceId: lp.serviceId ?? null,
+        campaignId: lp.campaignId ?? null,
+        hvcoId: null,
+        emailEncrypted: encryptPii(email),
+        emailHash: hashEmail(email),
+        nameEncrypted: wName ? encryptPii(wName) : null,
+        consentGiven: true,
+        consentText: "I agree to receive the webinar joining link and related emails, and accept the privacy policy.",
+        privacyPolicyUrl: "https://zapcampaigns.com/privacy",
+        sourceSlug: slug,
+        ipHash: ipHashed,
+        userAgent: (req.headers["user-agent"] || "").toString().slice(0, 500) || null,
+        magnetHtmlUrl: null,
+        magnetPdfUrl: null,
+        submissionData: null,
+        resultBand: null,
+        deliveredAt: wNow,
+        purgeAfter: new Date(wNow.getTime() + RETENTION_MS),
+      });
+      res.status(200).json({ ok: true, registered: true });
+      return;
+    }
+
+    // 3m. Lead-magnet mode requires a valid magnet id.
+    const hvcoId = Number(body.hvcoId);
+    if (!Number.isInteger(hvcoId) || hvcoId <= 0) { res.status(400).json({ error: "Invalid magnet" }); return; }
 
     // 4. Resolve the magnet — must be a published lead-magnet row.
     const [hvco] = await db.select().from(hvcoTitles).where(eq(hvcoTitles.id, hvcoId)).limit(1);

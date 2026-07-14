@@ -53,6 +53,10 @@ export const users = mysqlTable("users", {
   coachName: varchar("coach_name", { length: 255 }),
   coachGender: varchar("coach_gender", { length: 50 }),
   coachBackground: text("coach_background"),
+  // Per-coach booking/calendar URL (migration 0086, APPLIED). Backs the discovery LP CTA
+  // and the email/whatsapp [INSERT_BOOKING_URL] fallback. Promoted to a typed column now
+  // 0086 is applied (was read via a guarded raw query pre-migration — see coachBookingUrl.ts).
+  bookingUrl: varchar("booking_url", { length: 500 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),

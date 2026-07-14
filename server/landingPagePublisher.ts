@@ -34,11 +34,14 @@
 import { getDb } from "./db";
 import { landingPages, services, users, coachAssets } from "../drizzle/schema";
 import { eq, and, or, isNull } from "drizzle-orm";
+import type { LpStyleMode } from "./lib/templates/renderRegistry";
 
 export type RunLandingPagePublishInput = {
   userId: number;
   landingPageId: number;
-  styleMode: "text" | "visual" | "executive" | "energetic" | "clinical" | "warm" | "bold" | "lead_magnet_burchard" | "discovery_burchard_performance";
+  // The canonical registry union — importing it (not re-listing the styles) means adding a
+  // template never drifts this signature out of sync (webinar_rajsekar_coaching, etc.).
+  styleMode: LpStyleMode;
 };
 
 export type RunLandingPagePublishResult = {
