@@ -82,12 +82,15 @@ export async function handleCaptureLead(req: Request, res: Response): Promise<vo
     const db = await getDb();
     if (!db) { res.status(503).json({ error: "Database not available" }); return; }
 
-    // 3w. Webinar registration mode. A webinar page has NO magnet to deliver — it just
-    // captures the registration (email + consent) against the landing page's owner. The page
-    // posts { mode: "webinar", slug } where slug is the LP's public slug (read from its URL),
-    // so the owner/service/campaign are resolved here. Same PII/consent/retention path as the
-    // lead-magnet opt-in; hvcoId is null (nullable column) and nothing is delivered on-page.
-    if (body.mode === "webinar") {
+    // 3w. Webinar / event registration mode. A webinar or event page has NO magnet to deliver — it
+    // just captures the registration (email + consent) against the landing page's owner. The page
+    // posts { mode: "webinar" | "event", slug } where slug is the LP's public slug (read from its
+    // URL), so the owner/service/campaign are resolved here. Same PII/consent/retention path as the
+    // lead-magnet opt-in; hvcoId is null (nullable column) and nothing is delivered on-page. Event
+    // registration (free-ticket Iman + paid Hormozi reserve flows) reuses this path with a mode-
+    // appropriate consent string.
+    if (body.mode === "webinar" || body.mode === "event") {
+      const isEvent = body.mode === "event";
       const slug = typeof body.slug === "string" ? body.slug.trim().slice(0, 255) : "";
       if (!slug) { res.status(400).json({ error: "Invalid registration" }); return; }
       const [lp] = await db
@@ -108,7 +111,9 @@ export async function handleCaptureLead(req: Request, res: Response): Promise<vo
         emailHash: hashEmail(email),
         nameEncrypted: wName ? encryptPii(wName) : null,
         consentGiven: true,
-        consentText: "I agree to receive the webinar joining link and related emails, and accept the privacy policy.",
+        consentText: isEvent
+          ? "I agree to receive my event ticket and related emails, and accept the privacy policy."
+          : "I agree to receive the webinar joining link and related emails, and accept the privacy policy.",
         privacyPolicyUrl: "https://zapcampaigns.com/privacy",
         sourceSlug: slug,
         ipHash: ipHashed,

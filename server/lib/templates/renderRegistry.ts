@@ -24,7 +24,8 @@ import { slotImageUrl, type SlotAssetType } from "../images/imageSlots";
 
 export type LpStyleMode =
   | "text" | "visual" | "executive" | "energetic" | "clinical" | "warm" | "bold"
-  | "lead_magnet_burchard" | "discovery_burchard_performance" | "webinar_rajsekar_coaching";
+  | "lead_magnet_burchard" | "discovery_burchard_performance" | "webinar_rajsekar_coaching"
+  | "event_iman_gadzhi" | "event_hormozi";
 
 export type AssetRow = { assetType: string; url: string };
 
@@ -151,6 +152,29 @@ async function renderWebinar(input: TemplateRenderInput): Promise<string> {
   });
 }
 
+async function renderEventIman(input: TemplateRenderInput): Promise<string> {
+  const { renderEventImanGadzhi } = await import("./eventPublish");
+  return renderEventImanGadzhi({
+    content: input.content,
+    serviceName: input.serviceName,
+    coachName: input.coachName,
+    assetRows: input.assetRows,
+  });
+}
+
+async function renderEventHormoziEntry(input: TemplateRenderInput): Promise<string> {
+  const { renderEventHormozi } = await import("./eventPublish");
+  return renderEventHormozi({
+    content: input.content,
+    serviceName: input.serviceName,
+    coachName: input.coachName,
+    coachBackground: input.coachBackground,
+    assetRows: input.assetRows,
+    serviceId: input.serviceId,
+    userId: input.userId,
+  });
+}
+
 /**
  * The registry. To add template N: add its styleMode entry with its `pageType`
  * (so orchestration auto-selects it) and a `render` that calls its builder.
@@ -159,6 +183,12 @@ export const TEMPLATE_REGISTRY: Record<LpStyleMode, TemplateEntry> = {
   lead_magnet_burchard: { pageType: "lead_magnet_download", render: renderBurchard },
   discovery_burchard_performance: { pageType: "discovery_call_booking", render: renderDiscovery },
   webinar_rajsekar_coaching: { pageType: "webinar_registration", render: renderWebinar },
+  // Event has TWO bespoke references sharing one pageType. Iman (free) is the auto-selected
+  // default for `event_registration`; Hormozi (paid) is pageType:null so styleForPageType stays
+  // deterministic (→ Iman). `resolveEventStyle` upgrades Iman→Hormozi when a REAL operator price
+  // is present, at (re)publish time where the content is loaded.
+  event_iman_gadzhi: { pageType: "event_registration", render: renderEventIman },
+  event_hormozi: { pageType: null, render: renderEventHormoziEntry },
   executive: { pageType: null, render: (i) => renderLegacyTemplate(i, "executive") },
   energetic: { pageType: null, render: (i) => renderLegacyTemplate(i, "energetic") },
   clinical: { pageType: null, render: (i) => renderLegacyTemplate(i, "clinical") },
@@ -187,4 +217,22 @@ export function styleForPageType(pageType: string): LpStyleMode | null {
     ([, e]) => e.pageType === pageType,
   );
   return hit ? hit[0] : null;
+}
+
+/**
+ * Event free-vs-paid discriminator (the one decision the shared `event_registration` pageType
+ * can't make on its own). A REAL operator-captured price → the paid Hormozi workshop; absent → the
+ * free-ticket Iman default. Price is NEVER fabricated, so with no price every event stays on Iman
+ * (and, until an event date/presenter is set, a review-draft anyway). Applied at (re)publish time
+ * in `runLandingPagePublish`, where the LP content — and thus the price — is loaded. Any other
+ * styleMode passes through unchanged, so this is safe to call on every publish.
+ */
+export function resolveEventStyle(
+  styleMode: string,
+  content: Pick<LandingPageContent, "price"> | null | undefined,
+): string {
+  if (styleMode !== "event_iman_gadzhi") return styleMode;
+  const amount = content?.price?.amount;
+  const hasRealPrice = typeof amount === "string" && amount.trim().length > 0;
+  return hasRealPrice ? "event_hormozi" : "event_iman_gadzhi";
 }

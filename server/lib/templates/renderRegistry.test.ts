@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   TEMPLATE_REGISTRY,
   styleForPageType,
+  resolveEventStyle,
   coachAssetOptionsFrom,
   renderLandingPageHtml,
   type TemplateRenderInput,
@@ -29,8 +30,10 @@ describe("styleForPageType — the orchestration publish/draft decision", () => 
     expect(styleForPageType("discovery_call_booking")).toBe("discovery_burchard_performance");
     expect(styleForPageType("webinar_registration")).toBe("webinar_rajsekar_coaching");
   });
+  it("picks the FREE Iman default for event_registration (paid Hormozi is price-gated, not auto)", () => {
+    expect(styleForPageType("event_registration")).toBe("event_iman_gadzhi");
+  });
   it("returns null for page types with no template yet → orchestration stages a review-draft", () => {
-    expect(styleForPageType("event_registration")).toBeNull();
     expect(styleForPageType("sales_page")).toBeNull();
   });
   it("never returns the rejected energetic style for a fresh page", () => {
@@ -64,11 +67,15 @@ describe("coachAssetOptionsFrom — slotImageUrl wired for structural slots", ()
 });
 
 describe("registry shape + dispatch", () => {
-  it("lead_magnet_burchard + discovery + webinar are the per-reference (auto-selectable) templates today", () => {
+  it("the auto-selectable per-reference templates today are burchard + discovery + webinar + iman event", () => {
     const withPageType = Object.entries(TEMPLATE_REGISTRY).filter(([, e]) => e.pageType !== null);
     expect(withPageType.map(([k]) => k).sort()).toEqual(
-      ["discovery_burchard_performance", "lead_magnet_burchard", "webinar_rajsekar_coaching"],
+      ["discovery_burchard_performance", "event_iman_gadzhi", "lead_magnet_burchard", "webinar_rajsekar_coaching"],
     );
+  });
+  it("Hormozi (paid) is registered but pageType:null — reachable via price, never generic auto-select", () => {
+    expect(TEMPLATE_REGISTRY.event_hormozi).toBeDefined();
+    expect(TEMPLATE_REGISTRY.event_hormozi.pageType).toBeNull();
   });
   it("renders the text style through the shared dispatch (no DB needed)", async () => {
     const html = await renderLandingPageHtml("text", inputWith([]));
@@ -79,5 +86,22 @@ describe("registry shape + dispatch", () => {
     const html = await renderLandingPageHtml("does_not_exist", inputWith([]));
     expect(typeof html).toBe("string");
     expect(html.length).toBeGreaterThan(0);
+  });
+});
+
+describe("resolveEventStyle — free-vs-paid event discriminator (price-presence)", () => {
+  const priced = (amount: string) => ({ price: { amount } }) as unknown as LandingPageContent;
+  it("upgrades the free Iman default to paid Hormozi ONLY when a real price is present", () => {
+    expect(resolveEventStyle("event_iman_gadzhi", priced("2,000"))).toBe("event_hormozi");
+  });
+  it("stays on the free Iman default with no price (never fabricated → default free)", () => {
+    expect(resolveEventStyle("event_iman_gadzhi", null)).toBe("event_iman_gadzhi");
+    expect(resolveEventStyle("event_iman_gadzhi", {} as unknown as LandingPageContent)).toBe("event_iman_gadzhi");
+    expect(resolveEventStyle("event_iman_gadzhi", priced("   "))).toBe("event_iman_gadzhi"); // blank ≠ real
+  });
+  it("is a no-op for every non-event style (safe to call on every publish)", () => {
+    expect(resolveEventStyle("lead_magnet_burchard", priced("99"))).toBe("lead_magnet_burchard");
+    expect(resolveEventStyle("webinar_rajsekar_coaching", null)).toBe("webinar_rajsekar_coaching");
+    expect(resolveEventStyle("event_hormozi", null)).toBe("event_hormozi"); // already paid → unchanged
   });
 });

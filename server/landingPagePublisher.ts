@@ -128,8 +128,13 @@ export async function runLandingPagePublish(
   // path and the complianceRewrites re-render path call, so a template can never
   // be swapped by only one of them (the "family, not leaf" rule).
   const { ensureKvNamespace, writeKvPage, deployWorker } = await import("./lib/cloudflare");
-  const { renderLandingPageHtml } = await import("./lib/templates/renderRegistry");
-  const html = await renderLandingPageHtml(input.styleMode, {
+  const { renderLandingPageHtml, resolveEventStyle } = await import("./lib/templates/renderRegistry");
+  // Event free-vs-paid discriminator: a REAL operator-captured price upgrades the free Iman default
+  // to the paid Hormozi workshop. No-op for every non-event style. Decided here (not upstream)
+  // because this is where the LP content — and thus the price — is loaded; the resolved style is
+  // used for BOTH the render and the persisted publishedStyle so they never disagree.
+  const styleMode = resolveEventStyle(input.styleMode, content) as LpStyleMode;
+  const html = await renderLandingPageHtml(styleMode, {
     content,
     serviceName,
     coachName,
@@ -161,7 +166,7 @@ export async function runLandingPagePublish(
   // 8. Persist publish state on the LP row.
   await db
     .update(landingPages)
-    .set({ publicSlug: slug, publicUrl, publishedStyle: input.styleMode })
+    .set({ publicSlug: slug, publicUrl, publishedStyle: styleMode })
     .where(eq(landingPages.id, lp.id));
 
   return { publicUrl, slug };
