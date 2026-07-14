@@ -57,6 +57,10 @@ export const users = mysqlTable("users", {
   // and the email/whatsapp [INSERT_BOOKING_URL] fallback. Promoted to a typed column now
   // 0086 is applied (was read via a guarded raw query pre-migration — see coachBookingUrl.ts).
   bookingUrl: varchar("booking_url", { length: 500 }),
+  // Per-coach webinar/masterclass video URL (migration 0087, APPLIED). Powers the webinar
+  // template hero media; ZAP never fabricates video. Promoted to a typed column now 0087 is
+  // applied (was read via a guarded raw query pre-migration — see coachVideoUrl.ts).
+  videoUrl: varchar("video_url", { length: 500 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
