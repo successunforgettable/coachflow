@@ -51,6 +51,18 @@ Key open structural questions to resolve in that proposal:
 
 **Optional-deferred:** a batched live-proof pass — prove discovery + webinar + event + sales live together once built, rather than proof-per-template. (Template #1 is already live-proven; discovery is prod-ready pending a coach booking_url.)
 
+## 🔒 LOCKED VISION (2026-07-14) — Operator-Capture = Conversational Intake (NOT a form)
+
+A separate **post-template** sprint, recorded now so it is built as a conversation, not a form. Do NOT build it now — it needs the per-template operator-captured fields to exist first (`booking_url` done; `video_url`/`eventSchedule`/`price`/bonus values arrive with the webinar/event/sales templates).
+
+The scattered operator-captured fields the templates introduce (`booking_url`, `video_url`, `eventSchedule`/date, sales `price`, bonus values, and future ones) are collected via a **Zappy-led conversation**, never a big form. Design rules:
+- **Conversational, one ask at a time** — when a wizard / existing-assets coach opts into "give me your details now," Zappy walks them through the needed fields conversationally (same interaction model as Auto Mode's one-line text intake, extended multi-turn).
+- **Progress-signalled** — Zappy says roughly how many steps remain ("2 more and your page's ready") so an open-ended chat feels bounded. No wall-of-fields, no progress bar screaming "12 required."
+- **Graceful skip, out loud** — for anything the coach doesn't have, Zappy says "no problem — we'll omit it / or go grab it, but let's keep going" and moves on. A missing field is a non-event, never a blocker. Optionally nudges them to fetch the real thing, never forces it.
+- **Same field pool + same fallback rules underneath** as the in-context/review path — just a conversational entry point. Nothing compulsory; the coach can always publish and add real details later (review-draft / omit fallbacks already exist).
+
+**Three tiers, mapped to the three user types:** (1) **Auto Mode** — asks NOTHING, runs on the one-line text, gracefully omits everything unknown; (2) **Conversational intake** — asks everything, one turn at a time, skippable (friendly default for "I want to do this properly now"); (3) **In-context / at-review** — fills each field as the specific page needs it, for coaches who'd rather go node-by-node.
+
 ## Standing discipline (carry forward)
 - **Prove-live-not-structure.** Committed ≠ applied ≠ deployed ≠ rendered.
 - **Prod writes gated on Arfeen's explicit "execute"** in the immediately-preceding message (CLAUDE.md §10). 0084/0085/0086 were each executed under that gate; the discovery live-proof publish is not yet authorized.
