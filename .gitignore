@@ -115,3 +115,7 @@ tmp-uploads/
 # Webdev artifacts (checkpoint zips, migrations, etc.)
 .webdev/
 .claude/worktrees/
+
+# impeccable design skill — vendored, project-scoped, on-demand /impeccable only (no hook). Never commit.
+.claude/skills/impeccable/
+.claude/agents/impeccable-manual-edit-applier.md

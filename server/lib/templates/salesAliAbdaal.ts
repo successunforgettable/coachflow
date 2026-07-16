@@ -47,21 +47,27 @@ export interface SalesCoachInput {
 }
 
 // ── Palette — sampled token-for-token from the frozen Ali Abdaal reference (sales_page--ali-abdaal.png).
-// Warm off-white barely above white (NOT a yellow ivory), dark navy-black ink, a MUTED natural green
-// purchase CTA, a SOFT coral accent, and gold review stars. Restraint is the point — the reference's
-// polish comes from subtle warmth + high-contrast serif, not saturated colour. ──
+// Warm off-white barely above white (NOT a yellow ivory), dark navy-black ink, a SKY-BLUE `#5DCDF1`
+// purchase CTA with `#1B1624` text, and gold review stars. Restraint is the point — the reference's
+// polish comes from subtle warmth + high-contrast serif, not saturated colour.
+// ⚠️ CORRECTED 2026-07-17 (reference-audit): the earlier premise "MUTED natural green purchase CTA +
+// SOFT coral accent" was a MISREAD — the reference's real primary CTA is sky-blue (sampled #5DCDF1,
+// 74k px). Green is retained for checkmarks/accents only; the CTA is sky-blue. ──
 const WHITE = "#FFFFFF";
-const IVORY = "#FAF6F3";      // sampled warm off-white (250,246,243) — subtle, not tan
-const BLOB = "#F0EBE6";       // the reference's faint organic background shape
+const IVORY = "#F9F6F3";      // page off-white (249,246,243) — subtle, not tan
+const BLOB = "#ECE5E1";       // beige panel / faint organic background shape
 const INK = "#1B1624";        // sampled headline navy-black (27,22,36)
 const INK_SOFT = "#6B6572";
 const BODY = "#4A4652";
-const GREEN = "#2F9E4E";      // sampled muted natural purchase green (~#3C9145 family), not kelly-bright
+const GREEN = "#2F9E4E";      // sampled muted natural green — retained for checkmarks / accents only
 const GREEN_HOVER = "#268A42";
+const CTA = "#5DCDF1";        // sampled sky-blue primary purchase CTA (reference's real CTA colour)
+const CTA_HOVER = "#43C1EA";  // slightly deeper sky blue on hover
+const CTA_TEXT = "#1B1624";   // dark ink on the sky-blue CTA (not white)
 const CORAL = "#FD6D6D";      // sampled soft coral (253,109,109), not orange
 const STAR = "#F6A623";       // gold review stars
 const CARD_LINE = "#ECE7E0";  // subtle warm hairline border
-const S = "'Inter', system-ui, -apple-system, sans-serif"; // clean sans — nav / body / connective copy
+const S = "'Hanken Grotesk', system-ui, -apple-system, sans-serif"; // squared grotesque — nav / body / connective copy
 const SERIF = "'Fraunces', Georgia, 'Times New Roman', serif"; // high-contrast editorial serif — display
 
 const PRICE_TOKEN = "[INSERT_PRICE]";
@@ -95,7 +101,7 @@ function heroMedia(coach: SalesCoachInput): string {
 // ── CTA + capture ──────────────────────────────────────────────────────────────────────────────
 /** Green purchase CTA. Real checkout URL → a real link; else a reveal-on-intent capture button. */
 function purchaseCta(coach: SalesCoachInput, id: string, label: string): string {
-  const style = `display:inline-block;padding:15px 38px;font-family:${S};font-weight:600;font-size:clamp(15px,1.5vw,17px);color:${WHITE};background:${GREEN};border:0;border-radius:9999px;cursor:pointer;text-decoration:none;box-shadow:0 1px 2px rgba(27,22,36,0.10);`;
+  const style = `display:inline-block;padding:15px 38px;font-family:${S};font-weight:600;font-size:clamp(15px,1.5vw,17px);color:${CTA_TEXT};background:${CTA};border:0;border-radius:9999px;cursor:pointer;text-decoration:none;box-shadow:0 1px 2px rgba(27,22,36,0.10);`;
   if (ok(coach.checkoutUrl)) return ctaLink(coach.checkoutUrl!, label, style);
   return `<button type="button" class="sl_cta" data-form="${esc(id)}" style="${style}">${esc(label)}</button>`;
 }
@@ -108,7 +114,7 @@ function captureForm(coach: SalesCoachInput, id: string): string {
           <input type="email" name="sl_email" required placeholder="you@example.com" style="width:100%;box-sizing:border-box;padding:13px 15px;font-family:${S};font-size:15px;border:1px solid ${CARD_LINE};border-radius:10px;">
           <label style="display:flex;gap:8px;align-items:flex-start;font-family:${S};font-size:12px;line-height:1.4;color:${BODY};"><input type="checkbox" class="sl_consent" required style="margin-top:3px;"><span>I agree to receive enrolment details and related emails, and accept the <a href="https://zapcampaigns.com/privacy" target="_blank" rel="noopener" style="color:${GREEN_HOVER};">privacy policy</a>.</span></label>
           <div style="position:absolute;left:-9999px;" aria-hidden="true"><input type="text" name="sl_hp" tabindex="-1" autocomplete="off"></div>
-          <button type="submit" class="sl_submit" style="width:100%;box-sizing:border-box;padding:15px 24px;font-family:${S};font-weight:700;font-size:16px;color:${WHITE};background:${GREEN};border:0;border-radius:9999px;cursor:pointer;">Send me the enrolment details</button>
+          <button type="submit" class="sl_submit" style="width:100%;box-sizing:border-box;padding:15px 24px;font-family:${S};font-weight:700;font-size:16px;color:${CTA_TEXT};background:${CTA};border:0;border-radius:9999px;cursor:pointer;">Send me the enrolment details</button>
           <div class="sl_msg" style="font-family:${S};font-size:13px;color:${GREEN_HOVER};min-height:16px;"></div>
         </form>
       </div>`;
@@ -123,7 +129,7 @@ function header(coach: SalesCoachInput, serviceName: string): string {
   <header style="background:${IVORY};border-bottom:1px solid ${CARD_LINE};padding:16px 24px;">
     <div style="max-width:1120px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:16px;">
       ${brand}
-      <a href="#sl-offer" style="display:inline-block;padding:10px 22px;font-family:${S};font-weight:600;font-size:14px;color:${WHITE};background:${CORAL};border-radius:9999px;text-decoration:none;">Enrol Today</a>
+      <a href="#sl-offer" style="display:inline-block;padding:10px 22px;font-family:${S};font-weight:600;font-size:14px;color:${CTA_TEXT};background:${CTA};border-radius:9999px;text-decoration:none;">Enrol Today</a>
     </div>
   </header>`;
 }
@@ -136,7 +142,7 @@ function heroSection(content: LandingPageContent, coach: SalesCoachInput): strin
   const sub = ok(content.subheadline) ? esc(content.subheadline) : "";
   const media = heroMedia(coach);
   return `
-  <section style="position:relative;background:${IVORY};padding:92px 24px 84px;overflow:hidden;">
+  <section style="position:relative;background:${IVORY};padding:96px 24px;overflow:hidden;">
     <div aria-hidden="true" style="position:absolute;top:-6%;left:50%;transform:translateX(-50%);width:640px;height:640px;border-radius:9999px;background:${BLOB};filter:blur(8px);opacity:0.6;pointer-events:none;"></div>
     <div style="position:relative;max-width:900px;margin:0 auto;text-align:center;">
       ${eyebrow}
@@ -151,10 +157,12 @@ function heroSection(content: LandingPageContent, coach: SalesCoachInput): strin
 
 /** Review wall — real testimonials as five-star monogram cards (real-or-nothing). */
 function reviewWall(content: LandingPageContent): string {
-  const items = (Array.isArray(content.testimonials) ? content.testimonials : []).filter((t) => ok(t?.quote)).slice(0, 6);
+  // First three as the early star wall; later testimonials thread through the page as proofStrips
+  // (the reference interleaves proof between every content section — see the body order).
+  const items = (Array.isArray(content.testimonials) ? content.testimonials : []).filter((t) => ok(t?.quote)).slice(0, 3);
   if (items.length === 0) return "";
   const cards = items.map((t) => `
-        <div style="flex:1 1 300px;min-width:260px;max-width:360px;background:${WHITE};border:1px solid ${CARD_LINE};border-radius:16px;padding:24px;box-shadow:0 2px 10px rgba(27,22,36,0.04);">
+        <div style="flex:1 1 300px;min-width:260px;max-width:360px;background:${WHITE};border:1px solid ${CARD_LINE};border-radius:16px;padding:24px;box-shadow:0 2px 8px rgba(27,22,36,0.08);">
           <div style="margin:0 0 12px;">${stars(STAR, 15)}</div>
           <p style="font-family:${S};font-weight:400;font-size:15px;line-height:1.6;color:${INK};margin:0 0 16px;">&ldquo;${esc(t.quote)}&rdquo;</p>
           <div style="display:flex;align-items:center;gap:12px;">
@@ -166,10 +174,30 @@ function reviewWall(content: LandingPageContent): string {
           </div>
         </div>`).join("");
   return `
-  <section style="background:${WHITE};padding:92px 24px;">
+  <section style="background:${WHITE};padding:96px 24px;">
     <div style="max-width:1120px;margin:0 auto;">
       <h2 style="font-family:${SERIF};font-weight:600;font-size:clamp(26px,3vw,38px);line-height:1.15;color:${INK};text-align:center;margin:0 auto 40px;max-width:20ch;">Loved by the people who took it</h2>
       <div style="display:flex;flex-wrap:wrap;gap:20px;justify-content:center;">${cards}</div>
+    </div>
+  </section>`;
+}
+
+/**
+ * A single real testimonial as a wide beige interlude — threads proof BETWEEN content sections to
+ * match the reference's interleaved rhythm (it never clusters proof into two blocks). Cycles by
+ * index across the testimonial pool; omits when that index has no real testimonial (real-or-nothing,
+ * never padded or repeated). The early star wall shows [0..2]; strips carry [3], [4], [5]…
+ */
+function proofStrip(content: LandingPageContent, idx: number): string {
+  const items = (Array.isArray(content.testimonials) ? content.testimonials : []).filter((t) => ok(t?.quote));
+  const t = items[idx];
+  if (!t) return "";
+  return `
+  <section style="background:${BLOB};padding:60px 24px;">
+    <div style="max-width:820px;margin:0 auto;text-align:center;">
+      <div style="margin:0 0 14px;display:flex;justify-content:center;">${stars(STAR, 16)}</div>
+      <p style="font-family:${SERIF};font-weight:500;font-style:italic;font-size:clamp(19px,2.2vw,26px);line-height:1.4;color:${INK};margin:0 0 18px;">&ldquo;${esc(t.quote)}&rdquo;</p>
+      <div style="font-family:${S};font-weight:700;font-size:15px;color:${INK};">${esc(t.name ?? "")}${ok(t.location) ? `<span style="font-weight:400;color:${INK_SOFT};"> &middot; ${esc(t.location)}</span>` : ""}</div>
     </div>
   </section>`;
 }
@@ -183,7 +211,7 @@ function founderSection(content: LandingPageContent, coach: SalesCoachInput): st
     "width:200px;height:240px;border-radius:16px;object-fit:cover;object-position:top center;flex-shrink:0;box-shadow:0 10px 28px rgba(27,22,36,0.10);");
   const pull = ok(content.shockingStat) ? esc(content.shockingStat) : ok(content.insiderAdvantages) ? esc(content.insiderAdvantages) : "";
   return `
-  <section style="background:${WHITE};padding:32px 24px 80px;">
+  <section style="background:${WHITE};padding:32px 24px 96px;">
     <div style="max-width:960px;margin:0 auto;display:flex;flex-wrap:wrap;gap:40px;align-items:center;justify-content:center;">
       ${portrait}
       <div style="flex:1 1 420px;min-width:300px;">
@@ -200,8 +228,8 @@ function founderSection(content: LandingPageContent, coach: SalesCoachInput): st
 function formulaSection(content: LandingPageContent): string {
   if (!ok(content.uniqueMechanism)) return "";
   return `
-  <section style="background:${IVORY};padding:92px 24px;">
-    <div style="max-width:820px;margin:0 auto;background:${WHITE};border:1px solid ${CARD_LINE};border-radius:24px;padding:48px 40px;text-align:center;box-shadow:0 6px 24px rgba(27,22,36,0.05);">
+  <section style="background:${IVORY};padding:96px 24px;">
+    <div style="max-width:820px;margin:0 auto;background:${WHITE};border:1px solid ${CARD_LINE};border-radius:24px;padding:48px 40px;text-align:center;box-shadow:0 2px 8px rgba(27,22,36,0.08);">
       <div style="font-family:${S};font-weight:700;font-size:13px;letter-spacing:0.08em;text-transform:uppercase;color:${CORAL};margin:0 0 14px;">The simple formula</div>
       <h2 style="font-family:${SERIF};font-weight:600;font-size:clamp(24px,3vw,36px);line-height:1.2;color:${INK};margin:0 auto 20px;max-width:22ch;">It&#39;s simpler than you think</h2>
       <p style="font-family:${S};font-weight:400;font-size:17px;line-height:1.65;color:${BODY};margin:0 auto;max-width:56ch;">${esc(content.uniqueMechanism)}</p>
@@ -220,7 +248,7 @@ function systemsGrid(content: LandingPageContent): string {
           <div style="font-family:${SERIF};font-weight:600;font-size:17px;line-height:1.3;color:${INK};">${esc(t)}</div>
         </div>`).join("");
   return `
-  <section style="background:${WHITE};padding:92px 24px;">
+  <section style="background:${WHITE};padding:96px 24px;">
     <div style="max-width:1120px;margin:0 auto;">
       <h2 style="font-family:${SERIF};font-weight:600;font-size:clamp(26px,3vw,38px);line-height:1.15;color:${INK};text-align:center;margin:0 auto 44px;max-width:22ch;">You&#39;ll build systems for</h2>
       <div style="display:flex;flex-wrap:wrap;gap:18px;justify-content:center;">${cells}</div>
@@ -234,13 +262,13 @@ function deliverablesSection(content: LandingPageContent): string {
     .filter((o) => ok(o?.title) || ok(o?.description)).slice(0, 6);
   if (items.length === 0) return "";
   const cards = items.map((o, i) => `
-        <div style="flex:1 1 340px;min-width:280px;background:${WHITE};border:1px solid ${CARD_LINE};border-radius:16px;padding:28px 26px;box-shadow:0 2px 10px rgba(27,22,36,0.04);">
+        <div style="flex:1 1 340px;min-width:280px;background:${WHITE};border:1px solid ${CARD_LINE};border-radius:16px;padding:28px 26px;box-shadow:0 2px 8px rgba(27,22,36,0.08);">
           <div style="font-family:${SERIF};font-weight:600;font-size:14px;color:${CORAL};margin:0 0 10px;">0${i + 1}</div>
           ${ok(o.title) ? `<div style="font-family:${SERIF};font-weight:600;font-size:20px;color:${INK};margin:0 0 10px;">${esc(o.title)}</div>` : ""}
           ${ok(o.description) ? `<p style="font-family:${S};font-weight:400;font-size:15px;line-height:1.6;color:${BODY};margin:0;">${esc(o.description)}</p>` : ""}
         </div>`).join("");
   return `
-  <section style="background:${IVORY};padding:92px 24px;">
+  <section style="background:${IVORY};padding:96px 24px;">
     <div style="max-width:1000px;margin:0 auto;">
       <h2 style="font-family:${SERIF};font-weight:600;font-size:clamp(26px,3vw,38px);line-height:1.15;color:${INK};text-align:center;margin:0 auto 44px;max-width:24ch;">What&#39;s inside the Academy</h2>
       <div style="display:flex;flex-wrap:wrap;gap:20px;justify-content:center;">${cards}</div>
@@ -267,7 +295,7 @@ function resultsSection(content: LandingPageContent): string {
       const metrics = (Array.isArray(c.metrics) ? c.metrics : []).filter(ok).slice(0, 3).map((m) => `
               <div style="flex:1 1 120px;background:${IVORY};border-radius:12px;padding:14px;text-align:center;"><div style="font-family:${SERIF};font-weight:600;font-size:18px;color:${INK};">${esc(m)}</div></div>`).join("");
       return `
-        <div style="background:${WHITE};border:1px solid ${CARD_LINE};border-radius:20px;padding:32px;box-shadow:0 4px 16px rgba(27,22,36,0.05);margin:0 0 24px;">
+        <div style="background:${WHITE};border:1px solid ${CARD_LINE};border-radius:20px;padding:32px;box-shadow:0 2px 8px rgba(27,22,36,0.08);margin:0 0 24px;">
           <div style="display:flex;align-items:center;gap:16px;margin:0 0 18px;">
             ${avatar}
             <div style="font-family:${SERIF};font-weight:600;font-size:20px;color:${INK};">${esc(c.name)}</div>
@@ -277,7 +305,7 @@ function resultsSection(content: LandingPageContent): string {
         </div>`;
     }).join("");
     return `
-  <section style="background:${WHITE};padding:92px 24px;">
+  <section style="background:${WHITE};padding:96px 24px;">
     <div style="max-width:820px;margin:0 auto;">${heading}${cards}</div>
   </section>`;
   }
@@ -286,7 +314,7 @@ function resultsSection(content: LandingPageContent): string {
   const items = (Array.isArray(content.testimonials) ? content.testimonials : []).filter((t) => ok(t?.quote)).slice(0, 6);
   if (items.length === 0) return "";
   const cards = items.map((t) => `
-        <div style="flex:1 1 300px;min-width:260px;max-width:360px;background:${WHITE};border:1px solid ${CARD_LINE};border-radius:16px;padding:24px;box-shadow:0 2px 10px rgba(27,22,36,0.04);">
+        <div style="flex:1 1 300px;min-width:260px;max-width:360px;background:${WHITE};border:1px solid ${CARD_LINE};border-radius:16px;padding:24px;box-shadow:0 2px 8px rgba(27,22,36,0.08);">
           <p style="font-family:${S};font-weight:400;font-size:15px;line-height:1.6;color:${INK};margin:0 0 16px;">&ldquo;${esc(t.quote)}&rdquo;</p>
           <div style="display:flex;align-items:center;gap:12px;">
             <div aria-hidden="true" style="width:42px;height:42px;border-radius:9999px;background:${GREEN}1A;display:flex;align-items:center;justify-content:center;font-family:${SERIF};font-weight:600;font-size:15px;color:${GREEN_HOVER};text-transform:uppercase;">${esc(initials(String(t.name ?? "")))}</div>
@@ -297,7 +325,7 @@ function resultsSection(content: LandingPageContent): string {
           </div>
         </div>`).join("");
   return `
-  <section style="background:${WHITE};padding:92px 24px;">
+  <section style="background:${WHITE};padding:96px 24px;">
     <div style="max-width:1120px;margin:0 auto;">${heading}
       <div style="display:flex;flex-wrap:wrap;gap:20px;justify-content:center;">${cards}</div>
     </div>
@@ -315,7 +343,7 @@ function curriculumSection(content: LandingPageContent): string {
           </summary>
         </details>`).join("");
   return `
-  <section style="background:${WHITE};padding:92px 24px;">
+  <section style="background:${WHITE};padding:96px 24px;">
     <div style="max-width:720px;margin:0 auto;">
       <h2 style="font-family:${SERIF};font-weight:600;font-size:clamp(26px,3vw,38px);line-height:1.15;color:${INK};text-align:center;margin:0 auto 40px;">The curriculum</h2>
       ${items}
@@ -349,7 +377,7 @@ function offerSection(content: LandingPageContent, coach: SalesCoachInput): stri
   const title = ok(coach.coachName) ? `${esc(coach.coachName)}&#39;s Academy` : ok(content.mainHeadline) ? esc(content.mainHeadline) : "Join the Academy";
   return `
   <section id="sl-offer" style="background:${IVORY};padding:96px 24px;">
-    <div style="max-width:640px;margin:0 auto;background:${WHITE};border:1px solid ${CARD_LINE};border-radius:24px;padding:44px 40px;box-shadow:0 16px 48px rgba(27,22,36,0.08);text-align:center;">
+    <div style="max-width:640px;margin:0 auto;background:${WHITE};border:1px solid ${CARD_LINE};border-radius:24px;padding:44px 40px;box-shadow:0 2px 8px rgba(27,22,36,0.08);text-align:center;">
       <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin:0 0 20px;">
         ${portrait}
         <div style="font-family:${SERIF};font-weight:600;font-size:22px;color:${INK};text-align:left;">${title}</div>
@@ -367,7 +395,7 @@ function bonusesSection(content: LandingPageContent): string {
   const bonuses = (Array.isArray(content.bonuses) ? content.bonuses : []).filter((b) => ok(b?.title) || ok(b?.description)).slice(0, 4);
   if (bonuses.length === 0) return "";
   const cards = bonuses.map((b) => `
-        <div style="flex:1 1 300px;min-width:260px;max-width:360px;background:${WHITE};border:1px solid ${CARD_LINE};border-radius:16px;padding:24px;box-shadow:0 2px 10px rgba(27,22,36,0.04);">
+        <div style="flex:1 1 300px;min-width:260px;max-width:360px;background:${WHITE};border:1px solid ${CARD_LINE};border-radius:16px;padding:24px;box-shadow:0 2px 8px rgba(27,22,36,0.08);">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 10px;">
             ${ok(b.title) ? `<div style="font-family:${SERIF};font-weight:600;font-size:18px;color:${INK};">${esc(b.title)}</div>` : "<span></span>"}
             ${ok(b.value) ? `<div style="font-family:${S};font-weight:700;font-size:14px;color:${GREEN_HOVER};white-space:nowrap;">${esc(b.value)}</div>` : ""}
@@ -375,7 +403,7 @@ function bonusesSection(content: LandingPageContent): string {
           ${ok(b.description) ? `<p style="font-family:${S};font-weight:400;font-size:15px;line-height:1.55;color:${BODY};margin:0;">${esc(b.description)}</p>` : ""}
         </div>`).join("");
   return `
-  <section style="background:${WHITE};padding:92px 24px;">
+  <section style="background:${WHITE};padding:96px 24px;">
     <div style="max-width:1120px;margin:0 auto;">
       <h2 style="font-family:${SERIF};font-weight:600;font-size:clamp(26px,3vw,38px);line-height:1.15;color:${INK};text-align:center;margin:0 auto 40px;max-width:22ch;">Free bonuses when you enrol</h2>
       <div style="display:flex;flex-wrap:wrap;gap:20px;justify-content:center;">${cards}</div>
@@ -388,7 +416,7 @@ function guaranteeSection(content: LandingPageContent): string {
   if (!ok(content.guarantee)) return "";
   return `
   <section style="background:${IVORY};padding:96px 24px;">
-    <div style="max-width:620px;margin:0 auto;background:${WHITE};border:1px solid ${CARD_LINE};border-radius:20px;padding:40px;text-align:center;box-shadow:0 6px 24px rgba(27,22,36,0.05);">
+    <div style="max-width:620px;margin:0 auto;background:${WHITE};border:1px solid ${CARD_LINE};border-radius:20px;padding:40px;text-align:center;box-shadow:0 2px 8px rgba(27,22,36,0.08);">
       <div style="font-family:${SERIF};font-weight:600;font-size:clamp(22px,2.6vw,30px);color:${INK};margin:0 0 16px;">Our guarantee</div>
       <p style="font-family:${S};font-weight:400;font-size:16px;line-height:1.65;color:${BODY};margin:0;">${esc(content.guarantee)}</p>
     </div>
@@ -405,7 +433,7 @@ function faqSection(content: LandingPageContent): string {
           ${ok(f.answer) ? `<p style="font-family:${S};font-weight:400;font-size:15px;line-height:1.6;color:${BODY};margin:0 0 16px;">${esc(f.answer)}</p>` : ""}
         </details>`).join("");
   return `
-  <section style="background:${WHITE};padding:92px 24px;">
+  <section style="background:${WHITE};padding:96px 24px;">
     <div style="max-width:760px;margin:0 auto;">
       <h2 style="font-family:${SERIF};font-weight:600;font-size:clamp(26px,3vw,38px);line-height:1.15;color:${INK};text-align:center;margin:0 auto 32px;">Questions?</h2>
       ${items}
@@ -445,7 +473,7 @@ function runtimeScript(): string {
     fetch('/api/capture-lead',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({mode:'sales',slug:slug,email:email,name:((form.querySelector('input[name=sl_name]')||{}).value||''),consent:consent,website:((form.querySelector('input[name=sl_hp]')||{}).value||'')})})
     .then(function(r){return r.json().catch(function(){return {};});})
-    .then(function(){form.parentNode.innerHTML='<div style="font-family:'+"'Inter',sans-serif"+';font-weight:700;font-size:15px;color:#1A1A1A;text-align:center;padding:8px 0;">Thanks! Check your inbox for the enrolment details.</div>';})
+    .then(function(){form.parentNode.innerHTML='<div style="font-family:'+"'Hanken Grotesk',sans-serif"+';font-weight:700;font-size:15px;color:#1A1A1A;text-align:center;padding:8px 0;">Thanks! Check your inbox for the enrolment details.</div>';})
     .catch(function(){if(msg){msg.textContent='Something went wrong — please try again.';}if(sub){sub.disabled=false;sub.textContent='Send me the enrolment details';}});
   });})(forms[j]);}
 })();
@@ -465,7 +493,7 @@ export function buildSalesAliAbdaalHtml(
 ): string {
   return renderDocument({
     title: content.mainHeadline || serviceName,
-    fontHref: "https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..700&family=Inter:wght@400;500;600;700;800&display=swap",
+    fontHref: "https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..700&family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap",
     bodyBg: WHITE,
     body: [
       header(coach, serviceName),
@@ -473,11 +501,14 @@ export function buildSalesAliAbdaalHtml(
       reviewWall(content),
       founderSection(content, coach),
       formulaSection(content),
+      proofStrip(content, 3),        // interleaved proof (reference rhythm)
       systemsGrid(content),
       deliverablesSection(content),
+      proofStrip(content, 4),        // interleaved proof
       resultsSection(content),
       curriculumSection(content),
       offerSection(content, coach),
+      proofStrip(content, 5),        // interleaved proof
       bonusesSection(content),
       guaranteeSection(content),
       faqSection(content),

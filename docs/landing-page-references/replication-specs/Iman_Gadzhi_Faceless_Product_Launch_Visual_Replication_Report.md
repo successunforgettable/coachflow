@@ -1,5 +1,8 @@
 # Iman Gadzhi Faceless Product Launch — Visual Replication Research Report
 
+> ⚠️ **PROSE-VS-PNG CONTRADICTION (2026-07-17 reference audit).** This dossier's prose says the page is "one integrated cinematic poster ... not a chain of conventional funnel sections." That is FALSE against the frozen PNG `event_registration--iman-gadzhi.png` (4480×13966), which is a FULL ~8-section page: poster hero → "What You're Going To Learn" (Day 0N agenda) → "All The Details" → "The Cost of Doing Nothing vs Joining" → results → prizes/INCLUDED grid → "Register Below" CTA → legal. **The PNG is truth.** This prose poisoned the template (shipped at 0.48× height and PASSED its own gate), CLAUDE.md, and a unit test. Template REBUILT 2026-07-17 to match the PNG.
+
+
 > ## ⏹ FROZEN CANONICAL REFERENCE (frozen 2026-07-14 — live-page-is-truth)
 > - **In-repo authority:** `docs/landing-page-references/event_registration--iman-gadzhi.png` — **4480 × 13966 px**, complete full page (content scan 85.7%, no lazy-load gap).
 > - **Page:** Iman Gadzhi — "Make Money Online Challenge" (LIVE VIRTUAL EVENT, April 27 – May 1). Category: `event_registration` (free-event default).

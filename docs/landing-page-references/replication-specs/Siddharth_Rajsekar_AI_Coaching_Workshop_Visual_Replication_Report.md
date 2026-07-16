@@ -1,5 +1,8 @@
 # Siddharth Rajsekar AI Coaching Workshop — Visual Replication Research Dossier
 
+> ⚠️ **PROSE-VS-PNG CONTRADICTION (2026-07-17 reference audit).** This dossier's prose says "unusually compact, overwhelmingly white, coral eyebrow, blue-outlined reservation card." That is FALSE against the frozen PNG `webinar_registration--rajsekar.png` (4480×23788), which is a TALL page with a NAVY hero (#0F172A), a PURPLE action colour (#8F5BF6), and an alternating navy/white/navy/lavender/mint/white/lavender/navy band rhythm. **The PNG is truth.** This prose poisoned the template ("overwhelmingly white/coral", shipped at 0.54×). Template REBUILT 2026-07-17 to match the PNG.
+
+
 > ## ⏹ FROZEN CANONICAL REFERENCE (frozen 2026-07-14 — live-page-is-truth)
 > - **In-repo authority:** `docs/landing-page-references/webinar_registration--rajsekar.png` — **4480 × 23788 px**, complete full page. Category: `webinar_registration` (default).
 > - **Page:** Siddharth Rajsekar — "Free Masterclass: Turn Your Knowledge Into a ₹3L/Month One-Person Business Using AI" (Internet Lifestyle Hub). All required sections present + styled: hero (headline + presenter photo + countdown + form + stat badges) → Wistia video → stats bar (50,000+ / ₹1,500Cr+ / 9,100+ / 1) → "Is This You" 3 cards → 3-Part AI Framework → success-stories grid (Riddhi Deorah ₹24 Cr + 11 more) → "The System Architect" trainer bio → Free Bonuses (₹5,999 AI tools) → FAQ → footer.

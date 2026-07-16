@@ -50,25 +50,28 @@ export interface EventHormoziCoachInput {
 
 // ── Palette — the frozen Hormozi reference (spec §23): navy / white / pale-grey with purple CTA ──
 const WHITE = "#FFFFFF";
-const NAVY = "#1C1D3A"; // hero field + disclosure bars
+const NAVY = "#131628"; // hero field + disclosure bars (sampled from the frozen reference)
 const NAVY_DEEP = "#141531";
 const NEAR_BLACK = "#171717"; // torn divider + top strip
 const INK = "#20223F";
 const BODY = "#3B3D57";
 const PALE = "#F3F3F3"; // proof field
 const CARD_LINE = "#E4E5EE";
-const PURPLE_A = "#9A2BFF";
-const PURPLE_B = "#7A00FF";
-const PURPLE_TEXT = "#8000FF";
-const H = "'Inter', system-ui, -apple-system, sans-serif"; // heavy geometric sans
-const B = "'Inter', system-ui, -apple-system, sans-serif";
+// Action purple — sampled #6F00FD from the reference button (was a too-bright magenta gradient
+// topping #9A2BFF). Kept as a very subtle top-light gradient centred on the sampled violet.
+const PURPLE_A = "#8A3BFF";
+const PURPLE_B = "#6F00FF";
+const PURPLE_TEXT = "#6F00FF";
+const H = "'Poppins', system-ui, -apple-system, sans-serif"; // heavy geometric sans
+const B = "'Poppins', system-ui, -apple-system, sans-serif";
+const BTN = "Arial, Helvetica, sans-serif"; // buttons + form inputs
 
 const EVENT_LOC_TOKEN = "[INSERT_EVENT_LOCATION]";
 const EVENT_DATE_TOKEN = "[INSERT_EVENT_DATE]";
 
 /** Purple gradient pill CTA (reveal-on-intent email capture). Wording repeats across the page. */
 function purpleCta(id: string, label: string): string {
-  return `<button type="button" class="ev_cta" data-form="${esc(id)}" style="display:inline-block;padding:16px 38px;font-family:${H};font-weight:800;font-size:clamp(15px,1.6vw,18px);text-transform:uppercase;letter-spacing:0.02em;color:${WHITE};background:linear-gradient(180deg,${PURPLE_A} 0%,${PURPLE_B} 100%);border:0;border-radius:9999px;cursor:pointer;box-shadow:0 16px 40px rgba(122,0,255,0.32);">${esc(label)}</button>`;
+  return `<button type="button" class="ev_cta" data-form="${esc(id)}" style="display:inline-block;padding:16px 38px;font-family:${BTN};font-weight:800;font-size:clamp(15px,1.6vw,18px);text-transform:uppercase;letter-spacing:0.02em;color:${WHITE};background:linear-gradient(180deg,${PURPLE_A} 0%,${PURPLE_B} 100%);border:0;border-radius:9999px;cursor:pointer;box-shadow:0 8px 20px rgba(19,22,40,0.20);">${esc(label)}</button>`;
 }
 
 /** The reveal-on-intent capture form (shared markup; one instance per CTA id). */
@@ -76,11 +79,11 @@ function captureForm(id: string): string {
   return `
         <div id="${esc(id)}" class="ev_form" style="display:none;max-width:440px;margin:18px auto 0;text-align:left;">
           <form class="ev_optin" autocomplete="on" style="display:flex;flex-direction:column;gap:10px;">
-            <input type="text" name="ev_name" placeholder="First name (optional)" style="width:100%;box-sizing:border-box;padding:13px 15px;font-family:${B};font-size:15px;border:1px solid ${CARD_LINE};border-radius:10px;">
-            <input type="email" name="ev_email" required placeholder="you@example.com" style="width:100%;box-sizing:border-box;padding:13px 15px;font-family:${B};font-size:15px;border:1px solid ${CARD_LINE};border-radius:10px;">
+            <input type="text" name="ev_name" placeholder="First name (optional)" style="width:100%;box-sizing:border-box;padding:13px 15px;font-family:${BTN};font-size:15px;border:1px solid ${CARD_LINE};border-radius:8px;">
+            <input type="email" name="ev_email" required placeholder="you@example.com" style="width:100%;box-sizing:border-box;padding:13px 15px;font-family:${BTN};font-size:15px;border:1px solid ${CARD_LINE};border-radius:8px;">
             <label style="display:flex;gap:8px;align-items:flex-start;font-family:${B};font-size:12px;line-height:1.4;color:${BODY};"><input type="checkbox" class="ev_consent" required style="margin-top:3px;"><span>I agree to receive workshop details and related emails, and accept the <a href="https://zapcampaigns.com/privacy" target="_blank" rel="noopener" style="color:${PURPLE_TEXT};">privacy policy</a>.</span></label>
             <div style="position:absolute;left:-9999px;" aria-hidden="true"><input type="text" name="ev_hp" tabindex="-1" autocomplete="off"></div>
-            <button type="submit" class="ev_submit" style="width:100%;box-sizing:border-box;padding:15px 24px;font-family:${H};font-weight:800;font-size:16px;text-transform:uppercase;color:${WHITE};background:linear-gradient(180deg,${PURPLE_A},${PURPLE_B});border:0;border-radius:9999px;cursor:pointer;">Reserve my seat</button>
+            <button type="submit" class="ev_submit" style="width:100%;box-sizing:border-box;padding:15px 24px;font-family:${BTN};font-weight:800;font-size:16px;text-transform:uppercase;color:${WHITE};background:linear-gradient(180deg,${PURPLE_A},${PURPLE_B});border:0;border-radius:9999px;cursor:pointer;">Reserve my seat</button>
             <div class="ev_msg" style="font-family:${B};font-size:13px;color:${PURPLE_TEXT};min-height:16px;"></div>
           </form>
         </div>`;
@@ -186,7 +189,7 @@ function proofSection(content: LandingPageContent, heading: string, slice: [numb
     .filter((t) => ok(t?.quote)).slice(slice[0], slice[1]);
   if (testimonials.length === 0) return "";
   const cards = testimonials.map((t) => `
-        <div style="flex:1 1 300px;min-width:260px;max-width:360px;background:${WHITE};border:1px solid ${CARD_LINE};border-radius:14px;padding:24px;box-shadow:0 10px 30px rgba(20,21,49,0.06);">
+        <div style="flex:1 1 300px;min-width:260px;max-width:360px;background:${WHITE};border:1px solid ${CARD_LINE};border-radius:10px;padding:24px;box-shadow:0 8px 20px rgba(19,22,40,0.06);">
           <p style="font-family:${B};font-weight:400;font-size:15px;line-height:1.6;color:${INK};margin:0 0 16px;">&ldquo;${esc(t.quote)}&rdquo;</p>
           <div style="display:flex;align-items:center;gap:12px;">
             <div aria-hidden="true" style="width:42px;height:42px;border-radius:9999px;background:${PURPLE_TEXT}1A;display:flex;align-items:center;justify-content:center;font-family:${H};font-weight:700;font-size:15px;color:${PURPLE_TEXT};text-transform:uppercase;">${esc(initials(String(t.name ?? "")))}</div>
@@ -205,34 +208,46 @@ function proofSection(content: LandingPageContent, heading: string, slice: [numb
   </section>`;
 }
 
-/** Full-width torn black in-person divider (spec §7/§30 — "in-person" underlined). */
+/**
+ * Full-width TORN black in-person divider (spec §7/§30 — "in-person" underlined). Real torn-paper
+ * edges: a ragged strip along the top (filled with the PALE proof colour above) and bottom (filled
+ * WHITE like the deliverables below) so the black band reads as torn out of the page, not a flat bar.
+ */
 function tornDivider(): string {
+  const D = "M0,20 L60,6 L120,17 L180,4 L240,15 L300,3 L360,16 L420,6 L480,18 L540,5 L600,15 L660,7 L720,17 L780,4 L840,16 L900,6 L960,18 L1020,5 L1080,15 L1140,8 L1200,17 L1200,20 Z";
+  const tearTop = `<svg aria-hidden="true" viewBox="0 0 1200 20" preserveAspectRatio="none" style="position:absolute;top:-1px;left:0;width:100%;height:20px;display:block;"><path d="${D}" fill="${PALE}"/></svg>`;
+  const tearBottom = `<svg aria-hidden="true" viewBox="0 0 1200 20" preserveAspectRatio="none" style="position:absolute;bottom:-1px;left:0;width:100%;height:20px;display:block;transform:rotate(180deg);"><path d="${D}" fill="${WHITE}"/></svg>`;
   return `
-  <section style="background:${NEAR_BLACK};padding:64px 24px;position:relative;">
-    <div style="max-width:900px;margin:0 auto;text-align:center;">
+  <section style="background:${NEAR_BLACK};padding:72px 24px;position:relative;overflow:hidden;">
+    ${tearTop}${tearBottom}
+    <div style="max-width:900px;margin:0 auto;text-align:center;position:relative;z-index:1;">
       <h2 style="font-family:${H};font-weight:800;font-size:clamp(24px,3vw,40px);line-height:1.15;text-transform:uppercase;color:${WHITE};margin:0;">What you get at the <span style="text-decoration:underline;text-decoration-color:${PURPLE_A};text-underline-offset:5px;">in-person</span> workshop</h2>
     </div>
   </section>`;
 }
 
 /**
- * Three numbered workshop deliverables from consultationOutline (text-first per decision G5; an
- * event photo is optional/graceful-omit — no fabricated stock imagery). A CTA follows the full set.
+ * Three numbered workshop deliverables from consultationOutline. TEXT-FIRST BY DESIGN (decision G5),
+ * and honestly so: the reference shows a photo per deliverable, but ZAP has NO honest per-deliverable
+ * image source — a coach supplies one headshot + one hero image, never three distinct workshop
+ * photos, and fabricating stock imagery is forbidden. So each deliverable is an enriched numbered
+ * card (purple index + top accent) rather than a fake photo. A CTA follows the full set.
  */
 function benefitsSection(content: LandingPageContent): string {
   const items = (Array.isArray(content.consultationOutline) ? content.consultationOutline : [])
     .filter((o) => ok(o?.title) || ok(o?.description)).slice(0, 3);
   if (items.length === 0) return "";
   const cols = items.map((o, i) => `
-        <div style="flex:1 1 280px;min-width:250px;">
-          <div style="font-family:${H};font-weight:800;font-size:44px;line-height:1;color:${PURPLE_TEXT};margin:0 0 14px;">${i + 1}</div>
+        <div style="flex:1 1 280px;min-width:250px;background:#FBFBFE;border:1px solid ${CARD_LINE};border-radius:12px;padding:26px 24px;position:relative;overflow:hidden;">
+          <div aria-hidden="true" style="position:absolute;top:0;left:0;width:100%;height:4px;background:linear-gradient(90deg,${PURPLE_A},${PURPLE_B});"></div>
+          <div style="font-family:${H};font-weight:800;font-size:48px;line-height:1;color:${PURPLE_TEXT};margin:6px 0 14px;">${String(i + 1).padStart(2, "0")}</div>
           ${ok(o.title) ? `<div style="font-family:${H};font-weight:700;font-size:19px;color:${INK};margin:0 0 10px;">${esc(o.title)}</div>` : ""}
           ${ok(o.description) ? `<p style="font-family:${B};font-weight:400;font-size:15px;line-height:1.6;color:${BODY};margin:0;">${esc(o.description)}</p>` : ""}
         </div>`).join("");
   return `
   <section style="background:${WHITE};padding:72px 24px 64px;">
     <div style="max-width:1000px;margin:0 auto;">
-      <div style="display:flex;flex-wrap:wrap;gap:40px;">${cols}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:24px;">${cols}</div>
       <div style="text-align:center;margin-top:52px;">
         ${purpleCta("f_mid", ok(content.primaryCta) ? content.primaryCta : "I'm ready to scale")}
         ${captureForm("f_mid")}
@@ -289,7 +304,7 @@ function ladderSection(content: LandingPageContent, coach: EventHormoziCoachInpu
   if (!ok(bars)) return "";
   return `
   <section style="background:${WHITE};padding:32px 24px 8px;">
-    <div style="max-width:820px;margin:0 auto;border:1px solid ${CARD_LINE};border-bottom:0;border-radius:14px 14px 0 0;overflow:hidden;">${bars}</div>
+    <div style="max-width:820px;margin:0 auto;border:1px solid ${CARD_LINE};border-bottom:0;border-radius:10px 10px 0 0;overflow:hidden;">${bars}</div>
   </section>`;
 }
 
@@ -322,7 +337,7 @@ function runtimeScript(): string {
     fetch('/api/capture-lead',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({mode:'event',slug:slug,email:email,name:((form.querySelector('input[name=ev_name]')||{}).value||''),consent:consent,website:((form.querySelector('input[name=ev_hp]')||{}).value||'')})})
     .then(function(r){return r.json().catch(function(){return {};});})
-    .then(function(){form.parentNode.innerHTML='<div style="font-family:'+"'Inter',sans-serif"+';font-weight:700;font-size:15px;color:#20223F;text-align:center;padding:8px 0;">You&#39;re on the list! Check your inbox for the workshop details.</div>';})
+    .then(function(){form.parentNode.innerHTML='<div style="font-family:'+"'Poppins',sans-serif"+';font-weight:700;font-size:15px;color:#20223F;text-align:center;padding:8px 0;">You&#39;re on the list! Check your inbox for the workshop details.</div>';})
     .catch(function(){if(msg){msg.textContent='Something went wrong — please try again.';}if(sub){sub.disabled=false;sub.textContent='Reserve my seat';}});
   });})(forms[j]);}
 })();
@@ -341,7 +356,7 @@ export function buildEventHormoziHtml(
 ): string {
   return renderDocument({
     title: content.mainHeadline || serviceName,
-    fontHref: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap",
+    fontHref: "https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap",
     bodyBg: WHITE,
     body: [
       eventStrip(content),

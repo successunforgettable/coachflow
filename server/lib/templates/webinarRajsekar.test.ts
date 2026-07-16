@@ -81,12 +81,14 @@ describe("buildWebinarRajsekarHtml — webinar registration on the Rajsekar desi
     expect(html).toContain('id="wb_hp"'); // honeypot present
   });
 
-  it("binds 'Is This You' cards to ICP-derived content (real-or-nothing), omits when empty", () => {
+  // CORRECTED 2026-07-17: the ICP qualification is now the reference's lavender "Who is this class
+  // for?" closer (moved from a top "Is this you"); still binds coach.isThisYou (real-or-nothing).
+  it("binds 'Who is this class for?' cards to ICP-derived content (real-or-nothing), omits when empty", () => {
     const html = buildWebinarRajsekarHtml(base, "Coaching", coach);
-    expect(html).toContain("Does this sound like you?");
+    expect(html).toContain("Who is this class for?");
     expect(html).toContain("can&#39;t scale past 1:1");
     const noIcp = buildWebinarRajsekarHtml(base, "Coaching", { ...coach, isThisYou: [] });
-    expect(noIcp).not.toContain("Does this sound like you?");
+    expect(noIcp).not.toContain("Who is this class for?");
   });
 
   it("renders the 3-part framework from consultationOutline and real testimonials with monograms", () => {
@@ -119,6 +121,6 @@ describe("buildWebinarRajsekarHtml — webinar registration on the Rajsekar desi
     expect(html).toContain("Meet your host");
     expect(html).toContain("Siddharth Rajsekar");
     expect(html).toContain("decade training coaches");
-    expect(html).toContain("#04113A"); // navy footer
+    expect(html).toContain("#0F172A"); // navy footer (sampled NAVY, unified 2026-07-17)
   });
 });

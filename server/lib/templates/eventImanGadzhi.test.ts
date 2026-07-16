@@ -13,8 +13,9 @@ const base = {
   testimonials: [{ headline: "", quote: "This changed everything for me.", name: "Jordan Lee", location: "Austin" }],
   insiderAdvantages: "", scarcityUrgency: "Tickets Are First Come, First Served",
   shockingStat: "", timeSavingBenefit: "",
-  consultationOutline: [{ title: "Should not render", description: "no benefits on this poster" }],
-  faq: [{ question: "Should not render?", answer: "no FAQ on this poster" }],
+  // The agenda ("What You're Going To Learn") binds to consultationOutline (corrected 2026-07-17).
+  consultationOutline: [{ title: "The Market Opportunity", description: "How the landscape shifts in your favour." }],
+  faq: [{ question: "Should not render?", answer: "no FAQ on this poster" }], // Iman has NO FAQ section
   guarantee: "",
 } as unknown as LandingPageContent;
 
@@ -49,11 +50,11 @@ describe("buildEventImanGadzhiHtml — free-ticket event poster on the Iman desi
     expect(html).toContain("[INSERT_EVENT_DATE]");
   });
 
-  it("renders ONE yellow pill CTA with the label and scarcity note, and no countdown", () => {
+  it("renders ONE pill CTA with the label and scarcity note, and no countdown", () => {
     const html = buildEventImanGadzhiHtml(base, "Challenge", coach);
     expect(html).toContain("GET MY FREE TICKET");
     expect(html).toContain("Tickets Are First Come, First Served");
-    expect(html).toContain("#FFF62E"); // luminous yellow conversion accent
+    expect(html).toContain("#FF6242"); // brand orange conversion accent (per the brand design system)
     expect(html).not.toContain('id="ev_cd"'); // the frozen reference shows no countdown — never fake one
   });
 
@@ -69,14 +70,21 @@ describe("buildEventImanGadzhiHtml — free-ticket event poster on the Iman desi
     expect(html).toContain("/api/capture-lead");
     expect(html).toContain("mode:'event'");
     expect(html).toContain('type="email"');
-    expect(html).toContain('id="ev_hp"'); // honeypot present
+    expect(html).toContain('class="ev_hp_in"'); // honeypot present (class-based, multi-instance reveal)
   });
 
-  it("does NOT invent proof, benefits, agenda, price, or FAQ sections (frozen reference has none)", () => {
+  // CORRECTED 2026-07-17: the frozen reference is a FULL page, not a poster. The agenda ("What
+  // You're Going To Learn") DOES render from consultationOutline; but Iman's reference has no
+  // testimonials block and no FAQ, and ZAP never fabricates its $250K/McLaren/Rolex prize pool.
+  it("builds the agenda from consultationOutline, omits testimonials/FAQ, never fabricates prizes", () => {
     const html = buildEventImanGadzhiHtml(base, "Challenge", coach);
-    expect(html).not.toContain("This changed everything for me."); // testimonial ignored
-    expect(html).not.toContain("no benefits on this poster"); // consultationOutline ignored
-    expect(html).not.toContain("no FAQ on this poster"); // faq ignored
+    expect(html).toContain("What You&rsquo;re Going To Learn"); // agenda section header
+    expect(html).toContain("The Market Opportunity"); // real consultationOutline day renders
+    expect(html).not.toContain("This changed everything for me."); // no testimonials block (ref has none)
+    expect(html).not.toContain("no FAQ on this poster"); // no FAQ section (ref has none)
+    expect(html).not.toContain("$250"); // never Iman's prize pool
+    expect(html).not.toContain("McLaren");
+    expect(html).not.toContain("Rolex");
   });
 
   it("closes on the legal endpoint (privacy/terms, non-affiliation disclaimer, copyright)", () => {

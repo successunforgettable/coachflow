@@ -2,7 +2,7 @@
  * Discovery — the Burchard design LANGUAGE applied to a discovery-call / booking flow.
  * Template #2. Same visual system as the frozen Burchard Productivity lead-magnet reference
  * (docs/landing-page-references/lead_magnet_download--brendon-burchard-productivity.png):
- * navy/orange/Figtree, the white creator/product composite, charcoal benefit bands + navy
+ * navy/orange/Fira Sans, the white creator/product composite, charcoal benefit bands + navy
  * testimonials, cream lower section, navy footer. The page drives BOOKING A CALL, not a
  * download, so it differs from lead-magnet in exactly the places the flow differs:
  *   - the hero CTA is a REAL <a href={bookingUrl}> "Book a Discovery Call" (no email form —
@@ -39,18 +39,18 @@ export interface DiscoveryCoachInput {
 }
 
 // ── Palette — the same design language as the frozen Burchard Productivity reference ──
-const NAVY = "#1E293B";
-const ORANGE = "#F88028";
-const ORANGE_HOVER = "#F0731A";
+const NAVY = "#161E2A";
+const ORANGE = "#F97316";
+const ORANGE_HOVER = "#F37231";
 const WHITE = "#FFFFFF";
-const SUB = "#CBD5E1";
-const H = "'Figtree', system-ui, sans-serif";
-const B = "'Figtree', system-ui, sans-serif";
-const CHARCOAL = "#343137";
+const SUB = "#595959";
+const H = "'Fira Sans', system-ui, -apple-system, sans-serif";
+const B = "'Open Sans', system-ui, -apple-system, sans-serif";
+const CHARCOAL = "#1F2937";
 const CHARCOAL_BORDER = "#3F3B42";
 const TESTIMONIAL_BG = "#303A4A";
 const BAND_TEXT = "#E8EAED";
-const CREAM = "#FFF7ED";
+const CREAM = "#FDF7F0"; // sampled from the Burchard reference's lower band (matches lead-magnet)
 const FOOTER_BG = "#1B2538";
 const FOOTER_TEXT = "#94A3B8";
 
@@ -93,7 +93,7 @@ function callComposite(coach: DiscoveryCoachInput): string {
     "position:absolute;left:14px;bottom:0;height:80%;width:auto;max-width:46%;object-fit:cover;object-position:top center;",
   );
 
-  return `<div style="position:relative;width:100%;max-width:680px;aspect-ratio:1.42;background:${WHITE};border-radius:16px;box-shadow:0 24px 60px rgba(0,0,0,0.45);overflow:hidden;display:flex;flex-direction:column;">
+  return `<div style="position:relative;width:100%;max-width:560px;aspect-ratio:1.46;background:${WHITE};border-radius:16px;box-shadow:0 24px 60px rgba(0,0,0,0.45);overflow:hidden;display:flex;flex-direction:column;">
     <div aria-hidden="true" style="position:absolute;top:14px;right:14px;width:54px;height:54px;border-radius:50%;background:${ORANGE};display:flex;align-items:center;justify-content:center;color:#fff;font-family:${H};font-weight:800;font-size:14px;transform:rotate(8deg);box-shadow:0 4px 10px rgba(0,0,0,0.18);z-index:3;">FREE</div>
     <div style="padding:16px 22px 6px;text-align:center;z-index:2;">
       <div style="font-family:${B};font-size:10px;font-weight:700;letter-spacing:0.12em;color:#64748B;">${eyebrow}</div>
@@ -131,7 +131,7 @@ function heroSection(content: LandingPageContent, coach: DiscoveryCoachInput): s
   );
 
   return `
-  <section style="background:${NAVY};padding:40px 24px 34px;">
+  <section style="background:${NAVY};padding:30px 24px 22px;">
     <div style="max-width:1050px;margin:0 auto;">
       <div style="margin:0 0 40px;">${logo}</div>
       <div style="display:flex;flex-wrap:wrap;align-items:flex-start;gap:44px;">
@@ -161,13 +161,13 @@ function bandsSection(content: LandingPageContent): string {
   if (outline.length === 0 && testimonials.length === 0) return "";
 
   const bands = outline.slice(0, 3).map((item) => `
-        <div style="background:${CHARCOAL};border:1px solid ${CHARCOAL_BORDER};border-radius:10px;padding:17px 22px;display:flex;align-items:center;gap:14px;">
+        <div style="background:${CHARCOAL};border:1px solid ${CHARCOAL_BORDER};border-radius:10px;padding:13px 20px;display:flex;align-items:center;gap:14px;">
           ${CHECK}
           <span style="font-family:${B};font-size:15px;font-weight:500;color:${BAND_TEXT};line-height:1.4;">${highlightKeyword(String(item.description ?? ""), String(item.title ?? ""), ORANGE)}</span>
         </div>`).join("");
 
   const quotes = testimonials.slice(0, 2).map((t) => `
-        <div style="background:${TESTIMONIAL_BG};border-radius:10px;padding:22px 26px;display:flex;gap:16px;align-items:flex-start;">
+        <div style="background:${TESTIMONIAL_BG};border-radius:10px;padding:16px 22px;display:flex;gap:16px;align-items:flex-start;">
           <div aria-hidden="true" style="flex-shrink:0;width:44px;height:44px;border-radius:50%;background:#475569;display:flex;align-items:center;justify-content:center;font-family:${H};font-weight:700;font-size:16px;color:#E2E8F0;text-transform:uppercase;">${esc(initials(String(t.name ?? "")))}</div>
           <div>
             <p style="font-family:${B};font-size:15px;font-weight:400;color:#E2E8F0;line-height:1.5;margin:0 0 8px;">&ldquo;${esc(t.quote ?? "")}&rdquo;</p>
@@ -176,7 +176,7 @@ function bandsSection(content: LandingPageContent): string {
         </div>`).join("");
 
   return `
-  <section style="background:${NAVY};padding:0 24px 60px;">
+  <section style="background:${NAVY};padding:0 24px 34px;">
     <div style="max-width:1050px;margin:0 auto;">
       ${outline.length ? `<h2 style="font-family:${H};font-weight:800;font-size:clamp(20px,2vw,28px);line-height:1.2;color:${WHITE};text-align:center;margin:0 0 26px;">What we'll cover on the call</h2>` : ""}
       <div style="display:flex;flex-direction:column;gap:14px;">
@@ -199,10 +199,10 @@ function creamSection(content: LandingPageContent, serviceName: string, coach: D
   );
 
   return `
-  <section style="background:${CREAM};padding:64px 24px 72px;">
+  <section style="background:${CREAM};padding:34px 24px 40px;">
     <div style="max-width:1050px;margin:0 auto;">
       <h2 style="font-family:${H};font-weight:800;font-size:clamp(24px,2.4vw,34px);line-height:1.2;letter-spacing:-0.01em;color:${NAVY};text-align:center;margin:0 auto 12px;max-width:780px;">Ready to see if we're a fit?</h2>
-      <p style="font-family:${B};font-size:16px;color:#64748B;text-align:center;margin:0 auto 40px;max-width:620px;">Book a free 1:1 — no pressure, no pitch. Just a conversation about your next step.</p>
+      <p style="font-family:${B};font-size:16px;color:#64748B;text-align:center;margin:0 auto 22px;max-width:620px;">Book a free 1:1 — no pressure, no pitch. Just a conversation about your next step.</p>
       <div style="max-width:560px;margin:0 auto;background:#FFFFFF;border:2px solid ${ORANGE};border-radius:14px;padding:28px 28px 26px;box-shadow:0 14px 34px rgba(20,30,45,0.10);text-align:center;">
         <h3 style="font-family:${H};font-weight:800;font-size:22px;color:${NAVY};margin:0 0 18px;">Book Your Free Discovery Call</h3>
         <div>${ctaBtn}</div>
@@ -225,7 +225,7 @@ export function buildDiscoveryBurchardHtml(
 ): string {
   return renderDocument({
     title: content.mainHeadline || serviceName,
-    fontHref: "https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap",
+    fontHref: "https://fonts.googleapis.com/css2?family=Fira+Sans:wght@400;500;600;700;800&family=Open+Sans:wght@400;500;600;700&display=swap",
     bodyBg: NAVY,
     body: [
       heroSection(content, coach),

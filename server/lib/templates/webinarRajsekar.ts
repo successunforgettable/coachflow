@@ -1,16 +1,17 @@
 /**
  * Webinar (Rajsekar) — template #3. A NEW design bar, NOT the Burchard design language.
  * Bespoke replica of the frozen Siddharth Rajsekar masterclass-registration reference
- * (docs/landing-page-references/webinar_registration--rajsekar.png, 4480×23788): an
- * overwhelmingly WHITE, video-led workshop-registration page with a coral action colour,
- * a blue-outlined white reservation card, and a deep-navy legal footer. Rounded, friendly,
- * very-heavy geometric sans (Poppins) for the headline crown; charcoal body.
+ * (docs/landing-page-references/webinar_registration--rajsekar.png, 4480×23788).
+ * ⚠️ CORRECTED 2026-07-17 (reference-audit): the earlier premise "overwhelmingly WHITE, coral
+ * action colour" was a MISREAD. The reference is a NAVY-hero page with a PURPLE action colour and
+ * an ALTERNATING band rhythm (navy / white / navy / lavender / white / mint / white / lavender /
+ * navy) — not monotone white/coral. Poppins headings (Univia-Pro match) / Outfit body.
  *
- * FULL 10-section page (built to the frozen full-page capture, not the older compact
- * SwipePages evidence): hero (eyebrow → headline → support → media + reservation card) →
- * "Is This You" pain cards → 3-part framework → success stories → host bio → free bonuses →
- * FAQ → footer. (The reference's numeric stats bar is intentionally OMITTED — a coach has no
- * such figures and ZAP never invents "50,000+ / ₹1,500Cr+" numbers.)
+ * FULL page in reference order: navy hero (badge → headline → sub → countdown → purple CTA +
+ * presenter) → white VIDEO/social-proof ("Watch how it works") → NAVY framework band (large
+ * numerals) → lavender multi-row success grid → white host bio → MINT free bonuses → white FAQ →
+ * lavender "Who is this class for?" closer → navy footer. (The reference's numeric stats bar is
+ * intentionally OMITTED — a coach has no such figures and ZAP never invents "50,000+ / ₹1,500Cr+".)
  *
  * Highest-risk / Gate-1 section (spec §22): the hero media + reservation-card composite —
  * an asymmetric video/photo mass beside a narrower blue-bordered white action card that must
@@ -54,20 +55,31 @@ export interface WebinarCoachInput {
   trustCount?: string | null;
 }
 
-// ── Palette — the frozen Rajsekar reference (spec §17), a distinct bar from Burchard ──
+// ── Palette — Rajsekar brand design system + PNG-sampled action colours (spec §17) ──
+// Fonts: Univia Pro (headings, commercial) → matched to Poppins (closest free geometric — rounded,
+// humanist, moderate x-height); body = Outfit (free, per the brand doc). Action colour is PURPLE:
+// the CTA button samples #8F5BF6, with a lighter #A78BFA lilac for accent tints; navy hero #0F172A,
+// near-black #22222A headings on white, emerald #34D399. (The build had drifted to white/coral.)
 const WHITE = "#FFFFFF";
-const INK = "#242424"; // near-black headline / heavy copy
+const INK = "#22222A"; // near-black headline / heavy copy (white sections)
 const INK_SOFT = "#4A4A55";
-const CORAL = "#FF5847"; // eyebrow + CTA + action
-const CORAL_HOVER = "#F0472F";
-const BLUE = "#438FD8"; // reservation-card perimeter
+const CORAL = "#8F5BF6"; // action colour — sampled purple CTA button
+const CORAL_HOVER = "#7A44E8";
+const LILAC = "#A78BFA"; // lighter accent tint (eyebrow, emphasis) per the brand doc
+const HERO_NAVY = "#0F172A"; // deep-navy hero band (brand doc)
+const HERO_SUB = "#C4CAD8"; // hero sub-copy on navy
+const BLUE = "#438FD8"; // reservation-card perimeter (retained for form links)
 const BLUE_LINK = "#4A96E0";
-const GREEN = "#1FA463"; // rating tiles
-const NAVY = "#04113A"; // footer
+const GREEN = "#34D399"; // emerald rating tiles (brand doc)
+const NAVY = "#0F172A"; // footer + dark framework band (sampled)
 const CANVAS_SOFT = "#F6F8FB"; // alternating soft section bg
 const CARD_LINE = "#E3E8EF";
-const H = "'Poppins', system-ui, -apple-system, sans-serif";
-const B = "'Poppins', system-ui, -apple-system, sans-serif";
+// Alternating band backgrounds sampled from the reference rhythm.
+const LAVENDER = "#F7F3FF"; // success grid + "who is this for" closer
+const MINT = "#ECFDF5";     // free-bonuses band
+const PURPLE_ON_DARK = "#B98BFF"; // large framework numerals / accents on the navy band
+const H = "'Poppins', system-ui, -apple-system, sans-serif"; // Univia Pro match (headings)
+const B = "'Outfit', system-ui, -apple-system, sans-serif";  // Outfit (body, per brand doc)
 
 const EVENT_DATE_TOKEN = "[INSERT_EVENT_DATE]";
 const EVENT_TIME_TOKEN = "[INSERT_EVENT_TIME]";
@@ -95,17 +107,54 @@ function videoEmbed(url: string, posterFallback: string): string {
   return posterFallback;
 }
 
-/** 16:9 media mass: real video, else real headshot/hero poster (NO play button), else omitted. */
-function mediaFrame(coach: WebinarCoachInput): string {
+/**
+ * 16:9 media mass. `posterOnly` (hero) → the presenter photo only, never the video (the video has
+ * its own section below the hero, matching the reference). Otherwise (video section) → real video →
+ * embed, else real photo poster (no fake play), else omitted.
+ */
+function mediaFrame(coach: WebinarCoachInput, posterOnly = false): string {
   const posterUrl = coach.heroImageUrl || coach.headshotUrl;
   const poster = imgOrOmit(
     posterUrl,
     coach.coachName || "Your host",
     "position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:top center;",
   );
-  const inner = ok(coach.videoUrl) ? videoEmbed(coach.videoUrl!, poster) : poster;
+  const inner = !posterOnly && ok(coach.videoUrl) ? videoEmbed(coach.videoUrl!, poster) : poster;
   if (!ok(inner)) return ""; // no real video and no real photo → omit honestly (no placeholder)
-  return `<div style="position:relative;width:100%;aspect-ratio:16/9;background:#0B1220;border-radius:14px;overflow:hidden;box-shadow:0 24px 60px rgba(15,23,42,0.28);">${inner}</div>`;
+  return `<div style="position:relative;width:100%;aspect-ratio:16/9;background:#0B1220;border-radius:12px;overflow:hidden;box-shadow:0 24px 60px rgba(122,60,255,0.22);">${inner}</div>`;
+}
+
+/**
+ * Hero-right PRESENTER portrait (matches the reference: the presenter beside the headline, NOT a
+ * 16:9 video). Prefers the real headshot; falls back to the hero image; omits when neither exists.
+ * A portrait 4:5 frame so a face-cropped photo reads as a presenter, not a letterboxed band.
+ */
+function heroPresenter(coach: WebinarCoachInput): string {
+  const url = coach.headshotUrl || coach.heroImageUrl;
+  const img = imgOrOmit(url, coach.coachName || "Your host",
+    "position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:top center;");
+  if (!ok(img)) return "";
+  return `<div style="position:relative;width:100%;aspect-ratio:4/5;max-width:420px;margin:0 auto;background:#0B1220;border-radius:16px;overflow:hidden;box-shadow:0 24px 60px rgba(122,60,255,0.22);">${img}</div>`;
+}
+
+/**
+ * "Watch how it works" — the reference's white video/social-proof band directly under the hero.
+ * Renders the coach's REAL video (video_url) in a 16:9 frame; ZAP never fabricates video, so with no
+ * real video the whole section omits. Heading is generic-but-true (never Rajsekar's specific claim).
+ */
+function videoSection(content: LandingPageContent, coach: WebinarCoachInput): string {
+  if (!ok(coach.videoUrl)) return ""; // no real video → omit the section entirely
+  const heading = "Watch how it works";
+  const sub = ok(content.solutionIntro) ? esc(content.solutionIntro) : "";
+  const frame = `<div style="position:relative;width:100%;aspect-ratio:16/9;background:#0B1220;border-radius:16px;overflow:hidden;box-shadow:0 30px 70px rgba(122,60,255,0.18);">${videoEmbed(coach.videoUrl!, "")}</div>`;
+  return `
+  <section style="background:${WHITE};padding:72px 24px;">
+    <div style="max-width:900px;margin:0 auto;text-align:center;">
+      <h2 style="font-family:${H};font-weight:800;font-size:clamp(24px,2.8vw,36px);line-height:1.15;color:${INK};margin:0 auto 14px;max-width:22ch;">${heading}</h2>
+      ${sub ? `<p style="font-family:${B};font-weight:400;font-size:clamp(15px,1.4vw,18px);line-height:1.55;color:${INK_SOFT};margin:0 auto 34px;max-width:52ch;">${sub}</p>` : `<div style="height:20px;"></div>`}
+      ${frame}
+    </div>
+  </section>`;
 }
 
 // ── Reservation card (Gate-1 right mass) ─────────────────────────────────────────────
@@ -122,14 +171,14 @@ function reserveCard(content: LandingPageContent, coach: WebinarCoachInput): str
     : `${EVENT_DATE_TOKEN}, ${EVENT_TIME_TOKEN} ${EVENT_TZ_TOKEN}`;
 
   // Countdown binds to a REAL date only. No date → no timer (and the tokens above trip the
-  // publish hard-gate → review-draft). Never a fake ticking clock.
+  // publish hard-gate → review-draft). Never a fake ticking clock. White on the navy hero.
   const countdown = hasDate
-    ? `<div id="wb_cd" data-target="${esc(eventTargetAttr(es))}" style="font-family:${B};font-weight:700;font-size:15px;color:${CORAL};letter-spacing:0.02em;margin:2px 0 14px;">&nbsp;</div>`
+    ? `<div id="wb_cd" data-target="${esc(eventTargetAttr(es))}" style="font-family:${B};font-weight:700;font-size:15px;color:${WHITE};letter-spacing:0.08em;margin:0 0 20px;">&nbsp;</div>`
     : "";
 
   const bonuses = Array.isArray(content.bonuses) ? content.bonuses : [];
   const bonusLine = bonuses.length && ok(bonuses[0].title)
-    ? `<div style="font-family:${H};font-weight:700;font-size:16px;line-height:1.35;color:${INK};margin:0 0 12px;">&#127873; <span style="color:${CORAL};">BONUS:</span> ${esc(bonuses[0].title)} — free when you attend live</div>`
+    ? `<div style="font-family:${B};font-weight:600;font-size:15px;line-height:1.4;color:${HERO_SUB};margin:0 0 16px;">&#127873; <span style="color:${LILAC};font-weight:700;">BONUS:</span> ${esc(bonuses[0].title)} — free when you attend live</div>`
     : "";
 
   const cta = ok(content.primaryCta) ? content.primaryCta : "Reserve My Free Seat";
@@ -139,29 +188,27 @@ function reserveCard(content: LandingPageContent, coach: WebinarCoachInput): str
     ? `${esc(coach.trustCount)} already registered`
     : "Free to attend &middot; Live online";
 
+  // Left-aligned hero action block on the navy field (no bordered card — the reference keeps the
+  // CTA inline under the headline). The reveal-on-intent email capture keeps its wb_* ids so the
+  // runtime script still wires it to /api/capture-lead (webinar mode).
   return `
-      <div style="background:${WHITE};border:2px dashed ${BLUE};border-radius:16px;padding:26px 26px 22px;box-shadow:0 18px 44px rgba(15,23,42,0.10);">
+      <div style="text-align:left;">
         ${bonusLine}
-        <div style="display:flex;align-items:center;gap:8px;font-family:${B};font-weight:600;font-size:15px;color:${INK};margin:0 0 4px;">
-          <span aria-hidden="true">&#128197;</span><span>${eventLine}</span>
-        </div>
         ${countdown}
-        <!-- Default state matches the frozen card: a single coral CTA, no visible fields. The
-             minimal email capture reveals on intent, then posts to /api/capture-lead (webinar). -->
-        <button type="button" id="wb_cta" style="display:block;width:100%;box-sizing:border-box;padding:16px 24px;font-family:${H};font-weight:700;font-size:17px;color:${WHITE};background:${CORAL};border:0;border-radius:9999px;cursor:pointer;letter-spacing:0.01em;">${esc(cta)}</button>
-        <div id="wb_form" style="display:none;margin-top:14px;">
+        <button type="button" id="wb_cta" style="display:inline-block;padding:17px 40px;font-family:${H};font-weight:700;font-size:17px;color:${WHITE};background:${CORAL};border:0;border-radius:16px;cursor:pointer;letter-spacing:0.01em;box-shadow:0 14px 30px rgba(122,60,255,0.35);">${esc(cta)}</button>
+        <div id="wb_form" style="display:none;margin-top:16px;max-width:400px;">
           <form id="wb_optin" autocomplete="on" style="display:flex;flex-direction:column;gap:10px;">
-            <input type="text" id="wb_name" name="wb_name" placeholder="First name (optional)" style="width:100%;box-sizing:border-box;padding:12px 14px;font-family:${B};font-size:15px;border:1px solid ${CARD_LINE};border-radius:10px;">
-            <input type="email" id="wb_email" name="wb_email" required placeholder="you@example.com" style="width:100%;box-sizing:border-box;padding:12px 14px;font-family:${B};font-size:15px;border:1px solid ${CARD_LINE};border-radius:10px;">
-            <label style="display:flex;gap:8px;align-items:flex-start;font-family:${B};font-size:12px;line-height:1.4;color:${INK_SOFT};"><input type="checkbox" id="wb_consent" required style="margin-top:3px;"><span>I agree to receive the joining link and related emails, and accept the <a href="https://zapcampaigns.com/privacy" target="_blank" rel="noopener" style="color:${BLUE_LINK};">privacy policy</a>.</span></label>
+            <input type="text" id="wb_name" name="wb_name" placeholder="First name (optional)" style="width:100%;box-sizing:border-box;padding:13px 15px;font-family:${B};font-size:15px;border:1px solid ${CARD_LINE};border-radius:8px;">
+            <input type="email" id="wb_email" name="wb_email" required placeholder="you@example.com" style="width:100%;box-sizing:border-box;padding:13px 15px;font-family:${B};font-size:15px;border:1px solid ${CARD_LINE};border-radius:8px;">
+            <label style="display:flex;gap:8px;align-items:flex-start;font-family:${B};font-size:12px;line-height:1.4;color:${HERO_SUB};"><input type="checkbox" id="wb_consent" required style="margin-top:3px;"><span>I agree to receive the joining link and related emails, and accept the <a href="https://zapcampaigns.com/privacy" target="_blank" rel="noopener" style="color:${LILAC};">privacy policy</a>.</span></label>
             <div style="position:absolute;left:-9999px;" aria-hidden="true"><input type="text" id="wb_hp" name="wb_hp" tabindex="-1" autocomplete="off"></div>
-            <button type="submit" id="wb_submit" style="width:100%;box-sizing:border-box;padding:14px 24px;font-family:${H};font-weight:700;font-size:16px;color:${WHITE};background:${CORAL};border:0;border-radius:9999px;cursor:pointer;">Confirm my seat</button>
-            <div id="wb_msg" style="font-family:${B};font-size:13px;color:${CORAL_HOVER};min-height:16px;"></div>
+            <button type="submit" id="wb_submit" style="width:100%;box-sizing:border-box;padding:15px 24px;font-family:${H};font-weight:700;font-size:16px;color:${WHITE};background:${CORAL};border:0;border-radius:16px;cursor:pointer;">Confirm my seat</button>
+            <div id="wb_msg" style="font-family:${B};font-size:13px;color:${LILAC};min-height:16px;"></div>
           </form>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;justify-content:center;margin-top:14px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-top:18px;">
           <span aria-hidden="true" style="display:inline-flex;gap:3px;">${greenStar()}${greenStar()}${greenStar()}${greenStar()}${greenStar()}</span>
-          <span style="font-family:${B};font-size:13px;font-weight:500;color:${INK_SOFT};">${trustLine}</span>
+          <span style="font-family:${B};font-size:13px;font-weight:500;color:${HERO_SUB};">${trustLine}</span>
         </div>
       </div>`;
 }
@@ -172,53 +219,74 @@ function greenStar(): string {
 
 // ── Sections ─────────────────────────────────────────────────────────────────────────
 
-/** Gate 1: centered eyebrow → headline → support, then the media + reservation-card composite. */
+/** Gate 1: reference-faithful two-column hero — LEFT badge→headline→sub→countdown→CTA, RIGHT presenter. */
 function heroSection(content: LandingPageContent, coach: WebinarCoachInput): string {
-  const eyebrow = ok(content.eyebrowHeadline) ? esc(content.eyebrowHeadline) : "FREE ONLINE WORKSHOP";
+  const eyebrow = ok(content.eyebrowHeadline) ? esc(content.eyebrowHeadline) : "FREE LIVE CLASS";
   const headline = ok(content.mainHeadline) ? esc(content.mainHeadline) : "Join my free live workshop";
   const sub = ok(content.subheadline) ? esc(content.subheadline) : "";
   const logo = ok(coach.logoUrl)
-    ? `<img src="${esc(coach.logoUrl)}" alt="${esc(coach.coachName || "Logo")}" style="height:30px;width:auto;display:block;margin:0 auto;">`
+    ? `<img src="${esc(coach.logoUrl)}" alt="${esc(coach.coachName || "Logo")}" style="height:30px;width:auto;display:block;margin:0 0 22px;">`
     : "";
 
-  const media = mediaFrame(coach);
-  const card = reserveCard(content, coach);
-  // Asymmetric composite (spec §7): media the wider left mass, card the narrower right mass.
-  // When there is no media at all, the card centres so the hero still reads finished.
-  const composite = media
-    ? `<div style="display:flex;flex-wrap:wrap;gap:34px;align-items:flex-start;justify-content:center;">
-        <div style="flex:1 1 560px;min-width:300px;max-width:680px;">${media}</div>
-        <div style="flex:1 1 380px;min-width:290px;max-width:440px;">${card}</div>
+  // Eyebrow pill: "FREE LIVE CLASS · <real date>" (date only when a real eventSchedule.date exists).
+  const es = content.eventSchedule ?? {};
+  // Real date → shown in the badge; no date → emit the [INSERT_EVENT_*] tokens so the publish
+  // placeholder hard-gate blocks the page (review-draft-until-a-date-is-set). Never a fake date.
+  const dateBadge = ok(es.date)
+    ? `<span style="color:${HERO_SUB};font-weight:500;">&nbsp;&middot;&nbsp;${esc(es.date)}${ok(es.time) ? `, ${esc(es.time)}` : ""}${ok(es.timezone) ? ` ${esc(es.timezone)}` : ""}</span>`
+    : `<span style="color:${HERO_SUB};font-weight:500;">&nbsp;&middot;&nbsp;${EVENT_DATE_TOKEN}, ${EVENT_TIME_TOKEN} ${EVENT_TZ_TOKEN}</span>`;
+  const badge = `<div style="display:inline-flex;align-items:center;gap:8px;background:rgba(167,139,250,0.14);border:1px solid rgba(167,139,250,0.34);border-radius:9999px;padding:7px 16px;font-family:${B};font-weight:700;font-size:12px;letter-spacing:0.06em;color:${LILAC};text-transform:uppercase;margin:0 0 20px;"><span aria-hidden="true" style="width:7px;height:7px;border-radius:50%;background:${GREEN};display:inline-block;"></span>${eyebrow}${dateBadge}</div>`;
+
+  const media = heroPresenter(coach); // hero shows the presenter PORTRAIT; the video has its own section
+  const action = reserveCard(content, coach);
+
+  // RIGHT: presenter media with two honest decorative chips (no fabricated numbers — both are
+  // true of any free live class). Omitted entirely when there is no real video/photo.
+  const right = media
+    ? `<div style="flex:1 1 440px;min-width:300px;position:relative;">
+        ${media}
+        <div aria-hidden="true" style="position:absolute;top:-14px;left:-14px;background:${WHITE};border-radius:12px;padding:8px 14px;font-family:${B};font-weight:600;font-size:13px;color:${INK};box-shadow:0 10px 24px rgba(122,60,255,0.20);">&#9889; Live &amp; interactive</div>
+        <div aria-hidden="true" style="position:absolute;bottom:-14px;right:-14px;background:${CORAL};border-radius:12px;padding:8px 14px;font-family:${B};font-weight:600;font-size:13px;color:${WHITE};box-shadow:0 10px 24px rgba(122,60,255,0.32);">&#127775; Free to attend</div>
       </div>`
-    : `<div style="max-width:460px;margin:0 auto;">${card}</div>`;
+    : "";
 
   return `
-  <section style="background:${WHITE};padding:34px 24px 56px;">
-    <div style="max-width:1080px;margin:0 auto;text-align:center;">
-      ${logo ? `<div style="margin:0 0 26px;">${logo}</div>` : ""}
-      <div style="font-family:${B};font-weight:700;font-size:14px;letter-spacing:0.08em;color:${CORAL};text-transform:uppercase;margin:0 0 14px;">${eyebrow}</div>
-      <h1 style="font-family:${H};font-weight:800;font-size:clamp(30px,4.4vw,52px);line-height:1.06;letter-spacing:-0.02em;color:${INK};margin:0 auto 18px;max-width:16ch;">${headline}</h1>
-      ${sub ? `<p style="font-family:${B};font-weight:500;font-size:clamp(16px,1.5vw,19px);line-height:1.5;color:${INK_SOFT};margin:0 auto 40px;max-width:52ch;">${sub}</p>` : `<div style="height:20px;"></div>`}
-      <div style="text-align:left;">${composite}</div>
+  <section style="background:${HERO_NAVY};padding:56px 24px 64px;">
+    <div style="max-width:1120px;margin:0 auto;display:flex;flex-wrap:wrap;gap:48px;align-items:center;justify-content:center;">
+      <div id="wb_reserve" style="flex:1 1 460px;min-width:300px;text-align:left;">
+        ${logo}${badge}
+        <h1 style="font-family:${H};font-weight:800;font-size:clamp(30px,4vw,50px);line-height:1.08;letter-spacing:-0.02em;color:${WHITE};margin:0 0 18px;max-width:15ch;">${headline}</h1>
+        ${sub ? `<p style="font-family:${B};font-weight:400;font-size:clamp(16px,1.4vw,19px);line-height:1.55;color:${HERO_SUB};margin:0 0 28px;max-width:46ch;">${sub}</p>` : ""}
+        ${action}
+      </div>
+      ${right}
     </div>
   </section>`;
 }
 
-/** "Is This You" — 3 pain cards bound to the coach's existing long ICP (real-or-nothing). */
-function isThisYouSection(coach: WebinarCoachInput): string {
+/**
+ * "Who is this class for?" — the reference's lavender qualification closer. Binds the coach's
+ * existing long ICP (coach.isThisYou, real-or-nothing → omit when empty) and ends on a purple CTA
+ * that scrolls to the hero reserve block (no second capture form — the hero owns the one form).
+ */
+function whoForSection(content: LandingPageContent, coach: WebinarCoachInput): string {
   const items = (Array.isArray(coach.isThisYou) ? coach.isThisYou : []).filter((c) => ok(c?.body)).slice(0, 3);
   if (items.length === 0) return "";
+  const cta = ok(content.primaryCta) ? esc(content.primaryCta) : "Reserve My Free Seat";
   const cards = items.map((c) => `
-        <div style="flex:1 1 280px;min-width:250px;background:${WHITE};border:1px solid ${CARD_LINE};border-radius:16px;padding:26px 24px;box-shadow:0 8px 24px rgba(15,23,42,0.05);">
-          <div style="width:40px;height:40px;border-radius:10px;background:${CORAL}1A;display:flex;align-items:center;justify-content:center;margin:0 0 16px;"><span style="color:${CORAL};font-family:${H};font-weight:800;font-size:20px;">?</span></div>
+        <div style="flex:1 1 280px;min-width:250px;background:${WHITE};border:1px solid #E7DEF9;border-radius:16px;padding:26px 24px;box-shadow:0 10px 30px rgba(122,60,255,0.08);">
+          <div style="width:40px;height:40px;border-radius:10px;background:${CORAL}1A;display:flex;align-items:center;justify-content:center;margin:0 0 16px;"><span style="color:${CORAL};font-family:${H};font-weight:800;font-size:20px;">&#10003;</span></div>
           ${ok(c.label) ? `<div style="font-family:${H};font-weight:700;font-size:17px;color:${INK};margin:0 0 8px;">${esc(c.label)}</div>` : ""}
           <p style="font-family:${B};font-weight:400;font-size:15px;line-height:1.55;color:${INK_SOFT};margin:0;">${esc(c.body)}</p>
         </div>`).join("");
   return `
-  <section style="background:${CANVAS_SOFT};padding:64px 24px;">
+  <section style="background:${LAVENDER};padding:80px 24px;">
     <div style="max-width:1080px;margin:0 auto;">
-      <h2 style="font-family:${H};font-weight:800;font-size:clamp(24px,2.6vw,34px);line-height:1.15;color:${INK};text-align:center;margin:0 auto 36px;max-width:20ch;">Does this sound like you?</h2>
+      <h2 style="font-family:${H};font-weight:800;font-size:clamp(24px,2.6vw,34px);line-height:1.15;color:${INK};text-align:center;margin:0 auto 36px;max-width:20ch;">Who is this class for?</h2>
       <div style="display:flex;flex-wrap:wrap;gap:20px;justify-content:center;">${cards}</div>
+      <div style="text-align:center;margin:38px 0 0;">
+        <a href="#wb_reserve" style="display:inline-block;padding:17px 40px;font-family:${H};font-weight:700;font-size:17px;text-decoration:none;color:${WHITE};background:${CORAL};border-radius:16px;box-shadow:0 14px 30px rgba(122,60,255,0.3);">${cta}</a>
+      </div>
     </div>
   </section>`;
 }
@@ -230,14 +298,14 @@ function frameworkSection(content: LandingPageContent): string {
   if (outline.length === 0) return "";
   const steps = outline.map((o, i) => `
         <div style="flex:1 1 280px;min-width:250px;text-align:center;">
-          <div style="width:56px;height:56px;border-radius:9999px;background:${CORAL};color:${WHITE};display:flex;align-items:center;justify-content:center;font-family:${H};font-weight:800;font-size:24px;margin:0 auto 18px;">${i + 1}</div>
-          ${ok(o.title) ? `<div style="font-family:${H};font-weight:700;font-size:19px;color:${INK};margin:0 0 8px;">${esc(o.title)}</div>` : ""}
-          ${ok(o.description) ? `<p style="font-family:${B};font-weight:400;font-size:15px;line-height:1.55;color:${INK_SOFT};margin:0 auto;max-width:34ch;">${esc(o.description)}</p>` : ""}
+          <div style="font-family:${H};font-weight:800;font-size:clamp(52px,6vw,76px);line-height:1;color:${PURPLE_ON_DARK};margin:0 0 12px;opacity:0.95;">${String(i + 1).padStart(2, "0")}</div>
+          ${ok(o.title) ? `<div style="font-family:${H};font-weight:700;font-size:19px;color:${WHITE};margin:0 0 8px;">${esc(o.title)}</div>` : ""}
+          ${ok(o.description) ? `<p style="font-family:${B};font-weight:400;font-size:15px;line-height:1.55;color:#C4CAD8;margin:0 auto;max-width:34ch;">${esc(o.description)}</p>` : ""}
         </div>`).join("");
   return `
-  <section style="background:${WHITE};padding:72px 24px;">
+  <section style="background:${NAVY};padding:80px 24px;">
     <div style="max-width:1080px;margin:0 auto;">
-      <h2 style="font-family:${H};font-weight:800;font-size:clamp(24px,2.6vw,34px);line-height:1.15;color:${INK};text-align:center;margin:0 auto 44px;max-width:22ch;">What you&#39;ll learn live</h2>
+      <h2 style="font-family:${H};font-weight:800;font-size:clamp(24px,2.6vw,34px);line-height:1.15;color:${WHITE};text-align:center;margin:0 auto 48px;max-width:22ch;">What you&#39;ll learn live</h2>
       <div style="display:flex;flex-wrap:wrap;gap:32px;justify-content:center;">${steps}</div>
     </div>
   </section>`;
@@ -260,8 +328,8 @@ function successSection(content: LandingPageContent): string {
           <p style="font-family:${B};font-weight:400;font-size:15px;line-height:1.55;color:${INK};margin:0;">&ldquo;${esc(t.quote)}&rdquo;</p>
         </div>`).join("");
   return `
-  <section style="background:${CANVAS_SOFT};padding:72px 24px;">
-    <div style="max-width:1080px;margin:0 auto;">
+  <section style="background:${LAVENDER};padding:80px 24px;">
+    <div style="max-width:1120px;margin:0 auto;">
       <h2 style="font-family:${H};font-weight:800;font-size:clamp(24px,2.6vw,34px);line-height:1.15;color:${INK};text-align:center;margin:0 auto 40px;max-width:22ch;">From people who attended</h2>
       <div style="display:flex;flex-wrap:wrap;gap:20px;justify-content:center;">${cards}</div>
     </div>
@@ -305,7 +373,7 @@ function bonusesSection(content: LandingPageContent): string {
           ${ok(b.description) ? `<p style="font-family:${B};font-weight:400;font-size:15px;line-height:1.55;color:${INK_SOFT};margin:0;">${esc(b.description)}</p>` : ""}
         </div>`).join("");
   return `
-  <section style="background:${CANVAS_SOFT};padding:72px 24px;">
+  <section style="background:${MINT};padding:80px 24px;">
     <div style="max-width:1080px;margin:0 auto;">
       <h2 style="font-family:${H};font-weight:800;font-size:clamp(24px,2.6vw,34px);line-height:1.15;color:${INK};text-align:center;margin:0 auto 12px;max-width:22ch;">Free bonuses when you attend live</h2>
       <p style="font-family:${B};font-size:15px;color:${INK_SOFT};text-align:center;margin:0 auto 40px;max-width:46ch;">Show up live and these are yours &mdash; on the house.</p>
@@ -379,7 +447,8 @@ function runtimeScript(): string {
 </script>`;
 }
 
-/** Full webinar page: hero composite → is-this-you → framework → success → bio → bonuses → FAQ → footer. */
+/** Full webinar page (reference band rhythm): navy hero → white video → NAVY framework → lavender
+ * success → white bio → MINT bonuses → white FAQ → lavender who-for → navy footer. */
 export function buildWebinarRajsekarHtml(
   content: LandingPageContent,
   serviceName: string,
@@ -387,16 +456,17 @@ export function buildWebinarRajsekarHtml(
 ): string {
   return renderDocument({
     title: content.mainHeadline || serviceName,
-    fontHref: "https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap",
+    fontHref: "https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700&display=swap",
     bodyBg: WHITE,
     body: [
       heroSection(content, coach),
-      isThisYouSection(coach),
+      videoSection(content, coach),
       frameworkSection(content),
       successSection(content),
       bioSection(coach),
       bonusesSection(content),
       faqSection(content),
+      whoForSection(content, coach),
       footer(serviceName, coach),
       runtimeScript(),
     ].join("\n"),

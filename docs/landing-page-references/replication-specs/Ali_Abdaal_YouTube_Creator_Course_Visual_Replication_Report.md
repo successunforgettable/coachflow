@@ -1,5 +1,8 @@
 # Ali Abdaal — YouTube Creator Course Visual Replication Report
 
+> ⚠️ **PROSE-VS-PNG CONTRADICTION (2026-07-17 reference audit).** This dossier's prose repeatedly says "green CTA." That is FALSE against the frozen PNG `sales_page--ali-abdaal.png`, whose primary CTA is SKY-BLUE `#5DCDF1` with `#1B1624` text (sampled, 74k px). **The PNG is truth.** This prose poisoned the sales template (green CTA); CTA corrected 2026-07-17.
+
+
 > ## ⏹ FROZEN CANONICAL REFERENCE (frozen 2026-07-14 — live-page-is-truth)
 > - **In-repo authority:** `docs/landing-page-references/sales_page--ali-abdaal.png` — **4480 × 69468 px**, complete full page (content scan 73.4% over a very tall page, largest blank gap only 2.0% — no lazy-load hole).
 > - **Page:** Ali Abdaal — Part-Time YouTuber Academy, crash-course offer page ("Save $100 When You Buy The Part-Time YouTuber Academy"). Category: `sales_page` (default).
