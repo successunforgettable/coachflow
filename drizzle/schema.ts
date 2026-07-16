@@ -61,6 +61,11 @@ export const users = mysqlTable("users", {
   // template hero media; ZAP never fabricates video. Promoted to a typed column now 0087 is
   // applied (was read via a guarded raw query pre-migration — see coachVideoUrl.ts).
   videoUrl: varchar("video_url", { length: 500 }),
+  // Per-coach external checkout/enrolment URL (migration 0088, APPLIED). Backs the sales LP
+  // CTA (ZAP has no payment integration); when NULL the sales page falls back to an email
+  // capture. Promoted to a typed column now 0088 is applied (was read via a guarded raw query
+  // pre-migration — see coachCheckoutUrl.ts).
+  checkoutUrl: varchar("checkout_url", { length: 500 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
