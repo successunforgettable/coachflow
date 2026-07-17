@@ -138,8 +138,21 @@ surfaces), locked with tests (`realTestimonials.test.ts`, `renderRegistry.test.t
 (a book review / "great mentor" quote a coach wants pinned as coach-proof regardless of scope). Not
 built — scope derivation covers the launch case, and a curation UI doesn't exist yet.
 
+## 10. Testimonial library — MOUNTED (`/v2-dashboard/settings`)
+
+The last link in the proof chain: the cap fix / partition / presence-gating only matter if a coach can
+get their testimonials in. Now they can. A **"Testimonials" section in `V2Settings`** (`client/src/v2/
+components/TestimonialLibrarySection.tsx`, new) — coach-level persistent home matching the coach-proof
+partition (portable, not campaign-scoped). Full **list + delete** (`testimonials.delete`), a collapsible
+**bulk import** (`TestimonialBulkImport`, gained an additive `onImported` callback), and a plain-language
+**value banner** after import ("N testimonials added — your landing pages will now show your real
+proof"). The in-chat `TestimonialPicker` still handles per-campaign activation (up to 3). Client-only,
+additive — publish path + templates untouched; matches V2 styling (Fraunces headings, Instrument Sans,
+orange pills). **FOLLOW-UP flagged (not built):** a "manage your full library" link from the in-chat
+picker into Settings.
+
 ## RESUME POINT
 1. Arfeen's **final visual approval** of `craft-review/final-*` + the proof-composition renders.
-2. Mount `TestimonialBulkImport` into a reachable surface; then the batched **live-proof** pass
+2. The batched **live-proof** pass
    (needs `execute`): discovery + webinar + event + sales, now with real testimonials + presence gating.
 4. The conversational operator-intake sprint (booking_url / video_url / date / price) remains queued.

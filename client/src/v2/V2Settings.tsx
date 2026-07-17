@@ -15,6 +15,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { openSnapshotApplyTab } from "./lib/ghlSnapshot";
 import V2Layout from "./V2Layout";
 import { WorkflowStatusPill } from "./components/WorkflowStatusPill";
+import TestimonialLibrarySection from "./components/TestimonialLibrarySection";
 
 const T = {
   bg: "#F5F1EA",
@@ -334,6 +335,14 @@ export default function V2Settings() {
               {isPro ? "Pro" : "Free"}
             </span>
           </div>
+        </div>
+
+        {/* ── SECTION 1.2: TESTIMONIALS — the coach's persistent proof library ── */}
+        {/* Where a coach gets their real testimonials in (paste / CSV), sees them, */}
+        {/* and deletes a bad one. Feeds the landing-page proof surfaces. */}
+        <div style={T.card}>
+          <SectionHeading>Testimonials</SectionHeading>
+          <TestimonialLibrarySection />
         </div>
 
         {/* ── SECTION 1.5: INTEGRATIONS — Phase C C3 follow-on 8 (Phase 1) ── */}

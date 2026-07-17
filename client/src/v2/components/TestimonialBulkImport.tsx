@@ -25,6 +25,8 @@ interface Props {
   /** Attach imported testimonials to a specific service (else global to the coach). */
   serviceId?: number;
   onDone?: () => void;
+  /** Fired after a successful import — the parent surfaces what it unlocked in plain language. */
+  onImported?: (result: { added: number; duplicates: number; invalid: number }) => void;
 }
 
 type Row = { name: string; title: string; quote: string };
@@ -70,10 +72,13 @@ function validate(rows: Row[]): ParsedRow[] {
   });
 }
 
-export default function TestimonialBulkImport({ serviceId, onDone }: Props) {
+export default function TestimonialBulkImport({ serviceId, onDone, onImported }: Props) {
   const utils = trpc.useUtils();
   const addMany = trpc.testimonials.addMany.useMutation({
-    onSuccess: () => utils.testimonials.list.invalidate(),
+    onSuccess: (r) => {
+      utils.testimonials.list.invalidate();
+      onImported?.({ added: r.added, duplicates: r.duplicates, invalid: r.invalid });
+    },
   });
   const [raw, setRaw] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
