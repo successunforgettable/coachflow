@@ -463,6 +463,17 @@ export type LandingPageContent = {
     name: string;
     location: string;
   }>;
+  // OFFER proof for THIS service (testimonials scoped to serviceId = this page's service). Additive
+  // partition (2026-07-17): `testimonials` above now carries OFFER proof; `coachTestimonials` below
+  // carries portable COACH proof (the coach's testimonials NOT scoped to this service — global or
+  // another program). Both real-or-nothing, populated by realTestimonials.ts at publish. Optional so
+  // every non-partitioned reader is unaffected.
+  coachTestimonials?: Array<{
+    headline: string;
+    quote: string;
+    name: string;
+    location: string;
+  }>;
   insiderAdvantages: string;
   scarcityUrgency: string;
   shockingStat: string;

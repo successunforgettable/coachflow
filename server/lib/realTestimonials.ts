@@ -1,81 +1,93 @@
 /**
- * Real-testimonial injection — the 3-cap fix (2026-07-18).
+ * Real-testimonial injection + proof partition — the 3-cap fix and the coach-vs-offer proof model.
  *
- * ROOT CAUSE: the cascade populates `content.testimonials` from `services.testimonial1/2/3` — three
- * literal columns, capped at 3. The `testimonials` LIBRARY table (unlimited per coach) was never
- * wired into landing-page rendering, so a coach with 8 real testimonials silently lost 5. This is a
- * bug, not an optimisation: every LP template that renders testimonials (Burchard, Discovery, Hormozi,
- * Sales, Webinar) was showing at most 3 of however many the coach actually has.
+ * TWO BUGS this addresses:
+ *  1. THE 3-CAP: `content.testimonials` was populated only from `services.testimonial1/2/3` (three
+ *     literal columns, capped at 3); the unlimited `testimonials` LIBRARY table was never wired into
+ *     LP rendering. A coach with 8 real testimonials silently lost 5.
+ *  2. THE OTHER-PROGRAMS BUG (2026-07-17): the earlier fix read `serviceId = S OR serviceId IS NULL`,
+ *     so testimonials scoped to the coach's OTHER programs never flowed. An established coach with 40
+ *     testimonials across programs #1–3 launching #4 saw ZERO of them — the coach with the most proof
+ *     got the least. Fix: read COACH-WIDE (every testimonial the coach owns).
  *
- * FIX: at publish time (both publish paths), read the coach's FULL real testimonial library for this
- * service and replace `content.testimonials` with the complete set — VERBATIM, bypassing both the
- * 3-column bridge and any LLM regurgitation (no paraphrase, no token cost). Additive and isolated:
- * when the library is empty, content is returned unchanged (so nothing regresses for coaches who only
- * use the 3 service fields). The 3 columns stay exactly as-is for the ad / email / whatsapp generators
- * that legitimately want ~3. NEVER fabricates — real-or-nothing holds absolutely.
+ * THE MODEL (scope-derived, no migration). On a page for service S:
+ *   · OFFER proof  = library rows with `serviceId === S`  → the results wall (about THIS program).
+ *   · COACH proof  = every other row the coach owns (`serviceId` NULL or another service) → the
+ *                    authority surface near the bio ("what clients say about working with [Coach]").
+ * Each testimonial lands in exactly ONE bucket → no quote appears twice on a page (de-dup by
+ * construction, same discipline as the sales allocator). NEVER fabricates — real-or-nothing absolute.
+ * The 3 service columns stay untouched for the ad/email/whatsapp generators that legitimately want ~3.
+ *
+ * FOLLOW-UP (deferred): an explicit `kind enum('offer','coach')` column for curation (a book review or
+ * "great mentor" quote a coach wants pinned as coach-proof regardless of scope). Not built — scope
+ * derivation covers the launch case; curation UI doesn't exist yet.
  */
-import { and, eq, or, isNull, asc } from "drizzle-orm";
+import { eq, asc } from "drizzle-orm";
 import { getDb } from "../db";
 import { testimonials } from "../../drizzle/schema";
 import type { LandingPageContent } from "../../drizzle/schema";
 
-/** The shape LandingPageContent.testimonials uses. `location` carries the library `title` (subtitle). */
-export type RealTestimonial = LandingPageContent["testimonials"][number];
+/** The shape LandingPageContent.testimonials / .coachTestimonials use. `location` carries `title`. */
+export type RealTestimonial = NonNullable<LandingPageContent["testimonials"]>[number];
+/** A raw library row (carries serviceId, needed to partition). */
+export type LibraryRow = { serviceId: number | null; name: string; title: string | null; quote: string };
 
-/** Map one library row → the content.testimonials shape. `title` (e.g. "CEO, Acme") → `location`
- * (the subtitle every template renders under the name). No `headline` in the library → "". */
+/** Map one library row → the content testimonial shape. `title` → `location` (the rendered subtitle). */
 export function mapLibraryRow(r: { name: string; title: string | null; quote: string }): RealTestimonial {
   return { headline: "", quote: r.quote, name: r.name, location: r.title ?? "" };
 }
 
 /**
- * PURE. Replace content.testimonials with the FULL real library set when it has entries; otherwise
- * leave content untouched (keeps the generated ≤3 from the service fields, or empty). Unit-testable
- * without a DB — the "is this additive / does it ever fabricate" contract lives here.
+ * PURE. Partition coach-wide rows into OFFER (serviceId === S) and COACH (everything else), dropping
+ * blank quotes. Each row goes to exactly one bucket → no duplication. Unit-tested without a DB.
  */
-export function mergeRealTestimonials(content: LandingPageContent, real: RealTestimonial[]): LandingPageContent {
-  const clean = (Array.isArray(real) ? real : []).filter((t) => typeof t?.quote === "string" && t.quote.trim().length > 0);
-  if (clean.length === 0) return content; // library empty → no change (never removes existing real proof)
-  return { ...content, testimonials: clean };
+export function partitionProof(rows: LibraryRow[], serviceId: number | null): { offer: RealTestimonial[]; coach: RealTestimonial[] } {
+  const clean = (Array.isArray(rows) ? rows : []).filter((r) => typeof r?.quote === "string" && r.quote.trim().length > 0);
+  const offer: RealTestimonial[] = [];
+  const coach: RealTestimonial[] = [];
+  for (const r of clean) {
+    if (serviceId != null && r.serviceId === serviceId) offer.push(mapLibraryRow(r));
+    else coach.push(mapLibraryRow(r));
+  }
+  return { offer, coach };
 }
 
 /**
- * Read the coach's REAL testimonial library for this service (service-scoped + global rows, coach-owned
- * only). Ordered oldest-first for stable output. Returns [] on any failure or missing DB, so a publish
- * never breaks over testimonials — worst case it falls back to the generated set.
+ * PURE. Apply the partition to content: `testimonials` = offer, `coachTestimonials` = coach. When the
+ * library has NO real rows at all, content is returned UNCHANGED (keeps the generated ≤3 from the
+ * service fields as offer proof; never removes existing real proof). Never fabricates.
  */
-export async function getRealTestimonials(userId: number, serviceId: number | null): Promise<RealTestimonial[]> {
+export function mergeProof(content: LandingPageContent, part: { offer: RealTestimonial[]; coach: RealTestimonial[] }): LandingPageContent {
+  if (part.offer.length === 0 && part.coach.length === 0) return content;
+  return { ...content, testimonials: part.offer, coachTestimonials: part.coach };
+}
+
+/** Read EVERY testimonial the coach owns (coach-wide — the bug fix). Ordered oldest-first, stable. */
+export async function getAllCoachTestimonials(userId: number): Promise<LibraryRow[]> {
   const db = await getDb();
   if (!db) return [];
   try {
-    const rows = await db
-      .select({ name: testimonials.name, title: testimonials.title, quote: testimonials.quote })
+    return await db
+      .select({ serviceId: testimonials.serviceId, name: testimonials.name, title: testimonials.title, quote: testimonials.quote })
       .from(testimonials)
-      .where(
-        and(
-          eq(testimonials.userId, userId),
-          serviceId == null
-            ? isNull(testimonials.serviceId)
-            : or(eq(testimonials.serviceId, serviceId), isNull(testimonials.serviceId)),
-        ),
-      )
+      .where(eq(testimonials.userId, userId))
       .orderBy(asc(testimonials.createdAt));
-    return rows.filter((r) => r.quote && r.quote.trim().length > 0).map(mapLibraryRow);
   } catch {
     return [];
   }
 }
 
 /**
- * Publish-time convenience: read the real library and merge it into content. Called by BOTH publish
- * paths (landingPagePublisher + complianceRewrites) BEFORE the style discriminators run, so the
- * proof-based selection also sees the real count. No-op when the library is empty.
+ * Publish-time convenience: read the coach's whole library, partition offer/coach for this service, and
+ * merge into content. Called by BOTH publish paths BEFORE the discriminators (which now count offer +
+ * coach). No-op when the library is empty.
  */
 export async function injectRealTestimonials(
   content: LandingPageContent,
   userId: number,
   serviceId: number | null,
 ): Promise<LandingPageContent> {
-  const real = await getRealTestimonials(userId, serviceId);
-  return mergeRealTestimonials(content, real);
+  const rows = await getAllCoachTestimonials(userId);
+  if (rows.length === 0) return content;
+  return mergeProof(content, partitionProof(rows, serviceId));
 }

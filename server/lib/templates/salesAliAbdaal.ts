@@ -243,6 +243,39 @@ function founderSection(content: LandingPageContent, coach: SalesCoachInput): st
   </section>`;
 }
 
+/**
+ * COACH-PROOF authority band — portable testimonials the coach owns (their track record, other
+ * programs, "great mentor" quotes), framed as AUTHORITY next to the founder story, NOT as this
+ * program's results. Honest on a brand-new program's page: it says what clients say about working with
+ * the coach and claims nothing about the new offer. Sits right after the founder narrative to match
+ * Ali's own reference (a founder track-record band). Real-or-omit. Disjoint from the offer wall by
+ * construction (offer = serviceId=this; coach = everything else), so no quote appears twice.
+ */
+function coachProofSection(content: LandingPageContent, coach: SalesCoachInput): string {
+  const items = (Array.isArray(content.coachTestimonials) ? content.coachTestimonials : []).filter((t) => ok(t?.quote)).slice(0, 6);
+  if (items.length === 0) return "";
+  const who = ok(coach.coachName) ? `working with ${esc(coach.coachName)}` : "working with me";
+  const cards = items.map((t) => `
+        <div style="flex:1 1 300px;min-width:260px;max-width:360px;background:${IVORY};border:1px solid ${CARD_LINE};border-radius:16px;padding:24px;">
+          <p style="font-family:${SERIF};font-weight:500;font-style:italic;font-size:16px;line-height:1.55;color:${INK};margin:0 0 16px;">&ldquo;${esc(t.quote)}&rdquo;</p>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div aria-hidden="true" style="width:40px;height:40px;border-radius:9999px;background:${CORAL}1A;display:flex;align-items:center;justify-content:center;font-family:${SERIF};font-weight:600;font-size:14px;color:${CORAL};text-transform:uppercase;">${esc(initials(String(t.name ?? "")))}</div>
+            <div>
+              ${ok(t.name) ? `<div style="font-family:${S};font-weight:700;font-size:14px;color:${INK};">${esc(t.name)}</div>` : ""}
+              ${ok(t.location) ? `<div style="font-family:${S};font-size:12px;color:${INK_SOFT};">${esc(t.location)}</div>` : ""}
+            </div>
+          </div>
+        </div>`).join("");
+  return `
+  <section style="background:${WHITE};padding:24px 24px 64px;">
+    <div style="max-width:1000px;margin:0 auto;">
+      <div style="font-family:${S};font-weight:700;font-size:13px;letter-spacing:0.08em;text-transform:uppercase;color:${CORAL};text-align:center;margin:0 0 8px;">The people I&#39;ve worked with</div>
+      <h2 style="font-family:${SERIF};font-weight:600;font-size:clamp(22px,2.6vw,32px);line-height:1.2;color:${INK};text-align:center;margin:0 auto 28px;max-width:24ch;">What clients say about ${who}</h2>
+      <div style="display:flex;flex-wrap:wrap;gap:18px;justify-content:center;">${cards}</div>
+    </div>
+  </section>`;
+}
+
 /** "The simple formula" — editorial panel bound to uniqueMechanism (no fabricated loop labels). */
 function formulaSection(content: LandingPageContent): string {
   if (!ok(content.uniqueMechanism)) return "";
@@ -523,6 +556,7 @@ export function buildSalesAliAbdaalHtml(
         heroSection(content, coach),
         reviewWall(proof.wall),
         founderSection(content, coach),
+        coachProofSection(content, coach),   // portable coach proof — authority near the bio, never the offer wall
         formulaSection(content),
         proofStrip(proof.strips[0]),   // threaded proof — the allocator fills 0–3 strips for N=4–8+
         systemsGrid(content),

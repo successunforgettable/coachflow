@@ -187,4 +187,41 @@ describe("buildSalesAliAbdaalHtml — long-form course sales page on the Ali Abd
     expect(zero).not.toContain("Real results from real students");  // no results
     expect(zero).not.toContain("#ECE5E1;padding:44px");             // no strips
   });
+
+  // ── Coach-proof vs offer-proof (partition) ──────────────────────────────────────────────
+  const OFFER = (n: number) => Array.from({ length: n }, (_, i) => ({ headline: "", quote: `OFFERPROOF_${i}_x`, name: `Off ${i}`, location: "" }));
+  const COACH = (n: number) => Array.from({ length: n }, (_, i) => ({ headline: "", quote: `COACHPROOF_${i}_x`, name: `Co ${i}`, location: "" }));
+
+  it("COACH-PROOF ONLY (established coach, new program): authority band renders, offer wall OMITS (real-or-nothing)", () => {
+    const html = buildSalesAliAbdaalHtml({ ...base, testimonials: [], coachTestimonials: COACH(5) } as unknown as LandingPageContent, "Academy", coach);
+    expect(html).toContain("What clients say about working with Ali Coach"); // coach-proof authority surface
+    expect(html).toContain("COACHPROOF_0_x");
+    expect(html).not.toContain("Loved by the people who took it"); // NO offer wall
+    expect(html).not.toContain("Real results from real students");  // NO results
+    expect(html).not.toContain("#ECE5E1;padding:44px");             // NO strips — no offer proof to thread
+  });
+
+  it("BOTH — offer proof in the wall, coach proof in the authority band, and NEVER the same quote in both", () => {
+    const html = buildSalesAliAbdaalHtml({ ...base, testimonials: OFFER(3), coachTestimonials: COACH(3) } as unknown as LandingPageContent, "Academy", coach);
+    expect(html).toContain("Loved by the people who took it");             // offer wall present
+    expect(html).toContain("What clients say about working with Ali Coach"); // coach band present
+    for (let i = 0; i < 3; i++) {
+      expect(html.split(`OFFERPROOF_${i}_x`).length - 1, `offer ${i} once`).toBe(1);
+      expect(html.split(`COACHPROOF_${i}_x`).length - 1, `coach ${i} once`).toBe(1);
+    }
+  });
+
+  it("DE-DUP scan — every proof quote appears EXACTLY once across coach-only / offer-only / both", () => {
+    const cases: Array<[typeof OFFER extends never ? never : any, any]> = [
+      [OFFER(0), COACH(6)],   // coach only
+      [OFFER(6), COACH(0)],   // offer only
+      [OFFER(4), COACH(4)],   // both
+      [OFFER(1), COACH(9)],   // lopsided
+    ];
+    for (const [off, co] of cases) {
+      const html = buildSalesAliAbdaalHtml({ ...base, testimonials: off, coachTestimonials: co } as unknown as LandingPageContent, "Academy", coach);
+      for (let i = 0; i < off.length; i++) expect(html.split(`OFFERPROOF_${i}_x`).length - 1, `off ${i} never twice`).toBeLessThanOrEqual(1);
+      for (let i = 0; i < co.length; i++) expect(html.split(`COACHPROOF_${i}_x`).length - 1, `co ${i} never twice`).toBeLessThanOrEqual(1);
+    }
+  });
 });

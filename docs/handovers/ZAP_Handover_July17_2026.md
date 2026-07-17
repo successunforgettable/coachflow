@@ -1,7 +1,7 @@
 # ZAP Handover — 2026-07-17
 
 **Status:** WIP pushed to `railway-build` pending Arfeen's **final visual approval** of the six
-`craft-review/final-*` side-by-sides + the proof-composition renders. Gates **TS 35 / vitest 507**.
+`craft-review/final-*` side-by-sides + the proof-composition renders. Gates **TS 35 / vitest 517**.
 Not sign-off. Migration `0089` is **APPLIED + verified on prod (2026-07-17)**.
 
 This session took the "all 5 templates built" state (prior handover July16) and did the visual/structural
@@ -97,6 +97,46 @@ pattern): post-apply INFORMATION_SCHEMA verify confirmed **both light values pre
 (text=50 / visual=25 / lead_magnet_burchard=1, identical before/after). The light variants are the DEFAULT
 for sales_page/webinar_registration and can now persist on prod — the earlier enum-truncation risk is
 resolved. (Migrations 0084–0089 all applied; 0081 superseded — never apply.)
+
+## 9. 🔴 Coach-proof vs offer-proof partition (a BUG — `realTestimonials.ts`)
+
+**Root cause:** the cap-fix query read `serviceId = S OR serviceId IS NULL`, so testimonials scoped to
+a coach's OTHER programs never flowed onto a new program's page. **An established coach with 40
+testimonials across programs #1–3 launching #4 saw ZERO of their own proof — the coach with the most
+proof got the least.**
+
+**Fix (Option A, scope-derived, NO migration):** read **coach-wide** (`getAllCoachTestimonials(userId)`,
+`WHERE userId = X`), then `partitionProof(rows, S)`:
+- `serviceId === S` → **offer proof** (about THIS program) → the results wall / success grid.
+- everything else the coach owns (NULL or another program) → portable **COACH proof** → an authority
+  surface near the bio.
+Each row lands in exactly ONE bucket → **de-dup by construction** (no quote on the page twice).
+Injected as `content.testimonials` (offer) + additive `content.coachTestimonials` (coach); no-op when
+the library is empty.
+
+**Discriminator** (`renderRegistry.ts`) now counts **coach-wide** (offer + coach): rich if the coach has
+≥1 real testimonial anywhere; light only at genuine zero. The launch case (coach proof, zero offer
+proof) → RICH.
+
+**Honesty rule (the point):** the coach-proof surface uses authority framing ("what clients say about
+working with [Coach]") — honest for any real testimonial the coach owns, claims nothing about the new
+program. The **offer wall is `serviceId = S` ONLY and OMITS when empty** (a brand-new program shows no
+results wall — coach proof carries the page). Never relabel coach proof as this program's results; never
+pull another program's results into this wall.
+
+**Placement per each frozen reference (not standardised):** sales = editorial quote cards after the
+founder narrative (Ali's founder track-record band); webinar = check-bulleted authority items beside the
+host bio (Rajsekar's "YOUR TRAINER" credential band). Burchard/Discovery/Hormozi have a single trust
+surface (no split) → render offer + coach COMBINED (coach-wide, non-regressive).
+
+**Proven:** rendered all four proof-states (0→light · coach-only→rich with authority band + NO results
+wall · offer-only · both) + a rendered-HTML de-dup scan (each testimonial once, no quote in both
+surfaces), locked with tests (`realTestimonials.test.ts`, `renderRegistry.test.ts`,
+`salesAliAbdaal.test.ts`, `webinarRajsekar.test.ts`).
+
+**DEFERRED follow-up:** an explicit `kind enum('offer','coach')` column on `testimonials` for CURATION
+(a book review / "great mentor" quote a coach wants pinned as coach-proof regardless of scope). Not
+built — scope derivation covers the launch case, and a curation UI doesn't exist yet.
 
 ## RESUME POINT
 1. Arfeen's **final visual approval** of `craft-review/final-*` + the proof-composition renders.

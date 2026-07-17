@@ -157,7 +157,11 @@ function heroSection(content: LandingPageContent, coach: DiscoveryCoachInput): s
 /** Gate-2 equivalent: charcoal "what we'll cover" bands + navy testimonials (real-or-nothing). */
 function bandsSection(content: LandingPageContent): string {
   const outline = Array.isArray(content.consultationOutline) ? content.consultationOutline : [];
-  const testimonials = Array.isArray(content.testimonials) ? content.testimonials : [];
+  // Single trust surface (no offer/coach split) → offer (this service) + portable coach proof combined.
+  const testimonials = [
+    ...(Array.isArray(content.testimonials) ? content.testimonials : []),
+    ...(Array.isArray(content.coachTestimonials) ? content.coachTestimonials : []),
+  ];
   if (outline.length === 0 && testimonials.length === 0) return "";
 
   const bands = outline.slice(0, 3).map((item) => `

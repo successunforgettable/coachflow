@@ -133,6 +133,17 @@ describe("resolveSalesStyle / resolveWebinarStyle — proof-gated light→rich d
     const blanks = { testimonials: Array.from({ length: 12 }, () => ({ headline: "", quote: "  ", name: "X", location: "Y" })) } as unknown as LandingPageContent;
     expect(resolveSalesStyle("sales_ali_abdaal_light", blanks)).toBe("sales_ali_abdaal_light"); // 12 blank quotes = zero real proof → light
   });
+
+  it("THE LAUNCH CASE — coach proof with ZERO offer proof (new program) still routes to RICH, both templates", () => {
+    // established coach launching #4: no testimonials for #4, but portable coach proof → must get rich
+    const coachOnly = { testimonials: [], coachTestimonials: [{ headline: "", quote: "Alex is an exceptional mentor.", name: "A", location: "" }] } as unknown as LandingPageContent;
+    expect(resolveSalesStyle("sales_ali_abdaal_light", coachOnly)).toBe("sales_ali_abdaal");
+    expect(resolveWebinarStyle("webinar_rajsekar_light", coachOnly)).toBe("webinar_rajsekar_coaching");
+    // genuine zero (no offer, no coach proof) → still light
+    const zero = { testimonials: [], coachTestimonials: [] } as unknown as LandingPageContent;
+    expect(resolveSalesStyle("sales_ali_abdaal_light", zero)).toBe("sales_ali_abdaal_light");
+    expect(resolveWebinarStyle("webinar_rajsekar_light", zero)).toBe("webinar_rajsekar_light");
+  });
   it("each is a no-op for the other's / any non-default style (order-independent chaining)", () => {
     expect(resolveSalesStyle("webinar_rajsekar_light", withTestimonials(20))).toBe("webinar_rajsekar_light");
     expect(resolveWebinarStyle("sales_ali_abdaal_light", withTestimonials(20))).toBe("sales_ali_abdaal_light");

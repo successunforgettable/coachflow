@@ -134,4 +134,33 @@ describe("buildWebinarRajsekarHtml — webinar registration on the Rajsekar desi
     expect(html).toContain("decade training coaches");
     expect(html).toContain("#0F172A"); // navy footer (sampled NAVY, unified 2026-07-17)
   });
+
+  // ── Coach-proof vs offer-proof (partition) ──────────────────────────────────────────────
+  const OFFER = (n: number) => Array.from({ length: n }, (_, i) => ({ headline: "", quote: `OFFERPROOF_${i}_x`, name: `Off ${i}`, location: "" }));
+  const COACH = (n: number) => Array.from({ length: n }, (_, i) => ({ headline: "", quote: `COACHPROOF_${i}_x`, name: `Co ${i}`, location: "" }));
+
+  it("COACH-PROOF ONLY (established coach, new class): authority band renders, success grid OMITS", () => {
+    const html = buildWebinarRajsekarHtml({ ...base, testimonials: [], coachTestimonials: COACH(5) } as unknown as LandingPageContent, "Coaching", coach);
+    expect(html).toContain("What people say about working with Siddharth Rajsekar"); // coach-proof authority band
+    expect(html).toContain("COACHPROOF_0_x");
+    expect(html).not.toContain("From people who attended"); // NO success grid — no offer proof for this class
+  });
+
+  it("BOTH — offer proof in the success grid, coach proof beside the bio, and NEVER the same quote in both", () => {
+    const html = buildWebinarRajsekarHtml({ ...base, testimonials: OFFER(3), coachTestimonials: COACH(3) } as unknown as LandingPageContent, "Coaching", coach);
+    expect(html).toContain("From people who attended");                              // offer grid present
+    expect(html).toContain("What people say about working with Siddharth Rajsekar"); // coach band present
+    for (let i = 0; i < 3; i++) {
+      expect(html.split(`OFFERPROOF_${i}_x`).length - 1, `offer ${i} once`).toBe(1);
+      expect(html.split(`COACHPROOF_${i}_x`).length - 1, `coach ${i} once`).toBe(1);
+    }
+  });
+
+  it("DE-DUP scan — every proof quote appears EXACTLY once across coach-only / offer-only / both", () => {
+    for (const [off, co] of [[OFFER(0), COACH(6)], [OFFER(6), COACH(0)], [OFFER(4), COACH(4)], [OFFER(1), COACH(9)]] as const) {
+      const html = buildWebinarRajsekarHtml({ ...base, testimonials: off, coachTestimonials: co } as unknown as LandingPageContent, "Coaching", coach);
+      for (let i = 0; i < off.length; i++) expect(html.split(`OFFERPROOF_${i}_x`).length - 1, `off ${i} never twice`).toBeLessThanOrEqual(1);
+      for (let i = 0; i < co.length; i++) expect(html.split(`COACHPROOF_${i}_x`).length - 1, `co ${i} never twice`).toBeLessThanOrEqual(1);
+    }
+  });
 });

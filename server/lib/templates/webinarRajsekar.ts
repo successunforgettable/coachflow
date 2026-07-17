@@ -405,6 +405,36 @@ function successSection(content: LandingPageContent): string {
   </section>`;
 }
 
+/**
+ * COACH-PROOF authority band — the coach's portable testimonials (their track record / other programs
+ * / "great mentor" quotes), framed as AUTHORITY beside the host bio, NOT as this class's results.
+ * Rendered as check-bulleted authority lines to echo Rajsekar's own "YOUR TRAINER" credential band (its
+ * reference is bulleted credentials, not a quote wall — matched per §Correction-1, not standardised).
+ * Honest on a brand-new class's page (claims nothing about the class). Real-or-omit. Disjoint from the
+ * success grid by construction (grid = serviceId=this; coach = everything else) → no quote twice.
+ */
+function coachProofSection(content: LandingPageContent, coach: WebinarCoachInput): string {
+  const items = (Array.isArray(content.coachTestimonials) ? content.coachTestimonials : []).filter((t) => ok(t?.quote)).slice(0, 6);
+  if (items.length === 0) return "";
+  const who = ok(coach.coachName) ? `working with ${esc(coach.coachName)}` : "working with me";
+  const rows = items.map((t) => `
+        <div style="display:flex;gap:14px;align-items:flex-start;margin:0 0 18px;">
+          <span aria-hidden="true" style="flex-shrink:0;width:24px;height:24px;border-radius:9999px;background:${GREEN}1F;color:${GREEN};display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;margin-top:2px;">&#10003;</span>
+          <div>
+            <p style="font-family:${B};font-weight:500;font-size:16px;line-height:1.5;color:${INK};margin:0 0 4px;">&ldquo;${esc(t.quote)}&rdquo;</p>
+            <div style="font-family:${B};font-weight:700;font-size:13px;color:${INK_SOFT};">${esc(t.name ?? "")}${ok(t.location) ? `<span style="font-weight:400;"> &middot; ${esc(t.location)}</span>` : ""}</div>
+          </div>
+        </div>`).join("");
+  return `
+  <section style="background:${WHITE};padding:24px 24px 64px;">
+    <div style="max-width:760px;margin:0 auto;">
+      <div style="font-family:${B};font-weight:700;font-size:13px;letter-spacing:0.08em;color:${CORAL};text-transform:uppercase;margin:0 0 8px;">Trusted by the people I work with</div>
+      <h2 style="font-family:${H};font-weight:800;font-size:clamp(22px,2.4vw,30px);line-height:1.15;color:${INK};margin:0 0 28px;max-width:24ch;">What people say about ${who}</h2>
+      ${rows}
+    </div>
+  </section>`;
+}
+
 /** Host bio — coach name + background + real portrait (monogram-free: a real photo or omit). */
 function bioSection(coach: WebinarCoachInput): string {
   const name = ok(coach.coachName) ? esc(coach.coachName) : "";
@@ -533,6 +563,7 @@ export function buildWebinarRajsekarHtml(
       frameworkSection(content),
       successSection(content),
       bioSection(coach),
+      coachProofSection(content, coach),   // portable coach proof — authority beside the bio, never the success grid
       bonusesSection(content),
       faqSection(content),
       whoForSection(content, coach),

@@ -185,8 +185,11 @@ function heroSection(content: LandingPageContent, coach: EventHormoziCoachInput)
  * textured field preserved; the density comes from real quotes, not invented figures.
  */
 function proofSection(content: LandingPageContent, heading: string, slice: [number, number]): string {
-  const testimonials = (Array.isArray(content.testimonials) ? content.testimonials : [])
-    .filter((t) => ok(t?.quote)).slice(slice[0], slice[1]);
+  // Single trust surface (no offer/coach split) → offer (this service) + portable coach proof combined.
+  const testimonials = [
+    ...(Array.isArray(content.testimonials) ? content.testimonials : []),
+    ...(Array.isArray(content.coachTestimonials) ? content.coachTestimonials : []),
+  ].filter((t) => ok(t?.quote)).slice(slice[0], slice[1]);
   if (testimonials.length === 0) return "";
   const cards = testimonials.map((t) => `
         <div style="flex:1 1 300px;min-width:260px;max-width:360px;background:${WHITE};border:1px solid ${CARD_LINE};border-radius:10px;padding:24px;box-shadow:0 8px 20px rgba(19,22,40,0.06);">

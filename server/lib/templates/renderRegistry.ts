@@ -290,14 +290,17 @@ export function resolveEventStyle(
 }
 
 /**
- * How many REAL testimonials the content carries (real-or-nothing: quote required; NEVER fabricated).
- * The single proof signal the pipeline can supply today — proofMetrics/caseStudies are never populated,
- * so they are not counted yet.
+ * How many REAL testimonials the content carries — OFFER proof (this service) PLUS portable COACH proof
+ * (the coach's other/global testimonials). Real-or-nothing: quote required; NEVER fabricated. Counting
+ * both is the point: an established coach launching a new program has zero offer proof for it but real
+ * coach proof, and must get the rich page. proofMetrics/caseStudies are never populated → not counted.
  */
-function realTestimonialCount(content: Pick<LandingPageContent, "testimonials"> | null | undefined): number {
-  const t = content?.testimonials;
-  if (!Array.isArray(t)) return 0;
-  return t.filter((x) => typeof x?.quote === "string" && x.quote.trim().length > 0).length;
+function realTestimonialCount(
+  content: Pick<LandingPageContent, "testimonials" | "coachTestimonials"> | null | undefined,
+): number {
+  const quoted = (arr: unknown) =>
+    Array.isArray(arr) ? arr.filter((x: any) => typeof x?.quote === "string" && x.quote.trim().length > 0).length : 0;
+  return quoted(content?.testimonials) + quoted(content?.coachTestimonials);
 }
 
 // PRESENCE, NOT MAGNITUDE (2026-07-18). The earlier ≥10 / ≥6 thresholds were derived from Ali's and
@@ -316,7 +319,7 @@ function realTestimonialCount(content: Pick<LandingPageContent, "testimonials"> 
  */
 export function resolveSalesStyle(
   styleMode: string,
-  content: Pick<LandingPageContent, "testimonials"> | null | undefined,
+  content: Pick<LandingPageContent, "testimonials" | "coachTestimonials"> | null | undefined,
 ): string {
   if (styleMode !== "sales_ali_abdaal_light") return styleMode;
   return realTestimonialCount(content) >= 1 ? "sales_ali_abdaal" : "sales_ali_abdaal_light";
@@ -328,7 +331,7 @@ export function resolveSalesStyle(
  */
 export function resolveWebinarStyle(
   styleMode: string,
-  content: Pick<LandingPageContent, "testimonials"> | null | undefined,
+  content: Pick<LandingPageContent, "testimonials" | "coachTestimonials"> | null | undefined,
 ): string {
   if (styleMode !== "webinar_rajsekar_light") return styleMode;
   return realTestimonialCount(content) >= 1 ? "webinar_rajsekar_coaching" : "webinar_rajsekar_light";

@@ -159,7 +159,12 @@ const CHECK = checkCircle(ORANGE);
 
 function gate2Section(content: LandingPageContent): string {
   const outline = Array.isArray(content.consultationOutline) ? content.consultationOutline : [];
-  const testimonials = Array.isArray(content.testimonials) ? content.testimonials : [];
+  // Single trust surface (no offer/coach split) → the coach's full real proof: offer (this service) +
+  // portable coach proof combined. Kept to slice(0,2) below to match the frozen 2-quote reference PNG.
+  const testimonials = [
+    ...(Array.isArray(content.testimonials) ? content.testimonials : []),
+    ...(Array.isArray(content.coachTestimonials) ? content.coachTestimonials : []),
+  ];
   if (outline.length === 0 && testimonials.length === 0) return "";
 
   const bands = outline.slice(0, 3).map((item) => `
