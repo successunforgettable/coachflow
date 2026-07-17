@@ -21,6 +21,10 @@ mkdirSync(OUT, { recursive: true });
 const HEADSHOT = "https://res.cloudinary.com/demo/image/upload/w_800,h_1200,c_fill,g_face/woman.jpg";
 const HERO = "https://res.cloudinary.com/demo/image/upload/w_1600,h_900,c_fill/sample.jpg";
 const LOGO = "https://res.cloudinary.com/demo/image/upload/w_240,c_fit/cloudinary_icon.png";
+// REAL background-removed presenter cutout (prod account dunshei0y, verified live 200 image/png).
+// This is exactly what production emits from resolvePresenterCutoutUrl — a free-standing figure with
+// a transparent background — so the webinar/Iman heroes render as cutouts, not framed rectangles.
+const CUTOUT = "https://res.cloudinary.com/dunshei0y/image/upload/e_background_removal,c_fit,w_800,f_png/v1774218984/coach-assets_1_1774218983297-arfeen_pic_3.JPG.jpg";
 
 const content = {
   eyebrowHeadline: "FREE 3-DAY LIVE WORKSHOP",
@@ -90,6 +94,7 @@ const freeContent = { ...content, price: undefined } as unknown as LandingPageCo
 
 const coach = {
   headshotUrl: HEADSHOT, heroImageUrl: HERO, logoUrl: LOGO, coachName: "Alex Rivera",
+  presenterCutoutUrl: CUTOUT, // webinar hero cutout (host-bio still uses the framed headshot)
   bookingUrl: "https://cal.com/alexrivera/discovery",
   videoUrl: null, // → headshot poster path (no fabricated video)
   checkoutUrl: "https://alexrivera.com/enrol",
@@ -97,13 +102,17 @@ const coach = {
   coachBackground: "Alex Rivera scaled three companies past seven figures before turning 35, then spent a decade teaching founders to escape the bottleneck. Featured in Forbes and on TEDx stages worldwide.",
 } as any;
 
+// Iman's presenter IS the page: its builder uses headshotUrl as the free-standing figure, so it
+// receives the cutout directly (matches production, where eventPublish passes the resolved cutout).
+const coachIman = { ...coach, headshotUrl: CUTOUT } as any;
+
 const SVC = "The Self-Running Business Workshop";
 
 const renders: Array<[string, string]> = [
   ["burchard", buildBurchardProductivityHtml(content, "The Productivity Cheat-Sheet", coach)],
   ["discovery", buildDiscoveryBurchardHtml(content, "Free Discovery Call", coach)],
   ["webinar", buildWebinarRajsekarHtml(content, SVC, coach)],
-  ["event-iman", buildEventImanGadzhiHtml(freeContent, SVC, coach)],
+  ["event-iman", buildEventImanGadzhiHtml(freeContent, SVC, coachIman)],
   ["event-hormozi", buildEventHormoziHtml(content, SVC, coach)],
   ["sales", buildSalesAliAbdaalHtml(content, SVC, coach)],
 ];

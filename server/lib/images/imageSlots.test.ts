@@ -11,6 +11,7 @@ import {
   hasFacingFlip,
   pdfPageOneCoverUrl,
   resolveProductCoverUrl,
+  presenterCutoutUrl,
 } from "./imageSlots";
 
 const CLD = "https://res.cloudinary.com/dunshei0y/image/upload/v1783804556/coach-assets_x.png";
@@ -158,6 +159,27 @@ describe("resolveProductCoverUrl — locked fallback order", () => {
   });
   it("treats a quiz (no PDF) as empty → null, not a broken url", () => {
     expect(resolveProductCoverUrl(null, null)).toBeNull();
+  });
+});
+
+describe("presenterCutoutUrl — hero cutout via background removal", () => {
+  it("prepends the bg-removal + resize + f_png transform after /image/upload/", () => {
+    expect(presenterCutoutUrl(CLD)).toBe(
+      "https://res.cloudinary.com/dunshei0y/image/upload/e_background_removal,c_fit,w_800,f_png/v1783804556/coach-assets_x.png",
+    );
+  });
+  it("preserves a baked facing-flip token (a_hflip) after the cutout transform", () => {
+    const flipped =
+      "https://res.cloudinary.com/dunshei0y/image/upload/a_hflip/v1783804556/coach-assets_x.png";
+    expect(presenterCutoutUrl(flipped)).toBe(
+      "https://res.cloudinary.com/dunshei0y/image/upload/e_background_removal,c_fit,w_800,f_png/a_hflip/v1783804556/coach-assets_x.png",
+    );
+  });
+  it("returns empty string for non-Cloudinary / null / empty urls (caller stages a review-draft)", () => {
+    expect(presenterCutoutUrl(null)).toBe("");
+    expect(presenterCutoutUrl(undefined)).toBe("");
+    expect(presenterCutoutUrl("")).toBe("");
+    expect(presenterCutoutUrl("https://cdn.example.com/coach.jpg")).toBe("");
   });
 });
 

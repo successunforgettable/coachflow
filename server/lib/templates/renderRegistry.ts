@@ -25,7 +25,8 @@ import { slotImageUrl, type SlotAssetType } from "../images/imageSlots";
 export type LpStyleMode =
   | "text" | "visual" | "executive" | "energetic" | "clinical" | "warm" | "bold"
   | "lead_magnet_burchard" | "discovery_burchard_performance" | "webinar_rajsekar_coaching"
-  | "event_iman_gadzhi" | "event_hormozi" | "sales_ali_abdaal";
+  | "webinar_rajsekar_light" | "event_iman_gadzhi" | "event_hormozi" | "sales_ali_abdaal"
+  | "sales_ali_abdaal_light";
 
 export type AssetRow = { assetType: string; url: string };
 
@@ -187,6 +188,31 @@ async function renderSales(input: TemplateRenderInput): Promise<string> {
   });
 }
 
+async function renderSalesLightEntry(input: TemplateRenderInput): Promise<string> {
+  const { renderSalesLight } = await import("./salesPublish");
+  return renderSalesLight({
+    content: input.content,
+    serviceName: input.serviceName,
+    coachName: input.coachName,
+    coachBackground: input.coachBackground,
+    assetRows: input.assetRows,
+    userId: input.userId,
+  });
+}
+
+async function renderWebinarLightEntry(input: TemplateRenderInput): Promise<string> {
+  const { renderWebinarLight } = await import("./webinarPublish");
+  return renderWebinarLight({
+    content: input.content,
+    serviceName: input.serviceName,
+    coachName: input.coachName,
+    coachBackground: input.coachBackground,
+    assetRows: input.assetRows,
+    serviceId: input.serviceId,
+    userId: input.userId,
+  });
+}
+
 /**
  * The registry. To add template N: add its styleMode entry with its `pageType`
  * (so orchestration auto-selects it) and a `render` that calls its builder.
@@ -194,7 +220,13 @@ async function renderSales(input: TemplateRenderInput): Promise<string> {
 export const TEMPLATE_REGISTRY: Record<LpStyleMode, TemplateEntry> = {
   lead_magnet_burchard: { pageType: "lead_magnet_download", render: renderBurchard },
   discovery_burchard_performance: { pageType: "discovery_call_booking", render: renderDiscovery },
-  webinar_rajsekar_coaching: { pageType: "webinar_registration", render: renderWebinar },
+  // Webinar has TWO variants sharing one pageType (proof-gated, same shape as event free-vs-paid).
+  // The proof-LIGHT variant is the auto-selected default for `webinar_registration` (every real coach
+  // is proof-starved today — the cascade caps testimonials at 3); the RICH reference-faithful variant
+  // is pageType:null so styleForPageType stays deterministic (→ light). `resolveWebinarStyle` upgrades
+  // light→rich when the coach has enough real proof, at (re)publish time.
+  webinar_rajsekar_light: { pageType: "webinar_registration", render: renderWebinarLightEntry },
+  webinar_rajsekar_coaching: { pageType: null, render: renderWebinar },
   // Event has TWO bespoke references sharing one pageType. Iman (free) is the auto-selected
   // default for `event_registration`; Hormozi (paid) is pageType:null so styleForPageType stays
   // deterministic (→ Iman). `resolveEventStyle` upgrades Iman→Hormozi when a REAL operator price
@@ -202,10 +234,13 @@ export const TEMPLATE_REGISTRY: Record<LpStyleMode, TemplateEntry> = {
   event_iman_gadzhi: { pageType: "event_registration", render: renderEventIman },
   event_hormozi: { pageType: null, render: renderEventHormoziEntry },
   // Sales is the DEFAULT pageType (course_launch / product_launch / challenge all map to it via
-  // pageTypeForCampaign). Wiring this flips `styleForPageType('sales_page')` from null (review-draft)
-  // to the real per-reference template — the widest blast radius of any template. Every other page
-  // type keeps its own styleMode, so their publishing is unaffected.
-  sales_ali_abdaal: { pageType: "sales_page", render: renderSales },
+  // pageTypeForCampaign). The proof-LIGHT variant is the auto-selected default — the reference-faithful
+  // RICH page needs 10+ testimonials it can't get today (3-cap), so it would read sparse for every real
+  // coach. `styleForPageType('sales_page')` → light; `resolveSalesStyle` upgrades light→rich at publish
+  // when proof clears the threshold. The RICH variant is pageType:null (upgrade-only). This is the
+  // widest blast radius of any template — every course_launch/product_launch/challenge publishes light.
+  sales_ali_abdaal_light: { pageType: "sales_page", render: renderSalesLightEntry },
+  sales_ali_abdaal: { pageType: null, render: renderSales },
   executive: { pageType: null, render: (i) => renderLegacyTemplate(i, "executive") },
   energetic: { pageType: null, render: (i) => renderLegacyTemplate(i, "energetic") },
   clinical: { pageType: null, render: (i) => renderLegacyTemplate(i, "clinical") },
@@ -252,4 +287,49 @@ export function resolveEventStyle(
   const amount = content?.price?.amount;
   const hasRealPrice = typeof amount === "string" && amount.trim().length > 0;
   return hasRealPrice ? "event_hormozi" : "event_iman_gadzhi";
+}
+
+/**
+ * How many REAL testimonials the content carries (real-or-nothing: quote required; NEVER fabricated).
+ * The single proof signal the pipeline can supply today — proofMetrics/caseStudies are never populated,
+ * so they are not counted yet.
+ */
+function realTestimonialCount(content: Pick<LandingPageContent, "testimonials"> | null | undefined): number {
+  const t = content?.testimonials;
+  if (!Array.isArray(t)) return 0;
+  return t.filter((x) => typeof x?.quote === "string" && x.quote.trim().length > 0).length;
+}
+
+// PRESENCE, NOT MAGNITUDE (2026-07-18). The earlier ≥10 / ≥6 thresholds were derived from Ali's and
+// Rajsekar's own pages (established operators with 30 and 12+ testimonials) — almost no real coach
+// clears them, so a coach with 5–8 REAL testimonials was routed to the light page and their proof
+// never appeared. That is worse than the 3-cap it replaced. The rule is now binary on PRESENCE: zero
+// real proof → the light spine (a genuine zero-proof composition, correct for Auto Mode / blank slate);
+// ANY real proof → the rich spine, whose proof sections COMPOSE for whatever count exists (see the
+// proof allocator in salesAliAbdaal.ts and the count-shaped grid in webinarRajsekar.ts). A coach with
+// one real testimonial must see it. NEVER fabricates — a zero count simply keeps the light page.
+
+/**
+ * Sales proof discriminator — light spine when the coach has ZERO real testimonials; the rich
+ * (composes-for-N) spine the moment they have at least one. Mirrors `resolveEventStyle`: acts only on
+ * the default styleMode, passes everything else through unchanged, safe to call on every publish.
+ */
+export function resolveSalesStyle(
+  styleMode: string,
+  content: Pick<LandingPageContent, "testimonials"> | null | undefined,
+): string {
+  if (styleMode !== "sales_ali_abdaal_light") return styleMode;
+  return realTestimonialCount(content) >= 1 ? "sales_ali_abdaal" : "sales_ali_abdaal_light";
+}
+
+/**
+ * Webinar proof discriminator — light spine at zero real proof; the rich spine (count-shaped success
+ * grid) the moment there is at least one real testimonial. Same shape/guarantees as `resolveSalesStyle`.
+ */
+export function resolveWebinarStyle(
+  styleMode: string,
+  content: Pick<LandingPageContent, "testimonials"> | null | undefined,
+): string {
+  if (styleMode !== "webinar_rajsekar_light") return styleMode;
+  return realTestimonialCount(content) >= 1 ? "webinar_rajsekar_coaching" : "webinar_rajsekar_light";
 }

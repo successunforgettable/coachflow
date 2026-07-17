@@ -323,12 +323,17 @@ async function republishLandingPageToKv(
       ),
     ));
 
+  // 3-CAP FIX (same as landingPagePublisher): inject the coach's FULL real testimonial library so a
+  // compliance re-render shows the same full proof as an initial publish. No-op when empty.
+  const { injectRealTestimonials } = await import("../lib/realTestimonials");
+  const enrichedContent = await injectRealTestimonials(content, userId, (lp as any).serviceId ?? null);
+
   const { ensureKvNamespace, writeKvPage } = await import("../lib/cloudflare");
   // Same shared registry dispatch as landingPagePublisher — one source of truth so
   // a rewrite re-renders through the exact same template selection + asset resolution.
   const { renderLandingPageHtml } = await import("../lib/templates/renderRegistry");
   const html = await renderLandingPageHtml(styleMode, {
-    content,
+    content: enrichedContent,
     serviceName,
     coachName,
     coachBackground,

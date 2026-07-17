@@ -3,6 +3,8 @@ import {
   TEMPLATE_REGISTRY,
   styleForPageType,
   resolveEventStyle,
+  resolveSalesStyle,
+  resolveWebinarStyle,
   coachAssetOptionsFrom,
   renderLandingPageHtml,
   type TemplateRenderInput,
@@ -28,8 +30,10 @@ describe("styleForPageType — the orchestration publish/draft decision", () => 
   it("returns the built per-reference templates (all 5 campaign types now covered)", () => {
     expect(styleForPageType("lead_magnet_download")).toBe("lead_magnet_burchard");
     expect(styleForPageType("discovery_call_booking")).toBe("discovery_burchard_performance");
-    expect(styleForPageType("webinar_registration")).toBe("webinar_rajsekar_coaching");
-    expect(styleForPageType("sales_page")).toBe("sales_ali_abdaal"); // the catch-all default, now built
+    // Sales + webinar default to the proof-LIGHT variant (the rich page is proof-gated, upgrade-only —
+    // every real coach is proof-starved today). Same shape as the free-Iman default for events.
+    expect(styleForPageType("webinar_registration")).toBe("webinar_rajsekar_light");
+    expect(styleForPageType("sales_page")).toBe("sales_ali_abdaal_light"); // the catch-all default (light)
   });
   it("picks the FREE Iman default for event_registration (paid Hormozi is price-gated, not auto)", () => {
     expect(styleForPageType("event_registration")).toBe("event_iman_gadzhi");
@@ -71,7 +75,9 @@ describe("registry shape + dispatch", () => {
   it("all 5 campaign types now have an auto-selectable per-reference template (sales completes the set)", () => {
     const withPageType = Object.entries(TEMPLATE_REGISTRY).filter(([, e]) => e.pageType !== null);
     expect(withPageType.map(([k]) => k).sort()).toEqual(
-      ["discovery_burchard_performance", "event_iman_gadzhi", "lead_magnet_burchard", "sales_ali_abdaal", "webinar_rajsekar_coaching"],
+      // sales + webinar defaults are now the proof-LIGHT variants; the rich pages are pageType:null
+      // (upgrade-only, like Hormozi), so they don't appear as auto-selectable defaults.
+      ["discovery_burchard_performance", "event_iman_gadzhi", "lead_magnet_burchard", "sales_ali_abdaal_light", "webinar_rajsekar_light"],
     );
   });
   it("Hormozi (paid) is registered but pageType:null — reachable via price, never generic auto-select", () => {
@@ -104,5 +110,33 @@ describe("resolveEventStyle — free-vs-paid event discriminator (price-presence
     expect(resolveEventStyle("lead_magnet_burchard", priced("99"))).toBe("lead_magnet_burchard");
     expect(resolveEventStyle("webinar_rajsekar_coaching", null)).toBe("webinar_rajsekar_coaching");
     expect(resolveEventStyle("event_hormozi", null)).toBe("event_hormozi"); // already paid → unchanged
+  });
+});
+
+describe("resolveSalesStyle / resolveWebinarStyle — proof-gated light→rich discriminators", () => {
+  const withTestimonials = (n: number) =>
+    ({ testimonials: Array.from({ length: n }, (_, i) => ({ headline: "", quote: `real proof ${i}`, name: `P${i}`, location: "City" })) }) as unknown as LandingPageContent;
+
+  it("SALES: PRESENCE not magnitude — light at zero, rich the moment there's ANY real testimonial", () => {
+    expect(resolveSalesStyle("sales_ali_abdaal_light", null)).toBe("sales_ali_abdaal_light");        // zero → light
+    expect(resolveSalesStyle("sales_ali_abdaal_light", withTestimonials(0))).toBe("sales_ali_abdaal_light");
+    expect(resolveSalesStyle("sales_ali_abdaal_light", withTestimonials(1))).toBe("sales_ali_abdaal"); // one real → rich (must be seen)
+    expect(resolveSalesStyle("sales_ali_abdaal_light", withTestimonials(5))).toBe("sales_ali_abdaal"); // the 5–8 range no longer falls off a cliff
+    expect(resolveSalesStyle("sales_ali_abdaal_light", withTestimonials(8))).toBe("sales_ali_abdaal");
+  });
+  it("WEBINAR: PRESENCE not magnitude — light at zero, rich from one real testimonial", () => {
+    expect(resolveWebinarStyle("webinar_rajsekar_light", null)).toBe("webinar_rajsekar_light");
+    expect(resolveWebinarStyle("webinar_rajsekar_light", withTestimonials(1))).toBe("webinar_rajsekar_coaching");
+    expect(resolveWebinarStyle("webinar_rajsekar_light", withTestimonials(5))).toBe("webinar_rajsekar_coaching");
+  });
+  it("only real (quoted) testimonials count — a blank/whitespace quote does NOT unlock rich", () => {
+    const blanks = { testimonials: Array.from({ length: 12 }, () => ({ headline: "", quote: "  ", name: "X", location: "Y" })) } as unknown as LandingPageContent;
+    expect(resolveSalesStyle("sales_ali_abdaal_light", blanks)).toBe("sales_ali_abdaal_light"); // 12 blank quotes = zero real proof → light
+  });
+  it("each is a no-op for the other's / any non-default style (order-independent chaining)", () => {
+    expect(resolveSalesStyle("webinar_rajsekar_light", withTestimonials(20))).toBe("webinar_rajsekar_light");
+    expect(resolveWebinarStyle("sales_ali_abdaal_light", withTestimonials(20))).toBe("sales_ali_abdaal_light");
+    expect(resolveSalesStyle("sales_ali_abdaal", withTestimonials(0))).toBe("sales_ali_abdaal"); // already rich → unchanged
+    expect(resolveWebinarStyle("lead_magnet_burchard", null)).toBe("lead_magnet_burchard");
   });
 });

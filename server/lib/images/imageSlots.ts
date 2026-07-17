@@ -223,6 +223,49 @@ export function resolveProductCoverUrl(
   return derived || null;
 }
 
+// ── Presenter cutout (hero figure) ──────────────────────────────────────────
+// The reference heroes (Rajsekar webinar, Iman event) show the presenter as a
+// free-standing CUTOUT — a transparent-background figure over the design, NOT a
+// framed rectangular photo. Cloudinary's AI Background Removal add-on (verified
+// live on the prod account dunshei0y: e_background_removal,f_png → 200 image/png,
+// synchronous, cached) produces the cutout as a PURE delivery-URL transform — the
+// exact pattern as pdfPageOneCoverUrl: no new API, no upload job, no migration.
+// Chains e_background_removal → c_fit resize → f_png (alpha), preserving any baked
+// user-choice tokens (a_hflip facing). Non-Cloudinary or empty urls return "" so
+// the caller stages a review-draft ([INSERT_PRESENTER_PHOTO]) rather than shipping
+// a framed rectangle. Applied to the RAW headshot (never the g_face slot crop) so
+// background removal sees the whole figure.
+const PRESENTER_CUTOUT_TRANSFORM = "e_background_removal,c_fit,w_800,f_png";
+
+export function presenterCutoutUrl(url: string | null | undefined): string {
+  if (!isCloudinaryUrl(url)) return "";
+  const p = parse(url)!;
+  const chained = p.baked ? `${PRESENTER_CUTOUT_TRANSFORM}/${p.baked}` : PRESENTER_CUTOUT_TRANSFORM;
+  return `${p.head}${chained}/${p.tail}`;
+}
+
+/**
+ * Publish-time resolution of the presenter cutout, with the same verified-live
+ * discipline as the magnet cover: build the background-removal URL and HEAD-verify
+ * it. Returns the cutout URL on 200; returns null when removal is impossible or
+ * fails (non-Cloudinary source, add-on quota exhausted, unprocessable photo) so the
+ * caller emits [INSERT_PRESENTER_PHOTO] and the publish hard-gate stages a
+ * review-draft — never a framed rectangle pretending to be a cutout. Applies to
+ * BOTH the webinar (Rajsekar) and event (Iman) heroes.
+ */
+export async function resolvePresenterCutoutUrl(
+  rawHeadshotUrl: string | null | undefined,
+): Promise<string | null> {
+  const cutout = presenterCutoutUrl(rawHeadshotUrl);
+  if (!cutout) return null;
+  try {
+    const res = await fetch(cutout, { method: "HEAD" });
+    return res.ok ? cutout : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Explicit width/height for the rendered <img>, preventing Cumulative Layout
  * Shift (research §6 rule 3). null height = intrinsic (wide logo bar).

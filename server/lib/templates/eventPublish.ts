@@ -19,7 +19,7 @@ import type { LandingPageContent } from "../../../drizzle/schema";
 import { idealCustomerProfiles } from "../../../drizzle/schema";
 import { getDb } from "../../db";
 import { getCoachVideoUrl } from "../coachVideoUrl";
-import { slotImageUrl } from "../images/imageSlots";
+import { slotImageUrl, resolvePresenterCutoutUrl } from "../images/imageSlots";
 import { buildEventImanGadzhiHtml } from "./eventImanGadzhi";
 import { buildEventHormoziHtml } from "./eventHormozi";
 
@@ -74,8 +74,13 @@ export async function renderEventImanGadzhi(opts: {
   const { content, serviceName, coachName, assetRows } = opts;
   const rawHeadshot = assetRows.find((a) => a.assetType === "headshot")?.url ?? null;
   const rawHero = assetRows.find((a) => a.assetType === "hero_image")?.url ?? null;
+  // The presenter IS the page — render it as a background-removed CUTOUT (HEAD-verified, same
+  // discipline as the magnet cover) so the open-arm figure stands free over the audience wall,
+  // matching the reference. Null when removal is unavailable/failed → the hero emits
+  // [INSERT_PRESENTER_PHOTO] → publish hard-gate → review-draft (never a framed rectangle).
+  const presenterCutout = await resolvePresenterCutoutUrl(rawHeadshot);
   return buildEventImanGadzhiHtml(content, serviceName, {
-    headshotUrl: rawHeadshot ? slotImageUrl(rawHeadshot, "headshot") : null,
+    headshotUrl: presenterCutout,
     heroImageUrl: rawHero ? slotImageUrl(rawHero, "hero_image") : null,
     coachName,
   });

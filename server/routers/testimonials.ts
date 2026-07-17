@@ -50,6 +50,63 @@ export const testimonialsRouter = router({
       return row;
     }),
 
+  /**
+   * Bulk-add testimonials to the library — the paste / CSV import surface. The median coach has 5–10
+   * testimonials sitting in a doc; this is how they get them in so the landing-page proof allocator has
+   * real material. Rows are validated PER ROW (never all-or-nothing) and deduped by quote (against the
+   * existing library AND within the batch), so re-pasting is safe. Real testimonials only — nothing
+   * auto-generated, nothing fabricated. Returns a per-row outcome so the UI can show what happened.
+   */
+  addMany: protectedProcedure
+    .input(z.object({
+      serviceId: z.number().optional(),
+      // Loose field validation here so a single bad row can't reject the whole batch — the handler
+      // reports per-row status instead. Hard caps only (length, batch size).
+      items: z.array(z.object({
+        name: z.string().max(255),
+        title: z.string().max(255).optional(),
+        quote: z.string().max(2000),
+      })).min(1).max(200),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB not available" });
+
+      const norm = (q: string) => q.toLowerCase().replace(/\s+/g, " ").trim();
+
+      // Existing quotes for this coach → dedupe target.
+      const existing = await db
+        .select({ quote: testimonials.quote })
+        .from(testimonials)
+        .where(eq(testimonials.userId, ctx.user.id));
+      const seen = new Set(existing.map((e) => norm(e.quote)));
+
+      type RowStatus = "added" | "duplicate" | "invalid";
+      const results: Array<{ index: number; status: RowStatus; reason?: string }> = [];
+      const toInsert: Array<{ userId: number; serviceId: number | null; name: string; title: string | null; quote: string }> = [];
+
+      input.items.forEach((row, index) => {
+        const name = (row.name ?? "").trim();
+        const quote = (row.quote ?? "").trim();
+        if (!name) { results.push({ index, status: "invalid", reason: "Missing name" }); return; }
+        if (!quote) { results.push({ index, status: "invalid", reason: "Missing quote" }); return; }
+        const key = norm(quote);
+        if (seen.has(key)) { results.push({ index, status: "duplicate" }); return; }
+        seen.add(key); // dedupe within the batch too
+        toInsert.push({ userId: ctx.user.id, serviceId: input.serviceId ?? null, name, title: (row.title ?? "").trim() || null, quote });
+        results.push({ index, status: "added" });
+      });
+
+      if (toInsert.length > 0) await db.insert(testimonials).values(toInsert);
+
+      return {
+        added: toInsert.length,
+        duplicates: results.filter((r) => r.status === "duplicate").length,
+        invalid: results.filter((r) => r.status === "invalid").length,
+        results,
+      };
+    }),
+
   /** Delete a testimonial from the library. */
   delete: protectedProcedure
     .input(z.object({ id: z.number() }))

@@ -550,9 +550,9 @@ export const landingPages = mysqlTable("landingPages", {
     "text", "visual", "executive", "energetic", "clinical", "warm", "bold",
     "lead_magnet_burchard",
     "discovery_burchard_performance",
-    "webinar_rajsekar_coaching", "webinar_rajsekar_marketing",
+    "webinar_rajsekar_coaching", "webinar_rajsekar_light", "webinar_rajsekar_marketing",
     "event_iman_gadzhi", "event_hormozi",
-    "sales_ali_abdaal", "sales_jenna_kutcher",
+    "sales_ali_abdaal", "sales_ali_abdaal_light", "sales_jenna_kutcher",
     "lead_magnet_jeff_walker",
   ]).default("text"),
 

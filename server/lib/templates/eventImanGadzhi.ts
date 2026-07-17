@@ -43,8 +43,19 @@ const NEAR_BLACK = "#17191B";
 const WHITE = "#F4F4F2";
 const GREEN = "#00D33A"; // event lockup + headline emphasis + status dot + environmental light
 const GREEN_SOFT = "rgba(0,211,58,0.22)";
-const YELLOW = "#FF6242"; // the single luminous conversion accent — brand orange action color
-const YELLOW_HI = "#F97066";
+// PNG-sampled 2026-07-17: the reference uses a THREE-accent system — a bright GOLD ticket pill, a
+// MUTED brick-orange for headings/icons/rules/the WHEN tile, and green/red on the compare panels.
+// (The build had a single hot #FF6242 doing all of it, reading over-saturated vs the frozen PNG.)
+const YELLOW = "#D14F35"; // muted brick-orange accent — sampled #d14f35 (icons/rules/eyebrows/WHEN tile)
+const YELLOW_HI = "#E0603F";
+const GOLD = "#E2DC2A";    // bright gold ticket-CTA pill — sampled #e2dc2a (CTA only, never card headers)
+const GOLD_HI = "#F2ED5C";
+// Compare-panel colours (light off-white panels with a coloured border + black heading — sampled).
+const PANEL_LIGHT = "#EFEFED"; // "With/Without" panel body (light, NOT dark)
+const PANEL_ROW = "#FFFFFF";   // item rows inside the light panel
+const PANEL_INK = "#0F0F0F";   // black panel heading (NOT the accent colour)
+const COMPARE_GREEN = "#22C55E"; // "with" border + check badge — sampled vivid green
+const COMPARE_RED = "#EF4444";   // "without" border + cross badge — sampled red
 const CAPSULE = "#20261F"; // grey rounded date capsule
 const LEGAL = "#777777";
 const H = "'Inter', system-ui, -apple-system, sans-serif"; // Inter Display (headings)
@@ -64,7 +75,7 @@ function greenTailHeadline(headline: string): string {
   const words = safe.split(/\s+/).filter(Boolean);
   if (words.length < 4) return safe;
   const comma = safe.lastIndexOf(",");
-  const green = (t: string) => `<span style="color:#FF6242;">${t}</span>`; // orange/red headline emphasis (per reference)
+  const green = (t: string) => `<span style="color:${YELLOW};">${t}</span>`; // muted brick-orange headline emphasis (PNG-sampled)
   if (comma > 0 && comma < safe.length - 2) {
     return safe.slice(0, comma + 1) + " " + green(safe.slice(comma + 1).trim());
   }
@@ -132,7 +143,7 @@ function ctaBlock(content: LandingPageContent, suffix = ""): string {
   const f = (n: string) => `ev_${n}${suffix}`;
   return `
       <div style="max-width:520px;margin:0 auto;">
-        <button type="button" id="${f("cta")}" class="ev_cta_btn" data-form="${f("form")}" style="display:flex;flex-direction:column;align-items:center;gap:4px;width:100%;box-sizing:border-box;padding:18px 28px;border:0;border-radius:9999px;cursor:pointer;background:linear-gradient(180deg,${YELLOW_HI} 0%,${YELLOW} 100%);box-shadow:0 0 0 4px rgba(255,98,66,0.18), 0 18px 44px rgba(255,98,66,0.22);">
+        <button type="button" id="${f("cta")}" class="ev_cta_btn" data-form="${f("form")}" style="display:flex;flex-direction:column;align-items:center;gap:4px;width:100%;box-sizing:border-box;padding:18px 28px;border:0;border-radius:9999px;cursor:pointer;background:linear-gradient(180deg,${GOLD_HI} 0%,${GOLD} 100%);box-shadow:0 0 0 4px rgba(226,220,42,0.16), 0 18px 44px rgba(226,220,42,0.22);">
           <span style="display:inline-flex;align-items:center;gap:10px;font-family:${H};font-weight:800;font-size:clamp(17px,2.2vw,21px);text-transform:uppercase;letter-spacing:0.02em;color:${BLACK};">${ticket}${label}</span>
           <span style="font-family:${B};font-weight:600;font-size:12px;color:rgba(2,3,2,0.68);">*${scarcity}</span>
         </button>
@@ -142,7 +153,7 @@ function ctaBlock(content: LandingPageContent, suffix = ""): string {
             <input type="email" class="ev_email_in" name="ev_email" required placeholder="you@example.com" style="width:100%;box-sizing:border-box;padding:13px 15px;font-family:${B};font-size:15px;border:1px solid #2A2F28;border-radius:10px;background:${NEAR_BLACK};color:${WHITE};">
             <label style="display:flex;gap:8px;align-items:flex-start;font-family:${B};font-size:12px;line-height:1.4;color:#9AA39A;"><input type="checkbox" class="ev_consent_in" required style="margin-top:3px;"><span>I agree to receive my ticket and event emails, and accept the <a href="https://zapcampaigns.com/privacy" target="_blank" rel="noopener" style="color:${GREEN};">privacy policy</a>.</span></label>
             <div style="position:absolute;left:-9999px;" aria-hidden="true"><input type="text" class="ev_hp_in" name="ev_hp" tabindex="-1" autocomplete="off"></div>
-            <button type="submit" class="ev_submit_btn" style="width:100%;box-sizing:border-box;padding:15px 24px;font-family:${H};font-weight:800;font-size:16px;text-transform:uppercase;color:${BLACK};background:${YELLOW};border:0;border-radius:9999px;cursor:pointer;">Claim my free ticket</button>
+            <button type="submit" class="ev_submit_btn" style="width:100%;box-sizing:border-box;padding:15px 24px;font-family:${H};font-weight:800;font-size:16px;text-transform:uppercase;color:${BLACK};background:${GOLD};border:0;border-radius:9999px;cursor:pointer;">Claim my free ticket</button>
             <div class="ev_msg_box" style="font-family:${B};font-size:13px;color:${YELLOW_HI};min-height:16px;"></div>
           </form>
         </div>
@@ -208,6 +219,9 @@ const RED = "#FF4D4D";       // "without" column negatives
 const CARD_W = "#FFFFFF";    // white agenda cards
 const CARD_INK = "#151515";  // dark text on white cards
 const SUBTLE = "#B9C0B8";    // section sub-copy on black
+const CREAM = "#FAF8F3";     // Day-card body — near-white cream (PNG-sampled, NOT an orange fill)
+const DAY_HEADER = "#0D0D0D"; // Day-card header — glossy black bar with white "DAY 0N" + orange icon
+const CHARCOAL = "#282828";  // ATD "WHAT" tile — sampled charcoal (the varied third tile)
 
 /** Centred white section head + red-orange underline + optional sub, on the black canvas. */
 function sectionHead(title: string, sub?: string): string {
@@ -223,11 +237,15 @@ function sectionHead(title: string, sub?: string): string {
 function learnSection(content: LandingPageContent): string {
   const days = (Array.isArray(content.consultationOutline) ? content.consultationOutline : []).filter((d) => ok(d?.title)).slice(0, 6);
   if (!days.length) return "";
+  // PNG-sampled treatment: glossy BLACK header (white "DAY 0N" + muted-orange bar-chart icon) over a
+  // near-white CREAM body with an orange rule under the title. NOT the old orange-gradient header.
+  const barIcon = `<svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="${YELLOW}" style="flex-shrink:0;"><rect x="3" y="12" width="4" height="9" rx="1"/><rect x="10" y="7" width="4" height="14" rx="1"/><rect x="17" y="3" width="4" height="18" rx="1"/></svg>`;
   const cards = days.map((d, i) => `
-        <div style="flex:1 1 300px;min-width:260px;max-width:340px;background:${CARD_W};border-radius:16px;overflow:hidden;box-shadow:0 20px 44px rgba(0,0,0,0.5);">
-          <div style="background:linear-gradient(180deg,${YELLOW_HI},${YELLOW});padding:11px 18px;font-family:${H};font-weight:800;font-size:17px;letter-spacing:0.04em;text-transform:uppercase;color:${BLACK};">DAY ${String(i + 1).padStart(2, "0")}</div>
-          <div style="padding:20px 20px 24px;">
-            <div style="font-family:${H};font-weight:800;font-size:18px;line-height:1.2;color:${CARD_INK};margin:0 0 ${ok(d.description) ? "10px" : "0"};">${esc(d.title)}</div>
+        <div style="flex:1 1 300px;min-width:260px;max-width:340px;background:${CREAM};border:1px solid rgba(209,79,53,0.30);border-radius:16px;overflow:hidden;box-shadow:0 20px 44px rgba(0,0,0,0.5);">
+          <div style="background:${DAY_HEADER};padding:12px 18px;display:flex;align-items:center;gap:10px;font-family:${H};font-weight:800;font-size:18px;letter-spacing:0.04em;text-transform:uppercase;color:${WHITE};">${barIcon}DAY ${String(i + 1).padStart(2, "0")}</div>
+          <div style="padding:18px 20px 22px;">
+            <div style="font-family:${H};font-weight:800;font-size:18px;line-height:1.22;color:${CARD_INK};margin:0 0 12px;">${esc(d.title)}</div>
+            <div aria-hidden="true" style="height:2px;background:${YELLOW};opacity:0.5;margin:0 0 ${ok(d.description) ? "14px" : "0"};"></div>
             ${ok(d.description) ? `<p style="font-family:${B};font-weight:400;font-size:14px;line-height:1.55;color:#4A4A4A;margin:0;">${esc(d.description)}</p>` : ""}
           </div>
         </div>`).join("");
@@ -251,11 +269,21 @@ function detailsSection(content: LandingPageContent): string {
     ["WHEN", when],
     ["WHAT", whatBits || "A free live event designed to move you forward."],
   ];
-  const cards = cols.map(([k, v]) => `
-        <div style="flex:1 1 240px;min-width:220px;max-width:320px;background:${NEAR_BLACK};border:1px solid #26221F;border-radius:16px;overflow:hidden;">
-          <div style="background:linear-gradient(180deg,${YELLOW_HI},${YELLOW});padding:10px 18px;font-family:${H};font-weight:800;font-size:15px;letter-spacing:0.1em;text-transform:uppercase;color:${BLACK};">${k}</div>
-          <div style="padding:18px 18px 22px;font-family:${B};font-weight:400;font-size:14px;line-height:1.55;color:#CBD0C9;">${v}</div>
-        </div>`).join("");
+  // PNG-sampled: the three tiles are VARIED, not a uniform orange header — cream WHERE, orange-fill
+  // WHEN (the single highlight), charcoal WHAT; the label sits inside each tile, not on a header bar.
+  const tileStyles = [
+    { bg: CREAM,    head: YELLOW,     body: "#2A2A2A" },              // WHERE — cream
+    { bg: YELLOW,   head: "#FFFFFF",  body: "rgba(255,255,255,0.92)" }, // WHEN  — orange fill
+    { bg: CHARCOAL, head: YELLOW,     body: "#D8D8D6" },              // WHAT  — charcoal
+  ];
+  const cards = cols.map(([k, v], i) => {
+    const s = tileStyles[i] ?? tileStyles[0];
+    return `
+        <div style="flex:1 1 240px;min-width:220px;max-width:320px;background:${s.bg};border-radius:16px;overflow:hidden;padding:20px 20px 22px;">
+          <div style="font-family:${H};font-weight:800;font-size:22px;letter-spacing:0.06em;text-transform:uppercase;color:${s.head};margin:0 0 10px;">${k}</div>
+          <div style="font-family:${B};font-weight:400;font-size:14px;line-height:1.55;color:${s.body};">${v}</div>
+        </div>`;
+  }).join("");
   return `
   <section style="background:${BLACK};padding:8px 24px 64px;">
     <div style="max-width:960px;margin:0 auto;">
@@ -270,13 +298,16 @@ function costSection(content: LandingPageContent): string {
   const withItems = (Array.isArray(content.consultationOutline) ? content.consultationOutline : []).filter((d) => ok(d?.title)).slice(0, 3).map((d) => esc(d.title!));
   const withoutItems = [content.problemAgitation, content.whyOldFail, content.scarcityUrgency].filter(ok).slice(0, 3).map((x) => esc(x!));
   if (withItems.length < 2 || withoutItems.length < 1) return ""; // no honest source for the contrast → omit
+  // PNG-sampled: LIGHT off-white panels (not dark) with a green/red border, a BLACK heading + rule,
+  // and items on white rows with a solid colour-filled check/cross badge.
   const row = (text: string, colour: string, mark: string) => `
-          <div style="display:flex;gap:10px;align-items:flex-start;font-family:${B};font-weight:500;font-size:14px;line-height:1.5;color:#E6EAE4;margin:0 0 12px;">
-            <span aria-hidden="true" style="flex-shrink:0;width:20px;height:20px;border-radius:9999px;background:${colour}22;color:${colour};display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;">${mark}</span><span>${text}</span>
+          <div style="display:flex;gap:12px;align-items:flex-start;background:${PANEL_ROW};border-radius:10px;padding:12px 14px;margin:0 0 10px;font-family:${B};font-weight:500;font-size:14px;line-height:1.5;color:#1A1A1A;">
+            <span aria-hidden="true" style="flex-shrink:0;width:20px;height:20px;border-radius:9999px;background:${colour};color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;">${mark}</span><span>${text}</span>
           </div>`;
   const col = (title: string, colour: string, mark: string, items: string[]) => `
-        <div style="flex:1 1 300px;min-width:280px;max-width:420px;background:${NEAR_BLACK};border:1px solid ${colour}59;border-radius:16px;padding:24px 22px;">
-          <div style="font-family:${H};font-weight:800;font-size:18px;color:${colour};margin:0 0 16px;">${title}</div>
+        <div style="flex:1 1 300px;min-width:280px;max-width:420px;background:${PANEL_LIGHT};border:2px solid ${colour};border-radius:16px;padding:24px 22px;">
+          <div style="font-family:${H};font-weight:800;font-size:20px;color:${PANEL_INK};margin:0 0 8px;">${title}</div>
+          <div aria-hidden="true" style="height:2px;background:#1A1A1A;opacity:0.85;margin:0 0 16px;"></div>
           ${items.map((t) => row(t, colour, mark)).join("")}
         </div>`;
   return `
@@ -284,8 +315,8 @@ function costSection(content: LandingPageContent): string {
     <div style="max-width:960px;margin:0 auto;">
       ${sectionHead("The Cost of Doing Nothing<br>vs Joining the Challenge")}
       <div style="display:flex;flex-wrap:wrap;gap:22px;justify-content:center;align-items:stretch;">
-        ${col("With This Event", GREEN, "&#10003;", withItems)}
-        ${col("Without This Event", RED, "&times;", withoutItems)}
+        ${col("With This Event", COMPARE_GREEN, "&#10003;", withItems)}
+        ${col("Without This Event", COMPARE_RED, "&times;", withoutItems)}
       </div>
       <div style="margin:34px auto 0;">${ctaBlock(content, "3")}</div>
     </div>
@@ -301,7 +332,7 @@ function includedSection(content: LandingPageContent): string {
     : feats.map((f) => ({ t: esc(f), d: "", v: "" }));
   if (!items.length) return "";
   const cards = items.map((it) => `
-        <div style="flex:1 1 300px;min-width:260px;max-width:420px;position:relative;border-radius:16px;overflow:hidden;background:radial-gradient(120% 120% at 50% 0%, rgba(255,98,66,0.14) 0%, rgba(0,0,0,0) 62%), ${NEAR_BLACK};border:1px solid #26221F;padding:24px 22px;">
+        <div style="flex:1 1 300px;min-width:260px;max-width:420px;position:relative;border-radius:16px;overflow:hidden;background:radial-gradient(120% 120% at 50% 50%, rgba(209,79,53,0.16) 0%, rgba(0,0,0,0) 60%), ${NEAR_BLACK};border:1px solid #26221F;padding:24px 22px;">
           ${it.v ? `<div style="position:absolute;top:14px;right:14px;font-family:${B};font-weight:700;font-size:12px;color:${YELLOW};">${it.v} value</div>` : ""}
           <div style="font-family:${H};font-weight:800;font-size:18px;line-height:1.2;color:${WHITE};margin:0 0 ${it.d ? "10px" : "0"};">${it.t}</div>
           ${it.d ? `<p style="font-family:${B};font-weight:400;font-size:14px;line-height:1.55;color:${SUBTLE};margin:0;">${it.d}</p>` : ""}
@@ -322,7 +353,7 @@ function finalCtaSection(content: LandingPageContent): string {
     : "Register below to save your free seat — you&rsquo;ll get the confirmation and joining details by email.";
   return `
   <section style="background:${BLACK};padding:8px 24px 72px;">
-    <div style="max-width:760px;margin:0 auto;border-radius:20px;overflow:hidden;background:radial-gradient(130% 110% at 50% 0%, rgba(255,98,66,0.18) 0%, rgba(0,0,0,0) 60%), ${NEAR_BLACK};padding:44px 28px;text-align:center;">
+    <div style="max-width:760px;margin:0 auto;border-radius:20px;overflow:hidden;background:radial-gradient(130% 110% at 50% 45%, rgba(190,55,40,0.20) 0%, rgba(0,0,0,0) 62%), ${NEAR_BLACK};padding:44px 28px;text-align:center;">
       <div style="font-family:${B};font-weight:700;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:${YELLOW};margin:0 0 12px;">Important</div>
       <h2 style="font-family:${H};font-weight:800;font-size:clamp(24px,3.4vw,38px);line-height:1.1;color:${WHITE};margin:0 auto 14px;max-width:20ch;">Register Below to Save Your Free Seat.</h2>
       <p style="font-family:${B};font-weight:400;font-size:15px;line-height:1.55;color:${SUBTLE};margin:0 auto 26px;max-width:52ch;">${note}</p>

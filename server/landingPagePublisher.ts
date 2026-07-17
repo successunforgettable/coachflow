@@ -95,6 +95,13 @@ export async function runLandingPagePublish(
     );
   }
 
+  // 3b. 3-CAP FIX: replace the generated ≤3 testimonials with the coach's FULL real library (verbatim,
+  // never fabricated; no-op when the library is empty). Done BEFORE the discriminators so proof-based
+  // selection sees the real count, and so EVERY testimonial-rendering template (Burchard/Discovery/
+  // Hormozi/Sales/Webinar) shows all real proof, not just 3.
+  const { injectRealTestimonials } = await import("./lib/realTestimonials");
+  const enrichedContent = await injectRealTestimonials(content, input.userId, lp.serviceId);
+
   // 4. Coach profile + assets (used by visual style HTML builder).
   const [coachProfileRow] = await db
     .select({ coachName: users.coachName, coachBackground: users.coachBackground })
@@ -128,14 +135,20 @@ export async function runLandingPagePublish(
   // path and the complianceRewrites re-render path call, so a template can never
   // be swapped by only one of them (the "family, not leaf" rule).
   const { ensureKvNamespace, writeKvPage, deployWorker } = await import("./lib/cloudflare");
-  const { renderLandingPageHtml, resolveEventStyle } = await import("./lib/templates/renderRegistry");
-  // Event free-vs-paid discriminator: a REAL operator-captured price upgrades the free Iman default
-  // to the paid Hormozi workshop. No-op for every non-event style. Decided here (not upstream)
-  // because this is where the LP content — and thus the price — is loaded; the resolved style is
-  // used for BOTH the render and the persisted publishedStyle so they never disagree.
-  const styleMode = resolveEventStyle(input.styleMode, content) as LpStyleMode;
+  const { renderLandingPageHtml, resolveEventStyle, resolveSalesStyle, resolveWebinarStyle } = await import("./lib/templates/renderRegistry");
+  // Publish-time style discriminators (each a no-op unless its default styleMode is in play, so the
+  // chain is order-independent and safe on every publish). Decided here because this is where the LP
+  // content — price + testimonials — is loaded; the resolved style drives BOTH the render and the
+  // persisted publishedStyle so they never disagree.
+  //  · Event free-vs-paid — a REAL operator price upgrades free Iman → paid Hormozi.
+  //  · Sales/Webinar proof-gate — the proof-LIGHT default upgrades to the reference-faithful RICH page
+  //    only when the coach has enough REAL testimonials (never fabricated; light stays until then).
+  const styleMode = resolveWebinarStyle(
+    resolveSalesStyle(resolveEventStyle(input.styleMode, enrichedContent), enrichedContent),
+    enrichedContent,
+  ) as LpStyleMode;
   const html = await renderLandingPageHtml(styleMode, {
-    content,
+    content: enrichedContent,
     serviceName,
     coachName,
     coachBackground,

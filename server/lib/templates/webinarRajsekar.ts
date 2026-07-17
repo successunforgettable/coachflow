@@ -31,8 +31,15 @@ import type { LandingPageContent } from "../../../drizzle/schema";
 import { esc, ok, imgOrOmit, initials, renderDocument } from "./templatePrimitives";
 
 export interface WebinarCoachInput {
-  /** Presenter photo — headshot slot. Hero media fallback (no fake play) + host-bio portrait. */
+  /** Presenter photo — headshot slot. Video-poster fallback (no fake play) + host-bio portrait. */
   headshotUrl?: string | null;
+  /**
+   * Hero presenter CUTOUT — the raw headshot with the background removed (resolvePresenterCutoutUrl),
+   * so it reads as a free-standing figure over the navy hero, matching the reference. Null when
+   * background removal is unavailable/failed → the hero emits [INSERT_PRESENTER_PHOTO] and the
+   * publish hard-gate stages a review-draft (never a framed rectangle).
+   */
+  presenterCutoutUrl?: string | null;
   /** Optional 16:9 hero image slot — preferred media poster before the headshot. */
   heroImageUrl?: string | null;
   /** Coach logo slot — small wordmark top-left. */
@@ -84,6 +91,7 @@ const B = "'Outfit', system-ui, -apple-system, sans-serif";  // Outfit (body, pe
 const EVENT_DATE_TOKEN = "[INSERT_EVENT_DATE]";
 const EVENT_TIME_TOKEN = "[INSERT_EVENT_TIME]";
 const EVENT_TZ_TOKEN = "[INSERT_EVENT_TIMEZONE]";
+const PRESENTER_TOKEN = "[INSERT_PRESENTER_PHOTO]";
 
 // ── Media frame — real video, else real photo (no fake play), else omit ──────────────
 
@@ -125,16 +133,18 @@ function mediaFrame(coach: WebinarCoachInput, posterOnly = false): string {
 }
 
 /**
- * Hero-right PRESENTER portrait (matches the reference: the presenter beside the headline, NOT a
- * 16:9 video). Prefers the real headshot; falls back to the hero image; omits when neither exists.
- * A portrait 4:5 frame so a face-cropped photo reads as a presenter, not a letterboxed band.
+ * Hero-right PRESENTER cutout (matches the reference: a free-standing figure beside the headline,
+ * NOT a framed rectangular photo). Renders the background-removed cutout as a transparent PNG with
+ * object-fit:contain + a drop-shadow that hugs the figure — no card, no border, no rectangle edges.
+ * No usable cutout (removal unavailable/failed) → emits [INSERT_PRESENTER_PHOTO] so the publish
+ * hard-gate stages a review-draft; we never ship a framed rectangle pretending to be a cutout.
  */
 function heroPresenter(coach: WebinarCoachInput): string {
-  const url = coach.headshotUrl || coach.heroImageUrl;
-  const img = imgOrOmit(url, coach.coachName || "Your host",
-    "position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:top center;");
-  if (!ok(img)) return "";
-  return `<div style="position:relative;width:100%;aspect-ratio:4/5;max-width:420px;margin:0 auto;background:#0B1220;border-radius:16px;overflow:hidden;box-shadow:0 24px 60px rgba(122,60,255,0.22);">${img}</div>`;
+  const url = coach.presenterCutoutUrl;
+  if (!ok(url)) return PRESENTER_TOKEN;
+  return `<div style="position:relative;width:100%;max-width:440px;margin:0 auto;">`
+    + `<img src="${esc(url!)}" alt="${esc(coach.coachName || "Your host")}" style="display:block;width:100%;height:auto;object-fit:contain;filter:drop-shadow(0 34px 60px rgba(0,0,0,0.45));">`
+    + `</div>`;
 }
 
 /**
@@ -237,21 +247,23 @@ function heroSection(content: LandingPageContent, coach: WebinarCoachInput): str
     : `<span style="color:${HERO_SUB};font-weight:500;">&nbsp;&middot;&nbsp;${EVENT_DATE_TOKEN}, ${EVENT_TIME_TOKEN} ${EVENT_TZ_TOKEN}</span>`;
   const badge = `<div style="display:inline-flex;align-items:center;gap:8px;background:rgba(167,139,250,0.14);border:1px solid rgba(167,139,250,0.34);border-radius:9999px;padding:7px 16px;font-family:${B};font-weight:700;font-size:12px;letter-spacing:0.06em;color:${LILAC};text-transform:uppercase;margin:0 0 20px;"><span aria-hidden="true" style="width:7px;height:7px;border-radius:50%;background:${GREEN};display:inline-block;"></span>${eyebrow}${dateBadge}</div>`;
 
-  const media = heroPresenter(coach); // hero shows the presenter PORTRAIT; the video has its own section
+  const media = heroPresenter(coach); // hero shows the presenter CUTOUT; the video has its own section
   const action = reserveCard(content, coach);
 
-  // RIGHT: presenter media with two honest decorative chips (no fabricated numbers — both are
-  // true of any free live class). Omitted entirely when there is no real video/photo.
-  const right = media
+  // RIGHT: presenter cutout with two honest decorative chips (no fabricated numbers — both are true
+  // of any free live class). The chips only float over a REAL cutout; when the presenter is unset
+  // (review-draft token), the column shows just the token so the review surface reads it cleanly.
+  const hasCutout = ok(coach.presenterCutoutUrl);
+  const right = hasCutout
     ? `<div style="flex:1 1 440px;min-width:300px;position:relative;">
         ${media}
         <div aria-hidden="true" style="position:absolute;top:-14px;left:-14px;background:${WHITE};border-radius:12px;padding:8px 14px;font-family:${B};font-weight:600;font-size:13px;color:${INK};box-shadow:0 10px 24px rgba(122,60,255,0.20);">&#9889; Live &amp; interactive</div>
         <div aria-hidden="true" style="position:absolute;bottom:-14px;right:-14px;background:${CORAL};border-radius:12px;padding:8px 14px;font-family:${B};font-weight:600;font-size:13px;color:${WHITE};box-shadow:0 10px 24px rgba(122,60,255,0.32);">&#127775; Free to attend</div>
       </div>`
-    : "";
+    : `<div style="flex:1 1 440px;min-width:300px;">${media}</div>`;
 
   return `
-  <section style="background:${HERO_NAVY};padding:56px 24px 64px;">
+  <section style="background:${HERO_NAVY};padding:76px 24px 92px;">
     <div style="max-width:1120px;margin:0 auto;display:flex;flex-wrap:wrap;gap:48px;align-items:center;justify-content:center;">
       <div id="wb_reserve" style="flex:1 1 460px;min-width:300px;text-align:left;">
         ${logo}${badge}
@@ -291,6 +303,58 @@ function whoForSection(content: LandingPageContent, coach: WebinarCoachInput): s
   </section>`;
 }
 
+/**
+ * "What changes if you don't do this?" — the reference's cost-of-inaction close (it runs one before
+ * the final CTA). Binds the coach's REAL problem / why-the-old-way-fails / scarcity copy; real-or-
+ * nothing → omits when fewer than two honest sources exist. Never fabricates stakes. One scroll-to-
+ * hero CTA (the hero owns the single capture form).
+ */
+function costOfInactionSection(content: LandingPageContent): string {
+  const sources: Array<[string, string]> = ([
+    ["Nothing changes", content.problemAgitation],
+    ["The old way keeps failing", content.whyOldFail],
+    ["The window is now", content.scarcityUrgency],
+  ] as Array<[string, unknown]>).filter(([, v]) => ok(v as string)).map(([l, v]) => [l, String(v)]);
+  if (sources.length < 2) return ""; // no honest stakes → omit (never invented urgency)
+  const cta = ok(content.primaryCta) ? esc(content.primaryCta) : "Reserve My Free Seat";
+  const cards = sources.map(([label, body]) => `
+        <div style="flex:1 1 300px;min-width:260px;max-width:360px;background:${WHITE};border:1px solid #E7DEF9;border-radius:16px;padding:26px 24px;box-shadow:0 10px 30px rgba(122,60,255,0.08);">
+          <div style="width:40px;height:40px;border-radius:10px;background:${CORAL}1A;display:flex;align-items:center;justify-content:center;margin:0 0 16px;"><span style="color:${CORAL};font-family:${H};font-weight:800;font-size:20px;">!</span></div>
+          <div style="font-family:${H};font-weight:700;font-size:17px;color:${INK};margin:0 0 8px;">${esc(label)}</div>
+          <p style="font-family:${B};font-weight:400;font-size:15px;line-height:1.55;color:${INK_SOFT};margin:0;">${esc(body)}</p>
+        </div>`).join("");
+  return `
+  <section style="background:${CANVAS_SOFT};padding:80px 24px;">
+    <div style="max-width:1080px;margin:0 auto;">
+      <h2 style="font-family:${H};font-weight:800;font-size:clamp(24px,2.6vw,34px);line-height:1.15;color:${INK};text-align:center;margin:0 auto 36px;max-width:24ch;">What changes if you don&rsquo;t do this?</h2>
+      <div style="display:flex;flex-wrap:wrap;gap:20px;justify-content:center;">${cards}</div>
+      <div style="text-align:center;margin:38px 0 0;">
+        <a href="#wb_reserve" style="display:inline-block;padding:17px 40px;font-family:${H};font-weight:700;font-size:17px;text-decoration:none;color:${WHITE};background:${CORAL};border-radius:16px;box-shadow:0 14px 30px rgba(122,60,255,0.3);">${esc(cta)}</a>
+      </div>
+    </div>
+  </section>`;
+}
+
+/**
+ * Dedicated final CTA — the reference's navy "…your freedom." closer (its own full section, distinct
+ * from the footer). One scroll-to-hero CTA; the hero owns the single capture form, so this is never a
+ * second form. Always renders (uses primaryCta + the coach's real solutionIntro when present).
+ */
+function finalCtaSection(content: LandingPageContent): string {
+  const cta = ok(content.primaryCta) ? esc(content.primaryCta) : "Reserve My Free Seat";
+  const sub = ok(content.solutionIntro) ? esc(content.solutionIntro) : "";
+  return `
+  <section style="background:${NAVY};padding:88px 24px;">
+    <div style="max-width:720px;margin:0 auto;text-align:center;">
+      <div style="font-family:${B};font-weight:700;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:${LILAC};margin:0 0 14px;">Your next class starts here</div>
+      <h2 style="font-family:${H};font-weight:800;font-size:clamp(28px,3.6vw,44px);line-height:1.12;color:${WHITE};margin:0 auto 18px;max-width:18ch;">Your knowledge, your business, your freedom.</h2>
+      ${sub ? `<p style="font-family:${B};font-weight:400;font-size:clamp(15px,1.5vw,18px);line-height:1.55;color:${HERO_SUB};margin:0 auto 30px;max-width:48ch;">${sub}</p>` : `<div style="height:14px;"></div>`}
+      <a href="#wb_reserve" style="display:inline-block;padding:18px 44px;font-family:${H};font-weight:700;font-size:18px;text-decoration:none;color:${WHITE};background:${CORAL};border-radius:16px;box-shadow:0 16px 34px rgba(122,60,255,0.4);">${esc(cta)}</a>
+      <div style="font-family:${B};font-size:13px;color:${HERO_SUB};margin-top:16px;">Free to attend &middot; Live online</div>
+    </div>
+  </section>`;
+}
+
 /** 3-part framework — binds consultationOutline ("What you'll learn LIVE"). */
 function frameworkSection(content: LandingPageContent): string {
   const outline = (Array.isArray(content.consultationOutline) ? content.consultationOutline : [])
@@ -311,10 +375,15 @@ function frameworkSection(content: LandingPageContent): string {
   </section>`;
 }
 
-/** Success stories — real testimonials only, monogram avatars, no padding, no invented figures. */
+/**
+ * Success stories — real testimonials only, monogram avatars, no invented figures. The count-shaped
+ * grid (flex-wrap, centered) composes for whatever the coach has: 1–2 → a centered row, 3–6 → a grid,
+ * 7–12 → multiple rows. Shows ALL real testimonials up to 12 (the reference's own count) — no 6-cap
+ * that would drop a coach's real proof, and no padding when they have few.
+ */
 function successSection(content: LandingPageContent): string {
   const testimonials = (Array.isArray(content.testimonials) ? content.testimonials : [])
-    .filter((t) => ok(t?.quote)).slice(0, 6);
+    .filter((t) => ok(t?.quote)).slice(0, 12);
   if (testimonials.length === 0) return "";
   const cards = testimonials.map((t) => `
         <div style="flex:1 1 300px;min-width:260px;max-width:360px;background:${WHITE};border:1px solid ${CARD_LINE};border-radius:16px;padding:24px;box-shadow:0 8px 24px rgba(15,23,42,0.05);">
@@ -467,6 +536,8 @@ export function buildWebinarRajsekarHtml(
       bonusesSection(content),
       faqSection(content),
       whoForSection(content, coach),
+      costOfInactionSection(content),
+      finalCtaSection(content),
       footer(serviceName, coach),
       runtimeScript(),
     ].join("\n"),

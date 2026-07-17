@@ -101,10 +101,12 @@ describe("buildSalesAliAbdaalHtml — long-form course sales page on the Ali Abd
   });
 
   it("Gate-1 results default to honest testimonial monogram cards — no fabricated charts/metrics", () => {
-    const html = buildSalesAliAbdaalHtml(base, "Academy", coach);
+    // The results section renders the allocator's REMAINDER (testimonials beyond the wall+strips), so
+    // it needs enough testimonials to have a remainder (N>=7). Judge the honest-monogram form here.
+    const many = Array.from({ length: 8 }, (_, i) => ({ headline: "", quote: `Real proof ${i} from a student.`, name: `Rina Patel ${i}`, location: "City" }));
+    const html = buildSalesAliAbdaalHtml({ ...base, testimonials: many } as unknown as LandingPageContent, "Academy", coach);
     expect(html).toContain("Real results from real students");
-    expect(html).toContain("I finally built a system that works.");
-    expect(html).toContain(">RP<"); // Rina Patel monogram — no fabricated chart or subscriber count
+    expect(html).toContain(">RP<"); // monogram avatar — no fabricated chart or subscriber count
     expect(html).not.toContain("<canvas");
   });
 
@@ -145,5 +147,44 @@ describe("buildSalesAliAbdaalHtml — long-form course sales page on the Ali Abd
     expect(html).not.toContain("The curriculum");
     expect(html).not.toContain("You&#39;ll build systems for");
     expect(html).not.toContain("Real results from real students"); // no cases and no testimonials
+  });
+
+  const mkProof = (n: number) =>
+    Array.from({ length: n }, (_, i) => ({ headline: "", quote: `UNIQUEPROOF_${i}_marker quote text`, name: `Person ${i}`, location: "City" }));
+
+  it("PROOF ALLOCATOR — composition scales with count: wall → threaded strips (max 3) → results", () => {
+    const STRIP = /#ECE5E1;padding:44px/g; // the proofStrip beige-band signature — one per rendered strip
+    const strips = (n: number) =>
+      (buildSalesAliAbdaalHtml({ ...base, testimonials: mkProof(n) } as unknown as LandingPageContent, "Academy", coach).match(STRIP) || []).length;
+    // N<=2 → wall only. N=3 → wall of 3, no strips. N=4 → +1 strip. N=5 → +2. N=6+ → 3 strips (capped),
+    // remainder goes to the results grid. No empty strips ever (unfilled slots render nothing).
+    expect(strips(1)).toBe(0);
+    expect(strips(2)).toBe(0);
+    expect(strips(3)).toBe(0);
+    expect(strips(4)).toBe(1);
+    expect(strips(5)).toBe(2);
+    expect(strips(6)).toBe(3);
+    expect(strips(8)).toBe(3);   // capped at 3 threaded strips; the rest go to results
+    expect(strips(12)).toBe(3);
+  });
+
+  it("NO DUPLICATION — every real testimonial appears EXACTLY once at N=1,2,3,5,8,12", () => {
+    for (const N of [1, 2, 3, 5, 8, 12]) {
+      const html = buildSalesAliAbdaalHtml({ ...base, testimonials: mkProof(N) } as unknown as LandingPageContent, "Academy", coach);
+      for (let i = 0; i < N; i++) {
+        const marker = `UNIQUEPROOF_${i}_marker`;
+        const occurrences = html.split(marker).length - 1;
+        expect(occurrences, `N=${N}: testimonial ${i} should render exactly once, saw ${occurrences}`).toBe(1);
+      }
+    }
+  });
+
+  it("light spine at ZERO proof shows NO proof surfaces; the rich page never invents any", () => {
+    // (the discriminator routes zero-proof to the light builder; the rich builder itself omits every
+    // proof surface at N=0 — belt and braces, so a stray render never shows an empty/padded block)
+    const zero = buildSalesAliAbdaalHtml({ ...base, testimonials: [] } as unknown as LandingPageContent, "Academy", coach);
+    expect(zero).not.toContain("Loved by the people who took it"); // no wall
+    expect(zero).not.toContain("Real results from real students");  // no results
+    expect(zero).not.toContain("#ECE5E1;padding:44px");             // no strips
   });
 });

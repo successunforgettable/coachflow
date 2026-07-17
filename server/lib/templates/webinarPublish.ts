@@ -18,11 +18,13 @@ import type { LandingPageContent } from "../../../drizzle/schema";
 import { idealCustomerProfiles } from "../../../drizzle/schema";
 import { getDb } from "../../db";
 import { getCoachVideoUrl } from "../coachVideoUrl";
-import { slotImageUrl } from "../images/imageSlots";
+import { slotImageUrl, resolvePresenterCutoutUrl } from "../images/imageSlots";
 import { buildWebinarRajsekarHtml } from "./webinarRajsekar";
+import { buildWebinarLightHtml } from "./webinarLight";
 
-/** Additive publishedStyle enum value that selects the webinar template. */
+/** Additive publishedStyle enum values that select the webinar templates (rich + proof-light). */
 export const WEBINAR_RAJSEKAR_STYLE = "webinar_rajsekar_coaching" as const;
+export const WEBINAR_LIGHT_STYLE = "webinar_rajsekar_light" as const;
 
 type AssetRow = { assetType: string; url: string };
 
@@ -82,6 +84,11 @@ export async function renderWebinarRajsekar(opts: {
   const heroImageUrl = rawHero ? slotImageUrl(rawHero, "hero_image") : null;
   const logoUrl = assetRows.find((a) => a.assetType === "logo")?.url ?? null;
 
+  // Hero presenter CUTOUT — background-removed figure (HEAD-verified live, same discipline as the
+  // magnet cover). Null when removal is unavailable/failed → the hero emits [INSERT_PRESENTER_PHOTO]
+  // → publish hard-gate → review-draft (never a framed rectangle). Built from the RAW headshot.
+  const presenterCutoutUrl = await resolvePresenterCutoutUrl(rawHeadshot);
+
   // REAL video only (guarded reader — column pending migration 0087). Null → headshot poster.
   const videoUrl = await getCoachVideoUrl(userId);
 
@@ -90,12 +97,44 @@ export async function renderWebinarRajsekar(opts: {
 
   return buildWebinarRajsekarHtml(content, serviceName, {
     headshotUrl,
+    presenterCutoutUrl,
     heroImageUrl,
     logoUrl,
     coachName,
     coachBackground,
     videoUrl,
     isThisYou,
+    trustCount: null,
+  });
+}
+
+/**
+ * Proof-LIGHT webinar variant (the default; teacher/value-forward). Same coach + cutout resolution as
+ * the rich variant, minus the ICP "Is This You" cards (the light spine has no who-for section). No
+ * success grid, no stats bar — a composed page for a coach with little/no proof.
+ */
+export async function renderWebinarLight(opts: {
+  content: LandingPageContent;
+  serviceName: string;
+  coachName: string | null;
+  coachBackground: string | null;
+  assetRows: AssetRow[];
+  serviceId: number | null;
+  userId: number;
+}): Promise<string> {
+  const { content, serviceName, coachName, coachBackground, assetRows, userId } = opts;
+  const rawHeadshot = assetRows.find((a) => a.assetType === "headshot")?.url ?? null;
+  const rawHero = assetRows.find((a) => a.assetType === "hero_image")?.url ?? null;
+  const presenterCutoutUrl = await resolvePresenterCutoutUrl(rawHeadshot);
+  const videoUrl = await getCoachVideoUrl(userId);
+  return buildWebinarLightHtml(content, serviceName, {
+    headshotUrl: rawHeadshot ? slotImageUrl(rawHeadshot, "headshot") : null,
+    presenterCutoutUrl,
+    heroImageUrl: rawHero ? slotImageUrl(rawHero, "hero_image") : null,
+    logoUrl: assetRows.find((a) => a.assetType === "logo")?.url ?? null,
+    coachName,
+    coachBackground,
+    videoUrl,
     trustCount: null,
   });
 }

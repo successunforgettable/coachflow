@@ -54,7 +54,10 @@ describe("buildEventImanGadzhiHtml — free-ticket event poster on the Iman desi
     const html = buildEventImanGadzhiHtml(base, "Challenge", coach);
     expect(html).toContain("GET MY FREE TICKET");
     expect(html).toContain("Tickets Are First Come, First Served");
-    expect(html).toContain("#FF6242"); // brand orange conversion accent (per the brand design system)
+    // PNG-sampled palette (2026-07-17): GOLD ticket pill + MUTED brick-orange accent; NOT the old hot #FF6242.
+    expect(html).toContain("#E2DC2A"); // gold CTA pill (sampled from the frozen reference)
+    expect(html).toContain("#D14F35"); // muted brick-orange accent
+    expect(html).not.toContain("#FF6242"); // the over-saturated orange the reference never uses
     expect(html).not.toContain('id="ev_cd"'); // the frozen reference shows no countdown — never fake one
   });
 

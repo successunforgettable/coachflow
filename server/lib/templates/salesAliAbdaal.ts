@@ -142,24 +142,45 @@ function heroSection(content: LandingPageContent, coach: SalesCoachInput): strin
   const sub = ok(content.subheadline) ? esc(content.subheadline) : "";
   const media = heroMedia(coach);
   return `
-  <section style="position:relative;background:${IVORY};padding:96px 24px;overflow:hidden;">
+  <section style="position:relative;background:${IVORY};padding:64px 24px;overflow:hidden;">
     <div aria-hidden="true" style="position:absolute;top:-6%;left:50%;transform:translateX(-50%);width:640px;height:640px;border-radius:9999px;background:${BLOB};filter:blur(8px);opacity:0.6;pointer-events:none;"></div>
     <div style="position:relative;max-width:900px;margin:0 auto;text-align:center;">
       ${eyebrow}
       <h1 style="font-family:${SERIF};font-weight:600;font-size:clamp(34px,4.8vw,60px);line-height:1.13;letter-spacing:-0.005em;color:${INK};margin:0 auto 26px;max-width:19ch;">${headline}</h1>
-      ${sub ? `<p style="font-family:${S};font-weight:400;font-size:clamp(16px,1.5vw,19px);line-height:1.6;color:${INK_SOFT};margin:0 auto 44px;max-width:50ch;">${sub}</p>` : `<div style="height:24px;"></div>`}
-      ${media ? `<div style="margin:0 auto 44px;">${media}</div>` : ""}
+      ${sub ? `<p style="font-family:${S};font-weight:400;font-size:clamp(16px,1.5vw,19px);line-height:1.6;color:${INK_SOFT};margin:0 auto 30px;max-width:50ch;">${sub}</p>` : `<div style="height:24px;"></div>`}
+      ${media ? `<div style="margin:0 auto 30px;">${media}</div>` : ""}
       ${purchaseCta(coach, "f_hero", ok(content.primaryCta) ? content.primaryCta : "Join the Academy")}
       ${captureForm(coach, "f_hero")}
     </div>
   </section>`;
 }
 
-/** Review wall — real testimonials as five-star monogram cards (real-or-nothing). */
-function reviewWall(content: LandingPageContent): string {
-  // First three as the early star wall; later testimonials thread through the page as proofStrips
-  // (the reference interleaves proof between every content section — see the body order).
-  const items = (Array.isArray(content.testimonials) ? content.testimonials : []).filter((t) => ok(t?.quote)).slice(0, 3);
+type SalesTestimonial = NonNullable<LandingPageContent["testimonials"]>[number];
+
+/**
+ * PROOF ALLOCATOR (2026-07-18) — the fix for the duplication bug. The three proof surfaces (review
+ * wall, interleaved strips, results grid) all used to slice the SAME `content.testimonials` array, so
+ * a coach's testimonials rendered 2–3 times — the same person's quote repeated to fake density. This
+ * partitions the coach's REAL testimonials into DISJOINT slices so each appears EXACTLY ONCE, and
+ * scales which surfaces render to the count:
+ *   N=1–2 → a single wall block (no strips, no results).
+ *   N=3   → wall of 3 (no strips, no results).
+ *   N=4   → wall of 3 + 1 threaded strip.
+ *   N=5–8 → wall of 3 + up to 3 threaded strips + a results block for the remainder.
+ *   N=9+  → the saturated treatment (wall + 3 strips + a larger results grid).
+ * Real-or-nothing: only quoted testimonials count; nothing is padded, repeated, or fabricated.
+ */
+function allocateProof(content: LandingPageContent): { wall: SalesTestimonial[]; strips: SalesTestimonial[]; results: SalesTestimonial[] } {
+  const all = (Array.isArray(content.testimonials) ? content.testimonials : []).filter((t) => ok(t?.quote));
+  if (all.length <= 2) return { wall: all, strips: [], results: [] };
+  const wall = all.slice(0, 3);
+  const rest = all.slice(3);
+  const stripCount = Math.min(3, rest.length);
+  return { wall, strips: rest.slice(0, stripCount), results: rest.slice(stripCount) };
+}
+
+/** Review wall — real testimonials as five-star monogram cards (its disjoint allocator slice). */
+function reviewWall(items: SalesTestimonial[]): string {
   if (items.length === 0) return "";
   const cards = items.map((t) => `
         <div style="flex:1 1 300px;min-width:260px;max-width:360px;background:${WHITE};border:1px solid ${CARD_LINE};border-radius:16px;padding:24px;box-shadow:0 2px 8px rgba(27,22,36,0.08);">
@@ -174,9 +195,9 @@ function reviewWall(content: LandingPageContent): string {
           </div>
         </div>`).join("");
   return `
-  <section style="background:${WHITE};padding:96px 24px;">
+  <section style="background:${WHITE};padding:64px 24px;">
     <div style="max-width:1120px;margin:0 auto;">
-      <h2 style="font-family:${SERIF};font-weight:600;font-size:clamp(26px,3vw,38px);line-height:1.15;color:${INK};text-align:center;margin:0 auto 40px;max-width:20ch;">Loved by the people who took it</h2>
+      <h2 style="font-family:${SERIF};font-weight:600;font-size:clamp(26px,3vw,38px);line-height:1.15;color:${INK};text-align:center;margin:0 auto 28px;max-width:20ch;">Loved by the people who took it</h2>
       <div style="display:flex;flex-wrap:wrap;gap:20px;justify-content:center;">${cards}</div>
     </div>
   </section>`;
@@ -184,16 +205,14 @@ function reviewWall(content: LandingPageContent): string {
 
 /**
  * A single real testimonial as a wide beige interlude — threads proof BETWEEN content sections to
- * match the reference's interleaved rhythm (it never clusters proof into two blocks). Cycles by
- * index across the testimonial pool; omits when that index has no real testimonial (real-or-nothing,
- * never padded or repeated). The early star wall shows [0..2]; strips carry [3], [4], [5]…
+ * match the reference's interleaved rhythm. Takes ONE testimonial from the allocator's disjoint
+ * `strips` slice (never re-slices the shared array, so a quote can never repeat elsewhere on the
+ * page). Omits when the slot has no testimonial (real-or-nothing).
  */
-function proofStrip(content: LandingPageContent, idx: number): string {
-  const items = (Array.isArray(content.testimonials) ? content.testimonials : []).filter((t) => ok(t?.quote));
-  const t = items[idx];
-  if (!t) return "";
+function proofStrip(t: SalesTestimonial | undefined): string {
+  if (!t || !ok(t.quote)) return "";
   return `
-  <section style="background:${BLOB};padding:60px 24px;">
+  <section style="background:${BLOB};padding:44px 24px;">
     <div style="max-width:820px;margin:0 auto;text-align:center;">
       <div style="margin:0 0 14px;display:flex;justify-content:center;">${stars(STAR, 16)}</div>
       <p style="font-family:${SERIF};font-weight:500;font-style:italic;font-size:clamp(19px,2.2vw,26px);line-height:1.4;color:${INK};margin:0 0 18px;">&ldquo;${esc(t.quote)}&rdquo;</p>
@@ -211,7 +230,7 @@ function founderSection(content: LandingPageContent, coach: SalesCoachInput): st
     "width:200px;height:240px;border-radius:16px;object-fit:cover;object-position:top center;flex-shrink:0;box-shadow:0 10px 28px rgba(27,22,36,0.10);");
   const pull = ok(content.shockingStat) ? esc(content.shockingStat) : ok(content.insiderAdvantages) ? esc(content.insiderAdvantages) : "";
   return `
-  <section style="background:${WHITE};padding:32px 24px 96px;">
+  <section style="background:${WHITE};padding:24px 24px 64px;">
     <div style="max-width:960px;margin:0 auto;display:flex;flex-wrap:wrap;gap:40px;align-items:center;justify-content:center;">
       ${portrait}
       <div style="flex:1 1 420px;min-width:300px;">
@@ -228,7 +247,7 @@ function founderSection(content: LandingPageContent, coach: SalesCoachInput): st
 function formulaSection(content: LandingPageContent): string {
   if (!ok(content.uniqueMechanism)) return "";
   return `
-  <section style="background:${IVORY};padding:96px 24px;">
+  <section style="background:${IVORY};padding:64px 24px;">
     <div style="max-width:820px;margin:0 auto;background:${WHITE};border:1px solid ${CARD_LINE};border-radius:24px;padding:48px 40px;text-align:center;box-shadow:0 2px 8px rgba(27,22,36,0.08);">
       <div style="font-family:${S};font-weight:700;font-size:13px;letter-spacing:0.08em;text-transform:uppercase;color:${CORAL};margin:0 0 14px;">The simple formula</div>
       <h2 style="font-family:${SERIF};font-weight:600;font-size:clamp(24px,3vw,36px);line-height:1.2;color:${INK};margin:0 auto 20px;max-width:22ch;">It&#39;s simpler than you think</h2>
@@ -248,9 +267,9 @@ function systemsGrid(content: LandingPageContent): string {
           <div style="font-family:${SERIF};font-weight:600;font-size:17px;line-height:1.3;color:${INK};">${esc(t)}</div>
         </div>`).join("");
   return `
-  <section style="background:${WHITE};padding:96px 24px;">
+  <section style="background:${WHITE};padding:64px 24px;">
     <div style="max-width:1120px;margin:0 auto;">
-      <h2 style="font-family:${SERIF};font-weight:600;font-size:clamp(26px,3vw,38px);line-height:1.15;color:${INK};text-align:center;margin:0 auto 44px;max-width:22ch;">You&#39;ll build systems for</h2>
+      <h2 style="font-family:${SERIF};font-weight:600;font-size:clamp(26px,3vw,38px);line-height:1.15;color:${INK};text-align:center;margin:0 auto 30px;max-width:22ch;">You&#39;ll build systems for</h2>
       <div style="display:flex;flex-wrap:wrap;gap:18px;justify-content:center;">${cells}</div>
     </div>
   </section>`;
@@ -268,9 +287,9 @@ function deliverablesSection(content: LandingPageContent): string {
           ${ok(o.description) ? `<p style="font-family:${S};font-weight:400;font-size:15px;line-height:1.6;color:${BODY};margin:0;">${esc(o.description)}</p>` : ""}
         </div>`).join("");
   return `
-  <section style="background:${IVORY};padding:96px 24px;">
+  <section style="background:${IVORY};padding:64px 24px;">
     <div style="max-width:1000px;margin:0 auto;">
-      <h2 style="font-family:${SERIF};font-weight:600;font-size:clamp(26px,3vw,38px);line-height:1.15;color:${INK};text-align:center;margin:0 auto 44px;max-width:24ch;">What&#39;s inside the Academy</h2>
+      <h2 style="font-family:${SERIF};font-weight:600;font-size:clamp(26px,3vw,38px);line-height:1.15;color:${INK};text-align:center;margin:0 auto 30px;max-width:24ch;">What&#39;s inside the Academy</h2>
       <div style="display:flex;flex-wrap:wrap;gap:20px;justify-content:center;">${cards}</div>
     </div>
   </section>`;
@@ -281,9 +300,9 @@ function deliverablesSection(content: LandingPageContent): string {
  * fabricated charts) when supplied; else the coach's real `testimonials` as monogram quote cards.
  * Never invents Ali's charts, subscriber counts, or revenue. Reads as clean testimonials by design.
  */
-function resultsSection(content: LandingPageContent): string {
+function resultsSection(content: LandingPageContent, items: SalesTestimonial[]): string {
   const cases = (Array.isArray(content.caseStudies) ? content.caseStudies : []).filter((c) => ok(c?.name) && ok(c?.quote));
-  const heading = `<h2 style="font-family:${SERIF};font-weight:600;font-size:clamp(26px,3vw,38px);line-height:1.15;color:${INK};text-align:center;margin:0 auto 44px;max-width:22ch;">Real results from real students</h2>`;
+  const heading = `<h2 style="font-family:${SERIF};font-weight:600;font-size:clamp(26px,3vw,38px);line-height:1.15;color:${INK};text-align:center;margin:0 auto 30px;max-width:22ch;">Real results from real students</h2>`;
 
   if (cases.length > 0) {
     const cards = cases.slice(0, 3).map((c) => {
@@ -305,13 +324,13 @@ function resultsSection(content: LandingPageContent): string {
         </div>`;
     }).join("");
     return `
-  <section style="background:${WHITE};padding:96px 24px;">
+  <section style="background:${WHITE};padding:64px 24px;">
     <div style="max-width:820px;margin:0 auto;">${heading}${cards}</div>
   </section>`;
   }
 
-  // Fallback (default): the coach's real testimonials as monogram quote cards (Gate-1 honest form).
-  const items = (Array.isArray(content.testimonials) ? content.testimonials : []).filter((t) => ok(t?.quote)).slice(0, 6);
+  // Fallback (default): the allocator's disjoint results slice as monogram quote cards (Gate-1 honest
+  // form). These are the testimonials NOT already shown in the wall or strips — never a repeat.
   if (items.length === 0) return "";
   const cards = items.map((t) => `
         <div style="flex:1 1 300px;min-width:260px;max-width:360px;background:${WHITE};border:1px solid ${CARD_LINE};border-radius:16px;padding:24px;box-shadow:0 2px 8px rgba(27,22,36,0.08);">
@@ -325,7 +344,7 @@ function resultsSection(content: LandingPageContent): string {
           </div>
         </div>`).join("");
   return `
-  <section style="background:${WHITE};padding:96px 24px;">
+  <section style="background:${WHITE};padding:64px 24px;">
     <div style="max-width:1120px;margin:0 auto;">${heading}
       <div style="display:flex;flex-wrap:wrap;gap:20px;justify-content:center;">${cards}</div>
     </div>
@@ -343,9 +362,9 @@ function curriculumSection(content: LandingPageContent): string {
           </summary>
         </details>`).join("");
   return `
-  <section style="background:${WHITE};padding:96px 24px;">
+  <section style="background:${WHITE};padding:64px 24px;">
     <div style="max-width:720px;margin:0 auto;">
-      <h2 style="font-family:${SERIF};font-weight:600;font-size:clamp(26px,3vw,38px);line-height:1.15;color:${INK};text-align:center;margin:0 auto 40px;">The curriculum</h2>
+      <h2 style="font-family:${SERIF};font-weight:600;font-size:clamp(26px,3vw,38px);line-height:1.15;color:${INK};text-align:center;margin:0 auto 28px;">The curriculum</h2>
       ${items}
     </div>
   </section>`;
@@ -376,7 +395,7 @@ function offerSection(content: LandingPageContent, coach: SalesCoachInput): stri
 
   const title = ok(coach.coachName) ? `${esc(coach.coachName)}&#39;s Academy` : ok(content.mainHeadline) ? esc(content.mainHeadline) : "Join the Academy";
   return `
-  <section id="sl-offer" style="background:${IVORY};padding:96px 24px;">
+  <section id="sl-offer" style="background:${IVORY};padding:64px 24px;">
     <div style="max-width:640px;margin:0 auto;background:${WHITE};border:1px solid ${CARD_LINE};border-radius:24px;padding:44px 40px;box-shadow:0 2px 8px rgba(27,22,36,0.08);text-align:center;">
       <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin:0 0 20px;">
         ${portrait}
@@ -403,9 +422,9 @@ function bonusesSection(content: LandingPageContent): string {
           ${ok(b.description) ? `<p style="font-family:${S};font-weight:400;font-size:15px;line-height:1.55;color:${BODY};margin:0;">${esc(b.description)}</p>` : ""}
         </div>`).join("");
   return `
-  <section style="background:${WHITE};padding:96px 24px;">
+  <section style="background:${WHITE};padding:64px 24px;">
     <div style="max-width:1120px;margin:0 auto;">
-      <h2 style="font-family:${SERIF};font-weight:600;font-size:clamp(26px,3vw,38px);line-height:1.15;color:${INK};text-align:center;margin:0 auto 40px;max-width:22ch;">Free bonuses when you enrol</h2>
+      <h2 style="font-family:${SERIF};font-weight:600;font-size:clamp(26px,3vw,38px);line-height:1.15;color:${INK};text-align:center;margin:0 auto 28px;max-width:22ch;">Free bonuses when you enrol</h2>
       <div style="display:flex;flex-wrap:wrap;gap:20px;justify-content:center;">${cards}</div>
     </div>
   </section>`;
@@ -415,7 +434,7 @@ function bonusesSection(content: LandingPageContent): string {
 function guaranteeSection(content: LandingPageContent): string {
   if (!ok(content.guarantee)) return "";
   return `
-  <section style="background:${IVORY};padding:96px 24px;">
+  <section style="background:${IVORY};padding:64px 24px;">
     <div style="max-width:620px;margin:0 auto;background:${WHITE};border:1px solid ${CARD_LINE};border-radius:20px;padding:40px;text-align:center;box-shadow:0 2px 8px rgba(27,22,36,0.08);">
       <div style="font-family:${SERIF};font-weight:600;font-size:clamp(22px,2.6vw,30px);color:${INK};margin:0 0 16px;">Our guarantee</div>
       <p style="font-family:${S};font-weight:400;font-size:16px;line-height:1.65;color:${BODY};margin:0;">${esc(content.guarantee)}</p>
@@ -433,7 +452,7 @@ function faqSection(content: LandingPageContent): string {
           ${ok(f.answer) ? `<p style="font-family:${S};font-weight:400;font-size:15px;line-height:1.6;color:${BODY};margin:0 0 16px;">${esc(f.answer)}</p>` : ""}
         </details>`).join("");
   return `
-  <section style="background:${WHITE};padding:96px 24px;">
+  <section style="background:${WHITE};padding:64px 24px;">
     <div style="max-width:760px;margin:0 auto;">
       <h2 style="font-family:${SERIF};font-weight:600;font-size:clamp(26px,3vw,38px);line-height:1.15;color:${INK};text-align:center;margin:0 auto 32px;">Questions?</h2>
       ${items}
@@ -495,25 +514,30 @@ export function buildSalesAliAbdaalHtml(
     title: content.mainHeadline || serviceName,
     fontHref: "https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..700&family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap",
     bodyBg: WHITE,
-    body: [
-      header(coach, serviceName),
-      heroSection(content, coach),
-      reviewWall(content),
-      founderSection(content, coach),
-      formulaSection(content),
-      proofStrip(content, 3),        // interleaved proof (reference rhythm)
-      systemsGrid(content),
-      deliverablesSection(content),
-      proofStrip(content, 4),        // interleaved proof
-      resultsSection(content),
-      curriculumSection(content),
-      offerSection(content, coach),
-      proofStrip(content, 5),        // interleaved proof
-      bonusesSection(content),
-      guaranteeSection(content),
-      faqSection(content),
-      footer(serviceName, coach),
-      runtimeScript(),
-    ].join("\n"),
+    // Allocate the coach's REAL testimonials across the proof surfaces ONCE, disjointly — each
+    // testimonial appears exactly once (wall → threaded strips → results), scaled to the count.
+    body: (() => {
+      const proof = allocateProof(content);
+      return [
+        header(coach, serviceName),
+        heroSection(content, coach),
+        reviewWall(proof.wall),
+        founderSection(content, coach),
+        formulaSection(content),
+        proofStrip(proof.strips[0]),   // threaded proof — the allocator fills 0–3 strips for N=4–8+
+        systemsGrid(content),
+        proofStrip(proof.strips[1]),
+        deliverablesSection(content),
+        proofStrip(proof.strips[2]),
+        resultsSection(content, proof.results),  // only the remainder beyond wall+strips — never a repeat
+        curriculumSection(content),
+        offerSection(content, coach),
+        bonusesSection(content),
+        guaranteeSection(content),
+        faqSection(content),
+        footer(serviceName, coach),
+        runtimeScript(),
+      ].join("\n");
+    })(),
   });
 }

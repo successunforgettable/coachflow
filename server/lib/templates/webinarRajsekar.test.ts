@@ -25,6 +25,7 @@ const base = {
 
 const coach = {
   headshotUrl: "https://res.cloudinary.com/dunshei0y/image/upload/v1/coach_h.png",
+  presenterCutoutUrl: "https://res.cloudinary.com/dunshei0y/image/upload/e_background_removal,c_fit,w_800,f_png/v1/coach_h.png",
   logoUrl: null, coachName: "Siddharth Rajsekar", coachBackground: "I've spent a decade training coaches to scale.",
   videoUrl: "https://youtu.be/dQw4w9WgXcQ",
   isThisYou: [
@@ -41,16 +42,26 @@ describe("buildWebinarRajsekarHtml — webinar registration on the Rajsekar desi
     expect(html).toContain("<iframe");
   });
 
-  it("falls back to the real headshot poster with NO fake play button when there's no video", () => {
+  it("renders the hero presenter as a background-removed CUTOUT — contain + drop-shadow, no framed rectangle", () => {
     const html = buildWebinarRajsekarHtml(base, "Coaching", { ...coach, videoUrl: null });
-    expect(html).toContain("coach_h.png");
+    expect(html).toContain("e_background_removal,c_fit,w_800,f_png/v1/coach_h.png");
+    expect(html).toContain("object-fit:contain");
+    expect(html).toContain("drop-shadow(");
+    // the old framed-rectangle treatment (bordered card / letterbox crop) is gone
+    expect(html).not.toContain("aspect-ratio:4/5");
+    expect(html).not.toContain("[INSERT_PRESENTER_PHOTO]");
     expect(html).not.toContain("<iframe");
-    // no fabricated play affordance drawn over a static photo
-    expect(html).not.toContain("▶");
   });
 
-  it("omits the media frame honestly when there's neither video nor photo", () => {
-    const html = buildWebinarRajsekarHtml(base, "Coaching", { ...coach, videoUrl: null, headshotUrl: null, heroImageUrl: null });
+  it("stages a review-draft ([INSERT_PRESENTER_PHOTO]) when there's no usable cutout — never a framed rectangle (parity with Iman)", () => {
+    const html = buildWebinarRajsekarHtml(base, "Coaching", { ...coach, presenterCutoutUrl: null });
+    expect(html).toContain("[INSERT_PRESENTER_PHOTO]");
+    // no framed-rectangle fallback masquerading as a cutout
+    expect(html).not.toContain("aspect-ratio:4/5");
+  });
+
+  it("omits the video media frame honestly when there's neither video nor photo", () => {
+    const html = buildWebinarRajsekarHtml(base, "Coaching", { ...coach, videoUrl: null, headshotUrl: null, heroImageUrl: null, presenterCutoutUrl: null });
     expect(html).not.toContain("<iframe");
     expect(html).not.toContain("aspect-ratio:16/9");
   });

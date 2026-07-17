@@ -14,32 +14,34 @@ import { getCoachVideoUrl } from "../coachVideoUrl";
 import { getCoachCheckoutUrl } from "../coachCheckoutUrl";
 import { slotImageUrl } from "../images/imageSlots";
 import { buildSalesAliAbdaalHtml } from "./salesAliAbdaal";
+import { buildSalesLightHtml } from "./salesLight";
 
-/** Additive publishedStyle enum value that selects the sales template. */
+/** Additive publishedStyle enum values that select the sales templates (rich + proof-light). */
 export const SALES_ALI_ABDAAL_STYLE = "sales_ali_abdaal" as const;
+export const SALES_LIGHT_STYLE = "sales_ali_abdaal_light" as const;
 
 type AssetRow = { assetType: string; url: string };
 
-export async function renderSalesAliAbdaal(opts: {
+interface SalesRenderOpts {
   content: LandingPageContent;
   serviceName: string;
   coachName: string | null;
   coachBackground: string | null;
   assetRows: AssetRow[];
   userId: number;
-}): Promise<string> {
-  const { content, serviceName, coachName, coachBackground, assetRows, userId } = opts;
+}
 
+/** Shared coach-input resolution — identical slot / video / checkout resolution for both variants. */
+async function resolveSalesCoach(opts: SalesRenderOpts) {
+  const { coachName, coachBackground, assetRows, userId } = opts;
   const rawHeadshot = assetRows.find((a) => a.assetType === "headshot")?.url ?? null;
   const rawHero = assetRows.find((a) => a.assetType === "hero_image")?.url ?? null;
   const logoUrl = assetRows.find((a) => a.assetType === "logo")?.url ?? null;
-
   // REAL video only (guarded reader). Null → headshot poster (no fake play), else omit.
   const videoUrl = await getCoachVideoUrl(userId);
-  // REAL checkout URL only (guarded reader — column pending 0088). Null → on-page email capture.
+  // REAL checkout URL only (guarded reader). Null → on-page email capture.
   const checkoutUrl = await getCoachCheckoutUrl(userId);
-
-  return buildSalesAliAbdaalHtml(content, serviceName, {
+  return {
     headshotUrl: rawHeadshot ? slotImageUrl(rawHeadshot, "headshot") : null,
     heroImageUrl: rawHero ? slotImageUrl(rawHero, "hero_image") : null,
     logoUrl,
@@ -47,5 +49,17 @@ export async function renderSalesAliAbdaal(opts: {
     coachBackground,
     videoUrl,
     checkoutUrl,
-  });
+  };
+}
+
+/** RICH sales variant (reference-faithful; selected only when proof clears the threshold). */
+export async function renderSalesAliAbdaal(opts: SalesRenderOpts): Promise<string> {
+  const coach = await resolveSalesCoach(opts);
+  return buildSalesAliAbdaalHtml(opts.content, opts.serviceName, coach);
+}
+
+/** Proof-LIGHT sales variant (the default; offer/method-forward). Same coach resolution as the rich. */
+export async function renderSalesLight(opts: SalesRenderOpts): Promise<string> {
+  const coach = await resolveSalesCoach(opts);
+  return buildSalesLightHtml(opts.content, opts.serviceName, coach);
 }

@@ -12,6 +12,8 @@ import { buildWebinarRajsekarHtml } from "../server/lib/templates/webinarRajseka
 import { buildEventImanGadzhiHtml } from "../server/lib/templates/eventImanGadzhi";
 import { buildEventHormoziHtml } from "../server/lib/templates/eventHormozi";
 import { buildSalesAliAbdaalHtml } from "../server/lib/templates/salesAliAbdaal";
+import { buildSalesLightHtml } from "../server/lib/templates/salesLight";
+import { buildWebinarLightHtml } from "../server/lib/templates/webinarLight";
 
 const OUT = "/tmp/craft"; mkdirSync(OUT, { recursive: true });
 
@@ -22,6 +24,10 @@ const PORTRAIT = "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=80
 const LANDSCAPE = "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1600&h=900&fit=crop&q=80";        // workshop/stage (16:9) — video poster
 const AUDIENCE = "https://images.unsplash.com/photo-1505373877841-8d25f7d46678?w=1600&h=1200&fit=crop&q=80";        // live audience — Iman audience wall
 const VIDEO = "https://www.youtube.com/watch?v=aqz-KE-bpKQ"; // neutral open-source film (Big Buck Bunny) — a real, non-joke embed
+// REAL background-removed presenter cutout (prod account dunshei0y, verified live 200 image/png) —
+// exactly what production emits from resolvePresenterCutoutUrl. Renders the webinar/Iman heroes as
+// free-standing figures (transparent bg), not framed rectangles.
+const CUTOUT = "https://res.cloudinary.com/dunshei0y/image/upload/e_background_removal,c_fit,w_800,f_png/v1774218984/coach-assets_1_1774218983297-arfeen_pic_3.JPG.jpg";
 // Product/magnet cover — a real DESIGNED cover (navy + orange accent + title), exactly the kind of
 // asset ZAP composes from the coach's PDF/branding; not a grey box.
 const COVER = "data:image/svg+xml;utf8," + encodeURIComponent(
@@ -98,8 +104,8 @@ const freeBase = { ...base, price: undefined } as unknown as LandingPageContent;
 // Per-template coach fixtures — correct slots + shapes per reference.
 const coachBurchard = { headshotUrl: PORTRAIT, productCoverUrl: COVER, logoUrl: null, coachName: "Alex Rivera", leadMagnetName: "1-Page Productivity Sheet", trustCount: null } as any;
 const coachDiscovery = { headshotUrl: PORTRAIT, logoUrl: null, coachName: "Alex Rivera", bookingUrl: "https://cal.com/alexrivera/discovery", trustCount: null } as any;
-const coachWebinar = { headshotUrl: PORTRAIT, heroImageUrl: LANDSCAPE, logoUrl: null, coachName: "Alex Rivera", coachBackground: "Alex Rivera scaled three companies past seven figures before turning 35, then spent a decade teaching founders to escape the bottleneck.", videoUrl: VIDEO, isThisYou: [ { label: "You're the bottleneck", body: "Every decision waits on you, and growth just means more hours." }, { label: "No real systems", body: "You've tried tools but nothing sticks, and the team still asks you everything." }, { label: "Stuck at a ceiling", body: "Revenue plateaued because you personally can't do any more hours." } ], trustCount: null } as any;
-const coachIman = { headshotUrl: PORTRAIT, heroImageUrl: AUDIENCE, coachName: "Alex Rivera" } as any;
+const coachWebinar = { headshotUrl: PORTRAIT, presenterCutoutUrl: CUTOUT, heroImageUrl: LANDSCAPE, logoUrl: null, coachName: "Alex Rivera", coachBackground: "Alex Rivera scaled three companies past seven figures before turning 35, then spent a decade teaching founders to escape the bottleneck.", videoUrl: VIDEO, isThisYou: [ { label: "You're the bottleneck", body: "Every decision waits on you, and growth just means more hours." }, { label: "No real systems", body: "You've tried tools but nothing sticks, and the team still asks you everything." }, { label: "Stuck at a ceiling", body: "Revenue plateaued because you personally can't do any more hours." } ], trustCount: null } as any;
+const coachIman = { headshotUrl: CUTOUT, heroImageUrl: AUDIENCE, coachName: "Alex Rivera" } as any;
 const coachHormozi = { headshotUrl: PORTRAIT, heroImageUrl: LANDSCAPE, coachName: "Alex Rivera", coachBackground: "Alex Rivera scaled three companies past seven figures.", videoUrl: VIDEO, whoFor: ["Founders doing 6–7 figures stuck as the bottleneck", "Coaches and consultants ready to build a real team", "Operators who want systems, not more hustle"] } as any;
 const coachSales = { headshotUrl: PORTRAIT, videoUrl: VIDEO, logoUrl: null, coachName: "Alex Rivera", checkoutUrl: "https://alexrivera.com/enrol", coachBackground: "Alex Rivera scaled three companies past seven figures before turning 35, then spent a decade teaching founders to escape the bottleneck. Featured in Forbes and on TEDx stages worldwide." } as any;
 
@@ -111,6 +117,11 @@ const renders: Array<[string, string]> = [
   ["event-iman", buildEventImanGadzhiHtml(freeBase, SVC, coachIman)],
   ["event-hormozi", buildEventHormoziHtml(base, SVC, coachHormozi)],
   ["sales", buildSalesAliAbdaalHtml(base, SVC, coachSales)],
+  // Proof-LIGHT variants — judged as designs in their own right (NO reference: they are new
+  // compositions for a coach with little/no proof). Rendered at ZERO testimonials (the real coach
+  // reality) to prove they look deliberate, not thinned.
+  ["sales-light", buildSalesLightHtml({ ...base, testimonials: [] } as typeof base, SVC, coachSales)],
+  ["webinar-light", buildWebinarLightHtml({ ...base, testimonials: [] } as typeof base, SVC, coachWebinar)],
 ];
 for (const [name, html] of renders) { writeFileSync(`${OUT}/audit-${name}.html`, html); console.log(`wrote audit-${name}.html (${html.length} bytes)`); }
 console.log("DONE");
