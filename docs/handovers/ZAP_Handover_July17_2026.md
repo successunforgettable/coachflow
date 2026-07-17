@@ -2,7 +2,7 @@
 
 **Status:** WIP pushed to `railway-build` pending Arfeen's **final visual approval** of the six
 `craft-review/final-*` side-by-sides + the proof-composition renders. Gates **TS 35 / vitest 507**.
-Not sign-off. One migration (`0089`) is authored + HELD.
+Not sign-off. Migration `0089` is **APPLIED + verified on prod (2026-07-17)**.
 
 This session took the "all 5 templates built" state (prior handover July16) and did the visual/structural
 corrections Arfeen's review demanded, then fixed two live proof bugs and rebuilt the proof-gating model.
@@ -89,17 +89,17 @@ Makes the cap fix real — the median coach has 5–10 testimonials in a doc wit
   result summary ("8 added · 2 duplicates skipped"). A real user surface, not an admin tool. NOT yet
   mounted into a page — needs a host surface (settings / intake) to be reachable.
 
-## 8. 🔴 Migration 0089 — AUTHORED + HELD
+## 8. ✅ Migration 0089 — APPLIED + verified (2026-07-17)
 
-`drizzle/0089_lp_proof_light_styles.sql` adds `sales_ali_abdaal_light` + `webinar_rajsekar_light` to the
-`landingPages.publishedStyle` enum. **NOT applied.** Because the light variants are now the DEFAULT for
-sales_page/webinar_registration, **any prod sales/webinar (re)publish that resolves to a light styleMode
-will hit enum truncation until 0089 executes.** Execute 0089 (gated, needs explicit "execute") before
-light publishing is exercised on prod. (Migrations 0084–0088 applied; 0081 superseded — never apply.)
+`drizzle/0089_lp_proof_light_styles.sql` added `sales_ali_abdaal_light` + `webinar_rajsekar_light` to the
+`landingPages.publishedStyle` enum. **APPLIED on prod 2026-07-17** with the read-first guard (0086/0087/0088
+pattern): post-apply INFORMATION_SCHEMA verify confirmed **both light values present, 76 rows unchanged**
+(text=50 / visual=25 / lead_magnet_burchard=1, identical before/after). The light variants are the DEFAULT
+for sales_page/webinar_registration and can now persist on prod — the earlier enum-truncation risk is
+resolved. (Migrations 0084–0089 all applied; 0081 superseded — never apply.)
 
 ## RESUME POINT
 1. Arfeen's **final visual approval** of `craft-review/final-*` + the proof-composition renders.
-2. **Execute migration 0089** (gated) so light defaults can persist on prod.
-3. Mount `TestimonialBulkImport` into a reachable surface; then the batched **live-proof** pass
+2. Mount `TestimonialBulkImport` into a reachable surface; then the batched **live-proof** pass
    (needs `execute`): discovery + webinar + event + sales, now with real testimonials + presence gating.
 4. The conversational operator-intake sprint (booking_url / video_url / date / price) remains queued.
