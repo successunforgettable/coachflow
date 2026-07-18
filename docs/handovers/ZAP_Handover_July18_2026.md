@@ -222,15 +222,30 @@ attempted, 4 live (webinar date/time/tz, sales price, sales by-application, disc
 (a) **Copy polish / prompt-quality** — prose-blank generator rewrites (5 generators, §14) + the "Who is
     this class for?" heading. Polish; blocks nothing.
 (b) **Remaining wizard-node fixes** — Offer/LP picker single-select + persist `activeAngle` (Finding 5;
-    kit `selectedLandingPageAngle=NULL`) · WhatsApp 3/5/7 length · Email length choice.
-(c) **Batched live-proof of the other 4 templates via the intake** — discovery (booking →
-    calendar/email), sales (price → number/by-application), event (Iman free / Hormozi paid, +venue),
-    each published by answering Zappy. The intake now makes this a repeatable coach action.
+    kit `selectedLandingPageAngle=NULL`) · WhatsApp 3/5/7 length · Email length choice · **NEW: a
+    "change my answer" EDIT FLOW for captured operator fields** (dates/prices/booking/typos — coaches WILL
+    need to correct these; there is no re-answer path today once an operator field is set). **Building this
+    edit flow also CLOSES the discovery email-capture live-proof as a side-effect** (re-answer booking →
+    `__EMAIL_CAPTURE__`), so it's tied to the live-proof gap below.
+(c) **Batched live-proof — PARTLY DONE (2026-07-19):** ✅ webinar (206) · ✅ sales price (208) + sales
+    by-application (209) · ✅ discovery calendar-URL (172). REMAINING: discovery `__EMAIL_CAPTURE__` (blocked
+    on the edit flow in (b) — coach-wide booking already set to a URL) · **event Iman-free / Hormozi-paid /
+    `__ONLINE__` venue** — Arfeen is creating a real `in_person_event` campaign in the wizard (the truest
+    coach path; campaign-creation + cascade for `in_person_event` are THEMSELVES untested — never
+    instantiated). CC stands by to walk the intake (`__FREE__`→Iman, price→Hormozi, `__ONLINE__` venue) and
+    verify each live (HTTP+KV+DB, zero tokens, correct template) once it reaches the landing-page stage. Do
+    NOT trigger the cascade — let the coach path run.
 (d) **Auto Mode tier** — asks nothing, holds unknowns, and the held page flows into the SAME "Finish your
     page" surface built here (tier-3 is the landing zone for tier-1's holds).
 
-**Leverage:** (c) proves the whole product across all 5 templates and is now cheap (the intake exists) —
-highest-confidence next step. (b) is the biggest correctness win for the wizard the coach actually uses
-(the Offer/LP picker silently loses the angle choice). (a) is pure polish. (d) is the widest-reach vision
-but builds ON (c)'s proof. Recommended order next session: **(c) batched live-proof → (b) picker fix →
-(d) Auto Mode → (a) copy polish** interleaved.
+**PRODUCT DECISIONS FLAGGED (decide later, not code):**
+- **Booking URL is COACH-WIDE** (`users.booking_url`) — a coach cannot mix booking modes across discovery
+  pages (all their discovery pages share one calendar-URL-or-email-capture answer). Probably fine (a coach
+  books the same way everywhere), but it's a deliberate constraint to confirm, not assume. Surfaced by the
+  2026-07-19 live-proof (couldn't test URL and email-capture on the same coach).
+
+**Leverage:** (c) is nearly closed (3/5 live; event pending the real coach campaign, discovery-email pending
+the (b) edit flow). (b) is the biggest correctness win for the wizard the coach actually uses (the Offer/LP
+picker silently loses the angle choice) AND its edit flow unblocks discovery-email. (a) is pure polish.
+(d) is the widest-reach vision but builds ON (c). Recommended order next session: **finish (c) event via
+Arfeen's campaign → (b) picker + edit flow (closes discovery-email) → (d) Auto Mode → (a) copy polish.**
