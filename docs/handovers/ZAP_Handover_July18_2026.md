@@ -164,3 +164,44 @@ numeric result" instructions; **rewrite them (per §14 positive framing) to prod
 REAL inputs** (mechanism, transformation, ICP pain) rather than demanding a fabricated proof and leaving a
 blank — replace bracket skeletons with concrete FILLED examples so the model has nothing to echo. **No
 repair-by-fabrication:** a specific the coach didn't give is omitted/reworded, NEVER invented.
+- **ALSO in this copy-polish sprint (shipping-page nit, found on the live LP 206):** the webinar "Who is
+  this class for?" heading is hardcoded — "class" reads wrong for webinar/event/training pages. Adapt to
+  pageType (webinar → "Who is this webinar for?", event → "…this event…") or neutral phrasing.
+
+---
+
+## ✅✅ PHASE FINISH LINE (2026-07-18) — a COACH published a live page via the intake conversation
+
+The landing-page product gate is CLOSED. Arfeen, acting as the coach, opened Kit 171's **"Finish your
+page →"** surface and answered Zappy's three questions (date / time / timezone). The page went live with
+**no SQL and no script**: **`https://zapcampaigns.com/p/incredible-you-coach-training-program-206`**
+(LP 206, `webinar_rajsekar_coaching`).
+
+- **Verified 3 ways:** public GET 200 (29,274 bytes, zero `[INSERT_*]`) · Cloudflare KV read (200, 29KB) ·
+  DB row `publicUrl` set with `eventSchedule={date:"28th september 2026", time:"9.30 am", timezone:"india,
+  mumbai"}`. **Those are Arfeen's OWN typed answers** — proof the fields were set only by
+  `answerOperatorField` (the intake), never seed-scripted (LP 206 had only read-only pulls; the throwaway
+  seed script was hardcoded to 214 and deleted).
+- **Shipped `8f878ed`** (on `2592aae` core / `09f1a02` publish-style wiring): `deriveOperatorQuestions` +
+  `getPublishReadiness` / `answerOperatorField` (applies across all angles; writes the coach column — the
+  missing booking/video/checkout setter) + `V2OperatorIntake` mounted in the Kit (replaces the silent
+  `publicUrl===null` state — Finding 3). Refinements: front-loaded datetime parse, pageType-aware price
+  branches ("free" only on events), URL-hero success. Gates TS 35 / vitest 554.
+
+## FOLLOW-UP PUNCH-LIST (sequence next session)
+
+(a) **Copy polish / prompt-quality** — prose-blank generator rewrites (5 generators, §14) + the "Who is
+    this class for?" heading. Polish; blocks nothing.
+(b) **Remaining wizard-node fixes** — Offer/LP picker single-select + persist `activeAngle` (Finding 5;
+    kit `selectedLandingPageAngle=NULL`) · WhatsApp 3/5/7 length · Email length choice.
+(c) **Batched live-proof of the other 4 templates via the intake** — discovery (booking →
+    calendar/email), sales (price → number/by-application), event (Iman free / Hormozi paid, +venue),
+    each published by answering Zappy. The intake now makes this a repeatable coach action.
+(d) **Auto Mode tier** — asks nothing, holds unknowns, and the held page flows into the SAME "Finish your
+    page" surface built here (tier-3 is the landing zone for tier-1's holds).
+
+**Leverage:** (c) proves the whole product across all 5 templates and is now cheap (the intake exists) —
+highest-confidence next step. (b) is the biggest correctness win for the wizard the coach actually uses
+(the Offer/LP picker silently loses the angle choice). (a) is pure polish. (d) is the widest-reach vision
+but builds ON (c)'s proof. Recommended order next session: **(c) batched live-proof → (b) picker fix →
+(d) Auto Mode → (a) copy polish** interleaved.
