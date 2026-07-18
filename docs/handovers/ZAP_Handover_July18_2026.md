@@ -188,6 +188,35 @@ page →"** surface and answered Zappy's three questions (date / time / timezone
   `publicUrl===null` state — Finding 3). Refinements: front-loaded datetime parse, pageType-aware price
   branches ("free" only on events), URL-hero success. Gates TS 35 / vitest 554.
 
+## BATCHED LIVE-PROOF via the intake (2026-07-19) — 3 of 5 templates proven live; 2 gaps found
+
+Walked fresh/legacy campaigns through the REAL intake tRPC procedures (`appRouter.createCaller({user})` →
+`getPublishReadiness` → `answerOperatorField` → `publishToCloudflare`; answers flow through
+`applyOperatorAnswer`, NOT SQL). Verified each: HTTP 200 + KV 200 + DB `publicUrl`, zero `[INSERT_*]`.
+
+- **✅ Sales — real price** (LP 208, fresh): £1,497 rendered · `sales_ali_abdaal` (rich). LIVE.
+- **✅ Sales — `__BY_APPLICATION__`** (LP 209, fresh): "By application" + "Apply now" CTA + email-capture
+  (`sl_optin`, no checkout_url → reveal not dead button). Checkout handling confirmed. LIVE.
+- **✅ Discovery — real calendar URL** (LP 172, legacy-visual → re-published `discovery_burchard_performance`):
+  real `<a href>` booking CTA ×2, no dead token. LIVE. (Confirms the styleMode-from-pageType wiring
+  re-publishes legacy pages as the new template.)
+- **🔴 Discovery — `__EMAIL_CAPTURE__` branch: NOT live-proven.** Booking URL is a COACH-WIDE column
+  (`users.booking_url`); the LP 172 walk set it to a calendar URL, so LP 177's intake saw booking already
+  answered and never asked → the `__EMAIL_CAPTURE__` answer wasn't applied (LP 177 inherited the URL).
+  **Findings: (1) one booking mode per coach (can't mix discovery pages); (2) NO "change my answer" /
+  edit flow for a captured operator answer.** The email-capture render is unit-proven
+  (`discoveryBurchard.test.ts`); live-via-intake needs a coach with no prior URL, or an edit flow.
+- **🔴 Event (Iman free / Hormozi paid / venue): NOT proven — no campaign exists.** `event_registration`
+  maps ONLY from campaignType `in_person_event` (`CAMPAIGN_TO_PAGE_TYPE`), and no coach has ever created
+  one (prod campaignTypes: course_launch/discovery_call/webinar/challenge/product_launch/lead_magnet).
+  **The Iman/Hormozi templates + the `__FREE__`/price→Hormozi/`__ONLINE__` branches have NEVER been
+  instantiated.** Needs an `in_person_event` campaign created (Arfeen via wizard = truest, or CC via
+  cascade) BEFORE the intake can walk it.
+
+**Tally: 5/5 templates built; live-via-intake proven for 3 (webinar 206 + sales + discovery); 5 branches
+attempted, 4 live (webinar date/time/tz, sales price, sales by-application, discovery URL), 1 blocked
+(discovery email-capture) + event blocked. Both blocks are campaign/coach-state gaps, NOT template bugs.**
+
 ## FOLLOW-UP PUNCH-LIST (sequence next session)
 
 (a) **Copy polish / prompt-quality** — prose-blank generator rewrites (5 generators, §14) + the "Who is
