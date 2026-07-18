@@ -166,6 +166,10 @@ export interface OperatorTokenSpec {
   na?: NaBranch[];
   /** For category "auto-fill": the existing datum the token is filled from (never asked of the coach). */
   autoFillFrom?: "coachName" | "serviceName" | "leadMagnetName";
+  /** For a NUDGE the coach skips: the graceful, non-fabricated text that replaces the copy token so the
+   *  page still publishes (a hedge or a removal — never an invented specific). Hard-hold tokens have none
+   *  (skipping a hard-hold leaves the page a draft). */
+  skipText?: string;
 }
 
 // Canonical names only (the generator's forbidden aliases — BOOKING_LINK, LAUNCH_DATE, DEADLINE,
@@ -196,7 +200,7 @@ export const OPERATOR_TOKEN_REGISTRY: Record<string, OperatorTokenSpec> = {
     ],
   },
   // ── Copy-only, nudge (strengthen/complete the prose; absence ships) ──
-  "[INSERT_REPLAY_AVAILABILITY]": { token: "[INSERT_REPLAY_AVAILABILITY]", key: "replay", category: "nudge", scope: "copy-only", question: "Will there be a replay? (e.g. “yes, for 48 hours” or “no, live only”)" },
+  "[INSERT_REPLAY_AVAILABILITY]": { token: "[INSERT_REPLAY_AVAILABILITY]", key: "replay", category: "nudge", scope: "copy-only", question: "Will there be a replay? (e.g. “yes, for 48 hours” or “no, live only”)", skipText: "Replay availability will be confirmed by email." },
   "[INSERT_EVENT_AGENDA]": { token: "[INSERT_EVENT_AGENDA]", key: "agenda", category: "nudge", scope: "copy-only", question: "Anything specific on the agenda you want named?" },
   "[INSERT_BOOKING_DURATION]": { token: "[INSERT_BOOKING_DURATION]", key: "booking_duration", category: "nudge", scope: "copy-only", question: "How long is the call? (e.g. 30 minutes)" },
   "[INSERT_BOOKING_TIME]": { token: "[INSERT_BOOKING_TIME]", key: "booking_time", category: "nudge", scope: "copy-only", question: "What times are you usually available?" },
@@ -306,4 +310,171 @@ export function applyOperatorAnswer(
     }
   }
   return { content: next, coachColumn, resolution };
+}
+
+/**
+ * Apply a SKIP to a nudge/copy-only token — substitute the token with its graceful `skipText` (a hedge
+ * or removal, never a fabricated specific) so the page can still publish. Only valid for non-hard-hold
+ * tokens (the caller must not offer skip on a hard-hold — skipping one leaves the page a draft).
+ */
+export function applyOperatorSkip(content: LandingPageContent, token: string): LandingPageContent {
+  const spec = OPERATOR_TOKEN_REGISTRY[token];
+  const skipText = spec?.skipText ?? ""; // unknown/agenda/logistics → remove the token
+  return substituteTokenDeep(content, token, skipText);
+}
+
+/**
+ * Heuristic split of a front-loaded datetime answer ("August 12 at 11am GMT") into its parts, so the
+ * coach who says it all at once isn't re-asked "what time?". Never fabricates — an absent part stays
+ * undefined. Timezone (named or GMT±n) and time (11am / 11:00 / 14:00) are extracted; the remainder,
+ * stripped of connectives, is the date.
+ */
+export function parseEventDateTime(text: string): { date?: string; time?: string; timezone?: string } {
+  const raw = clean(text);
+  if (!raw) return {};
+  let rest = raw;
+  const tzRe = /\b(?:GMT|UTC)[+-]\d{1,2}(?::\d{2})?\b|\b(GMT|UTC|BST|EST|EDT|CST|CDT|MST|MDT|PST|PDT|PT|ET|CT|MT|IST|CET|CEST|EET|AEST|AEDT|SGT|JST|HKT)\b/i;
+  const tzM = rest.match(tzRe);
+  const timezone = tzM ? tzM[0].toUpperCase() : undefined;
+  if (tzM) rest = rest.slice(0, tzM.index) + rest.slice(tzM.index! + tzM[0].length);
+  const timeRe = /\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|\b(?:[01]?\d|2[0-3]):[0-5]\d\b/i;
+  const tM = rest.match(timeRe);
+  const time = tM ? tM[0].replace(/\s+/g, "").replace(/(am|pm)/i, (m) => " " + m.toLowerCase()).trim() : undefined;
+  if (tM) rest = rest.slice(0, tM.index) + rest.slice(tM.index! + tM[0].length);
+  let date = rest.replace(/\b(?:at|on|starting|start(?:s|ing)?|from)\b/gi, " ").replace(/[,·]/g, " ").replace(/\s+/g, " ").trim();
+  date = date.replace(/^[-–—\s]+|[-–—\s]+$/g, "").trim();
+  return { date: date || undefined, time, timezone };
+}
+
+/**
+ * Expand ONE captured answer into all the (token, value) writes it implies — front-loading. A plain
+ * value on the DATE question is parsed; any time/timezone found is applied to their own tokens too, so
+ * the redundant questions are skipped. N/A sentinels and skips (and every non-date token) pass through
+ * as a single write. Returns the list of writes the mutation then applies through applyOperatorAnswer.
+ */
+export function expandOperatorAnswer(token: string, answer: string): { token: string; value: string }[] {
+  const isSentinelOrSkip = answer === "__SKIP__" || /^__[A-Z_]+__$/.test(clean(answer));
+  if (token !== "[INSERT_EVENT_DATE]" || isSentinelOrSkip) return [{ token, value: answer }];
+  const p = parseEventDateTime(answer);
+  const out: { token: string; value: string }[] = [{ token: "[INSERT_EVENT_DATE]", value: p.date ?? clean(answer) }];
+  if (p.time) out.push({ token: "[INSERT_EVENT_TIME]", value: p.time });
+  if (p.timezone) out.push({ token: "[INSERT_EVENT_TIMEZONE]", value: p.timezone });
+  return out;
+}
+
+// ── deriveOperatorQuestions — "what does THIS page need answered?" (token-driven) ────────────────────
+// Two sources, unioned: (1) baked `[INSERT_*]` tokens the LLM wrote into the copy (webinar date/time/tz,
+// replay, logistics — caught by scanning the content strings), and (2) per-pageType STRUCTURED holds a
+// template emits at render when its field is unanswered (sales/event price, event venue, discovery
+// booking — which are NOT baked into copy). Each maps to its OPERATOR_TOKEN_REGISTRY entry → the Zappy
+// question. Auto-fill tokens (host/event/magnet name) are excluded (filled server-side). N/A branches
+// ride along as chips. Pure + testable — the tRPC layer renders nothing, it just reads this.
+
+/** The per-pageType hard-hold operator fields a template EMITS when unanswered (not baked in copy). */
+const PAGETYPE_REQUIRED_TOKENS: Record<string, string[]> = {
+  webinar_registration: ["[INSERT_EVENT_DATE]", "[INSERT_EVENT_TIME]", "[INSERT_EVENT_TIMEZONE]"],
+  event_registration: ["[INSERT_EVENT_DATE]", "[INSERT_EVENT_VENUE]", "[INSERT_PRICE]"],
+  sales_page: ["[INSERT_PRICE]"],
+  discovery_call_booking: ["[INSERT_BOOKING_URL]"],
+  lead_magnet_download: [],
+};
+
+/** Is a token's STRUCTURED field genuinely unanswered (a value OR an N/A sentinel both count as answered)? */
+function tokenStructurallyUnanswered(
+  token: string,
+  content: Pick<LandingPageContent, "eventSchedule" | "price"> | null | undefined,
+  coach: { bookingUrl?: string | null } | null | undefined,
+): boolean {
+  const es = content?.eventSchedule ?? {};
+  switch (token) {
+    case "[INSERT_EVENT_DATE]": return !clean(es.date);
+    case "[INSERT_EVENT_TIME]": return !clean(es.time);
+    case "[INSERT_EVENT_TIMEZONE]": return !clean(es.timezone);
+    case "[INSERT_EVENT_VENUE]": return classifyLocation(es.venue).status === "unanswered";
+    case "[INSERT_PRICE]": return classifyPrice(content?.price).status === "unanswered";
+    case "[INSERT_BOOKING_URL]": return classifyBooking(coach?.bookingUrl).status === "unanswered";
+    default: return true;
+  }
+}
+
+export interface OperatorQuestion {
+  token: string;
+  key: string;
+  question: string;
+  category: TokenCategory;
+  scope: WriteScope;
+  /** N/A answer-branches → the chips ("It's free" → __FREE__). Empty for fields with no N/A. */
+  naBranches: { sentinel: string; label: string }[];
+  /** false → not in the registry: a stray token the generator slipped through (generic "fill this in"). */
+  known: boolean;
+}
+
+/** Stable ask order: the gating facts first, then optional nudges; unknown stray tokens last. */
+const QUESTION_ORDER = [
+  "[INSERT_EVENT_DATE]", "[INSERT_EVENT_TIME]", "[INSERT_EVENT_TIMEZONE]", "[INSERT_EVENT_VENUE]",
+  "[INSERT_PRICE]", "[INSERT_BOOKING_URL]",
+];
+
+function collectBakedTokens(node: unknown, out: Set<string>): void {
+  if (typeof node === "string") {
+    const m = node.match(/\[INSERT_[A-Z_0-9]+\]/g);
+    if (m) for (const t of m) out.add(t);
+  } else if (Array.isArray(node)) {
+    for (const n of node) collectBakedTokens(n, out);
+  } else if (node && typeof node === "object") {
+    for (const k in node as any) collectBakedTokens((node as any)[k], out);
+  }
+}
+
+/**
+ * The token-driven question list for one page: the operator tokens it actually needs, each with its
+ * Zappy question + N/A branches, ordered gating-first. Excludes auto-fill tokens (filled server-side).
+ * A baked token that isn't in the registry still surfaces (known:false) so the generic fail-safe asks it.
+ */
+export function deriveOperatorQuestions(
+  pageType: string | null | undefined,
+  content: LandingPageContent | null | undefined,
+  coach: { bookingUrl?: string | null } | null | undefined,
+): OperatorQuestion[] {
+  const needed = new Set<string>();
+  // (1) baked copy tokens actually present in the content
+  collectBakedTokens(content ?? {}, needed);
+  // (2) per-pageType structured holds whose field is unanswered
+  for (const token of PAGETYPE_REQUIRED_TOKENS[pageType ?? ""] ?? []) {
+    if (tokenStructurallyUnanswered(token, content, coach)) needed.add(token);
+  }
+
+  const questions: OperatorQuestion[] = [];
+  for (const token of Array.from(needed)) {
+    const spec = OPERATOR_TOKEN_REGISTRY[token];
+    if (spec?.category === "auto-fill") continue; // never asked — filled from data ZAP already has
+    if (!spec) {
+      questions.push({ token, key: token, question: `This page has a blank: what should go where it says ${token}?`, category: "nudge", scope: "copy-only", naBranches: [], known: false });
+      continue;
+    }
+    // Price branches are pageType-aware: "It's free" only where free is a real answer (an event — a free
+    // webinar is normal). A sales page sells something, so free is a contradiction the coach shouldn't
+    // have to resolve → only "By application" (or a typed price). Other N/A fields pass their branches through.
+    let na = spec.na ?? [];
+    if (token === "[INSERT_PRICE]") {
+      na = na.filter((n) =>
+        pageType === "event_registration" ? n.sentinel === NA_SENTINEL.FREE
+        : pageType === "sales_page" ? n.sentinel === NA_SENTINEL.BY_APPLICATION
+        : true,
+      );
+    }
+    questions.push({
+      token, key: spec.key, question: spec.question, category: spec.category, scope: spec.scope,
+      naBranches: na.map((n) => ({ sentinel: n.sentinel, label: n.label })), known: true,
+    });
+  }
+
+  // Order: gating (QUESTION_ORDER) → other hard-hold → nudge → unknown; stable within group.
+  const rank = (q: OperatorQuestion) => {
+    const i = QUESTION_ORDER.indexOf(q.token);
+    if (i >= 0) return i;
+    if (!q.known) return 900;
+    return q.category === "hard-hold" ? 100 : 500;
+  };
+  return questions.sort((a, b) => rank(a) - rank(b));
 }

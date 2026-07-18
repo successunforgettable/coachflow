@@ -11,6 +11,7 @@ import PushKitModal from "./PushKitModal";
 import V2QuizReviewModal from "./V2QuizReviewModal";
 import KitPlaceholderBanner from "./components/KitPlaceholderBanner";
 import PlaceholderEditor from "./components/PlaceholderEditor";
+import V2OperatorIntake from "./components/V2OperatorIntake";
 import { detectPlaceholders } from "./lib/placeholderDetector";
 import { resolveTokensInObject, resolveTokensInText } from "./lib/resolveTokens";
 import { trpc } from "@/lib/trpc";
@@ -85,24 +86,36 @@ function AdCopyPreview({ data }: { data: any }) {
 }
 
 function LandingPagePreview({ data, angle }: { data: any; angle?: string }) {
+  const [showIntake, setShowIntake] = useState(false);
+  const [justPublished, setJustPublished] = useState<string | null>(null);
   if (!data) return null;
   const angleData = angle === "godfather" ? data.godfatherAngle : angle === "free" ? data.freeAngle : angle === "dollar" ? data.dollarAngle : data.originalAngle;
   const parsed = typeof angleData === "string" ? JSON.parse(angleData) : angleData;
-  // Phase C C2: publicUrl is populated by orchestrator's auto-publish call
-  // (or by the wizard's manual publishToCloudflare mutation). Render as a
-  // clickable link below the angle indicator so the user can preview the
-  // live page directly from the kit page. opacity-respect: only render when
-  // populated (un-published LPs show angle-only as before).
-  const publicUrl = (data as { publicUrl?: string | null }).publicUrl;
+  // publicUrl is set by the orchestrator's auto-publish OR the operator intake below. When it's absent
+  // the page ISN'T live — instead of the old silent state, surface a "finish your page" entry that opens
+  // the Zappy-led operator intake (the token-driven conversation). This replaces the review-draft silence
+  // (Finding 3): the coach is told the page needs a couple of details, and answering them makes it live.
+  const publicUrl = justPublished || (data as { publicUrl?: string | null }).publicUrl;
   return (
     <div>
       <p style={previewHeading}>{parsed?.mainHeadline || "Landing Page"}</p>
       <p style={previewBody}>{parsed?.subheadline || ""}</p>
       <p style={previewMuted}>Angle: {angle || "original"}</p>
-      {publicUrl && (
+      {publicUrl ? (
         <p style={previewMuted}>
           Live at: <a href={publicUrl} target="_blank" rel="noopener noreferrer" style={{ color: "var(--v2-primary-btn, #FF5B1D)", textDecoration: "underline" }}>{publicUrl} →</a>
         </p>
+      ) : showIntake ? (
+        <div style={{ marginTop: 12, border: "1px solid #E2E8F0", borderRadius: 14, overflow: "hidden", height: 480, display: "flex", flexDirection: "column" }}>
+          <V2OperatorIntake landingPageId={data.id} onPublished={(u) => setJustPublished(u)} />
+        </div>
+      ) : (
+        <div style={{ marginTop: 12, padding: 16, background: "#FFF7ED", border: "1px solid #FED7AA", borderRadius: 14 }}>
+          <p style={{ ...previewMuted, marginBottom: 10 }}>This page isn't live yet — a couple of quick details will finish it.</p>
+          <button type="button" onClick={() => setShowIntake(true)} style={{ padding: "10px 22px", borderRadius: 9999, background: "var(--v2-primary-btn, #FF5B1D)", color: "#fff", border: 0, fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
+            Finish your page →
+          </button>
+        </div>
       )}
     </div>
   );

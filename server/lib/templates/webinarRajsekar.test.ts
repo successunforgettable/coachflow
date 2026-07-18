@@ -53,11 +53,11 @@ describe("buildWebinarRajsekarHtml — webinar registration on the Rajsekar desi
     expect(html).not.toContain("<iframe");
   });
 
-  it("stages a review-draft ([INSERT_PRESENTER_PHOTO]) when there's no usable cutout — never a framed rectangle (parity with Iman)", () => {
+  it("SHIPS without a cutout (nudge-category): no token, single-column text hero, never a framed rectangle", () => {
     const html = buildWebinarRajsekarHtml(base, "Coaching", { ...coach, presenterCutoutUrl: null });
-    expect(html).toContain("[INSERT_PRESENTER_PHOTO]");
-    // no framed-rectangle fallback masquerading as a cutout
-    expect(html).not.toContain("aspect-ratio:4/5");
+    expect(html).not.toContain("[INSERT_PRESENTER_PHOTO]"); // ship-but-nudge — the figure just omits
+    expect(html).not.toContain("aspect-ratio:4/5"); // no framed-rectangle fallback masquerading as a cutout
+    expect(html).toContain("wb_reserve"); // the hero (reserve block) still renders single-column
   });
 
   it("omits the video media frame honestly when there's neither video nor photo", () => {

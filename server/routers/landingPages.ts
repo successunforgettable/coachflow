@@ -8,6 +8,8 @@ import { getDb } from "../db";
 import { landingPages, services, users, campaigns, idealCustomerProfiles, sourceOfTruth, jobs, campaignKits, offers, heroMechanisms, hvcoTitles, coachAssets, complianceRewrites } from "../../drizzle/schema";
 import { eq, and, desc, like } from "drizzle-orm";
 import { generateAllAngles, runLandingPageGeneration } from "../landingPageGenerator";
+import { deriveOperatorQuestions, applyOperatorAnswer, applyOperatorSkip, expandOperatorAnswer } from "../lib/templates/operatorFields";
+import type { LandingPageContent } from "../../drizzle/schema";
 import { getCascadeContext, validateCascadePrereqs } from "../_core/cascadeContext";
 import { invokeLLM } from "../_core/llm";
 import { enforceQuota, incrementQuotaCount } from "../lib/quotaEnforcement";
@@ -322,6 +324,84 @@ export const landingPagesRouter = router({
       }
 
       return page;
+    }),
+
+  // ── Operator intake (2026-07-18) — the token-driven "finish your page" conversation ──
+  // getPublishReadiness scans the page for the operator tokens it actually needs (baked copy tokens +
+  // per-pageType structured holds) and returns the mapped Zappy questions. answerOperatorField applies
+  // ONE answer through the unified core (applyOperatorAnswer): sets the structured field AND substitutes
+  // every matching copy token — across ALL generated angles (operator facts are angle-invariant; the
+  // copy differs per angle so each is substituted in place) — then returns the updated readiness.
+  getPublishReadiness: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      const [page] = await db.select().from(landingPages)
+        .where(and(eq(landingPages.id, input.id), eq(landingPages.userId, ctx.user.id))).limit(1);
+      if (!page) throw new TRPCError({ code: "NOT_FOUND", message: "Landing page not found" });
+      const angleKey = (page.activeAngle || "original") as "original" | "godfather" | "free" | "dollar";
+      const content = ((page as any)[`${angleKey}Angle`] || page.originalAngle) as LandingPageContent | null;
+      const [coach] = await db.select({ bookingUrl: users.bookingUrl }).from(users).where(eq(users.id, page.userId)).limit(1);
+      const questions = deriveOperatorQuestions(page.pageType, content, { bookingUrl: coach?.bookingUrl });
+      return {
+        landingPageId: page.id,
+        pageType: page.pageType,
+        publicUrl: page.publicUrl ?? null,
+        ready: questions.length === 0,
+        remaining: questions.length,
+        questions,
+      };
+    }),
+
+  answerOperatorField: protectedProcedure
+    .input(z.object({ id: z.number(), token: z.string().max(60), answer: z.string().max(2000) }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      const [page] = await db.select().from(landingPages)
+        .where(and(eq(landingPages.id, input.id), eq(landingPages.userId, ctx.user.id))).limit(1);
+      if (!page) throw new TRPCError({ code: "NOT_FOUND", message: "Landing page not found" });
+
+      const SKIP = "__SKIP__";
+      const angleCols = ["originalAngle", "godfatherAngle", "freeAngle", "dollarAngle"] as const;
+      const update: Record<string, LandingPageContent> = {};
+      let coachColumn: { column: string; value: string } | undefined;
+      // Front-load: a full datetime on the date question ("Aug 12 at 11am GMT") expands into date+time+tz
+      // writes so the redundant questions are skipped. Skips and every other answer are a single write.
+      const writes = input.answer === SKIP ? [] : expandOperatorAnswer(input.token, input.answer);
+      // Apply to EVERY generated angle in place (each has its own copy; the structured field is shared).
+      for (const col of angleCols) {
+        const angle = (page as any)[col] as LandingPageContent | null;
+        if (!angle) continue;
+        if (input.answer === SKIP) {
+          update[col] = applyOperatorSkip(angle, input.token);
+        } else {
+          let acc = angle;
+          for (const w of writes) {
+            const applied = applyOperatorAnswer(acc, w.token, w.value);
+            acc = applied.content;
+            if (applied.coachColumn) coachColumn = applied.coachColumn;
+          }
+          update[col] = acc;
+        }
+      }
+      if (Object.keys(update).length > 0) {
+        await db.update(landingPages).set(update as any).where(eq(landingPages.id, page.id));
+      }
+      // Coach-scoped answer (booking/video/checkout) → persist on the users row (the missing setter).
+      if (coachColumn) {
+        await db.update(users).set({ [coachColumn.column]: coachColumn.value } as any).where(eq(users.id, page.userId));
+      }
+
+      // Recompute readiness from the updated active angle.
+      const angleKey = (page.activeAngle || "original") as "original" | "godfather" | "free" | "dollar";
+      const newContent = (update[`${angleKey}Angle`] || update.originalAngle
+        || (page as any)[`${angleKey}Angle`] || page.originalAngle) as LandingPageContent | null;
+      const [coach] = await db.select({ bookingUrl: users.bookingUrl }).from(users).where(eq(users.id, page.userId)).limit(1);
+      const bookingUrl = coachColumn?.column === "bookingUrl" ? coachColumn.value : coach?.bookingUrl;
+      const questions = deriveOperatorQuestions(page.pageType, newContent, { bookingUrl });
+      return { ready: questions.length === 0, remaining: questions.length, questions };
     }),
 
   // Generate landing page with all 4 angles using AI

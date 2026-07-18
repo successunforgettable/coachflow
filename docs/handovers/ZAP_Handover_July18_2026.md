@@ -138,6 +138,29 @@ browser.** (LP 214 = trail 181's webinar; `publishedStyle=webinar_rajsekar_coach
   `09f1a02` publish-styleMode derived from `pageType` (manual publish path now renders the per-reference
   template + runs the gate). Gates: TS 35 / vitest 532.
 - **NOW BUILDING — the intake core:** `OPERATOR_TOKEN_REGISTRY` + `resolveOperatorToken` (unify three-state
-  + PlaceholderEditor) → constrain the generator (with the unknown-token fail-safe) → the six token-driven
-  Zappy questions (N/A first-class). **Finish line: a NEW campaign (non-214, non-seeded) publishes because a
-  coach answered Zappy — no SQL, no script.**
+  + PlaceholderEditor) → the six token-driven Zappy questions (N/A first-class). **Finish line: a NEW campaign
+  (non-214, non-seeded) publishes because a coach answered Zappy — no SQL, no script.**
+
+## QUEUED FOLLOW-UP (AFTER intake ships — NOT a publish-blocker) — prompt-quality sprint
+
+**Two distinct bracket phenomena — do NOT conflate:**
+- **`[INSERT_*]` operator tokens** (uppercase, 6 fields) — the coach's own facts (date/price/booking). The
+  INTAKE captures these. They GATE publishing.
+- **prose-blanks** (`[Specific numeric result]`, `[mechanism]`, `[misconception]`) — the LLM CORRECTLY
+  refusing to fabricate a specific the coach never gave. **No-fabrication working at the generation layer,
+  NOT a bug.** They must NEVER be "filled" (nothing real to fill them with; inventing is forbidden).
+
+**Data (2026-07-18 prod scan, 77 LPs):** prose-blanks in landing-page content = **0**. They do NOT block
+publishing — campaign-214 published fine. Root-cause: they're **prompt format-skeletons** in FIVE non-LP
+generators (`headlinesGenerator`, `hvcoGenerator`, `emailSequenceGenerator`, `whatsappSequenceGenerator`,
+`heroMechanismsGenerator`) — e.g. `"[Unique Mechanism] Turns [Audience] into [Result]"`, `"[Specific
+Outcome] in 60 Minutes Live"`, `"If you're a [specific archetype]…"`. Showing the model a bracketed slot
+occasionally makes it echo the slot verbatim (the §14 failure mode). The landing-page generator uses NO
+such skeletons (→ 0 leaks). Other assets only carry INTENTIONAL brackets — `[First Name]` (GHL merge tag),
+`[LINK TO LEAD MAGNET]` (link placeholder) — not defects.
+
+**The sprint (polish, not publish-blocker):** audit those 5 generators for "insert specific X / cite a
+numeric result" instructions; **rewrite them (per §14 positive framing) to produce compelling copy from
+REAL inputs** (mechanism, transformation, ICP pain) rather than demanding a fabricated proof and leaving a
+blank — replace bracket skeletons with concrete FILLED examples so the model has nothing to echo. **No
+repair-by-fabrication:** a specific the coach didn't give is omitted/reworded, NEVER invented.

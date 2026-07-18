@@ -10,6 +10,9 @@ import {
   KNOWN_OPERATOR_TOKENS,
   resolveOperatorToken,
   applyOperatorAnswer,
+  deriveOperatorQuestions,
+  parseEventDateTime,
+  expandOperatorAnswer,
 } from "./operatorFields";
 
 const price = (amount?: string): LandingPageContent["price"] =>
@@ -181,5 +184,96 @@ describe("applyOperatorAnswer — the unified action (three-state + PlaceholderE
     expect((content as any).eventSchedule.venue).toBe(NA_SENTINEL.ONLINE);
     expect((content as any).subheadline).toBe("Held at online.");
     expect(JSON.stringify(content)).not.toContain("[INSERT_EVENT_VENUE]");
+  });
+});
+
+describe("deriveOperatorQuestions — token-driven, per-page ask list", () => {
+  const tokens = (qs: ReturnType<typeof deriveOperatorQuestions>) => qs.map((q) => q.token);
+
+  it("webinar with baked date/time/tz tokens → asks exactly those three, in gating order", () => {
+    const content = {
+      subheadline: "Join me live on [INSERT_EVENT_DATE] at [INSERT_EVENT_TIME] [INSERT_EVENT_TIMEZONE].",
+      faq: [{ answer: "Runs on [INSERT_EVENT_DATE]." }],
+    } as unknown as LandingPageContent;
+    const qs = deriveOperatorQuestions("webinar_registration", content, {});
+    expect(tokens(qs)).toEqual(["[INSERT_EVENT_DATE]", "[INSERT_EVENT_TIME]", "[INSERT_EVENT_TIMEZONE]"]);
+    expect(qs[0].question).toMatch(/date/i);
+    expect(qs.every((q) => q.known)).toBe(true);
+  });
+
+  it("sales page with no price (template-emitted, NOT baked) → asks price with by-application only (no 'free')", () => {
+    const content = { mainHeadline: "Join the Academy" } as unknown as LandingPageContent; // no baked tokens
+    const qs = deriveOperatorQuestions("sales_page", content, {});
+    expect(tokens(qs)).toEqual(["[INSERT_PRICE]"]);
+    expect(qs[0].naBranches.map((b) => b.sentinel)).toEqual([NA_SENTINEL.BY_APPLICATION]); // a sales page isn't "free"
+  });
+
+  it("a real price already set → price NOT asked (answered = value)", () => {
+    const content = { price: { amount: "997" } } as unknown as LandingPageContent;
+    expect(deriveOperatorQuestions("sales_page", content, {})).toEqual([]);
+  });
+
+  it("an explicit __FREE__ price counts as answered → not asked again", () => {
+    const content = { price: { amount: NA_SENTINEL.FREE } } as unknown as LandingPageContent;
+    expect(deriveOperatorQuestions("event_registration", content, {})).toContainEqual(
+      expect.objectContaining({ token: "[INSERT_EVENT_DATE]" }),
+    );
+    expect(deriveOperatorQuestions("event_registration", content, {}).map((q) => q.token)).not.toContain("[INSERT_PRICE]");
+  });
+
+  it("discovery booking: unanswered coach URL → asks with email-capture branch; set URL → not asked", () => {
+    const content = {} as unknown as LandingPageContent;
+    const asked = deriveOperatorQuestions("discovery_call_booking", content, { bookingUrl: null });
+    expect(tokens(asked)).toEqual(["[INSERT_BOOKING_URL]"]);
+    expect(asked[0].naBranches[0].sentinel).toBe(NA_SENTINEL.EMAIL_CAPTURE);
+    expect(deriveOperatorQuestions("discovery_call_booking", content, { bookingUrl: "https://cal.com/x" })).toEqual([]);
+  });
+
+  it("auto-fill tokens (host name) are NEVER asked; a stray unknown token surfaces via the fail-safe", () => {
+    const content = {
+      subheadline: "Hosted by [INSERT_HOST_NAME].",           // auto-fill → excluded
+      faq: [{ answer: "See [INSERT_MYSTERY_FIELD] for details." }], // unknown → generic prompt
+    } as unknown as LandingPageContent;
+    const qs = deriveOperatorQuestions("webinar_registration", content, {});
+    expect(tokens(qs)).not.toContain("[INSERT_HOST_NAME]");
+    const mystery = qs.find((q) => q.token === "[INSERT_MYSTERY_FIELD]");
+    expect(mystery).toBeDefined();
+    expect(mystery!.known).toBe(false);
+  });
+
+  it("lead-magnet page needs no operator answers", () => {
+    expect(deriveOperatorQuestions("lead_magnet_download", { mainHeadline: "Get the guide" } as any, {})).toEqual([]);
+  });
+
+  it("PRICE branches are pageType-aware: event → free only; sales → by-application only", () => {
+    const evPrice = deriveOperatorQuestions("event_registration", { eventSchedule: { date: "x", venue: "y" } } as any, {}).find((q) => q.token === "[INSERT_PRICE]");
+    expect(evPrice!.naBranches.map((b) => b.sentinel)).toEqual([NA_SENTINEL.FREE]); // no "By application" on an event
+    const salesPrice = deriveOperatorQuestions("sales_page", {} as any, {}).find((q) => q.token === "[INSERT_PRICE]");
+    expect(salesPrice!.naBranches.map((b) => b.sentinel)).toEqual([NA_SENTINEL.BY_APPLICATION]); // no "It's free" on a sales page
+  });
+});
+
+describe("parseEventDateTime + expandOperatorAnswer — front-loading a full datetime", () => {
+  it("splits 'August 12 at 11am GMT' into date / time / timezone", () => {
+    expect(parseEventDateTime("August 12 at 11am GMT")).toEqual({ date: "August 12", time: "11 am", timezone: "GMT" });
+  });
+  it("24h time + offset timezone", () => {
+    const p = parseEventDateTime("Tuesday 12 Aug, 14:00 UTC+1");
+    expect(p.time).toBe("14:00");
+    expect(p.timezone).toBe("UTC+1");
+    expect(p.date).toContain("Aug");
+  });
+  it("a bare date leaves time/timezone undefined (no fabrication)", () => {
+    expect(parseEventDateTime("August 12")).toEqual({ date: "August 12", time: undefined, timezone: undefined });
+  });
+  it("expandOperatorAnswer front-loads the date answer into 3 writes; other tokens stay single", () => {
+    expect(expandOperatorAnswer("[INSERT_EVENT_DATE]", "Aug 12 at 11am GMT")).toEqual([
+      { token: "[INSERT_EVENT_DATE]", value: "Aug 12" },
+      { token: "[INSERT_EVENT_TIME]", value: "11 am" },
+      { token: "[INSERT_EVENT_TIMEZONE]", value: "GMT" },
+    ]);
+    expect(expandOperatorAnswer("[INSERT_EVENT_DATE]", "August 12")).toEqual([{ token: "[INSERT_EVENT_DATE]", value: "August 12" }]);
+    expect(expandOperatorAnswer("[INSERT_PRICE]", NA_SENTINEL.FREE)).toEqual([{ token: "[INSERT_PRICE]", value: NA_SENTINEL.FREE }]);
+    expect(expandOperatorAnswer("[INSERT_EVENT_TIME]", "11 am")).toEqual([{ token: "[INSERT_EVENT_TIME]", value: "11 am" }]);
   });
 });
