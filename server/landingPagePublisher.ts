@@ -135,8 +135,16 @@ export async function runLandingPagePublish(
   // path and the complianceRewrites re-render path call, so a template can never
   // be swapped by only one of them (the "family, not leaf" rule).
   const { ensureKvNamespace, writeKvPage, deployWorker } = await import("./lib/cloudflare");
-  const { renderLandingPageHtml, resolveEventStyle, resolveSalesStyle, resolveWebinarStyle } = await import("./lib/templates/renderRegistry");
+  const { renderLandingPageHtml, resolveEventStyle, resolveSalesStyle, resolveWebinarStyle, styleForPageType } = await import("./lib/templates/renderRegistry");
   const { unansweredRequiredOperatorFields } = await import("./lib/templates/operatorFields");
+  const pageType = (lp as any).pageType || "sales_page";
+  // Base style is derived from the LP's pageType — the SAME per-reference template orchestration
+  // auto-selects (styleForPageType) — so EVERY publish path renders the correct template and runs the
+  // three-state discriminators/gate below. Without this the manual `publishToCloudflare` mutation (whose
+  // styleMode input is the LEGACY text/visual/energetic enum, default "text") would publish a webinar or
+  // event page as the old generic text template, bypassing the event/webinar gate entirely. Falls back
+  // to the caller's styleMode only when the pageType has no registered per-reference template (legacy).
+  const baseStyle = styleForPageType(pageType) ?? input.styleMode;
   // Publish-time style discriminators (each a no-op unless its default styleMode is in play, so the
   // chain is order-independent and safe on every publish). Decided here because this is where the LP
   // content — price + testimonials — is loaded; the resolved style drives BOTH the render and the
@@ -145,10 +153,9 @@ export async function runLandingPagePublish(
   //  · Sales/Webinar proof-gate — the proof-LIGHT default upgrades to the reference-faithful RICH page
   //    only when the coach has enough REAL testimonials (never fabricated; light stays until then).
   const styleMode = resolveWebinarStyle(
-    resolveSalesStyle(resolveEventStyle(input.styleMode, enrichedContent), enrichedContent),
+    resolveSalesStyle(resolveEventStyle(baseStyle, enrichedContent), enrichedContent),
     enrichedContent,
   ) as LpStyleMode;
-  const pageType = (lp as any).pageType || "sales_page";
   const html = await renderLandingPageHtml(styleMode, {
     content: enrichedContent,
     serviceName,
