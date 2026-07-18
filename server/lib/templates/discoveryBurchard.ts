@@ -25,6 +25,7 @@ import {
   esc, ok, imgOrOmit, stars, checkCircle, initials,
   highlightKeyword, ctaLink, renderDocument,
 } from "./templatePrimitives";
+import { classifyBooking } from "./operatorFields";
 
 export interface DiscoveryCoachInput {
   /** Coach photo — headshot slot (2:3). Composed into the call card as the cutout. */
@@ -62,6 +63,62 @@ const CAL_GLYPH = `<svg aria-hidden="true" viewBox="0 0 24 24" width="34" height
 
 function bookingHref(coach: DiscoveryCoachInput): string {
   return ok(coach.bookingUrl) ? coach.bookingUrl!.trim() : BOOKING_URL_TOKEN;
+}
+
+/** True when the coach answered "I take enquiries by email" (__EMAIL_CAPTURE__) — no calendar link. */
+function isEmailBooking(coach: DiscoveryCoachInput): boolean {
+  const s = classifyBooking(coach.bookingUrl);
+  return s.status === "na" && s.kind === "email_capture";
+}
+
+/**
+ * Booking CTA — three-state (2026-07-18). A real calendar URL → a real <a> to the calendar (unchanged);
+ * __EMAIL_CAPTURE__ → a reveal-on-intent email-capture form (the sales-checkout pattern, posts
+ * mode:"discovery" — an email-only coach who has no calendar link can now publish a discovery page);
+ * genuine silence → the [INSERT_BOOKING_URL] token so the publish gate holds the page as a review-draft.
+ */
+function bookingCta(coach: DiscoveryCoachInput, label: string, id: string, btnStyle: string): string {
+  if (!isEmailBooking(coach)) return ctaLink(bookingHref(coach), label, btnStyle);
+  const btn = `<button type="button" class="db_cta" data-form="${esc(id)}" style="${btnStyle}border:0;cursor:pointer;">${esc(label)}</button>`;
+  const form = `
+      <div id="${esc(id)}" class="db_form" style="display:none;max-width:420px;margin:16px auto 0;text-align:left;">
+        <form class="db_optin" autocomplete="on" style="display:flex;flex-direction:column;gap:10px;">
+          <input type="text" name="db_name" placeholder="First name (optional)" style="width:100%;box-sizing:border-box;padding:12px 14px;font-family:${B};font-size:15px;border:1px solid #CBD5E1;border-radius:8px;">
+          <input type="email" name="db_email" required placeholder="you@example.com" style="width:100%;box-sizing:border-box;padding:12px 14px;font-family:${B};font-size:15px;border:1px solid #CBD5E1;border-radius:8px;">
+          <label style="display:flex;gap:8px;align-items:flex-start;font-family:${B};font-size:12px;line-height:1.4;color:${SUB};"><input type="checkbox" class="db_consent" required style="margin-top:3px;"><span>I agree to be contacted about a discovery call and accept the <a href="https://zapcampaigns.com/privacy" target="_blank" rel="noopener" style="color:${ORANGE};">privacy policy</a>.</span></label>
+          <div style="position:absolute;left:-9999px;" aria-hidden="true"><input type="text" name="db_hp" tabindex="-1" autocomplete="off"></div>
+          <button type="submit" class="db_submit" style="width:100%;box-sizing:border-box;padding:14px 24px;font-family:${B};font-weight:700;font-size:15px;color:${WHITE};background:${ORANGE};border:0;border-radius:8px;cursor:pointer;">Request my discovery call</button>
+          <div class="db_msg" style="font-family:${B};font-size:13px;color:${ORANGE};min-height:16px;"></div>
+        </form>
+      </div>`;
+  return btn + form;
+}
+
+/** Inline runtime for the email-only booking mode — reveal-on-intent capture → discovery mode. */
+function bookingRuntime(): string {
+  return `<script>
+(function(){
+  var btns=document.querySelectorAll('.db_cta');
+  for(var i=0;i<btns.length;i++){(function(btn){btn.addEventListener('click',function(){
+    var f=document.getElementById(btn.getAttribute('data-form'));
+    if(f){f.style.display='block';var e=f.querySelector('input[type=email]');if(e){e.focus();}}
+  });})(btns[i]);}
+  var forms=document.querySelectorAll('.db_optin');
+  for(var j=0;j<forms.length;j++){(function(form){form.addEventListener('submit',function(ev){ev.preventDefault();
+    var msg=form.querySelector('.db_msg');
+    var email=((form.querySelector('input[type=email]')||{}).value||'').trim();
+    var consent=(form.querySelector('.db_consent')||{}).checked;
+    if(!email||!consent){if(msg){msg.textContent='Enter your email and tick the box to continue.';}return;}
+    var sub=form.querySelector('.db_submit');if(sub){sub.disabled=true;sub.textContent='Sending…';}
+    var slug=(location.pathname.split('/').filter(Boolean).pop())||'';
+    fetch('/api/capture-lead',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({mode:'discovery',slug:slug,email:email,name:((form.querySelector('input[name=db_name]')||{}).value||''),consent:consent,website:((form.querySelector('input[name=db_hp]')||{}).value||'')})})
+    .then(function(r){return r.json().catch(function(){return {};});})
+    .then(function(){form.parentNode.innerHTML='<div style="font-family:'+"'Open Sans',sans-serif"+';font-weight:700;font-size:15px;color:#161E2A;text-align:center;padding:8px 0;">Thanks! I&#39;ll be in touch to set up your call.</div>';})
+    .catch(function(){if(msg){msg.textContent='Something went wrong — please try again.';}if(sub){sub.disabled=false;sub.textContent='Request my discovery call';}});
+  });})(forms[j]);}
+})();
+</script>`;
 }
 
 /**
@@ -124,9 +181,10 @@ function heroSection(content: LandingPageContent, coach: DiscoveryCoachInput): s
     ? `<img src="${esc(coach.logoUrl)}" alt="${esc(coach.coachName || "Logo")}" style="height:26px;width:auto;display:block;">`
     : `<span style="font-family:${H};font-weight:800;font-size:18px;color:${WHITE};letter-spacing:-0.01em;">${esc(coach.coachName || "yourbrand")}</span>`;
 
-  const ctaBtn = ctaLink(
-    bookingHref(coach),
+  const ctaBtn = bookingCta(
+    coach,
     cta,
+    "db_hero",
     `display:inline-block;box-sizing:border-box;padding:16px 40px;font-family:${B};font-weight:700;font-size:16px;color:${WHITE};background:${ORANGE};border-radius:8px;text-decoration:none;letter-spacing:0.01em;`,
   );
 
@@ -196,9 +254,10 @@ function creamSection(content: LandingPageContent, serviceName: string, coach: D
   const cta = ok(content.primaryCta) ? content.primaryCta : "Book a Discovery Call";
   const brand = ok(coach.coachName) ? esc(coach.coachName) : esc(serviceName || "Your Brand");
   const year = new Date().getFullYear();
-  const ctaBtn = ctaLink(
-    bookingHref(coach),
+  const ctaBtn = bookingCta(
+    coach,
     cta,
+    "db_final",
     `display:inline-block;box-sizing:border-box;padding:15px 40px;font-family:${B};font-weight:700;font-size:15px;color:${WHITE};background:${ORANGE};border-radius:8px;text-decoration:none;`,
   );
 
@@ -235,6 +294,7 @@ export function buildDiscoveryBurchardHtml(
       heroSection(content, coach),
       bandsSection(content),
       creamSection(content, serviceName, coach),
+      isEmailBooking(coach) ? bookingRuntime() : "",
     ].join("\n"),
   });
 }

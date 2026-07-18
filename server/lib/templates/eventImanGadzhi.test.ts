@@ -32,9 +32,10 @@ describe("buildEventImanGadzhiHtml — free-ticket event poster on the Iman desi
     expect(html).not.toContain("[INSERT_PRESENTER_PHOTO]");
   });
 
-  it("stays a review-draft with NO presenter photo: emits [INSERT_PRESENTER_PHOTO] (publish hard-gate)", () => {
+  it("SHIPS without a presenter photo (nudge-category, not a hold): no token, graceful text hero", () => {
     const html = buildEventImanGadzhiHtml(base, "Challenge", { ...coach, headshotUrl: null, heroImageUrl: null });
-    expect(html).toContain("[INSERT_PRESENTER_PHOTO]"); // never a faceless dark poster
+    expect(html).not.toContain("[INSERT_PRESENTER_PHOTO]"); // ship-but-nudge — the figure just omits
+    expect(html).toContain("3 Days to copy my system"); // the hero headline still renders (text-forward)
   });
 
   it("binds the date capsule to a REAL eventSchedule, no [INSERT_EVENT_*] when set", () => {
@@ -48,6 +49,19 @@ describe("buildEventImanGadzhiHtml — free-ticket event poster on the Iman desi
   it("stays a review-draft with no date: emits [INSERT_EVENT_DATE]", () => {
     const html = buildEventImanGadzhiHtml(base, "Challenge", coach);
     expect(html).toContain("[INSERT_EVENT_DATE]");
+  });
+
+  it("location three-state in All-The-Details: real venue → venue; __ONLINE__ → 'Live online'; silence → held", () => {
+    const venue = { ...base, eventSchedule: { date: "SEPT 28th", venue: "Austin Convention Center" } } as unknown as LandingPageContent;
+    expect(buildEventImanGadzhiHtml(venue, "Challenge", coach)).toContain("Austin Convention Center");
+    const online = { ...base, eventSchedule: { date: "SEPT 28th", venue: "__ONLINE__" } } as unknown as LandingPageContent;
+    const onlineHtml = buildEventImanGadzhiHtml(online, "Challenge", coach);
+    expect(onlineHtml).toContain("Live online"); // explicit online → graceful, not held
+    expect(onlineHtml).not.toContain("[INSERT_EVENT_LOCATION]");
+    expect(onlineHtml).not.toContain("__ONLINE__");
+    // A dated event with an UNANSWERED location is now HELD (location no longer inferred as "online").
+    const noLoc = { ...base, eventSchedule: { date: "SEPT 28th" } } as unknown as LandingPageContent;
+    expect(buildEventImanGadzhiHtml(noLoc, "Challenge", coach)).toContain("[INSERT_EVENT_LOCATION]");
   });
 
   it("renders ONE pill CTA with the label and scarcity note, and no countdown", () => {

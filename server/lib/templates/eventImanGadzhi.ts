@@ -17,9 +17,10 @@
  * the top edge of the audience wall through the bottom edge of the yellow CTA. It must read as one
  * continuous poster, never a hero/date/benefit/CTA stack with visible seams.
  *
- * Honesty patterns (inherited): the page IS the presenter — no headshot (and no hero image) → the
- * hero emits an [INSERT_PRESENTER_PHOTO] token so the publish placeholder hard-gate blocks the page
- * (review-draft; we never ship a faceless dark poster). The date capsule binds a REAL
+ * Honesty patterns (inherited): the presenter figure strengthens the hero, but it is NUDGE-category
+ * (ship-but-nudge) — no headshot → the figure OMITS and the page ships as a text-forward hero (the coach
+ * is nudged to add a photo later); we never show a framed rectangle, and never a review-draft for a
+ * missing photo. This text-only Iman hero is its weakest, so it's the prime nudge. The date capsule binds a REAL
  * eventSchedule.date; absent → [INSERT_EVENT_*] tokens → the same hard-gate → review-draft. The
  * reserve flow is button-only (matching the frozen "no visible fields") and reveals a minimal
  * email+consent capture on intent that posts to /api/capture-lead in EVENT mode (no magnet). ZAP
@@ -28,6 +29,7 @@
  */
 import type { LandingPageContent } from "../../../drizzle/schema";
 import { esc, ok, renderDocument } from "./templatePrimitives";
+import { classifyLocation } from "./operatorFields";
 
 export interface EventImanCoachInput {
   /** Open-arm, front-facing presenter photo — headshot slot. The page's authority anchor. */
@@ -62,7 +64,8 @@ const H = "'Inter', system-ui, -apple-system, sans-serif"; // Inter Display (hea
 const B = "'Inter', system-ui, -apple-system, sans-serif";
 
 const EVENT_DATE_TOKEN = "[INSERT_EVENT_DATE]";
-const PRESENTER_TOKEN = "[INSERT_PRESENTER_PHOTO]";
+const EVENT_LOC_TOKEN = "[INSERT_EVENT_LOCATION]";
+// Presenter photo is NUDGE-category (ship-but-nudge), not a hard-hold — no [INSERT_PRESENTER_PHOTO].
 
 /**
  * Green the trailing emphasis of the headline (spec §7/§14 — contiguous green phrase, white lead).
@@ -88,11 +91,13 @@ function presenterScene(coach: EventImanCoachInput): string {
   const audience = ok(coach.heroImageUrl)
     ? `background-image:url('${esc(coach.heroImageUrl)}');background-size:cover;background-position:center top;`
     : "";
-  // No presenter photo → emit the token that trips the publish hard-gate (review-draft). The page
-  // has no honest hero without the open-arm presenter, so we do NOT ship a faceless dark poster.
+  // Presenter photo is NUDGE-category (2026-07-18), NOT hard-hold: no usable cutout → the figure simply
+  // OMITS and the page ships as a text-forward hero (audience wall + green light band + headline). We
+  // never show a framed rectangle, and never a review-draft token — the coach gets a soft nudge later
+  // ([[NUDGE_FIELDS]] in operatorFields). This text-only hero is Iman's weakest, so it's the prime nudge.
   const presenter = ok(coach.headshotUrl)
     ? `<img src="${esc(coach.headshotUrl)}" alt="${esc(coach.coachName || "Your host")}" style="position:relative;z-index:2;display:block;margin:0 auto;max-width:440px;width:62%;height:auto;object-fit:contain;filter:drop-shadow(0 30px 60px rgba(0,0,0,0.6));">`
-    : `<div style="position:relative;z-index:2;font-family:${B};font-size:13px;color:${LEGAL};padding:80px 20px;">${PRESENTER_TOKEN}</div>`;
+    : "";
   return `
       <div style="position:relative;width:100%;max-width:920px;margin:0 auto;min-height:340px;padding-top:clamp(48px,8vw,104px);${audience}">
         <!-- blurred/darkened audience field + green horizontal light band behind the presenter -->
@@ -117,7 +122,11 @@ function eventLockup(serviceName: string): string {
 function dateCapsule(content: LandingPageContent): string {
   const es = content.eventSchedule ?? {};
   const hasDate = ok(es.date);
-  const type = ok(es.venue) ? esc(es.venue) : "LIVE VIRTUAL EVENT";
+  // Capsule "type" label: a real venue names it; __ONLINE__ or an unanswered location both read as the
+  // generic "LIVE VIRTUAL EVENT" here (never the raw sentinel). The authoritative location hold lives in
+  // the All-The-Details WHERE cell, which emits [INSERT_EVENT_LOCATION] on genuine silence.
+  const typeState = classifyLocation(es.venue);
+  const type = typeState.status === "value" ? esc(typeState.value) : "LIVE VIRTUAL EVENT";
   const dateText = hasDate
     ? `${esc(es.date)}${ok(es.endDate) ? ` – ${esc(es.endDate)}` : ""}`
     : EVENT_DATE_TOKEN;
@@ -264,8 +273,16 @@ function detailsSection(content: LandingPageContent): string {
   if (!ok(es.date)) return ""; // no real date → the page is a review-draft anyway; omit details
   const when = [es.date, ok(es.time) ? `at ${es.time}` : "", ok(es.timezone) ? esc(es.timezone) : ""].filter(Boolean).map((x) => esc(String(x))).join(" ");
   const whatBits = [ok(es.language) ? esc(es.language) : "", es.durationMins ? `${es.durationMins}-min sessions` : ""].filter(Boolean).join(" · ");
+  // Three-state location (2026-07-18): a real venue → the venue; __ONLINE__ → an explicit "Live online"
+  // (a complete answer); genuine silence → [INSERT_EVENT_LOCATION] → held. "Online" is now a first-class
+  // answer, no longer inferred from a null venue (which used to silently label every dateless-fixed event
+  // "Live online" whether or not the coach ever said so).
+  const locState = classifyLocation(es.venue);
+  const whereText = locState.status === "value" ? esc(locState.value)
+    : locState.status === "na" ? "Live online — join from anywhere in the world."
+    : EVENT_LOC_TOKEN;
   const cols: Array<[string, string]> = [
-    ["WHERE", ok(es.venue) ? esc(es.venue) : "Live online — join from anywhere in the world."],
+    ["WHERE", whereText],
     ["WHEN", when],
     ["WHAT", whatBits || "A free live event designed to move you forward."],
   ];

@@ -36,8 +36,8 @@ export interface WebinarCoachInput {
   /**
    * Hero presenter CUTOUT — the raw headshot with the background removed (resolvePresenterCutoutUrl),
    * so it reads as a free-standing figure over the navy hero, matching the reference. Null when
-   * background removal is unavailable/failed → the hero emits [INSERT_PRESENTER_PHOTO] and the
-   * publish hard-gate stages a review-draft (never a framed rectangle).
+   * background removal is unavailable/failed → the hero OMITS the figure (nudge-category: ships
+   * text-forward, never a framed rectangle, never a review-draft for a missing photo).
    */
   presenterCutoutUrl?: string | null;
   /** Optional 16:9 hero image slot — preferred media poster before the headshot. */
@@ -91,7 +91,7 @@ const B = "'Outfit', system-ui, -apple-system, sans-serif";  // Outfit (body, pe
 const EVENT_DATE_TOKEN = "[INSERT_EVENT_DATE]";
 const EVENT_TIME_TOKEN = "[INSERT_EVENT_TIME]";
 const EVENT_TZ_TOKEN = "[INSERT_EVENT_TIMEZONE]";
-const PRESENTER_TOKEN = "[INSERT_PRESENTER_PHOTO]";
+// Presenter photo is NUDGE-category (ship-but-nudge), not a hard-hold — no [INSERT_PRESENTER_PHOTO].
 
 // ── Media frame — real video, else real photo (no fake play), else omit ──────────────
 
@@ -136,12 +136,13 @@ function mediaFrame(coach: WebinarCoachInput, posterOnly = false): string {
  * Hero-right PRESENTER cutout (matches the reference: a free-standing figure beside the headline,
  * NOT a framed rectangular photo). Renders the background-removed cutout as a transparent PNG with
  * object-fit:contain + a drop-shadow that hugs the figure — no card, no border, no rectangle edges.
- * No usable cutout (removal unavailable/failed) → emits [INSERT_PRESENTER_PHOTO] so the publish
- * hard-gate stages a review-draft; we never ship a framed rectangle pretending to be a cutout.
+ * No usable cutout (removal unavailable/failed) → OMITS the figure (NUDGE-category, ship-but-nudge:
+ * the page ships single-column text-forward, the coach is nudged to add a photo later). We never ship a
+ * framed rectangle pretending to be a cutout, and never a review-draft token for a missing photo.
  */
 function heroPresenter(coach: WebinarCoachInput): string {
   const url = coach.presenterCutoutUrl;
-  if (!ok(url)) return PRESENTER_TOKEN;
+  if (!ok(url)) return ""; // NUDGE-category (ship-but-nudge): no cutout → omit the figure, ship text-only
   return `<div style="position:relative;width:100%;max-width:440px;margin:0 auto;">`
     + `<img src="${esc(url!)}" alt="${esc(coach.coachName || "Your host")}" style="display:block;width:100%;height:auto;object-fit:contain;filter:drop-shadow(0 34px 60px rgba(0,0,0,0.45));">`
     + `</div>`;
@@ -254,13 +255,15 @@ function heroSection(content: LandingPageContent, coach: WebinarCoachInput): str
   // of any free live class). The chips only float over a REAL cutout; when the presenter is unset
   // (review-draft token), the column shows just the token so the review surface reads it cleanly.
   const hasCutout = ok(coach.presenterCutoutUrl);
+  // No cutout → OMIT the right column entirely; the hero centres as a single-column text hero (nudge,
+  // not hold). The decorative chips only float over a REAL cutout.
   const right = hasCutout
     ? `<div style="flex:1 1 440px;min-width:300px;position:relative;">
         ${media}
         <div aria-hidden="true" style="position:absolute;top:-14px;left:-14px;background:${WHITE};border-radius:12px;padding:8px 14px;font-family:${B};font-weight:600;font-size:13px;color:${INK};box-shadow:0 10px 24px rgba(122,60,255,0.20);">&#9889; Live &amp; interactive</div>
         <div aria-hidden="true" style="position:absolute;bottom:-14px;right:-14px;background:${CORAL};border-radius:12px;padding:8px 14px;font-family:${B};font-weight:600;font-size:13px;color:${WHITE};box-shadow:0 10px 24px rgba(122,60,255,0.32);">&#127775; Free to attend</div>
       </div>`
-    : `<div style="flex:1 1 440px;min-width:300px;">${media}</div>`;
+    : "";
 
   return `
   <section style="background:${HERO_NAVY};padding:76px 24px 92px;">

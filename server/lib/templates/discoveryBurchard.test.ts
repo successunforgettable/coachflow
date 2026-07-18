@@ -75,6 +75,16 @@ describe("buildDiscoveryBurchardHtml — booking flow on the Burchard design lan
     expect(html).toMatch(/\[INSERT_BOOKING_URL\]/); // the publish hard-gate will catch this
   });
 
+  it("__EMAIL_CAPTURE__ booking → a reveal-on-intent capture form (discovery mode), publishes, no token/leak", () => {
+    const html = buildDiscoveryBurchardHtml(content, "Coaching", { coachName: "Asha Rao", bookingUrl: "__EMAIL_CAPTURE__" });
+    expect(html).toContain('class="db_cta"'); // reveal button
+    expect(html).toContain('class="db_optin"'); // capture form
+    expect(html).toContain("mode:'discovery'"); // posts to the discovery capture mode
+    expect(html).toContain('name="db_hp"'); // honeypot
+    expect(html).not.toContain("[INSERT_BOOKING_URL]"); // an email-only coach is COMPLETE → publishes
+    expect(html).not.toContain("__EMAIL_CAPTURE__"); // sentinel interpreted, never rendered raw
+  });
+
   it("degrades honestly with no headshot: cutout omitted, call panel centres", () => {
     const html = buildDiscoveryBurchardHtml(content, "Coaching", { coachName: "Asha Rao", bookingUrl: "https://cal.com/a" });
     expect(html).toContain("translateX(-50%)"); // panel centres

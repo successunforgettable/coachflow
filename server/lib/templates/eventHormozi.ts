@@ -31,6 +31,7 @@
  */
 import type { LandingPageContent } from "../../../drizzle/schema";
 import { esc, ok, imgOrOmit, initials, renderDocument } from "./templatePrimitives";
+import { classifyLocation } from "./operatorFields";
 
 export interface EventHormoziCoachInput {
   /** Presenter photo — headshot slot. Hero video poster fallback (no fake play) + benefit imagery. */
@@ -147,11 +148,18 @@ function heroMedia(coach: EventHormoziCoachInput): string {
 /** Hairline event/location strip — real eventSchedule.venue, else [INSERT_EVENT_LOCATION] token. */
 function eventStrip(content: LandingPageContent): string {
   const es = content.eventSchedule ?? {};
-  const loc = ok(es.venue) ? esc(es.venue) : EVENT_LOC_TOKEN;
+  // Three-state location (2026-07-18): real venue → venue; __ONLINE__ → "Live online" (aligns Hormozi
+  // with Iman's graceful online handling); genuine silence → [INSERT_EVENT_LOCATION] → held.
+  const locState = classifyLocation(es.venue);
+  const loc = locState.status === "value" ? esc(locState.value)
+    : locState.status === "na" ? "Live online"
+    : EVENT_LOC_TOKEN;
   const date = ok(es.date) ? esc(es.date) : EVENT_DATE_TOKEN;
+  // An online event isn't an "in-person workshop" — drop that label when the coach answered "online".
+  const kindLabel = locState.status === "na" ? "Live workshop" : "Live in-person workshop";
   return `
   <div style="background:${NEAR_BLACK};padding:9px 20px;text-align:center;">
-    <span style="display:inline-block;background:rgba(255,255,255,0.08);border-radius:9999px;padding:5px 16px;font-family:${B};font-weight:600;font-size:12px;letter-spacing:0.05em;text-transform:uppercase;color:#E7E7F0;">Live in-person workshop &middot; ${loc} &middot; ${date}</span>
+    <span style="display:inline-block;background:rgba(255,255,255,0.08);border-radius:9999px;padding:5px 16px;font-family:${B};font-weight:600;font-size:12px;letter-spacing:0.05em;text-transform:uppercase;color:#E7E7F0;">${kindLabel} &middot; ${loc} &middot; ${date}</span>
   </div>`;
 }
 

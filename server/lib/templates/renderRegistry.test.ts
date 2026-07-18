@@ -101,10 +101,12 @@ describe("resolveEventStyle — free-vs-paid event discriminator (price-presence
   it("upgrades the free Iman default to paid Hormozi ONLY when a real price is present", () => {
     expect(resolveEventStyle("event_iman_gadzhi", priced("2,000"))).toBe("event_hormozi");
   });
-  it("stays on the free Iman default with no price (never fabricated → default free)", () => {
-    expect(resolveEventStyle("event_iman_gadzhi", null)).toBe("event_iman_gadzhi");
+  it("renders on the Iman (free) template for an explicit __FREE__ answer, free/N-A, or silence", () => {
+    expect(resolveEventStyle("event_iman_gadzhi", priced("__FREE__"))).toBe("event_iman_gadzhi"); // explicit free
+    expect(resolveEventStyle("event_iman_gadzhi", null)).toBe("event_iman_gadzhi");               // silence (render side)
     expect(resolveEventStyle("event_iman_gadzhi", {} as unknown as LandingPageContent)).toBe("event_iman_gadzhi");
-    expect(resolveEventStyle("event_iman_gadzhi", priced("   "))).toBe("event_iman_gadzhi"); // blank ≠ real
+    expect(resolveEventStyle("event_iman_gadzhi", priced("   "))).toBe("event_iman_gadzhi");        // blank ≠ real
+    // NOTE: silence renders on Iman but does NOT publish — the gate HOLDS it (see unansweredRequiredOperatorFields).
   });
   it("is a no-op for every non-event style (safe to call on every publish)", () => {
     expect(resolveEventStyle("lead_magnet_burchard", priced("99"))).toBe("lead_magnet_burchard");

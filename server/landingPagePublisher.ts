@@ -136,6 +136,7 @@ export async function runLandingPagePublish(
   // be swapped by only one of them (the "family, not leaf" rule).
   const { ensureKvNamespace, writeKvPage, deployWorker } = await import("./lib/cloudflare");
   const { renderLandingPageHtml, resolveEventStyle, resolveSalesStyle, resolveWebinarStyle } = await import("./lib/templates/renderRegistry");
+  const { unansweredRequiredOperatorFields } = await import("./lib/templates/operatorFields");
   // Publish-time style discriminators (each a no-op unless its default styleMode is in play, so the
   // chain is order-independent and safe on every publish). Decided here because this is where the LP
   // content — price + testimonials — is loaded; the resolved style drives BOTH the render and the
@@ -147,6 +148,7 @@ export async function runLandingPagePublish(
     resolveSalesStyle(resolveEventStyle(input.styleMode, enrichedContent), enrichedContent),
     enrichedContent,
   ) as LpStyleMode;
+  const pageType = (lp as any).pageType || "sales_page";
   const html = await renderLandingPageHtml(styleMode, {
     content: enrichedContent,
     serviceName,
@@ -155,8 +157,20 @@ export async function runLandingPagePublish(
     assetRows,
     serviceId: lp.serviceId,
     userId: input.userId,
-    pageType: (lp as any).pageType || "sales_page",
+    pageType,
   });
+
+  // 6a. Three-state operator-field gate (2026-07-18): HOLD when a REQUIRED operator field is in genuine
+  // silence, so absence never routes to a published page. Currently the one field the dumb token scan
+  // can't catch — EVENT PRICE: free (__FREE__) and unanswered both render on Iman which carries no price
+  // token, so without this an unanswered-but-actually-PAID event would silently ship as a free page.
+  // The N/A sentinels (__FREE__ etc.) read as "answered" here, so an explicitly-free event is NOT held.
+  const heldFields = unansweredRequiredOperatorFields(pageType, enrichedContent);
+  if (heldFields.length > 0) {
+    throw new Error(
+      `Landing page needs ${heldFields.length} operator answer${heldFields.length === 1 ? "" : "s"} before it can go live: ${heldFields.join(", ")}.`
+    );
+  }
 
   // 6b. B5 hard publish gate: block publish if unfilled placeholders remain.
   const unfilledTokens = html.match(/\[INSERT_[A-Z_0-9]+\]/g);

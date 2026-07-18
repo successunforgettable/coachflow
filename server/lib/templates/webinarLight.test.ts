@@ -49,9 +49,10 @@ describe("buildWebinarLightHtml — proof-light webinar (teacher/value-forward)"
     expect(html).not.toContain("[INSERT_PRESENTER_PHOTO]");
   });
 
-  it("stages a review-draft ([INSERT_PRESENTER_PHOTO]) when there's no usable cutout (parity with rich/Iman)", () => {
+  it("SHIPS without a cutout (nudge-category): no token, single-column text hero", () => {
     const html = buildWebinarLightHtml(base, "Coaching", { ...coach, presenterCutoutUrl: null });
-    expect(html).toContain("[INSERT_PRESENTER_PHOTO]");
+    expect(html).not.toContain("[INSERT_PRESENTER_PHOTO]"); // ship-but-nudge — the figure just omits
+    expect(html).toContain("wb_reserve"); // the hero still renders single-column
   });
 
   it("renders fully at ZERO proof — a composed page, no empty sections, no fabrication", () => {

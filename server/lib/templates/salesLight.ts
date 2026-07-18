@@ -20,6 +20,7 @@
  */
 import type { LandingPageContent } from "../../../drizzle/schema";
 import { esc, ok, imgOrOmit, checkCircle, ctaLink, tileIconSet, renderDocument } from "./templatePrimitives";
+import { classifyPrice } from "./operatorFields";
 
 /** Coach inputs — mirrors SalesCoachInput; resolved in salesPublish.ts. */
 export interface SalesLightCoachInput {
@@ -244,11 +245,18 @@ function guaranteeSection(content: LandingPageContent): string {
 
 /** Offer / purchase card — real price only; absent → [INSERT_PRICE] → review-draft (identical to rich). */
 function offerSection(content: LandingPageContent, coach: SalesLightCoachInput): string {
-  const p = content.price;
-  const hasPrice = !!p && ok(p.amount);
-  const cur = hasPrice && ok(p!.currency) ? esc(p!.currency!) + (/^[A-Za-z]/.test(p!.currency!.trim()) ? " " : "") : "";
-  const priceText = hasPrice ? `${cur}${esc(p!.amount)}` : PRICE_TOKEN;
-  const installments = hasPrice && ok(p!.installments) ? `<div style="font-family:${S};font-weight:400;font-size:15px;color:${INK_SOFT};margin:6px 0 0;">${esc(p!.installments!)}</div>` : "";
+  // Three-state price (2026-07-18) — identical rule to the rich Ali card: real amount → figure;
+  // __BY_APPLICATION__ → "By application" + Apply CTA; silence → [INSERT_PRICE] → held.
+  const priceState = classifyPrice(content.price);
+  const isByApplication = priceState.status === "na" && priceState.kind === "by_application";
+  const hasPrice = priceState.status === "value";
+  const cur = hasPrice && ok(priceState.value.currency) ? esc(priceState.value.currency!) + (/^[A-Za-z]/.test(priceState.value.currency!.trim()) ? " " : "") : "";
+  const priceBlock = hasPrice
+    ? `<div style="font-family:${SERIF};font-weight:600;font-size:clamp(38px,6vw,56px);line-height:1;color:${INK};">${cur}${esc(priceState.value.amount)}</div>${ok(priceState.value.installments) ? `<div style="font-family:${S};font-weight:400;font-size:15px;color:${INK_SOFT};margin:6px 0 0;">${esc(priceState.value.installments!)}</div>` : ""}`
+    : isByApplication
+    ? `<div style="font-family:${SERIF};font-weight:600;font-size:clamp(26px,3.6vw,34px);line-height:1.1;color:${INK};">By application</div><div style="font-family:${S};font-weight:400;font-size:15px;color:${INK_SOFT};margin:8px 0 0;">Enrolment is by application — apply to see if it&#39;s the right fit.</div>`
+    : `<div style="font-family:${SERIF};font-weight:600;font-size:clamp(38px,6vw,56px);line-height:1;color:${INK};">${PRICE_TOKEN}</div>`;
+  const ctaLabel = isByApplication ? "Apply now" : ok(content.primaryCta) ? content.primaryCta : "Enrol Now";
   const portrait = imgOrOmit(coach.headshotUrl, coach.coachName || "Your instructor",
     "width:72px;height:72px;border-radius:9999px;object-fit:cover;object-position:top center;flex-shrink:0;");
   const included = [
@@ -266,10 +274,9 @@ function offerSection(content: LandingPageContent, coach: SalesLightCoachInput):
         ${portrait}
         <div style="font-family:${SERIF};font-weight:600;font-size:22px;color:${INK};text-align:left;">${title}</div>
       </div>
-      <div style="font-family:${SERIF};font-weight:600;font-size:clamp(38px,6vw,56px);line-height:1;color:${INK};">${priceText}</div>
-      ${installments}
-      <div style="margin:26px 0 0;">${purchaseCta(coach, "f_offer", ok(content.primaryCta) ? content.primaryCta : "Enrol Now")}${captureForm(coach, "f_offer")}</div>
-      ${checklist ? `<div style="border-top:1px solid ${CARD_LINE};margin-top:26px;padding-top:24px;text-align:left;"><div style="font-family:${S};font-weight:700;font-size:13px;letter-spacing:0.06em;text-transform:uppercase;color:${INK_SOFT};margin:0 0 14px;text-align:center;">Everything you get</div>${checklist}<div style="text-align:center;margin-top:8px;">${purchaseCta(coach, "f_offer2", ok(content.primaryCta) ? content.primaryCta : "Enrol Now")}${captureForm(coach, "f_offer2")}</div></div>` : ""}
+      ${priceBlock}
+      <div style="margin:26px 0 0;">${purchaseCta(coach, "f_offer", ctaLabel)}${captureForm(coach, "f_offer")}</div>
+      ${checklist ? `<div style="border-top:1px solid ${CARD_LINE};margin-top:26px;padding-top:24px;text-align:left;"><div style="font-family:${S};font-weight:700;font-size:13px;letter-spacing:0.06em;text-transform:uppercase;color:${INK_SOFT};margin:0 0 14px;text-align:center;">Everything you get</div>${checklist}<div style="text-align:center;margin-top:8px;">${purchaseCta(coach, "f_offer2", ctaLabel)}${captureForm(coach, "f_offer2")}</div></div>` : ""}
     </div>
   </section>`;
 }

@@ -21,6 +21,7 @@
 import type { LandingPageContent } from "../../../drizzle/schema";
 import type { CoachAssetOptions, LpPageType } from "./types";
 import { slotImageUrl, type SlotAssetType } from "../images/imageSlots";
+import { classifyPrice } from "./operatorFields";
 
 export type LpStyleMode =
   | "text" | "visual" | "executive" | "energetic" | "clinical" | "warm" | "bold"
@@ -284,9 +285,11 @@ export function resolveEventStyle(
   content: Pick<LandingPageContent, "price"> | null | undefined,
 ): string {
   if (styleMode !== "event_iman_gadzhi") return styleMode;
-  const amount = content?.price?.amount;
-  const hasRealPrice = typeof amount === "string" && amount.trim().length > 0;
-  return hasRealPrice ? "event_hormozi" : "event_iman_gadzhi";
+  // Three-state (2026-07-18): only a REAL price value upgrades to the paid Hormozi page. An explicit
+  // __FREE__ answer, an unrelated N/A, or genuine silence all stay on Iman for RENDER — but silence is
+  // NOT assumed free: the publish gate (unansweredRequiredOperatorFields) HOLDS an unanswered-price
+  // event so an unanswered-but-actually-paid event can never ship as a free page.
+  return classifyPrice(content?.price).status === "value" ? "event_hormozi" : "event_iman_gadzhi";
 }
 
 /**

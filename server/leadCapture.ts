@@ -89,12 +89,14 @@ export async function handleCaptureLead(req: Request, res: Response): Promise<vo
     // path as the lead-magnet opt-in; hvcoId is null (nullable column) and nothing is delivered
     // on-page. Sales capture is the fallback for a sales page whose coach has set NO checkout URL —
     // the CTA collects the email so a coach follows up with enrolment details (never a dead button).
-    if (body.mode === "webinar" || body.mode === "event" || body.mode === "sales") {
+    if (body.mode === "webinar" || body.mode === "event" || body.mode === "sales" || body.mode === "discovery") {
       const consentByMode =
         body.mode === "event"
           ? "I agree to receive my event ticket and related emails, and accept the privacy policy."
           : body.mode === "sales"
           ? "I agree to receive enrolment details and related emails, and accept the privacy policy."
+          : body.mode === "discovery"
+          ? "I agree to be contacted about a discovery call and accept the privacy policy."
           : "I agree to receive the webinar joining link and related emails, and accept the privacy policy.";
       const slug = typeof body.slug === "string" ? body.slug.trim().slice(0, 255) : "";
       if (!slug) { res.status(400).json({ error: "Invalid registration" }); return; }

@@ -62,6 +62,15 @@ describe("buildEventHormoziHtml — paid workshop objection ladder on the Hormoz
     expect(noDate).toContain("[INSERT_EVENT_DATE]");
   });
 
+  it("__ONLINE__ venue → 'Live online' (not 'in-person'), no [INSERT_EVENT_LOCATION], no raw sentinel", () => {
+    const online = { ...base, eventSchedule: { date: "Nov 12", venue: "__ONLINE__" } } as unknown as LandingPageContent;
+    const html = buildEventHormoziHtml(online, "Workshop", coach);
+    expect(html).toContain("Live online");
+    expect(html).not.toContain("Live in-person workshop"); // the strip label drops "in-person" when online
+    expect(html).not.toContain("[INSERT_EVENT_LOCATION]"); // explicit answer → complete
+    expect(html).not.toContain("__ONLINE__");
+  });
+
   it("renders the Gate-1 proof as honest monogram quote cards from REAL testimonials (no fake screenshots)", () => {
     const html = buildEventHormoziHtml(base, "Workshop", coach);
     expect(html).toContain("What people are saying");

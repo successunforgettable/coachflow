@@ -65,6 +65,15 @@ describe("buildSalesLightHtml — proof-light sales (offer/method-forward)", () 
     expect(html).toContain("[INSERT_PRICE]");
   });
 
+  it("__BY_APPLICATION__ price → 'By application' + Apply CTA, publishes (no [INSERT_PRICE], no raw sentinel)", () => {
+    const byApp = { ...base, price: { amount: "__BY_APPLICATION__" } } as unknown as LandingPageContent;
+    const html = buildSalesLightHtml(byApp, "Academy", coach);
+    expect(html).toContain("By application");
+    expect(html).toContain("Apply now");
+    expect(html).not.toContain("[INSERT_PRICE]");
+    expect(html).not.toContain("__BY_APPLICATION__");
+  });
+
   it("uses the coach's real checkout link; reveals email capture when there is none", () => {
     const linked = buildSalesLightHtml(base, "Academy", coach);
     expect(linked).toContain("https://alexrivera.com/enrol");

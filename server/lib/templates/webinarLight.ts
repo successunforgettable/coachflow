@@ -12,9 +12,9 @@
  * automatically by `resolveWebinarStyle` at publish when proof is below the (placeholder) rich
  * threshold; it is the DEFAULT for webinar_registration.
  *
- * Honesty is identical to the rich variant: the presenter is a background-removed CUTOUT or the page
- * stages a review-draft ([INSERT_PRESENTER_PHOTO]); the countdown binds a REAL event date only; and
- * NOTHING is fabricated. Shares the Rajsekar navy/purple palette + fonts so the variants read as one
+ * Honesty is identical to the rich variant: the presenter is a background-removed CUTOUT or the figure
+ * OMITS (nudge-category: ships text-forward, no review-draft for a missing photo); the countdown binds a
+ * REAL event date only; and NOTHING is fabricated. Shares the Rajsekar navy/purple palette + fonts so the variants read as one
  * brand. Self-contained per the Iman/Hormozi precedent — the rich builder is untouched.
  */
 import type { LandingPageContent } from "../../../drizzle/schema";
@@ -53,7 +53,7 @@ const B = "'Outfit', system-ui, -apple-system, sans-serif";
 const EVENT_DATE_TOKEN = "[INSERT_EVENT_DATE]";
 const EVENT_TIME_TOKEN = "[INSERT_EVENT_TIME]";
 const EVENT_TZ_TOKEN = "[INSERT_EVENT_TIMEZONE]";
-const PRESENTER_TOKEN = "[INSERT_PRESENTER_PHOTO]";
+// Presenter photo is NUDGE-category (ship-but-nudge), not a hard-hold — no [INSERT_PRESENTER_PHOTO].
 
 function greenStar(): string {
   return `<span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;background:${GREEN};border-radius:3px;color:#fff;font-size:11px;line-height:1;">&#9733;</span>`;
@@ -62,7 +62,7 @@ function greenStar(): string {
 /** Hero presenter CUTOUT (transparent figure, no framed rectangle). No cutout → review-draft token. */
 function heroPresenter(coach: WebinarLightCoachInput): string {
   const url = coach.presenterCutoutUrl;
-  if (!ok(url)) return PRESENTER_TOKEN;
+  if (!ok(url)) return ""; // NUDGE-category (ship-but-nudge): no cutout → omit the figure, ship text-only
   return `<div style="position:relative;width:100%;max-width:440px;margin:0 auto;">`
     + `<img src="${esc(url!)}" alt="${esc(coach.coachName || "Your host")}" style="display:block;width:100%;height:auto;object-fit:contain;filter:drop-shadow(0 34px 60px rgba(0,0,0,0.45));">`
     + `</div>`;
@@ -115,13 +115,14 @@ function heroSection(content: LandingPageContent, coach: WebinarLightCoachInput)
 
   const media = heroPresenter(coach);
   const hasCutout = ok(coach.presenterCutoutUrl);
+  // No cutout → OMIT the right column; the hero centres as a single-column text hero (nudge, not hold).
   const right = hasCutout
     ? `<div style="flex:1 1 440px;min-width:300px;position:relative;">
         ${media}
         <div aria-hidden="true" style="position:absolute;top:-14px;left:-14px;background:${WHITE};border-radius:12px;padding:8px 14px;font-family:${B};font-weight:600;font-size:13px;color:${INK};box-shadow:0 10px 24px rgba(122,60,255,0.20);">&#9889; Live &amp; interactive</div>
         <div aria-hidden="true" style="position:absolute;bottom:-14px;right:-14px;background:${CORAL};border-radius:12px;padding:8px 14px;font-family:${B};font-weight:600;font-size:13px;color:${WHITE};box-shadow:0 10px 24px rgba(122,60,255,0.32);">&#127775; Free to attend</div>
       </div>`
-    : `<div style="flex:1 1 440px;min-width:300px;">${media}</div>`;
+    : "";
 
   return `
   <section style="background:${HERO_NAVY};padding:76px 24px 92px;">

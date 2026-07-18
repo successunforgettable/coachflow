@@ -78,6 +78,15 @@ describe("buildSalesAliAbdaalHtml — long-form course sales page on the Ali Abd
     expect(html).not.toContain('class="sl_optin"'); // no email capture when there's a real checkout
   });
 
+  it("__BY_APPLICATION__ price → 'By application' + an Apply CTA, no [INSERT_PRICE], no literal sentinel", () => {
+    const byApp = { ...base, price: { amount: "__BY_APPLICATION__" } } as unknown as LandingPageContent;
+    const html = buildSalesAliAbdaalHtml(byApp, "Academy", coach);
+    expect(html).toContain("By application");
+    expect(html).toContain("Apply now");
+    expect(html).not.toContain("[INSERT_PRICE]"); // an explicit N/A answer is complete → publishes
+    expect(html).not.toContain("__BY_APPLICATION__"); // sentinel is interpreted, never rendered raw
+  });
+
   it("falls back to a reveal-on-intent email capture in SALES mode when there's no checkout URL", () => {
     const html = buildSalesAliAbdaalHtml(base, "Academy", coach);
     expect(html).toContain('class="sl_cta"'); // reveal button
