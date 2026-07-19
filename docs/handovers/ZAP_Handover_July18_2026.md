@@ -217,6 +217,45 @@ Walked fresh/legacy campaigns through the REAL intake tRPC procedures (`appRoute
 attempted, 4 live (webinar date/time/tz, sales price, sales by-application, discovery URL), 1 blocked
 (discovery email-capture) + event blocked. Both blocks are campaign/coach-state gaps, NOT template bugs.**
 
+## ✅ 5/5 TEMPLATES PROVEN LIVE + full-wizard-run findings (2026-07-20)
+
+Arfeen ran a REAL `in_person_event` campaign through the whole wizard (the truest coach path) → **LP 215,
+`event_hormozi`, LIVE at `/p/campaign-215`.** Event template PASSES (cutout, torn dividers, three
+deliverables, proof threading, "Tickets are free" copy, `__ONLINE__`/venue badge correct). **This is the
+5th and last template proven live — landing-page TEMPLATES are 5/5 DONE.** But running the full wizard
+(not just the intake) exposed the sprint-(b) bugs with hard evidence + new finds. Root-causes:
+
+- **🔴 #1 FABRICATED LOCATION (ship-blocking, invisible).** LP 215 copy says "Reserve Your Seat in
+  Atlanta", "One day in Atlanta", "LIVE IN ATLANTA", "being in this room in Atlanta" — but the venue
+  answer was DUBAI (`eventSchedule.venue` correct; the badge/faq[0] used `[INSERT_EVENT_VENUE]` and
+  substituted right). **No `[INSERT_EVENT_VENUE]` token exists in the Atlanta fields — the LLM hallucinated
+  a literal city.** Root cause: `landingPageGenerator.ts:334` shows the model `"Register for [city]"` /
+  `"Save Your Spot at [venue]"` as CTA examples — a bracketed fill (the §14 skeleton failure) that primes
+  it to invent a city instead of emitting the canonical token. Worse than an `[INSERT_]` token: it's a
+  plausible wrong fact that ships silently. FIX = generation-side: constrain the event generator to ALWAYS
+  use `[INSERT_EVENT_VENUE]` for location, never a literal city (positive framing). NB: (i) existing LP 215
+  copy can't be auto-substituted (no token) → needs regen; (ii) the venue ANSWER format ("in person.
+  address: in5 tech, media city, dubai") reads awkwardly in "Reserve your seat in ___" → consider a concise
+  city/venue capture. Same fabrication family as the queued prose-blank sprint, ELEVATED to ship-blocking.
+- **🔴 #2 LONG-COPY FONT.** The `disclosure` body is Poppins, BUT `whoForBody` (eventHormozi.ts:290)
+  renders `<ul style="margin…padding-left:20px;">` with NO inline font-family (violates §5 invariant #7)
+  AND nests a block `<ul>` inside a `<p>` → the browser breaks it out and it renders default serif
+  ("text-editor look"). Poppins IS loaded (fontHref:370). FIX = add `font-family:${B}` to the `<ul>`/`<li>`
+  + fix the `<p>`/`<ul>` nesting. Template-level.
+- **Sub-observation (minor):** LP 215 `price.amount = "free"` (literal) not the `__FREE__` sentinel → it
+  routed to **Hormozi (paid)**, not Iman (free). Arfeen TYPED "free" instead of tapping the "It's free"
+  chip. Render reads fine, but normalize typed "free"/"no charge" → `__FREE__` so free routes to Iman.
+- **#4/#5 PICKER (confirmed root cause):** `V2Trail.tsx` `offerAngles`/`lpAngles` give every angle card the
+  SAME id (`id: offerId`/`id: lpId`) + `selected:i===0`; single-select matches by id → ALL cards select,
+  chosen angle LOST (`selectedLandingPageAngle=NULL`). One shared bug. FIX = unique id per angle
+  (`${lpId}:${key}`) + persist chosen angle to `activeAngle`/`selectedLandingPageAngle`.
+- **New finds:** #10 method names jargony ("Pipeline Honesty Audit") — generator wording · #11 Ad Images
+  node ordered LAST, should follow Ad Copy · #12 (design idea) email/WhatsApp counts could auto-derive from
+  event-date proximity, not just be asked.
+- **Re-confirmed (Finding 5, evidence again):** #3 Zappy freezes after "I'll pick as we go" · #6
+  testimonial cap 3 · #7 ad-copy generation FAILED then looped to Offer (no ad-copy retry) · #8 no email
+  length choice · #9 WhatsApp auto-ran no 3/5/7.
+
 ## FOLLOW-UP PUNCH-LIST (sequence next session)
 
 (a) **Copy polish / prompt-quality** — prose-blank generator rewrites (5 generators, §14) + the "Who is
