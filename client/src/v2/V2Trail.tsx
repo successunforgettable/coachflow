@@ -195,6 +195,8 @@ export default function V2Trail() {
   // reads offers.activeAngle — a picked angle MUST write these, or the chosen angle is lost (default ships).
   const updateLpAngle = trpc.landingPages.updateActiveAngle.useMutation();
   const updateOfferAngle = trpc.offers.updateActiveAngle.useMutation();
+  // Phase 1 (Problem A): capture operator facts UPFRONT (before generation) → campaignKits.campaignFacts.
+  const answerCampaignFact = trpc.campaignKits.answerCampaignFact.useMutation();
   // Sprint 4 C3: quota status for deal-more chips
   const quotaStatus = trpc.trail.getQuotaStatus.useQuery();
   // Sprint 4 C4: skip/import
@@ -461,6 +463,9 @@ export default function V2Trail() {
   const activeChips = useRef<{ msgId: string; step: AutoStepName } | null>(null);
   const lastReaction = useRef<number>(-1);
   const [tweakMode, setTweakMode] = useState<AutoStepName | null>(null);
+  // Phase 1 (Problem A): when set, the wizard is asking an upfront campaign-fact question — the text input
+  // + chip taps route to the fact-answer resolver instead of the tweak/deal handlers.
+  const [factsMode, setFactsMode] = useState<{ token: string; naBranches: { sentinel: string; label: string }[] } | null>(null);
   const tweakQueue = useRef<{ step: AutoStepName; instruction: string }[]>([]);
   const driverBusy = useRef(false);
 
@@ -518,6 +523,19 @@ export default function V2Trail() {
   };
 
   const handleChipTap = async (messageId: string, chip: string) => {
+    // Phase 1 (Problem A): while asking an upfront fact, a chip is an N/A answer ("It's free" → __FREE__)
+    // or "Skip" → route it to the fact-answer resolver, not the deal/tweak handlers.
+    if (factsMode) {
+      removeLive(messageId);
+      if (activeChips.current?.msgId === messageId) activeChips.current = null;
+      const echo = addLive({ type: "user-bubble", text: chip });
+      persistMsgs([echo]);
+      const branch = factsMode.naBranches.find(b => b.label === chip);
+      const answer = chip === "Skip" ? "__SKIP__" : branch ? branch.sentinel : chip;
+      factAnswerResolve.current?.(answer);
+      factAnswerResolve.current = null;
+      return;
+    }
     const target = activeChips.current?.msgId === messageId ? activeChips.current.step : null;
     removeLive(messageId);
     if (activeChips.current?.msgId === messageId) activeChips.current = null;
@@ -1001,6 +1019,14 @@ export default function V2Trail() {
     }
   };
 
+  // Phase 1 (Problem A): a typed answer to an upfront fact question (a date/venue/price value) → resolver.
+  const handleFactText = (text: string) => {
+    const echo = addLive({ type: "user-bubble", text });
+    persistMsgs([echo]);
+    factAnswerResolve.current?.(text.trim());
+    factAnswerResolve.current = null;
+  };
+
   const handleTweakInstruction = async (text: string) => {
     const step = tweakMode;
     if (!step) return;
@@ -1308,6 +1334,10 @@ export default function V2Trail() {
   // user taps "Lock it in →" (or a card in the deck) ──
   const manualResolve = useRef<(() => void) | null>(null);
   const waitForManualProceed = () => new Promise<void>(r => { manualResolve.current = r; });
+  // Phase 1 (Problem A): the upfront-facts answer resolver — resolves with the coach's answer string
+  // (a typed value, an N/A sentinel via chip, or "__SKIP__"). Active only while factsMode is set.
+  const factAnswerResolve = useRef<((answer: string) => void) | null>(null);
+  const waitForFactAnswer = () => new Promise<string>(r => { factAnswerResolve.current = r; });
   // Sprint 4 C3: distinguishes Lock-it-in from Deal-a-fresh-set in the same
   // chip row. Both resolve the manual proceed promise; the loop checks which.
   const dealMoreChipChoice = useRef<"lock" | "deal" | "skip" | null>(null);
@@ -1461,6 +1491,33 @@ export default function V2Trail() {
           }
         }
       } catch { /* non-fatal */ }
+    }
+
+    // ── Phase 1 (Problem A): capture campaign facts UPFRONT, before ANY generation node ──
+    // So email/whatsapp/LP generate with the coach's real date/venue/price (length derived from the date,
+    // no [INSERT_*] placeholders patched later). Zappy-led, one at a time, N/A first-class, skippable.
+    // Only runs on a FRESH manual build (skip on swap/resume where nodes already exist).
+    if (!manualIsSwapRegen && manualFirstPending?.step === "offer") {
+      try {
+        let fr = await utils.campaignKits.getCampaignFactsReadiness.fetch({ kitId });
+        if (!fr.ready && fr.questions.length > 0) {
+          addLive({ type: "zappy-bubble", mood: "idle", text: `Before I build anything — ${fr.remaining} quick detail${fr.remaining === 1 ? "" : "s"} so it's all built with your real info, not placeholders.` });
+          let guard = 0;
+          while (!fr.ready && fr.questions.length > 0 && guard++ < 12) {
+            if (cancelled.current) return;
+            const q = fr.questions[0] as { token: string; question: string; category: string; naBranches: { sentinel: string; label: string }[] };
+            addLive({ type: "zappy-bubble", mood: "idle", text: q.question });
+            const chips = [...q.naBranches.map(b => b.label), ...(q.category === "nudge" ? ["Skip"] : [])];
+            if (chips.length) { collapsePreviousChips(); const cr = addLive({ type: "chip-row", chips }); activeChips.current = { msgId: cr.id, step: "offer" }; }
+            setFactsMode({ token: q.token, naBranches: q.naBranches });
+            const ans = await waitForFactAnswer();
+            setFactsMode(null);
+            if (cancelled.current) return;
+            fr = await answerCampaignFact.mutateAsync({ kitId, token: q.token, answer: ans });
+          }
+          addLive({ type: "zappy-bubble", mood: "celebrating", text: "Perfect — I'll build everything with that." });
+        }
+      } catch (e) { console.warn("[trail] upfront facts capture failed (non-fatal):", e); setFactsMode(null); }
     }
 
     for (const stepDef of AUTO_STEPS) {
@@ -2147,9 +2204,9 @@ export default function V2Trail() {
             onDeckHeart={handleDeckHeart}
             onStyleChoose={handleStyleChoose}
             onTestimonialDone={handleTestimonialDone}
-            onSendText={tweakMode ? handleTweakInstruction : undefined}
-            inputPlaceholder="What should change?"
-            inputDisabled={!tweakMode}
+            onSendText={factsMode ? handleFactText : (tweakMode ? handleTweakInstruction : undefined)}
+            inputPlaceholder={factsMode ? "Type your answer…" : "What should change?"}
+            inputDisabled={!factsMode && !tweakMode}
           />
         </div>
       </div>

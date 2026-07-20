@@ -76,6 +76,36 @@ export function pageTypeForCampaign(campaignType?: string | null): "sales_page" 
   return campaignType ? (CAMPAIGN_TO_PAGE_TYPE[campaignType] ?? "sales_page") : "sales_page";
 }
 
+// ── Phase 1 (Problem A) — campaign facts feed generation ─────────────────────────────────────────────
+/** WhatsApp/email sequence length from event-date proximity: closer → shorter & punchier, further →
+ *  longer nurture. Unknown/unparseable date → 3 (the prior hardcoded default; safe). */
+export function deriveLengthFromDate(dateStr?: string | null): 3 | 5 | 7 {
+  if (!dateStr) return 3;
+  const t = Date.parse(dateStr);
+  if (Number.isNaN(t)) return 3;
+  const days = (t - Date.now()) / 86_400_000;
+  if (days <= 7) return 3;
+  if (days <= 21) return 5;
+  return 7;
+}
+
+/** The (token, value) answers implied by a kit's campaignFacts — fed through applyOperatorAnswer so a
+ *  freshly-generated LP's [INSERT_EVENT_*]/[INSERT_PRICE] tokens are DETERMINISTICALLY substituted with the
+ *  real facts. Deterministic resolver, NOT a generator prompt change (that's the Atlanta failure mode). */
+export function factsToTokenAnswers(
+  facts?: { eventSchedule?: { date?: string; time?: string; timezone?: string; venue?: string } | null; price?: { amount?: string } | null } | null,
+): { token: string; value: string }[] {
+  const es = facts?.eventSchedule ?? {};
+  const out: { token: string; value: string }[] = [];
+  const push = (token: string, v?: string) => { if (v && String(v).trim()) out.push({ token, value: String(v) }); };
+  push("[INSERT_EVENT_DATE]", es.date);
+  push("[INSERT_EVENT_TIME]", es.time);
+  push("[INSERT_EVENT_TIMEZONE]", es.timezone);
+  push("[INSERT_EVENT_VENUE]", es.venue);
+  push("[INSERT_PRICE]", facts?.price?.amount);
+  return out;
+}
+
 export const ORCHESTRATION_STEP_LABELS = {
   init: "Reading your profile and getting Zappy ready…",
   offer: "Crafting your premium offer angles…",
@@ -164,10 +194,12 @@ export async function runOrchestrationStep(
   onProgress?: (label: string) => Promise<void> | void,
 ): Promise<OrchestrationStepRunResult> {
   const { getDb } = await import("../db");
-  const { users, campaignKits, services, heroMechanisms, hvcoTitles, headlines, adCopy, idealCustomerProfiles } =
+  const { users, campaignKits, services, heroMechanisms, hvcoTitles, headlines, adCopy, idealCustomerProfiles, landingPages } =
     await import("../../drizzle/schema");
   const { eq, and, asc } = await import("drizzle-orm");
   const { autoSelectBest } = await import("../routers/campaignKits");
+  // Phase 1 (Problem A): apply the kit's upfront campaignFacts to a freshly-generated LP (deterministic).
+  const { applyOperatorAnswer } = await import("../lib/templates/operatorFields");
 
   const db = await getDb();
   if (!db) throw new Error("Database not available in orchestration step");
@@ -397,6 +429,28 @@ export async function runOrchestrationStep(
       // Skip the step-level call below (idempotent but redundant).
       skipAutoSelect = true;
 
+      // Phase 1 (Problem A): apply the kit's UPFRONT campaign facts to the freshly-generated LP BEFORE the
+      // auto-publish below — deterministic token substitution via applyOperatorAnswer (NOT a generator
+      // prompt change; that's the Atlanta failure mode). Fills [INSERT_EVENT_*]/[INSERT_PRICE] with the
+      // real date/venue/price across all generated angles, so the published page carries no placeholders.
+      const lpFactAnswers = factsToTokenAnswers(kit?.campaignFacts);
+      if (lpFactAnswers.length > 0) {
+        const [lpRow] = await db.select().from(landingPages).where(eq(landingPages.id, landingPageId)).limit(1);
+        if (lpRow) {
+          const angleCols = ["originalAngle", "godfatherAngle", "freeAngle", "dollarAngle"] as const;
+          const lpUpdate: Record<string, unknown> = {};
+          for (const col of angleCols) {
+            let angle = (lpRow as Record<string, any>)[col];
+            if (!angle) continue;
+            for (const fa of lpFactAnswers) angle = applyOperatorAnswer(angle, fa.token, fa.value).content;
+            lpUpdate[col] = angle;
+          }
+          if (Object.keys(lpUpdate).length > 0) {
+            await db.update(landingPages).set(lpUpdate as any).where(eq(landingPages.id, landingPageId));
+          }
+        }
+      }
+
       // Phase C C2: auto-publish the landing page to Cloudflare Workers KV
       // so the user has a live public URL the moment the cascade completes.
       // Visual style mode by default — Auto Mode runs are paid-tier per
@@ -477,12 +531,15 @@ export async function runOrchestrationStep(
       // falling back to [INSERT_BOOKING_URL] (the pre-existing gap this closes). Null when
       // the coach hasn't supplied one → the builder keeps its token, as before.
       const emailBookingUrl = await getCoachBookingUrl(input.userId);
+      // Phase 1 (Problem A): anchor the sequence to the kit's UPFRONT-captured facts (date/venue), not
+      // bookingUrl-only — so it stops emitting [INSERT_EVENT_*] the coach has already answered.
+      const emailEs = (kit?.campaignFacts?.eventSchedule ?? {}) as Record<string, string | undefined>;
       const { id } = await runEmailSequenceGeneration({
         userId: input.userId,
         serviceId: input.serviceId,
         sequenceType: "welcome",
         name: svc?.name ? `${svc.name} — Welcome Sequence` : "Welcome Sequence",
-        eventDetails: emailBookingUrl ? { bookingUrl: emailBookingUrl } : undefined,
+        eventDetails: { bookingUrl: emailBookingUrl ?? undefined, eventDate: emailEs.date, eventTime: emailEs.time, eventTimezone: emailEs.timezone, eventVenue: emailEs.venue },
       });
       generatedId = id;
       break;
@@ -491,14 +548,16 @@ export async function runOrchestrationStep(
       // Defaults match WA Zod schema: engagement / conversational / 3.
       const [svc] = await db.select().from(services).where(eq(services.id, input.serviceId)).limit(1);
       const waBookingUrl = await getCoachBookingUrl(input.userId);
+      // Phase 1 (Problem A): length DERIVED from event-date proximity (was hardcoded 3); real facts.
+      const waEs = (kit?.campaignFacts?.eventSchedule ?? {}) as Record<string, string | undefined>;
       const { id } = await runWhatsappSequenceGeneration({
         userId: input.userId,
         serviceId: input.serviceId,
         sequenceType: "engagement",
         name: svc?.name ? `${svc.name} — Engagement Sequence` : "Engagement Sequence",
         tone: "conversational",
-        sequenceLength: 3,
-        eventDetails: waBookingUrl ? { bookingUrl: waBookingUrl } : undefined,
+        sequenceLength: deriveLengthFromDate(waEs.date),
+        eventDetails: { bookingUrl: waBookingUrl ?? undefined, eventDate: waEs.date, eventTime: waEs.time, eventTimezone: waEs.timezone, eventVenue: waEs.venue },
       });
       generatedId = id;
       break;

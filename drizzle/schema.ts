@@ -1502,6 +1502,13 @@ export const campaignKits = mysqlTable("campaignKits", {
   // Style options (migration 0078): user's chosen ad-image style.
   // NULL = photo_ad (existing Flux pipeline). "quote_card:navy" etc for quote cards.
   adImageStyle: varchar("adImageStyle", { length: 50 }),
+  // Campaign facts (migration 0090, Phase 1 / Problem A): operator facts captured UPFRONT in the wizard —
+  // date/time/timezone/venue + price — BEFORE any generation node, so email/whatsapp/LP generate with REAL
+  // values instead of hardcoded sequenceLength:3 + [INSERT_*] placeholders patched later. Typed to the
+  // eventSchedule + price sub-shape of LandingPageContent so the intake resolver (deriveOperatorQuestions /
+  // applyOperatorAnswer) works against it VERBATIM. Booking/video/checkout stay coach-level (users columns).
+  // Read by orchestration's emailSequence / whatsappSequence / landingPage steps (wizard path only).
+  campaignFacts: json("campaignFacts").$type<{ eventSchedule?: LandingPageContent["eventSchedule"]; price?: LandingPageContent["price"] }>(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

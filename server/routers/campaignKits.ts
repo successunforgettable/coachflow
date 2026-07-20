@@ -1,9 +1,13 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
-import { campaignKits, idealCustomerProfiles, services, offers, nodeStatuses } from "../../drizzle/schema";
+import { campaignKits, idealCustomerProfiles, services, offers, nodeStatuses, users } from "../../drizzle/schema";
+import type { LandingPageContent } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
+import { deriveOperatorQuestions, deriveAnsweredOperatorFields, applyOperatorAnswer, expandOperatorAnswer } from "../lib/templates/operatorFields";
+import { pageTypeForCampaign } from "../_core/orchestration";
+import { getCoachBookingUrl } from "../lib/coachBookingUrl";
 
 const MAX_KIT_NAME = 255;
 
@@ -222,6 +226,59 @@ export const campaignKitsRouter = router({
         .limit(1);
 
       return newKit;
+    }),
+
+  // ── Campaign facts (Phase 1 / Problem A) — capture operator facts UPFRONT, before any generation node ──
+  // Kit-level twins of getPublishReadiness / answerOperatorField: the SAME intake resolver
+  // (deriveOperatorQuestions / applyOperatorAnswer), sourced from campaignKits.campaignFacts
+  // (eventSchedule + price) + the coach booking column, keyed off the kit's campaignType. Booking stays
+  // coach-level (users column). Read later by orchestration's email/whatsapp/LP steps so they generate
+  // with REAL facts (no hardcoded sequenceLength:3, no [INSERT_*] placeholders). Wizard path only.
+  getCampaignFactsReadiness: protectedProcedure
+    .input(z.object({ kitId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      const [kit] = await db.select().from(campaignKits)
+        .where(and(eq(campaignKits.id, input.kitId), eq(campaignKits.userId, ctx.user.id))).limit(1);
+      if (!kit) throw new TRPCError({ code: "NOT_FOUND", message: "Kit not found" });
+      const pageType = pageTypeForCampaign(kit.campaignType);
+      const facts = (kit.campaignFacts ?? {}) as LandingPageContent;
+      const bookingUrl = await getCoachBookingUrl(kit.userId);
+      const questions = deriveOperatorQuestions(pageType, facts, { bookingUrl });
+      const answered = deriveAnsweredOperatorFields(pageType, facts, { bookingUrl });
+      return { kitId: kit.id, campaignType: kit.campaignType, pageType, ready: questions.length === 0, remaining: questions.length, questions, answered };
+    }),
+
+  answerCampaignFact: protectedProcedure
+    .input(z.object({ kitId: z.number(), token: z.string().max(60), answer: z.string().max(2000) }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      const [kit] = await db.select().from(campaignKits)
+        .where(and(eq(campaignKits.id, input.kitId), eq(campaignKits.userId, ctx.user.id))).limit(1);
+      if (!kit) throw new TRPCError({ code: "NOT_FOUND", message: "Kit not found" });
+      const pageType = pageTypeForCampaign(kit.campaignType);
+      let facts = (kit.campaignFacts ?? {}) as LandingPageContent;
+      let coachColumn: { column: string; value: string } | undefined;
+      if (input.answer !== "__SKIP__") {
+        // Front-load: a full datetime on the date question fills date+time+tz. applyOperatorAnswer sets the
+        // structured field on the facts object (facts carry no copy → the copy-substitution is a no-op);
+        // a coach-scoped answer (booking) comes back as coachColumn → users row.
+        for (const w of expandOperatorAnswer(input.token, input.answer)) {
+          const applied = applyOperatorAnswer(facts, w.token, w.value);
+          facts = applied.content;
+          if (applied.coachColumn) coachColumn = applied.coachColumn;
+        }
+        await db.update(campaignKits).set({ campaignFacts: facts as any }).where(eq(campaignKits.id, kit.id));
+        if (coachColumn) {
+          await db.update(users).set({ [coachColumn.column]: coachColumn.value } as any).where(eq(users.id, kit.userId));
+        }
+      }
+      const bookingUrl = coachColumn?.column === "bookingUrl" ? coachColumn.value : await getCoachBookingUrl(kit.userId);
+      const questions = deriveOperatorQuestions(pageType, facts, { bookingUrl });
+      const answered = deriveAnsweredOperatorFields(pageType, facts, { bookingUrl });
+      return { kitId: kit.id, campaignType: kit.campaignType, pageType, ready: questions.length === 0, remaining: questions.length, questions, answered };
     }),
 
   /**
