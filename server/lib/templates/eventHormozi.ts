@@ -67,7 +67,7 @@ const H = "'Poppins', system-ui, -apple-system, sans-serif"; // heavy geometric 
 const B = "'Poppins', system-ui, -apple-system, sans-serif";
 const BTN = "Arial, Helvetica, sans-serif"; // buttons + form inputs
 
-const EVENT_LOC_TOKEN = "[INSERT_EVENT_LOCATION]";
+const EVENT_LOC_TOKEN = "[INSERT_EVENT_VENUE]"; // canonical location token (matches the registry + intake + email/whatsapp), so a venue answer substitutes it everywhere
 const EVENT_DATE_TOKEN = "[INSERT_EVENT_DATE]";
 
 /** Purple gradient pill CTA (reveal-on-intent email capture). Wording repeats across the page. */
@@ -145,11 +145,11 @@ function heroMedia(coach: EventHormoziCoachInput): string {
 
 // ── Sections ─────────────────────────────────────────────────────────────────────────
 
-/** Hairline event/location strip — real eventSchedule.venue, else [INSERT_EVENT_LOCATION] token. */
+/** Hairline event/location strip — real eventSchedule.venue, else [INSERT_EVENT_VENUE] token. */
 function eventStrip(content: LandingPageContent): string {
   const es = content.eventSchedule ?? {};
   // Three-state location (2026-07-18): real venue → venue; __ONLINE__ → "Live online" (aligns Hormozi
-  // with Iman's graceful online handling); genuine silence → [INSERT_EVENT_LOCATION] → held.
+  // with Iman's graceful online handling); genuine silence → [INSERT_EVENT_VENUE] → held.
   const locState = classifyLocation(es.venue);
   const loc = locState.status === "value" ? esc(locState.value)
     : locState.status === "na" ? "Live online"
@@ -277,7 +277,7 @@ function disclosure(title: string, body: string): string {
         <span aria-hidden="true" style="font-family:${H};font-weight:700;font-size:22px;color:#8E90C8;flex-shrink:0;">+</span>
       </div>
       <div style="background:${WHITE};padding:22px 24px 30px;">
-        <p style="font-family:${B};font-weight:400;font-size:15px;line-height:1.65;color:${BODY};margin:0;max-width:70ch;">${body}</p>
+        <div style="font-family:${B};font-weight:400;font-size:15px;line-height:1.65;color:${BODY};margin:0;max-width:70ch;">${body}</div>
       </div>
     </div>`;
 }
@@ -286,8 +286,8 @@ function disclosure(title: string, body: string): string {
 function whoForBody(coach: EventHormoziCoachInput): string {
   const lines = (Array.isArray(coach.whoFor) ? coach.whoFor : []).filter((s) => ok(s)).slice(0, 4);
   if (lines.length === 0) return "";
-  const items = lines.map((s) => `<li style="margin:0 0 8px;">${esc(s)}</li>`).join("");
-  return `This workshop is built for a specific kind of business owner. It&#39;s the right room for you if:<ul style="margin:12px 0 0;padding-left:20px;">${items}</ul>`;
+  const items = lines.map((s) => `<li style="font-family:${B};margin:0 0 8px;">${esc(s)}</li>`).join("");
+  return `This workshop is built for a specific kind of business owner. It&#39;s the right room for you if:<ul style="font-family:${B};margin:12px 0 0;padding-left:20px;">${items}</ul>`;
 }
 
 /** Price answer — REAL operator-captured price only. Absent → the whole section is omitted upstream. */

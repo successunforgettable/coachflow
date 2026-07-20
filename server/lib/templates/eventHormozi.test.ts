@@ -56,18 +56,18 @@ describe("buildEventHormoziHtml — paid workshop objection ladder on the Hormoz
     const html = buildEventHormoziHtml(dated, "Workshop", coach);
     expect(html).toContain("Las Vegas");
     expect(html).toContain("Nov 12");
-    expect(html).not.toContain("[INSERT_EVENT_LOCATION]");
+    expect(html).not.toContain("[INSERT_EVENT_VENUE]");
     const noDate = buildEventHormoziHtml(base, "Workshop", coach);
-    expect(noDate).toContain("[INSERT_EVENT_LOCATION]");
+    expect(noDate).toContain("[INSERT_EVENT_VENUE]");
     expect(noDate).toContain("[INSERT_EVENT_DATE]");
   });
 
-  it("__ONLINE__ venue → 'Live online' (not 'in-person'), no [INSERT_EVENT_LOCATION], no raw sentinel", () => {
+  it("__ONLINE__ venue → 'Live online' (not 'in-person'), no [INSERT_EVENT_VENUE], no raw sentinel", () => {
     const online = { ...base, eventSchedule: { date: "Nov 12", venue: "__ONLINE__" } } as unknown as LandingPageContent;
     const html = buildEventHormoziHtml(online, "Workshop", coach);
     expect(html).toContain("Live online");
     expect(html).not.toContain("Live in-person workshop"); // the strip label drops "in-person" when online
-    expect(html).not.toContain("[INSERT_EVENT_LOCATION]"); // explicit answer → complete
+    expect(html).not.toContain("[INSERT_EVENT_VENUE]"); // explicit answer → complete
     expect(html).not.toContain("__ONLINE__");
   });
 

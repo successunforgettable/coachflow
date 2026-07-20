@@ -329,10 +329,21 @@ of a sales sequence I'm being funneled through."
   event_registration: `
 PAGE TYPE: In-person event registration page.
 
+LOCATION LOCK (critical — no fabrication): You are NOT told the event's city,
+venue, or address. NEVER write a specific location — no city name, no venue
+name, no street address — in ANY field (eyebrow, headline, subheadline, CTA,
+scarcityUrgency, insiderAdvantages, faq, agenda). Everywhere a location would
+naturally appear, write the LITERAL token [INSERT_EVENT_VENUE]; the operator's
+answer substitutes it in every field at once. Pick ONE consistent token, never
+a plausible-sounding placeholder city. The same rule for the date/time: use
+[INSERT_EVENT_DATE] / [INSERT_EVENT_TIME] / [INSERT_EVENT_TIMEZONE], never an
+invented date. Inventing a location or date is a hard failure.
+
 SECTIONS TO POPULATE (fill substantively):
 - eyebrowHeadline, mainHeadline, subheadline, primaryCta — registration
-  hero. CTA: "Reserve Your Seat", "Register for [city]", "Save Your
-  Spot at [venue]".
+  hero. CTA: "Reserve Your Seat", "Register Now", "Save My Spot". If a CTA or
+  any headline/body names WHERE it is, write [INSERT_EVENT_VENUE] — never a
+  city or venue name.
 - scarcityUrgency — venue + date + time + timezone. Use [INSERT_EVENT_
   VENUE], [INSERT_EVENT_DATE], [INSERT_EVENT_TIME], [INSERT_EVENT_
   TIMEZONE] when not supplied.

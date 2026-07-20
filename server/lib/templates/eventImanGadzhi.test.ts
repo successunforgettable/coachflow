@@ -57,11 +57,11 @@ describe("buildEventImanGadzhiHtml — free-ticket event poster on the Iman desi
     const online = { ...base, eventSchedule: { date: "SEPT 28th", venue: "__ONLINE__" } } as unknown as LandingPageContent;
     const onlineHtml = buildEventImanGadzhiHtml(online, "Challenge", coach);
     expect(onlineHtml).toContain("Live online"); // explicit online → graceful, not held
-    expect(onlineHtml).not.toContain("[INSERT_EVENT_LOCATION]");
+    expect(onlineHtml).not.toContain("[INSERT_EVENT_VENUE]");
     expect(onlineHtml).not.toContain("__ONLINE__");
     // A dated event with an UNANSWERED location is now HELD (location no longer inferred as "online").
     const noLoc = { ...base, eventSchedule: { date: "SEPT 28th" } } as unknown as LandingPageContent;
-    expect(buildEventImanGadzhiHtml(noLoc, "Challenge", coach)).toContain("[INSERT_EVENT_LOCATION]");
+    expect(buildEventImanGadzhiHtml(noLoc, "Challenge", coach)).toContain("[INSERT_EVENT_VENUE]");
   });
 
   it("renders ONE pill CTA with the label and scarcity note, and no countdown", () => {

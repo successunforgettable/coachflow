@@ -64,7 +64,7 @@ const H = "'Inter', system-ui, -apple-system, sans-serif"; // Inter Display (hea
 const B = "'Inter', system-ui, -apple-system, sans-serif";
 
 const EVENT_DATE_TOKEN = "[INSERT_EVENT_DATE]";
-const EVENT_LOC_TOKEN = "[INSERT_EVENT_LOCATION]";
+const EVENT_LOC_TOKEN = "[INSERT_EVENT_VENUE]"; // canonical location token (matches the registry + intake), so a venue answer substitutes it everywhere
 // Presenter photo is NUDGE-category (ship-but-nudge), not a hard-hold — no [INSERT_PRESENTER_PHOTO].
 
 /**
@@ -124,7 +124,7 @@ function dateCapsule(content: LandingPageContent): string {
   const hasDate = ok(es.date);
   // Capsule "type" label: a real venue names it; __ONLINE__ or an unanswered location both read as the
   // generic "LIVE VIRTUAL EVENT" here (never the raw sentinel). The authoritative location hold lives in
-  // the All-The-Details WHERE cell, which emits [INSERT_EVENT_LOCATION] on genuine silence.
+  // the All-The-Details WHERE cell, which emits [INSERT_EVENT_VENUE] on genuine silence.
   const typeState = classifyLocation(es.venue);
   const type = typeState.status === "value" ? esc(typeState.value) : "LIVE VIRTUAL EVENT";
   const dateText = hasDate
@@ -274,7 +274,7 @@ function detailsSection(content: LandingPageContent): string {
   const when = [es.date, ok(es.time) ? `at ${es.time}` : "", ok(es.timezone) ? esc(es.timezone) : ""].filter(Boolean).map((x) => esc(String(x))).join(" ");
   const whatBits = [ok(es.language) ? esc(es.language) : "", es.durationMins ? `${es.durationMins}-min sessions` : ""].filter(Boolean).join(" · ");
   // Three-state location (2026-07-18): a real venue → the venue; __ONLINE__ → an explicit "Live online"
-  // (a complete answer); genuine silence → [INSERT_EVENT_LOCATION] → held. "Online" is now a first-class
+  // (a complete answer); genuine silence → [INSERT_EVENT_VENUE] → held. "Online" is now a first-class
   // answer, no longer inferred from a null venue (which used to silently label every dateless-fixed event
   // "Live online" whether or not the coach ever said so).
   const locState = classifyLocation(es.venue);
