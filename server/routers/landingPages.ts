@@ -8,7 +8,7 @@ import { getDb } from "../db";
 import { landingPages, services, users, campaigns, idealCustomerProfiles, sourceOfTruth, jobs, campaignKits, offers, heroMechanisms, hvcoTitles, coachAssets, complianceRewrites } from "../../drizzle/schema";
 import { eq, and, desc, like } from "drizzle-orm";
 import { generateAllAngles, runLandingPageGeneration } from "../landingPageGenerator";
-import { deriveOperatorQuestions, applyOperatorAnswer, applyOperatorSkip, expandOperatorAnswer } from "../lib/templates/operatorFields";
+import { deriveOperatorQuestions, applyOperatorAnswer, applyOperatorSkip, expandOperatorAnswer, reapplyOperatorAnswer, deriveAnsweredOperatorFields } from "../lib/templates/operatorFields";
 import type { LandingPageContent } from "../../drizzle/schema";
 import { getCascadeContext, validateCascadePrereqs } from "../_core/cascadeContext";
 import { invokeLLM } from "../_core/llm";
@@ -344,6 +344,7 @@ export const landingPagesRouter = router({
       const content = ((page as any)[`${angleKey}Angle`] || page.originalAngle) as LandingPageContent | null;
       const [coach] = await db.select({ bookingUrl: users.bookingUrl }).from(users).where(eq(users.id, page.userId)).limit(1);
       const questions = deriveOperatorQuestions(page.pageType, content, { bookingUrl: coach?.bookingUrl });
+      const answered = deriveAnsweredOperatorFields(page.pageType, content, { bookingUrl: coach?.bookingUrl });
       return {
         landingPageId: page.id,
         pageType: page.pageType,
@@ -351,6 +352,7 @@ export const landingPagesRouter = router({
         ready: questions.length === 0,
         remaining: questions.length,
         questions,
+        answered, // the already-answered operator fields the coach can re-open and change (edit flow)
       };
     }),
 
@@ -401,7 +403,58 @@ export const landingPagesRouter = router({
       const [coach] = await db.select({ bookingUrl: users.bookingUrl }).from(users).where(eq(users.id, page.userId)).limit(1);
       const bookingUrl = coachColumn?.column === "bookingUrl" ? coachColumn.value : coach?.bookingUrl;
       const questions = deriveOperatorQuestions(page.pageType, newContent, { bookingUrl });
-      return { ready: questions.length === 0, remaining: questions.length, questions };
+      const answered = deriveAnsweredOperatorFields(page.pageType, newContent, { bookingUrl });
+      return { ready: questions.length === 0, remaining: questions.length, questions, answered };
+    }),
+
+  // Edit flow ("change my answer") — re-answer an ALREADY-answered operator field. Reads the current
+  // stored value, then runs the new answer through reapplyOperatorAnswer across all angles: re-sets the
+  // structured field AND replaces the OLD copy text with the NEW everywhere (the first answer already
+  // consumed the [INSERT_*] token). Same resolve path as the first answer — never a partial update. The
+  // client re-publishes afterwards so the change goes live.
+  reanswerOperatorField: protectedProcedure
+    .input(z.object({ id: z.number(), token: z.string().max(60), answer: z.string().max(2000) }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      const [page] = await db.select().from(landingPages)
+        .where(and(eq(landingPages.id, input.id), eq(landingPages.userId, ctx.user.id))).limit(1);
+      if (!page) throw new TRPCError({ code: "NOT_FOUND", message: "Landing page not found" });
+
+      const angleCols = ["originalAngle", "godfatherAngle", "freeAngle", "dollarAngle"] as const;
+      const angleKey = (page.activeAngle || "original") as "original" | "godfather" | "free" | "dollar";
+      const activeContent = ((page as any)[`${angleKey}Angle`] || page.originalAngle) as LandingPageContent | null;
+      const [coachRow] = await db.select({ bookingUrl: users.bookingUrl }).from(users).where(eq(users.id, page.userId)).limit(1);
+      // Read the CURRENT stored value (the "old" value the edit replaces) from the structured field.
+      const es = (activeContent?.eventSchedule ?? {}) as Record<string, string | undefined>;
+      const oldByToken: Record<string, string> = {
+        "[INSERT_EVENT_DATE]": String(es.date ?? ""), "[INSERT_EVENT_TIME]": String(es.time ?? ""),
+        "[INSERT_EVENT_TIMEZONE]": String(es.timezone ?? ""), "[INSERT_EVENT_VENUE]": String(es.venue ?? ""),
+        "[INSERT_PRICE]": String(activeContent?.price?.amount ?? ""), "[INSERT_BOOKING_URL]": String(coachRow?.bookingUrl ?? ""),
+      };
+      const oldValue = oldByToken[input.token] ?? "";
+
+      const update: Record<string, LandingPageContent> = {};
+      let coachColumn: { column: string; value: string } | undefined;
+      for (const col of angleCols) {
+        const angle = (page as any)[col] as LandingPageContent | null;
+        if (!angle) continue;
+        const applied = reapplyOperatorAnswer(angle, input.token, oldValue, input.answer);
+        update[col] = applied.content;
+        if (applied.coachColumn) coachColumn = applied.coachColumn;
+      }
+      if (Object.keys(update).length > 0) {
+        await db.update(landingPages).set(update as any).where(eq(landingPages.id, page.id));
+      }
+      if (coachColumn) {
+        await db.update(users).set({ [coachColumn.column]: coachColumn.value } as any).where(eq(users.id, page.userId));
+      }
+
+      const newContent = (update[`${angleKey}Angle`] || update.originalAngle || activeContent) as LandingPageContent | null;
+      const bookingUrl = coachColumn?.column === "bookingUrl" ? coachColumn.value : coachRow?.bookingUrl;
+      const questions = deriveOperatorQuestions(page.pageType, newContent, { bookingUrl });
+      const answered = deriveAnsweredOperatorFields(page.pageType, newContent, { bookingUrl });
+      return { ready: questions.length === 0, remaining: questions.length, questions, answered };
     }),
 
   // Generate landing page with all 4 angles using AI

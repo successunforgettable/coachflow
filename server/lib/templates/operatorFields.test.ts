@@ -13,6 +13,8 @@ import {
   deriveOperatorQuestions,
   parseEventDateTime,
   expandOperatorAnswer,
+  reapplyOperatorAnswer,
+  deriveAnsweredOperatorFields,
 } from "./operatorFields";
 
 const price = (amount?: string): LandingPageContent["price"] =>
@@ -275,5 +277,52 @@ describe("parseEventDateTime + expandOperatorAnswer — front-loading a full dat
     expect(expandOperatorAnswer("[INSERT_EVENT_DATE]", "August 12")).toEqual([{ token: "[INSERT_EVENT_DATE]", value: "August 12" }]);
     expect(expandOperatorAnswer("[INSERT_PRICE]", NA_SENTINEL.FREE)).toEqual([{ token: "[INSERT_PRICE]", value: NA_SENTINEL.FREE }]);
     expect(expandOperatorAnswer("[INSERT_EVENT_TIME]", "11 am")).toEqual([{ token: "[INSERT_EVENT_TIME]", value: "11 am" }]);
+  });
+});
+
+describe("edit flow — reapplyOperatorAnswer + deriveAnsweredOperatorFields", () => {
+  it("changing an answered venue replaces the OLD value in ALL copy + re-sets the field (old gone)", () => {
+    // simulate a page where the FIRST answer already substituted the token → literal "Dubai" in the copy
+    let content = {
+      eyebrowHeadline: "LIVE EVENT AT [INSERT_EVENT_VENUE]",
+      subheadline: "One day at [INSERT_EVENT_VENUE].",
+    } as unknown as LandingPageContent;
+    content = applyOperatorAnswer(content, "[INSERT_EVENT_VENUE]", "Dubai").content;
+    expect(JSON.stringify(content)).toContain("Dubai");
+    expect(JSON.stringify(content)).not.toContain("[INSERT_EVENT_VENUE]");
+    // now the coach edits the venue → Abu Dhabi
+    const edited = reapplyOperatorAnswer(content, "[INSERT_EVENT_VENUE]", "Dubai", "Abu Dhabi");
+    expect((edited.content as any).eventSchedule.venue).toBe("Abu Dhabi");
+    expect(JSON.stringify(edited.content)).toContain("Abu Dhabi");
+    expect(JSON.stringify(edited.content)).not.toContain("Dubai"); // old value gone everywhere
+  });
+
+  it("discovery booking URL → __EMAIL_CAPTURE__ re-answer flips the coach column + copy", () => {
+    const content = { subheadline: "Book at https://cal.com/asha." } as unknown as LandingPageContent;
+    // first answer set a real URL; now re-answer as email-capture
+    const edited = reapplyOperatorAnswer(content, "[INSERT_BOOKING_URL]", "https://cal.com/asha", NA_SENTINEL.EMAIL_CAPTURE);
+    expect(edited.coachColumn).toEqual({ column: "bookingUrl", value: NA_SENTINEL.EMAIL_CAPTURE });
+    expect((edited.content as any).subheadline).toContain("using the form on this page");
+    expect(JSON.stringify(edited.content)).not.toContain("cal.com/asha"); // old URL gone from copy
+  });
+
+  it("a first answer (no prior value) behaves exactly like applyOperatorAnswer", () => {
+    const content = { subheadline: "Live on [INSERT_EVENT_DATE]." } as unknown as LandingPageContent;
+    const edited = reapplyOperatorAnswer(content, "[INSERT_EVENT_DATE]", "", "August 12");
+    expect((edited.content as any).eventSchedule.date).toBe("August 12");
+    expect((edited.content as any).subheadline).toBe("Live on August 12.");
+  });
+
+  it("deriveAnsweredOperatorFields lists answered fields with friendly current values + branches", () => {
+    const content = { eventSchedule: { date: "Aug 12", venue: NA_SENTINEL.ONLINE }, price: { amount: "500" } } as unknown as LandingPageContent;
+    const fields = deriveAnsweredOperatorFields("event_registration", content, {});
+    const byKey = Object.fromEntries(fields.map((f) => [f.token, f]));
+    expect(byKey["[INSERT_EVENT_DATE]"].current).toBe("Aug 12");
+    expect(byKey["[INSERT_EVENT_VENUE]"].current).toBe("It's online"); // sentinel → friendly label
+    expect(byKey["[INSERT_PRICE]"].current).toBe("500");
+    expect(byKey["[INSERT_PRICE]"].naBranches.map((b) => b.sentinel)).toEqual([NA_SENTINEL.FREE]); // event → free only
+    // an UNANSWERED field is not listed as editable
+    const noVenue = deriveAnsweredOperatorFields("event_registration", { eventSchedule: { date: "Aug 12" } } as any, {});
+    expect(noVenue.find((f) => f.token === "[INSERT_EVENT_VENUE]")).toBeUndefined();
   });
 });

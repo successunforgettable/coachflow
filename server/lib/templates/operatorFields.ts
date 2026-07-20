@@ -478,3 +478,94 @@ export function deriveOperatorQuestions(
   };
   return questions.sort((a, b) => rank(a) - rank(b));
 }
+
+// ── EDIT FLOW — "change my answer" (re-answer an already-answered operator field) ────────────────────
+// The first answer replaced the [INSERT_*] token with the value, so the token is GONE — a re-answer can't
+// find it. To CHANGE an answered field we substitute the OLD copy text → the NEW copy text (computed from
+// the old structured value + the new answer via the same resolveOperatorToken path), and re-set the
+// structured field. Same resolve path as the first answer → never a partial update, never fabrication.
+
+const FIELD_LABELS: Record<string, string> = {
+  "[INSERT_EVENT_DATE]": "Event date", "[INSERT_EVENT_TIME]": "Start time", "[INSERT_EVENT_TIMEZONE]": "Timezone",
+  "[INSERT_EVENT_VENUE]": "Location", "[INSERT_PRICE]": "Price", "[INSERT_BOOKING_URL]": "Booking",
+};
+
+/** A friendly display of a structured value/sentinel for the edit list ("__ONLINE__" → "Online"). */
+function friendlyValue(token: string, structuredValue: string): string {
+  const v = clean(structuredValue);
+  const na = OPERATOR_TOKEN_REGISTRY[token]?.na?.find((n) => n.sentinel === v);
+  return na ? na.label : v;
+}
+
+export interface AnsweredOperatorField {
+  token: string;
+  key: string;
+  label: string;
+  /** Human-readable current answer ("Dubai", "Online", "By email", "Free"). */
+  current: string;
+  /** N/A branches (chips) so the coach can re-answer as an N/A too. */
+  naBranches: { sentinel: string; label: string }[];
+}
+
+/**
+ * The operator fields this page has ALREADY answered — what the coach can re-open and change. Mirrors
+ * deriveOperatorQuestions but for ANSWERED fields (a value OR an N/A sentinel present in the structured
+ * field). Auto-fill and copy-only tokens are excluded (only the hard-hold operator facts are editable).
+ */
+export function deriveAnsweredOperatorFields(
+  pageType: string | null | undefined,
+  content: LandingPageContent | null | undefined,
+  coach: { bookingUrl?: string | null } | null | undefined,
+): AnsweredOperatorField[] {
+  const es = content?.eventSchedule ?? {};
+  const currentOf = (token: string): string => {
+    switch (token) {
+      case "[INSERT_EVENT_DATE]": return clean(es.date);
+      case "[INSERT_EVENT_TIME]": return clean(es.time);
+      case "[INSERT_EVENT_TIMEZONE]": return clean(es.timezone);
+      case "[INSERT_EVENT_VENUE]": return clean(es.venue);
+      case "[INSERT_PRICE]": return clean(content?.price?.amount);
+      case "[INSERT_BOOKING_URL]": return clean(coach?.bookingUrl);
+      default: return "";
+    }
+  };
+  const out: AnsweredOperatorField[] = [];
+  for (const token of PAGETYPE_REQUIRED_TOKENS[pageType ?? ""] ?? []) {
+    const cur = currentOf(token);
+    if (!cur) continue; // unanswered → it's a QUESTION, not an editable field
+    const spec = OPERATOR_TOKEN_REGISTRY[token];
+    // Price branches are pageType-aware (same rule as the questions): free only on events, etc.
+    let na = spec?.na ?? [];
+    if (token === "[INSERT_PRICE]") {
+      na = na.filter((n) => pageType === "event_registration" ? n.sentinel === NA_SENTINEL.FREE : pageType === "sales_page" ? n.sentinel === NA_SENTINEL.BY_APPLICATION : true);
+    }
+    out.push({
+      token, key: spec?.key ?? token, label: FIELD_LABELS[token] ?? spec?.key ?? token,
+      current: friendlyValue(token, cur), naBranches: na.map((n) => ({ sentinel: n.sentinel, label: n.label })),
+    });
+  }
+  return out;
+}
+
+/**
+ * Re-answer an already-answered field. `oldStructuredValue` is the field's CURRENT stored value/sentinel.
+ * Runs the new answer through the full resolve path (structured field + copy) AND replaces the OLD copy
+ * text with the NEW copy text across the prose (because the original token was already consumed by the
+ * first answer). No prior value → identical to a first answer. Pure; returns new content + any coach column.
+ */
+export function reapplyOperatorAnswer(
+  content: LandingPageContent,
+  token: string,
+  oldStructuredValue: string | null | undefined,
+  newAnswer: string,
+): AppliedAnswer {
+  const applied = applyOperatorAnswer(content, token, newAnswer); // re-sets the structured field (+ token no-op if already consumed)
+  const oldClean = clean(oldStructuredValue);
+  if (!oldClean) return applied; // first answer — nothing to replace
+  const oldCopy = resolveOperatorToken(token, oldClean).copy.text;
+  const newCopy = applied.resolution.copy.text;
+  if (oldCopy && oldCopy !== newCopy) {
+    return { ...applied, content: substituteTokenDeep(applied.content, oldCopy, newCopy) };
+  }
+  return applied;
+}
