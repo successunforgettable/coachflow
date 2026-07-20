@@ -1668,8 +1668,10 @@ export default function V2Trail() {
             addLive({ type: "system-divider", text: `${stepDef.revealLabel} — skipped (imported)` });
           } catch { /* non-fatal */ }
           await trailState.refetch();
+          continue; // ADVANCE to the next node — skip marks it imported, so do NOT re-present it. (The
+          // shared `return` below re-entered the driver and re-dealt THIS node = the ad-copy loop.)
         }
-        return; // re-enter the manual loop: node is still pending on "Try again"
+        return; // "Try again" only → re-enter the manual loop to retry THIS node cleanly (never bounce)
       }
 
       const deckReveal = getRevealLine(stepDef.step);
