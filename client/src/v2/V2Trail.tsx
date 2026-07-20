@@ -191,6 +191,10 @@ export default function V2Trail() {
   const appendMessages = trpc.trail.appendMessages.useMutation();
   // Sprint 4 C1: manual crown write (the proven wizard mutation)
   const updateSelection = trpc.campaignKits.updateSelection.useMutation();
+  // Angle-picker persistence (P2 fix): the publisher reads landingPages.activeAngle and the offer cascade
+  // reads offers.activeAngle — a picked angle MUST write these, or the chosen angle is lost (default ships).
+  const updateLpAngle = trpc.landingPages.updateActiveAngle.useMutation();
+  const updateOfferAngle = trpc.offers.updateActiveAngle.useMutation();
   // Sprint 4 C3: quota status for deal-more chips
   const quotaStatus = trpc.trail.getQuotaStatus.useQuery();
   // Sprint 4 C4: skip/import
@@ -787,6 +791,35 @@ export default function V2Trail() {
 
     const oldValue = kit[stepDef.field];
 
+    // ── Angle-picker nodes (offer / landing page) ── the "cards" are ANGLES of ONE row, not separate
+    // rows. Persist the ROW id to the selected*Id field AND the chosen ANGLE (the publisher reads
+    // landingPages.activeAngle; the offer cascade reads offers.activeAngle). The generic path below would
+    // write the synthetic card id and lose the angle — the selectedLandingPageAngle=NULL data-loss bug.
+    const pickedCard = deckMsg?.deck?.cards?.find(c => c.id === cardId);
+    const angleKey = pickedCard?.angleKey;
+    if (angleKey && (nodeKey === "offer" || nodeKey === "landingPage")) {
+      const rowId = Math.floor(cardId / 100); // id was rowId*100+i
+      try {
+        if (nodeKey === "landingPage") {
+          await updateLpAngle.mutateAsync({ id: rowId, activeAngle: angleKey as "original" | "godfather" | "free" | "dollar" });
+          await updateSelection.mutateAsync({ kitId, selectedLandingPageId: rowId, selectedLandingPageAngle: angleKey } as any);
+        } else {
+          await updateOfferAngle.mutateAsync({ id: rowId, activeAngle: angleKey as "godfather" | "free" | "dollar" });
+          await updateSelection.mutateAsync({ kitId, selectedOfferId: rowId } as any);
+        }
+      } catch (err) {
+        console.warn("[handleDeckSelect] angle persist failed:", err);
+        return;
+      }
+      const markPick = (m: ChatMessage): ChatMessage =>
+        m.id === messageId && m.deck
+          ? { ...m, deck: { cards: m.deck.cards.map(c => ({ ...c, selected: c.id === cardId })) } }
+          : m;
+      setLive(prev => prev.map(markPick));
+      setPersisted(prev => prev ? prev.map(markPick) : prev);
+      return;
+    }
+
     // Write the crown
     try {
       await updateSelection.mutateAsync({ kitId, [stepDef.field]: cardId } as any);
@@ -1348,9 +1381,13 @@ export default function V2Trail() {
           { key: "freeAngle", label: "Free" },
           { key: "dollarAngle", label: "Dollar" },
         ];
+        // UNIQUE id per angle card (rowId*100+i) so single-select marks ONE card, not all (they used to
+        // share `offerId`). The row id is recoverable as Math.floor(id/100) in the select handler.
+        const offerActive = String((o as Record<string, unknown>).activeAngle ?? "godfather");
         return angles.filter(a => o[a.key] != null).map((a, i) => {
           const angle = parseMaybeJson(o[a.key]);
-          return { id: offerId, title: `${a.label}: ${String(angle?.offerName ?? "Offer")}`, preview: String(angle?.valueProposition ?? "").slice(0, 120), selected: i === 0 };
+          const angleKey = a.key.replace("Angle", ""); // godfather | free | dollar
+          return { id: offerId * 100 + i, angleKey, title: `${a.label}: ${String(angle?.offerName ?? "Offer")}`, preview: String(angle?.valueProposition ?? "").slice(0, 120), selected: angleKey === offerActive };
         });
       }
       case "lpAngles": {
@@ -1363,9 +1400,13 @@ export default function V2Trail() {
           { key: "freeAngle", label: "Free" },
           { key: "dollarAngle", label: "Dollar" },
         ];
+        // UNIQUE id per angle card (rowId*100+i) so single-select marks ONE card, not all (they used to
+        // share `lpId`, so every card showed "✓ Selected" and the chosen angle was lost).
+        const lpActive = String((lp as Record<string, unknown>).activeAngle ?? "original");
         return angles.filter(a => lp[a.key] != null).map((a, i) => {
           const angle = parseMaybeJson(lp[a.key]);
-          return { id: lpId, title: `${a.label}: ${String(angle?.mainHeadline ?? "Landing Page")}`, preview: String(angle?.subheadline ?? "").slice(0, 120), selected: i === 0 };
+          const angleKey = a.key.replace("Angle", ""); // original | godfather | free | dollar
+          return { id: lpId * 100 + i, angleKey, title: `${a.label}: ${String(angle?.mainHeadline ?? "Landing Page")}`, preview: String(angle?.subheadline ?? "").slice(0, 120), selected: angleKey === lpActive };
         });
       }
     }

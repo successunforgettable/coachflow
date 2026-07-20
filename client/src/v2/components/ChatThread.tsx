@@ -83,7 +83,7 @@ export interface ChatMessage {
   /** Asset reveal card data (structural shell) */
   reveal?: { eyebrow: string; title: string; preview: string; score?: number; sections?: { label: string; content: string }[] };
   /** Card deck data (structural shell) */
-  deck?: { cards: { id: number; title: string; preview: string; selected?: boolean; favouritable?: boolean; favourited?: boolean }[] };
+  deck?: { cards: { id: number; title: string; preview: string; selected?: boolean; favouritable?: boolean; favourited?: boolean; angleKey?: string }[] };
   /** Milestone badge data */
   milestone?: { name: string; line: string };
   /** Currently selected chips in a multi-select chip-row */
