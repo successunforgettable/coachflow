@@ -121,14 +121,50 @@ templates are done (5/5 live), the wizard is the remaining work. Hold TS 35 / vi
   reorder (move the `adCreatives` entry up to after `adCopy`). ad-images depend on headline+ad-copy only
   (both done by then), so it's safe. Needs a browser pass to confirm the wizard flow.
 
-### 🧭 WIZARD FLOW-REWORK — PROPOSED, awaiting decision (P3+ items are DOWNSTREAM of this)
-Two structural problems Arfeen surfaced: **(A)** operator facts (date/price/venue/booking) are captured at
-the END (the Kit "finish your page" intake), AFTER LP/email/whatsapp generate → generation runs on
-hardcoded `sequenceLength:3` + `[INSERT_*]` placeholders, patched later. **(B)** generative nodes generate
-+ advance WITHOUT showing the coach the real asset (LP node shows angle HEADLINES not the page; email/
-WhatsApp show a summary "full detail in Kit"; only ad-images shows the true artifact) → the wizard is "Auto
-Mode with extra clicks," defeating its purpose (CONTROL). **Proposed (wizard-only, Auto Mode unchanged):**
-facts captured UPFRONT (before the generation nodes) + every node shows its REAL output with approve/
-regenerate. This also kills Atlanta at the source (generator HAS the venue), enables email/WA
-auto-derive-from-date, and absorbs the July-18 "LP never shown" + picker-visibility bugs. **All P3/P4/P5
-build items HELD pending this flow decision.**
+### 🧭 WIZARD FLOW-REWORK — FULL PROPOSAL (awaiting build decision; P3+ items are DOWNSTREAM of this)
+
+Two structural problems Arfeen surfaced — the same conversation (the shape of the wizard flow):
+
+**PROBLEM A — operator facts captured too LATE.** Date/time/price/venue/booking are captured in the intake
+(the Kit "finish your page" surface) AFTER LP + email + WhatsApp generate. But sequence length depends on
+the event date, and copy depends on venue/price → generation runs on hardcoded guesses (`sequenceLength:3`,
+`orchestration.ts:~500`) + `[INSERT_*]` placeholders, then patches after. The date arrives too late to
+inform what needs it.
+
+**PROBLEM B — generated assets never shown AT the node.** Each generative node generates, marks complete,
+advances — without showing the coach the real output. Current map:
+- Offer / Method / Lead-magnet / Headlines / Ad-Copy → a deck of **short/truncated previews** (pick + tweak) — partial review.
+- **Landing Page → angle HEADLINE cards, NEVER the rendered page** (the July-18 bug is this exact instance).
+- **Email / WhatsApp → a summary reveal card ("full detail in your Kit")** — no real content, no regen.
+- **Ad Images → the only node that shows the true artifact** (but runs LAST).
+The real asset only appears in the Kit — too late to react. The wizard's whole point is CONTROL; without
+in-node review it's "Auto Mode with extra clicks."
+
+**PROPOSED FLOW (wizard-only):** facts captured UPFRONT + every node shows its REAL asset with
+approve/regenerate. Reordered sequence:
+`[CAMPAIGN FACTS] → Offer → Method → Lead-Magnet → Headlines → Ad-Copy → Ad-Images(after copy) →
+Landing Page(show the page) → Email → WhatsApp`.
+
+**AUTO MODE — confirmed NOT broken.** Both changes are WIZARD-ONLY and REUSE the same machinery (the
+operator-token registry + resolveOperatorToken + the review surface). Auto Mode keeps generate-first-
+backfill (one line → cascade → hold gaps → finish-your-page) — a blank-slate coach gives no facts upfront
+and has no nodes to review. This is exactly the locked three-tier model (Auto asks nothing · wizard asks
+upfront · in-context at review). The Auto cascade is untouched.
+
+**ABSORBS OTHER BUGS:** (A) kills Atlanta at the SOURCE (generator has the venue → never invents; P1's
+token-constraint becomes the Auto-Mode safety net) + enables email/WA auto-derive-from-date (P5). (B)
+absorbs the July-18 "LP never shown" + the picker-visibility issues (pick by seeing the real asset).
+
+**SCOPE (honest):** NOT a deep cascade rewrite — generators/registry/render/intake all EXIST. It's FLOW
+rework. (A) = MODERATE (move the intake to the front + plumb facts into orchestrateStep → generators,
+replacing placeholders + hardcoded length; wiring, not new generation). (B) = MODERATE→LARGE, UI-heavy
+(render each node's real asset — LP page preview, actual emails/WA messages — + Approve/Regenerate,
+extending the regen that dealable nodes already have). Not a hard launch blocker (Auto Mode is a viable
+launch path), but the wizard isn't a real wizard until this lands.
+
+### 🔒 LOCKED SEQUENCING (2026-07-20 decision)
+**Fix the WIZARD (Problems A + B) FIRST — it serves EXISTING-ASSETS coaches, the priority launch users.
+Auto Mode comes AFTER.** All P3/P4/P5 build items are HELD as downstream of this flow rework. Suggested
+phasing: **Phase 1** — facts-upfront + plumb into generation (A); **Phase 2** — in-node real-asset review +
+approve/regenerate per node (B); then the P3/P4/P5 items fold in (WhatsApp 3/5/7 + email length ride on
+facts-upfront; ad-images reorder is part of the new sequence; picker visual + LP-preview are part of B).
