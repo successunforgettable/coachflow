@@ -99,3 +99,36 @@ one selects ALL, and the chosen angle **never persists** → `selectedLandingPag
 Build **P1 → P2, report BOTH before P3**, then **P3 → P4 → P5**. **P1 (Atlanta) is the priority — it's the
 no-fabrication discipline breached at the one unguarded layer (generation).** No fixes are started; the
 templates are done (5/5 live), the wizard is the remaining work. Hold TS 35 / vitest 554.
+
+---
+
+## PROGRESS (2026-07-20, later) — P1 + P2 + edit-flow + ad-copy loop SHIPPED; wizard flow-rework proposed
+
+- **✅ P1 Atlanta fabrication — FIXED + verified live** (`5f0eb25`): generator LOCATION LOCK (emit
+  `[INSERT_EVENT_VENUE]`, never invent a city) + token unification + long-copy font. Regenerated event
+  LP 217 → 10 venue tokens / 0 cities; walked intake → `/p/campaign-217` venue everywhere, no Atlanta.
+- **✅ P2 picker data-loss — FIXED** (`5e6e91f`): unique id per angle card + persist `activeAngle`
+  (publisher-critical) / `offers.activeAngle`. DB-verified; **picker VISUAL still to confirm in Arfeen's
+  browser (deferred to P4).**
+- **✅ P2 edit flow — BUILT + verified live** (`d9f946c`): `reanswerOperatorField` (old→new copy sub +
+  re-set field) + "Your details — edit any" in the finish-your-page surface. Changed venue on 217 (old
+  gone) + **closed the discovery `__EMAIL_CAPTURE__` branch** (172 URL→email-capture live).
+- **✅ Ad-copy LOOP — FIXED + shipped** (`1d54127`): zero-cards Skip now `continue`s (advances) instead of
+  the shared `return` that re-dealt the same node. Unblocks campaign 179. Arfeen confirms in browser.
+
+### 🔧 TO-DO (confirmed, independent, dependency-safe — do anytime)
+- **Ad-Images node runs LAST; move it right after Ad-Copy** (creative flows from copy). Simple `AUTO_STEPS`
+  reorder (move the `adCreatives` entry up to after `adCopy`). ad-images depend on headline+ad-copy only
+  (both done by then), so it's safe. Needs a browser pass to confirm the wizard flow.
+
+### 🧭 WIZARD FLOW-REWORK — PROPOSED, awaiting decision (P3+ items are DOWNSTREAM of this)
+Two structural problems Arfeen surfaced: **(A)** operator facts (date/price/venue/booking) are captured at
+the END (the Kit "finish your page" intake), AFTER LP/email/whatsapp generate → generation runs on
+hardcoded `sequenceLength:3` + `[INSERT_*]` placeholders, patched later. **(B)** generative nodes generate
++ advance WITHOUT showing the coach the real asset (LP node shows angle HEADLINES not the page; email/
+WhatsApp show a summary "full detail in Kit"; only ad-images shows the true artifact) → the wizard is "Auto
+Mode with extra clicks," defeating its purpose (CONTROL). **Proposed (wizard-only, Auto Mode unchanged):**
+facts captured UPFRONT (before the generation nodes) + every node shows its REAL output with approve/
+regenerate. This also kills Atlanta at the source (generator HAS the venue), enables email/WA
+auto-derive-from-date, and absorbs the July-18 "LP never shown" + picker-visibility bugs. **All P3/P4/P5
+build items HELD pending this flow decision.**
