@@ -145,32 +145,58 @@ test.describe.serial("manual wizard — free in-person event", () => {
         record(id, l, false, `phase-1 error: ${e?.message ?? e}`);
     }
 
-    // ── PHASE 2 — drive nodes to whatsapp; ad-copy deck (A8) + no loop-to-offer (A9) ──
+    // ── PHASE 2 — deterministic per-node driver: offer → … → whatsapp (Ad Images LAST, skipped) ──
     let adCopyReached = false, adCopyDeck = false, offerAfterAdCopy = false;
     try {
-
-    // Loop: deal/accept whatever the current node offers, until whatsapp is selected (node 10 of 11).
-    // Ad Images (11) is last — we stop before it; no assertion needs it.
-    for (let i = 0; i < 120; i++) {
-      const [kit] = await dbQuery<any>("SELECT selectedWhatsAppSequenceId w, selectedAdCopyId ac FROM campaignKits WHERE id=?", [kitId]);
-      if (kit?.w) break; // whatsapp done → everything A4–A13 needs is persisted
-
-      // ad-copy node detection (the deck must be visible + selectable)
-      if (await page.getByText(/ad copy/i).first().isVisible().catch(() => false)) {
-        adCopyReached = true;
-        if (await chipVisible(page, /use this one/i)) adCopyDeck = true;
+      // waitFor(visible) then click — returns whether it acted.
+      const clickWhenVisible = async (nameRe: RegExp, ms = 90_000) => {
+        const b = page.getByRole("button", { name: nameRe, exact: false }).first();
+        const ok = await b.waitFor({ state: "visible", timeout: ms }).then(() => true).catch(() => false);
+        if (ok) await b.click().catch(() => {});
+        return ok;
+      };
+      const pollField = async (field: string, ms = 200_000) => {
+        const deadline = Date.now() + ms;
+        while (Date.now() < deadline) {
+          const [k] = await dbQuery<any>(`SELECT ${field} v FROM campaignKits WHERE id=?`, [kitId]);
+          if (k?.v) return true;
+          await page.waitForTimeout(4000);
+        }
+        return false;
+      };
+      // Dealable nodes: "Show me options" (deal) → "Use this one" (pick a card) → "Love it ✓" (accept+advance).
+      // Non-dealable (email/whatsapp): auto-generate a reveal → "Love it ✓".
+      const NODES: { field: string; dealable: boolean; adCopy?: boolean }[] = [
+        { field: "selectedOfferId", dealable: true },
+        { field: "selectedMechanismId", dealable: true },
+        { field: "selectedHvcoId", dealable: true },
+        { field: "selectedHeadlineId", dealable: true },
+        { field: "selectedAdCopyId", dealable: true, adCopy: true },
+        { field: "selectedLandingPageId", dealable: true },
+        { field: "selectedEmailSequenceId", dealable: false },
+        { field: "selectedWhatsAppSequenceId", dealable: false },
+      ];
+      for (const node of NODES) {
+        const [pre] = await dbQuery<any>(`SELECT ${node.field} v FROM campaignKits WHERE id=?`, [kitId]);
+        if (pre?.v) continue; // already done (e.g. offer on a resume)
+        if (node.dealable) {
+          // deal → deck generates (~1–2 min) → "Lock it in →" locks the default (best) selection & advances.
+          await clickWhenVisible(/show me options/i, 90_000);
+          const locked = await page.getByRole("button", { name: /lock it in/i }).first()
+            .waitFor({ state: "visible", timeout: 320_000 }).then(() => true).catch(() => false);
+          if (node.adCopy) {
+            adCopyReached = true;
+            adCopyDeck = locked; // "Lock it in →" only appears with a non-empty deck (zero-cards → "Try again")
+            const [k] = await dbQuery<any>("SELECT selectedOfferId o FROM campaignKits WHERE id=?", [kitId]);
+            offerAfterAdCopy = !k?.o; // the offer must still be selected (never re-dealt) at ad-copy time
+          }
+          await clickWhenVisible(/lock it in/i, 5_000);
+        } else {
+          // non-dealable (email/whatsapp): auto-generate a reveal → "Love it ✓" accepts & advances.
+          await clickWhenVisible(/love it/i, 320_000);
+        }
+        await pollField(node.field, 320_000); // wait for this node to persist before the next
       }
-      if (adCopyReached && kit?.ac && await page.getByText(/your offer|^offer$/i).first().isVisible().catch(() => false)) {
-        offerAfterAdCopy = true;
-      }
-
-      // advance: deal a dealable node, pick a card, or accept a reveal
-      let acted = false;
-      for (const label of [/show me options/i, /use this one/i, /love it/i, /use this & continue/i, /looks good/i]) {
-        if (await chipVisible(page, label)) { await clickChip(page, label, 30_000).catch(() => {}); acted = true; break; }
-      }
-      if (!acted) await page.waitForTimeout(5000); // generation window
-    }
 
       record("A8", "ad-copy node renders a visible selectable deck", adCopyReached && adCopyDeck,
         adCopyReached ? (adCopyDeck ? "deck shown" : "0 selectable cards") : "ad-copy node not reached");

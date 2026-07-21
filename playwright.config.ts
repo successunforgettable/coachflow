@@ -20,7 +20,7 @@ export default defineConfig({
   testDir: "./e2e",
   // A full manual campaign is 11 LLM-generated nodes — minutes, not seconds. Generous, serial, no retries
   // (a flaky retry would hide a real intermittent bug the harness exists to catch).
-  timeout: 15 * 60 * 1000,
+  timeout: 55 * 60 * 1000,
   expect: { timeout: 90 * 1000 },
   fullyParallel: false,
   workers: 1,
