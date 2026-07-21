@@ -194,7 +194,7 @@ export async function runOrchestrationStep(
   onProgress?: (label: string) => Promise<void> | void,
 ): Promise<OrchestrationStepRunResult> {
   const { getDb } = await import("../db");
-  const { users, campaignKits, services, heroMechanisms, hvcoTitles, headlines, adCopy, idealCustomerProfiles, landingPages } =
+  const { users, campaignKits, services, heroMechanisms, hvcoTitles, headlines, adCopy, idealCustomerProfiles, landingPages, offers } =
     await import("../../drizzle/schema");
   const { eq, and, asc } = await import("drizzle-orm");
   const { autoSelectBest } = await import("../routers/campaignKits");
@@ -278,6 +278,28 @@ export async function runOrchestrationStep(
         offerType: "premium", // matches V2 wizard ADVANCED default at L168
       });
       generatedId = offerId;
+      // Phase 1 (item 7): apply the kit's UPFRONT campaign facts to the freshly-generated offer, exactly as
+      // the landingPage case does — deterministic token substitution via applyOperatorAnswer (NOT a generator
+      // prompt change). The offer generator emits [INSERT_PRICE] verbatim when no price is supplied; here we
+      // fill it with the coach's real answer (a number, or "free" for a __FREE__ event) so the offer carries
+      // the real price/date instead of a placeholder or a first-pass fabrication.
+      const offerFactAnswers = factsToTokenAnswers(kit?.campaignFacts);
+      if (offerFactAnswers.length > 0) {
+        const [offerRow] = await db.select().from(offers).where(eq(offers.id, offerId)).limit(1);
+        if (offerRow) {
+          const offerAngleCols = ["godfatherAngle", "freeAngle", "dollarAngle"] as const;
+          const offerUpdate: Record<string, unknown> = {};
+          for (const col of offerAngleCols) {
+            let angle = (offerRow as Record<string, any>)[col];
+            if (!angle) continue;
+            for (const fa of offerFactAnswers) angle = applyOperatorAnswer(angle, fa.token, fa.value).content;
+            offerUpdate[col] = angle;
+          }
+          if (Object.keys(offerUpdate).length > 0) {
+            await db.update(offers).set(offerUpdate as any).where(eq(offers.id, offerId));
+          }
+        }
+      }
       break;
     }
     case "mechanism": {

@@ -86,57 +86,68 @@ test.describe.serial("manual wizard — free in-person event", () => {
     await page.close().catch(() => {});
   });
 
-  test("guard — TEST_OPENID set", () => {
-    record("A0", "TEST_OPENID provided", !!TEST_OPENID, TEST_OPENID ? "set" : "MISSING");
-  });
-
-  test("intake → facts step (A1–A3)", async () => {
+  // ONE test — all 13 assertions run in a single serial flow (soft-recorded), so the full table always
+  // prints even under heavy red. Each phase is guarded so a driver error in one doesn't abort the rest.
+  test("full manual free-event campaign (A0–A13)", async () => {
     test.skip(!TEST_OPENID, "no TEST_OPENID");
-    await page.goto("/v2-dashboard/trail/new");
+    record("A0", "TEST_OPENID provided", !!TEST_OPENID, "set");
 
-    // business description → the free-text chat input
-    const box = page.getByRole("textbox").first();
-    await box.waitFor({ state: "visible", timeout: 30_000 });
-    await box.fill(BUSINESS);
-    await box.press("Enter");
+    // ── PHASE 1 — intake + facts step (A1–A3) ──
+    try {
+      await page.goto("/v2-dashboard/trail/new");
+      const box = page.getByRole("textbox").first();
+      await box.waitFor({ state: "visible", timeout: 30_000 });
+      await box.fill(BUSINESS);
+      await box.press("Enter");
 
-    await clickChip(page, "That's me");        // confirm the "WHAT I HEARD" reflection
-    await clickChip(page, "Live event");        // campaign type
-    await clickChip(page, "I'll pick as we go"); // manual fork → ICP job (~2 min) then testimonial picker
-    await clickChip(page, /Skip — I don't have testimonials|Skip/); // waits out the ICP, then skips
+      await clickChip(page, "That's me");
+      await clickChip(page, "Live event");
+      await clickChip(page, "I'll pick as we go");
 
-    // kit created + navigated
-    await page.waitForURL(/\/v2-dashboard\/trail\/\d+/, { timeout: 240_000 });
-    kitId = Number(page.url().match(/\/trail\/(\d+)/)?.[1] ?? 0);
+      await page.waitForURL(/\/v2-dashboard\/trail\/\d+/, { timeout: 300_000 });
+      kitId = Number(page.url().match(/\/trail\/(\d+)/)?.[1] ?? 0);
 
-    // ── FACTS STEP ──
-    // A1 — DATE: a real native date-picker (Batch A). Committed HEAD shows a free-text box → red.
-    const dateInput = page.locator('input[type="date"]');
-    const a1 = await dateInput.first().isVisible({ timeout: 60_000 }).catch(() => false);
-    record("A1", "facts DATE renders a real date-picker", a1, a1 ? "input[type=date] present" : "no date picker (free-text)");
-    if (a1) { await dateInput.first().fill(EVENT_DATE_ISO); await clickChip(page, "Confirm", 30_000); }
+      await page.getByText(/client testimonials/i).first().waitFor({ state: "visible", timeout: 300_000 });
+      await clickChip(page, "Skip — I don't have testimonials", 30_000);
+      await page.getByText(/quick detail|when.?s your event|before i build/i).first().waitFor({ state: "visible", timeout: 60_000 });
 
-    // A2 — VENUE: Online / In-person chips + a place field.
-    const onlineChip = await chipVisible(page, /online/i);
-    const inPersonChip = await chipVisible(page, /in person/i);
-    record("A2", "facts VENUE renders Online/In-person chips + place field", onlineChip && inPersonChip,
-      onlineChip && inPersonChip ? "chips present" : "venue is free-text, not chips");
-    if (inPersonChip) {
-      await clickChip(page, /in person/i, 30_000);
-      const placeInput = page.locator('input[placeholder="Venue name & city"]');
-      await placeInput.first().fill(VENUE);
-      await clickChip(page, "Confirm", 30_000);
+      // isVisible() is a NON-waiting snapshot; use waitFor(visible) to actually wait for async re-renders.
+      const waitVisible = (loc: import("@playwright/test").Locator, ms = 30_000) =>
+        loc.waitFor({ state: "visible", timeout: ms }).then(() => true).catch(() => false);
+
+      // A1 — DATE picker (Batch A). Wait for it, then fill + confirm.
+      const dateInput = page.locator('input[type="date"]').first();
+      const a1 = await waitVisible(dateInput);
+      record("A1", "facts DATE renders a real date-picker", a1, a1 ? "input[type=date] present" : "no date picker (free-text)");
+      if (a1) { await dateInput.fill(EVENT_DATE_ISO); await clickChip(page, "Confirm", 30_000); }
+
+      // A2 — VENUE: WAIT for the venue step to render (it appears after the date confirm), then assert chips.
+      const inPersonBtn = page.getByRole("button", { name: /in person/i }).first();
+      const a2 = await waitVisible(inPersonBtn);
+      const onlineVisible = await waitVisible(page.getByRole("button", { name: /online/i }).first(), 5_000);
+      record("A2", "facts VENUE renders Online/In-person chips + place field", a2 && onlineVisible,
+        a2 && onlineVisible ? "chips present" : "venue is free-text, not chips");
+      if (a2) {
+        await inPersonBtn.click();
+        const place = page.locator('input[placeholder="Venue name & city"]').first();
+        await waitVisible(place);
+        await place.fill(VENUE);
+        await clickChip(page, "Confirm", 30_000);
+      }
+
+      // A3 — PRICE: WAIT for the price step, then assert the Free chip.
+      const freeBtn = page.getByRole("button", { name: /it.?s free/i }).first();
+      const a3 = await waitVisible(freeBtn);
+      record("A3", "facts PRICE renders Free/By-application chips", a3, a3 ? "Free chip present" : "price is free-text");
+      if (a3) await freeBtn.click();
+    } catch (e: any) {
+      for (const [id, l] of [["A1", "facts DATE renders a real date-picker"], ["A2", "facts VENUE renders Online/In-person chips + place field"], ["A3", "facts PRICE renders Free/By-application chips"]] as const)
+        record(id, l, false, `phase-1 error: ${e?.message ?? e}`);
     }
 
-    // A3 — PRICE: Free chip (event) present, not free text.
-    const freeChip = await chipVisible(page, /free/i);
-    record("A3", "facts PRICE renders Free/By-application chips", freeChip, freeChip ? "Free chip present" : "price is free-text");
-    if (freeChip) await clickChip(page, /it.?s free|free/i, 30_000);
-  });
-
-  test("drive nodes to whatsapp; ad-copy deck (A8) + no loop-to-offer (A9)", async () => {
-    test.skip(!TEST_OPENID || !kitId, "intake didn't reach the wizard");
+    // ── PHASE 2 — drive nodes to whatsapp; ad-copy deck (A8) + no loop-to-offer (A9) ──
     let adCopyReached = false, adCopyDeck = false, offerAfterAdCopy = false;
+    try {
 
     // Loop: deal/accept whatever the current node offers, until whatsapp is selected (node 10 of 11).
     // Ad Images (11) is last — we stop before it; no assertion needs it.
@@ -161,20 +172,24 @@ test.describe.serial("manual wizard — free in-person event", () => {
       if (!acted) await page.waitForTimeout(5000); // generation window
     }
 
-    record("A8", "ad-copy node renders a visible selectable deck", adCopyReached && adCopyDeck,
-      adCopyReached ? (adCopyDeck ? "deck shown" : "0 selectable cards") : "ad-copy node not reached");
-    record("A9", "ad-copy failure does not loop back to offer", adCopyReached && !offerAfterAdCopy,
-      adCopyReached ? (offerAfterAdCopy ? "offer re-entered" : "no offer re-entry") : "ad-copy node not reached");
-  });
+      record("A8", "ad-copy node renders a visible selectable deck", adCopyReached && adCopyDeck,
+        adCopyReached ? (adCopyDeck ? "deck shown" : "0 selectable cards") : "ad-copy node not reached");
+      record("A9", "ad-copy failure does not loop back to offer", adCopyReached && !offerAfterAdCopy,
+        adCopyReached ? (offerAfterAdCopy ? "offer re-entered" : "no offer re-entry") : "ad-copy node not reached");
+    } catch (e: any) {
+      record("A8", "ad-copy node renders a visible selectable deck", false, `phase-2 error: ${e?.message ?? e}`);
+      record("A9", "ad-copy failure does not loop back to offer", false, `phase-2 error: ${e?.message ?? e}`);
+    }
 
-  test("assert persisted assets (A4–A7, A10–A13)", async () => {
-    test.skip(!TEST_OPENID || !kitId, "no kit");
+    // ── PHASE 3 — assert persisted assets (A4–A7, A10–A13) ──
+    try {
     const [kit] = await dbQuery<any>("SELECT * FROM campaignKits WHERE id=?", [kitId]);
     const facts = typeof kit?.campaignFacts === "string" ? JSON.parse(kit.campaignFacts) : (kit?.campaignFacts ?? {});
     const [lp] = kit?.selectedLandingPageId ? await dbQuery<any>("SELECT * FROM landingPages WHERE id=?", [kit.selectedLandingPageId]) : [null];
     const [wa] = kit?.selectedWhatsAppSequenceId ? await dbQuery<any>("SELECT * FROM whatsappSequences WHERE id=?", [kit.selectedWhatsAppSequenceId]) : [null];
     const [offer] = kit?.selectedOfferId ? await dbQuery<any>("SELECT * FROM offers WHERE id=?", [kit.selectedOfferId]) : [null];
-    const lpContent = lp ? (typeof lp.content === "string" ? lp.content : JSON.stringify(lp.content)) : "";
+    // The LP's copy lives across the four angle columns (no single `content` column).
+    const lpContent = lp ? ["originalAngle", "godfatherAngle", "freeAngle", "dollarAngle"].map((c) => typeof lp[c] === "string" ? lp[c] : JSON.stringify(lp[c] ?? "")).join(" ") : "";
     const offerText = offer ? JSON.stringify(offer) : "";
 
     // A4 — WhatsApp length reflects the (far-future) date → 7, not the hardcoded 3.
@@ -220,9 +235,12 @@ test.describe.serial("manual wizard — free in-person event", () => {
       offer ? (figs.length ? `figures: ${figs.join(", ")}` : "clean") : "no offer");
 
     // A13 — readability (reported; bar TBD).
-    const headline = lp ? (() => { try { const c = JSON.parse(lpContent); return `${c.headline ?? ""} ${c.subheadline ?? ""}`; } catch { return lpContent.slice(0, 2000); } })() : "";
-    const grade = fkGrade(headline || "");
+    const grade = fkGrade(lpContent.slice(0, 3000));
     record("A13", "readability (Flesch–Kincaid) within bar", Number.isFinite(grade) && grade > 0 ? grade <= 12 : false,
       `FK grade = ${grade} (provisional bar 12)`);
+    } catch (e: any) {
+      for (const [id, l] of [["A4", "WhatsApp length"], ["A5", "Iman not Hormozi"], ["A6", "no bad venue"], ["A7", "no fabricated cities"], ["A10", "LP publish gate"], ["A11", "placeholder count 0"], ["A12", "offer no fabrication"], ["A13", "readability"]] as const)
+        record(id, l, false, `phase-3 error: ${e?.message ?? e}`);
+    }
   });
 });
