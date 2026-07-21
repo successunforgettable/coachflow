@@ -142,6 +142,14 @@ export function unansweredRequiredOperatorFields(
 export type TokenCategory = "hard-hold" | "nudge" | "auto-fill";
 /** Where the answer's structured value lands. copy-only = no structured field, prose substitution only. */
 export type WriteScope = "content" | "coach" | "copy-only";
+/**
+ * The UI control the intake renders for a token (2026-07-22, Batch A / item 3). Structured controls make a
+ * malformed value structurally impossible: a date/time PICKER can only emit a canonical, Date.parse-able
+ * value (killing the `deriveLengthFromDate` NaN→fallback), a venue is an Online-chip-or-a-real-place, a
+ * price is a chip (Free / By-application → the sentinel, written directly) or a number. "text" is the
+ * default free-text box (booking URL, timezone, a credential line). NOT a free-text box with a format hint.
+ */
+export type OperatorInputType = "text" | "date" | "time" | "venue" | "price";
 
 export interface NaBranch {
   /** The sentinel written to the structured field (read by classifyPrice/Booking/Location). */
@@ -158,6 +166,8 @@ export interface OperatorTokenSpec {
   key: string;
   category: TokenCategory;
   scope: WriteScope;
+  /** The intake UI control (item 3). Absent → "text" (a plain free-text box). */
+  inputType?: OperatorInputType;
   /** Structured target: a dot-path in LandingPageContent (scope "content") or a users column (scope "coach"). Absent for copy-only. */
   path?: string;
   /** Zappy's one-at-a-time question (DATA for the intake tier, which is built on top of this registry). */
@@ -177,12 +187,12 @@ export interface OperatorTokenSpec {
 // generator constraint step maps/rejects them).
 export const OPERATOR_TOKEN_REGISTRY: Record<string, OperatorTokenSpec> = {
   // ── Structured, hard-hold, no N/A (a live event genuinely has a date/time/tz) ──
-  "[INSERT_EVENT_DATE]": { token: "[INSERT_EVENT_DATE]", key: "event_date", category: "hard-hold", scope: "content", path: "eventSchedule.date", question: "When's your event — what date?" },
-  "[INSERT_EVENT_TIME]": { token: "[INSERT_EVENT_TIME]", key: "event_time", category: "hard-hold", scope: "content", path: "eventSchedule.time", question: "What time does it start?" },
+  "[INSERT_EVENT_DATE]": { token: "[INSERT_EVENT_DATE]", key: "event_date", category: "hard-hold", scope: "content", inputType: "date", path: "eventSchedule.date", question: "When's your event — what date?" },
+  "[INSERT_EVENT_TIME]": { token: "[INSERT_EVENT_TIME]", key: "event_time", category: "hard-hold", scope: "content", inputType: "time", path: "eventSchedule.time", question: "What time does it start?" },
   "[INSERT_EVENT_TIMEZONE]": { token: "[INSERT_EVENT_TIMEZONE]", key: "event_timezone", category: "hard-hold", scope: "content", path: "eventSchedule.timezone", question: "Which timezone is that in?" },
   // ── Structured, hard-hold, WITH N/A first-class ──
   "[INSERT_EVENT_VENUE]": {
-    token: "[INSERT_EVENT_VENUE]", key: "event_location", category: "hard-hold", scope: "content", path: "eventSchedule.venue",
+    token: "[INSERT_EVENT_VENUE]", key: "event_location", category: "hard-hold", scope: "content", inputType: "venue", path: "eventSchedule.venue",
     question: "Is it in person or online? If in person, where?",
     na: [{ sentinel: NA_SENTINEL.ONLINE, label: "It's online", copyText: "online" }],
   },
@@ -192,13 +202,17 @@ export const OPERATOR_TOKEN_REGISTRY: Record<string, OperatorTokenSpec> = {
     na: [{ sentinel: NA_SENTINEL.EMAIL_CAPTURE, label: "By email", copyText: "using the form on this page" }],
   },
   "[INSERT_PRICE]": {
-    token: "[INSERT_PRICE]", key: "price", category: "hard-hold", scope: "content", path: "price.amount",
+    token: "[INSERT_PRICE]", key: "price", category: "hard-hold", scope: "content", inputType: "price", path: "price.amount",
     question: "What's the price — a set amount, free, or by application?",
     na: [
       { sentinel: NA_SENTINEL.FREE, label: "It's free", copyText: "free" },
       { sentinel: NA_SENTINEL.BY_APPLICATION, label: "By application", copyText: "by application" },
     ],
   },
+  // ── Copy-only, hard-hold: the coach's headline credential line (2026-07-22, registered in Batch A so
+  // Way 2's per-node copy scan (Batch C) surfaces it with a real question instead of the generic fail-safe;
+  // it does NOT change the upfront facts step — campaignFacts carry no copy, so it is never asked there). ──
+  "[INSERT_COACH_CREDENTIAL]": { token: "[INSERT_COACH_CREDENTIAL]", key: "coach_credential", category: "hard-hold", scope: "copy-only", question: "What's your headline credential — the one-line proof of why you're the person to learn this from? (e.g. “20-year executive coach”, “ex-Google product lead”)" },
   // ── Copy-only, nudge (strengthen/complete the prose; absence ships) ──
   "[INSERT_REPLAY_AVAILABILITY]": { token: "[INSERT_REPLAY_AVAILABILITY]", key: "replay", category: "nudge", scope: "copy-only", question: "Will there be a replay? (e.g. “yes, for 48 hours” or “no, live only”)", skipText: "Replay availability will be confirmed by email." },
   "[INSERT_EVENT_AGENDA]": { token: "[INSERT_EVENT_AGENDA]", key: "agenda", category: "nudge", scope: "copy-only", question: "Anything specific on the agenda you want named?" },
@@ -229,6 +243,71 @@ export interface TokenResolution {
   structured: { scope: WriteScope; path: string; value: string } | null;
   /** The prose substitution to apply — ALWAYS present (this is what clears the baked copy token). */
   copy: { token: string; text: string };
+}
+
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+/**
+ * A native `<input type="date">` value ("2026-08-28") → a human, Date.parse-able string ("August 28, 2026").
+ * The picker only ever emits ISO, so the stored/rendered date is always parseable (fixing the WhatsApp/email
+ * `deriveLengthFromDate("28th august 2026") → NaN → fallback-3` bug) AND reads naturally on the page. Any
+ * non-ISO input (a typed date the front-load parser already handled) passes through unchanged. Pure.
+ */
+export function canonicalEventDate(value: string): string {
+  const v = clean(value);
+  const m = v.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return v || value;
+  const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+  if (mo < 1 || mo > 12 || d < 1 || d > 31) return v;
+  return `${MONTH_NAMES[mo - 1]} ${d}, ${y}`;
+}
+
+/**
+ * A native `<input type="time">` value ("14:30") → a human 12-hour string ("2:30 pm"). Non-`HH:MM` passes
+ * through. Pure.
+ */
+export function canonicalEventTime(value: string): string {
+  const v = clean(value);
+  const m = v.match(/^(\d{1,2}):(\d{2})$/);
+  if (!m) return v || value;
+  const h = Number(m[1]), mm = Number(m[2]);
+  if (h > 23 || mm > 59) return v;
+  const ampm = h < 12 ? "am" : "pm";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${String(mm).padStart(2, "0")} ${ampm}`;
+}
+
+/**
+ * Normalize a captured answer to its canonical stored form BEFORE it is resolved (2026-07-22, item 2 — the
+ * safety net). Runs at the SINGLE `applyOperatorAnswer` chokepoint, so every intake path (facts step, LP
+ * intake, edit flow) gets it without per-callsite duplication. Two jobs:
+ *   (1) map a typed N/A phrase to its sentinel for the case a value still arrives as free text (the
+ *       structured chips write the sentinel directly, so this only catches a typed fallback): a PRICE of
+ *       "free"/"£0"/"no charge" → __FREE__, "by application"/"apply" → __BY_APPLICATION__; a VENUE of
+ *       "online"/"virtual" → __ONLINE__.
+ *   (2) canonicalize a picker's raw value — an ISO date / a 24h time — to a human, Date.parse-able string.
+ * A value that is already a sentinel/skip, or matches nothing, passes through untouched. Pure + idempotent.
+ */
+export function normalizeOperatorAnswer(token: string, answer: string): string {
+  const raw = clean(answer);
+  if (!raw) return answer;
+  if (raw === "__SKIP__" || /^__[A-Z_]+__$/.test(raw)) return raw; // already a sentinel/skip
+  const lc = raw.toLowerCase().replace(/[.!,\s]+$/g, "").trim();
+  if (token === "[INSERT_PRICE]") {
+    if (/^(free|no charge|no cost|complimentary|£0(?:\.0{1,2})?|\$0(?:\.0{1,2})?|0(?:\.0{1,2})?)$/.test(lc)) return NA_SENTINEL.FREE;
+    if (/^(by application|application only|on application|price on application|apply(?: only)?|poa)$/.test(lc)) return NA_SENTINEL.BY_APPLICATION;
+    return raw;
+  }
+  if (token === "[INSERT_EVENT_VENUE]") {
+    if (/^(online|virtual|remote|on ?line|via zoom|zoom|livestream|live stream)$/.test(lc)) return NA_SENTINEL.ONLINE;
+    return raw;
+  }
+  if (token === "[INSERT_EVENT_DATE]") return canonicalEventDate(raw);
+  if (token === "[INSERT_EVENT_TIME]") return canonicalEventTime(raw);
+  return raw;
 }
 
 /**
@@ -299,7 +378,9 @@ export function applyOperatorAnswer(
   token: string,
   answer: string,
 ): AppliedAnswer {
-  const resolution = resolveOperatorToken(token, answer);
+  // item 2 — the single chokepoint: normalize a typed N/A phrase to its sentinel and canonicalize a
+  // picker's raw date/time BEFORE resolving, so every caller (facts step, LP intake, edit flow) is covered.
+  const resolution = resolveOperatorToken(token, normalizeOperatorAnswer(token, answer));
   let next = substituteTokenDeep(content, resolution.copy.token, resolution.copy.text);
   let coachColumn: { column: string; value: string } | undefined;
   if (resolution.structured) {
@@ -403,6 +484,8 @@ export interface OperatorQuestion {
   question: string;
   category: TokenCategory;
   scope: WriteScope;
+  /** The UI control the intake renders (item 3). "text" for anything without a structured control. */
+  inputType: OperatorInputType;
   /** N/A answer-branches → the chips ("It's free" → __FREE__). Empty for fields with no N/A. */
   naBranches: { sentinel: string; label: string }[];
   /** false → not in the registry: a stray token the generator slipped through (generic "fill this in"). */
@@ -449,7 +532,7 @@ export function deriveOperatorQuestions(
     const spec = OPERATOR_TOKEN_REGISTRY[token];
     if (spec?.category === "auto-fill") continue; // never asked — filled from data ZAP already has
     if (!spec) {
-      questions.push({ token, key: token, question: `This page has a blank: what should go where it says ${token}?`, category: "nudge", scope: "copy-only", naBranches: [], known: false });
+      questions.push({ token, key: token, question: `This page has a blank: what should go where it says ${token}?`, category: "nudge", scope: "copy-only", inputType: "text", naBranches: [], known: false });
       continue;
     }
     // Price branches are pageType-aware: "It's free" only where free is a real answer (an event — a free
@@ -465,6 +548,7 @@ export function deriveOperatorQuestions(
     }
     questions.push({
       token, key: spec.key, question: spec.question, category: spec.category, scope: spec.scope,
+      inputType: spec.inputType ?? "text",
       naBranches: na.map((n) => ({ sentinel: n.sentinel, label: n.label })), known: true,
     });
   }
@@ -503,6 +587,8 @@ export interface AnsweredOperatorField {
   label: string;
   /** Human-readable current answer ("Dubai", "Online", "By email", "Free"). */
   current: string;
+  /** The UI control the edit surface renders (item 3) — so editing later matches the intake control. */
+  inputType: OperatorInputType;
   /** N/A branches (chips) so the coach can re-answer as an N/A too. */
   naBranches: { sentinel: string; label: string }[];
 }
@@ -541,7 +627,8 @@ export function deriveAnsweredOperatorFields(
     }
     out.push({
       token, key: spec?.key ?? token, label: FIELD_LABELS[token] ?? spec?.key ?? token,
-      current: friendlyValue(token, cur), naBranches: na.map((n) => ({ sentinel: n.sentinel, label: n.label })),
+      current: friendlyValue(token, cur), inputType: spec?.inputType ?? "text",
+      naBranches: na.map((n) => ({ sentinel: n.sentinel, label: n.label })),
     });
   }
   return out;

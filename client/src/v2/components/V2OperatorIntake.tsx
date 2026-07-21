@@ -13,12 +13,15 @@ import { useEffect, useRef, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import ChatThread, { type ChatMessage } from "./ChatThread";
 
+type OperatorInputType = "text" | "date" | "time" | "venue" | "price";
+
 interface OperatorQuestion {
   token: string;
   key: string;
   question: string;
   category: "hard-hold" | "nudge" | "auto-fill";
   scope: "content" | "coach" | "copy-only";
+  inputType?: OperatorInputType;
   naBranches: { sentinel: string; label: string }[];
   known: boolean;
 }
@@ -28,6 +31,7 @@ interface AnsweredField {
   key: string;
   label: string;
   current: string;
+  inputType?: OperatorInputType;
   naBranches: { sentinel: string; label: string }[];
 }
 
@@ -87,8 +91,16 @@ export default function V2OperatorIntake({
       ? `Last one — ${q.question}`
       : `${remaining} more — ${q.question}`;
     push({ type: "zappy-bubble", mood: "idle", text: prefix });
-    const chips = [...q.naBranches.map((b) => b.label), ...(q.category === "nudge" ? ["Skip"] : [])];
-    if (chips.length) push({ type: "chip-row", chips });
+    const inputType = q.inputType ?? "text";
+    if (inputType === "text") {
+      // Free-text field → the N/A chips + the bottom text bar (existing behaviour).
+      const chips = [...q.naBranches.map((b) => b.label), ...(q.category === "nudge" ? ["Skip"] : [])];
+      if (chips.length) push({ type: "chip-row", chips });
+    } else {
+      // Structured control (date/time picker, venue chip-or-place, price chip-or-number) — the malformed
+      // value is structurally impossible; its own chips carry the N/A branches, so no separate chip-row.
+      push({ type: "structured-input", operatorInput: { token: q.token, inputType, naBranches: q.naBranches } });
+    }
   };
 
   useEffect(() => {
@@ -148,6 +160,14 @@ export default function V2OperatorIntake({
     const branch = current.naBranches.find((b) => b.label === chip);
     if (branch) void submit(current.token, branch.sentinel, chip);
   };
+  // A structured control (picker / venue / price) resolved — remove its message so it can't be re-submitted,
+  // then route the canonical value through the same answer path.
+  const onStructuredSubmit = (messageId: string, token: string, value: string, echo: string) => {
+    setMessages((prev) => prev.filter((m) => m.id !== messageId));
+    void submit(token, value, echo);
+  };
+  // The bottom free-text bar is for "text" questions only — a structured question must use its inline control.
+  const textBarActive = !!current && (current.inputType ?? "text") === "text";
 
   // Success hero — the live URL is the triumph; lead with it, copy + view prominent.
   if (publishedUrl) {
@@ -195,12 +215,16 @@ export default function V2OperatorIntake({
                   <div>
                     <div style={{ fontSize: 13, color: "#64748B", marginBottom: 6 }}>{f.label}</div>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                      {/* Same control as the intake (item 3): a date/time picker or a price number field
+                          guarantees a canonical value; venue's place-name + Online chip come from naBranches. */}
                       <input
                         autoFocus
+                        type={f.inputType === "date" ? "date" : f.inputType === "time" ? "time" : f.inputType === "price" ? "number" : "text"}
+                        {...(f.inputType === "price" ? { min: "0", inputMode: "numeric" as const } : {})}
                         value={editValue}
                         onChange={(e) => setEditValue(e.target.value)}
                         onKeyDown={(e) => { if (e.key === "Enter" && editValue.trim() && !busy) void saveEdit(f.token, editValue.trim()); }}
-                        placeholder={`New ${f.label.toLowerCase()}…`}
+                        placeholder={f.inputType === "venue" ? "Venue name & city" : f.inputType === "price" ? "Amount" : `New ${f.label.toLowerCase()}…`}
                         style={{ flex: "1 1 180px", padding: "9px 12px", border: "1px solid #CBD5E1", borderRadius: 8, fontFamily: "var(--v2-font-body, sans-serif)", fontSize: 14 }}
                       />
                       <button type="button" disabled={busy || !editValue.trim()} onClick={() => void saveEdit(f.token, editValue.trim())} style={{ padding: "9px 18px", borderRadius: 9999, background: "var(--v2-primary-btn, #FF5B1D)", color: "#fff", border: 0, fontWeight: 700, fontSize: 13, cursor: "pointer", opacity: busy || !editValue.trim() ? 0.5 : 1 }}>Save</button>
@@ -235,9 +259,10 @@ export default function V2OperatorIntake({
     <ChatThread
       messages={messages}
       onChipTap={onChipTap}
-      onSendText={current ? onSendText : undefined}
-      inputPlaceholder={current ? "Type your answer…" : "…"}
-      inputDisabled={busy || !current}
+      onStructuredSubmit={onStructuredSubmit}
+      onSendText={textBarActive ? onSendText : undefined}
+      inputPlaceholder={textBarActive ? "Type your answer…" : "…"}
+      inputDisabled={busy || !textBarActive}
     />
   );
 }

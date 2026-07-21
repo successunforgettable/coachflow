@@ -67,7 +67,11 @@ export type ChatMessageType =
   | "style-chooser"
   | "testimonial-picker"
   | "quick-fill-card"
-  | "file-upload";
+  | "file-upload"
+  | "structured-input";
+
+/** The intake control a structured-input message renders (Batch A / item 3 — mirrors the server registry). */
+export type OperatorInputType = "text" | "date" | "time" | "venue" | "price";
 
 export interface ChatMessage {
   id: string;
@@ -96,6 +100,8 @@ export interface ChatMessage {
   testimonialPicker?: { serviceId: number; mode: "campaign" | "standalone" };
   /** Quick-fill card: serviceId + campaign type (drives the conversion-link label) */
   quickFill?: { serviceId: number; campaignType?: string };
+  /** Structured-input message (Batch A / item 3): the operator token + its control + N/A chip branches. */
+  operatorInput?: { token: string; inputType: OperatorInputType; naBranches: { sentinel: string; label: string }[] };
 }
 
 export type StyleChooseCallback = (messageId: string, style: string) => void;
@@ -113,6 +119,13 @@ export interface ChatThreadProps {
   onQuickFillDone?: (messageId: string, action: "saved" | "skip") => void;
   /** File upload handler — called when user selects files from the file-upload message */
   onFileSelect?: (messageId: string, files: FileList) => void;
+  /**
+   * Structured-input submit (Batch A / item 3) — a date/time picker, a venue chip-or-place, or a price
+   * chip-or-number resolves here. `value` is the canonical answer (an ISO date, an HH:MM time, a sentinel,
+   * or a number) the server normalizes; `echo` is the friendly user-bubble text. The consumer removes the
+   * message and routes `value` through its normal answer path.
+   */
+  onStructuredSubmit?: (messageId: string, token: string, value: string, echo: string) => void;
   /** Ref map for TrailBar scroll-to-node */
   nodeRefMap?: React.MutableRefObject<Map<string, HTMLDivElement>>;
   /**
@@ -673,8 +686,102 @@ function SystemDivider({ msg }: { msg: ChatMessage }) {
   );
 }
 
+// ─── Structured operator input (Batch A / item 3) ─────────────────────────────
+// A date/time PICKER, a venue (Online chip OR a real place), or a price (Free / By-application chip OR a
+// number) — so a malformed value ("28th august 2026", "in person" as the venue) is structurally impossible
+// to submit. The picker's raw value (ISO date / HH:MM time / sentinel / number) is the `value`; the friendly
+// `echo` is only the chat bubble text. The server canonicalizes `value`.
+const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+function humanDate(iso: string): string {
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? `${MONTHS_SHORT[Number(m[2]) - 1]} ${Number(m[3])}, ${m[1]}` : iso;
+}
+function humanTime(hhmm: string): string {
+  const m = hhmm.match(/^(\d{1,2}):(\d{2})$/);
+  if (!m) return hhmm;
+  const h = Number(m[1]);
+  const ampm = h < 12 ? "am" : "pm";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${m[2]} ${ampm}`;
+}
+
+function StructuredInput({ msg, onSubmit }: { msg: ChatMessage; onSubmit: (token: string, value: string, echo: string) => void }) {
+  const [val, setVal] = useState("");
+  const [venueMode, setVenueMode] = useState<"choose" | "place">("choose");
+  const oi = msg.operatorInput;
+  if (!oi) return null;
+  const { token, inputType, naBranches } = oi;
+
+  const fieldStyle: React.CSSProperties = {
+    border: "1.5px solid #D1D5DB", borderRadius: 10, padding: "10px 14px",
+    fontFamily: FONT_BODY, fontSize: 14, color: TEXT_COLOR, background: "white", outline: "none",
+  };
+  const confirmStyle = (enabled: boolean): React.CSSProperties => ({
+    background: BRAND_PRIMARY, color: "white", border: "none", borderRadius: 9999,
+    padding: "10px 22px", fontFamily: FONT_BODY, fontSize: 13, fontWeight: 600,
+    cursor: enabled ? "pointer" : "not-allowed", opacity: enabled ? 1 : 0.5,
+  });
+  const chipStyle: React.CSSProperties = {
+    background: "white", border: `1.5px solid ${BRAND_PRIMARY}`, borderRadius: 9999,
+    padding: "8px 18px", fontFamily: FONT_BODY, fontSize: 13, fontWeight: 600, color: BRAND_PRIMARY, cursor: "pointer",
+  };
+  // A plain style (NOT a nested component — a component defined here would get a new identity each render and
+  // remount the input on every keystroke, stealing focus).
+  const rowStyle: React.CSSProperties = { paddingLeft: 44, display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" };
+  const naChip = (label: string, sentinel: string) => (
+    <button key={sentinel} type="button" style={chipStyle} onClick={() => onSubmit(token, sentinel, label)}>{label}</button>
+  );
+
+  if (inputType === "date") {
+    return (
+      <div style={rowStyle}>
+        <input type="date" value={val} onChange={(e) => setVal(e.target.value)} style={fieldStyle} />
+        <button type="button" disabled={!val} style={confirmStyle(!!val)} onClick={() => val && onSubmit(token, val, humanDate(val))}>Confirm</button>
+      </div>
+    );
+  }
+  if (inputType === "time") {
+    return (
+      <div style={rowStyle}>
+        <input type="time" value={val} onChange={(e) => setVal(e.target.value)} style={fieldStyle} />
+        <button type="button" disabled={!val} style={confirmStyle(!!val)} onClick={() => val && onSubmit(token, val, humanTime(val))}>Confirm</button>
+      </div>
+    );
+  }
+  if (inputType === "price") {
+    return (
+      <div style={rowStyle}>
+        {naBranches.map((b) => naChip(b.label, b.sentinel))}
+        <input type="number" min="0" inputMode="numeric" placeholder="Amount" value={val} onChange={(e) => setVal(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && val.trim()) onSubmit(token, val.trim(), val.trim()); }}
+          style={{ ...fieldStyle, width: 130 }} />
+        <button type="button" disabled={!val.trim()} style={confirmStyle(!!val.trim())} onClick={() => val.trim() && onSubmit(token, val.trim(), val.trim())}>Confirm</button>
+      </div>
+    );
+  }
+  if (inputType === "venue") {
+    if (venueMode === "choose") {
+      return (
+        <div style={rowStyle}>
+          {naBranches.map((b) => naChip(b.label, b.sentinel))}
+          <button type="button" style={chipStyle} onClick={() => setVenueMode("place")}>In person</button>
+        </div>
+      );
+    }
+    return (
+      <div style={rowStyle}>
+        <input type="text" autoFocus placeholder="Venue name & city" value={val} onChange={(e) => setVal(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && val.trim()) onSubmit(token, val.trim(), val.trim()); }}
+          style={{ ...fieldStyle, minWidth: 220 }} />
+        <button type="button" disabled={!val.trim()} style={confirmStyle(!!val.trim())} onClick={() => val.trim() && onSubmit(token, val.trim(), val.trim())}>Confirm</button>
+      </div>
+    );
+  }
+  return null; // "text" → handled by the bottom free-text bar
+}
+
 // ─── Main ChatThread ──────────────────────────────────────────────────────────
-export default function ChatThread({ messages, campaignStatus, onChipTap, onDeckSelect, onDeckHeart, onStyleChoose, onTestimonialDone, onQuickFillDone, onFileSelect, nodeRefMap, onSendText, inputPlaceholder, inputDisabled, optionsGenerating }: ChatThreadProps) {
+export default function ChatThread({ messages, campaignStatus, onChipTap, onDeckSelect, onDeckHeart, onStyleChoose, onTestimonialDone, onQuickFillDone, onFileSelect, onStructuredSubmit, nodeRefMap, onSendText, inputPlaceholder, inputDisabled, optionsGenerating }: ChatThreadProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
@@ -807,6 +914,7 @@ export default function ChatThread({ messages, campaignStatus, onChipTap, onDeck
                 {msg.type === "milestone-badge" && <MilestoneBadge msg={msg} />}
                 {msg.type === "system-divider" && <SystemDivider msg={msg} />}
                 {msg.type === "file-upload" && <FileUploadButton msg={msg} onSelect={onFileSelect} />}
+                {msg.type === "structured-input" && <StructuredInput msg={msg} onSubmit={(token, value, echo) => onStructuredSubmit?.(msg.id, token, value, echo)} />}
                 {msg.type === "style-chooser" && (
                   <Suspense fallback={<SuspenseFallback label="style picker" onSkip={() => onStyleChoose?.(msg.id, "photo_ad")} />}>
                     <StyleChooser

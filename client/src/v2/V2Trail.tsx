@@ -465,7 +465,7 @@ export default function V2Trail() {
   const [tweakMode, setTweakMode] = useState<AutoStepName | null>(null);
   // Phase 1 (Problem A): when set, the wizard is asking an upfront campaign-fact question — the text input
   // + chip taps route to the fact-answer resolver instead of the tweak/deal handlers.
-  const [factsMode, setFactsMode] = useState<{ token: string; naBranches: { sentinel: string; label: string }[] } | null>(null);
+  const [factsMode, setFactsMode] = useState<{ token: string; inputType: "text" | "date" | "time" | "venue" | "price"; naBranches: { sentinel: string; label: string }[] } | null>(null);
   const tweakQueue = useRef<{ step: AutoStepName; instruction: string }[]>([]);
   const driverBusy = useRef(false);
 
@@ -1027,6 +1027,15 @@ export default function V2Trail() {
     factAnswerResolve.current = null;
   };
 
+  // Batch A / item 3: a structured-input control (date/time picker, venue chip-or-place, price chip-or-number)
+  // resolved. `value` is the canonical answer (ISO date / HH:MM / sentinel / number); the server normalizes it.
+  const handleFactStructured = (_msgId: string, _token: string, value: string, echo: string) => {
+    const bubble = addLive({ type: "user-bubble", text: echo });
+    persistMsgs([bubble]);
+    factAnswerResolve.current?.(value);
+    factAnswerResolve.current = null;
+  };
+
   const handleTweakInstruction = async (text: string) => {
     const step = tweakMode;
     if (!step) return;
@@ -1505,13 +1514,23 @@ export default function V2Trail() {
           let guard = 0;
           while (!fr.ready && fr.questions.length > 0 && guard++ < 12) {
             if (cancelled.current) return;
-            const q = fr.questions[0] as { token: string; question: string; category: string; naBranches: { sentinel: string; label: string }[] };
+            const q = fr.questions[0] as { token: string; question: string; category: string; inputType?: "text" | "date" | "time" | "venue" | "price"; naBranches: { sentinel: string; label: string }[] };
             addLive({ type: "zappy-bubble", mood: "idle", text: q.question });
-            const chips = [...q.naBranches.map(b => b.label), ...(q.category === "nudge" ? ["Skip"] : [])];
-            if (chips.length) { collapsePreviousChips(); const cr = addLive({ type: "chip-row", chips }); activeChips.current = { msgId: cr.id, step: "offer" }; }
-            setFactsMode({ token: q.token, naBranches: q.naBranches });
+            const inputType = q.inputType ?? "text";
+            let structuredMsgId: string | null = null;
+            if (inputType === "text") {
+              // Free-text field → N/A chips + the bottom text bar (existing behaviour).
+              const chips = [...q.naBranches.map(b => b.label), ...(q.category === "nudge" ? ["Skip"] : [])];
+              if (chips.length) { collapsePreviousChips(); const cr = addLive({ type: "chip-row", chips }); activeChips.current = { msgId: cr.id, step: "offer" }; }
+            } else {
+              // Structured control — a malformed date/venue/price is impossible; its own chips carry the N/A.
+              const si = addLive({ type: "structured-input", operatorInput: { token: q.token, inputType, naBranches: q.naBranches } });
+              structuredMsgId = si.id;
+            }
+            setFactsMode({ token: q.token, inputType, naBranches: q.naBranches });
             const ans = await waitForFactAnswer();
             setFactsMode(null);
+            if (structuredMsgId) removeLive(structuredMsgId);
             if (cancelled.current) return;
             fr = await answerCampaignFact.mutateAsync({ kitId, token: q.token, answer: ans });
           }
@@ -2204,9 +2223,10 @@ export default function V2Trail() {
             onDeckHeart={handleDeckHeart}
             onStyleChoose={handleStyleChoose}
             onTestimonialDone={handleTestimonialDone}
-            onSendText={factsMode ? handleFactText : (tweakMode ? handleTweakInstruction : undefined)}
-            inputPlaceholder={factsMode ? "Type your answer…" : "What should change?"}
-            inputDisabled={!factsMode && !tweakMode}
+            onStructuredSubmit={handleFactStructured}
+            onSendText={factsMode && factsMode.inputType === "text" ? handleFactText : (tweakMode ? handleTweakInstruction : undefined)}
+            inputPlaceholder={factsMode && factsMode.inputType === "text" ? "Type your answer…" : "What should change?"}
+            inputDisabled={!(factsMode && factsMode.inputType === "text") && !tweakMode}
           />
         </div>
       </div>

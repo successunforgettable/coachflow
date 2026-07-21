@@ -15,6 +15,9 @@ import {
   expandOperatorAnswer,
   reapplyOperatorAnswer,
   deriveAnsweredOperatorFields,
+  normalizeOperatorAnswer,
+  canonicalEventDate,
+  canonicalEventTime,
 } from "./operatorFields";
 
 const price = (amount?: string): LandingPageContent["price"] =>
@@ -324,5 +327,129 @@ describe("edit flow — reapplyOperatorAnswer + deriveAnsweredOperatorFields", (
     // an UNANSWERED field is not listed as editable
     const noVenue = deriveAnsweredOperatorFields("event_registration", { eventSchedule: { date: "Aug 12" } } as any, {});
     expect(noVenue.find((f) => f.token === "[INSERT_EVENT_VENUE]")).toBeUndefined();
+  });
+});
+
+// ── Batch A / item 3 + item 2 (2026-07-22): structured inputs + sentinel normalize ──
+
+describe("canonicalEventDate — a native date-picker value → a human, Date.parse-able string", () => {
+  it("ISO → 'Month D, YYYY'", () => {
+    expect(canonicalEventDate("2026-08-28")).toBe("August 28, 2026");
+    expect(canonicalEventDate("2026-01-05")).toBe("January 5, 2026");
+    expect(canonicalEventDate("2026-12-31")).toBe("December 31, 2026");
+  });
+  it("the result is always Date.parse-able (the WhatsApp/email length-derivation fix)", () => {
+    expect(Number.isNaN(Date.parse(canonicalEventDate("2026-08-28")))).toBe(false);
+    // the OLD broken shape (an ordinal a coach could type) is exactly what the picker now makes impossible:
+    expect(Number.isNaN(Date.parse("28th august 2026"))).toBe(true);
+  });
+  it("a non-ISO value (a typed date the front-load parser handled) passes through untouched", () => {
+    expect(canonicalEventDate("August 12")).toBe("August 12");
+    expect(canonicalEventDate("next Tuesday")).toBe("next Tuesday");
+  });
+  it("an out-of-range ISO passes through rather than fabricating a month", () => {
+    expect(canonicalEventDate("2026-13-40")).toBe("2026-13-40");
+  });
+});
+
+describe("canonicalEventTime — a native time-picker value → a human 12-hour string", () => {
+  it("24h HH:MM → h:mm am/pm, with the noon/midnight edges", () => {
+    expect(canonicalEventTime("14:30")).toBe("2:30 pm");
+    expect(canonicalEventTime("09:05")).toBe("9:05 am");
+    expect(canonicalEventTime("00:00")).toBe("12:00 am");
+    expect(canonicalEventTime("12:00")).toBe("12:00 pm");
+  });
+  it("a non-HH:MM value passes through", () => {
+    expect(canonicalEventTime("11am")).toBe("11am");
+  });
+});
+
+describe("normalizeOperatorAnswer — the item-2 safety net (typed N/A → sentinel + picker canonicalize)", () => {
+  it("PRICE: a typed free/zero phrase → __FREE__", () => {
+    for (const t of ["free", "Free", "FREE", "no charge", "no cost", "£0", "$0", "0", "£0.00"]) {
+      expect(normalizeOperatorAnswer("[INSERT_PRICE]", t)).toBe(NA_SENTINEL.FREE);
+    }
+  });
+  it("PRICE: a typed by-application phrase → __BY_APPLICATION__", () => {
+    for (const t of ["by application", "By application", "on application", "apply", "POA", "price on application"]) {
+      expect(normalizeOperatorAnswer("[INSERT_PRICE]", t)).toBe(NA_SENTINEL.BY_APPLICATION);
+    }
+  });
+  it("PRICE: a real number passes through", () => {
+    expect(normalizeOperatorAnswer("[INSERT_PRICE]", "497")).toBe("497");
+    expect(normalizeOperatorAnswer("[INSERT_PRICE]", "1,500")).toBe("1,500");
+  });
+  it("VENUE: a typed online phrase → __ONLINE__; a real place passes through", () => {
+    for (const t of ["online", "Online", "virtual", "remote", "Zoom"]) {
+      expect(normalizeOperatorAnswer("[INSERT_EVENT_VENUE]", t)).toBe(NA_SENTINEL.ONLINE);
+    }
+    expect(normalizeOperatorAnswer("[INSERT_EVENT_VENUE]", "IN5 Dubai")).toBe("IN5 Dubai");
+  });
+  it("DATE/TIME: canonicalizes a picker's raw value", () => {
+    expect(normalizeOperatorAnswer("[INSERT_EVENT_DATE]", "2026-08-28")).toBe("August 28, 2026");
+    expect(normalizeOperatorAnswer("[INSERT_EVENT_TIME]", "14:30")).toBe("2:30 pm");
+  });
+  it("is token-scoped: 'online' is only an N/A on the venue token, not elsewhere", () => {
+    expect(normalizeOperatorAnswer("[INSERT_EVENT_DATE]", "online")).toBe("online");
+    expect(normalizeOperatorAnswer("[INSERT_BOOKING_URL]", "free")).toBe("free");
+  });
+  it("passes sentinels, skips, and empties through untouched, and is idempotent", () => {
+    expect(normalizeOperatorAnswer("[INSERT_PRICE]", NA_SENTINEL.FREE)).toBe(NA_SENTINEL.FREE);
+    expect(normalizeOperatorAnswer("[INSERT_EVENT_VENUE]", "__SKIP__")).toBe("__SKIP__");
+    expect(normalizeOperatorAnswer("[INSERT_PRICE]", "")).toBe("");
+    const once = normalizeOperatorAnswer("[INSERT_EVENT_DATE]", "2026-08-28");
+    expect(normalizeOperatorAnswer("[INSERT_EVENT_DATE]", once)).toBe(once); // idempotent
+  });
+});
+
+describe("applyOperatorAnswer — normalize runs at the single chokepoint (item 2 wiring)", () => {
+  it("a typed 'free' price resolves as the __FREE__ N/A (structured sentinel + 'free' in the copy)", () => {
+    const content = { subheadline: "Tickets are [INSERT_PRICE]." } as unknown as LandingPageContent;
+    const applied = applyOperatorAnswer(content, "[INSERT_PRICE]", "free");
+    expect((applied.content as any).price.amount).toBe(NA_SENTINEL.FREE);
+    expect((applied.content as any).subheadline).toBe("Tickets are free.");
+    expect(applied.resolution.isNa).toBe(true);
+  });
+  it("an ISO date from the picker is stored human + Date.parse-able (routing/length fix, end to end)", () => {
+    const content = { subheadline: "Live on [INSERT_EVENT_DATE]." } as unknown as LandingPageContent;
+    const applied = applyOperatorAnswer(content, "[INSERT_EVENT_DATE]", "2026-08-28");
+    expect((applied.content as any).eventSchedule.date).toBe("August 28, 2026");
+    expect((applied.content as any).subheadline).toBe("Live on August 28, 2026.");
+    expect(Number.isNaN(Date.parse((applied.content as any).eventSchedule.date))).toBe(false);
+  });
+  it("a typed 'online' venue resolves as __ONLINE__", () => {
+    const content = { subheadline: "Join us [INSERT_EVENT_VENUE]." } as unknown as LandingPageContent;
+    const applied = applyOperatorAnswer(content, "[INSERT_EVENT_VENUE]", "virtual");
+    expect((applied.content as any).eventSchedule.venue).toBe(NA_SENTINEL.ONLINE);
+    expect((applied.content as any).subheadline).toBe("Join us online.");
+  });
+});
+
+describe("inputType — the registry + question list drive the structured control (item 3)", () => {
+  it("the registry carries the structured control per token", () => {
+    expect(OPERATOR_TOKEN_REGISTRY["[INSERT_EVENT_DATE]"].inputType).toBe("date");
+    expect(OPERATOR_TOKEN_REGISTRY["[INSERT_EVENT_TIME]"].inputType).toBe("time");
+    expect(OPERATOR_TOKEN_REGISTRY["[INSERT_EVENT_VENUE]"].inputType).toBe("venue");
+    expect(OPERATOR_TOKEN_REGISTRY["[INSERT_PRICE]"].inputType).toBe("price");
+    expect(OPERATOR_TOKEN_REGISTRY["[INSERT_BOOKING_URL]"].inputType).toBeUndefined(); // → "text" default
+  });
+  it("[INSERT_COACH_CREDENTIAL] is registered with a real question (Batch A one-line add)", () => {
+    const spec = OPERATOR_TOKEN_REGISTRY["[INSERT_COACH_CREDENTIAL]"];
+    expect(spec).toBeDefined();
+    expect(spec.question.length).toBeGreaterThan(0);
+    expect(KNOWN_OPERATOR_TOKENS).toContain("[INSERT_COACH_CREDENTIAL]");
+  });
+  it("deriveOperatorQuestions surfaces inputType (default 'text' where unset)", () => {
+    const qs = deriveOperatorQuestions("event_registration", { eventSchedule: {} } as any, {});
+    const byToken = Object.fromEntries(qs.map((q) => [q.token, q]));
+    expect(byToken["[INSERT_EVENT_DATE]"].inputType).toBe("date");
+    expect(byToken["[INSERT_EVENT_VENUE]"].inputType).toBe("venue");
+    expect(byToken["[INSERT_PRICE]"].inputType).toBe("price");
+  });
+  it("deriveAnsweredOperatorFields carries inputType for the matching edit control", () => {
+    const content = { eventSchedule: { date: "Aug 12" }, price: { amount: "500" } } as unknown as LandingPageContent;
+    const byToken = Object.fromEntries(deriveAnsweredOperatorFields("event_registration", content, {}).map((f) => [f.token, f]));
+    expect(byToken["[INSERT_EVENT_DATE]"].inputType).toBe("date");
+    expect(byToken["[INSERT_PRICE]"].inputType).toBe("price");
   });
 });
