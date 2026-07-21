@@ -119,3 +119,9 @@ tmp-uploads/
 # impeccable design skill — vendored, project-scoped, on-demand /impeccable only (no hook). Never commit.
 .claude/skills/impeccable/
 .claude/agents/impeccable-manual-edit-applier.md
+
+# Playwright E2E harness artifacts (2026-07-22)
+test-results/
+playwright-report/
+e2e/.report/
+.playwright-mcp/
