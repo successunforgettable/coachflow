@@ -86,4 +86,18 @@ Run 10 verifying the three fixes → on green, ship them with **migration 0091 g
 (migration first, then push code, then watch build→SUCCESS + verify served bundle). After that, the remaining
 piece is the **A11 / bonus build** with Arfeen's 3 decisions. **TS baseline 38** (corrected from 35); vitest ≥ 565.
 
+## 🧭 FORWARD SEQUENCE (banked 2026-07-23 — Claude's lead, the ordered roadmap)
+The agreed forward order (each earlier piece unblocks/cheapens the next):
+1. **Ship the three in-flight fixes** — run 10 verification → migration `0091` via Arfeen's "execute" → push code → watch build SUCCESS → verify served bundle.
+2. **Bonus build** — Arfeen's 3 product decisions (generate-3 · value-line · Class-C reframe); the six NotebookLM research reports → `docs/bonus-research/`. This is the A11 / offer-token run.
+3. **Problem B** — per-node review surface + existing-assets import (forward-only wizard; retire the stale / re-crown / `markTweakStale` / dismiss machinery).
+4. **Andromeda backbone** — piece 1 (read the REAL Meta fatigue/diversity signals — `frequency`, `first_time_impression_ratio`, duplicate-post detection via `effective_object_story_id`; the practitioner "score" fields `creative_diversity_score`/`creative_similarity_score`/`creative_fatigue` **DO NOT EXIST** — CC-verified against Meta's live docs) + piece 2 (P.D.A. concept axis + validator). **Deliberately AFTER Problem B** — Problem B's per-node review surface is likely SHARED machinery with Andromeda's concept-picker UI; build once, inherit, don't duplicate. **First re-verify the Andromeda thesis against Meta's live docs** (same discipline that caught the fake score-fields).
+5. **Andromeda downstream** — LP message-match (nearly free once the P.D.A. axis exists — ad + LP already share `cascadeContext`), video-script generator (extends the paused `server/routers/videoScripts.ts`).
+6. **Andromeda closed write-back loop** — SEPARATE, gated, LAST (autonomy + coach ad-spend; per-action approval; its own scope decision).
+7. **Parked** — OpenAI GPT Image 2 evaluation + swap (quality + cost-per-image on real prompts).
+
+**Constraints to hold:** Andromeda piece 2 touches `adCopyGenerator.ts` — the file currently carrying the A7 location-lock — so **Andromeda does NOT start until the current work ships** (no same-file collision). The bonus path is fully independent. **Every Meta API field is CC-verified against live docs before building.** Full brief (DOCUMENTATION — do NOT execute until Arfeen says so): `docs/andromeda/EXECUTION_BRIEF.md`.
+
+**Deferred (unchanged):** off-ICP testimonial ICP-filtering — product call, leave as-is.
+
 Prior: `docs/handovers/ZAP_Handover_July22_2026.md`.
