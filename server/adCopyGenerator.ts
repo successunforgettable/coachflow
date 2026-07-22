@@ -276,9 +276,9 @@ Framing: Specific value before any pitch — the ad sells a single concrete asse
 Urgency mechanism: None artificial. The asset itself is the hook. Avoid fake scarcity.
 CTA language: Get the free guide / Download free / Send me the [asset]`,
     in_person_event: `CAMPAIGN TYPE: In-Person Event
-Framing: Physical-presence value — the ad sells the room, the people, the energy of being there in person. Specifics: city, venue, date.
+Framing: Physical-presence value — the ad sells the room, the people, the energy of being there in person. LOCATION LOCK: you are NOT told the city or venue — wherever a location would appear write the literal token [INSERT_EVENT_VENUE]; never invent a city, venue, or address.
 Urgency mechanism: Travel logistics + limited room capacity. Real seat limits.
-CTA language: Reserve your seat / Register for [city] / Save your spot at [venue]`,
+CTA language: Reserve your seat / Register now / Save your spot — write [INSERT_EVENT_VENUE] where a location appears, never a city name`,
   };
   const campaignTypeContext = campaignTypeContextMap[campaignType] || campaignTypeContextMap['course_launch'];
 

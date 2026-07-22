@@ -101,7 +101,7 @@ The titles will name a free strategy call or audit. Format examples: "The [Topic
     lead_magnet: `CAMPAIGN CONTEXT: Lead Magnet
 The titles will name a downloadable asset (PDF, guide, training, swipe file). This is HVCO's native use case — every existing title rule applies fully. Reference the asset format in the framing.`,
     in_person_event: `CAMPAIGN CONTEXT: In-Person Event
-The titles will name a live in-person workshop, mastermind, or training day. Format examples: "[Topic] Live in [City]", "[Period] [Topic] Intensive", "The [City] [Event Type]". Reference the physical location.`,
+The titles will name a live in-person workshop, mastermind, or training day. Format examples: "[Topic] Intensive", "[Period] [Topic] Live Training", "The [Topic] Workshop". LOCATION LOCK: you are NOT told the city or venue — if a title would name WHERE it is, write the literal token [INSERT_EVENT_VENUE]; never invent a city, venue, or "[City]" placeholder.`,
   };
   const campaignTypeContext = campaignTypeContextMap[campaignType] || campaignTypeContextMap['course_launch'];
 

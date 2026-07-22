@@ -52,6 +52,22 @@ const updateICPSchema = z.object({
   rating: z.number().min(0).max(5).optional(),
 });
 
+/**
+ * FAQ scaffolding strip (item 6, 2026-07-23) — the OBJECTIONS prompt asks the model to format each objection
+ * as `What they say: "…". What they mean: …` (a useful internal frame). Stripped HERE, at the ICP source, so
+ * the STORED objections are clean prose — every downstream surface (LP whoFor/FAQ, email, kit) inherits clean
+ * text and the literal `**`/scaffolding labels can never render on a published page. Pure.
+ */
+function stripObjectionScaffolding(text: unknown): unknown {
+  if (typeof text !== "string") return text;
+  return text
+    .replace(/\*+/g, "")                                  // literal **/* markdown
+    .replace(/\.?\s*\bwhat they mean:\s*/gi, " — ")        // "What they mean:" → a clean connector
+    .replace(/\bwhat they say:\s*/gi, "")                  // "What they say:" label → drop
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
+}
+
 export const icpsRouter = router({
   // List all ICPs for current user
   list: protectedProcedure
@@ -231,6 +247,7 @@ export const icpsRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: `Some generated content contained prohibited language and could not be saved. Please regenerate. Flagged: ${icpFlaggedTerms.join("; ")}` });
       }
       const filteredIcpData = { ...icpData, ...cleanedIcpData };
+      filteredIcpData.objections = stripObjectionScaffolding(filteredIcpData.objections) as string; // item 6: strip FAQ scaffolding at source
 
       // Save to database - ALL 17 sections
       const insertResult: any = await db
@@ -329,6 +346,7 @@ export const icpsRouter = router({
             throw new Error(`Some generated content contained prohibited language and could not be saved. Flagged: ${icpFlaggedTermsAsync.join("; ")}`);
           }
           const filteredIcpDataAsync = { ...icpData, ...cleanedIcpDataAsync };
+          filteredIcpDataAsync.objections = stripObjectionScaffolding(filteredIcpDataAsync.objections) as string; // item 6: strip FAQ scaffolding at source
 
           const insertResult: any = await bgDb.insert(idealCustomerProfiles).values({
             userId: capturedUserId,

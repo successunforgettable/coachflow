@@ -310,7 +310,11 @@ export default function V2Trail() {
       let state: StopState = "pending";
       if (kit) {
         const override = statusMap.get(def.key);
-        if (override === "imported" || override === "stale" || override === "dismissed") {
+        if (override === "needs_publish") {
+          // A10: the LP was generated but publish failed → NOT complete (checked before the selected-id
+          // fallthrough below, so a swallowed publish failure can't show a false "done" / 11-of-11).
+          state = "pending";
+        } else if (override === "imported" || override === "stale" || override === "dismissed") {
           state = override === "dismissed" ? "stale" : override; // dismissed shows as amber (stale) on trail bar
         } else if (def.key === "icp") {
           state = "done"; // a kit always has its ICP

@@ -55,6 +55,7 @@ import { storagePut } from "../storage";
 import { runLandingPagePublish } from "../landingPagePublisher";
 import { styleForPageType } from "../lib/templates/renderRegistry";
 import { getCoachBookingUrl } from "../lib/coachBookingUrl";
+import { sweepFabricatedLocationsDeep } from "../lib/locationSweep";
 
 // ─── Locked B-2 Zappy script labels ────────────────────────────────────────
 // 10 labels: init + 8 steps + finalize. V2AutoModeProgress (Phase B3) reads
@@ -194,7 +195,7 @@ export async function runOrchestrationStep(
   onProgress?: (label: string) => Promise<void> | void,
 ): Promise<OrchestrationStepRunResult> {
   const { getDb } = await import("../db");
-  const { users, campaignKits, services, heroMechanisms, hvcoTitles, headlines, adCopy, idealCustomerProfiles, landingPages, offers } =
+  const { users, campaignKits, services, heroMechanisms, hvcoTitles, headlines, adCopy, idealCustomerProfiles, landingPages, offers, nodeStatuses } =
     await import("../../drizzle/schema");
   const { eq, and, asc } = await import("drizzle-orm");
   const { autoSelectBest } = await import("../routers/campaignKits");
@@ -456,7 +457,11 @@ export async function runOrchestrationStep(
       // prompt change; that's the Atlanta failure mode). Fills [INSERT_EVENT_*]/[INSERT_PRICE] with the
       // real date/venue/price across all generated angles, so the published page carries no placeholders.
       const lpFactAnswers = factsToTokenAnswers(kit?.campaignFacts);
-      if (lpFactAnswers.length > 0) {
+      // A7 (item 10): event pages get a deterministic location sweep even when there are no facts to apply —
+      // the prompt lock is primary, this guarantees no LLM-slipped city survives regardless.
+      const isEventPage = pageType === "event_registration";
+      const suppliedVenue = ((kit?.campaignFacts as any)?.eventSchedule?.venue ?? null) as string | null;
+      if (lpFactAnswers.length > 0 || isEventPage) {
         const [lpRow] = await db.select().from(landingPages).where(eq(landingPages.id, landingPageId)).limit(1);
         if (lpRow) {
           const angleCols = ["originalAngle", "godfatherAngle", "freeAngle", "dollarAngle"] as const;
@@ -464,6 +469,8 @@ export async function runOrchestrationStep(
           for (const col of angleCols) {
             let angle = (lpRow as Record<string, any>)[col];
             if (!angle) continue;
+            // Sweep fabricated cities → [INSERT_EVENT_VENUE] FIRST, then facts substitute the token → real venue.
+            if (isEventPage) angle = sweepFabricatedLocationsDeep(angle, suppliedVenue);
             for (const fa of lpFactAnswers) angle = applyOperatorAnswer(angle, fa.token, fa.value).content;
             lpUpdate[col] = angle;
           }
@@ -493,6 +500,7 @@ export async function runOrchestrationStep(
       // (webinar/event additionally emit [INSERT_EVENT_*] tokens the publish gate
       // rejects — draft is the correct home until those fields are captured.)
       const publishStyle = styleForPageType(pageType);
+      let lpPublished = false; // A10: gate node completion on a real publish, not on generatedId
       // Discovery requires a real per-coach booking URL — its CTA is a live calendar link,
       // and we never publish a dead "Book a Call" button. Absent → stage a review-draft
       // (same home as an unbuilt page type); the coach adds their booking URL in review,
@@ -517,6 +525,7 @@ export async function runOrchestrationStep(
             styleMode: publishStyle,
           });
           console.log(`[orchestration] LP published to ${publicUrl} (slug=${slug})`);
+          lpPublished = true;
 
           // Set kit.selectedLandingPageAngle so the kit page renders the
           // angle that was just published. Default 'original' matches what
@@ -538,6 +547,17 @@ export async function runOrchestrationStep(
             `[orchestration] LP publish to Cloudflare failed for landingPageId=${landingPageId}: ${errorMessage}. ` +
               `Cascade continues; user can re-publish via wizard.`,
           );
+        }
+      }
+
+      // A10 (item 4): gate LP node completion on a real publish. On any non-publish outcome (review-draft,
+      // unbuilt template, discovery-needs-booking, or a swallowed Cloudflare failure) flag the node
+      // `needs_publish` — an explicit non-complete state (NOT a thrown error; the cascade must continue).
+      // On a real publish, clear any lingering flag. The wizard reads this to avoid a false 11-of-11.
+      if (kit?.id) {
+        await db.delete(nodeStatuses).where(and(eq(nodeStatuses.campaignKitId, kit.id), eq(nodeStatuses.nodeType, "landingPage")));
+        if (!lpPublished) {
+          await db.insert(nodeStatuses).values({ campaignKitId: kit.id, nodeType: "landingPage", status: "needs_publish" });
         }
       }
 

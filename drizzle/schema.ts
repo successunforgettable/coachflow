@@ -1524,7 +1524,7 @@ export const nodeStatuses = mysqlTable("nodeStatuses", {
   id: int("id").autoincrement().primaryKey(),
   campaignKitId: int("campaignKitId").notNull(),
   nodeType: varchar("nodeType", { length: 30 }).notNull(),
-  status: mysqlEnum("status", ["generated", "imported", "stale", "dismissed"]).notNull().default("generated"),
+  status: mysqlEnum("status", ["generated", "imported", "stale", "dismissed", "needs_publish"]).notNull().default("generated"),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({
   uniqueKitNode: uniqueIndex("nodeStatuses_kitId_nodeType_unique").on(table.campaignKitId, table.nodeType),

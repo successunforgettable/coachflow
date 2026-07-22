@@ -252,13 +252,15 @@ test.describe.serial("manual wizard — free in-person event", () => {
     record("A7", "no fabricated location names", lp ? cities.length === 0 : false,
       lp ? (cities.length ? `found: ${cities.join(", ")}` : "clean") : "no landing page");
 
-    // A10 — LP not complete when publish failed (no publicUrl). Cloudflare omitted → publish fails.
+    // A10 — LP not complete when publish failed. Cloudflare omitted → publish fails → the orchestration must
+    // flag the landingPage node 'needs_publish' in the nodeStatuses table (an explicit non-complete state),
+    // NOT leave it looking complete. Read that table directly.
     const published = !!lp?.publicUrl;
-    const nodeStatuses = kit?.nodeStatuses ? (typeof kit.nodeStatuses === "string" ? JSON.parse(kit.nodeStatuses) : kit.nodeStatuses) : {};
-    const lpMarkedComplete = !!kit?.selectedLandingPageId && (nodeStatuses?.landingPage === "complete" || nodeStatuses?.landingPage === "done" || !nodeStatuses?.landingPage);
+    const [lpNodeStatus] = await dbQuery<any>("SELECT status FROM nodeStatuses WHERE campaignKitId=? AND nodeType='landingPage' ORDER BY updatedAt DESC LIMIT 1", [kitId]);
+    const flaggedNeedsPublish = lpNodeStatus?.status === "needs_publish";
     record("A10", "LP not complete when publish failed (gated on publicUrl)",
-      published ? true : !lpMarkedComplete,
-      published ? "published" : (lpMarkedComplete ? "marked complete with no publicUrl (bug)" : "correctly held (no publicUrl)"));
+      published ? true : flaggedNeedsPublish,
+      published ? "published (publicUrl set)" : (flaggedNeedsPublish ? "correctly flagged needs_publish (not complete)" : `NOT flagged — status=${lpNodeStatus?.status ?? "(none)"} (false-complete bug)`));
 
     // A11 — kit unresolved [INSERT_*] placeholder count.
     const blob = JSON.stringify(kit) + lpContent + offerText + (wa ? JSON.stringify(wa) : "");
@@ -274,8 +276,17 @@ test.describe.serial("manual wizard — free in-person event", () => {
     const grade = fkGrade(lpContent.slice(0, 3000));
     record("A13", "readability (Flesch–Kincaid) within bar", Number.isFinite(grade) && grade > 0 ? grade <= 12 : false,
       `FK grade = ${grade} (provisional bar 12)`);
+
+    // A14 (item 6) — no FAQ/objection scaffolding artifacts or raw markdown ** in the served LP copy.
+    const scaffolding = [
+      ...(/what they say:/i.test(lpContent) ? ["What they say:"] : []),
+      ...(/what they mean:/i.test(lpContent) ? ["What they mean:"] : []),
+      ...(lpContent.includes("**") ? ["** (raw markdown)"] : []),
+    ];
+    record("A14", "no FAQ scaffolding / raw ** in LP copy", lp ? scaffolding.length === 0 : false,
+      lp ? (scaffolding.length ? `found: ${scaffolding.join(", ")}` : "clean") : "no landing page");
     } catch (e: any) {
-      for (const [id, l] of [["A4", "WhatsApp length"], ["A5", "Iman not Hormozi"], ["A6", "no bad venue"], ["A7", "no fabricated cities"], ["A10", "LP publish gate"], ["A11", "placeholder count 0"], ["A12", "offer no fabrication"], ["A13", "readability"]] as const)
+      for (const [id, l] of [["A4", "WhatsApp length"], ["A5", "Iman not Hormozi"], ["A6", "no bad venue"], ["A7", "no fabricated cities"], ["A10", "LP publish gate"], ["A11", "placeholder count 0"], ["A12", "offer no fabrication"], ["A13", "readability"], ["A14", "no FAQ scaffolding"]] as const)
         record(id, l, false, `phase-3 error: ${e?.message ?? e}`);
     }
   });
