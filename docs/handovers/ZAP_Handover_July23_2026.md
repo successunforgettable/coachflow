@@ -1,7 +1,32 @@
-# ZAP Handover — STEP 1 (A7/A10/A14) + STEP 2 (bonus Layer 1) SHIPPED + live
+# ZAP Handover — STEP 1 + STEP 2 (Layer 1) SHIPPED · Layer 2 BUILT-not-shipped
 
-Two ships recorded here. **STEP 2 (bonus build, Layer 1) is the latest — shipped 2026-07-24.** STEP 1 (the
-three fixes A7/A10/A14) shipped 2026-07-23 (detail below). Prior: `docs/handovers/ZAP_Handover_July22_2026_v2.md`.
+STEP 1 (A7/A10/A14) + STEP 2 bonus **Layer 1** are LIVE (2026-07-23/24, below). **Bonus Layer 2 (hosted PDFs) is
+BUILT + clean-room green but NOT shipped** — the latest state. Prior: `docs/handovers/ZAP_Handover_July22_2026_v2.md`.
+
+## 🧪 BONUS LAYER 2 — BUILT, CLEAN-ROOM GREEN, NOT SHIPPED (2026-07-24)
+Each generated bonus becomes a real hosted PDF deliverable. **Code is committed LOCAL-ONLY on `railway-build`
+(on top of the pushed docs commit) — a push would deploy it; do NOT push until Arfeen approves.** Full detail:
+memory `session_state_2026_07_24_layer2_built_not_shipped.md`.
+- **7 pieces built:** `publishDeliverableBody` extraction (**characterization test 3/3** — proves
+  `publishLeadMagnet` byte-identical: same slugs, storage path, opt-in slug, single `ensureKvNamespace`, same
+  return URLs) · `contentBrief` (bonus description + obstacle → MUST-MATCH brief so the PDF delivers what the
+  offer/LP advertise) · `runBonusPdfGeneration` fire-and-forget after concepts persist (`assetBody` persisted
+  BEFORE publish so content-gen is provable where publish fails) · Kit "Your Bonuses" surface
+  (`V2CampaignKit.tsx` + `bonuses.listForKit`) · KV teardown (`server/scripts/e2e-bonus-teardown.ts`, four
+  independent guards — openId from env only · resolves to a user · email == hard-coded test address · `native_`
+  identity — structurally incapable of touching a real coach) · harness A22 · **no migration** (0092 has the columns).
+- **Clean-room: 23/25.** A22 PASS (assetBody 3/3). A15–A23 green, no regression A1–A24 (A8/A11 the known reds).
+  Format mapping proven in the server log: checklist→checklist, sop→toolkit, script→toolkit. Publish correctly
+  fails `CLOUDFLARE_ACCOUNT_ID not set` (expected → the PDF-hosting half is PROD-ONLY). Gates: **TS 35, 28 unit tests**.
+- **🔴 RESUME (exact):** Arfeen mid-review. NEXT = **read-only content review** of the 3 clean-room `assetBody`s
+  (every checklist item, the full SOP toolkit body, the actual script-bank scripts) shown beside each bonus's
+  advertised description — judge (a) concrete/usable vs vague, (b) the PDF content MATCHES the offer/LP promise.
+  Then EITHER nudge the content prompt in the clean-room (cheap now) OR ship → push → deploy → prod smoke run
+  (A22-prod: magnetPdfUrl×3 + live 200) → run KV teardown → assert nothing remains hosted.
+- **PROD-RUN NOTE:** the LP no-publish guard (`E2E_NOPUBLISH_OPENID`) does NOT gate bonus deliverables — BY
+  DESIGN (a PDF must be hosted to be rendered + verified); the teardown removes them afterwards.
+
+---
 
 ## 🚢 STEP 2 — BONUS BUILD (Layer 1) SHIPPED + LIVE (2026-07-24)
 - **Migration `0092`** applied to prod via Arfeen's "execute" (`bonuses` table — **19 columns incl. `shortLine`**,
