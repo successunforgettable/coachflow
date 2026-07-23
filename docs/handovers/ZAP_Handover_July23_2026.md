@@ -19,12 +19,30 @@ three fixes A7/A10/A14) shipped 2026-07-23 (detail below). Prior: `docs/handover
   lead-magnet-as-bonus; email fed the real bonuses so reveals reference a real one); tightened **title register**
   (positive-framing); full validator guardrails (`validateBonusFabricationPatterns` — 6 patterns + structural);
   harness **A15–A21 + A23**. Gates at ship: **TS 35, unit tests 22/22, harness 22/24** (A8/A11 pre-existing/out-of-scope).
-- **🔴 OPEN VERIFICATION ITEM:** bonus generation cannot be verified by an unauthenticated public check
-  (server-side; needs an authenticated campaign; scripted login is dev-only). Proven by **clean-room 22/24 +
-  successful deploy of the exact SHA**. **TRUE end-to-end confirmation = the first real prod campaign — Arfeen to
-  run one and eyeball the live bonus copy.**
+- **✅ LAYER 1 OPEN-VERIFICATION ITEM — CLOSED (2026-07-24) by the machine, not by manual eyeballing.** A prod
+  smoke run drove a REAL campaign on prod: **A15–A23 green on prod** (kit 187 / LP 222 unpublished / 3 bonuses
+  under the test account, preserved — no teardown), **A24 PASS** (no publicUrl, guard held). Prod run: **23/25**
+  (the two reds are the known A8 ad-copy deck + A11 Class-B/C tokens). See the PROD SMOKE PATH section below.
 - **Layer 2 (hosted PDF) remains deferred** — needs its own pass with live post-deploy verification (Cloudflare
   fail-fast → `magnetPdfUrl` null in the clean-room, so it can't be proven there).
+
+## 🤖 PROD SMOKE PATH IS LIVE (2026-07-24) — the machine is the prod functional test
+The Playwright harness can now drive a REAL campaign on prod after each deploy (so the machine, not Arfeen, is
+the functional test). Full setup + maintenance: memory `project_prod_smoke_harness.md`.
+- **Test coach (dedicated, non-privileged):** `zap-e2e-smoke@mailinator.com` · id **117174** · openId
+  **`native_ea8a5ee639013dd01bc0b6b585b9dd52`** · `pro`/`active`/NULL expiries (non-expiring, no admin). Created
+  via the normal native signup.
+- **Auth:** harness `E2E_PROD=1` logs in via the EXISTING `nativeAuth.login` — **NO bypass, NO new endpoint;
+  `/api/test-login` stays dev-only (NODE_ENV gate untouched).** Creds from env only (`TEST_PROD_EMAIL` /
+  `TEST_PROD_PASSWORD` / `E2E_DB_URL`). **Password lives ONLY in `~/.zap-e2e-creds.env` (chmod 600, outside the
+  repo) — never committed.** Opt-in teardown `E2E_TEARDOWN=1` (OFF by default).
+- **Server no-publish guard:** `E2E_NOPUBLISH_OPENID` env-gated skip in the orchestration LP publish block —
+  stages `needs_publish` instead of publishing, **for that one openId only**. **FAILS OPEN when unset → normal
+  publish for everyone; no real coach affected under any misconfiguration.** Deployed at `9fb861a`; armed via
+  `de5ef85f`. **WHY server-side (do NOT "simplify" into the harness):** publish runs INSIDE the same
+  orchestration job as bonus generation — a spec-only publish guard is impossible; A24 is the detection layer.
+- **🔴 HARD RULE:** NO prod harness run until `E2E_NOPUBLISH_OPENID` is verified **active on the running server**
+  (resolves via `railway run` AND the applying deploy reached SUCCESS) — not merely saved in the dashboard.
 
 ---
 
