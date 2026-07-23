@@ -125,6 +125,9 @@ interface MagnetContext {
   icpGoals: string;
   icpBarriers: string;
   sot: string;
+  // Optional caller-supplied brief (step 2 Layer 2): a bonus's own advertised description + the ICP obstacle
+  // it solves, so the generated body MATCHES what the offer/LP already promise (never a title-only re-derivation).
+  contentBrief: string;
 }
 
 async function gatherContext(userId: number, serviceId: number, icpId: number | null, campaignId: number | null, title: string): Promise<MagnetContext | null> {
@@ -168,12 +171,14 @@ async function gatherContext(userId: number, serviceId: number, icpId: number | 
     icpGoals: (icp?.goals ?? "").slice(0, 400),
     icpBarriers: (icp?.implementationBarriers ?? "").slice(0, 400),
     sot: sotLine.slice(0, 400),
+    contentBrief: "",
   };
 }
 
 function contextBlock(c: MagnetContext): string {
   return [
     `Lead magnet title (the promise to deliver on): "${c.title}"`,
+    c.contentBrief ? `MUST-MATCH BRIEF — the deliverable already advertised to the buyer; the content you produce must deliver exactly this, not a re-interpretation of the title: ${c.contentBrief}` : "",
     `Niche / audience: ${c.niche}`,
     c.programme ? `Paid programme name (what nextStep bridges to): ${c.programme}` : "",
     c.mainBenefit ? `Main benefit of the paid offer: ${c.mainBenefit}` : "",
@@ -346,10 +351,12 @@ export async function generateLeadMagnetContent(input: {
   campaignId?: number | null;
   title: string;
   formatOverride?: LeadMagnetFormat;
+  contentBrief?: string;
 }): Promise<LeadMagnetBody | null> {
   const format = input.formatOverride ?? inferLeadMagnetFormat(input.title);
   const c = await gatherContext(input.userId, input.serviceId, input.icpId ?? null, input.campaignId ?? null, input.title);
   if (!c) return null;
+  if (input.contentBrief) c.contentBrief = input.contentBrief.slice(0, 800);
 
   const { invokeLLM } = await import("./_core/llm");
   // Up to 2 attempts: the model occasionally returns a thin/empty array on the

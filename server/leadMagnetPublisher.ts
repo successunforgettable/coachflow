@@ -37,6 +37,34 @@ export type PublishLeadMagnetResult = {
 };
 
 /**
+ * Row-agnostic deliverable-publish core (extracted for reuse by bonus PDFs, step 2 Layer 2).
+ * renderDeliverableHtml → writeKvPage → renderPdfFromUrl → storagePut. Returns null when the format has no
+ * deliverable HTML (e.g. quiz), matching publishLeadMagnet's prior early-return. PDF failure is non-fatal
+ * (logged) — the hosted page still delivers. `namespaceId` is optional: publishLeadMagnet passes its existing
+ * one so its ensureKvNamespace call-count is UNCHANGED; standalone callers omit it and it's resolved here.
+ */
+export async function publishDeliverableBody(
+  body: LeadMagnetBody,
+  opts: { userId: number; slug: string; storageKey: string; coachLogoUrl: string | null; namespaceId?: string },
+): Promise<{ deliverableUrl: string; pdfUrl: string } | null> {
+  const deliverableHtml = renderDeliverableHtml(body, { coachLogoUrl: opts.coachLogoUrl });
+  if (!deliverableHtml) return null;
+  const { ensureKvNamespace, writeKvPage, renderPdfFromUrl } = await import("./lib/cloudflare");
+  const namespaceId = opts.namespaceId ?? (await ensureKvNamespace());
+  await writeKvPage(namespaceId, opts.slug, deliverableHtml);
+  const deliverableUrl = `${BASE}/p/${opts.slug}`;
+  let pdfUrl = "";
+  try {
+    const pdf = await renderPdfFromUrl(deliverableUrl);
+    const stored = await storagePut(opts.storageKey, pdf, "application/pdf");
+    pdfUrl = stored.url;
+  } catch (err) {
+    console.warn(`[publishDeliverableBody] PDF render failed for ${opts.slug}: ${err instanceof Error ? err.message : String(err)}`);
+  }
+  return { deliverableUrl, pdfUrl };
+}
+
+/**
  * Publish the delivery surfaces for one selected lead-magnet title.
  * Returns null if there is no body, the format is out of scope (quiz), or a
  * fatal publish error occurs (KV write). PDF failure is non-fatal (logged).
@@ -102,26 +130,20 @@ export async function publishLeadMagnet(input: { hvcoId: number }): Promise<Publ
   }
 
   // ── static formats (guide / checklist / toolkit): deliverable + opt-in + PDF ──
-  const deliverableHtml = renderDeliverableHtml(body, { coachLogoUrl });
-  if (!deliverableHtml) {
+  // Steps 1-2 (deliverable KV + PDF) via the shared core. Pass the existing namespaceId so ensureKvNamespace
+  // is still called exactly once here; slug + storageKey are byte-identical to the pre-extraction values.
+  const published = await publishDeliverableBody(body, {
+    userId: hvco.userId,
+    slug: deliverableSlug,
+    storageKey: `lead-magnets/${hvco.userId}/${input.hvcoId}.pdf`,
+    coachLogoUrl,
+    namespaceId,
+  });
+  if (!published) {
     console.log(`[leadMagnetPublisher] format "${(body as any)?.format}" not deliverable this sprint (hvco ${input.hvcoId}) — skipped`);
     return null;
   }
-
-  // 1. deliverable page (source of truth) → KV
-  await writeKvPage(namespaceId, deliverableSlug, deliverableHtml);
-  const deliverableUrl = `${BASE}/p/${deliverableSlug}`;
-
-  // 2. PDF from that exact page → Cloudinary. Non-fatal: the hosted page still
-  //    delivers even if Browser Rendering hiccups.
-  let pdfUrl = "";
-  try {
-    const pdf = await renderPdfFromUrl(deliverableUrl);
-    const stored = await storagePut(`lead-magnets/${hvco.userId}/${input.hvcoId}.pdf`, pdf, "application/pdf");
-    pdfUrl = stored.url;
-  } catch (err) {
-    console.warn(`[leadMagnetPublisher] PDF render failed for hvco ${input.hvcoId}: ${err instanceof Error ? err.message : String(err)}`);
-  }
+  const { deliverableUrl, pdfUrl } = published;
 
   // 3. opt-in page (capture + bridge) → KV
   const optInHtml = renderOptInHtml({

@@ -14,6 +14,7 @@ import { emailSequencesRouter } from "./routers/emailSequences";
 import { whatsappSequencesRouter } from "./routers/whatsappSequences";
 import { landingPagesRouter } from "./routers/landingPages";
 import { offersRouter } from "./routers/offers";
+import { bonusesRouter } from "./routers/bonuses";
 import { subscriptionRouter } from "./routers/subscription";
 import { campaignsRouter } from "./routers/campaigns";
 import { sourceOfTruthRouter } from "./routers/sourceOfTruth";
@@ -229,6 +230,7 @@ export const appRouter = router({
   landingPages: landingPagesRouter,
   adCreatives: adCreativesRouter,
   offers: offersRouter,
+  bonuses: bonusesRouter,
   subscription: subscriptionRouter,
   campaigns: campaignsRouter,
   sourceOfTruth: sourceOfTruthRouter,

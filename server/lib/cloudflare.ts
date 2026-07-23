@@ -50,6 +50,19 @@ export async function writeKvPage(namespaceId: string, slug: string, html: strin
   if (!data.success) throw new Error(`KV write failed: ${JSON.stringify(data.errors)}`);
 }
 
+// Delete a KV page (used by the E2E bonus teardown so a prod smoke run leaves nothing hosted). Idempotent —
+// a missing key returns success. Same account/token/namespace as writeKvPage.
+export async function deleteKvPage(namespaceId: string, slug: string): Promise<void> {
+  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+  const token = process.env.CLOUDFLARE_API_TOKEN;
+  const res = await fetch(
+    `${CF_API}/accounts/${accountId}/storage/kv/namespaces/${namespaceId}/values/${encodeURIComponent(slug)}`,
+    { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }
+  );
+  const data = (await res.json()) as any;
+  if (!data.success) throw new Error(`KV delete failed: ${JSON.stringify(data.errors)}`);
+}
+
 // Render a public URL to PDF via Cloudflare Browser Rendering (/pdf).
 // Reuses the same account/token as KV publishing (needs the Browser Rendering
 // permission on the token + Workers Paid plan). Returns the PDF bytes.

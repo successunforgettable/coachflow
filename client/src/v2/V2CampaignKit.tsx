@@ -399,6 +399,42 @@ function AssetSection({ sectionKey, label, step, selectedId, angle, navigate, se
   );
 }
 
+// ─── Bonuses section (Layer 2) — the coach's reachable surface for the 3 hosted bonus PDFs ──────────────
+// Reads bonuses.listForKit; shows title + shortLine + a Download PDF link when ready, or "Generating…" while
+// the fire-and-forget PDF job runs (polls until all are ready). Renders nothing until bonuses exist.
+function BonusesSection({ kitId }: { kitId: number }) {
+  const q = trpc.bonuses.listForKit.useQuery(
+    { campaignKitId: kitId },
+    { refetchInterval: (query: any) => (Array.isArray(query?.state?.data) && query.state.data.some((b: any) => b.status !== "ready") ? 5000 : false) },
+  );
+  const list = q.data ?? [];
+  if (list.length === 0) return null;
+  const pill = "var(--v2-border-radius-pill, 9999px)";
+  const bodyFont = "var(--v2-font-body, 'Instrument Sans', sans-serif)";
+  return (
+    <div style={{ marginBottom: 28 }}>
+      <p style={{ fontFamily: "var(--v2-font-heading, 'Fraunces', serif)", fontStyle: "italic", fontWeight: 900, fontSize: 18, color: "#1A1624", margin: "0 0 8px" }}>
+        Your Bonuses
+      </p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {list.map((b) => (
+          <div key={b.id} style={{ border: "1px solid #e5e0d8", borderRadius: 16, padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontFamily: bodyFont, fontWeight: 700, fontSize: 15, color: "#1A1624" }}>{b.title}</div>
+              <div style={{ fontFamily: bodyFont, fontSize: 13, color: "#666", marginTop: 2 }}>{b.shortLine}</div>
+            </div>
+            {b.status === "ready" && b.pdfUrl ? (
+              <a href={b.pdfUrl} target="_blank" rel="noreferrer" style={{ flexShrink: 0, background: "var(--v2-primary-btn, #FF6B35)", color: "#fff", borderRadius: pill, padding: "10px 20px", fontFamily: bodyFont, fontWeight: 700, fontSize: 13, textDecoration: "none", whiteSpace: "nowrap" }}>↓ Download PDF</a>
+            ) : (
+              <span style={{ flexShrink: 0, fontFamily: bodyFont, fontSize: 13, color: "#999", whiteSpace: "nowrap" }}>Generating…</span>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main page component ───────────────────────────────────────────────────────
 export default function V2CampaignKit() {
   const utils = trpc.useUtils();
@@ -1062,6 +1098,8 @@ export default function V2CampaignKit() {
             </div>
           </div>
         )}
+
+        {kitId && <BonusesSection kitId={kitId} />}
       </div>
 
       {/* Floating action bar */}

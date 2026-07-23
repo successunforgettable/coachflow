@@ -59,6 +59,19 @@ export async function storagePut(
   return { key: relKey, url: result.secure_url };
 }
 
+// Delete a stored asset (used by the E2E bonus teardown so a prod smoke run leaves no hosted PDF).
+// PDFs uploaded with resource_type:auto land as "image" in Cloudinary; try that then "raw". Idempotent.
+export async function storageDelete(relKey: string): Promise<void> {
+  ensureConfigured();
+  const publicId = sanitizePublicId(relKey);
+  for (const resource_type of ["image", "raw"] as const) {
+    try {
+      const r = await cloudinary.uploader.destroy(publicId, { resource_type, invalidate: true });
+      if (r?.result === "ok") return;
+    } catch { /* try next resource_type */ }
+  }
+}
+
 export async function storageGet(
   relKey: string
 ): Promise<{ key: string; url: string }> {

@@ -296,7 +296,7 @@ test.describe.serial("manual wizard — free in-person event", () => {
     // Guard: if the Skip-safety check tripped (a Skip cleared an upstream selection), STOP — the LP ran on a
     // broken upstream, so A4–A7/A10–A14 would be misleading. Record them as not-evaluated, do not read the DB.
     if (upstreamBroken) {
-      for (const [id, l] of [["A4", "WhatsApp length"], ["A5", "Iman not Hormozi"], ["A6", "no bad venue"], ["A7", "no fabricated cities"], ["A10", "LP publish gate"], ["A11", "placeholder count 0"], ["A12", "offer no fabrication"], ["A13", "readability"], ["A14", "no FAQ scaffolding"], ["A15", "3 bonuses one per type"], ["A16", "offer bonus tokens filled"], ["A17", "no bonus fabrication"], ["A18", "bonuses DFY"], ["A19", "bonus obstacle traced"], ["A20", "objection-crusher traces objections"], ["A21", "bonuses distinct from lead magnet"], ["A23", "offer+LP bonus coherence"]] as const)
+      for (const [id, l] of [["A4", "WhatsApp length"], ["A5", "Iman not Hormozi"], ["A6", "no bad venue"], ["A7", "no fabricated cities"], ["A10", "LP publish gate"], ["A11", "placeholder count 0"], ["A12", "offer no fabrication"], ["A13", "readability"], ["A14", "no FAQ scaffolding"], ["A15", "3 bonuses one per type"], ["A16", "offer bonus tokens filled"], ["A17", "no bonus fabrication"], ["A18", "bonuses DFY"], ["A19", "bonus obstacle traced"], ["A20", "objection-crusher traces objections"], ["A21", "bonuses distinct from lead magnet"], ["A22", "bonus PDF deliverable"], ["A23", "offer+LP bonus coherence"]] as const)
         record(id, l, false, "NOT EVALUATED — Skip broke an upstream selection (see S-* row); results would be misleading");
     } else {
     try {
@@ -445,8 +445,33 @@ test.describe.serial("manual wizard — free in-person event", () => {
       record("A24", "prod run did NOT publish (no-publish guard held)", lp ? !published : true,
         published ? `LEAKED: publicUrl=${lp.publicUrl} — guard OFF, page is PUBLIC (unset works? check E2E_NOPUBLISH_OPENID)` : "no publicUrl — guard held, nothing published");
     }
+
+    // A22 — Layer 2: each bonus becomes a real hosted PDF deliverable. The PDF job is fire-and-forget async, so
+    // POLL for assetBody. assetBody proves content-gen (clean-room + prod). magnetPdfUrl + a live 200 prove the
+    // hosted PDF — PROD ONLY (clean-room has no Cloudflare → publish fails → magnetPdfUrl stays null).
+    {
+      const deadline = Date.now() + 180_000;
+      let brows: any[] = [];
+      while (Date.now() < deadline) {
+        brows = await dbQuery<any>("SELECT assetBody, magnetPdfUrl FROM bonuses WHERE campaignKitId=?", [kitId]);
+        if (brows.filter((b: any) => b.assetBody != null).length >= 3) break;
+        await new Promise((r) => setTimeout(r, 5000));
+      }
+      const bodies = brows.filter((b: any) => b.assetBody != null).length;
+      if (E2E_PROD) {
+        const pdfs = brows.filter((b: any) => !!b.magnetPdfUrl).length;
+        const oneUrl = brows.find((b: any) => b.magnetPdfUrl)?.magnetPdfUrl as string | undefined;
+        let url200 = false;
+        if (oneUrl) url200 = await page.request.get(oneUrl).then((r) => r.ok()).catch(() => false);
+        record("A22", "each bonus has a hosted PDF (assetBody + magnetPdfUrl + 200)", bodies === 3 && pdfs === 3 && url200,
+          `bodies=${bodies}/3 pdfs=${pdfs}/3 url200=${url200}`);
+      } else {
+        record("A22", "each bonus has generated assetBody (PDF hosting is prod-only)", bodies === 3,
+          `bodies=${bodies}/3 (clean-room: magnetPdfUrl null — no Cloudflare)`);
+      }
+    }
     } catch (e: any) {
-      for (const [id, l] of [["A4", "WhatsApp length"], ["A5", "Iman not Hormozi"], ["A6", "no bad venue"], ["A7", "no fabricated cities"], ["A10", "LP publish gate"], ["A11", "placeholder count 0"], ["A12", "offer no fabrication"], ["A13", "readability"], ["A14", "no FAQ scaffolding"], ["A15", "3 bonuses one per type"], ["A16", "offer bonus tokens filled"], ["A17", "no bonus fabrication"], ["A18", "bonuses DFY"], ["A19", "bonus obstacle traced"], ["A20", "objection-crusher traces objections"], ["A21", "bonuses distinct from lead magnet"], ["A23", "offer+LP bonus coherence"]] as const)
+      for (const [id, l] of [["A4", "WhatsApp length"], ["A5", "Iman not Hormozi"], ["A6", "no bad venue"], ["A7", "no fabricated cities"], ["A10", "LP publish gate"], ["A11", "placeholder count 0"], ["A12", "offer no fabrication"], ["A13", "readability"], ["A14", "no FAQ scaffolding"], ["A15", "3 bonuses one per type"], ["A16", "offer bonus tokens filled"], ["A17", "no bonus fabrication"], ["A18", "bonuses DFY"], ["A19", "bonus obstacle traced"], ["A20", "objection-crusher traces objections"], ["A21", "bonuses distinct from lead magnet"], ["A22", "bonus PDF deliverable"], ["A23", "offer+LP bonus coherence"]] as const)
         record(id, l, false, `phase-3 error: ${e?.message ?? e}`);
     }
     } // end else (upstream not broken)

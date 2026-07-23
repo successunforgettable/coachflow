@@ -58,6 +58,7 @@ import { getCoachBookingUrl } from "../lib/coachBookingUrl";
 import { sweepFabricatedLocationsDeep } from "../lib/locationSweep";
 import { runBonusGeneration } from "../bonusGenerator";
 import { applyBonusesToText } from "../lib/bonusTokens";
+import { runBonusPdfGeneration } from "../bonusPdfGenerator";
 
 // ─── Locked B-2 Zappy script labels ────────────────────────────────────────
 // 10 labels: init + 8 steps + finalize. V2AutoModeProgress (Phase B3) reads
@@ -508,6 +509,12 @@ export async function runOrchestrationStep(
               await db.update(landingPages).set(lpBonusUpdate as any).where(eq(landingPages.id, landingPageId));
             }
           }
+
+          // (c) Layer 2 — fire-and-forget: generate + host a real PDF deliverable per bonus (rides the
+          // lead-magnet pipeline; populates bonuses.assetBody/magnetHtmlUrl/magnetPdfUrl). Un-awaited so the
+          // wizard advances immediately; PDFs land async. Never blocks or throws into the cascade.
+          void runBonusPdfGeneration({ userId: input.userId, bonusSetId: bonusResult.bonusSetId })
+            .catch((e) => console.warn(`[orchestration] bonus PDF generation non-fatal: ${e instanceof Error ? e.message : e}`));
         }
       } catch (bonusErr) {
         console.warn(`[orchestration] bonus generation/fill non-fatal error: ${bonusErr instanceof Error ? bonusErr.message : bonusErr}`);
