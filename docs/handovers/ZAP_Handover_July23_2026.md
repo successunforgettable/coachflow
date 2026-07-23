@@ -1,7 +1,32 @@
-# ZAP Handover — 2026-07-23 — Forward-sequence STEP 1 SHIPPED + live-verified
+# ZAP Handover — STEP 1 (A7/A10/A14) + STEP 2 (bonus Layer 1) SHIPPED + live
 
-The three in-flight fixes (A7 / A10 / A14) are **LIVE on prod and machine-verified**. This closes
-forward-sequence step 1. Prior: `docs/handovers/ZAP_Handover_July22_2026_v2.md`.
+Two ships recorded here. **STEP 2 (bonus build, Layer 1) is the latest — shipped 2026-07-24.** STEP 1 (the
+three fixes A7/A10/A14) shipped 2026-07-23 (detail below). Prior: `docs/handovers/ZAP_Handover_July22_2026_v2.md`.
+
+## 🚢 STEP 2 — BONUS BUILD (Layer 1) SHIPPED + LIVE (2026-07-24)
+- **Migration `0092`** applied to prod via Arfeen's "execute" (`bonuses` table — **19 columns incl. `shortLine`**,
+  3 indexes + PK, FK `bonuses_userId_users_id_fk` → users), **BEFORE** the code deploy.
+- Code **`d16c66c`** pushed; Railway deploy **`a0228625` = SUCCESS on that exact SHA** (frozen install passed,
+  no drift). **Deploy-verify 5/5** (no regression, Batch A intact, campaign-214 → 200).
+- **🔑 SERVED BUNDLE UNCHANGED BY DESIGN — do NOT misread as a failed deploy.** Layer 1 is **server-side only**
+  (bonusGenerator / validator / orchestration / offer+email generators / schema) — **zero `client/src` changes**,
+  so there is no new client bundle to fingerprint (`index-pYeJbqmn.js` stayed). The deployment proof is the
+  **Railway-confirmed deployed-commit SHA = `d16c66c`**, not a bundle-hash change. (STEP 1 had a V2Trail client
+  change and DID move the bundle; this ship legitimately does not.)
+- **What's LIVE:** ICP-derived bonus generation — 3 bonuses, one per type (**Accelerator / Gap-Filler /
+  Objection-Crusher**) via Problem-Solution Mapping; **single source of truth across offer + LP + email** (offer
+  whole-line fill with title+shortLine; LP `content.bonuses` overwritten — kills the invented swipe-file +
+  lead-magnet-as-bonus; email fed the real bonuses so reveals reference a real one); tightened **title register**
+  (positive-framing); full validator guardrails (`validateBonusFabricationPatterns` — 6 patterns + structural);
+  harness **A15–A21 + A23**. Gates at ship: **TS 35, unit tests 22/22, harness 22/24** (A8/A11 pre-existing/out-of-scope).
+- **🔴 OPEN VERIFICATION ITEM:** bonus generation cannot be verified by an unauthenticated public check
+  (server-side; needs an authenticated campaign; scripted login is dev-only). Proven by **clean-room 22/24 +
+  successful deploy of the exact SHA**. **TRUE end-to-end confirmation = the first real prod campaign — Arfeen to
+  run one and eyeball the live bonus copy.**
+- **Layer 2 (hosted PDF) remains deferred** — needs its own pass with live post-deploy verification (Cloudflare
+  fail-fast → `magnetPdfUrl` null in the clean-room, so it can't be proven there).
+
+---
 
 ## 🚢 THE SHIP (forward-sequence step 1 — DONE)
 
@@ -78,12 +103,13 @@ memory `project_copy_readability_register_pass.md`.
 - **Priority (Claude's rec on record):** run **after Layer 1 ships, ahead of Layer 2 and Problem B** — visible on
   every campaign a coach publishes.
 
-## 🧭 FORWARD SEQUENCE — step 1 DONE, rest intact
+## 🧭 FORWARD SEQUENCE — steps 1 & 2 DONE, rest intact
 
-1. ✅ **Ship the 3 in-flight fixes** — DONE (this handover).
-2. **Bonus build** (NEXT) — the A11/offer-token run. Needs from Arfeen: (a) the **six NotebookLM research
-   reports** placed under `docs/bonus-research/` (git-lfs), and (b) his **3 product decisions** (generate-3 ·
-   value-line · Class-C reframe-vs-ask). Spec: `docs/bonus-research/README.md`. Independent of Andromeda.
+1. ✅ **Ship the 3 in-flight fixes** (A7/A10/A14) — DONE.
+2. ✅ **Bonus build, Layer 1** — DONE + LIVE (migration 0092 → `d16c66c` → deploy `a0228625` SUCCESS). **Layer 2
+   (hosted PDF) is a SEPARATE deferred pass** (needs live post-deploy verification; can't be proven in the clean-room).
+2a. **Copy readability / register pass (NEXT — Claude's rec on record)** — see the TRACKED WORK ITEM below; it's
+   visible on every published campaign and slots in ahead of Layer 2 and Problem B.
 3. **Problem B** — per-node review surface + existing-assets import (forward-only wizard; retire stale/re-crown/dismiss).
 4. **Andromeda backbone** — piece 1 (REAL Meta fatigue/diversity signals: `frequency`/`first_time_impression_ratio`/
    duplicate-post detection — the practitioner "score" fields DON'T exist, CC-verified) + piece 2 (P.D.A. concept
