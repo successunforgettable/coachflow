@@ -570,8 +570,21 @@ export async function runOrchestrationStep(
       const discoveryNeedsBookingUrl =
         publishStyle === "discovery_burchard_performance" &&
         !(await getCoachBookingUrl(input.userId));
-      if (!publishStyle || discoveryNeedsBookingUrl) {
-        const reason = !publishStyle
+      // E2E prod-smoke containment (structural, env-gated, single identity): the designated test account NEVER
+      // publishes — so routine post-deploy verification cannot write to the shared Cloudflare KV or create a
+      // public /p/ page. FAILS SAFE: `E2E_NOPUBLISH_OPENID` unset → no effect on anyone; only an EXACT openId
+      // match is skipped, and it stages the SAME review-draft (needs_publish) state as the other non-publish
+      // paths (A10 handles it). Instantly disable-able by unsetting the env var. Cannot affect real coaches.
+      let e2eNoPublish = false;
+      const e2eNoPublishOpenId = process.env.E2E_NOPUBLISH_OPENID;
+      if (e2eNoPublishOpenId) {
+        const [e2eUser] = await db.select({ openId: users.openId }).from(users).where(eq(users.id, input.userId)).limit(1);
+        e2eNoPublish = !!e2eUser && e2eUser.openId === e2eNoPublishOpenId;
+      }
+      if (!publishStyle || discoveryNeedsBookingUrl || e2eNoPublish) {
+        const reason = e2eNoPublish
+          ? "e2e test account (no-publish guard)"
+          : !publishStyle
           ? `${pageType} has no per-reference template yet`
           : "discovery needs a coach booking URL";
         console.log(

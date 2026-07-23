@@ -20,6 +20,14 @@ import { FABRICATED_CITY_WORDS, BAD_VENUE_PHRASES } from "./fixtures/free-event-
 
 const TEST_OPENID = process.env.TEST_OPENID ?? "";
 const DB_URL = process.env.E2E_DB_URL ?? "mysql://root@127.0.0.1:3307/zap_test";
+// ── PROD-SMOKE mode (E2E_PROD=1) — authenticate against zapcampaigns.com via the EXISTING native login
+// (nativeAuth.login), NOT the dev-only /api/test-login bypass. Credentials come from env ONLY (never committed).
+// Containment: the server's env-gated no-publish guard (E2E_NOPUBLISH_OPENID) makes this account structurally
+// unpublishable; A24 asserts no page leaked. The dev path (test-login) is untouched.
+const E2E_PROD = process.env.E2E_PROD === "1";
+const PROD_EMAIL = process.env.TEST_PROD_EMAIL ?? "";
+const PROD_PASSWORD = process.env.TEST_PROD_PASSWORD ?? "";
+const HAS_AUTH = E2E_PROD ? (!!PROD_EMAIL && !!PROD_PASSWORD) : !!TEST_OPENID;
 // Resume an already-positioned kit (skip intake+facts+done nodes) — the full 8-node generate is ~90 min,
 // so to iterate the LP/whatsapp-dependent assertions we resume a kit with the early nodes already done.
 const RESUME_KIT = Number(process.env.E2E_RESUME_KIT ?? 0);
@@ -75,8 +83,19 @@ test.describe.serial("manual wizard — free in-person event", () => {
 
   test.beforeAll(async ({ browser }) => {
     page = await browser.newPage();
-    if (!TEST_OPENID) return;
-    await page.goto(`/api/test-login/${encodeURIComponent(TEST_OPENID)}`);
+    if (!HAS_AUTH) return;
+    if (E2E_PROD) {
+      // Prod: log in through the REAL native-auth endpoint with the test account's credentials (from env).
+      // No bypass, no new endpoint. The Set-Cookie session lands in the page's browser context.
+      const res = await page.request.post("/api/trpc/nativeAuth.login", {
+        headers: { "content-type": "application/json" },
+        data: { json: { email: PROD_EMAIL, password: PROD_PASSWORD } },
+      });
+      if (!res.ok()) throw new Error(`native login failed: ${res.status()} ${(await res.text()).slice(0, 300)}`);
+      await page.goto("/v2-dashboard");
+    } else {
+      await page.goto(`/api/test-login/${encodeURIComponent(TEST_OPENID)}`);
+    }
     await page.waitForURL(/\/v2-dashboard/, { timeout: 60_000 });
   });
   test.afterAll(async () => {
@@ -86,14 +105,33 @@ test.describe.serial("manual wizard — free in-person event", () => {
     const passed = results.filter((r) => r.pass).length;
     // eslint-disable-next-line no-console
     console.log(`\n${line}\nMANUAL-WIZARD E2E — ${passed}/${results.length} PASS\n${line}\n${rows.join("\n")}\n${line}\n`);
+
+    // Opt-in teardown (E2E_TEARDOWN=1) — remove THIS run's rows for the test account only. OFF by default
+    // (the first prod run preserves data for eyeballing; it's the isolated test account). Hard-scoped to the
+    // run's kit + its userId so it can never touch a real coach's data. FK order: children before kit.
+    if (E2E_PROD && process.env.E2E_TEARDOWN === "1" && kitId) {
+      try {
+        const [k] = await dbQuery<any>("SELECT userId, serviceId FROM campaignKits WHERE id=?", [kitId]);
+        if (k?.userId) {
+          await dbQuery("DELETE FROM bonuses WHERE campaignKitId=? AND userId=?", [kitId, k.userId]);
+          if (k.serviceId) {
+            await dbQuery("DELETE FROM landingPages WHERE serviceId=? AND userId=?", [k.serviceId, k.userId]);
+            await dbQuery("DELETE FROM offers WHERE serviceId=? AND userId=?", [k.serviceId, k.userId]);
+          }
+          await dbQuery("DELETE FROM campaignKits WHERE id=? AND userId=?", [kitId, k.userId]);
+          // eslint-disable-next-line no-console
+          console.log(`[teardown] removed run rows for kit ${kitId} (user ${k.userId}).`);
+        }
+      } catch (e: any) { console.log(`[teardown] non-fatal: ${e?.message ?? e}`); }
+    }
     await page.close().catch(() => {});
   });
 
   // ONE test — all 13 assertions run in a single serial flow (soft-recorded), so the full table always
   // prints even under heavy red. Each phase is guarded so a driver error in one doesn't abort the rest.
   test("full manual free-event campaign (A0–A13)", async () => {
-    test.skip(!TEST_OPENID, "no TEST_OPENID");
-    record("A0", "TEST_OPENID provided", !!TEST_OPENID, "set");
+    test.skip(!HAS_AUTH, E2E_PROD ? "no TEST_PROD_EMAIL/PASSWORD" : "no TEST_OPENID");
+    record("A0", "auth provided", HAS_AUTH, E2E_PROD ? "prod native-login creds" : "dev test-login openId");
 
     // ── PHASE 1 — intake + facts step (A1–A3) ── (skipped in resume mode)
     if (RESUME_KIT) {
@@ -399,6 +437,14 @@ test.describe.serial("manual wizard — free in-person event", () => {
     const a23 = bonusRows.length > 0 && offerHasAllTitles && lpMatches && !lpAdvertisesLeadMagnet;
     record("A23", "offer+LP bonus copy = the 3 real bonuses", a23,
       !offerHasAllTitles ? "offer bonus section missing a real title" : !lpMatches ? `LP titles differ: [${Array.from(new Set(lpTitles)).join(" | ")}]` : lpAdvertisesLeadMagnet ? "LP advertises the lead magnet as a bonus" : "coherent");
+
+    // A24 (PROD ONLY) — the server no-publish guard held: this run created NO public page. Detection layer on
+    // top of the structural server guard (E2E_NOPUBLISH_OPENID); a leak here means the guard was misconfigured.
+    if (E2E_PROD) {
+      const published = !!lp?.publicUrl;
+      record("A24", "prod run did NOT publish (no-publish guard held)", lp ? !published : true,
+        published ? `LEAKED: publicUrl=${lp.publicUrl} — guard OFF, page is PUBLIC (unset works? check E2E_NOPUBLISH_OPENID)` : "no publicUrl — guard held, nothing published");
+    }
     } catch (e: any) {
       for (const [id, l] of [["A4", "WhatsApp length"], ["A5", "Iman not Hormozi"], ["A6", "no bad venue"], ["A7", "no fabricated cities"], ["A10", "LP publish gate"], ["A11", "placeholder count 0"], ["A12", "offer no fabrication"], ["A13", "readability"], ["A14", "no FAQ scaffolding"], ["A15", "3 bonuses one per type"], ["A16", "offer bonus tokens filled"], ["A17", "no bonus fabrication"], ["A18", "bonuses DFY"], ["A19", "bonus obstacle traced"], ["A20", "objection-crusher traces objections"], ["A21", "bonuses distinct from lead magnet"], ["A23", "offer+LP bonus coherence"]] as const)
         record(id, l, false, `phase-3 error: ${e?.message ?? e}`);
