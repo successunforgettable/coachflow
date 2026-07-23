@@ -56,6 +56,8 @@ import { runLandingPagePublish } from "../landingPagePublisher";
 import { styleForPageType } from "../lib/templates/renderRegistry";
 import { getCoachBookingUrl } from "../lib/coachBookingUrl";
 import { sweepFabricatedLocationsDeep } from "../lib/locationSweep";
+import { runBonusGeneration } from "../bonusGenerator";
+import { applyBonusesToText } from "../lib/bonusTokens";
 
 // ─── Locked B-2 Zappy script labels ────────────────────────────────────────
 // 10 labels: init + 8 steps + finalize. V2AutoModeProgress (Phase B3) reads
@@ -451,6 +453,65 @@ export async function runOrchestrationStep(
       // runLandingPageGeneration calls autoSelectBest internally already.
       // Skip the step-level call below (idempotent but redundant).
       skipAutoSelect = true;
+
+      // ── Bonuses (forward-sequence step 2, Layer 1) ──────────────────────────────────────────────────
+      // Generate the 3 ICP-derived bonuses and make them the SINGLE SOURCE OF TRUTH every bonus surface draws
+      // from: fill the offer's [INSERT_BONUS_N_*] slots (whole-line, so a drifted trailer can't survive) AND
+      // overwrite the LP's own invented content.bonuses (which otherwise collides with real bonuses and even
+      // advertises the lead magnet as a bonus). Email is fed the same bonuses at its own node. Silent — no
+      // wizard node (deferred to Problem B). Runs HERE because offer/method/lead-magnet are all selected by the
+      // landingPage step (full distinctness context). NON-FATAL: a bonus hiccup must never break the cascade.
+      // value is coach-supplied ONLY; absent → offer line shows no value, LP bonus value omitted (never fabricated).
+      try {
+        const bonusResult = await runBonusGeneration({
+          userId: input.userId,
+          serviceId: input.serviceId,
+          icpId: input.icpId,
+        });
+        if (bonusResult) {
+          const TYPE_ORDER = ["accelerator", "gap_filler", "objection_crusher"] as const;
+          const ordered = TYPE_ORDER
+            .map((t) => bonusResult.bonuses.find((b) => b.bonusType === t))
+            .filter((b): b is NonNullable<typeof b> => !!b);
+
+          // (a) Offer — whole-line fill of the bonus slots with title + shortLine.
+          if (kit?.selectedOfferId) {
+            const fills = ordered.map((b, i) => ({ index: i + 1, title: b.title, shortLine: b.shortLine, value: null as string | null }));
+            const [offerRow] = await db.select().from(offers).where(eq(offers.id, kit.selectedOfferId)).limit(1);
+            if (offerRow) {
+              const offerUpdate: Record<string, unknown> = {};
+              for (const col of ["godfatherAngle", "freeAngle", "dollarAngle"] as const) {
+                const angle = (offerRow as Record<string, any>)[col];
+                if (angle && typeof angle.bonuses === "string") {
+                  offerUpdate[col] = { ...angle, bonuses: applyBonusesToText(angle.bonuses, fills) };
+                }
+              }
+              if (Object.keys(offerUpdate).length > 0) {
+                await db.update(offers).set(offerUpdate as any).where(eq(offers.id, kit.selectedOfferId));
+              }
+            }
+          }
+
+          // (b) LP — overwrite content.bonuses on every angle with the real bonuses (full description; value
+          // omitted). Kills the LP's invented swipe-file collision + the lead-magnet-advertised-as-a-bonus.
+          const realLpBonuses = ordered.map((b) => ({ title: b.title, description: b.description }));
+          const [lpRow2] = await db.select().from(landingPages).where(eq(landingPages.id, landingPageId)).limit(1);
+          if (lpRow2 && realLpBonuses.length > 0) {
+            const lpBonusUpdate: Record<string, unknown> = {};
+            for (const col of ["originalAngle", "godfatherAngle", "freeAngle", "dollarAngle"] as const) {
+              const angle = (lpRow2 as Record<string, any>)[col];
+              if (angle && Array.isArray(angle.bonuses)) {
+                lpBonusUpdate[col] = { ...angle, bonuses: realLpBonuses };
+              }
+            }
+            if (Object.keys(lpBonusUpdate).length > 0) {
+              await db.update(landingPages).set(lpBonusUpdate as any).where(eq(landingPages.id, landingPageId));
+            }
+          }
+        }
+      } catch (bonusErr) {
+        console.warn(`[orchestration] bonus generation/fill non-fatal error: ${bonusErr instanceof Error ? bonusErr.message : bonusErr}`);
+      }
 
       // Phase 1 (Problem A): apply the kit's UPFRONT campaign facts to the freshly-generated LP BEFORE the
       // auto-publish below — deterministic token substitution via applyOperatorAnswer (NOT a generator

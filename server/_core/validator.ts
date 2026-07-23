@@ -1556,3 +1556,137 @@ export function validateOfferFabricationPatterns(
   if (allHits.length === 0) return { ok: true };
   return { ok: false, hits: allHits, failContext: buildOfferFailContext(allHits) };
 }
+
+// ─── Bonus fabrication validator (forward-sequence step 2, Layer 1) ──────────
+// Mirrors validateOfferFabricationPatterns: pattern hits + cross-checks against the ICP → a failContext for
+// the regeneration retry loop. Reuses detectInventedCurrencyAmounts (the offer currency primitive).
+
+export type BonusFabricationClass =
+  | "bonus_invented_value"
+  | "bonus_invented_roi_or_casestudy"
+  | "bonus_excluded_type"
+  | "bonus_guarantee_leak"
+  | "bonus_missing_obstacle"
+  | "bonus_overlap"
+  | "bonus_structural";
+
+/** One parsed bonus as returned by runBonusGeneration's LLM call. value is ALWAYS null from the LLM. */
+export interface RawBonus {
+  bonusType?: string; // 'accelerator' | 'gap_filler' | 'objection_crusher'
+  title?: string;
+  description?: string;
+  format?: string;
+  derivedFromObstacle?: string;
+  value?: string | null;
+}
+
+/** ICP obstacle corpus + selected lead-magnet title, for the traceability + overlap cross-checks. */
+export interface BonusValidationContext {
+  pains?: string | null;
+  frustrations?: string | null;
+  objections?: string | null;
+  implementationBarriers?: string | null;
+  leadMagnetTitle?: string | null;
+}
+
+export interface BonusFabricationHit {
+  classId: BonusFabricationClass;
+  description: string;
+  matched: string;
+  location: string;
+}
+
+export type BonusFabricationResult =
+  | { ok: true }
+  | { ok: false; failContext: string; hits: BonusFabricationHit[] };
+
+// DFY exclusions (Community/OPM/live), guarantee leakage, and invented ROI/case-study shapes.
+const BONUS_EXCLUDED_TYPE_RE = /\b(live (?:call|session|q&a|webinar|training)|q&a|community|slack|discord|mastermind|1[- ]?on[- ]?1|one[- ]?on[- ]?one|group call|office hours|coaching (?:call|session)|zoom call|weekly call)\b/i;
+const BONUS_GUARANTEE_RE = /\b(money[- ]?back|guarantee|refunds?|risk[- ]?free|pay nothing)\b/i;
+const BONUS_ROI_CASESTUDY_RE = /(\bturn(?:ed|s)?\b[^.]*\binto\b|\bclient like\b|cost of inaction|\d+\s*%\s*(?:lift|increase|more|roi))/i;
+
+const BONUS_STOPWORDS = new Set(["the","a","an","and","or","to","for","of","in","on","your","you","with","that","this","from","plan","system","guide","step","week","weeks","day","days","free"]);
+function bonusSignificantWords(s: string): Set<string> {
+  return new Set((String(s).toLowerCase().match(/[a-z]{4,}/g) ?? []).filter(w => !BONUS_STOPWORDS.has(w)));
+}
+function bonusWordOverlap(a: string, b: string): number {
+  const wb = bonusSignificantWords(b);
+  return Array.from(bonusSignificantWords(a)).filter((w) => wb.has(w)).length;
+}
+
+function buildBonusFailContext(hits: BonusFabricationHit[], maxHits = 6): string {
+  const top = hits.slice(0, maxHits);
+  const lines = top.map(h => `- ${h.location}: matched "${h.matched}" — ${h.description}`);
+  const more = hits.length > maxHits ? `\n(plus ${hits.length - maxHits} more)` : "";
+  return `Your previous bonus set contained content that must not appear:\n${lines.join("\n")}${more}\n\nRegenerate all 3 bonuses (exactly one accelerator, one gap_filler, one objection_crusher). Each must: derive from a specific ICP obstacle; be an implementation-heavy DFY asset (checklist/template/script/SOP/swipe/cheat-sheet); be framed by outcome/time-saved/problem-solved with NO currency, ROI, case-study, guarantee, or live/community/1-on-1 language; and be distinct from the lead magnet. Return value: null for every bonus.`;
+}
+
+/**
+ * Validate a generated bonus stack. Flags fabrication + structural violations and returns a failContext for
+ * the regeneration retry. Cross-checks each bonus's obstacle against the ICP corpus (traceability) and each
+ * title against the lead-magnet title (no overlap). value is coach-supplied only — any currency in generated
+ * copy is a fabrication.
+ */
+export function validateBonusFabricationPatterns(
+  bonuses: RawBonus[],
+  ctx: BonusValidationContext,
+): BonusFabricationResult {
+  const hits: BonusFabricationHit[] = [];
+  const push = (classId: BonusFabricationClass, description: string, matched: string, location: string) =>
+    hits.push({ classId, description, matched: String(matched).slice(0, 200), location });
+
+  // Structural — exactly 3, one of each type.
+  const REQUIRED = ["accelerator", "gap_filler", "objection_crusher"];
+  const types = bonuses.map(b => b.bonusType ?? "");
+  if (bonuses.length !== 3 || !REQUIRED.every(t => types.filter(x => x === t).length === 1)) {
+    push("bonus_structural",
+      "The stack must be exactly 3 bonuses — one accelerator, one gap_filler, one objection_crusher.",
+      `types=[${types.join(", ")}]`, "stack");
+  }
+
+  const obstacleCorpus = [ctx.pains, ctx.frustrations, ctx.objections, ctx.implementationBarriers].filter(Boolean).join(" ");
+  const objectionsCorpus = ctx.objections ?? "";
+
+  bonuses.forEach((b, i) => {
+    const loc = `bonus[${i}]`;
+    const text = `${b.title ?? ""} ${b.description ?? ""}`;
+
+    for (const m of detectInventedCurrencyAmounts(text, null)) {
+      push("bonus_invented_value",
+        "Invented currency figure in bonus copy. Bonus copy is outcome/time/problem framed; a £ value is coach-supplied only, never in generated text.",
+        m[0], `${loc}.copy`);
+    }
+    const roi = text.match(BONUS_ROI_CASESTUDY_RE);
+    if (roi) push("bonus_invented_roi_or_casestudy",
+      "Invented ROI/case-study claim. Never fabricate 'turned X into Y', 'client like', 'cost of inaction', or % lift figures.",
+      roi[0], `${loc}.copy`);
+    const exc = text.match(BONUS_EXCLUDED_TYPE_RE);
+    if (exc) push("bonus_excluded_type",
+      "Excluded (non-DFY) bonus type. Bonuses are zero-marginal-cost DFY assets — no live sessions, calls, Q&A, community, or 1-on-1 access.",
+      exc[0], `${loc}.copy`);
+    const g = text.match(BONUS_GUARANTEE_RE);
+    if (g) push("bonus_guarantee_leak",
+      "Guarantee language in a bonus. A guarantee is a coach commitment (Class-C), never a bonus — remove it.",
+      g[0], `${loc}.copy`);
+
+    const obst = (b.derivedFromObstacle ?? "").trim();
+    if (!obst || bonusWordOverlap(obst, obstacleCorpus) === 0) {
+      push("bonus_missing_obstacle",
+        "Bonus not traceable to a specific ICP obstacle. Each bonus derives from a real ICP pain/frustration/objection/barrier via Problem-Solution Mapping.",
+        obst || "(empty)", `${loc}.derivedFromObstacle`);
+    } else if (b.bonusType === "objection_crusher" && objectionsCorpus && bonusWordOverlap(obst, objectionsCorpus) === 0) {
+      push("bonus_missing_obstacle",
+        "The Objection-Crusher's obstacle must trace to the ICP's objections, not a generic pain.",
+        obst, `${loc}.derivedFromObstacle`);
+    }
+
+    if (ctx.leadMagnetTitle && bonusWordOverlap(b.title ?? "", ctx.leadMagnetTitle) >= 2) {
+      push("bonus_overlap",
+        "Bonus duplicates/overshadows the selected lead magnet. Bonuses must be distinct from the lead magnet (subordination rule).",
+        `${b.title} ≈ ${ctx.leadMagnetTitle}`, `${loc}.title`);
+    }
+  });
+
+  if (hits.length === 0) return { ok: true };
+  return { ok: false, hits, failContext: buildBonusFailContext(hits) };
+}

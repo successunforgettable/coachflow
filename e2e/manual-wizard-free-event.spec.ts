@@ -156,7 +156,7 @@ test.describe.serial("manual wizard — free in-person event", () => {
     }
 
     // ── PHASE 2 — deterministic per-node driver: offer → … → whatsapp (Ad Images LAST, skipped) ──
-    let adCopyReached = false, adCopyDeck = false, offerAfterAdCopy = false;
+    let adCopyReached = false, adCopyDeck = false, offerAfterAdCopy = false, upstreamBroken = false;
     try {
       // waitFor(visible) then click — returns whether it acted.
       const clickWhenVisible = async (nameRe: RegExp, ms = 90_000) => {
@@ -200,7 +200,44 @@ test.describe.serial("manual wizard — free in-person event", () => {
             const [k] = await dbQuery<any>("SELECT selectedOfferId o FROM campaignKits WHERE id=?", [kitId]);
             offerAfterAdCopy = !k?.o; // the offer must still be selected (never re-dealt) at ad-copy time
           }
-          await clickWhenVisible(/lock it in/i, 5_000);
+          if (locked) {
+            await clickWhenVisible(/lock it in/i, 5_000);
+          } else {
+            // ── 0-card "didn't come through" recovery (project_bug_manual_deck_skipped_null_id) ──
+            // The deck render missed already-generated content: the row is auto-selected in the DB, but the
+            // deck fetched 0 cards, so the app is PARKED on "Try again / Skip — I already have this" and BLOCKS
+            // advancement until a chip is tapped. The driver had silently moved on (pollField saw the
+            // auto-selected id), desyncing from the app — that is the LP-never-reached deadlock. Click
+            // "Skip — I already have this" to re-sync: the app's 0-card Skip branch marks the node imported and
+            // ADVANCES to the next node **without clearing the selection**.
+            //
+            // SKIP-SAFETY (do NOT assume): "Skip — I already have this" is elsewhere a silent bypass that can
+            // leave selected*Id NULL and break the cascade. Prove it does not here — snapshot every upstream
+            // selection, Skip, re-read, and HARD-STOP if anything was cleared (A7/A10 on a broken upstream
+            // would be misleading).
+            const selCols = "selectedOfferId, selectedMechanismId, selectedHvcoId, selectedHeadlineId, selectedAdCopyId";
+            const [before] = await dbQuery<any>(`SELECT ${selCols} FROM campaignKits WHERE id=?`, [kitId]);
+            const skipped = await clickWhenVisible(/skip\s*—?\s*i already have this|skip.*already have this/i, 15_000);
+            if (skipped) {
+              await page.waitForTimeout(3000); // let the skip mutation + node-advance settle
+              const [after] = await dbQuery<any>(`SELECT ${selCols} FROM campaignKits WHERE id=?`, [kitId]);
+              const b = (before ?? {}) as Record<string, unknown>, a = (after ?? {}) as Record<string, unknown>;
+              const cleared = Object.keys(b).filter((k) => b[k] != null && a[k] == null);
+              const nodeStillSet = a[node.field] != null;
+              record(`S-${node.field}`, `Skip recovery preserves selections (${node.field})`,
+                cleared.length === 0 && nodeStillSet,
+                cleared.length
+                  ? `CLEARED ${cleared.join(", ")} — upstream BROKEN (before=${JSON.stringify(b)} after=${JSON.stringify(a)})`
+                  : `preserved: ${node.field}=${String(a[node.field])}, upstream intact (${JSON.stringify(a)})`);
+              if (cleared.length > 0 || !nodeStillSet) {
+                upstreamBroken = true;
+                throw new Error(`Skip cleared [${cleared.join(", ")}]${nodeStillSet ? "" : ` + ${node.field} now null`} — STOP: downstream A7/A10 would run on a broken upstream and be misleading.`);
+              }
+            } else {
+              record(`S-${node.field}`, `Skip recovery preserves selections (${node.field})`, false,
+                "no Skip chip found — driver could not re-sync with the parked app");
+            }
+          }
         } else {
           // non-dealable (email/whatsapp): auto-generate a reveal → "Love it ✓" accepts & advances.
           await clickWhenVisible(/love it/i, 240_000);
@@ -218,6 +255,12 @@ test.describe.serial("manual wizard — free in-person event", () => {
     }
 
     // ── PHASE 3 — assert persisted assets (A4–A7, A10–A13) ──
+    // Guard: if the Skip-safety check tripped (a Skip cleared an upstream selection), STOP — the LP ran on a
+    // broken upstream, so A4–A7/A10–A14 would be misleading. Record them as not-evaluated, do not read the DB.
+    if (upstreamBroken) {
+      for (const [id, l] of [["A4", "WhatsApp length"], ["A5", "Iman not Hormozi"], ["A6", "no bad venue"], ["A7", "no fabricated cities"], ["A10", "LP publish gate"], ["A11", "placeholder count 0"], ["A12", "offer no fabrication"], ["A13", "readability"], ["A14", "no FAQ scaffolding"], ["A15", "3 bonuses one per type"], ["A16", "offer bonus tokens filled"], ["A17", "no bonus fabrication"], ["A18", "bonuses DFY"], ["A19", "bonus obstacle traced"], ["A20", "objection-crusher traces objections"], ["A21", "bonuses distinct from lead magnet"], ["A23", "offer+LP bonus coherence"]] as const)
+        record(id, l, false, "NOT EVALUATED — Skip broke an upstream selection (see S-* row); results would be misleading");
+    } else {
     try {
     const [kit] = await dbQuery<any>("SELECT * FROM campaignKits WHERE id=?", [kitId]);
     const facts = typeof kit?.campaignFacts === "string" ? JSON.parse(kit.campaignFacts) : (kit?.campaignFacts ?? {});
@@ -285,9 +328,81 @@ test.describe.serial("manual wizard — free in-person event", () => {
     ];
     record("A14", "no FAQ scaffolding / raw ** in LP copy", lp ? scaffolding.length === 0 : false,
       lp ? (scaffolding.length ? `found: ${scaffolding.join(", ")}` : "clean") : "no landing page");
+
+    // ── A15–A21 — Bonus generation (step 2, Layer 1) ──
+    const sig = (s: string): Set<string> => {
+      const stop = new Set(["the","a","an","and","or","to","for","of","in","on","your","you","with","that","this","from","plan","system","guide","step","week","weeks","day","days","free"]);
+      return new Set((String(s ?? "").toLowerCase().match(/[a-z]{4,}/g) ?? []).filter(w => !stop.has(w)));
+    };
+    const overlap = (a: string, b: string): number => { const wb = sig(b); return Array.from(sig(a)).filter(w => wb.has(w)).length; };
+    const bonusRows = await dbQuery<any>("SELECT * FROM bonuses WHERE campaignKitId=? ORDER BY id", [kitId]);
+    const [icpRow] = kit?.icpId ? await dbQuery<any>("SELECT pains, frustrations, objections, implementationBarriers FROM idealCustomerProfiles WHERE id=?", [kit.icpId]) : [null];
+    const [lmRow] = kit?.selectedHvcoId ? await dbQuery<any>("SELECT title FROM hvcoTitles WHERE id=?", [kit.selectedHvcoId]) : [null];
+    const obstacleCorpus = icpRow ? [icpRow.pains, icpRow.frustrations, icpRow.objections, icpRow.implementationBarriers].filter(Boolean).join(" ") : "";
+    const bText = bonusRows.map((b: any) => `${b.title} ${b.description}`).join(" ");
+    const parseMaybe = (v: any) => { if (typeof v !== "string") return v; try { return JSON.parse(v); } catch { return null; } };
+    const offerAngles = offer ? ["godfatherAngle", "freeAngle", "dollarAngle"].map((c) => parseMaybe(offer[c])).filter(Boolean) : [];
+    const offerBonusText = offerAngles.map((a: any) => String(a?.bonuses ?? "")).join("\n");
+    const lpAngles = lp ? ["originalAngle", "godfatherAngle", "freeAngle", "dollarAngle"].map((c) => parseMaybe(lp[c])).filter(Boolean) : [];
+    const lpBonusItems = lpAngles.flatMap((a: any) => (Array.isArray(a?.bonuses) ? a.bonuses : []));
+    const lpBonusText = lpBonusItems.map((b: any) => `${b?.title ?? ""} ${b?.description ?? ""}`).join(" ");
+    const [emailRow] = kit?.selectedEmailSequenceId ? await dbQuery<any>("SELECT * FROM emailSequences WHERE id=?", [kit.selectedEmailSequenceId]).catch(() => [null]) : [null];
+    const emailText = emailRow ? JSON.stringify(emailRow) : "";
+    const realTitles = bonusRows.map((b: any) => String(b.title));
+    const EXC = /\b(live (?:call|session|q&a|webinar|training)|q&a|community|slack|discord|mastermind|1[- ]?on[- ]?1|group call|office hours|coaching (?:call|session)|zoom call)\b/i;
+
+    // A15 — exactly 3 bonuses, one of each type.
+    const types = bonusRows.map((b: any) => b.bonusType).sort();
+    const a15 = bonusRows.length === 3 && JSON.stringify(types) === JSON.stringify(["accelerator", "gap_filler", "objection_crusher"]);
+    record("A15", "3 bonuses generated, one per type", a15, `n=${bonusRows.length} types=[${bonusRows.map((b: any) => b.bonusType).join(", ")}]`);
+
+    // A16 — offer bonus tokens all filled (0 [INSERT_BONUS_*] remain in the offer).
+    const bonusTokens = Array.from(new Set(`${offerText}\n${emailText}`.match(/\[INSERT_BONUS_[A-Z0-9_]+\]/g) ?? []));
+    record("A16", "offer+email [INSERT_BONUS_*] tokens all filled", (offer || emailText) ? bonusTokens.length === 0 : false,
+      bonusTokens.length ? `remain: ${bonusTokens.join(", ")}` : "clean");
+
+    // A17 — no fabricated currency in bonus copy (value is coach-supplied only, none supplied here).
+    const bonusCurrency = `${offerBonusText} ${lpBonusText}`.match(/[£$€]\s?\d[\d,]*/g) ?? [];
+    record("A17", "no fabricated bonus value/currency (offer+LP copy)", bonusRows.length > 0 && bonusCurrency.length === 0,
+      bonusRows.length ? (bonusCurrency.length ? `figures: ${bonusCurrency.join(", ")}` : "clean") : "no bonuses");
+
+    // A18 — every bonus is a DFY asset (no live/community/call/Q&A language).
+    const excludedOfferLp = `${offerBonusText} ${lpBonusText}`.match(EXC);
+    const emailBonusExcluded = (emailText.match(/bonus[\s\S]{0,120}/gi) ?? []).map((seg) => seg.match(EXC)).find(Boolean)?.[0] ?? null;
+    const a18found = excludedOfferLp?.[0] ?? emailBonusExcluded;
+    record("A18", "bonuses DFY across offer/LP/email (no live/community)", bonusRows.length > 0 && !a18found,
+      a18found ? `found: ${a18found}` : (bonusRows.length ? "clean" : "no bonuses"));
+
+    // A19 — every bonus traces to a real ICP obstacle.
+    const untraceable = bonusRows.filter((b: any) => !String(b.derivedFromObstacle ?? "").trim() || (obstacleCorpus && overlap(b.derivedFromObstacle, obstacleCorpus) === 0));
+    record("A19", "every bonus derives from a real ICP obstacle", bonusRows.length > 0 && untraceable.length === 0,
+      untraceable.length ? `untraceable: ${untraceable.map((b: any) => b.bonusType).join(", ")}` : (bonusRows.length ? "all traced" : "no bonuses"));
+
+    // A20 — Objection-Crusher traces to the ICP objections specifically.
+    const oc = bonusRows.find((b: any) => b.bonusType === "objection_crusher");
+    const a20 = !!oc && !!icpRow?.objections && overlap(oc.derivedFromObstacle, icpRow.objections) > 0;
+    record("A20", "Objection-Crusher traces to ICP objections", a20,
+      oc ? `obstacle="${String(oc.derivedFromObstacle).slice(0, 60)}"` : "no objection_crusher bonus");
+
+    // A21 — bonuses distinct from the selected lead magnet (no significant title overlap).
+    const dupes = lmRow?.title ? bonusRows.filter((b: any) => overlap(b.title, lmRow.title) >= 2) : [];
+    record("A21", "bonuses distinct from the lead magnet", bonusRows.length > 0 && dupes.length === 0,
+      dupes.length ? `overlap: ${dupes.map((b: any) => b.title).join(" | ")}` : (lmRow?.title ? "distinct" : "no lead magnet to compare"));
+
+    // A23 — coherence: the offer + LP bonus copy IS the 3 real bonuses (no invented extras, no lead-magnet-as-bonus).
+    const offerHasAllTitles = realTitles.length > 0 && realTitles.every((t: string) => offerBonusText.includes(t));
+    const lpTitles = lpBonusItems.map((b: any) => String(b?.title ?? "")).filter(Boolean);
+    const lpSet = JSON.stringify(Array.from(new Set(lpTitles)).sort());
+    const realSet = JSON.stringify(Array.from(new Set(realTitles)).sort());
+    const lpMatches = lpBonusItems.length === 0 || lpSet === realSet; // [] when the page type renders no bonuses
+    const lpAdvertisesLeadMagnet = lmRow?.title ? lpTitles.some((t: string) => overlap(t, lmRow.title) >= 2) : false;
+    const a23 = bonusRows.length > 0 && offerHasAllTitles && lpMatches && !lpAdvertisesLeadMagnet;
+    record("A23", "offer+LP bonus copy = the 3 real bonuses", a23,
+      !offerHasAllTitles ? "offer bonus section missing a real title" : !lpMatches ? `LP titles differ: [${Array.from(new Set(lpTitles)).join(" | ")}]` : lpAdvertisesLeadMagnet ? "LP advertises the lead magnet as a bonus" : "coherent");
     } catch (e: any) {
-      for (const [id, l] of [["A4", "WhatsApp length"], ["A5", "Iman not Hormozi"], ["A6", "no bad venue"], ["A7", "no fabricated cities"], ["A10", "LP publish gate"], ["A11", "placeholder count 0"], ["A12", "offer no fabrication"], ["A13", "readability"], ["A14", "no FAQ scaffolding"]] as const)
+      for (const [id, l] of [["A4", "WhatsApp length"], ["A5", "Iman not Hormozi"], ["A6", "no bad venue"], ["A7", "no fabricated cities"], ["A10", "LP publish gate"], ["A11", "placeholder count 0"], ["A12", "offer no fabrication"], ["A13", "readability"], ["A14", "no FAQ scaffolding"], ["A15", "3 bonuses one per type"], ["A16", "offer bonus tokens filled"], ["A17", "no bonus fabrication"], ["A18", "bonuses DFY"], ["A19", "bonus obstacle traced"], ["A20", "objection-crusher traces objections"], ["A21", "bonuses distinct from lead magnet"], ["A23", "offer+LP bonus coherence"]] as const)
         record(id, l, false, `phase-3 error: ${e?.message ?? e}`);
     }
+    } // end else (upstream not broken)
   });
 });

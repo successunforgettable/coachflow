@@ -622,6 +622,41 @@ export const offers = mysqlTable("offers", {
 }));
 
 export type Offer = typeof offers.$inferSelect;
+
+/**
+ * Bonuses (forward-sequence step 2, Layer 1) — the 3 generated bonuses per kit.
+ * A DISTINCT entity: never services.bonuses (coach Program Vault) and never hvcoTitles
+ * (would pollute the lead-magnet deck). One row per bonus, grouped by bonusSetId.
+ * `value` is coach-supplied ONLY (never LLM-generated). assetBody + magnet URLs are Layer 2.
+ */
+export const bonuses = mysqlTable("bonuses", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  serviceId: int("serviceId"),
+  campaignId: int("campaignId"),
+  campaignKitId: int("campaignKitId"),
+  bonusSetId: varchar("bonusSetId", { length: 191 }).notNull(),
+  bonusType: mysqlEnum("bonusType", ["accelerator", "gap_filler", "objection_crusher"]).notNull(),
+  title: text("title").notNull(),
+  description: text("description").notNull(), // full buyer-facing copy → LP + Layer-2 PDF
+  shortLine: varchar("shortLine", { length: 255 }).notNull(), // ~12-18 word outcome line → offer + email
+  value: varchar("value", { length: 255 }), // coach-supplied £ figure only; NULL → no value line
+  derivedFromObstacle: text("derivedFromObstacle").notNull(),
+  format: varchar("format", { length: 50 }).notNull(), // checklist | template | script | sop | swipe | cheatsheet
+  assetBody: json("assetBody"), // Layer 2: LeadMagnetBody for the hosted PDF
+  magnetHtmlUrl: varchar("magnetHtmlUrl", { length: 500 }), // Layer 2
+  magnetPdfUrl: varchar("magnetPdfUrl", { length: 500 }), // Layer 2
+  source: mysqlEnum("source", ["generated", "imported"]).default("generated").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  userIdIdx: index("idx_bonuses_userId").on(table.userId),
+  kitIdx: index("idx_bonuses_kit").on(table.campaignKitId),
+  setIdx: index("idx_bonuses_set").on(table.bonusSetId),
+}));
+
+export type Bonus = typeof bonuses.$inferSelect;
+export type BonusType = "accelerator" | "gap_filler" | "objection_crusher";
 export type InsertOffer = typeof offers.$inferInsert;
 
 /**

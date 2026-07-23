@@ -60,6 +60,24 @@ the parked app, snapshots all upstream selections before/after to **prove Skip c
   cleanly — that's why A6/A7 are green). Note: A11's placeholders are WHY A10's `needs_publish` correctly fires —
   the page genuinely isn't publishable yet, and the gate honestly says so.
 
+## 📝 TRACKED WORK ITEM — Copy readability / register pass (raised by Arfeen live-run, never actioned)
+Logged 2026-07-24 so it survives sessions. **Its own pass — do NOT bundle into a structural ship.** Full detail:
+memory `project_copy_readability_register_pass.md`.
+- **Problem:** generated copy across **headlines / landing-page / offer / method names** is overcomplicated &
+  jargon-heavy — language real people don't use. Arfeen's live examples: *"Start The Postpartum Recalibration
+  Protocol, and Drop the Baby Weight in 12 Weeks — Without Cutting Calories While Your Body Is Still
+  Breastfeeding"*; a ~40-word LP header; jargon method names ("Postpartum Recalibration Protocol").
+- **Current state:** A13 **measures** Flesch-Kincaid + reports a score (recent runs FK **9.4–9.6**) but **no bar
+  was ever agreed** — it passes a threshold nobody set. Measurement exists; the fix does not.
+- **Not just a number:** jargon like "Postpartum Recalibration Protocol" can score fine on syllables and still be
+  jargon → needs a **REGISTER standard**, not only an FK threshold.
+- **Proven template:** the **bonus-title register fix** — positive-framing prompt guidance (NEVER negative
+  "Wrong:/Right:" examples — §14), verified in a harness run. Apply the same shape to the copy generators.
+- **Open decision for Arfeen:** acceptable FK grade for **headlines vs body copy**, and the **register standard**
+  for his market. A13 then gets a real bar; generators get positive-framing register guidance.
+- **Priority (Claude's rec on record):** run **after Layer 1 ships, ahead of Layer 2 and Problem B** — visible on
+  every campaign a coach publishes.
+
 ## 🧭 FORWARD SEQUENCE — step 1 DONE, rest intact
 
 1. ✅ **Ship the 3 in-flight fixes** — DONE (this handover).

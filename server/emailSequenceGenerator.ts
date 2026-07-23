@@ -890,7 +890,7 @@ export async function runEmailSequenceGeneration(input: {
   };
 }): Promise<{ id: number }> {
   const { getDb } = await import("./db");
-  const { emailSequences, services, idealCustomerProfiles, sourceOfTruth, campaigns, campaignKits } = await import("../drizzle/schema");
+  const { emailSequences, services, idealCustomerProfiles, sourceOfTruth, campaigns, campaignKits, bonuses } = await import("../drizzle/schema");
   const { eq, and } = await import("drizzle-orm");
 
   const db = await getDb();
@@ -943,6 +943,23 @@ export async function runEmailSequenceGeneration(input: {
       .where(and(eq(campaignKits.userId, input.userId), eq(campaignKits.icpId, icp.id)))
       .limit(1);
     if (kit?.campaignType) campaignType = kit.campaignType;
+  }
+
+  // Real bonus stack (step 2 coherence) — feed the campaign's 3 generated bonuses so any bonus-reveal email
+  // references a REAL bonus by name, never an inline invention, and never a fabricated monetary value.
+  let realBonusBlock = "";
+  let realBonusSupplied: string | null = null;
+  if (icp?.id) {
+    const [kitRow] = await db.select({ id: campaignKits.id }).from(campaignKits)
+      .where(and(eq(campaignKits.userId, input.userId), eq(campaignKits.icpId, icp.id))).limit(1);
+    if (kitRow?.id) {
+      const bonusRows = await db.select().from(bonuses).where(eq(bonuses.campaignKitId, kitRow.id));
+      if (bonusRows.length > 0) {
+        const lines = bonusRows.map((b, i) => `${i + 1}. ${b.title} — ${b.shortLine}`).join("\n");
+        realBonusSupplied = lines;
+        realBonusBlock = `\n\nREAL BONUS STACK — the campaign includes exactly these bonuses:\n${lines}\nWhen any email reveals or references a bonus, it MUST be one of these exact bonuses named above, described by its line. Never invent a different bonus, never rename these, and never describe any of them as a live call, session, Q&A, or community. These bonuses have NO monetary value assigned — never state or invent a £/$ figure for them, and never emit a bonus value placeholder.\n`;
+      }
+    }
   }
 
   const cascadeContext = await getCascadeContext(input.userId, icp?.id, "email");
@@ -1074,14 +1091,14 @@ You MUST use these exact numbers and real names. Do not fabricate.`
     guaranteeType: service.guaranteeType ?? null,
     guaranteeDuration: service.guaranteeDuration ?? null,
     deliveryDuration: service.deliveryDuration ?? null,
-    bonuses: service.bonuses ?? null,
+    bonuses: realBonusSupplied ?? service.bonuses ?? null,
     testimonialNames: [
       service.testimonial1Name,
       service.testimonial2Name,
       service.testimonial3Name,
     ],
   };
-  const rawEmails = await invokeEmailSequenceWithRetry(cascadeContext + prompt, supplied);
+  const rawEmails = await invokeEmailSequenceWithRetry(cascadeContext + realBonusBlock + prompt, supplied);
   const sequenceData: { emails: any[] } = { emails: rawEmails };
 
   // Server-controlled delay metadata override (workstream commit 4c).

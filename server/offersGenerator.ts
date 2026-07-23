@@ -140,7 +140,7 @@ USAGE RULES:
     : `- The operator has NOT supplied a delivery duration. Emit the placeholder [INSERT_PROGRAMME_DURATION] verbatim wherever programme duration would appear. Do NOT invent "N-minute session", "N-week sprint", or similar durations.`;
   const suppliedBonusesLine = supplied.bonuses
     ? `- The operator HAS supplied bonuses content. Reference it directly without inventing additional currency values.`
-    : `- The operator has NOT supplied bonuses. For each bonus, use [INSERT_BONUS_N_NAME] for the name and [INSERT_BONUS_N_VALUE] for the value (N=1, 2, 3, 4, 5). Do NOT invent "(£497 value)" / "(£1,200 value)" / etc. Do NOT invent a total bonus value summation.`;
+    : `- The operator has NOT supplied bonuses. Emit EXACTLY 3 bonuses. For each, use [INSERT_BONUS_N_NAME] for the name and [INSERT_BONUS_N_VALUE] for the value (N=1, 2, 3 only — never 4 or 5). Do NOT invent "(£497 value)" / "(£1,200 value)" / etc. Do NOT invent a total bonus value summation.`;
 
   const canonicalTokensList = getCanonicalOfferTokens().join(", ");
 
@@ -229,10 +229,10 @@ Generate a complete offer with 7 sections:
 3. **Pricing** (price section, 30-50 words)
    Use operator-supplied price OR [INSERT_PRICE] placeholder verbatim. Do NOT invent a price, anchor range, or cost comparison with a fabricated number. Include the guarantee duration only if operator-supplied; otherwise reference the [INSERT_GUARANTEE_TERMS] placeholder.
 
-4. **Bonuses** (3-5 bonuses, 150-200 words total)
-   Every bonus must: have a real name (or [INSERT_BONUS_N_NAME] placeholder), the operator-supplied value or [INSERT_BONUS_N_VALUE] placeholder, and one sentence explaining exactly what it does for the customer.
-   Example with supplied value: "BONUS #1: The Strategy Playbook (£497 value) — Maps your next 90 days in actionable detail."
-   Example without supplied value: "BONUS #1: [INSERT_BONUS_1_NAME] ([INSERT_BONUS_1_VALUE]) — Maps your next 90 days in actionable detail."
+4. **Bonuses** (EXACTLY 3 bonuses)
+   Emit ONLY the bonus NAME slot for each — one bonus per line, NAME token only, NO description, and NO value unless the operator supplied one. The real bonus name and its one-line description are filled in from the campaign's generated bonus stack after this step; adding your own description here would contradict the real bonus (a checklist wrongly described as a "live call"), so leave the line at the name slot.
+   Format WITHOUT a supplied value (the default): "BONUS #1: [INSERT_BONUS_1_NAME]" then "BONUS #2: [INSERT_BONUS_2_NAME]" then "BONUS #3: [INSERT_BONUS_3_NAME]", each on its own line (N=1, 2, 3 only).
+   Format WITH an operator-supplied value: "BONUS #1: The Strategy Playbook (£497 value)".
 
 5. **Guarantee** (50-75 words, specific risk reversal)
    Use operator-supplied guarantee terms OR [INSERT_GUARANTEE_TERMS] placeholder verbatim. Do NOT invent "30-day refund", "pay nothing", "full refund", "money-back" mechanics.
