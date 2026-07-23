@@ -1,48 +1,67 @@
-# Bonus generation — source-of-truth + filtered build spec (banked 2026-07-22)
+# Bonus generation — source-of-truth + settled build spec
 
-This directory is the source-of-truth for the **bonus generation** build (the A11 / offer-token "Class A"
-work). It is **parked** — it runs as its own future session after Arfeen's three product decisions.
+This directory is the source-of-truth for the **bonus generation** build (forward-sequence step 2; the
+A11 / offer-token "Class A" work). The six NotebookLM research reports are **in the repo** (below), and the
+three product decisions are **settled** (below). Build proceeds to the settled spec.
 
-## The six NotebookLM research reports — NOT YET IN THE REPO (place here)
-Six NotebookLM reports are the research foundation. They are **not in the working tree yet**; Arfeen must add
-them here as git-lfs `.md` files (mirroring `docs/landing-page-references/`), one per topic:
+## The six research reports (present, read in full 2026-07-23)
+Stored under their original NotebookLM titles (not the idealized `01-…` filenames the old README listed):
 
-1. `01-taxonomy.md` — bonus taxonomy (Accelerator / Gap-Filler / Objection-Crusher / …)
-2. `02-icp-derivation.md` — deriving bonuses from the ICP via Problem-Solution Mapping
-3. `03-coherence-and-number.md` — how many bonuses, coherence across the stack
-4. `04-honest-value-framing.md` — value framing WITHOUT fabricated currency
-5. `05-deliverable-format.md` — implementation-asset formats (checklist / template / script / SOP)
-6. `06-failure-modes.md` — bonus failure modes to avoid
+1. **Taxonomy** — `The Taxonomy of High-Value Incentives_ A Strategic Report on High-Converting Bonus Architecture.md`
+2. **ICP-derivation** — `The Strategic Architecture of High-Value Incentives_ A Decision Framework for Bonus Derivation.md`
+3. **Coherence / number** — `Strategic Architecture of the Bonus Stack_ Coherence, Value, and Quantity.md`
+4. **Honest value-framing** — `Strategic Report_ Honest Value Framing and the Architecture of High-Trust Bonuses.md`
+5. **Deliverable format / quality** — `The Architecture of Premium Digital Bonuses_ Strategic Format and Quality Conventions.md`
+6. **Failure modes** — `Bonus Failure Modes & Design Architecture Checklist_ A $100M Offers Strategic Report.md`
 
-Track them with git-lfs (add `*.md` under this dir to `.gitattributes` if large, or store as normal `.md`).
-CC reads these as source-of-truth when the bonus run starts.
+(The stray byte-identical duplicate `…Bonus Derivation (1).md` was deleted 2026-07-23.)
 
-## Filtered build spec (guru value-inflation removed, structural mechanics kept)
-- **Generate 3 bonuses** — one **Accelerator** (speeds the core result) + one **Gap-Filler** (covers a
-  prerequisite the ICP lacks) + one **Objection-Crusher** (dissolves the top buying objection). Arfeen chose
-  this varied stack over 3-of-a-kind.
-- **Derive each via Problem-Solution Mapping from the ICP** — not generic; map to a real ICP pain/objection.
-- **Each is a real implementation asset** — a checklist, template, script, or SOP the coach can hand over.
-  **Never an info-dump / "ultimate guide" filler.**
-- **Honest framing** — describe each by its **outcome / time saved / problem solved**. **NEVER fabricate a £
-  value.** Default the value line to **"included free"**; show a £ figure **only if the coach supplies it**
-  (same anti-fabrication rule as the offer price/guarantee tokens).
-- **Rendered to premium craft via the existing lead-magnet pipeline** —
-  `leadMagnetContentGenerator` → `leadMagnetRenderer` → `leadMagnetPublisher` already produces real hosted PDF
-  deliverables (`storagePut` → hosted URL, persists `magnetHtmlUrl`/`magnetPdfUrl`). Bonuses **ride this
-  pipeline** — moderate reuse, not net-new. Net-new = a bonus-concepts generator (3 concepts from the ICP,
-  like `hvcoGenerator`'s titles) + a bonuses store wired into the offer's `[INSERT_BONUS_N_NAME]` slots.
+## Reference-truth caveat (mirrors §15a)
+These sources carry **known guru value-inflation** that is INCOMPATIBLE with ZAP's no-fabrication rule and must
+be stripped: fabricated MSRP "valued at $X" stacking, Goldilocks $20k/$9,997 tiers, RPM/"= 165,000 views" math,
+invented "cost of inaction $50k" figures, and invented "Value Proof" case studies. Report #4 (honest framing)
+**explicitly refutes** #1/#2/#5 on this — ZAP sides with #4. Guarantees, cohort caps, and durations are
+**Class-C facts** (coach-supplied or reframed-when-absent), NOT bonuses, and stay OUT of the bonus generator.
 
-## Three product decisions PENDING from Arfeen (before this run starts)
-1. **Confirm generate-3** (Accelerator + Gap-Filler + Objection-Crusher).
-2. **Value-line handling** — "included free" default vs require a £ value.
-3. **Class-C facts** (guarantee / duration / cohort dates) — reframe-when-absent (matches email/WhatsApp
-   generators) vs ask in the facts step.
+## SETTLED build spec (Arfeen's decisions — build to this)
+- **Generate 3 bonuses, one per type:**
+  - **Accelerator** — collapses Time Delay: a quick-win checklist/protocol for a first result in ≤7 days.
+  - **Gap-Filler** — resolves a missing prerequisite / logistical friction the ICP lacks.
+  - **Objection-Crusher** — dissolves the ICP's **top-ranked buying objection**; ALWAYS the DFY-asset form
+    (script bank / template), **NEVER a promised live session**.
+- **Full deliverable:** each bonus is a **real hosted PDF** via the existing lead-magnet pipeline
+  (`generateLeadMagnetContent` → `renderDeliverableHtml` → publish/PDF core). Not name-only.
+- **Derivation:** Problem-Solution Mapping from the ICP — the core offer creates secondary problems; each bonus
+  dissolves one. Input = the existing long ICP (pains, frustrations, objections), mirroring how
+  `hvcoGenerator` derives lead-magnet titles.
+- **Value framing:** outcome / time-saved / problem-solved. Value line **OPTIONAL** — default **no figure**;
+  render a £ value ONLY if the coach supplies a real one. **Never emit any currency or ROI figure not
+  coach-supplied.** No invented case studies, no "cost of inaction" numbers, no MSRP stacking.
+- **Class-C facts** (guarantee / duration / cohort): **reframe when absent, never fabricate, never add to
+  intake** — port the reframe-fallback the email/WhatsApp generators already use. Guarantees stay OUT entirely.
+- **Format:** implementation-heavy only (checklist / fill-in template / swipe file / script bank / SOP / 1-page
+  cheat sheet). Never a guide, info-dump, or video-course. Inherit the lead-magnet renderer's craft
+  (≤2 fonts, 2–3 colours, whitespace). **Niche-specific to the ICP, never generic.**
+- **Hard exclusions:** **Community** and **Third-Party/OPM** bonus types — ZAP cannot fulfill them; generating
+  them fabricates a deliverable.
+- **Guardrails (failure modes):** every bonus derives from a specific ICP obstacle · implementation-heavy ·
+  subordinate to the core offer (never overshadow / no second offer in disguise) · niche-specific ·
+  zero-marginal-cost DFY only.
 
-## The A11 offer-token context (three classes — see the July-22 handover)
-- **Class A — bonuses:** generate/import as real deliverables (this spec). `service.bonuses` import field exists.
+## Settled mechanism decisions (no further input needed)
+- Pass the already-selected **offer / method / lead-magnet** as cascade context so bonuses are **distinct by
+  construction** (no duplication of the lead magnet).
+- **Auto-pick the top-ranked ICP objection** for the Objection-Crusher.
+- Defer "bonuses as their own reviewable wizard node" to **step 3 (Problem B)** so it inherits that review
+  surface rather than building a second one. Bonuses generate silently for now.
+
+## Where it plugs in (the A11 offer-token context — three classes)
+- **Class A — bonuses:** generate as real deliverables (this spec); fill the offer's `[INSERT_BONUS_N_NAME]` /
+  `[INSERT_BONUS_N_VALUE]` slots (value stripped when no coach figure).
 - **Class B — resolve from existing data:** `HOST_NAME` (coach name), `OFFER_LINK` (`users.checkout_url`),
   `BOOKING_URL` (`users.booking_url`) — extend the offer facts-wire to resolve these.
 - **Class C — real facts:** `GUARANTEE_TERMS`, `PROGRAMME_DURATION`, `COHORT_LIMIT`, `COHORT_CLOSE_DATE`,
   `PROGRAMME_START_DATE`, `FIRST_RESULT_TIMEFRAME`, `BONUS_VALUE` — port the reframe-when-absent pattern the
   email/WhatsApp generators already use (the offer generator is the only one emitting these raw).
+
+Full read + independent analysis: handover `docs/handovers/ZAP_Handover_July23_2026.md` and the step-2 proposal.

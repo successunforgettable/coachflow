@@ -28,9 +28,12 @@ export default defineConfig({
   reporter: [["list"], ["json", { outputFile: "e2e/.report/results.json" }]],
   use: {
     baseURL: process.env.E2E_BASE_URL ?? "http://localhost:3000",
-    trace: "retain-on-failure",
+    // Disk guard (2026-07-23): trace.zip + video retention wrote ~629MB per FAILED run and filled the data
+    // volume mid-ship (ENOSPC blocked all tooling). Trace + video OFF; the failure screenshot (~100KB) stays —
+    // it carried the ad-copy 0-card diagnosis. Re-enable a trace ad-hoc with `--trace on` when actively debugging.
+    trace: "off",
     screenshot: "only-on-failure",
-    video: "retain-on-failure",
+    video: "off",
     actionTimeout: 60 * 1000,
     navigationTimeout: 90 * 1000,
   },
