@@ -121,3 +121,29 @@ Build in this order — each piece makes the next cheaper. **The P.D.A. concept 
 Do NOT start building. First, confirm the current in-flight work has shipped and the tree is clean. Then have CC do an investigate-and-propose pass on **piece 1 (read the real signals)** and **piece 2 (the P.D.A. concept axis + validator)** — the backbone — proposing the exact schema, prompt, and validator shape from the real code, for review before any build. Everything downstream (LP match, video scripts, the write-back loop) sequences after the backbone exists.
 
 **The strategic headline to hold onto:** ZAP already does the two hardest things Andromeda rewards — conceptual diversity (via the concept engine, once built) and ad-to-page match (by construction). Building this makes every ZAP campaign perform better on Meta automatically, and it's a genuine repositioning, not just a feature.
+
+---
+
+## 12. FINDING — how Meta actually reads the landing page (research-verified correction, 2026-07-24)
+
+**Verified across 7 NotebookLM technical reports** (banked at `docs/andromeda/landing-page-research/`). This is a **research-verified correction to the original ZAP premise** — read it before designing any LP-as-targeting mechanism.
+
+### There are TWO separate mechanisms — do NOT conflate them
+
+1. **Compliance scanning — CONFIRMED, deterministic.** Meta renders and crawls the destination page (headless browser, mobile UA, **OCRs images**) to enforce policy: claim substantiation, prohibited content, functional-page checks, and **ad-to-page consistency ("landing page dissonance")**. Ad-to-page coherence is a **HARD compliance requirement** — mismatch risks rejection. Documented and enforced.
+
+2. **Targeting / retrieval — INDIRECT, not direct.** The evidence converges: Meta does **NOT** semantically crawl the LP's text and feed it into the Andromeda retrieval model as a **direct targeting vector**. The mechanism is **indirect** — the LP drives conversions → the **pixel/CAPI fires those conversion events** → that **behavioral signal (not the page's words)** is what Andromeda's ML uses to find the audience. The page shapes targeting **THROUGH the conversion signal it produces**, not through Meta reading its meaning.
+
+### CORRECTION to the original premise (record explicitly)
+
+The earlier idea — **"write the LP with lots of text so Meta's AI reads it and identifies the right customer"** — is **NOT how targeting works** and **must be retired as a rationale.** Reframe:
+
+- The **per-concept LP hook variant's job is CONVERSION MATCH** (persona X's ad → persona X's page → persona X converts), **NOT semantic legibility for a crawler.**
+- **Ad-to-page coherence is doubly justified:** compliance safety **AND** a clean, unambiguous conversion signal for Andromeda.
+- **Pixel/CAPI conversion tracking is the actual targeting lever** and becomes **MORE central to the Andromeda mode than any LP-text encoding.** → **Flag for piece 5 (the write-back loop) design.**
+
+### §5 discipline note — CONFIRMED vs UNCONFIRMED
+
+A minority of the reports lean toward "creative/LP context feeds retrieval embeddings **directly**." **Sources split here.** Build for the **CONFIRMED** mechanism (**conversion-signal + compliance-consistency**). Treat **"Meta directly reads LP semantics for targeting" as UNCONFIRMED** — nice if true, **not something to architect on.** This ties to the existing §10 discipline (CC verifies every mechanism against live evidence before building).
+
+**Consequence for the roadmap** (the CLAUDE.md "Andromeda MODE design discussion" + piece 5): the "LP as targeting instrument" language in this brief means *targeting through the conversion signal*, not *targeting through Meta reading the page*. Sources: `docs/andromeda/landing-page-research/` (7 reports).

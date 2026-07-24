@@ -1,11 +1,38 @@
 # ZAP Handover — July 24, 2026
 
-## Headline
+## Headline (checkpoint 2026-07-25)
 
-**Forward-sequence STEP 2b — Layer 2 bonus PDF DURABILITY FIX shipped + prod-verified.** The Layer 2 bonus
-hosted-PDF path was live but fire-and-forget (a process recycle mid-run orphaned bonuses with no recovery). It is
-now a durable jobs-table job with on-Kit-load self-heal. Shipped `0cf0a38`, deploy SUCCESS, prod smoke A22-prod
-green, artifacts torn down.
+**✅ BONUS ARC COMPLETE (reading-task tier) + LIVE.** Full arc, all machine-verified: **Layer 1** (ICP-derived
+3-bonus content, coherent across offer/LP/email) → **Layer 2** (hosted PDF deliverables + Kit "Your Bonuses"
+surface) → **durability fix** (jobs-table, self-heal reconcile, no orphans) → **correctness pass** (post-purchase
+framing + markdown rendering). **NEXT = the Andromeda script generator** (Arfeen re-prioritized it AHEAD of the
+readability pass). Everything below documents the two most recent stages.
+
+### Correctness pass — `10582b9` (post-purchase framing + markdown rendering)
+
+`HEAD = origin/railway-build = 10582b9`. Deploy **SUCCESS**, image digest **`sha256:46ce904e5f16`** (container
+swapped, prod 200; server-side render/content change → no client bundle, proof = digest + boot). Two defects from
+Arfeen's live review (kit 191) fixed:
+- **Framing:** the generator prompt was pre-registration lead-magnet copy, so a post-purchase bonus pitched the
+  buyer to convert ("Reserve My Spot… next cohort is forming"). Added `mode:"bonus"` — system + user prompts write
+  to a buyer already enrolled; `nextStep` orients to USING the programme; requires a `howToUse` orientation.
+  `bonusPdfGenerator` passes `mode:"bonus"`. Lead-magnet mode byte-identical (characterization 3/3).
+- **Rendering:** tool content is well-structured markdown but was dumped raw into `<pre>` (literal `##`/`**`/`|`).
+  Replaced with an in-house line-based markdown renderer (no dependency): headings, bold/italic, ordered &
+  unordered lists, tables, rules; `[BRACKET]` fill-ins render as distinct chips; `howToUse` renders in a "How to
+  use this" card under the cover; cover states the format.
+
+**Verified LIVE in prod output (kit 192, all 3 bonuses):** framing OK (buyer CTAs, no register/reserve/book) ·
+`noRawMd:true ×3` · no `<pre>` · fill-in chips · how-to card + format cover. Gates: TS 35, new tests **19/19**,
+characterization **3/3**. **Both teardowns clean** — pre-fix kit-191 + smoke kit-192 (6 rows/6 KV/6 PDFs removed;
+post-teardown DB 0 + all 6 pages & PDFs 404; nothing hosted). Files: `leadMagnetRenderer.ts` (+ `.test.ts`),
+`leadMagnetContentGenerator.ts` (+ `.bonus.test.ts`), `bonusPdfGenerator.ts`, `scripts/verify-bonus-render.ts`.
+
+### Prior — `0cf0a38` (Layer 2 bonus PDF DURABILITY FIX)
+
+The Layer 2 bonus hosted-PDF path was live but fire-and-forget (a process recycle mid-run orphaned bonuses with no
+recovery). It is now a durable jobs-table job with on-Kit-load self-heal. Shipped `0cf0a38`, deploy SUCCESS, prod
+smoke A22-prod green, artifacts torn down.
 
 ## What shipped — `0cf0a38` (durable bonus PDF generation)
 
@@ -79,8 +106,49 @@ never hit hard-zero again. Claude cannot toggle billing settings. **Status as of
 NOT confirmed enabled — OPEN.** A secondary guardrail worth considering: a low-balance alert / a boot-time or
 scheduled cheap-probe healthcheck that pages on a 400-credit error (today nothing surfaced the outage).
 
+## 🔵 TRACKED (do not drop) — Bonus deliverable FORMAT + design decision: INTERACTIVE-FIRST (deferred until AFTER the Andromeda script generator)
+
+**Supersedes and EXPANDS the earlier "make the bonus PDF look better" pass — this is a FORMAT decision, not polish.**
+
+**Reframe:** the earlier item was "make the bonus PDF look better." The real question is bigger — **is PDF even the
+right format?** Arfeen's position, research-backed: **a bonus should be a tool the buyer OPERATES, not a reading
+task.** *"If it's a reading task, generally people hate it."*
+
+**Why PDF was chosen (honest record):** it was **never chosen.** PDF came bundled with the decision to reuse the
+lead-magnet pipeline (which produces PDFs). The format question was **never surfaced as a product decision.**
+
+**What the research supports:** implementation-over-information (the Xanax-vs-meditation principle) — the deliverable
+should **do the work, not describe it.** Premium examples in the research are interactive (Notion workspaces,
+"one-click Notion OS", plug-and-play systems) *because they're operated, not read.* **Nothing privileges PDF.**
+
+**Interactive-first is the leading candidate. Functional case per format:**
+- **Checklist** — boxes that actually tick (a PDF checklist you can't tick is a worse checklist).
+- **Script bank** — copy-to-clipboard per script (use the words, don't retype them).
+- **SOP / template** — real typeable fill-in fields, not printed brackets.
+- Plus **HTML has far more design headroom than a print-oriented PDF renderer** (interactivity, motion, layout,
+  states) — the design ambition is MORE achievable in HTML than PDF.
+
+**Counterweights to resolve when built (validate, don't assume):** perceived value (a download feels owned, a link
+feels visited) · portability/permanence (a PDF survives independent of ZAP hosting; does the link die on archive?) ·
+**state persistence — does a ticked box survive a refresh? If not, an interactive checklist is a toy. Make-or-break.**
+
+**Likely answer (validate, not assume): BOTH.** The HTML is already generated and the PDF is rendered FROM it —
+`magnetHtmlUrl` AND `magnetPdfUrl` already exist. So this is probably "present the **interactive** version as the
+PRIMARY deliverable, with a PDF to keep" — not either/or. **The genuinely new work is making the HTML actually
+interactive (tickable / copyable / typeable), rather than just being the print source.**
+
+**Why it MUST NOT be dropped (Arfeen's reasoning):** the offer assigns value to these bonuses. A bonus framed as
+valuable that arrives as a plain document nobody wants to read **has no value and undermines the offer's credibility.**
+
+**Sequencing:** DEFERRED until AFTER the Andromeda script generator (more important — the Andromeda backbone; the
+current bonuses are now correct + clear rather than broken; rushing a format change on an uncommitted fix is how good
+decisions get made badly). Full detail: memory `project_bonus_pdf_visual_design_pass`. **Separate from the correctness
+fixes** (register/framing · `<pre>`→markdown · howToUse · fill-in chips) which already made the current PDF bonuses
+correct + clear.
+
 ## Next in the forward sequence
 
 (2a) **Copy readability / register pass** — visible on every campaign; A13 measures FK but no bar agreed; needs a
 register standard, not just a number. · (3) **Problem B** — per-node review surface + existing-assets import. ·
-(4) **Andromeda backbone.** See CLAUDE.md §1a for the full ordered roadmap.
+(4) **Andromeda backbone** → then **(4.5) Bonus PDF visual design pass** (queued after the Andromeda script generator).
+See CLAUDE.md §1a for the full ordered roadmap.
