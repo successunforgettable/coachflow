@@ -44,12 +44,20 @@ function record(id: string, label: string, pass: boolean, detail: string) {
   expect.soft(pass, `${id} ${label} — ${detail}`).toBeTruthy();
 }
 
-// ── direct DB read (mysql2) — the isolated test DB is on the same box ──
-async function dbQuery<T = any>(sql: string, params: any[] = []): Promise<T[]> {
+// ── direct DB read (mysql2) — BOUNDED so a stalled prod-DB connection can't hang the run past its deadline
+// (the failure where a hung poll query ran 55 min instead of exiting at 600s). connectTimeout + per-query
+// timeout + an outer hard race that rejects on any hang (connect / query / end).
+async function dbQuery<T = any>(sql: string, params: any[] = [], timeoutMs = 20_000): Promise<T[]> {
   const mysql = await import("mysql2/promise");
-  const conn = await mysql.createConnection(DB_URL);
-  try { const [rows] = await conn.query(sql, params); return rows as T[]; }
-  finally { await conn.end(); }
+  const run = (async () => {
+    const conn = await mysql.createConnection({ uri: DB_URL, connectTimeout: 10_000 });
+    try { const [rows] = await conn.query({ sql, values: params, timeout: timeoutMs }); return rows as T[]; }
+    finally { await conn.end().catch(() => {}); }
+  })();
+  return await Promise.race([
+    run,
+    new Promise<T[]>((_, rej) => setTimeout(() => rej(new Error(`dbQuery hard-timeout after ${timeoutMs + 5000}ms`)), timeoutMs + 5000)),
+  ]);
 }
 
 // ── chat driving helpers ──
@@ -446,25 +454,42 @@ test.describe.serial("manual wizard — free in-person event", () => {
         published ? `LEAKED: publicUrl=${lp.publicUrl} — guard OFF, page is PUBLIC (unset works? check E2E_NOPUBLISH_OPENID)` : "no publicUrl — guard held, nothing published");
     }
 
-    // A22 — Layer 2: each bonus becomes a real hosted PDF deliverable. The PDF job is fire-and-forget async, so
-    // POLL for assetBody. assetBody proves content-gen (clean-room + prod). magnetPdfUrl + a live 200 prove the
-    // hosted PDF — PROD ONLY (clean-room has no Cloudflare → publish fails → magnetPdfUrl stays null).
+    // A22 — Layer 2: each bonus becomes a real hosted PDF deliverable. The PDF job is fire-and-forget and the
+    // PDFs render SEQUENTIALLY (~1-2 min each via Cloudflare Browser Rendering), so poll on the thing being
+    // ASSERTED: prod waits for magnetPdfUrl on all 3 (generous timeout = 3 sequential renders + headroom;
+    // logs progress so a real failure is distinguishable from "still rendering"); clean-room waits for
+    // assetBody (publish fails fast with no Cloudflare → magnetPdfUrl never lands). Don't trade a race for a timeout.
     {
-      const deadline = Date.now() + 180_000;
+      const targetMs = E2E_PROD ? 600_000 : 180_000; // prod: ~3×2min renders + headroom
+      const deadline = Date.now() + targetMs;
+      const readyCount = (rows: any[]) => E2E_PROD
+        ? rows.filter((b: any) => !!b.magnetPdfUrl).length
+        : rows.filter((b: any) => b.assetBody != null).length;
       let brows: any[] = [];
+      let lastLogged = -1;
       while (Date.now() < deadline) {
-        brows = await dbQuery<any>("SELECT assetBody, magnetPdfUrl FROM bonuses WHERE campaignKitId=?", [kitId]);
-        if (brows.filter((b: any) => b.assetBody != null).length >= 3) break;
-        await new Promise((r) => setTimeout(r, 5000));
+        // a transient DB hang must not abort the poll — keep the prior snapshot and retry next tick.
+        brows = await dbQuery<any>("SELECT assetBody, magnetPdfUrl FROM bonuses WHERE campaignKitId=?", [kitId]).catch(() => brows);
+        const n = readyCount(brows);
+        if (n !== lastLogged) {
+          // eslint-disable-next-line no-console
+          console.log(`[A22] ${E2E_PROD ? "hosted PDFs" : "bodies"} ready ${n}/3 (bodies=${brows.filter((b: any) => b.assetBody != null).length}/3, ${Math.round((deadline - Date.now()) / 1000)}s left)`);
+          lastLogged = n;
+        }
+        if (n >= 3) break;
+        await new Promise((r) => setTimeout(r, 6000));
       }
       const bodies = brows.filter((b: any) => b.assetBody != null).length;
       if (E2E_PROD) {
-        const pdfs = brows.filter((b: any) => !!b.magnetPdfUrl).length;
-        const oneUrl = brows.find((b: any) => b.magnetPdfUrl)?.magnetPdfUrl as string | undefined;
-        let url200 = false;
-        if (oneUrl) url200 = await page.request.get(oneUrl).then((r) => r.ok()).catch(() => false);
-        record("A22", "each bonus has a hosted PDF (assetBody + magnetPdfUrl + 200)", bodies === 3 && pdfs === 3 && url200,
-          `bodies=${bodies}/3 pdfs=${pdfs}/3 url200=${url200}`);
+        const pdfRows = brows.filter((b: any) => !!b.magnetPdfUrl);
+        const pdfs = pdfRows.length;
+        let all200 = pdfs === 3; // verify EVERY hosted PDF resolves, not just one
+        for (const b of pdfRows) {
+          const ok = await page.request.get(b.magnetPdfUrl).then((r) => r.ok()).catch(() => false);
+          if (!ok) all200 = false;
+        }
+        record("A22", "each bonus has a hosted PDF (assetBody + magnetPdfUrl + all 200)", bodies === 3 && pdfs === 3 && all200,
+          `bodies=${bodies}/3 pdfs=${pdfs}/3 all-urls-200=${all200}`);
       } else {
         record("A22", "each bonus has generated assetBody (PDF hosting is prod-only)", bodies === 3,
           `bodies=${bodies}/3 (clean-room: magnetPdfUrl null — no Cloudflare)`);

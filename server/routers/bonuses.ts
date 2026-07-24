@@ -17,6 +17,12 @@ export const bonusesRouter = router({
         .where(and(eq(campaignKits.id, input.campaignKitId), eq(campaignKits.userId, ctx.user.id))).limit(1);
       if (!kit) throw new TRPCError({ code: "NOT_FOUND", message: "Kit not found" });
 
+      // Self-heal: re-enqueue a durable PDF job for any bonus orphaned by a process recycle (concept but no
+      // assetBody past the stale window). Non-blocking — never delays the Kit render.
+      import("../bonusPdfGenerator")
+        .then((m) => m.reconcileBonusPdfs(ctx.user.id, input.campaignKitId))
+        .catch((e) => console.warn(`[bonuses.listForKit] reconcile non-fatal: ${e instanceof Error ? e.message : e}`));
+
       const rows = await db.select({
         id: bonuses.id, bonusType: bonuses.bonusType, title: bonuses.title, shortLine: bonuses.shortLine,
         format: bonuses.format, magnetHtmlUrl: bonuses.magnetHtmlUrl, magnetPdfUrl: bonuses.magnetPdfUrl,
