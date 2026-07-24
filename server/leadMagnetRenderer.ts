@@ -45,7 +45,93 @@ function esc(s: string): string {
 function paras(text: string): string {
   return String(text ?? "")
     .split(/\n\s*\n/).map(p => p.trim()).filter(Boolean)
-    .map(p => `<p class="p">${esc(p).replace(/\n/g, "<br>")}</p>`).join("");
+    .map(p => `<p class="p">${inlineMd(esc(p).replace(/\n/g, "<br>"))}</p>`).join("");
+}
+
+// ── in-house markdown → HTML (no dependency) ────────────────────────────────
+// The generator emits well-structured markdown (## headings, **bold**, | tables |, --- rules, - lists) plus
+// [BRACKET] fill-in prompts. Rendering it as HTML (not a raw <pre> dump) is the fix for the "very confusing"
+// bonus documents. Inline formatting runs on ALREADY-ESCAPED text, so it can never inject markup.
+function inlineMd(escaped: string): string {
+  return escaped
+    // **bold** first (before single-asterisk italic)
+    .replace(/\*\*([^*]+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/(^|[^*])\*([^*\n]+?)\*(?!\*)/g, "$1<em>$2</em>")
+    .replace(/\b_([^_\n]+?)_\b/g, "<em>$1</em>")
+    // [FILL-IN PROMPT] → a distinct fill-in chip the reader can see they complete. Kept AFTER emphasis so a
+    // bracket's inner text isn't mangled. &#39;/&quot; etc are already escaped; brackets are literal here.
+    .replace(/\[([^\]\n]{1,80})\]/g, '<span class="fillin">[$1]</span>');
+}
+
+function mdInlinePlusBreaks(raw: string): string {
+  return inlineMd(esc(raw)).replace(/\n/g, "<br>");
+}
+
+// Line-based markdown → HTML. Deliberately small and deterministic — the subset the generator produces (headings,
+// bold/italic, ordered & unordered lists, tables, rules, blockquotes, [BRACKET] fill-ins). Line-based (not
+// blank-line-block) so a heading that is immediately followed by content on the next line still renders as a
+// heading rather than leaking its literal "##".
+const RE_HEADING = /^\s*(#{1,6})\s+(.+?)\s*$/;
+const RE_HR = /^\s*([-*_])\1{2,}\s*$/;
+const RE_ULI = /^\s*([-*+]|[☐☑✅])\s+/;
+const RE_OLI = /^\s*\d+[.)]\s+/;
+const RE_TABLE_SEP = /^\s*\|?[\s:|-]+\|?\s*$/;
+
+function mdToHtml(src: string): string {
+  const text = String(src ?? "").replace(/\r\n?/g, "\n").replace(/\n+$/g, "");
+  if (!text.trim()) return "";
+  const lines = text.split("\n");
+  const out: string[] = [];
+
+  let para: string[] = [];
+  let list: { type: "ul" | "ol"; items: string[] } | null = null;
+  const flushPara = () => { if (para.length) { out.push(`<p class="md-p">${mdInlinePlusBreaks(para.join("\n"))}</p>`); para = []; } };
+  const flushList = () => { if (list) { const t = list.type; out.push(`<${t} class="md-${t}">${list.items.map(i => `<li>${inlineMd(esc(i))}</li>`).join("")}</${t}>`); list = null; } };
+  const flushAll = () => { flushPara(); flushList(); };
+  const cells = (row: string) => row.trim().replace(/^\||\|$/g, "").split("|").map(c => c.trim());
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    if (!line.trim()) { flushAll(); continue; }
+
+    // table: a "| … |" row immediately followed by a |---| separator row
+    if (/^\s*\|.*\|\s*$/.test(line) && i + 1 < lines.length && RE_TABLE_SEP.test(lines[i + 1]) && lines[i + 1].includes("-")) {
+      flushAll();
+      const head = cells(line);
+      const bodyRows: string[] = [];
+      let j = i + 2;
+      for (; j < lines.length && lines[j].includes("|") && lines[j].trim(); j++) bodyRows.push(lines[j]);
+      const th = head.map(c => `<th>${inlineMd(esc(c))}</th>`).join("");
+      const tb = bodyRows.map(r => `<tr>${cells(r).map(c => `<td>${inlineMd(esc(c))}</td>`).join("")}</tr>`).join("");
+      out.push(`<table class="md-table"><thead><tr>${th}</tr></thead><tbody>${tb}</tbody></table>`);
+      i = j - 1;
+      continue;
+    }
+
+    if (RE_HR.test(line)) { flushAll(); out.push('<hr class="md-hr">'); continue; }
+
+    const h = line.match(RE_HEADING);
+    if (h) { flushAll(); const cls = h[1].length <= 2 ? "md-h3" : "md-h4"; out.push(`<p class="${cls}">${inlineMd(esc(h[2]))}</p>`); continue; }
+
+    if (RE_ULI.test(line)) { flushPara(); if (!list || list.type !== "ul") { flushList(); list = { type: "ul", items: [] }; } list.items.push(line.replace(RE_ULI, "")); continue; }
+    if (RE_OLI.test(line)) { flushPara(); if (!list || list.type !== "ol") { flushList(); list = { type: "ol", items: [] }; } list.items.push(line.replace(RE_OLI, "")); continue; }
+
+    if (/^\s*>\s?/.test(line)) { flushPara(); flushList(); out.push(`<blockquote class="md-q">${inlineMd(esc(line.replace(/^\s*>\s?/, "")))}</blockquote>`); continue; }
+
+    // plain text — accumulate into the current paragraph (ends a list)
+    flushList();
+    para.push(line);
+  }
+  flushAll();
+  return `<div class="md">${out.join("")}</div>`;
+}
+
+// "How to use this" orientation block — rendered right after the cover so the reader immediately knows what the
+// document is, how to use it, and what it achieves. Omitted when the body carries no howToUse.
+function howToUseBlock(howToUse?: string | null): string {
+  if (!howToUse || !String(howToUse).trim()) return "";
+  return `<section class="howto"><p class="tag">How to use this</p>${mdToHtml(String(howToUse))}</section>`;
 }
 
 // Shared minimalist stylesheet. No @page margin — PDF page margins come from the
@@ -75,6 +161,25 @@ function baseCss(extra = ""): string {
   .tag{font-weight:600;letter-spacing:.16em;text-transform:uppercase;font-size:11px;color:${ACC};margin:0 0 10px}
   .inst{color:${SEC};font-size:15px;margin:0 0 18px}
   .toolbody pre{white-space:pre-wrap;font-family:${BODY};font-size:16px;line-height:1.7;margin:0;color:${INK};page-break-inside:auto}
+  /* Rendered markdown (tool content + howToUse): real headings, lists, tables — never a raw markdown dump. */
+  .md{font-size:16px;line-height:1.7;color:${INK}}
+  .md-h3{font-family:${HEAD};font-weight:600;font-size:18px;line-height:1.3;margin:22px 0 8px;color:${INK}}
+  .md-h4{font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:${ACC};margin:20px 0 8px}
+  .md-p{margin:0 0 14px}
+  .md-ul,.md-ol{margin:0 0 14px;padding-left:22px}
+  .md-ul li,.md-ol li{margin:0 0 7px;padding-left:2px}
+  .md-hr{border:0;height:1px;background:${HAIR};margin:20px 0}
+  .md-q{margin:0 0 14px;padding:2px 0 2px 16px;border-left:3px solid ${HAIR};color:${SEC};font-style:italic}
+  .md-table{width:100%;border-collapse:collapse;margin:6px 0 18px;font-size:14px;page-break-inside:auto}
+  .md-table th{text-align:left;font-weight:600;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:${ACC};border-bottom:2px solid ${HAIR};padding:8px 10px 8px 0;vertical-align:top}
+  .md-table td{border-bottom:1px solid ${HAIR};padding:9px 10px 9px 0;vertical-align:top;color:${INK}}
+  /* Fill-in prompt chip — makes [BRACKETED] fields read as something the reader completes, not body prose. */
+  .fillin{background:#f2ede2;border:1px solid ${HAIR};border-radius:5px;padding:0 5px;font-weight:600;font-size:.92em;color:${ACC};white-space:normal}
+  /* "How to use this" orientation block, right under the cover. */
+  .howto{background:#fff;border:1px solid ${HAIR};border-radius:14px;padding:22px 24px;margin:0 0 44px}
+  .howto .tag{margin:0 0 10px}
+  .howto .md{font-size:16px}
+  .howto .md-p:last-child{margin-bottom:0}
   .check{display:flex;gap:14px;align-items:flex-start;padding:16px 0;border-bottom:1px solid ${HAIR}}
   .check:last-child{border-bottom:0}
   .box{flex:0 0 20px;width:20px;height:20px;border:2px solid ${ACC};border-radius:6px;margin-top:3px}
@@ -124,19 +229,19 @@ function nextStepBlock(n: NextStep): string {
 function renderGuide(b: GuideBody, logo?: string | null): string {
   const sections = (b.sections || []).map((s, i) =>
     `<section><h2>${esc(s.heading)}</h2>${paras(s.body)}</section>${i < b.sections.length - 1 ? '<hr class="div">' : ""}`).join("");
-  return `<div class="wrap">${cover("Guide", b.title, b.promise, logo)}${sections}${nextStepBlock(b.nextStep)}${foot(logo)}</div>`;
+  return `<div class="wrap">${cover("Guide", b.title, b.promise, logo)}${howToUseBlock(b.howToUse)}${sections}${nextStepBlock(b.nextStep)}${foot(logo)}</div>`;
 }
 function renderChecklist(b: ChecklistBody, logo?: string | null): string {
   const items = (b.items || []).map(i =>
-    `<div class="check"><div class="box"></div><div><p class="label">${esc(i.label)}</p><p class="detail">${esc(i.detail)}</p></div></div>`).join("");
-  return `<div class="wrap">${cover("Checklist", b.title, b.promise, logo)}<div>${items}</div>${nextStepBlock(b.nextStep)}${foot(logo)}</div>`;
+    `<div class="check"><div class="box"></div><div><p class="label">${inlineMd(esc(i.label))}</p><p class="detail">${inlineMd(esc(i.detail))}</p></div></div>`).join("");
+  return `<div class="wrap">${cover("Checklist", b.title, b.promise, logo)}${howToUseBlock(b.howToUse)}<div>${items}</div>${nextStepBlock(b.nextStep)}${foot(logo)}</div>`;
 }
 function renderToolkit(b: ToolkitBody, logo?: string | null): string {
   const tools = (b.tools || []).map((t, i) =>
     `<section class="tool"><div class="tag">${esc(TYPE_LABEL[t.type] || t.type)}</div><h2>${esc(t.name)}</h2>` +
-    `<p class="inst">${esc(t.instructions)}</p><div class="toolbody"><pre>${esc(t.content)}</pre></div></section>` +
+    `<p class="inst">${esc(t.instructions)}</p><div class="toolbody">${mdToHtml(t.content)}</div></section>` +
     `${i < b.tools.length - 1 ? '<hr class="div">' : ""}`).join("");
-  return `<div class="wrap">${cover("Toolkit", b.title, b.promise, logo)}${tools}${nextStepBlock(b.nextStep)}${foot(logo)}</div>`;
+  return `<div class="wrap">${cover("Toolkit", b.title, b.promise, logo)}${howToUseBlock(b.howToUse)}${tools}${nextStepBlock(b.nextStep)}${foot(logo)}</div>`;
 }
 
 export interface RenderDeliverableOpts {

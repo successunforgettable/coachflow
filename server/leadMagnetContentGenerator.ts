@@ -28,10 +28,14 @@ export interface NextStep {
   body: string;
   ctaLabel: string;
 }
+// howToUse: a short "what this is / how to use it / what it achieves" orientation shown at the top of the
+// deliverable (2-4 sentences). Optional so existing lead-magnet bodies stay valid; populated for bonuses so the
+// document tells the reader what it is on opening (Arfeen: "doesn't even tell you what it is").
 export interface GuideBody {
   format: "guide";
   title: string;
   promise: string;
+  howToUse?: string;
   // Solution-focused, lean (not padded): each section is directly actionable.
   sections: { heading: string; body: string }[];
   nextStep: NextStep;
@@ -40,6 +44,7 @@ export interface ChecklistBody {
   format: "checklist";
   title: string;
   promise: string;
+  howToUse?: string;
   items: { label: string; detail: string }[];
   nextStep: NextStep;
 }
@@ -47,6 +52,7 @@ export interface ToolkitBody {
   format: "toolkit";
   title: string;
   promise: string;
+  howToUse?: string;
   // Right-sized to 3-4 focused, immediately-usable tools (no padding).
   tools: { name: string; type: ToolType; instructions: string; content: string }[];
   nextStep: NextStep;
@@ -114,7 +120,7 @@ export function inferLeadMagnetFormat(title: string): LeadMagnetFormat {
 }
 
 // ── Context assembly (mirrors hvcoGenerator's grounding) ──
-interface MagnetContext {
+export interface MagnetContext {
   niche: string;
   title: string;
   programme: string;
@@ -191,39 +197,46 @@ function contextBlock(c: MagnetContext): string {
   ].filter(Boolean).join("\n");
 }
 
-const SYSTEM_PROMPT =
+// A deliverable is either a pre-registration LEAD MAGNET (reader is a prospect to convert) or a post-purchase
+// BONUS (reader has already enrolled — write to a buyer on the inside, help them execute, no sales pitch).
+export type DeliverableMode = "lead_magnet" | "bonus";
+
+const SYSTEM_PROMPT_LEAD_MAGNET =
   "You produce done-for-you lead-magnet content for coaches, consultants and experts at agency quality. The bar: ~80% immediately-usable tools (swipe copy, fill-in templates, SOPs, scripts, worksheets, checklists the reader uses TODAY) and only ~20% teaching. Useful beats comprehensive — right-size to solve ONE specific problem, never padded. Everything is concrete and specific to the exact niche given, with real fill-in-the-blank content or real swipe copy the reader can copy and use, never generic filler that could belong to any coach. Open with a tight promise (max two sentences: what they can DO after using it). Close with a nextStep that bridges to the paid programme — a clear next action, no dead end. Respond with valid JSON.";
+
+const SYSTEM_PROMPT_BONUS =
+  "You produce done-for-you BONUS deliverables for coaches, consultants and experts at agency quality. The reader has ALREADY enrolled in / purchased the paid programme — this is a post-purchase asset that helps them get more from what they've already committed to, so you write to a buyer on the inside who is ready to execute, never to a prospect you are trying to convince to buy. The bar: ~80% immediately-usable tools (swipe copy, fill-in templates, SOPs, scripts, worksheets, checklists the reader uses TODAY) and only ~20% teaching. Useful beats comprehensive — right-size to solve ONE specific problem, never padded. Everything is concrete and specific to the exact niche given, with real fill-in-the-blank content the reader can use, never generic filler. Open by telling the reader plainly what this is, how to use it, and what it achieves. Close with a nextStep that helps them put this to work and get the most from the programme they've joined — a concrete action, no dead end. Respond with valid JSON.";
+
+export function systemPromptFor(mode: DeliverableMode = "lead_magnet"): string {
+  return mode === "bonus" ? SYSTEM_PROMPT_BONUS : SYSTEM_PROMPT_LEAD_MAGNET;
+}
 
 // ── Per-format response schemas (json_schema, strict) ──
 type ResponseFormat = { type: "json_schema"; json_schema: { name: string; strict: boolean; schema: Record<string, unknown> } };
-function schemaFor(format: LeadMagnetFormat): ResponseFormat {
+export function schemaFor(format: LeadMagnetFormat, mode: DeliverableMode = "lead_magnet"): ResponseFormat {
   const s = (name: string, schema: Record<string, unknown>): ResponseFormat => ({ type: "json_schema", json_schema: { name, strict: true, schema } });
   const str = { type: "string" } as const;
   const arr = (items: Record<string, unknown>) => ({ type: "array", items });
   // Shared nextStep bridge — required on every format.
   const nextStep = { type: "object", additionalProperties: false, required: ["heading", "body", "ctaLabel"], properties: { heading: str, body: str, ctaLabel: str } };
-  if (format === "guide") return s("lead_magnet_guide", {
-    type: "object", additionalProperties: false,
-    required: ["promise", "sections", "nextStep"],
-    properties: {
+  const bonus = mode === "bonus";
+  // Bonus mode adds a required howToUse orientation (what it is / how to use / what it achieves), rendered at the
+  // top of the deliverable. Injected into the static-format schemas (guide/checklist/toolkit) only.
+  const withHowTo = (required: string[], properties: Record<string, unknown>) =>
+    bonus
+      ? { required: ["howToUse", ...required], properties: { howToUse: str, ...properties } }
+      : { required, properties };
+  if (format === "guide") { const g = withHowTo(["promise", "sections", "nextStep"], {
       promise: str,
       sections: arr({ type: "object", additionalProperties: false, required: ["heading", "body"], properties: { heading: str, body: str } }),
       nextStep,
-    },
-  });
-  if (format === "checklist") return s("lead_magnet_checklist", {
-    type: "object", additionalProperties: false,
-    required: ["promise", "items", "nextStep"],
-    properties: {
+    }); return s("lead_magnet_guide", { type: "object", additionalProperties: false, ...g }); }
+  if (format === "checklist") { const g = withHowTo(["promise", "items", "nextStep"], {
       promise: str,
       items: arr({ type: "object", additionalProperties: false, required: ["label", "detail"], properties: { label: str, detail: str } }),
       nextStep,
-    },
-  });
-  if (format === "toolkit") return s("lead_magnet_toolkit", {
-    type: "object", additionalProperties: false,
-    required: ["promise", "tools", "nextStep"],
-    properties: {
+    }); return s("lead_magnet_checklist", { type: "object", additionalProperties: false, ...g }); }
+  if (format === "toolkit") { const g = withHowTo(["promise", "tools", "nextStep"], {
       promise: str,
       tools: arr({ type: "object", additionalProperties: false, required: ["name", "type", "instructions", "content"], properties: {
         name: str,
@@ -232,8 +245,7 @@ function schemaFor(format: LeadMagnetFormat): ResponseFormat {
         content: str,
       } }),
       nextStep,
-    },
-  });
+    }); return s("lead_magnet_toolkit", { type: "object", additionalProperties: false, ...g }); }
   const pct = { type: "integer", minimum: 0, maximum: 100 } as const;
   return s("lead_magnet_quiz", {
     type: "object", additionalProperties: false,
@@ -265,13 +277,19 @@ function schemaFor(format: LeadMagnetFormat): ResponseFormat {
   });
 }
 
-function userPromptFor(format: LeadMagnetFormat, c: MagnetContext): string {
+export function userPromptFor(format: LeadMagnetFormat, c: MagnetContext, mode: DeliverableMode = "lead_magnet"): string {
   const ctx = contextBlock(c);
   const programme = c.programme || "the paid programme";
-  const common = `Create this lead magnet to the 80/20 bar — usable tools first, minimal teaching, right-sized to solve ONE specific problem. Everything specific to this exact niche and audience — real fill-in content, real swipe copy, the words this audience actually uses. No generic filler, no padding.\n\n${ctx}\n\nOpen with a TIGHT promise: max two sentences on what they can DO after using this (not teaching). End with a nextStep that bridges to "${programme}" — a heading, a short body that connects this free win to the paid outcome, and a concrete ctaLabel (e.g. "Book My Free Call"). No dead end.\n\n`;
-  if (format === "guide") return `${common}Produce a GUIDE: 3-6 solution-focused sections, each a clear heading and lean, directly-actionable content (steps, a mini-framework, an example the reader applies) — not padded prose. Useful beats comprehensive.\nReturn JSON: { "promise", "sections":[{"heading","body"}], "nextStep":{"heading","body","ctaLabel"} }.`;
-  if (format === "checklist") return `${common}Produce a CHECKLIST / cheat-sheet: 7-15 concrete action items, each a short actionable label plus a one-to-two-sentence detail that makes it doable today. Every item is something they DO, not something they learn.\nReturn JSON: { "promise", "items":[{"label","detail"}], "nextStep":{"heading","body","ctaLabel"} }.`;
-  if (format === "toolkit") return `${common}Produce a TOOLKIT: 3-4 focused, immediately-usable tools (no more — lean, not a swipe-file dump). Each tool has a name, a type (one of: swipe, template, sop, worksheet, script, checklist), one-line usage instructions, and the ACTUAL usable content (real fill-in-the-blank templates / swipe copy / step-by-step SOP the reader copies and uses today).\nReturn JSON: { "promise", "tools":[{"name","type","instructions","content"}], "nextStep":{"heading","body","ctaLabel"} }.`;
+  const bonus = mode === "bonus";
+  // Bonus: write to a buyer who has already enrolled; the nextStep helps them execute inside the programme they
+  // joined (no sales pitch); and it opens with a howToUse orientation. Lead magnet: unchanged conversion bridge.
+  const common = bonus
+    ? `Create this BONUS deliverable to the 80/20 bar — usable tools first, minimal teaching, right-sized to solve ONE specific problem. Everything specific to this exact niche and audience — real fill-in content, the words this audience actually uses. No generic filler, no padding.\n\nThe reader has already enrolled in "${programme}" — write to a buyer on the inside who is ready to execute, not a prospect you are trying to convert.\n\n${ctx}\n\nBegin with a "howToUse": 2-4 sentences stating plainly what this document is, how to use it, and what it achieves. Then a TIGHT promise: max two sentences on what they can DO with this. End with a nextStep that helps them put this to work and get the most from "${programme}" — a heading, a short body orienting them to the next action inside the programme they have joined, and a concrete ctaLabel about USING it (for example "Start With Step 1"). No dead end.\n\n`
+    : `Create this lead magnet to the 80/20 bar — usable tools first, minimal teaching, right-sized to solve ONE specific problem. Everything specific to this exact niche and audience — real fill-in content, real swipe copy, the words this audience actually uses. No generic filler, no padding.\n\n${ctx}\n\nOpen with a TIGHT promise: max two sentences on what they can DO after using this (not teaching). End with a nextStep that bridges to "${programme}" — a heading, a short body that connects this free win to the paid outcome, and a concrete ctaLabel (e.g. "Book My Free Call"). No dead end.\n\n`;
+  const howToJson = bonus ? `"howToUse", ` : "";
+  if (format === "guide") return `${common}Produce a GUIDE: 3-6 solution-focused sections, each a clear heading and lean, directly-actionable content (steps, a mini-framework, an example the reader applies) — not padded prose. Useful beats comprehensive.\nReturn JSON: { ${howToJson}"promise", "sections":[{"heading","body"}], "nextStep":{"heading","body","ctaLabel"} }.`;
+  if (format === "checklist") return `${common}Produce a CHECKLIST / cheat-sheet: 7-15 concrete action items, each a short actionable label plus a one-to-two-sentence detail that makes it doable today. Every item is something they DO, not something they learn.\nReturn JSON: { ${howToJson}"promise", "items":[{"label","detail"}], "nextStep":{"heading","body","ctaLabel"} }.`;
+  if (format === "toolkit") return `${common}Produce a TOOLKIT: 3-4 focused, immediately-usable tools (no more — lean, not a swipe-file dump). Each tool has a name, a type (one of: swipe, template, sop, worksheet, script, checklist), one-line usage instructions, and the ACTUAL usable content (real fill-in-the-blank templates / swipe copy / step-by-step SOP the reader copies and uses today). Structure the content as clean markdown — headings, bold labels, ordered steps, and tables where useful — and write any fill-in field in [SQUARE BRACKETS].\nReturn JSON: { ${howToJson}"promise", "tools":[{"name","type","instructions","content"}], "nextStep":{"heading","body","ctaLabel"} }.`;
   return `${common}Produce a READINESS SCORECARD — a weighted, single-axis self-assessment that diagnoses where this prospect stands on their journey toward the outcome "${programme}" delivers. Genuinely diagnostic, never a disguised pitch.
 
 Build it so the scoring is self-consistent and discriminating:
@@ -352,8 +370,11 @@ export async function generateLeadMagnetContent(input: {
   title: string;
   formatOverride?: LeadMagnetFormat;
   contentBrief?: string;
+  /** "bonus" → post-purchase framing (buyer already enrolled) + howToUse orientation. Default "lead_magnet". */
+  mode?: DeliverableMode;
 }): Promise<LeadMagnetBody | null> {
   const format = input.formatOverride ?? inferLeadMagnetFormat(input.title);
+  const mode: DeliverableMode = input.mode ?? "lead_magnet";
   const c = await gatherContext(input.userId, input.serviceId, input.icpId ?? null, input.campaignId ?? null, input.title);
   if (!c) return null;
   if (input.contentBrief) c.contentBrief = input.contentBrief.slice(0, 800);
@@ -366,10 +387,10 @@ export async function generateLeadMagnetContent(input: {
     try {
       const response = await invokeLLM({
         messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: userPromptFor(format, c) },
+          { role: "system", content: systemPromptFor(mode) },
+          { role: "user", content: userPromptFor(format, c, mode) },
         ],
-        response_format: schemaFor(format),
+        response_format: schemaFor(format, mode),
       });
       const content = response.choices[0].message.content;
       const parsed = JSON.parse(typeof content === "string" ? content : JSON.stringify(content));

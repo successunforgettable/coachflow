@@ -60,6 +60,7 @@ export async function runBonusPdfGeneration(input: { userId: number; bonusSetId:
         title: b.title,
         formatOverride: leadMagnetFormat,
         contentBrief,
+        mode: "bonus", // post-purchase framing (buyer already enrolled) + howToUse orientation
       });
       if (!body) {
         console.warn(`[bonusPdf] no body generated for bonus ${b.id} ("${b.title}")`);
