@@ -1606,10 +1606,16 @@ const BONUS_GUARANTEE_RE = /\b(money[- ]?back|guarantee|refunds?|risk[- ]?free|p
 const BONUS_ROI_CASESTUDY_RE = /(\bturn(?:ed|s)?\b[^.]*\binto\b|\bclient like\b|cost of inaction|\d+\s*%\s*(?:lift|increase|more|roi))/i;
 
 const BONUS_STOPWORDS = new Set(["the","a","an","and","or","to","for","of","in","on","your","you","with","that","this","from","plan","system","guide","step","week","weeks","day","days","free"]);
-function bonusSignificantWords(s: string): Set<string> {
+/** Significant (4+ letter, non-stopword) tokens. Shared with the ICP grounding validator. */
+export function bonusSignificantWords(s: string): Set<string> {
   return new Set((String(s).toLowerCase().match(/[a-z]{4,}/g) ?? []).filter(w => !BONUS_STOPWORDS.has(w)));
 }
-function bonusWordOverlap(a: string, b: string): number {
+/**
+ * Count of significant words in `a` that also appear in `b`. The traceability
+ * primitive: "is this generated claim built out of the source material, or
+ * out of nothing?" Reused by icpGrounding for per-section provenance.
+ */
+export function bonusWordOverlap(a: string, b: string): number {
   const wb = bonusSignificantWords(b);
   return Array.from(bonusSignificantWords(a)).filter((w) => wb.has(w)).length;
 }

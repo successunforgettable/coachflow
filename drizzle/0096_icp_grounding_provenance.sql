@@ -1,0 +1,29 @@
+-- 0096 — ICP grounding provenance (out-of-band)
+--
+-- Adds ONE additive nullable JSON column to idealCustomerProfiles.
+--
+-- What it holds: per-section stated / partial / inferred labels, which laddered
+-- follow-ups the coach answered, the significant-word count of the coach-supplied
+-- corpus, and the R3 grounding hits recorded at generation time.
+--
+-- Why out-of-band: every downstream generator (adCopy, landingPage, email, whatsapp,
+-- headlines, offers, hvco, heroMechanisms, bonus, leadMagnetContent, concept,
+-- conceptScript) reads the 17 ICP text fields as raw strings and interpolates them
+-- directly into its own prompt. An inline "[inferred]" marker would therefore flow
+-- verbatim into generated ad copy and published landing pages. Provenance lives in
+-- its own column so the field contract is unchanged and no consumer is affected.
+--
+-- Safety:
+--   * Additive, nullable, no default — existing rows are untouched and read NULL.
+--   * No backfill. NULL == "generated before grounding shipped".
+--   * No index (nothing queries on it).
+--   * MySQL/TiDB: ADD COLUMN ... NULL is metadata-only.
+--   * No consumer reads this column yet, so applying it early is inert.
+--
+-- Migration-before-code gate: apply this BEFORE deploying the code that writes it.
+-- Verify after applying:
+--   SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE FROM INFORMATION_SCHEMA.COLUMNS
+--    WHERE TABLE_NAME='idealCustomerProfiles' AND COLUMN_NAME='groundingMeta';
+--   SELECT COUNT(*) FROM idealCustomerProfiles;  -- must equal the pre-apply count
+
+ALTER TABLE `idealCustomerProfiles` ADD COLUMN `groundingMeta` JSON NULL;

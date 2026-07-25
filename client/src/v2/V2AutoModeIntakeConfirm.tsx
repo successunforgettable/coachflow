@@ -97,7 +97,7 @@ export default function V2AutoModeIntakeConfirm() {
   //   trailPath: fork choice to write onto the kit once the ICP exists.
   type TrailCampaignType = "webinar" | "challenge" | "course_launch" | "product_launch" | "discovery_call" | "lead_magnet" | "in_person_event";
   const incomingState = (typeof window !== "undefined" ? (window.history.state ?? null) : null) as
-    | { extracted?: Extracted; rawText?: string; existingServiceId?: number; trailPath?: "auto" | "has_assets"; trailCampaignType?: TrailCampaignType }
+    | { extracted?: Extracted; rawText?: string; existingServiceId?: number; trailPath?: "auto" | "has_assets"; trailCampaignType?: TrailCampaignType; ladder?: { trigger?: string; priorAttempts?: string; hesitation?: string; successMoment?: string } }
     | null;
 
   const [extracted, setExtracted] = useState<Extracted | null>(incomingState?.extracted ?? null);
@@ -322,6 +322,9 @@ export default function V2AutoModeIntakeConfirm() {
           const { jobId } = await generateIcpAsync.mutateAsync({
             serviceId,
             name: extracted.icpDescriptor.trim() || `${extracted.serviceName.trim()} Profile`,
+            // ICP grounding — laddered answers collected during the Trail intake,
+            // carried through history.state. Absent for entries that skipped them.
+            ladder: incomingState?.ladder,
           });
           icpId = await pollIcpJob(jobId);
         }

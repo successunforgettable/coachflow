@@ -278,7 +278,11 @@ export const idealCustomerProfiles = mysqlTable("idealCustomerProfiles", {
   introduction: text("introduction"), // Tab 1: Overview/intro
   fears: text("fears"), // Tab 2: What they're afraid of
   hopesDreams: text("hopesDreams"), // Tab 3: Aspirations
-  demographics: json("demographics").$type<{ ageRange?: string; occupation?: string; incomeLevel?: string; location?: string; education?: string; familyStatus?: string }>(), // Tab 4
+  // Tab 4 — snake_case is what every generator has always WRITTEN and what every
+  // stored row holds. The prior camelCase $type was a lie the export formatter
+  // believed, so the demographics table rendered empty for generated ICPs.
+  // Read through normalizeDemographics() rather than indexing raw.
+  demographics: json("demographics").$type<{ age_range?: string; gender?: string; income_level?: string; education?: string; occupation?: string; location?: string; family_status?: string; summary?: string }>(), // Tab 4
   psychographics: text("psychographics"), // Tab 5: Personality, lifestyle, attitudes
   pains: text("pains"), // Tab 6: Pain points (renamed from painPoints for clarity)
   frustrations: text("frustrations"), // Tab 7: Daily frustrations
@@ -300,6 +304,18 @@ export const idealCustomerProfiles = mysqlTable("idealCustomerProfiles", {
   
   rating: int("rating").default(0),
   source: mysqlEnum("source", ["generated", "imported"]).default("generated").notNull(),
+
+  /**
+   * Grounding provenance — OUT OF BAND (migration 0096).
+   * Per-section stated / partial / inferred labels, which laddered follow-ups the
+   * coach answered, and the R3 hits recorded at generation time. Deliberately NOT
+   * inline in the 17 text fields: every downstream generator interpolates those
+   * fields straight into its own prompt, so an inline marker would reach ad copy
+   * and published landing pages. NULL on every pre-grounding row; no consumer
+   * reads it, so it is additive to the field contract.
+   */
+  groundingMeta: json("groundingMeta").$type<Record<string, unknown>>(),
+
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({

@@ -8,7 +8,7 @@
  *
  * This ensures the cascade reads a fully-populated ICP regardless of import path.
  */
-import { ICP_SYSTEM_PROMPT, ICP_USER_PROMPT, type ICPServiceInput } from "./icpPrompts";
+import { ICP_SYSTEM_PROMPT, ICP_USER_PROMPT, ICP_JSON_SCHEMA, type ICPServiceInput } from "./icpPrompts";
 import { invokeLLM } from "./llm";
 import { getDb } from "../db";
 import { idealCustomerProfiles, services } from "../../drizzle/schema";
@@ -96,53 +96,7 @@ export async function enrichImportedIcp(icpId: number): Promise<void> {
       ],
       response_format: {
         type: "json_schema",
-        json_schema: {
-          name: "icp_enrichment",
-          strict: true,
-          schema: {
-            type: "object",
-            properties: {
-              introduction: { type: "string" },
-              fears: { type: "string" },
-              hopesDreams: { type: "string" },
-              demographics: {
-                type: "object",
-                properties: {
-                  age_range: { type: "string" },
-                  gender: { type: "string" },
-                  income_level: { type: "string" },
-                  education: { type: "string" },
-                  occupation: { type: "string" },
-                  location: { type: "string" },
-                  family_status: { type: "string" },
-                },
-                required: ["age_range", "gender", "income_level", "education", "occupation", "location", "family_status"],
-                additionalProperties: false,
-              },
-              psychographics: { type: "string" },
-              pains: { type: "string" },
-              frustrations: { type: "string" },
-              goals: { type: "string" },
-              values: { type: "string" },
-              objections: { type: "string" },
-              buyingTriggers: { type: "string" },
-              mediaConsumption: { type: "string" },
-              influencers: { type: "string" },
-              communicationStyle: { type: "string" },
-              decisionMaking: { type: "string" },
-              successMetrics: { type: "string" },
-              implementationBarriers: { type: "string" },
-            },
-            required: [
-              "introduction", "fears", "hopesDreams", "demographics",
-              "psychographics", "pains", "frustrations", "goals", "values",
-              "objections", "buyingTriggers", "mediaConsumption", "influencers",
-              "communicationStyle", "decisionMaking", "successMetrics",
-              "implementationBarriers",
-            ],
-            additionalProperties: false,
-          },
-        },
+        json_schema: ICP_JSON_SCHEMA,
       },
     });
 

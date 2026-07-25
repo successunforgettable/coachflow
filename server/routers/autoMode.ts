@@ -328,7 +328,10 @@ export const autoModeRouter = router({
         pains: cleanedIcp.pains || null,
         goals: cleanedIcp.goals || null,
         implementationBarriers: cleanedIcp.implementationBarriers || null,
-        demographics: cleanedIcp.demographics ? { ageRange: cleanedIcp.demographics } : null,
+        // Free-text "who they are" from the import — stored as `summary`. It was
+        // previously written as { ageRange: <blob> }, a key no reader understood, so
+        // imported demographics never rendered anywhere.
+        demographics: cleanedIcp.demographics ? { summary: cleanedIcp.demographics } : null,
         source: "imported",
       });
 

@@ -4,6 +4,7 @@
  * All functions are pure (no DB calls) — they receive pre-fetched rows.
  */
 
+import { normalizeDemographics } from "./_core/icpGrounding";
 import type {
   Offer,
   HeroMechanism,
@@ -207,19 +208,30 @@ export function formatIdealCustomerProfile(icps: IdealCustomerProfile[]): string
       parts.push(`${value}\n`);
     }
 
-    // Demographics as a table
-    if (icp.demographics) {
-      const d = icp.demographics as any;
-      parts.push("### Demographics\n");
-      parts.push("| Field | Value |");
-      parts.push("|-------|-------|");
-      if (d.ageRange) parts.push(`| Age Range | ${d.ageRange} |`);
-      if (d.occupation) parts.push(`| Occupation | ${d.occupation} |`);
-      if (d.incomeLevel) parts.push(`| Income Level | ${d.incomeLevel} |`);
-      if (d.location) parts.push(`| Location | ${d.location} |`);
-      if (d.education) parts.push(`| Education | ${d.education} |`);
-      if (d.familyStatus) parts.push(`| Family Status | ${d.familyStatus} |`);
-      parts.push("");
+    // Demographics as a table.
+    // Read through normalizeDemographics: the generators write snake_case
+    // (age_range), the import path writes camelCase, and this block used to index
+    // camelCase only — so every generated ICP exported an empty demographics table.
+    const d = normalizeDemographics(icp.demographics);
+    if (d) {
+      const rows: [string, string | undefined][] = [
+        ["Who They Are", d.summary],
+        ["Age Range", d.age_range],
+        ["Gender", d.gender],
+        ["Occupation", d.occupation],
+        ["Income Level", d.income_level],
+        ["Location", d.location],
+        ["Education", d.education],
+        ["Family Status", d.family_status],
+      ];
+      const present = rows.filter(([, v]) => v && v.trim().length > 0);
+      if (present.length > 0) {
+        parts.push("### Demographics\n");
+        parts.push("| Field | Value |");
+        parts.push("|-------|-------|");
+        for (const [label, v] of present) parts.push(`| ${label} | ${v} |`);
+        parts.push("");
+      }
     }
   });
 

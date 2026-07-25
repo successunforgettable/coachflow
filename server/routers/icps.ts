@@ -4,13 +4,13 @@ import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { idealCustomerProfiles, services, jobs } from "../../drizzle/schema";
 
-function stripMarkdownJson(content: string): string {
-  return content.replace(/^```json\s*|^```\s*|\s*```$/gm, '').trim();
-}
 import { eq, and, desc } from "drizzle-orm";
 import { invokeLLM } from "../_core/llm";
 import { filterRecord, getGlobalNegativePrompts } from "../lib/complianceFilter";
-import { ICP_SYSTEM_PROMPT, ICP_USER_PROMPT } from "../_core/icpPrompts";
+import { ICP_SYSTEM_PROMPT, type ICPLadderAnswers, type ICPServiceInput } from "../_core/icpPrompts";
+import { runIcpGeneration } from "../_core/icpGenerate";
+import { normalizeDemographics } from "../_core/icpGrounding";
+import { stripObjectionScaffolding } from "../_core/icpSanitize";
 import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
@@ -18,10 +18,25 @@ import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 // ICP_SYSTEM_PROMPT and ICP_USER_PROMPT are defined in server/_core/icpPrompts.ts
 // and imported above — both generate (sync) and generateAsync use them.
 
+/**
+ * Laddered follow-ups (R2 5-Rings, coach→individual). Every field optional and
+ * skippable by design: a coach with no client history answers none, and their
+ * profile is labelled mostly-inferred rather than blocked.
+ */
+const ladderSchema = z
+  .object({
+    trigger: z.string().max(2000).optional(),
+    priorAttempts: z.string().max(2000).optional(),
+    hesitation: z.string().max(2000).optional(),
+    successMoment: z.string().max(2000).optional(),
+  })
+  .optional();
+
 const generateICPSchema = z.object({
   serviceId: z.number(),
   campaignId: z.number().optional(),
   name: z.string().min(1).max(255),
+  ladder: ladderSchema,
 });
 
 const updateICPSchema = z.object({
@@ -51,22 +66,6 @@ const updateICPSchema = z.object({
   valuesMotivations: z.string().optional(),
   rating: z.number().min(0).max(5).optional(),
 });
-
-/**
- * FAQ scaffolding strip (item 6, 2026-07-23) — the OBJECTIONS prompt asks the model to format each objection
- * as `What they say: "…". What they mean: …` (a useful internal frame). Stripped HERE, at the ICP source, so
- * the STORED objections are clean prose — every downstream surface (LP whoFor/FAQ, email, kit) inherits clean
- * text and the literal `**`/scaffolding labels can never render on a published page. Pure.
- */
-function stripObjectionScaffolding(text: unknown): unknown {
-  if (typeof text !== "string") return text;
-  return text
-    .replace(/\*+/g, "")                                  // literal **/* markdown
-    .replace(/\.?\s*\bwhat they mean:\s*/gi, " — ")        // "What they mean:" → a clean connector
-    .replace(/\bwhat they say:\s*/gi, "")                  // "What they say:" label → drop
-    .replace(/[ \t]{2,}/g, " ")
-    .trim();
-}
 
 export const icpsRouter = router({
   // List all ICPs for current user
@@ -151,94 +150,13 @@ export const icpsRouter = router({
         throw new Error("Service not found");
       }
 
-      // Generate ICP using AI - ALL 17 KONG TABS
-      const prompt = ICP_USER_PROMPT(service);
-
-      const response = await invokeLLM({
-        messages: [
-          {
-            role: "system",
-            content: ICP_SYSTEM_PROMPT(),
-          },
-          { role: "user", content: prompt },
-        ],
-        response_format: {
-          type: "json_schema",
-          json_schema: {
-            name: "ideal_customer_profile_17_tabs",
-            strict: true,
-            schema: {
-              type: "object",
-              properties: {
-                introduction: { type: "string" },
-                fears: { type: "string" },
-                hopesDreams: { type: "string" },
-                demographics: {
-                  type: "object",
-                  properties: {
-                    age_range: { type: "string" },
-                    gender: { type: "string" },
-                    income_level: { type: "string" },
-                    education: { type: "string" },
-                    occupation: { type: "string" },
-                    location: { type: "string" },
-                    family_status: { type: "string" },
-                  },
-                  required: [
-                    "age_range",
-                    "gender",
-                    "income_level",
-                    "education",
-                    "occupation",
-                    "location",
-                    "family_status",
-                  ],
-                  additionalProperties: false,
-                },
-                psychographics: { type: "string" },
-                pains: { type: "string" },
-                frustrations: { type: "string" },
-                goals: { type: "string" },
-                values: { type: "string" },
-                objections: { type: "string" },
-                buyingTriggers: { type: "string" },
-                mediaConsumption: { type: "string" },
-                influencers: { type: "string" },
-                communicationStyle: { type: "string" },
-                decisionMaking: { type: "string" },
-                successMetrics: { type: "string" },
-                implementationBarriers: { type: "string" },
-              },
-              required: [
-                "introduction",
-                "fears",
-                "hopesDreams",
-                "demographics",
-                "psychographics",
-                "pains",
-                "frustrations",
-                "goals",
-                "values",
-                "objections",
-                "buyingTriggers",
-                "mediaConsumption",
-                "influencers",
-                "communicationStyle",
-                "decisionMaking",
-                "successMetrics",
-                "implementationBarriers",
-              ],
-              additionalProperties: false,
-            },
-          },
-        },
+      // Generate ICP using AI — ALL 17 sections, through the single grounded runner
+      // (structural gate + R3 grounding labels + retry 1→3).
+      const { icp: icpData, provenance } = await runIcpGeneration({
+        service,
+        ladder: (input.ladder ?? null) as ICPLadderAnswers | null,
+        logLabel: "icps.generate",
       });
-
-      const content = response.choices[0].message.content;
-      if (typeof content !== 'string') {
-        throw new Error('Invalid response format from AI');
-      }
-      const icpData = JSON.parse(stripMarkdownJson(content));
 
       // Compliance pre-filter before DB write
       const ICP_FILTER_FIELDS = ["introduction", "fears", "hopesDreams", "pains", "frustrations", "goals", "objections", "buyingTriggers"];
@@ -246,7 +164,7 @@ export const icpsRouter = router({
       if (icpClassification === "REJECTED") {
         throw new TRPCError({ code: "BAD_REQUEST", message: `Some generated content contained prohibited language and could not be saved. Please regenerate. Flagged: ${icpFlaggedTerms.join("; ")}` });
       }
-      const filteredIcpData = { ...icpData, ...cleanedIcpData };
+      const filteredIcpData: any = { ...icpData, ...cleanedIcpData };
       filteredIcpData.objections = stripObjectionScaffolding(filteredIcpData.objections) as string; // item 6: strip FAQ scaffolding at source
 
       // Save to database - ALL 17 sections
@@ -261,7 +179,7 @@ export const icpsRouter = router({
           introduction: filteredIcpData.introduction,
           fears: filteredIcpData.fears,
           hopesDreams: filteredIcpData.hopesDreams,
-          demographics: filteredIcpData.demographics,
+          demographics: normalizeDemographics(filteredIcpData.demographics),
           psychographics: filteredIcpData.psychographics,
           pains: filteredIcpData.pains,
           frustrations: filteredIcpData.frustrations,
@@ -279,6 +197,9 @@ export const icpsRouter = router({
           painPoints: filteredIcpData.pains, // Map to old field
           desiredOutcomes: filteredIcpData.goals, // Map to old field
           valuesMotivations: filteredIcpData.values, // Map to old field
+          // Provenance is stored OUT OF BAND — never inline in the 17 text fields,
+          // which every downstream generator interpolates straight into its prompt.
+          groundingMeta: provenance,
         });
 
       // Fetch the created ICP
@@ -325,19 +246,11 @@ export const icpsRouter = router({
           const bgDb = await getDb();
           if (!bgDb) throw new Error("Database not available in background job");
 
-          const prompt = ICP_USER_PROMPT(capturedService);
-
-          const response = await invokeLLM({
-            messages: [
-              { role: "system", content: ICP_SYSTEM_PROMPT() },
-              { role: "user", content: prompt },
-            ],
-            response_format: { type: "json_schema", json_schema: { name: "ideal_customer_profile_17_tabs", strict: true, schema: { type: "object", properties: { introduction: { type: "string" }, fears: { type: "string" }, hopesDreams: { type: "string" }, demographics: { type: "object", properties: { age_range: { type: "string" }, gender: { type: "string" }, income_level: { type: "string" }, education: { type: "string" }, occupation: { type: "string" }, location: { type: "string" }, family_status: { type: "string" } }, required: ["age_range","gender","income_level","education","occupation","location","family_status"], additionalProperties: false }, psychographics: { type: "string" }, pains: { type: "string" }, frustrations: { type: "string" }, goals: { type: "string" }, values: { type: "string" }, objections: { type: "string" }, buyingTriggers: { type: "string" }, mediaConsumption: { type: "string" }, influencers: { type: "string" }, communicationStyle: { type: "string" }, decisionMaking: { type: "string" }, successMetrics: { type: "string" }, implementationBarriers: { type: "string" } }, required: ["introduction","fears","hopesDreams","demographics","psychographics","pains","frustrations","goals","values","objections","buyingTriggers","mediaConsumption","influencers","communicationStyle","decisionMaking","successMetrics","implementationBarriers"], additionalProperties: false } } },
+          const { icp: icpData, provenance } = await runIcpGeneration({
+            service: capturedService,
+            ladder: (capturedInput.ladder ?? null) as ICPLadderAnswers | null,
+            logLabel: "icps.generateAsync",
           });
-
-          const content = response.choices[0].message.content;
-          if (typeof content !== 'string') throw new Error('Invalid response format from AI');
-          const icpData = JSON.parse(stripMarkdownJson(content));
 
           // Compliance pre-filter before DB write (async path)
           const ICP_FILTER_FIELDS_ASYNC = ["introduction", "fears", "hopesDreams", "pains", "frustrations", "goals", "objections", "buyingTriggers"];
@@ -345,7 +258,7 @@ export const icpsRouter = router({
           if (icpClassificationAsync === "REJECTED") {
             throw new Error(`Some generated content contained prohibited language and could not be saved. Flagged: ${icpFlaggedTermsAsync.join("; ")}`);
           }
-          const filteredIcpDataAsync = { ...icpData, ...cleanedIcpDataAsync };
+          const filteredIcpDataAsync: any = { ...icpData, ...cleanedIcpDataAsync };
           filteredIcpDataAsync.objections = stripObjectionScaffolding(filteredIcpDataAsync.objections) as string; // item 6: strip FAQ scaffolding at source
 
           const insertResult: any = await bgDb.insert(idealCustomerProfiles).values({
@@ -356,7 +269,7 @@ export const icpsRouter = router({
             introduction: filteredIcpDataAsync.introduction,
             fears: filteredIcpDataAsync.fears,
             hopesDreams: filteredIcpDataAsync.hopesDreams,
-            demographics: filteredIcpDataAsync.demographics,
+            demographics: normalizeDemographics(filteredIcpDataAsync.demographics),
             psychographics: filteredIcpDataAsync.psychographics,
             pains: filteredIcpDataAsync.pains,
             frustrations: filteredIcpDataAsync.frustrations,
@@ -373,6 +286,7 @@ export const icpsRouter = router({
             painPoints: filteredIcpDataAsync.pains,
             desiredOutcomes: filteredIcpDataAsync.goals,
             valuesMotivations: filteredIcpDataAsync.values,
+            groundingMeta: provenance,
           });
 
           const [newICP] = await bgDb.select().from(idealCustomerProfiles)
@@ -498,11 +412,40 @@ export const icpsRouter = router({
         ? ` User instruction: ${input.promptOverride.trim()}.`
         : "";
 
-      const prompt = `Rewrite the "${input.sectionKey}" section for this ideal customer profile. Current value: ${serialized}.${userInstruction} Return ONLY the rewritten text. No JSON, no markdown, no explanation.`;
+      // The service this profile belongs to IS the ground truth for a rewrite —
+      // without it this path regenerated against nothing but its own prior output.
+      let service: ICPServiceInput | null = null;
+      if (row.serviceId) {
+        const [svc] = await db
+          .select({
+            name: services.name,
+            category: services.category,
+            description: services.description,
+            targetCustomer: services.targetCustomer,
+            mainBenefit: services.mainBenefit,
+          })
+          .from(services)
+          .where(eq(services.id, row.serviceId))
+          .limit(1);
+        if (svc) service = svc;
+      }
+
+      const groundTruth = service
+        ? `\n\nWHAT THE COACH TOLD US — treat as authoritative; stay consistent with it.\nService: ${service.name}\nDescription: ${service.description}\nTarget customer: ${service.targetCustomer}\nMain benefit: ${service.mainBenefit}`
+        : "";
+
+      // Sections 4/12/13 state checkable facts about real people; the same
+      // real-or-"Not specified" rule that governs generation governs a rewrite.
+      const CLASS_A_SECTIONS = new Set(["demographics", "mediaConsumption", "influencers"]);
+      const groundingRule = CLASS_A_SECTIONS.has(input.sectionKey)
+        ? `\n\nThis section states checkable facts about real people. Carry across what the coach's information above establishes. Name a specific individual, publication or brand only where the coach named it; otherwise describe the KIND of voice or channel this person trusts. Any demographic value the information above leaves open carries the exact text "Not specified".`
+        : `\n\nKeep the customer's internal monologue — specific lived situations, their own words, the detail that makes them recognise themselves. Build it on the coach's information above rather than on invented specifics.`;
+
+      const prompt = `Rewrite the "${input.sectionKey}" section for this ideal customer profile. Current value: ${serialized}.${userInstruction}${groundTruth}${groundingRule}\n\nReturn ONLY the rewritten text. No JSON, no markdown, no explanation.`;
 
       const response = await invokeLLM({
         messages: [
-          { role: "system", content: "You are an expert marketing strategist specializing in ideal customer profile development for coaches and consultants." },
+          { role: "system", content: ICP_SYSTEM_PROMPT() },
           { role: "user", content: prompt },
         ],
       });
@@ -510,7 +453,18 @@ export const icpsRouter = router({
       const content = response.choices[0].message.content;
       if (typeof content !== "string") throw new Error("Invalid response from AI");
 
-      const cleaned = content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
+      let cleaned = content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
+
+      // Same compliance pre-filter the generate paths run before any DB write.
+      const { cleaned: compliant, classification } = filterRecord({ [input.sectionKey]: cleaned }, [input.sectionKey]);
+      if (classification === "REJECTED") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "The rewritten section contained prohibited language and was not saved. Please try again.",
+        });
+      }
+      if (typeof compliant[input.sectionKey] === "string") cleaned = compliant[input.sectionKey] as string;
+      if (input.sectionKey === "objections") cleaned = stripObjectionScaffolding(cleaned) as string;
 
       await db
         .update(idealCustomerProfiles)

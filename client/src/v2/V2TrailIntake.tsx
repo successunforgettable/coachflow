@@ -25,6 +25,30 @@ import { patienceGuard } from "./lib/patienceGuard";
 const MIN_DESCRIPTION_CHARS = 120; // mirrors services.extractFromText z.min(120)
 const MAX_NOT_QUITE_LOOPS = 2;
 
+/**
+ * ICP grounding — laddered follow-ups (R2 "5 Rings", translated coach→individual).
+ * Asked one at a time, every one skippable. Answers become authoritative ground
+ * truth for the profile; a coach with no client history skips all three and their
+ * profile is labelled mostly-inferred rather than blocked.
+ * Keys must match ICPLadderAnswers on the server.
+ */
+/**
+ * 🔴 OFF — unverified. The laddered questions are built end-to-end (server prompt
+ * block, tRPC input, provenance) but were never verified working, because ICP
+ * generation itself has an open structural failure (see the handover:
+ * docs/handovers/ZAP_Handover_July26_2026_ICP_Grounding_Phase2.md §3).
+ *
+ * Do not flip to true until `server/scripts/verify-icp-grounding.ts` runs clean
+ * WITH a ladder restored in the second case.
+ */
+const LADDER_ENABLED = false;
+const LADDER_SKIP_CHIP = "Skip this one";
+const LADDER_QUESTIONS: { key: "trigger" | "priorAttempts" | "hesitation"; text: string }[] = [
+  { key: "trigger", text: "One more thing and I'll have a much sharper picture. Think of the last person who hired you — what was going on for them right when they reached out?" },
+  { key: "priorAttempts", text: "What had they already tried that didn't work?" },
+  { key: "hesitation", text: "And what nearly stopped them from going ahead?" },
+];
+
 type Phase =
   | "greeting"     // posting the opening bubbles
   | "describe"     // waiting for the business description
@@ -33,6 +57,7 @@ type Phase =
   | "correction"   // waiting for "what did I get wrong" free text
   | "tweakbox"     // field-edit fallback after loops maxed
   | "creating"     // services.create in flight
+  | "ladder"       // ICP grounding: 3 skippable follow-ups about real clients
   | "campaignType" // Sprint 3 C2: "What are you inviting people to?" chips live
   | "fork"         // Beat 5: path chips live
   | "autorun"      // Sprint 3 C2: in-chat auto path — ICP gen + kit creation
@@ -129,6 +154,9 @@ export default function V2TrailIntake() {
   // Sprint 3 C2: in-chat auto path
   const expandProfileMutation = trpc.services.expandProfile.useMutation();
   const generateIcpMutation = trpc.icps.generateAsync.useMutation();
+  // ICP grounding — laddered answers collected in-chat; every question skippable.
+  const ladderAnswers = useRef<Record<string, string>>({});
+  const ladderIdx = useRef(0);
   const getOrCreateKitMutation = trpc.campaignKits.getOrCreate.useMutation();
   const appendMessagesMutation = trpc.trail.appendMessages.useMutation();
   const checkCoherenceMutation = trpc.autoMode.checkCoherence.useMutation();
@@ -238,15 +266,32 @@ export default function V2TrailIntake() {
           ? `Done — ${fields.serviceName} is on the board. 🦊`
           : "Done — your campaign is on the board. 🦊",
       });
-      // ── Sprint 3 C2: campaign-type beat (before the fork) ──
-      addMsg({ type: "zappy-bubble", mood: "idle", text: "What are you inviting people to?" });
-      addMsg({ type: "chip-row", chips: Object.keys(CAMPAIGN_TYPE_CHIPS) });
-      setPhase("campaignType");
+      // ── ICP grounding: laddered follow-ups before the campaign-type beat ──
+      askLadder(0);
     } catch {
       addMsg({ type: "zappy-bubble", mood: "idle", text: "Hm — that save fizzled. Want me to try again?" });
       addMsg({ type: "chip-row", chips: ["Try again"] });
       setPhase("confirm");
     }
+  };
+
+  /** Post the campaign-type beat (the step the ladder hands off to). */
+  const askCampaignType = () => {
+    addMsg({ type: "zappy-bubble", mood: "idle", text: "What are you inviting people to?" });
+    addMsg({ type: "chip-row", chips: Object.keys(CAMPAIGN_TYPE_CHIPS) });
+    setPhase("campaignType");
+  };
+
+  /**
+   * Ask laddered follow-up i, or move on once they are done. Each question shows a
+   * Skip chip and accepts free text; nothing here can block the coach.
+   */
+  const askLadder = (i: number) => {
+    if (!LADDER_ENABLED || i >= LADDER_QUESTIONS.length) { askCampaignType(); return; }
+    ladderIdx.current = i;
+    addMsg({ type: "zappy-bubble", mood: "idle", text: LADDER_QUESTIONS[i].text });
+    addMsg({ type: "chip-row", chips: [LADDER_SKIP_CHIP] });
+    setPhase("ladder");
   };
 
   const extractionToFields = (ex: Extraction): TweakBoxFields => ({
@@ -267,6 +312,13 @@ export default function V2TrailIntake() {
       // Guard: if resolver isn't ready yet, the text input shouldn't be active
       // during hasAssetsChoice. If it somehow fires, ignore silently (input is
       // hidden during choice phase so this shouldn't happen in practice).
+      return;
+    }
+    if (phase === "ladder") {
+      addMsg({ type: "user-bubble", text });
+      const q = LADDER_QUESTIONS[ladderIdx.current];
+      if (q && text.trim()) ladderAnswers.current[q.key] = text.trim();
+      askLadder(ladderIdx.current + 1);
       return;
     }
     if (phase === "describe") {
@@ -353,7 +405,7 @@ export default function V2TrailIntake() {
       addMsg({ type: "zappy-bubble", mood: "thinking", text: "Studying the people you help…" });
       const icpName = extraction.current?.icpDescriptor?.trim()
         || `${pendingFields.current?.serviceName?.trim() || "My Service"} Profile`;
-      const { jobId } = await generateIcpMutation.mutateAsync({ serviceId, name: icpName });
+      const { jobId } = await generateIcpMutation.mutateAsync({ serviceId, name: icpName, ladder: ladderAnswers.current });
       const job = await patienceGuard(pollJob(jobId), addMsg);
       if (job.status === "failed" || typeof job.result?.icpId !== "number") {
         throw new Error(job.error || "ICP generation failed.");
@@ -765,7 +817,7 @@ export default function V2TrailIntake() {
       } else {
         const icpName = extraction.current?.icpDescriptor?.trim()
           || `${pendingFields.current?.serviceName?.trim() || "My Service"} Profile`;
-        const { jobId } = await generateIcpMutation.mutateAsync({ serviceId, name: icpName });
+        const { jobId } = await generateIcpMutation.mutateAsync({ serviceId, name: icpName, ladder: ladderAnswers.current });
         const job = await patienceGuard(pollJob(jobId), addMsg);
         if (job.status === "failed" || typeof job.result?.icpId !== "number") {
           throw new Error(job.error || "ICP generation failed.");
@@ -880,7 +932,7 @@ export default function V2TrailIntake() {
       addMsg({ type: "zappy-bubble", mood: "thinking", text: "Studying the people you help…" });
       const icpName = extraction.current?.icpDescriptor?.trim()
         || `${pendingFields.current?.serviceName?.trim() || "My Service"} Profile`;
-      const { jobId } = await generateIcpMutation.mutateAsync({ serviceId, name: icpName });
+      const { jobId } = await generateIcpMutation.mutateAsync({ serviceId, name: icpName, ladder: ladderAnswers.current });
       const job = await patienceGuard(pollJob(jobId), addMsg);
       if (job.status === "failed" || typeof job.result?.icpId !== "number") {
         throw new Error(job.error || "ICP generation failed.");
@@ -937,6 +989,11 @@ export default function V2TrailIntake() {
     messagesRef.current = messagesRef.current.filter(m => m.id !== messageId);
     addMsg({ type: "user-bubble", text: chip });
 
+    if (chip === LADDER_SKIP_CHIP && phase === "ladder") {
+      askLadder(ladderIdx.current + 1);
+      return;
+    }
+
     if (CAMPAIGN_TYPE_CHIPS[chip] && phase === "campaignType") {
       // ── Sprint 3 C2: campaign-type chosen → Beat 5 fork ──
       campaignType.current = CAMPAIGN_TYPE_CHIPS[chip];
@@ -967,9 +1024,9 @@ export default function V2TrailIntake() {
     createService(fields);
   };
 
-  const inputActive = phase === "describe" || phase === "correction" || phase === "hasAssets";
+  const inputActive = phase === "describe" || phase === "correction" || phase === "hasAssets" || phase === "ladder";
   // Hide the bar entirely on chips-only beats — no dead input (Commit 2 fix).
-  const showInput = phase === "greeting" || phase === "describe" || phase === "correction" || phase === "extracting" || phase === "hasAssets";
+  const showInput = phase === "greeting" || phase === "describe" || phase === "correction" || phase === "extracting" || phase === "hasAssets" || phase === "ladder";
   const stops: TrailStop[] = INTAKE_STOPS.map(s => {
     if (s.key === "service" && serviceCreated) return { ...s, state: "done" as const };
     if (confirmedStopKeys.has(s.key)) return { ...s, state: "imported" as const };
