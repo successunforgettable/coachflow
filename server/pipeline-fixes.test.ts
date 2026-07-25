@@ -2282,7 +2282,7 @@ describe("Phase E Sprint 2 — Email generator system prompt + supplied wiring",
     expect(generatorSrc).toContain("const supplied: EmailSuppliedData = {");
     expect(generatorSrc).toContain("price: service.price");
     expect(generatorSrc).toContain("testimonialNames:");
-    expect(generatorSrc).toContain("invokeEmailSequenceWithRetry(cascadeContext + prompt, supplied)");
+    expect(generatorSrc).toContain("invokeEmailSequenceWithRetry(cascadeContext + realBonusBlock + prompt, supplied)");
   });
 
   it("fabrication validator call forwards supplied data", () => {
