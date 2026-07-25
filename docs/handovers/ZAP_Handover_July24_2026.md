@@ -8,6 +8,22 @@ surface) → **durability fix** (jobs-table, self-heal reconcile, no orphans) �
 framing + markdown rendering). **NEXT = the Andromeda script generator** (Arfeen re-prioritized it AHEAD of the
 readability pass). Everything below documents the two most recent stages.
 
+## 🧩 ANDROMEDA — campaignConcepts per-concept mechanism (2026-07-25): migration 0093 LIVE on prod (empty), code HELD local, 7th hook + mapping GROUNDED
+
+The Andromeda per-concept fan-out mechanism was built this session (investigation → build → migration). **"One person, many angles": N concepts (default 8) vary Desire × Awareness WITHIN one ICP** (persona fixed to the ICP). Full detail: [[project_icp_generator_enhancement_spec]] context + the concept memory.
+
+**Migration state (the migration-before-code gate — track this before any push):**
+- **`0093_campaign_concepts.sql` — APPLIED TO PROD + VERIFIED (2026-07-25) via Arfeen's explicit "execute".** New additive `campaignConcepts` table: **19 cols**, 2 FKs (`userId`→users, `icpId`→idealCustomerProfiles, both cascade), PRIMARY + 3 indexes, enums (awareness 5, hookPattern, status 3). **Verified EMPTY (0 rows)** on prod. Additive — zero risk to existing tables.
+- **`0094_campaign_concepts_direct_offer_hook.sql` — AUTHORED, NOT APPLIED (awaits Arfeen "execute").** Appends the **7th hook pattern `direct_offer_urgency`** to `campaignConcepts.hookPattern` via `ALTER TABLE … MODIFY COLUMN`. Append-to-end enum = metadata-only + the table is empty → safe, near-instant. **Prod hookPattern is still the 6-value enum until 0094 runs.**
+
+**🔴 CODE HELD LOCAL — do NOT push until 0094 executes on prod.** Application code (schema enum + generator that can write `hookPattern='direct_offer_urgency'`) queries `campaignConcepts` and can emit the 7th value; deploying it before 0094 runs would break on the 6-value prod enum. Committed local-only (crash-safety; base build was `cb387f9`, the 7th-hook + mapping build sits on top). Push gated on: 0094 "execute" + harness green (harness IS green — see below).
+
+**What's grounded/approved this session:**
+- **Hook→awareness mapping — now APPROVED + GROUNDED** in `conceptAxis.ts` (`approved:true`). Source: Arfeen's NotebookLM run on his corpus, corroborated by banked ICP docs on the 2 independently-matching stages (Problem-Aware→Problem-First, Product-Aware→Social-Proof). The earlier web-derived candidate is RETIRED. Mapping: Unaware→meme_humor · Problem-Aware→problem_first · Solution-Aware→aspirational_transformation · Product-Aware→social_proof · Most-Aware→**direct_offer_urgency** (the 7th). Cross-stage: Founder/Authenticity spans Problem/Solution-Aware; Data/Chart spans Unaware/Product-Aware; Social-Proof spans Solution/Product-Aware.
+- **7th hook = highest Meta-compliance-risk** → compliance built IN, not bolted on: `screenConceptCompliance` routes every concept's hook/headline/shortText/longText through the existing `complianceFilter` (`server/lib/complianceFilter.ts` — guaranteed-income REJECT patterns + the "6b" fabricated-deadline-scarcity PIVOT pattern). The generator runs structural validate **AND** compliance screen every attempt → retry-with-failContext. Prompt instructs REAL urgency only (a genuine coach-supplied deadline), never fabricated scarcity.
+
+**Verification (all real, clean-room UP this session):** TS **35** · unit tests **20/20** concept (structural 8, compliance 3, mapping/7-hook 6, prompt 5 — 402 total incl. canonical 382) · **real end-to-end generation** (`server/scripts/verify-concept-generation.ts`, ICP 15): 8 concepts, all 5 awareness stages, **all 7 hook patterns incl. direct_offer_urgency**, 8 distinct desire×awareness, and the urgency concept used a `[DATE]` placeholder — REAL-urgency, NOT fabricated scarcity · **Playwright harness GREEN** (`e2e/campaign-concepts.spec.ts`, structural invariants from the DB). **Still deferred by design:** the ICP-corpus anti-fabrication validator (the ICP feeding this is knowingly fabricated → deferred to the ICP grounding sprint; DRAFT-only, nothing reaches Meta until publishToMeta).
+
 ### Correctness pass — `10582b9` (post-purchase framing + markdown rendering)
 
 `HEAD = origin/railway-build = 10582b9`. Deploy **SUCCESS**, image digest **`sha256:46ce904e5f16`** (container
@@ -145,6 +161,21 @@ current bonuses are now correct + clear rather than broken; rushing a format cha
 decisions get made badly). Full detail: memory `project_bonus_pdf_visual_design_pass`. **Separate from the correctness
 fixes** (register/framing · `<pre>`→markdown · howToUse · fill-in chips) which already made the current PDF bonuses
 correct + clear.
+
+## 🧠 TRACKED (do not drop) — ICP-GENERATOR ENHANCEMENT SPEC (research + audit + spec COMPLETE; NOT scheduled — after the Andromeda script generator)
+
+**The highest-leverage node in the system** (R4 quality-multiplier — ICP quality compounds through the entire downstream cascade) and the **load-bearing front-door of the funnel strategy** (the free-tool "wow, this gets me" hook). Research + a read-only audit + the enhancement spec are complete; **not scheduled** — Arfeen picks this up **after the Andromeda script generator ships.**
+
+**Research banked** (2026-07-25): `docs/icp-research/` — 4 NotebookLM reports + README. **R1** `The Psychology of the ICP…` (deep internal-buyer-dimension standard) · **R2** `Methodology Report… Signal Extraction…` (5 Rings, laddering, evidence-vs-hunch) · **R3** `Diagnostic Report… Failure and Recovery` (5 failure modes) · **R4** `Strategic Report… Precision-Impact Matrix` (downstream stakes). The reports are **B2B/RevOps-framed** — translate the psychological dimensions + anti-fabrication discipline to ZAP's coach/B2C context; drop the firmographic/territory/CRM machinery.
+
+**Current-state finding (read-only audit).** Generator: `server/routers/icps.ts` (`generate` sync + `generateAsync`) via shared prompts `server/_core/icpPrompts.ts` (`ICP_USER_PROMPT`/`ICP_SYSTEM_PROMPT`). It **MEETS the R1 depth standard** — root-vs-surface pain, fears (3am version), identity outcomes, buying triggers (specific moment), objections (say-vs-mean), first-person internal-monologue voice (only `demographics` is structured JSON; the other 16 tabs are `•`-bulleted prose). **BUT it has NONE of the R2/R3 safety machinery.** Critically it is **fabrication BY DESIGN**: the prompt demands invented specifics (real influencer names, specific ages/incomes/locations, verbatim first-person quotes) from **one thin freeform input** (the 3 real free-text answers: service `description`/`targetCustomer`/`mainBenefit`) with **zero grounding requirement** → the polished, convincing ICP is **confident fabrication = exactly R3's most dangerous failure mode ("Aspirational Fantasy" / fantasy-as-fact)**. It **reads excellent regardless of input quality because it's built to invent persuasively** (proof: real generated ICP #254 confidently invented unflagged income £60–120k, gender skew, six named cities, MBA/MSc, verbatim quotes). **No quality validator exists** — only a compliance language filter (`filterRecord` REJECTs banned terms) + `stripObjectionScaffolding`; `icpEnrichment` fills nulls for **imported** ICPs only, not generated.
+
+**Enhancement spec (research-grounded, 3 parts):**
+1. **Grounding (R2)** — input laddering (pain-point / 5-Whys to root pain, JTBD inference) + **inferred-vs-stated flagging** so the generator distinguishes what's grounded from what it's inventing.
+2. **Validator (R3)** — post-generation check for too-broad / aspirational-seller-centric / fantasy-unflagged / demographic-hollow — **mirror `validateBonusFabricationPatterns`** (generate → validate → retry-with-failContext, `server/_core/validator.ts`).
+3. **Input depth** — move from one freeform description to a small set of targeted questions that ladder to root pain.
+
+**🔴 THE KEY PRODUCT TENSION (Arfeen's call at BUILD time — record explicitly, do NOT resolve now).** The generator's vividness **comes from the fabrication**. A punchy, specific ICP is what makes the free-tool hook land ("wow, this gets me") — but that specificity is invented. The enhancement must **thread a needle**: keep the ICP compelling + specific ENOUGH to work as the funnel's front-door hook, while making it grounded + honest about what's inferred. **Over-ground it → hedged and boring, kills the hook. Leave it fabricated → poisons the cascade (R4: ICP quality compounds downstream).** This **grounding-vs-vividness balance is the real decision — a product/brand call for build time, NOT a mechanism CC decides.** Full detail: memory `project_icp_generator_enhancement_spec`.
 
 ## Next in the forward sequence
 

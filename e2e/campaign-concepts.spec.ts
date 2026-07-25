@@ -22,7 +22,7 @@ const DB_URL = process.env.E2E_DB_URL ?? "mysql://root@127.0.0.1:3307/zap_test";
 const TEST_ICP_ID = Number(process.env.TEST_ICP_ID ?? 0);
 
 const AWARENESS = ["unaware", "problem_aware", "solution_aware", "product_aware", "most_aware"];
-const HOOKS = ["problem_first", "founder_authenticity", "social_proof", "aspirational_transformation", "meme_humor", "data_chart"];
+const HOOKS = ["problem_first", "founder_authenticity", "social_proof", "aspirational_transformation", "meme_humor", "data_chart", "direct_offer_urgency"];
 const norm = (s: string) => (s ?? "").trim().toLowerCase().replace(/\s+/g, " ");
 
 test("campaignConcepts: structural invariants hold for the generated set", async () => {
@@ -30,8 +30,8 @@ test("campaignConcepts: structural invariants hold for the generated set", async
 
   const conn = await mysql.createConnection(DB_URL);
   try {
-    const [rows] = (await conn.execute(
-      "SELECT id, desire, awareness, hookPattern, hook, headline, shortText, longText FROM campaignConcepts WHERE icpId = ? ORDER BY id",
+    const [rows] = (await conn.query(
+      "SELECT `id`, `desire`, `awareness`, `hookPattern`, `hook`, `headline`, `shortText`, `longText` FROM `campaignConcepts` WHERE `icpId` = ? ORDER BY `id`",
       [TEST_ICP_ID],
     )) as any;
 

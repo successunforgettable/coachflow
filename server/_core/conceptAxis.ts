@@ -22,7 +22,11 @@ export const AWARENESS_STAGES = [
 ] as const;
 export type AwarenessStage = (typeof AWARENESS_STAGES)[number];
 
-// ─── Hook patterns (the 6 named patterns from EXECUTION_BRIEF §2) ─────────────
+// ─── Hook patterns (the 6 named patterns from EXECUTION_BRIEF §2 + the 7th, added this session) ──
+// The 7th — direct_offer_urgency — is the Most-Aware close. It is the HIGHEST Meta-compliance-risk hook:
+// it must express only REAL urgency (a genuine coach-supplied deadline/offer), never fabricated scarcity
+// or fake countdowns. Its output is screened through the existing complianceFilter guards
+// (server/lib/complianceFilter.ts — income REJECT + scarcity PIVOT patterns) via screenConceptCompliance.
 export const HOOK_PATTERNS = [
   "problem_first",
   "founder_authenticity",
@@ -30,6 +34,7 @@ export const HOOK_PATTERNS = [
   "aspirational_transformation",
   "meme_humor",
   "data_chart",
+  "direct_offer_urgency",
 ] as const;
 export type HookPattern = (typeof HOOK_PATTERNS)[number];
 
@@ -38,37 +43,30 @@ export type HookPattern = (typeof HOOK_PATTERNS)[number];
 // tunable constant, not false precision.
 export const DEFAULT_CONCEPT_COUNT = 8;
 
-// ─── CANDIDATE hook→awareness mapping — ⚠️ PENDING ARFEEN APPROVAL, DO NOT TREAT AS FINAL ──────
+// ─── Hook→awareness mapping — ✅ APPROVED (grounded), 2026-07-25 ──────────────────────────────────
 //
-// The brief ASSERTS "each [hook pattern] maps to an awareness stage" (§2) but NEVER specifies the
-// mapping. This candidate is DERIVED from direct-response marketing sources (Schwartz's stages ×
-// ad-hook practice), NOT invented — sources cited below. It is deliberately kept as editable config:
-// generation reads it as guidance, it is NOT hardcoded into any prompt string. Arfeen approves/edits
-// the mapping before it is treated as final.
+// SOURCE: Arfeen's NotebookLM run over his own research corpus, corroborated by the banked ICP docs on
+// the two stages where the corpus and the run matched INDEPENDENTLY:
+//   - Problem-Aware → Problem-First  (docs/icp-research/The Psychology of the ICP §6: "Empathize with the
+//     'Problem Pressure' and name the lived situation")
+//   - Product-Aware → Social-Proof   (same §6: "Address 'Perceived Barriers' and provide validation/proof")
+// The earlier web-derived candidate (hawky/selzee/sparkugc) is RETIRED — it was not grounded in Arfeen's data.
 //
-// Sources (CLAUDE §15 web fallback; marketingskills repo not cloned locally):
-//   - Schwartz 5 stages: selzee.com/eugene-schwartz-5-levels-of-awareness
-//   - Hook-by-stage ad mapping: hawky.ai/blog/customer-awareness-stages
-//   - UGC-ad stage hooks: sparkugc.com/resources/stages-of-awareness-ugc-ads
-//
-// Each stage lists the PRIMARY well-fit hook pattern first; secondary patterns are allowed because
-// hooks are not stage-exclusive (e.g. Founder/Authenticity spans Unaware→Problem-Aware).
+// Each stage lists the PRIMARY hook first; secondary is allowed because hooks are not stage-exclusive.
+// CROSS-STAGE (preserve): Founder/Authenticity spans Problem/Solution-Aware; Data/Chart spans
+// Unaware/Product-Aware; Social-Proof spans Solution/Product-Aware.
 export const CANDIDATE_HOOK_AWARENESS_MAP: {
-  approved: false;
+  approved: boolean;
   map: Record<AwarenessStage, { primary: HookPattern; secondary: HookPattern[] }>;
 } = {
-  approved: false, // flips to true only when Arfeen signs off; generation may guard on this.
+  approved: true, // grounded in Arfeen's corpus + corroborated on the 2 overlapping stages; signed off this session.
   map: {
-    // Unaware — pull them into a world they didn't know existed: curiosity / pattern-interrupt / story.
-    unaware: { primary: "meme_humor", secondary: ["founder_authenticity"] },
-    // Problem-Aware — validate + agitate the lived pain; founder-story videos that mirror the frustration.
+    unaware: { primary: "meme_humor", secondary: ["data_chart"] },
     problem_aware: { primary: "problem_first", secondary: ["founder_authenticity"] },
-    // Solution-Aware — introduce the better way / the transformation the mechanism unlocks.
-    solution_aware: { primary: "aspirational_transformation", secondary: ["data_chart"] },
-    // Product-Aware — verifiable evidence: case studies, testimonials, objection-handling.
+    solution_aware: { primary: "aspirational_transformation", secondary: ["founder_authenticity"] },
     product_aware: { primary: "social_proof", secondary: ["data_chart"] },
-    // Most-Aware — hard numeric proof + a final reason to act; the specific-numbers close.
-    most_aware: { primary: "data_chart", secondary: ["social_proof"] },
+    // Most-Aware — the 7th hook: a REAL coach-supplied deadline/offer, never fabricated scarcity.
+    most_aware: { primary: "direct_offer_urgency", secondary: ["social_proof"] },
   },
 };
 

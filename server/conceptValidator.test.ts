@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { validateConceptSetStructure, type RawConcept } from "./_core/conceptValidator";
+import { validateConceptSetStructure, screenConceptCompliance, type RawConcept } from "./_core/conceptValidator";
 
 // A well-formed concept: fixed persona (implicit via the ICP), varying desire × awareness,
 // all four ad-copy payload fields present, headline distinct from hook.
@@ -72,5 +72,38 @@ describe("validateConceptSetStructure — structural check only (NOT the ICP-cor
     ];
     const result = validateConceptSetStructure(concepts);
     expect(result.ok).toBe(true);
+  });
+
+  it("accepts direct_offer_urgency as a valid 7th hook pattern (Most-Aware close)", () => {
+    const result = validateConceptSetStructure([
+      ok({ awareness: "most_aware", hookPattern: "direct_offer_urgency" }),
+    ]);
+    expect(result.ok).toBe(true);
+  });
+});
+
+describe("screenConceptCompliance — routes concept text through the existing complianceFilter guards", () => {
+  it("passes clean concept copy (no scarcity, no income claim)", () => {
+    const result = screenConceptCompliance([ok()]);
+    expect(result.ok).toBe(true);
+  });
+
+  it("flags FABRICATED scarcity — the highest risk of the Direct-Offer/Urgency hook", () => {
+    const result = screenConceptCompliance([
+      ok({
+        hookPattern: "direct_offer_urgency",
+        awareness: "most_aware",
+        hook: "This offer expires tonight — gone forever at midnight.",
+      }),
+    ]);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.failContext.toLowerCase()).toContain("scarcity");
+  });
+
+  it("flags a guaranteed income claim (hard-banned by complianceFilter REJECTED patterns)", () => {
+    const result = screenConceptCompliance([
+      ok({ shortText: "Earn $10,000 in 7 days guaranteed with this system." }),
+    ]);
+    expect(result.ok).toBe(false);
   });
 });

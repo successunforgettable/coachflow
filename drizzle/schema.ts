@@ -1399,6 +1399,7 @@ export const campaignConcepts = mysqlTable("campaignConcepts", {
     "aspirational_transformation",
     "meme_humor",
     "data_chart",
+    "direct_offer_urgency",
   ]).notNull(),
   hook: text("hook").notNull(),
   headline: text("headline").notNull(),

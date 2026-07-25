@@ -17,6 +17,7 @@
  */
 
 import { isAwarenessStage, isHookPattern } from "./conceptAxis";
+import { complianceFilter } from "../lib/complianceFilter";
 
 export interface RawConcept {
   desire?: string;
@@ -33,7 +34,9 @@ export type ConceptStructureClass =
   | "concept_bad_awareness"
   | "concept_bad_hook_pattern"
   | "concept_headline_equals_hook"
-  | "concept_duplicate_axis";
+  | "concept_duplicate_axis"
+  | "concept_fabricated_scarcity"
+  | "concept_compliance_reject";
 
 export interface ConceptStructureHit {
   classId: ConceptStructureClass;
@@ -125,4 +128,44 @@ export function validateConceptSetStructure(concepts: RawConcept[]): ConceptStru
 
   if (hits.length === 0) return { ok: true };
   return { ok: false, hits, failContext: buildFailContext(hits) };
+}
+
+// ─── Compliance screen — route concept text through the EXISTING complianceFilter guards ─────────
+// The Direct-Offer/Urgency hook is the highest Meta-compliance-risk pattern (fabricated scarcity, fake
+// countdowns, income guarantees). We build the guard in from the start rather than bolt it on: every
+// concept's user-visible copy (hook/headline/shortText/longText) is passed through complianceFilter
+// (server/lib/complianceFilter.ts) — the same REJECTED (guaranteed-income) + PIVOT_REQUIRED (deadline
+// scarcity, pattern "6b") catalog the offer/ICP paths already use. Any non-VALID classification is a hit
+// → the concept set regenerates with a compliance failContext instructing REAL urgency only.
+
+const COMPLIANCE_FIELDS: Array<keyof RawConcept> = ["hook", "headline", "shortText", "longText"];
+
+export type ConceptComplianceResult =
+  | { ok: true }
+  | { ok: false; hits: ConceptStructureHit[]; failContext: string };
+
+export function screenConceptCompliance(concepts: RawConcept[]): ConceptComplianceResult {
+  const hits: ConceptStructureHit[] = [];
+
+  concepts.forEach((c, i) => {
+    for (const field of COMPLIANCE_FIELDS) {
+      const text = c[field];
+      if (typeof text !== "string" || text.trim().length === 0) continue;
+      const verdict = complianceFilter(text);
+      if (verdict.classification !== "VALID") {
+        const isScarcity = /scarcity|expires|deadline|gone\s+forever|countdown/i.test(verdict.flaggedTerms.join(" ") + " " + text);
+        hits.push({
+          classId: isScarcity ? "concept_fabricated_scarcity" : "concept_compliance_reject",
+          description: `${verdict.classification} — ${verdict.flaggedTerms.join("; ") || "policy-flagged copy"}`,
+          location: `concept[${i}].${String(field)}`,
+        });
+      }
+    }
+  });
+
+  if (hits.length === 0) return { ok: true };
+  const failContext = `Your previous concept set contained copy that fails Meta ad-policy screening and must be regenerated:\n${hits
+    .map((h) => `- ${h.location}: ${h.description}`)
+    .join("\n")}\n\nRegenerate so no concept invents scarcity, countdowns, or income guarantees. For the direct_offer_urgency hook, express urgency ONLY from a genuine coach-supplied deadline or offer — never a fabricated "expires tonight", "gone forever", "price doubles at midnight", or any guaranteed-income claim. If no real deadline exists, do not manufacture one; use a non-urgency close instead.`;
+  return { ok: false, hits, failContext };
 }

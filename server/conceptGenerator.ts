@@ -21,7 +21,7 @@ import {
   DEFAULT_CONCEPT_COUNT,
   CANDIDATE_HOOK_AWARENESS_MAP,
 } from "./_core/conceptAxis";
-import { validateConceptSetStructure, type RawConcept } from "./_core/conceptValidator";
+import { validateConceptSetStructure, screenConceptCompliance, type RawConcept } from "./_core/conceptValidator";
 
 export interface ConceptIcpInput {
   name?: string | null;
@@ -63,8 +63,10 @@ Objections: ${icp.objections || "(none provided)"}
 Buying triggers: ${icp.buyingTriggers || "(none provided)"}
 
 AWARENESS — span all 5 Schwartz stages across the set: ${AWARENESS_STAGES.join(", ")}.
-HOOK PATTERN — each concept uses exactly one of the 6 patterns: ${HOOK_PATTERNS.join(", ")}.
+HOOK PATTERN — each concept uses exactly one of the ${HOOK_PATTERNS.length} patterns: ${HOOK_PATTERNS.join(", ")}.
 ${renderHookGuidance()}
+
+REAL-URGENCY RULE (direct_offer_urgency hook): express urgency ONLY from a genuine, coach-supplied deadline or offer. NEVER invent scarcity — no "expires tonight", "gone forever", "price doubles at midnight", fake countdowns, or guaranteed-income claims. If no real deadline exists, use a non-urgency close instead. This copy is screened by Meta ad-policy filters.
 
 STRUCTURAL RULES (every concept):
 - desire: the single pain/goal this concept leads with, in this person's own language.
@@ -157,14 +159,29 @@ export async function generateConceptsForIcp(params: {
   const count = params.count ?? DEFAULT_CONCEPT_COUNT;
   const prompt = buildConceptPrompt(icp as ConceptIcpInput, count);
 
-  // Generate → structural validate → retry once with failContext.
+  // Generate → structural validate + compliance screen → retry once with combined failContext.
+  // Both gates run every attempt: structure (fields/enums/distinct/headline≠hook) AND Meta ad-policy
+  // screening (complianceFilter — fabricated scarcity / income guarantees, highest risk on the
+  // direct_offer_urgency hook). The ICP-corpus anti-fabrication check stays deferred until ICP grounding.
+  const gate = (cs: RawConcept[]): { ok: boolean; failContext: string; labels: string } => {
+    const structure = validateConceptSetStructure(cs);
+    const compliance = screenConceptCompliance(cs);
+    if (structure.ok && compliance.ok) return { ok: true, failContext: "", labels: "" };
+    const parts = [structure.ok ? "" : structure.failContext, compliance.ok ? "" : compliance.failContext].filter(Boolean);
+    const labels = [
+      ...(structure.ok ? [] : structure.hits.map((h) => h.classId)),
+      ...(compliance.ok ? [] : compliance.hits.map((h) => h.classId)),
+    ].join(", ");
+    return { ok: false, failContext: parts.join("\n\n"), labels };
+  };
+
   let concepts = await invokeConcepts(prompt, "");
-  let structure = validateConceptSetStructure(concepts);
-  if (!structure.ok) {
-    concepts = await invokeConcepts(prompt, structure.failContext);
-    structure = validateConceptSetStructure(concepts);
-    if (!structure.ok) {
-      throw new Error(`Concept set failed structural validation after retry: ${structure.hits.map((h) => h.classId).join(", ")}`);
+  let result = gate(concepts);
+  if (!result.ok) {
+    concepts = await invokeConcepts(prompt, result.failContext);
+    result = gate(concepts);
+    if (!result.ok) {
+      throw new Error(`Concept set failed validation after retry: ${result.labels}`);
     }
   }
 
