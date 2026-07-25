@@ -25,7 +25,25 @@ import {
   type RawScript,
   type RawScriptScene,
 } from "./_core/conceptScriptValidator";
-import { NICHE_DETECTION, HOOK_RULE, BANNED_WORDS, META_COMPLIANCE, REAL_URGENCY_RULE, SPOKEN_REGISTER } from "./_core/scriptPromptCraft";
+import { NICHE_DETECTION, HOOK_RULE, BANNED_WORDS, META_COMPLIANCE, REAL_URGENCY_RULE, SPOKEN_REGISTER, SCRIPT_STRUCTURE_CRAFT, SCRIPT_SAFETY } from "./_core/scriptPromptCraft";
+
+// Tone by warmth — mapped from the concept's awareness stage. INTERNAL NOTE: the 3-category (Cold/Warm/Hot)
+// → 5-stage (Schwartz) mapping is INFERRED from the tone report's category definitions; the report states
+// there is "no strong signal" for a data-backed 1:1 map across all 5 stages. Positive-framed.
+function toneForAwareness(awareness: string | null | undefined): string {
+  switch (awareness) {
+    case "unaware":
+    case "problem_aware":
+      return `TONE — COLD (${awareness}): this is a first handshake. Introduce, don't hard-sell. Lead with curiosity and a useful truth — like you're handing them something, not pitching.`;
+    case "solution_aware":
+    case "product_aware":
+      return `TONE — WARM (${awareness}): they already know the category. Show a new opportunity — a different way — with reassurance, using only REAL authority the coach's material supports.`;
+    case "most_aware":
+      return `TONE — HOT (most_aware): they're ready to act. Be direct and urgent, with honest FOMO built ONLY on the real deadline, scarcity, or pain in the coach's material — never invented.`;
+    default:
+      return "";
+  }
+}
 
 export interface ScriptConceptInput {
   personaLabel?: string | null;
@@ -37,6 +55,8 @@ export interface ScriptConceptInput {
 export function buildConceptScriptPrompt(concept: ScriptConceptInput, cascadeContext: string, targetSeconds: number): string {
   const budget = wordBudgetForSeconds(targetSeconds);
   const persona = concept.personaLabel || "this ideal customer";
+  const sceneCount = targetSeconds === 15 ? 3 : targetSeconds <= 30 ? 4 : 5;
+  const perScene = Math.floor(budget.min / sceneCount); // concrete per-scene cap, derived from the LOW end so the total lands under the hard max
   return `You are a world-class direct-response video scriptwriter for Meta ads. Write ONE short script a coach
 will record themselves (phone camera or avatar), for a SINGLE fixed concept.
 
@@ -50,21 +70,26 @@ THE CONCEPT (persona is fixed to this — do NOT drift to a different audience):
 ${NICHE_DETECTION}
 ${HOOK_RULE}
 ${SPOKEN_REGISTER}
+${SCRIPT_STRUCTURE_CRAFT}
+${toneForAwareness(concept.awareness)}
 ${BANNED_WORDS}
 ${META_COMPLIANCE}
 ${REAL_URGENCY_RULE}
+${SCRIPT_SAFETY}
 
 Every line — hook, body and CTA — sounds like a real person said it, not a copywriter. The whole script,
 not just the opening, must survive the read-aloud test above.
 
-LENGTH — this script targets ${targetSeconds} seconds (placement-safe short; Meta Advantage+ serves one asset
-across Reels, Stories and Feed, and the short end runs cleanly everywhere). Total spoken words ≈ ${budget.target}
-(hard max ${budget.max}). Keep it tight — tight means FEWER spoken beats (one idea per breath), not denser
-sentences; short sayable lines, not compressed written clauses.
+LENGTH — this is a ${targetSeconds}-SECOND script. That is only ~${budget.target} spoken words TOTAL, hard max ${budget.max}.
+You have ${sceneCount} scenes, so each scene is ONE short spoken line of about ${perScene} words — never more than ${perScene + 4}.
+Count as you write. Every word costs a fraction of a second on camera. Placement-safe short: Meta Advantage+ serves
+one asset across Reels, Stories and Feed, and the short end runs cleanly everywhere. Tight means FEWER, shorter
+sayable lines — one idea per breath — not denser sentences.
 
-STRUCTURE (${targetSeconds === 15 ? "3 tight scenes: hook → the one point → CTA" : targetSeconds <= 30 ? "3–4 scenes: hook → problem → solution → CTA" : "4–5 scenes: hook → problem → solution → CTA"}):
+SCENE MAP (${targetSeconds === 15 ? "3 tight scenes at 15s: hook → the turn (the one new-way point) → CTA — problem and solution fold into the turn" : targetSeconds <= 30 ? "4 scenes at 30s: hook → problem → turn → solution-and-CTA — fold the solution and the CTA into one closing scene so the whole thing fits the word cap" : "5 scenes: hook → problem → turn → solution → CTA"}):
 - Scene 1 is the HOOK, written in the ${concept.hookPattern} style, opening on the leading desire above.
-- At ${targetSeconds}s the total spoken read is ONLY ~${budget.target} words (hard max ${budget.max}) — keep scenes short and cut ruthlessly; fewer, tighter scenes beat more scenes that overrun.
+- Include a TURN beat — the "here's the new way" shift from problem to solution (sceneType: "turn"). Keep it short.
+- Total spoken words ~${budget.target}, HARD MAX ${budget.max}. This ceiling is non-negotiable: if a draft lands near ${budget.max}, cut a WHOLE sentence — don't shave words. Fewer, tighter scenes beat more scenes that overrun.
 - Each scene is for a HUMAN presenter recording themselves — no stock footage, no render directions.
 
 Return valid JSON only, no markdown:
@@ -153,13 +178,17 @@ export async function generateScriptForConcept(params: { userId: number; concept
     return { ok: false, failContext: parts.join("\n\n"), labels };
   };
 
+  // Up to 3 attempts: the model is stochastic on spoken word count, so a compliant draw (under the hard
+  // word cap, structurally sound, compliance-clean) usually lands within a few tries. The validator still
+  // enforces the cap every time — we just give it more draws rather than shipping an overrun.
+  const MAX_ATTEMPTS = 3;
   let script = await invokeScript(prompt, "");
   let result = gate(script);
-  if (!result.ok) {
+  for (let attempt = 2; attempt <= MAX_ATTEMPTS && !result.ok; attempt++) {
     script = await invokeScript(prompt, result.failContext);
     result = gate(script);
-    if (!result.ok) throw new Error(`Script failed validation after retry: ${result.labels}`);
   }
+  if (!result.ok) throw new Error(`Script failed validation after ${MAX_ATTEMPTS} attempts: ${result.labels}`);
 
   const scenes = (script.scenes ?? []) as RawScriptScene[];
   const teleprompter = scenes.map((s) => s.spokenLine).filter(Boolean).join("\n\n");

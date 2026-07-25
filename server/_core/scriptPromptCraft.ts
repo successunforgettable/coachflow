@@ -40,7 +40,47 @@ language of the niche instead:
 - "seamlessly", "effortlessly", "game-changer", "revolutionary", "holistic approach", "world-class"
 - "journey", "passion/passionate", "countless/many/numerous" (use actual numbers from the profile)
 - "individuals/people" (use the specific audience: traders, mothers, photographers, etc.)
+- "loophole", "secret", "hack", "they don't want you to know" — these oversell AND trip Meta's policy filter;
+  use "a new way" or "a different approach" instead.
 These words appear in every ad on the internet; they trigger the part of the brain that skips ads.
+`;
+
+// STRUCTURE + BODY craft — the research-grounded 5-beat shape (Hook → Problem → Turn → Solution → CTA) and
+// the ear-first body rules. Positive-framed (describes what the copy IS). Grounded in the 7 NotebookLM
+// scriptwriting reports (Structure/Timing §2 five-beat; Hooks §5 intro <10w + bold; Messy Middle §1 one-idea;
+// Natural Perf §5 story-before-stat; CTA §1 natural extension). The Turn's length is intentionally unspecified
+// (reports: "no strong signal" on Turn duration).
+export const SCRIPT_STRUCTURE_CRAFT = `
+STRUCTURE — five beats: HOOK → PROBLEM → TURN → SOLUTION → CTA.
+- HOOK (the opening, under ~10 words): lead with a bold, specific statement — the one truth that stops THIS
+  person mid-scroll. (A clear, immediately-legible opener also works; a question is a weaker fallback.) Open a
+  curiosity loop in the very first line, and resolve it on the very next beat.
+- PROBLEM: name the one lived situation they're in right now — one idea, one breath.
+- TURN: the shift from problem to solution — "here's the new way", "a different approach you haven't tried."
+  Keep it short; it's the bridge, not a lecture.
+- SOLUTION: the method as the way out — the benefit, not the feature.
+- CTA: a natural next step, not an interruption. Sell the click — one clear, easy step — and say why it's worth it.
+
+BODY — write for the ear:
+- One idea per sentence. If a line has a comma, it probably holds two ideas — split them.
+- Say it straight — no hedging ("maybe", "kind of", "sort of", "helps").
+- Walk the So-What chain from the plain feature to the emotional payoff that actually matters to this person.
+- Always set up a number or result with the story or benefit it belongs to — story first, then the number.
+- Spell numbers the way you'd say them out loud ("thirty-one hundred", not "3,100") so they're easy on camera.
+`;
+
+// GOVERNING SAFETY — overrides every persuasion tactic above. Positive-framed (ground in real material).
+// New this pass: contact-detail fabrication rule (CTA report) + honest "new opportunity" framing.
+export const SCRIPT_SAFETY = `
+GROUND EVERYTHING IN REAL MATERIAL — this overrides every persuasion tactic above:
+- Every number, percentage, dollar figure, result, and guarantee is a REAL one from the coach's material above.
+  If it isn't there, leave it out — never make one up.
+- Round a number for the ear ONLY when it's real ("around six thousand"); never round an invented figure into being.
+- A link, URL, phone, or email is the coach's real one or the placeholder [INSERT_LINK] — never invent a contact.
+- Frame the method as a new opportunity — a different way they haven't tried — in plain, honest words.
+- Name a real person or brand only if the coach's material named them first.
+- Hold a ready-to-buy (Most-Aware) urgency script to the STRICTEST version of every rule above — that's where
+  fabrication risk is highest.
 `;
 
 export const META_COMPLIANCE = `

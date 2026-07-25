@@ -55,4 +55,22 @@ describe("buildConceptScriptPrompt — per-concept, cascade-fed, length-capped",
   it("reframes the field label to spoken words written the way people talk", () => {
     expect(buildConceptScriptPrompt(concept, cascade, 30)).toContain("written the way people talk");
   });
+
+  it("adds the TURN beat (Hook → Problem → Turn → Solution → CTA), framed as a new/different way", () => {
+    const p = buildConceptScriptPrompt(concept, cascade, 30).toLowerCase();
+    expect(p).toContain("turn");
+    expect(p).toMatch(/new (way|opportunity)|different (way|approach)/);
+  });
+
+  it("carries the governing safety rule — no invented contact details (real or [INSERT_*] placeholder)", () => {
+    const p = buildConceptScriptPrompt(concept, cascade, 30).toLowerCase();
+    expect(p).toMatch(/invent.*(link|url|phone|email)|placeholder/);
+  });
+
+  it("adapts TONE by warmth — Hot (Most-Aware) leans urgent/FOMO, Cold (Problem-Aware) leans introduce/curiosity", () => {
+    const hot = buildConceptScriptPrompt({ ...concept, awareness: "most_aware", hookPattern: "direct_offer_urgency" }, cascade, 15).toLowerCase();
+    expect(hot).toMatch(/urgen|fomo|ready to (act|buy)/);
+    const cold = buildConceptScriptPrompt({ ...concept, awareness: "problem_aware", hookPattern: "problem_first" }, cascade, 30).toLowerCase();
+    expect(cold).toMatch(/introduc|curiosity|handshake/);
+  });
 });

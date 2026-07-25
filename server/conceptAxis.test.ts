@@ -64,11 +64,16 @@ describe("length config — research table stored, ACTIVE capped to placement-sa
     expect(activeLengthForStage("most_aware")).toBe(15);
   });
 
-  it("derives a spoken word budget from seconds (≈130 wpm)", () => {
+  it("uses the grounded per-duration word-budget table (reports), not the old 130-wpm formula", () => {
+    // 15s → 30–40 words, max 45 (was 33 / max 50 under the formula)
+    const b15 = wordBudgetForSeconds(15);
+    expect(b15.target).toBeGreaterThanOrEqual(30);
+    expect(b15.target).toBeLessThanOrEqual(40);
+    expect(b15.max).toBe(45);
+    // 30s → 75–85 words, max 90 (was 65 / max 98 — the over-cap that let a 94-word script pass)
     const b30 = wordBudgetForSeconds(30);
-    expect(b30.target).toBeGreaterThan(50);
-    expect(b30.target).toBeLessThan(80);
-    expect(b30.max).toBeGreaterThan(b30.target);
-    expect(wordBudgetForSeconds(15).target).toBeLessThan(b30.target);
+    expect(b30.target).toBeGreaterThanOrEqual(75);
+    expect(b30.target).toBeLessThanOrEqual(85);
+    expect(b30.max).toBe(90);
   });
 });

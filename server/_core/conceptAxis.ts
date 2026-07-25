@@ -108,8 +108,21 @@ export function activeLengthForStage(stage: AwarenessStage): number {
   return Math.min(LENGTH_BY_AWARENESS[stage].activeSeconds, PLACEMENT_SAFE_CEILING_SECONDS);
 }
 
-/** Spoken word budget for a target duration (~130 words/minute spoken pace). */
+// Spoken word budget — the GROUNDED per-duration table from the 7 NotebookLM scriptwriting reports
+// (Zizzo conservative range + JL max), replacing the old ~130-wpm formula which under-targeted and
+// over-capped (30s gave target 65 / max 98, letting a 94-word script pass; reports want 75–85 / max 90).
+// Scripts are written ~2–3s shy of the slot; pace ≈ 3 words/sec. Only 15s/30s are used operationally
+// (activeLengthForStage caps there); 60s kept for completeness; other durations fall back to ~3 w/s.
+const WORD_BUDGET_TABLE: Record<number, { min: number; target: number; max: number }> = {
+  15: { min: 30, target: 35, max: 45 },
+  30: { min: 75, target: 80, max: 90 },
+  60: { min: 150, target: 160, max: 180 },
+};
+
 export function wordBudgetForSeconds(seconds: number): { min: number; target: number; max: number } {
-  const target = Math.round((seconds * 130) / 60);
-  return { min: Math.round(target * 0.6), target, max: Math.round(target * 1.5) };
+  const table = WORD_BUDGET_TABLE[seconds];
+  if (table) return table;
+  // Fallback (non-standard durations): ~3 words/sec, written 2s shy of the slot, with a small tolerance band.
+  const target = Math.round(Math.max(0, seconds - 2) * 3);
+  return { min: Math.round(target * 0.85), target, max: Math.round(target * 1.15) };
 }
