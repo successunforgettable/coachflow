@@ -8,15 +8,34 @@ surface) → **durability fix** (jobs-table, self-heal reconcile, no orphans) �
 framing + markdown rendering). **NEXT = the Andromeda script generator** (Arfeen re-prioritized it AHEAD of the
 readability pass). Everything below documents the two most recent stages.
 
-## 🧩 ANDROMEDA — campaignConcepts per-concept mechanism (2026-07-25): migration 0093 LIVE on prod (empty), code HELD local, 7th hook + mapping GROUNDED
+## 🧩 ANDROMEDA — FULL SPINE SHIPPED + LIVE on prod (2026-07-25): `HEAD = origin/railway-build = aaa89fb`
 
-The Andromeda per-concept fan-out mechanism was built this session (investigation → build → migration). **"One person, many angles": N concepts (default 8) vary Desire × Awareness WITHIN one ICP** (persona fixed to the ICP). Full detail: [[project_icp_generator_enhancement_spec]] context + the concept memory.
+**The Andromeda per-concept spine is SHIPPED and live** (investigation → build → migrations → deploy, all this session). Two generators + three migrations, all on prod, all DRAFT-only:
+
+- **Concept generator** (`campaignConcepts`): **"one person, many angles"** — N concepts (default 8) vary **Desire × Awareness** WITHIN one ICP (persona fixed). 5 Schwartz awareness stages × 7 hook patterns, approved grounded hook→awareness mapping, compliance-screened. Lazy at the ad-copy entry (`ensureConceptsForIcp`).
+- **Per-concept video-script generator** (`conceptScripts`): one script per concept → its {persona, desire, awareness, hookPattern}; concept's hookPattern drives the opening hook; cascade-fed (`getCascadeContext`) for ad↔script↔page coherence; human-presenter output (spokenLine/onScreenText/deliveryNote + teleprompter); grounded placement-safe length (capped short).
+- **Migrations (all APPLIED TO PROD + VERIFIED via Arfeen "execute", each BEFORE its code deploy — migration-before-code gate honored throughout):** `0093` campaignConcepts (19 cols, empty) · `0094` hookPattern enum 6→7 (`direct_offer_urgency`) · `0095` conceptScripts (16 cols, 2 FKs, empty). Both tables **EMPTY on prod** until the first real run fills them.
+- **Deploy chain:** `d16c66c`(bonus)…→ `ece1070` (concepts + 7th hook + mapping) → **`aaa89fb`** (script generator). Each: Railway SUCCESS on the exact SHA, prod HTTP 200, deployed-commit == pushed SHA. Server-side changes → client bundle unchanged BY DESIGN (proven by SHA match, not fingerprint).
+
+**🔴 EVERYTHING IS DRAFT-ONLY — nothing built this session reaches Meta or a real coach yet.** Gated behind `publishToMeta` AND behind the ICP grounding sprint (next). Full detail: memory [[project_andromeda_concepts_mechanism]] + [[project_icp_generator_enhancement_spec]].
+
+### SCOPE-OUT / DEFERRED (NOT missing — deliberately not built this session)
+- **record → upload → push-to-Meta plumbing** — a coach records the script, uploads the finished video, ZAP pushes it to Meta with the ad. SEPARATE pass: video upload is a **different Meta endpoint** needing its own live-docs verification (the §10/§12 discipline). Not built.
+- **Video generation** (script → actual rendered video) — out of scope; the legacy Remotion/Creatomate credit-render tool in `videoScripts.ts` is untouched and unused by this path.
+- **ICP-fabrication truth check / "script-quality-is-good" validator** — DEFERRED to the ICP grounding sprint. The ICP feeding concepts+scripts is knowingly fabricated, so an anti-fabrication cross-check against it would be validation theatre. Only STRUCTURAL + Meta-compliance screening runs today.
+
+### 🎯 NEXT SPRINT = ICP GROUNDING (the gate for everything)
+The ICP is the **R4 quality-multiplier and the load-bearing front-door**: concepts, scripts, LP, ad copy, email all draw their persona/desire/pain from it. Everything shipped this session is structurally sound but reads off a **confidently-fabricated ICP** (fabrication BY DESIGN — see the audit). **Nothing reaches a real coach until the ICP is grounded** (R2 laddering + inferred-vs-stated flagging; R3 post-gen validator; deeper input) — and only after grounding does the deferred anti-fabrication validator become meaningful. **The build order settled earlier: mechanism now (done), ground the ICP before the validation/trust layer + before any real coach or Meta push.** Full spec + the grounding-vs-vividness product tension: [[project_icp_generator_enhancement_spec]].
+
+---
+
+The per-concept fan-out mechanism was built this session (investigation → build → migration). **"One person, many angles": N concepts (default 8) vary Desire × Awareness WITHIN one ICP** (persona fixed to the ICP). Full detail: [[project_icp_generator_enhancement_spec]] context + the concept memory.
 
 **Migration state (the migration-before-code gate — track this before any push):**
 - **`0093_campaign_concepts.sql` — APPLIED TO PROD + VERIFIED (2026-07-25) via Arfeen's explicit "execute".** New additive `campaignConcepts` table: **19 cols**, 2 FKs (`userId`→users, `icpId`→idealCustomerProfiles, both cascade), PRIMARY + 3 indexes, enums (awareness 5, hookPattern, status 3). **Verified EMPTY (0 rows)** on prod. Additive — zero risk to existing tables.
-- **`0094_campaign_concepts_direct_offer_hook.sql` — AUTHORED, NOT APPLIED (awaits Arfeen "execute").** Appends the **7th hook pattern `direct_offer_urgency`** to `campaignConcepts.hookPattern` via `ALTER TABLE … MODIFY COLUMN`. Append-to-end enum = metadata-only + the table is empty → safe, near-instant. **Prod hookPattern is still the 6-value enum until 0094 runs.**
+- **`0094_campaign_concepts_direct_offer_hook.sql` — APPLIED TO PROD + VERIFIED (2026-07-25, Arfeen "execute").** Widened `campaignConcepts.hookPattern` 6→7 values via `ALTER TABLE … MODIFY COLUMN` (append-to-end, empty table = metadata-only). Verified `direct_offer_urgency` present; table still 0 rows.
 
-**🔴 CODE HELD LOCAL — do NOT push until 0094 executes on prod.** Application code (schema enum + generator that can write `hookPattern='direct_offer_urgency'`) queries `campaignConcepts` and can emit the 7th value; deploying it before 0094 runs would break on the 6-value prod enum. Committed local-only (crash-safety; base build was `cb387f9`, the 7th-hook + mapping build sits on top). Push gated on: 0094 "execute" + harness green (harness IS green — see below).
+**✅ SHIPPED — `HEAD = origin/railway-build = ece1070`.** Both migrations ran on prod BEFORE the deploy (no enum-mismatch window). Deploy: Railway **SUCCESS on the exact SHA `ece1070`**, prod **HTTP 200**, deployed-commit **== pushed SHA** (digest `sha256:b075fa8e8656`; server-side change → client bundle unchanged BY DESIGN, proven by SHA match). TS 35 (caught + fixed a self-introduced +2 `TS2802` Set-spread regression in `verify-concept-generation.ts` BEFORE push). Table EMPTY on prod until the first real ad-copy run triggers `ensureConceptsForIcp`.
 
 **What's grounded/approved this session:**
 - **Hook→awareness mapping — now APPROVED + GROUNDED** in `conceptAxis.ts` (`approved:true`). Source: Arfeen's NotebookLM run on his corpus, corroborated by banked ICP docs on the 2 independently-matching stages (Problem-Aware→Problem-First, Product-Aware→Social-Proof). The earlier web-derived candidate is RETIRED. Mapping: Unaware→meme_humor · Problem-Aware→problem_first · Solution-Aware→aspirational_transformation · Product-Aware→social_proof · Most-Aware→**direct_offer_urgency** (the 7th). Cross-stage: Founder/Authenticity spans Problem/Solution-Aware; Data/Chart spans Unaware/Product-Aware; Social-Proof spans Solution/Product-Aware.
