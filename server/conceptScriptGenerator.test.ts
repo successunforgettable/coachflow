@@ -43,4 +43,16 @@ describe("buildConceptScriptPrompt — per-concept, cascade-fed, length-capped",
     expect(p).toContain("compliance");
     expect(p).toMatch(/real|genuine/); // real/genuine deadline only
   });
+
+  it("instructs SPOKEN register across the whole script (read-aloud, contractions, one idea per breath)", () => {
+    const p = buildConceptScriptPrompt(concept, cascade, 30).toLowerCase();
+    expect(p).toMatch(/read.*(aloud|out loud)|out loud/); // the read-aloud test
+    expect(p).toContain("contraction"); // everyday contractions
+    expect(p).toContain("breath"); // breath-length sentences / one idea per breath
+    expect(p).toMatch(/every scene|whole script|not just the hook/); // applies beyond the hook
+  });
+
+  it("reframes the field label to spoken words written the way people talk", () => {
+    expect(buildConceptScriptPrompt(concept, cascade, 30)).toContain("written the way people talk");
+  });
 });

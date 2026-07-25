@@ -25,7 +25,7 @@ import {
   type RawScript,
   type RawScriptScene,
 } from "./_core/conceptScriptValidator";
-import { NICHE_DETECTION, HOOK_RULE, BANNED_WORDS, META_COMPLIANCE, REAL_URGENCY_RULE } from "./_core/scriptPromptCraft";
+import { NICHE_DETECTION, HOOK_RULE, BANNED_WORDS, META_COMPLIANCE, REAL_URGENCY_RULE, SPOKEN_REGISTER } from "./_core/scriptPromptCraft";
 
 export interface ScriptConceptInput {
   personaLabel?: string | null;
@@ -49,13 +49,18 @@ THE CONCEPT (persona is fixed to this — do NOT drift to a different audience):
 
 ${NICHE_DETECTION}
 ${HOOK_RULE}
+${SPOKEN_REGISTER}
 ${BANNED_WORDS}
 ${META_COMPLIANCE}
 ${REAL_URGENCY_RULE}
 
+Every line — hook, body and CTA — sounds like a real person said it, not a copywriter. The whole script,
+not just the opening, must survive the read-aloud test above.
+
 LENGTH — this script targets ${targetSeconds} seconds (placement-safe short; Meta Advantage+ serves one asset
 across Reels, Stories and Feed, and the short end runs cleanly everywhere). Total spoken words ≈ ${budget.target}
-(hard max ${budget.max}). Keep it tight.
+(hard max ${budget.max}). Keep it tight — tight means FEWER spoken beats (one idea per breath), not denser
+sentences; short sayable lines, not compressed written clauses.
 
 STRUCTURE (${targetSeconds === 15 ? "3 tight scenes: hook → the one point → CTA" : targetSeconds <= 30 ? "3–4 scenes: hook → problem → solution → CTA" : "4–5 scenes: hook → problem → solution → CTA"}):
 - Scene 1 is the HOOK, written in the ${concept.hookPattern} style, opening on the leading desire above.
@@ -63,7 +68,7 @@ STRUCTURE (${targetSeconds === 15 ? "3 tight scenes: hook → the one point → 
 - Each scene is for a HUMAN presenter recording themselves — no stock footage, no render directions.
 
 Return valid JSON only, no markdown:
-{ "hookPattern": "${concept.hookPattern}", "scenes": [ { "sceneNumber": 1, "sceneType": "hook", "spokenLine": "the exact words to say to camera", "onScreenText": "SHORT CAPTION OVERLAY", "deliveryNote": "pacing/tone cue for the presenter" } ] }`;
+{ "hookPattern": "${concept.hookPattern}", "scenes": [ { "sceneNumber": 1, "sceneType": "hook", "spokenLine": "the exact words the coach says out loud, written the way people talk", "onScreenText": "SHORT CAPTION OVERLAY", "deliveryNote": "pacing/tone cue for the presenter" } ] }`;
 }
 
 const SCRIPT_JSON_SCHEMA = {

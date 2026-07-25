@@ -57,6 +57,22 @@ KEY PRINCIPLE: describe a specific physical MOMENT, not a personal attribute. Mo
 ("the moment you go to pick up your toddler and your back says no"); attributes are violations.
 `;
 
+// SPOKEN REGISTER — the load-bearing fix (2026-07-25): restores the spoken-register standard the paused
+// generator carried (CUSTOMER_LANGUAGE_RULE "read each line out loud" + globalRules "conversational —
+// contractions, short sentences, spoken naturally"), ported into POSITIVE framing (no WRONG:/RIGHT: pairs,
+// per §14) and scoped to the WHOLE script, not just the hook. Interim baseline — a deeper research-grounded
+// scriptwriting standard (NotebookLM) layers on top of this in a second pass.
+export const SPOKEN_REGISTER = `
+SPOKEN REGISTER — every spokenLine is said OUT LOUD by the coach to their phone camera. Write each line the
+way they would actually SAY it to one person across a table:
+- Everyday contractions — you're, don't, it's, I've, that's, here's.
+- Short, breath-length sentences — one idea per breath. Let a line end where a real person would pause.
+- The rhythm of talking, not writing — plain spoken words a 13-year-old would use out loud.
+- Every line passes the READ-ALOUD test: say it out loud and it sounds like a real person telling a friend
+  the truth. If it sounds like a sentence off a landing page, it belongs to the page, not the mouth.
+This applies to EVERY scene — the hook AND the body AND the CTA — not just the opening line.
+`;
+
 export const REAL_URGENCY_RULE = `
 REAL-URGENCY RULE (only when the hook is direct_offer_urgency): express urgency ONLY from a genuine,
 coach-supplied deadline or offer. NEVER invent scarcity — no "expires tonight", "gone forever", "price
