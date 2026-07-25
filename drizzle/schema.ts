@@ -1368,6 +1368,56 @@ export type IcpAngleSuggestion = typeof icpAngleSuggestions.$inferSelect;
 export type InsertIcpAngleSuggestion = typeof icpAngleSuggestions.$inferInsert;
 
 /**
+ * campaignConcepts — the Andromeda per-concept fan-out source (EXECUTION_BRIEF §2/§8).
+ * "One person, many angles": N concepts vary Desire × Awareness WITHIN one ICP (persona fixed to the
+ * ICP). Distinct from icp_angle_suggestions (which is per-service, pre-ICP, the onboarding persona-picker).
+ * Each row carries the ad-copy payload {hook, headline, shortText, longText} read downstream by ad copy,
+ * the video-script generator, and the LP hook variant. Awareness = Schwartz 5-stage enum; hookPattern =
+ * the 6 named patterns. Additive, zero risk to onboarding. DRAFT-only — nothing here reaches Meta until
+ * the separate, approval-gated publishToMeta action.
+ */
+export const campaignConcepts = mysqlTable("campaignConcepts", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  icpId: int("icpId").notNull().references(() => idealCustomerProfiles.id, { onDelete: "cascade" }),
+  serviceId: int("serviceId").references(() => services.id, { onDelete: "set null" }),
+  campaignId: int("campaignId").references(() => campaigns.id, { onDelete: "set null" }),
+  conceptSetId: varchar("conceptSetId", { length: 191 }).notNull(), // groups one generation batch
+  personaLabel: varchar("personaLabel", { length: 255 }), // snapshot of the ICP name/angle (persona is fixed)
+  desire: text("desire").notNull(), // which pain/goal this concept leads with (the Desire axis)
+  awareness: mysqlEnum("awareness", [
+    "unaware",
+    "problem_aware",
+    "solution_aware",
+    "product_aware",
+    "most_aware",
+  ]).notNull(),
+  hookPattern: mysqlEnum("hookPattern", [
+    "problem_first",
+    "founder_authenticity",
+    "social_proof",
+    "aspirational_transformation",
+    "meme_humor",
+    "data_chart",
+  ]).notNull(),
+  hook: text("hook").notNull(),
+  headline: text("headline").notNull(),
+  shortText: text("shortText").notNull(),
+  longText: text("longText").notNull(),
+  status: mysqlEnum("status", ["draft", "selected", "dismissed"]).default("draft").notNull(),
+  rating: int("rating").default(0),
+  source: mysqlEnum("source", ["generated", "imported"]).default("generated").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  userIdIdx: index("idx_campaignConcepts_userId").on(table.userId),
+  icpIdIdx: index("idx_campaignConcepts_icpId").on(table.icpId),
+  setIdx: index("idx_campaignConcepts_set").on(table.conceptSetId),
+}));
+export type CampaignConcept = typeof campaignConcepts.$inferSelect;
+export type InsertCampaignConcept = typeof campaignConcepts.$inferInsert;
+
+/**
  * Admin Audit Log — tracks all admin actions with full before/after details
  */
 export const adminAuditLog = mysqlTable("admin_audit_log", {

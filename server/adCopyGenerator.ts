@@ -1,6 +1,7 @@
 import { invokeLLM } from "./_core/llm";
 import { BANNED_HEADLINE_PATTERNS, META_COMPLIANCE_NOTES, NO_CREDENTIAL_FABRICATION_RULE, scoreAdContent } from "./_core/copywritingRules";
 import { nanoid } from "nanoid";
+import { ensureConceptsForIcp } from "./conceptGenerator";
 
 function stripMarkdownJson(content: string): string {
   return content.replace(/^```json\s*|^```\s*|\s*```$/gm, '').trim();
@@ -240,6 +241,18 @@ export async function runAdCopyGeneration(input: {
   }
   if (!icp) {
     [icp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
+  }
+
+  // Andromeda per-concept fan-out (DRAFT-only, LAZY): ensure this ICP has a concept set. Runs at the
+  // ad-copy entry (after validateCascadePrereqs, which the caller ran) — non-blocking; generates in the
+  // background if absent, never delays ad-copy generation. Nothing here reaches Meta until publishToMeta.
+  if (icp?.id) {
+    void ensureConceptsForIcp({
+      userId: input.userId,
+      icpId: icp.id,
+      serviceId: input.serviceId ?? null,
+      campaignId: input.campaignId ?? null,
+    }).catch(() => { /* best-effort; failures are logged inside ensureConceptsForIcp */ });
   }
 
   // campaignType from V2 SoT (campaignKits)
