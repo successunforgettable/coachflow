@@ -76,3 +76,40 @@ export function isAwarenessStage(v: unknown): v is AwarenessStage {
 export function isHookPattern(v: unknown): v is HookPattern {
   return typeof v === "string" && (HOOK_PATTERNS as readonly string[]).includes(v);
 }
+
+// ─── Video-script LENGTH config (grounded, Arfeen's NotebookLM corpus) ────────────────────────────
+//
+// DECISION: one length per concept, anchored SHORT / placement-safe. Meta Advantage+ auto-distributes ONE
+// asset across Reels/Stories/Feed and decides per-user, so the short end runs cleanly everywhere. We store
+// the FULL research-ideal range per stage (so the two-cut / long-Feed option can be enabled later WITHOUT a
+// rebuild), but ACTIVE generation caps every stage to the placement-safe ceiling.
+export const PLACEMENT_SAFE_CEILING_SECONDS = 30;
+
+// TWO_CUT (short + long-Feed asset per placement, via Meta placement asset customization) is PARKED.
+// When true, generation would emit a second research-ideal-length cut for Feed. Not built — config only.
+export const TWO_CUT_ENABLED = false;
+
+export interface AwarenessLength {
+  /** Full research-ideal range (low, high) in seconds — stored for the parked long-Feed cut. */
+  researchIdealSeconds: readonly [number, number];
+  /** The ACTIVE length used NOW — capped to PLACEMENT_SAFE_CEILING_SECONDS. */
+  activeSeconds: number;
+}
+
+export const LENGTH_BY_AWARENESS: Record<AwarenessStage, AwarenessLength> = {
+  unaware: { researchIdealSeconds: [60, 90], activeSeconds: 30 },
+  problem_aware: { researchIdealSeconds: [30, 60], activeSeconds: 30 },
+  solution_aware: { researchIdealSeconds: [60, 90], activeSeconds: 30 },
+  product_aware: { researchIdealSeconds: [15, 30], activeSeconds: 30 },
+  most_aware: { researchIdealSeconds: [15, 15], activeSeconds: 15 },
+};
+
+export function activeLengthForStage(stage: AwarenessStage): number {
+  return Math.min(LENGTH_BY_AWARENESS[stage].activeSeconds, PLACEMENT_SAFE_CEILING_SECONDS);
+}
+
+/** Spoken word budget for a target duration (~130 words/minute spoken pace). */
+export function wordBudgetForSeconds(seconds: number): { min: number; target: number; max: number } {
+  const target = Math.round((seconds * 130) / 60);
+  return { min: Math.round(target * 0.6), target, max: Math.round(target * 1.5) };
+}

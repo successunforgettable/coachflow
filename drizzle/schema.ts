@@ -1419,6 +1419,53 @@ export type CampaignConcept = typeof campaignConcepts.$inferSelect;
 export type InsertCampaignConcept = typeof campaignConcepts.$inferInsert;
 
 /**
+ * conceptScripts — the Andromeda per-concept video SCRIPT (a coach records it themselves for a Meta ad).
+ * One script per campaignConcepts row, written to that concept's persona/desire/awareness/hookPattern.
+ * Scenes hold {sceneNumber, sceneType, spokenLine, onScreenText, deliveryNote} for a human presenter (NOT
+ * render/pexels fields — the credit-render tool in videoScripts is untouched and unused here). A NEW table
+ * (not videoScripts) to avoid the credit-render coupling and to key on conceptId. Additive, zero risk.
+ * DRAFT-only — nothing here reaches Meta until publishToMeta. Video generation + upload→push = separate pass.
+ */
+export const conceptScripts = mysqlTable("conceptScripts", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  conceptId: int("conceptId").notNull().references(() => campaignConcepts.id, { onDelete: "cascade" }),
+  icpId: int("icpId").references(() => idealCustomerProfiles.id, { onDelete: "set null" }),
+  serviceId: int("serviceId").references(() => services.id, { onDelete: "set null" }),
+  campaignId: int("campaignId").references(() => campaigns.id, { onDelete: "set null" }),
+  scriptSetId: varchar("scriptSetId", { length: 191 }).notNull(),
+  awareness: mysqlEnum("awareness", [
+    "unaware",
+    "problem_aware",
+    "solution_aware",
+    "product_aware",
+    "most_aware",
+  ]).notNull(),
+  hookPattern: mysqlEnum("hookPattern", [
+    "problem_first",
+    "founder_authenticity",
+    "social_proof",
+    "aspirational_transformation",
+    "meme_humor",
+    "data_chart",
+    "direct_offer_urgency",
+  ]).notNull(),
+  targetLengthSeconds: int("targetLengthSeconds").notNull(),
+  scenes: json("scenes").notNull(), // [{sceneNumber, sceneType, spokenLine, onScreenText, deliveryNote}]
+  teleprompter: text("teleprompter").notNull(), // concatenated spokenLines
+  status: mysqlEnum("status", ["draft", "selected", "dismissed"]).default("draft").notNull(),
+  source: mysqlEnum("source", ["generated", "imported"]).default("generated").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  userIdIdx: index("idx_conceptScripts_userId").on(table.userId),
+  conceptIdIdx: index("idx_conceptScripts_conceptId").on(table.conceptId),
+  setIdx: index("idx_conceptScripts_set").on(table.scriptSetId),
+}));
+export type ConceptScript = typeof conceptScripts.$inferSelect;
+export type InsertConceptScript = typeof conceptScripts.$inferInsert;
+
+/**
  * Admin Audit Log — tracks all admin actions with full before/after details
  */
 export const adminAuditLog = mysqlTable("admin_audit_log", {

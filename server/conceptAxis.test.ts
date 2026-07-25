@@ -1,5 +1,14 @@
 import { describe, it, expect } from "vitest";
-import { HOOK_PATTERNS, CANDIDATE_HOOK_AWARENESS_MAP, AWARENESS_STAGES } from "./_core/conceptAxis";
+import {
+  HOOK_PATTERNS,
+  CANDIDATE_HOOK_AWARENESS_MAP,
+  AWARENESS_STAGES,
+  LENGTH_BY_AWARENESS,
+  PLACEMENT_SAFE_CEILING_SECONDS,
+  TWO_CUT_ENABLED,
+  activeLengthForStage,
+  wordBudgetForSeconds,
+} from "./_core/conceptAxis";
 
 describe("conceptAxis — 7 hook patterns + grounded APPROVED hook→awareness mapping", () => {
   it("includes the 7th hook pattern direct_offer_urgency", () => {
@@ -29,5 +38,37 @@ describe("conceptAxis — 7 hook patterns + grounded APPROVED hook→awareness m
       expect(HOOK_PATTERNS).toContain(entry.primary);
       for (const s of entry.secondary) expect(HOOK_PATTERNS).toContain(s);
     }
+  });
+});
+
+describe("length config — research table stored, ACTIVE capped to placement-safe short", () => {
+  it("stores the full research-ideal ranges for every stage (so two-cut can enable later)", () => {
+    expect(LENGTH_BY_AWARENESS.unaware.researchIdealSeconds).toEqual([60, 90]);
+    expect(LENGTH_BY_AWARENESS.problem_aware.researchIdealSeconds).toEqual([30, 60]);
+    expect(LENGTH_BY_AWARENESS.solution_aware.researchIdealSeconds).toEqual([60, 90]);
+    expect(LENGTH_BY_AWARENESS.product_aware.researchIdealSeconds).toEqual([15, 30]);
+    expect(LENGTH_BY_AWARENESS.most_aware.researchIdealSeconds).toEqual([15, 15]);
+  });
+
+  it("two-cut (short + long-Feed) is PARKED — config off, not built", () => {
+    expect(TWO_CUT_ENABLED).toBe(false);
+  });
+
+  it("caps every stage's ACTIVE length to the placement-safe ceiling", () => {
+    for (const stage of AWARENESS_STAGES) {
+      expect(activeLengthForStage(stage)).toBeLessThanOrEqual(PLACEMENT_SAFE_CEILING_SECONDS);
+    }
+    // long-ideal stages collapse to the ceiling; Most-Aware stays 15.
+    expect(activeLengthForStage("unaware")).toBe(30);
+    expect(activeLengthForStage("solution_aware")).toBe(30);
+    expect(activeLengthForStage("most_aware")).toBe(15);
+  });
+
+  it("derives a spoken word budget from seconds (≈130 wpm)", () => {
+    const b30 = wordBudgetForSeconds(30);
+    expect(b30.target).toBeGreaterThan(50);
+    expect(b30.target).toBeLessThan(80);
+    expect(b30.max).toBeGreaterThan(b30.target);
+    expect(wordBudgetForSeconds(15).target).toBeLessThan(b30.target);
   });
 });
