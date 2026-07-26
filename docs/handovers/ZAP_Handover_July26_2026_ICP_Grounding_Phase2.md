@@ -1,10 +1,14 @@
-# ZAP Handover — July 26, 2026 — ICP GROUNDING Phase 2 — ✅ SHIPPED + LIVE (first cut)
+# ZAP Handover — July 26-27, 2026 — ICP GROUNDING — ✅ Phase 2 + LADDERED INTAKE SHIPPED + LIVE
 
 **Status: SHIPPED + LIVE. `HEAD = origin/railway-build = fecd7fc`. Migration `0096` APPLIED to prod via Arfeen's
 explicit "execute" and verified. Railway SUCCESS on the exact SHA, prod 200.**
 
-🔴 **This is the FIRST CUT of the ICP sprint, not the finish line** — see §6 for what is still gated or unbuilt.
-Everything Andromeda stays DRAFT-only until ICP grounding fully lands.
+**Ladder shipped on top: `HEAD = origin/railway-build = 1fe41ff`, Railway `61fea75e` SUCCESS, prod 200,
+`LADDER_ENABLED = true`, no migration.** See §8.
+
+🔴 **The SUBSTANCE of ICP grounding is now live** (fabrication removed at the root + real client knowledge can
+sharpen the profile). What remains is in §5 — and the concept/script anti-fabrication validator is now
+BUILDABLE for the first time, which is the gate for Andromeda reaching a real coach.
 
 Supersedes nothing — this sits on top of `ZAP_Handover_July26_2026.md` (Andromeda spine).
 
@@ -139,15 +143,16 @@ object; zero occurrences of DEMOGRAPHICS / MEDIA CONSUMPTION / INFLUENCERS in th
 with the SHA match. Runtime behaviour was proven by the **8/8 live generations at this exact commit** before
 push. What it does NOT prove is the running container executing a generation end-to-end — see backlog (d).
 
-## 5. 🔴 STILL GATED / NOT DONE — the ICP sprint is BEGUN, not finished
+## 5. 🔴 STILL OPEN — after Phase 2 + the ladder
 
-* **Laddered intake** — built end-to-end (prompt block, tRPC input, provenance `ladderAnswered`, in-chat
-  questions) but **`LADDER_ENABLED = false`** in `V2TrailIntake.tsx`. Never verified working. Separate decision.
-* **Class-B provenance surfacing to the coach** — computed and persisted out-of-band, but whether/how any of it
-  is shown in the UI is **undecided and unshipped**. Today it is internal-only, which was the locked Phase-2 call.
-* **Concept/script anti-fabrication validator** — still DEFERRED. It now finally has a grounded corpus to check
-  against (that was the blocker), but it is **not built**.
-* **Everything Andromeda remains DRAFT-only** until ICP grounding fully lands. Nothing reaches Meta.
+* ~~Laddered intake~~ — **SHIPPED, see §8.**
+* **Coach-facing provenance surfacing** — computed and persisted out-of-band. Arfeen's call was
+  **keep it internal**, and it may simply stay that way; it is not a missing feature so much as an open option.
+* **🎯 Concept/script anti-fabrication validator — STILL DEFERRED, and now the GATE.** It was blocked on having
+  nothing trustworthy to check against; with the ICP grounded it has **real ground truth for the first time**,
+  so it is buildable now. **This is what lets the DRAFT-only Andromeda spine reach a real coach with
+  confidence.** Highest-value next piece.
+* **Everything Andromeda remains DRAFT-only** until that validator lands. Nothing reaches Meta.
 
 ## 6. Backlog
 
@@ -161,14 +166,85 @@ push. What it does NOT prove is the running container executing a generation end
 * **(c) Blog generator + other ICP-powered content tools** — when built, **the consuming tool defines how
   `demographics` / `mediaConsumption` / `influencers` get populated** (real data, coach-supplied, or an explicit
   research prompt). Never speculatively regenerated. The dormant columns are already there waiting.
-* **(d) Optional belt-and-suspenders:** one full end-to-end live ICP generation through the smoke coach on prod,
+* **(d) Optional: offer the ladder on the has-assets paths** — out of v1; those coaches already supplied a
+  real document, so it adds less. Separate placement question.
+* **(e) Optional belt-and-suspenders:** one full end-to-end live ICP generation through the smoke coach on prod,
   with teardown, if Arfeen wants runtime proof beyond SHA match + the 8/8 pre-push runs.
 
 ## 7. State
 
-* Branch `railway-build`, `HEAD = origin/railway-build = fecd7fc`. **`main` untouched.**
+* Branch `railway-build`, `HEAD = origin/railway-build = 1fe41ff` (Phase 2 `fecd7fc` → ladder `1fe41ff`).
+  **`main` untouched.**
 * Migration `0096` **APPLIED + VERIFIED** on prod.
 * `autoMode`'s demographics path is **deliberately LEFT INTACT** — it extracts from the coach's OWN pasted
   document, i.e. coach-supplied real data, which the removal rationale explicitly permits.
 * Clean-room artifacts: none. Verification was LLM-only; prod reads were SELECT-only apart from the one
   authorised ALTER.
+
+
+## 8. Laddered intake — SHIPPED + LIVE (2026-07-27)
+
+`HEAD = origin/railway-build = 1fe41ff` · Railway `61fea75e` **SUCCESS** on the exact SHA · prod **200** ·
+bundle `index-DVCmomSP.js` → **`index-8NEDgFpu.js`** (4 client files) · **`LADDER_ENABLED = true`** ·
+**no migration** (`groundingMeta` from 0096 is the home).
+
+**Shape.** The four questions are OPT-IN and appear only AFTER the coach has seen their first ICP reveal, and
+BEFORE the kit exists — the one window where no kit, cascade, concepts or assets reference the ICP, so an
+in-place regenerate has zero staleness blast radius. One offer
+("I can make this sharper if you've worked with real clients") with **[Sharpen it] / [Looks good, carry on]**.
+Decline → today's flow byte-for-byte. Accept → 4 questions one at a time, each individually skippable →
+in-place sharpen → **re-reveal** ("HERE'S THE SHARPER VERSION").
+
+**Mechanism.** `icps.sharpenWithLadder({ id, ladder })` loads the ICP + its service, calls
+`runIcpGeneration({ service, ladder })`, and UPDATEs the **same row** (14 sections + `groundingMeta`) with the
+same `filterRecord` + `stripObjectionScaffolding` as the generate paths. In place because
+`campaignKits.icpId` / `campaignConcepts.icpId` are NOT NULL and the cascade keys on `(userId, icpId)` — a new
+row would break the cascade rather than sharpen it. Full regenerate (not selective) for coherence.
+`runIcpGeneration` throws BEFORE any DB write, so a failed sharpen leaves the original intact; all-skipped
+returns `sharpened:false` and writes nothing.
+
+**The four questions are the product-owner's, VERBATIM.** The pre-ship build had only 3, paraphrased Q1 and
+omitted Q4/`successMoment`. The old PRE-generation gate is **fully removed**, not left dormant.
+
+**Provenance.** Answers are persisted as `IcpProvenance.ladderAnswers` (text, not just which keys), so a future
+regenerate re-grounds instead of reverting. Measured on real generations:
+
+```
+BEFORE (no ladder)   stated=0  partial=14  corpusWords=25  answersStored=0
+AFTER  (4/4)         stated=2  partial=12  corpusWords=72  answersStored=4
+AFTER  (2/4 partial) stated=0  partial=13  corpusWords=49  answersStored=2
+```
+Corpus widened 25 → 72 significant words; `introduction` + `buyingTriggers` improved their grounding label.
+Sharpened copy is visibly traceable to the coach's own words ("my biggest retainer ended with two weeks
+notice"). Note `overall` stayed `partial` in all three — the roll-up needs ≥50% `stated` to flip, and 2/14
+does not reach it; the thresholds (`PROVENANCE_STATED_RATIO`) are tunable if the label should move more readily.
+
+**LIVE decline-path verification** (driven on the running site as the smoke coach, not inferred):
+"Service profile created" → **straight to "What are you inviting people to?"** — no ladder pre-generation.
+Reveal card shown with both chips and Q1 correctly absent. **[Looks good, carry on]** → navigated straight to
+`/v2-dashboard/trail/193`, kit created, exactly the pre-existing behaviour. The wow moment is intact.
+
+**Live bonus proof:** the ICP created during that run came back with **`groundingMeta` populated** — the first
+runtime confirmation that the deployed generator writes the 0096 column.
+
+**Teardown clean.** The cascade is client-driven from `V2Trail.tsx`, so closing the browser at the trail meant
+it never ran (offers/mechanisms/hvco/headlines/adCopy/landingPages/concepts/nodeStatuses/bonuses all 0 → no KV
+to clean). Deleted exactly the 3 rows created (kit 193, ICP 255, service 278) behind a guard refusing anything
+not owned by the smoke coach. Prod back to 101 ICPs, 0 strays.
+
+**Out of v1:** the has-assets paths do not offer the ladder (separate placement question).
+`icpGeneratedCount` deliberately untouched (checked-but-never-incremented is a pre-existing bug; sharpening
+must not double-charge if it is ever fixed).
+
+## 9. 🔴 ACTION FOR ARFEEN — security
+
+**Rotate the smoke account password.** During the live decline-path run, CC printed the login helper with a
+redaction pattern that did not match the JS object literal, so `TEST_PROD_PASSWORD` for
+`zap-e2e-smoke@mailinator.com` rendered in cleartext in the session transcript.
+
+Severity is **low** — non-privileged test account, no admin, and the mailinator inbox is public by design —
+but it is a real credential exposure. **Rotate the password and update `~/.zap-e2e-creds.env` before the next
+smoke run.**
+
+Rule going forward: redact credentials **before** printing, and if a redaction pattern does not visibly match,
+treat the value as leaked and stop rather than continuing.
