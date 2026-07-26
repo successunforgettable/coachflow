@@ -7,7 +7,7 @@ import { idealCustomerProfiles, services, jobs } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { invokeLLM } from "../_core/llm";
 import { filterRecord, getGlobalNegativePrompts } from "../lib/complianceFilter";
-import { ICP_SYSTEM_PROMPT, type ICPLadderAnswers, type ICPServiceInput } from "../_core/icpPrompts";
+import { ICP_SYSTEM_PROMPT, hasLadderContent, type ICPLadderAnswers, type ICPServiceInput } from "../_core/icpPrompts";
 import { runIcpGeneration } from "../_core/icpGenerate";
 import { normalizeDemographics } from "../_core/icpGrounding";
 import { stripObjectionScaffolding } from "../_core/icpSanitize";
@@ -31,6 +31,11 @@ const ladderSchema = z
     successMoment: z.string().max(2000).optional(),
   })
   .optional();
+
+/** Fields the compliance filter screens before any ICP DB write. */
+const ICP_FILTER_FIELDS = [
+  "introduction", "fears", "hopesDreams", "pains", "frustrations", "goals", "objections", "buyingTriggers",
+];
 
 const generateICPSchema = z.object({
   serviceId: z.number(),
@@ -159,7 +164,6 @@ export const icpsRouter = router({
       });
 
       // Compliance pre-filter before DB write
-      const ICP_FILTER_FIELDS = ["introduction", "fears", "hopesDreams", "pains", "frustrations", "goals", "objections", "buyingTriggers"];
       const { cleaned: cleanedIcpData, classification: icpClassification, allFlaggedTerms: icpFlaggedTerms } = filterRecord(icpData as Record<string, unknown>, ICP_FILTER_FIELDS);
       if (icpClassification === "REJECTED") {
         throw new TRPCError({ code: "BAD_REQUEST", message: `Some generated content contained prohibited language and could not be saved. Please regenerate. Flagged: ${icpFlaggedTerms.join("; ")}` });
@@ -301,6 +305,122 @@ export const icpsRouter = router({
       });
 
       return { jobId };
+    }),
+
+  /**
+   * sharpenWithLadder — regenerate an EXISTING profile in place, grounded on the
+   * coach's laddered answers about a real client.
+   *
+   * Placement (locked): offered right after the coach sees the preview reveal card
+   * and BEFORE the kit exists, so nothing downstream has consumed the ICP yet and a
+   * regenerate has zero staleness blast radius. Opt-in; a coach who declines never
+   * reaches this endpoint and their flow is unchanged.
+   *
+   * In place, on the SAME row, deliberately: campaignKits.icpId and
+   * campaignConcepts.icpId are NOT NULL and the cascade is keyed on (userId, icpId),
+   * so minting a new row would break the cascade rather than sharpen it.
+   *
+   * Failure safety: runIcpGeneration throws BEFORE any DB write if the model cannot
+   * produce a structurally valid profile, so a failed sharpen leaves the original
+   * profile exactly as it was.
+   *
+   * Deliberately does NOT touch icpGeneratedCount — that counter is checked but never
+   * incremented anywhere (a pre-existing bug). Sharpening a profile the coach already
+   * has is not a new generation, so if that counter is ever fixed this must not
+   * double-charge.
+   */
+  sharpenWithLadder: protectedProcedure
+    .input(z.object({ id: z.number(), ladder: ladderSchema }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const [row] = await db
+        .select()
+        .from(idealCustomerProfiles)
+        .where(and(eq(idealCustomerProfiles.id, input.id), eq(idealCustomerProfiles.userId, ctx.user.id)))
+        .limit(1);
+      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "ICP not found" });
+
+      const ladder = (input.ladder ?? null) as ICPLadderAnswers | null;
+      if (!hasLadderContent(ladder)) {
+        // Every question skipped — nothing to ground on, so leave the profile alone
+        // rather than burning a generation that would produce the same thing.
+        return { sharpened: false as const, icp: row };
+      }
+
+      if (!row.serviceId) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This profile is not linked to a service." });
+      const [service] = await db
+        .select({
+          name: services.name,
+          category: services.category,
+          description: services.description,
+          targetCustomer: services.targetCustomer,
+          mainBenefit: services.mainBenefit,
+        })
+        .from(services)
+        .where(and(eq(services.id, row.serviceId), eq(services.userId, ctx.user.id)))
+        .limit(1);
+      if (!service) throw new TRPCError({ code: "NOT_FOUND", message: "Service not found" });
+
+      // Throws before any DB write if the model cannot produce a valid profile.
+      const { icp: icpData, provenance } = await runIcpGeneration({
+        service,
+        ladder,
+        logLabel: `icps.sharpenWithLadder[${input.id}]`,
+      });
+
+      // Same compliance pre-filter + objection strip the generate paths run.
+      const { cleaned, classification, allFlaggedTerms } = filterRecord(
+        icpData as Record<string, unknown>,
+        ICP_FILTER_FIELDS,
+      );
+      if (classification === "REJECTED") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `The sharpened profile contained prohibited language and was not saved. Your original profile is unchanged. Flagged: ${allFlaggedTerms.join("; ")}`,
+        });
+      }
+      const finalIcp: any = { ...icpData, ...cleaned };
+      finalIcp.objections = stripObjectionScaffolding(finalIcp.objections) as string;
+
+      await db
+        .update(idealCustomerProfiles)
+        .set({
+          introduction: finalIcp.introduction,
+          fears: finalIcp.fears,
+          hopesDreams: finalIcp.hopesDreams,
+          psychographics: finalIcp.psychographics,
+          pains: finalIcp.pains,
+          frustrations: finalIcp.frustrations,
+          goals: finalIcp.goals,
+          values: finalIcp.values,
+          objections: finalIcp.objections,
+          buyingTriggers: finalIcp.buyingTriggers,
+          communicationStyle: finalIcp.communicationStyle,
+          decisionMaking: finalIcp.decisionMaking,
+          successMetrics: finalIcp.successMetrics,
+          implementationBarriers: finalIcp.implementationBarriers,
+          // Legacy mirrors kept in step with the generate paths.
+          painPoints: finalIcp.pains,
+          desiredOutcomes: finalIcp.goals,
+          valuesMotivations: finalIcp.values,
+          // Provenance carries the coach's answers so a future regenerate re-grounds.
+          groundingMeta: provenance,
+        })
+        .where(eq(idealCustomerProfiles.id, input.id));
+
+      const [updated] = await db
+        .select()
+        .from(idealCustomerProfiles)
+        .where(eq(idealCustomerProfiles.id, input.id))
+        .limit(1);
+
+      console.log(
+        `[icps.sharpenWithLadder] icp=${input.id} answered=[${provenance.ladderAnswered.join(",")}] ` +
+        `overall=${provenance.overall} corpusWords=${provenance.corpusWords}`,
+      );
+      return { sharpened: true as const, icp: updated };
     }),
 
   // Update ICP

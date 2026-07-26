@@ -61,10 +61,17 @@ export type IcpGroundingHit = {
 export type IcpProvenanceLabel = "stated" | "partial" | "inferred";
 
 export type IcpProvenance = {
-  /** Per-section label for the 16 prose sections + demographics. */
+  /** Per-section label for the 14 generated sections (+ demographics on legacy rows). */
   perSection: Record<string, IcpProvenanceLabel>;
   /** Which laddered follow-ups the coach actually answered. */
   ladderAnswered: string[];
+  /**
+   * The coach's laddered answers, verbatim. Persisted so a later regenerate
+   * RE-GROUNDS on their real input instead of silently reverting to the thin
+   * service description. Coach-supplied text is real input and is not discardable.
+   * Absent when nothing was answered.
+   */
+  ladderAnswers?: Record<string, string>;
   /** Significant-word count of the coach-supplied corpus this was built from. */
   corpusWords: number;
   /** R3 hits recorded at generation time (labels, not rejections). */
@@ -376,6 +383,8 @@ export function computeIcpProvenance(
   const ladderAnswered = ctx.ladder
     ? ICP_LADDER_KEYS.filter((k) => typeof ctx.ladder![k] === "string" && (ctx.ladder![k] as string).trim().length > 0)
     : [];
+  const ladderAnswers: Record<string, string> = {};
+  for (const k of ladderAnswered) ladderAnswers[k] = (ctx.ladder![k] as string).trim();
 
   const counts = { stated: 0, partial: 0, inferred: 0 };
   for (const v of Object.values(perSection)) counts[v]++;
@@ -383,5 +392,13 @@ export function computeIcpProvenance(
   const overall: IcpProvenanceLabel =
     counts.stated / total >= 0.5 ? "stated" : counts.inferred / total >= 0.6 ? "inferred" : "partial";
 
-  return { perSection, ladderAnswered, corpusWords: corpusWordCount, hits, overall, version: 1 };
+  return {
+    perSection,
+    ladderAnswered,
+    ...(ladderAnswered.length > 0 ? { ladderAnswers } : {}),
+    corpusWords: corpusWordCount,
+    hits,
+    overall,
+    version: 1,
+  };
 }

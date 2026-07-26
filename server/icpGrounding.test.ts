@@ -188,6 +188,56 @@ describe("computeIcpProvenance — out-of-band labels", () => {
   });
 });
 
+describe("Laddered sharpening — provenance carries the coach's real input", () => {
+  const LADDER = {
+    trigger: "She lost a retainer client with no warning and realised her pipeline was one referral deep.",
+    priorAttempts: "She had posted a handful of times, got almost no engagement, and decided it did not work.",
+    hesitation: "She worried posting would look like she was desperate in front of former colleagues.",
+    successMoment: "Two inbound enquiries in a week from people she had never met.",
+  };
+
+  it("persists the answer TEXT, not just which questions were answered", () => {
+    const p = computeIcpProvenance(validIcp(), { service: SERVICE, ladder: LADDER });
+    expect(p.ladderAnswered).toEqual(["trigger", "priorAttempts", "hesitation", "successMoment"]);
+    expect(p.ladderAnswers).toEqual(LADDER);
+  });
+
+  it("records a partial answer set and omits the answers key entirely when nothing was given", () => {
+    const partial = computeIcpProvenance(validIcp(), {
+      service: SERVICE,
+      ladder: { trigger: LADDER.trigger, hesitation: "   " },
+    });
+    expect(partial.ladderAnswered).toEqual(["trigger"]);
+    expect(partial.ladderAnswers).toEqual({ trigger: LADDER.trigger });
+
+    const none = computeIcpProvenance(validIcp(), { service: SERVICE });
+    expect(none.ladderAnswered).toEqual([]);
+    expect(none.ladderAnswers).toBeUndefined();
+  });
+
+  it("widens the grounded corpus, so the same prose scores better with a ladder than without", () => {
+    // A section written from the coach's laddered answer.
+    const icp = validIcp({
+      pains: "Every month she looks at her pipeline and it is still only people she knew before she went solo — she posted a handful of times, got almost no engagement, and decided it did not work.",
+    });
+    const withoutLadder = computeIcpProvenance(icp, { service: SERVICE });
+    const withLadder = computeIcpProvenance(icp, { service: SERVICE, ladder: LADDER });
+
+    expect(withLadder.corpusWords).toBeGreaterThan(withoutLadder.corpusWords);
+    const rank = { inferred: 0, partial: 1, stated: 2 } as const;
+    expect(rank[withLadder.perSection.pains]).toBeGreaterThan(rank[withoutLadder.perSection.pains]);
+  });
+
+  it("puts the coach's answers into the prompt as authoritative, and omits the block when all four are skipped", () => {
+    const p = ICP_USER_PROMPT(SERVICE, { ladder: LADDER });
+    expect(p).toContain("treat this as authoritative");
+    expect(p).toContain(LADDER.trigger);
+    expect(p).toContain(LADDER.successMoment);
+    expect(hasLadderContent({ trigger: " ", priorAttempts: "" })).toBe(false);
+    expect(ICP_USER_PROMPT(SERVICE, { ladder: { trigger: "  " } })).not.toContain("treat this as authoritative");
+  });
+});
+
 describe("Class A removal — the three fields are no longer generated", () => {
   it("names none of the retired sections anywhere in the prompt", () => {
     for (const prompt of [ICP_USER_PROMPT(SERVICE), ICP_USER_PROMPT(SERVICE, { angle: {

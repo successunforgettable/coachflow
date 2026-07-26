@@ -33,20 +33,29 @@ const MAX_NOT_QUITE_LOOPS = 2;
  * Keys must match ICPLadderAnswers on the server.
  */
 /**
- * 🔴 OFF — unverified. The laddered questions are built end-to-end (server prompt
- * block, tRPC input, provenance) but were never verified working, because ICP
- * generation itself has an open structural failure (see the handover:
- * docs/handovers/ZAP_Handover_July26_2026_ICP_Grounding_Phase2.md §3).
- *
- * Do not flip to true until `server/scripts/verify-icp-grounding.ts` runs clean
- * WITH a ladder restored in the second case.
+ * Kill switch for the sharpen offer. Kept so the surface can be pulled without a
+ * revert if it misbehaves in the wild.
  */
-const LADDER_ENABLED = false;
+const LADDER_ENABLED = true;
+
+/**
+ * ICP sharpening — laddered follow-ups (R2 "5 Rings", translated coach→individual).
+ *
+ * Placement is deliberate: OPT-IN, offered only AFTER the coach has seen their first
+ * ICP reveal, and before the kit exists. A coach who declines gets exactly today's
+ * flow. A coach with no client history can decline, or accept and skip any question.
+ * Answers become authoritative ground truth for a full in-place regenerate.
+ *
+ * Wording is the product-owner's, verbatim. Keys match ICPLadderAnswers on the server.
+ */
 const LADDER_SKIP_CHIP = "Skip this one";
-const LADDER_QUESTIONS: { key: "trigger" | "priorAttempts" | "hesitation"; text: string }[] = [
-  { key: "trigger", text: "One more thing and I'll have a much sharper picture. Think of the last person who hired you — what was going on for them right when they reached out?" },
+const SHARPEN_YES = "Sharpen it";
+const SHARPEN_NO = "Looks good, carry on";
+const LADDER_QUESTIONS: { key: "trigger" | "priorAttempts" | "hesitation" | "successMoment"; text: string }[] = [
+  { key: "trigger", text: "Think of the last person who hired you. What was going on in their life right when they reached out?" },
   { key: "priorAttempts", text: "What had they already tried that didn't work?" },
-  { key: "hesitation", text: "And what nearly stopped them from going ahead?" },
+  { key: "hesitation", text: "What nearly stopped them from saying yes?" },
+  { key: "successMoment", text: "Six months in, what made them say it was worth it?" },
 ];
 
 type Phase =
@@ -157,6 +166,8 @@ export default function V2TrailIntake() {
   // ICP grounding — laddered answers collected in-chat; every question skippable.
   const ladderAnswers = useRef<Record<string, string>>({});
   const ladderIdx = useRef(0);
+  const sharpenResolve = useRef<((v: Record<string, string> | null) => void) | null>(null);
+  const sharpenMutation = trpc.icps.sharpenWithLadder.useMutation();
   const getOrCreateKitMutation = trpc.campaignKits.getOrCreate.useMutation();
   const appendMessagesMutation = trpc.trail.appendMessages.useMutation();
   const checkCoherenceMutation = trpc.autoMode.checkCoherence.useMutation();
@@ -266,8 +277,9 @@ export default function V2TrailIntake() {
           ? `Done — ${fields.serviceName} is on the board. 🦊`
           : "Done — your campaign is on the board. 🦊",
       });
-      // ── ICP grounding: laddered follow-ups before the campaign-type beat ──
-      askLadder(0);
+      // Campaign-type beat. The ICP sharpen offer deliberately does NOT live here —
+      // it comes after the coach has seen their first ICP reveal (see offerSharpen).
+      askCampaignType();
     } catch {
       addMsg({ type: "zappy-bubble", mood: "idle", text: "Hm — that save fizzled. Want me to try again?" });
       addMsg({ type: "chip-row", chips: ["Try again"] });
@@ -275,7 +287,7 @@ export default function V2TrailIntake() {
     }
   };
 
-  /** Post the campaign-type beat (the step the ladder hands off to). */
+  /** Post the campaign-type beat. */
   const askCampaignType = () => {
     addMsg({ type: "zappy-bubble", mood: "idle", text: "What are you inviting people to?" });
     addMsg({ type: "chip-row", chips: Object.keys(CAMPAIGN_TYPE_CHIPS) });
@@ -283,11 +295,36 @@ export default function V2TrailIntake() {
   };
 
   /**
-   * Ask laddered follow-up i, or move on once they are done. Each question shows a
-   * Skip chip and accepts free text; nothing here can block the coach.
+   * The sharpen beat. Resolves once the coach has either declined or finished the
+   * questions, so the autorun can await it inline between the reveal and the kit.
+   * Resolves to the answers (possibly partial) or null when declined/disabled.
    */
+  const offerSharpen = (): Promise<Record<string, string> | null> => {
+    if (!LADDER_ENABLED) return Promise.resolve(null);
+    ladderAnswers.current = {};
+    ladderIdx.current = 0;
+    return new Promise((resolve) => {
+      sharpenResolve.current = resolve;
+      addMsg({
+        type: "zappy-bubble",
+        mood: "idle",
+        text: "I can make this sharper if you've worked with real clients — four quick questions about one of them. Or we can crack on.",
+      });
+      addMsg({ type: "chip-row", chips: [SHARPEN_YES, SHARPEN_NO] });
+      setPhase("ladder");
+    });
+  };
+
+  /** Ask laddered follow-up i, or finish and hand the answers back. */
   const askLadder = (i: number) => {
-    if (!LADDER_ENABLED || i >= LADDER_QUESTIONS.length) { askCampaignType(); return; }
+    if (i >= LADDER_QUESTIONS.length) {
+      setPhase("autorun");
+      const answers = ladderAnswers.current;
+      const resolve = sharpenResolve.current;
+      sharpenResolve.current = null;
+      resolve?.(Object.keys(answers).length > 0 ? answers : null);
+      return;
+    }
     ladderIdx.current = i;
     addMsg({ type: "zappy-bubble", mood: "idle", text: LADDER_QUESTIONS[i].text });
     addMsg({ type: "chip-row", chips: [LADDER_SKIP_CHIP] });
@@ -405,7 +442,7 @@ export default function V2TrailIntake() {
       addMsg({ type: "zappy-bubble", mood: "thinking", text: "Studying the people you help…" });
       const icpName = extraction.current?.icpDescriptor?.trim()
         || `${pendingFields.current?.serviceName?.trim() || "My Service"} Profile`;
-      const { jobId } = await generateIcpMutation.mutateAsync({ serviceId, name: icpName, ladder: ladderAnswers.current });
+      const { jobId } = await generateIcpMutation.mutateAsync({ serviceId, name: icpName });
       const job = await patienceGuard(pollJob(jobId), addMsg);
       if (job.status === "failed" || typeof job.result?.icpId !== "number") {
         throw new Error(job.error || "ICP generation failed.");
@@ -413,17 +450,41 @@ export default function V2TrailIntake() {
       const icpId = job.result.icpId as number;
 
       // ICP reveal (simple C2 form — full reveal format lands in C3).
-      const icp = await utils.icps.get.fetch({ id: icpId });
+      type IcpPreview = { name?: string; introduction?: string | null } | null;
+      const revealIcp = (icp: IcpPreview, eyebrow: string) => {
+        addMsg({
+          type: "asset-reveal-card",
+          nodeKey: "icp",
+          reveal: {
+            eyebrow,
+            title: icp?.name || "Your Ideal Customer",
+            preview: (icp?.introduction || "").split("\n")[0].slice(0, 220) || "Profile generated — full detail in your Kit.",
+          },
+        });
+      };
+
+      const icp = (await utils.icps.get.fetch({ id: icpId })) as IcpPreview;
       addMsg({ type: "system-divider", text: "ICP generated" });
-      addMsg({
-        type: "asset-reveal-card",
-        nodeKey: "icp",
-        reveal: {
-          eyebrow: "YOUR IDEAL CUSTOMER",
-          title: (icp as { name?: string } | null)?.name || "Your Ideal Customer",
-          preview: ((icp as { introduction?: string | null } | null)?.introduction || "").split("\n")[0].slice(0, 220) || "Profile generated — full detail in your Kit.",
-        },
-      });
+      revealIcp(icp, "YOUR IDEAL CUSTOMER");
+
+      // ── ICP sharpening — OPT-IN, offered only now that the coach has seen a result,
+      //    and deliberately BEFORE the kit exists: nothing downstream has consumed the
+      //    ICP yet, so an in-place regenerate has zero staleness blast radius.
+      //    Declining leaves the rest of this flow byte-for-byte as it was. ──
+      const sharpenAnswers = await offerSharpen();
+      if (sharpenAnswers) {
+        addMsg({ type: "zappy-bubble", mood: "thinking", text: "Sharpening the profile with what you told me…" });
+        try {
+          const res = await sharpenMutation.mutateAsync({ id: icpId, ladder: sharpenAnswers });
+          if ((res as { sharpened?: boolean }).sharpened) {
+            addMsg({ type: "system-divider", text: "Profile sharpened" });
+            revealIcp((res as { icp?: IcpPreview }).icp ?? null, "HERE'S THE SHARPER VERSION");
+          }
+        } catch {
+          // Non-fatal by design: the original profile is untouched on failure.
+          addMsg({ type: "zappy-bubble", mood: "idle", text: "That sharpening pass didn't take — I'll carry on with the profile as it is." });
+        }
+      }
 
       // ── Kit row: path + campaignType recorded at the first icpId moment ──
       const kit = await getOrCreateKitMutation.mutateAsync({
@@ -817,7 +878,7 @@ export default function V2TrailIntake() {
       } else {
         const icpName = extraction.current?.icpDescriptor?.trim()
           || `${pendingFields.current?.serviceName?.trim() || "My Service"} Profile`;
-        const { jobId } = await generateIcpMutation.mutateAsync({ serviceId, name: icpName, ladder: ladderAnswers.current });
+        const { jobId } = await generateIcpMutation.mutateAsync({ serviceId, name: icpName });
         const job = await patienceGuard(pollJob(jobId), addMsg);
         if (job.status === "failed" || typeof job.result?.icpId !== "number") {
           throw new Error(job.error || "ICP generation failed.");
@@ -932,7 +993,7 @@ export default function V2TrailIntake() {
       addMsg({ type: "zappy-bubble", mood: "thinking", text: "Studying the people you help…" });
       const icpName = extraction.current?.icpDescriptor?.trim()
         || `${pendingFields.current?.serviceName?.trim() || "My Service"} Profile`;
-      const { jobId } = await generateIcpMutation.mutateAsync({ serviceId, name: icpName, ladder: ladderAnswers.current });
+      const { jobId } = await generateIcpMutation.mutateAsync({ serviceId, name: icpName });
       const job = await patienceGuard(pollJob(jobId), addMsg);
       if (job.status === "failed" || typeof job.result?.icpId !== "number") {
         throw new Error(job.error || "ICP generation failed.");
@@ -989,6 +1050,17 @@ export default function V2TrailIntake() {
     messagesRef.current = messagesRef.current.filter(m => m.id !== messageId);
     addMsg({ type: "user-bubble", text: chip });
 
+    if (phase === "ladder" && (chip === SHARPEN_YES || chip === SHARPEN_NO)) {
+      if (chip === SHARPEN_NO) {
+        setPhase("autorun");
+        const resolve = sharpenResolve.current;
+        sharpenResolve.current = null;
+        resolve?.(null);
+      } else {
+        askLadder(0);
+      }
+      return;
+    }
     if (chip === LADDER_SKIP_CHIP && phase === "ladder") {
       askLadder(ladderIdx.current + 1);
       return;
