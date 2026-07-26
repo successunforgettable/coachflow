@@ -15,10 +15,12 @@
 
 import { randomUUID } from "crypto";
 import { getDb } from "./db";
-import { campaignConcepts, conceptScripts, idealCustomerProfiles } from "../drizzle/schema";
+import { campaignConcepts, conceptScripts, idealCustomerProfiles, services } from "../drizzle/schema";
 import { and, eq } from "drizzle-orm";
 import { invokeLLM } from "./_core/llm";
 import { activeLengthForStage, wordBudgetForSeconds, type AwarenessStage } from "./_core/conceptAxis";
+import { validateScriptFabricationPatterns } from "./_core/fabricationValidator";
+import { buildCoachCorpus, buildProofSupplied } from "./_core/groundingCorpus";
 import {
   validateScriptStructure,
   screenScriptCompliance,
@@ -164,16 +166,35 @@ export async function generateScriptForConcept(params: { userId: number; concept
   const { getCascadeContext } = await import("./_core/cascadeContext");
   const cascadeContext = await getCascadeContext(params.userId, concept.icpId, "adCopy");
 
+  // Ground truth = the coach's own words (service + verbatim ladder answers),
+  // never the ICP prose. Scripts are free spoken prose, the highest-risk surface
+  // for invented proof; predictable category psychology still passes clean.
+  const [scriptIcp] = concept.icpId
+    ? await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.id, concept.icpId)).limit(1)
+    : [undefined];
+  const scriptSvcId = concept.serviceId ?? scriptIcp?.serviceId ?? null;
+  const [scriptService] = scriptSvcId
+    ? await db.select().from(services).where(and(eq(services.id, scriptSvcId), eq(services.userId, params.userId))).limit(1)
+    : [undefined];
+  const corpus = buildCoachCorpus({ service: scriptService, groundingMeta: scriptIcp?.groundingMeta });
+  const supplied = buildProofSupplied(scriptService);
+
   const prompt = buildConceptScriptPrompt(concept as ScriptConceptInput, cascadeContext, targetSeconds);
 
   const gate = (s: RawScript): { ok: boolean; failContext: string; labels: string } => {
     const structure = validateScriptStructure(s, { hookPattern: concept.hookPattern, targetSeconds });
     const compliance = screenScriptCompliance(s.scenes ?? []);
-    if (structure.ok && compliance.ok) return { ok: true, failContext: "", labels: "" };
-    const parts = [structure.ok ? "" : structure.failContext, compliance.ok ? "" : compliance.failContext].filter(Boolean);
+    const fabrication = validateScriptFabricationPatterns(s.scenes ?? [], corpus, supplied);
+    if (structure.ok && compliance.ok && fabrication.ok) return { ok: true, failContext: "", labels: "" };
+    const parts = [
+      structure.ok ? "" : structure.failContext,
+      compliance.ok ? "" : compliance.failContext,
+      fabrication.ok ? "" : fabrication.failContext,
+    ].filter(Boolean);
     const labels = [
       ...(structure.ok ? [] : structure.hits.map((h) => h.classId)),
       ...(compliance.ok ? [] : compliance.hits.map((h) => h.classId)),
+      ...fabrication.blocking.map((h) => h.classId),
     ].join(", ");
     return { ok: false, failContext: parts.join("\n\n"), labels };
   };

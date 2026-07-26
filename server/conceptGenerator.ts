@@ -12,7 +12,7 @@
 
 import { randomUUID } from "crypto";
 import { getDb } from "./db";
-import { idealCustomerProfiles, campaignConcepts } from "../drizzle/schema";
+import { idealCustomerProfiles, campaignConcepts, services } from "../drizzle/schema";
 import { and, eq } from "drizzle-orm";
 import { invokeLLM } from "./_core/llm";
 import {
@@ -22,6 +22,8 @@ import {
   CANDIDATE_HOOK_AWARENESS_MAP,
 } from "./_core/conceptAxis";
 import { validateConceptSetStructure, screenConceptCompliance, type RawConcept } from "./_core/conceptValidator";
+import { validateConceptFabricationPatterns, FABRICATION_RETRY_MAX_ATTEMPTS } from "./_core/fabricationValidator";
+import { buildCoachCorpus, buildProofSupplied } from "./_core/groundingCorpus";
 
 export interface ConceptIcpInput {
   name?: string | null;
@@ -156,33 +158,52 @@ export async function generateConceptsForIcp(params: {
     .limit(1);
   if (!icp) throw new Error(`ICP ${params.icpId} not found for user ${params.userId}`);
 
+  // The service row is the coach's own words — the ground truth the fabrication
+  // check measures against. Falls back to the ICP's own serviceId.
+  const svcId = params.serviceId ?? icp.serviceId ?? null;
+  const [service] = svcId
+    ? await db.select().from(services).where(and(eq(services.id, svcId), eq(services.userId, params.userId))).limit(1)
+    : [undefined];
+
   const count = params.count ?? DEFAULT_CONCEPT_COUNT;
   const prompt = buildConceptPrompt(icp as ConceptIcpInput, count);
 
-  // Generate → structural validate + compliance screen → retry once with combined failContext.
-  // Both gates run every attempt: structure (fields/enums/distinct/headline≠hook) AND Meta ad-policy
-  // screening (complianceFilter — fabricated scarcity / income guarantees, highest risk on the
-  // direct_offer_urgency hook). The ICP-corpus anti-fabrication check stays deferred until ICP grounding.
+  // Ground truth for the fabrication check is the COACH'S OWN WORDS — service
+  // fields, their verbatim ladder answers, imported material — never the ICP
+  // prose, which is model output (crediting it would launder fabrication a level
+  // down). Predictable category psychology is legitimate inference and passes.
+  const corpus = buildCoachCorpus({ service, groundingMeta: (icp as any).groundingMeta });
+  const supplied = buildProofSupplied(service);
+
+  // Generate → structure + Meta policy + invented-proof → retry with combined failContext.
   const gate = (cs: RawConcept[]): { ok: boolean; failContext: string; labels: string } => {
     const structure = validateConceptSetStructure(cs);
     const compliance = screenConceptCompliance(cs);
-    if (structure.ok && compliance.ok) return { ok: true, failContext: "", labels: "" };
-    const parts = [structure.ok ? "" : structure.failContext, compliance.ok ? "" : compliance.failContext].filter(Boolean);
+    const fabrication = validateConceptFabricationPatterns(cs, corpus, supplied);
+    if (structure.ok && compliance.ok && fabrication.ok) return { ok: true, failContext: "", labels: "" };
+    const parts = [
+      structure.ok ? "" : structure.failContext,
+      compliance.ok ? "" : compliance.failContext,
+      fabrication.ok ? "" : fabrication.failContext,
+    ].filter(Boolean);
     const labels = [
       ...(structure.ok ? [] : structure.hits.map((h) => h.classId)),
       ...(compliance.ok ? [] : compliance.hits.map((h) => h.classId)),
+      ...fabrication.blocking.map((h) => h.classId),
     ].join(", ");
     return { ok: false, failContext: parts.join("\n\n"), labels };
   };
 
   let concepts = await invokeConcepts(prompt, "");
   let result = gate(concepts);
-  if (!result.ok) {
+  for (let attempt = 2; attempt <= FABRICATION_RETRY_MAX_ATTEMPTS && !result.ok; attempt++) {
+    console.warn(`[conceptGenerator] gate failed attempt ${attempt - 1}/${FABRICATION_RETRY_MAX_ATTEMPTS} (${result.labels}). Retrying.`);
     concepts = await invokeConcepts(prompt, result.failContext);
     result = gate(concepts);
-    if (!result.ok) {
-      throw new Error(`Concept set failed validation after retry: ${result.labels}`);
-    }
+  }
+  if (!result.ok) {
+    // Invented proof must never persist: a coach would read it as real.
+    throw new Error(`Concept set failed validation after ${FABRICATION_RETRY_MAX_ATTEMPTS} attempts: ${result.labels}`);
   }
 
   const conceptSetId = randomUUID();

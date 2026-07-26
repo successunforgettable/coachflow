@@ -213,6 +213,8 @@ export async function runAdCopyGeneration(input: {
   const { getDb } = await import("./db");
   const { adCopy, services, idealCustomerProfiles, sourceOfTruth, campaigns, campaignKits } = await import("../drizzle/schema");
   const { eq, and } = await import("drizzle-orm");
+  const { validateAdCopyFabricationPatterns } = await import("./_core/fabricationValidator");
+  const { buildCoachCorpus, buildProofSupplied } = await import("./_core/groundingCorpus");
   const { getCascadeContext } = await import("./_core/cascadeContext");
   const { checkCompliance } = await import("./lib/complianceChecker");
 
@@ -355,12 +357,29 @@ ${icp.communicationStyle ? `How they communicate: ${icp.communicationStyle}` : '
 - ${socialProof.rating} average rating
 - ${socialProof.reviewCount} reviews
 You MUST use these exact numbers when incorporating social proof. Do not fabricate or inflate.`
-    : `NO SOCIAL PROOF DATA PROVIDED - Use launch-safe alternatives:
-- Focus on benefit claims and outcomes ("Get X result")
-- Use curiosity hooks ("The method that...")
-- Use contrast ("Before vs After")
-- DO NOT mention customer counts, ratings, or reviews
-- DO NOT fabricate testimonials or statistics`;
+    : `LAUNCH-STAGE COPY — this coach's proof is not yet on the record, so the copy earns attention from the reader's own situation and from the method itself:
+- Name the situation the reader is living in, in the vocabulary they use for it
+- Lead with the shift the method creates — how the approach works and why it is different
+- Use curiosity: the counterintuitive reason they are stuck
+- Use contrast: what the day looks like before and after the shift
+Every number, rating, review count, client story and named outcome in this copy comes from the supplied data above. Where the data above does not carry one, the copy speaks to the situation and the method instead.`;
+
+  // Headline angles. The result-with-a-number and client-result angles ask for
+  // PROOF, so they are offered only when the coach's proof is actually on the
+  // record. A launch-stage coach gets situation-led angles instead — the copy
+  // still lands, and the prompt never asks for a claim they cannot back.
+  const hasRealProof = socialProof.hasCustomers || socialProof.hasRating
+    || socialProof.hasReviews || socialProof.hasTestimonials || socialProof.hasPress;
+  const headlineAngles = hasRealProof
+    ? `- Pain angle: name the specific daily frustration (1-2 words max before the hook)
+- Outcome angle: name the exact result with a number or timeframe
+- Curiosity angle: counterintuitive insight about why they're stuck
+- Social proof angle: name the result a specific type of person got, drawn from the supplied proof data above`
+    : `- Pain angle: name the specific daily frustration (1-2 words max before the hook)
+- Situation angle: name where they are right now, in their own vocabulary
+- Curiosity angle: counterintuitive insight about why they're stuck
+- Mechanism angle: name the shift the method creates and what makes the approach different
+- Contrast angle: what a working week looks like before and after that shift`;
 
   // ── Headlines call (sync fuller prompt) ─────────────────────────────────────
   const headlinePrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ${count} high-converting ad HEADLINES for this service:
@@ -402,10 +421,7 @@ BANNED PATTERNS — never generate:
 MANDATORY: Include at least one word from the pressing problem field — the actual vocabulary the target market uses to describe their situation.
 
 Create ${count} attention-grabbing headlines (max 40 characters each). Use these angles across the set:
-- Pain angle: name the specific daily frustration (1-2 words max before the hook)
-- Outcome angle: name the exact result with a number or timeframe
-- Curiosity angle: counterintuitive insight about why they're stuck
-- Social proof angle: name the result a specific type of person got
+${headlineAngles}
 
 Format as JSON array:
 {
@@ -678,7 +694,40 @@ Format as JSON array:
     });
   }
 
-  await db.insert(adCopy).values(allInserts);
+  // ── Invented-proof gate (Class 1) ───────────────────────────────────────────
+  // Ground truth is the coach's OWN words (service fields + their verbatim ladder
+  // answers), never the ICP prose. Predictable category psychology passes; only
+  // invented PROOF is removed — a testimonial, a statistic, a promised result, a
+  // guarantee, a named third party, or a track record the coach has not earned.
+  //
+  // Disposition here is DROP-THE-VARIANT rather than throw: a deck carries 15-30
+  // variants, so removing the few that fabricate leaves a usable deck and never
+  // dead-ends a launch-stage coach mid-cascade. publishToMeta is the hard stop.
+  const adCorpus = buildCoachCorpus({ service, groundingMeta: (icp as any)?.groundingMeta });
+  const adSupplied = buildProofSupplied(service);
+  const keptInserts: typeof allInserts = [];
+  const droppedClasses: string[] = [];
+  for (const row of allInserts) {
+    const res = validateAdCopyFabricationPatterns(
+      [{ headline: String(row.content ?? ""), primaryText: null, description: null }],
+      adCorpus, adSupplied,
+    );
+    if (res.ok) { keptInserts.push(row); continue; }
+    droppedClasses.push(...res.blocking.map((h) => h.classId));
+  }
+  if (droppedClasses.length > 0) {
+    console.warn(
+      `[adCopyGenerator] dropped ${allInserts.length - keptInserts.length}/${allInserts.length} variants carrying ` +
+      `invented proof (classes=[${Array.from(new Set(droppedClasses)).join(",")}]); ${keptInserts.length} kept.`,
+    );
+  }
+  if (keptInserts.length === 0) {
+    throw new Error(
+      `Ad copy could not be produced without invented proof (classes=[${Array.from(new Set(droppedClasses)).join(",")}]). Nothing was saved.`,
+    );
+  }
+
+  await db.insert(adCopy).values(keptInserts);
 
   // Compliance precompute — must land before runX returns so wizard panel
   // sees ad copy + rewrites atomically. Mirrors prior async behavior.
