@@ -3,7 +3,7 @@ import { protectedProcedure, router } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "../db";
 import { metaAccessTokens } from "../../drizzle/schema";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { encryptToken, decryptToken } from "../_core/tokenCrypto";
 import { buildResolvedMap, resolveTokensInText } from "../lib/placeholderResolver";
 
@@ -252,44 +252,6 @@ export const metaRouter = router({
       const body = rt(input.body)!;
       const callToAction = rt(input.callToAction);
       const campaignName = rt(input.campaignName)!;
-
-      // ── Invented-proof hard gate (Class 1) ─────────────────────────────────
-      // Runs on the RESOLVED copy, deliberately: a real price that a [INSERT_*]
-      // token just resolved to must read as supplied, and an unresolved token
-      // must not read as a missing figure. Content-agnostic, so it catches
-      // whatever produced the copy — including a coach's hand-edit in the Kit.
-      // Ground truth is the coach's OWN words, never the ICP prose.
-      if (input.serviceId != null) {
-        const { validatePublishContentFabrication } = await import("../_core/fabricationValidator");
-        const { buildCoachCorpus, buildProofSupplied } = await import("../_core/groundingCorpus");
-        const { services, idealCustomerProfiles } = await import("../../drizzle/schema");
-        const gateDb = await getDb();
-        if (gateDb) {
-          const [svc] = await gateDb.select().from(services)
-            .where(and(eq(services.id, input.serviceId), eq(services.userId, ctx.user.id))).limit(1);
-          const [gateIcp] = await gateDb.select().from(idealCustomerProfiles)
-            .where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
-          const gate = validatePublishContentFabrication(
-            { headline, body, callToAction },
-            buildCoachCorpus({ service: svc, groundingMeta: gateIcp?.groundingMeta }),
-            buildProofSupplied(svc),
-          );
-          if (!gate.ok) {
-            const detail = gate.blocking.slice(0, 4)
-              .map((h) => `${h.location}: "${h.matched}"`).join("; ");
-            console.warn(
-              `[publishToMeta] BLOCKED for user ${ctx.user.id} — invented proof ` +
-              `(classes=[${Array.from(new Set(gate.blocking.map((h) => h.classId))).join(",")}])`,
-            );
-            throw new TRPCError({
-              code: "BAD_REQUEST",
-              message:
-                `This ad states things your own material doesn't back up, so it wasn't published: ${detail}. ` +
-                `Edit the copy to speak to the reader's situation and your method, or add the real figures to your profile first.`,
-            });
-          }
-        }
-      }
 
       try {
         // Step 1: Create campaign — budget intentionally NOT passed here.
