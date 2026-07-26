@@ -1,6 +1,10 @@
-# ZAP Handover — July 26, 2026 (evening) — ICP GROUNDING, Phase 1 CONFIRMED / Phase 2 BUILT + VERIFIED, HELD FOR EXECUTE
+# ZAP Handover — July 26, 2026 — ICP GROUNDING Phase 2 — ✅ SHIPPED + LIVE (first cut)
 
-**Status: BUILT + VERIFIED (8/8 clean live runs). Committed LOCAL-ONLY. Nothing pushed. No migration executed. Nothing written to prod. Awaiting Arfeen's review of the verification + "execute" on 0096.**
+**Status: SHIPPED + LIVE. `HEAD = origin/railway-build = fecd7fc`. Migration `0096` APPLIED to prod via Arfeen's
+explicit "execute" and verified. Railway SUCCESS on the exact SHA, prod 200.**
+
+🔴 **This is the FIRST CUT of the ICP sprint, not the finish line** — see §6 for what is still gated or unbuilt.
+Everything Andromeda stays DRAFT-only until ICP grounding fully lands.
 
 Supersedes nothing — this sits on top of `ZAP_Handover_July26_2026.md` (Andromeda spine).
 
@@ -28,7 +32,7 @@ claims attached. #218 likewise names Justin Welsh, Chris Do, April Dunford and s
 
 ---
 
-## 2. Phase 2 — what is BUILT (all local-only)
+## 2. Phase 2 — what SHIPPED
 
 ### Core
 | Piece | File | Notes |
@@ -37,7 +41,7 @@ claims attached. #218 likewise names Justin Welsh, Chris Do, April Dunford and s
 | Structural gate + R3 labelling + provenance | `server/_core/icpGrounding.ts` *(new)* | `validateIcpStructure` (hard gate), `validateIcpGrounding` (4 R3 modes), `computeIcpProvenance`, `normalizeDemographics`. Reuses `bonusWordOverlap` for traceability. |
 | Shared generation runner | `server/_core/icpGenerate.ts` *(new)* | structural → retry then **throw** (malformed never persists); grounding → retry then **label-and-persist**. Retry 1→3, mirrors the bonus generator's hit/failContext shape. |
 | Shared sanitiser | `server/_core/icpSanitize.ts` *(new)* | `stripObjectionScaffolding` extracted so the angle path gets it too. |
-| Migration (AUTHORED, **NOT APPLIED**) | `drizzle/0096_icp_grounding_provenance.sql` | one additive nullable `groundingMeta JSON` column — still required, for Class-B provenance. |
+| Migration **APPLIED + VERIFIED** | `drizzle/0096_icp_grounding_provenance.sql` | one additive nullable `groundingMeta JSON` column, for Class-B provenance. |
 
 ### The three sibling fixes — all done
 1. **`icpAngleSuggestions` duplication KILLED.** It carried its own near-verbatim copy of the 17-section prompt
@@ -113,28 +117,58 @@ TOTAL RUNS: 8 | mean attempts/run: 1.00 | MALFORMED THAT WOULD HAVE PERSISTED: 0
   contract (`ICP_CONTENT_FIELDS` length 16, enrichment filling `demographics`). They were updated, not
   deleted. `pipeline-fixes` still reports 382.
 
-## 3b. BACKLOG — BLOG GENERATOR and other ICP-powered content tools
+## 4. Ship record — the exact sequence that ran
 
-Logged as future work. When such a tool is built, **the consuming tool defines how `demographics` /
-`mediaConsumption` / `influencers` get populated** — from real data, coach-supplied input, or an explicit
-research prompt. They are NOT to be speculatively generated back into existence "because a tool might want
-them". The columns are already there, dormant and empty, waiting for a real source.
+| # | Step | Result | Actual |
+|---|---|---|---|
+| 1 | Pre-check | PASS | `groundingMeta` absent (0), **101** ICP rows, 30 columns |
+| 2 | Apply `0096` | PASS | `ALTER TABLE idealCustomerProfiles ADD COLUMN groundingMeta JSON NULL` → APPLIED OK (Arfeen "execute") |
+| 3 | Verify migration | PASS | type `json`, `IS_NULLABLE=YES`, default null; **101 rows unchanged, 101 NULL / 0 non-NULL — no backfill** |
+| 4 | Push | PASS | `744981c..fecd7fc`. Guards first: TS **35**, `@playwright/test` 0, no `package-lock.json`, frozen install passes |
+| 5 | Railway | PASS | deployment `ccd031d4` BUILDING → **SUCCESS**; prod `GET /` **200** |
+| 6 | SHA match + bundle | PASS | deployed `fecd7fcb9c0d757ea1cde95cb9466bf0a69ba180` == pushed SHA. Bundle `index-pYeJbqmn.js` → **`index-DVCmomSP.js`** — **changed as EXPECTED** (4 client files touched); proven by new string literals present in the served JS |
+| 7 | Field contract | PASS | 14 flat keys, no nested object, three retired fields absent |
 
-## 4. Resume checklist (exact)
+**Migration-before-code gate honoured**: `0096` landed before the deploy that writes the column.
 
-1. `git log -1` on `railway-build` — confirm the held commits are local and **not** on origin.
-2. Arfeen reviews the verification output above (his eyes are the gate).
-3. **Arfeen: "execute" migration `0096`** (one additive nullable JSON column) — must land **before** the code
-   deploy, because `icps.generate`, `icps.generateAsync` and `icpAngleSuggestions` all now write `groundingMeta`.
-   Verify: `INFORMATION_SCHEMA` shows the column, row count unchanged.
-4. Only then push `railway-build`; watch Railway → SUCCESS on the exact SHA; prod 200.
-5. The client bundle WILL change this time — `V2ICPResultPanel.tsx`, `icpRichness.ts`, `V2TrailIntake.tsx`,
-   `V2AutoModeIntakeConfirm.tsx` are all touched.
-6. Laddered intake stays `LADDER_ENABLED = false` — still unverified, a separate decision.
+**Post-deploy prod state:** 101 ICPs (unchanged), all 101 `groundingMeta` NULL, **0 rows created**. No test data anywhere.
 
-## 5. State
+**Step 7 was the read-only path, deliberately.** The contract was read straight from the pushed commit
+(`ICP_TEXT_SECTION_KEYS` = 14; `ICP_RETIRED_SECTION_KEYS` = the three; `ICP_JSON_SCHEMA` flat with no nested
+object; zero occurrences of DEMOGRAPHICS / MEDIA CONSUMPTION / INFLUENCERS in the prompt body) and combined
+with the SHA match. Runtime behaviour was proven by the **8/8 live generations at this exact commit** before
+push. What it does NOT prove is the running container executing a generation end-to-end — see backlog (d).
 
-* Branch `railway-build`, **local commit only — nothing pushed**, `origin/railway-build` still `744981c`.
-* Migration `0096` **authored and HELD**. Not applied to prod or anywhere.
-* Clean-room artifacts: **none created** — all verification ran through the LLM only, no DB writes anywhere.
-  Prod reads were `SELECT`-only via a read-only helper.
+## 5. 🔴 STILL GATED / NOT DONE — the ICP sprint is BEGUN, not finished
+
+* **Laddered intake** — built end-to-end (prompt block, tRPC input, provenance `ladderAnswered`, in-chat
+  questions) but **`LADDER_ENABLED = false`** in `V2TrailIntake.tsx`. Never verified working. Separate decision.
+* **Class-B provenance surfacing to the coach** — computed and persisted out-of-band, but whether/how any of it
+  is shown in the UI is **undecided and unshipped**. Today it is internal-only, which was the locked Phase-2 call.
+* **Concept/script anti-fabrication validator** — still DEFERRED. It now finally has a grounded corpus to check
+  against (that was the blocker), but it is **not built**.
+* **Everything Andromeda remains DRAFT-only** until ICP grounding fully lands. Nothing reaches Meta.
+
+## 6. Backlog
+
+* **(a) Two cosmetic leftovers — fold into the next deploy, not worth a build of their own:**
+  stale comment `/** The 16 text section keys… */` stacked above the correct 14-section docblock at
+  `server/_core/icpPrompts.ts:204`; and `ICP_JSON_SCHEMA.name` is still the string
+  `"ideal_customer_profile_17_tabs"` (tool name only, zero functional impact). Both were live during the
+  8/8 verification, so neither affects behaviour.
+* **(b) Script filename feature** — human-readable per-concept script filenames derived from
+  awareness + hook + length, rather than the raw ID.
+* **(c) Blog generator + other ICP-powered content tools** — when built, **the consuming tool defines how
+  `demographics` / `mediaConsumption` / `influencers` get populated** (real data, coach-supplied, or an explicit
+  research prompt). Never speculatively regenerated. The dormant columns are already there waiting.
+* **(d) Optional belt-and-suspenders:** one full end-to-end live ICP generation through the smoke coach on prod,
+  with teardown, if Arfeen wants runtime proof beyond SHA match + the 8/8 pre-push runs.
+
+## 7. State
+
+* Branch `railway-build`, `HEAD = origin/railway-build = fecd7fc`. **`main` untouched.**
+* Migration `0096` **APPLIED + VERIFIED** on prod.
+* `autoMode`'s demographics path is **deliberately LEFT INTACT** — it extracts from the coach's OWN pasted
+  document, i.e. coach-supplied real data, which the removal rationale explicitly permits.
+* Clean-room artifacts: none. Verification was LLM-only; prod reads were SELECT-only apart from the one
+  authorised ALTER.
