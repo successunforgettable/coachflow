@@ -15,10 +15,14 @@ import { idealCustomerProfiles, services } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { filterRecord } from "../lib/complianceFilter";
 
+/**
+ * The generated sections enrichment can fill. mediaConsumption / influencers are
+ * absent because they are no longer generated at all (see icpPrompts.ts).
+ */
 export const ICP_CONTENT_FIELDS = [
   "introduction", "fears", "hopesDreams", "psychographics",
   "pains", "frustrations", "goals", "values", "objections",
-  "buyingTriggers", "mediaConsumption", "influencers",
+  "buyingTriggers",
   "communicationStyle", "decisionMaking", "successMetrics",
   "implementationBarriers",
 ] as const;
@@ -36,9 +40,6 @@ export function buildNullOnlyUpdates(
     if (icp[field] == null && generated[field]) {
       updates[field] = generated[field];
     }
-  }
-  if (icp.demographics == null && generated.demographics) {
-    updates.demographics = generated.demographics;
   }
   if (updates.pains && !icp.painPoints) updates.painPoints = updates.pains;
   if (updates.goals && !icp.desiredOutcomes) updates.desiredOutcomes = updates.goals;

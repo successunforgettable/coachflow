@@ -179,7 +179,6 @@ export const icpsRouter = router({
           introduction: filteredIcpData.introduction,
           fears: filteredIcpData.fears,
           hopesDreams: filteredIcpData.hopesDreams,
-          demographics: normalizeDemographics(filteredIcpData.demographics),
           psychographics: filteredIcpData.psychographics,
           pains: filteredIcpData.pains,
           frustrations: filteredIcpData.frustrations,
@@ -187,8 +186,6 @@ export const icpsRouter = router({
           values: filteredIcpData.values,
           objections: filteredIcpData.objections,
           buyingTriggers: filteredIcpData.buyingTriggers,
-          mediaConsumption: filteredIcpData.mediaConsumption,
-          influencers: filteredIcpData.influencers,
           communicationStyle: filteredIcpData.communicationStyle,
           decisionMaking: filteredIcpData.decisionMaking,
           successMetrics: filteredIcpData.successMetrics,
@@ -269,7 +266,6 @@ export const icpsRouter = router({
             introduction: filteredIcpDataAsync.introduction,
             fears: filteredIcpDataAsync.fears,
             hopesDreams: filteredIcpDataAsync.hopesDreams,
-            demographics: normalizeDemographics(filteredIcpDataAsync.demographics),
             psychographics: filteredIcpDataAsync.psychographics,
             pains: filteredIcpDataAsync.pains,
             frustrations: filteredIcpDataAsync.frustrations,
@@ -277,8 +273,6 @@ export const icpsRouter = router({
             values: filteredIcpDataAsync.values,
             objections: filteredIcpDataAsync.objections,
             buyingTriggers: filteredIcpDataAsync.buyingTriggers,
-            mediaConsumption: filteredIcpDataAsync.mediaConsumption,
-            influencers: filteredIcpDataAsync.influencers,
             communicationStyle: filteredIcpDataAsync.communicationStyle,
             decisionMaking: filteredIcpDataAsync.decisionMaking,
             successMetrics: filteredIcpDataAsync.successMetrics,
@@ -385,10 +379,12 @@ export const icpsRouter = router({
   regenerateSection: protectedProcedure
     .input(z.object({
       id: z.number(),
+      // The 14 generated sections. demographics / mediaConsumption / influencers are
+      // no longer generated, so there is nothing to regenerate for them.
       sectionKey: z.enum([
-        "introduction", "fears", "hopesDreams", "demographics", "psychographics",
+        "introduction", "fears", "hopesDreams", "psychographics",
         "pains", "frustrations", "goals", "values", "objections", "buyingTriggers",
-        "mediaConsumption", "influencers", "communicationStyle", "decisionMaking",
+        "communicationStyle", "decisionMaking",
         "successMetrics", "implementationBarriers",
       ]),
       promptOverride: z.string().optional(),
@@ -434,12 +430,7 @@ export const icpsRouter = router({
         ? `\n\nWHAT THE COACH TOLD US — treat as authoritative; stay consistent with it.\nService: ${service.name}\nDescription: ${service.description}\nTarget customer: ${service.targetCustomer}\nMain benefit: ${service.mainBenefit}`
         : "";
 
-      // Sections 4/12/13 state checkable facts about real people; the same
-      // real-or-"Not specified" rule that governs generation governs a rewrite.
-      const CLASS_A_SECTIONS = new Set(["demographics", "mediaConsumption", "influencers"]);
-      const groundingRule = CLASS_A_SECTIONS.has(input.sectionKey)
-        ? `\n\nThis section states checkable facts about real people. Carry across what the coach's information above establishes. Name a specific individual, publication or brand only where the coach named it; otherwise describe the KIND of voice or channel this person trusts. Any demographic value the information above leaves open carries the exact text "Not specified".`
-        : `\n\nKeep the customer's internal monologue — specific lived situations, their own words, the detail that makes them recognise themselves. Build it on the coach's information above rather than on invented specifics.`;
+      const groundingRule = `\n\nKeep the customer's internal monologue — specific lived situations, their own words, the detail that makes them recognise themselves. Build it on the coach's information above rather than on invented specifics.`;
 
       const prompt = `Rewrite the "${input.sectionKey}" section for this ideal customer profile. Current value: ${serialized}.${userInstruction}${groundTruth}${groundingRule}\n\nReturn ONLY the rewritten text. No JSON, no markdown, no explanation.`;
 

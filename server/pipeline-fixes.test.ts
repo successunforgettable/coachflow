@@ -3783,8 +3783,12 @@ describe("Ad-Creatives ICP Wiring", () => {
 // ─── ICP Enrichment — NULL-only write protection ────────────────────────────
 
 describe("ICP Enrichment — NULL-only write protection", () => {
-  it("ICP_CONTENT_FIELDS covers all 16 enrichable text fields", () => {
-    expect(ICP_CONTENT_FIELDS).toHaveLength(16);
+  // 2026-07-26: 16 -> 14. mediaConsumption / influencers are no longer generated
+  // (Class A removal), so enrichment must not try to fill them either.
+  it("ICP_CONTENT_FIELDS covers all 14 enrichable text fields", () => {
+    expect(ICP_CONTENT_FIELDS).toHaveLength(14);
+    expect(ICP_CONTENT_FIELDS).not.toContain("mediaConsumption");
+    expect(ICP_CONTENT_FIELDS).not.toContain("influencers");
     expect(ICP_CONTENT_FIELDS).toContain("fears");
     expect(ICP_CONTENT_FIELDS).toContain("objections");
     expect(ICP_CONTENT_FIELDS).toContain("buyingTriggers");
@@ -3796,8 +3800,6 @@ describe("ICP Enrichment — NULL-only write protection", () => {
     expect(ICP_CONTENT_FIELDS).toContain("frustrations");
     expect(ICP_CONTENT_FIELDS).toContain("goals");
     expect(ICP_CONTENT_FIELDS).toContain("values");
-    expect(ICP_CONTENT_FIELDS).toContain("mediaConsumption");
-    expect(ICP_CONTENT_FIELDS).toContain("influencers");
     expect(ICP_CONTENT_FIELDS).toContain("decisionMaking");
     expect(ICP_CONTENT_FIELDS).toContain("successMetrics");
     expect(ICP_CONTENT_FIELDS).toContain("implementationBarriers");
@@ -3860,7 +3862,9 @@ describe("ICP Enrichment — NULL-only write protection", () => {
     expect(updates.psychographics).toBe("LLM-generated psychographics");
     expect(updates.communicationStyle).toBe("LLM-generated communication style");
     expect(updates.introduction).toBe("LLM-generated intro");
-    expect(updates.demographics).toEqual({ age_range: "25-55" });
+    // demographics is no longer generated, so enrichment never fills it from the
+    // model — a coach-supplied import value stays the only source (Class A removal).
+    expect(updates).not.toHaveProperty("demographics");
 
     // Mirror fields: painPoints, desiredOutcomes, valuesMotivations
     expect(updates).not.toHaveProperty("painPoints"); // pains wasn't updated

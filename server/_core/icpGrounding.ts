@@ -21,6 +21,12 @@
  *
  * Traceability reuses bonusWordOverlap from the shipped bonus validator rather than
  * re-implementing the same idea a second time.
+ *
+ * NOTE (2026-07-26): demographics / mediaConsumption / influencers are no longer
+ * generated. The Class-A checks below are kept and still run — they are cheap, they
+ * are tested, and they guard the day a future ICP-powered tool repopulates those
+ * dormant columns. Against a generated profile they simply find nothing, because
+ * the fields are absent.
  */
 
 import { bonusWordOverlap, bonusSignificantWords } from "./validator";
@@ -142,7 +148,7 @@ export function normalizeDemographics(raw: unknown): IcpDemographics | null {
 
 // ── 1. Structural gate ───────────────────────────────────────────────────────
 
-const ALL_KEYS: string[] = [...ICP_TEXT_SECTION_KEYS, "demographics"];
+const ALL_KEYS: string[] = [...ICP_TEXT_SECTION_KEYS];
 
 /**
  * HARD gate. Returns [] when the payload is shaped correctly.
@@ -165,32 +171,14 @@ export function validateIcpStructure(raw: unknown): IcpStructuralHit[] {
     }
   }
 
-  const demo = obj.demographics;
-  if (!demo || typeof demo !== "object" || Array.isArray(demo)) {
-    hits.push({
-      code: "icp_demographics_not_object",
-      description: 'Section "demographics" must be a nested JSON object holding the seven demographic keys.',
-      location: "demographics",
-    });
-  } else {
-    for (const k of ICP_DEMOGRAPHIC_KEYS) {
-      if (typeof (demo as Record<string, unknown>)[k] !== "string") {
-        hits.push({
-          code: "icp_demographic_key_missing",
-          description: `demographics.${k} must be a text value.`,
-          location: `demographics.${k}`,
-        });
-      }
-    }
-  }
-
-  // Stray top-level keys are the signature of a flattened demographics object.
+  // Any extra top-level key means the model invented structure. This used to be
+  // dominated by the seven demographic values being hoisted out of their nested
+  // object; with no nested object in the schema, that failure mode is gone.
   const extra = Object.keys(obj).filter((k) => !ALL_KEYS.includes(k));
   if (extra.length > 0) {
     hits.push({
       code: "icp_unexpected_top_level_keys",
-      description:
-        `Unexpected top-level keys: ${extra.join(", ")}. The seven demographic values belong nested inside "demographics".`,
+      description: `Unexpected top-level keys: ${extra.join(", ")}. Return only the named sections.`,
       location: "root",
     });
   }
@@ -199,7 +187,7 @@ export function validateIcpStructure(raw: unknown): IcpStructuralHit[] {
 
 export function buildIcpStructuralFailContext(hits: IcpStructuralHit[]): string {
   const lines = hits.slice(0, 8).map((h) => `- ${h.location}: ${h.description}`);
-  return `The previous response was not shaped correctly:\n${lines.join("\n")}\n\nReturn the profile again with exactly the 17 keys named in the format block: the 16 text sections as strings, and "demographics" as a single nested object holding age_range, gender, income_level, education, occupation, location and family_status. Keep the seven demographic values inside that object.`;
+  return `The previous response was not shaped correctly:\n${lines.join("\n")}\n\nReturn the profile again with exactly the ${ICP_TEXT_SECTION_KEYS.length} keys named in the format block, each holding a text string, and no other keys.`;
 }
 
 // ── 2. R3 grounding validator ────────────────────────────────────────────────
@@ -374,6 +362,8 @@ export function computeIcpProvenance(
     perSection[k] = labelFor(v, corpus, corpusWordCount);
   }
 
+  // demographics is not generated; only label it when a row actually carries one
+  // (a legacy profile, or a coach-supplied import).
   const demo = normalizeDemographics(icp.demographics);
   if (demo) {
     const values = ICP_DEMOGRAPHIC_KEYS.map((k) => demo[k] ?? "");
@@ -381,8 +371,6 @@ export function computeIcpProvenance(
     const supported = specified.filter((v) => demographicSupported(v, corpus));
     perSection.demographics =
       specified.length === 0 ? "inferred" : supported.length === specified.length ? "stated" : "partial";
-  } else {
-    perSection.demographics = "inferred";
   }
 
   const ladderAnswered = ctx.ladder

@@ -10,7 +10,10 @@
  * (~5 fields before enrichment) suppresses the card so we never surface a broken/empty one.
  */
 
-// The 16 text section fields (matches server ICP_CONTENT_FIELDS). Demographics handled separately.
+// The 14 generated text section fields (matches server ICP_CONTENT_FIELDS).
+// mediaConsumption / influencers / demographics are no longer generated, so they
+// are not counted — otherwise every new profile would look 3 sections thinner
+// than it is. Demographics is still handled separately below for legacy rows.
 export const ICP_TEXT_SECTION_KEYS = [
   "introduction",
   "fears",
@@ -22,8 +25,6 @@ export const ICP_TEXT_SECTION_KEYS = [
   "values",
   "objections",
   "buyingTriggers",
-  "mediaConsumption",
-  "influencers",
   "communicationStyle",
   "decisionMaking",
   "successMetrics",
@@ -45,7 +46,7 @@ function demographicsPopulated(raw: unknown): boolean {
   return Object.values(obj).some(v => v != null && String(v).trim().length > 0);
 }
 
-/** Count populated sections (0–17): the 16 text fields + demographics. */
+/** Count populated sections: the 14 generated text fields, plus demographics on legacy rows. */
 export function countPopulatedIcpSections(icp: unknown): number {
   if (!icp || typeof icp !== "object") return 0;
   const row = icp as Record<string, unknown>;

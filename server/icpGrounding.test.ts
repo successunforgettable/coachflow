@@ -11,22 +11,20 @@ import {
   buildIcpStructuralFailContext,
   type IcpValidationContext,
 } from "./_core/icpGrounding";
-import { ICP_USER_PROMPT, buildLadderBlock, hasLadderContent } from "./_core/icpPrompts";
+import {
+  ICP_USER_PROMPT, buildLadderBlock, hasLadderContent,
+  ICP_JSON_SCHEMA, ICP_RETIRED_SECTION_KEYS,
+} from "./_core/icpPrompts";
 
 const TEXT_KEYS = [
   "introduction", "fears", "hopesDreams", "psychographics", "pains", "frustrations",
-  "goals", "values", "objections", "buyingTriggers", "mediaConsumption", "influencers",
+  "goals", "values", "objections", "buyingTriggers",
   "communicationStyle", "decisionMaking", "successMetrics", "implementationBarriers",
 ];
 
 function validIcp(over: Record<string, unknown> = {}): Record<string, unknown> {
   const base: Record<string, unknown> = {};
   for (const k of TEXT_KEYS) base[k] = `content for ${k}`;
-  base.demographics = {
-    age_range: "Not specified", gender: "Not specified", income_level: "Not specified",
-    education: "Not specified", occupation: "Not specified", location: "Not specified",
-    family_status: "Not specified",
-  };
   return { ...base, ...over };
 }
 
@@ -45,32 +43,32 @@ describe("validateIcpStructure — the hard gate", () => {
   });
 
   /**
-   * REGRESSION — the exact Phase-1 failure: the model emitted
-   * `demographics: "<parameter name=\"age_range\">28-40"` and hoisted the other six
-   * keys to the top level, producing 23 fields. This must never persist.
+   * REGRESSION — the failure that forced the Class-A removal: the model hoisted the
+   * seven demographic values out of their nested object into top-level keys. There is
+   * no nested object in the schema any more, but any invented top-level key is still
+   * caught, so this can never silently persist.
    */
-  it("catches the flattened-demographics failure (23 top-level fields)", () => {
+  it("catches invented top-level keys (the old flattening signature)", () => {
     const broken = validIcp({
-      demographics: '\n<parameter name="age_range">28-40',
       gender: "Not specified",
       income_level: "Not specified",
-      education: "Not specified",
-      occupation: "Not specified",
-      location: "Not specified",
       family_status: "First-time parent",
     });
     const hits = validateIcpStructure(broken);
-    expect(hits.length).toBeGreaterThan(0);
     const codes = hits.map((h) => h.code);
-    expect(codes).toContain("icp_demographics_not_object");
     expect(codes).toContain("icp_unexpected_top_level_keys");
-    // and the retry prompt names the fix
-    expect(buildIcpStructuralFailContext(hits)).toMatch(/nested object/i);
+    expect(buildIcpStructuralFailContext(hits)).toMatch(/no other keys/i);
   });
 
-  it("catches a missing demographic key, an empty section and a non-object payload", () => {
-    const missingKey = validIcp({ demographics: { age_range: "28-40" } });
-    expect(validateIcpStructure(missingKey).map((h) => h.code)).toContain("icp_demographic_key_missing");
+  it("no longer requires demographics — the three retired fields are simply absent", () => {
+    const icp = validIcp();
+    expect(icp.demographics).toBeUndefined();
+    expect(icp.mediaConsumption).toBeUndefined();
+    expect(icp.influencers).toBeUndefined();
+    expect(validateIcpStructure(icp)).toEqual([]);
+  });
+
+  it("catches an empty section and a non-object payload", () => {
     expect(validateIcpStructure(validIcp({ pains: "   " })).map((h) => h.code)).toContain("icp_section_empty");
     expect(validateIcpStructure(validIcp({ fears: 42 })).map((h) => h.code)).toContain("icp_section_not_string");
     expect(validateIcpStructure("nope").map((h) => h.code)).toContain("icp_not_object");
@@ -131,22 +129,20 @@ describe("validateIcpGrounding — R3 failure modes, label-and-persist", () => {
     expect(hits.filter((h) => h.classId === "icp_named_third_party")).toHaveLength(0);
   });
 
-  it("flags an unsupported income bracket but accepts \"Not specified\" and input-derived values", () => {
+  it("still guards demographics IF a row carries one (legacy or coach-supplied), and is silent when absent", () => {
+    // absent on a generated profile → nothing to flag
+    expect(validateIcpGrounding(validIcp(), CTX).filter((h) => h.classId === "icp_demographic_unsupported"))
+      .toHaveLength(0);
+
+    // a legacy/imported row with an invented bracket is still caught
     const flagged = validateIcpGrounding(
-      validIcp({ demographics: { ...(validIcp().demographics as object), income_level: "$75,000-$160,000 household" } }),
+      validIcp({ demographics: { income_level: "$75,000-$160,000 household" } }),
       CTX,
     );
     expect(flagged.filter((h) => h.classId === "icp_demographic_unsupported").length).toBeGreaterThan(0);
 
-    // all "Not specified" → clean
-    expect(validateIcpGrounding(validIcp(), CTX).filter((h) => h.classId === "icp_demographic_unsupported"))
-      .toHaveLength(0);
-
     // the age range IS in the coach's targetCustomer → supported
-    const supported = validateIcpGrounding(
-      validIcp({ demographics: { ...(validIcp().demographics as object), age_range: "28-40" } }),
-      CTX,
-    );
+    const supported = validateIcpGrounding(validIcp({ demographics: { age_range: "28-40" } }), CTX);
     expect(supported.filter((h) => h.location === "demographics.age_range")).toHaveLength(0);
   });
 
@@ -182,23 +178,55 @@ describe("computeIcpProvenance — out-of-band labels", () => {
     expect(computeIcpProvenance(validIcp(), CTX).ladderAnswered).toEqual([]);
   });
 
-  it("marks all-\"Not specified\" demographics inferred, and never writes labels into the text fields", () => {
+  it("labels only the 14 generated sections, and never writes labels into the text fields", () => {
     const icp = validIcp();
     const p = computeIcpProvenance(icp, CTX);
-    expect(p.perSection.demographics).toBe("inferred");
+    expect(Object.keys(p.perSection).sort()).toEqual([...TEXT_KEYS].sort());
+    expect(p.perSection.demographics).toBeUndefined();
     // out-of-band invariant: the profile itself is untouched by labelling
     for (const k of TEXT_KEYS) expect(String(icp[k])).not.toMatch(/inferred|stated|provenance/i);
   });
 });
 
-describe("ICP_USER_PROMPT — single source (sibling fix 1)", () => {
-  it("numbers each section exactly once (regression: the duplicate 4. DEMOGRAPHICS that garbled the tool-call)", () => {
+describe("Class A removal — the three fields are no longer generated", () => {
+  it("names none of the retired sections anywhere in the prompt", () => {
     for (const prompt of [ICP_USER_PROMPT(SERVICE), ICP_USER_PROMPT(SERVICE, { angle: {
       angleName: "Second-time parents", description: "d", primaryPain: "p", primaryBuyingTrigger: "t" } })]) {
-      expect(prompt.match(/^4\. DEMOGRAPHICS/gm) ?? []).toHaveLength(1);
-      expect(prompt.match(/^12\. MEDIA CONSUMPTION/gm) ?? []).toHaveLength(1);
-      expect(prompt.match(/^13\. INFLUENCERS/gm) ?? []).toHaveLength(1);
-      expect(prompt.match(/^17\. IMPLEMENTATION BARRIERS/gm) ?? []).toHaveLength(1);
+      expect(prompt).not.toMatch(/DEMOGRAPHICS/);
+      expect(prompt).not.toMatch(/MEDIA CONSUMPTION/);
+      expect(prompt).not.toMatch(/INFLUENCERS/);
+      expect(prompt).not.toContain("age_range");
+      expect(prompt).not.toContain('"demographics"');
+      expect(prompt).not.toContain("Not specified");
+    }
+  });
+
+  it("asks for exactly 14 sections, numbered 1-14 with no gaps", () => {
+    const prompt = ICP_USER_PROMPT(SERVICE);
+    expect(prompt).toContain("ALL 14 sections");
+    const nums = (prompt.match(/^(\d+)\. [A-Z]/gm) ?? []).map((m) => parseInt(m, 10));
+    expect(nums).toEqual(Array.from({ length: 14 }, (_, i) => i + 1));
+  });
+
+  it("declares a flat 14-key schema with no nested object (the flattening had nothing to attach to)", () => {
+    expect(ICP_JSON_SCHEMA.schema.required).toHaveLength(14);
+    expect(ICP_JSON_SCHEMA.schema.required).not.toContain("demographics");
+    const props = ICP_JSON_SCHEMA.schema.properties as Record<string, { type: string }>;
+    expect(Object.keys(props)).toHaveLength(14);
+    for (const v of Object.values(props)) expect(v.type).toBe("string");
+  });
+
+  it("keeps the retired keys listed so a future tool can populate the dormant columns", () => {
+    expect([...ICP_RETIRED_SECTION_KEYS]).toEqual(["demographics", "mediaConsumption", "influencers"]);
+  });
+});
+
+describe("ICP_USER_PROMPT — single source (sibling fix 1)", () => {
+  it("numbers each section exactly once", () => {
+    for (const prompt of [ICP_USER_PROMPT(SERVICE), ICP_USER_PROMPT(SERVICE, { angle: {
+      angleName: "Second-time parents", description: "d", primaryPain: "p", primaryBuyingTrigger: "t" } })]) {
+      expect(prompt.match(/^1\. INTRODUCTION/gm) ?? []).toHaveLength(1);
+      expect(prompt.match(/^14\. IMPLEMENTATION BARRIERS/gm) ?? []).toHaveLength(1);
     }
   });
 
@@ -211,13 +239,13 @@ describe("ICP_USER_PROMPT — single source (sibling fix 1)", () => {
     expect(ICP_USER_PROMPT(SERVICE)).not.toContain("FOCUS THIS ICP ON THIS SPECIFIC AUDIENCE ANGLE");
   });
 
-  it("keeps the vivid Class-B instructions intact while grounding only 4/12/13", () => {
+  it("keeps the vivid Class-B instructions completely intact", () => {
     const p = ICP_USER_PROMPT(SERVICE);
     expect(p).toContain("the 3am version");
     expect(p).toContain("I lie awake worrying that");
     expect(p).toContain("their internal monologue, not a textbook description");
-    expect(p).toContain("GROUNDING — applies to sections 4, 12 and 13 only");
-    expect(p).toContain('the exact text "Not specified"');
+    expect(p).toContain("It's 2am and I'm refreshing my inbox again");
+    expect(p).toContain("Every [day/week/month]");
   });
 
   it("includes the coach's laddered answers as authoritative, and omits the block when skipped", () => {

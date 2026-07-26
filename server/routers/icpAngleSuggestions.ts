@@ -6,7 +6,6 @@ import { eq, and, desc } from "drizzle-orm";
 import { invokeLLM } from "../_core/llm";
 import { TRPCError } from "@trpc/server";
 import { runIcpGeneration } from "../_core/icpGenerate";
-import { normalizeDemographics } from "../_core/icpGrounding";
 import { filterRecord } from "../lib/complianceFilter";
 import { stripObjectionScaffolding } from "../_core/icpSanitize";
 
@@ -286,7 +285,6 @@ Return valid JSON only. No markdown. No explanation.`;
           introduction: icpData.introduction,
           fears: icpData.fears,
           hopesDreams: icpData.hopesDreams,
-          demographics: normalizeDemographics(icpData.demographics),
           psychographics: icpData.psychographics,
           pains: icpData.pains,
           frustrations: icpData.frustrations,
@@ -294,8 +292,6 @@ Return valid JSON only. No markdown. No explanation.`;
           values: icpData.values,
           objections: icpData.objections,
           buyingTriggers: icpData.buyingTriggers,
-          mediaConsumption: icpData.mediaConsumption,
-          influencers: icpData.influencers,
           communicationStyle: icpData.communicationStyle,
           decisionMaking: icpData.decisionMaking,
           successMetrics: icpData.successMetrics,

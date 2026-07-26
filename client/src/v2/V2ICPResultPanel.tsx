@@ -53,6 +53,18 @@ const SECTIONS = [
 
 type SectionKey = typeof SECTIONS[number]["key"];
 
+/** True when a section holds something worth rendering (handles the demographics object). */
+function hasSectionContent(raw: unknown): boolean {
+  if (raw == null) return false;
+  if (typeof raw === "string") return raw.trim().length > 0;
+  if (typeof raw === "object") {
+    return Object.values(raw as Record<string, unknown>).some(
+      (v) => v != null && String(v).trim().length > 0,
+    );
+  }
+  return String(raw).trim().length > 0;
+}
+
 // ─── Demographics renderer ────────────────────────────────────────────────────
 function DemographicsContent({ raw }: { raw: unknown }) {
   if (!raw) return <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "14px", color: "#555" }}>Not specified</p>;
@@ -484,8 +496,12 @@ export default function V2ICPResultPanel({
         </div>
       )}
 
-      {/* ── Accordion sections ── */}
-      {SECTIONS.map((s, i) => (
+      {/* ── Accordion sections ──
+          Only sections that actually carry content are shown. demographics /
+          mediaConsumption / influencers are no longer generated, so on a new
+          profile they are absent and their accordions would otherwise render
+          empty; a legacy profile that still holds them displays them as before. */}
+      {SECTIONS.filter((s) => hasSectionContent(icp[s.key])).map((s, i) => (
         <AccordionSection
           key={s.key}
           label={s.label}

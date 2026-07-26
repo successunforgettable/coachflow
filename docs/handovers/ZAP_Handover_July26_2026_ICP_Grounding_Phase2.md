@@ -1,6 +1,6 @@
-# ZAP Handover — July 26, 2026 (evening) — ICP GROUNDING, Phase 1 CONFIRMED / Phase 2 BUILT-AND-HELD
+# ZAP Handover — July 26, 2026 (evening) — ICP GROUNDING, Phase 1 CONFIRMED / Phase 2 BUILT + VERIFIED, HELD FOR EXECUTE
 
-**Status: SAFE-HOLD. Committed LOCAL-ONLY. Nothing pushed. No migration executed. Nothing written to prod.**
+**Status: BUILT + VERIFIED (8/8 clean live runs). Committed LOCAL-ONLY. Nothing pushed. No migration executed. Nothing written to prod. Awaiting Arfeen's review of the verification + "execute" on 0096.**
 
 Supersedes nothing — this sits on top of `ZAP_Handover_July26_2026.md` (Andromeda spine).
 
@@ -37,7 +37,7 @@ claims attached. #218 likewise names Justin Welsh, Chris Do, April Dunford and s
 | Structural gate + R3 labelling + provenance | `server/_core/icpGrounding.ts` *(new)* | `validateIcpStructure` (hard gate), `validateIcpGrounding` (4 R3 modes), `computeIcpProvenance`, `normalizeDemographics`. Reuses `bonusWordOverlap` for traceability. |
 | Shared generation runner | `server/_core/icpGenerate.ts` *(new)* | structural → retry then **throw** (malformed never persists); grounding → retry then **label-and-persist**. Retry 1→3, mirrors the bonus generator's hit/failContext shape. |
 | Shared sanitiser | `server/_core/icpSanitize.ts` *(new)* | `stripObjectionScaffolding` extracted so the angle path gets it too. |
-| Migration (AUTHORED, **NOT APPLIED**) | `drizzle/0096_icp_grounding_provenance.sql` | one additive nullable `groundingMeta JSON` column. |
+| Migration (AUTHORED, **NOT APPLIED**) | `drizzle/0096_icp_grounding_provenance.sql` | one additive nullable `groundingMeta JSON` column — still required, for Class-B provenance. |
 
 ### The three sibling fixes — all done
 1. **`icpAngleSuggestions` duplication KILLED.** It carried its own near-verbatim copy of the 17-section prompt
@@ -57,78 +57,80 @@ claims attached. #218 likewise names Justin Welsh, Chris Do, April Dunford and s
 ### Gates
 * **TS 35** — provably identical error *set* to HEAD (captured HEAD baseline via `git stash`, diffed normalised;
   only line numbers moved). Zero new errors.
-* **Tests 401 pass** — `pipeline-fixes` 382 unchanged + **19 new** in `server/icpGrounding.test.ts` (add-only).
-  Includes a regression test reproducing the exact Phase-1 flattening payload.
+* **Tests 424 pass** — `pipeline-fixes` 382 + `campaignExport` 18 + **24** in `server/icpGrounding.test.ts`.
 * Guards intact: no `@playwright/test`, no `package-lock.json`, `pnpm install --frozen-lockfile` passes.
 
 ---
 
-## 3. 🔴 THE OPEN BLOCKER — Phase 2 MUST NOT SHIP YET
+## 3. ✅ BLOCKER RESOLVED — Class A REMOVED (revised direction, locked with Arfeen)
 
-**The Class-A hardened prompt makes ICP generation hard-fail for some services.** This is the reason nothing
-was pushed. It is NOT about the laddered input (an earlier reading of mine that the evidence disproved).
+The earlier "harden Class A to Not specified" approach hit a structural bug that no prompt wording fixed:
+the model kept hoisting the seven demographic values out of their nested object into top-level keys
+(23 keys instead of 17), often enough on some services that 3 retries never recovered — one test service
+3/3 clean, the other 3/3 hard-fail.
 
-**Failure mode:** the model stops nesting the demographics object and hoists its seven values to the top level
-— **23 keys instead of 17**. `validateIcpStructure` catches it, so **nothing malformed ever persists** (that
-part works exactly as designed), but it survives all three retries, so the coach gets
-*"could not produce a correctly structured profile… nothing was saved."*
+**Revised direction (locked): `demographics`, `mediaConsumption` and `influencers` are REMOVED from ICP
+generation entirely.** Not hardened, not "Not specified" — the model no longer produces them.
 
-**Final measured run** (`verify-icp-grounding.ts 3`, both cases WITHOUT a ladder — the shipped configuration):
+Why:
+* **No downstream generator reads any of them** — verified across all twelve.
+* They are **fossils of interest-based Meta targeting**; Andromeda made the *creative* the targeting instrument.
+* `influencers`/`mediaConsumption` invented **named real people and publications** and stated them as fact
+  about a coach's audience — the highest fabrication risk in the system.
+
+**The DB columns are KEPT** (dormant, empty). No column is dropped, so nothing breaks and a future
+ICP-powered tool can populate them from real or coach-supplied data.
+
+**This dissolved the bug, as predicted.** The nested `demographics` object was the thing being flattened;
+`ICP_JSON_SCHEMA` is now **14 flat required string keys with no nested object at all**, so the failure mode
+has nothing to attach to.
+
+**Verification — 8 live generations, 4 per service, including the service that was 3/3 DEAD:**
 
 ```
-217 Rest Assured   run 1  attempts=2  keys=17  demoObject=true  notSpecified=5/7  structuralHits=0  ✅
-217 Rest Assured   run 2  attempts=1  keys=17  demoObject=true  notSpecified=5/7  structuralHits=0  ✅
-217 Rest Assured   run 3  attempts=1  keys=17  demoObject=true  notSpecified=5/7  structuralHits=0  ✅
-218 Visible Auth   run 1  THREW after 3 attempts (icp_demographics_not_object, icp_unexpected_top_level_keys)
-218 Visible Auth   run 2  THREW after 3 attempts (same)
-218 Visible Auth   run 3  THREW after 3 attempts (same)
-MALFORMED THAT WOULD HAVE PERSISTED: 0
+217 Rest Assured   run 1-4  attempts=1  keys=14/14  retiredPresent=none  structuralHits=0  ✅ ✅ ✅ ✅
+218 Visible Auth   run 1-4  attempts=1  keys=14/14  retiredPresent=none  structuralHits=0  ✅ ✅ ✅ ✅
+TOTAL RUNS: 8 | mean attempts/run: 1.00 | MALFORMED THAT WOULD HAVE PERSISTED: 0
 ```
 
-**One service is 3/3 clean; the other is 3/3 dead (9/9 attempts flattened).** Stochastic per attempt, but the
-rate is service-dependent and high enough on 218 that retries never recover.
+**mean attempts = 1.00 — not one retry was needed across 8 runs.** Before removal the same 218 case burned
+9/9 attempts and threw every time.
 
-**Hypotheses tested and DISPROVED — do not re-tread:**
-1. *The laddered block causes it.* No — 218 fails identically with and without a ladder.
-2. *Truncation.* No — `stop_reason` was `tool_use` on 4/4 raw-captured runs, `output_tokens` 6.1k–7.1k against
-   `max_tokens: 8192` (`llm.ts:355`).
-3. *The `"demographics": { ... }` placeholder in the trailing format block.* Spelling the seven keys out
-   explicitly made it **worse** — 10 keys instead of 17, 3/3 failures. Reverted.
+(a) three fields absent on every run, zero malformed structures · (b) Class B prose still vivid
+("Three likes — one from my mum", first-person density 16–21 per 1k, in band with the Phase-1 originals)
+· (c) provenance labels the 14 generated sections only, out-of-band, `hitClasses: []` · (d) sibling fixes intact.
 
-**What separates the two cases (UNTESTED hypothesis, best lead):** 217's input states "aged 28–40", so two of
-the seven demographic values are concrete. 218's input establishes none, so under the honesty rule nearly all
-seven must be the literal string `"Not specified"`. A degenerate object of seven identical strings may be what
-tips the model out of nesting. Note the Phase-1 CONTROL runs of the *original* (ungrounded) prompt were 2/2
-clean — the hardening is what raises the rate, because it is what produces the repeated `"Not specified"`.
+### Scope notes
+* **`autoMode.ts` extraction is deliberately untouched.** It pulls `demographics` from the coach's OWN pasted
+  document — coach-supplied real data, which the rationale explicitly permits. It is not speculative generation.
+* `regenerateSection`'s enum drops the three keys (nothing generates them, so nothing to regenerate).
+* `V2ICPResultPanel` now skips empty sections — otherwise a new profile would show three empty accordions.
+  A legacy profile that still holds the data renders it exactly as before.
+* `icpRichness` counts 14 instead of 17 so new profiles do not read as artificially thin.
+* The Class-A validator checks are KEPT and still run — they find nothing on a generated profile (fields absent)
+  but still guard legacy/imported rows and the day a future tool repopulates the columns.
+* **Deviation from "tests add-only":** three assertions inside `pipeline-fixes.test.ts` asserted the OLD
+  contract (`ICP_CONTENT_FIELDS` length 16, enrichment filling `demographics`). They were updated, not
+  deleted. `pipeline-fixes` still reports 382.
 
-**Untried fixes, in the order I would try them:**
-* **Flatten the schema** — seven top-level demographic keys, re-nested server-side by `normalizeDemographics`
-  (which already accepts multiple shapes). Removes the nesting requirement, so the failure mode cannot occur.
-  Highest confidence, smallest blast radius, no migration.
-* Let unsupported demographic values be **omitted** rather than all set to the same `"Not specified"` string
-  (tests the degeneracy hypothesis directly and is arguably better output anyway).
-* Generate demographics in its own small second call.
-* Raise `max_tokens` — **shared parameter used by every generator**, so not a local call.
+## 3b. BACKLOG — BLOG GENERATOR and other ICP-powered content tools
 
-**Everything else in Phase 2 verified clean on the passing case:** Class A honest (`notSpecified=5/7`, zero
-named third parties, zero unsupported demographic values), Class B prose vivid (first-person density 20/1k,
-clock-times present — in band with the Phase-1 originals), provenance computed out-of-band
-(`overall=partial`, `corpusWords=25`), and 0 malformed payloads reached persistence across all 12 generations
-run this session.
+Logged as future work. When such a tool is built, **the consuming tool defines how `demographics` /
+`mediaConsumption` / `influencers` get populated** — from real data, coach-supplied input, or an explicit
+research prompt. They are NOT to be speculatively generated back into existence "because a tool might want
+them". The columns are already there, dormant and empty, waiting for a real source.
 
 ## 4. Resume checklist (exact)
 
-1. `git log -1` on `railway-build` — confirm the held commit (SHA in §5) is local and **not** on origin.
-2. Decide the demographics-nesting fix (schema flattening is my recommendation) and implement.
-3. Re-run `railway run --environment production --service coachflow npx tsx server/scripts/verify-icp-grounding.ts 3`
-   with a ladder restored in the second case. Require **0 throws** across ≥6 runs before flipping
-   `LADDER_ENABLED = true`.
-4. **Arfeen: "execute" migration `0096`** (one additive nullable JSON column) — must land **before** the code
+1. `git log -1` on `railway-build` — confirm the held commits are local and **not** on origin.
+2. Arfeen reviews the verification output above (his eyes are the gate).
+3. **Arfeen: "execute" migration `0096`** (one additive nullable JSON column) — must land **before** the code
    deploy, because `icps.generate`, `icps.generateAsync` and `icpAngleSuggestions` all now write `groundingMeta`.
    Verify: `INFORMATION_SCHEMA` shows the column, row count unchanged.
-5. Only then push `railway-build`; watch Railway → SUCCESS on the exact SHA; prod 200.
-6. Server-side only apart from the (gated-off) intake questions → the client bundle will change *only* because
-   of `V2TrailIntake.tsx`/`V2AutoModeIntakeConfirm.tsx` edits.
+4. Only then push `railway-build`; watch Railway → SUCCESS on the exact SHA; prod 200.
+5. The client bundle WILL change this time — `V2ICPResultPanel.tsx`, `icpRichness.ts`, `V2TrailIntake.tsx`,
+   `V2AutoModeIntakeConfirm.tsx` are all touched.
+6. Laddered intake stays `LADDER_ENABLED = false` — still unverified, a separate decision.
 
 ## 5. State
 

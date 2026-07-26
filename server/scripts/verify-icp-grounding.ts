@@ -15,7 +15,7 @@ import type { ICPServiceInput } from "../_core/icpPrompts";
 
 const CASES: { label: string; service: ICPServiceInput; ladder?: Record<string, string> }[] = [
   {
-    label: "217 Rest Assured (no ladder — blank-slate coach)",
+    label: "217 Rest Assured",
     service: {
       name: "Rest Assured",
       category: "coaching",
@@ -25,7 +25,7 @@ const CASES: { label: string; service: ICPServiceInput; ladder?: Record<string, 
     },
   },
   {
-    label: "218 Visible Authority (no ladder — shipped configuration)",
+    label: "218 Visible Authority (the case that was 3/3 DEAD before removal)",
     service: {
       name: "Visible Authority",
       category: "coaching",
@@ -66,6 +66,9 @@ const CLOCK_RE = /\b\d{1,2}[:.]\d{2}\s?(am|pm)?\b|\b\d{1,2}\s?(am|pm)\b/gi;
       }
       totalAttempts += attempts;
 
+      // The three retired fields must be absent — not empty strings, absent.
+      const retired = ["demographics", "mediaConsumption", "influencers"].filter((k) => k in icp);
+
       // Structural integrity of what WOULD have persisted.
       const structural = validateIcpStructure(icp);
       if (structural.length > 0) malformedPersisted++;
@@ -74,9 +77,6 @@ const CLOCK_RE = /\b\d{1,2}[:.]\d{2}\s?(am|pm)?\b|\b\d{1,2}\s?(am|pm)\b/gi;
       const demoHits = grounding.filter((h) => h.classId === "icp_demographic_unsupported");
 
       const keys = Object.keys(icp);
-      const demo = icp.demographics as Record<string, string> | undefined;
-      const demoIsObject = !!demo && typeof demo === "object" && !Array.isArray(demo);
-      const notSpecified = demoIsObject ? Object.values(demo).filter((v) => /^not specified$/i.test(String(v))).length : -1;
 
       const prose = ["introduction", "fears", "pains"].map((k) => String(icp[k] ?? "")).join(" ");
       const clocks = (prose.match(CLOCK_RE) ?? []).length;
@@ -87,9 +87,8 @@ const CLOCK_RE = /\b\d{1,2}[:.]\d{2}\s?(am|pm)?\b|\b\d{1,2}\s?(am|pm)\b/gi;
         [
           `${c.label} run ${i}`,
           `attempts=${attempts}`,
-          `keys=${keys.length}`,
-          `demoObject=${demoIsObject}`,
-          `notSpecified=${notSpecified}/7`,
+          `keys=${keys.length}/14`,
+          `retiredPresent=${retired.length === 0 ? "none" : retired.join("+")}`,
           `structuralHits=${structural.length}`,
           `namedThirdParty=${named.length}`,
           `demoUnsupported=${demoHits.length}`,
@@ -107,12 +106,14 @@ const CLOCK_RE = /\b\d{1,2}[:.]\d{2}\s?(am|pm)?\b|\b\d{1,2}\s?(am|pm)\b/gi;
         console.log("\n" + "=".repeat(78));
         console.log(`SAMPLE — ${c.label}`);
         console.log("=".repeat(78));
-        console.log("\n--- CLASS A: demographics ---");
-        console.log(JSON.stringify(demo, null, 1));
-        console.log("\n--- CLASS A: influencers ---");
-        console.log(String(icp.influencers).slice(0, 900));
-        console.log("\n--- CLASS A: mediaConsumption ---");
-        console.log(String(icp.mediaConsumption).slice(0, 600));
+        console.log("\n--- RETIRED FIELDS (must be absent) ---");
+        console.log(JSON.stringify({
+          demographics: icp.demographics ?? "(absent)",
+          mediaConsumption: icp.mediaConsumption ?? "(absent)",
+          influencers: icp.influencers ?? "(absent)",
+        }, null, 1));
+        console.log("\n--- SECTION KEYS RETURNED ---");
+        console.log(keys.join(", "));
         console.log("\n--- CLASS B: introduction ---");
         console.log(String(icp.introduction).slice(0, 1100));
         console.log("\n--- CLASS B: fears (first 2) ---");
