@@ -89,6 +89,40 @@ const PROTECTED_ATTRIBUTE_TERMS = [
   "single mum", "single mom", "divorced", "widowed", "immigrant", "expat",
   // criminal record
   "criminal record", "conviction", "prison", "ex-offender", "ex-prisoner", "incarcerated",
+
+  // ── VOCABULARY EXPANSION (2026-07-27) ────────────────────────────────────────
+  // Triaged against 3,006 real texts (prod ad copy + prod ICP prose + post-register
+  // generated blocks): these 62 terms produced ZERO new blocks, while the rejected
+  // high-risk group (reset, reclaim, healing, career transitions) produced all 13 —
+  // "reset" and "reclaim" are PRODUCT NAMES in real prod copy. Marketing-industry terms
+  // (CAPI, ROAS, MRR…) and the mental symptom/proxy group (executive function, sensory
+  // regulation — service categories more often than health assertions) were rejected.
+  //
+  // A protected noun NEVER blocks on its own. Every term below reaches a verdict only
+  // through the anchoring engine: 22/22 planted cases block when predicated of the
+  // reader, 22/22 inverses pass as the offer's or the coach's own account.
+  // enumerated attributes on Meta's own §1.1 list that were missing — the 269 (criminal record)
+  // and 203 (ethnicity) cases exposed this class as the real blind spot
+  "citizenship", "citizenship status", "residency status", "immigration status", "green card",
+  "visa status", "undocumented", "asylum", "voting status", "registered to vote",
+  "trade union", "union member", "union membership",
+  // named medical conditions (physical health, §1.1)
+  "diabetes", "hypertension", "cardiovascular", "reproductive health", "oncology", "cancer",
+  "autoimmune", "hiv", "addiction", "eating disorder", "menopause", "sibo", "ibs", "leaky gut",
+  "celiac", "coeliac", "crohn", "overweight", "obesity",
+  // symptoms and proxies — only meaningful because the anchoring engine decides predication:
+  // "Tired of your bloating?" blocks, "the meal plan reduces bloating" does not
+  "bloating", "slow digestion", "chronic pain", "night sweats", "acne scars", "post-acne",
+  "thinning hair", "hair loss", "wrinkles", "constipation", "high blood pressure",
+  "sugar cravings",
+  // mental health conditions (§1.1)
+  "adhd", "autism", "dyslexia", "bipolar", "neurodivergent", "sensory impairment",
+  "cognitive decline",
+  // vulnerable financial status (§1.1)
+  "bankruptcy", "credit score", "unemployment", "unemployed", "low income",
+  // everyday financial-vulnerability phrasing
+  "money is tight", "paycheck to paycheck", "paycheque to paycheque", "financial insecurity",
+  "financial struggle", "financial vulnerability",
 ];
 
 // Predicates that assert a DEFICIT about whoever the sentence is about. These are what
@@ -110,6 +144,14 @@ const DEFICIT_PREDICATES = [
 // BODY-PROXY nouns. Meta §1.3 prohibits copy that implies or generates negative
 // self-perception about the body; "the clothes still don't fit" and "the mirror is a
 // daily reminder" do exactly that without naming a body part. ENUMERATED → tier 1.
+/**
+ * Attribute nouns that are NEUTRAL in isolation — everyone has a body, weight and skin.
+ * These block only when the sentence characterises them negatively. Diagnoses, financial
+ * status and the enumerated identity attributes are NOT in this list: naming one about the
+ * reader is the assertion, with or without a negative predicate.
+ */
+const NEUTRAL_ATTRIBUTE_TERMS = ["body", "weight", "skin", "hair", "face", "energy", "sleep", "savings"];
+
 const BODY_PROXY_NOUNS = [
   "clothes", "jeans", "dress", "shirt", "trousers", "wardrobe",
   "mirror", "camera", "photo", "photos", "photograph", "photographs", "scale", "scales",
@@ -272,7 +314,15 @@ export function resolveAnchors(sentences: string[]): Person[] {
 }
 
 const lower = (s: string) => s.toLowerCase();
-const containsAny = (hay: string, needles: string[]) => needles.find((n) => hay.includes(n));
+/**
+ * WORD-BOUNDARY matching. Plain substring matching silently produced false positives that
+ * only surfaced once the vocabulary grew: "body" matched inside "noBODY", so
+ * "nobody has shown you a framework you can stand behind" blocked as a body assertion.
+ * The same class lurks in "asking"/skin, "surface"/face, "warms"/arms, "hive"/hiv.
+ * Multi-word terms ("night sweats", "paycheck to paycheck") still match as phrases.
+ */
+const containsAny = (hay: string, needles: string[]) =>
+  needles.find((n) => new RegExp(`\\b${n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(hay));
 
 function isOfferDirected(sentence: string): boolean {
   return OFFER_DIRECTED.some((p) => lower(sentence).includes(p));
@@ -300,6 +350,29 @@ const RELATIVE_CLAUSE_YOU = /\b(the|a|an|every|any|each)\s+[a-z]+\s+you\s+(are|w
  * actually is" describes the method, not the reader.
  */
 const ABOUT_THE_OFFER = /\b(method|programme|program|course|cohort|framework|system|approach|session|workshop|plan|training|the link)\b/i;
+
+/**
+ * The offer-guard must require the offer to be the SUBJECT, not merely present.
+ *
+ * Bare presence is too permissive in the dangerous direction: "You're overweight and the
+ * programme helps" contains "programme", so a presence test exempts it and a real §1.1
+ * assertion walks through. This was flagged as a watch-item for `overweight`/`obesity`
+ * once weight vocabulary expanded; requiring subject position closes it rather than
+ * leaving it to be noticed in production.
+ *
+ * Subject position is approximated the same way the deliverable-noun-phrase guard does
+ * it — the offer noun must appear BEFORE the first second-person marker, so the reader
+ * can only be in a modifier hanging off it:
+ *   exempt  "The Fourth Trimester Method starts where your body actually is right now."
+ *   BLOCKS  "You're overweight and the programme helps."
+ */
+function offerIsSubject(sentence: string): boolean {
+  const m = ABOUT_THE_OFFER.exec(sentence);
+  if (!m) return false;
+  const you = SECOND_RE.exec(sentence);
+  if (!you) return true;                       // no reader in the sentence at all
+  return (m.index ?? 0) < (you.index ?? 0);    // offer introduced before the reader
+}
 
 /**
  * DELIVERABLE NOUN PHRASE — the offer is the subject and the reader appears only inside a
@@ -439,7 +512,7 @@ export function checkComplianceAxis(
 
       // A question naming a protected attribute, not anchored to the coach's own
       // account, addresses the reader by implication even with no pronoun present.
-      if (sentence.includes("?") && anchors[i] !== "first" && !ABOUT_THE_OFFER.test(sentence)) {
+      if (sentence.includes("?") && anchors[i] !== "first" && !offerIsSubject(sentence)) {
         const qAttr = containsAny(lower(sentence), PROTECTED_ATTRIBUTE_TERMS);
         if (qAttr) {
           push("second_person_protected_attribute", 1,
@@ -454,7 +527,7 @@ export function checkComplianceAxis(
       // to "none" and would skip it; it is nonetheless the negative self-perception §1.3
       // prohibits. Suppressed only when the sentence is the coach's own first-person
       // account ("The clothes still hang there. I kept them too.").
-      if (anchors[i] !== "first" && !ABOUT_THE_OFFER.test(sentence)) {
+      if (anchors[i] !== "first" && !offerIsSubject(sentence)) {
         const ls = lower(sentence);
         const bp = containsAny(ls, BODY_PROXY_NOUNS);
         const df = containsAny(ls, DEFICIT_PREDICATES);
@@ -476,12 +549,28 @@ export function checkComplianceAxis(
       // term ("Postpartum Reset"), and third-person sentences pulled in by inheritance
       // ("That her body would just sort itself out"). Requiring adjacency to an explicit
       // second-person marker, and only in a sentence that carries one, removes that class.
-      const attr = SECOND_RE.test(sentence) && !ABOUT_THE_OFFER.test(sentence)
+      // Naming a DIAGNOSIS about the reader is itself the assertion ("reverse your
+      // diabetes"). Naming a neutral body noun is not — "your body can absorb more from
+      // food" is product mechanism, and only becomes an assertion when the sentence
+      // characterises it negatively ("your body is failing you"). Without this split the
+      // rule fired on ordinary nutrition and fitness copy.
+      const neutralOnly = (t: string) => NEUTRAL_ATTRIBUTE_TERMS.includes(t);
+      const negativeContext = !!containsAny(s, DEFICIT_PREDICATES) || !!containsAny(s, APPEARANCE_COMPARISON)
+        || /\b(tired of|sick of|struggling|failing|embarrassed|ashamed|hate|hating|stuck|wrong|broken|no longer|worse|not where|should be|gave up|betrayed|hijack)\b/i.test(sentence)
+        // Possession denial characterises the reader's body just as directly as
+        // "wrong" does — "a body clock you don't currently have".
+        || /\byou\s+(don't|do not|didn't|can't|cannot|no longer)\b/i.test(sentence);
+      const attr = SECOND_RE.test(sentence) && !offerIsSubject(sentence)
         ? PROTECTED_ATTRIBUTE_TERMS.find((t) =>
             new RegExp(`\\byou(?:'re|r|\\s+are|\\s+feel|\\s+felt|\\s+look)?\\b[^.?!]{0,70}\\b${t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(sentence)
             || new RegExp(`\\b${t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b[^.?!]{0,45}\\byou\\b`, "i").test(sentence))
         : undefined;
-      if (attr) {
+      // Order matters: containsAny returns the FIRST list match, so a neutral term can mask
+      // a non-neutral one ("the weight of a life" masked "exhaustion"). Decide on whether
+      // ANY non-neutral attribute matched, not on whichever matched first.
+      const attrIsNonNeutral = attr !== undefined &&
+        PROTECTED_ATTRIBUTE_TERMS.some((t) => !neutralOnly(t) && new RegExp(`\\b${t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(sentence));
+      if (attr && (attrIsNonNeutral || negativeContext)) {
         push("second_person_protected_attribute", 1,
           "This states a personal attribute — health, body, financial standing, background or circumstances — as a fact about the person reading it. The same point lands as the coach's own experience, or as what the offer does.",
           sentence, f.location);
@@ -490,7 +579,7 @@ export function checkComplianceAxis(
 
       // Diagnostic present — a claim about what the reader is doing or has done,
       // in either word order.
-      if (!VOLITIONAL.test(sentence) && !ABOUT_THE_OFFER.test(sentence)) {
+      if (!VOLITIONAL.test(sentence) && !offerIsSubject(sentence)) {
         const dp = DIAGNOSTIC_PRESENT.find((re) => re.test(sentence))
           ?? (sentence.includes("?") && DIAGNOSTIC_QUESTION.test(sentence) ? DIAGNOSTIC_QUESTION : undefined);
         if (dp) {
@@ -509,7 +598,7 @@ export function checkComplianceAxis(
       const deficit = containsAny(s, DEFICIT_PREDICATES);
       const bodyProxy = containsAny(s, BODY_PROXY_NOUNS);
       const otherNoun = containsAny(s, NON_ENUMERATED_POSSESSION_NOUNS);
-      if (deficit && !ABOUT_THE_OFFER.test(sentence)) {
+      if (deficit && !offerIsSubject(sentence)) {
         if (bodyProxy) {
           // §1.3 — negative self-perception about the body, stated via a proxy.
           push("second_person_protected_attribute", 1,

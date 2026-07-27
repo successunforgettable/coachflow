@@ -367,3 +367,67 @@ describe("enforcement scope — enumerated blocks, house style labels", () => {
     console.log("NON-ENUMERATED: 4/4 label without blocking");
   });
 });
+
+/**
+ * VOCABULARY EXPANSION + OFFER-GUARD SUBJECT POSITION.
+ *
+ * The vocabulary only says which nouns are protected; the anchoring engine decides whether
+ * a violation occurred. Each term is therefore tested BOTH ways — predicated of the reader
+ * (must block) and as the offer's or the coach's own account (must pass).
+ */
+describe("expanded vocabulary — anchoring decides, not the noun", () => {
+  const pairs: [string, string, string][] = [
+    ["visa status",   "Worried about your visa status?",                       "Immigration paperwork support is part of the programme."],
+    ["voting status", "Your voting status shouldn't cost you the job.",        "Civic engagement is one module in the curriculum."],
+    ["union member",  "Are you a union member being passed over?",             "The programme works for union members and non-members alike."],
+    ["diabetes",      "Reverse your diabetes in 90 days.",                     "I built the plan after my own diabetes diagnosis."],
+    ["cancer",        "Since your cancer diagnosis, everything changed.",      "I coached through my own cancer treatment."],
+    ["hiv",           "Living with HIV? This changes things.",                 "The programme is open to people living with HIV."],
+    ["eating disorder","Is your eating disorder running the show?",            "The approach avoids eating-disorder triggers by design."],
+    ["ibs",           "Your IBS is not your fault.",                           "The plan is IBS-friendly throughout."],
+    ["bloating",      "Tired of your bloating?",                               "The meal plan reduces bloating for most people."],
+    ["night sweats",  "Waking up at 3am with night sweats?",                   "I remember the 3am night sweats vividly."],
+    ["adhd",          "Is your ADHD wrecking your focus?",                     "I was diagnosed with ADHD at forty."],
+    ["bankruptcy",    "Since your bankruptcy, nobody will lend to you.",       "I went through bankruptcy myself in 2019."],
+    ["credit score",  "Is your credit score stopping you?",                    "The module explains how credit scores work."],
+    ["paycheck",      "You're living paycheck to paycheck.",                   "I lived paycheck to paycheck for two years."],
+  ];
+
+  it("BLOCKS every term when it is predicated of the reader", () => {
+    const missed = pairs.filter(([, bad]) => checkComplianceAxis(F(bad)).blocking.length === 0).map(([l]) => l);
+    expect(missed).toEqual([]);
+  });
+
+  it("PASSES every term when it belongs to the offer or the coach's own account", () => {
+    const fps = pairs.filter(([, , ok]) => checkComplianceAxis(F(ok)).blocking.length > 0).map(([l]) => l);
+    expect(fps).toEqual([]);
+  });
+
+  it("rejects the high-false-positive terms — they are product names in real prod copy", () => {
+    for (const ok of [
+      "The Profit Reset changes the structure, not just the story you tell yourself.",
+      "Women who reclaim their sense of self don't need more willpower.",
+      "Ready to stop resetting every month?",
+      "Coaches who talk about career transitions have usually made exactly one.",
+    ]) {
+      expect(checkComplianceAxis(F(ok)).blocking, ok).toHaveLength(0);
+    }
+  });
+});
+
+describe("offer guard requires SUBJECT position, not mere presence", () => {
+  it("exempts a sentence whose subject is the offer", () => {
+    expect(checkComplianceAxis(F("The Fourth Trimester Method starts where your body actually is right now.")).blocking)
+      .toHaveLength(0);
+  });
+
+  it("BLOCKS when the reader is the subject and an offer word merely appears later", () => {
+    // Presence-testing exempted this and let a real §1.1 assertion through.
+    for (const bad of [
+      "You're overweight and the programme helps.",
+      "You're exhausted and your body is failing, so the method rebuilds it.",
+    ]) {
+      expect(checkComplianceAxis(F(bad)).blocking.length, bad).toBeGreaterThan(0);
+    }
+  });
+});
