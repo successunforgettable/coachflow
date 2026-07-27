@@ -209,7 +209,7 @@ export async function runAdCopyGeneration(input: {
   liteMode?: boolean;
   userSubscriptionTier?: string | null;
   userRole?: string | null;
-}): Promise<{ adSetId: string; count: number; headlineCount: number; bodyCount: number; linkCount: number }> {
+}): Promise<{ adSetId: string; count: number; headlineCount: number; bodyCount: number; linkCount: number; generatedCount: number; droppedCount: number }> {
   const { getDb } = await import("./db");
   const { adCopy, services, idealCustomerProfiles, sourceOfTruth, campaigns, campaignKits } = await import("../drizzle/schema");
   const { eq, and } = await import("drizzle-orm");
@@ -775,11 +775,17 @@ Format as JSON array:
     }
   } catch (e) { console.warn("[auto-select] adCopy failed:", e); }
 
+  // Counts report what was actually PERSISTED, not what was generated. The output gate
+  // above drops variants, so returning the pre-drop totals would hand the caller (and the
+  // wizard) a number that does not match the deck in the database.
+  const keptOf = (t: string) => keptInserts.filter((r) => r.contentType === t).length;
   return {
     adSetId,
-    count: allInserts.length,
-    headlineCount: headlineData.headlines.length,
-    bodyCount: bodyData.bodies.length,
-    linkCount: linkData.links.length,
+    count: keptInserts.length,
+    headlineCount: keptOf("headline"),
+    bodyCount: keptOf("body"),
+    linkCount: keptOf("link"),
+    generatedCount: allInserts.length,
+    droppedCount: allInserts.length - keptInserts.length,
   };
 }

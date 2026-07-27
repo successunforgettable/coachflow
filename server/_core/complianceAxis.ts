@@ -28,6 +28,11 @@
  */
 
 import { complianceFilter } from "../lib/complianceFilter";
+// Static import, NOT a lazy require: this module is ESM, and require() is not defined at
+// runtime here. The lazy form type-checked and passed every unit test — the tests call
+// checkComplianceAxis directly and never exercised checkOutput WITH grounding — but threw
+// on the first real generation. Caught by the end-to-end run, not by the suite.
+import { checkFabrication } from "./fabricationValidator";
 
 export type ComplianceClass =
   | "second_person_protected_attribute"   // §1.1  check 1
@@ -597,9 +602,6 @@ export function checkOutput(
   if (cmp.failContext) contexts.push(cmp.failContext);
 
   if (grounding?.corpus && grounding?.supplied) {
-    // Lazy require keeps the compliance axis usable on its own.
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { checkFabrication } = require("./fabricationValidator") as typeof import("./fabricationValidator");
     const fabFields: Record<string, string> = {};
     for (const f of fields) if (typeof f.text === "string" && f.text.trim()) fabFields[f.location] = f.text;
     if (Object.keys(fabFields).length > 0) {

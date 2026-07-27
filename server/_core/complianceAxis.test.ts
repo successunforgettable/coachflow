@@ -265,3 +265,47 @@ describe("deliverable guard does not create false negatives", () => {
     }
   });
 });
+
+/**
+ * checkOutput WITH grounding — the path the generators actually call.
+ *
+ * This exists because a lazy `require()` inside checkOutput type-checked, passed all 32
+ * tests, and then threw "require is not defined" on the first real generation: every test
+ * above calls checkComplianceAxis directly, so the grounded path was never executed. The
+ * suite must exercise the call shape the wiring uses.
+ */
+describe("checkOutput (the shared pass the generators call)", () => {
+  const svc: any = { id: 1, name: "Launch Coaching", description: "A programme for new coaches.",
+    targetCustomer: "new coaches", mainBenefit: "book their first clients" };
+
+  it("runs both axes without throwing, and merges their hits", async () => {
+    const { checkOutput } = await import("./complianceAxis");
+    const { buildCoachCorpus, buildProofSupplied } = await import("./groundingCorpus");
+    const grounding = { corpus: buildCoachCorpus({ service: svc }), supplied: buildProofSupplied(svc) };
+    const r = checkOutput(
+      [{ location: "body", text: "You're exhausted. 87% of coaches never book a second client.", role: "body" }],
+      grounding,
+    );
+    const classes = r.blocking.map((h) => String(h.classId));
+    expect(classes).toContain("second_person_protected_attribute"); // compliance axis
+    expect(classes).toContain("invented_statistic");                // fabrication axis
+    expect(r.failContext.length).toBeGreaterThan(0);
+  });
+
+  it("works with no grounding supplied (compliance only)", async () => {
+    const { checkOutput } = await import("./complianceAxis");
+    const r = checkOutput([{ location: "body", text: "You're exhausted and your body is failing you.", role: "body" }]);
+    expect(r.ok).toBe(false);
+  });
+
+  it("passes clean first-person copy on the grounded path", async () => {
+    const { checkOutput } = await import("./complianceAxis");
+    const { buildCoachCorpus, buildProofSupplied } = await import("./groundingCorpus");
+    const grounding = { corpus: buildCoachCorpus({ service: svc }), supplied: buildProofSupplied(svc) };
+    const r = checkOutput(
+      [{ location: "body", text: "I reopened the same proposal four times before sending it. That draft sat in my outbox for nine days.", role: "body" }],
+      grounding,
+    );
+    expect(r.blocking, JSON.stringify(r.blocking)).toHaveLength(0);
+  });
+});
