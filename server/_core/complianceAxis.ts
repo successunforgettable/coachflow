@@ -137,6 +137,11 @@ const DEFICIT_PREDICATES = [
   "losing", "lost", "stuck", "trapped", "behind", "falling behind",
   "not enough", "never enough", "running on empty", "nothing left",
   "avoid", "avoiding", "hide", "hiding", "dread", "dreading", "ashamed", "embarrassed",
+  // Added by the exhaustive triage of released texts: these predications of a body noun
+  // were slipping through. Each is safe only because the rule ALSO requires a body noun
+  // in the same sentence — "not sure" alone is ordinary hedging.
+  "expanding", "gained", "put on", "piled on", "said no", "won't budge", "not sure",
+  "can't trust", "cannot trust", "don't trust",
 ];
 
 // Intimate-possession nouns that carry an implied owner even with a definite article.
@@ -156,6 +161,10 @@ const BODY_PROXY_NOUNS = [
   "clothes", "jeans", "dress", "shirt", "trousers", "wardrobe",
   "mirror", "camera", "photo", "photos", "photograph", "photographs", "scale", "scales",
   "reflection", "body", "stomach", "arms", "legs", "face", "skin", "hair",
+  // Anatomy the exhaustive triage of released texts revealed as missing. "midsection" was
+  // the leaf ("still see your midsection expanding?"); this is the family.
+  "midsection", "waistline", "waist", "belly", "thighs", "hips", "torso", "jawline",
+  "silhouette", "double chin", "love handles", "muffin top", "bingo wings",
 ];
 
 // Employment and history nouns. NOT on Meta's enumerated list — a CV gap, a work history
@@ -229,6 +238,8 @@ const APPEARANCE_COMPARISON = [
   "before and after", "before & after", "before/after",
   "pre-pregnancy body", "pre-baby body", "get your body back", "bounce back",
   "beach body", "bikini body", "summer body", "dress size", "how you used to look",
+  "back inside your own body", "your own body after", "back into your old",
+  "pre-baby", "snap back", "before the baby",
   "the old you", "back to your old", "your best self",
 ];
 
@@ -322,7 +333,37 @@ const lower = (s: string) => s.toLowerCase();
  * Multi-word terms ("night sweats", "paycheck to paycheck") still match as phrases.
  */
 const containsAny = (hay: string, needles: string[]) =>
-  needles.find((n) => new RegExp(`\\b${n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(hay));
+  needles.find((n) => termRe(n).test(hay));
+
+/**
+ * Word-boundary matching with INFLECTION tolerance.
+ *
+ * Plain substring matching produced silent false positives ("body" inside "noBODY";
+ * "skin" inside "asking"; "face" inside "surface"). A bare \b fix over-corrected the
+ * other way and stopped matching inflections — "avoid" no longer matched "avoided", which
+ * released "That photo you avoided." Allowing the common suffixes keeps both directions
+ * honest: "hive" still does not match "hiv", because "e" alone is not a suffix here.
+ */
+/**
+ * Is `term` predicated of the reader in this sentence? Checked in both directions —
+ * reader-then-term ("your body is failing") and term-then-reader ("the exhaustion you
+ * feel") — and built from termRe so inflection handling matches containsAny exactly.
+ */
+function adjacentToReader(sentence: string, term: string): boolean {
+  const t = termRe(term).source.replace(/^\\b/, "").replace(/\\b$/, "");
+  return new RegExp(`\\byou(?:'re|r|\\s+are|\\s+feel|\\s+felt|\\s+look)?\\b[^.?!]{0,70}\\b${t}\\b`, "i").test(sentence)
+    || new RegExp(`\\b${t}\\b[^.?!]{0,45}\\byou\\b`, "i").test(sentence);
+}
+
+const TERM_RE_CACHE = new Map<string, RegExp>();
+function termRe(term: string): RegExp {
+  let re = TERM_RE_CACHE.get(term);
+  if (!re) {
+    re = new RegExp(`\\b${term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:s|es|ed|d|ing)?\\b`, "i");
+    TERM_RE_CACHE.set(term, re);
+  }
+  return re;
+}
 
 function isOfferDirected(sentence: string): boolean {
   return OFFER_DIRECTED.some((p) => lower(sentence).includes(p));
@@ -556,20 +597,23 @@ export function checkComplianceAxis(
       // rule fired on ordinary nutrition and fitness copy.
       const neutralOnly = (t: string) => NEUTRAL_ATTRIBUTE_TERMS.includes(t);
       const negativeContext = !!containsAny(s, DEFICIT_PREDICATES) || !!containsAny(s, APPEARANCE_COMPARISON)
-        || /\b(tired of|sick of|struggling|failing|embarrassed|ashamed|hate|hating|stuck|wrong|broken|no longer|worse|not where|should be|gave up|betrayed|hijack)\b/i.test(sentence)
+        || /\b(tired of|sick of|struggling|failing|embarrassed|ashamed|hate|hating|stuck|wrong|broken|no longer|worse|not where|should be|gave up|betrayed|hijack|expanding|gained|put on|piled on|said no|won't budge|can't trust|cannot trust|don't trust)\b/i.test(sentence)
         // Possession denial characterises the reader's body just as directly as
         // "wrong" does — "a body clock you don't currently have".
         || /\byou\s+(don't|do not|didn't|can't|cannot|no longer)\b/i.test(sentence);
+      // Adjacency in BOTH directions, through the SAME matcher as everything else. These
+      // were hand-rolled and lacked termRe's inflection tolerance, so the forward and
+      // reverse checks silently disagreed with containsAny about what a term matches.
       const attr = SECOND_RE.test(sentence) && !offerIsSubject(sentence)
-        ? PROTECTED_ATTRIBUTE_TERMS.find((t) =>
-            new RegExp(`\\byou(?:'re|r|\\s+are|\\s+feel|\\s+felt|\\s+look)?\\b[^.?!]{0,70}\\b${t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(sentence)
-            || new RegExp(`\\b${t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b[^.?!]{0,45}\\byou\\b`, "i").test(sentence))
+        ? PROTECTED_ATTRIBUTE_TERMS.find((t) => adjacentToReader(sentence, t))
         : undefined;
       // Order matters: containsAny returns the FIRST list match, so a neutral term can mask
       // a non-neutral one ("the weight of a life" masked "exhaustion"). Decide on whether
       // ANY non-neutral attribute matched, not on whichever matched first.
+      // Uses the SAME matcher as containsAny — a second hand-rolled regex here is how the
+      // two drift apart.
       const attrIsNonNeutral = attr !== undefined &&
-        PROTECTED_ATTRIBUTE_TERMS.some((t) => !neutralOnly(t) && new RegExp(`\\b${t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(sentence));
+        PROTECTED_ATTRIBUTE_TERMS.some((t) => !neutralOnly(t) && termRe(t).test(sentence));
       if (attr && (attrIsNonNeutral || negativeContext)) {
         push("second_person_protected_attribute", 1,
           "This states a personal attribute — health, body, financial standing, background or circumstances — as a fact about the person reading it. The same point lands as the coach's own experience, or as what the offer does.",

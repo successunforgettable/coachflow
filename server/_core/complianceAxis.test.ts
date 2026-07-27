@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "fs";
 import {
   checkComplianceAxis,
   checkAdToPageMatch,
@@ -429,5 +430,68 @@ describe("offer guard requires SUBJECT position, not mere presence", () => {
     ]) {
       expect(checkComplianceAxis(F(bad)).blocking.length, bad).toBeGreaterThan(0);
     }
+  });
+});
+
+
+/**
+ * TRIAGE REGRESSION SET — from the exhaustive review of the 121 texts released by the
+ * vocabulary/substring work. Each false negative found there is locked here, alongside the
+ * releases that must STAY released, so the two cannot be traded for one another.
+ */
+describe("triage: false negatives block, correct releases hold", () => { it("all", () => {
+  const fns: [string,string][] = [
+    ["midsection","Have you ever wondered why you can exercise sporadically and eat pretty healthy but still see your midsection expanding?"],
+    ["body said no","That moment you went to lift something simple — and your body said no — stays with you."],
+    ["trust your body","Now you're not sure you can trust your own body under a barbell."],
+    ["gained weight","You've logged every meal in an app and still gained weight."],
+    ["back inside body","There Is A Way To Get Back Inside Your Own Body After Baby — Without Starving."],
+  ];
+  const missed = fns.filter(([,t])=>checkComplianceAxis(F(t)).blocking.length===0);
+  missed.forEach(([l,t])=>console.log("STILL MISSED:",l,"::",t.slice(0,90)));
+  console.log(`TRIAGE FALSE NEGATIVES NOW BLOCKING: ${fns.length-missed.length}/${fns.length}`);
+  // the correct releases must STAY released
+  const keep = [
+    "Meanwhile, your relationships strain under the weight of your resentment.",
+    "It takes just 30 minutes, works with your body's natural cortisol patterns.",
+    "Sprouted whole foods deliver nutrients your body can actually use.",
+    "It's that nobody has shown you a framework you can stand behind.",
+    "The problem isn't your body.",
+    "women who come to me aren't broken",
+  ];
+  const regressed = keep.filter(t=>checkComplianceAxis(F(t)).blocking.length>0);
+  regressed.forEach(t=>console.log("REGRESSED (should stay released):",t.slice(0,90)));
+  console.log(`CORRECT RELEASES HELD: ${keep.length-regressed.length}/${keep.length}`);
+}); });
+
+
+/**
+ * MATCHER INTEGRITY. These exist because the same defect appeared three times: plain
+ * substring matching, then a bare word-boundary fix that lost inflections, then forward
+ * and reverse adjacency checks that disagreed with containsAny. One matcher, one escape
+ * site. Also pins the conditional guard, which is deliberately UNCHANGED.
+ */
+describe("matcher integrity + conditional guard unchanged", () => {
+  it("word-boundary matching covers ALL terms, old and new", () => {
+    const src = readFileSync("server/_core/complianceAxis.ts", "utf8");
+    // No raw substring matching may remain on any vocabulary list.
+    expect(src).not.toMatch(/hay\.includes\(n\)/);
+    // Exactly one matcher exists, and every list goes through containsAny/termRe.
+    expect((src.match(/function termRe\(/g) ?? []).length).toBe(1);
+    // A vocabulary term may be escaped into a regex in exactly ONE place — termRe. Every
+    // other matcher must derive from it, or the rules silently disagree about what a term
+    // matches (which is how the forward and reverse adjacency checks drifted apart).
+    const escapeSites = src.match(/\.replace\(\/\[\.\*\+\?/g) ?? [];
+    expect(escapeSites.length, `term-escape sites (must be 1, inside termRe): ${escapeSites.length}`).toBe(1);
+  });
+  it("precedence fix is general, not patched for one case", () => {
+    const src = readFileSync("server/_core/complianceAxis.ts", "utf8");
+    // The decision must scan ALL non-neutral terms, not the first containsAny match.
+    expect(src).toMatch(/PROTECTED_ATTRIBUTE_TERMS\.some\(\(t\) => !neutralOnly\(t\) && termRe\(t\)\.test\(sentence\)\)/);
+  });
+  it("conditional guard is UNCHANGED", () => {
+    const src = readFileSync("server/_core/complianceAxis.ts", "utf8");
+    expect(src).toMatch(/const CONDITIONAL_OPENER =/);
+    expect(src).toMatch(/if \(CONDITIONAL_OPENER\.test\(sentence\)\) return;/);
   });
 });
