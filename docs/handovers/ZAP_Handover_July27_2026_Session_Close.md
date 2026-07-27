@@ -143,6 +143,63 @@ third-person framing pushes them straight into inventing the exact Class-1 fabri
 First person needs no client at all. They reinforce each other, which is why they ship as one layer rather
 than as two unrelated passes.
 
+## 4a. COMPLIANCE LAYER — SHIPPED + LIVE (2026-07-27)
+
+**`HEAD = origin/railway-build = 7450103`** (merge of `held/compliance-layer-2026-07-27`, six commits:
+register standard · compliance axis · combined FP sweep · noun-phrase fix + wiring · two runtime bugs ·
+reword action). Railway `ddd2d60c` SUCCESS, image `sha256:bfd5a5ea13ad`, clean boot, prod 200. Client bundle
+`index-DXG_4j4E.js` carries all five new strings. **No migration.** Live post-deploy generation on the running
+site: 46 generated → 12 dropped → 34 persisted, DB row count matched the API exactly, gate fired on real prod
+content, teardown returned every table to baseline.
+
+⚠️ **Deployed-SHA confirmation is INDIRECT.** `RAILWAY_GIT_COMMIT_SHA` is empty under `railway run` (it injects
+local env, not the container's), so the deployed commit could not be read back. Evidence is: deploy triggered
+on the push, only SUCCESS since, and the served bundle contains strings unique to the pushed commits. Worth
+finding a direct method before the next ship.
+
+## 4b. BACKLOG banked from the compliance-layer ship
+
+### (1) PRESS/MEDIA NAMES — FIXED ATTRIBUTION FORMAT ONLY (Arfeen's call, NOT yet built)
+Press and media names may appear ONLY in a fixed format — **"As seen in: [publication]"** for publications,
+**"As seen on: [TV/podcast]"** for broadcast — and **never woven into generated prose**.
+
+**Root cause:** the model inflates a true supplied fact into a claim the fact does not support. Observed live:
+supplied `pressFeatures: "SaaStr, Sales Hacker"` became *"Recognised by SaaStr and Sales Hacker as a structured
+approach that works on live pipeline."* Being featured somewhere is not that outlet endorsing the method. The
+fabrication validator correctly passes it — the names ARE supplied — so this is not a detector gap.
+
+**Why format-lock rather than detection:** a detector would have to judge whether each sentence overstates the
+supplied fact, which is the fuzzy problem we keep losing. Removing the prose freedom removes the inflation —
+the same principle as `[INSERT_DATE]` for urgency: don't ask the model to be careful, remove the opportunity to
+be wrong.
+
+**SCOPE — fix the family, not the leaf:** every surface where supplied press names can surface — ad copy body
+(the authority angle especially), scripts, LP prose, email — NOT only the LP "As Seen In" section. Locking just
+that section relocates the inflation into prose.
+
+### (2) SHORT-FIELD READER-QUESTIONS — ASSESS BEFORE FIXING
+Previously logged as one "register residual". **That was wrong — they are not one thing, and at least one may be
+a DETECTION MISS rather than style.** Assess each against Meta's enumerated attribute list specifically
+(physical/mental health incl. medical conditions; vulnerable financial status), then split:
+
+* **"Stuck financially?"** — plausibly implies **vulnerable financial status**, which IS enumerated. If so this is
+  a genuine Tier-1 exposure the compliance axis is currently **MISSING** — a bug, not polish.
+* **"Stressed about how long this is taking?"** — "stress" shades toward mental health, which is enumerated, but
+  Meta's docs do not resolve whether ordinary stress language counts. This is one of the genuinely undefined
+  boundaries in the reference's OPEN section. **Do NOT invent a threshold**; report it as undefined if that is
+  what it is.
+* **"Scared of crypto?"** — caution about an asset class is neither a health condition nor financial
+  vulnerability. Probably outside the enumerated list; style rather than violation.
+
+**DELIVERABLE:** a per-phrase verdict — detection miss (fix the detector) / style preference (register polish) /
+genuinely undefined (leave, document) — each traced to Meta's own wording. Only then propose fixes.
+
+### (3) CARRY FORWARD — "throws only if nothing survives" NEVER EXECUTED LIVE
+The adCopy generator throws when every variant is dropped. The arithmetic and the empty-deck condition are
+verified; **the live throw has never been observed** because forcing all 46 generated variants to violate is not
+reproducible on demand. Recorded so it is not mistaken for verified. (Live prod drop rates so far: beginner 2/46,
+crypto 5/46, attribute 8/46, veteran 10/48, health 10/46, career-pivot 12/46 — nothing close to total.)
+
 ## 5. Still open — Arfeen actions
 
 * **🔴 SECURITY: rotate `zap-e2e-smoke@mailinator.com`'s password** and update `~/.zap-e2e-creds.env` before
