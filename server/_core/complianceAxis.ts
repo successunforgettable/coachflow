@@ -41,7 +41,8 @@ export type ComplianceClass =
   | "crypto_trade_endorsement"            // §1.8  check 4
   | "deceptive_urgency"                   // §1.6  check 6 (delegated to complianceFilter)
   | "ad_to_page_mismatch"                 // §1.4  check 3 (publish only)
-  | "special_ad_category_employment";     // Tier-2 evidence — ADVISORY ONLY, check 5
+  | "special_ad_category_employment"      // Tier-2 evidence — ADVISORY ONLY, check 5
+  | "register_diagnostic_address";        // TIER 3 house style — LABELS, never blocks
 
 export type ComplianceHit = {
   classId: ComplianceClass;
@@ -70,6 +71,16 @@ const PROTECTED_ATTRIBUTE_TERMS = [
   "anxiety", "anxious", "depression", "depressed", "burnout", "burnt out", "exhausted",
   "exhaustion", "insomnia", "sleepless", "menopause", "postpartum", "post-natal",
   "pregnancy", "pre-pregnancy", "fertility", "disability", "disabled", "chronic",
+  // Named medical conditions — physical or mental health is enumerated in §1.1, and the
+  // enforcement narrowing makes this vocabulary load-bearing: a burden frame now blocks
+  // only when it names an enumerated attribute, so a condition missing from this list
+  // would silently stop blocking. ("Tired of your acne?" is the reference's own §3.1
+  // prohibited example and was missed until this was added.)
+  "acne", "eczema", "psoriasis", "rosacea", "migraine", "migraines", "ibs", "reflux",
+  "thyroid", "diabetes", "arthritis", "back pain", "joint pain", "blood pressure",
+  "cholesterol", "adhd", "autism", "ptsd", "ocd", "burn-out", "panic attacks",
+  "addiction", "alcohol", "menopausal", "perimenopause", "endometriosis", "fatigue",
+  "hair loss", "balding", "cellulite", "bloating", "gut health",
   // vulnerable financial status
   "broke", "debt", "in debt", "debts", "bankrupt", "overdrawn", "can't afford", "cannot afford",
   "struggling financially", "financially stuck", "paycheck to paycheck",
@@ -96,12 +107,19 @@ const DEFICIT_PREDICATES = [
 
 // Intimate-possession nouns that carry an implied owner even with a definite article.
 // "The clothes still don't fit" has no pronoun but is unmistakably about someone.
-const IMPLIED_POSSESSION_NOUNS = [
+// BODY-PROXY nouns. Meta §1.3 prohibits copy that implies or generates negative
+// self-perception about the body; "the clothes still don't fit" and "the mirror is a
+// daily reminder" do exactly that without naming a body part. ENUMERATED → tier 1.
+const BODY_PROXY_NOUNS = [
   "clothes", "jeans", "dress", "shirt", "trousers", "wardrobe",
   "mirror", "camera", "photo", "photos", "photograph", "photographs", "scale", "scales",
   "reflection", "body", "stomach", "arms", "legs", "face", "skin", "hair",
-  "cv", "resume", "résumé", "record", "history", "gap",
 ];
+
+// Employment and history nouns. NOT on Meta's enumerated list — a CV gap, a work history
+// or a career record is not a protected attribute. Diagnostic address about these is
+// house style (Tier 3), so it LABELS and no longer blocks. See ENFORCEMENT SCOPE below.
+const NON_ENUMERATED_POSSESSION_NOUNS = ["cv", "resume", "résumé", "record", "history", "gap"];
 
 // Second-person assertions of what the reader is DOING or has DONE. This is the
 // canonical prohibited form in the reference (§3.1) — "You're sitting in the car park to
@@ -326,6 +344,33 @@ function isDeliverableNounPhrase(sentence: string): boolean {
 
 export type FieldRole = "short" | "body" | "cta";
 
+/**
+ * ENFORCEMENT SCOPE (2026-07-27, Arfeen's decision) — ONLY Tier 1 blocks.
+ *
+ * The compliance reference is explicit that Tier 1 (confirmed Meta policy) is the ONLY
+ * tier that may become enforcement logic. The first cut of this axis blocked on the
+ * REGISTER STANDARD as well, which is Tier 3 — ZAP's own house style. That meant we were
+ * gating on our own preference: a second-person sentence about someone's job situation,
+ * business frustration or ambition was blocked even though employment status appears
+ * nowhere on Meta's enumerated attribute list.
+ *
+ * Measured consequence: the career-pivot shape lost 12 of 16 body angles on prod, and
+ * career + client-acquisition is the largest cluster in the real service distribution —
+ * the niche with the most users was getting the thinnest decks, on a rule Meta does not
+ * impose.
+ *
+ * WHAT STILL BLOCKS (tier 1): second person plus an ENUMERATED attribute — physical or
+ * mental health including medical conditions, vulnerable financial status, race,
+ * ethnicity, religion, age, sexual orientation, gender identity, disability, criminal
+ * record, voting status, trade union membership, name — plus §1.3 negative
+ * self-perception, §1.8 crypto endorsement, §1.4 ad-to-page mismatch, §1.6 deceptive
+ * urgency.
+ *
+ * WHAT NOW LABELS INSTEAD (tier 2, `register_diagnostic_address`): diagnostic second
+ * person about NON-enumerated topics. The register standard remains in every generation
+ * prompt and still shapes the copy — it simply no longer gates it. Expect output to be
+ * less uniformly first-person on non-enumerated topics; that is the intended trade.
+ */
 export function checkComplianceAxis(
   fields: Array<{ location: string; text: string | null | undefined; role?: FieldRole }>,
 ): ComplianceAxisResult {
@@ -350,9 +395,16 @@ export function checkComplianceAxis(
         const clause = lower(descriptor[descriptor.length - 1] || "");
         const attr = containsAny(clause, PROTECTED_ATTRIBUTE_TERMS);
         const deficit = containsAny(clause, DEFICIT_PREDICATES);
-        if (attr || deficit) {
+        if (attr) {
+          // Enumerated attribute used as an audience identifier — Meta policy.
           push("audience_attribute_descriptor", 1,
-            "This names a group by a personal attribute or a difficulty, which reads as identifying the audience by that attribute. Describing what the offer is for, or the situation it addresses, carries the same targeting without the assertion.",
+            "This names a group by a personal attribute, which reads as identifying the audience by that attribute. Describing what the offer is for, or the situation it addresses, carries the same targeting without the assertion.",
+            descriptor[0], f.location);
+        } else if (deficit) {
+          // A difficulty that is NOT an enumerated attribute ("designers who keep losing
+          // pitches"). House style, not Meta policy → label only.
+          push("register_diagnostic_address", 2,
+            "This names a group by a difficulty. Meta's policy does not reach this — recorded as register, not blocked.",
             descriptor[0], f.location);
         }
       }
@@ -371,9 +423,17 @@ export function checkComplianceAxis(
       // "Struggling with debt?" carries no pronoun for anchoring to resolve, yet is
       // prohibited in the reference's own table (§3.1).
       if (burdenFrameAddress(sentence)) {
-        push("second_person_protected_attribute", 1,
-          "This opens by naming a difficulty as the reader's own. Naming what the offer is for carries the same targeting without stating anything about them.",
-          sentence, f.location);
+        // "Struggling with debt?" names an ENUMERATED attribute (vulnerable financial
+        // status) → policy. "Struggling with your pipeline?" does not → house style.
+        if (containsAny(lower(sentence), PROTECTED_ATTRIBUTE_TERMS)) {
+          push("second_person_protected_attribute", 1,
+            "This opens by naming a personal attribute as the reader's own. Naming what the offer is for carries the same targeting without stating anything about them.",
+            sentence, f.location);
+        } else {
+          push("register_diagnostic_address", 2,
+            "This opens by naming a difficulty as the reader's own. Not an attribute Meta enumerates — recorded as register, not blocked.",
+            sentence, f.location);
+        }
         return;
       }
 
@@ -384,6 +444,23 @@ export function checkComplianceAxis(
         if (qAttr) {
           push("second_person_protected_attribute", 1,
             "This asks the reader about a personal attribute, which reads as knowing it applies to them. Naming what the offer helps with states the same thing about the offer instead.",
+            sentence, f.location);
+          return;
+        }
+      }
+
+      // §1.3 BODY PROXY — checked BEFORE the anchor gate. "The clothes still don't fit and
+      // the mirror is a daily reminder" carries no pronoun at all, so anchoring resolves it
+      // to "none" and would skip it; it is nonetheless the negative self-perception §1.3
+      // prohibits. Suppressed only when the sentence is the coach's own first-person
+      // account ("The clothes still hang there. I kept them too.").
+      if (anchors[i] !== "first" && !ABOUT_THE_OFFER.test(sentence)) {
+        const ls = lower(sentence);
+        const bp = containsAny(ls, BODY_PROXY_NOUNS);
+        const df = containsAny(ls, DEFICIT_PREDICATES);
+        if (bp && df) {
+          push("second_person_protected_attribute", 1,
+            "This describes the reader's body, or something standing in for it, as lacking or failing. Told as a moment the coach lived, the same detail carries its full weight without asserting anything about the reader.",
             sentence, f.location);
           return;
         }
@@ -401,8 +478,8 @@ export function checkComplianceAxis(
       // second-person marker, and only in a sentence that carries one, removes that class.
       const attr = SECOND_RE.test(sentence) && !ABOUT_THE_OFFER.test(sentence)
         ? PROTECTED_ATTRIBUTE_TERMS.find((t) =>
-            new RegExp(`\\byou(?:'re|r|\\s+are|\\s+feel|\\s+felt|\\s+look)?\\b[^.?!]{0,24}\\b${t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(sentence)
-            || new RegExp(`\\b${t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b[^.?!]{0,16}\\byou\\b`, "i").test(sentence))
+            new RegExp(`\\byou(?:'re|r|\\s+are|\\s+feel|\\s+felt|\\s+look)?\\b[^.?!]{0,70}\\b${t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(sentence)
+            || new RegExp(`\\b${t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b[^.?!]{0,45}\\byou\\b`, "i").test(sentence))
         : undefined;
       if (attr) {
         push("second_person_protected_attribute", 1,
@@ -417,8 +494,11 @@ export function checkComplianceAxis(
         const dp = DIAGNOSTIC_PRESENT.find((re) => re.test(sentence))
           ?? (sentence.includes("?") && DIAGNOSTIC_QUESTION.test(sentence) ? DIAGNOSTIC_QUESTION : undefined);
         if (dp) {
-          push("second_person_protected_attribute", 1,
-            "This tells the reader what they are doing or have been through. The same moment, told as one the coach lived, keeps every bit of its force and claims nothing about the person reading.",
+          // Telling the reader what they are doing is the register standard's concern, not
+          // Meta's — the enumerated-attribute case is caught by the attribute rule above at
+          // tier 1. Labels, does not block.
+          push("register_diagnostic_address", 2,
+            "This tells the reader what they are doing or have been through. The same moment, told as one the coach lived, keeps every bit of its force and claims nothing about the person reading. Recorded as register, not blocked.",
             sentence, f.location);
           return;
         }
@@ -426,12 +506,21 @@ export function checkComplianceAxis(
 
       // Implied address: no attribute noun, but an intimate-possession noun plus a
       // deficit predicate, in a sentence the reader is the subject of.
-      const noun = containsAny(s, IMPLIED_POSSESSION_NOUNS);
       const deficit = containsAny(s, DEFICIT_PREDICATES);
-      if (noun && deficit && !ABOUT_THE_OFFER.test(sentence)) {
-        push("second_person_protected_attribute", 1,
-          "This describes something of the reader's as lacking or failing. Told as a moment the coach lived, the same detail carries its full weight without asserting anything about the reader.",
-          sentence, f.location);
+      const bodyProxy = containsAny(s, BODY_PROXY_NOUNS);
+      const otherNoun = containsAny(s, NON_ENUMERATED_POSSESSION_NOUNS);
+      if (deficit && !ABOUT_THE_OFFER.test(sentence)) {
+        if (bodyProxy) {
+          // §1.3 — negative self-perception about the body, stated via a proxy.
+          push("second_person_protected_attribute", 1,
+            "This describes the reader's body, or something standing in for it, as lacking or failing. Told as a moment the coach lived, the same detail carries its full weight without asserting anything about the reader.",
+            sentence, f.location);
+        } else if (otherNoun) {
+          // A CV gap or work history is not an enumerated attribute.
+          push("register_diagnostic_address", 2,
+            "This describes something of the reader's as lacking. Not an attribute Meta enumerates — recorded as register, not blocked.",
+            sentence, f.location);
+        }
       }
     });
 

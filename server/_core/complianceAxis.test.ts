@@ -56,15 +56,30 @@ describe("check 1 — assertions about the reader", () => {
     }
   });
 
-  it("catches the reference's own prohibited forms (§3.1), including pronoun-free ones", () => {
+  /**
+   * ENFORCEMENT SCOPE. §3.1 is TIER 3 — ZAP's own register standard — and only Tier 1 may
+   * become enforcement logic. So the §3.1 examples split by whether they name an attribute
+   * Meta actually enumerates. Both halves are still DETECTED; they differ in disposition.
+   */
+  it("BLOCKS §3.1 forms that name an ENUMERATED attribute", () => {
     for (const bad of [
-      "You're sitting in the car park to delay going in.",
-      "Are you struggling to land high-ticket clients?",
-      "Tired of your acne?",
-      "Struggling with debt?",              // carries NO pronoun for anchoring to resolve
-      "Living with anxiety? This helps.",
+      "Tired of your acne?",                // physical health
+      "Struggling with debt?",              // vulnerable financial status, no pronoun
+      "Living with anxiety? This helps.",   // mental health
     ]) {
       expect(checkComplianceAxis(F(bad)).blocking.length, bad).toBeGreaterThan(0);
+    }
+  });
+
+  it("LABELS §3.1 forms that name no enumerated attribute — house style, not Meta policy", () => {
+    for (const styleOnly of [
+      "You're sitting in the car park to delay going in.",   // behaviour, not an attribute
+      "Are you struggling to land high-ticket clients?",     // business frustration
+    ]) {
+      const r = checkComplianceAxis(F(styleOnly));
+      expect(r.blocking, `${styleOnly} should not block`).toHaveLength(0);
+      expect(r.advisories.map((h) => h.classId), styleOnly).toContain("register_diagnostic_address");
+      expect(r.ok, styleOnly).toBe(true);
     }
   });
 
@@ -307,5 +322,48 @@ describe("checkOutput (the shared pass the generators call)", () => {
       grounding,
     );
     expect(r.blocking, JSON.stringify(r.blocking)).toHaveLength(0);
+  });
+});
+
+
+/**
+ * ENFORCEMENT-SCOPE REGRESSION SET.
+ *
+ * Narrowing enforcement to Tier 1 carries one risk: an enumerated-attribute violation
+ * slipping through. These plant one case per enumerated class and assert it still blocks,
+ * alongside the non-enumerated cases that must now only label. Both halves matter — the
+ * set fails if enforcement is too narrow OR creeps back to blocking house style.
+ */
+describe("enforcement scope — enumerated blocks, house style labels", () => {
+  it("all block", () => {
+    const cases: [string,string][] = [
+      ["physical health","You're exhausted and your body is failing you."],
+      ["medical condition","Tired of your acne?"],
+      ["mental health","Living with anxiety? This helps."],
+      ["mental health 2","Your depression is why the mornings are hard."],
+      ["financial status","Struggling with debt?"],
+      ["financial status 2","You're broke and another month just went by."],
+      ["body proxy (§1.3)","The clothes still don't fit and the mirror is a daily reminder."],
+      ["negative self-percept","Get your body back — see the before and after."],
+      ["audience by attribute","FOR WOMEN WHO JUST HAD A BABY AND FEEL LIKE THEIR BODY NO LONGER BELONGS TO THEM"],
+      ["age","Are you a struggling 45-year-old?"],
+      ["criminal record","Your criminal record is the first thing they see."],
+      ["body clock","Every tip you've tried was calibrated to the wrong body clock."],
+    ];
+    const missed = cases.filter(([,t]) => checkComplianceAxis(F(t)).blocking.length === 0);
+    missed.forEach(([l,t]) => console.log("SLIPPED:", l, "::", t));
+    console.log(`PLANTED ENUMERATED: ${cases.length - missed.length}/${cases.length} block`);
+    expect(missed.map(([l]) => l)).toEqual([]);
+  });
+  it("first-person account of the same detail still passes", () => {
+    const r = checkComplianceAxis(F("The clothes still hang there. The ones from before. I kept them too."));
+    expect(r.blocking).toHaveLength(0);
+    console.log("FIRST-PERSON INVERSE: passes (no false positive)");
+  });
+  it("non-enumerated labels only", () => {
+    for (const t of ["You're sitting in the car park to delay going in.","Are you struggling to land high-ticket clients?","You keep rewriting the same proposal every Sunday.","The CV gap is the only thing they read."]) {
+      expect(checkComplianceAxis(F(t)).blocking, t).toHaveLength(0);
+    }
+    console.log("NON-ENUMERATED: 4/4 label without blocking");
   });
 });

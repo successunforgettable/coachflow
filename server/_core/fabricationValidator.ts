@@ -210,6 +210,24 @@ function isTitleCased(line: string): boolean {
   return capped / words.length >= 0.85;
 }
 
+/**
+ * The CTA strings ZAP's own compliance rules REQUIRE the model to use. Each is two or
+ * three capitalised words absent from the coach's corpus, so proper-noun scanning read
+ * them as invented named third parties and dropped the whole variant.
+ *
+ * Measured live (2026-07-27): "Learn More" accounted for 2 of 6 career-shape body drops.
+ * The interaction is worse than it looks — the phrase that opens proper-noun scanning
+ * ("the same method I used to build…") is first-person construction the REGISTER STANDARD
+ * actively encourages, so one layer pushed the copy into a shape the other then punished,
+ * over a CTA we mandate. Niche-independent; it had been thinning every deck since ship.
+ */
+const APPROVED_CTA_PHRASES = new Set([
+  "learn more", "sign up", "book a call", "get started", "download free guide",
+  "watch free training", "apply now", "register now", "save my spot", "save your seat",
+  "get early access", "join the challenge", "claim your place", "book a discovery call",
+  "reserve your slot", "enrol now", "enroll now", "start now", "download now",
+]);
+
 function unsupportedProperNouns(text: string, corpus: CoachCorpus): string[] {
   const hay = corpus.text.toLowerCase();
   const found = new Set<string>();
@@ -225,6 +243,8 @@ function unsupportedProperNouns(text: string, corpus: CoachCorpus): string[] {
     if (lower.split(/\s+/).some((t) => NON_NAME_TOKENS.has(t))) continue;
     // Tools, platforms and job titles are not named third parties.
     if (lower.split(/\s+/).some((t) => TOOL_OR_ROLE_TOKENS.has(t))) continue;
+    // A CTA we ourselves require the model to write is never an invented third party.
+    if (APPROVED_CTA_PHRASES.has(lower)) continue;
     if (hay.includes(lower)) continue;
     const tokens = lower.split(/\s+/).filter((t) => t.length > 3);
     if (tokens.length > 0 && tokens.every((t) => hay.includes(t))) continue;

@@ -726,19 +726,60 @@ Format as JSON array:
     corpus: buildCoachCorpus({ service, groundingMeta: (icp as any)?.groundingMeta }),
     supplied: buildProofSupplied(service),
   };
+  const gateRole = (t: unknown) => t === "headline" ? "short" as const : t === "link" ? "cta" as const : "body" as const;
+  const gateOne = (row: any) =>
+    checkOutput([{ location: String(row.contentType), text: String(row.content ?? ""), role: gateRole(row.contentType) }], gateGrounding);
+
   const keptInserts: typeof allInserts = [];
   const droppedClasses: string[] = [];
+  const retryable: Array<{ row: any; failContext: string }> = [];
   for (const row of allInserts) {
-    const role = row.contentType === "headline" ? "short" as const
-      : row.contentType === "link" ? "cta" as const : "body" as const;
-    const res = checkOutput([{ location: String(row.contentType), text: String(row.content ?? ""), role }], gateGrounding);
+    const res = gateOne(row);
     if (res.ok) { keptInserts.push(row); continue; }
     droppedClasses.push(...res.blocking.map((h) => String(h.classId)));
+    // BODY copy is retried; headlines and links are not. Measured on prod: 100% of drops
+    // were bodies (46 generated → 34 kept = 15 headlines + 4 bodies + 15 links), and a
+    // 40-character headline has little room for a redraft to change anything.
+    if (row.contentType === "body" && res.failContext) retryable.push({ row, failContext: res.failContext });
   }
-  if (droppedClasses.length > 0) {
+
+  // ── ONE RETRY ROUND ─────────────────────────────────────────────────────────
+  // adCopy was the only generator that dropped without retrying — concepts, scripts and
+  // the landing page all retry. Measured on a career-shaped offer: 10/16 bodies survived
+  // the first draft and 6/6 of the dropped angles recovered on a SINGLE redraft with the
+  // merged failContext, taking the deck to 16/16.
+  //
+  // Reactive by design: it re-runs what actually dropped rather than predicting from the
+  // service record, so it self-corrects for niches nobody has measured. Runs in parallel,
+  // so the cost is one extra round-trip in wall-clock regardless of how many failed.
+  let recoveredCount = 0;
+  if (retryable.length > 0) {
+    const { BODY_ANGLE_PROMPTS: ANGLE_PROMPTS } = await import('./adCopyAngles');
+    const retried = await Promise.all(retryable.map(async ({ row, failContext }) => {
+      try {
+        const anglePrompt = ANGLE_PROMPTS[row.bodyAngle as keyof typeof ANGLE_PROMPTS] ?? "";
+        const resp = await invokeLLM({
+          messages: [
+            { role: "system", content: `${META_COMPLIANCE_RULES}\n\nYou are an expert ad copywriter who specializes in Meta-compliant advertising for coaches, speakers and consultants.\n\n${NO_CREDENTIAL_FABRICATION_RULE}\n\n${REGISTER_STANDARD}` },
+            { role: "user", content: `${cascadeContext}You are rewriting ONE ad body copy using the ${String(row.bodyAngle).replace('_', ' ')} angle.\n\nService: ${service.name}\nTarget Market: ${input.targetMarket}\nPressing Problem: ${resolvedPressingProblem}\nDesired Outcome: ${resolvedDesiredOutcome}\nUnique Mechanism: ${resolvedUniqueMechanism}\n\n${anglePrompt}\n\n${registerPersonGuidance(hasRealProof)}\n\n${physicalGuidance}\n\nCreate ONE body copy (125-150 words). End with: ${input.adCallToAction}.\nReturn ONLY the body text as a single string.\n\n---\n\nIMPORTANT: your previous attempt failed validation. ${failContext}` },
+          ],
+        });
+        const raw = resp.choices[0]?.message?.content;
+        const text = typeof raw === "string" ? raw.trim() : "";
+        if (!text) return null;
+        const candidate = { ...row, content: text };
+        return gateOne(candidate).ok ? candidate : null;
+      } catch { return null; }
+    }));
+    for (const r of retried) if (r) { keptInserts.push(r); recoveredCount++; }
+  }
+  if (retryable.length > 0) {
+    console.log(`[adCopyGenerator] retry round: ${recoveredCount}/${retryable.length} body variants recovered.`);
+  }
+  if (droppedClasses.length > 0 && keptInserts.length < allInserts.length) {
     console.warn(
       `[adCopyGenerator] dropped ${allInserts.length - keptInserts.length}/${allInserts.length} variants ` +
-      `(classes=[${Array.from(new Set(droppedClasses)).join(",")}]); ${keptInserts.length} kept.`,
+      `after retry (classes=[${Array.from(new Set(droppedClasses)).join(",")}]); ${keptInserts.length} kept.`,
     );
   }
   if (keptInserts.length === 0) {
@@ -778,6 +819,7 @@ Format as JSON array:
   // Counts report what was actually PERSISTED, not what was generated. The output gate
   // above drops variants, so returning the pre-drop totals would hand the caller (and the
   // wizard) a number that does not match the deck in the database.
+  // keptInserts already includes anything the retry round recovered.
   const keptOf = (t: string) => keptInserts.filter((r) => r.contentType === t).length;
   return {
     adSetId,

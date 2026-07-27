@@ -244,3 +244,46 @@ describe("failContext is positive-framed (§14)", () => {
     expect(fc).toContain("87%"); // the specific hit is named, as evidence, not as a template
   });
 });
+
+/**
+ * REGRESSION — the CTA false positive. "Learn More" is the CTA ZAP's own compliance rules
+ * mandate; proper-noun scanning read it as an invented named third party whenever an
+ * attribution cue appeared elsewhere in the field, and dropped the variant. The cue that
+ * opened the scan is first-person phrasing the register standard encourages, so our own
+ * two layers were fighting each other over our own mandated string.
+ */
+describe("approved CTA strings are never invented third parties", () => {
+  const svc = { name: "The Career Pivot Intensive", description: "A masterclass using Map, Bridge, Move.",
+    targetCustomer: "mid-career professionals", mainBenefit: "a career pivot" };
+  const c = buildCoachCorpus({ service: svc });
+  const sup = buildProofSupplied(svc);
+  const run = (t: string) => checkFabrication({ fields: { body: t }, corpus: c, supplied: sup });
+
+  it("does not flag the mandated CTA when an attribution cue is present", () => {
+    for (const t of [
+      "It is the same method I used to build my own pivot. Learn More.",
+      "As seen in my own pivot, the sequence holds. Book a Call.",
+      "The same approach I used to grow the practice. Get Started.",
+    ]) {
+      const hits = run(t).blocking.filter((h) => h.classId === "invented_named_third_party");
+      expect(hits, `${t} -> ${JSON.stringify(hits)}`).toHaveLength(0);
+    }
+  });
+
+  it("still flags a genuine named third party in the same sentence as a CTA", () => {
+    const hits = run("As featured alongside Marie Forleo. Learn More.").blocking.map((h) => h.classId);
+    expect(hits).toContain("invented_named_third_party");
+  });
+
+  // KNOWN GAP, documented rather than papered over: a publication whose name contains a
+  // tool/role stoplist token ("Harvard Business REVIEW", "…Report", "…Hour") is missed,
+  // because that stoplist exists to stop job titles and tool names firing. Narrowing it
+  // would reopen that false-positive class, so the trade is deliberate. Recorded for the
+  // press/media backlog item, which restricts press names to a fixed attribution format
+  // and removes the need to detect them in prose at all.
+  it("KNOWN GAP: a publication name containing a stoplist token is not detected", () => {
+    const hits = run("As featured alongside Harvard Business Review. Learn More.").blocking
+      .map((h) => h.classId);
+    expect(hits).not.toContain("invented_named_third_party");
+  });
+});
