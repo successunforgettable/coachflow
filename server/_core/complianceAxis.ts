@@ -173,7 +173,10 @@ const CRYPTO_TERMS = ["crypto", "cryptocurrency", "bitcoin", "ethereum", "altcoi
 const TRADE_ENDORSEMENT = [
   "buy now", "start buying", "start trading", "trade now", "invest now", "start investing",
   "buy the dip", "get in early", "get in now", "before the price", "moon", "pump",
-  "portfolio returns", "grow your portfolio", "profit from", "returns of", "yield",
+  "portfolio returns", "grow your portfolio", "profit from", "returns of",
+  // NOT bare "yield": measured live, it fired on "a colleague mentioned DeFi, yield, and
+  // a wallet address" — jargon the reader does not understand, not an endorsement to buy.
+  "yield farming", "high yield",
   "which coins to buy", "what to buy", "best coins", "top coins to", "start staking",
 ];
 
@@ -258,7 +261,8 @@ function isOfferDirected(sentence: string): boolean {
  * thing §1.1 prohibits. Meta's rule is about IMPLYING KNOWLEDGE of the viewer, so a
  * clause that offers the reader the choice of recognising themselves is outside it.
  */
-const CONDITIONAL_OPENER = /^\s*(if|whether|in case|should you|for anyone who|for those who)\b/i;
+const CONDITIONAL_OPENER =
+  /(^|[\s:—-])(if|whether|in case|should you|for anyone who|for those who)\b[^.?!]{0,40}\byou\b/i;
 
 /**
  * "you" inside a relative clause modifying a third party — "the person you are talking
@@ -334,7 +338,7 @@ export function checkComplianceAxis(
 
       // A question naming a protected attribute, not anchored to the coach's own
       // account, addresses the reader by implication even with no pronoun present.
-      if (sentence.includes("?") && anchors[i] !== "first") {
+      if (sentence.includes("?") && anchors[i] !== "first" && !ABOUT_THE_OFFER.test(sentence)) {
         const qAttr = containsAny(lower(sentence), PROTECTED_ATTRIBUTE_TERMS);
         if (qAttr) {
           push("second_person_protected_attribute", 1,
@@ -368,7 +372,7 @@ export function checkComplianceAxis(
 
       // Diagnostic present — a claim about what the reader is doing or has done,
       // in either word order.
-      if (!VOLITIONAL.test(sentence)) {
+      if (!VOLITIONAL.test(sentence) && !ABOUT_THE_OFFER.test(sentence)) {
         const dp = DIAGNOSTIC_PRESENT.find((re) => re.test(sentence))
           ?? (sentence.includes("?") && DIAGNOSTIC_QUESTION.test(sentence) ? DIAGNOSTIC_QUESTION : undefined);
         if (dp) {
