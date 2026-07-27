@@ -1,7 +1,11 @@
-# 🔴 ACTIVE PROD RUN — cascade E2E (BEGINNER shape), 2026-07-28 — TEARDOWN-CRITICAL
+# ✅ CLOSED — cascade E2E (BEGINNER shape), 2026-07-28 — RUN FINISHED, PROD TORN DOWN
 
-**A cascade run is IN FLIGHT on PROD with live rows that must be removed. Read §3 (ids) and §4
-(teardown) first if picking this up cold.**
+**No live prod data remains from this run.** All 20 tables verified back to the §2 baseline.
+**Read §3a for the FINDINGS — the run failed at step 9 and surfaced several real defects.**
+
+⚠️ **ONE RESIDUAL: two bonus PDFs are still hosted on Cloudinary** (DB rows deleted, assets not):
+`bonuses_117174_19.pdf.pdf` and `bonuses_117174_20.pdf.pdf` under cloud `dunshei0y`. Harmless
+(unreferenced, non-indexed) but not zero. Delete on the next pass that has Cloudinary credentials.
 
 Branch `railway-build`. Verification only; no code changes belong to this run.
 
@@ -113,7 +117,26 @@ operator-supplied price or event date.
 
 ---
 
-## 4. 🔴 TEARDOWN — STANDS ALONE
+## 4. ✅ TEARDOWN — DONE 2026-07-28 (procedure kept below for the next run)
+
+**Executed and verified.** Dry pre-check first (all 16 clauses matched expected counts exactly,
+script set to abort on any mismatch), then FK-safe deletes:
+```
+campaignConcepts 8 · adCopy 9 · bonuses 3 · landingPages 1 · emailSequences 1
+whatsappSequences 1 · headlines 10 · hvcoTitles 60 · heroMechanisms 15 · offers 1
+nodeStatuses 1 · campaignKits 1 · idealCustomerProfiles 1 · services 1
+(conceptScripts 0, adCreatives 0 — none existed)
+```
+**All 20 tables re-measured = §2 baseline exactly.** Baseline rows survived (services 272–277,
+ICPs 249–254, kits 187–192, LPs 222–227 all at 6/6/6/6). No LP was ever published → **no KV entry
+existed**. `meta_published_ads` and `campaigns` for the coach = **0** → **no Meta cleanup needed**.
+⚠️ Residual: the two Cloudinary bonus PDFs named at the top of this file.
+
+⚠️ **A late writer was caught in the act:** bonus 20's PDF appeared *between* the artifact dump and
+the teardown — the durable bonus-PDF job was still running. This is exactly why settle-then-reverify
+is mandatory.
+
+### Procedure (reusable)
 
 Delete everything for **serviceId 280 / icpId 257 / kitId 195 / userId 117174** in the run window,
 FK-safe:
@@ -153,7 +176,97 @@ then call it clean.
 
 ---
 
-## 5. ARTIFACTS CAPTURED SO FAR
+## 3a. 🔴 FINDINGS — the run FAILED at step 9/9
+
+**Cascade job `16c6e327` → `status='failed'`** (the failure surfaced correctly; the zombie defect
+did NOT bite this time — contrast with §0):
+
+```
+Ad headlines LLM did not return Meta-compliant headlines after 5 attempts.
+Last failure: subCase=headline_over_length
+```
+
+**Steps 1–8 completed; step 9 (ad creatives) failed → `adCreatives = 0`.**
+
+### 🔴 F1 — AD CREATIVE GENERATION IS BROKEN FOR THIS SHAPE (headline_over_length, 5/5 attempts)
+This is **exactly the risk flagged before the run** — copy is now shorter and first-person after
+the register change, and the creative templates were built for the old shape. The creative headline
+generator could not produce a headline that is BOTH Meta-compliant AND within the overlay length
+budget, five attempts running, and **took the whole cascade down with it**.
+**Not a flaky failure — a deterministic dead end for a beginner.** Highest-priority defect found.
+Note it fails the ENTIRE job rather than degrading: a coach loses the creatives *and* the run.
+
+### 🔴 F2 — LANDING PAGE: 11 OF 21 FIELDS EMPTY, and the mechanism did not carry
+LP 228 (`lead_magnet_download`, Burchard). Field state on `originalAngle`:
+```
+filled : mainHeadline(92c) eyebrowHeadline(71c) subheadline(212c) problemAgitation(1437c)
+         primaryCta(22c) faq[5] bonuses[3] curriculum[5] systemTiles[8]
+         consultationOutline[3] quizSection{}
+EMPTY  : asSeenIn[0]  testimonials[0]  shockingStat  ← the 3 EXPECTED beginner suppressions
+EMPTY  : uniqueMechanism  whyOldFail  solutionIntro  insiderAdvantages
+         timeSavingBenefit  guarantee  scarcityUrgency   ← NOT expected
+```
+**`uniqueMechanism` empty is a cascade-coherence break, not a suppression:** the mechanism node ran,
+produced 15 mechanisms, and the kit selected **1103** — yet the LP's mechanism field is empty. The
+same is true of the whole "why old ways fail → solution → advantages" spine. **Eight empty fields
+beyond the three intended ones.** Whether each renders as a VISIBLE hole depends on the template's
+omit logic — **that is the unfinished half of this read (see §5).**
+
+### 🟡 F3 — WhatsApp = 3 messages, and it is a FALLBACK, not a signal
+`campaignKits.campaignFacts` is **NULL** — there is no `eventSchedule.date` at all, so
+`deriveLengthFromDate` had nothing to parse and returned its default 3. **Report the 3 as "no date
+stored", never as "event imminent".** Email = 3 (fixed by design, not a bug — expected).
+
+### 🟡 F4 — `campaignKits.campaignType` is NULL despite `campaignType:'lead_magnet'` being passed
+`autoMode.orchestrate` was called with `campaignType:'lead_magnet'` and the LP correctly came out
+`pageType=lead_magnet_download` — but the kit row's own `campaignType` column is NULL. The value
+routed correctly yet never persisted to the kit. Likely why `campaignFacts` is empty too (F3).
+
+### 🟡 F5 — DECK SIZES ARE FAR BELOW THE LABELS
+| node | produced | note |
+|---|---|---|
+| offers | 1 | |
+| heroMechanisms | 15 | |
+| hvcoTitles | 60 (1 with `assetBody`) | only the selected title gets a body — expected |
+| headlines | **10** | progress label says *"Writing 100 headlines across 5 formulas"* |
+| adCopy | **9** (3 headline / 3 body / 3 link, 1 adSetId) | prior live runs persisted ~34 of 46 |
+| landingPages | 1 | |
+| emailSequences | 1 (3 emails) | |
+| whatsappSequences | 1 (3 msgs) | |
+| adCreatives | **0** | F1 |
+| bonuses | 3 (2 with PDFs; 3rd never landed before teardown) | |
+| campaignConcepts | 8 | lazy `setImmediate` writer fired as expected |
+| conceptScripts | **0** | never generated |
+**No `violationReasons` were recorded on any headline or adCopy row**, so the small decks are NOT
+explained by compliance drops — worth a separate look at whether generation or persistence is
+thinning them.
+
+### ✅ F6 — what worked
+Steps 1–8 all completed. The failure surfaced as a real `failed` status with a real error string
+(no zombie). Bonuses generated with hosted PDFs. Lazy concept generation fired. Cascade context
+flowed forward through the text nodes.
+
+---
+
+## 5. ARTIFACTS CAPTURED — and what was NOT done
+
+**Captured as readable text** to `scratchpad/artifacts/` (session-scoped — regenerate with
+`artifacts.mjs` on a future run; the DB rows for THIS run are gone):
+`00-kit · 01-icp · 02-offer · 03-mechanism · 04-leadmagnet · 05-headlines · 06-adcopy ·
+07-landingpage · 08-email · 09-whatsapp · 11-bonuses · 12-concepts` (10-creatives and 13-scripts
+are empty — nothing was generated).
+
+### 🔴 NOT DONE — carry to the next run
+1. **LP published + screenshotted at its live `/p/{slug}`** — the headline artifact. NOT done.
+   F2 makes this MORE important, not less: eight unexpected empty fields need eyes on the rendered
+   page to know whether they leave visible holes.
+2. **Ad creatives** — blocked by F1; nothing to look at.
+3. **Bonus PDFs opened/verified** — 2 URLs existed but were not fetched.
+4. **Meta push against the publish gate** — not run.
+5. **Cascade coherence read** (offer named in ad vs LP vs email vs WhatsApp) — artifacts captured
+   but not cross-read.
+
+**Old §5 note (kept):**
 
 **None yet as readable output** — the cascade had produced only offer + mechanisms when this was
 banked, and the artifact dump runs against the finished cascade.
