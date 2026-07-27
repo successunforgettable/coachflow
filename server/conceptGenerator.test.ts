@@ -22,8 +22,12 @@ describe("buildConceptPrompt — one person, many angles (Desire × Awareness)",
     }
   });
 
-  it("lists all 6 hook patterns", () => {
-    const p = buildConceptPrompt(icp, 8);
+  // Register change 2026-07-27: the social-proof hook needs a real client account to
+  // carry it, so it is offered only when the coach's client material is on the record.
+  // A launch-stage coach gets the remaining patterns — the prompt never asks them for a
+  // client they do not have. Both branches are asserted.
+  it("lists all 7 hook patterns when the coach has supplied real client material", () => {
+    const p = buildConceptPrompt(icp, 8, true);
     for (const hp of [
       "problem_first",
       "founder_authenticity",
@@ -31,9 +35,31 @@ describe("buildConceptPrompt — one person, many angles (Desire × Awareness)",
       "aspirational_transformation",
       "meme_humor",
       "data_chart",
+      "direct_offer_urgency",
     ]) {
       expect(p).toContain(hp);
     }
+  });
+
+  it("withholds the proof-dependent hooks when no real client material is supplied", () => {
+    const p = buildConceptPrompt(icp, 8, false);
+    for (const hp of [
+      "problem_first",
+      "founder_authenticity",
+      "aspirational_transformation",
+      "meme_humor",
+      "direct_offer_urgency",
+    ]) {
+      expect(p).toContain(hp);
+    }
+    // Named only in the line explaining why they are absent, never in the usable set.
+    expect(p).not.toContain("hookPattern: social_proof");
+    expect(p).not.toContain("hookPattern: data_chart");
+    expect(p).toContain("proof is not on the record");
+  });
+
+  it("defaults to the launch-stage (first-person) branch", () => {
+    expect(buildConceptPrompt(icp, 8)).toBe(buildConceptPrompt(icp, 8, false));
   });
 
   it("feeds the ICP's real material (persona is fixed to this ICP)", () => {

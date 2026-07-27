@@ -16,18 +16,21 @@ never seen before. Detect and write in their world:
 - What does this person teach or help people do? Who specifically do they help — be specific.
 - What does failure look like for that audience RIGHT NOW, today? What does success look like?
 - What words does that audience use that an outsider would not? Use that insider language.
-Write in their language, not yours. Every niche has specific fears — name them precisely. Every niche has
-specific dreams — reference them concretely. If they say "yes, that's exactly how I feel" — correct world.
+Write in their language, not yours. Every niche has specific fears — name them precisely, as things the
+coach has seen and sat with in this work. Every niche has specific dreams — reference them concretely.
+When the described moment is accurate enough that someone in that world would say "that is exactly the
+thing" — correct world.
 `;
 
 export const HOOK_RULE = `
 HOOK RULE — Scene 1 only, the first 3 seconds. One job: make the RIGHT person stop scrolling.
-- Names something the viewer is LOSING or living right now — not something they could gain later.
+- Names a specific moment the coach has lived or watched close up in this work — concrete, and
+  told from their side.
 - Creates an open loop — a tension that cannot be resolved until they watch the rest.
-- Does NOT mention the product or the solution — only the reality that exists right now.
+- Does NOT mention the product or the solution — only the moment itself.
 - Sounds like a real person said it, not a copywriter. If it sounds polished, it will be skipped;
   if it sounds like a truth someone finally said out loud, it stops the scroll. The reaction should be:
-  "How did they know that?"
+  "that is exactly the thing, and nobody says it out loud."
 `;
 
 export const BANNED_WORDS = `
@@ -83,18 +86,23 @@ GROUND EVERYTHING IN REAL MATERIAL — this overrides every persuasion tactic ab
   fabrication risk is highest.
 `;
 
+// Reframed 2026-07-27 to positive form, on the SCRIPT_SAFETY model (§14). The prior version listed
+// violations as worked examples ("Are you exhausted?", "Feeling weak?"), which primes the shape it means
+// to prevent. The KEY PRINCIPLE — moments, not attributes — is the load-bearing idea and is preserved
+// verbatim in substance, with its example moved into first person.
 export const META_COMPLIANCE = `
-⚠️ META COMPLIANCE — CRITICAL: ad-account suspension if violated. Your script is REJECTED if it violates any:
-1. NEVER "you" + negative body/health language ("Are you exhausted?", "Feeling weak?", "Your body isn't yours?").
-   SAFE: "Want more energy?", "Ready to feel strong again?"
-2. NEVER call out personal attributes: age ("over 40", "postpartum"), race, religion, disability, financial
-   status ("broke", "can't afford"), medical conditions ("have anxiety", "diagnosed with"). Focus on the
-   desired outcome only.
-3. NEVER "you are" + failure language ("You're failing/stuck/losing/broke"). SAFE: "Want to stop losing...?"
-4. NEVER unrealistic/guaranteed outcomes ("Make $10K your first month", "Cure your anxiety", guaranteed income).
-5. NEVER before/after body-transformation language. SAFE: "Build strength", "Feel energized".
-KEY PRINCIPLE: describe a specific physical MOMENT, not a personal attribute. Moments are compliant
-("the moment you go to pick up your toddler and your back says no"); attributes are violations.
+META COMPLIANCE — this governs whether the ad can run at all:
+- KEY PRINCIPLE: describe a specific MOMENT, not a personal attribute. A moment is something that
+  happened, told from the coach's side — "the morning I went to pick my toddler up and my back said no".
+  That lands with full force and asserts nothing about the person watching.
+- Health, body, age, financial standing, background and medical history belong to the coach's own account
+  of their own experience, or to what the method does. The script speaks about the outcome the offer is
+  built to produce.
+- Outcomes are described as what the method is designed to do, at a scale the coach's material supports.
+- Where physical change is the subject, the script speaks to capability and how something feels to do —
+  strength, energy, moving well — rather than to appearance or a before-and-after comparison.
+- The strictest form of all of the above applies whenever the offer concerns body, weight, health, or
+  mental and emotional state.
 `;
 
 // SPOKEN REGISTER — the load-bearing fix (2026-07-25): restores the spoken-register standard the paused

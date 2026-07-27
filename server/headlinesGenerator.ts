@@ -1,6 +1,6 @@
 import { nanoid } from "nanoid";
 import { invokeLLM } from "./_core/llm";
-import { BANNED_HEADLINE_PATTERNS, META_COMPLIANCE_NOTES, NO_CREDENTIAL_FABRICATION_RULE, scoreAdContent } from "./_core/copywritingRules";
+import { BANNED_HEADLINE_PATTERNS, META_COMPLIANCE_NOTES, NO_CREDENTIAL_FABRICATION_RULE, REGISTER_STANDARD, scoreAdContent } from "./_core/copywritingRules";
 import type { headlines as headlinesTable } from "../drizzle/schema";
 
 function stripMarkdownJson(content: string): string {
@@ -110,7 +110,7 @@ Requirements:
 - Return ONLY a JSON object with a "headlines" field containing the array of 5 headline strings, nothing else
 
 Example output format:
-{"headlines": ["How a Weekend Vegas Bender Led an Aspiring Crypto Newbie to Discover a Revolutionary 9-Step Blueprint that Generates $10k Monthly!", "How an Embarrassing Margin Call Pushed a Skeptical 30-Something Day-Trader to Unearth a Breakthrough System that Multiplies Crypto Earnings!", ...]}`,
+{"headlines": ["How A Proposal That Sat Unsent For Nine Days Led Me To A Four-Minute Scoping Sequence", "How Losing Three Retainers In One Quarter Pushed Me To Rebuild How I Run Discovery Calls", ...]}`,
 
   eyebrow: `Generate 5 three-part headlines with eyebrow, main headline, and subheadline:
 
@@ -131,7 +131,7 @@ Requirements:
 - Return ONLY a JSON object with a "headlines" field containing the array of 5 objects with this structure: {"eyebrow": "...", "main": "...", "sub": "..."}
 
 Example output format:
-{"headlines": [{"eyebrow": "Award-winning Mind Coach Unveils", "main": "9-Step Crypto Wealth System Turns Beginners into $10k/Month Moneymakers", "sub": "Without Endless Hours Learning or Losing Money on Bad Trades"}, ...]}`,
+{"headlines": [{"eyebrow": "[INSERT_COACH_CREDENTIAL] Introduces", "main": "The Scope-First Method: Settle The Brief Before Anyone Talks Price", "sub": "Without Scripts, Discounting, Or Another Tool In The Stack"}, ...]}`,
 
   question: `Generate 5 question-based headlines that highlight obstacles or mistakes:
 
@@ -143,14 +143,14 @@ Context:
 - Desired Outcome: {desiredOutcome}
 
 Requirements:
-- Frame as a question that makes reader think "yes, that's me"
+- Frame as a question about the obstacle itself — why it persists, what it quietly costs, what gets missed
 - Focus on hidden obstacles, sneaky pitfalls, or overlooked mistakes
 - Use words like "preventing", "stopping", "sabotaging", "devouring", "sapping"
 - Each question should be 10-20 words
 - Return ONLY a JSON object with a "headlines" field containing the array of 5 question strings, nothing else
 
 Example output format:
-{"headlines": ["One Sneaky Crypto Pitfall Preventing You from Generating a $10k Monthly Income?", "Could this Commonly Overlooked Crypto Risk be Sapping Your Potential Earnings?", ...]}`,
+{"headlines": ["Which Part Of The Discovery Call Is Quietly Deciding The Whole Thing?", "What Happens To A Quote In The Nine Days Nobody Talks About?", ...]}`,
 
   authority: `Generate 5 authority-based headlines with main headline and subheadline:
 
@@ -170,7 +170,7 @@ Requirements:
 - Return ONLY a JSON object with a "headlines" field containing the array of 5 objects with this structure: {"main": "...", "sub": "..."}
 
 Example output format (formula structure only — credentials in this example are illustrative; do not copy them per NO_CREDENTIAL_FABRICATION_RULE):
-{"headlines": [{"main": "Award-Winning Mind Coach Unearthed Hidden 'Crypto Code' Transforming Newbies into Fortunate Investors", "sub": "This is why day trading, HODLing, and technical analysis have failed to produce consistent crypto income"}, ...]}`,
+{"headlines": [{"main": "[INSERT_AUTHORITY_TITLE] Reveals The Scoping Sequence Behind Every Booked Retainer", "sub": "This is why tighter scripts, faster follow-up, and lower pricing all leave the real problem untouched"}, ...]}`,
 
   urgency: `Generate 5 urgency-based headlines with specific timeframes:
 
@@ -189,7 +189,7 @@ Requirements:
 - Return ONLY a JSON object with a "headlines" field containing the array of 5 headline strings, nothing else
 
 Example output format:
-{"headlines": ["Unearth Crypto Millionaire Blueprint, and Pull in $10k in Under 30 Days!", "Discover 9-Step Program That Rains Passive-Income in 6 Months!", ...]}`,
+{"headlines": ["Apply The Scope-First Method, And Settle Your Next Brief In One Call!", "Rebuild Your Discovery Call, And Know Where Every Quote Stands In 30 Days!", ...]}`,
 };
 
 const HEADLINE_STRING_ARRAY_SCHEMA = {
@@ -418,7 +418,7 @@ BANNED OPENERS AND PHRASES — never generate headlines using these patterns:
 
 MANDATORY: Every headline must contain at least ONE word that comes directly from the ICP's pain language, desire language, or niche-specific vocabulary — a word that signals to the ideal customer "this was written for me specifically."
 
-Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES}\n\n${NO_CREDENTIAL_FABRICATION_RULE}`,
+Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES}\n\n${NO_CREDENTIAL_FABRICATION_RULE}\n\n${REGISTER_STANDARD}`,
               },
               { role: "user", content: cascadeContext + promptWithSot },
             ],

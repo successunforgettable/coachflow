@@ -1,5 +1,5 @@
 import { invokeLLM } from "./_core/llm";
-import { BANNED_COPYWRITING_WORDS } from "./_core/copywritingRules";
+import { BANNED_COPYWRITING_WORDS, REGISTER_STANDARD } from "./_core/copywritingRules";
 import { nanoid } from "nanoid";
 
 function stripMarkdownJson(content: string): string {
@@ -130,7 +130,7 @@ The titles will name a live in-person workshop, mastermind, or training day. For
   const hvcoSetId = nanoid();
   const allTitles: any[] = [];
 
-  const sharedSystem = "You are a direct response copywriting expert who specialises in HVCO titles for coaches and consultants. You write titles that are niche-specific — every title contains at least one of: a specific number, a specific timeframe, a named enemy or obstacle, or an insider term from the niche. You never write generic titles that could apply to any coaching offer. Return ONLY valid JSON arrays.";
+  const sharedSystem = "You are a direct response copywriting expert who specialises in HVCO titles for coaches and consultants. You write titles that are niche-specific — every title contains at least one of: a specific number, a specific timeframe, a named enemy or obstacle, or an insider term from the niche. You never write generic titles that could apply to any coaching offer. Return ONLY valid JSON arrays.\n\n" + REGISTER_STANDARD;
 
   // ── 1/4: Long Titles (20 variations × multiplier) ──────────────────────────
   const longTitlesPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert copywriter creating compelling HVCO (High-Value Content Offer) titles.
