@@ -716,7 +716,38 @@ Format as JSON array:
     });
   }
 
-  await db.insert(adCopy).values(allInserts);
+  // ── OUTPUT GATE (compliance axis + fabrication), one shared pass ────────────
+  // Disposition here is DROP-THE-VARIANT rather than throw: a deck carries 15-30
+  // variants, so removing the few that violate leaves a usable deck and never
+  // dead-ends a launch-stage coach mid-cascade. The publish gate is the hard stop.
+  const { checkOutput } = await import("./_core/complianceAxis");
+  const { buildCoachCorpus, buildProofSupplied } = await import("./_core/groundingCorpus");
+  const gateGrounding = {
+    corpus: buildCoachCorpus({ service, groundingMeta: (icp as any)?.groundingMeta }),
+    supplied: buildProofSupplied(service),
+  };
+  const keptInserts: typeof allInserts = [];
+  const droppedClasses: string[] = [];
+  for (const row of allInserts) {
+    const role = row.contentType === "headline" ? "short" as const
+      : row.contentType === "link" ? "cta" as const : "body" as const;
+    const res = checkOutput([{ location: String(row.contentType), text: String(row.content ?? ""), role }], gateGrounding);
+    if (res.ok) { keptInserts.push(row); continue; }
+    droppedClasses.push(...res.blocking.map((h) => String(h.classId)));
+  }
+  if (droppedClasses.length > 0) {
+    console.warn(
+      `[adCopyGenerator] dropped ${allInserts.length - keptInserts.length}/${allInserts.length} variants ` +
+      `(classes=[${Array.from(new Set(droppedClasses)).join(",")}]); ${keptInserts.length} kept.`,
+    );
+  }
+  if (keptInserts.length === 0) {
+    throw new Error(
+      `Every ad-copy variant in this set carried a policy or grounding issue (classes=[${Array.from(new Set(droppedClasses)).join(",")}]). ` +
+      `Nothing was saved — regenerate, or add your real figures and client material to your profile first.`,
+    );
+  }
+  await db.insert(adCopy).values(keptInserts);
 
   // Compliance precompute — must land before runX returns so wizard panel
   // sees ad copy + rewrites atomically. Mirrors prior async behavior.

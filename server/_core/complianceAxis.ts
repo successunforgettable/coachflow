@@ -66,7 +66,7 @@ const PROTECTED_ATTRIBUTE_TERMS = [
   "exhaustion", "insomnia", "sleepless", "menopause", "postpartum", "post-natal",
   "pregnancy", "pre-pregnancy", "fertility", "disability", "disabled", "chronic",
   // vulnerable financial status
-  "broke", "in debt", "debts", "bankrupt", "overdrawn", "can't afford", "cannot afford",
+  "broke", "debt", "in debt", "debts", "bankrupt", "overdrawn", "can't afford", "cannot afford",
   "struggling financially", "financially stuck", "paycheck to paycheck",
   "pay cheque to pay cheque", "savings", "no money",
   // age / gender identity / orientation / religion / race / ethnicity
@@ -278,6 +278,41 @@ const RELATIVE_CLAUSE_YOU = /\b(the|a|an|every|any|each)\s+[a-z]+\s+you\s+(are|w
  */
 const ABOUT_THE_OFFER = /\b(method|programme|program|course|cohort|framework|system|approach|session|workshop|plan|training|the link)\b/i;
 
+/**
+ * DELIVERABLE NOUN PHRASE — the offer is the subject and the reader appears only inside a
+ * modifier attached to it: "Progressive strength work specific to where your body is
+ * right now", "support tailored to where you are", "a plan built around your schedule",
+ * "coaching matched to your stage".
+ *
+ * These carry NO verb predicated of the reader, so the offer-guard had nothing to grip
+ * and they flagged as violations. The form is common in coaching copy and
+ * disproportionately common in health and money niches — exactly where the detector most
+ * needs to be right — so this is a structural hole rather than the 1-in-331 the sweep
+ * measured.
+ *
+ * The recognition is deliberately narrow: the sentence must NOT open on the reader, and
+ * must attach the reader through a fitting participle plus a preposition. That leaves
+ * every construction where the reader IS the subject fully detectable — "Your body did
+ * something incredible", "You're tired because your body needs rebuilding" — because
+ * those open on the reader and carry a predicate about them.
+ */
+const FITTING_PARTICIPLE =
+  /\b(tailored|built|designed|matched|specific|suited|adapted|customised|customized|geared|calibrated|shaped|structured|scaled|pitched|written|made|set up|put together|paced)\b\s+(to|for|around|at|with|against)\b/i;
+
+function isDeliverableNounPhrase(sentence: string): boolean {
+  // Strip a leading field label or list marker before judging how the sentence opens.
+  const body = sentence.replace(/^[\s•\-–—]*[a-zA-Z]{0,24}:\s*/, "").trim();
+  if (/^(you|your)\b/i.test(body)) return false;   // opens on the reader → not a deliverable
+  const m = FITTING_PARTICIPLE.exec(body);
+  if (!m) return false;
+  // The reader must appear ONLY inside the modifier. Where second person also precedes
+  // the participle, the main clause is predicating something about them and the sentence
+  // is not a deliverable description — "Every tip you've tried was calibrated to the
+  // wrong body clock" diagnoses the reader and then describes the tip. Measured against
+  // real prod copy, suppressing those was a genuine false-negative class.
+  return !SECOND_RE.test(body.slice(0, m.index));
+}
+
 // ─── Field roles ─────────────────────────────────────────────────────────────
 // Short fields are the priority gap: the register standard fixes body copy, but a
 // 40-character headline cannot carry a first-person moment, so diagnostic framing
@@ -325,6 +360,7 @@ export function checkComplianceAxis(
       if (role === "cta" || isOfferDirected(sentence)) return;
       if (CONDITIONAL_OPENER.test(sentence)) return;
       if (RELATIVE_CLAUSE_YOU.test(sentence)) return;
+      if (isDeliverableNounPhrase(sentence)) return;
 
       // Burden frame — an implied "are you". Checked BEFORE anchoring, because
       // "Struggling with debt?" carries no pronoun for anchoring to resolve, yet is
@@ -530,10 +566,51 @@ export function checkAdToPageMatch(adText: string, pageText: string): Compliance
 // the register standard removes. That line must be rewritten as the two merge, or every
 // fabrication retry will push copy back into the register we just took out.
 
+export type OutputHit = ComplianceHit | { classId: string; tier: 1 | 2; description: string; matched: string; location: string };
+
+export type OutputGateResult = {
+  ok: boolean;
+  blocking: OutputHit[];
+  advisories: OutputHit[];
+  failContext: string;
+};
+
+/**
+ * THE SHARED PASS — one call site per surface, so a single retry sees every constraint.
+ *
+ * Run as separate passes, a fabrication retry can reintroduce a compliance violation and
+ * vice versa, with neither retry seeing both. Merging the failContexts means one redraft
+ * fixes both. The two rule modules stay separate because their inputs differ — fabrication
+ * needs the coach corpus, compliance needs only the text and the field's role.
+ *
+ * Fabrication runs only when a corpus is supplied; callers without one (or before the
+ * validator is available) still get the compliance axis.
+ */
 export function checkOutput(
   fields: Array<{ location: string; text: string | null | undefined; role?: FieldRole }>,
-): ComplianceAxisResult {
-  return checkComplianceAxis(fields);
+  grounding?: { corpus: any; supplied: any },
+): OutputGateResult {
+  const cmp = checkComplianceAxis(fields);
+  const blocking: OutputHit[] = [...cmp.blocking];
+  const advisories: OutputHit[] = [...cmp.advisories];
+  const contexts: string[] = [];
+  if (cmp.failContext) contexts.push(cmp.failContext);
+
+  if (grounding?.corpus && grounding?.supplied) {
+    // Lazy require keeps the compliance axis usable on its own.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { checkFabrication } = require("./fabricationValidator") as typeof import("./fabricationValidator");
+    const fabFields: Record<string, string> = {};
+    for (const f of fields) if (typeof f.text === "string" && f.text.trim()) fabFields[f.location] = f.text;
+    if (Object.keys(fabFields).length > 0) {
+      const fab = checkFabrication({ fields: fabFields, corpus: grounding.corpus, supplied: grounding.supplied });
+      blocking.push(...fab.blocking);
+      advisories.push(...fab.hits.filter((h) => h.tier === 2));
+      if (fab.failContext) contexts.push(fab.failContext);
+    }
+  }
+
+  return { ok: blocking.length === 0, blocking, advisories, failContext: contexts.join("\n\n") };
 }
 
 export const COMPLIANCE_RETRY_MAX_ATTEMPTS = 3;

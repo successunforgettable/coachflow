@@ -189,14 +189,40 @@ export async function generateScriptForConcept(params: { userId: number; concept
 
   const prompt = buildConceptScriptPrompt(concept as ScriptConceptInput, cascadeContext, targetSeconds, hasRealClientMaterial);
 
+  // ONE SHARED PASS — structure + policy + compliance axis + fabrication in a single gate,
+  // so one retry satisfies all of them. onScreenText is checked as a SHORT field: it is
+  // exactly the place the register has no room to work.
+  const { checkOutput } = await import("./_core/complianceAxis");
+  const { buildCoachCorpus, buildProofSupplied } = await import("./_core/groundingCorpus");
+  let gateService: any = null;
+  if (concept.serviceId != null) {
+    const { services } = await import("../drizzle/schema");
+    [gateService] = await db.select().from(services).where(eq(services.id, concept.serviceId)).limit(1);
+  }
+  const grounding = gateService
+    ? { corpus: buildCoachCorpus({ service: gateService, groundingMeta: null }), supplied: buildProofSupplied(gateService) }
+    : undefined;
+
   const gate = (s: RawScript): { ok: boolean; failContext: string; labels: string } => {
     const structure = validateScriptStructure(s, { hookPattern: concept.hookPattern, targetSeconds });
     const compliance = screenScriptCompliance(s.scenes ?? []);
-    if (structure.ok && compliance.ok) return { ok: true, failContext: "", labels: "" };
-    const parts = [structure.ok ? "" : structure.failContext, compliance.ok ? "" : compliance.failContext].filter(Boolean);
+    const output = checkOutput(
+      (s.scenes ?? []).flatMap((sc: any, i: number) => [
+        { location: `scene[${i}].spokenLine`, text: sc.spokenLine, role: "body" as const },
+        { location: `scene[${i}].onScreenText`, text: sc.onScreenText, role: "short" as const },
+      ]),
+      grounding,
+    );
+    if (structure.ok && compliance.ok && output.ok) return { ok: true, failContext: "", labels: "" };
+    const parts = [
+      structure.ok ? "" : structure.failContext,
+      compliance.ok ? "" : compliance.failContext,
+      output.ok ? "" : output.failContext,
+    ].filter(Boolean);
     const labels = [
       ...(structure.ok ? [] : structure.hits.map((h) => h.classId)),
       ...(compliance.ok ? [] : compliance.hits.map((h) => h.classId)),
+      ...output.blocking.map((h) => h.classId),
     ].join(", ");
     return { ok: false, failContext: parts.join("\n\n"), labels };
   };

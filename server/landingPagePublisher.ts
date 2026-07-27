@@ -188,6 +188,28 @@ export async function runLandingPagePublish(
     );
   }
 
+  // 6c. OUTPUT GATE — compliance axis on the RESOLVED page, alongside the operator-field
+  // and placeholder gates above. Content-agnostic, so it holds a coach's hand-edit too.
+  // Short fields are checked as short: the eyebrow and headline are where the register
+  // standard has least room and where live runs produced the sharpest §1.1 constructions.
+  {
+    const { checkOutput } = await import("./_core/complianceAxis");
+    const c = enrichedContent as Record<string, unknown>;
+    const gate = checkOutput(([
+      ["eyebrowHeadline", "short"], ["mainHeadline", "short"], ["subheadline", "short"],
+      ["problemAgitation", "body"], ["solutionIntro", "body"], ["whyOldFail", "body"],
+      ["uniqueMechanism", "body"], ["insiderAdvantages", "body"], ["shockingStat", "body"],
+      ["timeSavingBenefit", "body"], ["primaryCta", "cta"],
+    ] as const).map(([k, role]) => ({ location: k, text: c[k] as string | undefined, role })));
+    if (!gate.ok) {
+      const detail = gate.blocking.slice(0, 3).map((h) => `${h.location}: "${h.matched}"`).join("; ");
+      throw new Error(
+        `Landing page not published — it states things about the reader that Meta's policy does not allow: ${detail}. ` +
+        `Rewrite those lines to describe the situation from your side and what the programme does, then publish again.`,
+      );
+    }
+  }
+
   // 7. Cloudflare KV write + worker deploy. Both calls can throw on
   // transient errors (network, Cloudflare API quota, KV unavailable);
   // caller decides whether to retry or treat as non-fatal.

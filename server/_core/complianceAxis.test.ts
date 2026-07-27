@@ -191,3 +191,77 @@ describe("false-positive floor — legitimate launch-stage prose stays clean", (
     }
   });
 });
+
+/**
+ * DELIVERABLE NOUN PHRASES — the structural hole found by the combined sweep.
+ *
+ * The offer-guard keyed on a verb predicated of the reader. A deliverable described as a
+ * noun phrase has none — the reader appears only inside a modifier — so the guard had
+ * nothing to grip and the sentence flagged. This form is common in coaching copy and
+ * disproportionately common in health and money niches, which is where the detector most
+ * needs to be right, so the family is covered here and not just the leaf that surfaced.
+ */
+describe("deliverable noun phrases (offer is the subject)", () => {
+  it("PASSES the exact string the sweep flagged", () => {
+    const r = checkComplianceAxis(F("Progressive strength work specific to where your body is right now."));
+    expect(r.blocking, JSON.stringify(r.blocking)).toHaveLength(0);
+  });
+
+  it("PASSES the sibling family — same shape, attribute term present in each", () => {
+    for (const ok of [
+      "Support tailored to where your energy actually is that week.",
+      "A plan built around your health, not around a gym timetable.",
+      "Coaching matched to your body's recovery stage.",
+      "Support designed for where your debt actually sits.",
+      "A programme paced to your sleep, not to a calendar.",
+      "Sessions structured around your anxiety about the first call.",
+    ]) {
+      expect(checkComplianceAxis(F(ok)).blocking, ok).toHaveLength(0);
+    }
+  });
+
+  it("STILL FLAGS the same subjects when the reader is the subject — the fix must not weaken detection", () => {
+    for (const bad of [
+      "Your body is not where it should be right now.",
+      "You're exhausted and your energy is gone by ten.",
+      "Your debt is the reason this keeps happening.",
+      "You avoid the camera because of how your body looks.",
+    ]) {
+      expect(checkComplianceAxis(F(bad)).blocking.length, bad).toBeGreaterThan(0);
+    }
+  });
+
+  it("STILL FLAGS a deliverable phrase that ALSO asserts something about the reader", () => {
+    // The participle form does not launder a second sentence that diagnoses the reader.
+    const r = checkComplianceAxis(F("A plan built around your schedule. You're failing because your body gave up."));
+    expect(r.blocking.length).toBeGreaterThan(0);
+  });
+
+  it("does not fire on a first-person account that happens to use a fitting participle", () => {
+    const r = checkComplianceAxis(F("I built the whole thing around my own broken sleep, because nothing else fitted."));
+    expect(r.blocking).toHaveLength(0);
+  });
+});
+
+describe("deliverable guard does not create false negatives", () => {
+  it("STILL FLAGS when the reader is diagnosed BEFORE the fitting participle", () => {
+    // Found in real prod copy while checking what the guard suppressed.
+    for (const bad of [
+      "Every tip you've tried was calibrated to the wrong body clock.",
+      "Every generic tip you've been given was calibrated to a body clock you don't currently have.",
+      "The exhaustion you feel is the weight of a life built around expectations.",
+    ]) {
+      expect(checkComplianceAxis(F(bad)).blocking.length, bad).toBeGreaterThan(0);
+    }
+  });
+
+  it("still PASSES genuine offer-subject deliverables", () => {
+    for (const ok of [
+      "Progressive strength work specific to where your body is right now.",
+      "It installs a fixed sleep anchor calibrated to your specific roster, not a generic schedule.",
+      "The protocol is built around rebuilding your energy first, not depleting it further.",
+    ]) {
+      expect(checkComplianceAxis(F(ok)).blocking, ok).toHaveLength(0);
+    }
+  });
+});

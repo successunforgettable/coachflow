@@ -1,6 +1,7 @@
 import { invokeLLM } from "./_core/llm";
 import type { LandingPageContent } from "../drizzle/schema";
 import { BANNED_COPYWRITING_WORDS, META_COMPLIANCE_NOTES, NO_DATE_FABRICATION_RULE, NO_RESEARCH_STATISTIC_FABRICATION_RULE, REGISTER_STANDARD, registerPersonGuidance, physicalSubjectGuidance, truncateQuote } from "./_core/copywritingRules";
+import { checkOutput } from "./_core/complianceAxis";
 import { validateLandingPageTestimonialsFabrication } from "./_core/validator";
 
 // The 12 simple-string fields in the landing-page schema. Each is
@@ -749,6 +750,40 @@ Use direct response copywriting principles: pain agitation, unique mechanism, so
       fabResult.hits.forEach((h, i) => {
         if (i < 5) console.warn(`[landingPageGenerator]   hit ${i + 1}: ${h.classId} @ ${h.location} matched "${h.matched}"`);
       });
+    }
+  }
+
+  // ── OUTPUT GATE (compliance axis) ────────────────────────────────────────────
+  // Reuses the existing retry loop rather than adding a second one. SHORT fields are
+  // checked as short: the eyebrow, headline and subheadline are exactly where the
+  // register standard has no room to work, and where a live run produced
+  // "FOR WOMEN WHO JUST HAD A BABY AND FEEL LIKE THEIR BODY NO LONGER BELONGS TO THEM".
+  // Fabrication is not run here — the LP has its own testimonials fabrication check
+  // immediately above, and the publish gate re-checks the resolved page.
+  {
+    const p = parsed as Record<string, unknown>;
+    const gateFields = ([
+      ["eyebrowHeadline", "short"], ["mainHeadline", "short"], ["subheadline", "short"],
+      ["problemAgitation", "body"], ["solutionIntro", "body"], ["whyOldFail", "body"],
+      ["uniqueMechanism", "body"], ["insiderAdvantages", "body"], ["shockingStat", "body"],
+      ["timeSavingBenefit", "body"], ["primaryCta", "cta"],
+    ] as const).map(([k, role]) => ({ location: `landingPage.${k}`, text: p[k] as string | undefined, role }));
+    const gate = checkOutput(gateFields);
+    if (!gate.ok) {
+      if (leakAttempt < LP_SCHEMA_RETRY_MAX_ATTEMPTS) {
+        validatorFailContext = gate.failContext;
+        console.warn(
+          `[landingPageGenerator] Compliance gate failed on attempt ${leakAttempt}/${LP_SCHEMA_RETRY_MAX_ATTEMPTS} ` +
+          `(angle=${angle}, classes=[${Array.from(new Set(gate.blocking.map((h) => String(h.classId)))).join(",")}]). Retrying with fail-context.`,
+        );
+        continue;
+      }
+      // Exhaust path mirrors the testimonials check directly above: return best-effort so
+      // the coach still gets a page, and let the publish gate be the hard stop.
+      console.warn(
+        `[landingPageGenerator] Compliance gate exhausted retries on angle=${angle} ` +
+        `(${gate.blocking.length} hits, classes=[${Array.from(new Set(gate.blocking.map((h) => String(h.classId)))).join(",")}]); returning best-effort — publish gate will hold it.`,
+      );
     }
   }
 

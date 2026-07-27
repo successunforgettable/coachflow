@@ -198,27 +198,54 @@ export async function generateConceptsForIcp(params: {
   // Both gates run every attempt: structure (fields/enums/distinct/headline≠hook) AND Meta ad-policy
   // screening (complianceFilter — fabricated scarcity / income guarantees, highest risk on the
   // direct_offer_urgency hook). The ICP-corpus anti-fabrication check stays deferred until ICP grounding.
+  // ONE SHARED PASS — structure + Meta ad-policy + the compliance axis + fabrication, so a
+  // single retry sees every constraint at once. Run separately, a fabrication retry can
+  // reintroduce a compliance violation and neither pass ever sees both.
+  const { checkOutput } = await import("./_core/complianceAxis");
+  const { buildCoachCorpus, buildProofSupplied } = await import("./_core/groundingCorpus");
+  let gateService: any = null;
+  if (params.serviceId != null) {
+    const { services } = await import("../drizzle/schema");
+    [gateService] = await db.select().from(services).where(eq(services.id, params.serviceId)).limit(1);
+  }
+  const grounding = gateService
+    ? { corpus: buildCoachCorpus({ service: gateService, groundingMeta: (icp as any)?.groundingMeta }), supplied: buildProofSupplied(gateService) }
+    : undefined;
+
   const gate = (cs: RawConcept[]): { ok: boolean; failContext: string; labels: string } => {
     const structure = validateConceptSetStructure(cs);
     const compliance = screenConceptCompliance(cs);
-    if (structure.ok && compliance.ok) return { ok: true, failContext: "", labels: "" };
-    const parts = [structure.ok ? "" : structure.failContext, compliance.ok ? "" : compliance.failContext].filter(Boolean);
+    const output = checkOutput(
+      cs.flatMap((c, i) => [
+        { location: `concept[${i}].hook`, text: c.hook, role: "short" as const },
+        { location: `concept[${i}].headline`, text: c.headline, role: "short" as const },
+        { location: `concept[${i}].shortText`, text: c.shortText, role: "body" as const },
+        { location: `concept[${i}].longText`, text: c.longText, role: "body" as const },
+      ]),
+      grounding,
+    );
+    if (structure.ok && compliance.ok && output.ok) return { ok: true, failContext: "", labels: "" };
+    const parts = [
+      structure.ok ? "" : structure.failContext,
+      compliance.ok ? "" : compliance.failContext,
+      output.ok ? "" : output.failContext,
+    ].filter(Boolean);
     const labels = [
       ...(structure.ok ? [] : structure.hits.map((h) => h.classId)),
       ...(compliance.ok ? [] : compliance.hits.map((h) => h.classId)),
+      ...output.blocking.map((h) => h.classId),
     ].join(", ");
     return { ok: false, failContext: parts.join("\n\n"), labels };
   };
 
+  const { COMPLIANCE_RETRY_MAX_ATTEMPTS } = await import("./_core/complianceAxis");
   let concepts = await invokeConcepts(prompt, "");
   let result = gate(concepts);
-  if (!result.ok) {
+  for (let attempt = 2; attempt <= COMPLIANCE_RETRY_MAX_ATTEMPTS && !result.ok; attempt++) {
     concepts = await invokeConcepts(prompt, result.failContext);
     result = gate(concepts);
-    if (!result.ok) {
-      throw new Error(`Concept set failed validation after retry: ${result.labels}`);
-    }
   }
+  if (!result.ok) throw new Error(`Concept set failed validation after ${COMPLIANCE_RETRY_MAX_ATTEMPTS} attempts: ${result.labels}`);
 
   const conceptSetId = randomUUID();
   const personaLabel = (icp as any).angleName || (icp as any).name || null;
