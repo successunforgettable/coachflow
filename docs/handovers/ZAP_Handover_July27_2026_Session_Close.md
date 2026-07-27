@@ -305,6 +305,16 @@ the thing under test (published landing page, ad creatives, bonus PDFs, the Kit 
 node ordering, chip/deck interactions, skip/recovery paths, the operator-intake conversation — is
 NOT exercised. A wizard-interaction run is its own piece of work and has not been done.
 
+## 4e. 🔴 ACTIVE PROD RUN — NOT TORN DOWN
+
+**A cascade E2E run is in flight on prod and has live data that must be removed.**
+Full detail, ids and teardown procedure: **`docs/handovers/ACTIVE_RUN_2026-07-28_cascade-e2e.md`**.
+
+Short version: smoke coach (userId 117174) · service **279** · ICP **256** · kit **194** · offer
+**207** · cascade job `50196735-efbb-4dff-a966-1f4e77d4e69d` was at step 3/9 when banked, so MORE
+rows exist than that list. Reconcile against the pre-run baseline recorded in that file — do not
+trust the id list. Nothing in this run is a code change.
+
 ## 5. Still open — Arfeen actions
 
 * **🔴 SECURITY: rotate `zap-e2e-smoke@mailinator.com`'s password** and update `~/.zap-e2e-creds.env` before
