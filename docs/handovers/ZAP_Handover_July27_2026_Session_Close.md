@@ -67,6 +67,55 @@ intact and the work is recoverable.
 push moves the whole ancestry. Docs-only checkpoints must be authored from a branch position that carries no
 held work, or the held work belongs on its own branch. Checking "no code in *this* commit" is not sufficient.
 
+### 3a. REGISTER CHANGE — built, verified, HELD OFF `railway-build` (2026-07-27)
+
+**Commit `5fc1a1c` — "feat(register): first-person register standard across all nine reader-facing generators".**
+
+**Why held:** Arfeen's call — it ships as **ONE compliance layer** together with the compliance axis and the
+fabrication validator, not on its own. Verification showed the register change fixes body copy comprehensively
+but leaves **short high-visibility fields drifting diagnostic on body/weight offers** (a live postpartum run
+produced the eyebrow *"FOR WOMEN WHO JUST HAD A BABY AND FEEL LIKE THEIR BODY NO LONGER BELONGS TO THEM"*).
+A 100-character field cannot carry a first-person moment, so the register has nowhere to go there. Shipping
+"better but still leaky" is not the bar; the compliance axis closes that gap on generated output.
+
+**PARKED DELIBERATELY, applying the process lesson above.** It is NOT an unpushed commit on `railway-build` —
+that is precisely the shape that caused the accidental push. It sits on two independent refs, neither of which
+is in `railway-build`'s ancestry, so no future docs commit can carry it to origin:
+
+| Ref | Kind | Points at |
+|---|---|---|
+| `held/register-change-2026-07-27` | local branch | `5fc1a1c` |
+| `held-register-change-2026-07-27` | local tag (redundancy vs. branch deletion / reflog expiry) | `5fc1a1c` |
+
+**Recovery — apply on top of whatever `railway-build` is at the time:**
+```
+git checkout railway-build
+git cherry-pick 5fc1a1c          # or: git merge held/register-change-2026-07-27
+```
+Neither ref is pushed. To retire them after the combined layer ships:
+`git branch -D held/register-change-2026-07-27 && git tag -d held-register-change-2026-07-27`.
+
+**State at hold:** TS 35, targeted suites 439 pass, no new failing suites, **no migration**. Nine generators
+touched. Does not restore `a912a2b`.
+
+**Verification evidence — what is and is not confirmed.** Real generations, clean-room, six coach shapes.
+CONFIRMED on complete runs: beginner (`asSeenIn []`, `testimonials []`, numberless shockingStat) · veteran
+(third person unlocks; uses the supplied quotes, press and figures verbatim) · enumerated-attribute case
+(prod service 269, ex-prisoners — no criminal-record assertion anywhere, **with no classifier involved**) ·
+crypto (no buy/sell endorsement, no financial-vulnerability assertion) · the `social_proof` fabrication
+(*"One client sat through…"* plus an invented quote for a zero-proof coach) and its fix by withholding
+proof-dependent angles. **NOT live-confirmed: the `data_chart` concept-hook gate** — added last, after the
+observed fabrication *"screened out … more than 70% of the time. Four months of data."*; currently backed by
+unit test only. Confirm it when the combined layer is verified.
+
+**⚠️ Two verification-method lessons, both worth keeping:**
+1. **A regex scan that keys on literal "you're" under-reports badly.** It scored a run 0 hits whose copy read
+   *"The clothes still don't fit… You avoid the camera… the mirror is a daily reminder."* The real pre-fix
+   count was 8. Implied address carries no pronoun — detection has to catch that.
+2. **A crashed run looks identical to a clean one.** Two "final" verification files were crash logs (the
+   harness had been deleted while the job was still queued) and scanned as 0 hits. Any completeness check must
+   assert a positive end-marker in the output, never infer success from absence of findings.
+
 ## 4. NEXT SPRINT — build order
 
 **1. REGISTER CHANGE — first-person default** across adCopy, scripts and landing pages, with niche-aware
