@@ -10,6 +10,7 @@ import ZappyMascot from "./ZappyMascot";
 import PushKitModal from "./PushKitModal";
 import V2QuizReviewModal from "./V2QuizReviewModal";
 import KitPlaceholderBanner from "./components/KitPlaceholderBanner";
+import ComplianceAdvisoryBanner from "./components/ComplianceAdvisoryBanner";
 import PlaceholderEditor from "./components/PlaceholderEditor";
 import V2OperatorIntake from "./components/V2OperatorIntake";
 import { detectPlaceholders } from "./lib/placeholderDetector";
@@ -460,6 +461,12 @@ export default function V2CampaignKit() {
   );
 
   // Fetch ICP name
+  const { data: advisoryData } = trpc.compliance.advisoriesForKit.useQuery(
+    { campaignKitId: kitId! },
+    { enabled: !!kitId && !isNaN(kitId) },
+  );
+  const complianceAdvisories = advisoryData?.advisories ?? [];
+
   const { data: icpData } = trpc.icps.get.useQuery(
     { id: kit?.icpId! },
     { enabled: !!kit?.icpId }
@@ -1056,6 +1063,12 @@ export default function V2CampaignKit() {
           report={placeholderReport}
           onReviewClick={() => setShowPlaceholderEditor(true)}
         />
+
+        {/* Compliance advisories — computed on read, never persisted, never gating.
+            Surfaced at the campaign because if one fires the cost has already landed
+            on a real coach; the remedies are attached so it is actionable rather than
+            just a warning. Self-hides when there is nothing to say. */}
+        <ComplianceAdvisoryBanner advisories={complianceAdvisories} />
 
         {/* Asset sections */}
         {SECTIONS.map(section => (

@@ -18,6 +18,85 @@ const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
 });
 
 export const complianceRouter = router({
+  /**
+   * Coach-facing compliance advisories for one Campaign Kit.
+   *
+   * COMPUTED ON READ, NOT PERSISTED — deliberately, and this is why there is no
+   * migration for it:
+   *   - the advisory must reflect the copy as it stands NOW. A stored flag goes stale
+   *     the moment the coach hand-edits a headline in the Kit, and would then either
+   *     warn about text that no longer exists or stay silent about text that does.
+   *   - it is pure text analysis, no LLM call, so recomputing costs nothing.
+   *   - nothing needs backfilling for kits that already exist.
+   * Same reasoning as the held publish gate being content-agnostic so it catches
+   * hand-edits.
+   *
+   * Returns ADVISORIES ONLY (tier 2). Nothing here gates anything: blocking checks
+   * live at generation and at the publish gates. Check 5 in particular rests on
+   * practitioner reports rather than Meta's published policy, so it must warn and
+   * never block — see docs/compliance/META_AD_COMPLIANCE_REFERENCE.md Tier 2.
+   */
+  advisoriesForKit: protectedProcedure
+    .input(z.object({ campaignKitId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const { campaignKits, adCopy, landingPages, headlines } = await import("../../drizzle/schema");
+      const { checkComplianceAxis } = await import("../_core/complianceAxis");
+
+      const [kit] = await db.select().from(campaignKits)
+        .where(and(eq(campaignKits.id, input.campaignKitId), eq(campaignKits.userId, ctx.user.id))).limit(1);
+      if (!kit) throw new TRPCError({ code: "NOT_FOUND", message: "Kit not found" });
+
+      const fields: Array<{ location: string; text: string | null | undefined; role?: "short" | "body" | "cta" }> = [];
+
+      if (kit.selectedAdCopyId) {
+        const [row] = await db.select().from(adCopy)
+          .where(and(eq(adCopy.id, kit.selectedAdCopyId), eq(adCopy.userId, ctx.user.id))).limit(1);
+        if (row?.content) {
+          fields.push({
+            location: "Ad copy",
+            text: row.content,
+            role: row.contentType === "headline" ? "short" : row.contentType === "link" ? "cta" : "body",
+          });
+        }
+      }
+      if (kit.selectedHeadlineId) {
+        const [row] = await db.select().from(headlines)
+          .where(and(eq(headlines.id, kit.selectedHeadlineId), eq(headlines.userId, ctx.user.id))).limit(1);
+        const h = row as Record<string, unknown> | undefined;
+        for (const key of ["main", "eyebrow", "sub", "content"]) {
+          const v = h?.[key];
+          if (typeof v === "string" && v.trim()) fields.push({ location: "Headline", text: v, role: "short" });
+        }
+      }
+      if (kit.selectedLandingPageId) {
+        const [row] = await db.select().from(landingPages)
+          .where(and(eq(landingPages.id, kit.selectedLandingPageId), eq(landingPages.userId, ctx.user.id))).limit(1);
+        const content = (row as Record<string, any> | undefined)?.content;
+        if (content && typeof content === "object") {
+          for (const [k, role] of [["eyebrowHeadline", "short"], ["mainHeadline", "short"], ["subheadline", "short"],
+                                   ["problemAgitation", "body"], ["solutionIntro", "body"], ["whyOldFail", "body"]] as const) {
+            const v = content[k];
+            if (typeof v === "string" && v.trim()) fields.push({ location: `Landing page — ${k}`, text: v, role });
+          }
+        }
+      }
+
+      if (fields.length === 0) return { advisories: [] as Array<{ classId: string; where: string; matched: string }> };
+
+      const result = checkComplianceAxis(fields);
+
+      // Collapse to one advisory per class — the coach needs to know the ad uses career
+      // language once, not once per sentence.
+      const seen = new Map<string, { classId: string; where: string; matched: string }>();
+      for (const h of result.advisories) {
+        if (!seen.has(h.classId)) seen.set(h.classId, { classId: h.classId, where: h.location, matched: h.matched });
+      }
+      return { advisories: Array.from(seen.values()) };
+    }),
+
   // Get all banned phrases
   listPhrases: adminProcedure.query(async () => {
     const db = await getDb();
