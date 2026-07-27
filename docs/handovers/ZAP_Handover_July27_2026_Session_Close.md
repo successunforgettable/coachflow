@@ -283,6 +283,28 @@ verified; **the live throw has never been observed** because forcing all 46 gene
 reproducible on demand. Recorded so it is not mistaken for verified. (Live prod drop rates so far: beginner 2/46,
 crypto 5/46, attribute 8/46, veteran 10/48, health 10/46, career-pivot 12/46 — nothing close to total.)
 
+## 4d. TWO VERIFICATION RULES banked (2026-07-27/28)
+
+### 🔴 TEARDOWN — a single post-delete count is NOT proof while background jobs are in flight
+**Prod carried 8 orphaned `campaignConcepts` rows from the correction-pass ship.** The teardown
+deleted them and measured 0; the rows reappeared minutes later with `createdAt` AFTER the delete.
+Cause: `ensureConceptsForIcp` is fire-and-forget (`setImmediate`) at the ad-copy entry, so the
+background generation landed BEHIND the teardown and re-inserted.
+
+**RULE: wait for background jobs to settle, then RE-VERIFY.** Reconcile row COUNTS against a
+pre-run baseline captured before the run — never just delete the ids you happen to hold, and
+never treat one post-delete count as final. Known async writers that can land late: lazy concept
+generation, the durable bonus-PDF job, and compliance-rewrite precompute.
+
+### ⚠️ API-DRIVEN CASCADE RUNS PROVE NOTHING ABOUT THE WIZARD
+Cascade verification is driven through the real orchestration API — the same server-side code the
+UI triggers, and far less brittle across a long run. Playwright is used only where RENDERING is
+the thing under test (published landing page, ad creatives, bonus PDFs, the Kit surface).
+
+**Do NOT read any such run as "the wizard is verified."** The 11-node wizard click-through UX —
+node ordering, chip/deck interactions, skip/recovery paths, the operator-intake conversation — is
+NOT exercised. A wizard-interaction run is its own piece of work and has not been done.
+
 ## 5. Still open — Arfeen actions
 
 * **🔴 SECURITY: rotate `zap-e2e-smoke@mailinator.com`'s password** and update `~/.zap-e2e-creds.env` before
