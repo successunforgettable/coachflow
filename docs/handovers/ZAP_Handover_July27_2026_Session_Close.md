@@ -157,6 +157,67 @@ local env, not the container's), so the deployed commit could not be read back. 
 on the push, only SUCCESS since, and the served bundle contains strings unique to the pushed commits. Worth
 finding a direct method before the next ship.
 
+## 4c. COMPLIANCE LAYER — CORRECTION PASS SHIPPED (2026-07-27, second deploy)
+
+**`HEAD = origin/railway-build = ce9b97d`.** Railway `ba2442b4` SUCCESS, clean boot, prod 200.
+Three commits: deck-thinning fix · vocabulary expansion · exhaustive triage. **NO MIGRATION.**
+
+**Served bundle UNCHANGED BY DESIGN** (`index-DXG_4j4E.js`) — all three commits touch `server/`
+only, so there is no client bundle to fingerprint. ⚠️ `RAILWAY_GIT_COMMIT_SHA` is empty under
+`railway run`, so SHA read-back is still INDIRECT. **The live generation is the deployment proof:**
+service 272 produced **4/16 bodies pre-fix and 16/16 post-fix** on identical inputs.
+
+**LIVE POST-DEPLOY GATE — all four sub-checks passed on prod:** generation completed in 28s
+(46 generated · 0 dropped · 46 persisted) · DB row counts matched the API exactly
+(`rows=46|headline=15|body=16|link=15`) · **the retry round fired live and recovered 5/5** ·
+a planted enumerated violation was **BLOCKED at publishToMeta** with the coach-facing message.
+Teardown returned every table to baseline.
+
+⚠️ **TEARDOWN LESSON:** the first generate call succeeded but a shell error aborted before its
+adSetId printed, orphaning 45 rows; and the ad-copy entry fires `ensureConceptsForIcp` lazily,
+orphaning 8 concepts. **Prod teardown must reconcile row COUNTS against a pre-run baseline, not
+just delete the ids you happen to hold.** Both were found and removed.
+
+### 🔴 CORRECTED BLOCKING BASELINE — 437, not 470
+The shipped layer had been **over-blocking real coach copy since it went live**, and it was
+invisible because every sweep measured GENERATED text rather than prod copy. Measured on 3,006
+real texts (5,405 prod ad-copy rows + 101 prod ICPs + generated blocks): **470 → 437.**
+
+An earlier intermediate figure of 349 was WRONG — it came from sampling the released texts rather
+than triaging them. Exhaustive triage of all 121 releases found two defects of my own and the
+true number is 437. **Never quote 349.**
+
+**The 121 releases, classified:** substring `nobody`→`body` 15 · product mechanism 17 · idiomatic
+"weight" 10 · third-person client stories 5 · identity/register with no enumerated attribute 57 —
+all CORRECT. Plus **8 genuine body assertions** that were false negatives, now fixed.
+
+### Three defects the triage exposed
+1. **Word-boundary over-correction** — fixing `body` inside `noBODY` stopped matching inflections
+   (`\bavoid\b` missed "avoided"). Now inflection-tolerant `(s|es|ed|d|ing)`; "hive" still does
+   not match "hiv". Restored 9 releases immediately.
+2. **Anatomy was a family, not a leaf** — `midsection` was the term spotted; waistline, belly,
+   thighs, hips, torso, jawline and colloquials were all missing. `figure`/`core`/`frame`
+   deliberately EXCLUDED — with inflection tolerance they match "figure out", "core values",
+   "framework".
+3. **FOUR MATCHERS WHERE THERE SHOULD BE ONE** — `containsAny`, the non-neutral precedence check,
+   and the forward and reverse adjacency checks each built their own regex and disagreed about
+   what a term matches. All now derive from `termRe`, **with a test asserting exactly ONE
+   term-escape site exists.** This defect recurred three times; the test is why it stops.
+
+### Conditional guard — UNCHANGED, and measured
+Arfeen's decision, on evidence. Of 1,150 conditional sentences in 3,006 real texts, the guard
+suppresses 90 blocks. **Split: 0 named clinical diagnosis · 66 everyday state words · 24 neither.**
+The motivating case ("If you've been living with IBS…") does not occur in real copy. Closing the
+gap would cost 66 legitimate suppressions to catch 0 observed violations. Offer conditionals
+("If you join before Friday") never depended on the guard — they carry no protected attribute.
+**A test pins the guard so it cannot drift silently.**
+
+### Enforcement scope — Tier 1 only
+Diagnostic second person about NON-enumerated topics (employment, business frustration, ambition)
+now LABELS as `register_diagnostic_address` (tier 2) instead of blocking. The register standard
+stays in every generation prompt and still shapes copy; it no longer gates it. Only Tier 1 —
+Meta's enumerated attributes, §1.3, §1.8, §1.4, §1.6 — blocks.
+
 ## 4b. BACKLOG banked from the compliance-layer ship
 
 ### (1) PRESS/MEDIA NAMES — FIXED ATTRIBUTION FORMAT ONLY (Arfeen's call, NOT yet built)
@@ -193,6 +254,28 @@ a DETECTION MISS rather than style.** Assess each against Meta's enumerated attr
 
 **DELIVERABLE:** a per-phrase verdict — detection miss (fix the detector) / style preference (register polish) /
 genuinely undefined (leave, document) — each traced to Meta's own wording. Only then propose fixes.
+
+### (4) EIGHT UNCOVERED CLAIM-TRIGGERS — SEPARATE AXIS, not built
+`treat` · `heal` · `reverse` · `eliminate` · `erase permanently` · `proven to` ·
+`clinically proven` · `big pharma`. **Audited against the existing filter:** `cure`,
+`guaranteed`, `100%`, `secret`, "they don't want you to know" and income guarantees are ALREADY
+covered by `complianceFilter` (PIVOT/REJECTED) — do not duplicate. Unsubstantiated statistical
+claims need nothing new either: the fabrication axis already catches them as
+`invented_statistic`.
+
+These eight are **predicates, not protected nouns**, so they do NOT flow through the anchoring
+engine and cannot simply be added to the vocabulary. They need their own rule shape (§1.6
+deceptive claims). Own pass.
+
+### (5) VOCABULARY — REJECTED, with the evidence, so it is not re-proposed
+Measured over 3,006 real texts: `reset`, `reclaim`, `healing`, `career transitions` produced ALL
+13 false positives — **`reset` and `reclaim` are PRODUCT NAMES in real prod copy** ("The Profit
+Reset", "reclaim their sense of self"). Also rejected: marketing-industry terms (CAPI, ROAS, MRR…)
+and the mental symptom/proxy group (executive function, sensory regulation — service categories
+more often than health assertions). A known gap is documented rather than papered over: a
+publication name containing a tool/role stoplist token ("Harvard Business REVIEW") is not
+detected; narrowing that stoplist would reopen the job-title FP class, and backlog item (1)
+removes the need to detect press names in prose at all.
 
 ### (3) CARRY FORWARD — "throws only if nothing survives" NEVER EXECUTED LIVE
 The adCopy generator throws when every variant is dropped. The arithmetic and the empty-deck condition are
