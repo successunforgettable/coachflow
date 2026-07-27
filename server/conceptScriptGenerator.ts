@@ -26,6 +26,7 @@ import {
   type RawScriptScene,
 } from "./_core/conceptScriptValidator";
 import { NICHE_DETECTION, HOOK_RULE, BANNED_WORDS, META_COMPLIANCE, REAL_URGENCY_RULE, SPOKEN_REGISTER, SCRIPT_STRUCTURE_CRAFT, SCRIPT_SAFETY } from "./_core/scriptPromptCraft";
+import { REGISTER_STANDARD, registerPersonGuidance, physicalSubjectGuidance } from "./_core/copywritingRules";
 
 // Tone by warmth — mapped from the concept's awareness stage. INTERNAL NOTE: the 3-category (Cold/Warm/Hot)
 // → 5-stage (Schwartz) mapping is INFERRED from the tone report's category definitions; the report states
@@ -52,7 +53,7 @@ export interface ScriptConceptInput {
   hookPattern?: string | null;
 }
 
-export function buildConceptScriptPrompt(concept: ScriptConceptInput, cascadeContext: string, targetSeconds: number): string {
+export function buildConceptScriptPrompt(concept: ScriptConceptInput, cascadeContext: string, targetSeconds: number, hasRealClientMaterial: boolean = false): string {
   const budget = wordBudgetForSeconds(targetSeconds);
   const persona = concept.personaLabel || "this ideal customer";
   const sceneCount = targetSeconds === 15 ? 3 : targetSeconds <= 30 ? 4 : 5;
@@ -76,6 +77,8 @@ ${BANNED_WORDS}
 ${META_COMPLIANCE}
 ${REAL_URGENCY_RULE}
 ${SCRIPT_SAFETY}
+${registerPersonGuidance(hasRealClientMaterial)}
+${physicalSubjectGuidance(`${cascadeContext} ${concept.desire ?? ""} ${persona}`)}
 
 Every line — hook, body and CTA — sounds like a real person said it, not a copywriter. The whole script,
 not just the opening, must survive the read-aloud test above.
@@ -131,7 +134,7 @@ async function invokeScript(prompt: string, failContext: string): Promise<RawScr
   const userContent = failContext ? `${prompt}\n\n---\n\n${failContext}` : prompt;
   const response = await invokeLLM({
     messages: [
-      { role: "system", content: "You are a world-class direct-response video scriptwriter. Always respond with valid JSON only." },
+      { role: "system", content: `You are a world-class direct-response video scriptwriter. Always respond with valid JSON only.\n\n${REGISTER_STANDARD}` },
       { role: "user", content: userContent },
     ],
     response_format: SCRIPT_JSON_SCHEMA as any,
@@ -164,16 +167,62 @@ export async function generateScriptForConcept(params: { userId: number; concept
   const { getCascadeContext } = await import("./_core/cascadeContext");
   const cascadeContext = await getCascadeContext(params.userId, concept.icpId, "adCopy");
 
-  const prompt = buildConceptScriptPrompt(concept as ScriptConceptInput, cascadeContext, targetSeconds);
+  // Real-proof signal for the third-person unlock. A script may tell a client's
+  // story only where the coach has actually supplied that client's material;
+  // otherwise the script is first person and never asks for a client at all.
+  // Best-effort: a concept with no serviceId resolves to first-person-only, which
+  // is the safe direction.
+  let hasRealClientMaterial = false;
+  if (concept.serviceId != null) {
+    const { services } = await import("../drizzle/schema");
+    const [svc] = await db
+      .select({
+        t1: services.testimonial1Name,
+        t2: services.testimonial2Name,
+        t3: services.testimonial3Name,
+      })
+      .from(services)
+      .where(eq(services.id, concept.serviceId))
+      .limit(1);
+    hasRealClientMaterial = !!(svc && (svc.t1 || svc.t2 || svc.t3));
+  }
+
+  const prompt = buildConceptScriptPrompt(concept as ScriptConceptInput, cascadeContext, targetSeconds, hasRealClientMaterial);
+
+  // ONE SHARED PASS — structure + policy + compliance axis + fabrication in a single gate,
+  // so one retry satisfies all of them. onScreenText is checked as a SHORT field: it is
+  // exactly the place the register has no room to work.
+  const { checkOutput } = await import("./_core/complianceAxis");
+  const { buildCoachCorpus, buildProofSupplied } = await import("./_core/groundingCorpus");
+  let gateService: any = null;
+  if (concept.serviceId != null) {
+    const { services } = await import("../drizzle/schema");
+    [gateService] = await db.select().from(services).where(eq(services.id, concept.serviceId)).limit(1);
+  }
+  const grounding = gateService
+    ? { corpus: buildCoachCorpus({ service: gateService, groundingMeta: null }), supplied: buildProofSupplied(gateService) }
+    : undefined;
 
   const gate = (s: RawScript): { ok: boolean; failContext: string; labels: string } => {
     const structure = validateScriptStructure(s, { hookPattern: concept.hookPattern, targetSeconds });
     const compliance = screenScriptCompliance(s.scenes ?? []);
-    if (structure.ok && compliance.ok) return { ok: true, failContext: "", labels: "" };
-    const parts = [structure.ok ? "" : structure.failContext, compliance.ok ? "" : compliance.failContext].filter(Boolean);
+    const output = checkOutput(
+      (s.scenes ?? []).flatMap((sc: any, i: number) => [
+        { location: `scene[${i}].spokenLine`, text: sc.spokenLine, role: "body" as const },
+        { location: `scene[${i}].onScreenText`, text: sc.onScreenText, role: "short" as const },
+      ]),
+      grounding,
+    );
+    if (structure.ok && compliance.ok && output.ok) return { ok: true, failContext: "", labels: "" };
+    const parts = [
+      structure.ok ? "" : structure.failContext,
+      compliance.ok ? "" : compliance.failContext,
+      output.ok ? "" : output.failContext,
+    ].filter(Boolean);
     const labels = [
       ...(structure.ok ? [] : structure.hits.map((h) => h.classId)),
       ...(compliance.ok ? [] : compliance.hits.map((h) => h.classId)),
+      ...output.blocking.map((h) => h.classId),
     ].join(", ");
     return { ok: false, failContext: parts.join("\n\n"), labels };
   };

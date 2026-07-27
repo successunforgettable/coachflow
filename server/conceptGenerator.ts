@@ -22,6 +22,7 @@ import {
   CANDIDATE_HOOK_AWARENESS_MAP,
 } from "./_core/conceptAxis";
 import { validateConceptSetStructure, screenConceptCompliance, type RawConcept } from "./_core/conceptValidator";
+import { REGISTER_STANDARD, registerPersonGuidance, physicalSubjectGuidance } from "./_core/copywritingRules";
 
 export interface ConceptIcpInput {
   name?: string | null;
@@ -35,11 +36,15 @@ export interface ConceptIcpInput {
 
 // The candidate stage→hook guidance, rendered from CONFIG (not baked into the prompt text). Until
 // CANDIDATE_HOOK_AWARENESS_MAP.approved flips true, this is guidance only — Arfeen signs off the mapping.
-function renderHookGuidance(): string {
+function renderHookGuidance(availableHooks: readonly string[]): string {
   const lines = AWARENESS_STAGES.map((stage) => {
     const m = CANDIDATE_HOOK_AWARENESS_MAP.map[stage];
-    const sec = m.secondary.length ? ` (or ${m.secondary.join(", ")})` : "";
-    return `  - ${stage}: prefer ${m.primary}${sec}`;
+    // A stage whose primary hook is unavailable (social_proof, when the coach has no
+    // client material) falls through to its secondary rather than losing its guidance.
+    const usable = [m.primary, ...m.secondary].filter((h) => availableHooks.includes(h));
+    if (usable.length === 0) return `  - ${stage}: any pattern above that fits this stage`;
+    const sec = usable.slice(1).length ? ` (or ${usable.slice(1).join(", ")})` : "";
+    return `  - ${stage}: prefer ${usable[0]}${sec}`;
   });
   const status = CANDIDATE_HOOK_AWARENESS_MAP.approved
     ? "Use this hook→awareness pairing."
@@ -47,8 +52,18 @@ function renderHookGuidance(): string {
   return `${status}\n${lines.join("\n")}`;
 }
 
-export function buildConceptPrompt(icp: ConceptIcpInput, count: number): string {
+export function buildConceptPrompt(icp: ConceptIcpInput, count: number, hasRealClientMaterial: boolean = false): string {
   const persona = icp.angleName || icp.name || "this ideal customer";
+  // PROOF-DEPENDENT HOOKS. social_proof asks for a client result; data_chart asks for a
+  // figure. Both are offered only once the coach's proof is on the record — otherwise the
+  // set is built from the remaining patterns and the prompt never asks for something the
+  // coach cannot supply. (Verified 2026-07-27: with data_chart still offered, a launch-stage
+  // coach's set produced "screened out ... more than 70% of the time. Four months of data."
+  // — an invented statistic presented as the coach's own tracked result.)
+  // Mirrors PROOF_DEPENDENT_ANGLES in adCopyAngles.ts.
+  const availableHooks = hasRealClientMaterial
+    ? [...HOOK_PATTERNS]
+    : HOOK_PATTERNS.filter((h) => h !== "social_proof" && h !== "data_chart");
   return `You are a world-class direct-response strategist building Meta ad concepts for ONE fixed persona.
 
 THE PERSONA IS FIXED — every concept is the SAME person: ${persona}.
@@ -63,15 +78,18 @@ Objections: ${icp.objections || "(none provided)"}
 Buying triggers: ${icp.buyingTriggers || "(none provided)"}
 
 AWARENESS — span all 5 Schwartz stages across the set: ${AWARENESS_STAGES.join(", ")}.
-HOOK PATTERN — each concept uses exactly one of the ${HOOK_PATTERNS.length} patterns: ${HOOK_PATTERNS.join(", ")}.
-${renderHookGuidance()}
+HOOK PATTERN — each concept uses exactly one of these patterns: ${availableHooks.join(", ")}.${hasRealClientMaterial ? "" : "\n(The social-proof and data-chart hooks need a real client account or a real figure to carry them, and this coach's proof is not on the record yet, so this set is built from the other patterns.)"}
+${renderHookGuidance(availableHooks)}
 
 REAL-URGENCY RULE (direct_offer_urgency hook): express urgency ONLY from a genuine, coach-supplied deadline or offer. NEVER invent scarcity — no "expires tonight", "gone forever", "price doubles at midnight", fake countdowns, or guaranteed-income claims. If no real deadline exists, use a non-urgency close instead. This copy is screened by Meta ad-policy filters.
+
+${registerPersonGuidance(hasRealClientMaterial)}
+${physicalSubjectGuidance([icp.pains, icp.goals, icp.fears, persona].join(" "))}
 
 STRUCTURAL RULES (every concept):
 - desire: the single pain/goal this concept leads with, in this person's own language.
 - awareness: exactly one of the 5 stages above.
-- hookPattern: exactly one of the 6 patterns above.
+- hookPattern: exactly one of the patterns listed above.
 - hook: the scroll-stopping opening line, named to this awareness stage.
 - headline: carries a DIFFERENT signal from the hook (the mechanism or the outcome) — NEVER a repeat of the hook.
 - shortText: the short-form primary text (feeds the ranking model).
@@ -121,7 +139,7 @@ async function invokeConcepts(prompt: string, failContext: string): Promise<RawC
   const userContent = failContext ? `${prompt}\n\n---\n\n${failContext}` : prompt;
   const response = await invokeLLM({
     messages: [
-      { role: "system", content: "You are a world-class direct-response strategist. Always respond with valid JSON only." },
+      { role: "system", content: `You are a world-class direct-response strategist. Always respond with valid JSON only.\n\n${REGISTER_STANDARD}` },
       { role: "user", content: userContent },
     ],
     response_format: CONCEPT_JSON_SCHEMA as any,
@@ -157,33 +175,77 @@ export async function generateConceptsForIcp(params: {
   if (!icp) throw new Error(`ICP ${params.icpId} not found for user ${params.userId}`);
 
   const count = params.count ?? DEFAULT_CONCEPT_COUNT;
-  const prompt = buildConceptPrompt(icp as ConceptIcpInput, count);
+  // Real-proof signal for the third-person unlock — the coach's own supplied client
+  // material. Absent (or no serviceId) resolves to first-person-only, the safe direction.
+  let hasRealClientMaterial = false;
+  if (params.serviceId != null) {
+    const { services } = await import("../drizzle/schema");
+    const [svc] = await db
+      .select({
+        t1: services.testimonial1Name,
+        t2: services.testimonial2Name,
+        t3: services.testimonial3Name,
+      })
+      .from(services)
+      .where(eq(services.id, params.serviceId))
+      .limit(1);
+    hasRealClientMaterial = !!(svc && (svc.t1 || svc.t2 || svc.t3));
+  }
+
+  const prompt = buildConceptPrompt(icp as ConceptIcpInput, count, hasRealClientMaterial);
 
   // Generate → structural validate + compliance screen → retry once with combined failContext.
   // Both gates run every attempt: structure (fields/enums/distinct/headline≠hook) AND Meta ad-policy
   // screening (complianceFilter — fabricated scarcity / income guarantees, highest risk on the
   // direct_offer_urgency hook). The ICP-corpus anti-fabrication check stays deferred until ICP grounding.
+  // ONE SHARED PASS — structure + Meta ad-policy + the compliance axis + fabrication, so a
+  // single retry sees every constraint at once. Run separately, a fabrication retry can
+  // reintroduce a compliance violation and neither pass ever sees both.
+  const { checkOutput } = await import("./_core/complianceAxis");
+  const { buildCoachCorpus, buildProofSupplied } = await import("./_core/groundingCorpus");
+  let gateService: any = null;
+  if (params.serviceId != null) {
+    const { services } = await import("../drizzle/schema");
+    [gateService] = await db.select().from(services).where(eq(services.id, params.serviceId)).limit(1);
+  }
+  const grounding = gateService
+    ? { corpus: buildCoachCorpus({ service: gateService, groundingMeta: (icp as any)?.groundingMeta }), supplied: buildProofSupplied(gateService) }
+    : undefined;
+
   const gate = (cs: RawConcept[]): { ok: boolean; failContext: string; labels: string } => {
     const structure = validateConceptSetStructure(cs);
     const compliance = screenConceptCompliance(cs);
-    if (structure.ok && compliance.ok) return { ok: true, failContext: "", labels: "" };
-    const parts = [structure.ok ? "" : structure.failContext, compliance.ok ? "" : compliance.failContext].filter(Boolean);
+    const output = checkOutput(
+      cs.flatMap((c, i) => [
+        { location: `concept[${i}].hook`, text: c.hook, role: "short" as const },
+        { location: `concept[${i}].headline`, text: c.headline, role: "short" as const },
+        { location: `concept[${i}].shortText`, text: c.shortText, role: "body" as const },
+        { location: `concept[${i}].longText`, text: c.longText, role: "body" as const },
+      ]),
+      grounding,
+    );
+    if (structure.ok && compliance.ok && output.ok) return { ok: true, failContext: "", labels: "" };
+    const parts = [
+      structure.ok ? "" : structure.failContext,
+      compliance.ok ? "" : compliance.failContext,
+      output.ok ? "" : output.failContext,
+    ].filter(Boolean);
     const labels = [
       ...(structure.ok ? [] : structure.hits.map((h) => h.classId)),
       ...(compliance.ok ? [] : compliance.hits.map((h) => h.classId)),
+      ...output.blocking.map((h) => h.classId),
     ].join(", ");
     return { ok: false, failContext: parts.join("\n\n"), labels };
   };
 
+  const { COMPLIANCE_RETRY_MAX_ATTEMPTS } = await import("./_core/complianceAxis");
   let concepts = await invokeConcepts(prompt, "");
   let result = gate(concepts);
-  if (!result.ok) {
+  for (let attempt = 2; attempt <= COMPLIANCE_RETRY_MAX_ATTEMPTS && !result.ok; attempt++) {
     concepts = await invokeConcepts(prompt, result.failContext);
     result = gate(concepts);
-    if (!result.ok) {
-      throw new Error(`Concept set failed validation after retry: ${result.labels}`);
-    }
   }
+  if (!result.ok) throw new Error(`Concept set failed validation after ${COMPLIANCE_RETRY_MAX_ATTEMPTS} attempts: ${result.labels}`);
 
   const conceptSetId = randomUUID();
   const personaLabel = (icp as any).angleName || (icp as any).name || null;

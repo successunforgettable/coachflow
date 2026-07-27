@@ -1,6 +1,6 @@
 import { invokeLLM } from "./_core/llm";
 import type { OfferContent } from "../drizzle/schema";
-import { BANNED_COPYWRITING_WORDS, META_COMPLIANCE_NOTES, NO_DATE_FABRICATION_RULE, truncateQuote } from "./_core/copywritingRules";
+import { BANNED_COPYWRITING_WORDS, META_COMPLIANCE_NOTES, NO_DATE_FABRICATION_RULE, REGISTER_STANDARD, truncateQuote } from "./_core/copywritingRules";
 import { validateOfferFabricationPatterns, getCanonicalOfferTokens, type OfferSuppliedData, type RawOfferFields } from "./_core/validator";
 
 // Phase D Phase 1 — offer hardening (red-team baseline v1 evidence-driven).
@@ -264,7 +264,7 @@ Return ONLY valid JSON with these exact keys: offerName, valueProposition, prici
         {
           role: "system",
           content:
-            `You are an expert offer creator specializing in irresistible, loss-aversion-driven offers for coaches, speakers, and consultants. You apply anchoring to make the price feel like a fraction of the value, and you make saying no feel more expensive than saying yes. You write specific outcomes — but you NEVER invent currency amounts, bonus values, cohort sizes, programme durations, or guarantee timeframes that the operator has not supplied. When such facts are unavailable, you emit the canonical operator-fill placeholder tokens listed in the user prompt verbatim. Always respond with valid JSON.\n\n${META_COMPLIANCE_NOTES}\n\n${NO_DATE_FABRICATION_RULE}`,
+            `You are an expert offer creator specializing in irresistible, loss-aversion-driven offers for coaches, speakers, and consultants. You apply anchoring to make the price feel like a fraction of the value, and you make saying no feel more expensive than saying yes. You write specific outcomes — but you NEVER invent currency amounts, bonus values, cohort sizes, programme durations, or guarantee timeframes that the operator has not supplied. When such facts are unavailable, you emit the canonical operator-fill placeholder tokens listed in the user prompt verbatim. Always respond with valid JSON.\n\n${META_COMPLIANCE_NOTES}\n\n${NO_DATE_FABRICATION_RULE}\n\n${REGISTER_STANDARD}`,
         },
         { role: "user", content: cascadeContext + failContextInjection + prompt },
       ],

@@ -1,5 +1,5 @@
 import { invokeLLM } from "./_core/llm";
-import { BANNED_HEADLINE_PATTERNS, META_COMPLIANCE_NOTES, NO_CREDENTIAL_FABRICATION_RULE, scoreAdContent } from "./_core/copywritingRules";
+import { BANNED_HEADLINE_PATTERNS, META_COMPLIANCE_NOTES, NO_CREDENTIAL_FABRICATION_RULE, REGISTER_STANDARD, registerPersonGuidance, physicalSubjectGuidance, scoreAdContent } from "./_core/copywritingRules";
 import { nanoid } from "nanoid";
 import { ensureConceptsForIcp } from "./conceptGenerator";
 
@@ -209,7 +209,7 @@ export async function runAdCopyGeneration(input: {
   liteMode?: boolean;
   userSubscriptionTier?: string | null;
   userRole?: string | null;
-}): Promise<{ adSetId: string; count: number; headlineCount: number; bodyCount: number; linkCount: number }> {
+}): Promise<{ adSetId: string; count: number; headlineCount: number; bodyCount: number; linkCount: number; generatedCount: number; droppedCount: number }> {
   const { getDb } = await import("./db");
   const { adCopy, services, idealCustomerProfiles, sourceOfTruth, campaigns, campaignKits } = await import("../drizzle/schema");
   const { eq, and } = await import("drizzle-orm");
@@ -355,12 +355,35 @@ ${icp.communicationStyle ? `How they communicate: ${icp.communicationStyle}` : '
 - ${socialProof.rating} average rating
 - ${socialProof.reviewCount} reviews
 You MUST use these exact numbers when incorporating social proof. Do not fabricate or inflate.`
-    : `NO SOCIAL PROOF DATA PROVIDED - Use launch-safe alternatives:
-- Focus on benefit claims and outcomes ("Get X result")
-- Use curiosity hooks ("The method that...")
-- Use contrast ("Before vs After")
-- DO NOT mention customer counts, ratings, or reviews
-- DO NOT fabricate testimonials or statistics`;
+    : `LAUNCH-STAGE COPY — this coach's proof is not yet on the record, so the copy earns attention from the coach's own experience of the work and from the method itself:
+- Open on the specific moment the coach knows this problem by, in the vocabulary the field uses for it
+- Lead with the shift the method creates — how the approach works and why it is different
+- Use curiosity: the counterintuitive thing the coach found in this work
+- Use contrast: how the work goes with the mechanism in place versus without it
+Every number, rating, review count, client story and named outcome in this copy comes from the supplied data above. Where the data above does not carry one, the copy speaks to the coach's own experience and the method instead.`;
+
+  // Headline angles. The result-with-a-number and client-result angles ask for
+  // PROOF, so they are offered only when the coach's proof is actually on the
+  // record. A launch-stage coach gets situation-led angles instead — the copy
+  // still lands, and the prompt never asks for a claim they cannot back.
+  const hasRealProof = socialProof.hasCustomers || socialProof.hasRating
+    || socialProof.hasReviews || socialProof.hasTestimonials || socialProof.hasPress;
+  // Derived from the generation context actually being sent — not a stored band.
+  const physicalGuidance = physicalSubjectGuidance(
+    [service.name, service.category, service.description, service.targetCustomer, service.mainBenefit,
+     resolvedPressingProblem, resolvedDesiredOutcome, input.targetMarket, input.productCategory].join(" "),
+  );
+
+  const headlineAngles = hasRealProof
+    ? `- Pain angle: name the specific daily frustration (1-2 words max before the hook)
+- Outcome angle: name the exact result with a number or timeframe, drawn from the supplied proof data above
+- Curiosity angle: the counterintuitive reason this problem persists
+- Social proof angle: name the result a specific type of person got, drawn from the supplied proof data above`
+    : `- Pain angle: name the specific daily frustration (1-2 words max before the hook)
+- Situation angle: name the moment this work turns, in the vocabulary the field uses
+- Curiosity angle: the counterintuitive reason this problem persists
+- Mechanism angle: name the shift the method creates and what makes the approach different
+- Contrast angle: what a working week looks like once that shift lands`;
 
   // ── Headlines call (sync fuller prompt) ─────────────────────────────────────
   const headlinePrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ${count} high-converting ad HEADLINES for this service:
@@ -388,12 +411,16 @@ Ad Type: ${adTypeContext}
 Ad Style: ${input.adStyle}
 Call To Action: ${input.adCallToAction}
 
-SCROLL-STOPPER RULE: The first word of every headline must arrest the scroll. Use the pressing problem or a counterintuitive insight as the opening — not a benefit, not the service name.
+SCROLL-STOPPER RULE: The first word of every headline must arrest the scroll. Open on the specific situation this work turns on, or on a counterintuitive insight — not a benefit, not the service name.
 
 THREE-QUESTION TEST — every headline must pass all three:
-1. Does it name a specific person in a specific situation? (Not "coaches" — "coaches posting daily with zero enquiries")
+1. Does it name a specific situation rather than a category? (Not "for coaches" — "the follow-up that decides the whole month")
 2. Does it name a specific outcome, not a category of outcomes? (Not "more clients" — "3 clients booked in 10 days")
 3. Could this headline ONLY be written for this service? If it works for any coach's service, rewrite it.
+
+${registerPersonGuidance(hasRealProof)}
+
+${physicalGuidance}
 
 BANNED PATTERNS — never generate:
 - ${BANNED_HEADLINE_PATTERNS.map(p => `"${p}..."`).join(', ')}
@@ -402,10 +429,7 @@ BANNED PATTERNS — never generate:
 MANDATORY: Include at least one word from the pressing problem field — the actual vocabulary the target market uses to describe their situation.
 
 Create ${count} attention-grabbing headlines (max 40 characters each). Use these angles across the set:
-- Pain angle: name the specific daily frustration (1-2 words max before the hook)
-- Outcome angle: name the exact result with a number or timeframe
-- Curiosity angle: counterintuitive insight about why they're stuck
-- Social proof angle: name the result a specific type of person got
+${headlineAngles}
 
 Format as JSON array:
 {
@@ -416,7 +440,7 @@ Format as JSON array:
     messages: [
       {
         role: "system",
-        content: `${META_COMPLIANCE_RULES}\n\nYou are an expert ad copywriter who specializes in Meta-compliant advertising for coaches, speakers and consultants. Always respond with valid JSON.`,
+        content: `${META_COMPLIANCE_RULES}\n\nYou are an expert ad copywriter who specializes in Meta-compliant advertising for coaches, speakers and consultants. Always respond with valid JSON.\n\n${REGISTER_STANDARD}`,
       },
       { role: "user", content: cascadeContext + headlinePrompt },
     ],
@@ -439,8 +463,18 @@ Format as JSON array:
   const headlineData = JSON.parse(stripMarkdownJson(headlineContent));
 
   // ── Body angles in parallel (sync fuller prompt with PAS structure) ────────
-  const { ALL_BODY_ANGLES, BODY_ANGLE_PROMPTS } = await import('./adCopyAngles');
-  const selectedAngles = input.liteMode ? ALL_BODY_ANGLES.slice(0, 3) : [...ALL_BODY_ANGLES];
+  const { ALL_BODY_ANGLES, PROOF_DEPENDENT_ANGLES, BODY_ANGLE_PROMPTS } = await import('./adCopyAngles');
+  // Proof-dependent angles are STRUCTURALLY built around a client account or a
+  // figure — their beat structure asks for one, so a launch-stage coach handed one
+  // of these has to invent the client to fill it. (Verified 2026-07-27: the
+  // social-proof angle produced "One client sat through…" plus an invented quote for
+  // a coach with zero supplied proof, even with the angle's own text reframed.)
+  // Withheld until the coach's proof is on the record — the deck simply uses the
+  // other angles, so a beginner still gets a full set.
+  const availableAngles = hasRealProof
+    ? [...ALL_BODY_ANGLES]
+    : ALL_BODY_ANGLES.filter((a) => !PROOF_DEPENDENT_ANGLES.includes(a));
+  const selectedAngles = input.liteMode ? availableAngles.slice(0, 3) : availableAngles;
   const bodyPromises = selectedAngles.map(async (angle) => {
     const anglePrompt = BODY_ANGLE_PROMPTS[angle];
     const bodyPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ONE high-converting ad BODY COPY using the ${angle.replace('_', ' ')} angle:
@@ -470,10 +504,14 @@ Call To Action: ${input.adCallToAction}
 
 ${anglePrompt}
 
+${registerPersonGuidance(hasRealProof)}
+
+${physicalGuidance}
+
 PAS STRUCTURE — apply to every body copy in this order:
-PAIN (1-2 sentences): Open with the scroll-stopping pain. Use the exact language the target market uses to describe this problem to a friend. The first sentence must be about their situation — not about the product.
-AGITATE (2-3 sentences): Make the pain feel bigger and more urgent. Name the cost of staying stuck. Name the failed solutions they've already tried.
-SOLUTION (2-3 sentences): Introduce the mechanism. Name what makes it different from what they've tried. Include a specific outcome or timeframe.
+PAIN (1-2 sentences): Open on the specific moment the coach knows this problem by — from their own experience of it, or from doing this work up close. Use the vocabulary the field actually uses for it. Concrete moment, not a category.
+AGITATE (2-3 sentences): Stay with that moment and show what it costs — what it takes out of a week, and which of the usual fixes do not hold.
+SOLUTION (2-3 sentences): Introduce the mechanism. Name what makes it different from the usual approach. Include a specific outcome or timeframe drawn from the supplied material.
 CTA (1 sentence): One clear next step. Use the approved CTA format from Meta compliance rules.
 
 FORMATTING RULES (applied to every body copy):
@@ -492,7 +530,7 @@ Return ONLY the body text as a single string, no JSON wrapper.`;
       messages: [
         {
           role: "system",
-          content: `${META_COMPLIANCE_RULES}\n\nYou are an expert ad copywriter who specializes in Meta-compliant advertising for coaches, speakers and consultants.\n\n${NO_CREDENTIAL_FABRICATION_RULE}`,
+          content: `${META_COMPLIANCE_RULES}\n\nYou are an expert ad copywriter who specializes in Meta-compliant advertising for coaches, speakers and consultants.\n\n${NO_CREDENTIAL_FABRICATION_RULE}\n\n${REGISTER_STANDARD}`,
         },
         { role: "user", content: cascadeContext + bodyPrompt },
       ],
@@ -539,7 +577,7 @@ Format as JSON array:
     messages: [
       {
         role: "system",
-        content: `${META_COMPLIANCE_RULES}\n\nYou are an expert ad copywriter who specializes in Meta-compliant advertising for coaches, speakers and consultants. Always respond with valid JSON.`,
+        content: `${META_COMPLIANCE_RULES}\n\nYou are an expert ad copywriter who specializes in Meta-compliant advertising for coaches, speakers and consultants. Always respond with valid JSON.\n\n${REGISTER_STANDARD}`,
       },
       { role: "user", content: cascadeContext + linkPrompt },
     ],
@@ -678,7 +716,38 @@ Format as JSON array:
     });
   }
 
-  await db.insert(adCopy).values(allInserts);
+  // ── OUTPUT GATE (compliance axis + fabrication), one shared pass ────────────
+  // Disposition here is DROP-THE-VARIANT rather than throw: a deck carries 15-30
+  // variants, so removing the few that violate leaves a usable deck and never
+  // dead-ends a launch-stage coach mid-cascade. The publish gate is the hard stop.
+  const { checkOutput } = await import("./_core/complianceAxis");
+  const { buildCoachCorpus, buildProofSupplied } = await import("./_core/groundingCorpus");
+  const gateGrounding = {
+    corpus: buildCoachCorpus({ service, groundingMeta: (icp as any)?.groundingMeta }),
+    supplied: buildProofSupplied(service),
+  };
+  const keptInserts: typeof allInserts = [];
+  const droppedClasses: string[] = [];
+  for (const row of allInserts) {
+    const role = row.contentType === "headline" ? "short" as const
+      : row.contentType === "link" ? "cta" as const : "body" as const;
+    const res = checkOutput([{ location: String(row.contentType), text: String(row.content ?? ""), role }], gateGrounding);
+    if (res.ok) { keptInserts.push(row); continue; }
+    droppedClasses.push(...res.blocking.map((h) => String(h.classId)));
+  }
+  if (droppedClasses.length > 0) {
+    console.warn(
+      `[adCopyGenerator] dropped ${allInserts.length - keptInserts.length}/${allInserts.length} variants ` +
+      `(classes=[${Array.from(new Set(droppedClasses)).join(",")}]); ${keptInserts.length} kept.`,
+    );
+  }
+  if (keptInserts.length === 0) {
+    throw new Error(
+      `Every ad-copy variant in this set carried a policy or grounding issue (classes=[${Array.from(new Set(droppedClasses)).join(",")}]). ` +
+      `Nothing was saved — regenerate, or add your real figures and client material to your profile first.`,
+    );
+  }
+  await db.insert(adCopy).values(keptInserts);
 
   // Compliance precompute — must land before runX returns so wizard panel
   // sees ad copy + rewrites atomically. Mirrors prior async behavior.
@@ -706,11 +775,17 @@ Format as JSON array:
     }
   } catch (e) { console.warn("[auto-select] adCopy failed:", e); }
 
+  // Counts report what was actually PERSISTED, not what was generated. The output gate
+  // above drops variants, so returning the pre-drop totals would hand the caller (and the
+  // wizard) a number that does not match the deck in the database.
+  const keptOf = (t: string) => keptInserts.filter((r) => r.contentType === t).length;
   return {
     adSetId,
-    count: allInserts.length,
-    headlineCount: headlineData.headlines.length,
-    bodyCount: bodyData.bodies.length,
-    linkCount: linkData.links.length,
+    count: keptInserts.length,
+    headlineCount: keptOf("headline"),
+    bodyCount: keptOf("body"),
+    linkCount: keptOf("link"),
+    generatedCount: allInserts.length,
+    droppedCount: allInserts.length - keptInserts.length,
   };
 }

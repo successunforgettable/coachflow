@@ -90,6 +90,120 @@ export const META_COMPLIANCE_NOTES =
   "Never include: As seen on Meta, As seen on Facebook, As seen on Instagram. Never make income guarantees. Never use banned Meta language: banned, secret they don't want you to know, leaked, exposed, glitch.";
 
 /**
+ * REGISTER STANDARD — first-person default. Appended to the system prompt of
+ * every generator that produces reader-facing copy.
+ *
+ * WHY THIS EXISTS. Meta's Personal Attributes policy prohibits copy that asserts
+ * or implies the advertiser knows something about the person seeing the ad —
+ * their health, financial status, age, ethnicity, criminal record, and the rest
+ * of the enumerated list. Meta's own stated remedy is to focus on the benefits
+ * of the product instead. The banned thing is the DIAGNOSTIC ADDRESS, not
+ * emotional force: "You're sitting in the car park to delay going in" and
+ * "I sat in the car park four minutes every Monday just to delay going in"
+ * carry the identical payload, and only the first makes a claim about the reader.
+ *
+ * First person is the default for two reasons. It is STRUCTURALLY outside the
+ * rule — a claim about the advertiser's own experience cannot assert knowledge
+ * of the viewer — and it is the only register a beginner can use honestly: a
+ * third-person case study needs a real client story, and a new coach has no
+ * "Sarah", so third-person framing pushes them straight into inventing proof.
+ *
+ * Positive-framed by design (§14): it describes the register the copy IS, and
+ * carries no banned-phrase list. Naming failure shapes primes the model to emit
+ * them — the documented cause of the Sprint-B email regression.
+ *
+ * Authoritative source: docs/compliance/META_AD_COMPLIANCE_REFERENCE.md §1.1,
+ * §1.2, §3.1. Compliance is validated on GENERATED OUTPUT (the compliance axis),
+ * not precomputed from the service record — the violation is created in the
+ * sentence, not in the offer.
+ */
+export const REGISTER_STANDARD = `REGISTER — write from the advertiser's side of the table.
+
+The copy speaks from what the coach has lived, seen and built: what they did, what
+they noticed, what changed, what the method does. It describes a moment precisely
+enough that the right reader recognises it — the recognition comes from the
+accuracy of the described moment, not from telling the reader what is true of them.
+
+Concrete and specific is the goal. Intensity, stakes and emotional weight all
+belong here in full — they are carried by the detail of the moment ("I sat in the
+car park four minutes every Monday just to delay going in"), by the cost the coach
+paid, and by what the method changes. Specificity is what makes copy land; keep it.
+
+Where the copy addresses the reader directly, it speaks about the offer and what
+it does — the benefit, the process, the outcome the method is built to produce.
+That is the ground Meta's policy explicitly points to.
+
+Attributes of a person — their health, body, mental state, financial standing,
+age, background, or circumstances — are things the coach describes about their own
+experience or their own work, never things the copy states or implies about the
+person reading it.`;
+
+/**
+ * PHYSICAL-SUBJECT GUIDANCE (§1.3). Meta stacks two rules on body/weight/appearance
+ * copy: personal attributes AND the prohibition on generating negative self-perception.
+ *
+ * This is NOT a niche band and NOT a classifier over the service record — there is no
+ * stored risk tier, and nothing here changes what is generated for any other subject.
+ * It reads the generation context that is already being sent to the model, and when
+ * the offer's OWN words put the body, weight or appearance in the subject position, it
+ * adds the stricter guidance to that same prompt.
+ *
+ * WHY IT EXISTS (verified 2026-07-27): with the register standard alone, a service
+ * record written in weight-loss language ("lose weight fast and get back to their
+ * pre-pregnancy body") pulled the copy back into the reader's body — "The clothes still
+ * don't fit… You avoid the camera… the mirror is a daily reminder". The model mirrors
+ * the framing it is handed. The register standard is necessary and not sufficient here;
+ * output-side enforcement is the compliance axis's job, and this is the prompt-side half.
+ */
+const PHYSICAL_SUBJECT_MARKERS = [
+  "weight", "lose weight", "fat loss", "slim", "body", "physique", "figure",
+  "pre-pregnancy", "postpartum", "post-natal", "postnatal", "before and after",
+  "transformation photo", "appearance", "look better", "toned", "belly", "waistline",
+  "dress size", "bikini", "shape",
+];
+
+export function physicalSubjectGuidance(generationContext: string): string {
+  const haystack = (generationContext || "").toLowerCase();
+  if (!PHYSICAL_SUBJECT_MARKERS.some((m) => haystack.includes(m))) return "";
+  return `PHYSICAL SUBJECT — this offer concerns the body, so the copy holds to the strictest form of the register:
+
+The subject is CAPABILITY and how something feels to do — lifting, climbing stairs, carrying a
+child, energy through an afternoon, sleeping and recovering. Those are the outcomes named, and
+they are named as what the method is built to produce.
+
+Appearance, weight, size, clothing fit, mirrors, photographs and comparisons between how someone
+looked then and looks now are outside what this copy describes — including as the coach's own
+account. Where the coach's own experience is told, it is told through what they could and could
+not DO.
+
+The reader's body is never the subject of a sentence. Every physical detail in the copy belongs
+to a moment the coach lived, or to what the programme does.`;
+}
+
+/**
+ * Third-person unlock. A case study about a named client is honest copy only when
+ * the coach has actually supplied that client's material; otherwise the model has
+ * to invent the client. Callers pass the real-proof signal they already compute
+ * (socialProof.hasTestimonials / a populated real-testimonial library).
+ *
+ * The no-proof branch is deliberately COMPLETE rather than restricted — it names
+ * what launch-stage copy is built from, and never mentions client stories at all,
+ * so there is nothing for the model to fill in.
+ */
+export function registerPersonGuidance(hasRealClientMaterial: boolean): string {
+  return hasRealClientMaterial
+    ? `PERSON — first person is the default voice. The coach's real client material is
+supplied above, so a third-person account of a client's experience is also available:
+draw it ONLY from the supplied material, using the words, roles and results that
+appear there.`
+    : `PERSON — first person throughout. This copy is built from the coach's own
+experience, the method itself, and what the offer does: the moment they remember,
+the shift the method creates, what makes the approach different, and what a working
+week looks like once it lands. Every figure, result and named person in the copy is
+one that appears in the supplied material above.`;
+}
+
+/**
  * Date-fabrication ban — appended to system prompts in all generators
  * with urgency/scarcity surfaces (Offer, Landing Page, Email, WhatsApp).
  * The model has no temporal awareness; any specific calendar date it

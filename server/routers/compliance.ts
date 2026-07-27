@@ -18,6 +18,166 @@ const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
 });
 
 export const complianceRouter = router({
+  /**
+   * Coach-facing compliance advisories for one Campaign Kit.
+   *
+   * COMPUTED ON READ, NOT PERSISTED — deliberately, and this is why there is no
+   * migration for it:
+   *   - the advisory must reflect the copy as it stands NOW. A stored flag goes stale
+   *     the moment the coach hand-edits a headline in the Kit, and would then either
+   *     warn about text that no longer exists or stay silent about text that does.
+   *   - it is pure text analysis, no LLM call, so recomputing costs nothing.
+   *   - nothing needs backfilling for kits that already exist.
+   * Same reasoning as the held publish gate being content-agnostic so it catches
+   * hand-edits.
+   *
+   * Returns ADVISORIES ONLY (tier 2). Nothing here gates anything: blocking checks
+   * live at generation and at the publish gates. Check 5 in particular rests on
+   * practitioner reports rather than Meta's published policy, so it must warn and
+   * never block — see docs/compliance/META_AD_COMPLIANCE_REFERENCE.md Tier 2.
+   */
+  advisoriesForKit: protectedProcedure
+    .input(z.object({ campaignKitId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const { campaignKits, adCopy, landingPages, headlines } = await import("../../drizzle/schema");
+      const { checkComplianceAxis } = await import("../_core/complianceAxis");
+
+      const [kit] = await db.select().from(campaignKits)
+        .where(and(eq(campaignKits.id, input.campaignKitId), eq(campaignKits.userId, ctx.user.id))).limit(1);
+      if (!kit) throw new TRPCError({ code: "NOT_FOUND", message: "Kit not found" });
+
+      const fields: Array<{ location: string; text: string | null | undefined; role?: "short" | "body" | "cta" }> = [];
+
+      if (kit.selectedAdCopyId) {
+        const [row] = await db.select().from(adCopy)
+          .where(and(eq(adCopy.id, kit.selectedAdCopyId), eq(adCopy.userId, ctx.user.id))).limit(1);
+        if (row?.content) {
+          fields.push({
+            location: "Ad copy",
+            text: row.content,
+            role: row.contentType === "headline" ? "short" : row.contentType === "link" ? "cta" : "body",
+          });
+        }
+      }
+      if (kit.selectedHeadlineId) {
+        const [row] = await db.select().from(headlines)
+          .where(and(eq(headlines.id, kit.selectedHeadlineId), eq(headlines.userId, ctx.user.id))).limit(1);
+        const h = row as Record<string, unknown> | undefined;
+        for (const key of ["main", "eyebrow", "sub", "content"]) {
+          const v = h?.[key];
+          if (typeof v === "string" && v.trim()) fields.push({ location: "Headline", text: v, role: "short" });
+        }
+      }
+      if (kit.selectedLandingPageId) {
+        const [row] = await db.select().from(landingPages)
+          .where(and(eq(landingPages.id, kit.selectedLandingPageId), eq(landingPages.userId, ctx.user.id))).limit(1);
+        const content = (row as Record<string, any> | undefined)?.content;
+        if (content && typeof content === "object") {
+          for (const [k, role] of [["eyebrowHeadline", "short"], ["mainHeadline", "short"], ["subheadline", "short"],
+                                   ["problemAgitation", "body"], ["solutionIntro", "body"], ["whyOldFail", "body"]] as const) {
+            const v = content[k];
+            if (typeof v === "string" && v.trim()) fields.push({ location: `Landing page — ${k}`, text: v, role });
+          }
+        }
+      }
+
+      if (fields.length === 0) return { advisories: [] as Array<{ classId: string; where: string; matched: string }> };
+
+      const result = checkComplianceAxis(fields);
+
+      // Collapse to one advisory per class — the coach needs to know the ad uses career
+      // language once, not once per sentence.
+      const seen = new Map<string, { classId: string; where: string; matched: string }>();
+      for (const h of result.advisories) {
+        if (!seen.has(h.classId)) seen.set(h.classId, { classId: h.classId, where: h.location, matched: h.matched });
+      }
+      return { advisories: Array.from(seen.values()) };
+    }),
+
+  /**
+   * REWORD — the coach's own choice, never automatic.
+   *
+   * The advisory it answers rests on practitioner reports, not Meta's published policy.
+   * Auto-stripping legitimate career language for a risk that may not apply would be
+   * wrong, so nothing here runs unless the coach asks for it.
+   *
+   * NON-DESTRUCTIVE and NO MIGRATION: the reworded copy is inserted as a NEW adCopy row
+   * in the same ad set, and the kit is repointed at it. The coach's original stays in the
+   * deck, so choosing this can be undone by re-selecting the previous variant.
+   *
+   * SCOPE: only the flagged asset is regenerated — not the campaign, not the deck. A
+   * narrow rewrite also preserves the copy the coach already chose, rather than re-rolling
+   * it into something unrecognisable.
+   *
+   * The Employment Special Ad Category declaration is deliberately NOT touched. That is a
+   * legal declaration the advertiser makes in their own Ads Manager, and ZAP must not make
+   * it on their behalf — the banner explains it, and that is where it ends.
+   */
+  rewordForAdvisory: protectedProcedure
+    .input(z.object({ campaignKitId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      const { campaignKits, adCopy } = await import("../../drizzle/schema");
+      const { checkOutput } = await import("../_core/complianceAxis");
+      const { invokeLLM } = await import("../_core/llm");
+      const { REGISTER_STANDARD } = await import("../_core/copywritingRules");
+
+      const [kit] = await db.select().from(campaignKits)
+        .where(and(eq(campaignKits.id, input.campaignKitId), eq(campaignKits.userId, ctx.user.id))).limit(1);
+      if (!kit) throw new TRPCError({ code: "NOT_FOUND", message: "Kit not found" });
+      if (!kit.selectedAdCopyId) throw new TRPCError({ code: "BAD_REQUEST", message: "No ad copy selected for this campaign yet." });
+
+      const [row] = await db.select().from(adCopy)
+        .where(and(eq(adCopy.id, kit.selectedAdCopyId), eq(adCopy.userId, ctx.user.id))).limit(1);
+      if (!row?.content) throw new TRPCError({ code: "NOT_FOUND", message: "Selected ad copy not found" });
+
+      // Positive-framed (§14): describes the copy wanted rather than listing words to avoid.
+      const system = `You are an expert Meta ad copywriter rewriting one piece of copy for a coach.\n\n${REGISTER_STANDARD}`;
+      const user = `Rewrite the copy below so the offer is described in terms of the COACHING ITSELF — the method, what it changes, what someone leaves with, the situation it addresses — rather than in terms of jobs, hiring, recruitment, promotions, salaries or CVs.
+
+Keep everything else: the same length, the same structure, the same specific detail, the same voice, the same call to action. The point is not to soften it. The outcome the reader wants stays exactly as vivid; only the vocabulary describing it moves away from employment framing.
+
+COPY TO REWRITE:
+${row.content}
+
+Return ONLY the rewritten copy as plain text. No preamble, no quotes around it, no explanation.`;
+
+      const role = row.contentType === "headline" ? "short" as const
+        : row.contentType === "link" ? "cta" as const : "body" as const;
+
+      let rewritten = "";
+      let advisoriesLeft = 1;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        const resp = await invokeLLM({ messages: [{ role: "system", content: system }, { role: "user", content: user }] });
+        const raw = resp.choices[0]?.message?.content;
+        const text = typeof raw === "string" ? raw.trim() : "";
+        if (!text) continue;
+        const gate = checkOutput([{ location: String(row.contentType), text, role }]);
+        advisoriesLeft = gate.advisories.filter((h) => h.classId === "special_ad_category_employment").length;
+        // Accept only copy that is BLOCKING-clean; the advisory clearing is the goal but a
+        // rewrite that introduced a real violation would be worse than the original.
+        if (gate.ok) { rewritten = text; if (advisoriesLeft === 0) break; }
+      }
+      if (!rewritten) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "The reword didn't produce copy that cleared the checks. Your original copy is unchanged — try again, or edit the wording yourself.",
+        });
+      }
+
+      const insert: any = await db.insert(adCopy).values({
+        ...row, id: undefined, content: rewritten, createdAt: undefined, updatedAt: undefined,
+      } as any);
+      const newId = insert[0].insertId;
+      await db.update(campaignKits).set({ selectedAdCopyId: newId }).where(eq(campaignKits.id, input.campaignKitId));
+
+      return { rewordedAdCopyId: newId, previousAdCopyId: row.id, content: rewritten, advisoryCleared: advisoriesLeft === 0 };
+    }),
+
   // Get all banned phrases
   listPhrases: adminProcedure.query(async () => {
     const db = await getDb();

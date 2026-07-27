@@ -3,7 +3,7 @@ import { protectedProcedure, router } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "../db";
 import { metaAccessTokens } from "../../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { encryptToken, decryptToken } from "../_core/tokenCrypto";
 import { buildResolvedMap, resolveTokensInText } from "../lib/placeholderResolver";
 
@@ -252,6 +252,64 @@ export const metaRouter = router({
       const body = rt(input.body)!;
       const callToAction = rt(input.callToAction);
       const campaignName = rt(input.campaignName)!;
+
+      // ── PUBLISH GATE — compliance axis + fabrication, on RESOLVED copy ──────────
+      // Runs on the resolved text deliberately: a real price a [INSERT_*] token just
+      // resolved to must read as supplied, and an unresolved token must not read as a
+      // missing figure. Content-agnostic, so it catches a coach's hand-edit in the Kit
+      // as well as anything a generator produced.
+      if (input.serviceId != null) {
+        const { checkOutput, checkAdToPageMatch } = await import("../_core/complianceAxis");
+        const { buildCoachCorpus, buildProofSupplied } = await import("../_core/groundingCorpus");
+        const { services, idealCustomerProfiles, landingPages } = await import("../../drizzle/schema");
+        const gateDb = await getDb();
+        if (gateDb) {
+          const [svc] = await gateDb.select().from(services)
+            .where(and(eq(services.id, input.serviceId), eq(services.userId, ctx.user.id))).limit(1);
+          const [gateIcp] = await gateDb.select().from(idealCustomerProfiles)
+            .where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
+
+          const gate = svc ? checkOutput(
+            [
+              { location: "headline", text: headline, role: "short" },
+              { location: "body", text: body, role: "body" },
+              { location: "callToAction", text: callToAction, role: "cta" },
+            ],
+            { corpus: buildCoachCorpus({ service: svc, groundingMeta: (gateIcp as any)?.groundingMeta }), supplied: buildProofSupplied(svc) },
+          ) : null;
+
+          // CHECK 3 (§1.4) — Meta requires the products and services promoted in an ad to
+          // match those on its landing page, and reviews the destination. Only evaluable
+          // here, where both artefacts exist.
+          const pageBlocking: Array<{ classId: string; matched: string; location: string }> = [];
+          try {
+            const [lp] = await gateDb.select().from(landingPages)
+              .where(and(eq(landingPages.publicUrl, input.linkUrl), eq(landingPages.userId, ctx.user.id))).limit(1);
+            const content = (lp as any)?.content;
+            if (content && typeof content === "object") {
+              const pageText = ["eyebrowHeadline", "mainHeadline", "subheadline", "problemAgitation",
+                "solutionIntro", "uniqueMechanism"].map((k) => content[k]).filter((v) => typeof v === "string").join(" ");
+              const match = checkAdToPageMatch(`${headline} ${body}`, pageText);
+              if (!match.ok) pageBlocking.push(...match.blocking);
+            }
+          } catch { /* destination not resolvable — the other checks still apply */ }
+
+          const blocking = [...(gate?.blocking ?? []), ...pageBlocking];
+          if (blocking.length > 0) {
+            const detail = blocking.slice(0, 4).map((h) => `${h.location}: "${h.matched}"`).join("; ");
+            console.warn(
+              `[publishToMeta] BLOCKED for user ${ctx.user.id} — ` +
+              `classes=[${Array.from(new Set(blocking.map((h) => String(h.classId)))).join(",")}]`,
+            );
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message:
+                `This ad wasn't published because it states things about the reader, or claims your own material doesn't back up: ${detail}. ` +
+                `Rewrite it to speak from your own experience and what the programme does, or add the real figures and client material to your profile first.`,
+            });
+          }
+        }
+      }
 
       try {
         // Step 1: Create campaign — budget intentionally NOT passed here.

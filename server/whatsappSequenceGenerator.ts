@@ -22,6 +22,7 @@ import {
   NO_CREDENTIAL_FABRICATION_RULE,
   NO_RESEARCH_STATISTIC_FABRICATION_RULE,
   META_COMPLIANCE_NOTES,
+  REGISTER_STANDARD,
 } from "./_core/copywritingRules";
 import { getCascadeContext } from "./_core/cascadeContext";
 import { validateWhatsappSequenceShape, validateWhatsappFabricationPatterns, type WhatsappSuppliedData } from "./_core/validator";
@@ -208,7 +209,7 @@ const ENGAGEMENT_FINAL_MESSAGE_DECISION_A = `Name the event specifically. Give o
 
 const ENGAGEMENT_PROOF_BLOCK = `Share one real result from one specific type of person (anonymised if needed). PROOF SPECIFICITY RULE: Anonymous proof must still be specific. Required structure: state the role first (specific job title or life situation), then the problem they had, then the mechanism or change, then the outcome with a number, timeframe, or named result. Never use: 'someone', 'a person', 'one of our clients', 'a student' without qualification. One sentence on what changed for them and how. Make it feel like evidence, not marketing. End with a direct question asking if that sounds familiar to them.`;
 
-const ENGAGEMENT_ASSUMPTION_BREAK_BLOCK = `Message 1 first sentence rule: The first sentence must break an assumption the reader currently holds — not just create curiosity. Identify the most common belief someone in this niche has about their situation, then write a first sentence that makes that belief feel worth questioning. This is not a shocking statement — it is something so precisely true about their current situation that it stops the scroll because it feels personal. It must contain one niche-specific word or phrase. Open a loop — ask one question they don't yet know the answer to, that makes them want to come to the event to find out. Do not answer the question in this message.`;
+const ENGAGEMENT_ASSUMPTION_BREAK_BLOCK = `Message 1 first sentence rule: The first sentence must break an assumption the reader currently holds — not just create curiosity. Identify the most common belief someone in this niche has about their situation, then write a first sentence that makes that belief feel worth questioning. This is not a shocking statement — it is an observation about how this work actually goes, described precisely enough from the coach's own experience that it stops the scroll. It must contain one niche-specific word or phrase. Open a loop — ask one question they don't yet know the answer to, that makes them want to come to the event to find out. Do not answer the question in this message.`;
 
 function buildEngagementMessageBlocks(length: WhatsappSequenceLength): string {
   if (length === 5) {
@@ -271,7 +272,7 @@ ${ENGAGEMENT_FINAL_MESSAGE_DECISION_A}`;
 
 const SALES_COST_OF_INACTION_BLOCK = `Reference what they just attended. Name the specific cost of staying where they are — the thing that keeps happening if they don't act. One concrete, niche-specific consequence. End with the direct link or action.`;
 
-const SALES_PROOF_MECHANISM_BLOCK = `Name one specific result from one specific type of person (anonymised if needed). PROOF SPECIFICITY RULE: Anonymous proof must still be specific. Required structure: state the role first (specific job title or life situation), then the problem they had, then the mechanism or change, then the outcome with a number, timeframe, or named result. Never use: 'someone', 'a person', 'one of our clients', 'a student' without qualification. Name the method or mechanism that produced that result — one sentence. End with a closing question derived from the ICP's specific situation — their named fear, their specific frustration, or their stated buying trigger. The question must make them feel seen, not categorised. Use their language, not coaching language.`;
+const SALES_PROOF_MECHANISM_BLOCK = `Name one specific result from one specific type of person (anonymised if needed). PROOF SPECIFICITY RULE: Anonymous proof must still be specific. Required structure: state the role first (specific job title or life situation), then the problem they had, then the mechanism or change, then the outcome with a number, timeframe, or named result. Never use: 'someone', 'a person', 'one of our clients', 'a student' without qualification. Name the method or mechanism that produced that result — one sentence. End with a closing question about the subject itself — the obstacle, the trade-off, or the decision this work turns on. The ICP profile selects which one and supplies the vocabulary; the question is about the thing, not about the reader. Use their language, not coaching language.`;
 
 const SALES_DIRECT_OFFER_BLOCK = `ANCHORING RULE: In the first sentence, state the total value of what they get before naming the price or the close. Given the 3-sentence constraint, the format is: sentence 1 = value anchor, sentence 2 = closing mechanism with specific named condition, sentence 3 = single action with CTA copy that communicates what they get (not just 'click here'). URGENCY FALLBACK: If no genuine deadline, price increase, or spot limit exists, use social proof scarcity — 'People who attended [event] and acted within 48 hours got [specific result]. The window where momentum works in your favour is closing.' This is honest urgency grounded in psychology, not fabricated scarcity. End with the single action and link only — no question.`;
 
@@ -306,7 +307,7 @@ Message 1 job = NAME THE COST OF INACTION (Day 1)
 ${SALES_COST_OF_INACTION_BLOCK}
 
 Message 2 job = PROBLEM DEEP-DIVE (Day 2)
-Articulate their problem more specifically than they've heard it articulated before. Not: "you're stuck on X". Yes: "the specific kind of stuck that happens at [specific moment in their workflow or week]." Show you understand the texture of the problem, not just the headline. End with a question that confirms you've named their actual problem.
+Articulate the problem more specifically than it usually gets articulated — name the exact point in the week or the workflow where it shows up, described from the coach's own experience of it. Carry the texture of the problem, not just the headline. End with a question inviting a reply on whether that matches how it plays out for them.
 
 Message 3 job = SOLUTION FRAMEWORK (Day 4)
 Your method, named, in plain language. One sentence: what it is. One sentence: the principle that makes it work. One sentence: the proof point that proves the principle. End with a question or an action that asks if they want to know how it works for their specific situation.
@@ -644,7 +645,8 @@ const WHATSAPP_SEQUENCE_SYSTEM_PROMPT =
   NO_DATE_FABRICATION_RULE + "\n\n" +
   NO_CREDENTIAL_FABRICATION_RULE + "\n\n" +
   NO_RESEARCH_STATISTIC_FABRICATION_RULE + "\n\n" +
-  META_COMPLIANCE_NOTES;
+  META_COMPLIANCE_NOTES + "\n\n" +
+  REGISTER_STANDARD;
 
 const WHATSAPP_SEQUENCE_RESPONSE_FORMAT = {
   type: "json_schema" as const,

@@ -1,6 +1,7 @@
 import { invokeLLM } from "./_core/llm";
 import type { LandingPageContent } from "../drizzle/schema";
-import { BANNED_COPYWRITING_WORDS, META_COMPLIANCE_NOTES, NO_DATE_FABRICATION_RULE, NO_RESEARCH_STATISTIC_FABRICATION_RULE, truncateQuote } from "./_core/copywritingRules";
+import { BANNED_COPYWRITING_WORDS, META_COMPLIANCE_NOTES, NO_DATE_FABRICATION_RULE, NO_RESEARCH_STATISTIC_FABRICATION_RULE, REGISTER_STANDARD, registerPersonGuidance, physicalSubjectGuidance, truncateQuote } from "./_core/copywritingRules";
+import { checkOutput } from "./_core/complianceAxis";
 import { validateLandingPageTestimonialsFabrication } from "./_core/validator";
 
 // The 12 simple-string fields in the landing-page schema. Each is
@@ -410,12 +411,36 @@ ${socialProof.hasTestimonials ? `- Real testimonials:\n${socialProof.testimonial
 ${socialProof.hasPress ? `- Press features: ${socialProof.press}` : ''}
 
 You MUST use these exact numbers and real testimonials. Do not fabricate or inflate.`
-    : `NO SOCIAL PROOF DATA PROVIDED — SUPPRESS ALL FABRICATED PROOF:
-- Set "testimonials" to an EMPTY ARRAY []. Do not generate fictional testimonials, fictional names, or fictional quotes of any kind.
-- Set "asSeenIn" to an EMPTY ARRAY []. Do not fabricate publication names.
-- The renderer will gracefully omit these sections when empty.
-- Focus the remaining sections on benefit claims and transformation stories.`;
-  
+    : `LAUNCH-STAGE PAGE — this coach's proof is not yet on the record, so the page is carried by the substance of the method and the coach's own account of the work:
+- "testimonials" is an EMPTY ARRAY []. The renderer omits the section cleanly, and the page reads as a confident new offer.
+- "asSeenIn" is an EMPTY ARRAY []. The renderer omits it the same way.
+- The proof sections' job passes to the method: what it does, the order it does it in, and what the coach has seen it change.
+Every figure, publication, client name and quoted result on this page appears in the supplied material above.`;
+
+  // Real-proof signal. The As-Seen-In, testimonial and statistic sections all ask
+  // the model to produce PROOF, so they are only requested when the coach's proof
+  // is actually on the record. Previously they were unconditional numbered
+  // requirements that overrode the no-proof branch immediately above them — the
+  // page spec ordered five publication names, four named testimonials with
+  // locations, and a population statistic, from a coach who had supplied none.
+  const hasRealProof = !!(socialProof.hasTestimonials || socialProof.hasCustomers || socialProof.hasPress);
+
+  const asSeenInSection = hasRealProof && socialProof.hasPress
+    ? `5. **As Seen In** (array of the real press features supplied above, exactly as named)
+   Use only the publications named in the supplied proof data. NOTE: DO NOT include "Meta", "Facebook", or "Instagram" as these imply platform endorsement which violates Meta advertising policy`
+    : `5. **As Seen In** — set to an EMPTY ARRAY []. The renderer omits this section cleanly.`;
+
+  const testimonialsSection = hasRealProof && socialProof.hasTestimonials
+    ? `11. **Social Proof / Testimonials** (built from the real testimonials supplied above)
+    Use the supplied quotes, names and roles exactly as they appear in the proof data. Each item: headline (a short phrase drawn from that quote), quote (the supplied words), name (as supplied), location (only if supplied).`
+    : `11. **Social Proof / Testimonials** — set to an EMPTY ARRAY []. The renderer omits this section cleanly, and the mechanism and offer sections carry the page.`;
+
+  const shockingStatSection = hasRealProof
+    ? `14. **Shocking Statistic** (150-200 words)
+    Build this section around a real figure from the supplied proof data — the coach's own customer count, rating, review count, or a result that appears in the supplied material. State what that figure reflects about how this work goes. Use no figure that does not appear above.`
+    : `14. **Shocking Statistic** (150-200 words)
+    No population statistics or research figures are available for this offer, so this section is written WITHOUT numbers: name the pattern the coach keeps seeing in this work and why the standard approach leaves it in place. Qualitative and specific throughout — a precisely described pattern in place of a figure.`;
+
   const prompt = `
 You are a world-class direct response copywriter specializing in high-converting landing pages.
 
@@ -431,66 +456,62 @@ ${PAGETYPE_PROMPTS[pageType]}
 
 ${socialProofGuidance}
 
-EMOTIONAL ARC — every section of this landing page must serve a specific emotional purpose in sequence. A visitor who reads from top to bottom must feel each emotion in order:
-Section 1 (Hero — eyebrow + main headline + subheadline): SEEN AND UNDERSTOOD. The reader must feel "this person knows exactly who I am and what I'm going through." Use their internal language. Name their situation precisely.
-Section 2 (Problem — quizSection + problemAgitation): NAMED AND VALIDATED. "Finally, someone has put words to this." The problem must be described so accurately that the reader feels exposed. Name the specific daily situation, not a category of pain.
-Section 3 (Agitate — whyOldFail + shockingStat): COST OF INACTION. "I cannot afford to stay here." Make the cost of not solving this problem feel concrete and immediate. Name the specific ways staying stuck is costing them (time, money, relationships, self-respect).
+${registerPersonGuidance(hasRealProof && socialProof.hasTestimonials)}
+
+${physicalSubjectGuidance([productName, productDescription, avatarName, avatarDescription].join(" "))}
+
+EMOTIONAL ARC — every section of this landing page must serve a specific emotional purpose in sequence. A visitor who reads from top to bottom moves through these in order. Each emotion is produced by describing something precisely from the coach's side of the table — the accuracy of the described moment is what does the work:
+Section 1 (Hero — eyebrow + main headline + subheadline): RECOGNITION. Describe the specific situation this work turns on, in the vocabulary the field actually uses, precisely enough that the right reader recognises it immediately.
+Section 2 (Problem — quizSection + problemAgitation): PUT INTO WORDS. Name the problem more precisely than it usually gets named — the specific moment it shows up, described from the coach's experience of it. Precision is the point; a category of pain is not.
+Section 3 (Agitate — whyOldFail): WHAT IT COSTS. Name concretely what the problem takes out of a week or a quarter when it goes unaddressed — described as what the coach has seen this cost, in time, money and repeated effort.
 Section 4 (Solution — solutionIntroduction): HOPE. "There might be a way out." Introduce the possibility of a different outcome before introducing the mechanism. Make hope feel credible, not hype.
-Section 5 (Mechanism — uniqueMechanismIntro): DIFFERENT FROM WHAT THEY'VE TRIED. "This is not the same thing I've already failed with." Explicitly name 1-2 things they've already tried and explain why this is structurally different — not just "better."
-Section 6 (Proof — socialProofTestimonials + insiderAdvantages): SAFE TO BELIEVE. "Other people like me have done this." Testimonials must feel like real people, not marketing copy. Quote specific situations and specific results.
-Section 7 (Offer — scarcityUrgency + timeSavingBenefit + consultationOutline): OBVIOUS NEXT STEP. "Not buying would be irrational." The offer must stack so much value that the question becomes "why wouldn't I?" Apply anchoring — state total value before the ask.
+Section 5 (Mechanism — uniqueMechanismIntro): DIFFERENT FROM THE USUAL APPROACH. Name 1-2 of the standard approaches in this field and explain why this one is structurally different — not just "better."
+Section 6 (Proof — socialProofTestimonials + insiderAdvantages): SAFE TO BELIEVE. Where real proof is supplied above, quote it exactly as supplied — the real situations and real results. Where none is supplied, this section carries the substance of the method instead.
+Section 7 (Offer — scarcityUrgency + timeSavingBenefit + consultationOutline): OBVIOUS NEXT STEP. The offer stacks enough value that the next step is easy to justify. Apply anchoring — state total value before the ask.
 
 Generate a complete landing page with 16 sections following this structure:
 
 1. **Eyebrow Headline** (all caps, attention-grabbing, addresses target avatar's pain, max 100 chars)
-   Example: "FOR UAE & GCC CRYPTO BEGINNERS"
+   Example: "FOR FREELANCE DESIGNERS QUOTING THEIR OWN PROJECTS"
 
 2. **Main Headline** (long-form, benefit-driven, 100-150 chars)
    A great landing page headline does three things simultaneously: (1) identifies the exact person it is written for so precisely that anyone else feels excluded, (2) names the specific outcome they want using their own words not marketing language, (3) signals that this is different from everything they have already tried. Do not use fill-in-the-blank template patterns — write a headline that could only exist for this specific product and this specific avatar. The headline must not use any of these words: ${BANNED_COPYWRITING_WORDS.join(', ')}.
 
 3. **Subheadline** (explains why current methods fail or what makes this different, 150-200 chars)
-   Example: "...No blocked accounts, stress, or risking your family's trust - even if you've lost money before or think the local banking system is impossible to beat."
+   Example: "...without rewriting the proposal four times, discounting to close, or adding another tool to the stack."
 
 4. **Primary CTA Button** (clear action, 3-6 words)
    Example: "Claim Your FREE Consultation!"
 
-5. **As Seen In** (5 credible publication names as array)
-   Example: ["Forbes", "Inc.", "Entrepreneur", "Yahoo Finance", "Business Insider"]
-   NOTE: DO NOT include "Meta", "Facebook", or "Instagram" as these imply platform endorsement which violates Meta advertising policy
+${asSeenInSection}
 
 6. **Quiz/Question Section** (niche-specific question with 5 plausible options and a surprising reveal answer, 200-300 words total)
    A great quiz question does two things: it makes the reader feel smart for knowing the answer (or curious because they don't), and it reframes their understanding of the problem. Rules: the question must use insider language from the target market; every option must sound genuinely plausible — a good option is one the reader would seriously consider before seeing the answer; the answer must surprise the reader and teach them something they could not have known without reading this page; the question must name a specific scenario from the niche, not a generic category. BANNED quiz patterns (too generic, do not use): "Which of these is the most important X", "What is the first step to X", "How many X do you need to Y".
 
 7. **Problem Agitation** (emotional pain points, 200-300 words)
-   Example: "Still Worrying You'll Be The Next Account Freeze Or Crypto Horror Story?"
+   Example: "The Quote That Sat In My Outbox For Nine Days"
 
 8. **Solution Introduction** (introduces the unique mechanism, 200-300 words)
-   Example: "If You've Tried P2P Groups, Chased Hot Signals, or Risked Your Bank Cards - and Still Aren't Seeing Real Crypto Profits..."
+   Example: "Scripts, discounts and faster follow-up all treat the symptom. The scope is what moves."
 
 9. **Why Old Methods Fail** (contrarian angle, 200-300 words)
-   Example: "Why Playing It 'Safe' With Mainstream Crypto Advice Actually Keeps You Stuck (and Broke)"
+   Example: "Why The Standard Advice On Pricing Leaves The Real Problem Untouched"
 
 10. **Unique Mechanism Introduction** (names the proprietary system, 200-300 words)
-    Example: "Introducing the 'Steady Wealth Protocol': Your Step-by-Step Safe Haven in Middle East Crypto"
+    Example: "Introducing the 'Scope-First Method': the four minutes that decide the rest of the call"
 
-11. **Social Proof / Testimonials** (4 testimonials with headline, quote, name, location)
-    Example: 
-    - Headline: "No More Blocked Accounts"
-    - Quote: "Before this, every time I tried cashing out, my bank flagged me. Now I follow their exact steps and my accounts are safe. Finally, I have peace of mind."
-    - Name: "Mohammed S."
-    - Location: "Abu Dhabi, UAE"
+${testimonialsSection}
 
 12. **Insider Advantages** (what makes it different, 200-300 words)
-    Example: "Unlock Insider Advantages: Built on Real Middle East Banking, Not Generic Advice"
+    Example: "Built From Six Years Of Running These Calls Wrong, Then Right"
 
 13. **Scarcity / Urgency** (limited enrollment messaging, 200-300 words)
-    Example: "The Steady Wealth Protocol Doors Are Only Open For a Short Window (Secure Your Spot Now)"
+    Example: "Enrolment for this cohort closes on [INSERT_DEADLINE]"
 
-14. **Shocking Statistic** (data-driven fear, 150-200 words)
-    Example: "92% of UAE Crypto Beginners Will Never Build Real Wealth Without a Proven System"
+${shockingStatSection}
 
 15. **Time-Saving Benefit** (shortcut positioning, 150-200 words)
-    Example: "Save Yourself Years of Painful Guesswork: Our Blueprint Gives You the Shortcut to Real Crypto Income"
+    Example: "The Ordering Took Me Six Years To Work Out. The Programme Hands It Over In Week One."
 
 16. **Consultation Outline** (10 numbered items, each with a specific title and a deliverable-focused description)
     The consultation outline must feel like a genuine agenda, not a marketing list. Each item must name the specific deliverable the client will have at the end of that segment — what they have after that step that they did not have before it. BANNED consultation outline patterns (do not use as titles or descriptions): "Introduction and welcome", "Q&A", "Next steps", "Strategy overview", "Getting to know you" — these are placeholders, not deliverables. Every item must name a specific analysis, assessment, calculation, or output. Example: "Revenue Gap Analysis — At the end of this segment you will have a precise number: the exact monthly gap between your current income and your target, and the three specific levers available to close it."
@@ -505,7 +526,7 @@ SPECIFICITY CHECK — apply this before returning the JSON:
 For every section, ask: does this section contain at least one phrase that could only appear on a landing page for THIS specific service in THIS specific niche? If any section contains only generic direct response language that could apply to any coaching programme, rewrite that section before returning. The test: mentally swap the product name for a different coaching product in a different niche. If the section still makes sense without any changes, it is not specific enough. Rewrite until it only makes sense for this product, this avatar, and this outcome.
 
 Return as JSON matching the LandingPageContent type.
-Use the avatar's name, location, and description throughout the copy to personalize it.
+The avatar profile above is INTERNAL — it selects which situation, vocabulary and outcome the page leads with. Its invented specifics (the avatar's name, age, location, income) are working notes, not page content: they never appear in the copy, and the page never states them as facts about the reader.
 Make it compelling, benefit-driven, and conversion-focused.
 Use direct response copywriting principles: pain agitation, unique mechanism, social proof, scarcity, and strong CTAs.
 `;
@@ -531,7 +552,7 @@ Use direct response copywriting principles: pain agitation, unique mechanism, so
     : `${cascadeContext}${prompt}`;
   const response = await invokeLLM({
     messages: [
-      { role: "system", content: `You are a world-class direct response copywriter specializing in high-converting landing pages. You engineer an emotional arc through each page — every section serves a specific emotional purpose, moving the reader from 'seen and understood' through 'named and validated', 'cost of inaction', 'hope', 'different from what they've tried', 'safe to believe', and finally 'obvious next step'. You write in the customer's own language — the words they use with a close friend, not marketing language. FORMATTING RULE: Return plain text only inside all JSON string values. No markdown. No asterisks (*). No hash symbols (#). No bold or italic formatting of any kind. No bullet markers. Just clean readable sentences and paragraphs.\n\n${META_COMPLIANCE_NOTES}\n\n${NO_DATE_FABRICATION_RULE}\n\n${NO_RESEARCH_STATISTIC_FABRICATION_RULE}` },
+      { role: "system", content: `You are a world-class direct response copywriter specializing in high-converting landing pages. You engineer an emotional arc through each page — every section serves a specific emotional purpose, moving through 'recognition', 'put into words', 'what it costs', 'hope', 'different from the usual approach', 'safe to believe', and finally 'obvious next step'. Each of those is produced by describing something from the coach's own side of the table, precisely — never by telling the reader what is true of them. You write in the customer's own vocabulary — the words they use with a close friend, not marketing language. FORMATTING RULE: Return plain text only inside all JSON string values. No markdown. No asterisks (*). No hash symbols (#). No bold or italic formatting of any kind. No bullet markers. Just clean readable sentences and paragraphs.\n\n${META_COMPLIANCE_NOTES}\n\n${NO_DATE_FABRICATION_RULE}\n\n${NO_RESEARCH_STATISTIC_FABRICATION_RULE}\n\n${REGISTER_STANDARD}` },
       { role: "user", content: effectiveUserContent }
     ],
     response_format: {
@@ -729,6 +750,40 @@ Use direct response copywriting principles: pain agitation, unique mechanism, so
       fabResult.hits.forEach((h, i) => {
         if (i < 5) console.warn(`[landingPageGenerator]   hit ${i + 1}: ${h.classId} @ ${h.location} matched "${h.matched}"`);
       });
+    }
+  }
+
+  // ── OUTPUT GATE (compliance axis) ────────────────────────────────────────────
+  // Reuses the existing retry loop rather than adding a second one. SHORT fields are
+  // checked as short: the eyebrow, headline and subheadline are exactly where the
+  // register standard has no room to work, and where a live run produced
+  // "FOR WOMEN WHO JUST HAD A BABY AND FEEL LIKE THEIR BODY NO LONGER BELONGS TO THEM".
+  // Fabrication is not run here — the LP has its own testimonials fabrication check
+  // immediately above, and the publish gate re-checks the resolved page.
+  {
+    const p = parsed as Record<string, unknown>;
+    const gateFields = ([
+      ["eyebrowHeadline", "short"], ["mainHeadline", "short"], ["subheadline", "short"],
+      ["problemAgitation", "body"], ["solutionIntro", "body"], ["whyOldFail", "body"],
+      ["uniqueMechanism", "body"], ["insiderAdvantages", "body"], ["shockingStat", "body"],
+      ["timeSavingBenefit", "body"], ["primaryCta", "cta"],
+    ] as const).map(([k, role]) => ({ location: `landingPage.${k}`, text: p[k] as string | undefined, role }));
+    const gate = checkOutput(gateFields);
+    if (!gate.ok) {
+      if (leakAttempt < LP_SCHEMA_RETRY_MAX_ATTEMPTS) {
+        validatorFailContext = gate.failContext;
+        console.warn(
+          `[landingPageGenerator] Compliance gate failed on attempt ${leakAttempt}/${LP_SCHEMA_RETRY_MAX_ATTEMPTS} ` +
+          `(angle=${angle}, classes=[${Array.from(new Set(gate.blocking.map((h) => String(h.classId)))).join(",")}]). Retrying with fail-context.`,
+        );
+        continue;
+      }
+      // Exhaust path mirrors the testimonials check directly above: return best-effort so
+      // the coach still gets a page, and let the publish gate be the hard stop.
+      console.warn(
+        `[landingPageGenerator] Compliance gate exhausted retries on angle=${angle} ` +
+        `(${gate.blocking.length} hits, classes=[${Array.from(new Set(gate.blocking.map((h) => String(h.classId)))).join(",")}]); returning best-effort — publish gate will hold it.`,
+      );
     }
   }
 

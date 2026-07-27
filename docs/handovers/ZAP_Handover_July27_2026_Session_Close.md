@@ -1,6 +1,8 @@
 # ZAP Handover — July 27, 2026 — SESSION CLOSE
 
-**`HEAD = origin/railway-build = 0656b67`.** ICP grounding is fully live. The anti-fabrication validator is
+**`HEAD = origin/railway-build = d6ecc4a`.** (An earlier draft of this handover recorded `0656b67`, the
+commit immediately below — the docs session-close commit `d6ecc4a` sits on top of it and is the real tip.)
+ICP grounding is fully live. The anti-fabrication validator is
 built but **reverted off the branch**, awaiting a widened false-positive sweep. A new authoritative compliance
 reference is in the repo and drives the next sprint.
 
@@ -153,7 +155,8 @@ than as two unrelated passes.
 
 ## 6. State
 
-* Branch `railway-build`, **`HEAD = origin = 0656b67`**. `main` untouched.
+* Branch `railway-build`, **`HEAD = origin = d6ecc4a`** (verified 2026-07-27; `0656b67` is its parent).
+  `main` untouched.
 * Migration `0096` applied and verified on prod. No migration pending.
 * Validator code **absent from the branch** (`fabricationValidator.ts`, `groundingCorpus.ts` gone; 0 publish-gate
   references in `meta.ts`); `6a89396` still reachable in history.
