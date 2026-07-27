@@ -20,7 +20,14 @@
 
 export type Advisory = { classId: string; where: string; matched: string };
 
-type Props = { advisories: Advisory[] };
+type Props = {
+  advisories: Advisory[];
+  /** Coach-initiated reword. Absent = the action simply is not offered. */
+  onReword?: () => void;
+  rewording?: boolean;
+  rewordError?: string | null;
+  rewordDone?: boolean;
+};
 
 /** Per-class coach-facing copy. Each names the trigger, the risk, and both remedies. */
 const COPY: Record<string, { title: string; body: string; remedies: string[] }> = {
@@ -38,7 +45,7 @@ const COPY: Record<string, { title: string; body: string; remedies: string[] }> 
   },
 };
 
-export default function ComplianceAdvisoryBanner({ advisories }: Props) {
+export default function ComplianceAdvisoryBanner({ advisories, onReword, rewording, rewordError, rewordDone }: Props) {
   const known = advisories.filter((a) => COPY[a.classId]);
   if (known.length === 0) return null;
 
@@ -84,6 +91,48 @@ export default function ComplianceAdvisoryBanner({ advisories }: Props) {
             <p style={{ fontSize: 11.5, color: "#777", margin: "10px 0 0", lineHeight: 1.5, fontStyle: "italic" }}>
               This is a heads-up, not a block — your campaign is ready to run either way.
             </p>
+
+            {/* The reword is the COACH'S choice and nothing happens without the click.
+                Only the second remedy is automatable: declaring the Special Ad Category is
+                a legal declaration the advertiser makes in their own Ads Manager, and ZAP
+                must not make it for them. */}
+            {onReword && a.classId === "special_ad_category_employment" && (
+              <div style={{ marginTop: 12 }}>
+                {rewordDone ? (
+                  <p style={{ fontSize: 12.5, color: "#1F7A43", margin: 0, fontWeight: 600 }}>
+                    ✓ Reworded. Your original copy is still in the deck if you'd rather go back to it.
+                  </p>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={onReword}
+                      disabled={rewording}
+                      style={{
+                        borderRadius: 9999,
+                        padding: "9px 20px",
+                        border: "1px solid rgba(138, 90, 0, 0.35)",
+                        background: rewording ? "rgba(255,176,32,0.12)" : "#fff",
+                        color: "#8A5A00",
+                        fontSize: 13,
+                        fontWeight: 700,
+                        fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)",
+                        cursor: rewording ? "default" : "pointer",
+                      }}
+                    >
+                      {rewording ? "Rewording…" : "Reword this for me"}
+                    </button>
+                    <p style={{ fontSize: 11.5, color: "#777", margin: "6px 0 0", lineHeight: 1.5 }}>
+                      Rewrites just this ad copy so it describes the coaching rather than jobs or salary.
+                      Nothing else in your campaign changes, and your original stays in the deck.
+                    </p>
+                  </>
+                )}
+                {rewordError && (
+                  <p style={{ fontSize: 12, color: "#A33", margin: "8px 0 0", lineHeight: 1.5 }}>{rewordError}</p>
+                )}
+              </div>
+            )}
           </div>
         );
       })}

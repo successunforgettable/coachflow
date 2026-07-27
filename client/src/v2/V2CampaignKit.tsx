@@ -466,6 +466,14 @@ export default function V2CampaignKit() {
     { enabled: !!kitId && !isNaN(kitId) },
   );
   const complianceAdvisories = advisoryData?.advisories ?? [];
+  const [rewordDone, setRewordDone] = useState(false);
+  const rewordMutation = trpc.compliance.rewordForAdvisory.useMutation({
+    onSuccess: () => {
+      setRewordDone(true);
+      utils.compliance.advisoriesForKit.invalidate();
+      utils.campaignKits.getById.invalidate();
+    },
+  });
 
   const { data: icpData } = trpc.icps.get.useQuery(
     { id: kit?.icpId! },
@@ -1068,7 +1076,13 @@ export default function V2CampaignKit() {
             Surfaced at the campaign because if one fires the cost has already landed
             on a real coach; the remedies are attached so it is actionable rather than
             just a warning. Self-hides when there is nothing to say. */}
-        <ComplianceAdvisoryBanner advisories={complianceAdvisories} />
+        <ComplianceAdvisoryBanner
+          advisories={complianceAdvisories}
+          onReword={() => kitId && rewordMutation.mutate({ campaignKitId: kitId })}
+          rewording={rewordMutation.isPending}
+          rewordError={rewordMutation.error?.message ?? null}
+          rewordDone={rewordDone}
+        />
 
         {/* Asset sections */}
         {SECTIONS.map(section => (
