@@ -694,3 +694,83 @@ structurally — at source and by inspecting the destination builder. The week's
 that live output catches what static analysis does not (four times now), so **a beginner cascade
 should be run before these are considered proven**: it would show a real sign-off, a real CTA link,
 and a nurture-shaped WhatsApp sequence. Cheap to do; it did not fit this session's budget.
+
+---
+
+# VERIFICATION RUN — 2026-07-29. Live cascade, service 283 / ICP 260 / kit 198.
+
+Run on deploy `300c6a8b` (SUCCESS, contains the P3/P4/P5 fixes). Beginner shape, `lead_magnet`.
+Cascade completed; 5 ad creatives; step 9 passed again. **Teardown clean** — all 107 rows removed,
+every count back to baseline, 0 leftovers, 0 running jobs, protected rows 6/6/6/6. No page was
+published, so no KV purge was needed.
+
+## Results — 3 confirmed, 1 refuted, 2 new defects found
+
+| Claim | Verdict |
+|---|---|
+| **P3a** email CTAs not `'#'` | ✅ **CONFIRMED** — `ctaLink: '[INSERT_BOOKING_URL]'` on both emails |
+| **P3b** sign-offs carry the coach's name | ❌ **REFUTED** — still `[INSERT_HOST_NAME]` |
+| **P4** WhatsApp nurture-shaped | ✅ **CONFIRMED** — `sequenceType: "nurture"`, opens *"Got [INSERT_LEAD_MAGNET_NAME] open?"*, **zero** `[INSERT_EVENT_NAME]`, no "already said yes" |
+| **P5** no reference examples leaked | ✅ **CONFIRMED** — 0 hits for car park / acne / high-ticket / calmer days / clearer-looking / long-term growth across email, WhatsApp, adCopy, mechanisms, lead-magnet titles and headlines |
+| Claim detector | ❌ **FALSE NEGATIVE FOUND** (below) |
+| Legacy fold reports tier 2, no drops | ✅ — the observed drops came from `checkOutput`, not the legacy fold |
+
+## ❌ P3b — the code was right, the PROMPT overrode it
+
+The plumbing works: `buildWelcomeEmailPrompt({hostName:"Dana Whitfield"})` emits `Host: Dana
+Whitfield`. But the same prompt **also** carried two token instructions — the HOST-NAME ANCHOR block
+("emit the token verbatim") and the PLACEHOLDER ALLOW-LIST listing `[INSERT_HOST_NAME]` as permitted.
+Supplying a value while still instructing the model to emit the token loses to the instruction.
+
+**Fixed:** both are now conditional on `p.hostName`. Verified — with a name supplied the token is
+**entirely absent** from the prompt; without one it is present, as the fallback should be.
+
+⚠️ A confound worth recording: the smoke coach's `users.name` is literally
+**"ZAP E2E Smoke (do not use)"**. A model may reasonably decline to sign an email with that, so the
+live output alone could not fully separate prompt-dominance from name-avoidance. The prompt fix is
+proven at the prompt level; **a coach with an ordinary name is still needed to prove it end to end.**
+
+## ❌ Claim detector — the FIFTH live-only false negative this week
+
+WhatsApp message 4 read *"A parent I worked with — back-to-work countdown ticking, baby still waking
+four times a night…"* — an invented client story for a zero-client coach, and it **passed clean**.
+
+`PAST_CLIENT_EVENT_RE` only matches **verb-then-person** ("worked with 200 families"). The inverted
+form — **person-then-verb** — never matched: "A parent I worked with", "parents I work with",
+"clients I've helped". Added `INVERTED_CLIENT_EVENT_RE`, which requires a delivery verb so method
+claims still pass ("the parents I want to reach" ✅ passes). 6/6 controls, 38/38 held.
+
+## 🔴 NEW DEFECT — the gate dropped a structurally required asset
+
+Two drops, needing **opposite** verdicts:
+
+- **Mechanisms 4/5 hero** (headline_ideas 5, beast_mode 5 intact) — **correct**. A mechanism deck is
+  interchangeable variants; drop-the-variant is exactly right.
+- **Bonuses 2/3 — the `accelerator` was dropped entirely.** **Wrong.** The three bonuses are
+  one-per-type by design (accelerator / gap_filler / objection_crusher) and both the offer and the
+  landing page reference the set, so removing a row leaves a **structural hole**, not a thinner deck.
+
+**Fixed:** bonuses now use `screenOnPersist` (screen-and-log), the same disposition as adCreatives.
+The general rule this establishes: **drop is only correct where rows are interchangeable variants.**
+Where each row is a required type, or where the row owns an already-produced artefact, screen and log.
+
+## Also captured
+
+- **WhatsApp length 5, `campaignFacts.eventSchedule` = NULL.** So 5 is the **nurture default**, not
+  date-derived — no date was supplied, which is a legitimate default (F3's rule).
+- **Sequence name still reads "— Engagement Sequence" while `sequenceType` is `nurture`.**
+  Orchestration builds the display name from a separate hardcoded string. Cosmetic, coach-visible in
+  the kit. Not fixed.
+- **Email count 2 (previous run: 3).** Generation variance, not a gate drop — the gate screens the
+  sequence row whole and its floor keeps it. Worth watching.
+- **`campaignKits.campaignType` still NULL** — F2, unchanged and known.
+- Full readable output: `RUN_2026-07-29_artifacts.txt`.
+
+## Scoreboard
+
+TS **34** · **420 tests pass** · teardown clean.
+
+**Five live-only findings this week**, every one on a green suite: the narrative window, `"First
+Name"`, `"Once I saw"`, the legacy tier mislabel, and now the inverted client-event form — plus this
+run refuting P3b outright and exposing the bonus-drop defect. Structural verification would have
+shipped all of them.

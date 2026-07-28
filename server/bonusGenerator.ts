@@ -213,11 +213,22 @@ Return ONLY valid JSON: { "bonuses": [ {bonusType, title, description, format, d
     format: b.format,
   }));
   {
-    // ONE VERDICT: the legacy bonus validator ran upstream; its hits fold in here rather
-    // than reaching a separate conclusion.
-    const { gateBeforePersist } = await import("./_core/persistenceGate");
-    const __g = await gateBeforePersist("bonuses", __bonusRows as any[], { legacyHits: __residualLegacyHits });
-    await db.insert(bonusesTable).values(__g.kept as any);
+    // SCREEN, DO NOT DROP. The three bonuses are one-per-type by design (accelerator /
+    // gap_filler / objection_crusher) and the offer and landing page both reference the set,
+    // so removing a row leaves a structural hole rather than a thinner deck. A live run on
+    // 2026-07-29 proved it: the gate dropped the accelerator and the kit persisted with 2 of
+    // 3 types. Same reasoning as adCreatives — drop is only the right remedy where the rows
+    // are interchangeable variants. Publish remains the hard stop.
+    // ONE VERDICT: the legacy bonus validator's residual hits are reported alongside.
+    const { screenOnPersist, copyFieldsOf } = await import("./_core/persistenceGate");
+    const __fields = (__bonusRows as any[]).flatMap((r, i) =>
+      copyFieldsOf(r).map((f) => ({ location: `bonus[${i}].${f.location}`, text: f.text })));
+    await screenOnPersist("bonuses", (__bonusRows as any[])[0]?.serviceId, __fields);
+    if (__residualLegacyHits.length > 0) {
+      console.warn(`[bonusGenerator] legacy validator residual hits (tier 2, non-blocking): ` +
+        `[${Array.from(new Set(__residualLegacyHits.map((h) => h.classId))).join(",")}]`);
+    }
+    await db.insert(bonusesTable).values(__bonusRows as any);
   };
 
   return { bonusSetId, bonuses: parsed, campaignKitId: kit?.id ?? null };

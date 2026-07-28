@@ -129,6 +129,18 @@ const PAST_CLIENT_EVENT_RE =
   );
 
 /**
+ * The INVERTED form: the person comes BEFORE the verb — "A parent I worked with", "parents
+ * I work with", "clients I've helped". PAST_CLIENT_EVENT_RE only matches verb-then-person,
+ * so a live 2026-07-29 run produced "A parent I worked with — back-to-work countdown
+ * ticking…" for a zero-client coach and it passed clean. The delivery verb is required, so
+ * "the parents I want to reach" (a method claim) still passes.
+ */
+const INVERTED_CLIENT_EVENT_RE =
+  new RegExp(`\\b(?:a|an|one|another|the|most|many|some)?\\s*${PERSON}\\s+(?:that\\s+|who(?:m)?\\s+)?I(?:'ve| have)?\\s+` +
+    `(?:work|works|worked|working|coach|coaches|coached|coaching|help|helps|helped|helping|` +
+    `train|trains|trained|training|serve|serves|served|serving)\\b`, "gi");
+
+/**
  * The un-named case study: "A first-time parent, baby around seven months, HAD BEEN feeding
  * to sleep since birth… By night four the transfer was holding." No name, no count, no
  * percentage — so every count/name/stat detector misses it, yet it is a full invented client
@@ -228,6 +240,7 @@ export function detectProofShapedClaims(text: string): Claim[] {
     add("named_person_outcome", m);
   }
   for (const m of all(text, PAST_CLIENT_EVENT_RE)) add("past_client_event", m);
+  for (const m of all(text, INVERTED_CLIENT_EVENT_RE)) add("past_client_event", m);
   for (const m of all(text, INDEFINITE_CLIENT_NARRATIVE_RE)) add("client_narrative", m);
   for (const m of all(text, OUTCOME_STATISTIC_RE)) if (statIsEvidence(text, m)) add("outcome_statistic", m);
   for (const m of all(text, GUARANTEE_RE)) add("stated_guarantee", m);

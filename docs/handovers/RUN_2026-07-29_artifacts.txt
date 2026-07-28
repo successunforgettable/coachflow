@@ -1,0 +1,631 @@
+
+==============================================================================
+CAMPAIGN KIT
+==============================================================================
+kitId=198 icpId=260 campaignType=null
+selections: {"offer":211,"mechanism":1148,"hvco":6826,"headline":2187,"adCopy":5558,"lp":231,"lpAngle":null,"email":417,"whatsapp":286,"adCreativeBatch":"batch-1785268736661-a4f87915"}
+campaignFacts: (null)
+
+==============================================================================
+ICP  (id 260)  — Exhausted First-Time Parents
+==============================================================================
+
+--- introduction ---
+I am running on four hours of broken sleep — again. My baby is seven months old and I genuinely cannot remember the last time I slept more than two consecutive hours. I used to be a functioning adult. I had a career, opinions, a sense of humour. Now I'm standing in the kitchen at 2:47am in mismatched socks, heating a bottle for the third time tonight, googling "why won't my baby sleep longer than 45 minutes" on my phone with one hand while swaying automatically because the moment I stop moving, she starts screaming again. My partner and I are not fighting exactly, but we're not really talking either. We're just passing the baby back and forth like a baton in a relay race neither of us signed up for.
+
+I've read everything. I've done the wake windows, the feed-play-sleep routine, the white noise at 65 decibels, the blackout curtains, the swaddle, the sleep sack, the dream feed. I joined three Facebook groups and got seventeen different contradictory opinions on whether I should be doing a four-month sleep regression protocol or just "riding it out." I bought two books. I started one of them. I bookmarked forty-seven articles I have never gone back to read. I know what a sleep association is. I know what overtiredness looks like. I know ALL the theory. And yet here I am at 2:47am, swaying in the dark, still completely lost.
+
+The one thing I cannot bring myself to do is cry it out. I've read the threads. I've heard both sides. But when I imagine closing that door and listening to her cry, something in me just shuts down. I can't do it. I won't do it. So I'm stuck — too exhausted to function, too principled to do the one thing everyone keeps suggesting, and quietly terrified that I've somehow missed a window and this is just going to be my life now forever.
+
+--- fears ---
+• I lie awake worrying that I've already created a permanent sleep association and my baby is now neurologically hardwired to only fall asleep on my breast, and no amount of gentle sleep coaching is going to undo six months of me nursing her to sleep every single time — that I've just broken her sleep for good.
+
+• I lie awake worrying that my partner and I are quietly unravelling and neither of us is saying it out loud — that the person I'm snapping at over the dishwasher at 7pm is not who I married, and they're wondering the same thing about me, and by the time the baby sleeps through the night it'll be too late for us.
+
+• I lie awake worrying that I'm going to spend money we genuinely don't have right now on a sleep consultant who gives me the exact same generic schedule I've already tried three times, repackaged in a PDF, and my baby still won't sleep and I'll have wasted £300 I can't get back.
+
+• I lie awake worrying that the "gentle method" is just a polished-up version of cry it out with extra steps — that I'm going to commit to this, do it wrong, traumatise my baby, and then have to live with the guilt of that for the rest of my life.
+
+• I lie awake worrying that I'm going to go back to work in six weeks still this destroyed — sitting in a meeting unable to form a sentence, making errors I wouldn't normally make, people noticing — and that this sleep deprivation is going to cost me professionally in ways I can't recover from.
+
+• I lie awake worrying that something is actually wrong with my baby — that there's a reason she can't string sleep cycles together that isn't behavioural, and I'm wasting time on sleep training when I should be at the GP asking about reflux or tongue tie or something nobody has caught yet.
+
+• I lie awake worrying that I am the only mother in my antenatal group whose baby still isn't sleeping through — that somehow everyone else figured this out and I'm the one who's failing at the most basic part of keeping a tiny human alive.
+
+--- hopesDreams ---
+• The specific situation I'm dreaming of: I put my baby down in her cot at 7pm, she fusses for maybe two minutes, and then she goes to sleep. I walk downstairs. I eat dinner with my partner while it's still hot. We watch something on TV that isn't about babies. I go to bed at 10pm. I wake up at 6:30am and she's still asleep. That's it. That's the whole dream.
+
+• I want to go back to work in six weeks and actually be present in meetings — remembering what was said, contributing something useful, not staring at my screen in a fog wondering when I can next close my eyes.
+
+• I want to stop dreading bedtime. Right now bedtime starts at 6pm and involves forty-five minutes of feeding, rocking, putting down, picking back up, patting, more feeding — and it feels like a battle I lose every single night. I want bedtime to be twenty minutes. I want it to be something I can look forward to, not something I brace for.
+
+• I want my partner and I to have a conversation after 8pm that isn't about the baby's sleep or whose turn it is tonight — just a normal conversation like we used to have, about anything else at all.
+
+• I want to feel like myself again — specifically, I want to have a thought that has nothing to do with sleep schedules, wake windows, or whether that nap was too short. I want mental space back.
+
+• I want to stop second-guessing every single decision I make about my baby's sleep — to have one clear, evidence-based, gentle plan that I actually trust, and to follow it without consulting seventeen conflicting forum threads at midnight.
+
+• I want the version of this where I did not have to let my baby cry it out — where three months from now, when someone asks how I got her sleeping through the night, I can say "we did it gently" and mean it.
+
+--- psychographics ---
+They are the kind of person who researches things properly before doing them. Before having the baby, they read three books on birth, made a birth plan, took hypnobirthing classes, and spent weeks comparing prams. They are not someone who acts impulsively — they are someone who gathers information, weighs it, and then acts. The problem is that "gathering information" about baby sleep has led them to a state of total paralysis, because every source contradicts every other source and there is no clear answer anywhere. They are data-literate but overwhelmed, and they're starting to suspect that more information is not what they need — a trusted guide is.
+
+They have strong opinions about parenting that they formed before their baby was born and still mostly hold, even when exhausted. They believe in responsiveness. They believe in attachment. They are not anti-science, but they are also not going to implement something just because it's in a bestselling book if it doesn't feel right to them. Cry it out doesn't feel right to them. It has never felt right to them. This is not a position they're going to be argued out of — it's a values-level thing, not an information-level thing. They find it quietly infuriating when people suggest they're just being oversensitive about CIO, as if their discomfort with it is a character flaw rather than a considered position.
+
+During the rare hours they get to switch off, they're not doing anything elaborate. They're watching something easy on Netflix — a reality show or a comfort rewatch of something they've seen before, something that requires zero emotional investment. They might scroll Instagram or TikTok, which is increasingly where they're seeing sleep content — short videos of babies going down drowsy but awake, testimonials from other parents who sound exactly like them. They used to read. They miss reading. They don't have the attention span for it right now.
+
+They are likely in a dual-income household, on parental leave or recently returned, probably in a mid-to-senior professional role — teacher, nurse, marketing manager, project coordinator, accountant. They are used to being competent. Being bad at something this fundamental — something that feels like it should be instinctual — is deeply uncomfortable for them. They don't talk about how bad things are, not really. They say they're "exhausted, but you know, it's just the newborn stage" to people who ask. They don't want to seem like they're struggling. But they are struggling. They are really, really struggling.
+
+--- pains ---
+• Every single night, I do the same forty-five-minute bedtime routine — feeding, rocking, shushing, laying down, picking back up — and then she's awake again at 10pm regardless of what I did, and I have to start over.
+
+• Every morning, I calculate exactly how many hours of sleep I technically got, add them up, and feel a specific kind of despair when the total is under five — which it has been for eleven weeks straight.
+
+• Every time I try to implement a schedule I've read about online, something goes wrong by day two — a nap that runs long, a car journey that ruins the wake window — and the whole thing collapses and I don't know whether to restart or keep going or abandon it entirely.
+
+• Every week, someone in my antenatal WhatsApp group mentions casually that their baby has "started sleeping through" and I read it, type a congratulations emoji, and then put my phone face-down and sit with a feeling I'm not proud of.
+
+• Every time I try to put her down drowsy but awake like every resource tells me to, she goes from drowsy to screaming in approximately four seconds, and I pick her up immediately, and now I feel like I've failed the first step of every gentle sleep method in existence.
+
+• Every few days I try a new thing I read about — the Ferber check-ins, the pantley pull-off, the fading method — and each one lasts about 36 hours before I abandon it at 3am because it isn't working fast enough and I'm too tired to hold the line.
+
+• Every time I have to drive somewhere during what should be a nap window, she falls asleep in the car for twelve minutes, and that apparently counts as a full nap now and she won't go down again for hours, and the whole day is ruined.
+
+• Every Sunday night I feel a specific dread about the week ahead — five more days of this, running on empty, trying to function, trying to be a good parent and a good employee and a good partner all at once, with a brain that feels like wet sand.
+
+• Every time someone — a parent, a health visitor, a well-meaning friend — says "have you tried just leaving her for a few minutes?" I have to explain, again, that cry it out is not something I'm willing to do, and the look they give me makes me feel judged and defensive and more alone than before they said it.
+
+--- frustrations ---
+• WHY does every sleep method I find online come with seventeen caveats and a disclaimer that says "every baby is different" — which basically means it might not work for my baby, there's no way to know, good luck? I need someone to just tell me what to DO, for my specific baby, and actually commit to it.
+
+• WHY does every Facebook group answer to my question turn into a debate between people who swear by cry it out and people who say any form of sleep training is harmful — when all I wanted was to know if a four-hour wake window is too long for a seven-month-old?
+
+• WHY did I spend £28 on a sleep book that spent the first 80 pages explaining infant sleep biology I already know, then gave me a plan in chapter 9 that lasts four days and doesn't say what to do when the baby doesn't follow the plan?
+
+• WHY does my baby sleep perfectly for two nights in a row — genuinely, amazingly — and then completely fall apart for no reason I can identify, resetting all the progress and making me feel like nothing I did actually worked, it was just random?
+
+• WHY does everyone who "solved" their baby's sleep make it sound like they just "stayed consistent" — as if I'm not being consistent, as if the problem is that I keep giving up, when the reality is I'm implementing things while running on three hours of sleep and working and keeping a human alive and sometimes at 3am consistency feels like a thing that happens to other people?
+
+• WHY is there no middle ground between "just let them cry, it's fine" and "co-sleep and feed on demand until they naturally wean at three" — where is the option for people who want a gentle, structured approach that actually has a timeline and a method and an outcome?
+
+• WHY did no one tell me that the four-month sleep regression wasn't a two-week blip but potentially the beginning of a permanent change in how my baby sleeps — and that what I did in the next few months would set patterns that last for years?
+
+--- goals ---
+• I want my baby sleeping a six-hour stretch minimum — ideally 7pm to 5am — within the next three weeks, without a single night of leaving her to cry alone in her cot.
+
+• I want one clear, written plan that tells me exactly what to do each night — not "try this and see," but a specific sequence of steps for my baby's age and temperament that I can follow even when I'm too tired to think.
+
+• I want to be able to hand the baby to my partner at 7pm for bedtime and know that she'll go down — that bedtime isn't something only I can do because I'm the one with the boobs, that my partner can fully participate in this without it ending in chaos.
+
+• I want to go back to work in six weeks and be able to say, honestly, that I slept last night — not perform wellness, actually feel it.
+
+• I want the confidence to stop second-guessing myself every time something doesn't go perfectly — to have someone I trust tell me "this is normal, stay the course" so I stop abandoning methods on day two.
+
+• I want to feel like the version of myself who knows things and makes good decisions — not the version who is googling the same questions at 2am and getting the same contradictory answers she got three months ago.
+
+• I want to be able to say, hand on heart, that I did this gently — that I respected my baby's needs, that I didn't traumatise her, that I found a way that worked for both of us — and feel proud of that, not defensive about it.
+
+• I want to stop talking about sleep entirely. I want it to be a solved problem, a done thing — not the subject of every conversation I have with my partner, my mum, my NCT group, and the inside of my own head at every hour of the day and night.
+
+--- values ---
+• I deeply value responsiveness — the belief that when my baby cries, she needs me, and that ignoring that cry is not something I'm willing to normalise. This value makes me resist any sleep method that involves any amount of monitored crying, even if it's framed as "minimal" or "controlled." I am not going to buy a program that turns out to be cry it out with a gentler name.
+
+• I value being an informed, research-led parent — which means I've read enough to know when someone is oversimplifying, and I distrust anyone who makes it sound too easy or too certain. This value makes me slow to trust consultants who seem very confident and polished, because my instinct is that confident + polished often means selling me something, not telling me the truth.
+
+• I value not appearing to struggle — I was competent before this baby, and I want to be competent now. Admitting I need to pay someone to help me get my baby to sleep feels like admitting defeat in a very public way. This value creates real friction around seeking help at all, especially paid help.
+
+• I value protecting my baby's emotional security above short-term convenience — which means even when I'm desperate, if something doesn't feel right, I won't do it. No amount of exhaustion is going to override this. It's the core reason I'm still awake at 2am instead of having done cry it out six weeks ago.
+
+• I value being self-sufficient — I've solved hard things before without help. I keep believing I can figure this out on my own if I just find the right information. This value makes me keep trying DIY approaches for months past the point where they're working, and delays me investing in actual support.
+
+• I value making decisions I can defend — not just to other people, but to my future child. If I do something now that I later believe was harmful, I will not forgive myself. This makes me risk-averse in ways that sometimes work against me, especially when the status quo is also harmful (chronic sleep deprivation is genuinely bad for everyone in this family).
+
+--- objections ---
+• "I'm not sure it's the right time — we've got a lot on financially right now." — "I've already spent money on books and a white noise machine and a fancy sleep sack and none of it worked, and I'm scared to spend more money on something that also won't work and then I've wasted money we genuinely don't have while still being completely exhausted."
+
+• "I want to do a bit more research before I commit." — "I don't trust you yet. I don't know if you're going to give me something genuinely different or just the same advice I've already read in three different Facebook groups repackaged as a professional service."
+
+• "I'm not sure my baby is ready for sleep training." — "I'm terrified of doing this wrong and causing harm — and if I don't start, I can't fail. Saying my baby isn't ready is safer than trying and it not working."
+
+• "I've tried a few things already and nothing has worked, so I'm not sure anything will." — "I've been let down so many times by advice that promised results and didn't deliver them that my default is now scepticism. I need to see proof that this is actually different before I believe it."
+
+• "I want to talk to my partner about it first." — "My partner is not convinced we need to pay for this when we could probably figure it out ourselves — or my partner is exhausted and sceptical and I need their buy-in before I can feel okay spending this money."
+
+• "Does your method involve any crying at all?" — "I need you to understand that cry it out is a dealbreaker, and I'm listening very carefully to how you answer this, and if your answer sounds like spin I am going to close this tab immediately and never come back."
+
+• "How do I know this will work for my baby specifically?" — "My baby is the difficult one. Other people's babies respond to things. Mine doesn't. I've been told multiple times that my baby is 'high needs' or 'sensitive' and I'm not sure a standard program is going to work for us."
+
+--- buyingTriggers ---
+• The moment I knew I had to do something was when I was driving to a supermarket on a Tuesday afternoon, stopped at a red light, and genuinely could not remember whether the light had been red or green a moment before. I sat there until the car behind me beeped. That was the moment I realised this wasn't just "tired" — this was impaired, and it was dangerous, and I needed it to stop.
+
+• The moment I knew I had to do something was when my baby had three decent nights in a row — three nights where she only woke once — and instead of feeling hopeful I felt a crushing dread, because I knew from experience that it was about to fall apart again, and I didn't have the emotional reserves to handle another collapse. I need a method, not luck.
+
+• The moment I knew I had to do something was when I booked my return to work date and looked at the calendar and realised I had five weeks left, and my baby was still waking four times a night, and I could not go back to a job that requires a functioning brain in this state.
+
+• The moment I knew I had to do something was when I saw a reel on Instagram of a baby going down awake, the parent walking out, and the baby just... going to sleep. The caption said "night 18, no cry it out, this is actually possible." I watched it four times. I saved it. Then I went looking for who made it.
+
+• The moment I knew I had to do something was when my partner and I had an argument at 4am — not about anything real, about something so small I can't even remember what it was — and I lay in bed afterwards crying quietly so I didn't wake the baby, and thought: this cannot be how this goes.
+
+• The moment I knew I had to do something was when a friend — someone with a baby three months older — told me casually that her baby had been sleeping 7pm to 6:30am for two months, and when I asked how, she said "we did a gentle sleep program, it took about three weeks." Three weeks. I've been doing this for six months. Three weeks felt like nothing. I asked her immediately who she used.
+
+--- communicationStyle ---
+They want communication that sounds like it comes from someone who has genuinely been in the trenches — or at minimum, someone who has sat with enough exhausted parents to know what 3am actually feels like. They distrust polished, corporate language. If your website sounds like a spa brochure, they're gone. If your Instagram grid is perfectly curated pastel flatlays with captions about "the gift of restorative sleep," they will not trust you. They want specificity — real stories, real timelines, real before-and-afters that sound like actual humans described them, not testimonials that sound like marketing copy.
+
+What builds trust for them is evidence that you understand their specific situation: the gentle method non-negotiable, the chronic exhaustion, the contradiction between being an informed and research-led parent and being completely lost, the guilt, the fear of doing harm. The moment they feel seen — the moment they read something and think "this person actually gets it" — is the moment the conversation changes from scrolling to engaging. The fastest way to lose them is to sound like you're judging either camp (CIO parents or anti-sleep-training parents) or to sound like you have an agenda beyond helping them.
+
+They respond to voice notes and conversational DMs better than formal emails. They are on their phones constantly, almost exclusively, often one-handed in the dark. Content needs to work at 1am on a phone screen. Short sentences. Bullet points. Real language. If you send them a long email with four different calls to action, they will mean to respond and they will forget, because they are running on empty and their attention is constantly broken. One clear next step. That's all they can hold.
+
+--- groundingMeta ---
+{
+  "hits": [],
+  "overall": "partial",
+  "version": 1,
+  "perSection": {
+    "fears": "stated",
+    "goals": "partial",
+    "pains": "stated",
+    "values": "partial",
+    "objections": "stated",
+    "hopesDreams": "partial",
+    "frustrations": "partial",
+    "introduction": "partial",
+    "buyingTriggers": "partial",
+    "decisionMaking": "partial",
+    "psychographics": "partial",
+    "successMetrics": "partial",
+    "communicationStyle": "partial",
+    "implementationBarriers": "partial"
+  },
+  "corpusWords": 48,
+  "ladderAnswered": []
+}
+
+==============================================================================
+OFFER  (id 211)  activeAngle=godfather
+==============================================================================
+productName: Sleep Reset for New Parents | offerType: premium
+
+--- godfatherAngle ---
+{
+  "cta": "Book your free Sleep Assessment call at [INSERT_BOOKING_URL] — bring both caregivers if possible, because the plan only holds when both adults in the house understand it from day one.",
+  "bonuses": "BONUS #1: The 3am Default-Override Response Cheat Sheet — A done-for-you cheat sheet that keeps the Settle-Window plan intact when exhaustion hits hardest.\nBONUS #2: The Both-Caregivers Briefing SOP — A fill-in SOP that gets both adults in the house doing the exact same thing from night one.\nBONUS #3: The 'Prove It's Different' Trust Script Bank — A done-for-you script bank that dissolves the 'I don't trust this is different' objection in minutes.",
+  "pricing": "Your investment in the Sleep Reset for New Parents programme is [INSERT_PRICE], covering [INSERT_PROGRAMME_DURATION] of full support. Guarantee terms: [INSERT_GUARANTEE_TERMS]. You do not pay unless the method produces a measurable reduction in night wakings for your baby.",
+  "urgency": "This programme works only because both caregivers are onboarded, the plan is consistent, and support is available close to real-time — which means the number of families running concurrently is capped at [INSERT_COHORT_LIMIT]. Enrolment closes on [INSERT_COHORT_CLOSE_DATE]. Every additional week of four-times-a-night waking is a week closer to your return-to-work date.",
+  "guarantee": "[INSERT_GUARANTEE_TERMS]. What the guarantee means in practice: if the agreed sleep outcome is not achieved, you are protected. What you keep regardless: every recorded session, every written sleep plan, every bonus resource — so even in the unlikely event you claim, you leave better equipped than when you arrived.",
+  "offerName": "Sleep Reset: Your Baby Sleeps Through in Three Weeks — No Cry-It-Out",
+  "valueProposition": "Your baby goes from waking four times a night to sleeping 7pm–5:30am within three weeks — using a gentle method with no cry-it-out — or you don't pay. Every night you stay where you are costs you the kind of rest that makes driving dangerous and relationships fracture at 4am."
+}
+
+--- freeAngle ---
+{
+  "cta": "Claim Your FREE Baby Sleep Gap Analysis — book your session at [INSERT_BOOKING_URL] before the remaining spots for this round are taken.",
+  "bonuses": "BONUS #1: The 3am Default-Override Response Cheat Sheet — A done-for-you cheat sheet that keeps the Settle-Window plan intact when exhaustion hits hardest.\n\nBONUS #2: The Both-Caregivers Briefing SOP — A fill-in SOP that gets both adults in the house doing the exact same thing from night one.\n\nBONUS #3: The 'Prove It's Different' Trust Script Bank — A done-for-you script bank that dissolves the 'I don't trust this is different' objection in minutes.",
+  "pricing": "This session is offered at no charge. The Sleep Gap Analysis you walk away with — a fully personalised assessment of your baby's current sleep architecture, wake triggers, and a sequenced gentle-method action plan — carries a perceived value of [INSERT_PRICE] if commissioned as a standalone diagnostic. This is the same first step taken inside the full programme. [INSERT_GUARANTEE_TERMS]",
+  "urgency": "This session is built around a live, personalised assessment — not a template — which means the number of sessions available each week is fixed at [INSERT_COHORT_LIMIT]. Enrolment for the current round closes on [INSERT_COHORT_CLOSE_DATE]. When those spots are filled, the booking window closes until the next round opens.",
+  "guarantee": "Your time will produce a specific, usable deliverable — a written Sleep Gap Analysis you can act on the same night the session ends. If you leave without a clear, sequenced gentle-method plan mapped to your baby's specific age, wake pattern, and sleep associations, [INSERT_GUARANTEE_TERMS].",
+  "offerName": "FREE Baby Sleep Gap Analysis for Exhausted New Parents",
+  "valueProposition": "A personalised Sleep Gap Analysis that maps exactly why your baby is still waking — and hands you a same-night action plan to begin closing those gaps. Every night you don't have this costs you another morning of functioning on empty, counting wake-ups instead of hours slept."
+}
+
+--- dollarAngle ---
+{
+  "cta": "This is not the full programme — it is the single most important tool inside it: the gentle night-waking response framework that replaces feed-to-sleep without a single minute of cry-it-out. The full programme follows for families who want ongoing support, partner onboarding, and the complete settling sequence. Start here. Get instant access for [INSERT_PRICE] at [INSERT_OFFER_LINK].",
+  "bonuses": "BONUS #1: The 3am Default-Override Response Cheat Sheet — A done-for-you cheat sheet that keeps the Settle-Window plan intact when exhaustion hits hardest.\nBONUS #2: The Both-Caregivers Briefing SOP — A fill-in SOP that gets both adults in the house doing the exact same thing from night one.\nBONUS #3: The 'Prove It's Different' Trust Script Bank — A done-for-you script bank that dissolves the 'I don't trust this is different' objection in minutes.",
+  "pricing": "Every month you stay in this pattern is another month of fractured sleep, 3am decision-making on an empty tank, and the creeping dread of bedtime. This tool is priced at [INSERT_PRICE] — a fraction of what one month of that ongoing cost looks like when you add up the cognitive load, the relationship strain, and what functioning sleep is actually worth to your daily life. [INSERT_GUARANTEE_TERMS]",
+  "urgency": "This entry-level tool is the first step toward the full Sleep Reset programme. Enrolment is capped at [INSERT_COHORT_LIMIT] families per cohort so that real-time WhatsApp support stays genuinely useful — not a queue. Once those places are filled, enrolment closes until [INSERT_COHORT_CLOSE_DATE].",
+  "guarantee": "This is not a program where you're left wondering if it's working. [INSERT_GUARANTEE_TERMS]. The goal is simple: you follow the method, you use the 3am support channel, you run the same approach with both caregivers — and if the outcome isn't tracking, the terms of the guarantee cover exactly what happens next.",
+  "offerName": "The Night Waking Reset Tool for Exhausted New Parents — [INSERT_PRICE]",
+  "valueProposition": "Get your baby sleeping through the night within three weeks using a gentle, no-cry-it-out method — or keep losing an estimated two to three hours of sleep every single night, compounding across months, with no method and no end in sight."
+}
+
+==============================================================================
+MECHANISM  (id 1148)  tab=hero_mechanisms
+==============================================================================
+
+--- mechanismName ---
+Settle-Window Sequencing Method
+
+--- mechanismDescription ---
+Most gentle sleep approaches hand you a generic schedule and leave you to guess why your baby blew straight past drowsy into screaming in four seconds flat. The Settle-Window Sequencing Method exists because I kept watching parents implement the right steps in the wrong order — putting a baby down inside a wake window that was either too short to build genuine sleep pressure or too long to avoid the overtired spiral that makes self-settling impossible. This method maps your baby's specific biological settle point — the precise intersection of sleep pressure and cortisol window — and sequences the bedtime routine backwards from that moment, not forwards from bath time. It is designed to remove the forty-five-minute feed-rock-shush-lay-down-pick-back-up loop entirely by targeting the neurological state the baby needs to be in before the routine even begins. Where 'drowsy but awake' fails because the gap between drowsy and screaming is four seconds, this approach is built for that gap — working with the settle window rather than hoping you land inside it by accident. The method is designed to produce a baby who reaches the cot in the right state rather than a parent who reaches 10pm in the wrong one.
+
+==============================================================================
+LEAD MAGNET  (id 6826)
+==============================================================================
+title: The 3-Week Settle-Window Sequencing Programme: How to Get Your Baby Sleeping 7pm–5:30am Without a Single Night of Cry-It-Out | topic: 
+magnetPdfUrl: https://res.cloudinary.com/dunshei0y/image/upload/v1785268562/lead-magnets_117174_6826.pdf.pdf
+magnetHtmlUrl: https://zapcampaigns.com/p/sleep-reset-for-new-parents-magnet-6826
+
+--- assetBody ---
+{
+  "title": "The 3-Week Settle-Window Sequencing Programme: How to Get Your Baby Sleeping 7pm–5:30am Without a Single Night of Cry-It-Out",
+  "format": "guide",
+  "promise": "In the next 10 minutes you'll walk away with a ready-to-use 3-week nightly sequence — the exact bedtime timings, settle steps, and a laminated-style 3am decision card — so you can start tonight without guessing, Googling, or thinking.",
+  "nextStep": {
+    "body": "This guide gives you the full Settle-Window Sequencing structure — and many parents get real results using it exactly as written. But the moment the plan gets hard is almost always the same: Night 3 or 4, between 2am and 4am, when you're exhausted and second-guessing everything and the urge to go back to rocking is overwhelming. That's precisely what Sleep Reset for New Parents is built for. It's a fully guided 3-week programme where I give you a plan written specifically for your baby's age, weight, temperament, and current nap schedule — not a generic guide. I check in with you at the hard moments. You have somewhere to send a voice note at 3:07am and get a response before the next wake. Most families see a 4–6 hour stretch by Night 7. Book a free 20-minute call and I'll tell you honestly whether the programme is right for your situation — no pressure, no pitch, just clarity.",
+    "heading": "Ready to Have Your Baby Sleeping 7pm–5:30am Within Three Weeks — With Someone Walking You Through Every Night?",
+    "ctaLabel": "Book My Free 20-Minute Sleep Assessment Call"
+  },
+  "sections": [
+    {
+      "body": "Here's the only thing worth understanding before you touch any tool in this guide: your baby isn't waking at 10pm because she's undertired or overtired — she's waking because she fell asleep in a different sensory environment (your arms, the breast, the dummy) than the one she woke up in (her cot, alone, dark). She has no bridge between the two. Settle-Window Sequencing fixes this by teaching her to enter sleep inside the cot — in the same environment she'll wake up in — using a narrowed, age-specific window and a predictable physical response from you that fades across 3 weeks. That's the whole mechanism. Everything below applies it.",
+      "heading": "Why Your Routine Isn't Working (And It's Not Your Fault) — The One Concept You Need"
+    },
+    {
+      "body": "Find your baby's age band below. The 'Settle Window' is the 20-minute zone in which you begin the wind-down. Starting inside this window is the single biggest lever you have.\n\n▸ 4–5 months: Settle Window opens at 6:20pm. Cot by 7:00pm. First feed cap: 10:30pm (don't respond to wakes before this).\n▸ 6–7 months: Settle Window opens at 6:30pm. Cot by 7:00pm. First feed cap: 11:00pm.\n▸ 8–10 months: Settle Window opens at 6:35pm. Cot by 7:00pm. First feed cap: 11:30pm.\n▸ 11–12 months: Settle Window opens at 6:40pm. Cot by 7:00pm. First feed cap: midnight.\n\n⚠️ If a nap ran long or a car journey pushed the last nap later: subtract 15 minutes from your Settle Window open time. Do not skip the window entirely — a later, messier bedtime costs you the whole night. A slightly early bedtime never does.\n\nWrite your window here: Settle Window opens at _______ pm. Cot by 7:00pm.",
+      "heading": "Your Age-Matched Settle Window: The Exact Times to Use This Week"
+    },
+    {
+      "body": "Each week uses the same 5-step bedtime structure. The only thing that changes is Step 4 — your physical presence during the settle. This is the fade.\n\n— THE 5-STEP STRUCTURE (every night, all 3 weeks) —\nStep 1 | [Settle Window opens] Bath or warm cloth wipe. Lights dim. White noise on. No screens.\nStep 2 | [Settle Window +10 min] Feed in the dim room — but not to sleep. Feed ends when drowsy, not asleep. Sit upright for 2 minutes after.\nStep 3 | [Settle Window +18 min] Into sleeping bag. Sing the same 60-second song every single night (it becomes her sleep cue — pick one now and write it here: _________).\nStep 4 | [Settle Window +20 min] Into cot, awake-but-drowsy. Your presence level depends on the week (see below).\nStep 5 | Leave the room. White noise running. Do not re-enter until the First Feed Cap time above.\n\n— WEEK-BY-WEEK PRESENCE FADE —\n\nWEEK 1 — 'Hand On': Place baby in cot. Keep one hand on her chest. Shhh rhythmically (match her breathing, then slow yours). Stay until eyes are closed and breathing is deep. You are allowed to pick up ONCE if she escalates to a hard cry — resettle in arms until calm (not asleep), then back in cot. One pick-up maximum.\n\nWEEK 2 — 'Hand Near': Place baby in cot. Rest your hand on the mattress beside her — touching the sheet, not her body. Same shhhh. Stay until drowsy and eyes are fluttering. Leave before she's fully asleep.\n\nWEEK 3 — 'Voice Only': Place baby in cot. Step back to the door. Use your voice — 'shhh, it's okay, I'm here' — from the doorway for up to 90 seconds. Then leave. She now has the cot as her sleep cue.\n\nThis is not cry-it-out. You are present. You are fading. It takes three weeks because that is how long it takes a 4–12-month-old brain to build a new sleep association. Stay the course.",
+      "heading": "The 3-Week Nightly Sequence: Your Done-For-You Plan"
+    },
+    {
+      "body": "This is the most important tool in this guide. When you are awake at 3am and operating on instinct, you will not remember the plan. You will remember this card. Print it, handwrite it on a Post-it, or screenshot it and make it your lock screen.\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🌙 3AM DECISION CARD — [Baby's name: _______]\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nShe's awake. Before you move, ask:\n\n1. IS IT BEFORE MY FIRST FEED CAP? (Write your cap here: _____ pm/am)\n   → YES: Wait 5 minutes. Set a timer. Do not go in yet.\n   → NO: Go in. Feed. This is a legitimate feed. It does not break the plan.\n\n2. AFTER THE 5-MINUTE WAIT — is she still crying?\n   → Full hard cry (escalating): Go in. Use your Week [circle one: 1 / 2 / 3] presence level. Return to cot before she's fully asleep.\n   → Grizzling / fussing / talking: Wait another 3 minutes. She may be in a partial wake cycle and will resettle herself.\n\n3. YOU WENT IN. NOW WHAT?\n   Week 1: Hand on chest. Shhh. One pick-up allowed if hard cry.\n   Week 2: Hand on mattress. Shhh. No pick-up unless escalating 5+ minutes.\n   Week 3: Voice from doorway. 90 seconds. Leave.\n\n4. THE URGE TO FEED/ROCK/BRING INTO BED:\n   Write this down now, in your own handwriting, and read it at 3am:\n   'If I feed/rock her back to sleep right now, I am teaching her that crying after [First Feed Cap time] gets a feed. Tomorrow night will be harder. I can do the [Week ___] settle. It will work. It worked last night.'\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n⏰ My First Feed Cap: _______\n📅 I am in Week: _______\n💬 My settle level tonight: _______\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+      "heading": "The 3am Decision Card: Print This, Stick It on the Wall"
+    },
+    {
+      "body": "The plan doesn't collapse when a nap runs long or a car journey ruins the wake window — it only collapses if you make the wrong call in the two hours before bedtime. Here's the exact rule:\n\nIF the last nap ended LESS than 90 minutes before your Settle Window opens:\n→ Push your Settle Window 20 minutes later. One time only.\n→ Still cap total wind-down at 20 minutes. Don't stretch it.\n\nIF the last nap ended MORE than 3.5 hours before your Settle Window (overtired risk):\n→ Open your Settle Window 10 minutes EARLIER than usual.\n→ Keep the room darker than usual and skip the bath — go straight to sleeping bag and feed.\n\nIF the car put the baby to sleep after 4:30pm:\n→ Wake her after 20 minutes maximum. A capped late nap is better than a ruined bedtime settle.\n→ Settle Window still opens on time.\n\nWrite this on a sticky note and put it next to the 3am Decision Card:\n'One bad nap day ≠ a broken plan. Adjust the window. Run the sequence. Done.'",
+      "heading": "The Nap-Disruption Recovery Rule (So a Blown Day Doesn't Wreck the Night)"
+    },
+    {
+      "body": "Tracking is not about perfection — it's about giving your exhausted brain evidence that it's working, so you don't abandon the plan on Day 4. Fill this in each morning. 60 seconds maximum.\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nWEEK 1 MORNING LOG\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nNight 1: Cot time _____ | First wake _____ | # of wakes _____ | First feed _____ | Final wake _____\nNight 2: Cot time _____ | First wake _____ | # of wakes _____ | First feed _____ | Final wake _____\nNight 3: Cot time _____ | First wake _____ | # of wakes _____ | First feed _____ | Final wake _____\nNight 4: Cot time _____ | First wake _____ | # of wakes _____ | First feed _____ | Final wake _____\nNight 5: Cot time _____ | First wake _____ | # of wakes _____ | First feed _____ | Final wake _____\nNight 6: Cot time _____ | First wake _____ | # of wakes _____ | First feed _____ | Final wake _____\nNight 7: Cot time _____ | First wake _____ | # of wakes _____ | First feed _____ | Final wake _____\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nWhat to look for by Night 5: The first wake should be moving later. Even 20–30 minutes later is the plan working. # of wakes should be reducing. If neither has shifted at all by Night 5, the most common reason is the First Feed Cap is too early — push it 30 minutes later and continue.\n\nIf things are moving in the right direction by Night 7 — and they will be — you are ready for Week 2's presence fade. You are not starting over. You are progressing.",
+      "heading": "Your Week-1 Tracking Sheet: Fill This In Every Morning"
+    }
+  ]
+}
+
+==============================================================================
+HEADLINES  (all generated for service 283)
+==============================================================================
+[2187] (question) Is Your Baby's Wake Window Sabotaging Every Gentle Sleep Attempt You Make?   [74 chars]   <<< SELECTED 
+[2188] (question) What Part Of The Bedtime Routine Is Quietly Preventing 7pm–5:30am Sleep?   [72 chars] 
+[2189] (story) How a 4am Drive to Urgent Care Pushed a Sleep-Deprived Dad to the Settle-Window Sequencing Method That Got His Baby Sleeping 7pm–5:30am!   [136 chars] 
+[2190] (story) How a Weekend Where Neither Parent Slept More Than 90 Minutes Led a New Mum to a Gentle Sequencing Method That Ended Four Night-Wakings Without Cry-It-Out!   [155 chars] 
+[2191] (urgency) Apply Settle-Window Sequencing Tonight, and Get Your Baby From Four Wake-Ups to Sleeping 7pm–5:30am in 3 Weeks — No Cry-It-Out Required!   [136 chars] 
+[2192] (urgency) Run The Settle-Window Sequencing Method With Your Baby, and Build a Consistent 7pm–5:30am Sleep Stretch in 21 Nights — Without a Single Cry-It-Out Session!   [155 chars] 
+[2193] (authority) [INSERT_COACH_CREDENTIAL] Unveiled the Settle-Window Sequencing Method That Gets Babies Sleeping 7pm–5:30am in Three Weeks — With Zero Cry-It-Out   [145 chars] 
+      sub: This is why generic sleep schedules, white-noise-and-shush routines, and gradual-withdrawal approaches have failed to produce a full night of unbroken sleep for your baby
+[2194] (authority) [INSERT_AUTHORITY_TITLE] Disclosed the Settle-Window Sequencing Method Behind Babies Who Stop Waking Four Times a Night — Without a Single Minute of Cry-It-Out   [159 chars] 
+      sub: This is why following a one-size schedule, guessing your baby's drowsy window, and trying every gentle method you found on a forum have failed to produce a baby who sleeps through reliably by week three
+[2195] (eyebrow) Settle-Window Sequencing Turns Sleep-Deprived New Parents Into A Household Where Baby Sleeps 7pm–5:30am Within Three Weeks   [122 chars] 
+      sub: Without Cry-It-Out, Generic Sleep Schedules That Ignore Your Baby's Actual Wake Windows, Or Another 4am Spiral That Fractures Everything By Morning
+[2196] (eyebrow) The Settle-Window Sequencing Method Turns New Parents Running On Broken Nights Into A Home Where Baby Is Down By 7pm — Guaranteed Or You Don't Pay   [146 chars] 
+      sub: Without Cry-It-Out, Guessing Why Your Baby Blew Past Drowsy Into Screaming In Four Seconds, Or A Plan That Falls Apart The Moment One Caregiver Isn't On The Same Page
+
+==============================================================================
+AD COPY  (all generated)
+==============================================================================
+
+--- [5558] lead_gen/conversational cta=Download Now angle=null   <<< SELECTED ---
+Wake Windows Are Breaking Gentle Sleep
+
+--- [5559] lead_gen/conversational cta=Download Now angle=null ---
+Drowsy-to-Screaming in 4 Seconds Flat
+
+--- [5560] lead_gen/conversational cta=Download Now angle=null ---
+Wrong Window. Right Baby. No Sleep.
+
+--- [5561] lead_gen/conversational cta=Download Now angle=pain_agitation ---
+I watched a parent sit across from me and describe stopping at a red light. She couldn't remember if it had just turned red. She waited until someone beeped.
+
+That wasn't tired. That was impaired.
+
+She'd tried the schedules. The fading method. The Pantley pull-off. Each one lasted about 36 hours before 3am ended it.
+
+The problem wasn't effort. It was timing.
+
+Most gentle approaches hand you a generic schedule. They don't tell you why your baby blows straight past drowsy into screaming in four seconds flat.
+
+That's the gap Settle-Window Sequencing closes.
+
+It sequences the settle window precisely — so your baby's nervous system is ready before you begin. Parents using this approach work toward their baby sleeping 7pm–5:30am within three weeks. No cry-it-out. Individual results will vary.
+
+Download the free 3-Week Settle-Window Sequencing Programme now.
+
+--- [5562] lead_gen/conversational cta=Download Now angle=authority ---
+The pattern I kept seeing was always the same moment.
+
+A parent doing everything right — the dim lights, the feed, the shush — and then the baby crossing from drowsy into screaming in four seconds flat.
+
+Not because they were doing it wrong. Because nobody had told them about the settle window.
+
+Most gentle sleep approaches hand you a schedule. They leave you guessing why the timing keeps failing. The Settle-Window Sequencing Method works differently. It maps the specific window — unique to your baby — where a gentle settle actually lands.
+
+That is the piece the generic schedules miss. And it is the piece that changes how the nights go.
+
+Babies can move from waking four times a night to sleeping 7pm–5:30am. In three weeks. Without a single night of cry-it-out.
+
+Results vary by baby and circumstance.
+
+Download the free 3-Week Programme guide now.
+
+--- [5563] lead_gen/conversational cta=Download Now angle=curiosity ---
+There's one thing I got wrong for years about gentle sleep: the window matters more than the method.
+
+Every exhausted parent I've sat with had tried the same thing. Drowsy but awake. Consistent routine. Gentle approach. And still — screaming in four seconds flat.
+
+Here's what I kept noticing. The approach wasn't the problem. The timing was. Hit the window wrong by even a few minutes and drowsy tips straight into overtired. Every gentle technique fails at that point. Every single one.
+
+That's what the Settle-Window Sequencing method addresses directly. Not a new routine. A precise sequencing framework that works with your baby's actual biological window — before it closes.
+
+When the timing is right, the gentle part actually works. Most parents see a real shift within three weeks. Individual results will vary.
+
+The full framework is in the free guide.
+
+Download Now → [INSERT_BOOKING_URL]
+
+--- [5564] lead_gen/conversational cta=Download Now angle=null ---
+Download your free guide now
+
+--- [5565] lead_gen/conversational cta=Download Now angle=null ---
+Get the 3-week plan today
+
+--- [5566] lead_gen/conversational cta=Download Now angle=null ---
+Start sleeping better—download
+
+==============================================================================
+LANDING PAGE  (id 231)  pageType=lead_magnet_download activeAngle=original
+==============================================================================
+publicUrl: (NOT PUBLISHED) | publishedStyle: text
+
+--- content (original) ---
+{
+  "faq": [
+    {
+      "answer": "The guide is a PDF you can read on your phone, tablet or laptop — designed to be usable at whatever hour you actually have five minutes. It walks through the Settle-Window Sequencing Method step by step: how to identify your baby's settle window, how to sequence the bedtime routine inside it, and what to expect across the first three weeks. It is written for exhausted parents, not sleep scientists, so there is no jargon.",
+      "question": "What exactly is in the guide and what format does it come in?"
+    },
+    {
+      "answer": "Yes — in fact, that is one of the most common patterns I see, and the guide addresses it directly. Settle-Window Sequencing is not about removing the feed. It is about placing the feed correctly inside the window so the association stops working against you. Many of the babies I have worked with had strong nursing associations and still made the shift without any crying.",
+      "question": "Is this suitable for babies who have a strong feed-to-sleep association?"
+    },
+    {
+      "answer": "The sequencing approach is specifically built around the idea that there is no universal baby schedule — only your baby's biology. The guide shows you how to map your baby's own window rather than overlay a pre-set timetable. Sensitive babies often respond well to this approach because it works with their nervous system rather than against it.",
+      "question": "My baby is what people call high-needs or sensitive. Will a general guide actually help us?"
+    },
+    {
+      "answer": "No. The method in this guide does not involve leaving your baby to cry. Settle-Window Sequencing is about timing and structure, not about withdrawal of response. If cry-it-out is a dealbreaker for you, this was built for exactly that constraint.",
+      "question": "Does this involve any cry-it-out at all?"
+    },
+    {
+      "answer": "You can apply the settle-window mapping process starting the same night you read it. The three-week structure gives you a night-by-night framework so you are not reinventing things each morning. Most parents I have worked with have enough to start the first night within the first read-through.",
+      "question": "How quickly will I be able to use what is in the guide?"
+    }
+  ],
+  "bonuses": [
+    {
+      "title": "The 3am Default-Override Response Cheat Sheet",
+      "description": "At 3am, when your baby is screaming and you've been awake since 1:15am, the plan you understood perfectly at 10am vanishes — and you default to feeding to sleep because it's the fastest way to silence the room. This cheat sheet gives you a single laminated-ready reference card with the exact Settle-Window response sequence broken into three decision points, so there is no thinking required and no plan to remember — only a path to follow. Every prompt is written for someone operating on three hours of sleep: short sentences, no caveats, clear next action. Parents who use it in the first seven nights report that the midnight default-to-old-habit cycle breaks faster because the unfamiliar response feels mechanical rather than effortful."
+    },
+    {
+      "title": "The Both-Caregivers Briefing SOP",
+      "description": "If one caregiver is following the Settle-Window method and the other is running the old routine on their shift, the baby receives mixed signals and the progress resets — but most parents don't identify this as the problem until day four when everything has already fallen apart. This SOP walks both caregivers through a single 20-minute joint briefing: it tells you exactly what to cover, in what order, and gives each person a filled-in reference card they keep by the bed so no one is improvising at 2am. It includes a one-page 'what we agreed' summary you both sign off on, which removes the friction of one partner not feeling fully briefed or bought in. The whole setup takes under half an hour and means the plan holds across every night-wake, whoever gets up."
+    },
+    {
+      "title": "The 'Prove It's Different' Trust Script Bank",
+      "description": "The single biggest reason parents hover at the booking page and close the tab is a quiet internal voice saying: 'I've already read this in three Facebook groups — this is just the same advice repackaged.' This script bank gives you — the buyer — a set of ready-to-use questions to bring to the Sleep Assessment call that expose exactly how the Settle-Window Sequencing Method differs mechanically from every generic schedule you've already tried and abandoned. It also includes a side-by-side comparison swipe of the five most common approaches found online versus what this method does differently at each decision point, so you can evaluate the distinction yourself before you commit to anything. You don't need to take anyone's word for it: the scripts do the due-diligence work for you in under ten minutes."
+    }
+  ],
+  "asSeenIn": [],
+  "guarantee": "",
+  "curriculum": [
+    {
+      "emoji": "🪟",
+      "title": "How to identify your baby's exact settle window — and why it closes faster than any schedule accounts for"
+    },
+    {
+      "emoji": "🔁",
+      "title": "The sequencing framework: how to place the feed, the wind-down, and the transfer inside the window instead of after it"
+    },
+    {
+      "emoji": "😴",
+      "title": "Why drowsy-but-awake fails when the timing is off — and what to do instead tonight"
+    },
+    {
+      "emoji": "📋",
+      "title": "A night-by-night tracking structure for the first three weeks so you always know where you are in the process"
+    },
+    {
+      "emoji": "⚠️",
+      "title": "What a normal dip looks like on night three or four — and why it does not mean the method is failing"
+    },
+    {
+      "emoji": "🤝",
+      "title": "How to brief both caregivers so the plan holds across every adult in the house, not just the one who read the guide"
+    },
+    {
+      "emoji": "🚗",
+      "title": "What to do when a car nap or a runaway nap blows the day's wake windows — a recovery sequence"
+    },
+    {
+      "emoji": "📞",
+      "title": "When the guide is not enough: how to know if your situation calls for a one-to-one Sleep Assessment call"
+    }
+  ],
+  "primaryCta": "Send Me the Free Guide",
+  "whyOldFail": "",
+  "quizSection": {
+    "answer": "Her settle window closed before you even started the bedtime feed. This is the part that almost no general sleep advice explains clearly. By the time you are doing the transfer, the opportunity was already gone — and it closed somewhere during the feed, not at the moment you laid her down. The transfer feels like the problem because that is the moment she screams. But the screaming is a signal about timing, not about the transfer technique or the feed association. The Settle-Window Sequencing Method is built entirely around this gap — identifying the precise window unique to your baby's biology, and structuring the bedtime sequence so that the feed happens inside it, not after it has closed. When the sequencing is right, the transfer stops being the moment everything falls apart. This guide explains how I work out that window and how you can map yours at home, starting tonight.",
+    "options": [
+      "The transfer itself is waking her — she senses the temperature change",
+      "She has a strong feed-to-sleep association and needs it broken first",
+      "Her settle window closed before you even started the bedtime feed",
+      "The room is too bright and she's overstimulated",
+      "She needs a longer wind-down — the routine isn't long enough"
+    ],
+    "question": "Your baby falls asleep on the breast at 7pm. You do the slow transfer onto the mattress, hold your breath, wait thirty seconds, and she explodes — full screaming, not stirring, screaming. Which of these is most likely the reason it keeps happening?"
+  },
+  "subheadline": "Download the free 3-Week Settle-Window Sequencing Programme and find out why your baby blows straight past drowsy into screaming — and what to do about it tonight, without a single minute of cry it out.",
+  "systemTiles": [
+    "A clear, readable PDF designed for phone screens at any hour",
+    "The settle-window mapping process you can start tonight",
+    "A sequencing framework built specifically for babies who go from drowsy to screaming fast",
+    "A night-by-night tracking structure across the full three weeks",
+    "Guidance on the normal dip — so a hard night three does not feel like failure",
+    "A two-caregiver briefing section so the plan holds for both adults",
+    "A car-nap recovery sequence for blown wake windows",
+    "Written for exhausted parents — no jargon, no sleep-science degree required"
+  ],
+  "mainHeadline": "Is Your Baby's Wake Window Sabotaging Every Gentle Sleep Attempt You Make?",
+  "shockingStat": "",
+  "testimonials": [],
+  "solutionIntro": "",
+  "eyebrowHeadline": "FOR FIRST-TIME PARENTS WHOSE BABY STILL ISN'T SLEEPING AND WHO REFUSE TO LEAVE THEM TO CRY",
+  "scarcityUrgency": "",
+  "uniqueMechanism": "",
+  "problemAgitation": "The thing I noticed across every family I worked with during my training was this: the forty-five-minute bedtime routine was not the problem. The feed was not the problem. The transfer was not the problem. The problem was always the timing — specifically, the gap between when the baby's settle window opened and when the parent started the bedtime sequence. By the time the room was dimmed and the feed was done and the transfer was attempted, the window had already closed. The baby was not overtired in a general sense. She was past the precise point at which her nervous system was ready to transition into sleep — and that point is a narrow one, measured in minutes, not in a broad schedule block labelled \"bedtime.\" Every online schedule, every sleep book, every well-meaning health visitor answer treats wake windows as an approximate guide. In my work, I've found they are not approximate at all. They are biological and they are specific to each baby — and when the sequencing is off by even a short margin, the result is always the same: a baby who goes from drowsy to screaming before she ever reaches the mattress, and a parent who picks her back up and starts the whole thing over, convinced the method has failed, when the method never had a real chance.",
+  "insiderAdvantages": "",
+  "timeSavingBenefit": "",
+  "consultationOutline": [
+    {
+      "title": "Settle Window Mapping",
+      "description": "For parents who want to stop guessing and start working with their baby's actual biology — this guide shows you how to identify and map the precise window your baby is ready to settle, so the bedtime sequence starts at the right moment instead of after it has already closed."
+    },
+    {
+      "title": "Sequence Without Cry-It-Out",
+      "description": "For parents who have tried every gentle method and abandoned each one by day two — this gives you a sequencing framework built specifically for babies who blow past drowsy fast, so you have a clear structure to follow even when everything else has collapsed."
+    },
+    {
+      "title": "3-Week Night-By-Night Tracking",
+      "description": "For parents who need to see the plan holding across real nights, including the hard ones — the guide includes a night-by-night tracking structure so you know exactly what a normal dip looks like, what it means, and when to expect the first full night."
+    }
+  ]
+}
+
+==============================================================================
+EMAIL SEQUENCE  (id 417)  Sleep Reset for New Parents — Welcome Sequence  type=welcome
+==============================================================================
+[
+  {
+    "ps": "PS. The reason most gentle methods collapse on day three has nothing to do with your baby — and everything to do with something that happens the night before.",
+    "cta": "Read email 3 when it arrives on Day 5 — it shows the method in action",
+    "body": "I finished my paediatric sleep consultant certification three months ago.\n\nBefore I submitted my final assessment, I sat with a question I couldn't shake:\n\n*What if I hand a family a plan — and they follow it — and their baby still doesn't sleep?*\n\nBecause the plans I'd studied worked on paper.\n\nBut the parents I'd spoken to — friends, mostly — described the same collapse every time.\n\nDay one, hopeful. Day two, shaky. Day three, 3am, and the plan was gone.\n\nNot because the method was wrong.\n\nBecause nobody had built the method around what actually happens at 3am when you're running on four broken hours and your instincts override everything.\n\nThat's when I stopped building a schedule and started building something different.\n\nSomething that works *with* the 3am version of you — not the 10am version who read the guide and felt ready.\n\nI'm not writing this from the other side of a hundred client transformations.\n\nI'm writing it because I know the gap between a plan that looks right and a plan that actually holds.\n\nAnd I built the Settle-Window Sequencing Method to close that gap.\n\n[INSERT_HOST_NAME]",
+    "delay": 0,
+    "ctaLink": "[INSERT_BOOKING_URL]",
+    "subject": "I almost didn't finish it",
+    "delayUnit": "hours",
+    "previewText": "Three months in, I had a moment that nearly ended all of this before it started."
+  },
+  {
+    "ps": "PS. Bring both caregivers to the call if you can — the plan only holds when both adults in the house understand it from night one.",
+    "cta": "Book your free Sleep Assessment call at [INSERT_BOOKING_URL]",
+    "body": "Here's what the Settle-Window Sequencing Method is built to do — and why it's structurally different from what you've already tried.\n\nMost gentle sleep approaches hand you a schedule.\n\nThey tell you: drowsy but awake, consistent response, hold the line.\n\nWhat they don't tell you is that the window between drowsy and screaming is measured in seconds — and if you miss it, the whole thing resets.\n\nThe Settle-Window method maps your baby's specific window, not a generic one from a PDF.\n\nIt also does something no schedule does: it prepares you for night three.\n\nAlmost every gentle method has a dip — a night where things look worse before they get better.\n\nParents who aren't prepared for it quit inside that dip and conclude the method failed.\n\nIt didn't fail. They just didn't know it was normal.\n\nConducted over [INSERT_PROGRAMME_DURATION], the method is long enough to observe the full pattern — including the dip — and hold the plan through it.\n\nWhen both caregivers are doing the same thing, from night one, the plan holds.\n\nThat's what The Both-Caregivers Briefing SOP is built for — it gets both adults in the house doing the exact same thing from day one.\n\nIf you're ready to see whether this is what you've been missing, the next step is a free Sleep Assessment call.\n\n[INSERT_HOST_NAME]",
+    "delay": 48,
+    "ctaLink": "[INSERT_BOOKING_URL]",
+    "subject": "night three is the tell",
+    "delayUnit": "hours",
+    "previewText": "Every gentle sleep method has a dip before it works. Most parents don't know it's coming — so they quit inside it."
+  }
+]
+
+==============================================================================
+WHATSAPP SEQUENCE  (id 286)  Sleep Reset for New Parents — Engagement Sequence  tone=conversational
+==============================================================================
+[
+  {
+    "text": "Got [INSERT_LEAD_MAGNET_NAME] open? 👀 The section that hit closest for most parents I work with is the part on why drowsy-but-awake collapses in four seconds flat — because that's usually where every gentle attempt dies and the guilt kicks in. Which part hit closest for you?",
+    "delay": 0,
+    "mediaUrl": null,
+    "delayUnit": "hours",
+    "mediaType": null
+  },
+  {
+    "text": "The thing I notice most often with new parents isn't the exhaustion itself — it's the specific dread of three decent nights in a row, because you've learned from experience that a collapse is coming and you don't have the reserves to survive another one. Does that land?",
+    "delay": 72,
+    "mediaUrl": null,
+    "delayUnit": "hours",
+    "mediaType": null
+  },
+  {
+    "text": "The Settle-Window Sequencing Method works by timing the settle attempt to the exact window where your baby's sleep pressure and wake-window alignment meet — instead of guessing at drowsy and hoping. The principle is that most gentle approaches get the intention right but miss the timing by enough minutes that the window's already gone. Want me to show you how it applies when a car nap has already wrecked the whole day?",
+    "delay": 168,
+    "mediaUrl": null,
+    "delayUnit": "hours",
+    "mediaType": null
+  },
+  {
+    "text": "A parent I worked with — back-to-work countdown ticking, baby still waking four times a night, every gentle method abandoned by night two — went from that to a consistent 7pm–5:30am stretch within three weeks, no cry-it-out, using the Settle-Window approach. The shift wasn't willpower; it was having a plan that accounted for the moments when exhaustion hits hardest and the 3am instinct kicks in. Does any part of that sound like where you are right now?",
+    "delay": 336,
+    "mediaUrl": null,
+    "delayUnit": "hours",
+    "mediaType": null
+  },
+  {
+    "text": "If you're still calculating your total sleep hours every morning and feeling that specific despair when it's under five, I want you to walk away from a conversation with me knowing the exact next step for your baby's specific situation — not a generic schedule, a sequenced plan built around your nights. 🎯 Book your free Sleep Assessment call here (bring both caregivers if you can, the plan holds better when you're both across it from night one): [INSERT_BOOKING_URL]",
+    "delay": 504,
+    "mediaUrl": null,
+    "delayUnit": "hours",
+    "mediaType": null
+  }
+]
+
+==============================================================================
+BONUSES  (2)
+==============================================================================
+
+--- [28] gap_filler — The Both-Caregivers Briefing SOP ---
+shortLine: A fill-in SOP that gets both adults in the house doing the exact same thing from night one.
+value: 
+format: sop
+derivedFromObstacle: If both adults in the house are not doing exactly the same thing, it falls apart. If one partner is following the new method and the other is doing the old thing on their nights because they didn't fully understand the plan, the baby gets mixed signals and the parent following the plan feels both frustrated and unsupported.
+pdf: (none) | html: (none)
+assetBody:
+(null)
+
+--- [29] objection_crusher — The 'Prove It's Different' Trust Script Bank ---
+shortLine: A done-for-you script bank that dissolves the 'I don't trust this is different' objection in minutes.
+value: 
+format: script
+derivedFromObstacle: I don't trust you yet. I don't know if you're going to give me something genuinely different or just the same advice I've already read in three different Facebook groups repackaged as a professional service.
+pdf: https://res.cloudinary.com/dunshei0y/image/upload/v1785268983/bonuses_117174_29.pdf.pdf | html: https://zapcampaigns.com/p/bonus-29
+assetBody:
+{
+  "title": "The 'Prove It's Different' Trust Script Bank",
+  "tools": [
+    {
+      "name": "The 'Prove It's Different' Assessment Call Script",
+      "type": "script",
+      "content": "# The 'Prove It's Different' Assessment Call Script\n\n**How to use:** These are your questions. You are not being difficult — you are doing due diligence after eleven-plus weeks of broken sleep and at least three failed schedule attempts. A good consultant will welcome every single one of these.\n\n---\n\n## SECTION 1 — The Wake Window Question\n*(Every schedule online uses wake windows. Ask this to find out if this method uses them differently.)*\n\n> **\"Every approach I've read about uses wake windows. Can you walk me through exactly what your method does at the moment the wake window ends and the baby is still showing no tired signs — or alternatively, IS showing tired signs but it's been less than 90 minutes? What specifically happens next in your sequence?\"**\n\n🔍 **What a meaningful answer sounds like:** A step-by-step sequence of actions tied to the baby's observable state — not \"we adjust the window\" but a specific decision tree.\n\n🚩 **Red flag answer:** \"We follow age-appropriate wake windows\" — that is what every Facebook group says.\n\n---\n\n## SECTION 2 — The 10pm Wake-Up Question\n*(Your baby wakes at 10pm regardless of what you did at bedtime. Ask this directly.)*\n\n> **\"My baby goes down fine after a 45-minute routine but wakes reliably around 10pm no matter what I do. In your method, what is the specific name for what's happening there, and what is the mechanical intervention — not the general principle, the actual step-by-step response — for that exact wake?\"**\n\n🔍 **What a meaningful answer sounds like:** A named mechanism (a sleep cycle marker, a partial arousal point, a specific settle window) and a concrete response sequence that differs from 'go in, resettle, leave.'\n\n🚩 **Red flag answer:** \"That's a very common wake — we'll address that in the plan.\"\n\n---\n\n## SECTION 3 — The Day-Two Collapse Question\n*(Every schedule you've tried has fallen apart by day two when something disrupts it. Ask this.)*\n\n> **\"Every schedule I've tried collapses by day two when something goes wrong — a nap that runs long, a car journey during a wake window. What does your method have built in for the day something goes off-plan? Is there an actual decision framework, or is the instruction 'start again tomorrow'?\"**\n\n🔍 **What a meaningful answer sounds like:** A named recovery protocol — specific steps to take when the day derails that don't require starting from scratch.\n\n🚩 **Red flag answer:** \"Don't worry, we'll troubleshoot together\" — that is support, not a method.\n\n---\n\n## SECTION 4 — The 3am Question\n*(This is your most important question. At 3am you will not remember anything. Ask this.)*\n\n> **\"At 3am, I've been awake since 1:15am, the baby is screaming, and I'm running on pure instinct. Your plan makes sense at 10am but at 3am I will default to whatever stops the crying fastest. What does your method give me that I can actually execute in that state — something written in under five steps that I can read with one eye open?\"**\n\n🔍 **What a meaningful answer sounds like:** A specific, condensed 3am reference card or night-mode instruction set — not the full plan, a distilled version of the critical decision point.\n\n🚩 **Red flag answer:** \"You'll have my support, just message me.\" Support at 3am is not the same as a protocol at 3am.\n\n---\n\n## SECTION 5 — The 'Not Cry-It-Out' Question\n*(You need a mechanical answer, not a values statement.)*\n\n> **\"I need to understand what 'no cry-it-out' means mechanically in your method — not the intention, the specific action. When my baby is crying in the cot at 2am, what is the exact sequence of steps I take, and at what point in that sequence does she have to tolerate any distress alone, even briefly?\"**\n\n🔍 **What a meaningful answer sounds like:** A numbered response sequence with time intervals, physical contact descriptions, and a clear statement of when (if ever) the parent is out of the room and for how long.\n\n🚩 **Red flag answer:** \"It's a very gentle approach, nothing like CIO\" — the word 'gentle' is not a protocol.\n\n---\n\n**After the call, score each answer:**\n- ✅ Got a specific mechanical answer → confidence point\n- 🔄 Got a general reassurance → follow up: *\"Can you give me the actual steps?\"*\n- 🚩 Got a deflection → note it; factor it into your decision",
+      "instructions": "Read through before your Sleep Assessment call — then ask these questions verbatim or paraphrase them in your own voice. You are looking for specific mechanical answers, not reassurance."
+    },
+    {
+      "name": "Side-by-Side: 5 Common Approaches vs. Settle-Window Sequencing Method",
+      "type": "swipe",
+      "content": "# Side-by-Side Comparison: What You've Already Tried vs. What This Method Does Differently\n\n**How to read this:** For each approach, find the one you've tried. The 'What Goes Wrong' column is your lived experience. The 'What Settle-Window Sequencing Does at This Decision Point' column is what to listen for — and ask about — on your call.\n\n---\n\n| # | Approach | Core Premise | Key Decision Point | What Goes Wrong By Day 2 | What Settle-Window Sequencing Does at This Decision Point |\n|---|----------|-------------|-------------------|--------------------------|-----------------------------------------------------------|\n| 1 | **Wake Window Scheduling** (The 2-3-4 method, Huckleberry app, etc.) | Space wake times by age-appropriate intervals and sleepiness will arrive naturally. | What happens when the baby's tired signs don't match the window — or the window is blown by a car journey. | You hit the window, the baby won't settle, you extend the wake, you overshoot, she's overtired, bedtime is a disaster. | The method sequences settle *attempts* inside a defined window — not at the end of it — so a blown window has a named recovery step rather than a reset-from-scratch. |\n| 2 | **Eat-Play-Sleep Routine** (feed → awake time → nap, repeat) | Decoupling feeding from sleep removes the feed-to-sleep association. | What to do at 3am when the baby wakes and feeding is the fastest, quietest solution and you are not capable of doing anything else. | Works in the day; collapses at night when instinct overrides intention. | The 3am protocol within the method is a condensed decision sequence of five steps or fewer, written specifically for night wakes — not the full daytime routine compressed. |\n| 3 | **Fading / Gradual Retreat** (move the chair further away each night) | Reduce parental presence incrementally so the baby habituates. | What to do when the baby escalates — cries harder as you move the chair — and the escalation happens at 11:30pm on night three. | Most parents abandon the method at the first escalation because there is no protocol for escalation, only for a cooperative baby. | The method includes a defined 'escalation response' — a specific alternate settle action at each stage — so escalation is a named event with a named response, not a reason to restart. |\n| 4 | **The 'Just Be Consistent' Advice** (every Facebook group, every HV appointment) | Consistency over 7–14 days will produce a result. | What 'consistency' means at the specific decision point of a 10pm wake that happens regardless of what you did at 7pm. | You are consistent with the wrong intervention — consistently repeating something that isn't working faster or slower. | The method distinguishes between consistency of *sequence* (what you do) and consistency of *timing* (when you do it) — the 10pm wake gets a specific response that is different from the bedtime response, not the same one repeated. |\n| 5 | **Cry-It-Out / Ferber / Timed Checks** | Teaching the baby to self-settle by tolerating distress in increasing intervals. | What to do when the crying escalates past what the parent can emotionally hold — which for most first-time parents is around four minutes at 2am. | You go in, you 'ruin it,' you feel guilt, you abandon the method, you add it to the list of things that didn't work. | The Settle-Window Sequencing Method does not use timed cry intervals. The parent remains in contact or within immediate reach throughout every night wake response. The settle is built *with* the baby's nervous system signal, not against it. |\n\n---\n\n**What to look for:** When your consultant answers the assessment call questions, map their answers to this table. If they can tell you specifically what happens at the 'Key Decision Point' for the approach you've tried — and the answer is mechanically different, not just philosophically different — that is meaningful signal.",
+      "instructions": "Read this before or after your Sleep Assessment call to evaluate what makes the method mechanically distinct — use the 'Key Decision Point' column as your benchmark when the consultant answers your script questions."
+    },
+    {
+      "name": "The '3am Plan-on-a-Post-it' Template",
+      "type": "template",
+      "content": "# The '3am Plan-on-a-Post-it' Template\n\n**Why this exists:** The full Sleep Reset plan makes complete sense at 10am. At 3am, after being awake since 1:15am, you will not read it. You will do whatever stopped the crying fastest last week. This template forces you to distil the plan into five steps you can execute with one eye open, before you need it.\n\n**Fill this in during your first programme session or immediately after — not at 3am.**\n\n---\n\n## MY 3AM REFERENCE CARD\n\n*(Print this section, fill in the blanks, cut it out, tape it next to the cot)*\n\n---\n\n**Baby's name:** [BABY'S NAME] **Age:** [AGE IN MONTHS]\n\n**Current night-wake pattern:** Typically wakes at [APPROXIMATE WAKE TIME, e.g. 10pm and 2am]\n\n---\n\n### WHEN SHE WAKES: DO THIS, IN THIS ORDER\n\n**Step 1 — Wait [NUMBER] seconds before going in.**\n*(Your consultant will give you this number. Write it here: _______ seconds.)*\n\n**Step 2 — When you go in, do this first:**\n[SPECIFIC FIRST ACTION — e.g. 'place hand on chest, no pick-up' or 'pick up, hold upright against shoulder' — your consultant specifies this]\n\n**Step 3 — If still crying after [NUMBER] minutes, do this:**\n[SPECIFIC SECOND ACTION — the next step in the settle sequence your consultant gives you]\n\n**Step 4 — If still crying after another [NUMBER] minutes, do this:**\n[SPECIFIC THIRD ACTION — e.g. 'feed to drowsy, not asleep' or 'transfer to [SPECIFIC HOLD]']\n\n**Step 5 — The one thing I must NOT do (my default that breaks the sequence):**\n[YOUR SPECIFIC DEFAULT — e.g. 'rock fully to sleep in the chair' / 'bring into our bed' / 'feed to full sleep'] \n*— not because it's wrong, but because it skips the settle window and resets the pattern.*\n\n---\n\n### THE 10PM WAKE IS DIFFERENT\n*(Your consultant will confirm this — the 10pm wake is a partial arousal, not a full wake. The response is shorter.)*\n\nFor the 10pm wake only: [ABBREVIATED RESPONSE — e.g. 'hand on chest, 60 seconds, leave' — your consultant specifies]\n\n---\n\n### IF THE DAY WENT WRONG (long nap / car nap / skipped nap)\n\nTonight, adjust by: [CONSULTANT'S DAY-RECOVERY INSTRUCTION — e.g. 'push bedtime 20 minutes later' / 'cap next nap at 30 min tomorrow']\n\n---\n\n**The one sentence that will keep you going at 3am:**\n*Write something true and specific here — not a platitude, something that is actually true for your baby:*\n\n> \"[E.g. 'She slept 4.5 hours straight on Night 3 last time I held the sequence — I know the window works when I follow steps 1–3.']\" \n\n---\n\n⬆️ **Cut here. Tape next to the cot. Do not read the full plan at 3am — read only this card.**",
+      "instructions": "Fill this in during or immediately after your first programme session while the plan makes sense — then stick it on the wall next to the cot. This is the only thing you need to read at 3am."
+    },
+    {
+      "name": "Pre-Call Confidence Checklist: What to Confirm Before You Commit to Week One",
+      "type": "checklist",
+      "content": "# Pre-Call Confidence Checklist\n## What to Confirm Before You Commit to Week One\n\n**Use this immediately after your Sleep Assessment call.** Every unchecked box is a question to bring back to your consultant before Night 1 — not after Night 3 when the plan has already collapsed.\n\n---\n\n### ✅ ABOUT THE METHOD\n\n- [ ] I can explain in one sentence what 'Settle-Window Sequencing' means mechanically — not the philosophy, the action sequence.\n- [ ] I know what a 'settle window' is and how long it is for my baby's current age ([BABY'S AGE] months).\n- [ ] I know what I do when the window closes and the baby is still awake.\n- [ ] I know what the 10pm wake specifically is called in this method, and I have a different response for it than I do for the 2am wake.\n- [ ] I can name the specific thing this method does at bedtime that is mechanically different from my current 45-minute routine.\n\n---\n\n### ✅ ABOUT THE NIGHT PLAN\n\n- [ ] I have a written, step-by-step response sequence for night wakes — not a general approach, an actual numbered list.\n- [ ] That sequence is five steps or fewer and I could read it with one eye open at 3am.\n- [ ] I know what to do if the baby escalates (cries harder) during the settle sequence — there is a named next step, not just 'stay consistent.'\n- [ ] I know the one specific action I must avoid (my default fast-fix) and I have written it on the 3am card above.\n- [ ] I have a physical reference card (the Post-it template above) filled in and placed next to the cot.\n\n---\n\n### ✅ ABOUT THE DAY-RECOVERY PROTOCOL\n\n- [ ] I know what to do tonight if today's naps went completely wrong (car nap, skipped nap, 2-hour accidental nap).\n- [ ] I know the single adjustment to make — not a full reset, one adjustment — when something disrupts the plan on Day 2 or 3.\n- [ ] I know whether a bad day resets the three-week timeline or whether the method has a built-in catch-up mechanism.\n\n---\n\n### ✅ ABOUT THE SUPPORT\n\n- [ ] I know exactly how to contact my consultant between sessions — platform, response time, what kinds of questions are in scope.\n- [ ] I know whether 3am questions are in scope or whether support is day-time only (so I can set my own expectations).\n- [ ] I have the programme materials open and know where to find the condensed night protocol inside the programme.\n\n---\n\n### ✅ ABOUT MY OWN READINESS\n\n- [ ] I've told my partner / co-parent the specific sequence so we are doing the same thing, not different things on different nights.\n- [ ] I know which night we are officially calling Night 1 — it is not 'when I feel ready,' it is a specific date: **[DATE]**.\n- [ ] I have accepted that Night 1 and Night 2 will probably be harder than my current baseline — and I know this is normal within this method because [CONSULTANT'S SPECIFIC REASON].\n\n---\n\n**Score: ___ / 18**\n\n- **16–18:** You are ready for Night 1. Start this week.\n- **12–15:** You have two or three specific gaps — bring them back to your consultant before Night 1, not after.\n- **Under 12:** You need a second shorter call or a written Q&A before Night 1. That is not failure — that is the difference between Night 1 going well and Night 3 collapsing.\n\n---\n\n*Your Night 1 start date: ________________________*",
+      "instructions": "Complete this in the 10 minutes after your Sleep Assessment call — before you start Week 1 — to confirm you have everything you need to actually follow through at 3am."
+    }
+  ],
+  "format": "toolkit",
+  "promise": "Use these scripts in under 10 minutes to expose the exact mechanical difference between the Settle-Window Sequencing Method and every generic schedule you've already abandoned. Walk into — and out of — the Sleep Assessment call knowing precisely what you're committing to and why it isn't just the same advice repackaged.",
+  "howToUse": "This is your pre-call due-diligence kit for the Sleep Assessment call inside Sleep Reset for New Parents. Print it or pull it up on your phone before the call, use the scripts to ask the specific mechanical questions that separate the Settle-Window Sequencing Method from everything you've already tried, and run the side-by-side comparison to evaluate the distinction yourself — no trust required, just the answers. You are not here to be sold; you are here to confirm what is actually different before you invest your next three weeks of fragmented, five-hours-or-less nights into a plan.",
+  "nextStep": {
+    "body": "You now have the questions, the comparison, the 3am card, and the go/no-go checklist. The one thing that turns this from interesting reading into a baby who sleeps a six-hour stretch is a Night 1 with a specific date on it. Open your Sleep Reset for New Parents programme, go to the Sleep Assessment call booking page, and schedule your call for within the next 48 hours — take your script questions with you. After the call, fill in the 3am Post-it template and complete the Pre-Call Confidence Checklist before you touch anything else in the programme. Your checklist score tells you whether you start this week or whether you need one more question answered first.",
+    "heading": "Your Next Move: Lock In Night 1 Before You Close This Document",
+    "ctaLabel": "Book Your Sleep Assessment Call Now"
+  }
+}
+
+==============================================================================
+CONCEPTS  (0)
+==============================================================================
+
+==============================================================================
+CONCEPT SCRIPTS  (0 most recent)
+==============================================================================
+
+==============================================================================
+CASCADE JOB
+==============================================================================
+status=complete err=
+result: (null)
