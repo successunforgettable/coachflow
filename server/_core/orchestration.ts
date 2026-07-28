@@ -83,14 +83,85 @@ export function pageTypeForCampaign(campaignType?: string | null): "sales_page" 
 // ── Phase 1 (Problem A) — campaign facts feed generation ─────────────────────────────────────────────
 /** WhatsApp/email sequence length from event-date proximity: closer → shorter & punchier, further →
  *  longer nurture. Unknown/unparseable date → 3 (the prior hardcoded default; safe). */
+/**
+ * Normalise a free-text event date to an ISO `YYYY-MM-DD` string, or null if it
+ * genuinely cannot be read.
+ *
+ * Event dates are stored as free text, so `Date.parse` alone silently fails on
+ * the two shapes real coaches actually type:
+ *   - UK slash order — "27/09/2026" parses as month 27 → NaN
+ *   - ordinal words  — "28th august 2026" → NaN
+ * Both previously collapsed to the 3-message fallback with no signal.
+ *
+ * SLASH-DATE POLICY: `d/m/y` is read as DAY-first. ZAP's coaches are UK-centric
+ * and the observed prod values are UK order. Where the first field is >12 this
+ * is unambiguous; where both are ≤12 ("05/09/2026") day-first is a deliberate
+ * choice, not a guess — recorded here so it is not silently flipped later.
+ */
+export function normalizeEventDateToISO(raw?: string | null): string | null {
+  if (!raw) return null;
+  const s = String(raw).trim();
+  if (!s) return null;
+
+  const iso = (y: number, m: number, d: number): string | null => {
+    if (m < 1 || m > 12 || d < 1 || d > 31) return null;
+    const dt = new Date(Date.UTC(y, m - 1, d));
+    // Rejects overflow like 31/02 , which Date would roll into March.
+    if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== m - 1 || dt.getUTCDate() !== d) return null;
+    return dt.toISOString().slice(0, 10);
+  };
+
+  // Already ISO-ish: YYYY-MM-DD
+  const isoMatch = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (isoMatch) return iso(+isoMatch[1], +isoMatch[2], +isoMatch[3]);
+
+  // Slash/dot/dash separated, day-first: D/M/YYYY or D/M/YY
+  const slash = s.match(/^(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{2}|\d{4})$/);
+  if (slash) {
+    const y = slash[3].length === 2 ? 2000 + +slash[3] : +slash[3];
+    return iso(y, +slash[2], +slash[1]);
+  }
+
+  // Ordinal words: "28th august 2026", "3rd Sept 2026", "August 28th, 2026"
+  const stripped = s.replace(/(\d{1,2})(st|nd|rd|th)\b/gi, "$1").replace(/,/g, " ");
+  const t = Date.parse(stripped);
+  if (!Number.isNaN(t)) {
+    const d = new Date(t);
+    return iso(d.getFullYear(), d.getMonth() + 1, d.getDate());
+  }
+  return null;
+}
+
+export type SequenceLengthResolution = {
+  length: 3 | 5 | 7;
+  /** no-date: nothing supplied (3 is correct). parsed: read successfully.
+   *  unparseable: a date WAS supplied but could not be read — must surface. */
+  status: "no-date" | "parsed" | "unparseable";
+  iso?: string;
+};
+
+/**
+ * Runway-aware sequence length, with the failure mode made visible.
+ *
+ * The distinction that matters: NO date supplied is a legitimate 3 (a lead
+ * magnet has no runway). A date supplied that we cannot read is a DEFECT, and
+ * previously it produced the identical 3 with no way to tell the two apart.
+ */
+export function resolveSequenceLength(dateStr?: string | null): SequenceLengthResolution {
+  if (!dateStr || !String(dateStr).trim()) return { length: 3, status: "no-date" };
+
+  const isoDate = normalizeEventDateToISO(dateStr);
+  if (!isoDate) return { length: 3, status: "unparseable" };
+
+  const days = (Date.parse(`${isoDate}T00:00:00Z`) - Date.now()) / 86_400_000;
+  const length = days <= 7 ? 3 : days <= 21 ? 5 : 7;
+  return { length, status: "parsed", iso: isoDate };
+}
+
+/** Back-compatible wrapper. Prefer resolveSequenceLength, which distinguishes
+ *  "no date" from "unreadable date". */
 export function deriveLengthFromDate(dateStr?: string | null): 3 | 5 | 7 {
-  if (!dateStr) return 3;
-  const t = Date.parse(dateStr);
-  if (Number.isNaN(t)) return 3;
-  const days = (t - Date.now()) / 86_400_000;
-  if (days <= 7) return 3;
-  if (days <= 21) return 5;
-  return 7;
+  return resolveSequenceLength(dateStr).length;
 }
 
 /** The (token, value) answers implied by a kit's campaignFacts — fed through applyOperatorAnswer so a
@@ -695,13 +766,25 @@ export async function runOrchestrationStep(
       const waBookingUrl = await getCoachBookingUrl(input.userId);
       // Phase 1 (Problem A): length DERIVED from event-date proximity (was hardcoded 3); real facts.
       const waEs = (kit?.campaignFacts?.eventSchedule ?? {}) as Record<string, string | undefined>;
+      // A supplied-but-unreadable date used to collapse into the same silent 3
+      // as no date at all. Surface it: the coach's runway was real, we just
+      // could not read it, and that is a defect worth seeing in the logs
+      // rather than a shrug that looks like a deliberate short sequence.
+      const waLength = resolveSequenceLength(waEs.date);
+      if (waLength.status === "unparseable") {
+        console.error(
+          `[orchestration] WhatsApp sequence length FELL BACK to 3: an event date was supplied ` +
+            `but could not be parsed (raw="${String(waEs.date).slice(0, 80)}"). The sequence is ` +
+            `NOT runway-aware. Fix the capture path so dates normalise to ISO.`,
+        );
+      }
       const { id } = await runWhatsappSequenceGeneration({
         userId: input.userId,
         serviceId: input.serviceId,
         sequenceType: "engagement",
         name: svc?.name ? `${svc.name} — Engagement Sequence` : "Engagement Sequence",
         tone: "conversational",
-        sequenceLength: deriveLengthFromDate(waEs.date),
+        sequenceLength: waLength.length,
         eventDetails: { bookingUrl: waBookingUrl ?? undefined, eventDate: waEs.date, eventTime: waEs.time, eventTimezone: waEs.timezone, eventVenue: waEs.venue },
       });
       generatedId = id;
