@@ -90,7 +90,8 @@ export async function generateOfferAngle(
   socialProof: any,
   cascadeContext: string = "",
   supplied: OfferSuppliedData = {},
-): Promise<OfferContent> {
+  /** Residual legacy-validator hits, so the persistence gate folds them into ONE verdict. */
+  __legacySink?: { hits: Array<{ classId: string; matched: string; location: string }> }): Promise<OfferContent> {
   const offerTypeInstructions = {
     standard: "Entry-level offer with core benefits, good value",
     premium: "Mid-tier offer with additional bonuses, better value",
@@ -323,6 +324,9 @@ Return ONLY valid JSON with these exact keys: offerName, valueProposition, prici
 
     // Fabrication-pattern check against the canonical-token allow-list.
     const fabResult = validateOfferFabricationPatterns(parsed as RawOfferFields, supplied);
+    if (__legacySink) __legacySink.hits.push(...(fabResult.ok ? [] : (fabResult.hits ?? []).map((h: any) => ({
+      classId: String(h.classId), matched: String(h.matched ?? ""), location: String(h.location ?? "offer"),
+    }))));
     if (fabResult.ok) {
       return parsed;
     }
@@ -363,15 +367,17 @@ export async function generateAllOfferAngles(
   socialProof: any,
   cascadeContext: string = "",
   supplied: OfferSuppliedData = {},
-): Promise<{
+  /** Shared sink so all three angles' residual legacy hits reach ONE verdict at persist. */
+  __sink?: { hits: Array<{ classId: string; matched: string; location: string }> }): Promise<{
   godfather: OfferContent;
   free: OfferContent;
   dollar: OfferContent;
 }> {
+  const __offerLegacySink = __sink ?? { hits: [] as Array<{ classId: string; matched: string; location: string }> };
   const [godfather, free, dollar] = await Promise.all([
-    generateOfferAngle(productName, productDescription, targetCustomer, mainBenefit, 'godfather', offerType, socialProof, cascadeContext, supplied),
-    generateOfferAngle(productName, productDescription, targetCustomer, mainBenefit, 'free', offerType, socialProof, cascadeContext, supplied),
-    generateOfferAngle(productName, productDescription, targetCustomer, mainBenefit, 'dollar', offerType, socialProof, cascadeContext, supplied),
+    generateOfferAngle(productName, productDescription, targetCustomer, mainBenefit, 'godfather', offerType, socialProof, cascadeContext, supplied, __offerLegacySink),
+    generateOfferAngle(productName, productDescription, targetCustomer, mainBenefit, 'free', offerType, socialProof, cascadeContext, supplied, __offerLegacySink),
+    generateOfferAngle(productName, productDescription, targetCustomer, mainBenefit, 'dollar', offerType, socialProof, cascadeContext, supplied, __offerLegacySink),
   ]);
 
   return { godfather, free, dollar };
@@ -503,6 +509,7 @@ export async function runOfferGeneration(input: {
     bonuses: service.bonuses ?? null,
   };
 
+  const __offerSink = { hits: [] as Array<{ classId: string; matched: string; location: string }> };
   const allAngles = await generateAllOfferAngles(
     service.name,
     service.description || "",
@@ -512,9 +519,10 @@ export async function runOfferGeneration(input: {
     socialProof,
     cascadeContext,
     offerSupplied,
+    __offerSink
   );
 
-  const insertResult: any = await db.insert(offers).values({
+  const __offerRow = {
     userId: input.userId,
     serviceId: input.serviceId,
     campaignId: input.campaignId || null,
@@ -525,7 +533,12 @@ export async function runOfferGeneration(input: {
     dollarAngle: allAngles.dollar,
     activeAngle: "godfather",
     rating: 0,
-  });
+  };
+  // Persistence backstop for offers — previously the ONLY cascade table with no gate at
+  // all. legacyHits folds the offer validator's residual findings into the same verdict.
+  const { gateBeforePersist } = await import("./_core/persistenceGate");
+  const __og = await gateBeforePersist("offers", [__offerRow as any], { legacyHits: __offerSink.hits });
+  const insertResult: any = await db.insert(offers).values((__og.kept[0] ?? __offerRow) as any);
   const offerId = insertResult[0].insertId;
 
   // Auto-select into campaign kit (creates kit if needed) — mirrors orchestrator pattern

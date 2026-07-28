@@ -1014,11 +1014,16 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
     input.pageType,
   );
 
+  // Typed as LandingPageContent, not Record<string, unknown>. The old Record cast threw away
+  // the shape the `landingPages.*Angle` columns actually declare, so the insert never
+  // type-checked — a pre-existing TS2769 on this persistence path that the 35-error baseline
+  // had simply absorbed. Casting to the column's own type fixes it at source rather than
+  // silencing it at the call.
   const allAngles = {
-    original: allAnglesRaw.original as Record<string, unknown>,
-    godfather: allAnglesRaw.godfather as Record<string, unknown>,
-    free: allAnglesRaw.free as Record<string, unknown>,
-    dollar: allAnglesRaw.dollar as Record<string, unknown>,
+    original: allAnglesRaw.original as LandingPageContent,
+    godfather: allAnglesRaw.godfather as LandingPageContent,
+    free: allAnglesRaw.free as LandingPageContent,
+    dollar: allAnglesRaw.dollar as LandingPageContent,
   };
 
   const __row = {
@@ -1033,7 +1038,10 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
     godfatherAngle: allAngles.godfather,
     freeAngle: allAngles.free,
     dollarAngle: allAngles.dollar,
-    activeAngle: "original",
+    // `as const` because extracting the row into a variable loses the contextual typing the
+    // inline .values({...}) used to supply — without it the literal widens to `string` and
+    // no longer satisfies the column's enum.
+    activeAngle: "original" as const,
     pageType: input.pageType,
     rating: 0,
   };
@@ -1041,8 +1049,8 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
   // an explicit extractor. Single-row insert: the floor keeps it and logs rather than
   // emptying the node (degrade, never kill).
   const { gateBeforePersist, copyFieldsOfJson } = await import("./_core/persistenceGate");
-  const __g = await gateBeforePersist("landingPages", [__row as any], { textOf: (r: any) => ["originalAngle","godfatherAngle","freeAngle","dollarAngle"].flatMap((k) => copyFieldsOfJson(r[k], k)) });
-  const insertResult: any = await db.insert(landingPages).values((__g.kept[0] ?? __row) as any);
+  const __g = await gateBeforePersist("landingPages", [__row], { textOf: (r: any) => ["originalAngle","godfatherAngle","freeAngle","dollarAngle"].flatMap((k) => copyFieldsOfJson(r[k], k)) });
+  const insertResult: any = await db.insert(landingPages).values((__g.kept[0] ?? __row));
   const landingPageId = insertResult[0].insertId;
 
   // Quota tracking — both wizard and orchestrator paths increment consistently

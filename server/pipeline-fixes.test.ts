@@ -2282,7 +2282,10 @@ describe("Phase E Sprint 2 — Email generator system prompt + supplied wiring",
     expect(generatorSrc).toContain("const supplied: EmailSuppliedData = {");
     expect(generatorSrc).toContain("price: service.price");
     expect(generatorSrc).toContain("testimonialNames:");
-    expect(generatorSrc).toContain("invokeEmailSequenceWithRetry(cascadeContext + realBonusBlock + prompt, supplied)");
+    // Asserts the WIRING (prompt + supplied reach the retry helper), not the exact arg list —
+    // the call also carries a legacy-hits sink now, and a literal-string match on the whole
+    // call breaks on any future parameter without the wiring having changed.
+    expect(generatorSrc).toContain("invokeEmailSequenceWithRetry(cascadeContext + realBonusBlock + prompt, supplied");
   });
 
   it("fabrication validator call forwards supplied data", () => {
@@ -2672,7 +2675,8 @@ describe("Phase F Sprint 2 — WhatsApp generator system prompt + supplied wirin
     expect(generatorSrc).toContain("const supplied: WhatsappSuppliedData = {");
     expect(generatorSrc).toContain("price: service.price");
     expect(generatorSrc).toContain("testimonialNames:");
-    expect(generatorSrc).toContain("invokeWhatsappSequenceWithRetry(cascadeContext + prompt, supplied)");
+    // Wiring assertion, not an exact arg list — see the email equivalent above.
+    expect(generatorSrc).toContain("invokeWhatsappSequenceWithRetry(cascadeContext + prompt, supplied");
   });
 
   it("fabrication validator call forwards supplied data", () => {

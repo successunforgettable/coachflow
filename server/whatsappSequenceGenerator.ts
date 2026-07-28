@@ -686,7 +686,9 @@ interface RawWhatsappMessage {
 async function invokeWhatsappSequenceWithRetry(
   userPrompt: string,
   supplied?: WhatsappSuppliedData,
-): Promise<RawWhatsappMessage[]> {
+  /** Residual legacy-validator hits, surfaced so the persistence gate can fold them
+   * into ONE verdict instead of this family concluding separately. */
+  __legacySink?: { hits: Array<{ classId: string; matched: string; location: string }> }): Promise<RawWhatsappMessage[]> {
   // Validator Phase 2 (Sprint B+1 path d, 2026-05-11): mirrors the email
   // generator's Phase 1 + Phase 2 architecture. Shape validation via
   // validateWhatsappSequenceShape (centralizes defensive un-stringification
@@ -730,6 +732,9 @@ async function invokeWhatsappSequenceWithRetry(
 
     // Stage 2: fabrication-pattern validation. Best-effort on exhaust.
     const fabResult = validateWhatsappFabricationPatterns(shapeResult.messages, supplied);
+    if (__legacySink) __legacySink.hits = fabResult.ok ? [] : (fabResult.hits ?? []).map((h: any) => ({
+      classId: String(h.classId), matched: String(h.matched ?? ""), location: String(h.location ?? "legacy"),
+    }));
     if (fabResult.ok) {
       return shapeResult.messages as RawWhatsappMessage[];
     }
@@ -976,7 +981,8 @@ You MUST use these exact numbers and real names. Do not fabricate.`
       service.testimonial3Name,
     ],
   };
-  const rawMessages = await invokeWhatsappSequenceWithRetry(cascadeContext + prompt, supplied);
+  const __legacySink = { hits: [] as Array<{ classId: string; matched: string; location: string }> };
+  const rawMessages = await invokeWhatsappSequenceWithRetry(cascadeContext + prompt, supplied, __legacySink);
   const delays = DELAY_HOURS_BY_WHATSAPP_TYPE[input.sequenceType] ?? [];
   const sequenceData: { messages: any[] } = {
     messages: rawMessages.map((msg: RawWhatsappMessage, idx: number) => ({
@@ -1001,7 +1007,7 @@ You MUST use these exact numbers and real names. Do not fabricate.`
   // an explicit extractor. Single-row insert: the floor keeps it and logs rather than
   // emptying the node (degrade, never kill).
   const { gateBeforePersist, copyFieldsOfJson } = await import("./_core/persistenceGate");
-  const __g = await gateBeforePersist("whatsappSequences", [__row as any], { textOf: (r: any) => copyFieldsOfJson(r.messages, "messages") });
+  const __g = await gateBeforePersist("whatsappSequences", [__row as any], { textOf: (r: any) => copyFieldsOfJson(r.messages, "messages"), legacyHits: __legacySink.hits });
   const insertResult: any = await db.insert(whatsappSequences).values((__g.kept[0] ?? __row) as any);
 
   return { id: insertResult[0].insertId };

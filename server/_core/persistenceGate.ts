@@ -154,9 +154,19 @@ export async function gateBeforePersist<T extends Record<string, any>>(
     // letting each family reach its own conclusion — is what makes the two systems one
     // decision. It is deliberately additive: replacing the old detectors outright cost five
     // real detections the first time it was tried.
+    // 🔴 FOLDED AS TIER 2 — REPORTED, NEVER BLOCKING. Measured on 288 real prod rows the
+    // legacy families produce 1,833 hits (~6.4 per row), overwhelmingly the OFFER validator
+    // flagging ordinary offer content: "$97", "full refund", "Risk-Free", "next cohort",
+    // "($97 value)", "within 30 days". Those are an offer doing its job; they are flagged
+    // only because they are not operator-supplied, and each family's OWN disposition is
+    // retry-with-failContext then persist best-effort — deliberately not a block.
+    //
+    // So consolidation here unifies the VERDICT SURFACE, not the disposition: one place to
+    // read what every detector found, while each family keeps the remedy it was tuned for.
+    // Promoting these to tier 1 would drop nearly every offer row generated.
     const legacy = (opts.legacyHits ?? []).map((h) => ({
-      classId: String(h.classId), tier: 1 as const,
-      description: "Flagged by the asset's own validator.",
+      classId: String(h.classId), tier: 2 as const,
+      description: "Flagged by the asset's own validator; that family handles its own remedy.",
       matched: String(h.matched ?? ""), location: String(h.location ?? assetType),
     }));
     if (legacy.length > 0) hits.push(...(legacy as unknown as OutputHit[]));

@@ -750,7 +750,9 @@ interface RawEmail {
 async function invokeEmailSequenceWithRetry(
   userPrompt: string,
   supplied?: EmailSuppliedData,
-): Promise<RawEmail[]> {
+  /** Residual legacy-validator hits, surfaced so the persistence gate can fold them
+   * into ONE verdict instead of this family concluding separately. */
+  __legacySink?: { hits: Array<{ classId: string; matched: string; location: string }> }): Promise<RawEmail[]> {
   let lastFailureContext: string | null = null;
   // Validator Phase 1 (Sprint B+1 path d, 2026-05-11): post-generation
   // shape validation. Replaces the inline defensive un-stringify + array-
@@ -809,6 +811,9 @@ async function invokeEmailSequenceWithRetry(
     // is best-effort: log + return content anyway (kit completes, individual
     // fabrications may persist for user to swap via kit page Swap button).
     const fabResult = validateEmailFabricationPatterns(shapeResult.emails, supplied);
+    if (__legacySink) __legacySink.hits = fabResult.ok ? [] : (fabResult.hits ?? []).map((h: any) => ({
+      classId: String(h.classId), matched: String(h.matched ?? ""), location: String(h.location ?? "legacy"),
+    }));
     if (fabResult.ok) {
       return shapeResult.emails as RawEmail[];
     }
@@ -1100,7 +1105,8 @@ You MUST use these exact numbers and real names. Do not fabricate.`
       service.testimonial3Name,
     ],
   };
-  const rawEmails = await invokeEmailSequenceWithRetry(cascadeContext + realBonusBlock + prompt, supplied);
+  const __legacySink = { hits: [] as Array<{ classId: string; matched: string; location: string }> };
+  const rawEmails = await invokeEmailSequenceWithRetry(cascadeContext + realBonusBlock + prompt, supplied, __legacySink);
   const sequenceData: { emails: any[] } = { emails: rawEmails };
 
   // Server-controlled delay metadata override (workstream commit 4c).
@@ -1128,7 +1134,7 @@ You MUST use these exact numbers and real names. Do not fabricate.`
   // an explicit extractor. Single-row insert: the floor keeps it and logs rather than
   // emptying the node (degrade, never kill).
   const { gateBeforePersist, copyFieldsOfJson } = await import("./_core/persistenceGate");
-  const __g = await gateBeforePersist("emailSequences", [__row as any], { textOf: (r: any) => copyFieldsOfJson(r.emails, "emails") });
+  const __g = await gateBeforePersist("emailSequences", [__row as any], { textOf: (r: any) => copyFieldsOfJson(r.emails, "emails"), legacyHits: __legacySink.hits });
   const insertResult: any = await db.insert(emailSequences).values((__g.kept[0] ?? __row) as any);
 
   return { id: insertResult[0].insertId };

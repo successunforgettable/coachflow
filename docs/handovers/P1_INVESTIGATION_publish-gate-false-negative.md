@@ -544,3 +544,80 @@ already been validated across 15,586 prod rows.
 
 Banked at ~72%, past the 70% target. The overshoot was spent on the live screen and the two FP fixes
 it produced — stopping at the green unit suite would have shipped both.
+
+---
+
+# ITEM 4 CLOSE-OUT — 2026-07-29. Legacy fold finished; TS suppression properly fixed.
+
+## ✅ TS suppression removed — it was a real, fixable bug
+
+The `as any` is gone from both places on the landingPages persistence path. The underlying
+TS2769 was **two** separate problems:
+
+1. **Pre-existing.** `allAngles` cast each angle to `Record<string, unknown>`, throwing away the
+   shape the `landingPages.*Angle` columns declare. Fixed at source by casting to
+   **`LandingPageContent`** — the column's own type. This is the error the 35-baseline had
+   absorbed for however long.
+2. **Mine.** Extracting the row into a `const` lost the contextual typing that inline
+   `.values({...})` supplied, so `activeAngle: "original"` widened to `string` and no longer
+   satisfied the column enum. Fixed with `as const`.
+
+**The baseline is now 34 and it means something:** 35 minus one genuinely fixed error, with no
+suppression anywhere. `landingPageGenerator` type-checks clean. Server errors 9, client 25.
+
+## ✅ Legacy fold — 4 of 5 sites, and the recipe did NOT transfer
+
+The doc's "three-line hoist" only worked for `bonusGenerator`. In the other four the validator
+lives in a **helper function** that returns content, with the insert in a different function — so
+the hits needed a *channel*, not a hoist. Each helper has exactly one call site, so they take an
+optional `__legacySink` the helper writes into; smaller diff than changing four return types.
+
+**Folded:** `bonusGenerator` (prior) · `emailSequenceGenerator` · `whatsappSequenceGenerator` ·
+`offersGenerator`. **Not folded: LP-testimonials** — same pattern, ~10 minutes, banked.
+
+**`offers` also had NO persistence gate at all** — the last cascade table with none. Now gated.
+
+## 🔴 THE LIVE CHECK CAUGHT THE MOST SERIOUS THING THIS WEEK
+
+Screening **288 real prod rows** through the legacy families produced **1,833 hits (~6.4 per row)**,
+overwhelmingly the OFFER validator flagging ordinary offer content:
+
+```
+  85x offer_invented_currency|$97        48x offer_invented_refund_mechanic|full refund
+  64x offer_invented_currency|$27        27x offer_invented_refund_mechanic|Risk-Free
+  24x offer_invented_cohort_date|next cohort   22x offer_invented_bonus_value|($97 value)
+  22x offer_invented_guarantee_timeframe|within 48 hours
+```
+
+**That is an offer doing its job.** Those strings are flagged only because they are not
+operator-supplied, and each legacy family's OWN disposition is retry-with-failContext then persist
+best-effort — deliberately not a block.
+
+I had folded them as **tier 1**. Had that fed the drop decision, **it would have dropped nearly
+every offer row generated.** It did not, because the fold lands after the keep/drop loop — but the
+label was wrong and the next person to filter on tier 1 would have inherited a live landmine.
+
+**Corrected to tier 2.** Consolidation here unifies the **verdict surface**, not the **disposition**:
+one place to read what every detector found, while each family keeps the remedy it was tuned for.
+That is the honest reading of "one verdict, not one regex".
+
+**Four live-only findings this week** — the narrative-window FP, `"First Name"`, `"Once I saw"`, and
+now this. Every one on a green unit suite.
+
+## Test-quality fix
+
+Two `pipeline-fixes` assertions grepped the generator source for an exact call string and broke on
+the new sink parameter. They asserted the arg list rather than the wiring, so they were narrowed to
+match the wiring — a literal whole-call match breaks on any future parameter without the wiring
+having changed.
+
+| Gate | Result |
+|---|---|
+| `trackRecordClaims` + `fabricationValidator` | **38/38** |
+| `pipeline-fixes` | **382/382** |
+| TypeScript | **34** — real baseline, no suppression |
+| Live legacy-family screen, 288 prod rows | ran; tier mislabel found and fixed |
+
+## Remaining
+
+LP-testimonials fold (one site, known pattern). Everything else in item 4 is closed.
