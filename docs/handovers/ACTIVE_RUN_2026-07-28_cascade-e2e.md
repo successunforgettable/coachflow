@@ -14,6 +14,31 @@ public_ids `bonuses_117174_19.pdf` and `bonuses_117174_20.pdf`, resource_type `i
 
 ---
 
+## 0. ✅ CREDITS RULED OUT (checked 2026-07-28) — F1 is NOT a credit failure
+
+| Service | Probe | Result |
+|---|---|---|
+| **Anthropic** | live 1-token `/v1/messages` on the prod key | **HTTP 200**, no `credit balance is too low` |
+| **Replicate** | `GET /v1/account` on `REPLICATE_API_KEY` | **HTTP 200**, account `successunforgettable` valid |
+| **Cloudinary** | `GET /usage` on cloud `dunshei0y` | **HTTP 200**, plan **Free**, credits usage **3.39** |
+
+**Step 9 fails BEFORE any image API call is made.** `generateContextualAdHeadlines`
+(`orchestration.ts:816`) runs ahead of `runAdCreativesGeneration` (`:941`); the throw at 816 means
+941 is never reached. The headline check is **local validation of a SUCCESSFUL Anthropic response** —
+the RETRY EXHAUST logs show all 5 attempts returning 5 headlines each with char counts. Anthropic is
+working; Replicate and Cloudinary are never contacted on this path.
+
+⚠️ **BUT: image generation (Replicate → Cloudinary) remains UNVERIFIED.** Credits being healthy is
+not the same as the path working — it has not executed in any recent run because F1 blocks it first.
+Do not assume it works until a creative actually renders.
+
+⚠️ **Cloudinary is on the FREE plan** — worth watching if creative volume ramps.
+
+**Method note:** two earlier probes returned HTTP 400 `invalid_request_error`. That was shell
+quoting mangling the JSON body inside `railway run bash -c`, **not** the API. Probe from a node
+script with `JSON.stringify`, not a heredoc through nested quotes — a malformed probe looks
+exactly like a broken service.
+
 ## 1. WHAT SHIPPED AND IS LIVE
 
 | Commit | What |
