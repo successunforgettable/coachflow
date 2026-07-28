@@ -28,6 +28,41 @@ whose headlines run long — the all-or-nothing disposition is unchanged.
 produced creatives. That closes a standing caveat and unblocks the parked image-model evaluation,
 which was gated on "the ad-creative path generates again".
 
+### 1a. The creatives, seen for the first time — mechanically fine, not usable
+
+Saved: `docs/screenshots/run-2026-07-28/ad-creative-v1..v5.png` (1080×1080).
+
+**Why step 9 passed is now unambiguous** — every headline landed under the bar, one exactly on it:
+
+| v | style | headline | chars |
+|---|---|---|---|
+| 1 | person_shocked | Baby sleeps through in 3 weeks. | 31 |
+| 2 | screenshot | From 2-hour bedtimes to 7pm done. | 33 |
+| 3 | person_intense | It's not the habit. It's the sequence. | **38** |
+| 4 | object | Rocking her down vs. she goes down. | 35 |
+| 5 | person_curious | Stop feeding to sleep every night. | 34 |
+
+**The images have systemic problems:**
+
+1. **Gender mismatch with the ICP.** The ICP is unambiguously a mother — "my partner", maternity
+   pay, mothers' group, antenatal group. **Both inspected creatives depict a man.**
+2. **Headline text overlaps the subject's face** in both — laid across mouth, arm and chest.
+3. **Garbled callout labels.** v4 renders a green speech bubble reading "Parenting books" and a
+   circle reading **"Baby time parents"** — not a phrase. Half of it sits behind the headline,
+   partly illegible.
+4. **v1 reads as alarming, not aspirational** — a wild-eyed, open-mouthed man holding a **newborn**
+   (the ICP's baby is 4–12 months). For an audience that explicitly distrusts anything that "sounds
+   too easy" and values gentleness, this is badly off-brand.
+5. **All five share one identical body line** — "I remember standing at the cot at 11pm…". The
+   variations vary headline and image only, so the deck is less varied than the count suggests.
+6. The body line **is** correctly first person — the register standard is working here.
+
+**"Baby sleeps through in 3 weeks."** is a flat promised result in a timeframe — the
+`PROMISED_RESULT_RE` category — and it passed the gate. Another instance of §3.
+
+**This is the input the parked image-model evaluation needs.** It was blocked on "the ad-creative
+path generates again"; it now does, and these are real ZAP prompts rather than generic test ones.
+
 ## 2. 🔴 The landing page published — and it is the headline artifact
 
 **`https://zapcampaigns.com/p/sleep-reset-for-new-parents-230`** — HTTP 200, **zero `[INSERT_*]`
@@ -129,7 +164,19 @@ coach's own words*, which is what the corpus was built for.
 - **The 8 concepts are correctly first-person** — *"I built a method because I needed one thing that
   did not change shape every time I looked at it."* The register standard is working where wired.
 
-## 6. Method notes
+## 6. Where the artifacts live (all committed — nothing session-scoped)
+
+| Artifact | Path |
+|---|---|
+| Published LP, full-page screenshot | `docs/screenshots/LP-230-published-fullpage.png` |
+| 5 ad creatives | `docs/screenshots/run-2026-07-28/ad-creative-v1..v5.png` |
+| 3 bonus PDFs | `docs/screenshots/run-2026-07-28/bonus-25..27.pdf` |
+| Every node's full text — ICP, offer, mechanism, lead magnet, all 10 headlines, all 9 ad copy, LP content, **email sequence in full**, **WhatsApp sequence in full**, bonuses, concepts | `docs/handovers/RUN_2026-07-28_artifacts-full.txt` |
+
+The 5 published pages were purged from Cloudflare KV and verified 404. Cloudinary assets (5 creative
+PNGs, 3 bonus PDFs, 1 magnet PDF) remain as orphans — same `.pdf.pdf` cleanup class as the prior run.
+
+## 7. Method notes
 
 - The **poll watched downstream write timestamps, not `jobs.status`** — the zombie-job tell.
 - **`campaignConcepts` went 0 → 8 after the artifact dump.** A real late writer, caught only by
