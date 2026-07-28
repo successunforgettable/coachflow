@@ -621,3 +621,76 @@ having changed.
 ## Remaining
 
 LP-testimonials fold (one site, known pattern). Everything else in item 4 is closed.
+
+---
+
+# P3 / P4 / P5 — 2026-07-29. Plus LP-testimonials, closing item 4.
+
+## ✅ LP-testimonials folded — item 4 complete
+
+`generateLandingPageAngle` → `generateAllAngles` → the gate, via the same sink used for offers.
+**All five legacy families are now folded.** The signature insertion that broke three times is
+fixed by stripping a trailing comma before appending the parameter.
+
+## ✅ P3 — dead CTA links and unfilled host name
+
+**Both were a fallback firing because the real value was never populated.**
+
+- **`ctaLink: email.ctaLink || '#'`** — every CTA in every sequence was a **silently** dead link.
+  Now falls back to the coach's `bookingUrl`, then to **`[INSERT_BOOKING_URL]`**. A token beats
+  `'#'` outright: the operator intake can resolve it, and it is *visibly* unfilled rather than
+  quietly broken.
+- **`[INSERT_HOST_NAME]`** — orchestration passes `bookingUrl` and the event fields but **never
+  `hostName`**, so every Auto Mode sign-off rendered the raw token. `runEmailSequenceGeneration`
+  now reads the coach's own `users.name` when the caller doesn't supply one. The coach's own name
+  is not a fabrication. Wrapped in try/catch — a name lookup must never block generation. The
+  wizard, which does pass `hostName`, is unaffected.
+
+## ✅ P4 — WhatsApp was event-framed on every campaign
+
+Not a token gap. `orchestration.ts` hardcoded **`sequenceType: "engagement"`** for every campaign,
+and that builder is written for *"the event the reader is about to attend"*, anchored on
+`[INSERT_EVENT_NAME]`. A lead-magnet campaign has no event, so it produced *"You've already said
+yes to [INSERT_EVENT_NAME]"*.
+
+Added `WHATSAPP_SEQUENCE_FOR_CAMPAIGN`: webinar / in_person_event / challenge keep **engagement**;
+lead_magnet / discovery_call / course_launch / product_launch get **nurture**.
+
+**Verified the fix actually helps:** the `nurture` builder was checked for event framing — its only
+`INSERT_EVENT*` mention is `[INSERT_EVENT_DURATION]` cited as a *contrast* when defining
+PROGRAMME_DURATION. It is event-free, so the reroute lands somewhere coherent rather than moving the
+problem.
+
+## ✅ P5 — the leak was in the prompt string itself
+
+`REGISTER_STANDARD` (`copywritingRules.ts:129`) carried the reference's worked example **inside the
+exported prompt** — *"I sat in the car park four minutes every Monday just to delay going in"*. A
+vivid, concrete, first-person sentence injected into every generation prompt is precisely what a
+model will copy, and it did: it surfaced in email 2's preview as if it were the coach's story.
+
+Replaced with an abstract description of the SHAPE ("the precise detail of a moment the coach
+actually lived… from THIS coach's own material, never from an example: a borrowed moment reads as
+invented because it is").
+
+**Sweep result: the leak was singular.** Every other §3.1 example ("Tired of your acne?",
+"Struggling with debt?", "high-ticket clients") appears only in **comments** in `complianceAxis.ts`
+explaining detector rationale — never in prompt text.
+
+### 🔴 Separate finding the sweep turned up — NOT fixed, flagged
+
+`adCopyGenerator.ts:40` contains a **"Do NOT write"** list with concrete failure examples:
+*"before I was broke, now I'm rich"*, *"I used to be fat, now I'm thin"*. That is the §14
+negative-priming anti-pattern — CLAUDE.md records it as the documented root cause of the Sprint B
+email regression. It is a different problem from P5 (prohibitive, not prescriptive) and rewriting a
+live compliance block carries real regression risk, so it is logged rather than changed.
+
+## ⚠️ Verification honesty
+
+TS **34** · **420 tests pass** (382 pipeline + 38 fabrication) · P4's reroute confirmed to land on an
+event-free builder · P5's leak confirmed removed and the sweep confirmed clean.
+
+**But none of P3/P4/P5 has been seen in live generated output yet.** These were verified
+structurally — at source and by inspecting the destination builder. The week's standing lesson is
+that live output catches what static analysis does not (four times now), so **a beginner cascade
+should be run before these are considered proven**: it would show a real sign-off, a real CTA link,
+and a nurture-shaped WhatsApp sequence. Cheap to do; it did not fit this session's budget.

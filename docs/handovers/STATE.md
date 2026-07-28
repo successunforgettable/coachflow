@@ -116,6 +116,11 @@ spelled-out numbers and the noun "families".
 **`fabricationValidator.test.ts` is 23/23 green while the gate is blind** — the suite asserts only
 the strings the regexes were written against. **Add the real phrasings above as regression tests.**
 
+**✅ P1 ITEM 4 CLOSED 2026-07-29** — all five legacy families folded (bonus, email, WhatsApp,
+offers, LP-testimonials); `offers` gained the persistence gate it never had. Folded as **tier 2**:
+measured on 288 prod rows the legacy families fire ~6.4×/row on ordinary offer content ("$97",
+"full refund", "next cohort"), so consolidation unifies the VERDICT SURFACE, not the disposition.
+
 **📄 INVESTIGATED 2026-07-28 — proposal ready, nothing built:
 `docs/handovers/P1_INVESTIGATION_publish-gate-false-negative.md`.** Corrections to the diagnosis
 above: coverage is **bifurcated, not absent** (a legacy per-asset validator family in
@@ -144,17 +149,17 @@ so no generator guard can ever catch it.** It renders on **every zero-client coa
 `burchardProductivity.ts:123` falls back to the literal string `yourbrand` when `coachName` is unset;
 the magnet card renders `YOUR BRAND'S`. **Both were visible on the published page.**
 
-### P3 EMAIL PLUMBING
+### P3 ✅ FIXED 2026-07-29 — EMAIL PLUMBING
 
 All three CTAs are `ctaLink: "#"` — **dead links**. All three sign-offs render an unfilled
 `[INSERT_HOST_NAME]`.
 
-### P4 WHATSAPP WRONG FUNNEL
+### P4 ✅ FIXED 2026-07-29 — WHATSAPP WRONG FUNNEL
 
 Event-framed on a **lead-magnet campaign with no event**: *"At [INSERT_EVENT_NAME] with
 [INSERT_HOST_NAME]"*, *"You've already said yes to [INSERT_EVENT_NAME]"*. Structural, not a token gap.
 
-### P5 PROMPT EXAMPLE LEAKED INTO OUTPUT
+### P5 ✅ FIXED 2026-07-29 — PROMPT EXAMPLE LEAKED INTO OUTPUT
 
 Email 2's preview promises *"you sit in a car park"* — **the register standard's own worked example**
 from `META_AD_COMPLIANCE_REFERENCE.md` §3.1, escaping the prompt as if it were the coach's story

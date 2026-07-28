@@ -401,7 +401,8 @@ export async function generateLandingPageAngle(
   socialProof: any,
   cascadeContext: string = "",
   pageType: LpPageType = 'sales_page',
-): Promise<LandingPageContent> {
+  /** Residual legacy-validator hits, so the persistence gate folds them into ONE verdict. */
+  __sink?: { hits: Array<{ classId: string; matched: string; location: string }> }): Promise<LandingPageContent> {
   // Social proof guidance (Issue 2 fix)
   const socialProofGuidance = socialProof.hasTestimonials || socialProof.hasCustomers || socialProof.hasPress
     ? `REAL SOCIAL PROOF AVAILABLE:
@@ -736,6 +737,9 @@ Use direct response copywriting principles: pain agitation, unique mechanism, so
   const testimonials = (parsed as { testimonials?: unknown }).testimonials;
   if (Array.isArray(testimonials)) {
     const fabResult = validateLandingPageTestimonialsFabrication(testimonials as Parameters<typeof validateLandingPageTestimonialsFabrication>[0]);
+    if (__sink) __sink.hits.push(...(fabResult.ok ? [] : (fabResult.hits ?? []).map((h: any) => ({
+      classId: String(h.classId), matched: String(h.matched ?? ""), location: String(h.location ?? "lpTestimonials"),
+    }))));
     if (!fabResult.ok) {
       if (leakAttempt < LP_SCHEMA_RETRY_MAX_ATTEMPTS) {
         validatorFailContext = fabResult.failContext;
@@ -810,7 +814,8 @@ export async function generateAllAngles(
   // blanks (Path A architecture). Default 'sales_page' preserves backward-
   // compatible behavior for all existing callsites that don't pass pageType.
   pageType: LpPageType = 'sales_page',
-): Promise<{
+  /** Residual legacy-validator hits, so the persistence gate folds them into ONE verdict. */
+  __sink?: { hits: Array<{ classId: string; matched: string; location: string }> }): Promise<{
   original: LandingPageContent;
   godfather: LandingPageContent;
   free: LandingPageContent;
@@ -836,10 +841,10 @@ export async function generateAllAngles(
   };
 
   const [original, godfather, free, dollar] = await Promise.all([
-    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'original', socialProof, cascadeContext, pageType).then(async r => { await notify(); return r; }),
-    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'godfather', socialProof, cascadeContext, pageType).then(async r => { await notify(); return r; }),
-    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'free', socialProof, cascadeContext, pageType).then(async r => { await notify(); return r; }),
-    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'dollar', socialProof, cascadeContext, pageType).then(async r => { await notify(); return r; }),
+    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'original', socialProof, cascadeContext, pageType, __sink).then(async r => { await notify(); return r; }),
+    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'godfather', socialProof, cascadeContext, pageType, __sink).then(async r => { await notify(); return r; }),
+    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'free', socialProof, cascadeContext, pageType, __sink).then(async r => { await notify(); return r; }),
+    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'dollar', socialProof, cascadeContext, pageType, __sink).then(async r => { await notify(); return r; }),
   ]);
   return { original, godfather, free, dollar };
 }
@@ -1003,6 +1008,7 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
     icpContext || null,
   ].filter(Boolean).join('\n\n');
 
+  const __lpSink = { hits: [] as Array<{ classId: string; matched: string; location: string }> };
   const allAnglesRaw = await generateAllAngles(
     service.name,
     service.description || "",
@@ -1012,6 +1018,7 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
     input.onProgress,
     cascadeContext,
     input.pageType,
+    __lpSink
   );
 
   // Typed as LandingPageContent, not Record<string, unknown>. The old Record cast threw away
@@ -1049,7 +1056,7 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
   // an explicit extractor. Single-row insert: the floor keeps it and logs rather than
   // emptying the node (degrade, never kill).
   const { gateBeforePersist, copyFieldsOfJson } = await import("./_core/persistenceGate");
-  const __g = await gateBeforePersist("landingPages", [__row], { textOf: (r: any) => ["originalAngle","godfatherAngle","freeAngle","dollarAngle"].flatMap((k) => copyFieldsOfJson(r[k], k)) });
+  const __g = await gateBeforePersist("landingPages", [__row], { textOf: (r: any) => ["originalAngle","godfatherAngle","freeAngle","dollarAngle"].flatMap((k) => copyFieldsOfJson(r[k], k)), legacyHits: __lpSink.hits });
   const insertResult: any = await db.insert(landingPages).values((__g.kept[0] ?? __row));
   const landingPageId = insertResult[0].insertId;
 

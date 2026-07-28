@@ -125,9 +125,10 @@ enough that the right reader recognises it — the recognition comes from the
 accuracy of the described moment, not from telling the reader what is true of them.
 
 Concrete and specific is the goal. Intensity, stakes and emotional weight all
-belong here in full — they are carried by the detail of the moment ("I sat in the
-car park four minutes every Monday just to delay going in"), by the cost the coach
-paid, and by what the method changes. Specificity is what makes copy land; keep it.
+belong here in full — they are carried by the precise detail of a moment the coach
+actually lived, by the cost they paid, and by what the method changes. The detail
+comes from THIS coach's own material, never from an example: a borrowed moment
+reads as invented because it is. Specificity is what makes copy land; keep it.
 
 Where the copy addresses the reader directly, it speaks about the offer and what
 it does — the benefit, the process, the outcome the method is built to produce.

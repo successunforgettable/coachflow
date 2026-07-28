@@ -76,6 +76,20 @@ export const CAMPAIGN_TO_PAGE_TYPE: Record<string, "sales_page" | "webinar_regis
   product_launch: "sales_page",
   challenge: "sales_page",
 };
+/**
+ * Which WhatsApp sequence shape fits a campaign. Only campaigns that actually HAVE an event
+ * may use the event-anchored engagement builder.
+ */
+const WHATSAPP_SEQUENCE_FOR_CAMPAIGN: Record<string, "engagement" | "nurture"> = {
+  webinar: "engagement",
+  in_person_event: "engagement",
+  challenge: "engagement",
+  lead_magnet: "nurture",
+  discovery_call: "nurture",
+  course_launch: "nurture",
+  product_launch: "nurture",
+};
+
 export function pageTypeForCampaign(campaignType?: string | null): "sales_page" | "webinar_registration" | "discovery_call_booking" | "lead_magnet_download" | "event_registration" {
   return campaignType ? (CAMPAIGN_TO_PAGE_TYPE[campaignType] ?? "sales_page") : "sales_page";
 }
@@ -781,7 +795,12 @@ export async function runOrchestrationStep(
       const { id } = await runWhatsappSequenceGeneration({
         userId: input.userId,
         serviceId: input.serviceId,
-        sequenceType: "engagement",
+        // P4: was hardcoded "engagement" for every campaign. That builder is written for
+        // "the event the reader is about to attend" and anchors on [INSERT_EVENT_NAME], so a
+        // lead-magnet campaign produced "You've already said yes to [INSERT_EVENT_NAME]" when
+        // no event exists — a structural coherence break, not a token gap. Event-shaped
+        // campaigns keep engagement; the rest nurture the person who just downloaded.
+        sequenceType: WHATSAPP_SEQUENCE_FOR_CAMPAIGN[input.campaignType ?? ""] ?? "nurture",
         name: svc?.name ? `${svc.name} — Engagement Sequence` : "Engagement Sequence",
         tone: "conversational",
         sequenceLength: waLength.length,

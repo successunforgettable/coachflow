@@ -897,6 +897,22 @@ export async function runEmailSequenceGeneration(input: {
   };
 }): Promise<{ id: number }> {
   const { getDb } = await import("./db");
+  // P3: Auto Mode's orchestration never passed hostName, so every sign-off rendered the raw
+  // [INSERT_HOST_NAME] token. The coach's own name is not a fabrication — read it and use it.
+  // Callers that DO supply hostName (the wizard) are unaffected.
+  if (!input.eventDetails?.hostName) {
+    try {
+      const { getDb: _g } = await import("./db");
+      const _db = await _g();
+      if (_db) {
+        const { users } = await import("../drizzle/schema");
+        const { eq: _eq } = await import("drizzle-orm");
+        const [coach] = await _db.select({ name: users.name }).from(users).where(_eq(users.id, input.userId)).limit(1);
+        const coachName = (coach?.name ?? "").trim();
+        if (coachName) input.eventDetails = { ...(input.eventDetails ?? {}), hostName: coachName };
+      }
+    } catch { /* leave the token — never block generation on a name lookup */ }
+  }
   const { emailSequences, services, idealCustomerProfiles, sourceOfTruth, campaigns, campaignKits, bonuses } = await import("../drizzle/schema");
   const { eq, and } = await import("drizzle-orm");
 
@@ -1118,7 +1134,10 @@ You MUST use these exact numbers and real names. Do not fabricate.`
     delay: delays[idx] ?? (idx * 24),
     delayUnit: 'hours',
     cta: email.cta || 'Learn More',
-    ctaLink: email.ctaLink || '#',
+    // P3: was `|| '#'` — a silently dead link in every email of every sequence. A real
+    // destination when we have one, otherwise the canonical token, which the operator intake
+    // can actually resolve and which is visibly unfilled rather than quietly broken.
+    ctaLink: email.ctaLink || input.eventDetails?.bookingUrl || '[INSERT_BOOKING_URL]',
     ps: email.ps || '',
   }));
 
