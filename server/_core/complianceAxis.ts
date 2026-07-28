@@ -42,6 +42,7 @@ export type ComplianceClass =
   | "deceptive_urgency"                   // §1.6  check 6 (delegated to complianceFilter)
   | "ad_to_page_mismatch"                 // §1.4  check 3 (publish only)
   | "special_ad_category_employment"      // Tier-2 evidence — ADVISORY ONLY, check 5
+  | "promised_result"                     // check 7 — ZAP HOUSE STANDARD, see below
   | "register_diagnostic_address";        // TIER 3 house style — LABELS, never blocks
 
 export type ComplianceHit = {
@@ -485,6 +486,13 @@ export type FieldRole = "short" | "body" | "cta";
  * prompt and still shapes the copy — it simply no longer gates it. Expect output to be
  * less uniformly first-person on non-enumerated topics; that is the intended trade.
  */
+/** A result promised in a timeframe. Moved from fabricationValidator — see check 7. */
+const PROMISED_RESULT_RE =
+  /\b(?:in|within|inside)\s+(?:just\s+)?\d+\s*(?:day|week|month|year)s?\b[^.!?]{0,60}\b(?:you(?:'ll| will)?|guarantee|promise|results?|revenue|clients?|leads?)\b|\b(?:you(?:'ll| will)|guaranteed to)\s+(?:make|earn|add|hit|land|book|double|triple)\b/gi;
+
+const matches = (t: string, re: RegExp): RegExpMatchArray[] =>
+  Array.from(t.matchAll(new RegExp(re.source, re.flags)));
+
 export function checkComplianceAxis(
   fields: Array<{ location: string; text: string | null | undefined; role?: FieldRole }>,
 ): ComplianceAxisResult {
@@ -689,6 +697,26 @@ export function checkComplianceAxis(
       push("special_ad_category_employment", 2,
         "Career and employment wording. Meta MAY treat an ad using this language as a job ad, which would place it in the Employment Special Ad Category and restrict its targeting.",
         sac, f.location);
+    }
+
+    // ── Check 7 — a result promised in a timeframe ────────────────────────────
+    // Moved here from the fabrication validator. Under Rule 1 a forward promise is a claim
+    // about what the method is DESIGNED to produce, so it is NOT invention — a coach may
+    // make it at zero clients. But it is still a RESULTS-CLAIM RISK, and risk is decided on
+    // FORM, not truth: Meta never verifies whether a promise came true, and a genuinely
+    // honest promise reads exactly like a dishonest one. The two layers are meant to
+    // disagree here — copy can pass fabrication and be flagged by compliance.
+    //
+    // ⚠️ EVIDENCE DISCIPLINE (compliance reference §1.4a, §3.4). A results claim is NOT one
+    // of the six confirmed Tier-1 checks in §3.3, and no Meta document enumerates it. This
+    // is a **ZAP HOUSE STANDARD**, legitimate as craft in exactly the way the 38-character
+    // headline rule is legitimate as craft — and like that rule it must NEVER be described
+    // to a coach as a Meta requirement. The remedy is HOW IT IS WORDED (one person's
+    // experience, no promise of typicality), not proving the result happened.
+    for (const m of matches(text, PROMISED_RESULT_RE)) {
+      push("promised_result", 1,
+        "A specific result in a specific timeframe reads as a promise of what someone will get. Describing what the method does, and what one person's experience was, carries the same weight without promising an outcome.",
+        m[0], f.location);
     }
 
     // ── Check 6 — delegate to the existing filter rather than duplicating it.

@@ -119,6 +119,30 @@ export async function runHeroMechanismGeneration(input: {
   const sharedSystemPrompt = "You are a direct response copywriting expert who specialises in creating proprietary mechanism names and descriptions for coaches and consultants. You write mechanism names that are niche-specific — containing vocabulary from the target market's industry, not generic business language. Your mechanism descriptions make the reader feel the copy was written specifically for them. Return ONLY valid JSON arrays.";
 
   // ── 1/3: Hero Mechanisms (5 variations) ────────────────────────────────────
+  // ── Proof guidance is CONDITIONAL on what the coach actually supplied ────────
+  // 🔴 ROOT CAUSE OF THE 2026-07-28 INVENTION. This prompt used to instruct, unconditionally:
+  //   "Who developed it and why (credibility tied to niche)"
+  //   "A concrete outcome with a number or timeframe (X clients in Y weeks)"
+  // A coach with zero clients has no such credibility and no such number, so the model
+  // supplied both — "Developed after working with over two hundred families… Most families
+  // reach a five-to-six-hour first stretch by night fourteen" — and it propagated into the
+  // lead magnet, ad copy, email and WhatsApp. The mechanism was not going rogue; it was
+  // following instructions. Detecting that downstream is strictly worse than not asking
+  // for it, so the ask itself is now gated on supplied proof.
+  //
+  // Framed POSITIVELY (§14): it describes the paragraph we want, never the failure shape.
+  // Same pattern as adCopyGenerator's proof-seeking angles, which are already conditional.
+  const { buildCoachCorpus: __bcc, buildProofSupplied: __bps } = await import("./_core/groundingCorpus");
+  const __corpus = __bcc({ service: service as any });
+  const __supplied = __bps(service as any);
+  const mechanismProofGuidance = __corpus.isLaunchStage
+    ? `   - What the method is DESIGNED to produce, described as the outcome it aims at rather than a
+     figure anyone has already hit — the mechanism stands on how it works, not on a track record
+   - Why this approach exists: the reasoning and the insight behind it, in the first person`
+    : `   - Who developed it and why, drawing ONLY on this supplied background: ${JSON.stringify(__supplied.coachBackground ?? "")}
+   - A concrete outcome, using ONLY figures present in the supplied material above; where none is
+     supplied, describe what the method is designed to produce instead`;
+
   const heroMechanismsPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert direct response copywriter creating compelling Hero Mechanisms.
 
 Product: ${service.name}
@@ -147,10 +171,9 @@ Create 5 HERO MECHANISMS. Each mechanism must have:
    - Sounds like something that exists as a real system, not a marketing concept
 2. A full PARAGRAPH description (150-200 words) that includes:
    - The specific problem it solves (name the problem, not a category of problems)
-   - Who developed it and why (credibility tied to niche, not generic "award-winning expert")
-   - A concrete outcome with a number or timeframe ($X/month, X clients in Y weeks, etc.)
+${mechanismProofGuidance}
    - What specifically makes it different from what they've already tried (name the failed approaches)
-   - One before/after moment that makes the transformation real and believable
+   - One before/after moment, written as what the method is DESIGNED to produce, that makes the transformation real and believable
 
 Return ONLY a JSON array of 5 objects with "name" and "description" fields, nothing else.`;
 

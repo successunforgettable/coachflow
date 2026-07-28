@@ -128,10 +128,18 @@ const PAST_CLIENT_EVENT_RE =
  * completed history.
  */
 const PAST_TENSE_NARRATION =
-  "(?:had been|had|was|were|went|got|reached|saw|started|stopped|came|finished|worked through|" +
-  "used to|ended up|turned out|managed)";
+  // Contractions matter: "A mum who'd been feeding to sleep" is the commonest case-study
+  // opener there is, and "who'd been" never matches a plain "had been" alternation.
+  "(?:\\w+'d\\s+been|had been|had|was|were|went|got|reached|saw|started|stopped|came|finished|" +
+  "worked through|used to|ended up|turned out|managed)";
+// ⚠️ The window is deliberately TIGHT (40 chars). A real case study narrates in the past
+// immediately — "A mum who'd been feeding to sleep", "A first-time parent, baby around seven
+// months, had been…". A generic present-tense scenario does not: a live run produced
+// "a parent checks the time and thinks — I knew this was…", where the only past-tense word
+// sat 46 characters away inside quoted speech. A wide window reads that as a case study and
+// blocks legitimate copy, which is the one failure mode a launch-stage coach must never hit.
 const INDEFINITE_CLIENT_NARRATIVE_RE =
-  new RegExp(`\\b(?:a|an|one|another)\\s+(?:[\\w-]+\\s+){0,3}?${PERSON}\\b[^.!?]{0,140}?\\b${PAST_TENSE_NARRATION}\\b`, "gi");
+  new RegExp(`\\b(?:a|an|one|another)\\s+(?:[\\w-]+\\s+){0,3}?${PERSON}\\b[^.!?]{0,40}?\\b${PAST_TENSE_NARRATION}\\b`, "gi");
 
 const OUTCOME_STATISTIC_RE =
   /\b\d{1,3}(?:\.\d+)?\s?%|\b\d+\s*(?:out of|in)\s*\d+\b|\b\d+(?:\.\d+)?x\s+(?:more|faster|better|higher)\b/gi;

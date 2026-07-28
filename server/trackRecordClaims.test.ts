@@ -84,6 +84,11 @@ const HARVESTED_METHOD = [
   "I spend about 80% of my week on admin.",
   "I'm not 100% sure this is the right time.",
   "Every Monday I run the same wind-down sequence.",
+  // Harvested from a LIVE generation on 2026-07-28: the narrative detector's window was wide
+  // enough to read this present-tense scenario as a case study, because a past-tense word sat
+  // 46 chars away inside quoted speech. A false positive here dead-ends a launch-stage coach.
+  "It is 3am and a parent checks the time and thinks — I knew this was going to happen again.",
+  "A parent who wants a predictable evening will find the sequence does the work.",
 ];
 
 describe("held-out corpus — recall on real generated output", () => {
@@ -123,6 +128,17 @@ describe("supplied is true — the same strings pass once the coach has told us"
  * Each mutation preserves the CLASS of the claim while changing its surface. If a detector
  * is tuned to one phrasing rather than to the claim, exactly one of these will escape.
  */
+describe("compliance owns the forward promise — the two layers disagree by design", () => {
+  it("passes fabrication (method claim) and blocks in compliance (results-claim risk)", async () => {
+    const { checkComplianceAxis } = await import("./_core/complianceAxis");
+    const t = "In 8 weeks you will land three retainer clients.";
+    expect(blocked(t)).toBe(false);
+    const c = checkComplianceAxis([{ location: "body", text: t, role: "body" }]);
+    expect(c.ok).toBe(false);
+    expect(c.blocking.map((h) => h.classId)).toContain("promised_result");
+  });
+});
+
 describe("paraphrase / mutation — a class must survive a change of surface", () => {
   const NOUNS = ["clients", "families", "parents", "students", "customers", "members"];
 

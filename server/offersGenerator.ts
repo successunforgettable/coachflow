@@ -15,7 +15,7 @@ Generate an IRRESISTIBLE GODFATHER OFFER using the Hormozi value equation: Dream
 
 STRUCTURE:
 1. Name the dream outcome in one specific sentence — not a category, a situation. Not "financial freedom" — "replacing your current salary within [INSERT_FIRST_RESULT_TIMEFRAME]." Use niche-specific language for specificity, never invented currency amounts.
-2. State the likelihood of achievement using social proof — specific client numbers from the data provided, or "hundreds of clients" minimum if none available.
+2. State the likelihood of achievement using whatever the SOCIAL PROOF section below actually supplies. Where it supplies none, establish likelihood through the MECHANISM itself — why the method works, what it accounts for that the approaches they already tried do not — which carries the same persuasive weight while standing on the method rather than on a client count.
 3. Reduce perceived time delay — name the specific first result the customer sees in the first 7 days, not just the end result.
 4. Reduce perceived effort — name the one thing they do NOT have to do that they assumed they would have to do.
 5. Stack the offer: core programme + bonuses (each with a real name and the operator-supplied value or [INSERT_BONUS_N_VALUE] placeholder when none is supplied) + guarantee that removes all financial risk.

@@ -99,10 +99,11 @@ describe("the governing line — predictable psychology flows, invented proof bl
   // compliance layer's question (decided on form, not truth), and is recorded as tier 2.
   it("does NOT block a forward promise as fabrication — it is a method claim (Rule 1)", () => {
     const res = check("In 8 weeks you will land three retainer clients.");
-    expect(res.ok).toBe(true);                                    // not invention
+    expect(res.ok).toBe(true);                       // not invention — a method claim
     expect(res.blocking).toHaveLength(0);
-    expect(res.hits.map((h) => h.classId)).toContain("promised_result");   // still recorded
-    expect(res.hits.find((h) => h.classId === "promised_result")!.tier).toBe(2);
+    // It is not fabrication's concern at all now; complianceAxis owns it as check 7, so a
+    // results-claim risk is never left unowned by both layers.
+    expect(res.hits.map((h) => h.classId)).not.toContain("promised_result");
   });
 
   it("blocks a guarantee the coach never stated", () => {

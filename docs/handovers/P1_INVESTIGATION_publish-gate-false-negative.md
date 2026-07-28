@@ -349,3 +349,123 @@ and asks for proof at exactly the moment the coach is least willing to give it.
 **Open for Arfeen:** whether an unanswered ladder should nudge once at the point a claim is blocked
 ("you mentioned free sessions — want to tell us about them?"), which converts a dead end into a
 route, or whether that reads as ZAP asking for proof.
+
+---
+
+# WIRING SESSION — 2026-07-28 (second build). Five of six items done.
+
+## ✅ 5. `promised_result` is now OWNED — closed first, as instructed
+
+Removed from `fabricationValidator` entirely (a forward promise is a METHOD claim under Rule 1,
+so it is not invention) and added to `complianceAxis` as **check 7**. Verified both sides:
+
+```
+fabrication (must PASS - method claim): PASS ✅
+compliance   (must BLOCK):              BLOCK ✅  | promised_result
+```
+
+⚠️ **Evidence discipline.** A results claim is **not** one of the six confirmed Tier-1 checks in
+`META_AD_COMPLIANCE_REFERENCE.md` §3.3, and no Meta document enumerates it. It is implemented as a
+**ZAP HOUSE STANDARD** — legitimate as craft in exactly the way the 38-character headline rule is
+legitimate as craft — and the code comment says so. **It must never be described to a coach as a
+Meta requirement.** The remedy is wording (one person's experience, no promise of typicality), not
+proving the result happened.
+
+## ✅ 1. heroMechanisms — the ROOT CAUSE was the prompt, not the model
+
+The mechanism prompt **instructed the model to invent**, unconditionally:
+
+```
+- Who developed it and why (credibility tied to niche, not generic "award-winning expert")
+- A concrete outcome with a number or timeframe ($X/month, X clients in Y weeks, etc.)
+```
+
+A coach with zero clients has neither, so the model supplied both — *"Developed after working with
+over two hundred families… Most families reach… by night fourteen"* — and it propagated into five
+downstream assets. **The mechanism was not going rogue; it was following instructions.** Detecting
+that downstream is strictly worse than not asking for it.
+
+Both bullets are now **conditional on `isLaunchStage`**, positive-framed per §14, same pattern as
+adCopyGenerator's already-conditional proof angles. Launch-stage coaches get method-design framing;
+coaches with a supplied background get their own supplied figures and nothing else.
+
+## ✅ 2. (partial) The other five generators
+
+**`offersGenerator` carried a worse instruction than the mechanism did** —
+*"specific client numbers from the data provided, **or 'hundreds of clients' minimum if none
+available**"*: an explicit instruction to state a fabricated figure. Removed; likelihood is now
+established through the mechanism when no proof is supplied. A sweep found no other generator
+telling the model to invent a floor figure.
+
+`hvcoTitles` and `headlines` are covered by the persistence gate (below).
+**NOT wired: `leadMagnetContent`, `adCreatives`, `bonusPdf`.**
+
+## ✅ 3. THE PERSISTENCE-BOUNDARY ASSERTION — the structural fix
+
+New `server/_core/persistenceGate.ts`, wired into `db.ts` at `createHeroMechanisms`,
+`createHeadlines`, `createHvcoTitles`. It derives its own grounding from the rows' own
+`userId`/`serviceId`, so **no call site plumbs anything** — it sits on the insert and cannot be
+forgotten when generator #17 arrives.
+
+**Disposition: DEGRADE, NEVER KILL.** F1(b) is the precedent — a mid-cascade throw destroyed a run
+that had completed eight nodes. The gate drops offending rows and keeps the rest; if every row would
+drop it keeps the batch and logs loudly rather than emptying the node.
+⚠️ **Accepted limitation:** in that case invented proof still persists. It is visible in logs and
+blocked at publish. Revisit only with a retry path.
+
+## ✅ 6. THE SCHEDULED END-TO-END ASSERTION — built and run
+
+`scripts/fabrication-e2e-audit.ts`, two read-only modes, non-zero exit so a scheduler can alarm.
+
+**`live`** — runs a REAL generation for a synthetic zero-client coach and screens what the model
+returns, persisting nothing. This is the root-cause check.
+
+**`audit <serviceId>`** — screens already-persisted assets through the same gate.
+
+## Verification — executed on LIVE output, not fixtures
+
+**Live generation, first run** — the prompt fix held (all three mechanisms in method-design
+register, zero invented track record) but surfaced a **false positive**: the narrative detector read
+*"a parent checks the time and thinks — I knew this was…"* as a case study, because a past-tense word
+sat 46 characters away **inside quoted speech**. An FP here dead-ends a launch-stage coach, so the
+window was tightened to 40 chars — which then broke `"A mum who'd been feeding to sleep"`, the
+commonest case-study opener, because a contraction never matches a plain `had been`. Both fixed;
+both are now permanent regression strings.
+
+**Live generation, second run — PASS, zero blocking, zero false positives.**
+
+**Audit of real prod service 277 — the layer works on real data and found 12 blocking claims in
+already-persisted content**, including an invented `15%` statistic in a live headline and in live ad
+copy. That content predates this work and is exactly what the layer exists to surface.
+
+| Gate | Result |
+|---|---|
+| 9 harvested track-record strings | **9/9 BLOCK** |
+| 12 method controls (incl. 2 new live-harvested FPs) | **12/12 PASS** |
+| Supplied-proof controls · supplied guarantee | **PASS** |
+| Mutation sets (nouns × number forms × names × non-person) | **all hold** |
+| `trackRecordClaims` + `fabricationValidator` | **38/38** |
+| `pipeline-fixes` | **382/382** |
+| TypeScript | **35** — baseline, zero added |
+| Live generation (real LLM, zero-client coach) | **PASS** |
+
+## ⚠️ 4. NOT DONE — folding in the legacy families
+
+`_core/validator.ts`'s per-asset validators (offer, email, WhatsApp, bonus, LP-testimonials) still
+run in parallel with their own verdicts. **Partially mitigated:** the persistence gate applies ONE
+verdict to persisted rows regardless of which family produced them — but only for the three tables
+wired so far, and the legacy families remain a separate code path.
+
+**Also still open:** `leadMagnetContent` / `adCreatives` / `bonusPdf` generator wiring; extending the
+persistence gate to `adCopy`, `landingPages`, `emailSequences`, `whatsappSequences`, `bonuses`
+(those do not insert through `db.ts` helpers, so each needs its own hook); and scheduling the audit
+script rather than leaving it manual.
+
+**Deliberately not built, per instruction:** the informal-results ladder question — it must ship
+together with the `hasProof` change, since `isLaunchStage` reads only structured fields and a coach
+could otherwise write a full account of real results and still be blocked.
+
+## §16 note
+
+Banked at ~77%, past the 70% target. The overshoot bought the second live-generation run, which is
+what caught the false positive — a fixture-only stop would have shipped it.

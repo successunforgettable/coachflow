@@ -97,7 +97,9 @@ export async function createHeadlines(headlineData: Array<typeof headlines.$infe
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  await db.insert(headlines).values(headlineData);
+  const { gateBeforePersist } = await import("./_core/persistenceGate");
+  const __gated = await gateBeforePersist("headlines", headlineData as any[]);
+  await db.insert(headlines).values(__gated.kept as any);
 }
 
 export async function getHeadlinesByUserId(userId: number) {
@@ -174,7 +176,9 @@ export async function createHvcoTitles(titles: InsertHvcoTitle[]) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  await db.insert(hvcoTitles).values(titles);
+  const { gateBeforePersist } = await import("./_core/persistenceGate");
+  const __gated = await gateBeforePersist("hvcoTitles", titles as any[]);
+  await db.insert(hvcoTitles).values(__gated.kept as any);
 }
 
 export async function getHvcoSetsByUser(userId: number) {
@@ -271,7 +275,9 @@ export async function createHeroMechanisms(mechanisms: InsertHeroMechanism[]) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  await db.insert(heroMechanisms).values(mechanisms);
+  const { gateBeforePersist } = await import("./_core/persistenceGate");
+  const __gated = await gateBeforePersist("heroMechanisms", mechanisms as any[]);
+  await db.insert(heroMechanisms).values(__gated.kept as any);
 }
 
 export async function getHeroMechanismSetsByUser(userId: number) {

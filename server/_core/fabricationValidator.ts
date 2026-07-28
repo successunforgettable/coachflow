@@ -60,7 +60,6 @@ export type FabricationClass =
   | "invented_statistic"
   | "invented_named_third_party"
   | "invented_guarantee"
-  | "promised_result"
   | "unearned_authority"
   | "untraceable_persona_claim";
 
@@ -330,16 +329,8 @@ export function checkFabrication(input: FabricationCheckInput): FabricationResul
         name, location);
     }
 
-    // A forward promise ("in 8 weeks you will land three clients") is a claim about what the
-    // method is DESIGNED to produce, so under Rule 1 it is NOT invention and must not block
-    // here. It is still a results-claim RISK — but risk is complianceAxis's question, decided
-    // on form rather than truth. Recorded as tier 2 so it stays visible while the two layers
-    // remain free to disagree.  ⚠️ Its proper long-term home is complianceAxis.
-    for (const m of has(text, PROMISED_RESULT_RE)) {
-      push("promised_result", 2,
-        "A specific result in a specific timeframe reads as a promise. Not invention — the method may claim what it is designed to produce — but it carries results-claim risk and is recorded for the compliance layer.",
-        m[0], location);
-    }
+    // A forward promise is a METHOD claim under Rule 1 and is not invention, so it is not
+    // detected here at all. It is a results-claim risk, which complianceAxis owns as check 7.
 
     // ── Tier 2 — persona traceability. Deliberately soft. ──
     // Predictable category psychology is legitimate inference and is NEVER blocked.
