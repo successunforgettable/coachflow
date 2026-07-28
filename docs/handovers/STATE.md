@@ -107,6 +107,17 @@ spelled-out numbers and the noun "families".
 **`fabricationValidator.test.ts` is 23/23 green while the gate is blind** — the suite asserts only
 the strings the regexes were written against. **Add the real phrasings above as regression tests.**
 
+**📄 INVESTIGATED 2026-07-28 — proposal ready, nothing built:
+`docs/handovers/P1_INVESTIGATION_publish-gate-false-negative.md`.** Corrections to the diagnosis
+above: coverage is **bifurcated, not absent** (a legacy per-asset validator family in
+`_core/validator.ts` runs alongside the compliance layer; **six** generators are in neither); the
+gate **wiring is correct** — `complianceAxis.ts:826-834` does push `fab.blocking`, the detectors
+simply returned nothing; **`isLaunchStage` is dead code** (computed, never read — the documented
+"stricter for beginners" rule is unimplemented, and is the cheapest available fix); and the
+**corpus is an allow-list, never a detector** — consulted only *after* a regex fires, so it cannot
+catch a missed phrasing by construction. Email and WhatsApp *have* legacy guards and still leaked
+invented case studies, so detection is insufficient in **both** families.
+
 ⚠️ Surface-form matching will keep losing to paraphrase. Tightening regexes is the floor, not the
 answer — the durable fix reasons about whether a claim is supported by the coach's own words.
 **Do not quote CLAUDE.md's old "Class 1 invented proof BLOCKS" as current fact.**
