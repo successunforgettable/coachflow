@@ -86,6 +86,15 @@ In order. Each carries its diagnosis — execute without re-investigating.
 
 ### P1 🔴🔴 PUBLISH GATE FALSE NEGATIVE — top of the queue
 
+**📊 EXPOSURE MEASURED 2026-07-29 — `docs/handovers/PUBLISHED_EXPOSURE_AUDIT_2026-07-29.md`.
+NO REAL COACH IS EXPOSED.** All 35 published landing pages belong to just two accounts
+(arfeen@arfeenkhan.com 32, zapreviewer 3); zero real-coach owners. Only 2 Meta rows exist ever,
+both Arfeen's, both PAUSED, both with a placeholder `temp` adSetId — **no ad copy has ever reached
+Meta**. "Dr. Sarah Chen" (24 rows) and "hundreds of successful clients" (75 rows) are both
+generated-but-never-published. **The ~1,825 fleet figure is latent debt in stored decks, not a live
+incident** — the risk is forward-looking. ⚠️ Blind spot: GHL deployment is not measurable (no
+per-asset push record exists), so email/WhatsApp reach is unknown either way.
+
 The live `meta.publishToMeta` gate returned **`ok=true`, zero blocking, zero advisories** on a named
 testimonial + invented client count + invented statistic + unstated guarantee, **for a zero-client
 coach**. Evidence: `RUN_2026-07-28_beginner-cascade-artifact-read.md` §3.
