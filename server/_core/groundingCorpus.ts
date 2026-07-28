@@ -65,6 +65,10 @@ export type CoachCorpusInput = {
     testimonial1Quote?: string | null;
     testimonial2Quote?: string | null;
     testimonial3Quote?: string | null;
+    price?: string | number | null;
+    guaranteeType?: string | null;
+    guaranteeDuration?: string | null;
+    riskReversal?: string | null;
   } | null;
   /** The ICP row's groundingMeta — ONLY ladderAnswers is read from it. */
   groundingMeta?: unknown;
@@ -148,8 +152,10 @@ export function buildProofSupplied(service: CoachCorpusInput["service"]): ProofS
     socialProofStat: s.socialProofStat ?? null,
     coachBackground: s.coachBackground ?? null,
     testimonialNames: [s.testimonial1Name, s.testimonial2Name, s.testimonial3Name],
-    price: null,
-    guaranteeType: null,
-    guaranteeDuration: null,
+    // These were hardcoded to null, so a coach who HAD supplied a guarantee still had every
+    // guarantee mention treated as invented. `services` carries all three columns; read them.
+    price: s.price ?? null,
+    guaranteeType: s.guaranteeType ?? s.riskReversal ?? null,
+    guaranteeDuration: s.guaranteeDuration ?? null,
   };
 }

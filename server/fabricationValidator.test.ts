@@ -93,10 +93,16 @@ describe("the governing line — predictable psychology flows, invented proof bl
       .toContain("invented_statistic");
   });
 
-  it("blocks a promised result in a timeframe", () => {
+  // RULE 1 (Arfeen, 2026-07-28): a coach may state what their method is DESIGNED to produce.
+  // A forward promise is such a claim — nothing is asserted to have already happened — so it
+  // is NOT invention and must not block here. It remains a results-claim RISK, which is the
+  // compliance layer's question (decided on form, not truth), and is recorded as tier 2.
+  it("does NOT block a forward promise as fabrication — it is a method claim (Rule 1)", () => {
     const res = check("In 8 weeks you will land three retainer clients.");
-    expect(res.ok).toBe(false);
-    expect(res.blocking.map((h) => h.classId)).toContain("promised_result");
+    expect(res.ok).toBe(true);                                    // not invention
+    expect(res.blocking).toHaveLength(0);
+    expect(res.hits.map((h) => h.classId)).toContain("promised_result");   // still recorded
+    expect(res.hits.find((h) => h.classId === "promised_result")!.tier).toBe(2);
   });
 
   it("blocks a guarantee the coach never stated", () => {
@@ -209,7 +215,9 @@ describe("per-asset adapters cover concept, script, adCopy and the publish bound
 
   it("adCopy: checks headline, primaryText and description", () => {
     const res = validateAdCopyFabricationPatterns(
-      [{ headline: "Stop chasing referrals", primaryText: "In 8 weeks you will land three clients.", description: null }],
+      // Rule 1: forward promise is a method claim, so the adCopy adapter must surface it as a
+      // tier-2 record rather than dropping the variant. Invented PROOF still blocks (below).
+      [{ headline: "Stop chasing referrals", primaryText: "Sarah went from two clients to a full pipeline.", description: null }],
       beginnerCorpus, beginnerSupplied,
     );
     expect(res.ok).toBe(false);

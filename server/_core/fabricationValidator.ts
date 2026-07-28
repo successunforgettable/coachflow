@@ -29,6 +29,31 @@
 
 import { bonusWordOverlap } from "./validator";
 import type { CoachCorpus, ProofSupplied } from "./groundingCorpus";
+import { ungroundedClaims, type ClaimKind } from "./trackRecordClaims";
+
+/** Track-record claim kinds map onto the existing reported classes. */
+const CLAIM_CLASS: Record<ClaimKind, FabricationClass> = {
+  possessive_population: "unearned_authority",
+  people_count: "unearned_authority",
+  past_client_event: "unearned_authority",
+  named_person_outcome: "invented_testimonial",
+  client_narrative: "invented_testimonial",
+  outcome_statistic: "invented_statistic",
+  stated_guarantee: "invented_guarantee",
+  third_party_attribution: "invented_named_third_party",
+};
+
+const CLAIM_DESCRIPTION: Record<ClaimKind, string> = {
+  possessive_population: "Copy refers to the coach's own clients or students, which asserts people they have not told us about. What the method is designed to do needs no client behind it.",
+  people_count: "A count of real people appears that the coach has not supplied. Numbers of people served come from what the coach has told us.",
+  past_client_event: "Copy states the coach has already worked with people, which their supplied material does not establish. The method's design stands on its own.",
+  named_person_outcome: "A named person and their result appear in copy for a coach whose proof is not on the record. Client stories come from supplied material.",
+  client_narrative: "A client's story is narrated as something that already happened, which the coach's supplied material does not carry. The method can be described without a case study.",
+  outcome_statistic: "A statistic is stated as evidence without a supplied figure behind it. Figures come from the coach's own data.",
+  invented_guarantee: "",
+  stated_guarantee: "A guarantee appears that the coach has not said they offer. Guarantee terms are the coach's to state.",
+  third_party_attribution: "A named person, publication or brand is presented as a source or endorsement that the coach never mentioned.",
+} as Record<ClaimKind, string>;
 
 export type FabricationClass =
   | "invented_testimonial"
@@ -274,40 +299,23 @@ export function checkFabrication(input: FabricationCheckInput): FabricationResul
     const text = typeof raw === "string" ? raw : "";
     if (!text.trim()) continue;
 
-    for (const m of has(text, TESTIMONIAL_RE)) {
-      // A client story passes only when the coach supplied real testimonial data.
-      const names = input.supplied.testimonialNames.filter(Boolean);
-      if (names.length === 0) {
-        push("invented_testimonial", 1,
-          "A client story or named result appears in copy for a coach whose proof is not on the record. Client stories come from supplied testimonials.",
-          m[0], location);
-      }
+    // ── Track-record detection (Rule 1) ──────────────────────────────────────
+    // Detect PROOF-SHAPED claims, then require grounding. A claim the detector does not
+    // return is a METHOD claim — what the coach's method is designed to produce — and is
+    // always allowed, at zero clients included. See trackRecordClaims.ts for the rule.
+    //
+    // This replaces the old shape, where six regexes decided alone and the corpus was only
+    // consulted afterwards to excuse a hit. That made a missed phrasing uncatchable by
+    // construction: "94% of my clients" passed while "87% of consultants" blocked.
+    for (const claim of ungroundedClaims(text, input.corpus, input.supplied)) {
+      push(CLAIM_CLASS[claim.kind], 1, CLAIM_DESCRIPTION[claim.kind], claim.matched, location);
     }
 
-    for (const m of has(text, STAT_RE)) {
-      if (statIsIdiomatic(text, m)) continue;
-      if (statIsSelfDescriptive(text, m)) continue;
-      if (!statSupported(m[0], input.supplied, input.corpus)) {
-        push("invented_statistic", 1,
-          "A statistic is stated as evidence without a supplied figure behind it. Figures come from the coach's own data.",
-          m[0], location);
-      }
-    }
-
-    for (const m of has(text, PROMISED_RESULT_RE)) {
-      push("promised_result", 1,
-        "A specific result in a specific timeframe reads as a promise. Copy describes the method and the shift rather than promising an outcome.",
-        m[0], location);
-    }
-
-    for (const m of has(text, GUARANTEE_RE)) {
-      if (!input.supplied.guaranteeType && !input.supplied.guaranteeDuration) {
-        push("invented_guarantee", 1,
-          "A guarantee appears that the coach has not said they offer. Guarantee terms are the coach's to state.",
-          m[0], location);
-      }
-    }
-
+    // ── Legacy detectors, retained as ADDITIONAL inputs to the SAME decision ──────
+    // Consolidation means one verdict, not one regex: these catch shapes the claim
+    // detector does not model — tenure ("in my 15 years") and an endorsement frame
+    // naming a third party. Dropping them when the claim detector landed cost five
+    // real detections, so they stay.
     for (const m of has(text, AUTHORITY_RE)) {
       if (!authoritySupported(m[0], input.supplied)) {
         push("unearned_authority", 1,
@@ -316,15 +324,21 @@ export function checkFabrication(input: FabricationCheckInput): FabricationResul
       }
     }
 
-    // The class is "a named third party that reads as an ENDORSEMENT", so require the
-    // sentence to actually present it as one. Capitalisation alone cannot tell a name
-    // from Title Case styling, and tuning a capitalisation ratio to separate them is the
-    // arbitrary precision the compliance reference warns against. An attribution frame is
-    // the real signal, and it is what makes the claim risky in the first place.
     if (ATTRIBUTION_CUE.test(text)) for (const name of unsupportedProperNouns(text, input.corpus)) {
       push("invented_named_third_party", 1,
         "A named person, publication or brand appears that the coach never mentioned, which reads as an endorsement.",
         name, location);
+    }
+
+    // A forward promise ("in 8 weeks you will land three clients") is a claim about what the
+    // method is DESIGNED to produce, so under Rule 1 it is NOT invention and must not block
+    // here. It is still a results-claim RISK — but risk is complianceAxis's question, decided
+    // on form rather than truth. Recorded as tier 2 so it stays visible while the two layers
+    // remain free to disagree.  ⚠️ Its proper long-term home is complianceAxis.
+    for (const m of has(text, PROMISED_RESULT_RE)) {
+      push("promised_result", 2,
+        "A specific result in a specific timeframe reads as a promise. Not invention — the method may claim what it is designed to produce — but it carries results-claim risk and is recorded for the compliance layer.",
+        m[0], location);
     }
 
     // ── Tier 2 — persona traceability. Deliberately soft. ──

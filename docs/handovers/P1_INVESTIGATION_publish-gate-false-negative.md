@@ -243,3 +243,109 @@ unenumerated. **So how hard this blocks is a product decision, not something Met
 | Consolidate-don't-wire-16-places | **MEDIUM** | design judgement |
 | Layer-1 beginner rule catches all 9 | **MEDIUM-HIGH** | reasoned from `isLaunchStage` semantics; **not executed** |
 | LLM-judge latency/cost figures | **LOW-MEDIUM** | **not measured** |
+
+---
+
+# BUILD — 2026-07-28. Rule 1 implemented and verified.
+
+## What shipped
+
+**New `server/_core/trackRecordClaims.ts`** — the METHOD vs TRACK-RECORD discriminator.
+Detects **proof-shaped claims** (a closed set: possessive population, people count, named-person
+outcome, past client event, indefinite client narrative, outcome statistic, guarantee, third-party
+attribution) and requires grounding **only** for those. Anything not returned is a method claim and
+is always allowed — including at zero clients.
+
+**The discriminator is the actual-people assertion, not tense.** `"Most families reach a five-to-six
+hour stretch by night fourteen"` and `"94% of my clients see a full night by week two"` are both
+results in a timeframe; the second asserts a real population the coach has not told us about.
+
+**The `of my` inversion is the core fix.** The old `STAT_SELF_DESCRIPTIVE` exemption matched `of my`
+alone, so it exempted `94% of my clients` (the highest-risk phrasing) in order to protect
+`80% of my week`. The exemption is now narrowed to **non-person** possessions, so the possessive is a
+*trigger* for people and an *exemption* for weeks and time. Both cases are covered by tests.
+
+**`isLaunchStage` is now live** — zero supplied proof ⇒ any track-record claim is unsupported by
+definition. Deterministic, no model call, no corpus search. It was computed and discarded.
+
+**Three defects fixed:** `isLaunchStage` dead code (now the primary rule) · `buildProofSupplied`
+hardcoded `price`/`guaranteeType`/`guaranteeDuration` to null (now read from `services`, incl.
+`riskReversal` fallback) · `ATTRIBUTION_CUE` gating (a bare first name is now caught by a dedicated
+detector rather than depending on a cue a testimonial rarely contains; the attribution detector now
+requires an actual named entity, so ordinary "according to the plan" no longer trips it).
+
+**Legacy detectors retained as ADDITIONAL inputs to one verdict** — consolidation means one decision,
+not one regex. Dropping `AUTHORITY_RE` and the endorsement check when the claim detector landed cost
+five real detections immediately; they are back, feeding the same result.
+
+## 🔴 One policy consequence of Rule 1 — flagged for confirmation
+
+**`promised_result` no longer blocks as fabrication; it is now tier 2.** A forward promise
+("in 8 weeks you will land three retainer clients") is a claim about what the method is designed to
+produce — nothing is asserted to have already happened — so under Rule 1 it is not invention.
+It remains a **results-claim risk**, which is compliance's question, decided on form not truth.
+Two existing tests were updated to assert the new policy. **Its proper long-term home is
+`complianceAxis`; it is parked in the fabrication result as tier 2 until moved.**
+
+## Verification — executed, not reasoned
+
+The Layer-1 claim was labelled MEDIUM-HIGH and unexecuted. It is now executed.
+
+| Set | Result |
+|---|---|
+| 9 harvested track-record strings, zero-client coach | **9/9 BLOCK** |
+| 10 method-claim controls (incl. both Arfeen called ALLOW, and the July false positives) | **10/10 PASS** |
+| Same strings once SUPPLIED | **PASS fabrication** |
+| Supplied guarantee | **PASS** |
+| Mutation: 6 person-nouns × possessive | **all block** |
+| Mutation: 4 number forms × 6 nouns | **all block** |
+| Mutation: 5 first names | **all block** |
+| Mutation: 5 non-person possessions | **none block** |
+| `server/trackRecordClaims.test.ts` + `fabricationValidator.test.ts` | **37/37** |
+| `server/pipeline-fixes.test.ts` | **382/382** |
+| TypeScript | **35** — baseline, zero added |
+
+## ⚠️ NOT BUILT — remaining P1 scope
+
+1. **The six unguarded generators are still unguarded** — heroMechanisms, hvco,
+   leadMagnetContent, headlines, adCreatives, bonusPdf. The detector is fixed; nothing yet calls it
+   from those generators. **heroMechanisms is the priority: it is upstream of five downstream assets.**
+2. **The persistence-boundary assertion is not built.**
+3. **The legacy `_core/validator.ts` families are not yet folded in** — they still run in parallel
+   for offer/email/whatsapp/bonus with their own verdicts.
+4. **Layer (iv), the scheduled end-to-end assertion**, is not built.
+
+---
+
+# PROPOSAL (not built) — how a beginner SUPPLIES informal results
+
+**The problem.** Every current field assumes paying clients and formal testimonials
+(`testimonial1Name`, `totalCustomers`, `pressFeatures`). A coach who tested on free users, friends or
+their own child has **no route to declare it** — so their TRUE story gets blocked while an invented
+one from a coach with a filled `coachBackground` slips through. The honesty layer currently punishes
+the honest beginner.
+
+**Where it fits: the laddered intake.** It already exists, is opt-in, fires after the first ICP
+reveal and before the kit exists (the one window with zero staleness blast radius), already persists
+**verbatim** answers to `groundingMeta.ladderAnswers`, and `buildCoachCorpus` **already reads them
+into `corpus.text`**. No new surface, no migration — `groundingMeta` exists from 0096.
+
+**The ask — one question, plain, no categories, no proof requested:**
+
+> "Have you had results with anyone yet? Could be paying clients, free sessions, friends, even your
+> own family. Tell us what happened — in your words."
+
+Free text. Skippable. **ZAP must never ask who they were or whether they paid.**
+
+**🔴 THE ONE CODE CHANGE THIS NEEDS.** A ladder answer flows into `corpus.text`, but `isLaunchStage`
+is computed **only** from structured fields (`groundingCorpus.ts:107-114`). So today a coach could
+write a full account of real results and **still** be `isLaunchStage: true` and still be blocked.
+**`hasProof` must also count a non-empty results ladder answer.** Without that, adding the question
+achieves nothing.
+
+**Why not a settings form:** a form reintroduces the categories and evidence fields Rule 2 forbids,
+and asks for proof at exactly the moment the coach is least willing to give it.
+
+**Open for Arfeen:** whether an unanswered ladder should nudge once at the point a claim is blocked
+("you mentioned free sessions — want to tell us about them?"), which converts a dead end into a
+route, or whether that reads as ZAP asking for proof.
