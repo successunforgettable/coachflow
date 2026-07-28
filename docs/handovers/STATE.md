@@ -22,7 +22,8 @@ Last updated: 2026-07-28.
 | TS baseline | **35** under pnpm — must not regress; new work adds zero |
 | Package manager | **pnpm only.** No `package-lock.json`, no `@playwright/test` in `package.json` |
 | Migrations | latest applied = **0096**. `0081` is SUPERSEDED — never apply |
-| Prod tables | services 124 · ICPs 101 · kits 49 · LPs 90 · emails 96 · WA 91 · offers 101 · **bonuses 0 · concepts 0 · scripts 0** · jobs 85 (80 complete / 5 failed / **0 running**) |
+| Prod tables (verified 2026-07-28 post-teardown) | services 124 · ICPs 101 · kits 49 · LPs 90 · emails 96 · WA 91 · offers 101 · **bonuses 0 · concepts 0 · scripts 0** · mechs 1072 · hvco 6577 · headlines 2154 · adCopy 5405 · creatives 397 · jobs 88 (**0 running**) |
+| Prod cleanliness | **Clean.** The 2026-07-28 run was fully torn down — every count back to baseline, 0 rows above it, protected smoke rows intact 6/6/6/6, all published pages purged from KV and verified 404. **A fresh session has nothing to clean.** |
 
 Verify, never recall: `git rev-parse HEAD origin/railway-build` · `npx tsc --noEmit 2>&1 | grep -c
 "error TS"` · `pnpm install --frozen-lockfile`.
@@ -42,7 +43,7 @@ Verify, never recall: `git rev-parse HEAD origin/railway-build` · `npx tsc --no
   `optional: true` (`orchestration.ts:246`); steps 1–8 rethrow by design.
 - **Compliance layer** — register standard + compliance axis + anti-fabrication validator, shipped
   as ONE layer, wired and enforcing at HEAD. Tier-1 enforcement only; publish gate at
-  `server/routers/meta.ts:262`. Blocking baseline **437**. ⚠️ **See queue item 0 — the fabrication half does not fire on real copy.**
+  `server/routers/meta.ts:262`. Blocking baseline **437**. ⚠️ **See queue item P1 — the fabrication half does not fire on real copy.**
 - **ICP grounding** — Class-A invented fields removed at root; opt-in laddered intake sharpens the
   ICP in place after first reveal. `groundingMeta` proven written on prod.
 - **Andromeda spine** — concept + per-concept script generators live, DRAFT-only.
@@ -59,7 +60,7 @@ exercised against the publish gate with zero spend risk · full node-by-node rea
 Full text of every node: `RUN_2026-07-28_artifacts-full.txt` · screenshot:
 `docs/screenshots/LP-230-published-fullpage.png`.
 
-It found the validator gap now sitting at the top of the queue, plus live-page defects: a literal
+It found the P1 validator gap now sitting at the top of the queue, plus live-page defects: a literal
 `yourbrand` placeholder, and five filled stars reading **"Trusted by high achievers"** on a page for
 a coach with zero clients.
 
@@ -69,7 +70,7 @@ a coach with zero clients.
 
 **Step 9 (ad creatives) fails on MOST runs but not all.** When it fails,
 `generateContextualAdHeadlines` (`orchestration.ts:816`) throws before `runAdCreativesGeneration`
-(`:941`) is reached, so no image API is contacted. This is the F1(a) gate, queue item 1; the cascade
+(`:941`) is reached, so no image API is contacted. This is the F1(a) gate, queue item 10; the cascade
 degrades correctly around it.
 
 **✅ On 2026-07-28 step 9 PASSED and produced 5 creatives** — so the Replicate → Cloudinary path is
@@ -83,34 +84,90 @@ Anthropic, Replicate and Cloudinary all probed HTTP 200 healthy (Cloudinary is o
 
 In order. Each carries its diagnosis — execute without re-investigating.
 
-### 0. 🔴🔴 The anti-fabrication validator does not fire on real copy — NEW, TOP PRIORITY
+### P1 🔴🔴 PUBLISH GATE FALSE NEGATIVE — top of the queue
 
-Found by the 2026-07-28 artifact read. Full evidence:
-`docs/handovers/RUN_2026-07-28_beginner-cascade-artifact-read.md` §3.
+The live `meta.publishToMeta` gate returned **`ok=true`, zero blocking, zero advisories** on a named
+testimonial + invented client count + invented statistic + unstated guarantee, **for a zero-client
+coach**. Evidence: `RUN_2026-07-28_beginner-cascade-artifact-read.md` §3.
 
-The live `meta.publishToMeta` gate returned **`ok=true`, zero blocking, zero advisories** on copy
-containing a named client testimonial, an invented client count, an invented statistic and an
-unstated guarantee — for a coach whose own service description says she has **no paying clients**.
+**Two causes, fix both.**
 
-**Two independent causes.** (a) `heroMechanismsGenerator.ts` has **no** compliance guard at all, and
-the mechanism is upstream of the whole cascade — so its invented "over two hundred families" claim
-propagates. Offer, lead-magnet, email, WhatsApp and bonus generators are likewise unguarded.
-(b) The detector regexes miss the phrasings that actually occur: `STAT_SELF_DESCRIPTIVE` exempts
-`of my`, so `94% of my clients` passes while `87% of consultants` blocks; `TESTIMONIAL_RE` never
-matches a bare first name; `GUARANTEE_RE` misses "or your money back"; `AUTHORITY_RE` misses
+**(a) `heroMechanismsGenerator.ts` has NO fabrication guard at all** — no `compliance`/`fabricat`/
+`screen` reference anywhere in the file — and it sits **upstream of everything**, so its invented
+claim propagates. `checkOutput` is wired into concept, landing-page, LP-publisher, concept-script,
+ad-copy and the Meta gate only. Offer, lead-magnet, email, WhatsApp and bonus generators are also
+unguarded.
+
+**(b) The `of my` exemption opened a false negative.** `STAT_SELF_DESCRIPTIVE` was added to kill the
+*"80% of my week"* false positive; it also exempts **`94% of my clients`**, which passes while
+`87% of consultants` blocks. Same class: `TESTIMONIAL_RE` never matches a bare first name
+("Sarah got her baby…"); `GUARANTEE_RE` misses "or your money back"; `AUTHORITY_RE` misses
 spelled-out numbers and the noun "families".
 
-`fabricationValidator.test.ts` is **23/23 green** — it asserts the exact strings the regexes were
-written against, so it measures the fixtures, not the behaviour. This is the §15a failure mode in a
-different costume.
+**`fabricationValidator.test.ts` is 23/23 green while the gate is blind** — the suite asserts only
+the strings the regexes were written against. **Add the real phrasings above as regression tests.**
 
-**Not a "tighten the regex" task.** Surface-form matching will keep losing to paraphrase; the
-replacement has to reason about whether a claim is supported by the coach's own words.
+⚠️ Surface-form matching will keep losing to paraphrase. Tightening regexes is the floor, not the
+answer — the durable fix reasons about whether a claim is supported by the coach's own words.
+**Do not quote CLAUDE.md's old "Class 1 invented proof BLOCKS" as current fact.**
 
-**Do not quote CLAUDE.md's old claim that "Class 1 invented proof BLOCKS" as current fact** —
-behaviourally, at HEAD, it does not.
+### P2 🔴 TEMPLATE CHROME ASSERTS SOCIAL PROOF
 
-### 1. F1(a) — the all-or-nothing headline gate
+**"Trusted by high achievers" + five filled stars is hardcoded page furniture, not generated copy —
+so no generator guard can ever catch it.** It renders on **every zero-client coach's page**.
+`burchardProductivity.ts:114-116`: the guard drops the trust *number* when unsupplied but keeps the
+*claim*; the comment reads "Never fabricated". Make it conditional on real proof, exactly as
+`asSeenIn` / `testimonials` already are.
+
+### P2b `yourbrand` PLACEHOLDER SHIPS LIVE
+
+`burchardProductivity.ts:123` falls back to the literal string `yourbrand` when `coachName` is unset;
+the magnet card renders `YOUR BRAND'S`. **Both were visible on the published page.**
+
+### P3 EMAIL PLUMBING
+
+All three CTAs are `ctaLink: "#"` — **dead links**. All three sign-offs render an unfilled
+`[INSERT_HOST_NAME]`.
+
+### P4 WHATSAPP WRONG FUNNEL
+
+Event-framed on a **lead-magnet campaign with no event**: *"At [INSERT_EVENT_NAME] with
+[INSERT_HOST_NAME]"*, *"You've already said yes to [INSERT_EVENT_NAME]"*. Structural, not a token gap.
+
+### P5 PROMPT EXAMPLE LEAKED INTO OUTPUT
+
+Email 2's preview promises *"you sit in a car park"* — **the register standard's own worked example**
+from `META_AD_COMPLIANCE_REFERENCE.md` §3.1, escaping the prompt as if it were the coach's story
+(the body contains no car park). **Audit every generator for other worked examples leaking.**
+
+### P6 CREATIVES — GENDER MISMATCH WITH ICP
+
+All five images depict a **man**; the ICP is unambiguously a **mother** (partner, maternity pay,
+mothers' group, antenatal group). **The image prompt is not carrying ICP gender.** Also: v1 shows a
+**newborn** when the ICP's baby is 4–12 months, and reads alarming rather than gentle.
+
+### P7 CREATIVES — GARBLED AI TEXT
+
+v4 renders garbled label text — `"Baby time parents"` and `"Parenting books"` observed directly;
+`"Whieck to fisrts-ime parents"` also reported. Headlines **overlay subjects' faces** in multiple
+creatives. This is the **Flux text-rendering weakness**, and it feeds straight into the parked
+image-model evaluation — **now UNBLOCKED**, since creatives generate again and these are real ZAP
+prompts rather than generic test ones.
+
+### P8 ALL 5 CREATIVES SHARE ONE IDENTICAL BODY LINE
+
+*"I remember standing at the cot at 11pm…"* on all five. The deck is less varied than the count
+implies — **relevant to Entity-ID diversity**.
+
+### P9 LP TEXT OVERFLOW + GRAMMAR
+
+Magnet title **clipped by the FREE badge** (`…SEQUENCE RESET: H`); **`Get Your Free The 3-Night…`**
+double article; the 137-char lead-magnet title renders as a four-line run-on ending on a lonely full
+stop. **The lead-magnet title length needs a cap.**
+
+---
+
+### 10. F1(a) — the all-or-nothing headline gate
 
 **Symptom:** step 9 yields zero creatives on most runs. **⚠️ It is input-dependent, not
 deterministic — the 2026-07-28 run PASSED step 9 and produced 5 ad creatives**, because that run's
@@ -132,7 +189,7 @@ behaviour, not the threshold.
 adCopy generator already uses — drop variants, never the deck), throwing only if none survive.
 Code-only, no migration. Unblocks the ad-creative path and the parked image-model evaluation.
 
-### 2. Zombie-job liveness signal 🔴🔴
+### 11. Zombie-job liveness signal 🔴🔴
 
 **Hit twice in two runs.** A job whose process dies stays `status='running'` forever — never
 reaped, never marked failed, never resumed, nothing written to `jobs.error`.
@@ -149,7 +206,7 @@ jobs whose heartbeat/last-write exceeds a generous threshold, transitioning to `
 error the UI can surface. **Never infer liveness from `jobs.status`; the tell is the last downstream
 write timestamp.** Own pass.
 
-### 3. F2 — `campaignKits.campaignType` is NULL
+### 12. F2 — `campaignKits.campaignType` is NULL
 
 **Still NULL after the attempted fix. The change is inert, not harmful.**
 
@@ -163,7 +220,7 @@ the parameter only applies on insert.
 any generator runs. **Do NOT thread it through the generator call sites** — there are seven and it
 is fragile. Code-only, no migration.
 
-### 4. F3 — event-date capture (the unbuilt half)
+### 13. F3 — event-date capture (the unbuilt half)
 
 **Shipped half:** `normalizeEventDateToISO` + `resolveSequenceLength`. UK day-first slash dates
 (`27/09/2026`) and ordinal words (`28th august 2026`) parse instead of silently falling back to 3;
@@ -175,7 +232,7 @@ coach base, matches observed prod values.
 
 **Remaining, mechanism settled:**
 1. optional `eventDate` on the `autoMode.orchestrate` input, alongside `campaignType`
-2. write it to `campaignFacts` at the **same kit-creation point** that item 3 fixes
+2. write it to `campaignFacts` at the **same kit-creation point** that item 12 fixes
 3. one conditional question in the Auto Mode entry UI
 
 **Asked ONLY for date-based types** (webinar, in_person_event, challenge) — **never** for
@@ -200,7 +257,7 @@ kit exists while `campaignFacts` lives on the kit. No migration (`campaignFacts`
 - **Andromeda backbone** — real Meta fatigue signals (`frequency`,
   `first_time_impression_ratio`; the "score" fields do NOT exist) + P.D.A. concept axis.
   Touches `adCopyGenerator.ts`.
-- **Image-model evaluation — FLUX vs OpenAI. PARKED, blocked by item 1.** Scope is the
+- **Image-model evaluation — FLUX vs OpenAI. UNBLOCKED (see P7)** — creatives generate again. Scope is the
   **generation call, not the image infrastructure** — Cloudinary is hosting/transformation and stays
   either way. Evaluate on **text-heavy ad creatives first** (where Flux is weakest), on **real ZAP
   prompts, never generic test prompts**. Three axes: quality on text-heavy creatives · cost per
