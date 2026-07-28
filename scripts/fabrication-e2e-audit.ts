@@ -126,12 +126,116 @@ Return ONLY a JSON array of 3 objects with "name" and "description" fields, noth
   return total;
 }
 
+/**
+ * Fleet-wide, read-only. Screens every service's persisted content and reports SCALE:
+ * how many services carry invented proof, how many claims, and the worst examples.
+ * Modifies nothing.
+ */
+async function auditAll(): Promise<number> {
+  const { getDb } = await import("../server/db");
+  const schema = await import("../drizzle/schema");
+  const { eq, inArray } = await import("drizzle-orm");
+  const db = await getDb();
+  if (!db) throw new Error("no db");
+
+  const services: any[] = await db.select().from(schema.services);
+  const icps: any[] = await db.select({
+    serviceId: schema.idealCustomerProfiles.serviceId,
+    groundingMeta: schema.idealCustomerProfiles.groundingMeta,
+  }).from(schema.idealCustomerProfiles);
+  const gmBy = new Map<number, unknown>();
+  for (const i of icps) if (!gmBy.has(i.serviceId)) gmBy.set(i.serviceId, i.groundingMeta);
+
+  const ground = new Map<number, any>();
+  for (const svc of services) {
+    ground.set(svc.id, {
+      corpus: buildCoachCorpus({ service: svc as any, groundingMeta: gmBy.get(svc.id) }),
+      supplied: buildProofSupplied(svc as any),
+      name: svc.name,
+    });
+  }
+
+  const TABLES: Array<[string, any]> = [
+    ["heroMechanisms", schema.heroMechanisms], ["hvcoTitles", schema.hvcoTitles],
+    ["headlines", schema.headlines], ["adCopy", schema.adCopy],
+    ["emailSequences", schema.emailSequences], ["whatsappSequences", schema.whatsappSequences],
+    ["landingPages", schema.landingPages], ["offers", schema.offers],
+  ];
+
+  const byClass = new Map<string, number>();
+  const byTable = new Map<string, number>();
+  const affected = new Set<number>();
+  const worst: Array<{ svc: number; table: string; id: number; cls: string; matched: string }> = [];
+  let totalRows = 0, totalClaims = 0;
+
+  for (const [name, table] of TABLES) {
+    let rows: any[] = [];
+    try { rows = await db.select().from(table); }
+    catch (e) { console.log(`  (skipped ${name}: ${e instanceof Error ? e.message : e})`); continue; }
+    for (const r of rows) {
+      const g = ground.get(r.serviceId);
+      if (!g) continue;
+      totalRows++;
+      const fields = copyFieldsOf(r);
+      if (fields.length === 0) continue;
+      const res = checkOutput(fields.map((f) => ({ ...f, role: "body" as const })), { corpus: g.corpus, supplied: g.supplied });
+      if (res.ok) continue;
+      affected.add(r.serviceId);
+      byTable.set(name, (byTable.get(name) ?? 0) + res.blocking.length);
+      for (const h of res.blocking) {
+        totalClaims++;
+        byClass.set(String(h.classId), (byClass.get(String(h.classId)) ?? 0) + 1);
+        if (worst.length < 4000) worst.push({ svc: r.serviceId, table: name, id: r.id, cls: String(h.classId), matched: String(h.matched) });
+      }
+    }
+    console.log(`  scanned ${name}: ${rows.length} rows`);
+  }
+
+  console.log(`
+${"=".repeat(70)}
+FLEET-WIDE FABRICATION EXPOSURE (read-only)
+${"=".repeat(70)}`);
+  console.log(`services in prod        : ${services.length}`);
+  console.log(`services with ≥1 claim  : ${affected.size}  (${Math.round(affected.size / services.length * 100)}%)`);
+  console.log(`content rows screened   : ${totalRows}`);
+  console.log(`blocking claims total   : ${totalClaims}`);
+  console.log(`
+BY CLASS`);
+  for (const [c, n] of [...byClass.entries()].sort((a, b) => b[1] - a[1])) console.log(`  ${String(n).padStart(6)}  ${c}`);
+  console.log(`
+BY TABLE`);
+  for (const [t, n] of [...byTable.entries()].sort((a, b) => b[1] - a[1])) console.log(`  ${String(n).padStart(6)}  ${t}`);
+
+  const perSvc = new Map<number, number>();
+  for (const w of worst) perSvc.set(w.svc, (perSvc.get(w.svc) ?? 0) + 1);
+  console.log(`
+WORST SERVICES`);
+  for (const [sid, n] of [...perSvc.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10))
+    console.log(`  service ${String(sid).padStart(4)}  ${String(n).padStart(4)} claims  — ${ground.get(sid)?.name ?? "?"}`);
+
+  console.log(`
+WORST EXAMPLES (most severe classes first)`);
+  const SEVERITY = ["invented_testimonial", "unearned_authority", "invented_statistic", "invented_guarantee", "invented_named_third_party"];
+  const seen = new Set<string>();
+  for (const cls of SEVERITY) {
+    const ex = worst.filter((w) => w.cls === cls);
+    for (const e of ex.slice(0, 4)) {
+      const k = `${cls}|${e.matched}`;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      console.log(`  [${cls}] svc ${e.svc} ${e.table}#${e.id}: "${e.matched.slice(0, 100)}"`);
+    }
+  }
+  return totalClaims;
+}
+
 (async () => {
   const mode = process.argv[2];
   let blocking = 0;
   if (mode === "audit") blocking = await auditPersisted(Number(process.argv[3]));
   else if (mode === "live") blocking = await liveGeneration();
-  else { console.error("usage: fabrication-e2e-audit.ts <audit <serviceId> | live>"); process.exit(2); }
+  else if (mode === "all") blocking = await auditAll();
+  else { console.error("usage: fabrication-e2e-audit.ts <audit <serviceId> | live | all>"); process.exit(2); }
 
   console.log(`\n${blocking === 0 ? "PASS — no invented proof" : `FAIL — ${blocking} blocking claim(s)`}`);
   process.exit(blocking === 0 ? 0 : 1);

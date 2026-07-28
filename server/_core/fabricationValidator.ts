@@ -112,6 +112,13 @@ const TOOL_OR_ROLE_TOKENS = new Set([
   "founder", "coach", "trainer", "specialist", "analyst", "engineer", "designer",
   "partner", "associate", "assistant", "executive", "lead", "head", "chief", "vp",
   "hour", "session", "call", "meeting", "review", "report", "program", "programme",
+  // METHOD-NAME NOUNS — a proprietary mechanism name is what the mechanism generator EXISTS
+  // to produce, so it is not a third-party endorsement. Measured on prod: "First Resequencing
+  // Method", "Ballpark Reframe Protocol", "Calibration Language Mapping", "Authentic Identity
+  // Restoration Method" were all flagged as named third parties. They are the coach's own IP.
+  "method", "protocol", "system", "framework", "formula", "blueprint", "sequence", "mapping",
+  "audit", "reset", "playbook", "roadmap", "matrix", "loop", "ladder", "engine", "stack",
+  "model", "map", "cycle", "phase", "track", "path", "arc", "curve", "shift", "switch",
   // places — a location is not a named third party
   "new", "york", "san", "jose", "los", "angeles", "london", "dubai", "mumbai", "delhi",
   "singapore", "sydney", "toronto", "chicago", "boston", "austin", "francisco", "street",

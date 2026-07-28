@@ -55,13 +55,19 @@ export type Claim = { kind: ClaimKind; matched: string; index: number };
  * because it matched "of my" alone; that is exactly the false negative this fixes.
  */
 const PERSON_NOUNS = [
+  // ⚠️ PEOPLE THE COACH COULD HAVE SERVED — nothing else. Measured on 15,586 prod rows,
+  // a looser list produced a false-positive flood: "coaching business" 326×, "our ideal
+  // customer" 179×, "one person" 158×, "two kids" 67×. Those are ORG nouns, AUDIENCE
+  // description and PERSONA detail, none of which assert a track record. They are excluded:
+  //   business/team    — an organisation is not a person the coach served
+  //   person/people    — too generic; "one person" is ordinary prose, not a client count
+  //   kid/child/baby   — the CLIENT'S dependants, not the coach's clients
   "client", "clients", "customer", "customers", "student", "students", "member", "members",
   "family", "families", "parent", "parents", "mum", "mums", "mom", "moms", "mother", "mothers",
-  "dad", "dads", "father", "fathers", "couple", "couples", "baby", "babies", "child", "children",
-  "kid", "kids", "people", "person", "founder", "founders", "owner", "owners", "consultant",
-  "consultants", "coach", "coaches", "woman", "women", "man", "men", "patient", "patients",
-  "participant", "participants", "attendee", "attendees", "subscriber", "subscribers",
-  "business", "businesses", "team", "teams", "professional", "professionals",
+  "dad", "dads", "father", "fathers", "couple", "couples",
+  "founder", "founders", "owner", "owners", "consultant", "consultants", "coachee", "coachees",
+  "patient", "patients", "participant", "participants", "attendee", "attendees",
+  "subscriber", "subscribers", "professional", "professionals",
 ];
 const PERSON = `(?:${PERSON_NOUNS.join("|")})`;
 
@@ -86,7 +92,10 @@ const PEOPLE_COUNT_RE =
 /** Verbs that mark a result already delivered to someone. */
 const OUTCOME_VERB =
   "(?:went from|got|grew|scaled|doubled|tripled|landed|booked|made|earned|added|hit|reached|" +
-  "dropped|lost|saw|achieved|finished|completed|started sleeping|is now|was now)";
+  // "is now" / "was now" are too weak to mark a delivered result: measured on prod they
+  // matched "Enrolment is now…" across six services, which is scheduling copy, not a
+  // client outcome. A result verb has to describe something the person DID or REACHED.
+  "dropped|lost|saw|achieved|finished|completed|started sleeping)";
 
 /**
  * A bare first name plus an outcome verb — "Sarah got her baby sleeping 12 hours in 4 days".
