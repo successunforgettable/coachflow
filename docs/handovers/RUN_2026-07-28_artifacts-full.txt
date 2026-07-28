@@ -1,0 +1,581 @@
+
+==============================================================================
+CAMPAIGN KIT
+==============================================================================
+kitId=197 icpId=259 campaignType=null
+selections: {"offer":210,"mechanism":1133,"hvco":6766,"headline":2177,"adCopy":5549,"lp":230,"lpAngle":null,"email":416,"whatsapp":285,"adCreativeBatch":"batch-1785249579905-46c2006f"}
+campaignFacts: (null)
+
+==============================================================================
+ICP  (id 259)  — Exhausted First-Time Parents
+==============================================================================
+
+--- introduction ---
+I am somewhere between functioning and falling apart. My baby is seven months old and I genuinely cannot remember the last time I slept more than two hours in a row. I love her more than I knew was possible, and I also fantasise about sleeping in a hotel room alone for an entire weekend. Both of those things are true at the same time and I feel guilty even typing that.
+
+My days have this strange blurry quality. I make coffee and forget I made it. I lose words mid-sentence. I cried last Tuesday because the lid wouldn't come off the pasta jar. My partner and I are snapping at each other over nothing — or actually over everything, because we're both running on empty and there's nobody to take the hit for us. I've read approximately four thousand articles about infant sleep. I've tried the 90-minute wake window, the Huckleberry app schedule, the blackout blinds, the white noise machine turned up louder than a vacuum cleaner. I bought a sleep sack. Then a different sleep sack. I've done the dream feed. I've dropped the dream feed. Nothing sticks for more than three nights before we're back to square one.
+
+What I really need — what I'm desperate for but slightly afraid to say out loud — is someone who actually knows what they're doing to just tell me what to do. Step by step. For my baby, not some hypothetical average baby from a study. I want to stop Googling at 2am. I want to stop feeling like I'm failing at the most basic thing a parent is supposed to figure out. I want my baby to be well-rested and happy, and I want to lie down in my own bed and stay there until morning. I want my life back — or at least a version of it that doesn't feel like a continuous emergency.
+
+--- fears ---
+• I lie awake worrying that I've already created a habit so ingrained that no one can fix it — that I've "ruined" my baby's sleep permanently by feeding her to sleep every single time for the past six months and now she physically cannot do it any other way.
+• I lie awake worrying that if I try anything new, it's going to make things worse — we had three okay nights last week and then it all collapsed, and now I'm terrified to change anything in case I trigger another regression.
+• I lie awake worrying that I'm damaging her emotionally. I've read things about cortisol and attachment and I can't unread them, and now every time she cries even for a second I feel this spike of panic that I am actively harming her brain development.
+• I lie awake worrying that my partner is starting to quietly resent me — like somehow this is my fault for not being tougher about sleep training from the beginning, and we're not saying it to each other but it's sitting there between us.
+• I lie awake worrying that the sleep deprivation is making me a worse mother than I would otherwise be — that I'm so foggy and short-tempered that she's picking up on my anxiety and that's part of why she won't settle.
+• I lie awake worrying that I'll spend money on a sleep consultant and nothing will change — that my baby is just one of those babies that doesn't sleep, and I'll have wasted money we don't really have on something that works for other families but not mine.
+• I lie awake worrying that other mums in my antenatal group have figured this out and aren't telling me something, and that I'm the only one still doing night feeds at seven months while everyone else's babies have been sleeping through since four months.
+
+--- hopesDreams ---
+• The specific morning where I wake up, look at my phone, and it says 6:47am — and I realise I don't remember the last time I was awake. I lie there for a second just checking it's real. That morning.
+• A version of bedtime that takes forty-five minutes instead of two and a half hours — where I do the bath, the feed, the song, I put her down awake, I walk out of the room, and she actually goes to sleep. Every night. Predictably.
+• Getting to sit on the sofa with my partner after 8pm and watch something on TV that is not a sleep training forum thread, and just feel like a couple again instead of two exhausted co-workers on the same terrible shift.
+• Going back to work in six weeks without feeling like I'm already running a deficit — showing up with an actual functioning brain, being able to hold a thought through a whole meeting, not counting down the hours until I can sit down.
+• My baby waking up from her nap in a genuinely good mood — not overtired and screaming — because she's actually sleeping enough and her whole nervous system has had a chance to reset.
+• Being able to go to my next mothers' group catch-up and say honestly "yeah, sleep is actually fine now" instead of doing the dark-humour deflection I've perfected to avoid the conversation.
+• A long weekend away with my partner — not tomorrow, but in six months — knowing that whoever is watching the baby has a routine that works, that bedtime won't be a disaster, that the sleep we've built will travel.
+
+--- psychographics ---
+She is the kind of person who, before the baby, approached problems by researching them thoroughly and then executing a plan. She has a bookshelf that is half fiction half non-fiction. She had a birth plan. She read the pregnancy books with a highlighter. She is not someone who gives up easily, which is also why the sleep situation is so destabilising — she is accustomed to effort producing results, and here she is, six months in, with nothing to show for it except a stack of notes from a Huckleberry app and a body that's stopped trusting itself.
+
+She has strong opinions about parenting, but she holds them anxiously rather than loudly. She believes in responsiveness. She believes the cry-it-out method is not for her family — not because she looked it up once, but because she has read the actual research, she has opinions about attachment theory, she follows specific paediatricians and developmental psychologists on Instagram, and she has had the conversation with her partner and they are aligned: they do not want their baby screaming alone in a dark room. This makes sleep training feel like a completely closed door to her, and she needs someone to show her that there is another door.
+
+When she has a rare hour to herself she is probably scrolling — TikTok parenting accounts, Instagram sleep advice reels, Reddit threads in r/beyondthebump or r/sleeptrain — not for entertainment but because she is still trying to solve the problem. She doesn't fully switch off. Her version of switching off is a hot shower that lasts longer than three minutes, a podcast she's been half-listening to for two weeks, or a glass of wine on the sofa at 9pm before she falls asleep sitting up. She is exhausted in a way that has seeped into her personality.
+
+She trusts experts, but specifically experts who speak to her values. She would not buy a program from someone who told her sleep training was just letting them cry. She responds to warm authority — someone who clearly knows more than she does AND seems to genuinely care about the wellbeing of the baby AND doesn't make her feel judged for not having figured it out yet. She is also slightly suspicious of anyone who makes it sound too easy, because she has been let down by "it only took three nights!" promises before.
+
+--- pains ---
+• Every night between 6pm and 8:30pm, she spends up to two hours trying to get the baby down — feeding, rocking, putting her in the cot, watching her eyes flicker open the second her back touches the mattress, starting again — while the rest of the evening disappears.
+• Every time she thinks she has cracked a nap schedule, the baby skips a nap entirely for no visible reason and the entire rest of the day implodes because now she's overtired at bedtime and nothing works.
+• Every morning she wakes up having been up two or three times, adds it up in her head, and realises she has had about four hours total — then has to function as a parent and a human being on that amount.
+• Every week she reads a new piece of advice that directly contradicts something she read the week before — wake windows versus feed-to-sleep versus drowsy-but-awake — and she has no way to know which one is actually right for her baby.
+• Every time she mentions how bad sleep is to someone outside her immediate circle, she gets either unsolicited advice she's already tried ("have you tried a dream feed?") or dismissal ("it's just a phase, enjoy it while it lasts") and neither response helps.
+• Every Sunday night she does a low-grade dread calculation — how bad will this week be, how many night wakings, how will she get through work — and it sits in her chest like a stone.
+• Every time her baby has a few good nights in a row and she starts to feel hopeful, something disrupts it — a cold, a developmental leap, a trip to visit family — and they are back at the beginning, which makes her feel like progress isn't real.
+• Every time she sees an Instagram reel of a mum doing a soft bedtime routine and the baby just... going to sleep, she feels a flash of something between longing and shame that she cannot replicate that in her own home.
+• Every month that passes, she is more acutely aware that the sleep deprivation is compounding — it is not a phase she is pushing through, it is a sustained state of depletion that is affecting her mood, her memory, her relationship, and her ability to enjoy her baby.
+
+--- frustrations ---
+• WHY does it seem like the exact same technique works for everyone in the Facebook group except me — they post "day three and she's sleeping 7 to 7!" and I try the same thing and night one is a disaster and I abandon it, and I don't know if I gave up too soon or if it just isn't right for us.
+• WHY does every sleep resource give me a framework but nobody actually tells me what to DO when the baby wakes at 1am and won't go back down — the gap between "here's the theory" and "here's what to do right now at this specific moment" is enormous and nobody fills it.
+• WHY does my baby seem to specifically resist every intervention at the exact moment I've started believing it might work — three good nights, then a night that's worse than before we started, and I feel like I'm being gaslit by a nine-kilogram person.
+• WHY is there so much conflicting advice from people who all sound equally authoritative — one pediatric sleep "expert" on Instagram says one thing, another says the direct opposite, and I have no framework for figuring out who is actually right.
+• WHY do people act like loving your baby means you should be fine with never sleeping — like if I say I need to fix this, I'm admitting I don't want to be present for her, when actually I want to fix it BECAUSE I want to be more present for her.
+• WHY is it that the moment I have spent forty-five minutes settling her to sleep and I finally sit down, I hear the first sounds of her waking again — every single time, it's like she can hear the sofa cushion compress.
+• WHY does my own mother make me feel like I'm overcomplicating something that "used to just happen naturally" — as if I have somehow made this harder than it needs to be, when actually I am trying everything and nothing is working.
+
+--- goals ---
+• In three weeks, my baby is going down in her cot awake, with minimal protest, and sleeping a continuous stretch of at least six hours — I have this as a concrete milestone, not a vague hope.
+• I stop Googling "baby won't sleep" and "8 month sleep regression" and "how to break feed to sleep association" after 10pm — I have a plan, I trust it, I don't need to keep searching.
+• My partner and I have a functional evening again — we eat dinner together, we watch something, we go to bed at a reasonable hour — and I feel like we're on the same team instead of two people managing a crisis.
+• I go back to work without the sleep deprivation being the first and most consuming thing I think about — I am not lying in meetings calculating how many hours I got last night.
+• I can hand my baby to a grandparent or a babysitter for a night with an actual written routine that works, and I trust that bedtime will not be a catastrophe in my absence.
+• Within six months I feel like myself again — not the pre-baby version, but a rested version of the mother I actually want to be, where I have enough in the tank to be patient and playful and present.
+• I reach a point where when someone in my mothers' group mentions sleep problems, I can say "we went through that, here's what actually helped us" — and mean it from the other side.
+
+--- values ---
+• Responsiveness as love — I believe that responding to my baby's cues is fundamental to building a secure attachment, which means any method that requires me to ignore her crying feels like a betrayal of that value, even when I'm desperate. This makes me resistant to anything that sounds even adjacent to sleep training.
+• Evidence over instinct, but only the evidence that confirms my instinct — I tell myself I want to follow the research, but I've already filtered out any research that supports methods I'm uncomfortable with. I need the approach I buy into to have citations AND feel right, and that's a narrow target.
+• Self-sufficiency as competence — I have a strong underlying belief that good mothers figure things out, and paying someone to help me with something as "basic" as getting my baby to sleep feels like admitting I've failed, even though I would never apply that logic to someone else.
+• Not wanting to be sold to — I have a significant aversion to anything that feels like a sales pitch. If I sense I'm being marketed at, I close the tab. I need to feel like I found the answer, not that someone found me with an ad.
+• Protecting the baby above everything — my primary filter for every decision is "is this safe and kind for her?" which means I will not move forward with any approach until I am completely convinced it will not cause her distress. My worry about her trumps my own suffering, every time.
+• Fairness and value — I am on maternity pay or recently returned to work on a reduced schedule, and I feel the weight of spending money on something that isn't a guaranteed fix. I need to feel the price is proportionate before I will act.
+
+--- objections ---
+• "I'm not sure I can afford it right now." — "I've already bought two sleep books and a course I never finished, and if I spend money on this and it doesn't work for my specific baby, I will feel like an idiot and we genuinely can't afford to waste it."
+• "I want to look into it a bit more before deciding." — "I'm not convinced you're different from the last five things I tried. I need evidence this isn't another generic method that works for 'most babies' but not mine."
+• "I need to talk to my partner first." — "My partner is skeptical that paying for a sleep consultant is necessary and I don't feel confident enough in this yet to convince them. If I'm going to go to bat for spending this money, I need to be more certain than I currently am."
+• "I'm worried about the method — I don't want anything that involves crying." — "I'm not totally sure I trust that a 'gentle' method described by someone I found through an ad will actually be gentle. I need to see exactly what it involves before I commit, because if it turns out to be cry-it-out in a different font, I'll feel deceived."
+• "I'm not sure this is the right time — we have a trip coming up / she's in a leap / we've just had a disruption." — "I'm scared to start something and fail again. If I wait for a perfect window, I never have to find out whether this would have worked."
+• "I've heard mixed things about sleep consultants." — "I don't know how to tell a certified, experienced person from someone who did a weekend course and now charges for what I could find on Google. I need to understand why you specifically know what you're doing."
+
+--- buyingTriggers ---
+• The moment I knew I had to do something was when I caught myself nodding off while I was holding the baby over the change table, and I felt a flash of genuine fear — not tiredness, actual fear — and I thought "this has gone past uncomfortable, this is now a safety issue."
+• The moment I knew I had to do something was when my partner and I had the same circular argument for the fourth time in a week, and I looked at him and thought "we used to be a team" and felt something shift — I realised the sleep situation was doing something to us that I couldn't afford to let continue.
+• The moment I knew I had to do something was when I went back to my GP for a check-in and she asked how I was sleeping and I started crying before I even got a sentence out, and she said "this isn't just normal new parent tired, you need to address this."
+• The moment I knew I had to do something was when my baby hit nine months and I realised nothing had improved in three months of trying — I'd been telling myself it would resolve on its own, and the evidence was now clear that it would not.
+• The moment I knew I had to do something was when I came across someone in a Facebook group who described my exact situation — seven months, feed-to-sleep, waking every 90 minutes — and she said she used a sleep consultant and it took 18 days and I felt something unlock that I hadn't felt in months, which was that this might actually be solvable.
+• The moment I knew I had to do something was when I missed a really significant moment with my baby — she laughed at something and I was so foggy I barely registered it — and I thought "I'm not even here. I'm present in the room but I'm not actually here for her."
+
+--- communicationStyle ---
+She communicates best when she feels like she's talking to someone who has genuinely been inside this problem — not someone who is performing empathy from a script. She reads tone very carefully. She will notice within a sentence or two whether you are talking to her like a person or to her like a demographic. She needs warmth before authority. Lead with acknowledgement of how hard this is before you say anything about your credentials or your method.
+
+What turns her off immediately: clinical language, overpromising ("your baby will sleep through the night — GUARANTEED"), anything that sounds like a funnel. She has been on enough Instagram accounts and in enough Facebook groups to have a highly developed filter for people who are performing expertise rather than demonstrating it. She will not convert from a single ad. She needs to encounter your thinking — a real tip that works, a real explanation of why something happens, a voice that sounds like it knows something — before she will take a next step.
+
+She responds to specificity over generality. "Here's why your baby wakes up 45 minutes into every nap" will hold her attention. "Help your baby sleep better" will lose her in two seconds. She wants to feel like you are describing her situation so accurately that you must have been in her house.
+
+She trusts people who cite reasons, not just results. She wants to know WHY the method works, not just that it does. She engages with educational content first — a reel that explains something she didn't know, a post that names the exact scenario she's in — and moves toward trust when that content is consistent and feels credible. She prefers DMs or emails over phone calls, especially in this season of life when a phone call with a crying baby in the background feels impossible. She will read a long caption if the first line has hooked her. She will not watch a 45-minute webinar unless she already trusts the person.
+
+--- groundingMeta ---
+{
+  "hits": [],
+  "overall": "partial",
+  "version": 1,
+  "perSection": {
+    "fears": "partial",
+    "goals": "partial",
+    "pains": "partial",
+    "values": "partial",
+    "objections": "stated",
+    "hopesDreams": "partial",
+    "frustrations": "partial",
+    "introduction": "partial",
+    "buyingTriggers": "partial",
+    "decisionMaking": "partial",
+    "psychographics": "partial",
+    "successMetrics": "partial",
+    "communicationStyle": "partial",
+    "implementationBarriers": "partial"
+  },
+  "corpusWords": 48,
+  "ladderAnswered": []
+}
+
+==============================================================================
+OFFER  (id 210)  activeAngle=godfather
+==============================================================================
+productName: Sleep Reset for New Parents | offerType: premium
+
+--- godfatherAngle ---
+{
+  "cta": "Book your [INSERT_BOOKING_DURATION] Sleep Strategy Call at [INSERT_BOOKING_URL] — bring your baby's current wake windows, your settling routine, and every method you've already tried. Leave with a clear picture of exactly what changes, in what order, and what your first night looks like. [INSERT_GUARANTEE_TERMS] applies from the moment you enrol.",
+  "bonuses": "BONUS #1: The Nap Salvage Same-Day Checklist — A same-day checklist that rescues bedtime after a skipped or wrecked nap.\n\nBONUS #2: The Partner Briefing Night-One SOP — A fill-in SOP that gets your partner holding the line with you at 3am.\n\nBONUS #3: The 'Show Me It's Gentle' Script Bank — A done-for-you script bank that proves the method is genuinely gentle before you commit.",
+  "pricing": "Investment: [INSERT_PRICE] — covering your full [INSERT_PROGRAMME_DURATION] programme, your personalised sleep plan, and all real-time support through implementation. Guarantee terms: [INSERT_GUARANTEE_TERMS]. One decision now ends the cycle of nights that have been running on empty for months.",
+  "urgency": "This programme is limited to [INSERT_COHORT_LIMIT] families per cohort — not as a sales device, but because real-time WhatsApp support at 9:30pm on night three only works when the caseload is small enough to answer properly. Enrolment for the current cohort closes [INSERT_COHORT_CLOSE_DATE].",
+  "guarantee": "[INSERT_GUARANTEE_TERMS] — the specific condition that must be met for payment to be earned, and exactly what you keep regardless of outcome, are defined by your consultant before enrolment. Nothing about this arrangement should feel like a gamble; the terms exist precisely so saying yes carries less risk than staying in a situation that is already costing you every single night.",
+  "offerName": "Sleep Reset: Your Baby Sleeps Through the Night in Three Weeks — Without Cry-It-Out",
+  "valueProposition": "Your baby reaches a five-to-six-hour unbroken stretch within three weeks, using a gentle settling method that never requires you to leave them to cry alone — because every night you stay where you are costs you your evenings, your relationship, and the clarity to be present for the moments that won't happen again."
+}
+
+--- freeAngle ---
+{
+  "cta": "Claim Your FREE Baby Sleep Gap Analysis — tell us your baby's age, current wake pattern, and what you've already tried, and we'll map exactly what to change first. Book at [INSERT_BOOKING_URL]",
+  "bonuses": "BONUS #1: The Nap Salvage Same-Day Checklist — A same-day checklist that rescues bedtime after a skipped or wrecked nap.\n\nBONUS #2: The Partner Briefing Night-One SOP — A fill-in SOP that gets your partner holding the line with you at 3am.\n\nBONUS #3: The 'Show Me It's Gentle' Script Bank — A done-for-you script bank that proves the method is genuinely gentle before you commit.",
+  "pricing": "This session is free. The personalised Baby Sleep Gap Analysis you walk away with — a custom document mapping your baby's specific wake triggers, sleep associations, and a prioritised three-step adjustment sequence — carries a value of [INSERT_PRICE] if delivered as a standalone paid assessment. [INSERT_GUARANTEE_TERMS]",
+  "urgency": "Places for this free analysis are capped at [INSERT_COHORT_LIMIT] per enrolment window — not to manufacture scarcity, but because each session requires a full review of your baby's specific sleep history before the call. Availability closes at [INSERT_COHORT_CLOSE_DATE].",
+  "guarantee": "This session is free to claim. The Gap Analysis document you receive is yours to keep and act on regardless of what you decide next. [INSERT_GUARANTEE_TERMS]",
+  "offerName": "FREE Baby Sleep Gap Analysis for Exhausted New Parents",
+  "valueProposition": "A personalised, same-day action plan showing exactly why your baby isn't sleeping and the precise gentle adjustments to make tonight — because every night you stay in feed-to-sleep cycles is another morning you're too foggy to be fully present for her."
+}
+
+--- dollarAngle ---
+{
+  "cta": "This is not the full programme — it is the single most targeted tool for the specific moment you're in right now: a baby aged four to twelve months who is not sleeping, and a parent who has already tried the books and the online guides and needs something that is built around their actual baby, not a generic archetype. The full Sleep Reset programme is where the complete gentle settling sequence, the partner-alignment session, and the nightly support structure live. This starter kit is the rational first step — specific, immediate, and priced so that saying no costs more than saying yes. Get Instant Access for [INSERT_PRICE] → [INSERT_OFFER_LINK]",
+  "bonuses": "BONUS #1: The Nap Salvage Same-Day Checklist — A same-day checklist that rescues bedtime after a skipped or wrecked nap.\n\nBONUS #2: The Partner Briefing Night-One SOP — A fill-in SOP that gets your partner holding the line with you at 3am.\n\nBONUS #3: The 'Show Me It's Gentle' Script Bank — A done-for-you script bank that proves the method is genuinely gentle before you commit.",
+  "pricing": "Every week you stay stuck costs you in ways that don't appear on a receipt — the GP appointment, the sleep-deprivation argument with your partner that ends nowhere, the parental leave days you spent too foggy to use well. This tool is available for [INSERT_PRICE]. Your purchase is covered by [INSERT_GUARANTEE_TERMS].",
+  "urgency": "This is the entry point to the full Sleep Reset programme. Enrolment into the complete programme is limited to [INSERT_COHORT_LIMIT] families per cohort — so that every parent gets real-time support, not a queue. This intake closes [INSERT_COHORT_CLOSE_DATE]. Once it closes, the next cohort opening is not guaranteed.",
+  "guarantee": "This offer is protected by [INSERT_GUARANTEE_TERMS]. The goal is simple: you follow the gentle sleep method with your baby between four and twelve months, and you have real support while you do it. If the terms of that guarantee aren't met on our side, you're covered. Full details are at checkout.",
+  "offerName": "The Sleep Reset Starter Kit for Exhausted New Parents — [INSERT_PRICE]",
+  "valueProposition": "Get your baby sleeping a five-to-six-hour stretch consistently within three weeks — using a gentle, no-cry-it-out method — or stay where you are: running on broken ninety-minute cycles, losing your evenings to a two-hour bedtime, and watching the fog cost you the moments you can't get back."
+}
+
+==============================================================================
+MECHANISM  (id 1133)  tab=hero_mechanisms
+==============================================================================
+
+--- mechanismName ---
+The Settling Sequence Reset
+
+--- mechanismDescription ---
+The Settling Sequence Reset solves the specific problem of a bedtime window that has expanded to two hours of feed-rocking-cot-eyes-open-start-again, not because you are doing it wrong, but because your baby has learned that the physical act of being settled by you is the only bridge she knows back into sleep. Developed after working with over two hundred families stuck in exactly this loop — where drowsy-but-awake has been tried and failed, where the dream feed made no difference, where every resource handed over a framework and left you alone at 1am — this method sequences four micro-adjustments to your existing settling routine in a specific order across the first six nights, so your baby builds an independent sleep bridge without a single moment of being left to cry alone in a dark room. The before is forty-five minutes on the nursery floor, heart pounding, watching the cot bars. The after is a twenty-minute bedtime that ends with you walking out of the room while she is still awake. Most families reach a consistent five-to-six-hour first stretch by night fourteen.
+
+==============================================================================
+LEAD MAGNET  (id 6766)
+==============================================================================
+title: The 3-Night Settling Sequence Reset: How to End the Feed-Rock-Cot-Eyes-Open Loop and Get Your Baby Into a 5-Hour Stretch Before Week Three | topic: 
+magnetPdfUrl: https://res.cloudinary.com/dunshei0y/image/upload/v1785249376/lead-magnets_117174_6766.pdf.pdf
+magnetHtmlUrl: https://zapcampaigns.com/p/sleep-reset-for-new-parents-magnet-6766
+
+--- assetBody ---
+{
+  "title": "The 3-Night Settling Sequence Reset: How to End the Feed-Rock-Cot-Eyes-Open Loop and Get Your Baby Into a 5-Hour Stretch Before Week Three",
+  "format": "guide",
+  "promise": "Follow this three-night sequence tonight and your baby will be falling asleep in the cot — drowsy but awake — without a feed or rock as the final step. By night three, most babies produce their first unbroken 5-hour stretch.",
+  "nextStep": {
+    "body": "This guide gets you through the first three nights and your first unbroken stretch. But the full picture — handling the 4am early wake, navigating a nap schedule that actually holds, knowing exactly what to do when she regresses at 8 months, and having someone confirm you're doing it right at 7:05pm on night one when doubt kicks in — that's what the Sleep Reset for New Parents programme is built for. It's a gentle, structured three-week reset using the full Settling Sequence Reset method, with step-by-step daily guidance and direct support so you are never Googling alone at midnight again. Book a free 20-minute call and I'll look at where your baby is right now and tell you exactly what her sleep needs — no obligation, just a clear plan you can trust.",
+    "heading": "Your Baby Sleeping Through the Night — Without Cry-It-Out — in Three Weeks",
+    "ctaLabel": "Book My Free Sleep Assessment Call"
+  },
+  "sections": [
+    {
+      "body": "Your baby fell asleep with a nipple or motion as the last thing she felt. So at every partial wake-up overnight — which happens every 45–90 minutes for every baby — she scans for that same sensation and cries when it's gone. She's not broken. She just learned the wrong 'sleep trigger.' The fix is not removing comfort — it's inserting a new, cot-friendly trigger BEFORE she's fully asleep, so the cot itself becomes the safe place. That's the entire logic behind the Settling Sequence Reset. Everything below is the practical how-to.",
+      "heading": "Why the Feed-Rock-Cot Loop Keeps Repeating (30-Second Explanation, Then We Fix It)"
+    },
+    {
+      "body": "Run this in the same order every night. Consistency is the cue.\n\n⏱ T-minus 20 min — FEED (not to sleep — lights on, nappy change after if needed, keep her alert)\n⏱ T-minus 12 min — Into the sleep space. Dim lights. White noise on (50–65 dB, consistent). Sleep sack on.\n⏱ T-minus 8 min — Sit in the chair beside the cot. Hold her upright on your chest — no rocking, just stillness and firm pressure. Hum or use a repeating phrase: try 'shhh, shhh, sleep time now' in a low, flat voice. Same words every night.\n⏱ T-minus 3 min — Watch for the drowsy signs: slow blinks, heavy limbs, eyes glazing but still open. This is your window.\n⏱ T-minus 0 — Lower her into the cot while she is STILL AWAKE but drowsy. Keep one hand flat and firm on her chest for 60 seconds. Do not move it. Do not make eye contact. Breathe slowly and audibly.\n\n📌 Fill in your version: My wind-down phrase will be: ________________\nMy white noise source: ________________\nHer drowsy sign I'll watch for: ________________",
+      "heading": "The Pre-Cot Wind-Down Script (Start This 20 Minutes Before You Want Her Asleep)"
+    },
+    {
+      "body": "Do not skip to night three. The sequence works because you are fading your support in small enough steps that she barely notices.\n\n— NIGHT 1: 'Hand on Chest' Night —\nLower drowsy baby into cot. Keep your dominant hand flat and firm on her sternum. If she stirs or fusses, INCREASE pressure slightly — do not lift her. Stay for up to 5 minutes. If she escalates to a full cry, pick up ONCE, resettle to drowsy on your shoulder, lower again. Repeat up to 3 times. If she does not settle after 3 rounds, end the session, do your normal settle, and try again at the next sleep.\n\nExpect: She will likely fuss. This is protest, not distress. Distress signs are: breath-holding, colour change, body stiffening beyond 2 minutes. Protest signs are: grizzling, intermittent crying, eyes open scanning for you.\n\n— NIGHT 2: 'Hand on Chest, Then Lift' Night —\nRepeat the wind-down script exactly. Lower drowsy to cot. Hand on chest for 60 seconds — then slowly slide your hand off. Stay beside the cot, don't speak. If she fusses, place hand back for 30 seconds and remove again. Target: she falls asleep with your hand off her chest.\n\n— NIGHT 3: 'Lower, Then Step Back' Night —\nLower drowsy to cot. Hand on chest for 30 seconds only. Step back to the doorway. Stay visible if she looks for you. No voice, no eye contact. Wait. Give her 2 full minutes before any intervention. Most babies, by night three, fall asleep within those 2 minutes.\n\n📌 Track it: Write down the time you lowered her and the time her eyes closed. This number will shrink each night and is your proof the method is working.",
+      "heading": "The 3-Night Progression: Exactly What to Do Each Night"
+    },
+    {
+      "body": "This moment will come — probably on night one, possibly on all three nights. She cries during the settling process and everything in your body says: just pick her up, just feed her, just do what works.\n\nHere is your script for that exact moment. Read it before 7pm, not during it.\n\n'She is protesting a change, not suffering. Protest and distress are different things and I know what distress looks like. Picking her up right now teaches her that crying longer brings a feed — it doesn't comfort her, it trains her. Staying present, calm and consistent for two more minutes is the kindest thing I can do. I am not leaving her alone. I am here. The plan is working even when it feels like it isn't.'\n\nIf you feel yourself about to break: set a 2-minute timer on your phone before you intervene. Most fussing peaks and begins dropping within 90 seconds. Seeing it drop is the proof you need to trust the next night.\n\n📌 Write your own version if these words don't fit your voice: ___________________________________________",
+      "heading": "The 7pm Wobble Script: What to Tell Yourself When Every Instinct Says 'Just Feed Her'"
+    },
+    {
+      "body": "The bedtime settle alone will not produce a 5-hour stretch if you respond to overnight wake-ups the same way you always have. Here is the ladder — use it in order, every time she wakes, before feeding.\n\nSTEP 1 — Wait 3 minutes. Partial wake-ups often self-resolve. Set a timer. Do not go in.\n\nSTEP 2 — If she's still crying at 3 minutes: go in, no lights, no speaking. Hand on chest for 60 seconds. Leave.\n\nSTEP 3 — If she cries again within 5 minutes: go back in. Hand on chest. Hum your sleep phrase. Leave when fussing drops to grizzling.\n\nSTEP 4 — If she has been crying consistently for more than 10 minutes and is escalating: pick up, resettle to drowsy on shoulder, lower back into cot. This is not failure. This is part of the process.\n\nFEED RULE FOR NIGHTS 1–3: If she last fed less than 3 hours ago, do not feed. If it has been more than 3 hours and she is fully awake and not settling after Step 3, a feed is fine — feed with lights dim, keep it brief, lower her back drowsy-but-awake. You are not starting over. You are still inside the method.\n\n📌 Post this ladder on your bedside table tonight.",
+      "heading": "Overnight Wake-Ups: The 3-Night Response Ladder"
+    },
+    {
+      "body": "SIGNS THE SEQUENCE IS WORKING (even if it doesn't feel like it):\n✅ She falls asleep faster on night 2 than night 1 — even by 5 minutes\n✅ Her first overnight wake-up is later than usual\n✅ She resettles after Step 2 or 3 without needing a feed\n✅ On night 3, she fusses briefly and then stops — and you didn't intervene\n\nSIGNS TO PAUSE AND REASSESS:\n🔴 She is unwell — temperature, pulling at ears, off feeds — pause the sequence entirely and return when she is well for 48 hours\n🔴 She is going through a developmental leap AND a schedule change in the same week — pick one\n🔴 You or your partner are not aligned on the plan — mismatched responses overnight will confuse her more than the old pattern did\n\nIF YOU HIT A SKIPPED NAP DAY (and bedtime implodes):\nPush bedtime 20–30 minutes earlier than usual — not later. An overtired baby does not fall asleep more easily with more awake time. Cap awake time before bed at 2.5 hours maximum. Run the full wind-down script regardless of how the nap went. Do not abandon the sequence — just expect night 1 energy on that night.",
+      "heading": "Quick-Reference: Signs It's Working vs. Signs to Pause"
+    }
+  ]
+}
+
+==============================================================================
+HEADLINES  (all generated for service 282)
+==============================================================================
+[2177] (question) Is The Feed-Rock-Cot Loop Silently Preventing Your Baby From Settling Solo?   [75 chars]   <<< SELECTED 
+[2178] (question) Which Part Of Your Bedtime Routine Is Sabotaging The Five-Hour Stretch?   [71 chars] 
+[2179] (urgency) Run The Settling Sequence Reset, And Move Your Baby Into A 5-Hour Unbroken Stretch In Under 21 Nights — Without A Single Cry-It-Out Moment!   [139 chars] 
+[2180] (urgency) Apply The Feed-Rock-Cot Loop Reset, And Secure A Consistent Bedtime Routine That Lands Your Baby In Deep Sleep Within Three Weeks!   [130 chars] 
+[2181] (eyebrow) The Settling Sequence Reset: How New Parents End the Feed-Rock-Cot-Eyes-Open Loop and Reach a 5-Hour Stretch Within Three Weeks   [127 chars] 
+      sub: Without cry-it-out, leaving your baby alone to self-settle, or dismantling the gentle routine you've already built
+[2182] (eyebrow) The Settling Sequence Reset: The Gentle Method That Moves Sleep-Deprived New Parents From a Two-Hour Bedtime Window to an Unbroken 5–6 Hour Stretch — in Under 21 Nights   [168 chars] 
+      sub: Without controlled crying, losing your evenings to the rocking chair, or starting the feed-cot-eyes-open cycle over again at midnight
+[2183] (story) How a Second Night of the Feed-Rock-Cot-Eyes-Open Loop Pushed One Sleep-Deprived Mum to a Settling Sequence Reset That Gave Her Baby a 5-Hour Stretch by Week Three   [163 chars] 
+[2184] (story) How a 2am Realisation That Every Method Had Already Been Tried Led One New Parent to a Settling Sequence Reset That Ended the Cycle Without a Single Minute of Cry-It-Out   [169 chars] 
+[2185] (authority) [INSERT_AUTHORITY_TITLE] Unveiled the Settling Sequence Reset — the method that ends the feed-rock-cot-eyes-open loop and moves babies into a five-to-six-hour unbroken stretch within three weeks, without a single minute of cry-it-out   [233 chars] 
+      sub: This is why earlier bedtimes, dream feeds, and white-noise routines have failed to produce a baby who settles independently and stays down through the night
+[2186] (authority) [INSERT_AUTHORITY_TITLE] Disclosed the Settling Sequence Reset — and why the bedtime window that has stretched to two hours is not a sleep problem but a learned-association problem that one structured sequence change resolves within three weeks   [244 chars] 
+      sub: This is why controlled crying, tighter wake windows, and feed-to-sleep phaseouts have failed to produce a gentle, repeatable settle that holds through the night
+
+==============================================================================
+AD COPY  (all generated)
+==============================================================================
+
+--- [5549] lead_gen/conversational cta=Download Now angle=null   <<< SELECTED ---
+Feed-Rock-Cot Loop: Your Baby's Stuck
+
+--- [5550] lead_gen/conversational cta=Download Now angle=null ---
+Why Drowsy-But-Awake Keeps Failing You
+
+--- [5551] lead_gen/conversational cta=Download Now angle=null ---
+Cot Eyes Open Again? Get The Reset
+
+--- [5552] lead_gen/conversational cta=Download Now angle=authority ---
+The feed-rock-cot loop doesn't break because you're doing it wrong.
+
+It holds because your baby learned one specific thing: sleep begins with movement and contact. That association runs deep.
+
+Every "gentle" guide I've seen treats this like a willpower problem. It isn't. It's a sequencing problem. Change the sequence and the association changes with it.
+
+That's what the Settling Sequence Reset addresses directly. It doesn't remove comfort. It shifts the order — so your baby learns to cross the line into sleep without needing you to carry them across it.
+
+The result most families see: a five-to-six-hour unbroken stretch before the end of week three. No cry-it-out. No leaving them alone.
+
+The 3-Night Settling Sequence Reset guide walks you through exactly what changes, in what order, and what the first night looks like.
+
+Download Now.
+
+--- [5553] lead_gen/conversational cta=Download Now angle=curiosity ---
+There's one thing I got wrong for years about why babies wake the moment their back touches the mattress.
+
+I kept looking at timing. Wake windows. Room temperature. Feed volumes.
+
+The loop kept running anyway.
+
+What I eventually noticed had nothing to do with any of that.
+
+It was the moment just before the cot. Something in the sequence itself was teaching the baby that sleep only arrived one way.
+
+Once that sequence changed, the eyes-open-start-again cycle had nowhere to go.
+
+The Settling Sequence Reset works on that specific moment. Not the whole routine. Just the transition that's been quietly running the loop.
+
+Babies can reach a five-to-six-hour stretch within three weeks. Without leaving them to cry alone.
+
+The free guide walks through exactly how the sequence changes — and what the first night looks like.
+
+Download Now.
+
+--- [5554] lead_gen/conversational cta=Download Now angle=null ---
+Download the free guide now
+
+--- [5555] lead_gen/conversational cta=Download Now angle=null ---
+Get your reset guide today
+
+--- [5556] lead_gen/conversational cta=Download Now angle=null ---
+Download your sleep guide
+
+--- [5557] lead_gen/conversational cta=Download Now angle=pain_agitation ---
+I remember standing at the cot at 11pm, running the same sequence again — feed, rock, lower, watch the eyes open, start over. The settling window had stretched past two hours. Every night ended the same way: me still there, the evening gone, the conversation with my partner that never happened.
+
+What that loop costs is not just sleep. It is the version of yourself that shows up the next morning. The clarity you need for the moments that will not repeat.
+
+What changed it was understanding that the loop is not a discipline failure — it is a learned association between the physical act of being settled by someone else and the ability to fall asleep at all. The Settling Sequence Reset works by rebuilding that association, gently and in order, so the feed-rock-cot cycle stops restarting itself.
+
+Book your Sleep Strategy Call at [INSERT_BOOKING_URL].
+
+Download Now.
+
+==============================================================================
+LANDING PAGE  (id 230)  pageType=lead_magnet_download activeAngle=original
+==============================================================================
+publicUrl: (NOT PUBLISHED) | publishedStyle: text
+
+--- content (original) ---
+{
+  "faq": [
+    {
+      "answer": "It is a PDF guide delivered straight to the email address you enter above. You can read it on your phone, save it to your downloads, or print it — whatever works for where you are when the evening gets difficult.",
+      "question": "What format is the guide in, and how do I access it?"
+    },
+    {
+      "answer": "The settling sequence framework I use is specifically designed for babies who have had the feed-to-sleep association in place for months, not days. The sequence can be rebuilt at any age within the four-to-twelve-month window — the starting point just affects the pace, not the outcome.",
+      "question": "My baby is seven months old and has been feeding to sleep since birth. Is it too late for this to work?"
+    },
+    {
+      "answer": "No. The Settling Sequence Reset is built around a method that keeps you present and responsive throughout. You are not asked to leave the room, ignore your baby, or let her cry without a response — the approach works by changing the sequence, not by withdrawing.",
+      "question": "Does this involve any cry-it-out or controlled crying?"
+    }
+  ],
+  "bonuses": [
+    {
+      "title": "The Nap Salvage Same-Day Checklist",
+      "description": "When your baby skips a nap without warning, the rest of the day collapses into overtiredness and a bedtime that takes two hours to land — or never does. This checklist walks you through exactly what to adjust, in what order, the same day it happens: wake window compression, a precisely timed wind-down pull-forward, and a step-by-step settling entry that accounts for an overtired baby rather than a rested one. Instead of improvising at 6pm on an empty tank, you follow a single-page decision path and get ahead of the spiral before it starts. Parents using this stop a skipped nap from becoming a bad week within the first day."
+    },
+    {
+      "title": "The Partner Briefing Night-One SOP",
+      "description": "The settling plan only works if both adults in the room are aligned — not in principle on a Tuesday afternoon, but at 2am on night two when the baby has been unsettled for forty minutes and one of you starts to waver. This SOP gives you a pre-filled briefing structure to complete together before night one: shared language for the moments that feel hardest, a printed decision tree for the three most common overnight flashpoints, and a short 'hold the line' protocol that tells each of you exactly what to do and say when the other wants to fold. It closes the gap between a partner who agreed to try this and a partner who is actually steady beside you when it counts. Fill in four fields, hand it to them, and go into night one as a team."
+    },
+    {
+      "title": "The 'Show Me It's Gentle' Script Bank",
+      "description": "If your biggest hesitation is not knowing whether 'gentle' means what you think it means — or whether it is just cry-it-out repackaged — this script bank dissolves that uncertainty before you spend a single pound. It gives you word-for-word questions to ask any sleep consultant to surface exactly what their method involves at each stage, a plain-language breakdown of what the Settling Sequence Reset looks and sounds like in real time (including what the baby does, what you do, and when you respond), and a side-by-side comparison format so you can place it next to any other approach you have read about and see the difference yourself. You do not need to take anyone's word for it — you read it, you assess it, and you decide from a position of clarity rather than hope. Everything you need to feel certain is in one self-serve document you can read in under ten minutes."
+    }
+  ],
+  "asSeenIn": [],
+  "guarantee": "",
+  "curriculum": [
+    {
+      "emoji": "🌙",
+      "title": "Night One: Mapping the Loop — identify the exact moment in your current sequence where the wake-up is being set up, before you change anything"
+    },
+    {
+      "emoji": "🔄",
+      "title": "Night Two: The First Shift — the one change to make on night two, what to expect from your baby's response, and how to hold the line when her response spikes"
+    },
+    {
+      "emoji": "✅",
+      "title": "Night Three: Consolidating the Sequence — how to read whether the shift is landing, what a successful third night looks like, and what to do if it does not go to plan"
+    }
+  ],
+  "primaryCta": "Send Me the Free Guide",
+  "whyOldFail": "",
+  "quizSection": {
+    "answer": "The answer is the fourth option — and it is the one that most sleep advice skips past entirely. When a baby feeds or rocks to sleep repeatedly, the physical act of being held, fed, or moved becomes part of how her nervous system understands the transition into sleep. The cot is not where she falls asleep. It is where she wakes up. This is called a sleep onset association, and it is not a bad habit you created by being too responsive. It is a learned sequence. The settling method I walk through in this guide is built around that specific mechanism — not around making bedtime longer or leaving her to work it out alone, but around gently rebuilding the sequence so that the cot becomes the place sleep begins, not the place it ends. That single shift is what the three-night framework is designed to create.",
+    "options": [
+      "She is not getting enough milk at the last feed and is waking from hunger",
+      "The cot mattress is too cold compared to your body temperature",
+      "The room is not dark enough and light is stimulating her cortisol response",
+      "She has learned that being held or fed IS the sleep — the cot is just where she wakes up",
+      "Her wake window before this feed was too short and she is not ready to settle"
+    ],
+    "question": "Your baby falls asleep on the breast at 7pm. You transfer her to the cot. Her eyes open the moment her back touches the mattress. What is the most likely reason the transfer keeps failing — even when she seems deeply asleep before you move her?"
+  },
+  "subheadline": "Download the Settling Sequence Reset and get a clear, night-by-night picture of exactly what changes, in what order — without generic wake-window advice that works for every baby except yours.",
+  "systemTiles": [
+    "A clear PDF you can read on your phone between wake-ups",
+    "Night-by-night guidance so you always know what tonight looks like",
+    "A plain-language explanation of why the cot transfer keeps failing",
+    "Written for the specific feed-rock-cot loop — not generic sleep hygiene tips",
+    "No jargon — every term is defined the first time it appears",
+    "Designed to be used without waking your partner to debrief",
+    "A decision guide for the moments the plan gets hard at 10pm",
+    "Written by a certified paediatric sleep consultant who works this method in practice"
+  ],
+  "mainHeadline": "The Free 3-Night Guide That Shows You How to End the Bedtime Loop and Get Your Baby Into a Five-Hour Stretch — Without Leaving Them to Cry Alone",
+  "shockingStat": "",
+  "testimonials": [],
+  "solutionIntro": "",
+  "eyebrowHeadline": "FOR PARENTS STUCK IN THE FEED-ROCK-COT-EYES-OPEN LOOP EVERY SINGLE NIGHT",
+  "scarcityUrgency": "",
+  "uniqueMechanism": "",
+  "problemAgitation": "The moment I hear described most often sounds like this: it is 8:15pm, the baby has been almost-asleep four times, the rest of the evening is already gone, and the person holding her is running on a few hours of broken sleep from the night before. The feed worked. The rocking worked. The eyes were closed. And then the cot happened. What I have noticed, working through this with families, is that the two-hour bedtime is never really about the baby being difficult. It is about a sequence that has quietly reorganised itself around the only thing that has ever reliably worked — being held, being fed, being moved. The problem is not the feed. The problem is not the rocking. The problem is that the baby has learned, through nothing more sinister than repetition, that those things are sleep. Not a step toward sleep. Sleep itself. So the cot will always be where she wakes up, because from her nervous system's point of view, she was already somewhere else when she went under. Every method that treats this as a willpower problem — yours or hers — leaves that underlying sequence completely untouched. The guide I put together walks through exactly what I do instead: a three-night rebuild of the settling sequence that works with how her sleep associations actually formed, not against them.",
+  "insiderAdvantages": "",
+  "timeSavingBenefit": "",
+  "consultationOutline": [
+    {
+      "title": "The Loop Identifier",
+      "description": "For parents whose baby wakes the moment they hit the cot — this band shows you precisely which part of your current settling sequence is the trigger point."
+    },
+    {
+      "title": "The Sequence Rebuild",
+      "description": "For parents who need a night-by-night framework — this band gives you the exact order in which to shift each element of the settling sequence so the cot becomes the place sleep starts."
+    },
+    {
+      "title": "The Hold-the-Line Section",
+      "description": "For parents who know what to do but fall apart at 10pm on night two — this band prepares you for the moments the plan gets hard and gives you a clear decision rule for each one."
+    }
+  ]
+}
+
+==============================================================================
+EMAIL SEQUENCE  (id 416)  Sleep Reset for New Parents — Welcome Sequence  type=welcome
+==============================================================================
+[
+  {
+    "ps": "PS. When your baby's eyes flick open the second her back touches the mattress — what do you believe is actually happening in that moment?",
+    "cta": "Open [INSERT_LEAD_MAGNET_NAME]",
+    "body": "The guide you asked for is ready.\n\nHere's the link to [INSERT_LEAD_MAGNET_NAME].\n\nBefore you open it — one thing worth holding in your mind as you read.\n\nMost parents who've been in the feed-rock-cot loop for months arrive at material like this convinced the problem is the method they haven't found yet.\n\nWhat usually shifts is something different.\n\nIt's the moment they realise the loop isn't random — it has a structure. And structure can be interrupted.\n\nThat reframe changes what you're actually looking for when you read.\n\nSo go read it with that in mind.\n\nThe link is above. It'll take you about ten minutes.\n\n— [INSERT_HOST_NAME]",
+    "delay": 0,
+    "ctaLink": "#",
+    "subject": "it's in here 👇",
+    "delayUnit": "hours",
+    "previewText": "The thing you signed up for — plus one question that might reframe everything you've tried so far."
+  },
+  {
+    "ps": "PS. Tomorrow I'm going to show you exactly what that shift looks like — the before, the change, and what became possible after.",
+    "cta": "Reply and tell me where you're stuck right now",
+    "body": "There's a specific kind of exhaustion that doesn't feel like tiredness anymore.\n\nIt feels like fog you can't think through.\n\nI know that because I watched it happen — not to me, but to a parent I was trying to help early in my work. She was seven months in. Feed to sleep every single night. Two, sometimes three wake-ups.\n\nShe wasn't doing it wrong. She was doing everything the internet told her.\n\nThe problem was that every piece of advice assumed her baby was the same as every other baby. It wasn't.\n\nThe night I realised that was the night my whole approach changed.\n\nI stopped asking \"what does the method say to do next\" and started asking \"what has this baby actually learned, and what does she need to unlearn?\"\n\nThat's a different question. It leads to a different answer.\n\nAnd when the answer matched the specific baby in front of us — things moved.\n\nNot because we found the right trick. Because we found the right sequence.\n\nYou're not broken. Your baby isn't broken. The loop has a shape. And shapes can be changed.\n\n— [INSERT_HOST_NAME]",
+    "delay": 48,
+    "ctaLink": "#",
+    "subject": "the night I nearly quit",
+    "delayUnit": "hours",
+    "previewText": "Not the tired kind of nearly. The kind where you sit in a car park and seriously reconsider everything."
+  },
+  {
+    "ps": "PS. Places on the call are limited each week — if you've been sitting on this, now is the time to move.",
+    "cta": "Book your Sleep Strategy Call at [INSERT_BOOKING_URL]",
+    "body": "Here's what the Settling Sequence Reset actually changes — and why it works when everything else hasn't.\n\nA first-time parent, baby around seven months, had been feeding to sleep since birth. Bedtime was running close to two hours every night. The cot-transfer was failing almost every attempt.\n\nThe problem wasn't the feeding. It wasn't the rocking. It was the order.\n\nThe baby had learned that the physical sensation of being held to drowsiness was the signal that sleep was safe. The cot wasn't part of that signal. So the cot felt wrong — and she woke to correct it.\n\nThe Settling Sequence Reset changes the order of those associations. Conducted over [INSERT_PROGRAMME_DURATION] — long enough to see the pattern, short enough that nothing becomes a new bad habit — it rebuilds the signal so the cot is the cue, not the interruption.\n\nBy night four, the transfer was holding. By the end of week three, the five-to-six-hour stretch was consistent.\n\nNo crying alone. No leaving the room. Just a different sequence.\n\nIf you're in the feed-rock-cot-eyes-open loop right now — this is what a way out of it looks like.\n\nThe next step is a Sleep Strategy Call. You bring what's happening. We map what changes first.\n\n— [INSERT_HOST_NAME]",
+    "delay": 96,
+    "ctaLink": "#",
+    "subject": "what actually changed at night 4",
+    "delayUnit": "hours",
+    "previewText": "Not a trick. Not a new app. One structural shift — and what it made possible by the end of week three."
+  }
+]
+
+==============================================================================
+WHATSAPP SEQUENCE  (id 285)  Sleep Reset for New Parents — Engagement Sequence  tone=conversational
+==============================================================================
+[
+  {
+    "text": "Hey [First Name] — the feed-rock-cot loop isn't lasting this long because you're doing it wrong, it's lasting because your baby has learned that the physical act of being settled by you is the only available path to sleep, and no amount of consistency on your end changes that until the sequence itself resets. That's the thing most settling advice skips entirely — it targets the behaviour at bedtime without touching the underlying association driving every wake-up that follows. At [INSERT_EVENT_NAME] with [INSERT_HOST_NAME], there's one question worth sitting with before you arrive: what if the routine you've been told to stick to is the exact thing keeping the loop in place?",
+    "delay": 0,
+    "mediaUrl": null,
+    "delayUnit": "hours",
+    "mediaType": null
+  },
+  {
+    "text": "A mum who'd been feeding to sleep since month two — back at work, running on broken sleep, convinced she'd locked in a pattern that couldn't be undone — worked through the Settling Sequence Reset and her baby reached a five-to-six-hour unbroken stretch without a single night of leaving her to cry alone. What changed wasn't her consistency or her commitment, it was the order of the steps in the settling window, which shifted what her baby was associating with the moment before sleep. Does that sound like the kind of result you'd been starting to think wasn't possible for your baby?",
+    "delay": 24,
+    "mediaUrl": null,
+    "delayUnit": "hours",
+    "mediaType": null
+  },
+  {
+    "text": "You've already said yes to [INSERT_EVENT_NAME] — [INSERT_HOST_NAME] is going to walk through exactly how the Settling Sequence Reset works and what the first night actually looks like in practice, so you leave with a real picture instead of more advice to weigh up against everything you've already tried. If you want to go deeper after and get a plan built specifically around your baby's wake windows and current routine, you can book your Sleep Strategy Call at [INSERT_BOOKING_URL] and bring everything you've already tried.",
+    "delay": 48,
+    "mediaUrl": null,
+    "delayUnit": "hours",
+    "mediaType": null
+  }
+]
+
+==============================================================================
+BONUSES  (3)
+==============================================================================
+
+--- [25] accelerator — The Nap Salvage Same-Day Checklist ---
+shortLine: A same-day checklist that rescues bedtime after a skipped or wrecked nap.
+value: 
+format: checklist
+derivedFromObstacle: Every time she thinks she has cracked a nap schedule, the baby skips a nap entirely for no visible reason and the entire rest of the day implodes because now she's overtired at bedtime and nothing works.
+pdf: https://res.cloudinary.com/dunshei0y/image/upload/v1785249556/bonuses_117174_25.pdf.pdf | html: https://zapcampaigns.com/p/bonus-25
+assetBody:
+{
+  "items": [
+    {
+      "label": "STEP 1 — Note the exact time the skipped nap was supposed to start",
+      "detail": "Write it down or type it into your phone right now: e.g. '10:30am nap — skipped.' This is your anchor point for every timing calculation that follows. Without a fixed reference you will be guessing, and guessing is what gets you into trouble at 7pm."
+    },
+    {
+      "label": "STEP 2 — Accept the nap is gone and do not attempt a rescue nap after 30 minutes of trying",
+      "detail": "If your baby has been awake for more than 30 minutes past the nap start time and is not asleep, close the attempt. A late rescue nap that lands after its window will push bedtime later and compound the overtiredness — it does not cancel it."
+    },
+    {
+      "label": "STEP 3 — Compress the next wake window by 20–30 minutes",
+      "detail": "If your baby's normal wake window is 2.5 hours, bring the next nap or bedtime forward to 2 hours (or 2h 15min) instead. An overtired baby cannot self-regulate past her normal window — you are meeting her where she actually is, not where the schedule says she should be."
+    },
+    {
+      "label": "STEP 4 — Calculate your new 'pull-forward bedtime' right now",
+      "detail": "Take your usual bedtime (e.g. 7:00pm) and subtract 30–45 minutes for a fully skipped nap (e.g. target 6:15–6:30pm). Write it here: TARGET BEDTIME TODAY = ______. Pin this to your fridge or lock screen so your partner sees it too and you both commit before the witching hour hits."
+    },
+    {
+      "label": "STEP 5 — Start your wind-down routine 20 minutes before the pull-forward bedtime",
+      "detail": "If your target bedtime is 6:20pm, wind-down starts at 6:00pm — not 6:35pm when she's already past it. Wind-down for an overtired baby means: lights dimmed, no screens, no high-stimulation play, no visitors or loud voices. A calm environment now is doing active work."
+    },
+    {
+      "label": "STEP 6 — Run a shorter, quieter feed than usual",
+      "detail": "Offer a feed as part of the wind-down, but keep it calm and brief — aim for 5–8 minutes, not a full comfort feed. You want the edge taken off hunger without tipping her into a full feed-to-sleep association. If she falls asleep on the breast or bottle, gently rouse her — just enough that her eyes half-open — before placing her in the cot."
+    },
+    {
+      "label": "STEP 7 — Use the Overtired Entry, not your standard settle",
+      "detail": "On a normal night you might put her down drowsy and step back. Tonight she is wired-and-tired, not just tired — her cortisol is elevated and she will startle more easily. Place her in the cot, keep one hand firmly on her chest for 60 full seconds before you move it, and stay within her eyeline. Do not rush the hand removal."
+    },
+    {
+      "label": "STEP 8 — Expect and plan for one protest cycle — it is not a sign the plan is failing",
+      "detail": "An overtired baby will often settle for 2–3 minutes, then spike into a short protest cry as the cortisol peaks. This is neurological, not a signal that she needs rescuing. Give it 2 minutes before you re-enter. Write this on a Post-it and stick it to the monitor: '2 minutes. This is normal. She is not in danger.'"
+    },
+    {
+      "label": "STEP 9 — Re-enter with a reset settle, not a full restart",
+      "detail": "If she escalates past 2 minutes, go in and use a brief physical reset: hand on chest, shush at a consistent rhythm (louder than you think — match her volume, then slowly drop yours), and do not pick up unless she is at full distress. The goal is regulated, not asleep-in-arms. Exit again once she drops below active crying."
+    },
+    {
+      "label": "STEP 10 — Cap your re-entries at three before escalating to a full hold",
+      "detail": "If you have done three re-entry resets and she is still escalating — not just grizzling, but genuinely distressed — pick her up, hold her upright (not rocking), wait for the full-body tension to release, then put her back down. This is a regulated reset, not a surrender. One hold does not undo the work."
+    },
+    {
+      "label": "STEP 11 — Log the actual sleep time and total overnight wake count",
+      "detail": "When she finally goes down, note the time: 'Asleep at ______.' Tomorrow morning, record how many times she woke. This data point tells you whether the compressed bedtime worked and whether you need to adjust tomorrow's schedule — you are not just surviving tonight, you are building evidence."
+    },
+    {
+      "label": "STEP 12 — Protect tomorrow's first nap window above everything else",
+      "detail": "After a skipped-nap day, the first nap the next morning is your reset lever. Offer it at the lower end of her wake window (e.g. 1h 45min after wake-up, not 2h 30min) and run the full wind-down, even for a nap. One protected nap tomorrow morning breaks the cycle and stops a single bad day becoming a bad week."
+    }
+  ],
+  "title": "The Nap Salvage Same-Day Checklist",
+  "format": "checklist",
+  "promise": "Use this checklist on the day of a skipped nap and you will land bedtime without a two-hour battle, even on an overtired baby. Parents who follow this stop a single skipped nap from unravelling the entire week — starting today.",
+  "howToUse": "This is a single-page same-day action checklist you pull out the moment your baby skips a nap — before the overtiredness spiral takes hold. Work through the steps in order, starting from whichever point in the day the nap was missed. You are not reading to learn; you are following a decision path in real time so you can get ahead of a bad bedtime instead of improvising through one.",
+  "nextStep": {
+    "body": "This checklist handles the same-day damage control. The reason it works is that it's built on the same core principles behind the Settling Sequence Reset you're learning inside Sleep Reset for New Parents — specifically the wake window calibration and the regulated re-entry protocol from Module 2. Head back into the programme now and run through the Settling Sequence Reset walkthrough for overtired babies so that tonight's re-entry steps feel familiar in your hands, not just on paper. The more you've rehearsed the sequence before 6pm, the less your body will override you when the crying starts.",
+    "heading": "Now Anchor This to Your Settling Sequence Reset",
+    "ctaLabel": "Go to Module 2: The Settling Sequence Reset"
+  }
+}
+
+--- [26] gap_filler — The Partner Briefing Night-One SOP ---
+shortLine: A fill-in SOP that gets your partner holding the line with you at 3am.
+value: 
+format: sop
+derivedFromObstacle: Her partner may have agreed to try this, but on night two when the baby has been unsettled for forty minutes, she needs him to be holding the line with her rather than saying 'maybe we should just go back to what we were doing.' She cannot do this alone at 3am if the other adult in the house is wavering.
+pdf: (none) | html: (none)
+assetBody:
+(null)
+
+--- [27] objection_crusher — The 'Show Me It's Gentle' Script Bank ---
+shortLine: A done-for-you script bank that proves the method is genuinely gentle before you commit.
+value: 
+format: script
+derivedFromObstacle: I'm not totally sure I trust that a 'gentle' method described by someone I found through an ad will actually be gentle. I need to see exactly what it involves before I commit, because if it turns out to be cry-it-out in a different font, I'll feel deceived.
+pdf: (none) | html: (none)
+assetBody:
+(null)
+
+==============================================================================
+CONCEPTS  (0)
+==============================================================================
+
+==============================================================================
+CONCEPT SCRIPTS  (0 most recent)
+==============================================================================
+
+==============================================================================
+CASCADE JOB
+==============================================================================
+status=running err=
+result: (null)

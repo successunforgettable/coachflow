@@ -18,7 +18,7 @@ Last updated: 2026-07-28.
 | | |
 |---|---|
 | Branch | `railway-build` (never push `main` during sprints) |
-| HEAD | `1db32bd` = `origin/railway-build` |
+| HEAD | `origin/railway-build` — verify, do not recall |
 | TS baseline | **35** under pnpm — must not regress; new work adds zero |
 | Package manager | **pnpm only.** No `package-lock.json`, no `@playwright/test` in `package.json` |
 | Migrations | latest applied = **0096**. `0081` is SUPERSEDED — never apply |
@@ -42,35 +42,40 @@ Verify, never recall: `git rev-parse HEAD origin/railway-build` · `npx tsc --no
   `optional: true` (`orchestration.ts:246`); steps 1–8 rethrow by design.
 - **Compliance layer** — register standard + compliance axis + anti-fabrication validator, shipped
   as ONE layer, wired and enforcing at HEAD. Tier-1 enforcement only; publish gate at
-  `server/routers/meta.ts:262`. Blocking baseline **437**.
+  `server/routers/meta.ts:262`. Blocking baseline **437**. ⚠️ **See queue item 0 — the fabrication half does not fire on real copy.**
 - **ICP grounding** — Class-A invented fields removed at root; opt-in laddered intake sharpens the
   ICP in place after first reveal. `groundingMeta` proven written on prod.
 - **Andromeda spine** — concept + per-concept script generators live, DRAFT-only.
 - **Bonus arc** — 3 ICP-derived bonuses, hosted PDFs, durable job, coherent across offer/LP/email.
 - **All 5 LP templates** built and proven live via the intake.
 
-### What has never been done on any run
+### The artifact read — DONE (2026-07-28, beginner shape)
 
-The artifact read. Specifically:
+All of it, on prod: landing page **published and screenshotted** at its live `/p/{slug}` · **5 ad
+creatives generated** (step 9 passed) · bonus PDFs opened and confirmed rendering · Meta push
+exercised against the publish gate with zero spend risk · full node-by-node read.
 
-- Landing page **published and screenshotted at its live `/p/{slug}`**
-- Ad creatives seen (blocked by F1(a))
-- Bonus PDFs opened
-- Meta push exercised against the publish gate
-- Cascade coherence cross-read (does node N actually reflect node N−1?)
+**Report: `docs/handovers/RUN_2026-07-28_beginner-cascade-artifact-read.md`**
+Full text of every node: `RUN_2026-07-28_artifacts-full.txt` · screenshot:
+`docs/screenshots/LP-230-published-fullpage.png`.
 
-**Veteran / has-assets shape is a separate run.** Everything above is the beginner shape.
+It found the validator gap now sitting at the top of the queue, plus live-page defects: a literal
+`yourbrand` placeholder, and five filled stars reading **"Trusted by high achievers"** on a page for
+a coach with zero clients.
 
-### Known-failing, expected
+**Veteran / has-assets shape is still a separate run, never done.**
 
-**Step 9 (ad creatives) fails every run.** `generateContextualAdHeadlines`
-(`orchestration.ts:816`) throws before `runAdCreativesGeneration` (`:941`) is ever reached — so no
-image API is contacted. This is the F1(a) gate, queue item 1. The cascade degrades correctly around
-it. **Credits are ruled out**: Anthropic, Replicate and Cloudinary all probed HTTP 200 healthy
-(Cloudinary is on the **Free** plan — watch if creative volume ramps).
+### Known-failing, input-dependent
 
-⚠️ Image generation (Replicate → Cloudinary) is therefore **UNVERIFIED end-to-end** — healthy
-credits are not a working path. Do not assume it works until a creative actually renders.
+**Step 9 (ad creatives) fails on MOST runs but not all.** When it fails,
+`generateContextualAdHeadlines` (`orchestration.ts:816`) throws before `runAdCreativesGeneration`
+(`:941`) is reached, so no image API is contacted. This is the F1(a) gate, queue item 1; the cascade
+degrades correctly around it.
+
+**✅ On 2026-07-28 step 9 PASSED and produced 5 creatives** — so the Replicate → Cloudinary path is
+**verified end-to-end** and the old "UNVERIFIED" caveat is retired. **Credits are ruled out**:
+Anthropic, Replicate and Cloudinary all probed HTTP 200 healthy (Cloudinary is on the **Free** plan
+— watch if creative volume ramps).
 
 ---
 
@@ -78,9 +83,40 @@ credits are not a working path. Do not assume it works until a creative actually
 
 In order. Each carries its diagnosis — execute without re-investigating.
 
+### 0. 🔴🔴 The anti-fabrication validator does not fire on real copy — NEW, TOP PRIORITY
+
+Found by the 2026-07-28 artifact read. Full evidence:
+`docs/handovers/RUN_2026-07-28_beginner-cascade-artifact-read.md` §3.
+
+The live `meta.publishToMeta` gate returned **`ok=true`, zero blocking, zero advisories** on copy
+containing a named client testimonial, an invented client count, an invented statistic and an
+unstated guarantee — for a coach whose own service description says she has **no paying clients**.
+
+**Two independent causes.** (a) `heroMechanismsGenerator.ts` has **no** compliance guard at all, and
+the mechanism is upstream of the whole cascade — so its invented "over two hundred families" claim
+propagates. Offer, lead-magnet, email, WhatsApp and bonus generators are likewise unguarded.
+(b) The detector regexes miss the phrasings that actually occur: `STAT_SELF_DESCRIPTIVE` exempts
+`of my`, so `94% of my clients` passes while `87% of consultants` blocks; `TESTIMONIAL_RE` never
+matches a bare first name; `GUARANTEE_RE` misses "or your money back"; `AUTHORITY_RE` misses
+spelled-out numbers and the noun "families".
+
+`fabricationValidator.test.ts` is **23/23 green** — it asserts the exact strings the regexes were
+written against, so it measures the fixtures, not the behaviour. This is the §15a failure mode in a
+different costume.
+
+**Not a "tighten the regex" task.** Surface-form matching will keep losing to paraphrase; the
+replacement has to reason about whether a claim is supported by the coach's own words.
+
+**Do not quote CLAUDE.md's old claim that "Class 1 invented proof BLOCKS" as current fact** —
+behaviourally, at HEAD, it does not.
+
 ### 1. F1(a) — the all-or-nothing headline gate
 
-**Symptom:** step 9 yields zero creatives on every run and always has.
+**Symptom:** step 9 yields zero creatives on most runs. **⚠️ It is input-dependent, not
+deterministic — the 2026-07-28 run PASSED step 9 and produced 5 ad creatives**, because that run's
+headlines happened to fit the bar. **The Replicate → Cloudinary image path is therefore no longer
+unverified — it executed end-to-end.** That closes the standing caveat and unblocks the parked
+image-model evaluation.
 
 **Mechanism:** the ad-headline check rejects the *whole batch* if any headline exceeds the length
 bar (`subCase=headline_over_length`), retries 5×, then throws. The RETRY EXHAUST logs show
