@@ -792,6 +792,7 @@ export async function runOrchestrationStep(
             `NOT runway-aware. Fix the capture path so dates normalise to ISO.`,
         );
       }
+      const __waSequenceType = WHATSAPP_SEQUENCE_FOR_CAMPAIGN[input.campaignType ?? ""] ?? "nurture";
       const { id } = await runWhatsappSequenceGeneration({
         userId: input.userId,
         serviceId: input.serviceId,
@@ -800,8 +801,14 @@ export async function runOrchestrationStep(
         // lead-magnet campaign produced "You've already said yes to [INSERT_EVENT_NAME]" when
         // no event exists — a structural coherence break, not a token gap. Event-shaped
         // campaigns keep engagement; the rest nurture the person who just downloaded.
-        sequenceType: WHATSAPP_SEQUENCE_FOR_CAMPAIGN[input.campaignType ?? ""] ?? "nurture",
-        name: svc?.name ? `${svc.name} — Engagement Sequence` : "Engagement Sequence",
+        sequenceType: __waSequenceType,
+        // Label follows the SHAPE actually generated. It used to be hardcoded "Engagement"
+        // while a lead-magnet campaign correctly produced a nurture sequence, so the kit
+        // showed the coach a name that contradicted the content.
+        name: (() => {
+          const label = __waSequenceType === "engagement" ? "Engagement Sequence" : "Nurture Sequence";
+          return svc?.name ? `${svc.name} — ${label}` : label;
+        })(),
         tone: "conversational",
         sequenceLength: waLength.length,
         eventDetails: { bookingUrl: waBookingUrl ?? undefined, eventDate: waEs.date, eventTime: waEs.time, eventTimezone: waEs.timezone, eventVenue: waEs.venue },
@@ -986,6 +993,20 @@ export async function runOrchestrationStep(
 }
 
 export async function runOrchestration(input: OrchestrationInput): Promise<void> {
+  // 🔴 F2 — born WITH campaignType, before any generator runs.
+  // The kit used to be created by the first autoSelectBest call, which comes from a generator
+  // (offersGenerator, step 1) passing only four arguments — so campaignType was never
+  // persisted, and by the time orchestration passed it the row already existed and the value
+  // was correctly ignored. Diagnosed twice. Creating the row here, first, is the whole fix;
+  // it is deliberately NOT threaded through the seven generator call sites.
+  try {
+    const { ensureCampaignKit } = await import("../routers/campaignKits");
+    await ensureCampaignKit(input.userId, input.icpId, input.campaignType ?? null);
+  } catch (err) {
+    // Never let kit pre-creation kill a cascade — autoSelectBest still creates it downstream.
+    console.error("[orchestration] ensureCampaignKit failed:", err instanceof Error ? err.message : String(err));
+  }
+
   const { getDb } = await import("../db");
   const { jobs, campaignKits } = await import("../../drizzle/schema");
   const { eq, and } = await import("drizzle-orm");

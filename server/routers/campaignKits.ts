@@ -61,6 +61,60 @@ const STALE_NODE_TO_FIELD: Record<string, string> = Object.fromEntries(
   Object.entries(STALE_FIELD_TO_NODE).map(([f, n]) => [n, f]),
 );
 
+/**
+ * Find-or-create the cascade's kit. THE ONLY creation path — autoSelectBest delegates here.
+ *
+ * 🔴 F2. campaignType was threaded through every generator in memory but never persisted,
+ * because the kit is BORN on the first autoSelectBest call and that first call comes from a
+ * generator (offersGenerator.ts, step 1) which passes only four arguments. By the time
+ * orchestration passed campaignType the kit already existed, so the value was correctly
+ * ignored — it only applies on insert. Diagnosed twice before this fix.
+ *
+ * The remedy is to call this at the TOP of runOrchestration, before any generator runs, so
+ * the row is born with the value. Deliberately NOT threaded through the seven generator call
+ * sites: that is fragile and is what failed twice.
+ *
+ * Idempotent. On an existing kit it backfills campaignType only when the row has none, so a
+ * kit created before this fix picks the value up rather than staying NULL forever.
+ */
+export async function ensureCampaignKit(
+  userId: number,
+  icpId: number,
+  campaignType?: string | null,
+): Promise<number | null> {
+  const db = await getDb();
+  if (!db) return null;
+
+  const [existing] = await db
+    .select()
+    .from(campaignKits)
+    .where(and(eq(campaignKits.userId, userId), eq(campaignKits.icpId, icpId)))
+    .limit(1);
+
+  if (existing) {
+    if (campaignType && !existing.campaignType) {
+      await db.update(campaignKits)
+        .set({ campaignType: campaignType as any, updatedAt: new Date() })
+        .where(eq(campaignKits.id, existing.id));
+    }
+    return existing.id;
+  }
+
+  const [icp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.id, icpId)).limit(1);
+  let serviceName: string | null = null;
+  if (icp?.serviceId) {
+    const [svc] = await db.select().from(services).where(eq(services.id, icp.serviceId)).limit(1);
+    if (svc) serviceName = svc.name;
+  }
+  const result: any = await db.insert(campaignKits).values({
+    userId,
+    icpId,
+    name: buildKitName(serviceName, icp?.name),
+    campaignType: (campaignType ?? null) as any,
+  });
+  return result[0].insertId;
+}
+
 export async function autoSelectBest(
   userId: number,
   icpId: number,
@@ -83,35 +137,8 @@ export async function autoSelectBest(
   const db = await getDb();
   if (!db) return;
 
-  // Find or create kit
-  const [existing] = await db
-    .select()
-    .from(campaignKits)
-    .where(and(eq(campaignKits.userId, userId), eq(campaignKits.icpId, icpId)))
-    .limit(1);
-
-  let kitId: number;
-  if (existing) {
-    kitId = existing.id;
-  } else {
-    // Fetch ICP + service to build a rich name
-    const [icp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.id, icpId)).limit(1);
-    let serviceName: string | null = null;
-    if (icp?.serviceId) {
-      const [svc] = await db.select().from(services).where(eq(services.id, icp.serviceId)).limit(1);
-      if (svc) serviceName = svc.name;
-    }
-    const name = buildKitName(serviceName, icp?.name);
-    const result: any = await db.insert(campaignKits).values({
-      userId,
-      icpId,
-      name,
-      // NULL when not supplied — identical to the previous behaviour for the
-      // wizard/generator callers that pass no campaignType.
-      campaignType: (campaignType ?? null) as any,
-    });
-    kitId = result[0].insertId;
-  }
+  const kitId = await ensureCampaignKit(userId, icpId, campaignType);
+  if (kitId == null) return;
 
   // Update the specific selection field
   await db
