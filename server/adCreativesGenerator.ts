@@ -189,7 +189,7 @@ Mechanism: ${gist(input.uniqueMechanism, 60)}
 Pressing problem: ${gist(input.pressingProblem, 120)}${input.icpPains ? `\nAudience daily pains: ${gist(input.icpPains, 200)}` : ""}${input.icpFears ? `\nAudience deep fears: ${gist(input.icpFears, 200)}` : ""}${input.icpObjections ? `\nAudience objections to buying: ${gist(input.icpObjections, 150)}` : ""}${input.icpBuyingTriggers ? `\nWhat triggers them to buy: ${gist(input.icpBuyingTriggers, 150)}` : ""}
 
 LENGTH RULE (READ TWICE):
-- Each headline MUST be ≤ 38 characters. This is a HARD LIMIT — Meta-compliance gate.
+- Each headline MUST be ≤ 38 characters. This is a HARD LIMIT — ZAP's house craft standard for creative headlines, not a Meta policy rule.
 - Plan each headline as 4 to 7 WORDS before writing. A 5-word headline averages 25-35 characters; a 7-word headline averages 35-45 characters. Word-count planning is more reliable than character-counting after the fact.
 - After writing each headline, count the characters. If 38 or fewer, keep. If over 38, cut filler words (the, a, your, this, that, our) or pick a shorter verb. Never ship a headline over 38 characters.
 

@@ -1081,7 +1081,7 @@ export function validateAdHeadlines(parsed: unknown): AdHeadlinesValidatorResult
     return {
       ok: false,
       subCase: "headline_over_length",
-      failContext: `Your previous response had ${overLength.length} headline(s) exceeding the ${AD_HEADLINE_MAX_CHARS}-character Meta-compliance limit:\n${hits}\n\nRewrite ALL ${AD_HEADLINE_REQUIRED_COUNT} headlines to be ≤ ${AD_HEADLINE_MAX_CHARS} characters each. Count characters before finalising. Strip filler words, use punchy active verbs, and avoid long compound nouns. Each headline must still be a punchy ad-style line that an ad copywriter would write — not a truncated phrase ending mid-thought.`,
+      failContext: `Your previous response had ${overLength.length} headline(s) exceeding ZAP's ${AD_HEADLINE_MAX_CHARS}-character house limit for ad-creative headlines:\n${hits}\n\nRewrite ALL ${AD_HEADLINE_REQUIRED_COUNT} headlines to be ≤ ${AD_HEADLINE_MAX_CHARS} characters each. Count characters before finalising. Strip filler words, use punchy active verbs, and avoid long compound nouns. Each headline must still be a punchy ad-style line that an ad copywriter would write — not a truncated phrase ending mid-thought.`,
     };
   }
 

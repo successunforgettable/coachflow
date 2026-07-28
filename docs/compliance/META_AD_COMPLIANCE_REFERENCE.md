@@ -70,6 +70,39 @@ Meta removes ads that:
 - All ad components must be relevant to the product or service offered
 - **The products and services promoted in an ad must match those promoted on the landing page**
 
+### 1.4a Headline character count — 27 is a DISPLAY RECOMMENDATION, not a compliance rule
+
+**Meta's published figure for the Facebook Feed ad headline is 27 characters**, stated on the Ads
+Guide under the heading **"Text Recommendations"** — presented alongside primary text "50-150
+characters", and explicitly separated from the technical requirements (file size, resolution).
+Verified on two independent Meta Ads Guide pages (`/business/ads-guide/image/facebook-feed/traffic`
+and `/business/ads-guide/update/image/facebook-feed/link-clicks`), July 2026.
+
+**What this means, precisely:**
+- It is a **display/performance recommendation about truncation in the feed**, NOT a policy rule.
+  Exceeding it is **not a policy violation** and cannot get an ad rejected on compliance grounds.
+- **It is therefore NOT enforceable logic under this document's Tier-1 rule.** Nothing in §3.3 may
+  gate on headline length.
+
+**⛔ NEITHER 38 NOR 40 APPEARS ANYWHERE IN META'S DOCUMENTATION.**
+- **ZAP's `AD_HEADLINE_MAX_CHARS = 38`** (`server/_core/validator.ts`) is **ZAP's own craft
+  standard** — a house rule about what reads well in our ad-creative image templates. It is
+  legitimate as a craft standard. It is **not** a Meta limit and must never be described as one.
+- The **"40-character recommendation"** in the ad-headline system prompt
+  (`server/adCreativesGenerator.ts`) is **unsourced**. It does not come from Meta's docs.
+
+**Why this is recorded here.** A live beginner cascade was killed by this gate: 1 of 5 headlines
+came in a single character over 38, the validator rejected the whole batch, and the throw took down
+a run that had completed eight nodes. The failContext called 38 "the 38-character Meta-compliance
+limit", which made a house craft rule look like an external policy constraint nobody could
+negotiate. **Wording corrected in code** to "ZAP's house limit". Recorded so the number is not
+re-litigated from a blog later, and so nobody "fixes" the gate by aligning it to another invented
+figure.
+
+**If the gate is ever revisited:** the honest options are to keep 38 as a craft standard, move
+toward Meta's actual 27 recommendation, or stop treating length as a hard blocker at all. What is
+NOT available is calling any of them a Meta compliance requirement.
+
 ### 1.5 Review scope and permanence
 
 - Review is primarily automated, **typically completed within 24 hours**
