@@ -112,6 +112,10 @@ const TOOL_OR_ROLE_TOKENS = new Set([
   "founder", "coach", "trainer", "specialist", "analyst", "engineer", "designer",
   "partner", "associate", "assistant", "executive", "lead", "head", "chief", "vp",
   "hour", "session", "call", "meeting", "review", "report", "program", "programme",
+  // PERSONALISATION MERGE TOKENS — "[First Name]" / "First Name" is a CRM placeholder the
+  // sequence generators emit deliberately. Measured on 187 real email/WhatsApp rows it was
+  // the single most frequent false positive (10 hits) in the named-third-party class.
+  "first", "last", "full", "name", "firstname", "lastname",
   // METHOD-NAME NOUNS — a proprietary mechanism name is what the mechanism generator EXISTS
   // to produce, so it is not a third-party endorsement. Measured on prod: "First Resequencing
   // Method", "Ballpark Reframe Protocol", "Calibration Language Mapping", "Authentic Identity

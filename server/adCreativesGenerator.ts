@@ -518,6 +518,15 @@ export async function runAdCreativesGeneration(
     const fileKey = `ad-creatives/${input.userId}/${batchId}/variation-${i + 1}.png`;
     const { url: s3Url } = await storagePut(fileKey, compositedBuffer, "image/png");
 
+    // Backstop: screen the GENERATED headline. Screen-not-drop — the image is already
+    // rendered and uploaded, so removing the row would orphan it. Other strings on this row
+    // are the coach's own inputs echoed back, so they carry no new claim.
+    {
+      const { screenOnPersist } = await import("./_core/persistenceGate");
+      await screenOnPersist("adCreatives", input.serviceId,
+        headline && String(headline).trim().length >= 12
+          ? [{ location: "headline", text: String(headline) }] : []);
+    }
     await db.insert(adCreatives).values({
       userId: input.userId,
       serviceId: input.serviceId,
@@ -613,6 +622,15 @@ export async function runEditorialAdCreativesGeneration(
     const fileKey = `ad-creatives/${input.userId}/${batchId}/variation-${i + 1}.png`;
     const { url: s3Url } = await storagePut(fileKey, compositedBuffer, "image/png");
 
+    // Backstop: screen the GENERATED headline. Screen-not-drop — the image is already
+    // rendered and uploaded, so removing the row would orphan it. Other strings on this row
+    // are the coach's own inputs echoed back, so they carry no new claim.
+    {
+      const { screenOnPersist } = await import("./_core/persistenceGate");
+      await screenOnPersist("adCreatives", input.serviceId,
+        headline && String(headline).trim().length >= 12
+          ? [{ location: "headline", text: String(headline) }] : []);
+    }
     await db.insert(adCreatives).values({
       userId: input.userId,
       serviceId: input.serviceId,

@@ -121,6 +121,8 @@ Return ONLY valid JSON: { "bonuses": [ {bonusType, title, description, format, d
   let failContext = "";
   let parsed: GeneratedBonus[] | null = null;
 
+  let __residualLegacyHits: Array<{ classId: string; matched: string; location: string }> = [];
+
   for (let attempt = 1; attempt <= BONUS_VALIDATOR_RETRY_MAX_ATTEMPTS; attempt++) {
     const inj = failContext ? `\n\nPRIOR-ATTEMPT FEEDBACK (you must address this):\n${failContext}\n\n` : "";
     const response = await invokeLLM({
@@ -177,6 +179,11 @@ Return ONLY valid JSON: { "bonuses": [ {bonusType, title, description, format, d
     }));
 
     const fab = validateBonusFabricationPatterns(parsed as RawBonus[], validationCtx);
+    // Carried out of the loop so the persistence gate can fold these into ONE verdict rather
+    // than the legacy family reaching its own separate conclusion.
+    __residualLegacyHits = fab.ok ? [] : (fab.hits ?? []).map((h) => ({
+      classId: String(h.classId), matched: String((h as any).matched ?? ""), location: String(h.location ?? "bonus"),
+    }));
     if (fab.ok) break;
 
     if (attempt < BONUS_VALIDATOR_RETRY_MAX_ATTEMPTS) {
@@ -191,8 +198,7 @@ Return ONLY valid JSON: { "bonuses": [ {bonusType, title, description, format, d
   if (!parsed || parsed.length === 0) return null;
 
   const bonusSetId = nanoid();
-  await db.insert(bonusesTable).values(
-    parsed.map((b) => ({
+  const __bonusRows = parsed.map((b) => ({
       userId: input.userId,
       serviceId: input.serviceId,
       campaignId: input.campaignId ?? null,
@@ -204,9 +210,15 @@ Return ONLY valid JSON: { "bonuses": [ {bonusType, title, description, format, d
       shortLine: b.shortLine,
       value: null,
       derivedFromObstacle: b.derivedFromObstacle,
-      format: b.format,
-    })),
-  );
+    format: b.format,
+  }));
+  {
+    // ONE VERDICT: the legacy bonus validator ran upstream; its hits fold in here rather
+    // than reaching a separate conclusion.
+    const { gateBeforePersist } = await import("./_core/persistenceGate");
+    const __g = await gateBeforePersist("bonuses", __bonusRows as any[], { legacyHits: __residualLegacyHits });
+    await db.insert(bonusesTable).values(__g.kept as any);
+  };
 
   return { bonusSetId, bonuses: parsed, campaignKitId: kit?.id ?? null };
 }

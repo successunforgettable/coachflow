@@ -53,6 +53,49 @@ export function copyFieldsOf(row: Record<string, unknown>): Array<{ location: st
   return out;
 }
 
+/**
+ * Pull coach-facing strings out of a JSON column (email `emails`, WhatsApp `messages`,
+ * landing-page `*Angle`). copyFieldsOf only sees top-level strings, so without this the
+ * three biggest published surfaces would be screened as if they were empty.
+ */
+export function copyFieldsOfJson(value: unknown, prefix: string, depth = 0): Array<{ location: string; text: string }> {
+  const out: Array<{ location: string; text: string }> = [];
+  if (depth > 4) return out;
+  let v: unknown = value;
+  if (typeof v === "string") {
+    const t = v.trim();
+    if (t.startsWith("{") || t.startsWith("[")) { try { v = JSON.parse(t); } catch { /* plain string */ } }
+  }
+  if (typeof v === "string") {
+    if (v.trim().length >= 12) out.push({ location: prefix, text: v });
+    return out;
+  }
+  if (Array.isArray(v)) {
+    v.forEach((x, i) => out.push(...copyFieldsOfJson(x, `${prefix}[${i}]`, depth + 1)));
+    return out;
+  }
+  if (v && typeof v === "object") {
+    for (const [k, x] of Object.entries(v as Record<string, unknown>)) {
+      if (NON_COPY_KEYS.has(k)) continue;
+      out.push(...copyFieldsOfJson(x, `${prefix}.${k}`, depth + 1));
+    }
+  }
+  return out;
+}
+
+/** A hit from one of the legacy per-asset validators, normalised for folding. */
+export type LegacyHit = { classId: string; matched?: string; location?: string };
+
+export type GateOptions<T> = {
+  /** Override field extraction — needed wherever the copy lives in a JSON column. */
+  textOf?: (row: T) => Array<{ location: string; text: string }>;
+  /**
+   * Hits the generator's own legacy validator already found. Folded into the SAME verdict
+   * rather than evaluated separately — consolidation means one decision, not one regex.
+   */
+  legacyHits?: LegacyHit[];
+};
+
 export type PersistenceGateResult<T> = {
   kept: T[];
   droppedCount: number;
@@ -68,6 +111,7 @@ export type PersistenceGateResult<T> = {
 export async function gateBeforePersist<T extends Record<string, any>>(
   assetType: string,
   rows: T[],
+  opts: GateOptions<T> = {},
 ): Promise<PersistenceGateResult<T>> {
   const empty: PersistenceGateResult<T> = { kept: rows, droppedCount: 0, hits: [], floorApplied: false };
   if (!Array.isArray(rows) || rows.length === 0) return empty;
@@ -97,12 +141,25 @@ export async function gateBeforePersist<T extends Record<string, any>>(
     const kept: T[] = [];
     const hits: OutputHit[] = [];
     for (const row of rows) {
-      const fields = copyFieldsOf(row);
+      const fields = opts.textOf ? opts.textOf(row) : copyFieldsOf(row);
       if (fields.length === 0) { kept.push(row); continue; }
       const res = checkOutput(fields.map((f) => ({ ...f, role: "body" as const })), grounding);
       if (res.ok) { kept.push(row); continue; }
       hits.push(...res.blocking);
     }
+
+    // ── ONE VERDICT ─────────────────────────────────────────────────────────
+    // The legacy per-asset validators (_core/validator.ts) run inside the generators and
+    // carry detection this layer does not model. Folding their hits in HERE — rather than
+    // letting each family reach its own conclusion — is what makes the two systems one
+    // decision. It is deliberately additive: replacing the old detectors outright cost five
+    // real detections the first time it was tried.
+    const legacy = (opts.legacyHits ?? []).map((h) => ({
+      classId: String(h.classId), tier: 1 as const,
+      description: "Flagged by the asset's own validator.",
+      matched: String(h.matched ?? ""), location: String(h.location ?? assetType),
+    }));
+    if (legacy.length > 0) hits.push(...(legacy as unknown as OutputHit[]));
 
     if (kept.length === 0 && rows.length > 0) {
       console.warn(
@@ -125,5 +182,48 @@ export async function gateBeforePersist<T extends Record<string, any>>(
     console.error(`[persistenceGate] ${assetType}: screening failed, persisting unchanged —`,
       err instanceof Error ? err.message : String(err));
     return empty;
+  }
+}
+
+/**
+ * Screen without dropping. For assets where removing the row is the WRONG remedy:
+ *   - adCreatives — the image is already rendered and uploaded, so dropping the row orphans it
+ *   - lead-magnet / bonus `assetBody` — written by UPDATE, and blanking a deliverable a coach
+ *     is about to hand out is worse than shipping copy they can edit
+ * Records a structured warning so the claim is visible and countable, and leaves the write
+ * alone. The publish gate remains the hard stop.
+ */
+export async function screenOnPersist(
+  assetType: string,
+  serviceId: number | null | undefined,
+  fields: Array<{ location: string; text: string }>,
+): Promise<OutputHit[]> {
+  if (serviceId == null || fields.length === 0) return [];
+  try {
+    const { getDb } = await import("../db");
+    const { services, idealCustomerProfiles } = await import("../../drizzle/schema");
+    const { eq } = await import("drizzle-orm");
+    const db = await getDb();
+    if (!db) return [];
+    const [service] = await db.select().from(services).where(eq(services.id, serviceId)).limit(1);
+    if (!service) return [];
+    const [icp] = await db.select().from(idealCustomerProfiles)
+      .where(eq(idealCustomerProfiles.serviceId, serviceId)).limit(1);
+    const { checkOutput } = await import("./complianceAxis");
+    const { buildCoachCorpus, buildProofSupplied } = await import("./groundingCorpus");
+    const res = checkOutput(fields.map((f) => ({ ...f, role: "body" as const })), {
+      corpus: buildCoachCorpus({ service: service as any, groundingMeta: (icp as any)?.groundingMeta }),
+      supplied: buildProofSupplied(service as any),
+    });
+    if (res.blocking.length > 0) {
+      console.warn(
+        `[persistenceGate] ${assetType} (service ${serviceId}): ${res.blocking.length} blocking claim(s) ` +
+        `persisted without dropping — classes=[${Array.from(new Set(res.blocking.map((h) => String(h.classId)))).join(",")}]`,
+      );
+    }
+    return res.blocking;
+  } catch (err) {
+    console.error(`[persistenceGate] ${assetType}: screen failed —`, err instanceof Error ? err.message : String(err));
+    return [];
   }
 }

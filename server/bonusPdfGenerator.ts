@@ -67,6 +67,11 @@ export async function runBonusPdfGeneration(input: { userId: number; bonusSetId:
         continue;
       }
       // Persist the content FIRST — independent of publish (which needs Cloudflare).
+      {
+        // Backstop for the bonus BODY. Screen-not-drop for the same reason as the lead magnet.
+        const { screenOnPersist, copyFieldsOfJson } = await import("./_core/persistenceGate");
+        await screenOnPersist("bonusPdf", (b as any).serviceId, copyFieldsOfJson(body, "assetBody"));
+      }
       await db.update(bonusesTable).set({ assetBody: body as any }).where(eq(bonusesTable.id, b.id));
 
       let published: { deliverableUrl: string; pdfUrl: string } | null = null;

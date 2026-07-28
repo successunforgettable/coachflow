@@ -788,7 +788,13 @@ Format as JSON array:
       `Nothing was saved — regenerate, or add your real figures and client material to your profile first.`,
     );
   }
-  await db.insert(adCopy).values(keptInserts);
+  // Persistence backstop. The per-variant gate above already dropped violators and drives
+  // the retry; this catches anything that gate's field selection missed.
+  {
+    const { gateBeforePersist } = await import("./_core/persistenceGate");
+    const __g = await gateBeforePersist("adCopy", keptInserts as any[]);
+    await db.insert(adCopy).values(__g.kept as any);
+  }
 
   // Compliance precompute — must land before runX returns so wizard panel
   // sees ad copy + rewrites atomically. Mirrors prior async behavior.

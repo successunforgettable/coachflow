@@ -988,7 +988,7 @@ You MUST use these exact numbers and real names. Do not fabricate.`
     })),
   };
 
-  const insertResult: any = await db.insert(whatsappSequences).values({
+  const __row = {
     userId: input.userId,
     serviceId: input.serviceId,
     campaignId: input.campaignId || null,
@@ -996,7 +996,13 @@ You MUST use these exact numbers and real names. Do not fabricate.`
     tone: input.tone || "conversational",
     name: input.name,
     messages: sequenceData.messages,
-  });
+  };
+  // Persistence backstop — WhatsApp copy lives in a JSON column, so the gate is given
+  // an explicit extractor. Single-row insert: the floor keeps it and logs rather than
+  // emptying the node (degrade, never kill).
+  const { gateBeforePersist, copyFieldsOfJson } = await import("./_core/persistenceGate");
+  const __g = await gateBeforePersist("whatsappSequences", [__row as any], { textOf: (r: any) => copyFieldsOfJson(r.messages, "messages") });
+  const insertResult: any = await db.insert(whatsappSequences).values((__g.kept[0] ?? __row) as any);
 
   return { id: insertResult[0].insertId };
 }

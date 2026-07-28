@@ -111,7 +111,7 @@ const NAMED_PERSON_OUTCOME_RE =
  * "Every Monday" and "When I'm" caused in the July sweep.
  */
 const NOT_A_NAME = new Set([
-  "one", "this", "that", "these", "those", "after", "before", "every", "when", "while", "since",
+  "one", "once", "this", "that", "these", "those", "after", "before", "every", "when", "while", "since",
   "most", "many", "some", "your", "you", "the", "and", "but", "for", "nor", "yet", "our", "their",
   "there", "here", "now", "then", "what", "who", "why", "how", "where", "which", "another", "each",
   "both", "either", "neither", "during", "until", "unless", "because", "although", "though", "with",

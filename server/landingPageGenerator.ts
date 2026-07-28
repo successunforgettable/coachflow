@@ -1021,7 +1021,7 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
     dollar: allAnglesRaw.dollar as Record<string, unknown>,
   };
 
-  const insertResult: any = await db.insert(landingPages).values({
+  const __row = {
     userId: input.userId,
     serviceId: input.serviceId,
     campaignId: input.campaignId || null,
@@ -1036,7 +1036,13 @@ CTA language: Get early access / Become a founding member / Lock in launch prici
     activeAngle: "original",
     pageType: input.pageType,
     rating: 0,
-  });
+  };
+  // Persistence backstop — landing-page copy lives in a JSON column, so the gate is given
+  // an explicit extractor. Single-row insert: the floor keeps it and logs rather than
+  // emptying the node (degrade, never kill).
+  const { gateBeforePersist, copyFieldsOfJson } = await import("./_core/persistenceGate");
+  const __g = await gateBeforePersist("landingPages", [__row as any], { textOf: (r: any) => ["originalAngle","godfatherAngle","freeAngle","dollarAngle"].flatMap((k) => copyFieldsOfJson(r[k], k)) });
+  const insertResult: any = await db.insert(landingPages).values((__g.kept[0] ?? __row) as any);
   const landingPageId = insertResult[0].insertId;
 
   // Quota tracking — both wizard and orchestrator paths increment consistently

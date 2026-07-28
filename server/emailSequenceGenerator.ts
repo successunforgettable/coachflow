@@ -1116,14 +1116,20 @@ You MUST use these exact numbers and real names. Do not fabricate.`
     ps: email.ps || '',
   }));
 
-  const insertResult: any = await db.insert(emailSequences).values({
+  const __row = {
     userId: input.userId,
     serviceId: input.serviceId,
     campaignId: input.campaignId || null,
     sequenceType: input.sequenceType,
     name: input.name,
     emails: sequenceData.emails,
-  });
+  };
+  // Persistence backstop — email copy lives in a JSON column, so the gate is given
+  // an explicit extractor. Single-row insert: the floor keeps it and logs rather than
+  // emptying the node (degrade, never kill).
+  const { gateBeforePersist, copyFieldsOfJson } = await import("./_core/persistenceGate");
+  const __g = await gateBeforePersist("emailSequences", [__row as any], { textOf: (r: any) => copyFieldsOfJson(r.emails, "emails") });
+  const insertResult: any = await db.insert(emailSequences).values((__g.kept[0] ?? __row) as any);
 
   return { id: insertResult[0].insertId };
 }

@@ -469,3 +469,78 @@ could otherwise write a full account of real results and still be blocked.
 
 Banked at ~77%, past the 70% target. The overshoot bought the second live-generation run, which is
 what caught the false positive — a fixture-only stop would have shipped it.
+
+---
+
+# ITEM 4 — 2026-07-29. Wiring complete; legacy fold demonstrated, not finished.
+
+## ✅ Persistence gate extended to the five tables that bypass `db.ts`
+
+`adCopy`, `landingPages`, `emailSequences`, `whatsappSequences`, `bonuses` all insert from
+generator files, so each got its own hook at the insert.
+
+**Three of them keep their copy in JSON columns** (`emails`, `messages`, `*Angle`) — `copyFieldsOf`
+only sees top-level strings, so without a new extractor the three biggest published surfaces would
+have been screened as if they were empty. Added `copyFieldsOfJson` (recursive, depth-capped,
+NON_COPY_KEYS-aware) and wired it per site via the new `textOf` option.
+
+## ✅ The three remaining generators — with the RIGHT disposition
+
+`adCreatives`, `leadMagnetContent` (`hvco.ts` assetBody) and `bonusPdf` use a new
+**`screenOnPersist`** — screens and logs, never drops. Dropping is the wrong remedy for all three:
+an ad creative's image is already rendered and uploaded (dropping the row orphans it), and blanking a
+lead-magnet or bonus body hands the coach an empty deliverable. The publish gate stays the hard stop.
+
+## 🟡 Legacy fold — capability built, ONE site wired
+
+`gateBeforePersist` now takes `legacyHits`, folding the legacy family's residual findings into the
+**same verdict** rather than letting each family conclude separately. Demonstrated end-to-end in
+`bonusGenerator`: the loop-scoped `fab.hits` are hoisted into `__residualLegacyHits` and passed to
+the gate.
+
+**NOT wired: email, WhatsApp, LP-testimonials, offer.** All four run their validator inside a retry
+loop, so each needs the same hoist. The recipe is exactly bonusGenerator's:
+1. declare `let __residualLegacyHits = []` before the retry loop
+2. assign `fab.ok ? [] : fab.hits.map(...)` inside it
+3. pass `{ legacyHits: __residualLegacyHits }` at the gate call
+
+## Verification — live output caught two more false positives
+
+Unit suites cannot find these. Screening **187 real email/WhatsApp rows** through the new JSON
+extractor produced 140 fabrication hits, and frequency analysis (the same technique that caught the
+detector bug on 2026-07-28) exposed two FPs immediately:
+
+| False positive | Hits | Cause |
+|---|---|---|
+| `"First Name"` → `invented_named_third_party` | **10** | the CRM **merge token** the sequence generators emit deliberately, read as a person |
+| `"Once I saw"` → `invented_testimonial` | 2 | `Once` read as a first name; the stoplist had `one`, not `once` |
+
+Both fixed. The remaining hits look genuine — `"I've worked with hundreds"`, `"28 students"`,
+`"six students"`, `"One client came"`, `"a professional services firm came"`, percentages.
+
+**That is three separate live-only false positives this week** (the narrative-window FP, then these
+two). Every one would have shipped on a green unit suite.
+
+| Gate | Result |
+|---|---|
+| `trackRecordClaims` + `fabricationValidator` | **38/38** |
+| `pipeline-fixes` | **382/382** |
+| TypeScript | **34** — see disclosure below |
+| Live JSON-extractor screen, 187 real rows | ran; 2 FPs found and fixed |
+
+⚠️ **TS is 34, one BELOW the 35 baseline — this is not an improvement.** The `as any` on the
+landingPages insert suppresses a pre-existing overload error at `landingPageGenerator.ts:1025`
+(confirmed by stashing and re-counting at HEAD). Suppression, not a fix; the underlying mismatch is
+untouched. **Zero errors added.**
+
+## Risk note on the new extractor
+
+`copyFieldsOfJson` only feeds the three **single-row** inserts, where the gate's floor keeps the row
+and logs rather than dropping. So even if it over-fires, it cannot delete an asset. The two
+**array** inserts that can drop rows (`adCopy`, `bonuses`) use the older `copyFieldsOf`, which has
+already been validated across 15,586 prod rows.
+
+## §16 note
+
+Banked at ~72%, past the 70% target. The overshoot was spent on the live screen and the two FP fixes
+it produced — stopping at the green unit suite would have shipped both.
