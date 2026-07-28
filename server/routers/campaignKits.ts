@@ -71,6 +71,14 @@ export async function autoSelectBest(
   // the same auto-select-on-cascade-completion path; Drizzle's set() accepts
   // either because the column types differ per field.
   itemId: number | string,
+  // Auto Mode cascade fix: the cascade's kit is born HERE (this is the only
+  // creation path runOrchestrationStep touches), and the insert below used to
+  // write {userId, icpId, name} only — so campaignType was threaded correctly
+  // through every generator in memory but never persisted on the kit row.
+  // The explicit `create` mutation further down this file always set it; the
+  // cascade never calls that path. Optional + ignored when the kit already
+  // exists, so every existing caller keeps today's behaviour exactly.
+  campaignType?: string | null,
 ): Promise<void> {
   const db = await getDb();
   if (!db) return;
@@ -98,6 +106,9 @@ export async function autoSelectBest(
       userId,
       icpId,
       name,
+      // NULL when not supplied — identical to the previous behaviour for the
+      // wizard/generator callers that pass no campaignType.
+      campaignType: (campaignType ?? null) as any,
     });
     kitId = result[0].insertId;
   }

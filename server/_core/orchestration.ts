@@ -115,7 +115,10 @@ export const ORCHESTRATION_STEP_LABELS = {
   offer: "Crafting your premium offer angles…",
   mechanism: "Naming your unique method…",
   hvco: "Building your free opt-in title…",
-  headlines: "Writing 100 headlines across 5 formulas…",
+  // No hard count: the cascade runs the headline generator in liteMode
+  // (countMultiplier 0.4), so the old "100 headlines" label overstated the real
+  // output by roughly 10x. Deck sizes vary by mode, so the label states no number.
+  headlines: "Writing your headline options across 5 formulas…",
   adCopy: "Drafting your Meta-compliant ad sets…",
   landingPage: "Generating angle {N} of 4 for your landing page…",
   emailSequence: "Composing your email sequence…",
@@ -135,6 +138,24 @@ type OrchestrationStep = {
   index: number;
   name: keyof typeof ORCHESTRATION_STEP_LABELS;
   kitField: string;
+  // TERMINAL-NODE DEGRADATION. A step marked optional may fail without taking
+  // the cascade down: the error is recorded and the loop continues.
+  //
+  // Only safe for steps NOTHING downstream consumes. Steps 1-8 are load-bearing
+  // — the cascade context feeds each node from the selected assets of the ones
+  // before it, so swallowing an early failure would build the rest of the
+  // campaign on a hole. Step 9 (adCreatives) is the last node and no step reads
+  // its output, so its failure costs only itself.
+  //
+  // Why this exists: a beginner run completed steps 1-8 and then died at step 9
+  // because the ad-headline validator rejected 1 of 5 headlines for being a
+  // single character over its length gate. The throw propagated out of the bare
+  // loop below, autoMode.orchestrate marked the whole job failed, and finalize
+  // never ran — so the kit was never completed despite eight nodes of real,
+  // persisted work. That failure was already on record as having exhausted its
+  // retries twice in the wild before this, so it is a live coach-facing path,
+  // not a test artifact.
+  optional?: boolean;
 };
 
 const ORCHESTRATION_STEPS: OrchestrationStep[] = [
@@ -151,7 +172,7 @@ const ORCHESTRATION_STEPS: OrchestrationStep[] = [
   // is settled). Wall-clock +2-2.5 min sequential per batch; cost ~$0.20.
   // selectedAdCreativeBatchId is varchar(100), unlike the int IDs of
   // steps 1-8 — autoSelectBest signature widened to accept string|number.
-  { index: 9, name: "adCreatives",      kitField: "selectedAdCreativeBatchId" },
+  { index: 9, name: "adCreatives",      kitField: "selectedAdCreativeBatchId", optional: true },
 ];
 
 const TOTAL_STEPS = ORCHESTRATION_STEPS.length;
@@ -856,7 +877,7 @@ export async function runOrchestrationStep(
   // autoSelectBest: update the kit's selected*Id slot for this step.
   // landingPage already does this internally — skipAutoSelect set above.
   if (generatedId != null && !skipAutoSelect) {
-    await autoSelectBest(input.userId, input.icpId, step.kitField, generatedId);
+    await autoSelectBest(input.userId, input.icpId, step.kitField, generatedId, input.campaignType ?? null);
   }
 
   return { skipped: false, generatedId, kitField: step.kitField };
@@ -900,19 +921,41 @@ export async function runOrchestration(input: OrchestrationInput): Promise<void>
   };
 
   // ── Step loop — delegates to the extracted single-step executor ─────────
+  // Steps that failed but were allowed to (step.optional). Reported on the job
+  // result so the Kit can tell the coach which node did not produce, instead of
+  // the whole run reading as a failure.
+  const failedOptionalSteps: Array<{ step: string; error: string }> = [];
+
   for (const step of ORCHESTRATION_STEPS) {
-    const result = await runOrchestrationStep(
-      {
-        userId: input.userId,
-        serviceId: input.serviceId,
-        icpId: input.icpId,
-        campaignType: input.campaignType,
-      },
-      step.name,
-      (label) => writeProgress(step.index, label),
-    );
-    if (result.skipped) {
-      await writeProgress(step.index, `Skipping ${ORCHESTRATION_STEP_LABELS[step.name]} — already done`);
+    try {
+      const result = await runOrchestrationStep(
+        {
+          userId: input.userId,
+          serviceId: input.serviceId,
+          icpId: input.icpId,
+          campaignType: input.campaignType,
+        },
+        step.name,
+        (label) => writeProgress(step.index, label),
+      );
+      if (result.skipped) {
+        await writeProgress(step.index, `Skipping ${ORCHESTRATION_STEP_LABELS[step.name]} — already done`);
+      }
+    } catch (err: unknown) {
+      // Load-bearing step — everything after it would build on a hole. Rethrow
+      // and let the job fail, exactly as before this change.
+      if (!step.optional) throw err;
+
+      const message = err instanceof Error ? err.message : String(err);
+      failedOptionalSteps.push({ step: step.name, error: message.slice(0, 500) });
+      console.error(
+        `[orchestration] Optional step "${step.name}" (${step.index}/${TOTAL_STEPS}) FAILED — ` +
+          `continuing so the coach keeps the ${step.index - 1} completed nodes. Error: ${message}`,
+      );
+      // Progress is best-effort; never let a progress write fail the cascade.
+      try {
+        await writeProgress(step.index, `Couldn't finish ${ORCHESTRATION_STEP_LABELS[step.name]} — carrying on with the rest of your campaign`);
+      } catch { /* non-fatal */ }
     }
   }
 
@@ -925,7 +968,12 @@ export async function runOrchestration(input: OrchestrationInput): Promise<void>
   await db.update(jobs)
     .set({
       status: "complete",
-      result: JSON.stringify({ kitId: finalKit?.id ?? null }),
+      // failedSteps is additive and omitted when empty, so existing readers of
+      // { kitId } are unaffected.
+      result: JSON.stringify({
+        kitId: finalKit?.id ?? null,
+        ...(failedOptionalSteps.length > 0 ? { failedSteps: failedOptionalSteps } : {}),
+      }),
     })
     .where(eq(jobs.id, input.jobId));
 }
