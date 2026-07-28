@@ -13,6 +13,22 @@ Last updated: 2026-07-28.
 
 ## 1. CURRENT STATE
 
+### 🟢 CHECKPOINT 2026-07-29 — PROD IS CLEAN, NOTHING IN FLIGHT
+
+**No run is live. No ACTIVE_RUN file is needed.** The last cascade (service 284 / ICP 261 / kit 199)
+completed and was **fully torn down**: 111 rows removed, every cascade table back to its pre-run
+baseline, **0 rows above baseline, 0 running jobs**, protected smoke rows intact 6/6/6/6.
+
+- **No landing page published** (`publicUrl` NULL) → **no KV entry to purge**.
+- **No Meta campaign** (`meta_published_ads` for the smoke user = 0) → nothing to pause or delete.
+- **Coach name restored.** `users.name` for 117174 was temporarily set to "Dana Whitfield" for the
+  P3b proof and is back to **"ZAP E2E Smoke (do not use)"** — verified by re-read.
+
+**Baseline all cascade tables reconcile against** (verified post-teardown): services 124 · ICPs 101 ·
+kits 49 · LPs 90 · emails 96 · WhatsApp 91 · bonuses 0 · concepts 0 · offers 101 · mechanisms 1072 ·
+hvcoTitles 6577 · headlines 2154 · adCopy 5405 · adCreatives 397. Protected id ranges: services
+272–277 · ICPs 249–254 · kits 187–192 · LPs 222–227.
+
 ### Ground truth
 
 | | |
@@ -149,17 +165,17 @@ so no generator guard can ever catch it.** It renders on **every zero-client coa
 `burchardProductivity.ts:123` falls back to the literal string `yourbrand` when `coachName` is unset;
 the magnet card renders `YOUR BRAND'S`. **Both were visible on the published page.**
 
-### P3 ✅ FIXED 2026-07-29 — EMAIL PLUMBING
+### P3 ✅ FIXED + PROVEN LIVE 2026-07-29 — EMAIL PLUMBING
 
 All three CTAs are `ctaLink: "#"` — **dead links**. All three sign-offs render an unfilled
 `[INSERT_HOST_NAME]`.
 
-### P4 ✅ FIXED 2026-07-29 — WHATSAPP WRONG FUNNEL
+### P4 ✅ FIXED + PROVEN LIVE 2026-07-29 — WHATSAPP WRONG FUNNEL (incl. display name)
 
 Event-framed on a **lead-magnet campaign with no event**: *"At [INSERT_EVENT_NAME] with
 [INSERT_HOST_NAME]"*, *"You've already said yes to [INSERT_EVENT_NAME]"*. Structural, not a token gap.
 
-### P5 ✅ FIXED 2026-07-29 — PROMPT EXAMPLE LEAKED INTO OUTPUT
+### P5 ✅ FIXED + PROVEN LIVE 2026-07-29 — PROMPT EXAMPLE LEAKED INTO OUTPUT
 
 Email 2's preview promises *"you sit in a car park"* — **the register standard's own worked example**
 from `META_AD_COMPLIANCE_REFERENCE.md` §3.1, escaping the prompt as if it were the coach's story
@@ -231,7 +247,15 @@ jobs whose heartbeat/last-write exceeds a generous threshold, transitioning to `
 error the UI can surface. **Never infer liveness from `jobs.status`; the tell is the last downstream
 write timestamp.** Own pass.
 
-### 12. F2 — `campaignKits.campaignType` is NULL
+### 12. ✅ F2 CLOSED 2026-07-29 — `campaignKits.campaignType` was NULL
+
+**Proven live: kit 199 carried `campaignType: "lead_magnet"`.** The fix is `ensureCampaignKit()`
+called at the TOP of `runOrchestration`, before any generator runs — `autoSelectBest` now delegates
+to it so there is ONE creation path. Deliberately NOT threaded through the seven generator call
+sites; that approach failed twice. It also backfills `campaignType` on an existing kit that has
+none. Original diagnosis retained below.
+
+#### Original diagnosis
 
 **Still NULL after the attempted fix. The change is inert, not harmful.**
 
@@ -263,6 +287,38 @@ coach base, matches observed prod values.
 **Asked ONLY for date-based types** (webinar, in_person_event, challenge) — **never** for
 lead_magnet or discovery, which legitimately have no date. **Not the ladder** — it runs before the
 kit exists while `campaignFacts` lives on the kit. No migration (`campaignFacts` exists from 0090).
+
+### 🔑 STANDING RULES EARNED THIS WEEK — carry these forward
+
+**1. DROP vs SCREEN.** Drop a row **only** where rows are interchangeable variants (an ad-copy deck,
+a mechanism deck). Where each row is a required **TYPE** (the three bonuses are one-per-type and the
+offer and LP both reference the set) or **owns an already-produced artefact** (an ad creative's image
+is already rendered and uploaded), **screen and log** — dropping leaves a structural hole or orphans
+an asset. Established by creatives, then proven by bonuses losing the accelerator on a live run.
+
+**2. LIVE VERIFICATION IS NOT OPTIONAL ON THIS CODEBASE.** Five live-only findings this week, every
+one on a green suite: the narrative-window FP · `"First Name"` (a CRM merge token read as a person) ·
+`"Once I saw"` · the legacy tier-1 mislabel that would have dropped nearly every offer row · the
+inverted `"A parent I worked with"` client claim. **Plus one fix — P3b — that structural
+verification called done and live output refuted.** Fixtures measure the fixtures.
+
+**3. PROMPT STRINGS BECOME CONTENT.** A worked example or a token instruction sitting inside a prompt
+gets reproduced as output. P5's car-park leak and P3b's HOST-NAME ANCHOR were both this: in P3b the
+code correctly supplied `Host: Dana Whitfield` while the same prompt still instructed the model to
+emit `[INSERT_HOST_NAME]`, and the instruction won. **Supplying a value is not enough — the
+instruction to use the token must also go.**
+
+### NEXT UP — P6–P9 are all image/layout work, a different kind of session
+
+P6 creative gender mismatch vs ICP · P7 garbled AI text in images · P8 all five creatives share one
+body line · P9 LP text overflow, grammar break, 137-char lead-magnet title cap.
+
+### 🟡 LOGGED, NOT SCHEDULED — needs its own pass, not a drive-by
+
+`adCopyGenerator.ts:40` carries a **"Do NOT write"** list with concrete failure examples
+(*"I used to be fat, now I'm thin"*). That is the **§14 negative-priming anti-pattern** — the same
+class as the P5 leak, sitting in a **live compliance block**. CLAUDE.md records negative examples as
+the root cause of the Sprint B email regression. **Needs regression testing, not a quick edit.**
 
 ### Then, roughly in order
 
