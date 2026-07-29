@@ -363,9 +363,9 @@ Return ONLY a JSON array of 20 subheadline strings, nothing else.`;
   try {
     if (icp?.id) {
       const { hvcoTitles } = await import("../drizzle/schema");
-      const { asc } = await import("drizzle-orm");
-      const [firstRow] = await db.select({ id: hvcoTitles.id }).from(hvcoTitles)
-        .where(eq(hvcoTitles.hvcoSetId, hvcoSetId)).orderBy(asc(hvcoTitles.id)).limit(1);
+      const { pickSelectedFromSet } = await import("./_core/pickSelected");
+        const __pickedId = await pickSelectedFromSet(db, "hvco", hvcoSetId);
+        const firstRow = __pickedId ? { id: __pickedId } : undefined;
       if (firstRow) {
         const { autoSelectBest } = await import("./routers/campaignKits");
         await autoSelectBest(input.userId, icp.id, "selectedHvcoId", firstRow.id);

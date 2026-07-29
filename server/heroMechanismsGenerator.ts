@@ -370,9 +370,9 @@ Return ONLY a JSON array of 5 objects with "name" and "description" fields, noth
   try {
     if (icp?.id) {
       const { heroMechanisms } = await import("../drizzle/schema");
-      const { asc } = await import("drizzle-orm");
-      const [firstRow] = await db.select({ id: heroMechanisms.id }).from(heroMechanisms)
-        .where(eq(heroMechanisms.mechanismSetId, mechanismSetId)).orderBy(asc(heroMechanisms.id)).limit(1);
+      const { pickSelectedFromSet } = await import("./_core/pickSelected");
+        const __pickedId = await pickSelectedFromSet(db, "heroMechanisms", mechanismSetId);
+        const firstRow = __pickedId ? { id: __pickedId } : undefined;
       if (firstRow) {
         const { autoSelectBest } = await import("./routers/campaignKits");
         await autoSelectBest(input.userId, icp.id, "selectedMechanismId", firstRow.id);

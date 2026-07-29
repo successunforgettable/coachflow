@@ -537,9 +537,9 @@ Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES
     if (resolvedIcpId) {
       const db2 = await getDb();
       if (db2) {
-        const { asc } = await import("drizzle-orm");
-        const [firstRow] = await db2.select({ id: headlines.id }).from(headlines)
-          .where(eq(headlines.headlineSetId, headlineSetId)).orderBy(asc(headlines.id)).limit(1);
+        const { pickSelectedFromSet } = await import("./_core/pickSelected");
+          const __pickedId = await pickSelectedFromSet(db2, "headlines", headlineSetId);
+          const firstRow = __pickedId ? { id: __pickedId } : undefined;
         if (firstRow) {
           const { autoSelectBest } = await import("./routers/campaignKits");
           await autoSelectBest(input.userId, resolvedIcpId, "selectedHeadlineId", firstRow.id);

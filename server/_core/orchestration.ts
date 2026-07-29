@@ -36,6 +36,7 @@
  * "engagement", tone = "conversational", sequenceLength = 3 (per WA Zod
  * schema defaults).
  */
+import { pickSelectedFromSet } from "./pickSelected";
 import { runOfferGeneration } from "../offersGenerator";
 import { runHeroMechanismGeneration } from "../heroMechanismsGenerator";
 import { runHvcoGeneration } from "../hvcoGenerator";
@@ -329,60 +330,21 @@ export async function runOrchestrationStep(
     return kit;
   };
 
-  // ── Helper: pick first item from a set for autoSelectBest ───────────────
-  // The 4 set-returning gen-cores (mechanism/hvco/headlines/adCopy) need
-  // the orchestrator to pick a specific item from the set to populate the
-  // kit's selected*Id. Strategy: pick the lowest-id row in the set (first
-  // inserted; deterministic across re-runs). Future enhancement: pick by
-  // selectionScore DESC where the table tracks it (adCopy has selectionScore;
-  // others may not).
-  const pickFirstFromHeroMechanismSet = async (setId: string): Promise<number | null> => {
-    const [row] = await db.select({ id: heroMechanisms.id }).from(heroMechanisms)
-      .where(eq(heroMechanisms.mechanismSetId, setId)).orderBy(asc(heroMechanisms.id)).limit(1);
-    return row?.id ?? null;
-  };
-  /**
-   * Pick the auto-selected lead-magnet title for a set.
-   *
-   * ROOT CAUSE OF THE 137-CHAR TITLE ON LP 230 (fixed 2026-07-29). This used to
-   * be `orderBy(asc(id)).limit(1)` — the lowest id in the set. The generator
-   * inserts tabs in order long → short → beast_mode → subheadlines, so the
-   * lowest id is ALWAYS the `long` tab. Measured on all 91 prod sets: the
-   * selector picked `long` 91/91, mean 140 chars, max 271 — while the `short`
-   * tab (mean 30, ZERO over 60 chars) was generated on every single set and
-   * never once selected.
-   *
-   * This was a SELECTION bug, not a generation bug: insertion order standing in
-   * for a choice, exactly like P8's `orderBy(desc(id)).limit(1)` on ad-copy
-   * bodies. The `long` tab is a legitimate product surface — a coach can pick a
-   * longer benefit-first title in the UI — it simply must not be what Auto Mode
-   * silently drops into every display slot.
-   *
-   * Prefers `short`. Falls back to the shortest title in the set for legacy sets
-   * that predate the short tab, so this can never return nothing where the old
-   * code returned something.
-   */
-  const pickFirstFromHvcoSet = async (setId: string): Promise<number | null> => {
-    const [shortRow] = await db.select({ id: hvcoTitles.id }).from(hvcoTitles)
-      .where(and(eq(hvcoTitles.hvcoSetId, setId), eq(hvcoTitles.tabType, "short")))
-      .orderBy(asc(hvcoTitles.id)).limit(1);
-    if (shortRow?.id) return shortRow.id;
-    // Legacy / no short tab: take the shortest title rather than the first row.
-    const [shortest] = await db.select({ id: hvcoTitles.id }).from(hvcoTitles)
-      .where(eq(hvcoTitles.hvcoSetId, setId))
-      .orderBy(asc(sql`CHAR_LENGTH(${hvcoTitles.title})`), asc(hvcoTitles.id)).limit(1);
-    return shortest?.id ?? null;
-  };
-  const pickFirstFromHeadlineSet = async (setId: string): Promise<number | null> => {
-    const [row] = await db.select({ id: headlines.id }).from(headlines)
-      .where(eq(headlines.headlineSetId, setId)).orderBy(asc(headlines.id)).limit(1);
-    return row?.id ?? null;
-  };
-  const pickFirstFromAdSet = async (setId: string): Promise<number | null> => {
-    const [row] = await db.select({ id: adCopy.id }).from(adCopy)
-      .where(eq(adCopy.adSetId, setId)).orderBy(asc(adCopy.id)).limit(1);
-    return row?.id ?? null;
-  };
+  // ── Selection: ONE shared decision, ONE call path ───────────────────────
+  // Delegates to _core/pickSelected. Each of these used to be
+  // `orderBy(asc(id)).limit(1)` — first-inserted — with the SAME shape
+  // duplicated again inside every generator, so a fix could land in one layer
+  // and miss the other. That is not hypothetical: the first hvco fix did
+  // exactly that and only a sweep caught it.
+  //
+  // NO LONGER A FUTURE ENHANCEMENT (built 2026-07-29). Scored tables (adCopy,
+  // headlines) order by selectionScore DESC with id as tie-break; unscored ones
+  // (heroMechanisms, hvcoTitles) carry a deliberate tab rule instead of an
+  // ordinal. pickSelected.ts documents the rules and the measured waste.
+  const pickFirstFromHeroMechanismSet = (setId: string) => pickSelectedFromSet(db, "heroMechanisms", setId);
+  const pickFirstFromHvcoSet = (setId: string) => pickSelectedFromSet(db, "hvco", setId);
+  const pickFirstFromHeadlineSet = (setId: string) => pickSelectedFromSet(db, "headlines", setId);
+  const pickFirstFromAdSet = (setId: string) => pickSelectedFromSet(db, "adCopy", setId);
 
   // ── Resolve user tier/role for compliance precompute caps (headlines/adCopy) ──
   // runHeadlinesGeneration + runAdCopyGeneration accept optional userSubscriptionTier

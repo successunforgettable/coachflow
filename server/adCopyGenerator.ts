@@ -812,9 +812,9 @@ Format as JSON array:
   // Auto-select first ad copy into campaign kit (creates kit if needed)
   try {
     if (icp?.id) {
-      const { asc } = await import("drizzle-orm");
-      const [firstRow] = await db.select({ id: adCopy.id }).from(adCopy)
-        .where(eq(adCopy.adSetId, adSetId)).orderBy(asc(adCopy.id)).limit(1);
+      const { pickSelectedFromSet } = await import("./_core/pickSelected");
+        const __pickedId = await pickSelectedFromSet(db, "adCopy", adSetId);
+        const firstRow = __pickedId ? { id: __pickedId } : undefined;
       if (firstRow) {
         const { autoSelectBest } = await import("./routers/campaignKits");
         await autoSelectBest(input.userId, icp.id, "selectedAdCopyId", firstRow.id);
