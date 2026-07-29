@@ -363,10 +363,11 @@ real prod `adCopy` rows, real Replicate + Cloudinary. Batch `batch-1785329050853
 ICPs 101 · kits 49 · adCopy 5405 · LPs 90 · emails 96 · WA 91) · 0 running jobs · protected rows
 intact 6/6/6/6. No LP published → no KV to purge.
 
-🔴 **TEARDOWN OUTSTANDING — awaiting Arfeen's explicit "execute":**
-`DELETE FROM adCreatives WHERE batchId = 'batch-1785329050853-d6c03d7a';` (5 rows → back to 397).
-Also 5 orphaned Cloudinary objects `ad-creatives_117174_batch-1785329050853-d6c03d7a_variation-{1..5}.png.png`
-plus their `raw-variation-*` siblings.
+✅ **TEARDOWN COMPLETE 2026-07-29** — executed on Arfeen's explicit go-ahead. 5 rows deleted,
+**settled 75s, then re-verified**: creatives back to **397**, batch remnant **0**, and every other
+table at baseline (services 124 · ICPs 101 · kits 49 · adCopy 5405 · LPs 90 · emails 96 · WA 91 ·
+offers 101 · mechanisms 1072) · **0 running jobs** · protected rows intact **6/6/6/6**.
+**A fresh session has nothing to clean in the DB.**
 
 ### 🔴 STILL UNPROVEN — the two paths this run did NOT exercise
 
@@ -500,6 +501,18 @@ the root cause of the Sprint B email regression. **Needs regression testing, not
 
 - 🔴 **Rotate the smoke password** (`zap-e2e-smoke@mailinator.com`) + update `~/.zap-e2e-creds.env`.
   Deferred through three runs.
+- 🟡 **Cloudinary cleanup — ad creatives (added 2026-07-29).** A DB delete never touches Cloudinary,
+  so every torn-down run leaves its images behind. **10 orphans from the 07-29 proof run** — cloud
+  `dunshei0y`, Media Library → search `batch-1785329050853` → delete all 10:
+  ```
+  ad-creatives_117174_batch-1785329050853-d6c03d7a_variation-{1,2,3,4,5}.png.png
+  ad-creatives_117174_batch-1785329050853-d6c03d7a_raw-variation-{1,2,3,4,5}.png.png
+  ```
+  ⚠️ Note the **`.png.png` double suffix** — same storage-key bug class as the known `.pdf.pdf`
+  issue, so search on the batch id rather than the extension. ⚠️ Also check `resource_type`: the
+  bonus PDFs were stored as **`image`** not `raw`, which is why a delete silently no-ops.
+  **Standing gap: teardown reconciles the DB only. Cloudinary orphans accumulate across every run
+  and nothing sweeps them** — worth a small teardown-side sweep by batchId eventually.
 - **Cloudinary cleanup:** two orphaned bonus PDFs, public_ids `bonuses_117174_19.pdf` and
   `bonuses_117174_20.pdf`, resource_type **`image`** (not `raw` — that's why a delete silently
   no-ops), cloud `dunshei0y`. Media Library → search `bonuses_117174_` → delete.
