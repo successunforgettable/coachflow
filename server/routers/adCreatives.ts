@@ -108,9 +108,34 @@ export function generateAdImagePrompt(
     ? "Raw UGC aesthetic, shot on iPhone, unpolished and authentic, slightly messy real-world environment, natural handheld camera shake, no studio lighting, no professional makeup, low-budget realism, observational documentary style, native social feed feel"
     : "Candid documentary photograph, available light, dramatic directional lighting, high contrast, shallow depth of field, phone-quality realism rather than polished studio work";
 
-  // Niche context and compliance — applied to every style
-  const nicheContext = `The person and setting must visually match the ${niche} niche — their clothing, environment, and expression must be recognisable to someone in that world. A fitness coach's client looks different from a crypto trader's client looks different from a corporate executive's client.`;
+  // P6 cause 1 (2026-07-29): nicheContext is STYLE-AWARE. It used to be a single
+  // person-worded string appended to all five styles, including the two that are
+  // explicitly person-free — so the `object` prompt read "…no person in frame.
+  // […] The person and setting must visually match … their clothing, environment
+  // and expression…", contradicting itself four words later. That is why the
+  // object slot kept returning a person. It predates fix C, and the fix-C re-run
+  // (upsampling OFF) still drifted, which ruled out prompt_upsampling as the cause.
+  const nicheContextPerson = `The person and setting must visually match the ${niche} niche — their clothing, environment, and expression must be recognisable to someone in that world. A fitness coach's client looks different from a crypto trader's client looks different from a corporate executive's client.`;
+  const nicheContextSetting = `The setting, props and styling must visually match the ${niche} niche — the room, surfaces and objects must be recognisable to someone in that world. A fitness coach's workspace looks different from a crypto trader's looks different from a corporate executive's.`;
   const complianceNote = `Do not generate images that imply medical treatment, guaranteed financial results, or dramatic physical before/after transformation. Images must show aspiration and possibility, not guaranteed outcomes.`;
+
+  // P6: `problem` was a DEAD parameter — passed by all five call sites,
+  // interpolated into none of the templates. That is why the 2026-07-28 v1 showed
+  // a newborn for an ICP whose baby is seven months old: nothing about the actual
+  // scenario reached the image. Now carried as a scene constraint. Trimmed at a
+  // word boundary — the raw painPoints field can be several sentences, and a long
+  // tail dilutes the rest of the prompt.
+  const gist = (s: string, max: number): string => {
+    const t = (s ?? "").replace(/\s+/g, " ").trim();
+    if (t.length <= max) return t;
+    const cut = t.slice(0, max);
+    const lastSpace = cut.lastIndexOf(" ");
+    return `${cut.slice(0, lastSpace > max * 0.6 ? lastSpace : max)}…`;
+  };
+  const problemGist = gist(problem, 180);
+  const scene = problemGist
+    ? `The moment depicted should be recognisable to someone living this situation: ${problemGist}`
+    : "";
 
   // Positive framing of the clean-plate requirement. Describes what the surfaces
   // ARE (blank, plain, unmarked) rather than listing what must not appear —
@@ -118,15 +143,18 @@ export function generateAdImagePrompt(
   const cleanPlate = "Every surface in frame is blank and unmarked: plain walls, unbranded plain objects, blank paper, blank screens, plain untitled book covers, plain clothing without prints or logos. A purely photographic scene with clear empty space around the subject.";
 
   const stylePrompts = {
-    person_shocked: `${baseStyle}. Person (30-45 years old) dressed and styled for the ${niche} world, with EXCITED expression, wide eyes, enthusiastic smile, gesturing toward the camera. Dark grey/black background. ${nicheContext} ${cleanPlate} ${complianceNote}`,
+    person_shocked: `${baseStyle}. Person (30-45 years old) dressed and styled for the ${niche} world, with EXCITED expression, wide eyes, enthusiastic smile, gesturing toward the camera. Dark grey/black background. ${nicheContextPerson} ${scene} ${cleanPlate} ${complianceNote}`,
 
-    screenshot: `${baseStyle}. Laptop photographed at an angle on a dark desk surface, its screen showing a plain abstract chart shape with no labelling, coffee cup visible. ${nicheContext} ${cleanPlate} ${complianceNote}`,
+    // "No people in the frame" was a bare NEGATION and Flux ignored it — the same
+    // trap as the deleted noText string. The `object` style's positively-framed
+    // "an object study only" worked on the identical run. Positive framing only.
+    screenshot: `${baseStyle}. An unattended desk at night, photographed as a still life: a laptop open at an angle on a dark surface, its screen showing a plain abstract chart shape with no labelling, a cold coffee cup beside it. The room is empty, the chair pushed back. ${nicheContextSetting} ${scene} ${cleanPlate} ${complianceNote}`,
 
-    person_intense: `${baseStyle}. Person (30-45 years old) dressed and styled for the ${niche} world, with CONFIDENT expression, serious face, leaning forward, direct eye contact. Dark background with a spotlight on the face. ${nicheContext} ${cleanPlate} ${complianceNote}`,
+    person_intense: `${baseStyle}. Person (30-45 years old) dressed and styled for the ${niche} world, with CONFIDENT expression, serious face, leaning forward, direct eye contact. Dark background with a spotlight on the face. ${nicheContextPerson} ${scene} ${cleanPlate} ${complianceNote}`,
 
-    object: `${baseStyle}. A single relevant object (device, tool, or item) specifically associated with the ${niche} niche, photographed alone as a still life with no person in frame. Dramatic lighting, dark background. ${nicheContext} ${cleanPlate} ${complianceNote}`,
+    object: `${baseStyle}. A single relevant object (device, tool, or item) specifically associated with the ${niche} niche, photographed alone as a still life. The frame is empty of people — an object study only. Dramatic lighting, dark background. ${nicheContextSetting} ${scene} ${cleanPlate} ${complianceNote}`,
 
-    person_curious: `${baseStyle}. Person (30-45 years old) dressed and styled for the ${niche} world, with INTRIGUED expression, raised eyebrow, interested smile, head tilted. Dark grey background. ${nicheContext} ${cleanPlate} ${complianceNote}`,
+    person_curious: `${baseStyle}. Person (30-45 years old) dressed and styled for the ${niche} world, with INTRIGUED expression, raised eyebrow, interested smile, head tilted. Dark grey background. ${nicheContextPerson} ${scene} ${cleanPlate} ${complianceNote}`,
   };
 
   return stylePrompts[style as keyof typeof stylePrompts] || stylePrompts.person_shocked;

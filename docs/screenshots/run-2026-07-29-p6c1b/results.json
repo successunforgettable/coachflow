@@ -1,0 +1,55 @@
+{
+  "niche": "first-time parents of babies aged 4-12 months who are exhausted by night waking",
+  "problem": "Baby feeds to sleep every night and wakes every two hours; the parent has tried wake windows, sleep sacks, white noise and dream feeds and nothing holds for more than three nights.",
+  "results": [
+    {
+      "model": "flux-1.1-pro",
+      "style": "person_shocked",
+      "variation": 1,
+      "ms": 6006,
+      "bytes": 1048594,
+      "ok": true
+    },
+    {
+      "model": "flux-1.1-pro",
+      "style": "screenshot",
+      "variation": 2,
+      "ms": 7027,
+      "bytes": 1118673,
+      "ok": true
+    },
+    {
+      "model": "flux-1.1-pro",
+      "style": "person_intense",
+      "variation": 3,
+      "ms": 4559,
+      "bytes": 1077166,
+      "ok": true
+    },
+    {
+      "model": "flux-1.1-pro",
+      "style": "object",
+      "variation": 4,
+      "ms": 4251,
+      "bytes": 1088896,
+      "ok": true
+    },
+    {
+      "model": "flux-1.1-pro",
+      "style": "person_curious",
+      "variation": 5,
+      "ms": 4296,
+      "bytes": 1292706,
+      "ok": true
+    }
+  ],
+  "summary": {
+    "flux-1.1-pro": {
+      "n": 5,
+      "medianMs": 4559,
+      "minMs": 4251,
+      "maxMs": 7027,
+      "meanMs": 5228
+    }
+  }
+}
