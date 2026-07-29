@@ -157,3 +157,33 @@ Always audit `INFORMATION_SCHEMA` before assuming Drizzle key == DB column. Comm
 - **Why this is law:** three replication specs — Iman (`..Faceless_Product_Launch..`), Rajsekar (`..AI_Coaching_Workshop..`), and Ali (`..YouTube_Creator_Course..`) — carried prose that CONTRADICTED their own frozen PNGs ("poster only, not a chain of funnel sections"; "overwhelmingly white/coral"; "green CTA"). Every downstream artifact — the template, its unit test, CLAUDE.md, and the handovers — faithfully implemented the LIE and PASSED its gate, because the gate checked against the lie. Iman shipped at 0.48× and webinar at 0.54× of the real page. All three specs now carry a ⚠️ PROSE-VS-PNG correction banner.
 - **A structural/self-judged PASS against a spec is worthless if the spec misreads the PNG.** Judge the render against the PNG itself, section-by-section, every time.
 - **Any future reference spec MUST be written from the frozen PNG**, and re-reconciled to the pixels if the capture is ever replaced. A spec is a convenience index over the PNG, not an authority above it.
+
+## 15b. Context Discipline — measured, not guessed (corrected 2026-07-29)
+
+**The old "bank at 70% context" rule is WITHDRAWN. CC cannot measure its own context usage.**
+Obeying an unseeable number meant guessing, and the guesses ran ~4× high: a session self-reported
+"84%" while `/context` showed **22% used, 78% free**. On that invented constraint a live prod
+cascade was declined **twice**, costing a session and a half of real work.
+
+- **Never self-report a context percentage; never act on one.** No "I'm at ~70%", no "running low".
+- **If a checkpoint decision genuinely depends on remaining room, ask Arfeen to run `/context` and
+  paste it.** Only he can run it — it is a built-in CLI command, not a skill CC can invoke.
+- **Never decline, defer, or truncate substantive work on a self-estimated figure.**
+- **Bank at work boundaries** — task finished, run torn down, decision needing Arfeen's input,
+  sprint ready to commit. Those are observable; percentages are not.
+
+**Reading is the dominant cost — the real lever.** `/context` attributed **663.9k tokens (66%)** to
+read results. Startup load is trivial by comparison (CLAUDE.md + MEMORY.md ≈ 10.5k combined).
+
+- **Use `offset`/`limit`** — read the functions you need, not whole files. `adCreativesGenerator.ts`
+  read in full cost 8,323 tokens; the two relevant functions would have cost a third.
+- **Never pipe a bare `railway … --json` into context — ~94KB / ~24,000 tokens for ONE status
+  check** (it embeds the entire commit message + service manifest). Always extract at the shell:
+  `railway deployment list … --json | python3 -c "import sys,json; d=json.load(sys.stdin)[0]; print(d['status'], d['meta']['commitHash'][:7])"`
+- **Long reports go to `docs/handovers/` and get referenced, never pasted into chat.**
+- Images are legitimately expensive (~1,400 tokens per 1024×1024) but are often the only ground
+  truth for a visual defect — the 07-28 pixels overturned STATE.md's own P7 summary. Spend them
+  deliberately, not reflexively.
+
+**Unrelated and unchanged: teardown still outranks the artifact read.** That rule is about prod
+safety, not context, and stands exactly as written in STATE.md TRAPS.
