@@ -129,31 +129,53 @@ function trimToLength(s: string, max: number): string {
 /**
  * Body-copy source: reuse the selected ad-copy primary text (~140 chars,
  * campaign-aligned), mainBenefit fallback. Strips operator-fill tokens and, per
- * the no-price-on-creatives rule, falls back to mainBenefit if a currency
- * amount survives the trim.
+ * the no-price-on-creatives rule, drops any candidate where a currency amount
+ * survives the trim.
+ *
+ * P8 fix (2026-07-29): returns the DECK, not one row. The prior `.limit(1)`
+ * meant every variation in a batch composited the identical body line even
+ * when the generator had produced several — measured on prod, 3 body rows
+ * exist per service and two were discarded on every batch. Callers rotate by
+ * variation index. Ordered newest-first so index 0 is the row the old
+ * single-value behaviour returned (parity for recomposite paths).
  */
-export async function resolveAdBodyText(db: any, userId: number, serviceId: number | null | undefined): Promise<string> {
-  if (serviceId == null) return "";
+export async function resolveAdBodyTexts(
+  db: any, userId: number, serviceId: number | null | undefined, limit = 5,
+): Promise<string[]> {
+  if (serviceId == null) return [];
   // Robust to markdown-escaped underscores in stored copy (e.g. "[INSERT\_X]").
   const stripTokens = (s: string) => s.replace(/\[INSERT[^\]]*\]/gi, "").replace(/\s+/g, " ").trim();
-  let body = "";
+  const hasPrice = (s: string) => /[£$€]\s?\d/.test(s);
+  let bodies: string[] = [];
   try {
     const rows = await db.select({ content: adCopy.content })
       .from(adCopy)
       .where(and(eq(adCopy.userId, userId), eq(adCopy.serviceId, serviceId), eq(adCopy.contentType, "body")))
       .orderBy(desc(adCopy.id))
-      .limit(1);
-    body = trimToLength(stripTokens(rows[0]?.content ?? ""), 140);
+      .limit(limit);
+    bodies = (rows ?? [])
+      .map((r: { content: string | null }) => trimToLength(stripTokens(r?.content ?? ""), 140))
+      .filter((b: string) => b.length > 0 && !hasPrice(b));
   } catch { /* fall through to mainBenefit */ }
-  const hasPrice = /[£$€]\s?\d/.test(body);
-  if (!body || hasPrice) {
+  if (bodies.length === 0) {
     try {
       const [svc] = await db.select({ mainBenefit: services.mainBenefit })
         .from(services).where(eq(services.id, serviceId)).limit(1);
-      body = trimToLength(stripTokens(svc?.mainBenefit ?? ""), 140);
-    } catch { /* leave body as-is */ }
+      const fallback = trimToLength(stripTokens(svc?.mainBenefit ?? ""), 140);
+      if (fallback) bodies = [fallback];
+    } catch { /* leave empty */ }
   }
-  return body;
+  return bodies;
+}
+
+/**
+ * Single-body convenience wrapper — unchanged contract for the recomposite and
+ * single-creative paths, which render one creative and want the same row the
+ * batch's index-0 variation used.
+ */
+export async function resolveAdBodyText(db: any, userId: number, serviceId: number | null | undefined): Promise<string> {
+  const bodies = await resolveAdBodyTexts(db, userId, serviceId, 1);
+  return bodies[0] ?? "";
 }
 
 // ─── Public: the render template ─────────────────────────────────────────────

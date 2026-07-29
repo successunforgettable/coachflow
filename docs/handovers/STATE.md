@@ -187,18 +187,50 @@ All five images depict a **man**; the ICP is unambiguously a **mother** (partner
 mothers' group, antenatal group). **The image prompt is not carrying ICP gender.** Also: v1 shows a
 **newborn** when the ICP's baby is 4–12 months, and reads alarming rather than gentle.
 
-### P7 CREATIVES — GARBLED AI TEXT
+### P7 ✅ FIX C BUILT + PROVEN ON REAL PROMPTS 2026-07-29 — NOT YET DEPLOYED
 
-v4 renders garbled label text — `"Baby time parents"` and `"Parenting books"` observed directly;
-`"Whieck to fisrts-ime parents"` also reported. Headlines **overlay subjects' faces** in multiple
-creatives. This is the **Flux text-rendering weakness**, and it feeds straight into the parked
-image-model evaluation — **now UNBLOCKED**, since creatives generate again and these are real ZAP
-prompts rather than generic test ones.
+**The earlier wording here was wrong: this was a PROMPT defect first, model second.**
+Full trace: `docs/handovers/P6-P8_INVESTIGATION_ad-creatives.md`.
 
-### P8 ALL 5 CREATIVES SHARE ONE IDENTICAL BODY LINE
+Three causes, all ours: (1) the base style asked for `"Gossip magazine style, tabloid aesthetic"` —
+a gossip magazine IS a page of text, and v3 was Flux obeying correctly; (2) the `noText` hard
+negative (`"NO text, NO words, NO letters…"`) was concatenated into flux-1.1-pro's **positive**
+prompt — that endpoint has no negative-prompt input and diffusion has no logical NOT, so every one
+of those tokens pushed text toward the image (**§14 negative-priming, live, in a shipping prompt**);
+(3) the prompt explicitly ordered empty green callout bubbles — the most caption-inviting shape
+available, and what v4's labels were filling.
 
-*"I remember standing at the cot at 11pm…"* on all five. The deck is less varied than the count
-implies — **relevant to Entity-ID diversity**.
+**Fixed:** photographic base style, `noText` deleted and replaced by a positively-framed clean-plate
+description, callouts dropped, `prompt_upsampling: false`.
+
+**Proof — 5 real ZAP prompts re-rendered on flux-1.1-pro, `docs/screenshots/run-2026-07-29-fixC/`:
+ZERO text in all five.** Also **~5× faster: median 5.5s/image against the ~25–30s the code comment
+recorded** — the upsampler was an LLM round-trip per image.
+
+⚠️ **Two things fix C did NOT fix — do not assume otherwise:** subjects are still male (that is P6,
+deliberately held); and the `object` style STILL returned a person rather than a still life, so
+**upsampling was NOT the cause of that drift** — the niche string dominates. The investigation
+doc's item-C4 hypothesis on drift is refuted by its own re-run.
+
+**Correction to the old P7 text:** `"Baby time parents"` / `"Parenting books"` were **not garbled** —
+they were crisply rendered nonsense labels. The genuine garbling was v3 (newsprint) and v5 (book
+cover). Two distinct defects that the one-line summary had merged.
+
+### P8 ✅ FIXED IN CODE 2026-07-29 — NOT YET PROVEN LIVE
+
+*"I remember standing at the cot at 11pm…"* on all five. **Two independent single-value bottlenecks,
+either alone inert:** `adCreativesGenerator.ts:468` resolved the body once OUTSIDE the variation
+loop, and `compositeHeadline.ts:145` was `.orderBy(desc(id)).limit(1)` so it could only ever return
+one row. **Prod has 3 `contentType='body'` rows per service** — two generated, stored and discarded
+on every batch.
+
+**Fixed:** new `resolveAdBodyTexts()` returns the deck; `resolveAdBodyText()` kept as a thin wrapper
+so the 6 recomposite / single-creative call sites are untouched. Rotation `bodies[i %
+bodies.length]` applied at **all three** batch sites — the third, `routers/adCreatives.ts:981`
+(wizard batch), carried the identical defect and was **not** in the original P8 report. Zero added
+LLM or image spend.
+
+**Still needs a live cascade to prove** — rotation cannot be verified from a raw-plate render.
 
 ### P9 LP TEXT OVERFLOW + GRAMMAR
 
@@ -308,10 +340,27 @@ code correctly supplied `Host: Dana Whitfield` while the same prompt still instr
 emit `[INSERT_HOST_NAME]`, and the instruction won. **Supplying a value is not enough — the
 instruction to use the token must also go.**
 
-### NEXT UP — P6–P9 are all image/layout work, a different kind of session
+### NEXT UP — P6 + the compositing fix, then deploy fix C
 
-P6 creative gender mismatch vs ICP · P7 garbled AI text in images · P8 all five creatives share one
-body line · P9 LP text overflow, grammar break, 137-char lead-magnet title cap.
+**P7 and P8 are built and committed (not pushed, not deployed).** What remains on creatives:
+
+1. **Deploy fix C + P8** and run one live cascade — the only way to prove the body rotation and to
+   see composited output rather than raw plates.
+2. **P6 gender — needs a RESOLUTION step, not a concat. Propose before building.** The data exists
+   (`demographics.gender` + `age_range`, populated on **73/101** prod ICPs) and no image path reads
+   it. But the stored values are hedged **population prose** — *"All genders, skewing slightly
+   female (55–60%)"* — and a photograph needs **one** person. Resolve once per batch (all five
+   creatives should show the same audience; varying gender across a deck reads as a bug), via
+   `normalizeDemographics()`, taking the *skew* term when the string hedges and falling back to the
+   current neutral wording only when genuinely unresolvable — never a coin flip.
+   Also: `generateAdImagePrompt`'s `problem` parameter is **dead** — passed by every caller,
+   interpolated into none of the five templates. That is why v1 showed a newborn for a 7-month ICP.
+3. **Headline-over-face — compositing, do it properly.** Editorial already has the answer: it passes
+   `zone` AND its photo prompt is told to leave that zone clean — a two-sided contract
+   (`compositeHeadline.ts:165-169`). Tabloid has **neither** half: `headTop` is computed from font
+   metrics alone and never inspects the photo, and the scrim starts at opacity 0 exactly where the
+   headline lands. Extend the contract rather than bolting on a fixed offset.
+4. **P9** LP text overflow, grammar break, 137-char lead-magnet title cap.
 
 ### 🟡 LOGGED, NOT SCHEDULED — needs its own pass, not a drive-by
 
@@ -338,11 +387,20 @@ the root cause of the Sprint B email regression. **Needs regression testing, not
 - **Andromeda backbone** — real Meta fatigue signals (`frequency`,
   `first_time_impression_ratio`; the "score" fields do NOT exist) + P.D.A. concept axis.
   Touches `adCopyGenerator.ts`.
-- **Image-model evaluation — FLUX vs OpenAI. UNBLOCKED (see P7)** — creatives generate again. Scope is the
-  **generation call, not the image infrastructure** — Cloudinary is hosting/transformation and stays
-  either way. Evaluate on **text-heavy ad creatives first** (where Flux is weakest), on **real ZAP
-  prompts, never generic test prompts**. Three axes: quality on text-heavy creatives · cost per
-  image at expected volume · reliability + latency.
+- 🔴 **Image-model evaluation — FLUX vs OpenAI. HALF-RUN, BLOCKED ON A KEY.** Harness built and
+  working: `scripts/adimage-bakeoff.mjs` (calls the REAL `generateAdImagePrompt`, never a copy;
+  writes PNGs + `results.json` with per-call latency; local-only, touches no prod row).
+  **Flux half done** — 5/5, median **5.5s**, zero text. **OpenAI half cannot run: there is no
+  `OPENAI_API_KEY` in the Railway prod env** (only `REPLICATE_API_KEY`). Arfeen must add one, then:
+  `railway run … npx tsx scripts/adimage-bakeoff.mjs --models=gpt-image-1,gpt-image-1-mini --quality=medium`
+  · **Cost is NOT the deciding axis — it is neutral.** Verbatim published prices, 5 creatives/campaign:
+  flux-1.1-pro **$0.20** · gpt-image-1-mini high **$0.18 (−10%)** · gpt-image-1 medium **$0.21 (+5%)**
+  · gpt-image-2 medium $0.265 · gpt-image-1 high $0.835. Decide on quality + latency.
+  · **Judge on instruction adherence, not text fidelity** — we want ZERO in-image text, so the
+  question is "does it leave the frame clean / hit a stated subject / respect a reserved zone",
+  which is what fixes A and D depend on.
+  · Scope is the **generation call only** — Cloudinary stays. `generateImage` already hands a Buffer
+  to `storagePut`, and OpenAI returns base64, which removes a fetch.
 - **Andromeda closed write-back loop** — gated, last, own scope call (autonomy + coach spend).
 - **`.pdf.pdf`** bonus-PDF storage-key double-suffix — cosmetic, resolves 200, tidy later.
 - **Off-ICP testimonial filtering** — deferred product call, leave as-is.

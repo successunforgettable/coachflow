@@ -52,7 +52,13 @@ export async function generateImage(
         output_format: "png",
         output_quality: 90,
         safety_tolerance: 2,
-        prompt_upsampling: true,
+        // FIX C (2026-07-29): upsampling OFF. flux-1.1-pro's upsampler rewrites
+        // the prompt with an LLM before generation — it dropped the scene
+        // constraints and embellished the stated aesthetic. Evidence from the
+        // 2026-07-28 run: the "object" style (explicitly "no person in frame")
+        // returned a person, and "tabloid aesthetic" was elaborated into a full
+        // newsprint page. We now send the prompt we actually wrote.
+        prompt_upsampling: false,
       },
     }
   ) as any;

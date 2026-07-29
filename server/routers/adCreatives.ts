@@ -6,7 +6,7 @@ import { eq, and, desc, gte, count } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { generateImage } from "../_core/imageGeneration";
 import { storagePut } from "../storage";
-import { renderAdCreative, resolveAdBodyText } from "../_core/compositeHeadline";
+import { renderAdCreative, resolveAdBodyText, resolveAdBodyTexts } from "../_core/compositeHeadline";
 import { resolveCampaignCta } from "../_core/campaignCta";
 import { randomBytes, randomUUID } from "crypto";
 import { runAdCreativesGeneration } from "../adCreativesGenerator";
@@ -72,9 +72,32 @@ export function checkCompliance(headline: string, benefit: string, problem: stri
 }
 
 // Generate ad image prompt — visual scene only, no text instructions.
-// Headline text is composited server-side via opentype.js + resvg-js after generation
-// (see server/_core/compositeHeadline.ts). AI models cannot reliably render text —
-// removing text instructions eliminates hallucinated glyphs.
+// Headline, body and CTA are composited server-side via opentype.js + resvg-js
+// after generation (see server/_core/compositeHeadline.ts), so the photograph
+// must be a clean plate.
+//
+// FIX C (2026-07-29) — three changes, all evidenced by the 2026-07-28 run
+// (docs/handovers/P6-P8_INVESTIGATION_ad-creatives.md):
+//
+//  1. The base style no longer asks for a magazine. "Gossip magazine style,
+//     tabloid aesthetic" requests a PAGE — masthead, headline, standfirst, body
+//     columns. Run v3 rendered exactly that, correctly, with every glyph
+//     garbled. We now ask for a photograph, keeping the raw non-studio feel
+//     without the publication metaphor.
+//
+//  2. The old `noText` hard negative ("NO text, NO words, NO letters…") is
+//     DELETED. It was concatenated into flux-1.1-pro's POSITIVE prompt — this
+//     endpoint has no negative-prompt input, and diffusion conditioning has no
+//     logical NOT, so every one of those tokens pushed text toward the image.
+//     Same negative-priming failure CLAUDE.md §14 bans for LLM prompts. The
+//     only lever that works is not naming text at all; the surrounding
+//     description now carries the clean-surface requirement positively.
+//
+//  3. Green circle / arrow / checkmark annotations are DROPPED. An empty
+//     callout is the most caption-inviting shape in a frame — run v4's
+//     "Parenting books" and "Baby time parents" were Flux labelling the bubbles
+//     it was told to draw. Annotations, if wanted, belong in the resvg layer
+//     that already draws the headline, body and CTA in real type.
 export function generateAdImagePrompt(
   style: string,
   niche: string,
@@ -83,27 +106,27 @@ export function generateAdImagePrompt(
 ): string {
   const baseStyle = uglyMode
     ? "Raw UGC aesthetic, shot on iPhone, unpolished and authentic, slightly messy real-world environment, natural handheld camera shake, no studio lighting, no professional makeup, low-budget realism, observational documentary style, native social feed feel"
-    : "Gossip magazine style, tabloid aesthetic, phone-quality photo (NOT polished studio shot), dramatic lighting, high contrast";
+    : "Candid documentary photograph, available light, dramatic directional lighting, high contrast, shallow depth of field, phone-quality realism rather than polished studio work";
 
   // Niche context and compliance — applied to every style
   const nicheContext = `The person and setting must visually match the ${niche} niche — their clothing, environment, and expression must be recognisable to someone in that world. A fitness coach's client looks different from a crypto trader's client looks different from a corporate executive's client.`;
   const complianceNote = `Do not generate images that imply medical treatment, guaranteed financial results, or dramatic physical before/after transformation. Images must show aspiration and possibility, not guaranteed outcomes.`;
 
-  // Hard negative — applied to every style. Diffusion models treat text as
-  // pixel-prediction and hallucinate garbled glyphs; real headlines are composited
-  // server-side via resvg so the AI scene must have zero text.
-  const noText = "NO text, NO words, NO letters, NO numbers, NO captions, NO labels, NO signs, NO chalk writing, NO handwriting, NO overlay text anywhere in the image.";
+  // Positive framing of the clean-plate requirement. Describes what the surfaces
+  // ARE (blank, plain, unmarked) rather than listing what must not appear —
+  // naming "text"/"letters"/"captions" at all is what put them in the frame.
+  const cleanPlate = "Every surface in frame is blank and unmarked: plain walls, unbranded plain objects, blank paper, blank screens, plain untitled book covers, plain clothing without prints or logos. A purely photographic scene with clear empty space around the subject.";
 
   const stylePrompts = {
-    person_shocked: `${baseStyle}. Person (30-45 years old) dressed and styled for the ${niche} world, with EXCITED expression, wide eyes, enthusiastic smile, pointing at viewer. Dark grey/black background. Green circle annotation around head with checkmark. Hand-drawn green arrow pointing from circle to viewer. ${nicheContext} ${complianceNote} ${noText}`,
+    person_shocked: `${baseStyle}. Person (30-45 years old) dressed and styled for the ${niche} world, with EXCITED expression, wide eyes, enthusiastic smile, gesturing toward the camera. Dark grey/black background. ${nicheContext} ${cleanPlate} ${complianceNote}`,
 
-    screenshot: `${baseStyle}. Laptop screen photographed at angle showing a ${niche}-relevant dashboard or workspace with results/numbers. Dark desk surface, coffee cup visible. Multiple green circles around key metrics. Green arrows pointing UP at gains. ${nicheContext} ${complianceNote} ${noText}`,
+    screenshot: `${baseStyle}. Laptop photographed at an angle on a dark desk surface, its screen showing a plain abstract chart shape with no labelling, coffee cup visible. ${nicheContext} ${cleanPlate} ${complianceNote}`,
 
-    person_intense: `${baseStyle}. Person (30-45 years old) dressed and styled for the ${niche} world, with CONFIDENT expression, serious face, leaning forward, direct eye contact. Dark background with spotlight on face. Green circle around key element in background. Green arrow pointing TO circled element. ${nicheContext} ${complianceNote} ${noText}`,
+    person_intense: `${baseStyle}. Person (30-45 years old) dressed and styled for the ${niche} world, with CONFIDENT expression, serious face, leaning forward, direct eye contact. Dark background with a spotlight on the face. ${nicheContext} ${cleanPlate} ${complianceNote}`,
 
-    object: `${baseStyle}. Relevant object (document, product, device, or tool) specifically associated with the ${niche} niche. Dramatic lighting, dark background. Green circles around key features. Green arrows pointing to circled areas. ${nicheContext} ${complianceNote} ${noText}`,
+    object: `${baseStyle}. A single relevant object (device, tool, or item) specifically associated with the ${niche} niche, photographed alone as a still life with no person in frame. Dramatic lighting, dark background. ${nicheContext} ${cleanPlate} ${complianceNote}`,
 
-    person_curious: `${baseStyle}. Person (30-45 years old) dressed and styled for the ${niche} world, with INTRIGUED expression, raised eyebrow, interested smile, head tilted. Dark grey background. Large green circle around a key element. Green arrow pointing from circle. ${nicheContext} ${complianceNote} ${noText}`,
+    person_curious: `${baseStyle}. Person (30-45 years old) dressed and styled for the ${niche} world, with INTRIGUED expression, raised eyebrow, interested smile, head tilted. Dark grey background. ${nicheContext} ${cleanPlate} ${complianceNote}`,
   };
 
   return stylePrompts[style as keyof typeof stylePrompts] || stylePrompts.person_shocked;
@@ -978,7 +1001,9 @@ export async function generateAdCreativesBatch(params: {
   const generatedCreatives = [];
 
   const batchCta = await resolveCampaignCta(db, { campaignId: params.campaignId, serviceId: params.serviceId });
-  const batchBody = await resolveAdBodyText(db, params.userId, params.serviceId);
+  // P8: body DECK, rotated per variation — a single line here made all five
+  // creatives in a wizard batch share one body, same as the Auto Mode path.
+  const batchBodies = await resolveAdBodyTexts(db, params.userId, params.serviceId, variations.length);
 
   for (let i = 0; i < 5; i++) {
     const variation = variations[i];
@@ -997,7 +1022,11 @@ export async function generateAdCreativesBatch(params: {
     const rawBuffer = Buffer.from(await imageResponse.arrayBuffer());
     const rawKey = `ad-creatives/${params.userId}/${batchId}/raw-variation-${i + 1}.png`;
     const { url: rawImageUrl } = await storagePut(rawKey, rawBuffer, "image/png");
-    const compositedBuffer = await renderAdCreative(rawBuffer, { headline, bodyText: batchBody, ctaLabel: batchCta });
+    const compositedBuffer = await renderAdCreative(rawBuffer, {
+      headline,
+      bodyText: batchBodies.length ? batchBodies[i % batchBodies.length] : "",
+      ctaLabel: batchCta,
+    });
     const fileKey = `ad-creatives/${params.userId}/${batchId}/variation-${i + 1}.png`;
     const { url: s3Url } = await storagePut(fileKey, compositedBuffer, "image/png");
 

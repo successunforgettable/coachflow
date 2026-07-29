@@ -45,7 +45,7 @@ import { invokeLLM } from "./_core/llm";
 import { generateImage, generateEditorialImage } from "./_core/imageGeneration";
 import { buildEditorialPrompt, EDITORIAL_VARIATIONS, generateEditorialSceneBriefs } from "./_core/editorialPrompt";
 import { storagePut } from "./storage";
-import { renderAdCreative, deriveAccent, resolveAdBodyText } from "./_core/compositeHeadline";
+import { renderAdCreative, deriveAccent, resolveAdBodyTexts } from "./_core/compositeHeadline";
 import { ctaForCampaignType } from "./_core/campaignCta";
 import { randomBytes } from "crypto";
 import {
@@ -463,9 +463,11 @@ export async function runAdCreativesGeneration(
   }
 
   // Stage 2 render-template inputs, resolved once per batch: the CTA pill label
-  // (campaign-type-driven) and the campaign-aligned body copy (reused ad copy).
+  // (campaign-type-driven) and the campaign-aligned body deck (reused ad copy).
+  // P8: the body DECK, rotated per variation below — resolving a single line
+  // here is what made all five creatives share one body.
   const ctaLabel = ctaForCampaignType(input.campaignType);
-  const bodyText = await resolveAdBodyText(db, input.userId, input.serviceId);
+  const bodyTexts = await resolveAdBodyTexts(db, input.userId, input.serviceId, VARIATIONS.length);
 
   let createdCount = 0;
   for (let i = 0; i < VARIATIONS.length; i++) {
@@ -512,7 +514,7 @@ export async function runAdCreativesGeneration(
     const compositedBuffer = await renderAdCreative(rawBuffer, {
       headline,
       emphasis: hl.emphasis,
-      bodyText,
+      bodyText: bodyTexts.length ? bodyTexts[i % bodyTexts.length] : "",
       ctaLabel,
     });
     const fileKey = `ad-creatives/${input.userId}/${batchId}/variation-${i + 1}.png`;
@@ -586,7 +588,8 @@ export async function runEditorialAdCreativesGeneration(
   }
 
   const ctaLabel = ctaForCampaignType(input.campaignType);
-  const bodyText = await resolveAdBodyText(db, input.userId, input.serviceId);
+  // P8: body DECK, rotated per variation below (see runAdCreativesGeneration).
+  const bodyTexts = await resolveAdBodyTexts(db, input.userId, input.serviceId, EDITORIAL_VARIATIONS.length);
 
   // Resolve all 5 headlines up front, then ONE batched micro-call turns them
   // into headline-driven scene briefs (falls back per-slot internally).
@@ -617,7 +620,9 @@ export async function runEditorialAdCreativesGeneration(
     const { url: rawImageUrl } = await storagePut(rawKey, rawBuffer, "image/png");
 
     const compositedBuffer = await renderAdCreative(rawBuffer, {
-      headline, emphasis: hl.emphasis, bodyText, ctaLabel, zone: scene.zone,
+      headline, emphasis: hl.emphasis,
+      bodyText: bodyTexts.length ? bodyTexts[i % bodyTexts.length] : "",
+      ctaLabel, zone: scene.zone,
     });
     const fileKey = `ad-creatives/${input.userId}/${batchId}/variation-${i + 1}.png`;
     const { url: s3Url } = await storagePut(fileKey, compositedBuffer, "image/png");
