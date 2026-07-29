@@ -151,19 +151,38 @@ export function generateAdImagePrompt(
   // Positive framing: describes the person to depict, never the one to avoid.
   const who = subject && subject.trim() ? subject.trim() : "Person (30-45 years old)";
 
+  // ZONE CONTRACT, prompt half (2026-07-29). The compositor stacks headline +
+  // body + CTA upward from the bottom edge and cannot see the photograph, so
+  // whatever occupies the lower half of the frame gets text laid over it — which
+  // is how headlines ended up across a mouth, an arm and a chest.
+  //
+  // Editorial has always had this contract (its zone "matches the zone the
+  // editorial photo prompt was told to leave clean"); tabloid had NEITHER half.
+  // This is the prompt half; `zone: "lower"` in renderAdCreative is the other.
+  //
+  // Stated as the composition we WANT. Diffusion has no logical NOT, and this
+  // codebase has now been bitten twice by phrasing a requirement as an absence:
+  // the deleted `noText` string, and "No people in the frame" which Flux ignored
+  // on the same run where "an object study only" worked.
+  // STYLE-AWARE, for the same reason nicheContext had to be: a person-worded
+  // composition line on a still-life style is a self-contradiction, and that is
+  // exactly what kept putting people in the `object` frame.
+  const compositionPerson = "Composed for a portrait-style advertisement: the subject sits high in the frame, head and shoulders in the upper half, framed from the chest up. The lower half of the image is calm open space — plain wall, plain surface, or softly defocused background — an unbroken area with room to breathe beneath the subject.";
+  const compositionSetting = "Composed for a portrait-style advertisement: the main object sits high in the frame, in the upper half, with the arrangement kept to the top of the picture. The lower half of the image is calm open space — bare surface or softly defocused background — an unbroken area with room to breathe below.";
+
   const stylePrompts = {
-    person_shocked: `${baseStyle}. ${who} dressed and styled for the ${niche} world, with EXCITED expression, wide eyes, enthusiastic smile, gesturing toward the camera. Dark grey/black background. ${nicheContextPerson} ${scene} ${cleanPlate} ${complianceNote}`,
+    person_shocked: `${baseStyle}. ${who} dressed and styled for the ${niche} world, with EXCITED expression, wide eyes, enthusiastic smile, gesturing toward the camera. Dark grey/black background. ${nicheContextPerson} ${scene} ${compositionPerson} ${cleanPlate} ${complianceNote}`,
 
     // "No people in the frame" was a bare NEGATION and Flux ignored it — the same
     // trap as the deleted noText string. The `object` style's positively-framed
     // "an object study only" worked on the identical run. Positive framing only.
-    screenshot: `${baseStyle}. An unattended desk at night, photographed as a still life: a laptop open at an angle on a dark surface, its screen showing a plain abstract chart shape with no labelling, a cold coffee cup beside it. The room is empty, the chair pushed back. ${nicheContextSetting} ${scene} ${cleanPlate} ${complianceNote}`,
+    screenshot: `${baseStyle}. An unattended desk at night, photographed as a still life: a laptop open at an angle on a dark surface, its screen showing a plain abstract chart shape with no labelling, a cold coffee cup beside it. The room is empty, the chair pushed back. ${nicheContextSetting} ${scene} ${compositionSetting} ${cleanPlate} ${complianceNote}`,
 
-    person_intense: `${baseStyle}. ${who} dressed and styled for the ${niche} world, with CONFIDENT expression, serious face, leaning forward, direct eye contact. Dark background with a spotlight on the face. ${nicheContextPerson} ${scene} ${cleanPlate} ${complianceNote}`,
+    person_intense: `${baseStyle}. ${who} dressed and styled for the ${niche} world, with CONFIDENT expression, serious face, leaning forward, direct eye contact. Dark background with a spotlight on the face. ${nicheContextPerson} ${scene} ${compositionPerson} ${cleanPlate} ${complianceNote}`,
 
-    object: `${baseStyle}. A single relevant object (device, tool, or item) specifically associated with the ${niche} niche, photographed alone as a still life. The frame is empty of people — an object study only. Dramatic lighting, dark background. ${nicheContextSetting} ${scene} ${cleanPlate} ${complianceNote}`,
+    object: `${baseStyle}. A single relevant object (device, tool, or item) specifically associated with the ${niche} niche, photographed alone as a still life. The frame is empty of people — an object study only. Dramatic lighting, dark background. ${nicheContextSetting} ${scene} ${compositionSetting} ${cleanPlate} ${complianceNote}`,
 
-    person_curious: `${baseStyle}. ${who} dressed and styled for the ${niche} world, with INTRIGUED expression, raised eyebrow, interested smile, head tilted. Dark grey background. ${nicheContextPerson} ${scene} ${cleanPlate} ${complianceNote}`,
+    person_curious: `${baseStyle}. ${who} dressed and styled for the ${niche} world, with INTRIGUED expression, raised eyebrow, interested smile, head tilted. Dark grey background. ${nicheContextPerson} ${scene} ${compositionPerson} ${cleanPlate} ${complianceNote}`,
   };
 
   return stylePrompts[style as keyof typeof stylePrompts] || stylePrompts.person_shocked;

@@ -561,6 +561,10 @@ export async function runAdCreativesGeneration(
       emphasis: hl.emphasis,
       bodyText: bodyTexts.length ? bodyTexts[i % bodyTexts.length] : "",
       ctaLabel,
+      // Compositor half of the zone contract — the photo prompt above was told
+      // to leave this band clean. Centring and anchoring are unchanged; the
+      // scrim now actually covers the text block.
+      zone: "lower",
     });
     const fileKey = `ad-creatives/${input.userId}/${batchId}/variation-${i + 1}.png`;
     const { url: s3Url } = await storagePut(fileKey, compositedBuffer, "image/png");

@@ -184,11 +184,17 @@ export type RenderAdCreativeInput = {
   emphasis?: string;   // verbatim substring to render gold; heuristic fallback
   bodyText?: string;   // ~140-char campaign-aligned body (no price)
   ctaLabel: string;    // CAMPAIGN_TO_CTA[campaignType]
-  // Composition zone (editorial). Undefined = tabloid (centered, bottom band —
-  // unchanged). "left" = text in the reserved left column (subject on the
-  // right); "bottom" = left-aligned lower third. Matches the zone the editorial
-  // photo prompt was told to leave clean.
-  zone?: "left" | "bottom";
+  // Composition zone — the compositor half of a two-sided contract with the
+  // photo prompt, which is told to leave this zone clean.
+  //   "left"   = editorial, text in the reserved left column (subject right)
+  //   "bottom" = editorial, left-aligned lower third
+  //   "lower"  = TABLOID (2026-07-29). Centered and bottom-anchored exactly as
+  //              before, so the tabloid look is unchanged, but it now declares
+  //              the reserved band and gets a scrim that actually covers it.
+  //   undefined = legacy tabloid, no contract. Kept so the recomposite and
+  //              wizard-single paths render byte-identically to what they
+  //              already produced; new batches pass "lower".
+  zone?: "left" | "bottom" | "lower";
 };
 
 export async function renderAdCreative(rawBuffer: Buffer, input: RenderAdCreativeInput): Promise<Buffer> {
@@ -219,7 +225,9 @@ export async function renderAdCreative(rawBuffer: Buffer, input: RenderAdCreativ
   //    "bottom"  = editorial, left-aligned, bottom-anchored, bottom scrim
   //    "left"    = editorial, left-aligned, TOP-anchored, left column, left scrim
   const zone = input.zone;
-  const align: "center" | "left" = zone === undefined ? "center" : "left";
+  // "lower" keeps the tabloid centring — it changes the CONTRACT and the scrim,
+  // never the layout, so a fixed creative still reads as a tabloid creative.
+  const align: "center" | "left" = zone === undefined || zone === "lower" ? "center" : "left";
   // On a tall vertical the copy always sits in the lower safe zone (above the
   // bottom UI band, clear of the top one) — the natural vertical-ad anchor and
   // it keeps the CTA in thumb reach. On feed ratios the "left" zone keeps its
@@ -314,12 +322,26 @@ export async function renderAdCreative(rawBuffer: Buffer, input: RenderAdCreativ
   const pillLabelPath = glyphPath(bodyFont, pillLabel, pillLabelX, pillLabelY, pillSize);
 
   // ── Scrim ──
-  const scrimTop = Math.max(0, headTop - Math.round(H * 0.06));
+  // The legibility half of the contract. The legacy gradient began at
+  // `headTop - 0.06H` with stop-opacity 0 and only reached 0.72 at 55% down, so
+  // the FIRST headline line rendered against a scrim that was still effectively
+  // transparent — text straight onto an undarkened face. "lower" starts the
+  // gradient higher and ramps early, so the whole reserved band carries contrast
+  // before any glyph lands on it. Legacy geometry is untouched for zone
+  // undefined / "bottom" / "left".
+  const scrimTop = Math.max(0, headTop - Math.round(H * (zone === "lower" ? 0.14 : 0.06)));
   const scrimDef = zone === "left"
     ? `<linearGradient id="scrim" x1="0" y1="0" x2="${W}" y2="0" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#0A0A0E" stop-opacity="0.92"/>
       <stop offset="0.42" stop-color="#0A0A0E" stop-opacity="0.6"/>
       <stop offset="0.72" stop-color="#0A0A0E" stop-opacity="0"/>
+    </linearGradient>`
+    : zone === "lower"
+    ? `<linearGradient id="scrim" x1="0" y1="${scrimTop}" x2="0" y2="${H}" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0A0A0E" stop-opacity="0"/>
+      <stop offset="0.25" stop-color="#0A0A0E" stop-opacity="0.62"/>
+      <stop offset="0.5" stop-color="#0A0A0E" stop-opacity="0.82"/>
+      <stop offset="1" stop-color="#0A0A0E" stop-opacity="0.94"/>
     </linearGradient>`
     : `<linearGradient id="scrim" x1="0" y1="${scrimTop}" x2="0" y2="${H}" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#0A0A0E" stop-opacity="0"/>
