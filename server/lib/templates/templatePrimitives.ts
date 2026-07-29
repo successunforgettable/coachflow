@@ -144,3 +144,66 @@ ${opts.body}
 </body>
 </html>`;
 }
+
+// ─── P9 (2026-07-29): lead-magnet title fitting + article-safe prefixing ─────
+// Measured on prod: 6,577 hvcoTitles, mean 104 chars, max 318, 79% over 60.
+// The generator produces DESCRIPTIONS, not titles — see STATE.md. Until that is
+// fixed at the source, every template slot that prints a magnet name has to fit
+// one, or it overruns its container (the 137-char title clipped by the FREE
+// badge, and the four-line orange run-on inside "in one simple ___.").
+
+/** Longest magnet title any template slot can carry without breaking layout. */
+export const MAGNET_TITLE_MAX = 60;
+
+/**
+ * Fit a lead-magnet title to a slot. Cuts at a WORD boundary and appends an
+ * ellipsis so a clipped title reads as deliberately shortened rather than as a
+ * rendering bug. Never mid-word, never mid-entity.
+ */
+export function fitTitle(s: unknown, max = MAGNET_TITLE_MAX): string {
+  const t = String(s ?? "").replace(/\s+/g, " ").trim();
+  if (t.length <= max) return t;
+  const cut = t.slice(0, max);
+  const lastSpace = cut.lastIndexOf(" ");
+  const kept = cut.slice(0, lastSpace > max * 0.6 ? lastSpace : max)
+    // An unclosed bracket left by the cut reads as a rendering fault, not as
+    // truncation — "QUALIFIED FOR (BUT…". Drop the dangling group.
+    .replace(/\s*\([^)]*$/, "")
+    .replace(/[\s,;:—–-]+$/, "");
+  return `${kept}…`;
+}
+
+/**
+ * Drop a leading article so a title can be prefixed without a grammar break.
+ * "Get Your Free" + "The 3-Night Settling Sequence Reset" produced
+ * "Get Your Free The 3-Night…" on the published page.
+ */
+export function withoutLeadingArticle(s: unknown): string {
+  return String(s ?? "").replace(/^\s*(the|a|an)\s+/i, "").trim();
+}
+
+/**
+ * Title for a slot that is grammatically prefixed (e.g. "Get Your Free ___").
+ * Article-stripped first, then fitted — order matters, otherwise the ellipsis
+ * budget is spent on a word that gets removed anyway.
+ */
+export function fitPrefixedTitle(s: unknown, max = MAGNET_TITLE_MAX): string {
+  return fitTitle(withoutLeadingArticle(s), max);
+}
+
+/**
+ * Fitted title for a slot whose template appends its own punctuation — e.g.
+ * "Get Your Free ___ Now!" or "in one simple ___.". A trailing ellipsis there
+ * collides with the template's own mark and renders as "Is… Now!" or "Your….".
+ * Same fit, no trailing ellipsis, and any dangling connector word removed so the
+ * phrase still ends cleanly.
+ */
+export function fitTitleForPunctuatedSlot(s: unknown, max = MAGNET_TITLE_MAX): string {
+  const fitted = fitPrefixedTitle(s, max).replace(/…$/, "").trim();
+  // Drop an orphaned opening bracket or a dangling connector left by the cut.
+  return fitted
+    .replace(/\s*\([^)]*$/, "")
+    .replace(/\s+(and|or|but|the|a|an|of|for|to|with|in|on|that|is|are)$/i, "")
+    .replace(/[\s,;:—–-]+$/, "")
+    .trim();
+}

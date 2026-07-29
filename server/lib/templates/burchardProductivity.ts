@@ -18,6 +18,7 @@ import type { LandingPageContent } from "../../../drizzle/schema";
 import {
   esc, ok, imgOrOmit, sectionOrEmpty, stars, checkCircle, initials,
   highlightKeyword, highlightTerm, tileIconSet, renderDocument,
+  fitTitle, fitPrefixedTitle, fitTitleForPunctuatedSlot,
 } from "./templatePrimitives";
 
 export interface BurchardCoachInput {
@@ -40,8 +41,13 @@ export interface BurchardCoachInput {
  * chrome (eyebrow/title/subtitle + FREE badge). Landscape ~3:2, matching the reference mass.
  */
 function compositeCard(coach: BurchardCoachInput, magnet: string): string {
-  const title = esc(magnet).toUpperCase();
-  const eyebrow = ok(coach.coachName) ? `${esc(coach.coachName).toUpperCase()}'S` : "YOUR BRAND'S";
+  // P9-3: fitted before escaping — a 137-char title overran the cover panel and
+  // was clipped mid-word by the FREE badge ("…SEQUENCE RESET: H").
+  const title = esc(fitTitle(magnet, 48)).toUpperCase();
+  // P9-1: an empty slot is OMITTED, never filled with a plausible-looking
+  // placeholder. "YOUR BRAND'S" shipped live and read as real copy. Same
+  // disposition the coach cutout already uses ("no fabricated silhouette").
+  const eyebrow = ok(coach.coachName) ? `${esc(coach.coachName).toUpperCase()}'S` : "";
   const subtitle = "Free instant download";
 
   // A real cover (coach-uploaded value_stack, or page 1 of the coach's own magnet
@@ -77,7 +83,7 @@ function compositeCard(coach: BurchardCoachInput, magnet: string): string {
 
   return `<div style="position:relative;width:100%;max-width:560px;aspect-ratio:1.46;background:#FFFFFF;border-radius:16px;box-shadow:0 24px 60px rgba(0,0,0,0.45);overflow:hidden;display:flex;flex-direction:column;">
     <div aria-hidden="true" style="position:absolute;top:14px;right:14px;width:54px;height:54px;border-radius:50%;background:${ORANGE};display:flex;align-items:center;justify-content:center;color:#fff;font-family:${H};font-weight:800;font-size:14px;transform:rotate(8deg);box-shadow:0 4px 10px rgba(0,0,0,0.18);z-index:3;">FREE</div>
-    <div style="padding:16px 22px 6px;text-align:center;z-index:2;">
+    <div style="padding:16px 74px 6px 22px;text-align:center;z-index:2;">
       <div style="font-family:${B};font-size:10px;font-weight:700;letter-spacing:0.12em;color:#64748B;">${eyebrow}</div>
       <div style="font-family:${H};font-weight:800;font-size:clamp(18px,1.9vw,26px);line-height:1.03;letter-spacing:-0.01em;color:${NAVY};text-transform:uppercase;margin:3px 0 4px;">${title}</div>
       <div style="font-family:${B};font-size:13px;font-weight:600;color:#2563EB;">${subtitle}</div>
@@ -109,18 +115,33 @@ function heroSection(content: LandingPageContent, coach: BurchardCoachInput): st
   const sub = ok(content.subheadline)
     ? esc(content.subheadline)
     : `Get instant access to the simple tool that helps you stay on track and get more done.`;
-  const cta = ok(content.primaryCta) ? esc(content.primaryCta) : `Download Free ${esc(magnet)}`;
-  // Trust line: real number if the coach supplied one (operator-fill), else non-numeric. Never fabricated.
-  const trustLine = ok(coach.trustCount)
-    ? `Trusted by over ${esc(coach.trustCount)} high achievers`
-    : `Trusted by high achievers`;
+  // P9-5: the fallback CTA is a visible slot too. (The composite's alt text
+  // deliberately keeps the FULL title — screen readers want the real name.)
+  const cta = ok(content.primaryCta) ? esc(content.primaryCta) : `Download Free ${esc(fitPrefixedTitle(magnet, 40))}`;
+  // P9-2: the stars and the trust line are now BOTH conditional on real
+  // coach-supplied proof. The old guard dropped the NUMBER but kept the CLAIM,
+  // so "Trusted by high achievers" + five filled stars rendered on the page of a
+  // coach with zero clients. That is a past-event assertion — it says people
+  // HAVE trusted her — so it falls under the track-record rule and cannot be
+  // softened by removing a magnitude. Honesty was applied to magnitude, not to
+  // assertion. No generator guard could ever catch it: this is template chrome,
+  // not generated copy.
+  const hasRealProof = ok(coach.trustCount);
+  const trustBlock = hasRealProof
+    ? `<div style="display:flex;align-items:center;gap:10px;margin:0 0 22px;">
+            ${STARS}
+            <span style="font-family:${B};font-size:14px;font-weight:500;color:${SUB};">Trusted by over ${esc(coach.trustCount)} high achievers</span>
+          </div>`
+    : "";
 
   // Reference right column = a DESIGNED landscape (~3:2) product composite ZAP assembles.
   const composite = compositeCard(coach, magnet);
 
   const logo = ok(coach.logoUrl)
     ? `<img src="${esc(coach.logoUrl)}" alt="${esc(coach.coachName || "Logo")}" style="height:26px;width:auto;display:block;">`
-    : `<span style="font-family:${H};font-weight:800;font-size:18px;color:${WHITE};letter-spacing:-0.01em;">${esc(coach.coachName || "yourbrand")}</span>`;
+    : ok(coach.coachName)
+      ? `<span style="font-family:${H};font-weight:800;font-size:18px;color:${WHITE};letter-spacing:-0.01em;">${esc(coach.coachName)}</span>`
+      : ""; // P9-1: no name, no wordmark. "yourbrand" shipped live as if it were one.
 
   return `
   <section style="background:${NAVY};padding:30px 24px 22px;">
@@ -131,10 +152,7 @@ function heroSection(content: LandingPageContent, coach: BurchardCoachInput): st
         <div style="flex:1 1 400px;min-width:320px;">
           <h1 style="font-family:${H};font-weight:800;font-size:clamp(26px,2vw,34px);line-height:1.15;letter-spacing:-0.02em;color:${WHITE};margin:0 0 18px;">${headline}</h1>
           <p style="font-family:${B};font-weight:400;font-size:16px;line-height:1.5;color:${SUB};margin:0 0 20px;max-width:34rem;">${sub}</p>
-          <div style="display:flex;align-items:center;gap:10px;margin:0 0 22px;">
-            ${STARS}
-            <span style="font-family:${B};font-size:14px;font-weight:500;color:${SUB};">${trustLine}</span>
-          </div>
+          ${trustBlock}
           <form style="margin:0;max-width:560px;" onsubmit="return false;">
             <input type="email" placeholder="Email Address" aria-label="Email Address" style="width:100%;box-sizing:border-box;padding:15px 18px;font-family:${B};font-size:16px;color:${NAVY};background:${WHITE};border:none;border-radius:8px;margin:0 0 12px;outline:none;">
             <button type="submit" style="width:100%;box-sizing:border-box;padding:16px 20px;font-family:${B};font-weight:700;font-size:16px;color:${WHITE};background:${ORANGE};border:none;border-radius:8px;cursor:pointer;letter-spacing:0.01em;transition:background 0.15s ease;" onmouseover="this.style.background='${ORANGE_HOVER}'" onmouseout="this.style.background='${ORANGE}'">${cta}</button>
@@ -203,7 +221,10 @@ const TILE_ICONS = tileIconSet(ORANGE);
 
 function gate3Section(content: LandingPageContent, serviceName: string, coach: BurchardCoachInput): string {
   const magnet = ok(coach.leadMagnetName) ? coach.leadMagnetName! : "Free Guide";
-  const cta = ok(content.primaryCta) ? esc(content.primaryCta) : `Download Free ${esc(magnet)}`;
+  // P9-5: the SECOND cta computation. The hero one was fitted and this one was
+  // not, so the bottom button rendered the whole 200-char title as a six-line
+  // orange slab. Only the published screenshot showed it.
+  const cta = ok(content.primaryCta) ? esc(content.primaryCta) : `Download Free ${esc(fitPrefixedTitle(magnet, 40))}`;
   const brand = ok(coach.coachName) ? esc(coach.coachName) : esc(serviceName || "Your Brand");
   const year = new Date().getFullYear();
   const tiles = Array.isArray(content.featureHighlights) ? content.featureHighlights.filter(ok).slice(0, 8) : [];
@@ -220,11 +241,11 @@ function gate3Section(content: LandingPageContent, serviceName: string, coach: B
   return `
   <section style="background:${CREAM};padding:32px 24px 38px;">
     <div style="max-width:1050px;margin:0 auto;">
-      <h2 style="font-family:${H};font-weight:800;font-size:clamp(24px,2.4vw,34px);line-height:1.2;letter-spacing:-0.01em;color:${NAVY};text-align:center;margin:0 auto 12px;max-width:780px;">Everything you need, in one simple <span style="color:${ORANGE};">${esc(magnet)}</span>.</h2>
-      <p style="font-family:${B};font-size:16px;color:#64748B;text-align:center;margin:0 auto 18px;max-width:620px;">Use it every day and stay on track.</p>
+      <h2 style="font-family:${H};font-weight:800;font-size:clamp(24px,2.4vw,34px);line-height:1.2;letter-spacing:-0.01em;color:${NAVY};text-align:center;margin:0 auto 12px;max-width:780px;">Everything you need, in one simple <span style="color:${ORANGE};">${esc(fitTitleForPunctuatedSlot(magnet, 48))}</span>.</h2>
+      ${sectionOrEmpty(ok(content.solutionIntro), `<p style="font-family:${B};font-size:16px;color:#64748B;text-align:center;margin:0 auto 18px;max-width:620px;">${esc(fitTitle(content.solutionIntro, 160))}</p>`)}
       ${tileGrid}
       <div style="max-width:560px;margin:0 auto;background:#FFFFFF;border:2px solid ${ORANGE};border-radius:14px;padding:20px 24px 18px;box-shadow:0 12px 30px rgba(20,30,45,0.10);">
-        <h3 style="font-family:${H};font-weight:800;font-size:22px;color:${NAVY};text-align:center;margin:0 0 12px;">Get Your Free ${esc(magnet)} Now!</h3>
+        <h3 style="font-family:${H};font-weight:800;font-size:22px;color:${NAVY};text-align:center;margin:0 0 12px;">Get Your Free ${esc(fitTitleForPunctuatedSlot(magnet))} Now!</h3>
         <form style="margin:0;" onsubmit="return false;">
           <input type="email" placeholder="Email Address" aria-label="Email Address" style="width:100%;box-sizing:border-box;padding:14px 16px;font-family:${B};font-size:16px;color:${NAVY};background:#FFFFFF;border:1px solid #E2E8F0;border-radius:8px;margin:0 0 10px;outline:none;">
           <button type="submit" style="width:100%;box-sizing:border-box;padding:15px 20px;font-family:${B};font-weight:700;font-size:15px;color:#FFFFFF;background:${ORANGE};border:none;border-radius:8px;cursor:pointer;" onmouseover="this.style.background='${ORANGE_HOVER}'" onmouseout="this.style.background='${ORANGE}'">${cta}</button>

@@ -66,7 +66,12 @@ describe("buildBurchardProductivityHtml — full page", () => {
     // Real headshot cutout present.
     expect(html).toContain("coach-assets_h.png");
     // Benefit bands + tiles + testimonials (initials monogram, no fabricated face).
-    expect(html).toContain("★★★★★");
+    // P9-2: this fixture has trustCount null, so the five stars and the
+    // "Trusted by…" claim must BOTH be absent. The old assertion here expected
+    // ★★★★★ unconditionally — it encoded the defect, asserting fabricated social
+    // proof on a coach with no supplied proof.
+    expect(html).not.toContain("★★★★★");
+    expect(html).not.toContain("Trusted by");
     expect(html).toContain(">AO<"); // Ann O'Neil monogram
     expect(html).toContain("A one-page format");
     // Apostrophe safety in the rendered headline.
@@ -75,6 +80,55 @@ describe("buildBurchardProductivityHtml — full page", () => {
     // No fabricated stand-ins anywhere.
     expect(html).not.toContain("repeating-linear-gradient");
     expect(html).not.toContain("#F1C0C8");
+  });
+
+  it("P9-2: renders stars and the trust line ONLY when the coach supplied a real count", () => {
+    const withProof = { ...richCoach, trustCount: "1,200" };
+    const html = buildBurchardProductivityHtml(content, "Focus Service", withProof);
+    expect(html).toContain("★★★★★");
+    expect(html).toContain("Trusted by over 1,200 high achievers");
+  });
+
+  it("P9-1: never ships a plausible-looking brand placeholder", () => {
+    const nameless = { ...richCoach, coachName: null, logoUrl: null };
+    const html = buildBurchardProductivityHtml(content, "Focus Service", nameless);
+    expect(html).not.toContain("yourbrand");
+    expect(html).not.toContain("YOUR BRAND");
+  });
+
+  it("P9-4: does not prepend an article-led title to \"Get Your Free\"", () => {
+    const articled = { ...richCoach, leadMagnetName: "The 3-Night Settling Sequence Reset" };
+    const html = buildBurchardProductivityHtml(content, "Focus Service", articled);
+    expect(html).not.toContain("Get Your Free The ");
+    expect(html).toContain("Get Your Free 3-Night Settling Sequence Reset Now!");
+  });
+
+  it("P9-5b: a fitted title never collides with the slot's own punctuation", () => {
+    // Found on the published screenshot, not by any text assertion: the fitted
+    // title's ellipsis met the template's own mark and rendered "Is… Now!" and
+    // "Your….", and the bottom CTA button (a SECOND cta computation the hero fix
+    // had missed) rendered the full 200-char title as a six-line orange slab.
+    const long = { ...richCoach, leadMagnetName:
+      "The 5 Roles You're Already Qualified For (But Your CV Is Written in the Wrong Sector's Language): How Mid-Career Professionals Are Getting Screened Out" };
+    const html = buildBurchardProductivityHtml(content, "Focus Service", long);
+    const visible = html.replace(/alt="[^"]*"/g, "");
+    expect(visible).not.toContain("… Now!");
+    expect(visible).not.toContain("….");
+    expect(visible).not.toContain("Getting Screened Out");   // no slot carries the full title
+    expect(visible).not.toMatch(/\([^)<]*<\/span>/);        // no orphaned opening bracket
+  });
+
+  it("P9-3/5: fits an over-long magnet title into every slot", () => {
+    const long = { ...richCoach, leadMagnetName:
+      "The 3-Night Settling Sequence Reset: How Exhausted First-Time Parents Get Their Baby Sleeping Through Without Cry-It-Out" };
+    const html = buildBurchardProductivityHtml(content, "Focus Service", long);
+    // Every VISIBLE slot is fitted. The composite's alt attribute deliberately
+    // keeps the full title for screen readers, so assert on the slots, not on
+    // the whole document.
+    const visible = html.replace(/alt="[^"]*"/g, "");
+    expect(visible).not.toContain("Without Cry-It-Out");
+    expect(visible).toContain("…");
+    expect(visible).not.toContain("Get Your Free The ");
   });
 
   it("degrades honestly when the coach has no headshot and no cover", () => {

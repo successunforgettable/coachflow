@@ -139,7 +139,13 @@ Product: ${service.name}
 Target Market: ${resolvedTargetMarket}
 HVCO Topic: ${resolvedHvcoTopic}
 ${icpContext ? `\n${icpContext}\n` : ''}
-${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}MANDATORY TITLE RULE — every title must contain at least ONE of these:
+${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}LENGTH RULE (READ TWICE):
+- Every title MUST be 60 characters or fewer. This is a TITLE, not a description — it has to fit a landing-page cover panel, a card heading, and the phrase "Get Your Free ___ Now!".
+- Plan each title as 4 to 9 WORDS before writing it. Word-count planning is more reliable than counting characters afterwards.
+- After writing each title, count the characters. If 60 or fewer, keep it. If longer, cut the explanatory clause and keep the naming part.
+- A title names the thing. Any sentence that explains what happens, who it is for, or what the reader will feel is a description, not a title.
+
+MANDATORY TITLE RULE — every title must contain at least ONE of these:
 1. A specific number (5 steps, 7 mistakes, 3 ways — not "multiple" or "several")
 2. A specific timeframe (in 30 days, this week, before Friday — not "quickly" or "fast")
 3. A named enemy or obstacle (cold outreach, algorithm changes, discount pricing — the specific thing blocking them)
@@ -202,7 +208,13 @@ Product: ${service.name}
 Target Market: ${resolvedTargetMarket}
 HVCO Topic: ${resolvedHvcoTopic}
 ${icpContext ? `\n${icpContext}\n` : ''}
-${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}MANDATORY TITLE RULE — every short title must contain at least ONE of:
+${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}LENGTH RULE (READ TWICE):
+- Every title MUST be 60 characters or fewer. This is a TITLE, not a description — it has to fit a landing-page cover panel, a card heading, and the phrase "Get Your Free ___ Now!".
+- Plan each title as 4 to 9 WORDS before writing it. Word-count planning is more reliable than counting characters afterwards.
+- After writing each title, count the characters. If 60 or fewer, keep it. If longer, cut the explanatory clause and keep the naming part.
+- A title names the thing. Any sentence that explains what happens, who it is for, or what the reader will feel is a description, not a title.
+
+MANDATORY TITLE RULE — every short title must contain at least ONE of:
 1. A specific number or timeframe (5-step, 30-day, $10k — not vague amounts)
 2. A named obstacle or enemy this audience specifically faces (the exact frustration, not a category of frustrations)
 3. An insider word from this niche — a term only someone in this niche would use
@@ -255,7 +267,13 @@ Product: ${service.name}
 Target Market: ${resolvedTargetMarket}
 HVCO Topic: ${resolvedHvcoTopic}
 ${icpContext ? `\n${icpContext}\n` : ''}
-${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}MANDATORY RULE — every title must contain at least ONE of:
+${campaignTypeContext ? `${campaignTypeContext}\n\n` : ''}LENGTH RULE (READ TWICE):
+- Every title MUST be 60 characters or fewer. This is a TITLE, not a description — it has to fit a landing-page cover panel, a card heading, and the phrase "Get Your Free ___ Now!".
+- Plan each title as 4 to 9 WORDS before writing it. Word-count planning is more reliable than counting characters afterwards.
+- After writing each title, count the characters. If 60 or fewer, keep it. If longer, cut the explanatory clause and keep the naming part.
+- A title names the thing. Any sentence that explains what happens, who it is for, or what the reader will feel is a description, not a title.
+
+MANDATORY RULE — every title must contain at least ONE of:
 1. A specific number or timeframe
 2. A named enemy, obstacle, or mistake this exact audience faces
 3. An insider term from this niche that only someone in it would recognise
