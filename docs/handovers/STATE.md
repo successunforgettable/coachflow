@@ -340,27 +340,60 @@ code correctly supplied `Host: Dana Whitfield` while the same prompt still instr
 emit `[INSERT_HOST_NAME]`, and the instruction won. **Supplying a value is not enough — the
 instruction to use the token must also go.**
 
-### NEXT UP — P6 + the compositing fix, then deploy fix C
+### NEXT UP — 🔴 THE UNFINISHED STEP: prove fix C + P8 on a live cascade
 
-**P7 and P8 are built and committed (not pushed, not deployed).** What remains on creatives:
+**`1f077d9` is PUSHED to `railway-build` and deployed. The live cascade was NOT run** — the session
+hit its context ceiling and a cascade must never be started without room to tear it down
+(TRAPS: *teardown outranks the artifact read*). **This is the top of the queue.** Everything needed:
 
-1. **Deploy fix C + P8** and run one live cascade — the only way to prove the body rotation and to
-   see composited output rather than raw plates.
-2. **P6 gender — needs a RESOLUTION step, not a concat. Propose before building.** The data exists
-   (`demographics.gender` + `age_range`, populated on **73/101** prod ICPs) and no image path reads
-   it. But the stored values are hedged **population prose** — *"All genders, skewing slightly
-   female (55–60%)"* — and a photograph needs **one** person. Resolve once per batch (all five
-   creatives should show the same audience; varying gender across a deck reads as a bug), via
-   `normalizeDemographics()`, taking the *skew* term when the string hedges and falling back to the
-   current neutral wording only when genuinely unresolvable — never a coin flip.
-   Also: `generateAdImagePrompt`'s `problem` parameter is **dead** — passed by every caller,
-   interpolated into none of the five templates. That is why v1 showed a newborn for a 7-month ICP.
-3. **Headline-over-face — compositing, do it properly.** Editorial already has the answer: it passes
-   `zone` AND its photo prompt is told to leave that zone clean — a two-sided contract
-   (`compositeHeadline.ts:165-169`). Tabloid has **neither** half: `headTop` is computed from font
-   metrics alone and never inspects the photo, and the scrim starts at opacity 0 exactly where the
-   headline lands. Extend the contract rather than bolting on a fixed offset.
-4. **P9** LP text overflow, grammar break, 137-char lead-magnet title cap.
+**What the cascade must prove — three things a raw-plate harness run cannot:**
+1. **P8** — the five creatives carry **different** body lines. Three sites were fixed, not two;
+   `routers/adCreatives.ts:981` (wizard batch) had the same defect. Auto Mode exercises
+   `adCreativesGenerator.ts` only, so the wizard site stays unproven unless a wizard batch is also run.
+2. **Fix C** — zero in-image text on *live-generated* creatives, not the reconstructed harness run
+   (the harness reconstructs `niche` and never touches the ICP).
+3. **Latency** — whether the harness's **median 5.5s/image** holds on the live path. If it does, the
+   old `~2-2.5 min` batch comment in `adCreativesGenerator.ts:16` is stale and should be corrected.
+
+**Preconditions (do not skip):** verify `E2E_NOPUBLISH_OPENID` active on the **running** server, not
+merely saved · take a **fresh** pre-run baseline (do not trust the numbers below) · never push
+mid-cascade.
+
+**Baseline at 2026-07-29 push time** (re-verify, do not recall): services 124 · ICPs 101 · kits 49 ·
+creatives **397** · adCopy 5405 · 0 running jobs. Protected rows untouched: services 272–277 ·
+ICPs 249–254 · kits 187–192 · LPs 222–227.
+
+**Teardown:** fresh baseline → reconcile counts (never an id list) → settle, then **re-verify**
+(late writers are real: lazy concepts, durable bonus-PDF job, compliance precompute) → purge KV if a
+page published. **Every delete needs Arfeen's explicit "execute" in the immediately preceding
+message.**
+
+### Then — P6, and it is wider than "gender"
+
+**📄 PROPOSAL READY, NOTHING BUILT: `docs/handovers/P6_PROPOSAL_subject-control.md`.**
+
+Two independent causes. **Cause 1 is a live self-contradiction and is cheap:** `nicheContext` is
+appended unconditionally to **all five** styles, so the `object` prompt reads *"no person in frame …
+**The person** and setting must visually match … **their** clothing, environment, and expression"* —
+four words apart. That is why the fix-C re-run's object slot still returned a person, and it
+**predates fix C**. ⚠️ **The earlier attribution of that drift to `prompt_upsampling` is REFUTED** —
+the re-run had upsampling off and the drift persisted. Make `nicheContext` style-aware.
+
+**Cause 2 needs a resolution step, not a concat** — `demographics.gender` is hedged *population*
+prose (*"All genders, skewing slightly female (55–60%)"*) and a photo needs **one** person. Proposed
+three-tier resolver (deterministic parse → the ICP's own first-person words → neutral, never a coin
+flip) with **two open product calls for Arfeen** documented in the proposal. Also: `problem` is a
+**dead parameter** in `generateAdImagePrompt` — passed by all five callers, interpolated into none.
+
+### Then — headline-over-face, and P9
+
+**Compositing, do it properly.** Editorial already has the answer: it passes `zone` AND its photo
+prompt is told to leave that zone clean — a two-sided contract (`compositeHeadline.ts:165-169`).
+Tabloid has **neither** half: `headTop` is computed from font metrics alone and never inspects the
+photo, and the scrim starts at opacity 0 exactly where the headline lands. Extend the contract
+rather than bolting on a fixed offset.
+
+**P9** LP text overflow, grammar break, 137-char lead-magnet title cap.
 
 ### 🟡 LOGGED, NOT SCHEDULED — needs its own pass, not a drive-by
 
