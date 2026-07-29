@@ -340,7 +340,46 @@ code correctly supplied `Host: Dana Whitfield` while the same prompt still instr
 emit `[INSERT_HOST_NAME]`, and the instruction won. **Supplying a value is not enough — the
 instruction to use the token must also go.**
 
-### NEXT UP — 🔴 THE UNFINISHED STEP: prove fix C + P8 on a live cascade
+### ✅ PROVEN LIVE ON PROD 2026-07-29 — fix C, P8 rotation, P6 cause 1
+
+Deployed `e090e7e` (Railway SUCCESS on the exact SHA, prod 200). Step 9 invoked against **real prod
+service 277 / ICP 254** via `scripts/prove-creatives-live.mjs` — the real `runAdCreativesGeneration`,
+real prod `adCopy` rows, real Replicate + Cloudinary. Batch `batch-1785329050853-d6c03d7a`.
+
+- **P8 ✅** three distinct bodies rotating exactly as designed (3 rows over 5 slots → 1,2,3,1,2):
+  v1/v4 *"You've updated your LinkedIn…"* · v2 *"You've done the assessments…"* · v3 *"You know that
+  feeling when Sunday evening arrives…"*. **4 of 5 inspected**; v5 not opened.
+- **Fix C ✅** zero in-image text on all four inspected — no newsprint, no callout labels, no garbled
+  book covers.
+- **P6 cause 1 ✅** both person-free styles are genuinely person-free: `screenshot` = empty desk,
+  `object` = desk still life. First time either has been.
+- **Latency:** **13.1s per creative end-to-end** (65.6s / 5). The harness's 5.5s median is
+  *generation only*; the extra ~7.6s is download + dual Cloudinary upload + resvg composite. **The
+  `~2-2.5 min` batch figure in `adCreativesGenerator.ts:16` is stale — 65.6s measured. Correct it.**
+- **Still male** (P6 cause 2, held) and **the headline still crosses the face in v3** (compositing
+  fix, held). Both expected.
+
+**Reconciliation: creatives 397 → 402 = exactly +5.** Every other table unchanged (services 124 ·
+ICPs 101 · kits 49 · adCopy 5405 · LPs 90 · emails 96 · WA 91) · 0 running jobs · protected rows
+intact 6/6/6/6. No LP published → no KV to purge.
+
+🔴 **TEARDOWN OUTSTANDING — awaiting Arfeen's explicit "execute":**
+`DELETE FROM adCreatives WHERE batchId = 'batch-1785329050853-d6c03d7a';` (5 rows → back to 397).
+Also 5 orphaned Cloudinary objects `ad-creatives_117174_batch-1785329050853-d6c03d7a_variation-{1..5}.png.png`
+plus their `raw-variation-*` siblings.
+
+### 🔴 STILL UNPROVEN — the two paths this run did NOT exercise
+
+1. **`routers/adCreatives.ts:981` — the WIZARD batch P8 site.** Fixed in code, never executed. This
+   run drove `adCreativesGenerator.ts` only. **Needs a wizard generation through the UI.**
+2. **The full 11-node cascade.** Not re-run — it was already proven end-to-end on 2026-07-28, and the
+   unproven surface was step 9, which this run covered directly. ⚠️ **Blocker if a full cascade is
+   wanted: the smoke user 117174 has ONLY protected rows** (services 272–277, ICPs 249–254) — there
+   is no spare service/ICP to run against, and deployed prod has **no scripted login**
+   (`/api/test-login/:openId` is `NODE_ENV=development` only). A full cascade therefore needs either
+   Arfeen driving the UI, or new parent rows created first.
+
+### Superseded — the old entry
 
 **`1f077d9` is PUSHED to `railway-build` and deployed. The live cascade was NOT run** — the session
 hit its context ceiling and a cascade must never be started without room to tear it down
