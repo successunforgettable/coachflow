@@ -16,6 +16,10 @@
 import { writeFileSync, mkdirSync } from "fs";
 import path from "path";
 import Replicate from "replicate";
+import { getDb } from "../server/db.ts";
+import { idealCustomerProfiles } from "../drizzle/schema.ts";
+import { eq } from "drizzle-orm";
+import { resolveSubjectDescriptor, subjectClausesForBatch, describeResolution } from "../server/_core/subjectDescriptor.ts";
 import { generateAdImagePrompt } from "../server/routers/adCreatives.ts";
 
 const arg = (n, d) => {
@@ -37,6 +41,22 @@ const PROBLEM =
   "sleep sacks, white noise and dream feeds and nothing holds for more than three nights.";
 
 const STYLES = ["person_shocked", "screenshot", "person_intense", "object", "person_curious"];
+
+// Casting is the axis under test, so the REAL resolver supplies the subject
+// clause — a bake-off without one cannot answer "did the model cast who we
+// asked for". ICP 247 resolves clear-female at tier 1 (bare token), so every
+// person-bearing slot asks for a woman and any man is a miss.
+const icpId = Number(arg("icpId", "247"));
+const db = await getDb();
+const [icpRow] = await db.select({
+  demographics: idealCustomerProfiles.demographics, introduction: idealCustomerProfiles.introduction,
+  fears: idealCustomerProfiles.fears, hopesDreams: idealCustomerProfiles.hopesDreams,
+  frustrations: idealCustomerProfiles.frustrations, psychographics: idealCustomerProfiles.psychographics,
+}).from(idealCustomerProfiles).where(eq(idealCustomerProfiles.id, icpId)).limit(1);
+const RESOLUTION = resolveSubjectDescriptor(icpRow ?? null);
+const CLAUSES = subjectClausesForBatch(RESOLUTION, STYLES);
+console.log(`SUBJECT ${describeResolution(RESOLUTION)}`);
+CLAUSES.forEach((c, i) => console.log(`SUBJECT_SLOT ${i + 1} ${STYLES[i]} :: ${c}`));
 
 async function renderReplicate(prompt) {
   const replicate = new Replicate({ auth: process.env.REPLICATE_API_KEY });
@@ -78,7 +98,7 @@ const results = [];
 for (const model of MODELS) {
   for (let i = 0; i < STYLES.length; i++) {
     const style = STYLES[i];
-    const prompt = generateAdImagePrompt(style, NICHE, PROBLEM);
+    const prompt = generateAdImagePrompt(style, NICHE, PROBLEM, false, CLAUSES[i]);
     const label = `${model}__v${i + 1}-${style}`;
     const t0 = Date.now();
     try {
