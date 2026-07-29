@@ -340,7 +340,41 @@ code correctly supplied `Host: Dana Whitfield` while the same prompt still instr
 emit `[INSERT_HOST_NAME]`, and the instruction won. **Supplying a value is not enough — the
 instruction to use the token must also go.**
 
-### 🔴 ORDINAL-AS-CHOICE SWEEP — 8 sites found, IMPACT MEASURED, nothing fixed yet
+### ✅ ORDINAL-AS-CHOICE — ALL 8 SITES FIXED + VERIFIED LIVE (`66a5682`)
+
+**`server/_core/pickSelected.ts` is now the ONLY place this decision is made.** All four
+orchestrator helpers and all four generator-side sites delegate to it — the two layers are collapsed
+onto one call path, so **a fix can no longer land in one layer and miss the other** (which is exactly
+what happened to the first hvco fix).
+
+- **Scored** (`adCopy`, `headlines`): `selectionScore DESC`, id as tie-break. `selectionScore` is a
+  real `decimal(5,2)`, so MySQL sorts numerically and puts NULLs last — an unscored row can never
+  outrank a scored one.
+- **Unscored, deliberate rules:** `hvco` prefers the `short` tab (mean 30, zero over 60) over `long`
+  (133) and `subheadlines` (159), else shortest title. `heroMechanisms` prefers the
+  `hero_mechanisms` tab — the one that actually names a mechanism (mean name 33) while
+  `headline_ideas` averages **150** and would render a sentence where a method name belongs.
+  ⚠️ **The old ordinal already landed there on 92/92 sets by accident of insertion order.** Stating
+  the rule changes no output today; it stops a future reordering silently promoting a sentence.
+
+**VERIFIED LIVE on real prod generations:**
+
+| | picked | max available | ordinal would have taken | changed |
+|---|---|---|---|---|
+| headlines | **90.00** | 90 | 80.00 | ✅ |
+| adCopy | **85.00** | 85 | 80.00 | ✅ |
+
+Stale comment removed (it still called `selectionScore` ordering a "future enhancement" after it was
+built — *a comment describing the opposite of the code is how the P7 negation trap survived*), and
+four now-unused `asc` imports dropped. Teardown: 17 rows removed, settled 80s, re-verified, every
+table at baseline, protected 6/6/6/6.
+
+🔑 **THE PATTERN, for future sweeps:** an `orderBy(...).limit(1)` is only safe when the ordering
+column *is* the decision. If it orders by `id` or `createdAt` to pick one of several interchangeable
+generated variants, it is an ordinal standing in for a choice — and it will silently track insertion
+order, which changes whenever a generator is reordered.
+
+#### Original sweep record (impact measurements that justified the work)
 
 The `orderBy(asc|desc(id)).limit(1)` pattern has now caused two defects (P8 ad-copy bodies, the hvco
 selector). Swept every selection path. **List only — Arfeen wants to see it before any fix.**
