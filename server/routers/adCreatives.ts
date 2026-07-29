@@ -146,7 +146,7 @@ export function generateAdImagePrompt(
   // Positive framing of the clean-plate requirement. Describes what the surfaces
   // ARE (blank, plain, unmarked) rather than listing what must not appear —
   // naming "text"/"letters"/"captions" at all is what put them in the frame.
-  const cleanPlate = "Every surface in frame is blank and unmarked: plain walls, unbranded plain objects, blank paper, blank screens, plain untitled book covers, plain clothing without prints or logos. A purely photographic scene with clear empty space around the subject.";
+  const cleanPlate = "Every surface in frame is blank and unmarked: plain walls, unbranded plain objects, blank paper, blank screens, plain untitled book covers, plain clothing in solid colours. A purely photographic scene with clear empty space around the subject.";
 
   // Positive framing: describes the person to depict, never the one to avoid.
   const who = subject && subject.trim() ? subject.trim() : "Person (30-45 years old)";
@@ -167,7 +167,21 @@ export function generateAdImagePrompt(
   // STYLE-AWARE, for the same reason nicheContext had to be: a person-worded
   // composition line on a still-life style is a self-contradiction, and that is
   // exactly what kept putting people in the `object` frame.
-  const compositionPerson = "Composed for a portrait-style advertisement: the subject sits high in the frame, head and shoulders in the upper half, framed from the chest up. The lower half of the image is calm open space — plain wall, plain surface, or softly defocused background — an unbroken area with room to breathe beneath the subject.";
+  //
+  // ⚠️ SELF-CONTRADICTION FIXED 2026-07-29 (bake-off finding). The first draft
+  // asked for the subject "framed from the chest up" AND for "the lower half
+  // calm open space". A chest-up portrait fills the frame with torso by
+  // definition — those two cannot both hold, and all THREE models in the
+  // bake-off duly filled the lower half with body. That was our prompt losing
+  // to itself, not a model failure, and it is the same class as nicheContext
+  // being person-worded on the still-life styles.
+  //
+  // Resolved by changing the SHOT rather than the wording: pull back to a
+  // medium-wide frame, put the head in the upper third, and give the lower half
+  // to a foreground surface falling into shadow. That is a real photograph a
+  // photographer could take, and the scrim then darkens an area that is already
+  // low-detail instead of fighting a lit torso.
+  const compositionPerson = "Composed for a portrait-format advertisement: a medium-wide shot with the subject seated behind a plain table or against a plain wall, their head and shoulders in the upper third of the frame and the camera far enough back to include space around them. The lower half of the picture is the bare foreground surface falling away into shadow — a calm, dark, low-detail area with nothing in it competing for attention.";
   const compositionSetting = "Composed for a portrait-style advertisement: the main object sits high in the frame, in the upper half, with the arrangement kept to the top of the picture. The lower half of the image is calm open space — bare surface or softly defocused background — an unbroken area with room to breathe below.";
 
   const stylePrompts = {

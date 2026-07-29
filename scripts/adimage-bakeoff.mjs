@@ -35,12 +35,13 @@ mkdirSync(OUT, { recursive: true });
 //    "Exhausted First-Time Parents"). That service row was torn down, so `niche`
 //    and `problem` are RECONSTRUCTED from the ICP dump in
 //    RUN_2026-07-28_artifacts-full.txt. Never generic test prompts.
-const NICHE = "first-time parents of babies aged 4-12 months who are exhausted by night waking";
-const PROBLEM =
+const NICHE = arg("niche", "first-time parents of babies aged 4-12 months who are exhausted by night waking");
+const PROBLEM = arg("problem",
   "Baby feeds to sleep every night and wakes every two hours; the parent has tried wake windows, " +
-  "sleep sacks, white noise and dream feeds and nothing holds for more than three nights.";
+  "sleep sacks, white noise and dream feeds and nothing holds for more than three nights.");
 
-const STYLES = ["person_shocked", "screenshot", "person_intense", "object", "person_curious"];
+const ALL_STYLES = ["person_shocked", "screenshot", "person_intense", "object", "person_curious"];
+const STYLES = arg("styles", "") ? arg("styles", "").split(",").map(x => x.trim()) : ALL_STYLES;
 
 // Casting is the axis under test, so the REAL resolver supplies the subject
 // clause — a bake-off without one cannot answer "did the model cast who we
