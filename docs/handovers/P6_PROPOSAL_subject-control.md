@@ -90,16 +90,32 @@ status quo is the honest render for it.
 `age_range` needs the same treatment in miniature: `"35–50, with the core cluster at 38–46"` should
 resolve to the cluster, not the outer band, and should replace the hardcoded `30-45`.
 
-### Two decisions that are Arfeen's, not mine
+### ✅ DECIDED BY ARFEEN 2026-07-29 — both calls answered, do not re-litigate
 
-1. **Resolve once per batch, or per variation?** **Recommend once per batch.** Five creatives for
-   one campaign are one audience; varying gender across a deck reads as a bug, not as variety. The
-   skew is a property of the campaign.
-2. **What should a genuinely mixed audience render?** Tier 3 currently means "unspecified", which in
-   practice means Flux's prior, which in practice means a man. The honest alternatives are to
-   alternate across the five slots, or to let the ICP skew decide even when weak. **This is a
-   product call about how ZAP depicts a mixed audience and I am not making it silently** — flagging
-   it rather than burying it in a default.
+**1. PER BATCH.** All five creatives depict the same person type, **resolved from the ICP, never
+guessed**. Five creatives are one audience; varying the subject across a deck reads as a bug.
+
+**2. A GENUINELY MIXED ICP ALTERNATES ACROSS THE FIVE SLOTS** — both represented, rather than
+defaulting to one.
+
+**These two interact, and the interaction is the whole rule:**
+
+> **One audience, one depiction. An actually-mixed audience, both.**
+
+- **Per-batch applies when the ICP is CLEAR** — e.g. "mums", "she", maternity pay, antenatal group →
+  **all five female.** Not alternated. A clear ICP is not a mixed one.
+- **Alternating applies ONLY when the ICP is genuinely mixed** — a real 50/50, or a skew too weak to
+  resolve. It is the tier-3 path, not a general variety mechanism.
+
+**Never a coin flip. Never a silent default to Flux's prior** (which is what "unspecified" resolved
+to, and why all five subjects came out male).
+
+### Revised tier 3
+
+Tier 3 is therefore **not** "emit the current neutral wording" as originally drafted — that is what
+produces the male default. It is: **mark the batch as mixed and alternate the resolved descriptor
+across the five variation slots.** The neutral wording survives only for an ICP with no usable
+signal at all in either tier 1 or tier 2, which should be rare and is worth logging when it happens.
 
 ### What this does NOT fix
 

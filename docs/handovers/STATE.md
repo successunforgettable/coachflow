@@ -349,7 +349,9 @@ hit its context ceiling and a cascade must never be started without room to tear
 **What the cascade must prove — three things a raw-plate harness run cannot:**
 1. **P8** — the five creatives carry **different** body lines. Three sites were fixed, not two;
    `routers/adCreatives.ts:981` (wizard batch) had the same defect. Auto Mode exercises
-   `adCreativesGenerator.ts` only, so the wizard site stays unproven unless a wizard batch is also run.
+   `adCreativesGenerator.ts` only, so **the wizard site stays unproven unless a wizard batch is also
+   run**. Do both if context allows; **if not, state explicitly which one is unproven** rather than
+   letting an Auto-Mode pass imply the wizard path was covered.
 2. **Fix C** — zero in-image text on *live-generated* creatives, not the reconstructed harness run
    (the harness reconstructs `niche` and never touches the ICP).
 3. **Latency** — whether the harness's **median 5.5s/image** holds on the live path. If it does, the
@@ -380,10 +382,27 @@ four words apart. That is why the fix-C re-run's object slot still returned a pe
 the re-run had upsampling off and the drift persisted. Make `nicheContext` style-aware.
 
 **Cause 2 needs a resolution step, not a concat** — `demographics.gender` is hedged *population*
-prose (*"All genders, skewing slightly female (55–60%)"*) and a photo needs **one** person. Proposed
-three-tier resolver (deterministic parse → the ICP's own first-person words → neutral, never a coin
-flip) with **two open product calls for Arfeen** documented in the proposal. Also: `problem` is a
-**dead parameter** in `generateAdImagePrompt` — passed by all five callers, interpolated into none.
+prose (*"All genders, skewing slightly female (55–60%)"*) and a photo needs **one** person.
+Three-tier resolver: deterministic skew parse → **the ICP's own first-person words** (the 07-28 ICP
+says *"other mums in my antenatal group"* where the demographics field hedged; grounding the
+depiction in what the ICP actually says is the anti-fabrication principle applied to imagery) →
+the alternating path below.
+
+**✅ BOTH PRODUCT CALLS DECIDED BY ARFEEN 2026-07-29 — do not re-litigate:**
+
+> **One audience, one depiction. An actually-mixed audience, both.**
+
+- **PER BATCH** — all five creatives depict the same person type, **resolved from the ICP, never
+  guessed**. Applies whenever the ICP is **CLEAR** (mums / she / maternity pay → **all five
+  female**). A clear ICP is not a mixed one.
+- **ALTERNATE ACROSS THE FIVE SLOTS** — **only** when the ICP is *genuinely* mixed (a real 50/50, or
+  a skew too weak to resolve). This is tier 3, not a general variety mechanism.
+- **Never a coin flip; never a silent default to Flux's prior** — "unspecified" resolving to Flux's
+  prior is precisely why all five subjects came out male.
+
+Also: `problem` is a **dead parameter** in `generateAdImagePrompt` — passed by all five callers,
+interpolated into none. Wire it (it carries the scenario that would have prevented v1's newborn) or
+delete it.
 
 ### Then — headline-over-face, and P9
 
