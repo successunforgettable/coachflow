@@ -340,6 +340,35 @@ code correctly supplied `Host: Dana Whitfield` while the same prompt still instr
 emit `[INSERT_HOST_NAME]`, and the instruction won. **Supplying a value is not enough — the
 instruction to use the token must also go.**
 
+### ✅ P6 CAUSE 2 SHIPPED + PROVEN LIVE 2026-07-29 — the gender resolver (`dac624a`)
+
+`server/_core/subjectDescriptor.ts`. Three tiers, failing to neutral, never to a guess. Wired into
+**both** batch paths (Auto Mode + wizard) via `resolveSubjectForService` → `subjectClausesForBatch`.
+
+**Verified live on prod against real ICPs:** clear-female (ICP 247, tier 1) → **all five female,
+all five inspected** · clear-male (synthetic input through the real resolver, tier 1) → all five
+male, **4 of 5 inspected** · mixed (ICP 253, tier 3) → **woman/man/woman** across person slots ·
+end-to-end through `runAdCreativesGeneration` on service 277 → v1 woman, v3 man in the composited
+output, P8 rotation still holding. **Teardown complete** — 5 rows, settled 80s, re-verified,
+creatives back to 397, remnants 0, protected 6/6/6/6.
+
+🔑 **LIVE RENDERING CAUGHT A BUG STRUCTURAL REASONING MISSED — carry this forward.** Alternating on
+the *variation index* put every woman on a visible slot and every man on a still life: `VARIATIONS`
+is `[person_shocked, screenshot, person_intense, object, person_curious]`, so the person-bearing
+styles sit at indices **0, 2, 4 — all EVEN**. A "mixed" ICP rendered **three women and zero men**
+while the unit tests passed, because they asserted the clause *sequence* rather than what a viewer
+sees. Fixed by alternating over person-bearing slots; tests now assert the visible subset.
+
+**Measured on prod:** every career-pivot ICP (249–254) resolves **tier 3 mixed** — the hedged
+"All genders, skewing slightly…" prose is the common case, exactly as designed. ICP 247 ("Female")
+is the only tier-1 clear resolve in the sample. **No ICP resolved via tier 2 in this sample** — the
+07-28 parenting ICP that would have is deleted, so tier 2 is covered by unit tests using its
+verbatim text, not by a live render.
+
+⚠️ **Not testable and left unproven:** the "v1 no longer shows a newborn for a seven-month-old ICP"
+check. That needs the deleted parenting ICP 259; the career-pivot ICPs have no baby. The `problem`
+parameter wiring itself IS proven (scene text reaches every prompt).
+
 ### ✅ PROVEN LIVE ON PROD 2026-07-29 — fix C, P8 rotation, P6 cause 1
 
 Deployed `e090e7e` (Railway SUCCESS on the exact SHA, prod 200). Step 9 invoked against **real prod
@@ -502,8 +531,13 @@ the root cause of the Sprint B email regression. **Needs regression testing, not
 - 🔴 **Rotate the smoke password** (`zap-e2e-smoke@mailinator.com`) + update `~/.zap-e2e-creds.env`.
   Deferred through three runs.
 - 🟡 **Cloudinary cleanup — ad creatives (added 2026-07-29).** A DB delete never touches Cloudinary,
-  so every torn-down run leaves its images behind. **10 orphans from the 07-29 proof run** — cloud
-  `dunshei0y`, Media Library → search `batch-1785329050853` → delete all 10:
+  so every torn-down run leaves its images behind. **20 orphans from the two 07-29 proof runs** —
+  cloud `dunshei0y`, Media Library. Search **`batch-1785332250726`** → delete 10:
+  ```
+  ad-creatives_117174_batch-1785332250726-7ef0a725_variation-{1,2,3,4,5}.png.png
+  ad-creatives_117174_batch-1785332250726-7ef0a725_raw-variation-{1,2,3,4,5}.png.png
+  ```
+  then search **`batch-1785329050853`** → delete 10:
   ```
   ad-creatives_117174_batch-1785329050853-d6c03d7a_variation-{1,2,3,4,5}.png.png
   ad-creatives_117174_batch-1785329050853-d6c03d7a_raw-variation-{1,2,3,4,5}.png.png
