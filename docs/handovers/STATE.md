@@ -340,6 +340,65 @@ code correctly supplied `Host: Dana Whitfield` while the same prompt still instr
 emit `[INSERT_HOST_NAME]`, and the instruction won. **Supplying a value is not enough — the
 instruction to use the token must also go.**
 
+### 🔴 ORDINAL-AS-CHOICE SWEEP — 8 sites found, IMPACT MEASURED, nothing fixed yet
+
+The `orderBy(asc|desc(id)).limit(1)` pattern has now caused two defects (P8 ad-copy bodies, the hvco
+selector). Swept every selection path. **List only — Arfeen wants to see it before any fix.**
+
+**It is documented as provisional.** `orchestration.ts:332-338`: *"Strategy: pick the lowest-id row
+in the set (first inserted; deterministic across re-runs). **Future enhancement: pick by
+selectionScore DESC where the table tracks it (adCopy has selectionScore; others may not).**"* The
+enhancement was never built — same shape as P1's dead `isLaunchStage`.
+
+**MEASURED IMPACT — how often the ordinal differs from the best-scored row:**
+
+| site | sets | picks a different row than the scorer would | avg score taken → available |
+|---|---|---|---|
+| **adCopy** | 134 | **82 (61%)** | 82.5 → **90.0** |
+| **headlines** | 104 | **40 (38%)** | 81.3 → **87.1** |
+| heroMechanisms | — | not comparable — **0 of 1,072 rows scored** | — |
+| hvcoTitles | — | not comparable — **0 of 6,577 rows scored** | — |
+
+So on ad copy the auto-selection is leaving ~7.5 points of its own scoring engine on the table in
+6 runs out of 10, and on headlines ~5.8 points in 4 out of 10.
+
+**THE 8 SITES — duplicated in two layers:**
+
+*Orchestrator (`_core/orchestration.ts`), feeding `kit.selected*Id`:*
+1. `:341` `pickFirstFromHeroMechanismSet` — unscored table
+2. `:368/373` `pickFirstFromHvcoSet` — ✅ **FIXED** (prefers `short` tab, else shortest)
+3. `:378` `pickFirstFromHeadlineSet` — **scored table, ignores the score**
+4. `:383` `pickFirstFromAdCopySet` — **scored table, ignores the score, highest impact**
+
+*Generator-side, same shape, feeding `autoSelectBest`:*
+5. `hvcoGenerator.ts:368` — ⚠️ **STILL THE OLD SHAPE. My hvco fix only patched the orchestrator.**
+   This path still selects the `long` tab. Same defect, second location.
+6. `heroMechanismsGenerator.ts:375`
+7. `headlinesGenerator.ts:542`
+8. `adCopyGenerator.ts:817`
+
+**Not the pattern (checked and cleared):** the ~35 `orderBy(desc(createdAt))` hits in routers are
+list queries with no `limit(1)` — display ordering, not selection. `campaignExport.ts:283` and
+`adCreativesGenerator.ts:448` (latest ICP for a service) take the latest of a set that should have
+one member; defensible.
+
+**Shape of the fix when authorised:** one shared helper, scored tables order by `selectionScore DESC`
+with id as the tie-break; unscored tables keep a deliberate rule (hvco's tab preference) rather than
+an ordinal; and the two layers collapse to one call path so a fix cannot land in only one of them —
+which is exactly what just happened to me.
+
+### 📌 COMMIT-MESSAGE DAMAGE — cosmetic, nothing lost
+
+Backticks in a bash heredoc were shell-substituted, deleting words from two messages.
+**Both are cosmetic and fully recoverable from surrounding context; no content is lost.**
+- `e090e7e` — one word (`problem`): *"Also wires , which was a DEAD parameter: passed by all five
+  call sites, interpolated into none"*. The clause names the parameter unambiguously.
+- `c94f412` — four words (`long`, `subheadlines`, `short`, `short`), each named by the adjacent text
+  (the insertion-order list, the parenthetical, and the quoted "Create 20 SHORT titles" rule).
+
+**No STATE.md reconstruction needed** — the uncorrupted record was written here via the Edit tool,
+which involves no shell. That is now the standing practice; see the TRAPS entry.
+
 ### ✅ HVCO LONG-TITLE DEFECT — it was SELECTION, not generation (`c94f412`)
 
 **ROOT CAUSE.** `pickFirstFromHvcoSet` (`orchestration.ts`) was
