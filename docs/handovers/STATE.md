@@ -340,6 +340,50 @@ code correctly supplied `Host: Dana Whitfield` while the same prompt still instr
 emit `[INSERT_HOST_NAME]`, and the instruction won. **Supplying a value is not enough — the
 instruction to use the token must also go.**
 
+### ✅ HVCO LONG-TITLE DEFECT — it was SELECTION, not generation (`c94f412`)
+
+**ROOT CAUSE.** `pickFirstFromHvcoSet` (`orchestration.ts`) was
+`orderBy(asc(id)).limit(1)` — the lowest id in the set. The generator inserts tabs in order
+**long → short → beast_mode → subheadlines**, so the lowest id is *always* the **`long`** tab.
+Measured on **all 91 prod sets: the selector picked `long` 91/91**, mean 140 chars, max 271 — while
+the **`short` tab (mean 30, ZERO over 60) was generated on every set and never once selected.**
+Insertion order standing in for a choice — **the same bug shape as P8's `orderBy(desc(id))` on
+ad-copy bodies. Look for this pattern elsewhere.**
+
+**Fixed:** prefer the `short` tab; fall back to the **shortest** title for the 7 legacy sets that
+predate it, so it can never return nothing where the old code returned something.
+**Simulated across all 91 prod sets: mean 140 → 32 · max 271 → 45 · 97% over 60 → 3%.** The residual
+3% is entirely legacy sets whose shortest title is itself 69–86 chars; P9 slot-fitting covers them.
+Quality holds — *"The Sunday Dread Exit Intensive"*, *"5 Qualified Roles, 3-Line Fix"*.
+
+⚠️ **THIS CORRECTS MY OWN P9 REPORT.** The "104-char average, the generator produces descriptions"
+figure was **contaminated** — it pooled `subheadlines` (mean 159, and correctly sentences, they are
+subheadlines) in with titles. By tab: **short 30 · long 133 · beast_mode 88 · subheadlines 159.**
+The short tab was always producing perfect titles. **Do not quote the 104/318/79% figure again.**
+
+⚠️ **AND CORRECTS MY P9 PROMPT PATCH, which was self-contradicting.** I had inserted *"every title
+MUST be 60 characters or fewer"* into the LONG prompt **28 lines above its own instruction "Create
+20 LONG, benefit-first titles"**, and into POWER MODE which asks for *"a mix of long (7-15 words)
+and short"*. Two conflicting orders; the task instruction wins, so the cap was inert. Removed from
+both — it now sits **only** on the `short` prompt, where it agrees with "Create 20 SHORT titles
+(3-7 words)". **The few-shot examples were never the problem: all three are 44–59 chars.**
+
+The `long` tab is a legitimate product surface, so it is **bounded, not capped**: *"7 to 15 WORDS —
+one line, the length of a book title"*. **Verified by two real prod generations: long mean 242 → 81,
+max 267 → 92**, now producing actual titles (*"The 90-Day Career Pivot Plan: Target Role, Real
+Salary, No Credential Reset"*). Short unchanged at mean 31 / max 36 / 0% over 60.
+
+**📌 BACKFILL DECISION — NOT WORTH IT, leave the 6,577 rows.** The selector fix is a **read-time**
+fix, so it retroactively improves every existing set: 84 of 91 already have a `short` tab and now
+resolve to a good title with zero regeneration. The 7 without fall back to shortest (23–86 chars),
+of which only 3 exceed 60 and P9 slot-fitting handles those. A backfill would burn tokens
+regenerating 6,577 rows to improve at most 3 sets that are already covered. **They are latent, not
+live** — stored only, and just two accounts ever published, both Arfeen's.
+
+🔴 **PROD IS ABOVE BASELINE — 113 test rows from the two verification generations.**
+`hvcoTitles` **6690** vs baseline **6577**. Awaiting explicit go-ahead:
+`DELETE FROM hvcoTitles WHERE hvcoSetId IN ('SOmzF3EsNP9M75J9uEfjx','rmr4FHtalld-WmKb8YLax');`
+
 ### ✅ P9 FIXED + PROVEN ON A PUBLISHED PAGE 2026-07-29 (`fda7127`)
 
 All six defects fixed and verified at a real `/p/` URL. Screenshots:
@@ -648,6 +692,11 @@ Each of these has already cost real time. They are cheap to store and expensive 
   local), so on an IST machine every stored UTC timestamp renders **5h30m early**. Compare DB
   timestamps to `SELECT NOW()` on the **same connection**, never the shell clock. This produced a
   wrong "6h45m" elapsed figure once already.
+- **NEVER put backticks in a commit message written through a bash heredoc.** `git commit -F - <<'EOF'`
+  still lets the shell substitute inside the *outer* command line, so backticked words are executed
+  and silently **deleted** from the message. This has now eaten words from two commits
+  (`e090e7e`, `c94f412`). Write prose-heavy records with the Edit tool into `docs/handovers/`, where
+  no shell is involved, and keep commit messages backtick-free.
 - **A malformed probe looks exactly like a broken service.** Two API probes returned HTTP 400
   `invalid_request_error` — that was shell quoting mangling JSON inside `railway run bash -c`, not
   the API. Probe from a node script with `JSON.stringify`, never a heredoc through nested quotes.
