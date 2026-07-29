@@ -306,7 +306,7 @@ export async function runOrchestrationStep(
   const { getDb } = await import("../db");
   const { users, campaignKits, services, heroMechanisms, hvcoTitles, headlines, adCopy, idealCustomerProfiles, landingPages, offers, nodeStatuses } =
     await import("../../drizzle/schema");
-  const { eq, and, asc } = await import("drizzle-orm");
+  const { eq, and, asc, sql } = await import("drizzle-orm");
   const { autoSelectBest } = await import("../routers/campaignKits");
   // Phase 1 (Problem A): apply the kit's upfront campaignFacts to a freshly-generated LP (deterministic).
   const { applyOperatorAnswer } = await import("../lib/templates/operatorFields");
@@ -341,10 +341,37 @@ export async function runOrchestrationStep(
       .where(eq(heroMechanisms.mechanismSetId, setId)).orderBy(asc(heroMechanisms.id)).limit(1);
     return row?.id ?? null;
   };
+  /**
+   * Pick the auto-selected lead-magnet title for a set.
+   *
+   * ROOT CAUSE OF THE 137-CHAR TITLE ON LP 230 (fixed 2026-07-29). This used to
+   * be `orderBy(asc(id)).limit(1)` — the lowest id in the set. The generator
+   * inserts tabs in order long → short → beast_mode → subheadlines, so the
+   * lowest id is ALWAYS the `long` tab. Measured on all 91 prod sets: the
+   * selector picked `long` 91/91, mean 140 chars, max 271 — while the `short`
+   * tab (mean 30, ZERO over 60 chars) was generated on every single set and
+   * never once selected.
+   *
+   * This was a SELECTION bug, not a generation bug: insertion order standing in
+   * for a choice, exactly like P8's `orderBy(desc(id)).limit(1)` on ad-copy
+   * bodies. The `long` tab is a legitimate product surface — a coach can pick a
+   * longer benefit-first title in the UI — it simply must not be what Auto Mode
+   * silently drops into every display slot.
+   *
+   * Prefers `short`. Falls back to the shortest title in the set for legacy sets
+   * that predate the short tab, so this can never return nothing where the old
+   * code returned something.
+   */
   const pickFirstFromHvcoSet = async (setId: string): Promise<number | null> => {
-    const [row] = await db.select({ id: hvcoTitles.id }).from(hvcoTitles)
-      .where(eq(hvcoTitles.hvcoSetId, setId)).orderBy(asc(hvcoTitles.id)).limit(1);
-    return row?.id ?? null;
+    const [shortRow] = await db.select({ id: hvcoTitles.id }).from(hvcoTitles)
+      .where(and(eq(hvcoTitles.hvcoSetId, setId), eq(hvcoTitles.tabType, "short")))
+      .orderBy(asc(hvcoTitles.id)).limit(1);
+    if (shortRow?.id) return shortRow.id;
+    // Legacy / no short tab: take the shortest title rather than the first row.
+    const [shortest] = await db.select({ id: hvcoTitles.id }).from(hvcoTitles)
+      .where(eq(hvcoTitles.hvcoSetId, setId))
+      .orderBy(asc(sql`CHAR_LENGTH(${hvcoTitles.title})`), asc(hvcoTitles.id)).limit(1);
+    return shortest?.id ?? null;
   };
   const pickFirstFromHeadlineSet = async (setId: string): Promise<number | null> => {
     const [row] = await db.select({ id: headlines.id }).from(headlines)
