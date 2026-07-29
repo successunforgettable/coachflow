@@ -340,6 +340,43 @@ code correctly supplied `Host: Dana Whitfield` while the same prompt still instr
 emit `[INSERT_HOST_NAME]`, and the instruction won. **Supplying a value is not enough — the
 instruction to use the token must also go.**
 
+### ✅ P9 FIXED + PROVEN ON A PUBLISHED PAGE 2026-07-29 (`fda7127`)
+
+All six defects fixed and verified at a real `/p/` URL. Screenshots:
+`docs/screenshots/run-2026-07-29-p9/`.
+
+**P9-1** `yourbrand` / `YOUR BRAND'S` → both slots OMIT when no coachName (the disposition the coach
+cutout already used). **P9-2** stars + "Trusted by high achievers" → conditional on real supplied
+proof; the old guard dropped the NUMBER and kept the CLAIM. **P9-3** cover clipping → title fitted +
+badge gutter reserved. **P9-4** article stripped before prefixing. **P9-5** new shared primitives
+(`fitTitle` / `withoutLeadingArticle` / `fitPrefixedTitle` / `fitTitleForPunctuatedSlot`) so ALL
+templates benefit, plus a 60-char rule in all three hvco prompts. **P9-6** filler → `solutionIntro`,
+omitted when absent.
+
+🔑 **THE UNIT TEST ENCODED THE DEFECT.** `burchardProductivity.test.ts` asserted `★★★★★` was ALWAYS
+present — it locked in fabricated social proof. Inverted, with the positive case added. **Check
+whether a failing test is asserting the bug before "fixing" the code to satisfy it.**
+
+🔑 **THREE MORE DEFECTS FOUND ONLY BY THE SCREENSHOT — after a served-bytes grep had reported all six
+fixed.** A SECOND `cta` computation the hero fix missed (full 200-char title as a six-line orange
+slab on the bottom button) · the fitted ellipsis colliding with the slot's own punctuation
+(`"Is… Now!"`, `"Your…."`) · orphaned opening brackets from truncation (`"QUALIFIED FOR (BUT…"`).
+**Grepping the HTML is not the same as looking at the page.**
+
+⚠️ **MEASURED, AND BIGGER THAN THE CAP — needs its own pass.** 6,577 prod `hvcoTitles` average
+**104 chars, max 318, 79% over 60**. **The hvco generator produces DESCRIPTIONS, not titles.** A
+drop-based cap would collapse the deck (STANDING RULE 1), so the fix is prompt-side + slot-fitting.
+Existing 6,577 rows are unchanged and still long.
+
+**✅ Cloudinary sweep built** — `server/lib/adCreativeTeardown.ts`. Reads public_ids from the stored
+URLs **before** deleting rows (unrecoverable afterwards), sweeps Cloudinary best-effort, then deletes
+rows unconditionally so a Cloudinary failure never leaves the DB above baseline. `dryRun` lists what
+would go. ⚠️ Drizzle's delete does NOT return `affectedRows` — the module falls back to `rows.length`;
+do not trust that field elsewhere.
+
+**Teardown complete:** KV purged (both slugs verified **404**), LP rows deleted, LPs back to **90**,
+every table at baseline, protected **6/6/6/6**, smoke user has **0** published pages.
+
 ### ✅ HEADLINE-OVER-FACE FIXED + PROVEN LIVE 2026-07-29 — the tabloid zone contract (`c9398ae`)
 
 Both halves built, mirroring what editorial always had and tabloid never did.
