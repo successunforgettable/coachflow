@@ -340,6 +340,29 @@ code correctly supplied `Host: Dana Whitfield` while the same prompt still instr
 emit `[INSERT_HOST_NAME]`, and the instruction won. **Supplying a value is not enough — the
 instruction to use the token must also go.**
 
+### ✅ HEADLINE-OVER-FACE FIXED + PROVEN LIVE 2026-07-29 — the tabloid zone contract (`c9398ae`)
+
+Both halves built, mirroring what editorial always had and tabloid never did.
+
+**Prompt half:** a composition clause on all five styles — subject high in frame, lower half kept as
+calm open space. Positively framed. **STYLE-AWARE**, because the first draft said *"head and
+shoulders, framed from the chest up"* and would have put person-wording on the two still lifes —
+the exact self-contradiction of P6 cause 1, caught before it shipped. Split into
+`compositionPerson` / `compositionSetting`.
+
+**Compositor half:** new zone **`"lower"`**. Centring and bottom anchoring **unchanged** (tabloid
+look preserved); what changes is the scrim. The legacy gradient began at `headTop − 0.06H` with
+**stop-opacity 0** and only reached 0.72 at 55% down, so the first headline line rendered against an
+effectively transparent scrim — text straight onto an undarkened face. `"lower"` starts at
+`headTop − 0.14H` and ramps to 0.62 by 25%. **Legacy geometry untouched** for zone
+`undefined`/`"bottom"`/`"left"`, so recomposite and wizard-single paths render as before.
+
+**Verified live, service 277, ALL FIVE inspected:** faces and subjects clear of the headline in
+every slot; the two still lifes composite over dark surface. ⚠️ **Honest limit — v3 and v5 have the
+headline cap-height grazing the jawline** rather than crossing a feature. Large improvement, not
+perfection. ⚠️ **Watch:** the `object` slot now renders quite dark, with the subject pushed high
+behind a stronger scrim. Teardown complete (402 → 397, remnants 0, protected 6/6/6/6).
+
 ### ✅ P6 CAUSE 2 SHIPPED + PROVEN LIVE 2026-07-29 — the gender resolver (`dac624a`)
 
 `server/_core/subjectDescriptor.ts`. Three tiers, failing to neutral, never to a guess. Wired into
@@ -531,8 +554,13 @@ the root cause of the Sprint B email regression. **Needs regression testing, not
 - 🔴 **Rotate the smoke password** (`zap-e2e-smoke@mailinator.com`) + update `~/.zap-e2e-creds.env`.
   Deferred through three runs.
 - 🟡 **Cloudinary cleanup — ad creatives (added 2026-07-29).** A DB delete never touches Cloudinary,
-  so every torn-down run leaves its images behind. **20 orphans from the two 07-29 proof runs** —
-  cloud `dunshei0y`, Media Library. Search **`batch-1785332250726`** → delete 10:
+  so every torn-down run leaves its images behind. **30 orphans from the three 07-29 proof runs** —
+  cloud `dunshei0y`, Media Library. Search **`batch-1785333231628`** → delete 10:
+  ```
+  ad-creatives_117174_batch-1785333231628-37151b84_variation-{1,2,3,4,5}.png.png
+  ad-creatives_117174_batch-1785333231628-37151b84_raw-variation-{1,2,3,4,5}.png.png
+  ```
+  then search **`batch-1785332250726`** → delete 10:
   ```
   ad-creatives_117174_batch-1785332250726-7ef0a725_variation-{1,2,3,4,5}.png.png
   ad-creatives_117174_batch-1785332250726-7ef0a725_raw-variation-{1,2,3,4,5}.png.png
