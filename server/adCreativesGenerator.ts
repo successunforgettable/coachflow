@@ -39,8 +39,12 @@
  * could add per-variation retry.
  */
 import { getDb } from "./db";
-import { adCreatives, services } from "../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { adCreatives, services, idealCustomerProfiles } from "../drizzle/schema";
+import { eq, desc } from "drizzle-orm";
+import {
+  resolveSubjectDescriptor, subjectClausesForBatch, describeResolution,
+  type SubjectResolution,
+} from "./_core/subjectDescriptor";
 import { invokeLLM } from "./_core/llm";
 import { generateImage, generateEditorialImage } from "./_core/imageGeneration";
 import { buildEditorialPrompt, EDITORIAL_VARIATIONS, generateEditorialSceneBriefs } from "./_core/editorialPrompt";
@@ -422,6 +426,33 @@ export type RunAdCreativesGenerationResult = {
   creativeCount: number;
 };
 
+/**
+ * P6 cause 2: load the service's ICP and resolve one subject for the batch.
+ * Fails SOFT — any lookup problem yields the "unresolved" resolution, which
+ * renders the pre-existing neutral wording. A missing ICP must never become a
+ * guess, and must never block a batch that would otherwise generate.
+ */
+export async function resolveSubjectForService(db: any, serviceId: number): Promise<SubjectResolution> {
+  try {
+    const [icp] = await db
+      .select({
+        demographics: idealCustomerProfiles.demographics,
+        introduction: idealCustomerProfiles.introduction,
+        fears: idealCustomerProfiles.fears,
+        hopesDreams: idealCustomerProfiles.hopesDreams,
+        frustrations: idealCustomerProfiles.frustrations,
+        psychographics: idealCustomerProfiles.psychographics,
+      })
+      .from(idealCustomerProfiles)
+      .where(eq(idealCustomerProfiles.serviceId, serviceId))
+      .orderBy(desc(idealCustomerProfiles.id))
+      .limit(1);
+    return resolveSubjectDescriptor(icp ?? null);
+  } catch {
+    return resolveSubjectDescriptor(null);
+  }
+}
+
 const VARIATIONS = [
   { style: "person_shocked" as const, formula: "benefit" as const },
   { style: "screenshot" as const, formula: "social_proof" as const },
@@ -469,6 +500,18 @@ export async function runAdCreativesGeneration(
   const ctaLabel = ctaForCampaignType(input.campaignType);
   const bodyTexts = await resolveAdBodyTexts(db, input.userId, input.serviceId, VARIATIONS.length);
 
+  // P6 cause 2: resolve the subject ONCE per batch. Arfeen's locked rule — one
+  // audience, one depiction; an actually-mixed audience, both. `subjectClause`
+  // returns the same clause for every slot when the ICP is clear, and alternates
+  // only when it is genuinely mixed. Resolved here (not in the orchestrator) so
+  // the wizard batch path gets it for free too.
+  const subject = await resolveSubjectForService(db, input.serviceId);
+  console.log(describeResolution(subject));
+  // Ordinal bookkeeping lives in the helper: the person-bearing styles sit at
+  // EVEN variation indices, so alternating on `i` would put every woman on a
+  // visible slot and every man on a still life.
+  const subjectClauses = subjectClausesForBatch(subject, VARIATIONS.map(v => v.style));
+
   let createdCount = 0;
   for (let i = 0; i < VARIATIONS.length; i++) {
     const variation = VARIATIONS[i];
@@ -487,6 +530,8 @@ export async function runAdCreativesGeneration(
       variation.style,
       input.niche,
       input.pressingProblem,
+      false,
+      subjectClauses[i],
     );
 
     console.log(

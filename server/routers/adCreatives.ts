@@ -9,7 +9,8 @@ import { storagePut } from "../storage";
 import { renderAdCreative, resolveAdBodyText, resolveAdBodyTexts } from "../_core/compositeHeadline";
 import { resolveCampaignCta } from "../_core/campaignCta";
 import { randomBytes, randomUUID } from "crypto";
-import { runAdCreativesGeneration } from "../adCreativesGenerator";
+import { runAdCreativesGeneration, resolveSubjectForService } from "../adCreativesGenerator";
+import { subjectClausesForBatch, describeResolution } from "../_core/subjectDescriptor";
 import { validateCascadePrereqs } from "../_core/cascadeContext";
 
 // Meta-prohibited phrases for compliance checking
@@ -102,7 +103,12 @@ export function generateAdImagePrompt(
   style: string,
   niche: string,
   problem: string,
-  uglyMode = false
+  uglyMode = false,
+  // P6 cause 2: the resolved subject clause for THIS variation slot, from
+  // subjectDescriptor.subjectClause(). Optional so the legacy call sites keep
+  // their previous behaviour — omitted falls back to the neutral wording, which
+  // is exactly what those sites rendered before.
+  subject?: string,
 ): string {
   const baseStyle = uglyMode
     ? "Raw UGC aesthetic, shot on iPhone, unpolished and authentic, slightly messy real-world environment, natural handheld camera shake, no studio lighting, no professional makeup, low-budget realism, observational documentary style, native social feed feel"
@@ -142,19 +148,22 @@ export function generateAdImagePrompt(
   // naming "text"/"letters"/"captions" at all is what put them in the frame.
   const cleanPlate = "Every surface in frame is blank and unmarked: plain walls, unbranded plain objects, blank paper, blank screens, plain untitled book covers, plain clothing without prints or logos. A purely photographic scene with clear empty space around the subject.";
 
+  // Positive framing: describes the person to depict, never the one to avoid.
+  const who = subject && subject.trim() ? subject.trim() : "Person (30-45 years old)";
+
   const stylePrompts = {
-    person_shocked: `${baseStyle}. Person (30-45 years old) dressed and styled for the ${niche} world, with EXCITED expression, wide eyes, enthusiastic smile, gesturing toward the camera. Dark grey/black background. ${nicheContextPerson} ${scene} ${cleanPlate} ${complianceNote}`,
+    person_shocked: `${baseStyle}. ${who} dressed and styled for the ${niche} world, with EXCITED expression, wide eyes, enthusiastic smile, gesturing toward the camera. Dark grey/black background. ${nicheContextPerson} ${scene} ${cleanPlate} ${complianceNote}`,
 
     // "No people in the frame" was a bare NEGATION and Flux ignored it — the same
     // trap as the deleted noText string. The `object` style's positively-framed
     // "an object study only" worked on the identical run. Positive framing only.
     screenshot: `${baseStyle}. An unattended desk at night, photographed as a still life: a laptop open at an angle on a dark surface, its screen showing a plain abstract chart shape with no labelling, a cold coffee cup beside it. The room is empty, the chair pushed back. ${nicheContextSetting} ${scene} ${cleanPlate} ${complianceNote}`,
 
-    person_intense: `${baseStyle}. Person (30-45 years old) dressed and styled for the ${niche} world, with CONFIDENT expression, serious face, leaning forward, direct eye contact. Dark background with a spotlight on the face. ${nicheContextPerson} ${scene} ${cleanPlate} ${complianceNote}`,
+    person_intense: `${baseStyle}. ${who} dressed and styled for the ${niche} world, with CONFIDENT expression, serious face, leaning forward, direct eye contact. Dark background with a spotlight on the face. ${nicheContextPerson} ${scene} ${cleanPlate} ${complianceNote}`,
 
     object: `${baseStyle}. A single relevant object (device, tool, or item) specifically associated with the ${niche} niche, photographed alone as a still life. The frame is empty of people — an object study only. Dramatic lighting, dark background. ${nicheContextSetting} ${scene} ${cleanPlate} ${complianceNote}`,
 
-    person_curious: `${baseStyle}. Person (30-45 years old) dressed and styled for the ${niche} world, with INTRIGUED expression, raised eyebrow, interested smile, head tilted. Dark grey background. ${nicheContextPerson} ${scene} ${cleanPlate} ${complianceNote}`,
+    person_curious: `${baseStyle}. ${who} dressed and styled for the ${niche} world, with INTRIGUED expression, raised eyebrow, interested smile, head tilted. Dark grey background. ${nicheContextPerson} ${scene} ${cleanPlate} ${complianceNote}`,
   };
 
   return stylePrompts[style as keyof typeof stylePrompts] || stylePrompts.person_shocked;
@@ -1032,12 +1041,16 @@ export async function generateAdCreativesBatch(params: {
   // P8: body DECK, rotated per variation — a single line here made all five
   // creatives in a wizard batch share one body, same as the Auto Mode path.
   const batchBodies = await resolveAdBodyTexts(db, params.userId, params.serviceId, variations.length);
+  // P6 cause 2: one subject resolved per batch, same rule as the Auto Mode path.
+  const batchSubject = await resolveSubjectForService(db, params.serviceId);
+  console.log(describeResolution(batchSubject));
+  const batchSubjectClauses = subjectClausesForBatch(batchSubject, variations.map(v => v.style));
 
   for (let i = 0; i < 5; i++) {
     const variation = variations[i];
     const headline = HEADLINE_FORMULAS[variation.formula](mechanism, params.niche, customerCount);
     const complianceIssues = checkCompliance(headline, params.mainBenefit, params.pressingProblem);
-    const imagePrompt = generateAdImagePrompt(variation.style, params.niche, params.pressingProblem);
+    const imagePrompt = generateAdImagePrompt(variation.style, params.niche, params.pressingProblem, false, batchSubjectClauses[i]);
 
     console.log(`[generateAdCreativesBatch] Generating variation ${i + 1}/5`);
 
