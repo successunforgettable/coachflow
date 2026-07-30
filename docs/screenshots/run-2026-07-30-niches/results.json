@@ -1,0 +1,214 @@
+{
+  "NICHES": [
+    [
+      "fitness",
+      "women over 40 rebuilding strength after years away from the gym",
+      "They start a programme every January, get sore, lose two weeks to a tweaked back and stop by February."
+    ],
+    [
+      "b2b",
+      "B2B software founders whose sales pipeline stalls after the first call",
+      "Discovery calls go well and then nothing moves; deals sit for months with no clear reason."
+    ],
+    [
+      "perimenopause",
+      "women in perimenopause struggling with broken sleep and flat energy",
+      "They wake at 3am most nights, run on caffeine, and have been told their bloods are normal."
+    ],
+    [
+      "photography",
+      "portrait photographers who cannot fill their booking calendar",
+      "Their work is good but enquiries are sporadic and they discount to fill gaps."
+    ],
+    [
+      "dogs",
+      "owners of reactive dogs who dread every walk",
+      "Their dog lunges and barks at other dogs, so they walk at 6am to avoid everyone and feel isolated."
+    ],
+    [
+      "piano",
+      "adult beginners learning piano who quit around month three",
+      "They practise inconsistently, plateau on playing with both hands, and decide they are not musical."
+    ]
+  ],
+  "results": [
+    {
+      "slug": "fitness",
+      "style": "object",
+      "model": "flux-1.1-pro",
+      "ms": 8458,
+      "ok": true
+    },
+    {
+      "slug": "fitness",
+      "style": "object",
+      "model": "gpt-image-1",
+      "ms": 17779,
+      "ok": true
+    },
+    {
+      "slug": "fitness",
+      "style": "screenshot",
+      "model": "flux-1.1-pro",
+      "ms": 6618,
+      "ok": true
+    },
+    {
+      "slug": "fitness",
+      "style": "screenshot",
+      "model": "gpt-image-1",
+      "ms": 19983,
+      "ok": true
+    },
+    {
+      "slug": "b2b",
+      "style": "object",
+      "model": "flux-1.1-pro",
+      "ms": 4289,
+      "ok": true
+    },
+    {
+      "slug": "b2b",
+      "style": "object",
+      "model": "gpt-image-1",
+      "ms": 17831,
+      "ok": true
+    },
+    {
+      "slug": "b2b",
+      "style": "screenshot",
+      "model": "flux-1.1-pro",
+      "ms": 6366,
+      "ok": true
+    },
+    {
+      "slug": "b2b",
+      "style": "screenshot",
+      "model": "gpt-image-1",
+      "ms": 17119,
+      "ok": true
+    },
+    {
+      "slug": "perimenopause",
+      "style": "object",
+      "model": "flux-1.1-pro",
+      "ms": 6105,
+      "ok": true
+    },
+    {
+      "slug": "perimenopause",
+      "style": "object",
+      "model": "gpt-image-1",
+      "ms": 19744,
+      "ok": true
+    },
+    {
+      "slug": "perimenopause",
+      "style": "screenshot",
+      "model": "flux-1.1-pro",
+      "ms": 6662,
+      "ok": true
+    },
+    {
+      "slug": "perimenopause",
+      "style": "screenshot",
+      "model": "gpt-image-1",
+      "ms": 18222,
+      "ok": true
+    },
+    {
+      "slug": "photography",
+      "style": "object",
+      "model": "flux-1.1-pro",
+      "ms": 4414,
+      "ok": true
+    },
+    {
+      "slug": "photography",
+      "style": "object",
+      "model": "gpt-image-1",
+      "ms": 19202,
+      "ok": true
+    },
+    {
+      "slug": "photography",
+      "style": "screenshot",
+      "model": "flux-1.1-pro",
+      "ms": 6793,
+      "ok": true
+    },
+    {
+      "slug": "photography",
+      "style": "screenshot",
+      "model": "gpt-image-1",
+      "ms": 17464,
+      "ok": true
+    },
+    {
+      "slug": "dogs",
+      "style": "object",
+      "model": "flux-1.1-pro",
+      "ms": 4420,
+      "ok": true
+    },
+    {
+      "slug": "dogs",
+      "style": "object",
+      "model": "gpt-image-1",
+      "ms": 17448,
+      "ok": true
+    },
+    {
+      "slug": "dogs",
+      "style": "screenshot",
+      "model": "flux-1.1-pro",
+      "ms": 5508,
+      "ok": true
+    },
+    {
+      "slug": "dogs",
+      "style": "screenshot",
+      "model": "gpt-image-1",
+      "ms": 18444,
+      "ok": true
+    },
+    {
+      "slug": "piano",
+      "style": "object",
+      "model": "flux-1.1-pro",
+      "ms": 4315,
+      "ok": true
+    },
+    {
+      "slug": "piano",
+      "style": "object",
+      "model": "gpt-image-1",
+      "ms": 17574,
+      "ok": true
+    },
+    {
+      "slug": "piano",
+      "style": "screenshot",
+      "model": "flux-1.1-pro",
+      "ms": 4808,
+      "ok": true
+    },
+    {
+      "slug": "piano",
+      "style": "screenshot",
+      "model": "gpt-image-1",
+      "ms": 19234,
+      "ok": true
+    }
+  ],
+  "summary": {
+    "flux-1.1-pro": {
+      "n": 12,
+      "medianMs": 6105
+    },
+    "gpt-image-1": {
+      "n": 12,
+      "medianMs": 18222
+    }
+  }
+}
