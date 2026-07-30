@@ -766,6 +766,15 @@ rather than bolting on a fixed offset.
 class as the P5 leak, sitting in a **live compliance block**. CLAUDE.md records negative examples as
 the root cause of the Sprint B email regression. **Needs regression testing, not a quick edit.**
 
+### 🔵 NEXT AFTER THE HYBRID — the parked Meta / GHL audit
+
+⚠️ **This is an AUDIT of what is built and unproven, NOT a build.** Both OAuth connections **EXIST**,
+and **16 GHL workflows were verified green in June** (see CLAUDE.md §11 for the locked architecture
+and the status-detection rule). **Do not open it assuming either integration is incomplete** — the
+question is what has never been exercised end-to-end, not what is missing. Known blind spot to start
+from: GHL deployment is not measurable today because **no per-asset push record exists**, so
+email/WhatsApp reach is unknown in both directions.
+
 ### Then, roughly in order
 
 - **A8 — ad-copy 0-card deck.** Real body rows exist in DB but the deck fetch returns 0 → the coach
